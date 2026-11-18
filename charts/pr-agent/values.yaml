@@ -19,13 +19,19 @@ customModelMaxTokens: "32768"
 maxModelTokens: "24576"
 inlineKeyIssues: true
 largePrChunking: true
-reviewMaxCalls: "8"
-numMaxFindings: "4"
+# Ceilings, not quotas. The prompt asks for 0..N verified issues and accepts an empty list.
+# Earlier findings also count toward N, so the ceiling has to leave room for a real new one.
+reviewMaxCalls: "100"
+numMaxFindings: "15"
 # Earlier findings are shown back to the model so it repeats them instead of paraphrasing.
 maxPreviousFindingsChars: "24000"
+# An empty finding list is still published, as "No major issues detected".
+publishOutputNoSuggestions: true
 # Host-only. Repository settings and /review arguments cannot override this.
 systemInstructions: >-
   Act like a careful human reviewer. Publish only a defect you can point at in the shown code.
+  Zero findings is a complete review. Do not add remarks to reach a count.
+  When you find no verified defect, say that there are no further remarks.
   Do not claim a statement was removed unless that line is absent from the diff.
   Do not restate an open inline thread, even in different words.
   Skip cosmetic import aliases and formatting-only hunks.
