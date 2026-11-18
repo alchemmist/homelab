@@ -36,3 +36,11 @@ def test_models_are_separate_and_public_content_is_aggregate():
         assert '[1m]' in expr and '$__interval' not in expr
     assert d['panels'][2]['gridPos']['y'] == 16
     assert all(p['gridPos']['h'] == 8 for p in d['panels'][:2])
+
+
+def test_chart_titles_use_litellm_route_names():
+    d = json.loads((Path(__file__).resolve().parents[1] / 'charts/monitoring-k3s/dashboards/llm-keys.json').read_text())
+    assert [p['title'] for p in d['panels'][:2]] == [
+        'Requests by API key — qwen3.8-27b',
+        'Requests by API key — venice-deepseek',
+    ]
