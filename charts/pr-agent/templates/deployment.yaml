@@ -80,6 +80,8 @@ spec:
               value: {{ .Values.reviewMaxCalls | quote }}
             - name: PR_REVIEWER__NUM_MAX_FINDINGS
               value: {{ .Values.numMaxFindings | quote }}
+            - name: PR_REVIEWER__PUBLISH_OUTPUT_NO_SUGGESTIONS
+              value: {{ .Values.publishOutputNoSuggestions | quote }}
             - name: PR_CODE_SUGGESTIONS__COMMITTABLE_CODE_SUGGESTIONS
               value: {{ .Values.committableSuggestions | quote }}
             - name: PR_CODE_SUGGESTIONS__MAX_NUMBER_OF_CALLS
