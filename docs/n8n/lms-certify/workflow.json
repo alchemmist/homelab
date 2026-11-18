@@ -1,95 +1,2116 @@
 {
-  "name": "LMS certify idle step",
+  "name": "LMS certification — echo pilot",
   "nodes": [
     {
-      "id": "8a1c0e2a-6b4d-4e1a-9c31-0a5f2d7b6c11",
+      "id": "0d0eb051-6286-57a2-8c7f-db87bae2bed0",
       "name": "Every minute",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "parameters": {
-        "rule": {"interval": [{"field": "minutes", "minutesInterval": 1}]}
-      }
-    },
-    {
-      "id": "b7e2a941-1c55-4a0e-8d66-2f4c9a0b7e22",
-      "name": "Qwen queue",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [280, 0],
-      "parameters": {
-        "method": "GET",
-        "url": "http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090/api/v1/query?query=vllm%3Anum_requests_running%7Bmodel_name%3D%22qwen3.8-27b%22%7D%20or%20vllm%3Anum_requests_waiting%7Bmodel_name%3D%22qwen3.8-27b%22%7D",
-        "options": {"timeout": 8000}
-      }
-    },
-    {
-      "id": "c3d4e5f6-7788-49aa-b012-3456789abc33",
-      "name": "Model free?",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [560, 0],
-      "parameters": {
-        "jsCode": "const rows = $json.data?.result || [];\nlet busy = 0;\nfor (const row of rows) busy += Number(row.value?.[1] || 0);\nif (!Number.isFinite(busy)) throw new Error('bad prometheus value');\nreturn [{json: {action: busy === 0 ? 'step' : 'skip', busy}}];"
-      }
-    },
-    {
-      "id": "d4e5f607-8899-4abb-c123-456789abcd44",
-      "name": "Free",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [840, 0],
-      "parameters": {
-        "conditions": {
-          "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2},
-          "combinator": "and",
-          "conditions": [
+        "rule": {
+          "interval": [
             {
-              "id": "free",
-              "leftValue": "={{ $json.action }}",
-              "rightValue": "step",
-              "operator": {"type": "string", "operation": "equals"}
+              "field": "minutes",
+              "minutesInterval": 1
             }
           ]
         }
       }
     },
     {
-      "id": "e5f60718-99aa-4bcc-d234-56789abcde55",
-      "name": "One certify step",
+      "id": "7a28ec43-e2d4-5473-ab33-532afe096e08",
+      "name": "Admission: queue depth",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1120, -80],
+      "position": [
+        220,
+        0
+      ],
       "parameters": {
+        "url": "http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090/api/v1/query",
+        "options": {
+          "timeout": 8000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "{__name__=~\"vllm:num_requests_(running|waiting)\",model_name=\"qwen3.8-27b\"}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "30c34a59-c09c-5a6e-8ab5-f95feff30c12",
+      "name": "Admission: sample freshness",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "url": "http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090/api/v1/query",
+        "options": {
+          "timeout": 8000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "label_replace(timestamp(vllm:num_requests_running{model_name=\"qwen3.8-27b\"}), \"queue_metric\", \"running\", \"model_name\", \".*\") or label_replace(timestamp(vllm:num_requests_waiting{model_name=\"qwen3.8-27b\"}), \"queue_metric\", \"waiting\", \"model_name\", \".*\")"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "7ab24674-adb7-5fea-9e5f-5b78200bd070",
+      "name": "Admission: verify both metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const values = $(\"Admission: queue depth\").item.json;\nconst stamps = $json;\nfunction rows(r) { return r.statusCode === 200 && r.body?.status === 'success' &&\n  Array.isArray(r.body?.data?.result) ? r.body.data.result : []; }\nconst expected = ['vllm:num_requests_running','vllm:num_requests_waiting'];\nconst v = rows(values), t = rows(stamps), now = Date.now()/1000;\nconst key = (r, metric) => JSON.stringify([metric, Object.entries(r.metric || {})\n  .filter(([k]) => !['__name__','queue_metric'].includes(k)).sort(([a],[b]) => a.localeCompare(b))]);\nconst fresh = new Set(t.filter(r => {const age = now - Number(r.value?.[1]); return age >= -5 && age <= 45;})\n  .map(r => key(r, r.metric.queue_metric)));\nreturn {json: {idle: expected.every(n => v.some(r => r.metric.__name__ === n)) &&\n  t.length === v.length && v.every(r => r.value?.[1] === '0' &&\n    fresh.has(key(r, r.metric.__name__.split('_').at(-1))))}};"
+      }
+    },
+    {
+      "id": "f17e76be-4c96-5389-859f-f9c2dc5569c3",
+      "name": "Admission: model idle?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        880,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "yes",
+              "leftValue": "={{ $json.idle === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "4b5f82b2-473a-5d2c-9295-4939faad041f",
+      "name": "Claim pilot and load checkpoint",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1100,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE lms_certification.pilot\nSET owner = $1, lease_until = clock_timestamp() + interval '15 minutes'\nWHERE id = 'echo-0-v1' AND phase NOT IN ('certified','needs_review')\nAND (lease_until IS NULL OR lease_until < clock_timestamp())\nRETURNING phase, data",
+        "options": {
+          "queryReplacement": "={{ [$execution.id] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_CERTIFICATION_DB",
+          "name": "CERTIFICATION_DB"
+        }
+      }
+    },
+    {
+      "id": "0e06520b-b2ac-555b-a290-915972673d09",
+      "name": "Checkpoint and dispatch next phase",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1480,
+        -380
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE lms_certification.pilot\nSET phase = $2, data = $3::jsonb, updated_at = clock_timestamp(),\nlease_until = CASE WHEN $2 IN ('certified','needs_review') THEN NULL ELSE clock_timestamp() + interval '15 minutes' END\nWHERE id = 'echo-0-v1' AND owner = $1 AND lease_until > clock_timestamp()\nRETURNING phase, data",
+        "options": {
+          "queryReplacement": "={{ [$execution.id, $json.phase, JSON.stringify($json.data)] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_CERTIFICATION_DB",
+          "name": "CERTIFICATION_DB"
+        }
+      }
+    },
+    {
+      "id": "a6444442-5163-50b9-9d37-196232548633",
+      "name": "Pause and release lease",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1140,
+        -580
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE lms_certification.pilot SET lease_until = NULL\nWHERE id = 'echo-0-v1' AND owner = $1 RETURNING phase",
+        "options": {
+          "queryReplacement": "={{ [$execution.id] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_CERTIFICATION_DB",
+          "name": "CERTIFICATION_DB"
+        }
+      }
+    },
+    {
+      "id": "d39d74d1-8e8f-5eee-9c4b-89ace6645bce",
+      "name": "Private outcome recorded",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4900,
+        -380
+      ],
+      "parameters": {
+        "jsCode": "return {json: {status: $json.phase}};"
+      }
+    },
+    {
+      "id": "adccd4f4-cf5a-5af4-a4bb-08c482ced990",
+      "name": "Phase: solve",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1490,
+        120
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "yes",
+              "leftValue": "={{ $json.phase === \"solve\" }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "22958f69-0787-5861-ae85-637ff454efc5",
+      "name": "Generate solution: queue depth",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1770,
+        120
+      ],
+      "parameters": {
+        "url": "http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090/api/v1/query",
+        "options": {
+          "timeout": 8000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "{__name__=~\"vllm:num_requests_(running|waiting)\",model_name=\"qwen3.8-27b\"}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "c6fc809e-611d-5ccd-9d5c-21eca412236d",
+      "name": "Generate solution: sample freshness",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1990,
+        120
+      ],
+      "parameters": {
+        "url": "http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090/api/v1/query",
+        "options": {
+          "timeout": 8000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "label_replace(timestamp(vllm:num_requests_running{model_name=\"qwen3.8-27b\"}), \"queue_metric\", \"running\", \"model_name\", \".*\") or label_replace(timestamp(vllm:num_requests_waiting{model_name=\"qwen3.8-27b\"}), \"queue_metric\", \"waiting\", \"model_name\", \".*\")"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "064c7acd-63b1-5b6e-93bf-7125ed29980f",
+      "name": "Generate solution: verify both metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2210,
+        120
+      ],
+      "parameters": {
+        "jsCode": "const values = $(\"Generate solution: queue depth\").item.json;\nconst stamps = $json;\nfunction rows(r) { return r.statusCode === 200 && r.body?.status === 'success' &&\n  Array.isArray(r.body?.data?.result) ? r.body.data.result : []; }\nconst expected = ['vllm:num_requests_running','vllm:num_requests_waiting'];\nconst v = rows(values), t = rows(stamps), now = Date.now()/1000;\nconst key = (r, metric) => JSON.stringify([metric, Object.entries(r.metric || {})\n  .filter(([k]) => !['__name__','queue_metric'].includes(k)).sort(([a],[b]) => a.localeCompare(b))]);\nconst fresh = new Set(t.filter(r => {const age = now - Number(r.value?.[1]); return age >= -5 && age <= 45;})\n  .map(r => key(r, r.metric.queue_metric)));\nreturn {json: {idle: expected.every(n => v.some(r => r.metric.__name__ === n)) &&\n  t.length === v.length && v.every(r => r.value?.[1] === '0' &&\n    fresh.has(key(r, r.metric.__name__.split('_').at(-1))))}};"
+      }
+    },
+    {
+      "id": "32a72370-466d-5348-8e7c-d7800b5bb1ad",
+      "name": "Generate solution: model idle?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2430,
+        120
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "yes",
+              "leftValue": "={{ $json.idle === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "8213aa8f-3a2d-5064-8a08-889811937385",
+      "name": "LLM: Generate solution",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2650,
+        120
+      ],
+      "parameters": {
+        "url": "http://litellm.llm.svc.cluster.local:4000/v1/chat/completions",
+        "options": {
+          "timeout": 90000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        },
         "method": "POST",
-        "url": "http://lms-certify.automation.svc.cluster.local:8080/step",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "{}",
-        "options": {"timeout": 100000}
+        "jsonBody": "={{ JSON.stringify({model:\"qwen3.8-27b\", temperature:0, max_tokens:1000, response_format:{type:'json_object'}, messages:[{role:'user', content: \"Верни решение на Python 3 в формате JSON {\\\"source\\\":\\\"...\\\"}. Условие: Напишите программу, которая считывает слово (или фразу, неважно) и тут же выводит её, и больше ничего не делает. Особое условие: одна строка, не более 14 символов.\"}]}) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
       "credentials": {
         "httpHeaderAuth": {
-          "id": "REPLACE_WITH_CREDENTIAL_ID",
-          "name": "lms-certify worker"
+          "id": "REPLACE_LITELLM",
+          "name": "LITELLM"
+        }
+      }
+    },
+    {
+      "id": "b33d0b3d-d880-5ad7-9c1a-e53ddbeaa101",
+      "name": "Validate solution format",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2870,
+        120
+      ],
+      "parameters": {
+        "jsCode": "const {phase,data} = $(\"Phase: solve\").item.json;\nconst status = $json.statusCode;\nif (status === 429 || status >= 500) return {json: {pause:true}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nlet payload;\ntry { payload = JSON.parse($json.body.choices[0].message.content); } catch { payload = {}; }\n data.calls = (data.calls || 0) + 1;\n const out = next => ({json:{phase:data.calls >= 12 && ['solve','repair','tests','expand'].includes(next) ? 'needs_review' : next,data}});\nconst source = typeof payload?.source === 'string' ? payload.source.trim() : '';\nif (!source || /[\\r\\n]/.test(source) || [...source].length > 14) return out(phase);\ndata.source = source;\nreturn out(phase === 'solve' ? 'tests' : 'public');"
+      }
+    },
+    {
+      "id": "af9a4059-e0b4-5503-9be9-e874559cc9c7",
+      "name": "Validate solution format checkpoint?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3090,
+        120
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "yes",
+              "leftValue": "={{ $json.pause !== true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "8f447f2f-e814-5941-b00c-fac17f6d077c",
+      "name": "Phase: tests",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1730,
+        420
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "yes",
+              "leftValue": "={{ $json.phase === \"tests\" }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "177ac377-dd19-500f-a0b6-2fb42912a8ae",
+      "name": "Author blind tests: queue depth",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2010,
+        420
+      ],
+      "parameters": {
+        "url": "http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090/api/v1/query",
+        "options": {
+          "timeout": 8000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "{__name__=~\"vllm:num_requests_(running|waiting)\",model_name=\"qwen3.8-27b\"}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "3216e856-864b-51eb-a98f-f68ec50aa1aa",
+      "name": "Author blind tests: sample freshness",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2230,
+        420
+      ],
+      "parameters": {
+        "url": "http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090/api/v1/query",
+        "options": {
+          "timeout": 8000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "label_replace(timestamp(vllm:num_requests_running{model_name=\"qwen3.8-27b\"}), \"queue_metric\", \"running\", \"model_name\", \".*\") or label_replace(timestamp(vllm:num_requests_waiting{model_name=\"qwen3.8-27b\"}), \"queue_metric\", \"waiting\", \"model_name\", \".*\")"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "63b2688d-94e2-55b6-a399-72d601074d71",
+      "name": "Author blind tests: verify both metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2450,
+        420
+      ],
+      "parameters": {
+        "jsCode": "const values = $(\"Author blind tests: queue depth\").item.json;\nconst stamps = $json;\nfunction rows(r) { return r.statusCode === 200 && r.body?.status === 'success' &&\n  Array.isArray(r.body?.data?.result) ? r.body.data.result : []; }\nconst expected = ['vllm:num_requests_running','vllm:num_requests_waiting'];\nconst v = rows(values), t = rows(stamps), now = Date.now()/1000;\nconst key = (r, metric) => JSON.stringify([metric, Object.entries(r.metric || {})\n  .filter(([k]) => !['__name__','queue_metric'].includes(k)).sort(([a],[b]) => a.localeCompare(b))]);\nconst fresh = new Set(t.filter(r => {const age = now - Number(r.value?.[1]); return age >= -5 && age <= 45;})\n  .map(r => key(r, r.metric.queue_metric)));\nreturn {json: {idle: expected.every(n => v.some(r => r.metric.__name__ === n)) &&\n  t.length === v.length && v.every(r => r.value?.[1] === '0' &&\n    fresh.has(key(r, r.metric.__name__.split('_').at(-1))))}};"
+      }
+    },
+    {
+      "id": "3b5dce48-f71e-5af3-b101-dc1d2037cd4d",
+      "name": "Author blind tests: model idle?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2670,
+        420
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "yes",
+              "leftValue": "={{ $json.idle === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "e787c774-0e09-58a6-96fd-47c64833fe47",
+      "name": "LLM: Author blind tests",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2890,
+        420
+      ],
+      "parameters": {
+        "url": "http://litellm.llm.svc.cluster.local:4000/v1/chat/completions",
+        "options": {
+          "timeout": 90000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        },
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({model:\"qwen3.8-27b\", temperature:0, max_tokens:1000, response_format:{type:'json_object'}, messages:[{role:'user', content: \"Придумай корректные закрытые тесты по условию. JSON {\\\"cases\\\":[{\\\"input\\\":\\\"строка\\\\n\\\",\\\"output\\\":\\\"строка\\\\n\\\"}]}. Добавь случаи с пробелами по краям, несколько слов, смешанный регистр и пустую строку. Условие: Напишите программу, которая считывает слово (или фразу, неважно) и тут же выводит её, и больше ничего не делает. Особое условие: одна строка, не более 14 символов.\"}]}) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_LITELLM",
+          "name": "LITELLM"
+        }
+      }
+    },
+    {
+      "id": "8ff6234e-1ff1-589c-b956-affecdbbcf1c",
+      "name": "Verify new tests against echo specification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3110,
+        420
+      ],
+      "parameters": {
+        "jsCode": "const {phase,data} = $(\"Phase: tests\").item.json;\nconst status = $json.statusCode;\nif (status === 429 || status >= 500) return {json: {pause:true}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nlet payload;\ntry { payload = JSON.parse($json.body.choices[0].message.content); } catch { payload = {}; }\n data.calls = (data.calls || 0) + 1;\n const out = next => ({json:{phase:data.calls >= 12 && ['solve','repair','tests','expand'].includes(next) ? 'needs_review' : next,data}});\n// Independently verify the echo task's expected output; never consult the candidate.\nconst cases = data.cases || [];\nconst seen = new Set(cases.map(c => c.input));\nfor (const c of (Array.isArray(payload?.cases) ? payload.cases.slice(0, 16) : [])) {\n  if (typeof c?.input !== 'string' || c.input.length > 256 || !/^[^\\r\\n]*\\n$/.test(c.input) ||\n      c.output !== c.input || seen.has(c.input) || c.input === 'Привет, мир!\\n' || cases.length >= 12) continue;\n  cases.push({input:c.input,output:c.output}); seen.add(c.input);\n}\ndata.cases = cases;\nreturn out(cases.length < 3 ? phase : 'public');"
+      }
+    },
+    {
+      "id": "bdb965ad-6721-591e-b41c-247340a8e188",
+      "name": "Verify new tests against echo specification checkpoint?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3330,
+        420
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "yes",
+              "leftValue": "={{ $json.pause !== true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "15f0f60c-b25c-54ba-85b7-2bc7f814322f",
+      "name": "Phase: public",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1970,
+        720
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "yes",
+              "leftValue": "={{ $json.phase === \"public\" }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "409ad27b-b043-5a80-831a-59ec2ecfdf2a",
+      "name": "Sandbox: Run public examples",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2250,
+        720
+      ],
+      "parameters": {
+        "url": "http://REPLACE_RUNNER:9000/certification/check-suite",
+        "options": {
+          "timeout": 90000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        },
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({source:$(\"Phase: public\").item.json.data.source, cases:[{\"input\": \"Привет, мир!\\n\", \"output\": \"Привет, мир!\\n\"}]}) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_SANDBOX",
+          "name": "SANDBOX"
+        }
+      }
+    },
+    {
+      "id": "400ee83c-0e8d-54ef-9c04-95236e2f65e2",
+      "name": "Route public example verdict",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2470,
+        720
+      ],
+      "parameters": {
+        "jsCode": "const {phase,data} = $(\"Phase: public\").item.json;\nconst status = $json.statusCode;\nif (status === 429 || status >= 500) return {json: {pause:true}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nconst verdict = $json.body?.verdict;\nif (!['accepted','wrong_answer','runtime_error','time_limit','output_limit','memory_limit'].includes(verdict))\n  throw new Error('Invalid sandbox verdict');\nlet next = \"suite\";\nif (verdict !== 'accepted') {\n  data.failure = {case: ([{\"input\": \"Привет, мир!\\n\", \"output\": \"Привет, мир!\\n\"}])[$json.body.test_index-1], verdict};\n  next = data.calls < 12 ? 'repair' : 'needs_review';\n} else if (next === 'mutate') { data.variant = 0; data.survivors = []; }\nreturn {json: {phase:next,data}};"
+      }
+    },
+    {
+      "id": "0a1bcc54-b46e-5358-80be-1c33c61b30a7",
+      "name": "Route public example verdict checkpoint?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2690,
+        720
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "yes",
+              "leftValue": "={{ $json.pause !== true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "a91fb146-61a0-5874-a5bd-6edc3b495130",
+      "name": "Phase: repair",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2210,
+        1020
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "yes",
+              "leftValue": "={{ $json.phase === \"repair\" }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "11ac0bf0-eea9-5c93-a58f-7fd3144ab884",
+      "name": "Repair solution: queue depth",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2490,
+        1020
+      ],
+      "parameters": {
+        "url": "http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090/api/v1/query",
+        "options": {
+          "timeout": 8000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "{__name__=~\"vllm:num_requests_(running|waiting)\",model_name=\"qwen3.8-27b\"}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "e8539968-1471-5aaf-912d-d7d05afce418",
+      "name": "Repair solution: sample freshness",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2710,
+        1020
+      ],
+      "parameters": {
+        "url": "http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090/api/v1/query",
+        "options": {
+          "timeout": 8000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "label_replace(timestamp(vllm:num_requests_running{model_name=\"qwen3.8-27b\"}), \"queue_metric\", \"running\", \"model_name\", \".*\") or label_replace(timestamp(vllm:num_requests_waiting{model_name=\"qwen3.8-27b\"}), \"queue_metric\", \"waiting\", \"model_name\", \".*\")"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "8b3f241d-a918-5ad2-babe-3ccec7217bd7",
+      "name": "Repair solution: verify both metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2930,
+        1020
+      ],
+      "parameters": {
+        "jsCode": "const values = $(\"Repair solution: queue depth\").item.json;\nconst stamps = $json;\nfunction rows(r) { return r.statusCode === 200 && r.body?.status === 'success' &&\n  Array.isArray(r.body?.data?.result) ? r.body.data.result : []; }\nconst expected = ['vllm:num_requests_running','vllm:num_requests_waiting'];\nconst v = rows(values), t = rows(stamps), now = Date.now()/1000;\nconst key = (r, metric) => JSON.stringify([metric, Object.entries(r.metric || {})\n  .filter(([k]) => !['__name__','queue_metric'].includes(k)).sort(([a],[b]) => a.localeCompare(b))]);\nconst fresh = new Set(t.filter(r => {const age = now - Number(r.value?.[1]); return age >= -5 && age <= 45;})\n  .map(r => key(r, r.metric.queue_metric)));\nreturn {json: {idle: expected.every(n => v.some(r => r.metric.__name__ === n)) &&\n  t.length === v.length && v.every(r => r.value?.[1] === '0' &&\n    fresh.has(key(r, r.metric.__name__.split('_').at(-1))))}};"
+      }
+    },
+    {
+      "id": "9e88fe83-ca11-5539-972c-007cc1e92efa",
+      "name": "Repair solution: model idle?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3150,
+        1020
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "yes",
+              "leftValue": "={{ $json.idle === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "971af9c3-7980-5923-871c-82f3d8317bfa",
+      "name": "LLM: Repair solution",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3370,
+        1020
+      ],
+      "parameters": {
+        "url": "http://litellm.llm.svc.cluster.local:4000/v1/chat/completions",
+        "options": {
+          "timeout": 90000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        },
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({model:\"qwen3.8-27b\", temperature:0, max_tokens:1000, response_format:{type:'json_object'}, messages:[{role:'user', content: \"Верни решение на Python 3 в формате JSON {\\\"source\\\":\\\"...\\\"}. Условие: Напишите программу, которая считывает слово (или фразу, неважно) и тут же выводит её, и больше ничего не делает. Особое условие: одна строка, не более 14 символов.\" + '\\nПредыдущее решение: ' + JSON.stringify($(\"Phase: repair\").item.json.data.source) + '\\nПроваленный проверенный тест: ' + JSON.stringify($(\"Phase: repair\").item.json.data.failure)}]}) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_LITELLM",
+          "name": "LITELLM"
+        }
+      }
+    },
+    {
+      "id": "8e95fca1-891b-5292-aefd-6f67e177a1aa",
+      "name": "Validate repaired solution format",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3590,
+        1020
+      ],
+      "parameters": {
+        "jsCode": "const {phase,data} = $(\"Phase: repair\").item.json;\nconst status = $json.statusCode;\nif (status === 429 || status >= 500) return {json: {pause:true}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nlet payload;\ntry { payload = JSON.parse($json.body.choices[0].message.content); } catch { payload = {}; }\n data.calls = (data.calls || 0) + 1;\n const out = next => ({json:{phase:data.calls >= 12 && ['solve','repair','tests','expand'].includes(next) ? 'needs_review' : next,data}});\nconst source = typeof payload?.source === 'string' ? payload.source.trim() : '';\nif (!source || /[\\r\\n]/.test(source) || [...source].length > 14) return out(phase);\ndata.source = source;\nreturn out(phase === 'solve' ? 'tests' : 'public');"
+      }
+    },
+    {
+      "id": "a1ea7077-4d13-5b66-9f25-9f6ccb00f58e",
+      "name": "Validate repaired solution format checkpoint?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3810,
+        1020
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "yes",
+              "leftValue": "={{ $json.pause !== true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "a2ad8d9a-dacf-5e29-bbfc-3a4bdc74d694",
+      "name": "Phase: suite",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2450,
+        1320
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "yes",
+              "leftValue": "={{ $json.phase === \"suite\" }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "0e11fb10-dd5c-5673-bb7a-f8f159cd1606",
+      "name": "Sandbox: Run verified private tests",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2730,
+        1320
+      ],
+      "parameters": {
+        "url": "http://REPLACE_RUNNER:9000/certification/check-suite",
+        "options": {
+          "timeout": 90000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        },
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({source:$(\"Phase: suite\").item.json.data.source, cases:$(\"Phase: suite\").item.json.data.cases}) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_SANDBOX",
+          "name": "SANDBOX"
+        }
+      }
+    },
+    {
+      "id": "efd8e366-ca7d-5938-bc90-b05621194ff8",
+      "name": "Route private test verdict",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2950,
+        1320
+      ],
+      "parameters": {
+        "jsCode": "const {phase,data} = $(\"Phase: suite\").item.json;\nconst status = $json.statusCode;\nif (status === 429 || status >= 500) return {json: {pause:true}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nconst verdict = $json.body?.verdict;\nif (!['accepted','wrong_answer','runtime_error','time_limit','output_limit','memory_limit'].includes(verdict))\n  throw new Error('Invalid sandbox verdict');\nlet next = \"mutate\";\nif (verdict !== 'accepted') {\n  data.failure = {case: ($(\"Phase: suite\").item.json.data.cases)[$json.body.test_index-1], verdict};\n  next = data.calls < 12 ? 'repair' : 'needs_review';\n} else if (next === 'mutate') { data.variant = 0; data.survivors = []; }\nreturn {json: {phase:next,data}};"
+      }
+    },
+    {
+      "id": "52567517-0b17-59bb-bc0b-8795f6b9d832",
+      "name": "Route private test verdict checkpoint?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3170,
+        1320
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "yes",
+              "leftValue": "={{ $json.pause !== true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "b24266c5-88a8-51ee-88a1-41064bcc3a39",
+      "name": "Phase: mutate",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2690,
+        1620
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "yes",
+              "leftValue": "={{ $json.phase === \"mutate\" }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "c1885635-6537-5f3a-8cfb-4cd20375a1d3",
+      "name": "Sandbox: Run one fault variant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2970,
+        1620
+      ],
+      "parameters": {
+        "url": "http://REPLACE_RUNNER:9000/certification/check-suite",
+        "options": {
+          "timeout": 90000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        },
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({source:[[\"empty program\", \"pass\"], [\"strip whitespace\", \"print(input().strip())\"], [\"truncate at first word\", \"print(input().split(\\\" \\\")[0])\"], [\"lowercase\", \"print(input().lower())\"], [\"lose leading characters\", \"print(input()[1:])\"]][$(\"Phase: mutate\").item.json.data.variant][1], cases:$(\"Phase: mutate\").item.json.data.cases}) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_SANDBOX",
+          "name": "SANDBOX"
+        }
+      }
+    },
+    {
+      "id": "d072a654-2a9d-5c5d-9cdf-0b440b2d4b95",
+      "name": "Count killed variants or request more coverage",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3190,
+        1620
+      ],
+      "parameters": {
+        "jsCode": "const {phase,data} = $(\"Phase: mutate\").item.json;\nconst status = $json.statusCode;\nif (status === 429 || status >= 500) return {json: {pause:true}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nconst verdict = $json.body?.verdict;\nif (!['accepted','wrong_answer','runtime_error','time_limit','output_limit','memory_limit'].includes(verdict))\n  throw new Error('Invalid sandbox verdict');\nconst variants = [[\"empty program\", \"pass\"], [\"strip whitespace\", \"print(input().strip())\"], [\"truncate at first word\", \"print(input().split(\\\" \\\")[0])\"], [\"lowercase\", \"print(input().lower())\"], [\"lose leading characters\", \"print(input()[1:])\"]];\nif (verdict !== 'wrong_answer') data.survivors.push(variants[data.variant][0]);\ndata.variant++;\nconst next = data.variant < variants.length ? 'mutate' :\n  !data.survivors.length ? 'certified' : data.calls < 12 ? 'expand' : 'needs_review';\ndata.faultsKilled = data.variant - data.survivors.length;\nreturn {json: {phase:next,data}};"
+      }
+    },
+    {
+      "id": "c25ba217-5721-5fea-9c08-a58343e1a0b7",
+      "name": "Count killed variants or request more coverage checkpoint?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3410,
+        1620
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "yes",
+              "leftValue": "={{ $json.pause !== true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "5a6a4b45-7c43-5e0a-9e85-4e82465d1fe2",
+      "name": "Phase: expand",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2930,
+        1920
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "yes",
+              "leftValue": "={{ $json.phase === \"expand\" }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "22134c65-37d6-53ea-9819-06b44e590a16",
+      "name": "Add missing corner cases: queue depth",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3210,
+        1920
+      ],
+      "parameters": {
+        "url": "http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090/api/v1/query",
+        "options": {
+          "timeout": 8000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "{__name__=~\"vllm:num_requests_(running|waiting)\",model_name=\"qwen3.8-27b\"}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "5f1c9460-3e51-5a49-a666-000e154b77af",
+      "name": "Add missing corner cases: sample freshness",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3430,
+        1920
+      ],
+      "parameters": {
+        "url": "http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090/api/v1/query",
+        "options": {
+          "timeout": 8000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "label_replace(timestamp(vllm:num_requests_running{model_name=\"qwen3.8-27b\"}), \"queue_metric\", \"running\", \"model_name\", \".*\") or label_replace(timestamp(vllm:num_requests_waiting{model_name=\"qwen3.8-27b\"}), \"queue_metric\", \"waiting\", \"model_name\", \".*\")"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "9c7d32df-0882-5494-abf1-ac55aa54172d",
+      "name": "Add missing corner cases: verify both metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3650,
+        1920
+      ],
+      "parameters": {
+        "jsCode": "const values = $(\"Add missing corner cases: queue depth\").item.json;\nconst stamps = $json;\nfunction rows(r) { return r.statusCode === 200 && r.body?.status === 'success' &&\n  Array.isArray(r.body?.data?.result) ? r.body.data.result : []; }\nconst expected = ['vllm:num_requests_running','vllm:num_requests_waiting'];\nconst v = rows(values), t = rows(stamps), now = Date.now()/1000;\nconst key = (r, metric) => JSON.stringify([metric, Object.entries(r.metric || {})\n  .filter(([k]) => !['__name__','queue_metric'].includes(k)).sort(([a],[b]) => a.localeCompare(b))]);\nconst fresh = new Set(t.filter(r => {const age = now - Number(r.value?.[1]); return age >= -5 && age <= 45;})\n  .map(r => key(r, r.metric.queue_metric)));\nreturn {json: {idle: expected.every(n => v.some(r => r.metric.__name__ === n)) &&\n  t.length === v.length && v.every(r => r.value?.[1] === '0' &&\n    fresh.has(key(r, r.metric.__name__.split('_').at(-1))))}};"
+      }
+    },
+    {
+      "id": "fb529c5e-97e2-5edd-a268-72d66e06c736",
+      "name": "Add missing corner cases: model idle?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3870,
+        1920
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "yes",
+              "leftValue": "={{ $json.idle === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "cb6c1100-6333-5817-8926-6c40aa9d6819",
+      "name": "LLM: Add missing corner cases",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4090,
+        1920
+      ],
+      "parameters": {
+        "url": "http://litellm.llm.svc.cluster.local:4000/v1/chat/completions",
+        "options": {
+          "timeout": 90000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        },
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({model:\"qwen3.8-27b\", temperature:0, max_tokens:1000, response_format:{type:'json_object'}, messages:[{role:'user', content: \"Придумай корректные закрытые тесты по условию. JSON {\\\"cases\\\":[{\\\"input\\\":\\\"строка\\\\n\\\",\\\"output\\\":\\\"строка\\\\n\\\"}]}. Добавь случаи с пробелами по краям, несколько слов, смешанный регистр и пустую строку. Условие: Напишите программу, которая считывает слово (или фразу, неважно) и тут же выводит её, и больше ничего не делает. Особое условие: одна строка, не более 14 символов.\" + '\\nУже проверенные входы: ' + JSON.stringify($(\"Phase: expand\").item.json.data.cases.map(c => c.input)) + '\\nЧто не поймано: ' + JSON.stringify($(\"Phase: expand\").item.json.data.survivors)}]}) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_LITELLM",
+          "name": "LITELLM"
+        }
+      }
+    },
+    {
+      "id": "986464f8-227a-5738-bd90-d0b9ba0d98b6",
+      "name": "Verify added cases and preserve existing tests",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4310,
+        1920
+      ],
+      "parameters": {
+        "jsCode": "const {phase,data} = $(\"Phase: expand\").item.json;\nconst status = $json.statusCode;\nif (status === 429 || status >= 500) return {json: {pause:true}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nlet payload;\ntry { payload = JSON.parse($json.body.choices[0].message.content); } catch { payload = {}; }\n data.calls = (data.calls || 0) + 1;\n const out = next => ({json:{phase:data.calls >= 12 && ['solve','repair','tests','expand'].includes(next) ? 'needs_review' : next,data}});\n// Independently verify the echo task's expected output; never consult the candidate.\nconst cases = data.cases || [];\nconst seen = new Set(cases.map(c => c.input));\nfor (const c of (Array.isArray(payload?.cases) ? payload.cases.slice(0, 16) : [])) {\n  if (typeof c?.input !== 'string' || c.input.length > 256 || !/^[^\\r\\n]*\\n$/.test(c.input) ||\n      c.output !== c.input || seen.has(c.input) || c.input === 'Привет, мир!\\n' || cases.length >= 12) continue;\n  cases.push({input:c.input,output:c.output}); seen.add(c.input);\n}\ndata.cases = cases;\nreturn out(cases.length < 3 ? phase : 'public');"
+      }
+    },
+    {
+      "id": "80927ff3-555b-53e1-afcb-7032b3f444ef",
+      "name": "Verify added cases and preserve existing tests checkpoint?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4530,
+        1920
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "yes",
+              "leftValue": "={{ $json.pause !== true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
         }
       }
     }
   ],
   "connections": {
-    "Every minute": {"main": [[{"node": "Qwen queue", "type": "main", "index": 0}]]},
-    "Qwen queue": {"main": [[{"node": "Model free?", "type": "main", "index": 0}]]},
-    "Model free?": {"main": [[{"node": "Free", "type": "main", "index": 0}]]},
-    "Free": {"main": [[{"node": "One certify step", "type": "main", "index": 0}]]}
+    "Admission: queue depth": {
+      "main": [
+        [
+          {
+            "node": "Admission: sample freshness",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Admission: sample freshness": {
+      "main": [
+        [
+          {
+            "node": "Admission: verify both metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Admission: verify both metrics": {
+      "main": [
+        [
+          {
+            "node": "Admission: model idle?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every minute": {
+      "main": [
+        [
+          {
+            "node": "Admission: queue depth",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Admission: model idle?": {
+      "main": [
+        [
+          {
+            "node": "Claim pilot and load checkpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claim pilot and load checkpoint": {
+      "main": [
+        [
+          {
+            "node": "Phase: solve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Checkpoint and dispatch next phase": {
+      "main": [
+        [
+          {
+            "node": "Phase: solve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate solution: queue depth": {
+      "main": [
+        [
+          {
+            "node": "Generate solution: sample freshness",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate solution: sample freshness": {
+      "main": [
+        [
+          {
+            "node": "Generate solution: verify both metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate solution: verify both metrics": {
+      "main": [
+        [
+          {
+            "node": "Generate solution: model idle?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phase: solve": {
+      "main": [
+        [
+          {
+            "node": "Generate solution: queue depth",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Phase: tests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate solution: model idle?": {
+      "main": [
+        [
+          {
+            "node": "LLM: Generate solution",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pause and release lease",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate solution format": {
+      "main": [
+        [
+          {
+            "node": "Validate solution format checkpoint?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate solution format checkpoint?": {
+      "main": [
+        [
+          {
+            "node": "Checkpoint and dispatch next phase",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pause and release lease",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM: Generate solution": {
+      "main": [
+        [
+          {
+            "node": "Validate solution format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Author blind tests: queue depth": {
+      "main": [
+        [
+          {
+            "node": "Author blind tests: sample freshness",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Author blind tests: sample freshness": {
+      "main": [
+        [
+          {
+            "node": "Author blind tests: verify both metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Author blind tests: verify both metrics": {
+      "main": [
+        [
+          {
+            "node": "Author blind tests: model idle?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phase: tests": {
+      "main": [
+        [
+          {
+            "node": "Author blind tests: queue depth",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Phase: public",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Author blind tests: model idle?": {
+      "main": [
+        [
+          {
+            "node": "LLM: Author blind tests",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pause and release lease",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify new tests against echo specification": {
+      "main": [
+        [
+          {
+            "node": "Verify new tests against echo specification checkpoint?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify new tests against echo specification checkpoint?": {
+      "main": [
+        [
+          {
+            "node": "Checkpoint and dispatch next phase",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pause and release lease",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM: Author blind tests": {
+      "main": [
+        [
+          {
+            "node": "Verify new tests against echo specification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route public example verdict": {
+      "main": [
+        [
+          {
+            "node": "Route public example verdict checkpoint?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route public example verdict checkpoint?": {
+      "main": [
+        [
+          {
+            "node": "Checkpoint and dispatch next phase",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pause and release lease",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phase: public": {
+      "main": [
+        [
+          {
+            "node": "Sandbox: Run public examples",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Phase: repair",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sandbox: Run public examples": {
+      "main": [
+        [
+          {
+            "node": "Route public example verdict",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Repair solution: queue depth": {
+      "main": [
+        [
+          {
+            "node": "Repair solution: sample freshness",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Repair solution: sample freshness": {
+      "main": [
+        [
+          {
+            "node": "Repair solution: verify both metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Repair solution: verify both metrics": {
+      "main": [
+        [
+          {
+            "node": "Repair solution: model idle?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phase: repair": {
+      "main": [
+        [
+          {
+            "node": "Repair solution: queue depth",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Phase: suite",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Repair solution: model idle?": {
+      "main": [
+        [
+          {
+            "node": "LLM: Repair solution",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pause and release lease",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate repaired solution format": {
+      "main": [
+        [
+          {
+            "node": "Validate repaired solution format checkpoint?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate repaired solution format checkpoint?": {
+      "main": [
+        [
+          {
+            "node": "Checkpoint and dispatch next phase",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pause and release lease",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM: Repair solution": {
+      "main": [
+        [
+          {
+            "node": "Validate repaired solution format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route private test verdict": {
+      "main": [
+        [
+          {
+            "node": "Route private test verdict checkpoint?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route private test verdict checkpoint?": {
+      "main": [
+        [
+          {
+            "node": "Checkpoint and dispatch next phase",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pause and release lease",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phase: suite": {
+      "main": [
+        [
+          {
+            "node": "Sandbox: Run verified private tests",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Phase: mutate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sandbox: Run verified private tests": {
+      "main": [
+        [
+          {
+            "node": "Route private test verdict",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Count killed variants or request more coverage": {
+      "main": [
+        [
+          {
+            "node": "Count killed variants or request more coverage checkpoint?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Count killed variants or request more coverage checkpoint?": {
+      "main": [
+        [
+          {
+            "node": "Checkpoint and dispatch next phase",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pause and release lease",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phase: mutate": {
+      "main": [
+        [
+          {
+            "node": "Sandbox: Run one fault variant",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Phase: expand",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sandbox: Run one fault variant": {
+      "main": [
+        [
+          {
+            "node": "Count killed variants or request more coverage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add missing corner cases: queue depth": {
+      "main": [
+        [
+          {
+            "node": "Add missing corner cases: sample freshness",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add missing corner cases: sample freshness": {
+      "main": [
+        [
+          {
+            "node": "Add missing corner cases: verify both metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add missing corner cases: verify both metrics": {
+      "main": [
+        [
+          {
+            "node": "Add missing corner cases: model idle?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phase: expand": {
+      "main": [
+        [
+          {
+            "node": "Add missing corner cases: queue depth",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Private outcome recorded",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add missing corner cases: model idle?": {
+      "main": [
+        [
+          {
+            "node": "LLM: Add missing corner cases",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pause and release lease",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify added cases and preserve existing tests": {
+      "main": [
+        [
+          {
+            "node": "Verify added cases and preserve existing tests checkpoint?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify added cases and preserve existing tests checkpoint?": {
+      "main": [
+        [
+          {
+            "node": "Checkpoint and dispatch next phase",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pause and release lease",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM: Add missing corner cases": {
+      "main": [
+        [
+          {
+            "node": "Verify added cases and preserve existing tests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
   "settings": {
     "errorWorkflow": "iZn7biFh6321a1w8",
     "executionOrder": "v1",
     "timezone": "Europe/Moscow",
-    "executionTimeout": 120,
-    "saveDataSuccessExecution": "all",
-    "saveDataErrorExecution": "all"
+    "executionTimeout": 720,
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveExecutionProgress": false,
+    "saveManualExecutions": false
   }
 }
