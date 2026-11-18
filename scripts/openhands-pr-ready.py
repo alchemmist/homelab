@@ -164,6 +164,9 @@ def fetch(repo, number):
     return pr
 
 
+_HANDOFF_SNAPSHOT_COUNT = 2
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", default="alchemmist/monori")
@@ -172,18 +175,21 @@ def main():
     parser.add_argument("--handler", action="append", default=[])
     args = parser.parse_args()
     try:
-        pr = fetch(args.repo, args.pr)
-        report = assess(pr, set(args.reviewer), set(args.handler))
-        fresh = fetch(args.repo, args.pr)
-        if fresh["headRefOid"] != report["head"]:
-            report["ready_to_review"] = False
-            report["blockers"].append("Head changed during audit")
-        else:
-            fresh_report = assess(fresh, set(args.reviewer), set(args.handler))
-            if fresh_report != report:
+        report = None
+        for _ in range(_HANDOFF_SNAPSHOT_COUNT):
+            snapshot = fetch(args.repo, args.pr)
+            if report is not None and snapshot["headRefOid"] != report["head"]:
+                report["ready_to_review"] = False
+                report["blockers"].append("Head changed during audit")
+                break
+            fresh_report = assess(snapshot, set(args.reviewer), set(args.handler))
+            if report is not None and fresh_report != report:
                 fresh_report["ready_to_review"] = False
                 fresh_report["blockers"].append("PR state changed during audit")
-                report = fresh_report
+            report = fresh_report
+        if report is None:
+            message = "Missing handoff snapshot assessment"
+            raise RuntimeError(message)
         report["checked_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0 if report["ready_to_review"] else 1
