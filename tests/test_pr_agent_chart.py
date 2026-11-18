@@ -34,8 +34,10 @@ class PrAgentChartTest(unittest.TestCase):
         fallback_value = rendered.splitlines()[fallback_at + 1]
         self.assertEqual(fallback_value.count("openai/venice-deepseek"), 9)
         self.assertIn("CONFIG__MAX_MODEL_TOKENS", rendered)
-        self.assertIn('value: "12288"', rendered)
-        self.assertIn('value: "100"', rendered)
+        self.assertIn('value: "24576"', rendered)
+        self.assertIn('value: "4"', rendered)
+        self.assertIn("PR_REVIEWER__MAX_PREVIOUS_FINDINGS_CHARS", rendered)
+        self.assertIn("CONFIG__SYSTEM_INSTRUCTIONS", rendered)
         self.assertIn("PR_REVIEWER__ENABLE_LARGE_PR_CHUNKING", rendered)
         self.assertIn("PR_REVIEWER__INLINE_KEY_ISSUES", rendered)
         self.assertIn("PR_CODE_SUGGESTIONS__COMMITTABLE_CODE_SUGGESTIONS", rendered)
@@ -43,7 +45,7 @@ class PrAgentChartTest(unittest.TestCase):
         self.assertIn("GITHUB_APP__PUSH_COMMANDS", rendered)
         self.assertIn("GITHUB__PUBLISH_AS_CHECK_RUN", rendered)
         check_at = next(i for i, line in enumerate(rendered.splitlines()) if "GITHUB__PUBLISH_AS_CHECK_RUN" in line)
-        self.assertIn('"true"', rendered.splitlines()[check_at + 1])
+        self.assertIn('"false"', rendered.splitlines()[check_at + 1])
         lines = rendered.splitlines()
         push_at = next(i for i, line in enumerate(lines) if "GITHUB_APP__PUSH_COMMANDS" in line)
         push_value = lines[push_at + 1]

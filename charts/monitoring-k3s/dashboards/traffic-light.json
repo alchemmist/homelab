@@ -182,9 +182,20 @@
           },
           "decimals": 0,
           "displayName": "VPN mode",
+          "links": [
+            {
+              "targetBlank": true,
+              "title": "Components: Moscow / NL runtime and checks",
+              "url": "/explore?left=%7B%22datasource%22%3A%22prometheus%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22%7B__name__%3D~%5C%22socrat_vpn_component_%28runtime%7Ccheck_success%7Coff%7Cobservation_success%7Cobserved_timestamp_seconds%29%5C%22%2Cjob%3D%5C%22node-exporter%5C%22%2Cinstance%3D~%5C%2210.250.0.40%3A9100%7C10.250.0.2%3A9100%5C%22%7D%22%2C%22instant%22%3Atrue%2C%22range%22%3Afalse%2C%22format%22%3A%22table%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-5m%22%2C%22to%22%3A%22now%22%7D%7D"
+            }
+          ],
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#666666",
+                  "text": "NO DATA"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "K3S"
@@ -196,10 +207,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "OFF"
-                },
-                "-2": {
-                  "color": "#666666",
-                  "text": "NO DATA"
                 },
                 "3": {
                   "color": "#A85D08",
@@ -227,14 +234,7 @@
               }
             ]
           },
-          "unit": "short",
-          "links": [
-            {
-              "title": "Components: Moscow / NL runtime and checks",
-              "url": "/explore?left=%7B%22datasource%22%3A%22prometheus%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22%7B__name__%3D~%5C%22socrat_vpn_component_%28runtime%7Ccheck_success%7Coff%7Cobservation_success%7Cobserved_timestamp_seconds%29%5C%22%2Cjob%3D%5C%22node-exporter%5C%22%2Cinstance%3D~%5C%2210.250.0.40%3A9100%7C10.250.0.2%3A9100%5C%22%7D%22%2C%22instant%22%3Atrue%2C%22range%22%3Afalse%2C%22format%22%3A%22table%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-5m%22%2C%22to%22%3A%22now%22%7D%7D",
-              "targetBlank": true
-            }
-          ]
+          "unit": "short"
         }
       },
       "gridPos": {
@@ -886,6 +886,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "STALE"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "OK"
@@ -901,10 +905,6 @@
                 "3": {
                   "color": "#B42332",
                   "text": "DOWN"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "STALE"
                 }
               },
               "type": "value"
@@ -987,6 +987,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "STALE"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "OK"
@@ -1002,10 +1006,6 @@
                 "3": {
                   "color": "#B42332",
                   "text": "DOWN"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "STALE"
                 }
               },
               "type": "value"
@@ -1088,6 +1088,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -1099,10 +1103,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -1185,6 +1185,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -1196,10 +1200,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -1282,6 +1282,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -1293,10 +1297,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -1457,6 +1457,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "STALE"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "OK"
@@ -1472,10 +1476,6 @@
                 "3": {
                   "color": "#B42332",
                   "text": "DOWN"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "STALE"
                 }
               },
               "type": "value"
@@ -1558,6 +1558,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "STALE"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "OK"
@@ -1573,10 +1577,6 @@
                 "3": {
                   "color": "#B42332",
                   "text": "DOWN"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "STALE"
                 }
               },
               "type": "value"
@@ -1659,6 +1659,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -1670,10 +1674,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -1756,6 +1756,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -1767,10 +1771,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -1853,6 +1853,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -1864,10 +1868,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -1950,6 +1950,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -1961,10 +1965,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -2047,6 +2047,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "STALE"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "OK"
@@ -2062,10 +2066,6 @@
                 "3": {
                   "color": "#B42332",
                   "text": "DOWN"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "STALE"
                 }
               },
               "type": "value"
@@ -2148,6 +2148,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -2159,10 +2163,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -2245,6 +2245,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -2256,10 +2260,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -2342,6 +2342,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -2353,10 +2357,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -2439,6 +2439,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "STALE"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "OK"
@@ -2454,10 +2458,6 @@
                 "3": {
                   "color": "#B42332",
                   "text": "DOWN"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "STALE"
                 }
               },
               "type": "value"
@@ -2485,10 +2485,10 @@
         }
       },
       "gridPos": {
-        "x": 23,
-        "y": 5,
+        "h": 1,
         "w": 1,
-        "h": 1
+        "x": 23,
+        "y": 5
       },
       "id": 927,
       "options": {
@@ -2540,6 +2540,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -2551,10 +2555,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -2637,6 +2637,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -2648,10 +2652,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -2734,6 +2734,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -2745,10 +2749,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -2831,6 +2831,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -2842,10 +2846,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -2928,6 +2928,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "STALE"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "OK"
@@ -2935,10 +2939,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "DOWN"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "STALE"
                 }
               },
               "type": "value"
@@ -3021,6 +3021,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -3032,10 +3036,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -3118,6 +3118,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -3129,10 +3133,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -3215,6 +3215,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "STALE"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "OK"
@@ -3222,10 +3226,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "DOWN"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "STALE"
                 }
               },
               "type": "value"
@@ -3308,6 +3308,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -3319,10 +3323,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -3405,6 +3405,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -3416,10 +3420,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -3502,6 +3502,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -3513,10 +3517,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -3592,6 +3592,99 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "Direct public IPv4 TCP443 from HOME socrat-0, source192.168.0.23 via physical eno1 / home router, stock host-network blackbox UID19091 with verified probe-only OUTPUT DNAT exemption. No DNS, TLS, application/VPN check, SOCKS proxy or Moscow relay. Green=TCP connect succeeds; red=fresh TCP connect failure; grey=missing/stale probe collection. Independent of service-probes and service/VPN alerts. This is one Russian HOME ISP vantage, not all Russia. ICMP may be blocked while TCP443 works. Home IP is a router hairpin check, not an external internet check. Route changes require revalidating physical WAN egress.",
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "Moscow IP",
+          "mappings": [
+            {
+              "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "STALE"
+                },
+                "0": {
+                  "color": "#26783D",
+                  "text": "OK"
+                },
+                "2": {
+                  "color": "#B42332",
+                  "text": "DOWN"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "noValue": "No telemetry",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": 0
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 1,
+        "w": 1,
+        "x": 23,
+        "y": 8
+      },
+      "id": 928,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 14
+        },
+        "textMode": "name",
+        "wideLayout": false
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "((2 * (1 - max(probe_success{job=\"public-ip-probes\",service_id=\"edge-moscow\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan-v2\"}))) and on() (max(up{job=\"public-ip-probes\",service_id=\"edge-moscow\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan-v2\"}) == 1) and on() (time() - max(timestamp(up{job=\"public-ip-probes\",service_id=\"edge-moscow\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan-v2\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"public-ip-probes\",service_id=\"edge-moscow\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan-v2\"})) < 90)) or vector(-2)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "description": "Image Proxy: tcp_connect probe of img-proxy.img-proxy.svc.cluster.local:80 every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
       "fieldConfig": {
         "defaults": {
@@ -3599,6 +3692,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -3610,10 +3707,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -3696,6 +3789,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -3707,10 +3804,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -3793,6 +3886,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -3804,10 +3901,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -3890,6 +3983,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -3901,10 +3998,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -3987,6 +4080,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -3998,10 +4095,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -4084,6 +4177,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -4095,10 +4192,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -4285,7 +4378,7 @@
         ]
       },
       "gridPos": {
-        "h": 5,
+        "h": 4,
         "w": 6,
         "x": 6,
         "y": 10
@@ -4329,6 +4422,7 @@
       "title": "",
       "type": "timeseries"
     },
+    {"datasource":{"type":"prometheus","uid":"prometheus"},"description":"RustFS storage pod RX/TX bytes/s5m, last1h; includes internal traffic/overhead, NOT object or OCI counts/availability. Fresh cAdvisor/current Pod coverage90s. Latest missing=-2/No telemetry, never zero. Independent sparkline scales: compare numbers, not heights.","fieldConfig":{"defaults":{"color":{"fixedColor":"#B877D9","mode":"fixed"},"decimals":0,"displayName":"RustFS · ${__field.labels.direction}","mappings":[{"options":{"-2":{"color":"#808080","text":"No telemetry"}},"type":"value"}],"min":0,"noValue":"No telemetry","thresholds":{"mode":"absolute","steps":[{"color":"green","value":0},{"color":"red","value":80}]},"unit":"Bps"}},"gridPos":{"h":3,"w":4,"x":12,"y":10},"hideTimeOverride":true,"id":931,"options":{"colorMode":"value","graphMode":"area","justifyMode":"center","orientation":"vertical","percentChangeColorMode":"standard","reduceOptions":{"calcs":["last"],"fields":"","values":false},"showPercentChange":false,"text":{"titleSize":12,"valueSize":26},"textMode":"value_and_name","wideLayout":false},"pluginVersion":"13.2.4","targets":[{"datasource":{"type":"prometheus","uid":"prometheus"},"expr":"((sum by(direction)((label_replace(rate(container_network_receive_bytes_total{namespace=\"rustfs\",pod=~\"rustfs-.*\",interface=\"eth0\",job=\"kubelet\"}[5m]), \"direction\", \"RX\", \"pod\", \".+\") or label_replace(rate(container_network_transmit_bytes_total{namespace=\"rustfs\",pod=~\"rustfs-.*\",interface=\"eth0\",job=\"kubelet\"}[5m]), \"direction\", \"TX\", \"pod\", \".+\")) and ignoring(direction,d) (label_join({__name__=~\"container_network_(receive|transmit)_bytes_total\",namespace=\"rustfs\",pod=~\"rustfs-.*\",interface=\"eth0\",job=\"kubelet\"}, \"d\", \"\", \"__name__\") and (time()-timestamp(label_join({__name__=~\"container_network_(receive|transmit)_bytes_total\",namespace=\"rustfs\",pod=~\"rustfs-.*\",interface=\"eth0\",job=\"kubelet\"}, \"d\", \"\", \"__name__\"))<90) and on(instance) (up{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\"}==1) and on(namespace,pod) (kube_pod_info{namespace=\"rustfs\",pod=~\"rustfs-.*\"} and (time()-timestamp(kube_pod_info{namespace=\"rustfs\",pod=~\"rustfs-.*\"})<90)))) and on() (count((label_join({__name__=~\"container_network_(receive|transmit)_bytes_total\",namespace=\"rustfs\",pod=~\"rustfs-.*\",interface=\"eth0\",job=\"kubelet\"}, \"d\", \"\", \"__name__\") and (time()-timestamp(label_join({__name__=~\"container_network_(receive|transmit)_bytes_total\",namespace=\"rustfs\",pod=~\"rustfs-.*\",interface=\"eth0\",job=\"kubelet\"}, \"d\", \"\", \"__name__\"))<90) and on(instance) (up{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\"}==1) and on(namespace,pod) (kube_pod_info{namespace=\"rustfs\",pod=~\"rustfs-.*\"} and (time()-timestamp(kube_pod_info{namespace=\"rustfs\",pod=~\"rustfs-.*\"})<90)))) == on() (2*count((kube_pod_info{namespace=\"rustfs\",pod=~\"rustfs-.*\"} and (time()-timestamp(kube_pod_info{namespace=\"rustfs\",pod=~\"rustfs-.*\"})<90)))))) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90))) or on(direction) (label_replace(vector(-2), \"direction\", \"RX\", \"__name__\", \".*\") or label_replace(vector(-2), \"direction\", \"TX\", \"__name__\", \".*\"))","format":"time_series","instant":false,"interval":"15s","legendFormat":"{{direction}}","range":true,"refId":"A"}],"timeFrom":"1h","title":"","type":"stat"},
     {
       "datasource": {
         "type": "prometheus",
@@ -4412,6 +4506,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -4423,10 +4521,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -4509,6 +4603,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -4520,10 +4618,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -4606,6 +4700,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -4617,10 +4715,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -4703,6 +4797,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -4714,10 +4812,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -4800,6 +4894,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -4811,10 +4909,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -4897,6 +4991,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -4908,10 +5006,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -4939,7 +5033,7 @@
         }
       },
       "gridPos": {
-        "h": 2,
+        "h": 1,
         "w": 2,
         "x": 2,
         "y": 13
@@ -4982,6 +5076,104 @@
       "title": "",
       "type": "stat"
     },
+    {"datasource":{"type":"prometheus","uid":"prometheus"},"description":"Harbor registry pod only RX/TX bytes/s5m, last1h; includes internal traffic/overhead, NOT object or OCI counts/availability. Fresh cAdvisor/current Pod coverage90s. Latest missing=-2/No telemetry, never zero. Independent sparkline scales: compare numbers, not heights.","fieldConfig":{"defaults":{"color":{"fixedColor":"#2EBFA5","mode":"fixed"},"decimals":0,"displayName":"Harbor · ${__field.labels.direction}","mappings":[{"options":{"-2":{"color":"#808080","text":"No telemetry"}},"type":"value"}],"min":0,"noValue":"No telemetry","thresholds":{"mode":"absolute","steps":[{"color":"green","value":0},{"color":"red","value":80}]},"unit":"Bps"}},"gridPos":{"h":3,"w":4,"x":12,"y":13},"hideTimeOverride":true,"id":932,"options":{"colorMode":"value","graphMode":"area","justifyMode":"center","orientation":"vertical","percentChangeColorMode":"standard","reduceOptions":{"calcs":["last"],"fields":"","values":false},"showPercentChange":false,"text":{"titleSize":12,"valueSize":26},"textMode":"value_and_name","wideLayout":false},"pluginVersion":"13.2.4","targets":[{"datasource":{"type":"prometheus","uid":"prometheus"},"expr":"((sum by(direction)((label_replace(rate(container_network_receive_bytes_total{namespace=\"harbor\",pod=~\"harbor-registry-.*\",interface=\"eth0\",job=\"kubelet\"}[5m]), \"direction\", \"RX\", \"pod\", \".+\") or label_replace(rate(container_network_transmit_bytes_total{namespace=\"harbor\",pod=~\"harbor-registry-.*\",interface=\"eth0\",job=\"kubelet\"}[5m]), \"direction\", \"TX\", \"pod\", \".+\")) and ignoring(direction,d) (label_join({__name__=~\"container_network_(receive|transmit)_bytes_total\",namespace=\"harbor\",pod=~\"harbor-registry-.*\",interface=\"eth0\",job=\"kubelet\"}, \"d\", \"\", \"__name__\") and (time()-timestamp(label_join({__name__=~\"container_network_(receive|transmit)_bytes_total\",namespace=\"harbor\",pod=~\"harbor-registry-.*\",interface=\"eth0\",job=\"kubelet\"}, \"d\", \"\", \"__name__\"))<90) and on(instance) (up{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\"}==1) and on(namespace,pod) (kube_pod_info{namespace=\"harbor\",pod=~\"harbor-registry-.*\"} and (time()-timestamp(kube_pod_info{namespace=\"harbor\",pod=~\"harbor-registry-.*\"})<90)))) and on() (count((label_join({__name__=~\"container_network_(receive|transmit)_bytes_total\",namespace=\"harbor\",pod=~\"harbor-registry-.*\",interface=\"eth0\",job=\"kubelet\"}, \"d\", \"\", \"__name__\") and (time()-timestamp(label_join({__name__=~\"container_network_(receive|transmit)_bytes_total\",namespace=\"harbor\",pod=~\"harbor-registry-.*\",interface=\"eth0\",job=\"kubelet\"}, \"d\", \"\", \"__name__\"))<90) and on(instance) (up{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\"}==1) and on(namespace,pod) (kube_pod_info{namespace=\"harbor\",pod=~\"harbor-registry-.*\"} and (time()-timestamp(kube_pod_info{namespace=\"harbor\",pod=~\"harbor-registry-.*\"})<90)))) == on() (2*count((kube_pod_info{namespace=\"harbor\",pod=~\"harbor-registry-.*\"} and (time()-timestamp(kube_pod_info{namespace=\"harbor\",pod=~\"harbor-registry-.*\"})<90)))))) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90))) or on(direction) (label_replace(vector(-2), \"direction\", \"RX\", \"__name__\", \".*\") or label_replace(vector(-2), \"direction\", \"TX\", \"__name__\", \".*\"))","format":"time_series","instant":false,"interval":"15s","legendFormat":"{{direction}}","range":true,"refId":"A"}],"timeFrom":"1h","title":"","type":"stat"},
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "n8n: http_2xx probe of http://n8n.automation.svc.cluster.local:80/healthz every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "n8n",
+          "mappings": [
+            {
+              "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
+                "0": {
+                  "color": "#26783D",
+                  "text": "Healthy"
+                },
+                "1": {
+                  "color": "#A85D08",
+                  "text": "Pending"
+                },
+                "2": {
+                  "color": "#B42332",
+                  "text": "Firing"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "noValue": "No telemetry",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": 0
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 1,
+        "w": 2,
+        "x": 2,
+        "y": 14
+      },
+      "id": 335,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 14
+        },
+        "textMode": "name",
+        "wideLayout": false
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceN8nUnavailable\",service_id=\"n8n\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceN8nUnavailable\",service_id=\"n8n\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"n8n\"})) and on() ((max(up{job=\"service-probes\",service_id=\"n8n\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"n8n\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"n8n\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "type": "stat"
+    },
     {
       "datasource": {
         "type": "prometheus",
@@ -4994,6 +5186,10 @@
           "mappings": [
             {
               "options": {
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -5005,10 +5201,6 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -5079,6 +5271,7 @@
       "title": "",
       "type": "stat"
     },
+    {"datasource":{"type":"prometheus","uid":"prometheus"},"description":"Thanos cascade: last successful hourly copy age (not sidecar upload); raw downsampling todo blocks (not bytes or ETA); halted compactors, all3 stages fresh required; Prometheus appended samples/s5m (not end-to-end delivery). Missing/stale90s = No telemetry, not0. Raw compactor is intentionally paused during the copy: temporary missing is not a fabricated failure. Age3h/6h bands match Metrics dashboard. No archive/DR integrity guarantee.","fieldConfig":{"defaults":{"color":{"fixedColor":"#E0B860","mode":"fixed"},"decimals":0,"mappings":[{"options":{"-2":{"color":"#808080","text":"No data"}},"type":"value"}],"min":0,"noValue":"No telemetry","thresholds":{"mode":"absolute","steps":[{"color":"green","value":0},{"color":"red","value":80}]},"unit":"short"},"overrides":[{"matcher":{"id":"byName","options":"Cascade age"},"properties":[{"id":"unit","value":"s"},{"id":"color","value":{"mode":"thresholds"}},{"id":"thresholds","value":{"mode":"absolute","steps":[{"color":"#E0B860","value":0},{"color":"#FFB357","value":10800},{"color":"#F2495C","value":21600}]}}]},{"matcher":{"id":"byName","options":"Halted"},"properties":[{"id":"color","value":{"mode":"thresholds"}},{"id":"thresholds","value":{"mode":"absolute","steps":[{"color":"#E0B860","value":0},{"color":"#F2495C","value":1}]}}]},{"matcher":{"id":"byName","options":"Samples/s"},"properties":[{"id":"decimals","value":1}]}]},"gridPos":{"h":2,"w":7,"x":16,"y":14},"id":936,"options":{"colorMode":"value","graphMode":"none","justifyMode":"center","orientation":"vertical","percentChangeColorMode":"standard","reduceOptions":{"calcs":["last"],"fields":"","values":false},"showPercentChange":false,"text":{"titleSize":11,"valueSize":20},"textMode":"value_and_name","wideLayout":false},"pluginVersion":"13.2.4","targets":[{"datasource":{"type":"prometheus","uid":"prometheus"},"expr":"((time()-max(kube_cronjob_status_last_successful_time{namespace=\"cattle-monitoring-system\",cronjob=\"thanos-cascade\"}>0)) and on() (time() - max(timestamp(kube_cronjob_status_last_successful_time{namespace=\"cattle-monitoring-system\",cronjob=\"thanos-cascade\"})) < 90) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90))) or vector(-2)","format":"time_series","instant":true,"legendFormat":"Cascade age","range":false,"refId":"A"},{"datasource":{"type":"prometheus","uid":"prometheus"},"expr":"max((thanos_compact_todo_downsample_blocks{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor-[0-9a-f]+-.+\"} and (time()-timestamp(thanos_compact_todo_downsample_blocks{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor-[0-9a-f]+-.+\"})<90) and on(instance) (up{job=\"cattle-monitoring-system/thanos\"}==1))) or vector(-2)","format":"time_series","instant":true,"legendFormat":"Downsample","range":false,"refId":"B"},{"datasource":{"type":"prometheus","uid":"prometheus"},"expr":"(sum(max by(stage)(label_replace((thanos_compact_halted{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor(-5m|-1h)?-[0-9a-f]+-.+\"} and (time()-timestamp(thanos_compact_halted{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor(-5m|-1h)?-[0-9a-f]+-.+\"})<90) and on(instance) (up{job=\"cattle-monitoring-system/thanos\"}==1)),\"stage\",\"$1\",\"pod\",\"(thanos-compactor(-5m|-1h)?)-[0-9a-f]+-.+\"))) and on() (count(max by(stage)(label_replace((thanos_compact_halted{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor(-5m|-1h)?-[0-9a-f]+-.+\"} and (time()-timestamp(thanos_compact_halted{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor(-5m|-1h)?-[0-9a-f]+-.+\"})<90) and on(instance) (up{job=\"cattle-monitoring-system/thanos\"}==1)),\"stage\",\"$1\",\"pod\",\"(thanos-compactor(-5m|-1h)?)-[0-9a-f]+-.+\")))==3)) or vector(-2)","format":"time_series","instant":true,"legendFormat":"Halted","range":false,"refId":"C"},{"datasource":{"type":"prometheus","uid":"prometheus"},"expr":"(max(rate(prometheus_tsdb_head_samples_appended_total{pod=\"prometheus-kube-prometheus-stack-prometheus-0\",container=\"prometheus\"}[5m])) and on() (time() - max(timestamp(prometheus_tsdb_head_samples_appended_total{pod=\"prometheus-kube-prometheus-stack-prometheus-0\",container=\"prometheus\"})) < 90) and on() ((max(up{job=\"kube-prometheus-stack-prometheus\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-prometheus-stack-prometheus\"})) < 90))) or vector(-2)","format":"time_series","instant":true,"legendFormat":"Samples/s","range":false,"refId":"D"}],"title":"","type":"stat"},
     {
       "datasource": {
         "type": "prometheus",
@@ -5317,405 +5510,21 @@
       "title": "",
       "type": "timeseries"
     },
+    {"datasource":{"type":"prometheus","uid":"prometheus"},"description":"Last successful lms/lms-database-backup age; NOT proof of archive integrity/offhost copy/restore. Bands6/8h. Missing/never succeeded/no telemetry distinct; up/sample fresh90s.","fieldConfig":{"defaults":{"color":{"mode":"thresholds"},"decimals":0,"displayName":"LMS backup","mappings":[{"options":{"-1":{"color":"#808080","text":"Never"},"-2":{"color":"#808080","text":"No data"},"-3":{"color":"#808080","text":"Missing"}},"type":"value"}],"min":0,"noValue":"No data","thresholds":{"mode":"absolute","steps":[{"color":"#26783D","value":0},{"color":"#FFB357","value":21600},{"color":"#F2495C","value":28800}]},"unit":"s"}},"gridPos":{"h":2,"w":2,"x":12,"y":16},"id":934,"options":{"colorMode":"value","graphMode":"none","justifyMode":"center","orientation":"vertical","percentChangeColorMode":"standard","reduceOptions":{"calcs":["last"],"fields":"","values":false},"showPercentChange":false,"text":{"titleSize":11,"valueSize":20},"textMode":"value_and_name","wideLayout":false},"pluginVersion":"13.2.4","targets":[{"datasource":{"type":"prometheus","uid":"prometheus"},"expr":"(((((((time() - max(kube_cronjob_status_last_successful_time{namespace=\"lms\",cronjob=\"lms-database-backup\"} > 0)) and on() (time() - max(timestamp(kube_cronjob_status_last_successful_time{namespace=\"lms\",cronjob=\"lms-database-backup\"})) < 90)) or (vector(-1) unless on() count(kube_cronjob_status_last_successful_time{namespace=\"lms\",cronjob=\"lms-database-backup\"} > 0))) and on() (count(kube_cronjob_info{namespace=\"lms\",cronjob=\"lms-database-backup\"}) > 0)) and on() ((time() - max(timestamp(kube_cronjob_info{namespace=\"lms\",cronjob=\"lms-database-backup\"})) < 90))) or (vector(-3) unless on() (count(kube_cronjob_info{namespace=\"lms\",cronjob=\"lms-database-backup\"}) > 0))) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90))) or vector(-2)","format":"time_series","instant":true,"interval":"15s","legendFormat":"LMS backup","range":false,"refId":"A"}],"title":"","type":"stat"},
+    {"datasource":{"type":"prometheus","uid":"prometheus"},"description":"Last successful automation/n8n-backup age; NOT proof of archive integrity/offhost copy/restore. Bands24/26h. Missing/never succeeded/no telemetry distinct; up/sample fresh90s.","fieldConfig":{"defaults":{"color":{"mode":"thresholds"},"decimals":0,"displayName":"n8n backup","mappings":[{"options":{"-1":{"color":"#808080","text":"Never"},"-2":{"color":"#808080","text":"No data"},"-3":{"color":"#808080","text":"Missing"}},"type":"value"}],"min":0,"noValue":"No data","thresholds":{"mode":"absolute","steps":[{"color":"#26783D","value":0},{"color":"#FFB357","value":86400},{"color":"#F2495C","value":93600}]},"unit":"s"}},"gridPos":{"h":2,"w":2,"x":14,"y":16},"id":935,"options":{"colorMode":"value","graphMode":"none","justifyMode":"center","orientation":"vertical","percentChangeColorMode":"standard","reduceOptions":{"calcs":["last"],"fields":"","values":false},"showPercentChange":false,"text":{"titleSize":11,"valueSize":20},"textMode":"value_and_name","wideLayout":false},"pluginVersion":"13.2.4","targets":[{"datasource":{"type":"prometheus","uid":"prometheus"},"expr":"(((((((time() - max(kube_cronjob_status_last_successful_time{namespace=\"automation\",cronjob=\"n8n-backup\"} > 0)) and on() (time() - max(timestamp(kube_cronjob_status_last_successful_time{namespace=\"automation\",cronjob=\"n8n-backup\"})) < 90)) or (vector(-1) unless on() count(kube_cronjob_status_last_successful_time{namespace=\"automation\",cronjob=\"n8n-backup\"} > 0))) and on() (count(kube_cronjob_info{namespace=\"automation\",cronjob=\"n8n-backup\"}) > 0)) and on() ((time() - max(timestamp(kube_cronjob_info{namespace=\"automation\",cronjob=\"n8n-backup\"})) < 90))) or (vector(-3) unless on() (count(kube_cronjob_info{namespace=\"automation\",cronjob=\"n8n-backup\"}) > 0))) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90))) or vector(-2)","format":"time_series","instant":true,"interval":"15s","legendFormat":"n8n backup","range":false,"refId":"A"}],"title":"","type":"stat"},
     {
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "#5794F2",
-            "mode": "fixed"
-          },
-          "decimals": 0,
-          "displayName": "n8n · running",
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {
-        "h": 2,
-        "w": 3,
-        "x": 6,
-        "y": 15
-      },
-      "id": 925,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "vertical",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 14,
-          "valueSize": 32
-        },
-        "textMode": "value_and_name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "max(socrat_n8n_starts_window{window=\"0\",status=\"running\"}) and on() (max(socrat_n8n_collection_success) == 1) and on() (time() - max(socrat_n8n_collection_timestamp_seconds) < 90)",
-          "format": "time_series",
-          "instant": true,
-          "legendFormat": "n8n · running",
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 0,
-          "displayName": "n8n · errors/h",
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": 0
-              },
-              {
-                "color": "#B42332",
-                "value": 1
-              }
-            ]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {
-        "h": 2,
-        "w": 3,
-        "x": 9,
-        "y": 15
-      },
-      "id": 924,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "vertical",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 14,
-          "valueSize": 32
-        },
-        "textMode": "value_and_name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum(socrat_n8n_starts_window{window=\"3600\",status=\"error\"}) and on() (max(socrat_n8n_collection_success) == 1) and on() (time() - max(socrat_n8n_collection_timestamp_seconds) < 90)",
-          "format": "time_series",
-          "instant": true,
-          "legendFormat": "n8n · errors/h",
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "#5794F2",
-            "mode": "fixed"
-          },
-          "decimals": 0,
-          "displayName": "n8n · starts/h",
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {
-        "h": 2,
-        "w": 4,
-        "x": 6,
-        "y": 17
-      },
-      "id": 923,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "vertical",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 14,
-          "valueSize": 32
-        },
-        "textMode": "value_and_name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum(socrat_n8n_starts_window{window=\"3600\"}) and on() (max(socrat_n8n_collection_success) == 1) and on() (time() - max(socrat_n8n_collection_timestamp_seconds) < 90)",
-          "format": "time_series",
-          "instant": true,
-          "legendFormat": "n8n · starts/h",
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "n8n: http_2xx probe of http://n8n.automation.svc.cluster.local:80/healthz every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "n8n",
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "color": "#26783D",
-                  "text": "Healthy"
-                },
-                "1": {
-                  "color": "#A85D08",
-                  "text": "Pending"
-                },
-                "2": {
-                  "color": "#B42332",
-                  "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": 0
-              },
-              {
-                "color": "#A85D08",
-                "value": 1
-              },
-              {
-                "color": "#B42332",
-                "value": 2
-              }
-            ]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {
-        "h": 2,
-        "w": 2,
-        "x": 10,
-        "y": 17
-      },
-      "id": 335,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 14
-        },
-        "textMode": "name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceN8nUnavailable\",service_id=\"n8n\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceN8nUnavailable\",service_id=\"n8n\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"n8n\"})) and on() ((max(up{job=\"service-probes\",service_id=\"n8n\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"n8n\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"n8n\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "id": 909,
-      "title": "",
-      "transparent": true,
-      "type": "bargauge",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 19,
-        "w": 12,
-        "h": 1
       },
       "description": "Current Argo Applications, not Pods/history. One equal full block per Application, alphabetically ordered by name; color encodes latest status. Numeric codes1..6 are categorical, not utilization or readiness percentage; max1 intentionally saturates every present block to the same size. Ready=Healthy+Synced, Progressing, Suspended, Git drift=OutOfSync, Unhealthy=Degraded/Missing, Unknown. Latest timestamp wins, priority Unhealthy > Unknown > Progressing > Suspended > drift > Ready. root included so every Argo Application has a block. Hover shows Application name through a native single data link; click opens that Application in Argo CD. Freshness90s and up/inventory completeness guards: unavailable/down/partially stale telemetry produces no data, never green fabricated blocks. Raw sampling15s; dashboard refresh5s. Native Bar gauge solid value-mapped colors, not LCD subdivisions: each whole block corresponds to one Application.",
-      "interval": "15s",
-      "maxDataPoints": 1,
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "((((0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\"})))))) or (1 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\"})))))) or (1 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",sync_status!~\"Synced|OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status!~\"Synced|OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status!~\"Synced|OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\"})))))) or (2 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status=\"Progressing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=\"Progressing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=\"Progressing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\"})))))) or (5 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status=\"Suspended\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=\"Suspended\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=\"Suspended\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",sync_status=\"OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status=\"OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status=\"OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\"})))))) or (4 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status=\"Healthy\",sync_status=\"Synced\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=\"Healthy\",sync_status=\"Synced\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=\"Healthy\",sync_status=\"Synced\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\"})))))) or (1 * max by(name) ((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\"}))))))) + 1) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)) and on() (count(max by(name) ((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90)))) == count(max by(name) (argocd_app_info{job=\"socrat-argocd\"})))",
-          "format": "time_series",
-          "instant": true,
-          "legendFormat": "{{name}}",
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "transformations": [
-        {
-          "id": "seriesToRows",
-          "options": {}
-        },
-        {
-          "id": "sortBy",
-          "options": {
-            "sort": [
-              {
-                "desc": false,
-                "field": "Metric"
-              }
-            ]
-          }
-        },
-        {
-          "id": "rowsToFields",
-          "options": {
-            "mappings": [
-              {
-                "fieldName": "Metric",
-                "handlerKey": "field.name"
-              },
-              {
-                "fieldName": "Value",
-                "handlerKey": "field.value"
-              }
-            ]
-          }
-        }
-      ],
       "fieldConfig": {
         "defaults": {
-          "min": 0,
-          "max": 1,
-          "decimals": 0,
-          "unit": "short",
-          "noValue": "No telemetry",
           "color": {
-            "mode": "fixed",
-            "fixedColor": "#808080"
+            "fixedColor": "#808080",
+            "mode": "fixed"
           },
+          "decimals": 0,
           "links": [
             {
               "targetBlank": true,
@@ -5754,6 +5563,9 @@
               "type": "value"
             }
           ],
+          "max": 1,
+          "min": 0,
+          "noValue": "No telemetry",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -5786,99 +5598,32 @@
                 "value": 6
               }
             ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "orientation": "vertical",
-        "displayMode": "gradient",
-        "valueMode": "hidden",
-        "namePlacement": "hidden",
-        "textMode": "none",
-        "showUnfilled": false,
-        "sizing": "manual",
-        "minVizWidth": 0,
-        "minVizHeight": 0,
-        "maxVizHeight": 300,
-        "reduceOptions": {
-          "values": false,
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": ""
-        },
-        "legend": {
-          "showLegend": false,
-          "displayMode": "list",
-          "placement": "bottom",
-          "calcs": []
-        }
-      },
-      "pluginVersion": "13.2.4"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Direct public IPv4 TCP443 from HOME socrat-0, source192.168.0.23 via physical eno1 / home router, stock host-network blackbox UID19091 with verified probe-only OUTPUT DNAT exemption. No DNS, TLS, application/VPN check, SOCKS proxy or Moscow relay. Green=TCP connect succeeds; red=fresh TCP connect failure; grey=missing/stale probe collection. Independent of service-probes and service/VPN alerts. This is one Russian HOME ISP vantage, not all Russia. ICMP may be blocked while TCP443 works. Home IP is a router hairpin check, not an external internet check. Route changes require revalidating physical WAN egress.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "Moscow IP",
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "color": "#26783D",
-                  "text": "OK"
-                },
-                "2": {
-                  "color": "#B42332",
-                  "text": "DOWN"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "STALE"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": 0
-              },
-              {
-                "color": "#A85D08",
-                "value": 1
-              },
-              {
-                "color": "#B42332",
-                "value": 2
-              }
-            ]
           },
           "unit": "short"
         }
       },
       "gridPos": {
-        "x": 23,
-        "y": 8,
-        "w": 1,
-        "h": 1
+        "h": 1,
+        "w": 12,
+        "x": 0,
+        "y": 19
       },
-      "id": 928,
+      "id": 909,
+      "interval": "15s",
+      "maxDataPoints": 1,
       "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
+        "displayMode": "gradient",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "maxVizHeight": 300,
+        "minVizHeight": 0,
+        "minVizWidth": 0,
+        "namePlacement": "hidden",
+        "orientation": "vertical",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -5886,12 +5631,10 @@
           "fields": "",
           "values": false
         },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 14
-        },
-        "textMode": "name",
-        "wideLayout": false
+        "showUnfilled": false,
+        "sizing": "manual",
+        "textMode": "none",
+        "valueMode": "hidden"
       },
       "pluginVersion": "13.2.4",
       "targets": [
@@ -5900,22 +5643,52 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "((2 * (1 - max(probe_success{job=\"public-ip-probes\",service_id=\"edge-moscow\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan-v2\"}))) and on() (max(up{job=\"public-ip-probes\",service_id=\"edge-moscow\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan-v2\"}) == 1) and on() (time() - max(timestamp(up{job=\"public-ip-probes\",service_id=\"edge-moscow\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan-v2\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"public-ip-probes\",service_id=\"edge-moscow\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan-v2\"})) < 90)) or vector(-2)",
+          "expr": "((((0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\"})))))) or (1 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\"})))))) or (1 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",sync_status!~\"Synced|OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status!~\"Synced|OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status!~\"Synced|OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\"})))))) or (2 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status=\"Progressing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=\"Progressing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=\"Progressing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\"})))))) or (5 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status=\"Suspended\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=\"Suspended\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=\"Suspended\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",sync_status=\"OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status=\"OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status=\"OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\"})))))) or (4 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status=\"Healthy\",sync_status=\"Synced\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=\"Healthy\",sync_status=\"Synced\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=\"Healthy\",sync_status=\"Synced\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\"})))))) or (1 * max by(name) ((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\"}))))))) + 1) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)) and on() (count(max by(name) ((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90)))) == count(max by(name) (argocd_app_info{job=\"socrat-argocd\"})))",
           "format": "time_series",
           "instant": true,
+          "legendFormat": "{{name}}",
           "range": false,
           "refId": "A"
         }
       ],
       "title": "",
-      "type": "stat"
+      "transformations": [
+        {
+          "id": "seriesToRows",
+          "options": {}
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "desc": false,
+                "field": "Metric"
+              }
+            ]
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {
+            "mappings": [
+              {
+                "fieldName": "Metric",
+                "handlerKey": "field.name"
+              },
+              {
+                "fieldName": "Value",
+                "handlerKey": "field.value"
+              }
+            ]
+          }
+        }
+      ],
+      "transparent": true,
+      "type": "bargauge"
     },
-    {"id":931,"type":"stat","title":"","datasource":{"type":"prometheus","uid":"prometheus"},"description":"RustFS storage pod RX/TX bytes/s5m, last1h; includes internal traffic/overhead, NOT object or OCI counts/availability. Fresh cAdvisor/current Pod coverage90s. Latest missing=-2/No telemetry, never zero. Independent sparkline scales: compare numbers, not heights.","gridPos":{"x":12,"y":14,"w":6,"h":4},"timeFrom":"1h","hideTimeOverride":true,"fieldConfig":{"defaults":{"displayName":"RustFS · ${__field.labels.direction}","unit":"Bps","min":0,"decimals":0,"noValue":"No telemetry","color":{"mode":"fixed","fixedColor":"#B877D9"},"mappings":[{"type":"value","options":{"-2":{"text":"No telemetry","color":"#808080"}}}]},"overrides":[]},"options":{"colorMode":"value","graphMode":"area","justifyMode":"center","orientation":"vertical","wideLayout":false,"textMode":"value_and_name","text":{"titleSize":12,"valueSize":26},"reduceOptions":{"values":false,"calcs":["last"],"fields":""}},"targets":[{"refId":"A","datasource":{"type":"prometheus","uid":"prometheus"},"expr":"((sum by(direction)((label_replace(rate(container_network_receive_bytes_total{namespace=\"rustfs\",pod=~\"rustfs-.*\",interface=\"eth0\",job=\"kubelet\"}[5m]), \"direction\", \"RX\", \"pod\", \".+\") or label_replace(rate(container_network_transmit_bytes_total{namespace=\"rustfs\",pod=~\"rustfs-.*\",interface=\"eth0\",job=\"kubelet\"}[5m]), \"direction\", \"TX\", \"pod\", \".+\")) and ignoring(direction,d) (label_join({__name__=~\"container_network_(receive|transmit)_bytes_total\",namespace=\"rustfs\",pod=~\"rustfs-.*\",interface=\"eth0\",job=\"kubelet\"}, \"d\", \"\", \"__name__\") and (time()-timestamp(label_join({__name__=~\"container_network_(receive|transmit)_bytes_total\",namespace=\"rustfs\",pod=~\"rustfs-.*\",interface=\"eth0\",job=\"kubelet\"}, \"d\", \"\", \"__name__\"))<90) and on(instance) (up{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\"}==1) and on(namespace,pod) (kube_pod_info{namespace=\"rustfs\",pod=~\"rustfs-.*\"} and (time()-timestamp(kube_pod_info{namespace=\"rustfs\",pod=~\"rustfs-.*\"})<90)))) and on() (count((label_join({__name__=~\"container_network_(receive|transmit)_bytes_total\",namespace=\"rustfs\",pod=~\"rustfs-.*\",interface=\"eth0\",job=\"kubelet\"}, \"d\", \"\", \"__name__\") and (time()-timestamp(label_join({__name__=~\"container_network_(receive|transmit)_bytes_total\",namespace=\"rustfs\",pod=~\"rustfs-.*\",interface=\"eth0\",job=\"kubelet\"}, \"d\", \"\", \"__name__\"))<90) and on(instance) (up{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\"}==1) and on(namespace,pod) (kube_pod_info{namespace=\"rustfs\",pod=~\"rustfs-.*\"} and (time()-timestamp(kube_pod_info{namespace=\"rustfs\",pod=~\"rustfs-.*\"})<90)))) == on() (2*count((kube_pod_info{namespace=\"rustfs\",pod=~\"rustfs-.*\"} and (time()-timestamp(kube_pod_info{namespace=\"rustfs\",pod=~\"rustfs-.*\"})<90)))))) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90))) or on(direction) (label_replace(vector(-2), \"direction\", \"RX\", \"__name__\", \".*\") or label_replace(vector(-2), \"direction\", \"TX\", \"__name__\", \".*\"))","legendFormat":"{{direction}}","format":"time_series","instant":false,"range":true,"interval":"15s"}]},
-    {"id":932,"type":"stat","title":"","datasource":{"type":"prometheus","uid":"prometheus"},"description":"Harbor registry pod only RX/TX bytes/s5m, last1h; includes internal traffic/overhead, NOT object or OCI counts/availability. Fresh cAdvisor/current Pod coverage90s. Latest missing=-2/No telemetry, never zero. Independent sparkline scales: compare numbers, not heights.","gridPos":{"x":18,"y":14,"w":6,"h":4},"timeFrom":"1h","hideTimeOverride":true,"fieldConfig":{"defaults":{"displayName":"Harbor · ${__field.labels.direction}","unit":"Bps","min":0,"decimals":0,"noValue":"No telemetry","color":{"mode":"fixed","fixedColor":"#2EBFA5"},"mappings":[{"type":"value","options":{"-2":{"text":"No telemetry","color":"#808080"}}}]},"overrides":[]},"options":{"colorMode":"value","graphMode":"area","justifyMode":"center","orientation":"vertical","wideLayout":false,"textMode":"value_and_name","text":{"titleSize":12,"valueSize":26},"reduceOptions":{"values":false,"calcs":["last"],"fields":""}},"targets":[{"refId":"A","datasource":{"type":"prometheus","uid":"prometheus"},"expr":"((sum by(direction)((label_replace(rate(container_network_receive_bytes_total{namespace=\"harbor\",pod=~\"harbor-registry-.*\",interface=\"eth0\",job=\"kubelet\"}[5m]), \"direction\", \"RX\", \"pod\", \".+\") or label_replace(rate(container_network_transmit_bytes_total{namespace=\"harbor\",pod=~\"harbor-registry-.*\",interface=\"eth0\",job=\"kubelet\"}[5m]), \"direction\", \"TX\", \"pod\", \".+\")) and ignoring(direction,d) (label_join({__name__=~\"container_network_(receive|transmit)_bytes_total\",namespace=\"harbor\",pod=~\"harbor-registry-.*\",interface=\"eth0\",job=\"kubelet\"}, \"d\", \"\", \"__name__\") and (time()-timestamp(label_join({__name__=~\"container_network_(receive|transmit)_bytes_total\",namespace=\"harbor\",pod=~\"harbor-registry-.*\",interface=\"eth0\",job=\"kubelet\"}, \"d\", \"\", \"__name__\"))<90) and on(instance) (up{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\"}==1) and on(namespace,pod) (kube_pod_info{namespace=\"harbor\",pod=~\"harbor-registry-.*\"} and (time()-timestamp(kube_pod_info{namespace=\"harbor\",pod=~\"harbor-registry-.*\"})<90)))) and on() (count((label_join({__name__=~\"container_network_(receive|transmit)_bytes_total\",namespace=\"harbor\",pod=~\"harbor-registry-.*\",interface=\"eth0\",job=\"kubelet\"}, \"d\", \"\", \"__name__\") and (time()-timestamp(label_join({__name__=~\"container_network_(receive|transmit)_bytes_total\",namespace=\"harbor\",pod=~\"harbor-registry-.*\",interface=\"eth0\",job=\"kubelet\"}, \"d\", \"\", \"__name__\"))<90) and on(instance) (up{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\"}==1) and on(namespace,pod) (kube_pod_info{namespace=\"harbor\",pod=~\"harbor-registry-.*\"} and (time()-timestamp(kube_pod_info{namespace=\"harbor\",pod=~\"harbor-registry-.*\"})<90)))) == on() (2*count((kube_pod_info{namespace=\"harbor\",pod=~\"harbor-registry-.*\"} and (time()-timestamp(kube_pod_info{namespace=\"harbor\",pod=~\"harbor-registry-.*\"})<90)))))) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90))) or on(direction) (label_replace(vector(-2), \"direction\", \"RX\", \"__name__\", \".*\") or label_replace(vector(-2), \"direction\", \"TX\", \"__name__\", \".*\"))","legendFormat":"{{direction}}","format":"time_series","instant":false,"range":true,"interval":"15s"}]},
-    {"id":930,"type":"stat","title":"","datasource":{"type":"prometheus","uid":"prometheus"},"description":"Local vLLM: current waiting requests + estimated first-token p95 over15m, NOT full streamed-response duration or remote LiteLLM models. Require20 histogram observations; otherwise Low sample, not0. Up/sample freshness90s; absent/invalid=No telemetry. Pink informational, no invented SLO.","gridPos":{"x":12,"y":10,"w":4,"h":4},"fieldConfig":{"defaults":{"unit":"short","min":0,"decimals":0,"noValue":"No telemetry","color":{"mode":"fixed","fixedColor":"#E0A6DC"},"mappings":[{"type":"value","options":{"-2":{"text":"No telemetry","color":"#808080"},"-1":{"text":"Low sample","color":"#808080"}}}]},"overrides":[{"matcher":{"id":"byName","options":"AI · TTFT p95"},"properties":[{"id":"unit","value":"s"},{"id":"decimals","value":1}]}]},"options":{"colorMode":"value","graphMode":"none","justifyMode":"center","orientation":"horizontal","wideLayout":false,"textMode":"value_and_name","text":{"titleSize":11,"valueSize":22},"reduceOptions":{"values":false,"calcs":["last"],"fields":""}},"targets":[{"refId":"A","datasource":{"type":"prometheus","uid":"prometheus"},"expr":"(sum(vllm:num_requests_waiting{job=\"vllm\"} and (time()-timestamp(vllm:num_requests_waiting{job=\"vllm\"})<90) and on(instance) (up{job=\"vllm\"}==1)) and on() ((max(up{job=\"vllm\"}) == 1) and on() (time() - max(timestamp(up{job=\"vllm\"})) < 90))) or vector(-2)","instant":true,"range":false,"format":"time_series","legendFormat":"AI · queue"},{"refId":"B","datasource":{"type":"prometheus","uid":"prometheus"},"expr":"((((((histogram_quantile(0.95,sum by(le)(rate(vllm:time_to_first_token_seconds_bucket{job=\"vllm\"}[15m])))) >= 0) and ((histogram_quantile(0.95,sum by(le)(rate(vllm:time_to_first_token_seconds_bucket{job=\"vllm\"}[15m])))) < +Inf)) and on() (sum(increase(vllm:time_to_first_token_seconds_count{job=\"vllm\"}[15m]))>=20)) or (vector(-1) and on() (sum(increase(vllm:time_to_first_token_seconds_count{job=\"vllm\"}[15m]))<20))) and on() (((max(up{job=\"vllm\"}) == 1) and on() (time() - max(timestamp(up{job=\"vllm\"})) < 90)) and on() (time() - max(timestamp(vllm:time_to_first_token_seconds_count{job=\"vllm\"})) < 90) and on() (time() - max(timestamp(vllm:time_to_first_token_seconds_bucket{job=\"vllm\"})) < 90))) or vector(-2)","instant":true,"range":false,"format":"time_series","legendFormat":"AI · TTFT p95"}]},
-    {"id":936,"type":"stat","title":"","datasource":{"type":"prometheus","uid":"prometheus"},"description":"Thanos cascade: last successful hourly copy age (not sidecar upload); raw downsampling todo blocks (not bytes or ETA); halted compactors, all3 stages fresh required; Prometheus appended samples/s5m (not end-to-end delivery). Missing/stale90s = No telemetry, not0. Raw compactor is intentionally paused during the copy: temporary missing is not a fabricated failure. Age3h/6h bands match Metrics dashboard. No archive/DR integrity guarantee.","gridPos":{"x":16,"y":18,"w":8,"h":2},"fieldConfig":{"defaults":{"unit":"short","min":0,"decimals":0,"noValue":"No telemetry","color":{"mode":"fixed","fixedColor":"#E0B860"},"mappings":[{"type":"value","options":{"-2":{"text":"No data","color":"#808080"}}}]},"overrides":[{"matcher":{"id":"byName","options":"Cascade age"},"properties":[{"id":"unit","value":"s"},{"id":"color","value":{"mode":"thresholds"}},{"id":"thresholds","value":{"mode":"absolute","steps":[{"color":"#E0B860","value":null},{"color":"#FFB357","value":10800},{"color":"#F2495C","value":21600}]}}]},{"matcher":{"id":"byName","options":"Halted"},"properties":[{"id":"color","value":{"mode":"thresholds"}},{"id":"thresholds","value":{"mode":"absolute","steps":[{"color":"#E0B860","value":null},{"color":"#F2495C","value":1}]}}]},{"matcher":{"id":"byName","options":"Samples/s"},"properties":[{"id":"decimals","value":1}]}]},"options":{"colorMode":"value","graphMode":"none","justifyMode":"center","orientation":"vertical","wideLayout":false,"textMode":"value_and_name","text":{"titleSize":11,"valueSize":20},"reduceOptions":{"values":false,"calcs":["last"],"fields":""}},"targets":[{"refId":"A","datasource":{"type":"prometheus","uid":"prometheus"},"expr":"((time()-max(kube_cronjob_status_last_successful_time{namespace=\"cattle-monitoring-system\",cronjob=\"thanos-cascade\"}>0)) and on() (time() - max(timestamp(kube_cronjob_status_last_successful_time{namespace=\"cattle-monitoring-system\",cronjob=\"thanos-cascade\"})) < 90) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90))) or vector(-2)","legendFormat":"Cascade age","instant":true,"range":false,"format":"time_series"},{"refId":"B","datasource":{"type":"prometheus","uid":"prometheus"},"expr":"max((thanos_compact_todo_downsample_blocks{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor-[0-9a-f]+-.+\"} and (time()-timestamp(thanos_compact_todo_downsample_blocks{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor-[0-9a-f]+-.+\"})<90) and on(instance) (up{job=\"cattle-monitoring-system/thanos\"}==1))) or vector(-2)","legendFormat":"Downsample","instant":true,"range":false,"format":"time_series"},{"refId":"C","datasource":{"type":"prometheus","uid":"prometheus"},"expr":"(sum(max by(stage)(label_replace((thanos_compact_halted{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor(-5m|-1h)?-[0-9a-f]+-.+\"} and (time()-timestamp(thanos_compact_halted{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor(-5m|-1h)?-[0-9a-f]+-.+\"})<90) and on(instance) (up{job=\"cattle-monitoring-system/thanos\"}==1)),\"stage\",\"$1\",\"pod\",\"(thanos-compactor(-5m|-1h)?)-[0-9a-f]+-.+\"))) and on() (count(max by(stage)(label_replace((thanos_compact_halted{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor(-5m|-1h)?-[0-9a-f]+-.+\"} and (time()-timestamp(thanos_compact_halted{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor(-5m|-1h)?-[0-9a-f]+-.+\"})<90) and on(instance) (up{job=\"cattle-monitoring-system/thanos\"}==1)),\"stage\",\"$1\",\"pod\",\"(thanos-compactor(-5m|-1h)?)-[0-9a-f]+-.+\")))==3)) or vector(-2)","legendFormat":"Halted","instant":true,"range":false,"format":"time_series"},{"refId":"D","datasource":{"type":"prometheus","uid":"prometheus"},"expr":"(max(rate(prometheus_tsdb_head_samples_appended_total{pod=\"prometheus-kube-prometheus-stack-prometheus-0\",container=\"prometheus\"}[5m])) and on() (time() - max(timestamp(prometheus_tsdb_head_samples_appended_total{pod=\"prometheus-kube-prometheus-stack-prometheus-0\",container=\"prometheus\"})) < 90) and on() ((max(up{job=\"kube-prometheus-stack-prometheus\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-prometheus-stack-prometheus\"})) < 90))) or vector(-2)","legendFormat":"Samples/s","instant":true,"range":false,"format":"time_series"}]},
-    {"id":934,"type":"stat","title":"","transparent":false,"datasource":{"type":"prometheus","uid":"prometheus"},"description":"Last successful lms/lms-database-backup age; NOT proof of archive integrity/offhost copy/restore. Bands6/8h. Missing/never succeeded/no telemetry distinct; up/sample fresh90s.","gridPos":{"x":12,"y":18,"w":2,"h":2},"fieldConfig":{"defaults":{"displayName":"LMS backup","unit":"s","decimals":0,"min":0,"noValue":"No data","color":{"mode":"thresholds"},"mappings":[{"type":"value","options":{"-2":{"text":"No data","color":"#808080"},"-1":{"text":"Never","color":"#808080"},"-3":{"text":"Missing","color":"#808080"}}}],"thresholds":{"mode":"absolute","steps":[{"color":"#26783D","value":null},{"color":"#FFB357","value":21600},{"color":"#F2495C","value":28800}]}},"overrides":[]},"options":{"colorMode":"value","graphMode":"none","justifyMode":"center","orientation":"vertical","textMode":"value_and_name","wideLayout":false,"text":{"titleSize":11,"valueSize":20},"reduceOptions":{"values":false,"calcs":["last"],"fields":""}},"targets":[{"refId":"A","datasource":{"type":"prometheus","uid":"prometheus"},"expr":"(((((((time() - max(kube_cronjob_status_last_successful_time{namespace=\"lms\",cronjob=\"lms-database-backup\"} > 0)) and on() (time() - max(timestamp(kube_cronjob_status_last_successful_time{namespace=\"lms\",cronjob=\"lms-database-backup\"})) < 90)) or (vector(-1) unless on() count(kube_cronjob_status_last_successful_time{namespace=\"lms\",cronjob=\"lms-database-backup\"} > 0))) and on() (count(kube_cronjob_info{namespace=\"lms\",cronjob=\"lms-database-backup\"}) > 0)) and on() ((time() - max(timestamp(kube_cronjob_info{namespace=\"lms\",cronjob=\"lms-database-backup\"})) < 90))) or (vector(-3) unless on() (count(kube_cronjob_info{namespace=\"lms\",cronjob=\"lms-database-backup\"}) > 0))) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90))) or vector(-2)","legendFormat":"LMS backup","format":"time_series","instant":true,"range":false,"interval":"15s"}]},
-    {"id":935,"type":"stat","title":"","transparent":false,"datasource":{"type":"prometheus","uid":"prometheus"},"description":"Last successful automation/n8n-backup age; NOT proof of archive integrity/offhost copy/restore. Bands24/26h. Missing/never succeeded/no telemetry distinct; up/sample fresh90s.","gridPos":{"x":14,"y":18,"w":2,"h":2},"fieldConfig":{"defaults":{"displayName":"n8n backup","unit":"s","decimals":0,"min":0,"noValue":"No data","color":{"mode":"thresholds"},"mappings":[{"type":"value","options":{"-2":{"text":"No data","color":"#808080"},"-1":{"text":"Never","color":"#808080"},"-3":{"text":"Missing","color":"#808080"}}}],"thresholds":{"mode":"absolute","steps":[{"color":"#26783D","value":null},{"color":"#FFB357","value":86400},{"color":"#F2495C","value":93600}]}},"overrides":[]},"options":{"colorMode":"value","graphMode":"none","justifyMode":"center","orientation":"vertical","textMode":"value_and_name","wideLayout":false,"text":{"titleSize":11,"valueSize":20},"reduceOptions":{"values":false,"calcs":["last"],"fields":""}},"targets":[{"refId":"A","datasource":{"type":"prometheus","uid":"prometheus"},"expr":"(((((((time() - max(kube_cronjob_status_last_successful_time{namespace=\"automation\",cronjob=\"n8n-backup\"} > 0)) and on() (time() - max(timestamp(kube_cronjob_status_last_successful_time{namespace=\"automation\",cronjob=\"n8n-backup\"})) < 90)) or (vector(-1) unless on() count(kube_cronjob_status_last_successful_time{namespace=\"automation\",cronjob=\"n8n-backup\"} > 0))) and on() (count(kube_cronjob_info{namespace=\"automation\",cronjob=\"n8n-backup\"}) > 0)) and on() ((time() - max(timestamp(kube_cronjob_info{namespace=\"automation\",cronjob=\"n8n-backup\"})) < 90))) or (vector(-3) unless on() (count(kube_cronjob_info{namespace=\"automation\",cronjob=\"n8n-backup\"}) > 0))) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90))) or vector(-2)","legendFormat":"n8n backup","format":"time_series","instant":true,"range":false,"interval":"15s"}]}
+    {"id":937,"title":"qwen3.8-27b","type":"timeseries","description":"Estimated LiteLLM requests over the preceding minute, by API key alias. Fixed rolling 1m window, independent of dashboard range and pixel width; adjacent points overlap and must not be summed. Counter extrapolation can produce fractional estimates. Missing telemetry is not zero activity. Completed request activity only; an unfinished request is not yet visible. TV: same time range as dashboard (default12h); no legend, native hover retains alias. Requests per rolling minute, not in-flight concurrency.","datasource":{"type":"prometheus","uid":"prometheus"},"gridPos":{"x":6,"y":14,"w":6,"h":5},"targets":[{"refId":"A","expr":"sum by (api_key_alias) (label_replace(label_replace(increase(litellm_requests_metric_total{job=\"litellm\",model=\"qwen3.8-27b\",api_key_alias!=\"\",api_key_alias!=\"None\",api_key_alias!~\"venice-acceptance-.*\"}[1m]), \"api_key_alias\", \"vladislav\", \"api_key_alias\", \"^pi$\"), \"api_key_alias\", \"alchemmist\", \"api_key_alias\", \"^(antex-agent|pi-agent)$\"))","legendFormat":"{{api_key_alias}}","instant":false,"format":"time_series"}],"fieldConfig":{"defaults":{"unit":"short","min":0,"color":{"mode":"palette-classic-by-name"},"custom":{"drawStyle":"line","lineInterpolation":"linear","lineWidth":1,"fillOpacity":8,"showPoints":"never","spanNulls":false,"axisLabel":"","axisBorderShow":false,"axisGridShow":true},"decimals":0},"overrides":[]},"options":{"legend":{"showLegend":false,"calcs":[],"displayMode":"list","placement":"bottom"},"tooltip":{"mode":"multi","sort":"desc"}},"interval":"1m","maxDataPoints":720},
+    {"id":938,"title":"venice-deepseek","type":"timeseries","description":"Estimated LiteLLM requests over the preceding minute, by API key alias. Fixed rolling 1m window, independent of dashboard range and pixel width; adjacent points overlap and must not be summed. Counter extrapolation can produce fractional estimates. Missing telemetry is not zero activity. Completed request activity only; an unfinished request is not yet visible. TV: same time range as dashboard (default12h); no legend, native hover retains alias. Requests per rolling minute, not in-flight concurrency.","datasource":{"type":"prometheus","uid":"prometheus"},"gridPos":{"x":16,"y":16,"w":8,"h":4},"targets":[{"refId":"A","expr":"sum by (api_key_alias) (label_replace(label_replace(increase(litellm_requests_metric_total{job=\"litellm\",model=\"venice-agentic-deepseek-v4.1-flash-uncensored\",api_key_alias!=\"\",api_key_alias!=\"None\",api_key_alias!~\"venice-acceptance-.*\"}[1m]), \"api_key_alias\", \"vladislav\", \"api_key_alias\", \"^pi$\"), \"api_key_alias\", \"alchemmist\", \"api_key_alias\", \"^(antex-agent|pi-agent)$\"))","legendFormat":"{{api_key_alias}}","instant":false,"format":"time_series"}],"fieldConfig":{"defaults":{"unit":"short","min":0,"color":{"mode":"palette-classic-by-name"},"custom":{"drawStyle":"line","lineInterpolation":"linear","lineWidth":1,"fillOpacity":8,"showPoints":"never","spanNulls":false,"axisLabel":"","axisBorderShow":false,"axisGridShow":true},"decimals":0},"overrides":[]},"options":{"legend":{"showLegend":false,"calcs":[],"displayMode":"list","placement":"bottom"},"tooltip":{"mode":"multi","sort":"desc"}},"interval":"1m","maxDataPoints":720}
   ],
   "preload": false,
   "refresh": "5s",
@@ -5946,9 +5719,5 @@
   "timezone": "browser",
   "title": "Traffic-light panel",
   "uid": "socrat-traffic-light",
-  "version": 38,
-  "links": [],
-  "templating": {
-    "list": []
-  }
+  "version": 42
 }

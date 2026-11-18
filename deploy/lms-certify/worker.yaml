@@ -4,7 +4,7 @@ metadata:
   name: lms-certify
   namespace: automation
 spec:
-  replicas: 1
+  replicas: 0 # Retired: never execute generated code in this worker.
   strategy:
     type: Recreate
   selector:

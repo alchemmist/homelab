@@ -66,6 +66,10 @@ spec:
               value: {{ .Values.customModelMaxTokens | quote }}
             - name: CONFIG__MAX_MODEL_TOKENS
               value: {{ .Values.maxModelTokens | quote }}
+            - name: CONFIG__SYSTEM_INSTRUCTIONS
+              value: {{ .Values.systemInstructions | quote }}
+            - name: PR_REVIEWER__MAX_PREVIOUS_FINDINGS_CHARS
+              value: {{ .Values.maxPreviousFindingsChars | quote }}
             - name: CONFIG__PERSISTENT_INLINE_COMMENTS
               value: {{ .Values.persistentInlineComments | quote }}
             - name: PR_REVIEWER__INLINE_KEY_ISSUES

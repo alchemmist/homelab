@@ -1,0 +1,38 @@
+const assert = require('node:assert/strict');
+const graph = require('../../docs/n8n/lms-certify/workflow.json');
+const nodes = new Map(graph.nodes.map(n => [n.name, n]));
+const run = (name, input, prev = {}) => new Function('$json', '$', nodes.get(name).parameters.jsCode)(input, () => ({item:{json:prev}})).json;
+assert.equal(nodes.has('One certify step'), false);
+for (const [name, {main}] of Object.entries(graph.connections)) {
+  assert(nodes.has(name));
+  for (const e of main.flat()) assert(nodes.has(e.node));
+}
+for (const n of graph.nodes.filter(n => n.type === 'n8n-nodes-base.code')) new Function(n.parameters.jsCode);
+const now = Date.now()/1000;
+const prom = result => ({statusCode:200,body:{status:'success',data:{result}}});
+const values = ['running','waiting'].map(m => ({metric:{__name__:`vllm:num_requests_${m}`, instance:'a'},value:[now,'0']}));
+const timestamps = ['running','waiting'].map(m => ({metric:{queue_metric:m,instance:'a'},value:[now,String(now)]}));
+const idle = (v,t) => run('Admission: verify both metrics',prom(t),prom(v)).idle;
+assert.equal(idle(values,timestamps),true);
+assert.equal(idle(values.slice(0,1),timestamps),false);
+assert.equal(idle(values,[timestamps[0],{...timestamps[1],value:[now,String(now-60)]}]),false);
+assert.equal(idle([values[0],{...values[1],value:[now,'1']}],timestamps),false);
+const response = payload => ({statusCode:200,body:{choices:[{message:{content:JSON.stringify(payload)}}]}});
+const cases = ['  Leading  \n','Two Words\n','\n'].map(input=>({input,output:input}));
+const validated = run('Verify new tests against echo specification',response({cases:[...cases,{input:'Oops\n',output:'Bad\n'}]}),{phase:'tests',data:{calls:1,source:'print(input())'}});
+assert.equal(validated.phase,'public');
+assert.deepEqual(validated.data.cases,cases);
+const verdict = (v, test_index) => ({statusCode:200,body:{verdict:v,test_index}});
+const bad = run('Route private test verdict',verdict('wrong_answer',1),validated);
+assert.equal(bad.phase,'repair');
+assert.deepEqual(bad.data.failure.case,cases[0]);
+const repaired = run('Validate repaired solution format',response({source:'print(input())'}),bad);
+assert.equal(repaired.phase,'public');
+assert.deepEqual(repaired.data.cases,cases);
+let mutation = run('Route private test verdict',verdict('accepted'),repaired);
+for (let i=0;i<5;i++) mutation = run('Count killed variants or request more coverage',verdict(i===1?'accepted':'wrong_answer'),mutation);
+assert.equal(mutation.phase,'expand');
+assert.equal(mutation.data.faultsKilled,4);
+assert.deepEqual(mutation.data.survivors,['strip whitespace']);
+assert.deepEqual(run('Validate repaired solution format',{statusCode:429},bad),{pause:true});
+console.log('Graph routing, admission and reducers passed');
