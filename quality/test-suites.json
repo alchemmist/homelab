@@ -2,6 +2,7 @@
   "version": 1,
   "suites": {
     "fast": [
+      "tests/openhands/test_ready.py",
       "tests/swe_mini/test_policy.py",
       "tests/swe_mini/test_queue.py",
       "tests/test_alert_graph_panel_ids.py",

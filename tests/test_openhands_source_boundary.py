@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import copy
+import importlib.util
 import json
+import subprocess
 from pathlib import Path
+from types import ModuleType
 
 import pytest
 import yaml
@@ -211,3 +214,116 @@ def test_boundary_rejects_real_rendered_graph_mutations(
     stateful["spec"] = spec
     with pytest.raises(AssertionError, match=message):
         _assert_boundary(documents)
+
+
+@pytest.fixture
+def handoff_gate(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
+    """Load reviewed read-only definitions with the sole native fetch transport trapped."""
+
+    def denied(*_args: object, **_kwargs: object) -> None:
+        message = "Native fetch transport forbidden"
+        raise AssertionError(message)
+
+    monkeypatch.setattr(subprocess, "check_output", denied)
+    spec = importlib.util.spec_from_file_location(
+        "reviewed_openhands_gate",
+        ROOT / "scripts/openhands-pr-ready.py",
+    )
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert isinstance(module, ModuleType)
+    return module
+
+
+def _handoff_snapshot() -> dict[str, object]:
+    """Construct only synthetic GitHub shapes, without authentication or API access."""
+    head = "a" * 40
+    return {
+        "url": "https://github.com/example/example/pull/1",
+        "headRefOid": head,
+        "isDraft": False,
+        "mergeable": "MERGEABLE",
+        "commits": {"nodes": [{"commit": {"oid": head}}]},
+        "reviews": {
+            "nodes": [
+                {
+                    "id": "review",
+                    "author": {"login": "review-bot", "__typename": "Bot"},
+                    "state": "APPROVED",
+                    "body": "",
+                    "commit": {"oid": head},
+                }
+            ]
+        },
+        "comments": {"nodes": []},
+        "reviewThreads": {"nodes": []},
+        "statusCheckRollup": {
+            "contexts": {
+                "nodes": [
+                    {
+                        "__typename": "CheckRun",
+                        "name": "tests",
+                        "status": "COMPLETED",
+                        "conclusion": "SUCCESS",
+                    },
+                ]
+            }
+        },
+    }
+
+
+@pytest.mark.parametrize("kind", ["UnknownContext", None, ""])
+def test_handoff_rejects_unknown_ci_variants(handoff_gate: ModuleType, kind: object) -> None:
+    """An arbitrary state=SUCCESS must not impersonate a legacy StatusContext."""
+    snapshot = _handoff_snapshot()
+    snapshot["statusCheckRollup"] = {
+        "contexts": {"nodes": [{"__typename": kind, "state": "SUCCESS"}]}
+    }
+    report = _mapping(handoff_gate.assess(snapshot, {"review-bot"}, {"publisher"}))
+    assert report["ready_to_review"] is False
+    assert any(str(item).startswith("CI not green:") for item in _list(report["blockers"]))
+
+
+@pytest.mark.parametrize("head", [None, "", "a" * 39, "g" * 40])
+def test_handoff_rejects_invalid_head_identity(handoff_gate: ModuleType, head: object) -> None:
+    """Matching malformed review identity cannot certify a concrete current commit."""
+    snapshot = _handoff_snapshot()
+    snapshot["headRefOid"] = head
+    snapshot["reviews"] = {
+        "nodes": [
+            {
+                "id": "review",
+                "author": {"login": "review-bot", "__typename": "Bot"},
+                "state": "APPROVED",
+                "body": "",
+                "commit": {"oid": head},
+            }
+        ]
+    }
+    report = _mapping(handoff_gate.assess(snapshot, {"review-bot"}, {"publisher"}))
+    assert report["ready_to_review"] is False
+    assert "Missing or invalid current head identity" in _list(report["blockers"])
+
+
+@pytest.mark.parametrize("kind", ["CheckRun", "StatusContext"])
+def test_handoff_retains_both_native_ci_success_variants(
+    handoff_gate: ModuleType, kind: str
+) -> None:
+    """Actual check-run and legacy status contexts retain original positive behavior."""
+    snapshot = _handoff_snapshot()
+    snapshot["statusCheckRollup"] = {
+        "contexts": {
+            "nodes": [
+                {
+                    "__typename": kind,
+                    "state": "SUCCESS",
+                    "status": "COMPLETED",
+                    "conclusion": "SUCCESS",
+                },
+            ]
+        }
+    }
+    report = _mapping(handoff_gate.assess(snapshot, {"review-bot"}, {"publisher"}))
+    assert report["ready_to_review"] is True
