@@ -296,3 +296,35 @@ has no errors. 33 local OpenHands tests + Helm lint passed. Existing browser coo
 may require one fresh SSO round trip during migration. Long-lived real owner refresh
 acceptance still requires a fresh owner session and observation beyond token expiry;
 do not claim proven8h convenience from startup/negative probes alone.
+
+## Update watch registration and blocked upgrade —18November17:50UTC
+
+Owner requested software-update alert coverage and upgrade. Registered target
+`openhands` in `charts/monitoring-k3s/values.yaml`: GitHub `OpenHands/OpenHands`
+(the actual Canvas1.41→1.42 release stream), not the unrelated agent-canvas1.6
+or software-agent-sdk1.62 streams. Watch now reads installed StatefulSet image;
+monitoring SA gets only GET statefulsets named openhands, no write. Six update-watch
+unit tests passed. GitOps commit `b9bffcd9`, monitoring app Synced/Healthy.
+Live exporter positively returned current1.41.0/latest1.42.0, available1, success1.
+Generic existing alert `SocratSoftwareUpdateAvailable` remains warning/for15min.
+
+IMPORTANT: exporter output is NOT end-to-end alert acceptance. Both Grafana MCP
+and official socrat-metrics queries returned no current OpenHands series/alert.
+Legacy Prometheus serviceMonitorSelector is retired; current static OTel scrape
+ConfigMap has60jobs and no monitoring-update-watch. Existing ServiceMonitor alone
+therefore does not establish this new target in the active collection path. Needs
+narrow owning-source scrape integration and verification through Grafana/Thanos;
+do not call the actual Grafana alert firing or fully operational yet. Do not
+revive retired Prometheus scraping or casually restart the whole monitoring stack.
+
+Latest stable1.42.0 confirmed via release API and image manifest:
+`ghcr.io/openhands/agent-canvas:1.42.0@sha256:e2dc90908f08e51abf833cd3559bb0c4a61c53aab06210b6d92f867d281457ac`.
+Image was NOT changed: pre-upgrade encrypted off-pod backup could not complete
+reliably over exec transport (large WS streams timeout/EOF; bounded ASCII-chunk
+attempts also exceeded time limits). SQLite quick_check and a small online backup
+were OK; eight conversations were finished/error and automation inactive. This is
+not evidence of DB corruption. Incomplete helper was not committed; temporary
+plaintext tar archives and own stuck backup processes were removed. No verified
+recovery receipt exists, no upgrade/rollback/backup-success claim. PVC, history,
+SSO and running1.41.0 unchanged. Need verified bounded backup transport before
+GitOps image bump, then active profile/MCP/history/schedule/SSO regressions.
