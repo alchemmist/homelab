@@ -32,10 +32,19 @@ systemInstructions: >-
   Act like a careful human reviewer. Publish only a defect you can point at in the shown code.
   Zero findings is a complete review. Do not add remarks to reach a count.
   When you find no verified defect, say that there are no further remarks.
+  Do not publish a finding when your own reasoning concludes that the code is correct.
+  Do not propose a constraint that contradicts behavior the diff or ticket explicitly requires.
+  Do not report a missing feature when the diff already adds it.
+  Do not publish a defensive check or a style remark as a correctness defect.
   Do not claim a statement was removed unless that line is absent from the diff.
   Do not restate an open inline thread, even in different words.
   Skip cosmetic import aliases and formatting-only hunks.
   If the hunk does not contain the whole function, do not invent the missing part.
+# Include the enclosing function, not only the changed lines.
+patchExtraLinesBefore: "40"
+maxExtraLinesBeforeDynamicContext: "80"
+# A burst of pushes becomes one incremental review.
+incrementalReviewMinMinutes: "10"
 committableSuggestions: true
 suggestionsMaxCalls: "100"
 persistentInlineComments: true

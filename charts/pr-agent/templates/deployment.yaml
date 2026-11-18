@@ -66,6 +66,10 @@ spec:
               value: {{ .Values.customModelMaxTokens | quote }}
             - name: CONFIG__MAX_MODEL_TOKENS
               value: {{ .Values.maxModelTokens | quote }}
+            - name: CONFIG__PATCH_EXTRA_LINES_BEFORE
+              value: {{ .Values.patchExtraLinesBefore | quote }}
+            - name: CONFIG__MAX_EXTRA_LINES_BEFORE_DYNAMIC_CONTEXT
+              value: {{ .Values.maxExtraLinesBeforeDynamicContext | quote }}
             - name: CONFIG__SYSTEM_INSTRUCTIONS
               value: {{ .Values.systemInstructions | quote }}
             - name: PR_REVIEWER__MAX_PREVIOUS_FINDINGS_CHARS
@@ -82,6 +86,8 @@ spec:
               value: {{ .Values.numMaxFindings | quote }}
             - name: PR_REVIEWER__PUBLISH_OUTPUT_NO_SUGGESTIONS
               value: {{ .Values.publishOutputNoSuggestions | quote }}
+            - name: PR_REVIEWER__MINIMAL_MINUTES_FOR_INCREMENTAL_REVIEW
+              value: {{ .Values.incrementalReviewMinMinutes | quote }}
             - name: PR_CODE_SUGGESTIONS__COMMITTABLE_CODE_SUGGESTIONS
               value: {{ .Values.committableSuggestions | quote }}
             - name: PR_CODE_SUGGESTIONS__MAX_NUMBER_OF_CALLS
