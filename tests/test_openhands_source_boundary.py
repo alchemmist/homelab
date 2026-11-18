@@ -70,8 +70,7 @@ def _assert_boundary(documents: list[dict[str, object]]) -> None:
         "ServiceAccount token automount enabled"
     )
     assert not any(
-        key in pod
-        for key in ("volumes", "hostNetwork", "hostPID", "hostIPC", "initContainers")
+        key in pod for key in ("volumes", "hostNetwork", "hostPID", "hostIPC", "initContainers")
     ), "Host or extra mounts/process namespaces enabled"
     security = _mapping(pod["securityContext"])
     assert security == {
@@ -134,11 +133,7 @@ def rendered() -> list[dict[str, object]]:
             "/dev/null",
         ]
     )
-    return [
-        _mapping(value)
-        for value in yaml.safe_load_all(result.stdout)
-        if value is not None
-    ]
+    return [_mapping(value) for value in yaml.safe_load_all(result.stdout) if value is not None]
 
 
 def test_owner_overrides_render_without_cluster_or_public_ingress_authority(
@@ -147,10 +142,7 @@ def test_owner_overrides_render_without_cluster_or_public_ingress_authority(
     """The deployed source graph keeps token/RBAC/ingress and PVC retention boundaries."""
     _assert_boundary(rendered)
     namespace = _mapping(_one(rendered, "Namespace")["metadata"])
-    assert (
-        _mapping(namespace["labels"])["pod-security.kubernetes.io/enforce"]
-        == "restricted"
-    )
+    assert _mapping(namespace["labels"])["pod-security.kubernetes.io/enforce"] == "restricted"
     policy = _mapping(_one(rendered, "NetworkPolicy")["spec"])
     assert policy["policyTypes"] == ["Ingress", "Egress"]
 

@@ -49,9 +49,7 @@ class QueueTransitions(unittest.TestCase):
         github_guard = patch.object(
             c,
             "github",
-            side_effect=AssertionError(
-                "Real GitHub access forbidden in queue fixtures"
-            ),
+            side_effect=AssertionError("Real GitHub access forbidden in queue fixtures"),
         )
         github_guard.start()
         self.addCleanup(github_guard.stop)
@@ -64,9 +62,7 @@ class QueueTransitions(unittest.TestCase):
         c.DB.commit()
         c.CORE = MagicMock()
         c.BATCH = MagicMock()
-        c.BATCH.read_namespaced_job.return_value.status = SimpleNamespace(
-            succeeded=1, failed=0
-        )
+        c.BATCH.read_namespaced_job.return_value.status = SimpleNamespace(succeeded=1, failed=0)
         c.CORE.list_namespaced_pod.return_value.items = [
             SimpleNamespace(metadata=SimpleNamespace(name="worker"))
         ]
@@ -149,9 +145,7 @@ class QueueTransitions(unittest.TestCase):
         self.assertEqual(self.state(), "failed")
 
     def test_invalid_candidate_is_terminal_not_infinite_retry(self):
-        self.result["changes"] = [
-            {"path": ".github/workflows/evil.yml", "content": "dHJ1ZQ=="}
-        ]
+        self.result["changes"] = [{"path": ".github/workflows/evil.yml", "content": "dHJ1ZQ=="}]
         self.tick()
         self.assertEqual(self.state(), "rejected")
 
@@ -180,9 +174,7 @@ class QueueTransitions(unittest.TestCase):
         with patch.object(c, "github", side_effect=[[], {"sha": "b" * 40}]):
             c.tick()
         self.assertEqual(
-            c.DB.execute("SELECT count(*) FROM runs WHERE state='queued'").fetchone()[
-                0
-            ],
+            c.DB.execute("SELECT count(*) FROM runs WHERE state='queued'").fetchone()[0],
             1,
         )
 
@@ -216,9 +208,7 @@ class QueueTransitions(unittest.TestCase):
 
     def test_idle_github_failure_is_backed_off(self):
         c.save("test", state="failed")
-        with patch.object(
-            c, "github", side_effect=RuntimeError("external API unavailable")
-        ) as api:
+        with patch.object(c, "github", side_effect=RuntimeError("external API unavailable")) as api:
             with self.assertRaises(RuntimeError):
                 c.tick()
             c.tick()
@@ -232,9 +222,7 @@ class QueueTransitions(unittest.TestCase):
 
     def test_backoff_preserves_dependency_error_and_heartbeat(self):
         c.save("test", state="failed")
-        with patch.object(
-            c, "github", side_effect=RuntimeError("external API unavailable")
-        ):
+        with patch.object(c, "github", side_effect=RuntimeError("external API unavailable")):
             c.run_once()
             c.run_once()
         self.assertEqual(c.STATUS["error"], "RuntimeError")
@@ -288,9 +276,7 @@ class QueueTransitions(unittest.TestCase):
         c.save("test", state="failed")
         with (
             patch.dict(os.environ, {"PAUSED": "true"}),
-            patch.object(
-                c, "github", side_effect=AssertionError("Provider forbidden")
-            ) as api,
+            patch.object(c, "github", side_effect=AssertionError("Provider forbidden")) as api,
         ):
             c.tick()
         api.assert_not_called()
@@ -365,12 +351,8 @@ class HealthContract(unittest.TestCase):
                 self.subTest(path=path, error=error, age=age),
                 patch.object(c.time, "time", return_value=1000),
                 patch.dict(c.STATUS, {"last_tick": 1000 - age, "error": error}),
-                patch(
-                    "socket.socket", side_effect=AssertionError("Socket use forbidden")
-                ),
-                patch.object(
-                    c, "github", side_effect=AssertionError("Provider use forbidden")
-                ),
+                patch("socket.socket", side_effect=AssertionError("Socket use forbidden")),
+                patch.object(c, "github", side_effect=AssertionError("Provider use forbidden")),
             ):
                 handler = MagicMock(spec=c.Health)
                 handler.path = path
