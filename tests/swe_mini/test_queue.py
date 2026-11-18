@@ -27,6 +27,7 @@ with patch.dict(sys.modules, {'policy': policy, 'jwt': MagicMock(), 'requests': 
 
 class QueueTransitions(unittest.TestCase):
     def setUp(self):
+        c.NEXT_IDLE_CHECK = 0
         c.DB.execute('DELETE FROM runs')
         c.DB.execute("INSERT INTO runs (id,lane,revision,state,job,created) VALUES ('test','backend',?,'work','test-work',0)", ('a' * 40,))
         c.DB.commit()
@@ -140,9 +141,24 @@ class QueueTransitions(unittest.TestCase):
             c.tick()
         self.assertEqual(c.STATUS['state'], 'waiting_for_dependency_merge')
         self.assertEqual(c.DB.execute('SELECT count(*) FROM runs').fetchone()[0], 1)
+        c.NEXT_IDLE_CHECK = 0
         with patch.object(c, 'github', side_effect=[prs, {'sha': 'b' * 40}]):
             c.tick()
         self.assertEqual(c.DB.execute('SELECT count(*) FROM runs').fetchone()[0], 2)
+
+    def test_idle_github_failure_is_backed_off(self):
+        c.save('test', state='failed')
+        with patch.object(c, 'github', side_effect=RuntimeError('external API unavailable')) as api:
+            with self.assertRaises(RuntimeError):
+                c.tick()
+            c.tick()
+            self.assertEqual(api.call_count, 1)
+
+    def test_main_discovery_uses_installation_auth(self):
+        c.save('test', state='failed')
+        with patch.object(c, 'github', side_effect=[[], {'sha': 'b' * 40}]) as api:
+            c.tick()
+            self.assertTrue(api.call_args.kwargs.get('auth'))
 
     def test_persisted_queued_run_resumes(self):
         c.save('test', state='queued')
