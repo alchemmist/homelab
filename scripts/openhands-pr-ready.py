@@ -21,6 +21,20 @@ tip:commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){nodes{__t
 }}}"""
 
 
+def _complete_connection(value: object, direction: str) -> bool:
+    """Require explicit native end-of-pagination evidence, not falsy/missing metadata."""
+    if not isinstance(value, dict):
+        return False
+    page = value.get("pageInfo")
+    if not isinstance(value.get("nodes"), list) or not isinstance(page, dict):
+        return False
+    return (
+        page.get(direction) is False
+        and not page.get("hasNextPage")
+        and not page.get("hasPreviousPage")
+    )
+
+
 def assess(pr, reviewers, handlers):
     blockers = []
     head = pr.get("headRefOid")
@@ -43,15 +57,12 @@ def assess(pr, reviewers, handlers):
         ) or (check.get("__typename") == "StatusContext" and check.get("state") == "SUCCESS")
         if not ok:
             blockers.append("CI not green: " + str(check.get("name") or check.get("context")))
-    sections = [pr.get(k, {}) for k in ("reviews", "comments", "reviewThreads", "commits")] + [
-        checks
-    ]
+    sections = [
+        (pr.get(k, {}), "hasNextPage") for k in ("reviews", "comments", "reviewThreads")
+    ] + [(pr.get("commits", {}), "hasPreviousPage"), (checks, "hasNextPage")]
     threads = pr.get("reviewThreads", {}).get("nodes", [])
-    sections += [t.get("comments", {}) for t in threads]
-    if any(
-        s.get("pageInfo", {}).get("hasNextPage") or s.get("pageInfo", {}).get("hasPreviousPage")
-        for s in sections
-    ):
+    sections += [(t.get("comments", {}), "hasNextPage") for t in threads]
+    if not all(_complete_connection(section, direction) for section, direction in sections):
         blockers.append("Incomplete pagination; cannot authorize handoff")
     reviews = pr.get("reviews", {}).get("nodes", [])
     observed_bots = {

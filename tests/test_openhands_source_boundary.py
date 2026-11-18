@@ -240,7 +240,7 @@ def handoff_gate(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
 def _handoff_snapshot() -> dict[str, object]:
     """Construct only synthetic GitHub shapes, without authentication or API access."""
     head = "a" * 40
-    return {
+    snapshot: dict[str, object] = {
         "url": "https://github.com/example/example/pull/1",
         "headRefOid": head,
         "isDraft": False,
@@ -273,13 +273,32 @@ def _handoff_snapshot() -> dict[str, object]:
         },
     }
 
+    for name, direction in [
+        ("reviews", "hasNextPage"),
+        ("comments", "hasNextPage"),
+        ("reviewThreads", "hasNextPage"),
+        ("commits", "hasPreviousPage"),
+    ]:
+        section = _mapping(snapshot[name])
+        section["pageInfo"] = {direction: False}
+        snapshot[name] = section
+    rollup = _mapping(snapshot["statusCheckRollup"])
+    checks = _mapping(rollup["contexts"])
+    checks["pageInfo"] = {"hasNextPage": False}
+    rollup["contexts"] = checks
+    snapshot["statusCheckRollup"] = rollup
+    return snapshot
+
 
 @pytest.mark.parametrize("kind", ["UnknownContext", None, ""])
 def test_handoff_rejects_unknown_ci_variants(handoff_gate: ModuleType, kind: object) -> None:
     """An arbitrary state=SUCCESS must not impersonate a legacy StatusContext."""
     snapshot = _handoff_snapshot()
     snapshot["statusCheckRollup"] = {
-        "contexts": {"nodes": [{"__typename": kind, "state": "SUCCESS"}]}
+        "contexts": {
+            "nodes": [{"__typename": kind, "state": "SUCCESS"}],
+            "pageInfo": {"hasNextPage": False},
+        }
     }
     report = _mapping(handoff_gate.assess(snapshot, {"review-bot"}, {"publisher"}))
     assert report["ready_to_review"] is False
@@ -315,6 +334,7 @@ def test_handoff_retains_both_native_ci_success_variants(
     snapshot = _handoff_snapshot()
     snapshot["statusCheckRollup"] = {
         "contexts": {
+            "pageInfo": {"hasNextPage": False},
             "nodes": [
                 {
                     "__typename": kind,
@@ -322,8 +342,73 @@ def test_handoff_retains_both_native_ci_success_variants(
                     "status": "COMPLETED",
                     "conclusion": "SUCCESS",
                 },
-            ]
+            ],
         }
+    }
+    report = _mapping(handoff_gate.assess(snapshot, {"review-bot"}, {"publisher"}))
+    assert report["ready_to_review"] is True
+
+
+@pytest.mark.parametrize(
+    "connection", ["reviews", "comments", "reviewThreads", "commits", "checks", "thread-comments"]
+)
+@pytest.mark.parametrize(
+    "metadata",
+    [
+        None,
+        {},
+        {"hasNextPage": True, "hasPreviousPage": True},
+        {"hasNextPage": None, "hasPreviousPage": None},
+        {"hasNextPage": 0, "hasPreviousPage": 0},
+    ],
+)
+def test_handoff_requires_explicit_complete_pagination(
+    handoff_gate: ModuleType,
+    connection: str,
+    metadata: object,
+) -> None:
+    """All queried connections, including each nested thread, require boolean completion."""
+    snapshot = _handoff_snapshot()
+    if connection == "checks":
+        rollup = _mapping(snapshot["statusCheckRollup"])
+        section = _mapping(rollup["contexts"])
+        section["pageInfo"] = metadata
+        rollup["contexts"] = section
+        snapshot["statusCheckRollup"] = rollup
+    elif connection == "thread-comments":
+        snapshot["reviewThreads"] = {
+            "pageInfo": {"hasNextPage": False},
+            "nodes": [
+                {
+                    "id": "empty-human-thread",
+                    "isResolved": True,
+                    "comments": {"nodes": [], "pageInfo": metadata},
+                }
+            ],
+        }
+    else:
+        section = _mapping(snapshot[connection])
+        section["pageInfo"] = metadata
+        snapshot[connection] = section
+    report = _mapping(handoff_gate.assess(snapshot, {"review-bot"}, {"publisher"}))
+    assert report["ready_to_review"] is False
+    assert "Incomplete pagination; cannot authorize handoff" in _list(report["blockers"])
+
+
+def test_handoff_accepts_explicit_complete_nested_empty_connection(
+    handoff_gate: ModuleType,
+) -> None:
+    """An explicitly complete empty human thread remains legitimate, not a hidden skip."""
+    snapshot = _handoff_snapshot()
+    snapshot["reviewThreads"] = {
+        "pageInfo": {"hasNextPage": False},
+        "nodes": [
+            {
+                "id": "empty-human-thread",
+                "isResolved": True,
+                "comments": {"nodes": [], "pageInfo": {"hasNextPage": False}},
+            }
+        ],
     }
     report = _mapping(handoff_gate.assess(snapshot, {"review-bot"}, {"publisher"}))
     assert report["ready_to_review"] is True

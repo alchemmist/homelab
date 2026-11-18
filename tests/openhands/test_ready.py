@@ -46,6 +46,11 @@ class ReadyContract(unittest.TestCase):
             },
         }
 
+        for name in ("reviews", "comments", "reviewThreads"):
+            self.p[name]["pageInfo"] = {"hasNextPage": False}
+        self.p["commits"]["pageInfo"] = {"hasPreviousPage": False}
+        self.p["statusCheckRollup"]["contexts"]["pageInfo"] = {"hasNextPage": False}
+
     def result(self):
         return m.assess(self.p, {"review-bot"}, {"publisher"})
 
@@ -55,13 +60,14 @@ class ReadyContract(unittest.TestCase):
                 "id": "thread",
                 "isResolved": True,
                 "comments": {
+                    "pageInfo": {"hasNextPage": False},
                     "nodes": [
                         {
                             "id": "remark",
                             "author": {"login": "review-bot", "__typename": "Bot"},
                             "body": "Please fix this bug.",
                         }
-                    ]
+                    ],
                 },
             }
         ]
