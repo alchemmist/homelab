@@ -31,7 +31,7 @@
   "panels": [
     {
       "id": 1,
-      "title": "Requests by API key — Qwen",
+      "title": "Requests by API key — qwen3.8-27b",
       "type": "timeseries",
       "description": "Estimated LiteLLM requests over the preceding minute, by API key alias. Fixed rolling 1m window, independent of dashboard range and pixel width; adjacent points overlap and must not be summed. Counter extrapolation can produce fractional estimates. Missing telemetry is not zero activity. Completed request activity only; an unfinished request is not yet visible.",
       "datasource": {
@@ -42,7 +42,7 @@
         "x": 0,
         "y": 0,
         "w": 24,
-        "h": 10
+        "h": 8
       },
       "targets": [
         {
@@ -58,7 +58,7 @@
           "unit": "short",
           "min": 0,
           "color": {
-            "mode": "palette-classic"
+            "mode": "palette-classic-by-name"
           },
           "custom": {
             "drawStyle": "line",
@@ -92,7 +92,7 @@
     },
     {
       "id": 2,
-      "title": "Requests by API key — Venice DeepSeek",
+      "title": "Requests by API key — venice-deepseek",
       "type": "timeseries",
       "description": "Estimated LiteLLM requests over the preceding minute, by API key alias. Fixed rolling 1m window, independent of dashboard range and pixel width; adjacent points overlap and must not be summed. Counter extrapolation can produce fractional estimates. Missing telemetry is not zero activity. Completed request activity only; an unfinished request is not yet visible.",
       "datasource": {
@@ -101,9 +101,9 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 10,
+        "y": 8,
         "w": 24,
-        "h": 10
+        "h": 8
       },
       "targets": [
         {
@@ -119,7 +119,7 @@
           "unit": "short",
           "min": 0,
           "color": {
-            "mode": "palette-classic"
+            "mode": "palette-classic-by-name"
           },
           "custom": {
             "drawStyle": "line",
@@ -162,7 +162,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 20,
+        "y": 16,
         "w": 24,
         "h": 8
       },

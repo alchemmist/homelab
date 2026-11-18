@@ -9,7 +9,8 @@ import pytest
 TABLE_PANEL_ID = 4
 REQUEST_TARGET_COUNT = 4
 DASHBOARD_PANEL_COUNT = 3
-TABLE_GRID_Y = 20
+TABLE_GRID_Y = 16
+REQUEST_PANEL_HEIGHT = 8
 REQUEST_MODELS = ("qwen3.8-27b", "venice-agentic-deepseek-v4.1-flash-uncensored")
 
 
@@ -64,6 +65,7 @@ def test_models_are_separate_and_public_content_is_aggregate() -> None:
         assert "[1m]" in expr
         assert "$__interval" not in expr
     assert d["panels"][2]["gridPos"]["y"] == TABLE_GRID_Y
+    assert all(p["gridPos"]["h"] == REQUEST_PANEL_HEIGHT for p in d["panels"][:2])
 
 
 @pytest.mark.parametrize("violation", ["zero-fill", "span-nulls", "picker-window", "wrong-model"])
@@ -92,3 +94,29 @@ def test_second_model_rejects_semantic_regressions(violation: str) -> None:
         else:
             with pytest.raises(AssertionError):
                 test_requests_window_is_independent_of_time_picker(2)
+
+
+def test_chart_titles_use_litellm_route_names() -> None:
+    """Keep exact owner-selected route titles without changing query model matchers."""
+    d = json.loads(
+        (
+            Path(__file__).resolve().parents[1] / "charts/monitoring-k3s/dashboards/llm-keys.json"
+        ).read_text()
+    )
+    assert [p["title"] for p in d["panels"][:2]] == [
+        "Requests by API key — qwen3.8-27b",
+        "Requests by API key — venice-deepseek",
+    ]
+
+
+def test_key_colors_are_stable_across_model_charts() -> None:
+    """Use the shared alias legend and name-based palette without per-panel overrides."""
+    d = json.loads(
+        (
+            Path(__file__).resolve().parents[1] / "charts/monitoring-k3s/dashboards/llm-keys.json"
+        ).read_text()
+    )
+    for panel in d["panels"][:2]:
+        assert panel["fieldConfig"]["defaults"]["color"]["mode"] == "palette-classic-by-name"
+        assert panel["targets"][0]["legendFormat"] == "{{api_key_alias}}"
+        assert panel["fieldConfig"]["overrides"] == []
