@@ -1,0 +1,3 @@
+"""Deliberately incomplete acceptance fixture, not production code."""
+def merge_intervals(intervals):
+    return sorted(intervals)

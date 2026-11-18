@@ -39,8 +39,10 @@ config:
   extraEnv:
     - name: AGENT_CANVAS_ALLOW_LAN_SESSION_KEY
       value: 'true'
+    # Local automation workers need key-authenticated loopback callbacks, not
+    # the public browser OIDC gate. Public UI still uses its same-origin proxy.
     - name: AUTOMATION_BASE_URL
-      value: https://openhands.socrat.alchemmist.xyz
+      value: http://127.0.0.1:8000
 statefulSet:
   persistentVolumeClaimRetentionPolicy:
     whenDeleted: Retain
