@@ -44,8 +44,8 @@ serviceProbes:
     alertName: SocratServiceImageProxyUnavailable
   - id: lms
     title: LMS
-    url: http://lms.lms.svc.cluster.local:80/
-    module: http_2xx
+    url: https://lms.alchemmist.xyz/
+    module: http_3xx
     alertName: SocratServiceLmsUnavailable
   - id: monori
     title: Monori
@@ -307,3 +307,10 @@ updateWatch:
       title: NVIDIA device plugin
       current: "0.20.1"
       github: NVIDIA/k8s-device-plugin
+    - id: pr-agent
+      title: PR-Agent
+      current: "0.50.0"
+      github: The-PR-Agent/pr-agent
+      namespace: pr-agent
+      deployment: pr-agent
+      container: pr-agent
