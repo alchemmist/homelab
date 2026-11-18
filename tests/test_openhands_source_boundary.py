@@ -6,6 +6,7 @@ import copy
 import importlib.util
 import json
 import subprocess
+import sys
 from pathlib import Path
 from types import ModuleType
 
@@ -412,3 +413,138 @@ def test_handoff_accepts_explicit_complete_nested_empty_connection(
     }
     report = _mapping(handoff_gate.assess(snapshot, {"review-bot"}, {"publisher"}))
     assert report["ready_to_review"] is True
+
+
+@pytest.mark.parametrize(
+    ("change", "blocker"),
+    [
+        ("failed-ci", "CI not green: tests"),
+        ("pending-review", "Pending review"),
+        ("missing-review", "Bot review incomplete on current head: review-bot"),
+        ("draft", "PR is still draft"),
+        ("pagination", "Incomplete pagination; cannot authorize handoff"),
+    ],
+)
+def test_handoff_cli_reassesses_second_same_head_snapshot(
+    handoff_gate: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    change: str,
+    blocker: str,
+) -> None:
+    """Same SHA is insufficient when the freshly fetched CI/review state is no longer valid."""
+    first = _handoff_snapshot()
+    second = copy.deepcopy(first)
+    if change == "failed-ci":
+        second["statusCheckRollup"] = {
+            "contexts": {
+                "pageInfo": {"hasNextPage": False},
+                "nodes": [
+                    {
+                        "__typename": "CheckRun",
+                        "name": "tests",
+                        "status": "COMPLETED",
+                        "conclusion": "FAILURE",
+                    }
+                ],
+            }
+        }
+    elif change == "pending-review":
+        reviews = _mapping(second["reviews"])
+        reviews["nodes"] = [
+            {
+                "id": "review",
+                "author": {"login": "review-bot", "__typename": "Bot"},
+                "state": "PENDING",
+                "body": "",
+                "commit": {"oid": second["headRefOid"]},
+            }
+        ]
+        second["reviews"] = reviews
+    elif change == "missing-review":
+        second["reviews"] = {"nodes": [], "pageInfo": {"hasNextPage": False}}
+    elif change == "draft":
+        second["isDraft"] = True
+    elif change == "pagination":
+        second["comments"] = {"nodes": [], "pageInfo": {"hasNextPage": True}}
+    else:
+        raise AssertionError(change)
+    responses = iter([first, second])
+    calls: list[tuple[str, int]] = []
+
+    def fetch(repo: str, number: int) -> dict[str, object]:
+        calls.append((repo, number))
+        return next(responses)
+
+    monkeypatch.setattr(handoff_gate, "fetch", fetch)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "gate",
+            "--repo",
+            "example/example",
+            "--pr",
+            "1",
+            "--reviewer",
+            "review-bot",
+            "--handler",
+            "publisher",
+        ],
+    )
+    assert handoff_gate.main() == 1
+    report = _mapping(json.loads(capsys.readouterr().out))
+    assert report["ready_to_review"] is False
+    assert report["head"] == first["headRefOid"]
+    assert blocker in _list(report["blockers"])
+    assert "PR state changed during audit" in _list(report["blockers"])
+    assert calls == [("example/example", 1), ("example/example", 1)]
+
+
+@pytest.mark.parametrize("mode", ["stable-green", "head-change", "becomes-green"])
+def test_handoff_cli_requires_stable_ready_assessment(
+    handoff_gate: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    mode: str,
+) -> None:
+    """Stable success remains valid; head changes or newly green unstable state still refuse."""
+    first = _handoff_snapshot()
+    second = copy.deepcopy(first)
+    if mode == "head-change":
+        second["headRefOid"] = "b" * 40
+    elif mode == "becomes-green":
+        first["isDraft"] = True
+    responses = iter([first, second])
+    calls: list[tuple[str, int]] = []
+
+    def fetch(repo: str, number: int) -> dict[str, object]:
+        calls.append((repo, number))
+        return next(responses)
+
+    monkeypatch.setattr(handoff_gate, "fetch", fetch)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "gate",
+            "--repo",
+            "example/example",
+            "--pr",
+            "1",
+            "--reviewer",
+            "review-bot",
+            "--handler",
+            "publisher",
+        ],
+    )
+    assert handoff_gate.main() == (0 if mode == "stable-green" else 1)
+    report = _mapping(json.loads(capsys.readouterr().out))
+    assert report["ready_to_review"] is (mode == "stable-green")
+    if mode == "head-change":
+        assert "Head changed during audit" in _list(report["blockers"])
+    elif mode == "becomes-green":
+        assert "PR state changed during audit" in _list(report["blockers"])
+    else:
+        assert report["blockers"] == []
+    assert calls == [("example/example", 1), ("example/example", 1)]

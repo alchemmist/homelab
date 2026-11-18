@@ -174,9 +174,16 @@ def main():
     try:
         pr = fetch(args.repo, args.pr)
         report = assess(pr, set(args.reviewer), set(args.handler))
-        if fetch(args.repo, args.pr)["headRefOid"] != report["head"]:
+        fresh = fetch(args.repo, args.pr)
+        if fresh["headRefOid"] != report["head"]:
             report["ready_to_review"] = False
             report["blockers"].append("Head changed during audit")
+        else:
+            fresh_report = assess(fresh, set(args.reviewer), set(args.handler))
+            if fresh_report != report:
+                fresh_report["ready_to_review"] = False
+                fresh_report["blockers"].append("PR state changed during audit")
+                report = fresh_report
         report["checked_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0 if report["ready_to_review"] else 1
