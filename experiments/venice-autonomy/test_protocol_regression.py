@@ -19,6 +19,30 @@ def python_path():
     return Path(raw) if raw else Path(sys.executable)
 
 
+class MethodSignatureTests(unittest.TestCase):
+    baseline = "class BrowserSession:\n    async def _answer(self, page, fallback=None) -> str:\n        return 'answer'\n    async def _generate_on_page(self, page):\n        return page\n"
+
+    def test_signature_changes_are_rejected(self):
+        changes = [
+            ('self, page,', 'self, injected_parameter, page,'),
+            ('fallback=None', 'fallback=42'),
+            ('-> str', '-> int'),
+            ('self, page,', 'self, page: str,'),
+        ]
+        for old, new in changes:
+            with self.subTest(new=new):
+                report = pilot.allowed_edit_report(self.baseline, self.baseline.replace(old, new))
+                self.assertFalse(report['allowed'], report)
+
+    def test_body_changes_remain_allowed(self):
+        report = pilot.allowed_edit_report(self.baseline, self.baseline.replace("return 'answer'", "return 'fixed'"))
+        self.assertTrue(report['allowed'], report)
+
+    def test_duplicate_allowed_method_is_rejected(self):
+        candidate = self.baseline + "    async def _answer(self, page, fallback=None) -> str:\n        return 'override'\n"
+        self.assertFalse(pilot.allowed_edit_report(self.baseline, candidate)['allowed'])
+
+
 class SnapshotTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()

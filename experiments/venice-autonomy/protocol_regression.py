@@ -90,6 +90,8 @@ def method_spans(source: str) -> dict[str, tuple[int, int]]:
             continue
         for child in node.body:
             if isinstance(child, ast.AsyncFunctionDef) and child.name in ALLOWED_METHODS:
+                if child.name in spans:
+                    raise ValueError("duplicate allowed method")
                 spans[child.name] = (child.lineno, child.end_lineno or child.lineno)
     if tuple(sorted(spans)) != tuple(sorted(ALLOWED_METHODS)):
         raise ValueError("snapshot is missing BrowserSession._answer or _generate_on_page")
@@ -119,7 +121,25 @@ def mask_allowed_methods(source: str) -> str:
 
 def allowed_edit_report(baseline: str, candidate: str) -> dict:
     try:
-        same_outside = mask_allowed_methods(baseline) == mask_allowed_methods(candidate)
+        def signatures(source):
+            tree = ast.parse(source)
+            return {
+                child.name: (
+                    ast.dump(child.args, include_attributes=False),
+                    ast.dump(child.returns, include_attributes=False) if child.returns else None,
+                    tuple(ast.dump(item, include_attributes=False) for item in getattr(child, "type_params", [])),
+                    child.type_comment,
+                )
+                for node in tree.body
+                if isinstance(node, ast.ClassDef) and node.name == "BrowserSession"
+                for child in node.body
+                if isinstance(child, ast.AsyncFunctionDef) and child.name in ALLOWED_METHODS
+            }
+
+        same_outside = (
+            mask_allowed_methods(baseline) == mask_allowed_methods(candidate)
+            and signatures(baseline) == signatures(candidate)
+        )
         detail = (
             "outside the two allowed methods matches the historical baseline"
             if same_outside
