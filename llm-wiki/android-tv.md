@@ -574,3 +574,20 @@ now preserves EXISTINGownerwidgetcontent/order/deletions ratherthanresurrectingA
 Argo builder retains absent emptyoverrides. Ownerlayoutfixture/tests updated;
 50traffic-light tests pass. ExistingdirectIPfixture updated for priorwishlistjob.
 Publicshare UID unchanged. No instrumentation/inference/plugin/silence changes.
+
+### Gold footer split —18November, a8fb6abc/6419721b
+
+Owner accepted two model charts, requested removing Downsample/Halted entirely,
+splitting age/ingest to two goldcards underbackupcards and expandingVeniceupwards.
+Freshlive model matchedGit before edit.936nowCascadeage x12,y18,w2,h2;939Samples/s
+x14,y18,w2,h2. Both retain EXACTformerA/D expressions, freshness/missing guards,
+units/agewarningbands; no fabricatedzero. Removed formerB/C queries. Nativefont9/
+15 fits names+value+units inside77.17×49.30CSSpx cards (11/20wrapped/clipped in
+preview; fixed ONLY newcards). Backups unchanged. Venice938 y14,h6 (wasy16,h4),
+useswholefreed2-rowblock, samebottom20; all59otherpanels exact.62panels/5holes.
+51traffic-light tests pass, ConfigMapbudget<240000 unchanged. Updated ownerfixture;
+modelbuilder preserves order and futuremanualgeometry. Inspected isolatedbrowser
+1024×575/DPR2 screenshot /tmp/tv-split-browser-preview.png: newcardlabel/value/unit
+rectangles fullycontained, Venicebottom569.98=Argo569.98, no scroll. This is NOTan
+actualTVscreenshot; TVstillNo route to host at192.168.0.19. No deviceprefs/restart/
+CSS/pipeline changes. Physicalacceptance blocked; owner refresh needed.
