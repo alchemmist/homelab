@@ -282,7 +282,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
 
     def test_new_panels_have_an_english_description(self):
         for panel in self.dashboard['panels']:
-            if panel['id'] >= 901 and panel['id'] not in (909, 920, 923, 924, 925):
+            if panel['id'] >= 901 and panel['id'] not in (909, 920, 923, 924, 925, 938):
                 self.assertTrue(panel.get('description', '').strip(), f'panel {panel["id"]}')
 
     def test_row_panels_have_unique_target_ids_and_series_names(self):

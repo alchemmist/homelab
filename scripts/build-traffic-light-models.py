@@ -14,9 +14,8 @@ def build(source=None):
     owner = {p['id']: p for p in d['panels']}
     bottom = owner[909]['gridPos']['y'] + owner[909]['gridPos']['h']
     panel = owner[938]
-    panel['title'] = 'LiteLLM · requests/min'
-    panel['description'] = ('Completed requests per rolling minute across API keys, grouped by requested LiteLLM route. '
-                            'Includes historical venice-deepseek traffic under v-deepseek-uc. Missing telemetry is not zero.')
+    panel['title'] = ''
+    panel.pop('description', None)
     target = panel['targets'][0]
     target.update(expr=('sum by (requested_model) (label_replace(increase(litellm_requests_metric_total{'
                         'job="litellm",requested_model!="",requested_model!="None",'
@@ -28,7 +27,7 @@ def build(source=None):
     panel['fieldConfig']['overrides'] = [
         {'matcher': {'id': 'byName', 'options': name}, 'properties': [
             {'id': 'color', 'value': {'mode': 'fixed', 'fixedColor': color}}]} for name, color in colors.items()]
-    panel['options']['legend']['showLegend'] = True
+    panel['options']['legend']['showLegend'] = False
     d['panels'] = [p for p in d['panels'] if p['id'] != 937]
     occupied = set()
     for p in d['panels']:

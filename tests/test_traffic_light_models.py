@@ -17,7 +17,9 @@ class Models(unittest.TestCase):
         self.assertEqual(M['build'](self.d), self.d)
         for p in self.d['panels']:
             if p['id'] == 938:
-                self.assertTrue(p['options']['legend']['showLegend'])
+                self.assertFalse(p['options']['legend']['showLegend'])
+                self.assertFalse(p['title'])
+                self.assertFalse(p.get('description'))
                 self.assertNotIn('timeFrom',p)
                 self.assertIn('[1m]',p['targets'][0]['expr'])
                 self.assertEqual(p['fieldConfig']['defaults']['color']['mode'],'palette-classic-by-name')
