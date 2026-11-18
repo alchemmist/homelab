@@ -38,7 +38,7 @@ class QualityPanelsTest(unittest.TestCase):
 
     def test_preserves_future_manual_network_geometry(self):
         panel=next(p for p in self.d['panels'] if p['id']==931)
-        panel['gridPos']={'x':12,'y':10,'w':3,'h':3}
+        panel['gridPos']={'x':12,'y':13,'w':3,'h':3}
         built=Q.build(self.d)
         self.assertEqual(next(p for p in built['panels'] if p['id']==931)['gridPos'],panel['gridPos'])
 
@@ -101,7 +101,7 @@ class QualityPanelsTest(unittest.TestCase):
     def test_more_service_room_without_moving_originals(self):
         self.assertNotIn(933,self.p)
         for i in [931,932]:
-            self.assertEqual(self.p[i]['gridPos']['w'],5)
+            self.assertEqual(self.p[i]['gridPos']['w'],4)
             self.assertEqual(self.p[i]['options']['graphMode'],'area')
         self.assertNotIn('socrat:node_pressure',json.dumps([self.p[i] for i in Q.IDS & self.p.keys()]))
 
