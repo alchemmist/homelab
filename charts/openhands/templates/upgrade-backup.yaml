@@ -1,0 +1,74 @@
+# One-time pre1.42 backup on a separate retained claim, not off-site DR.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: openhands-upgrade-backups
+  annotations: {argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'}
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests: {storage: 1Gi}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: openhands-backup-pre142}
+data:
+  backup.py: |
+{{ .Files.Get "files/upgrade_backup.py" | indent 4 }}
+  recipient.pem: |
+{{ .Files.Get "files/backup-recipient.pem" | indent 4 }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: openhands-backup-pre142}
+spec:
+  podSelector: {matchLabels: {app: openhands-backup-pre142}}
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress: []
+---
+apiVersion: batch/v1
+kind: Job
+metadata: {name: openhands-backup-pre142}
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels: {app: openhands-backup-pre142}
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      nodeSelector: {kubernetes.io/hostname: socrat-5}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: backup
+          image: ghcr.io/openhands/agent-canvas:1.41.0@sha256:dcae97b63c9845fd1d4313857af6b10fb5888324a154238c4795ef86233d227c
+          command: [python, -B, /config/backup.py]
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: source, mountPath: /source, readOnly: true}
+            - {name: backup, mountPath: /backup}
+            - {name: config, mountPath: /config, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: source
+          persistentVolumeClaim: {claimName: data-openhands-0, readOnly: true}
+        - name: backup
+          persistentVolumeClaim: {claimName: openhands-upgrade-backups}
+        - name: config
+          configMap: {name: openhands-backup-pre142}
+        - name: tmp
+          emptyDir: {sizeLimit: 16Mi}
