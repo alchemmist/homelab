@@ -1,6 +1,7 @@
 """Exercise real queue state transitions with API/model boundaries mocked."""
 import base64
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -33,6 +34,7 @@ class QueueTransitions(unittest.TestCase):
         )
         github_guard.start()
         self.addCleanup(github_guard.stop)
+        c.NEXT_IDLE_CHECK = 0
         c.DB.execute('DELETE FROM runs')
         c.DB.execute("INSERT INTO runs (id,lane,revision,state,job,created) VALUES ('test','backend',?,'work','test-work',0)", ('a' * 40,))
         c.DB.commit()
@@ -146,15 +148,61 @@ class QueueTransitions(unittest.TestCase):
             c.tick()
         self.assertEqual(c.STATUS['state'], 'waiting_for_dependency_merge')
         self.assertEqual(c.DB.execute('SELECT count(*) FROM runs').fetchone()[0], 1)
+        c.NEXT_IDLE_CHECK = 0
         with patch.object(c, 'github', side_effect=[prs, {'sha': 'b' * 40}]):
             c.tick()
         self.assertEqual(c.DB.execute('SELECT count(*) FROM runs').fetchone()[0], 2)
+
+    def test_idle_github_failure_is_backed_off(self):
+        c.save('test', state='failed')
+        with patch.object(c, 'github', side_effect=RuntimeError('external API unavailable')) as api:
+            with self.assertRaises(RuntimeError):
+                c.tick()
+            c.tick()
+            self.assertEqual(api.call_count, 1)
+
+    def test_main_discovery_uses_installation_auth(self):
+        c.save('test', state='failed')
+        with patch.object(c, 'github', side_effect=[[], {'sha': 'b' * 40}]) as api:
+            c.tick()
+            self.assertTrue(api.call_args.kwargs.get('auth'))
 
     def test_persisted_queued_run_resumes(self):
         c.save('test', state='queued')
         with patch.object(c, 'start_job') as start:
             c.tick()
             self.assertEqual(start.call_args.args[1], 'work')
+
+
+class HealthContract(unittest.TestCase):
+    """Exercise real GET routing with no server, sockets, provider or controller loop."""
+
+    def test_heartbeat_and_dependency_status_are_distinct(self) -> None:
+        """API errors do not restart a live process; stale heartbeats still fail."""
+        cases = [
+            ("/livez", "RuntimeError", 10, 200),
+            ("/healthz", "RuntimeError", 10, 200),
+            ("/dependencies", "RuntimeError", 10, 503),
+            ("/dependencies", "", 10, 200),
+            ("/livez", "", 180, 503),
+            ("/healthz", "", 180, 503),
+            ("/dependencies", "", 180, 503),
+        ]
+        for path, error, age, expected in cases:
+            with (
+                self.subTest(path=path, error=error, age=age),
+                patch.object(c.time, "time", return_value=1000),
+                patch.dict(c.STATUS, {"last_tick": 1000 - age, "error": error}),
+                patch("socket.socket", side_effect=AssertionError("Socket use forbidden")),
+                patch.object(c, "github", side_effect=AssertionError("Provider use forbidden")),
+            ):
+                handler = MagicMock(spec=c.Health)
+                handler.path = path
+                handler.wfile = io.BytesIO()
+                c.Health.do_GET(handler)
+                handler.send_response.assert_called_once_with(expected)
+                handler.end_headers.assert_called_once_with()
+                self.assertEqual(json.loads(handler.wfile.getvalue())["error"], error)
 
 
 if __name__ == '__main__':

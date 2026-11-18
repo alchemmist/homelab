@@ -29,7 +29,8 @@ RESULT_MASTER = bytes.fromhex(DB.execute('SELECT value FROM metadata WHERE key=?
 SESSION = requests.Session()
 SESSION.headers['Accept'] = 'application/vnd.github+json'
 TOKEN = {'value': '', 'expires': 0}
-STATUS = {'state': 'starting', 'last_tick': 0, 'error': ''}
+STATUS = {'state': 'starting', 'last_tick': time.time(), 'error': ''}
+NEXT_IDLE_CHECK = 0
 
 
 def signing_key(run_id, phase):
@@ -145,6 +146,7 @@ def publish(run, result, review):
 
 
 def tick():
+    global NEXT_IDLE_CHECK
     active = DB.execute("SELECT * FROM runs WHERE state IN ('queued','work','review','publishing') ORDER BY created LIMIT 1").fetchone()
     if active:
         columns = [r[1] for r in DB.execute('PRAGMA table_info(runs)')]
@@ -199,7 +201,7 @@ def tick():
             if candidate:
                 validate_changes(candidate)
             if any(i['path'] in {'web/package.json','web/package-lock.json'} for i in candidate):
-                base = github(f"repos/{REPO}/contents/web/package.json?ref={run['revision']}", auth=False)
+                base = github(f"repos/{REPO}/contents/web/package.json?ref={run['revision']}", auth=True)
                 validate_dependency_update(candidate, json.loads(base64.b64decode(base['content'])))
         except (ValueError, KeyError, TypeError):
             save(run['id'], state='rejected')
@@ -231,12 +233,16 @@ def tick():
     latest = previous[0] if previous else 0
     if previous and previous[1] != 'smoke' and time.time() - latest < int(os.getenv('MIN_INTERVAL_SECONDS', '1800')):
         return
+    # Waiting is healthy; external discovery is bounded, including after failures.
+    if time.monotonic() < NEXT_IDLE_CHECK:
+        return
+    NEXT_IDLE_CHECK = time.monotonic() + 300
     # Backpressure: bounded open PRs. Never keep creating PRs faster than a human can review.
     prs = github(f'repos/{REPO}/pulls?state=open&per_page=100')
     if sum(p['head']['ref'].startswith('swe-mini/') for p in prs) >= 5:
         STATUS['state'] = 'waiting_for_pr_review'
         return
-    revision = github(f'repos/{REPO}/commits/main', auth=False)['sha']
+    revision = github(f'repos/{REPO}/commits/main', auth=True)['sha']
     open_urls = {p['html_url'] for p in prs}
     for pr, payload in DB.execute("SELECT pr,result FROM runs WHERE state='published' AND revision=? ORDER BY created DESC LIMIT 100", (revision,)):
         if pr in open_urls and dependency_repair(json.loads(payload or '{}').get('changes', [])):
@@ -253,8 +259,11 @@ def tick():
 
 class Health(BaseHTTPRequestHandler):
     def do_GET(self):
-        if self.path == '/healthz':
-            self.send_response(200 if time.time() - STATUS['last_tick'] < 180 and not STATUS['error'] else 503)
+        if self.path in ('/healthz', '/livez', '/dependencies'):
+            # External API failures cannot be repaired by restarting this process.
+            alive = time.time() - STATUS['last_tick'] < 180
+            ready = alive and (self.path != '/dependencies' or not STATUS['error'])
+            self.send_response(200 if ready else 503)
             payload = json.dumps(STATUS).encode()
         elif self.path == '/metrics':
             self.send_response(200)
@@ -282,5 +291,7 @@ if __name__ == '__main__':
         except Exception as exc:
             # Never log request bodies, tokens or raw third-party error responses.
             STATUS.update(last_tick=time.time(), error=type(exc).__name__)
-            logging.error('Queue tick failed: %s', type(exc).__name__)
+            response = getattr(exc, 'response', None)
+            code = getattr(response, 'status_code', None)
+            logging.error('Queue tick failed: %s status=%s; bounded retry, no process restart required', type(exc).__name__, code)
         time.sleep(30)
