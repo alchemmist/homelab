@@ -44,3 +44,11 @@ def test_chart_titles_use_litellm_route_names():
         'Requests by API key — qwen3.8-27b',
         'Requests by API key — venice-deepseek',
     ]
+
+
+def test_key_colors_are_stable_across_model_charts():
+    d = json.loads((Path(__file__).resolve().parents[1] / 'charts/monitoring-k3s/dashboards/llm-keys.json').read_text())
+    for p in d['panels'][:2]:
+        assert p['fieldConfig']['defaults']['color']['mode'] == 'palette-classic-by-name'
+        assert p['targets'][0]['legendFormat'] == '{{api_key_alias}}'
+        assert p['fieldConfig']['overrides'] == []

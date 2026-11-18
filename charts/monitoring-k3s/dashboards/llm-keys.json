@@ -58,7 +58,7 @@
           "unit": "short",
           "min": 0,
           "color": {
-            "mode": "palette-classic"
+            "mode": "palette-classic-by-name"
           },
           "custom": {
             "drawStyle": "line",
@@ -119,7 +119,7 @@
           "unit": "short",
           "min": 0,
           "color": {
-            "mode": "palette-classic"
+            "mode": "palette-classic-by-name"
           },
           "custom": {
             "drawStyle": "line",
