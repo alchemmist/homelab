@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Two TV model timelines; preserve owner deletions/layout and Argo bottom boundary."""
+"""One route-aggregated TV timeline; preserve owner deletions/layout and Argo bottom boundary."""
 import copy
 import json
 import runpy
@@ -13,24 +13,23 @@ def build(source=None):
     d = copy.deepcopy(source if source is not None else json.loads(SOURCE.read_text()))
     owner = {p['id']: p for p in d['panels']}
     bottom = owner[909]['gridPos']['y'] + owner[909]['gridPos']['h']
-    keys = json.loads((SOURCE.parent / 'llm-keys.json').read_text())
-    for pid, template, title, pos in [
-        (937, keys['panels'][0], 'qwen3.8-27b', dict(x=6,y=14,w=6,h=5)),
-        (938, keys['panels'][1], 'venice-deepseek', dict(x=16,y=14,w=8,h=6)),
-    ]:
-        p = copy.deepcopy(template)
-        p.update(id=pid, title=title, gridPos=copy.deepcopy(owner[pid]['gridPos']) if pid in owner else pos)
-        p.pop('timeFrom', None)
-        p.pop('hideTimeOverride', None)
-        p['interval'] = '1m'
-        p['maxDataPoints'] = 720
-        p['options']['legend'] = {'showLegend': False, 'calcs': [], 'displayMode': 'list', 'placement': 'bottom'}
-        p['fieldConfig']['defaults']['custom'].update(axisLabel='', axisBorderShow=False, axisGridShow=True, lineWidth=1, fillOpacity=8)
-        p['description'] += ' TV: same time range as dashboard (default12h); no legend, native hover retains alias. Requests per rolling minute, not in-flight concurrency.'
-        if pid in owner:
-            d['panels'] = [p if v['id'] == pid else v for v in d['panels']]
-        else:
-            d['panels'].append(p)
+    panel = owner[938]
+    panel['title'] = 'LiteLLM · requests/min'
+    panel['description'] = ('Completed requests per rolling minute across API keys, grouped by requested LiteLLM route. '
+                            'Includes historical venice-deepseek traffic under v-deepseek-uc. Missing telemetry is not zero.')
+    target = panel['targets'][0]
+    target.update(expr=('sum by (requested_model) (label_replace(increase(litellm_requests_metric_total{'
+                        'job="litellm",requested_model!="",requested_model!="None",'
+                        'api_key_alias!~"venice-acceptance-.*"}[1m]), '
+                        '"requested_model", "v-deepseek-uc", "requested_model", "^venice-deepseek$"))'),
+                  legendFormat='{{requested_model}}')
+    panel['fieldConfig']['defaults']['color'] = {'mode': 'palette-classic-by-name'}
+    colors = {'qwen3.8-27b': '#73BF69', 'v-deepseek-uc': '#5794F2', 'o-deepseek': '#FF9830'}
+    panel['fieldConfig']['overrides'] = [
+        {'matcher': {'id': 'byName', 'options': name}, 'properties': [
+            {'id': 'color', 'value': {'mode': 'fixed', 'fixedColor': color}}]} for name, color in colors.items()]
+    panel['options']['legend']['showLegend'] = True
+    d['panels'] = [p for p in d['panels'] if p['id'] != 937]
     occupied = set()
     for p in d['panels']:
         g = p['gridPos']

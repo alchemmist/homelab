@@ -16,16 +16,18 @@ class Models(unittest.TestCase):
     def test_idempotent_and_owner_exact(self):
         self.assertEqual(M['build'](self.d), self.d)
         for p in self.d['panels']:
-            if p['id'] in (937,938):
-                self.assertFalse(p['options']['legend']['showLegend'])
+            if p['id'] == 938:
+                self.assertTrue(p['options']['legend']['showLegend'])
                 self.assertNotIn('timeFrom',p)
                 self.assertIn('[1m]',p['targets'][0]['expr'])
                 self.assertEqual(p['fieldConfig']['defaults']['color']['mode'],'palette-classic-by-name')
+        self.assertNotIn(937,{p['id'] for p in self.d['panels']})
+        self.assertIn('sum by (requested_model)', next(p for p in self.d['panels'] if p['id']==938)['targets'][0]['expr'])
         self.assertNotIn(930,{p['id'] for p in self.d['panels']})
 
     def test_overlap_rejected(self):
         d = copy.deepcopy(self.d)
-        next(p for p in d['panels'] if p['id']==937)['gridPos']['y']=10
+        next(p for p in d['panels'] if p['id']==938)['gridPos']['y']=10
         with self.assertRaises(ValueError): M['build'](d)
 
     def test_bottom_rejected(self):
