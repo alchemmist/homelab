@@ -1,7 +1,7 @@
 image:
   repository: ghcr.io/alchemmist/lms
-  tag: ab00b687f087733ce7218d828d4a505bdc8b19ab
-  digest: sha256:f2f2eab97f92df5a2ff74d645da78716a1d3a400fbdfa0fc9f42f1a595b6074e
+  tag: ecd51eabb5ccd001ac8f172694d4787e9573cfaf
+  digest: sha256:aa1492e6e341e406eff7785cdbf10befbb7a7798e90049f9a147ac47d8583fd5
   pullPolicy: IfNotPresent
 tracing:
   enabled: true
