@@ -170,3 +170,20 @@ gVisor/Kata is an explicit infrastructure decision, not automatically provided.
 Default remote conversations move agent execution to the remote server. The
 standard Agent Canvas launcher grants shell/filesystem access on its host.
 Neither should be dropped into the existing cluster with production credentials.
+
+## Historical Python grading safeguards
+
+The historical grader preserves method signatures as well as code outside the
+allowed methods. Each selected unittest must exit successfully and emit its
+one-test, non-skipped completion summary; a zero exit before test completion is
+not a pass. Both subprocess output channels have a 128 KiB limit and a deadline.
+A failed Docker start cannot be overwritten by a zero inspected container status.
+Continuation receipts include bounded failed-test diagnostics so the model can
+act on a rejection rather than seeing only a candidate hash.
+
+These are regression and resource safeguards, not a tamper-proof Python runtime.
+Candidate Python and unittest execute in the same interpreter inside the isolated
+worker. Deliberately hostile Python can tamper with interpreter state or forge
+unittest output. The Docker boundary protects the host; it does not make that
+in-process test result cryptographically trustworthy. The sealed JavaScript
+fixture verifier and this historical Python exercise have different trust models.

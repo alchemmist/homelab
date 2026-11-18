@@ -141,3 +141,23 @@ class FinalDecisionTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class AcceptanceFeedbackTests(unittest.TestCase):
+    def test_rejection_contains_bounded_failure_diagnostics(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            agent = root / 'snapshot' / 'agent'
+            agent.mkdir(parents=True)
+            (agent / 'main.py').write_text('value = 1\n')
+            message = 'x' * 10000 + 'RuntimeError: Model returned no assistant content'
+            verdict = {'passed': False, 'grade': {'tests': [{'test': 'typed_failure', 'exit_code': 1, 'stderr_tail': message}]}}
+            environment = mock.Mock()
+            environment.protocol.grade_candidate_container.return_value = verdict
+            environment.snapshot.side_effect = lambda path: shutil.copytree(agent, path)
+            with mock.patch.dict(os.environ, {'AUTONOMY_SNAPSHOT': str(root / 'snapshot')}, clear=False), mock.patch.object(repository_runner.subprocess, 'run'):
+                facts = repository_runner.sdk_acceptance(environment, root, 0)
+            self.assertFalse(facts['accepted'])
+            receipt = facts['verification']['tests'][0]['stderr_tail']
+            self.assertIn('Model returned no assistant content', receipt)
+            self.assertLessEqual(len(receipt), 1600)

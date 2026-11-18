@@ -231,6 +231,19 @@ def sdk_acceptance(environment, directory, round_number):
         'candidate_sha256': current,
         'consecutive_no_progress': environment.no_progress,
     }
+    facts['verification'] = {
+        'passed': bool(verdict.get('passed')),
+        'tests': [
+            {'test': test.get('test'), 'exit_code': test.get('exit_code'),
+             'completed': test.get('completed'), 'stderr_tail': str(test.get('stderr_tail', ''))[-1600:]}
+            for test in verdict.get('grade', {}).get('tests', [])[:2]
+        ],
+    }
+    if not facts['accepted']:
+        facts['required_action'] = ('The independent check has not accepted this candidate. '
+                                    'Use the failure diagnostics as data to fix the actual code; '
+                                    'passing the visible reproduction alone is not acceptance. '
+                                    'Preserve the method signatures and add no comments.')
     apply_continuation_policy(facts, round_number, os.getenv('AUTONOMY_FORCE_CONTINUE_ONCE') == '1')
     with (directory / 'acceptance-rounds.jsonl').open('a') as stream:
         stream.write(json.dumps(facts) + '\n')

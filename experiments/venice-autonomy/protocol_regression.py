@@ -7,11 +7,15 @@ import hashlib
 import io
 import json
 import os
+import re
+import selectors
+import signal
 import shutil
 import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 import uuid
 from pathlib import Path
 
@@ -241,7 +245,51 @@ def clean_env(agent: Path, home: Path, rejection: Path) -> dict[str, str]:
     }
 
 
+def bounded_test_process(args, cwd=None, env=None, timeout=120, limit=131072):
+    process = subprocess.Popen(args, cwd=cwd, env=env, stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE, start_new_session=True)
+    selector = selectors.DefaultSelector()
+    output = {"stdout": bytearray(), "stderr": bytearray()}
+    deadline = time.monotonic() + timeout
+    for name in output:
+        selector.register(getattr(process, name), selectors.EVENT_READ, name)
+    try:
+        while selector.get_map():
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("test process deadline exceeded")
+            for key, _ in selector.select(min(remaining, 1)):
+                data = os.read(key.fileobj.fileno(), 65536)
+                if not data:
+                    selector.unregister(key.fileobj)
+                    continue
+                output[key.data].extend(data)
+                if len(output[key.data]) > limit:
+                    raise ValueError("test process output limit exceeded")
+        code = process.wait(timeout=max(0.01, deadline - time.monotonic()))
+        return subprocess.CompletedProcess(args, code,
+            output["stdout"].decode("utf-8", errors="replace"),
+            output["stderr"].decode("utf-8", errors="replace"))
+    finally:
+        selector.close()
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.wait(timeout=5)
+        process.stdout.close()
+        process.stderr.close()
+
+
+def test_completed(exit_code, stderr):
+    return (exit_code == 0
+            and re.search(r"(?m)^Ran 1 test in [0-9.]+s$", stderr) is not None
+            and stderr.strip().endswith("\nOK"))
+
+
 def run_selected_tests(python: Path, agent: Path, grader: Path) -> dict:
+    agent = agent.resolve()
+    grader = grader.resolve()
     results = []
     with tempfile.TemporaryDirectory(prefix="protocol-regression-") as temp:
         root = Path(temp)
@@ -249,12 +297,10 @@ def run_selected_tests(python: Path, agent: Path, grader: Path) -> dict:
         (root / "home").mkdir()
         (root / "rejections").mkdir()
         for test in SELECTED_TESTS:
-            completed = subprocess.run(
-                [str(python), "-m", "unittest", test],
+            completed = bounded_test_process(
+                [str(python.absolute()), "-m", "unittest", test],
                 cwd=grader,
                 env=env,
-                capture_output=True,
-                text=True,
                 timeout=120,
             )
             tail = "\n".join((completed.stderr or "").strip().splitlines()[-40:])
@@ -262,9 +308,10 @@ def run_selected_tests(python: Path, agent: Path, grader: Path) -> dict:
                 "test": test,
                 "exit_code": completed.returncode,
                 "stderr_tail": tail,
+                "completed": test_completed(completed.returncode, completed.stderr),
             })
     return {
-        "passed": all(item["exit_code"] == 0 for item in results),
+        "passed": all(item["exit_code"] == 0 and item["completed"] for item in results),
         "tests": results,
     }
 
@@ -433,19 +480,18 @@ def run_container(docker: str, image: str, command: list[str], copies: list[tupl
     try:
         for dest, files in copies:
             copy_into(docker, name, dest, files)
-        started = subprocess.run(
+        started = bounded_test_process(
             [docker, "start", "-a", name],
-            capture_output=True,
-            text=True,
             env=docker_env(),
             timeout=180,
         )
         inspect = docker_run(docker, ["inspect", "--format", "{{.State.ExitCode}}", name], check=False)
         exit_code = started.returncode
-        if inspect.returncode == 0 and inspect.stdout.strip().isdigit():
+        if started.returncode == 0 and inspect.returncode == 0 and inspect.stdout.strip().isdigit():
             exit_code = int(inspect.stdout.strip())
         tail = "\n".join((started.stderr or started.stdout or "").strip().splitlines()[-40:])
-        return {"exit_code": exit_code, "stderr_tail": tail, "container": name}
+        return {"exit_code": exit_code, "stderr_tail": tail, "container": name,
+                "completed": test_completed(exit_code, started.stderr)}
     finally:
         remove_own_container(docker, name)
 
@@ -479,8 +525,9 @@ def run_selected_tests_container(docker: str, image: str, candidate: Path, snaps
             copies,
             "/opt/grader",
         )
-        results.append({"test": test, "exit_code": result["exit_code"], "stderr_tail": result["stderr_tail"]})
-    return {"passed": all(item["exit_code"] == 0 for item in results), "tests": results}
+        results.append({"test": test, "exit_code": result["exit_code"], "stderr_tail": result["stderr_tail"],
+                        "completed": result["completed"]})
+    return {"passed": all(item["exit_code"] == 0 and item["completed"] for item in results), "tests": results}
 
 
 def grade_candidate_container(docker: str, image: str, snapshot: Path, candidate: Path) -> dict:
