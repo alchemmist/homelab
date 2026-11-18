@@ -860,3 +860,26 @@ side effects. Non-owner/privacy, disjoint/multi-interest audiences, Alerts appro
 current-membership scheduled dispatch, populated legacy backfill and restart/stale
 controls covered on SQLite+PG. Real scheduled ticker/multi-recipient sends were
 not exercised against production users.
+
+## Full LLM key activity public dashboard — 2026-11-18
+
+Owner explicitly requested the FULL `socrat-llm-keys` dashboard public, not the
+older single-panel `socrat-llm-activity-public`. ce72484b splits request panel1
+(Qwen model=qwen3.8-27b) and new panel2 (Venice model=
+venice-agentic-deepseek-v4.1-flash-uncensored), full-width stacked; combined30day
+usage table4 remains below. Default1h, refresh5s. Live model labels verified;
+fixed rolling1m increase preserved, no zero fill, acceptance fixtures excluded.
+Only aliases aggregated, no hash/email/IP; built-in annotations removed from this
+public dashboard. Other owner panels matched live before edit. Foreign pr-agent
+values edit untouched. Three query contract tests and Helm render passed.
+
+Native public share created only for socrat-llm-keys with owner authorization;
+annotations disabled, time selection enabled, org anonymous still disabled.
+Private before/after/URL receipts on socrat-0 under
+~/.local/state/homelab-grafana-llm-keys-public/. Public URL provided to owner, not
+committed. Unauthenticated dashboard JSON verifies exactUID/3panels; all three
+native public panel-query POSTs successful with live frames (4/5/18 at acceptance).
+Existing one-panel share and TV share untouched. GitOps updates same canonical
+UID so public share follows future model edits. No inference, key changes or
+instrumentation/restarts. Remember completed request metrics do not show exact
+in-flight concurrency. Table remains combined across models, not spend accounting.
