@@ -167,3 +167,32 @@ and actual PR publication remain unproven at this checkpoint. Controller Recreat
 rollouts preserved this SAME active Job/run through the durable queue; no duplicate
 worker was launched. Do not exec a debug process inheriting RESULT_KEY into an
 active model container; use an env-empty read-only ephemeral inspector if needed.
+
+### Controller alert incident, 2026-11-18
+
+The initial overnight deployment restarted repeatedly (48observed), with
+KubePodNotReady/KubeDeploymentReplicasMismatch. Errors reaching GitHub drove the
+same /healthz used by liveness and readiness to503. The idle loop also anonymously
+polled main every30seconds, exceeding GitHub's60/hour anonymous budget if sustained.
+Old logs did not retain HTTP status codes; not every historical failure is proven
+rate limiting. Network ConnectionErrors also occurred.
+
+Fixes1374428d/7c9de534, native releases44275239467/44276749658: GitHub discovery uses
+scoped installation auth; idle discovery/retries are bounded to every300seconds.
+/livez and /healthz test the queue heartbeat, not external dependency availability;
+/dependencies remains503 while a known dependency failure persists, including
+through retry backoff. A stale heartbeat still fails liveness. Sanitized errors
+now include HTTP status, never response bodies/tokens.31tests include real HTTP
+probe semantics, retained errors during backoff and authenticated discovery.
+
+Runtime: replacement controller Ready1/1 with0restarts, Argo Synced/Healthy;
+health/livez/dependencies all200 and waiting_for_dependency_merge, PR500 unchanged.
+Both native Alertmanager endpoints no longer listed the two reported Pod/Deployment
+alerts after recovery. Image delivery temporarily hit TLS/auth failures; exact
+manifest and robot access were independently verified and native kubelet retry
+succeeded, with no insecure TLS or live image override.
+
+Also correct namespace storage quota headroom from2Gi to4Gi: its existing2Gi PVC
+otherwise continuously consumed100% and produced KubeQuotaFullyUsed. This is a
+bounded namespace admission limit, NOT a PVC resize, extra allocation or alert mute.
+No alerting/routing rules, production Monori data, identities or SSO were changed.

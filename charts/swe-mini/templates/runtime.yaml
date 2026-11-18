@@ -62,7 +62,8 @@ spec:
     limits.cpu: '5'
     requests.memory: 4Gi
     limits.memory: 12Gi
-    requests.storage: 2Gi
+    # Headroom for the 2Gi claim; quota is not an allocation or PVC resize.
+    requests.storage: 4Gi
     count/jobs.batch: '40'
     count/configmaps: '40'
 ---

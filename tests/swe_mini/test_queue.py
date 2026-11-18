@@ -182,7 +182,9 @@ class QueueTransitions(unittest.TestCase):
                 with urllib.request.urlopen('http://127.0.0.1:%d%s' % (server.server_port,path), timeout=3) as r:
                     return r.status
             except urllib.error.HTTPError as exc:
-                return exc.code
+                code = exc.code
+                exc.close()
+                return code
         try:
             c.STATUS.update(last_tick=time.time(), error='HTTPError')
             self.assertEqual(status('/livez'), 200)
