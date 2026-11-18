@@ -33,6 +33,12 @@ PROVIDER = {'name':'homelab-openhands', 'client_id':CLIENT, 'client_type':'confi
             'redirect_uris':[{'matching_mode':'strict','url':'https://' + HOST + '/oauth2/callback'}]}
 
 
+def encode_cookie_secret(raw):
+    iam.require(len(raw) == 32, 'Cookie key must contain exactly32 bytes')
+    # oauth2-proxy SecretBytes uses Go RawURLEncoding, not standard base64.
+    return base64.urlsafe_b64encode(raw).decode()
+
+
 def write_private(path, data):
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, 'w') as f:
@@ -112,7 +118,7 @@ def main():
         backup = Path(receipt['encryptedBackup']); iam.private(backup)
         iam.require(0 <= age <= 3600 and hashlib.sha256(backup.read_bytes()).hexdigest() == receipt['sha256'], 'Fresh valid encrypted backup required')
         write_private(marker,{'plan_hash':digest})
-        journal = {'status':'pending','client_secret':secrets.token_urlsafe(48),'cookie_secret':base64.b64encode(secrets.token_bytes(32)).decode()}
+        journal = {'status':'pending','client_secret':secrets.token_urlsafe(48),'cookie_secret':encode_cookie_secret(secrets.token_bytes(32))}
         write_private(file,journal)
         api = iam.API(a.credentials,write=True)
         provider = api.call('POST','providers/oauth2/',{**settings,'client_secret':journal['client_secret']})

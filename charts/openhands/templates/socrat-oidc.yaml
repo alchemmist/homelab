@@ -14,6 +14,7 @@ spec:
     matchLabels: {app: openhands-oidc}
   template:
     metadata:
+      annotations: {homelab.socrat/oidc-config-version: "2"}
       labels: {app: openhands-oidc}
     spec:
       automountServiceAccountToken: false
