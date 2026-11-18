@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import http.client
 import json
+import subprocess
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -138,3 +139,46 @@ def test_every_requirement_needs_its_own_hash(tmp_path: Path, *, missing_hash_fi
 def test_auditor_and_transport_fixtures_share_stdlib_module() -> None:
     """Do not remove a newly imported HTTP module with the temporary common alias."""
     assert sys.modules["http.client"] is http.client
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [
+        ("services/fixture/Dockerfile", True),
+        ("experiments/fixture/worker.Dockerfile", True),
+        ("services/fixture/Dockerfile.worker", True),
+        ("services/fixture/dockerfile", True),
+        ("services/fixture/WORKER.DOCKERFILE", True),
+        ("Dockerfile/not_a_build.py", False),
+        ("docs/worker.Dockerfile.md", False),
+    ],
+)
+def test_docker_filename_variants_are_admitted(name: str, *, expected: bool) -> None:
+    """Filename variants are source inputs, never Docker build invocations."""
+    assert lint.docker_targets([name]) == ([name] if expected else [])
+
+
+def test_docker_adapter_transports_each_source_and_keeps_findings() -> None:
+    """The owning adapter sends old and new paths to hadolint with no build effects."""
+    sources = [
+        "services/spi-tokenizer/Dockerfile",
+        "experiments/venice-autonomy/worker.Dockerfile",
+    ]
+    names = [*sources, "docs/not_a_dockerfile.md"]
+    payload = [{"code": "DL3013", "line": 1, "message": "synthetic source diagnostic"}]
+    process = subprocess.CompletedProcess(["hadolint"], 1, stdout=json.dumps(payload), stderr="")
+    with (
+        patch.object(lint, "use_project_tools"),
+        patch.object(lint, "tracked", return_value=names),
+        patch.object(lint, "owned", return_value=names),
+        patch.object(lint, "command", return_value=process) as command,
+    ):
+        findings, checked = lint.check("docker")
+    assert checked == len(sources)
+    assert [row["location"]["path"] for row in findings] == sources
+    assert [row["ruleId"] for row in findings] == ["DL3013"] * len(sources)
+    assert [item.args[0] for item in command.call_args_list] == [
+        ["hadolint", "--config", "quality/hadolint.yaml", "--format", "json", source]
+        for source in sources
+    ]
+    assert all(item.kwargs == {"allowed": (0, 1)} for item in command.call_args_list)

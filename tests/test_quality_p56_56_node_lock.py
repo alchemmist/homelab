@@ -125,6 +125,34 @@ def _digest(name: str) -> str:
     module = ast.parse(source)
     for node in module.body:
         if isinstance(node, ast.FunctionDef) and node.name == name:
+            if name == "check":
+                # Prove the reviewed concrete API annotations and sole selector
+                # expansion; every surrounding AST node retains its fingerprint.
+                assert len(node.args.args) == 1
+                assert node.args.args[0].annotation is not None
+                assert ast.dump(node.args.args[0].annotation) == ast.dump(
+                    ast.parse("str", mode="eval").body
+                )
+                assert node.returns is not None
+                assert ast.dump(node.returns) == ast.dump(
+                    ast.parse("tuple[list[Finding], int]", mode="eval").body
+                )
+                node.args.args[0].annotation = None
+                node.returns = None
+                expected = ast.parse("docker_targets(names)", mode="eval").body
+                selectors = [
+                    item
+                    for item in ast.walk(node)
+                    if isinstance(item, ast.Assign)
+                    and len(item.targets) == 1
+                    and isinstance(item.targets[0], ast.Name)
+                    and item.targets[0].id == "files"
+                    and ast.dump(item.value) == ast.dump(expected)
+                ]
+                assert len(selectors) == 1, "Unexpected Docker selector shape"
+                selectors[0].value = ast.parse(
+                    '[p for p in names if Path(p).name == "Dockerfile"]', mode="eval"
+                ).body
             dumped = ast.dump(node, include_attributes=False)
             return hashlib.sha256(dumped.encode()).hexdigest()[:16]
     message = name
@@ -743,3 +771,32 @@ def test_manifest_drift_refuses_before_advisory_transport(
     )
     with pytest.raises(ValueError, match=refusal):
         lint.check_dependencies([relative, "tools/fixture/package.json"])
+
+
+def test_docker_selector_proof_refuses_argument_mutation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A truncated selector input cannot masquerade as the reviewed expansion."""
+    source = (_REPO / "scripts/quality/lint.py").read_text()
+    original = "files = docker_targets(names)"
+    assert source.count(original) == 1
+    destination = tmp_path / "scripts/quality/lint.py"
+    destination.parent.mkdir(parents=True)
+    destination.write_text(source.replace(original, "files = docker_targets(names[:1])"))
+    monkeypatch.setattr(sys.modules[__name__], "_REPO", tmp_path)
+    with pytest.raises(AssertionError, match="Unexpected Docker selector shape"):
+        _digest("check")
+
+
+def test_docker_selector_proof_preserves_surrounding_body(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An unrelated tool-branch mutation still invalidates the original fingerprint."""
+    source = (_REPO / "scripts/quality/lint.py").read_text()
+    original = 'if tool == "javascript":'
+    assert source.count(original) == 1
+    destination = tmp_path / "scripts/quality/lint.py"
+    destination.parent.mkdir(parents=True)
+    destination.write_text(source.replace(original, 'if tool == "javascript-disabled":'))
+    monkeypatch.setattr(sys.modules[__name__], "_REPO", tmp_path)
+    assert _digest("check") != _UNCHANGED_FUNCTION_DIGESTS["check"]

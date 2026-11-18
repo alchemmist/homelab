@@ -1101,7 +1101,21 @@ def workflow_script_findings(names, kind):
     return result
 
 
-def check(tool):
+def docker_targets(names: list[str]) -> list[str]:
+    """Include conventional Dockerfile variants without executing build instructions."""
+    result: list[str] = []
+    for name in names:
+        basename = Path(name).name.casefold()
+        if (
+            basename == "dockerfile"
+            or basename.startswith("dockerfile.")
+            or basename.endswith(".dockerfile")
+        ):
+            result.append(name)
+    return result
+
+
+def check(tool: str) -> tuple[list[Finding], int]:
     use_project_tools()
     names = owned(tracked())
     if tool == "workflow":
@@ -1211,7 +1225,7 @@ def check(tool):
         )
         return sarif(data), len(files)
     if tool == "docker":
-        files = [p for p in names if Path(p).name == "Dockerfile"]
+        files = docker_targets(names)
         result = []
         for path in files:
             data = json.loads(
