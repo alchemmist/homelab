@@ -16,7 +16,7 @@ def build(source=None):
     keys = json.loads((SOURCE.parent / 'llm-keys.json').read_text())
     for pid, template, title, pos in [
         (937, keys['panels'][0], 'qwen3.8-27b', dict(x=6,y=14,w=6,h=5)),
-        (938, keys['panels'][1], 'venice-deepseek', dict(x=16,y=16,w=8,h=4)),
+        (938, keys['panels'][1], 'venice-deepseek', dict(x=16,y=14,w=8,h=6)),
     ]:
         p = copy.deepcopy(template)
         p.update(id=pid, title=title, gridPos=copy.deepcopy(owner[pid]['gridPos']) if pid in owner else pos)
@@ -27,7 +27,10 @@ def build(source=None):
         p['options']['legend'] = {'showLegend': False, 'calcs': [], 'displayMode': 'list', 'placement': 'bottom'}
         p['fieldConfig']['defaults']['custom'].update(axisLabel='', axisBorderShow=False, axisGridShow=True, lineWidth=1, fillOpacity=8)
         p['description'] += ' TV: same time range as dashboard (default12h); no legend, native hover retains alias. Requests per rolling minute, not in-flight concurrency.'
-        d['panels'] = [v for v in d['panels'] if v['id'] != pid] + [p]
+        if pid in owner:
+            d['panels'] = [p if v['id'] == pid else v for v in d['panels']]
+        else:
+            d['panels'].append(p)
     occupied = set()
     for p in d['panels']:
         g = p['gridPos']
@@ -44,7 +47,7 @@ def write(d):
     quality['write'](d)
     text = SOURCE.read_text()
     for p in d['panels']:
-        if p['id'] not in IDS | {21, 22, 23, 909}:
+        if p['id'] not in IDS | {21, 22, 23, 909, 939}:
             continue
         block = '\n'.join('    '+line for line in json.dumps(p,ensure_ascii=False,indent=2).splitlines())
         assert text.count(block) == 1
