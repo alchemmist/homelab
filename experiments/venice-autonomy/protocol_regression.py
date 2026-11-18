@@ -140,10 +140,22 @@ def allowed_edit_report(baseline: str, candidate: str) -> dict:
                 if isinstance(child, ast.AsyncFunctionDef) and child.name in ALLOWED_METHODS
             }
 
+        unchanged_signatures = signatures(baseline) == signatures(candidate)
         same_outside = (
             mask_allowed_methods(baseline) == mask_allowed_methods(candidate)
-            and signatures(baseline) == signatures(candidate)
+            and unchanged_signatures
         )
+        if not unchanged_signatures:
+            expected = [
+                "async def " + child.name + "(" + ast.unparse(child.args) + ")"
+                + (" -> " + ast.unparse(child.returns) if child.returns else "")
+                for node in ast.parse(baseline).body
+                if isinstance(node, ast.ClassDef) and node.name == "BrowserSession"
+                for child in node.body
+                if isinstance(child, ast.AsyncFunctionDef) and child.name in ALLOWED_METHODS
+            ]
+            return {"allowed": False, "detail": "candidate changes a method signature; edit only method bodies",
+                    "expected_signatures": expected}
         detail = (
             "outside the two allowed methods matches the historical baseline"
             if same_outside

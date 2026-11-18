@@ -155,13 +155,14 @@ class AcceptanceFeedbackTests(unittest.TestCase):
             agent.mkdir(parents=True)
             (agent / 'main.py').write_text('value = 1\n')
             message = 'x' * 10000 + 'RuntimeError: Model returned no assistant content'
-            verdict = {'passed': False, 'grade': {'tests': [{'test': 'typed_failure', 'exit_code': 1, 'stderr_tail': message}]}}
+            verdict = {'passed': False, 'allowed_edits': {'allowed': False, 'detail': 'signature changed', 'expected_signatures': ['async def _answer(self)']}, 'grade': {'tests': [{'test': 'typed_failure', 'exit_code': 1, 'stderr_tail': message}]}}
             environment = mock.Mock()
             environment.protocol.grade_candidate_container.return_value = verdict
             environment.snapshot.side_effect = lambda path: shutil.copytree(agent, path)
             with mock.patch.dict(os.environ, {'AUTONOMY_SNAPSHOT': str(root / 'snapshot')}, clear=False), mock.patch.object(repository_runner.subprocess, 'run'):
                 facts = repository_runner.sdk_acceptance(environment, root, 0)
             self.assertFalse(facts['accepted'])
+            self.assertEqual(facts['verification']['allowed_edits'], verdict['allowed_edits'])
             receipt = facts['verification']['tests'][0]['stderr_tail']
             self.assertIn('Model returned no assistant content', receipt)
             self.assertLessEqual(len(receipt), 1600)

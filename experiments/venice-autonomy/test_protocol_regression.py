@@ -35,6 +35,8 @@ class MethodSignatureTests(unittest.TestCase):
             with self.subTest(new=new):
                 report = pilot.allowed_edit_report(self.baseline, self.baseline.replace(old, new))
                 self.assertFalse(report['allowed'], report)
+                self.assertIn('method signature', report['detail'])
+                self.assertTrue(any('_answer' in value for value in report['expected_signatures']))
 
     def test_body_changes_remain_allowed(self):
         report = pilot.allowed_edit_report(self.baseline, self.baseline.replace("return 'answer'", "return 'fixed'"))

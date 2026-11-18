@@ -233,6 +233,8 @@ def sdk_acceptance(environment, directory, round_number):
     }
     facts['verification'] = {
         'passed': bool(verdict.get('passed')),
+        'allowed_edits': verdict.get('allowed_edits'),
+        'agent_protocol_unchanged': verdict.get('agent_protocol_unchanged'),
         'tests': [
             {'test': test.get('test'), 'exit_code': test.get('exit_code'),
              'completed': test.get('completed'), 'stderr_tail': str(test.get('stderr_tail', ''))[-1600:]}
