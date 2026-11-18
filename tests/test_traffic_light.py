@@ -75,7 +75,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
                  if (x, y) not in occupied]
         approved = json.loads((ROOT / 'tests/fixtures/traffic-light-owner-layout.json').read_text())
         self.assertEqual({str(p['id']): p['gridPos'] for p in self.dashboard['panels']}, approved)
-        self.assertEqual(len(holes), 5)  # intentional whitespace in owner layout
+        self.assertEqual(len(holes), 15)  # intentional whitespace in owner layout
 
     def test_cpu_temperature_bar_removed(self):
         ids = {panel['id'] for panel in self.dashboard['panels']}
@@ -123,7 +123,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
     def test_rps_and_n8n_share_a_shorter_graph_row(self):
         panel = panel_by_id(self.dashboard, 334)
         self.assertEqual(panel['gridPos'], {'x': 0, 'y': 15, 'w': 6, 'h': 4})
-        self.assertEqual(panel_by_id(self.dashboard, 920)['gridPos'], {'x': 6, 'y': 10, 'w': 6, 'h': 5})
+        self.assertEqual(panel_by_id(self.dashboard, 920)['gridPos'], {'x': 6, 'y': 10, 'w': 6, 'h': 4})
 
 
 class TrafficLightQueriesTest(unittest.TestCase):
@@ -206,14 +206,14 @@ class TrafficLightQueriesTest(unittest.TestCase):
         self.assertNotIn('name!="root"', panel['targets'][0]['expr'])
 
     def test_new_activity_visuals_have_no_headers_legends_or_period_badges(self):
-        for panel_id in (920, 923, 924, 925):
+        for panel_id in (920,):
             panel = panel_by_id(self.dashboard, panel_id)
             self.assertEqual(panel.get('title', ''), '')
             self.assertEqual(panel.get('description', ''), '')
             self.assertFalse(panel.get('options', {}).get('legend', {}).get('showLegend', False))
             if panel.get('timeFrom'):
                 self.assertTrue(panel['hideTimeOverride'])
-        for panel_id in (923, 924, 925):
+        for panel_id in ():  # owner removed compact n8n readouts
             panel = panel_by_id(self.dashboard, panel_id)
             self.assertEqual(len(panel['targets']), 1)
             self.assertEqual(panel['options']['orientation'], 'vertical')
@@ -253,15 +253,14 @@ class TrafficLightQueriesTest(unittest.TestCase):
             if panel['id'] != 930:  # Owner-approved compact local AI block.
                 self.assertNotIn('histogram_quantile', str(panel.get('targets')))
             self.assertNotEqual(panel['type'], 'table')
-        self.assertEqual(panel_by_id(self.dashboard, 925)['targets'][0]['legendFormat'], 'n8n · running')
-        self.assertIn('window="0"', panel_by_id(self.dashboard, 925)['targets'][0]['expr'])
+        self.assertFalse({923, 924, 925, 930} & {p['id'] for p in self.dashboard['panels']})
 
     def test_owner_removed_up_tile(self):
         self.assertNotIn(908, {p['id'] for p in self.dashboard['panels']})
 
     def test_platform_tiles_fill_the_gap_under_grafana(self):
         expected = {
-            335: ('n8n', 'SocratServiceN8nUnavailable', {'x': 10, 'y': 17, 'w': 2, 'h': 2}),
+            335: ('n8n', 'SocratServiceN8nUnavailable', {'x': 2, 'y': 14, 'w': 2, 'h': 1}),
             336: ('authentik', 'SocratServiceAuthentikUnavailable', {'x': 4, 'y': 9, 'w': 2, 'h': 2}),
             337: ('harbor', 'SocratServiceHarborUnavailable', {'x': 0, 'y': 13, 'w': 2, 'h': 2}),
             338: ('argocd', 'SocratServiceArgocdUnavailable', {'x': 2, 'y': 11, 'w': 2, 'h': 2}),

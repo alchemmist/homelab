@@ -38,12 +38,12 @@ class QualityPanelsTest(unittest.TestCase):
 
     def test_preserves_future_manual_network_geometry(self):
         panel=next(p for p in self.d['panels'] if p['id']==931)
-        panel['gridPos']={'x':12,'y':14,'w':5,'h':4}
+        panel['gridPos']={'x':12,'y':10,'w':3,'h':3}
         built=Q.build(self.d)
         self.assertEqual(next(p for p in built['panels'] if p['id']==931)['gridPos'],panel['gridPos'])
 
     def test_manual_return_to_legacy_width_is_also_authoritative(self):
-        grids={931:{'x':12,'y':14,'w':4,'h':4},932:{'x':16,'y':14,'w':4,'h':4}}
+        grids={931:{'x':12,'y':10,'w':4,'h':3},932:{'x':12,'y':13,'w':4,'h':3}}
         for p in self.d['panels']:
             if p['id'] in grids:p['gridPos']=grids[p['id']]
         built=Q.build(self.d)
@@ -76,7 +76,8 @@ class QualityPanelsTest(unittest.TestCase):
             self.assertIn('NOT object or OCI counts',p['description'])
 
     def test_one_compact_ai_block_replaces_http_errors(self):
-        p=self.p[930];self.assertEqual(p['type'],'stat')
+        self.assertNotIn(930, self.p)  # Owner removed this TV block.
+        p=Q.ai_quality();self.assertEqual(p['type'],'stat')
         self.assertEqual(p['options']['graphMode'],'none')
         self.assertEqual(len(p['targets']),2)
         queue,latency=[t['expr'] for t in p['targets']]
@@ -100,16 +101,16 @@ class QualityPanelsTest(unittest.TestCase):
     def test_more_service_room_without_moving_originals(self):
         self.assertNotIn(933,self.p)
         for i in [931,932]:
-            self.assertEqual(self.p[i]['gridPos']['w'],6)
+            self.assertEqual(self.p[i]['gridPos']['w'],4)
             self.assertEqual(self.p[i]['options']['graphMode'],'area')
         self.assertNotIn('socrat:node_pressure',json.dumps([self.p[i] for i in Q.IDS & self.p.keys()]))
 
     def test_cascade_six_values_fit_bottom_without_new_css(self):
-        self.assertEqual(self.p[931]['gridPos']['h'],4)
-        self.assertEqual(self.p[932]['gridPos']['h'],4)
+        self.assertEqual(self.p[931]['gridPos']['h'],3)
+        self.assertEqual(self.p[932]['gridPos']['h'],3)
         for i,x in [(934,12),(935,14)]:
-            self.assertEqual(self.p[i]['gridPos'],{'x':x,'y':18,'w':2,'h':2})
-        p=self.p[936];self.assertEqual(p['gridPos'],{'x':16,'y':18,'w':8,'h':2})
+            self.assertEqual(self.p[i]['gridPos'],{'x':x,'y':16,'w':2,'h':2})
+        p=self.p[936];self.assertEqual(p['gridPos'],{'x':16,'y':14,'w':7,'h':2})
         self.assertEqual(len(p['targets']),4)
         for t in p['targets']:
             self.assertTrue(t['instant']);self.assertIn('or vector(-2)',t['expr'])

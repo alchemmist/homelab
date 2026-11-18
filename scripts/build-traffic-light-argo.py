@@ -68,6 +68,7 @@ def application_query():
 def build():
     d = copy.deepcopy(json.loads(SOURCE.read_text()))
     panel = next(p for p in d['panels'] if p['id'] == 909)
+    had_overrides = 'overrides' in panel.get('fieldConfig', {})
     grid = copy.deepcopy(panel['gridPos'])  # Owner geometry is authoritative.
     plugin_version = panel.get('pluginVersion')
     thresholds = copy.deepcopy(panel['fieldConfig']['defaults'].get('thresholds'))
@@ -109,6 +110,8 @@ def build():
         panel['pluginVersion'] = plugin_version
     if thresholds is not None:
         panel['fieldConfig']['defaults']['thresholds'] = thresholds
+    if not had_overrides and not panel['fieldConfig'].get('overrides'):
+        panel['fieldConfig'].pop('overrides', None)
     return d
 
 
