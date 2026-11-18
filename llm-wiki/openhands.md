@@ -262,3 +262,37 @@ success is owner-reported; do not invent an observed public task/browser-close t
 Full the-loop PR publication/CI/current-head bot reviews, critical comment handling,
 replies-before-resolve and trusted publisher are still NOT implemented. Demo code
 success, cron, checklist completion and hooks must not be presented as PR Ready.
+
+## OIDC refresh/relogin repair — 18 November
+
+Owner reported frequent Authentik round trips. Logs showed concurrent refreshes
+of the same cookie session, repeated >4KB split-cookie warnings, successful refresh
+followed by `invalid_grant` and fatal session clearing. Cookie lifetime already8h;
+provider access tokens5min / refresh tokens8h. Likely rotating-refresh-token race,
+not an insufficient configured browser cookie lifetime.
+
+GitOps now selects official oauth2-proxy Redis session storage: dedicated
+`identity/openhands-oidc-sessions` Deployment/Service/NetworkPolicy onS5, official
+Redis8.2-alpine digest-pinned, authenticated, nonroot/read-only/no-SA-token,
+64MB noeviction session budget, no egress, ingress only same-namespace OIDC proxy.
+Coding pod connection denial verified. No shared Authentik/LiteLLM Redis usage.
+`scripts/provision-openhands-sessions.py` defaults GET-only, creates only this new
+Secret via stdin with --apply, validates ownership/config and never rotates/adopts.
+No changes to existing IdP/users/MFA/OIDC client/signing/cookie secrets or tokens.
+
+Redis store supplies native per-session refresh locking and reload under lock in
+oauth2-proxy7.15.6, avoiding concurrent redemption of stale rotated refresh tokens.
+Browser gets a small session ticket rather than the token/claims payload in split
+cookies. Cookie expiry8h, refresh2min, secure/HttpOnly/SameSite, verified issuer/TLS,
+owner group authorization, CSRF and PKCE remain unchanged. No token lifetime increase.
+Cache is memory-only: restart/loss forces reauthentication, never loss of Canvas
+history/workspace. Recreate strategy prevents two independent session caches behind
+one Service during rollout. This is not HA session storage.
+
+Rollouts completed via Argo at `7c9452c9`; Synced/Healthy. Redis unauthenticated PING
+rejected, authenticated PING passed, NX lock first acquisition succeeded and second
+failed; test key removed. Public trustedHTTPS canvas302, APIs/socket401. Startup
+has no errors. 33 local OpenHands tests + Helm lint passed. Existing browser cookies
+may require one fresh SSO round trip during migration. Long-lived real owner refresh
+acceptance still requires a fresh owner session and observation beyond token expiry;
+do not claim proven8h convenience from startup/negative probes alone.
