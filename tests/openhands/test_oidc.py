@@ -1,5 +1,6 @@
 """Auth gate invariants; no live credentials or IdP writes in these tests."""
 import copy
+import base64
 import importlib.util
 from pathlib import Path
 import subprocess
@@ -24,6 +25,14 @@ class NativeOIDC(unittest.TestCase):
         class API:
             def rows(_, path): return self.bindings
         m.validate(API(),self.owner,self.settings,self.provider,self.app,self.journal)
+
+    def test_cookie_secret_uses_go_raw_url_alphabet(self):
+        raw = bytes([251]) * 32
+        encoded = m.encode_cookie_secret(raw)
+        self.assertNotIn('+',encoded)
+        self.assertNotIn('/',encoded)
+        self.assertEqual(base64.urlsafe_b64decode(encoded),raw)
+        with self.assertRaises(RuntimeError): m.encode_cookie_secret(b'too short')
 
     def test_owner_only_existing_identity(self): self.validate()
 

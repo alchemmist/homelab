@@ -71,6 +71,10 @@ spec:
             - name: OAUTH2_PROXY_COOKIE_SECRET
               valueFrom: {secretKeyRef: {name: openhands-oidc, key: cookie-secret}}
           ports: [{name: http, containerPort: 4180}]
+          startupProbe:
+            httpGet: {path: /ping, port: http}
+            periodSeconds: 5
+            failureThreshold: 18
           readinessProbe:
             httpGet: {path: /ready, port: http}
             initialDelaySeconds: 3
@@ -137,6 +141,18 @@ spec:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: openhands}}
           podSelector: {matchLabels: {app.kubernetes.io/name: agent-canvas}}
       ports: [{port: 8000, protocol: TCP}]
+    # HA VIP is DNATed by k3s ServiceLB to Traefik's8443 endpoint.
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: traefik}}
+      ports: [{port: 8443, protocol: TCP}]
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector:
+            matchLabels:
+              svccontroller.k3s.cattle.io/svcname: traefik
+              svccontroller.k3s.cattle.io/svcnamespace: kube-system
+      ports: [{port: 443, protocol: TCP}]
     # Existing canonical Authentik DNS resolves to the private HA ingress VIP.
     - to: [{ipBlock: {cidr: 192.168.0.250/32}}]
       ports: [{port: 443, protocol: TCP}]
