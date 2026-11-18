@@ -48,10 +48,13 @@
     XDG_RUNTIME_DIR: "/run/user/{{ homelab_desktop_uid.stdout }}"
     DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ homelab_desktop_uid.stdout }}/bus"
   loop:
-    - {key: /org/gnome/desktop/background/picture-uri, value: "'file://{{ homelab_wallpaper_path }}'"}
-    - {key: /org/gnome/desktop/background/picture-uri-dark, value: "'file://{{ homelab_wallpaper_path }}'"}
+    - {key: /org/gnome/desktop/background/picture-uri,
+       value: "'file://{{ homelab_wallpaper_path }}'"}
+    - {key: /org/gnome/desktop/background/picture-uri-dark,
+       value: "'file://{{ homelab_wallpaper_path }}'"}
     - {key: /org/gnome/desktop/background/picture-options, value: "'zoom'"}
-    - {key: /org/gnome/desktop/screensaver/picture-uri, value: "'file://{{ homelab_wallpaper_path }}'"}
+    - {key: /org/gnome/desktop/screensaver/picture-uri,
+       value: "'file://{{ homelab_wallpaper_path }}'"}
     - {key: /org/gnome/desktop/screensaver/picture-options, value: "'zoom'"}
   when: homelab_desktop_bus.stat.exists
 

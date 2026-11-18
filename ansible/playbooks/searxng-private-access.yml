@@ -27,12 +27,29 @@
 
     - name: Wait for private gateway certificate
       ansible.builtin.command:
-        argv: [kubectl, --kubeconfig, "{{ searxng_private_kubeconfig }}", -n, syncthing, wait, '--for=condition=Ready', 'certificate/{{ searxng_private_tls_secret }}', --timeout=300s]
+        argv: [kubectl,
+               --kubeconfig,
+               "{{ searxng_private_kubeconfig }}",
+               -n,
+               syncthing,
+               wait,
+               '--for=condition=Ready',
+               'certificate/{{ searxng_private_tls_secret }}',
+               --timeout=300s]
       changed_when: false
 
     - name: Read existing private gateway values
       ansible.builtin.command:
-        argv: [helm, get, values, private-gateway, --namespace, syncthing, --kubeconfig, "{{ searxng_private_kubeconfig }}", --output, json]
+        argv: [helm,
+               get,
+               values,
+               private-gateway,
+               --namespace,
+               syncthing,
+               --kubeconfig,
+               "{{ searxng_private_kubeconfig }}",
+               --output,
+               json]
       register: searxng_private_gateway
       changed_when: false
       no_log: true
@@ -63,13 +80,38 @@
 
     - name: Compare private gateway manifests
       ansible.builtin.command:
-        argv: [python3, "{{ searxng_private_directory }}/helm_manifest_changed.py", --release, private-gateway, --chart, "{{ searxng_private_directory }}/gateway-chart", --namespace, syncthing, --values, "{{ searxng_private_directory }}/gateway-values.yaml", --kubeconfig, "{{ searxng_private_kubeconfig }}"]
+        argv: [python3,
+               "{{ searxng_private_directory }}/helm_manifest_changed.py",
+               --release,
+               private-gateway,
+               --chart,
+               "{{ searxng_private_directory }}/gateway-chart",
+               --namespace,
+               syncthing,
+               --values,
+               "{{ searxng_private_directory }}/gateway-values.yaml",
+               --kubeconfig,
+               "{{ searxng_private_kubeconfig }}"]
       register: searxng_private_gateway_diff
       changed_when: false
 
     - name: Publish the search endpoint inside WireGuard
       ansible.builtin.command:
-        argv: [helm, upgrade, private-gateway, "{{ searxng_private_directory }}/gateway-chart", --namespace, syncthing, --kubeconfig, "{{ searxng_private_kubeconfig }}", --reuse-values, --values, "{{ searxng_private_directory }}/gateway-values.yaml", --atomic, --wait, --timeout, 5m]
+        argv: [helm,
+               upgrade,
+               private-gateway,
+               "{{ searxng_private_directory }}/gateway-chart",
+               --namespace,
+               syncthing,
+               --kubeconfig,
+               "{{ searxng_private_kubeconfig }}",
+               --reuse-values,
+               --values,
+               "{{ searxng_private_directory }}/gateway-values.yaml",
+               --atomic,
+               --wait,
+               --timeout,
+               5m]
       when: (searxng_private_gateway_diff.stdout | from_json).changed
       changed_when: true
 

@@ -1,7 +1,16 @@
 ---
 - name: Read the installed certificate controller release
   ansible.builtin.command:
-    argv: [helm, list, --namespace, cert-manager, --kubeconfig, "{{ rancher_wg_kubeconfig }}", --filter, '^cert-manager$', --output, json]
+    argv: [helm,
+           list,
+           --namespace,
+           cert-manager,
+           --kubeconfig,
+           "{{ rancher_wg_kubeconfig }}",
+           --filter,
+           '^cert-manager$',
+           --output,
+           json]
   register: rancher_wg_cert_release
   changed_when: false
 
@@ -13,7 +22,16 @@
 
 - name: Read existing certificate controller settings
   ansible.builtin.command:
-    argv: [helm, get, values, cert-manager, --namespace, cert-manager, --kubeconfig, "{{ rancher_wg_kubeconfig }}", --output, json]
+    argv: [helm,
+           get,
+           values,
+           cert-manager,
+           --namespace,
+           cert-manager,
+           --kubeconfig,
+           "{{ rancher_wg_kubeconfig }}",
+           --output,
+           json]
   register: rancher_wg_cert_values
   changed_when: false
   no_log: true
@@ -71,7 +89,15 @@
 
 - name: Wait for certificate controller rollout before changing cluster DNS
   ansible.builtin.command:
-    argv: [kubectl, --kubeconfig, "{{ rancher_wg_kubeconfig }}", -n, cert-manager, rollout, status, deployment/cert-manager, --timeout=300s]
+    argv: [kubectl,
+           --kubeconfig,
+           "{{ rancher_wg_kubeconfig }}",
+           -n,
+           cert-manager,
+           rollout,
+           status,
+           deployment/cert-manager,
+           --timeout=300s]
   changed_when: false
 
 - name: Render private Rancher cluster DNS zone
@@ -92,14 +118,32 @@
 
 - name: Ensure a CoreDNS custom configuration exists without replacing its data
   ansible.builtin.command:
-    argv: [kubectl, --kubeconfig, "{{ rancher_wg_kubeconfig }}", apply, --server-side, '--field-manager=rancher-private-dns', -f, '-']
+    argv: [kubectl,
+           --kubeconfig,
+           "{{ rancher_wg_kubeconfig }}",
+           apply,
+           --server-side,
+           '--field-manager=rancher-private-dns',
+           -f,
+           '-']
     stdin: "{{ {'apiVersion': 'v1', 'kind': 'ConfigMap', 'metadata': {'name': 'coredns-custom', 'namespace': 'kube-system'}} | to_nice_yaml }}"
   register: rancher_wg_dns_configmap
   changed_when: "'created' in rancher_wg_dns_configmap.stdout"
 
 - name: Merge the Rancher DNS zone while preserving other private services
   ansible.builtin.command:
-    argv: [kubectl, --kubeconfig, "{{ rancher_wg_kubeconfig }}", -n, kube-system, patch, configmap, coredns-custom, --type, merge, -p, "{{ {'data': {'rancher-private.server': rancher_wg_cluster_dns_zone}} | to_json }}"]
+    argv: [kubectl,
+           --kubeconfig,
+           "{{ rancher_wg_kubeconfig }}",
+           -n,
+           kube-system,
+           patch,
+           configmap,
+           coredns-custom,
+           --type,
+           merge,
+           -p,
+           "{{ {'data': {'rancher-private.server': rancher_wg_cluster_dns_zone}} | to_json }}"]
   register: rancher_wg_dns_patch
   changed_when: "'(no change)' not in rancher_wg_dns_patch.stdout"
 ...

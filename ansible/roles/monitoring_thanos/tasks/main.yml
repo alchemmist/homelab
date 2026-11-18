@@ -17,14 +17,32 @@
 
 - name: Read Prometheus pods before installing Thanos
   ansible.builtin.command:
-    argv: ["{{ monitoring_thanos_k3s_binary }}", kubectl, --kubeconfig, "{{ monitoring_thanos_kubeconfig }}", -n, "{{ monitoring_thanos_namespace }}", get, pods, -l, app.kubernetes.io/name=prometheus, -o, json]
+    argv: ["{{ monitoring_thanos_k3s_binary }}",
+           kubectl,
+           --kubeconfig,
+           "{{ monitoring_thanos_kubeconfig }}",
+           -n,
+           "{{ monitoring_thanos_namespace }}",
+           get,
+           pods,
+           -l,
+           app.kubernetes.io/name=prometheus,
+           -o,
+           json]
   register: monitoring_thanos_prometheus_pods
   changed_when: false
   failed_when: false
 
 - name: Read persistent volumes before installing Thanos
   ansible.builtin.command:
-    argv: ["{{ monitoring_thanos_k3s_binary }}", kubectl, --kubeconfig, "{{ monitoring_thanos_kubeconfig }}", get, pv, -o, json]
+    argv: ["{{ monitoring_thanos_k3s_binary }}",
+           kubectl,
+           --kubeconfig,
+           "{{ monitoring_thanos_kubeconfig }}",
+           get,
+           pv,
+           -o,
+           json]
   register: monitoring_thanos_persistent_volumes
   changed_when: false
 

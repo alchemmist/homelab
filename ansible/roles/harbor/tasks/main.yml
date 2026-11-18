@@ -61,7 +61,17 @@
 
 - name: Detect activated Harbor OIDC without reading client credentials
   ansible.builtin.command:
-    argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, -n, harbor, get, secret, socrat-authentik-harbor, --ignore-not-found, -o, name]
+    argv: [kubectl,
+           --kubeconfig,
+           /etc/rancher/k3s/k3s.yaml,
+           -n,
+           harbor,
+           get,
+           secret,
+           socrat-authentik-harbor,
+           --ignore-not-found,
+           -o,
+           name]
   register: harbor_identity_oidc
   changed_when: false
 
@@ -99,7 +109,15 @@
 
 - name: Require trusted TLS certificate
   ansible.builtin.command:
-    argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, -n, harbor, wait, --for=condition=Ready, certificate/harbor-tls, --timeout=300s]
+    argv: [kubectl,
+           --kubeconfig,
+           /etc/rancher/k3s/k3s.yaml,
+           -n,
+           harbor,
+           wait,
+           --for=condition=Ready,
+           certificate/harbor-tls,
+           --timeout=300s]
   environment:
     K3S_CONFIG_FILE: /dev/null
   changed_when: false

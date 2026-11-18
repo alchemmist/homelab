@@ -15,7 +15,11 @@
   ansible.builtin.systemd_service:
     name: "{{ item }}"
     masked: true
-  loop: [sleep.target, suspend.target, hibernate.target, hybrid-sleep.target, suspend-then-hibernate.target]
+  loop: [sleep.target,
+         suspend.target,
+         hibernate.target,
+         hybrid-sleep.target,
+         suspend-then-hibernate.target]
   tags: [always, kernel_safety]
 
 - name: Configure Wi-Fi
@@ -40,7 +44,59 @@
 
 - name: Install server administration utilities
   ansible.builtin.apt:
-    name: [sudo, ca-certificates, curl, wget, git, tmux, htop, neovim, vim-tiny, jq, rsync, zip, unzip, 7zip, xz-utils, bzip2, tar, bash-completion, ripgrep, fd-find, tree, less, man-db, manpages, dnsutils, iproute2, iputils-ping, traceroute, mtr-tiny, netcat-openbsd, tcpdump, ethtool, lsof, strace, pciutils, usbutils, procps, psmisc, sysstat, iotop-c, ncdu, smartmontools, nvme-cli, parted, chrony, wireguard-tools, nfs-common, openssh-server, python3, python3-venv, python3-pip, build-essential, pkg-config]
+    name: [sudo,
+           ca-certificates,
+           curl,
+           wget,
+           git,
+           tmux,
+           htop,
+           neovim,
+           vim-tiny,
+           jq,
+           rsync,
+           zip,
+           unzip,
+           7zip,
+           xz-utils,
+           bzip2,
+           tar,
+           bash-completion,
+           ripgrep,
+           fd-find,
+           tree,
+           less,
+           man-db,
+           manpages,
+           dnsutils,
+           iproute2,
+           iputils-ping,
+           traceroute,
+           mtr-tiny,
+           netcat-openbsd,
+           tcpdump,
+           ethtool,
+           lsof,
+           strace,
+           pciutils,
+           usbutils,
+           procps,
+           psmisc,
+           sysstat,
+           iotop-c,
+           ncdu,
+           smartmontools,
+           nvme-cli,
+           parted,
+           chrony,
+           wireguard-tools,
+           nfs-common,
+           openssh-server,
+           python3,
+           python3-venv,
+           python3-pip,
+           build-essential,
+           pkg-config]
     state: present
     update_cache: true
     cache_valid_time: 3600

@@ -1,13 +1,43 @@
 ---
 - name: Discover Rancher pods before removing the public route
   ansible.builtin.command:
-    argv: [kubectl, --kubeconfig, "{{ rancher_wg_kubeconfig }}", -n, cattle-system, get, pods, -l, app=rancher, -o, json]
+    argv: [kubectl,
+           --kubeconfig,
+           "{{ rancher_wg_kubeconfig }}",
+           -n,
+           cattle-system,
+           get,
+           pods,
+           -l,
+           app=rancher,
+           -o,
+           json]
   register: rancher_wg_pods
   changed_when: false
 
 - name: Verify Rancher self-access through private DNS from every replica
   ansible.builtin.command:
-    argv: [kubectl, --kubeconfig, "{{ rancher_wg_kubeconfig }}", -n, cattle-system, exec, "{{ item.metadata.name }}", --, curl, --cacert, /etc/ssl/ca-bundle.pem, --silent, --show-error, --fail, --noproxy, '*', --max-time, '10', --write-out, '\n%{remote_ip}', "https://{{ rancher_wg_host }}/ping"]
+    argv: [kubectl,
+           --kubeconfig,
+           "{{ rancher_wg_kubeconfig }}",
+           -n,
+           cattle-system,
+           exec,
+           "{{ item.metadata.name }}",
+           --,
+           curl,
+           --cacert,
+           /etc/ssl/ca-bundle.pem,
+           --silent,
+           --show-error,
+           --fail,
+           --noproxy,
+           '*',
+           --max-time,
+           '10',
+           --write-out,
+           '\n%{remote_ip}',
+           "https://{{ rancher_wg_host }}/ping"]
   loop: "{{ (rancher_wg_pods.stdout | from_json)['items'] }}"
   loop_control:
     label: "{{ item.metadata.name }}"
@@ -22,7 +52,16 @@
 
 - name: Read the installed Rancher release metadata
   ansible.builtin.command:
-    argv: [helm, list, --namespace, cattle-system, --kubeconfig, "{{ rancher_wg_kubeconfig }}", --filter, '^rancher$', --output, json]
+    argv: [helm,
+           list,
+           --namespace,
+           cattle-system,
+           --kubeconfig,
+           "{{ rancher_wg_kubeconfig }}",
+           --filter,
+           '^rancher$',
+           --output,
+           json]
   register: rancher_wg_release_metadata
   changed_when: false
 
@@ -34,7 +73,16 @@
 
 - name: Read the installed Rancher values
   ansible.builtin.command:
-    argv: [helm, get, values, rancher, --namespace, cattle-system, --kubeconfig, "{{ rancher_wg_kubeconfig }}", --output, json]
+    argv: [helm,
+           get,
+           values,
+           rancher,
+           --namespace,
+           cattle-system,
+           --kubeconfig,
+           "{{ rancher_wg_kubeconfig }}",
+           --output,
+           json]
   register: rancher_wg_rancher_values
   changed_when: false
   no_log: true
@@ -67,7 +115,17 @@
 
 - name: Verify public Rancher ingress is absent
   ansible.builtin.command:
-    argv: [kubectl, --kubeconfig, "{{ rancher_wg_kubeconfig }}", -n, cattle-system, get, ingress, rancher, --ignore-not-found, -o, name]
+    argv: [kubectl,
+           --kubeconfig,
+           "{{ rancher_wg_kubeconfig }}",
+           -n,
+           cattle-system,
+           get,
+           ingress,
+           rancher,
+           --ignore-not-found,
+           -o,
+           name]
   register: rancher_wg_ingress
   changed_when: false
   failed_when: rancher_wg_ingress.stdout | trim | length > 0

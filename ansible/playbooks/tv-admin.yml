@@ -168,7 +168,14 @@
 
     - name: Grant helper control over the remaining YouTube VPN
       ansible.builtin.command:
-        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, pm, grant, "{{ item.package }}", "{{ item.name }}"]
+        argv: [adb,
+               -s,
+               "{{ homelab_tv_serial }}",
+               shell,
+               pm,
+               grant,
+               "{{ item.package }}",
+               "{{ item.name }}"]
       loop: "{{ homelab_tv_helper_permissions }}"
       when: >-
         item.name ~ ': granted=true' not in
@@ -224,7 +231,15 @@
 
     - name: Keep the Xiaomi partner customizer from taking the remote buttons
       ansible.builtin.command:
-        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, pm, disable-user, --user, "0", "{{ homelab_tv_partner_package }}"]
+        argv: [adb,
+               -s,
+               "{{ homelab_tv_serial }}",
+               shell,
+               pm,
+               disable-user,
+               --user,
+               "0",
+               "{{ homelab_tv_partner_package }}"]
       when: homelab_tv_partner_package not in homelab_tv_disabled_packages.stdout
 
     - name: Read the current home screen
@@ -248,24 +263,53 @@
 
     - name: Keep Home on the normal television launcher
       ansible.builtin.command:
-        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, cmd, package, set-home-activity, "{{ homelab_tv_home_component }}"]
+        argv: [adb,
+               -s,
+               "{{ homelab_tv_serial }}",
+               shell,
+               cmd,
+               package,
+               set-home-activity,
+               "{{ homelab_tv_home_component }}"]
       when: homelab_tv_fully_package in homelab_tv_home.stdout
 
     - name: Read the accessibility master switch
       ansible.builtin.command:
-        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, settings, get, secure, accessibility_enabled]
+        argv: [adb,
+               -s,
+               "{{ homelab_tv_serial }}",
+               shell,
+               settings,
+               get,
+               secure,
+               accessibility_enabled]
       register: homelab_tv_accessibility_enabled
       changed_when: false
       check_mode: false
 
     - name: Leave accessibility available for the remote helper
       ansible.builtin.command:
-        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, settings, put, secure, accessibility_enabled, "1"]
+        argv: [adb,
+               -s,
+               "{{ homelab_tv_serial }}",
+               shell,
+               settings,
+               put,
+               secure,
+               accessibility_enabled,
+               "1"]
       when: homelab_tv_accessibility_enabled.stdout != '1'
 
     - name: Read enabled accessibility services
       ansible.builtin.command:
-        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, settings, get, secure, enabled_accessibility_services]
+        argv: [adb,
+               -s,
+               "{{ homelab_tv_serial }}",
+               shell,
+               settings,
+               get,
+               secure,
+               enabled_accessibility_services]
       register: homelab_tv_accessibility_services
       changed_when: false
       check_mode: false
@@ -293,13 +337,27 @@
 
     - name: Keep the television helpers out of standby
       ansible.builtin.command:
-        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, dumpsys, deviceidle, whitelist, "+{{ item }}"]
+        argv: [adb,
+               -s,
+               "{{ homelab_tv_serial }}",
+               shell,
+               dumpsys,
+               deviceidle,
+               whitelist,
+               "+{{ item }}"]
       loop: "{{ homelab_tv_persistent_packages }}"
       when: item not in homelab_tv_idle_whitelist.stdout
 
     - name: Read background execution for the television helpers
       ansible.builtin.command:
-        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, appops, get, "{{ item.0 }}", "{{ item.1 }}"]
+        argv: [adb,
+               -s,
+               "{{ homelab_tv_serial }}",
+               shell,
+               appops,
+               get,
+               "{{ item.0 }}",
+               "{{ item.1 }}"]
       loop: "{{ homelab_tv_persistent_packages | product(['RUN_IN_BACKGROUND', 'RUN_ANY_IN_BACKGROUND']) | list }}"
       register: homelab_tv_background
       changed_when: false
@@ -307,7 +365,15 @@
 
     - name: Allow the television helpers to start again after boot
       ansible.builtin.command:
-        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, appops, set, "{{ item.item.0 }}", "{{ item.item.1 }}", allow]
+        argv: [adb,
+               -s,
+               "{{ homelab_tv_serial }}",
+               shell,
+               appops,
+               set,
+               "{{ item.item.0 }}",
+               "{{ item.item.1 }}",
+               allow]
       loop: "{{ homelab_tv_background.results }}"
       when: "'allow' not in item.stdout"
 
@@ -320,19 +386,41 @@
 
     - name: Do not auto-connect a TV VPN at boot
       ansible.builtin.command:
-        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, settings, delete, secure, always_on_vpn_app]
+        argv: [adb,
+               -s,
+               "{{ homelab_tv_serial }}",
+               shell,
+               settings,
+               delete,
+               secure,
+               always_on_vpn_app]
       when: homelab_tv_vpn_app.stdout not in ['', 'null']
 
     - name: Read VPN lockdown
       ansible.builtin.command:
-        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, settings, get, secure, always_on_vpn_lockdown]
+        argv: [adb,
+               -s,
+               "{{ homelab_tv_serial }}",
+               shell,
+               settings,
+               get,
+               secure,
+               always_on_vpn_lockdown]
       register: homelab_tv_vpn_lockdown
       changed_when: false
       check_mode: false
 
     - name: Leave YouTube and Kinopoisk on the normal network
       ansible.builtin.command:
-        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, settings, put, secure, always_on_vpn_lockdown, "0"]
+        argv: [adb,
+               -s,
+               "{{ homelab_tv_serial }}",
+               shell,
+               settings,
+               put,
+               secure,
+               always_on_vpn_lockdown,
+               "0"]
       when: homelab_tv_vpn_lockdown.stdout != '0'
 
     - name: Read Android private DNS mode
@@ -344,12 +432,27 @@
 
     - name: Keep DNS resolution compatible with the television VPN profiles
       ansible.builtin.command:
-        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, settings, put, global, private_dns_mode, "{{ homelab_tv_private_dns_mode }}"]
+        argv: [adb,
+               -s,
+               "{{ homelab_tv_serial }}",
+               shell,
+               settings,
+               put,
+               global,
+               private_dns_mode,
+               "{{ homelab_tv_private_dns_mode }}"]
       when: homelab_tv_private_dns.stdout != homelab_tv_private_dns_mode
 
     - name: Read Fully shared-storage access
       ansible.builtin.command:
-        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, appops, get, "{{ homelab_tv_fully_package }}", "{{ item }}"]
+        argv: [adb,
+               -s,
+               "{{ homelab_tv_serial }}",
+               shell,
+               appops,
+               get,
+               "{{ homelab_tv_fully_package }}",
+               "{{ item }}"]
       loop:
         - NO_ISOLATED_STORAGE
         - LEGACY_STORAGE
@@ -359,7 +462,15 @@
 
     - name: Let Fully read one-shot settings from shared storage
       ansible.builtin.command:
-        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, appops, set, "{{ homelab_tv_fully_package }}", "{{ item.item }}", allow]
+        argv: [adb,
+               -s,
+               "{{ homelab_tv_serial }}",
+               shell,
+               appops,
+               set,
+               "{{ homelab_tv_fully_package }}",
+               "{{ item.item }}",
+               allow]
       loop: "{{ homelab_tv_fully_storage.results }}"
       when: "'allow' not in item.stdout"
 
@@ -378,7 +489,12 @@
 
     - name: Push Fully one-shot settings
       ansible.builtin.command:
-        argv: [adb, -s, "{{ homelab_tv_serial }}", push, "{{ homelab_tv_fully_settings_path }}", /sdcard/fully-once-settings.json]
+        argv: [adb,
+               -s,
+               "{{ homelab_tv_serial }}",
+               push,
+               "{{ homelab_tv_fully_settings_path }}",
+               /sdcard/fully-once-settings.json]
       when: homelab_tv_fully_settings_file.changed or homelab_tv_fully_reapply | bool
 
     - name: Restart Fully so it imports the start URL

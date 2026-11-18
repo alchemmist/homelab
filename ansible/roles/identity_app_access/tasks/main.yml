@@ -9,7 +9,8 @@
   loop:
     - {src: "{{ playbook_dir }}/../../deploy/identity/services.json", name: services.json}
     - {src: "{{ role_path }}/../authentik/files/app_iam.py", name: app_iam.py}
-    - {src: "{{ role_path }}/../authentik/files/reconcile_app_access.py", name: reconcile_app_access.py}
+    - {src: "{{ role_path }}/../authentik/files/reconcile_app_access.py",
+       name: reconcile_app_access.py}
 
 - name: Plan automatic application groups and reviewed native admission
   ansible.builtin.command:

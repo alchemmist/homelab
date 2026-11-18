@@ -43,7 +43,9 @@
       register: application_ingress_configuration
     - name: Validate the configuration using the unchanged stock Collector
       ansible.builtin.command:
-        argv: [/usr/local/lib/homelab-otel/otelcol-contrib, validate, --config=/etc/homelab-otel/application-ingress.yaml]
+        argv: [/usr/local/lib/homelab-otel/otelcol-contrib,
+               validate,
+               --config=/etc/homelab-otel/application-ingress.yaml]
       environment:
         GOMEMLIMIT: 96MiB
         GOMAXPROCS: '1'

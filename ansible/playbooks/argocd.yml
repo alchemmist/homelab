@@ -40,7 +40,10 @@
     - name: Read the VPS ingress backend transport prerequisite
       ansible.builtin.command:
         argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, -n, traefik-edge,
-               get, deployment, traefik-edge, "-o=jsonpath={.spec.template.spec.containers[0].args}"]
+               get,
+               deployment,
+               traefik-edge,
+               "-o=jsonpath={.spec.template.spec.containers[0].args}"]
       environment:
         K3S_CONFIG_FILE: /dev/null
       register: argocd_edge_args

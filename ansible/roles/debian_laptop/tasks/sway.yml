@@ -1,7 +1,32 @@
 ---
 - name: Install the lightweight desktop and family applications
   ansible.builtin.apt:
-    name: [sway, swaybg, waybar, wofi, mako-notifier, thunar, gvfs-backends, tumbler, firefox-esr, firefox-esr-l10n-ru, python3-gi, gir1.2-gtk-3.0, gir1.2-gtklayershell-0.1, papirus-icon-theme, fonts-noto-core, pavucontrol, pulseaudio-utils, brightnessctl, network-manager-gnome, xdg-desktop-portal-wlr, xdg-desktop-portal-gtk, grim, slurp, mesa-va-drivers, vainfo, lxpolkit]
+    name: [sway,
+           swaybg,
+           waybar,
+           wofi,
+           mako-notifier,
+           thunar,
+           gvfs-backends,
+           tumbler,
+           firefox-esr,
+           firefox-esr-l10n-ru,
+           python3-gi,
+           gir1.2-gtk-3.0,
+           gir1.2-gtklayershell-0.1,
+           papirus-icon-theme,
+           fonts-noto-core,
+           pavucontrol,
+           pulseaudio-utils,
+           brightnessctl,
+           network-manager-gnome,
+           xdg-desktop-portal-wlr,
+           xdg-desktop-portal-gtk,
+           grim,
+           slurp,
+           mesa-va-drivers,
+           vainfo,
+           lxpolkit]
     state: present
     update_cache: true
     cache_valid_time: 3600
@@ -42,7 +67,11 @@
     owner: root
     group: root
     mode: '0755'
-  loop: [homelab-sway-app, homelab-sway-menu, homelab-sway-shortcuts, homelab-sway-window-action, homelab-graphics]
+  loop: [homelab-sway-app,
+         homelab-sway-menu,
+         homelab-sway-shortcuts,
+         homelab-sway-window-action,
+         homelab-graphics]
 
 - name: Configure familiar application appearance
   community.general.ini_file:

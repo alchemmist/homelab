@@ -71,7 +71,12 @@
           target: scrape.json
     - name: Validate exact native configs and preserved resource reserves
       ansible.builtin.command:
-        argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, prepare]
+        argv: [python3,
+               '{{ otel_host_metrics_directory }}/canary.py',
+               --directory,
+               '{{ otel_host_metrics_directory }}',
+               --phase,
+               prepare]
       changed_when: false
 
 - name: Prove four native agent metrics pipelines and durable restart replay
@@ -84,36 +89,71 @@
       block:
         - name: Start private mTLS backend on healthy host
           ansible.builtin.command:
-            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, backend-start]
+            argv: [python3,
+                   '{{ otel_host_metrics_directory }}/canary.py',
+                   --directory,
+                   '{{ otel_host_metrics_directory }}',
+                   --phase,
+                   backend-start]
           changed_when: false
           when: inventory_hostname == "socrat-1"
         - name: Start bounded exporter and actual metrics agent on every host
           ansible.builtin.command:
-            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, agents-start]
+            argv: [python3,
+                   '{{ otel_host_metrics_directory }}/canary.py',
+                   --directory,
+                   '{{ otel_host_metrics_directory }}',
+                   --phase,
+                   agents-start]
           changed_when: false
         - name: Check complete legacy target labels and three fresh healthy observations
           ansible.builtin.command:
-            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, probe]
+            argv: [python3,
+                   '{{ otel_host_metrics_directory }}/canary.py',
+                   --directory,
+                   '{{ otel_host_metrics_directory }}',
+                   --phase,
+                   probe]
           changed_when: false
           timeout: 150
           when: inventory_hostname == "socrat-1"
         - name: Retain actual native resource and queue telemetry before failure
           ansible.builtin.command:
-            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, telemetry]
+            argv: [python3,
+                   '{{ otel_host_metrics_directory }}/canary.py',
+                   --directory,
+                   '{{ otel_host_metrics_directory }}',
+                   --phase,
+                   telemetry]
           changed_when: false
         - name: Interrupt only test gateway delivery
           ansible.builtin.command:
-            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, gateway-stop]
+            argv: [python3,
+                   '{{ otel_host_metrics_directory }}/canary.py',
+                   --directory,
+                   '{{ otel_host_metrics_directory }}',
+                   --phase,
+                   gateway-stop]
           changed_when: false
           when: inventory_hostname == "socrat-1"
         - name: Wait for persistent queues on all four hosts
           ansible.builtin.command:
-            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, await-queued]
+            argv: [python3,
+                   '{{ otel_host_metrics_directory }}/canary.py',
+                   --directory,
+                   '{{ otel_host_metrics_directory }}',
+                   --phase,
+                   await-queued]
           changed_when: false
           timeout: 90
         - name: Restart each native agent while the backend remains unavailable
           ansible.builtin.command:
-            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, agent-restart]
+            argv: [python3,
+                   '{{ otel_host_metrics_directory }}/canary.py',
+                   --directory,
+                   '{{ otel_host_metrics_directory }}',
+                   --phase,
+                   agent-restart]
           changed_when: false
           register: native_restart
         - name: Assemble only non-secret restart times and queue counts
@@ -129,38 +169,73 @@
           when: inventory_hostname == "socrat-1"
         - name: Restore native test gateway
           ansible.builtin.command:
-            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, gateway-start]
+            argv: [python3,
+                   '{{ otel_host_metrics_directory }}/canary.py',
+                   --directory,
+                   '{{ otel_host_metrics_directory }}',
+                   --phase,
+                   gateway-start]
           changed_when: false
           when: inventory_hostname == "socrat-1"
         - name: Require fresh healthy data again after restart
           ansible.builtin.command:
-            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, probe]
+            argv: [python3,
+                   '{{ otel_host_metrics_directory }}/canary.py',
+                   --directory,
+                   '{{ otel_host_metrics_directory }}',
+                   --phase,
+                   probe]
           changed_when: false
           timeout: 150
           when: inventory_hostname == "socrat-1"
         - name: Require acknowledged queue drain on all four hosts
           ansible.builtin.command:
-            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, await-drained]
+            argv: [python3,
+                   '{{ otel_host_metrics_directory }}/canary.py',
+                   --directory,
+                   '{{ otel_host_metrics_directory }}',
+                   --phase,
+                   await-drained]
           changed_when: false
           timeout: 90
         - name: Verify raw pre-restart outage samples rather than lookback-interpolated values
           ansible.builtin.command:
-            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, outage-proof]
+            argv: [python3,
+                   '{{ otel_host_metrics_directory }}/canary.py',
+                   --directory,
+                   '{{ otel_host_metrics_directory }}',
+                   --phase,
+                   outage-proof]
           changed_when: false
           when: inventory_hostname == "socrat-1"
       always:
         - name: Stop all native agents before stopping their shared test backend
           ansible.builtin.command:
-            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, agents-cleanup]
+            argv: [python3,
+                   '{{ otel_host_metrics_directory }}/canary.py',
+                   --directory,
+                   '{{ otel_host_metrics_directory }}',
+                   --phase,
+                   agents-cleanup]
           changed_when: false
         - name: Stop gateway then shadow Prometheus only after the agent barrier
           ansible.builtin.command:
-            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, backend-cleanup]
+            argv: [python3,
+                   '{{ otel_host_metrics_directory }}/canary.py',
+                   --directory,
+                   '{{ otel_host_metrics_directory }}',
+                   --phase,
+                   backend-cleanup]
           changed_when: false
           when: inventory_hostname == "socrat-1"
         - name: Verify process termination and remove temporary client keys
           ansible.builtin.command:
-            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, cleanup]
+            argv: [python3,
+                   '{{ otel_host_metrics_directory }}/canary.py',
+                   --directory,
+                   '{{ otel_host_metrics_directory }}',
+                   --phase,
+                   cleanup]
           changed_when: false
         - name: Preserve every owned phase receipt without log bodies
           ansible.builtin.shell: 'cat {{ otel_host_metrics_directory | quote }}/*-result.json'
@@ -177,7 +252,12 @@
           no_log: true
     - name: Account for pinned upstream persistent-queue shutdown replay
       ansible.builtin.command:
-        argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, journal-evidence]
+        argv: [python3,
+               '{{ otel_host_metrics_directory }}/canary.py',
+               --directory,
+               '{{ otel_host_metrics_directory }}',
+               --phase,
+               journal-evidence]
       changed_when: false
       register: native_final_journal
     - name: Reject unaccounted drops, storage failures and memory refusals

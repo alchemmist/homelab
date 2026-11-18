@@ -1,7 +1,17 @@
 ---
 - name: Read private gateway values
   ansible.builtin.command:
-    argv: [helm, get, values, --all, "{{ wiki_editor_gateway_release }}", -n, "{{ wiki_editor_gateway_namespace }}", --kubeconfig, "{{ wiki_editor_kubeconfig }}", -o, json]
+    argv: [helm,
+           get,
+           values,
+           --all,
+           "{{ wiki_editor_gateway_release }}",
+           -n,
+           "{{ wiki_editor_gateway_namespace }}",
+           --kubeconfig,
+           "{{ wiki_editor_kubeconfig }}",
+           -o,
+           json]
   register: wiki_editor_gateway
   changed_when: false
   no_log: true
@@ -20,13 +30,31 @@
 
 - name: Require gateway authentication secret
   ansible.builtin.command:
-    argv: [kubectl, --kubeconfig, "{{ wiki_editor_kubeconfig }}", -n, "{{ wiki_editor_gateway_namespace }}", get, secret, "{{ wiki_editor_gateway_auth_secret }}", -o, name]
+    argv: [kubectl,
+           --kubeconfig,
+           "{{ wiki_editor_kubeconfig }}",
+           -n,
+           "{{ wiki_editor_gateway_namespace }}",
+           get,
+           secret,
+           "{{ wiki_editor_gateway_auth_secret }}",
+           -o,
+           name]
   changed_when: false
   when: not (wiki_editor_runtime_enabled | bool)
 
 - name: Discover DNS service
   ansible.builtin.command:
-    argv: [kubectl, --kubeconfig, "{{ wiki_editor_kubeconfig }}", -n, kube-system, get, service, kube-dns, -o, "jsonpath={.spec.clusterIP}"]
+    argv: [kubectl,
+           --kubeconfig,
+           "{{ wiki_editor_kubeconfig }}",
+           -n,
+           kube-system,
+           get,
+           service,
+           kube-dns,
+           -o,
+           "jsonpath={.spec.clusterIP}"]
   register: wiki_editor_cluster_dns
   changed_when: false
 
@@ -39,7 +67,15 @@
 
 - name: Wait for certificate
   ansible.builtin.command:
-    argv: [kubectl, --kubeconfig, "{{ wiki_editor_kubeconfig }}", -n, "{{ wiki_editor_gateway_namespace }}", wait, --for=condition=Ready, "certificate/{{ wiki_editor_tls_secret }}", --timeout=300s]
+    argv: [kubectl,
+           --kubeconfig,
+           "{{ wiki_editor_kubeconfig }}",
+           -n,
+           "{{ wiki_editor_gateway_namespace }}",
+           wait,
+           --for=condition=Ready,
+           "certificate/{{ wiki_editor_tls_secret }}",
+           --timeout=300s]
   changed_when: false
 
 - name: Preserve other private virtual hosts
@@ -80,13 +116,38 @@
 
 - name: Compare gateway manifest
   ansible.builtin.command:
-    argv: [python3, "{{ wiki_editor_directory }}/compare.py", --release, "{{ wiki_editor_gateway_release }}", --chart, "{{ wiki_editor_directory }}/chart", --namespace, "{{ wiki_editor_gateway_namespace }}", --values, "{{ wiki_editor_directory }}/values.yaml", --kubeconfig, "{{ wiki_editor_kubeconfig }}"]
+    argv: [python3,
+           "{{ wiki_editor_directory }}/compare.py",
+           --release,
+           "{{ wiki_editor_gateway_release }}",
+           --chart,
+           "{{ wiki_editor_directory }}/chart",
+           --namespace,
+           "{{ wiki_editor_gateway_namespace }}",
+           --values,
+           "{{ wiki_editor_directory }}/values.yaml",
+           --kubeconfig,
+           "{{ wiki_editor_kubeconfig }}"]
   register: wiki_editor_manifest
   changed_when: false
 
 - name: Upgrade private gateway
   ansible.builtin.command:
-    argv: [helm, upgrade, "{{ wiki_editor_gateway_release }}", "{{ wiki_editor_directory }}/chart", -n, "{{ wiki_editor_gateway_namespace }}", --kubeconfig, "{{ wiki_editor_kubeconfig }}", --reuse-values, -f, "{{ wiki_editor_directory }}/values.yaml", --atomic, --wait, --timeout, 5m]
+    argv: [helm,
+           upgrade,
+           "{{ wiki_editor_gateway_release }}",
+           "{{ wiki_editor_directory }}/chart",
+           -n,
+           "{{ wiki_editor_gateway_namespace }}",
+           --kubeconfig,
+           "{{ wiki_editor_kubeconfig }}",
+           --reuse-values,
+           -f,
+           "{{ wiki_editor_directory }}/values.yaml",
+           --atomic,
+           --wait,
+           --timeout,
+           5m]
   when: (wiki_editor_manifest.stdout | from_json).changed
   changed_when: true
 ...

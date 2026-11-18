@@ -29,7 +29,23 @@
       no_log: true
     - name: Install headless tools only, no GUI/session/wallpaper roles
       ansible.builtin.apt:
-        name: [sudo, zsh, starship, tmux, ca-certificates, curl, git, jq, rsync, python3, iproute2, iputils-ping, conntrack, iptables, nfs-common, open-iscsi, kmod]
+        name: [sudo,
+               zsh,
+               starship,
+               tmux,
+               ca-certificates,
+               curl,
+               git,
+               jq,
+               rsync,
+               python3,
+               iproute2,
+               iputils-ping,
+               conntrack,
+               iptables,
+               nfs-common,
+               open-iscsi,
+               kmod]
         update_cache: true
         cache_valid_time: 3600
         state: present

@@ -35,7 +35,14 @@
     - name: Verify owner automation still works
       become: false
       ansible.builtin.command:
-        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, auth, can-i, "*", "*", --all-namespaces]
+        argv: [kubectl,
+               --kubeconfig,
+               /etc/rancher/k3s/k3s.yaml,
+               auth,
+               can-i,
+               "*",
+               "*",
+               --all-namespaces]
       environment:
         K3S_CONFIG_FILE: /dev/null
       changed_when: false

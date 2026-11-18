@@ -32,7 +32,15 @@
       when: otel_production_native_staged_dir is not defined
     - name: Install a streamed stock binary without buffering the full archive on small nodes
       ansible.builtin.command:
-        argv: [install, -m, '0755', -o, root, -g, root, '{{ otel_production_native_staged_dir }}/otelcol-contrib', /usr/local/lib/homelab-otel/otelcol-contrib]
+        argv: [install,
+               -m,
+               '0755',
+               -o,
+               root,
+               -g,
+               root,
+               '{{ otel_production_native_staged_dir }}/otelcol-contrib',
+               /usr/local/lib/homelab-otel/otelcol-contrib]
       when: otel_production_native_staged_dir is defined
       notify: Restart validated host agent
     - name: Verify upstream binary identity
@@ -42,7 +50,15 @@
       changed_when: false
     - name: Install already independently verified stock host exporter
       ansible.builtin.command:
-        argv: [install, -m, '0755', -o, root, -g, root, "{{ otel_production_exporter_source | default('/var/tmp/otel-host-source-canary-20261030T1645/node_exporter') }}", /usr/local/lib/homelab-otel/node_exporter]
+        argv: [install,
+               -m,
+               '0755',
+               -o,
+               root,
+               -g,
+               root,
+               "{{ otel_production_exporter_source | default('/var/tmp/otel-host-source-canary-20261030T1645/node_exporter') }}",
+               /usr/local/lib/homelab-otel/node_exporter]
       changed_when: false
     - name: Verify immutable native exporter identity after copy
       ansible.builtin.command: sha256sum /usr/local/lib/homelab-otel/node_exporter

@@ -27,14 +27,32 @@
 
     - name: 'Sanity pre-check syncthing deployment is Ready'
       ansible.builtin.command:
-        argv: [kubectl, --kubeconfig, "{{ private_gateway_kubeconfig }}", -n, syncthing, get, deploy, syncthing, -o, 'jsonpath={.status.readyReplicas}']
+        argv: [kubectl,
+               --kubeconfig,
+               "{{ private_gateway_kubeconfig }}",
+               -n,
+               syncthing,
+               get,
+               deploy,
+               syncthing,
+               -o,
+               'jsonpath={.status.readyReplicas}']
       register: private_gateway_syncthing_ready
       changed_when: false
       failed_when: private_gateway_syncthing_ready.stdout != '1'
 
     - name: 'Sanity pre-check old syncthing-gateway DaemonSet exists'
       ansible.builtin.command:
-        argv: [kubectl, --kubeconfig, "{{ private_gateway_kubeconfig }}", -n, syncthing, get, daemonset, syncthing-gateway, -o, 'jsonpath={.metadata.name}']
+        argv: [kubectl,
+               --kubeconfig,
+               "{{ private_gateway_kubeconfig }}",
+               -n,
+               syncthing,
+               get,
+               daemonset,
+               syncthing-gateway,
+               -o,
+               'jsonpath={.metadata.name}']
       register: private_gateway_old_gateway
       changed_when: false
       failed_when: private_gateway_old_gateway.stdout != 'syncthing-gateway'
@@ -54,7 +72,18 @@
     # Values (including the live host list) are baked into the chart's values.yaml.
     - name: Compare private gateway manifests
       ansible.builtin.command:
-        argv: [python3, "{{ private_gateway_directory }}/helm_manifest_changed.py", --release, private-gateway, --chart, "{{ private_gateway_directory }}/gateway-chart", --namespace, syncthing, --values, "{{ private_gateway_directory }}/gateway-chart/values.yaml", --kubeconfig, "{{ private_gateway_kubeconfig }}"]
+        argv: [python3,
+               "{{ private_gateway_directory }}/helm_manifest_changed.py",
+               --release,
+               private-gateway,
+               --chart,
+               "{{ private_gateway_directory }}/gateway-chart",
+               --namespace,
+               syncthing,
+               --values,
+               "{{ private_gateway_directory }}/gateway-chart/values.yaml",
+               --kubeconfig,
+               "{{ private_gateway_kubeconfig }}"]
       register: private_gateway_diff
       changed_when: false
 
@@ -65,23 +94,63 @@
     # pruned from the release anyway.
     - name: Stop the old syncthing-gateway DaemonSet
       ansible.builtin.command:
-        argv: [kubectl, --kubeconfig, "{{ private_gateway_kubeconfig }}", -n, syncthing, delete, daemonset, syncthing-gateway, --wait=false]
+        argv: [kubectl,
+               --kubeconfig,
+               "{{ private_gateway_kubeconfig }}",
+               -n,
+               syncthing,
+               delete,
+               daemonset,
+               syncthing-gateway,
+               --wait=false]
       changed_when: true
 
     - name: Wait for the old gateway pod to terminate
       ansible.builtin.command:
-        argv: [kubectl, --kubeconfig, "{{ private_gateway_kubeconfig }}", -n, syncthing, wait, --for=delete, pod, -l, app.kubernetes.io/name=syncthing-gateway, --timeout=90s]
+        argv: [kubectl,
+               --kubeconfig,
+               "{{ private_gateway_kubeconfig }}",
+               -n,
+               syncthing,
+               wait,
+               --for=delete,
+               pod,
+               -l,
+               app.kubernetes.io/name=syncthing-gateway,
+               --timeout=90s]
       changed_when: false
 
     - name: Install the new private-gateway release
       ansible.builtin.command:
-        argv: [helm, upgrade, --install, private-gateway, "{{ private_gateway_directory }}/gateway-chart", --namespace, syncthing, --kubeconfig, "{{ private_gateway_kubeconfig }}", --values, "{{ private_gateway_directory }}/gateway-chart/values.yaml", --atomic, --wait, --timeout, 5m]
+        argv: [helm,
+               upgrade,
+               --install,
+               private-gateway,
+               "{{ private_gateway_directory }}/gateway-chart",
+               --namespace,
+               syncthing,
+               --kubeconfig,
+               "{{ private_gateway_kubeconfig }}",
+               --values,
+               "{{ private_gateway_directory }}/gateway-chart/values.yaml",
+               --atomic,
+               --wait,
+               --timeout,
+               5m]
       when: (private_gateway_diff.stdout | from_json).changed
       changed_when: true
 
     - name: Wait for the private-gateway DaemonSet to be Ready
       ansible.builtin.command:
-        argv: [kubectl, --kubeconfig, "{{ private_gateway_kubeconfig }}", -n, syncthing, rollout, status, daemonset/private-gateway, --timeout=120s]
+        argv: [kubectl,
+               --kubeconfig,
+               "{{ private_gateway_kubeconfig }}",
+               -n,
+               syncthing,
+               rollout,
+               status,
+               daemonset/private-gateway,
+               --timeout=120s]
       changed_when: false
 
     # nginx -t already ran in the container entrypoint; verify one health endpoint
@@ -99,7 +168,16 @@
     # Only now, with the new gateway Ready, disable the old one.
     - name: Read live syncthing release values
       ansible.builtin.command:
-        argv: [helm, get, values, syncthing, --namespace, syncthing, --kubeconfig, "{{ private_gateway_kubeconfig }}", --output, json]
+        argv: [helm,
+               get,
+               values,
+               syncthing,
+               --namespace,
+               syncthing,
+               --kubeconfig,
+               "{{ private_gateway_kubeconfig }}",
+               --output,
+               json]
       register: private_gateway_syncthing_values
       changed_when: false
       no_log: true
@@ -124,19 +202,49 @@
 
     - name: Disable the old syncthing-gateway DaemonSet
       ansible.builtin.command:
-        argv: [helm, upgrade, syncthing, "{{ private_gateway_directory }}/syncthing-chart", --namespace, syncthing, --kubeconfig, "{{ private_gateway_kubeconfig }}", --reuse-values, --values, "{{ private_gateway_directory }}/syncthing-values.yaml", --atomic, --wait, --timeout, 5m]
+        argv: [helm,
+               upgrade,
+               syncthing,
+               "{{ private_gateway_directory }}/syncthing-chart",
+               --namespace,
+               syncthing,
+               --kubeconfig,
+               "{{ private_gateway_kubeconfig }}",
+               --reuse-values,
+               --values,
+               "{{ private_gateway_directory }}/syncthing-values.yaml",
+               --atomic,
+               --wait,
+               --timeout,
+               5m]
       changed_when: true
 
     - name: 'Post-check old syncthing-gateway DaemonSet is gone'
       ansible.builtin.command:
-        argv: [kubectl, --kubeconfig, "{{ private_gateway_kubeconfig }}", -n, syncthing, get, daemonset, syncthing-gateway]
+        argv: [kubectl,
+               --kubeconfig,
+               "{{ private_gateway_kubeconfig }}",
+               -n,
+               syncthing,
+               get,
+               daemonset,
+               syncthing-gateway]
       register: private_gateway_old_gone
       changed_when: false
       failed_when: private_gateway_old_gone.rc == 0
 
     - name: 'Post-check syncthing deployment is Ready 1/1'
       ansible.builtin.command:
-        argv: [kubectl, --kubeconfig, "{{ private_gateway_kubeconfig }}", -n, syncthing, get, deploy, syncthing, -o, 'jsonpath={.status.readyReplicas}']
+        argv: [kubectl,
+               --kubeconfig,
+               "{{ private_gateway_kubeconfig }}",
+               -n,
+               syncthing,
+               get,
+               deploy,
+               syncthing,
+               -o,
+               'jsonpath={.status.readyReplicas}']
       register: private_gateway_post_syncthing_ready
       changed_when: false
       failed_when: private_gateway_post_syncthing_ready.stdout != '1'

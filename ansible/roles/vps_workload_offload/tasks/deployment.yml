@@ -16,7 +16,13 @@
 
 - name: Wait for this deployment before moving the next one
   ansible.builtin.command:
-    argv: [kubectl, -n, "{{ offload_workload.namespace }}", rollout, status, "deployment/{{ offload_workload.name }}", --timeout=300s]
+    argv: [kubectl,
+           -n,
+           "{{ offload_workload.namespace }}",
+           rollout,
+           status,
+           "deployment/{{ offload_workload.name }}",
+           --timeout=300s]
   changed_when: false
 
 - name: Verify the new ready pod is on socrat-1

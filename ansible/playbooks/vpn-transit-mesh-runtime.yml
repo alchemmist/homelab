@@ -89,7 +89,10 @@
           [Install]
           WantedBy=multi-user.target
       loop:
-        - {name: homelab-vpn-management-relay, config: management, memory: 100663296, go_memory: 48MiB}
+        - {name: homelab-vpn-management-relay,
+           config: management,
+           memory: 100663296,
+           go_memory: 48MiB}
         - {name: homelab-vpn-transit-native, config: user, memory: 201326592, go_memory: 96MiB}
     - name: Create agent boot fence drop-in
       ansible.builtin.file:
