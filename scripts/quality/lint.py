@@ -116,6 +116,24 @@ def validate_requirement_lock(path: Path) -> None:
         raise ValueError(_DEPENDENCY_REQUIREMENT_FAILURE)
 
 
+def validate_requirement_hashes(path: Path) -> None:
+    """Retain legacy source validation and require a hash for every pinned entry."""
+    validate_requirement_lock(path)
+    pending_hash = False
+    for line in path.read_text().splitlines():
+        candidate = line.strip().removesuffix("\\").strip()
+        if not candidate or candidate.startswith("#"):
+            continue
+        if _PINNED_REQUIREMENT.fullmatch(candidate):
+            if pending_hash:
+                raise ValueError(_DEPENDENCY_REQUIREMENT_FAILURE)
+            pending_hash = True
+        elif _REQUIREMENT_HASH.fullmatch(candidate):
+            pending_hash = False
+    if pending_hash:
+        raise ValueError(_DEPENDENCY_REQUIREMENT_FAILURE)
+
+
 def _distribution_fields(value: object) -> tuple[str, str, list[object]]:
     """Validate a collected distribution without trusting the auditor's JSON shape."""
     if not isinstance(value, dict):
@@ -657,7 +675,8 @@ def check_dependencies(names: Sequence[str]) -> tuple[list[Finding], int]:
     inventory = set(names)
     for name in sorted(inventory):
         path = Path(name)
-        requirement = path.name == "requirements.txt" or (
+        alternate_requirement = path.name.endswith("-requirements.txt")
+        requirement = alternate_requirement or path.name == "requirements.txt" or (
             path.name.startswith("requirements-") and path.suffix == ".txt"
         )
         npm_lock = path.name in {"package-lock.json", "npm-shrinkwrap.json"}
@@ -694,7 +713,21 @@ def check_dependencies(names: Sequence[str]) -> tuple[list[Finding], int]:
         if actual.is_symlink() or not actual.is_file():
             raise ValueError(_DEPENDENCY_PATH_FAILURE)
         if requirement:
-            validate_requirement_lock(actual)
+            try:
+                validate_requirement_hashes(actual)
+            except ValueError:
+                if not alternate_requirement:
+                    raise
+                findings.append(
+                    finding(
+                        "DEPENDENCY_LOCK_INVALID",
+                        name,
+                        1,
+                        "Owned Python requirement source is not a complete safe hashed lock.",
+                        name,
+                    )
+                )
+                continue
             rows, scanned = _audit_python_source(
                 [
                     "pip-audit",

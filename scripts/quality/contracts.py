@@ -75,6 +75,17 @@ def require_retained_push_tests(scheduled: set[str]) -> None:
     )
 
 
+def owned_test_files(names: list[str]) -> set[str]:
+    """Inventory experimental tests too, without authorizing their execution."""
+    return {
+        name
+        for name in names
+        if name.startswith(("tests/", "experiments/"))
+        and Path(name).name.startswith("test_")
+        and name.endswith(".py")
+    }
+
+
 def check():
     frozen_source_files()
     for policy in (ROOT / "quality").rglob("*.json"):
@@ -128,11 +139,7 @@ def check():
                 "Quality integrity contract failed",
             )
     inventory = json.loads((ROOT / "quality/test-suites.json").read_text())
-    actual = {
-        p
-        for p in tracked()
-        if p.startswith("tests/") and Path(p).name.startswith("test_") and p.endswith(".py")
-    }
+    actual = owned_test_files(tracked())
     scheduled = [p for paths in inventory["suites"].values() for p in paths]
     require(len(scheduled) == len(set(scheduled)), "Test assigned to multiple suites")
     require_retained_push_tests(set(scheduled))
