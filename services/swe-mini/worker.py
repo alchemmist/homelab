@@ -47,7 +47,7 @@ def agent_main():
     from minisweagent.models.litellm_textbased_model import LitellmTextbasedModel
     config = yaml.safe_load((Path(package_dir) / 'config/default.yaml').read_text())
     model_config = config['model']
-    model_config.update(model_name='openai/venice-deepseek', cost_tracking='ignore_errors')
+    model_config.update(model_name='openai/v-deepseek-uc', cost_tracking='ignore_errors')
     model_config.setdefault('model_kwargs', {}).update(
         api_base=os.environ['LLM_BASE'], api_key=os.environ['LLM_KEY'], timeout=900,
         num_retries=0, max_tokens=4096,

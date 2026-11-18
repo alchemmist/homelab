@@ -7,11 +7,11 @@ clusterIssuer: letsencrypt-http01
 secretName: pr-agent
 port: 3000
 openaiApiBase: http://litellm.llm.svc.cluster.local:4000/v1
-model: openai/venice-deepseek
+model: openai/v-deepseek-uc
 # Invalid YAML is retried only by walking fallback models. The chart repeats the
 # primary model so one review gets this many generations before the check fails.
 invalidOutputAttempts: 10
-# venice-deepseek is the LiteLLM alias of the 32768-context Venice bridge model.
+# v-deepseek-uc is the LiteLLM alias of the 32768-context Venice bridge model.
 customModelMaxTokens: "32768"
 # Per-call cap. A diff is split once it exceeds this. 24576 keeps the call inside the
 # 32768 window and avoids cutting one function across many independent reviews.

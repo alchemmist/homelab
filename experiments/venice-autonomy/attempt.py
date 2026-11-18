@@ -85,7 +85,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
     from minisweagent.models.litellm_model import LitellmModel
     from minisweagent.models.litellm_textbased_model import LitellmTextbasedModel
     model_class = LitellmTextbasedModel if engine == 'mini_text' else LitellmModel
-    model = model_class(model_name='openai/venice-deepseek', cost_tracking='ignore_errors',
+    model = model_class(model_name='openai/v-deepseek-uc', cost_tracking='ignore_errors',
                         model_kwargs={'api_base': base_url, 'timeout': 720, 'max_retries': 0,
                                       'parallel_tool_calls': False})
     query = model._query
@@ -182,7 +182,7 @@ def run_openhands(sandbox, directory, prompt, base_url, key, acceptance=None, ma
                         action_type=BashAction, observation_type=BashObservation, executor=BashExecutor())]
 
     register_tool(BashTool.name, BashTool)
-    llm = LLM(model='openai/venice-deepseek', base_url=base_url, api_key=SecretStr(key),
+    llm = LLM(model='openai/v-deepseek-uc', base_url=base_url, api_key=SecretStr(key),
               native_tool_calling=True, num_retries=0, timeout=720, stream=False,
               max_input_tokens=24000, max_output_tokens=6000, log_completions=False)
     agent = Agent(llm=llm, tools=[Tool(name=BashTool.name)])

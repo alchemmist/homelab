@@ -4,7 +4,7 @@ Status: experimental, not production or an unattended reliability certification.
 The lab compares mini-SWE-agent 2.4.6 native tool calls, its text-action variant,
 and OpenHands SDK 1.62.0 with a custom isolated bash tool. The latter is **not** a
 benchmark of the complete OpenHands UI or its default terminal environment.
-All use the existing `litellm` provider configuration and `venice-deepseek` alias.
+All use the existing `litellm` provider configuration and `v-deepseek-uc` alias.
 No paid provider or OpenHands Cloud backend is configured.
 
 ## Boundaries

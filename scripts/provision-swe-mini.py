@@ -51,7 +51,7 @@ def main():
                     break
             except OSError:
                 time.sleep(.25)
-        body = json.dumps({'key_alias': 'swe-mini-monori', 'models': ['venice-deepseek'], 'max_parallel_requests': 1,
+        body = json.dumps({'key_alias': 'swe-mini-monori', 'models': ['v-deepseek-uc'], 'max_parallel_requests': 1,
                            'metadata': {'purpose': 'owner-approved background Monori maintenance; no other models'}}).encode()
         req = urllib.request.Request(f'http://127.0.0.1:{port}/key/generate', data=body,
                                      headers={'Authorization': 'Bearer ' + master, 'Content-Type': 'application/json'})
