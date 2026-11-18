@@ -1,6 +1,8 @@
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "public_dns_zone.py"
 spec = importlib.util.spec_from_file_location("public_dns_zone", SCRIPT)
 zone = importlib.util.module_from_spec(spec)
@@ -44,6 +46,26 @@ def test_total_probe_failure_keeps_both_addresses():
     assert zone.healthy_addresses(False, False) == [zone.HOME, zone.VPS]
 
 
+def _reviewed_openhands_addition(lines: list[str], addresses: list[str]) -> list[str]:
+    """Validate the entire reviewed additive delta, retaining all unrelated lines."""
+    prefix = "openhands.socrat IN A "
+    assert [line for line in lines if line.startswith(prefix)] == [
+        prefix + address for address in addresses
+    ]
+    return [line for line in lines if not line.startswith(prefix)]
+
+
+@pytest.mark.parametrize(
+    "records",
+    [[], ["192.0.2.1"], ["192.0.2.1", "203.0.113.1"], ["192.0.2.1", "192.0.2.2", "192.0.2.2"]],
+)
+def test_reviewed_addition_refuses_missing_wrong_or_duplicate_records(records: list[str]) -> None:
+    """The new name cannot be excluded from history until its exact full delta passes."""
+    lines = ["openhands.socrat IN A " + address for address in records]
+    with pytest.raises(AssertionError):
+        _reviewed_openhands_addition(lines, ["192.0.2.1", "192.0.2.2"])
+
+
 def test_rustfs_names_additive_without_changes_to_existing_records():
     import subprocess
 
@@ -61,6 +83,8 @@ def test_rustfs_names_additive_without_changes_to_existing_records():
     prior["STATIC_A"]["vpn"] = ["91.189.82.238"]
     for home, vps in [(True, True), (False, True), (True, False), (False, False)]:
         new = zone.render(123, home, vps).splitlines()
+        # Require the exact reviewed new records before the unchanged historical comparison.
+        new = _reviewed_openhands_addition(new, zone.healthy_addresses(home, vps))
         # Independently approved concurrent SPI DNS addition is also historical-fixture scope.
         names = (
             "rustfs.socrat IN A ",

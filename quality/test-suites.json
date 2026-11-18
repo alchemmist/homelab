@@ -2,6 +2,7 @@
   "version": 1,
   "suites": {
     "fast": [
+      "tests/openhands/test_dns.py",
       "tests/openhands/test_ready.py",
       "tests/swe_mini/test_policy.py",
       "tests/swe_mini/test_queue.py",
@@ -27,6 +28,7 @@
       "tests/test_llm_keys_window.py",
       "tests/test_llm_public_dashboard.py",
       "tests/test_logging_coverage.py",
+      "tests/test_lms_certify_idle_source.py",
       "tests/test_openhands_source_boundary.py",
       "tests/test_loki_native_scrape.py",
       "tests/test_metrics_disk.py",

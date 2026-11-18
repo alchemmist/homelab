@@ -1,0 +1,169 @@
+{
+  "name": "LMS certify idle step",
+  "nodes": [
+    {
+      "id": "8a1c0e2a-6b4d-4e1a-9c31-0a5f2d7b6c11",
+      "name": "Every minute",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "b7e2a941-1c55-4a0e-8d66-2f4c9a0b7e22",
+      "name": "Qwen queue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        280,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090/api/v1/query?query=%7B__name__%3D~%22vllm%3Anum_requests_%28running%7Cwaiting%29%22%2Cmodel_name%3D%22qwen3.8-27b%22%7D",
+        "options": {
+          "timeout": 8000
+        }
+      }
+    },
+    {
+      "id": "c3d4e5f6-7788-49aa-b012-3456789abc33",
+      "name": "Model free?",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        0
+      ],
+      "parameters": {
+        "jsCode": "if ($json.status !== 'success' || $json.data?.resultType !== 'vector' ||\n    !Array.isArray($json.data.result) || $json.data.result.length === 0) {\n  throw new Error('missing complete queue telemetry');\n}\nconst pairs = new Map();\nlet busy = 0;\nfor (const row of $json.data.result) {\n  const metric = row.metric;\n  const name = metric?.__name__;\n  if (!metric || metric.model_name !== 'qwen3.8-27b' ||\n      !['vllm:num_requests_running', 'vllm:num_requests_waiting'].includes(name) ||\n      !Array.isArray(row.value) || row.value.length !== 2 ||\n      typeof row.value[0] !== 'number' || !Number.isFinite(row.value[0]) || row.value[0] <= 0 ||\n      typeof row.value[1] !== 'string' || row.value[1].trim() === '') {\n    throw new Error('invalid queue telemetry shape');\n  }\n  if (!/^[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?$/.test(row.value[1])) {\n    throw new Error('invalid queue number representation');\n  }\n  const value = Number(row.value[1]);\n  if (!Number.isFinite(value) || value < 0) throw new Error('invalid queue count');\n  const labels = Object.entries(metric).filter(([key]) => key !== '__name__');\n  if (labels.some(([, value]) => typeof value !== 'string')) throw new Error('invalid queue labels');\n  labels.sort(([a], [b]) => a.localeCompare(b));\n  const key = JSON.stringify(labels);\n  const pair = pairs.get(key) || new Set();\n  if (pair.has(name)) throw new Error('duplicate queue series');\n  pair.add(name);\n  pairs.set(key, pair);\n  busy += value;\n}\nif (!Number.isFinite(busy) || [...pairs.values()].some(pair => pair.size !== 2)) {\n  throw new Error('incomplete queue telemetry');\n}\nreturn [{json: {action: busy === 0 ? 'step' : 'skip', busy}}];"
+      }
+    },
+    {
+      "id": "d4e5f607-8899-4abb-c123-456789abcd44",
+      "name": "Free",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        840,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "free",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "step",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "e5f60718-99aa-4bcc-d234-56789abcde55",
+      "name": "One certify step",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        -80
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://lms-certify.automation.svc.cluster.local:8080/step",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}",
+        "options": {
+          "timeout": 100000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "lms-certify worker"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every minute": {
+      "main": [
+        [
+          {
+            "node": "Qwen queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qwen queue": {
+      "main": [
+        [
+          {
+            "node": "Model free?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Model free?": {
+      "main": [
+        [
+          {
+            "node": "Free",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Free": {
+      "main": [
+        [
+          {
+            "node": "One certify step",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "errorWorkflow": "iZn7biFh6321a1w8",
+    "executionOrder": "v1",
+    "timezone": "Europe/Moscow",
+    "executionTimeout": 120,
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all"
+  }
+}

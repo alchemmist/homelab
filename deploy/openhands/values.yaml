@@ -39,15 +39,6 @@ config:
   extraEnv:
     - name: AGENT_CANVAS_ALLOW_LAN_SESSION_KEY
       value: 'false'
-    - name: LLM_MODEL
-      value: openai/venice-deepseek
-    - name: LLM_BASE_URL
-      value: http://litellm.llm.svc.cluster.local:4000/v1
-    - name: LLM_API_KEY
-      valueFrom:
-        secretKeyRef:
-          name: openhands-model
-          key: api-key
     - name: AUTOMATION_BASE_URL
       value: https://openhands.socrat.alchemmist.xyz
 statefulSet:
