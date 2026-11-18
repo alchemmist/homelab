@@ -26,6 +26,7 @@
       "tests/test_llm_keys_window.py",
       "tests/test_llm_public_dashboard.py",
       "tests/test_logging_coverage.py",
+      "tests/test_openhands_source_boundary.py",
       "tests/test_loki_native_scrape.py",
       "tests/test_metrics_disk.py",
       "tests/test_moscow_return_worker.py",
