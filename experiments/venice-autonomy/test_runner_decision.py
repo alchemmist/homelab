@@ -166,3 +166,17 @@ class AcceptanceFeedbackTests(unittest.TestCase):
             receipt = facts['verification']['tests'][0]['stderr_tail']
             self.assertIn('Model returned no assistant content', receipt)
             self.assertLessEqual(len(receipt), 1600)
+
+
+class ResumePromptTests(unittest.TestCase):
+    def test_resume_identifies_original_snapshot_as_the_contract(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            agent = root / 'agent'
+            agent.mkdir()
+            (agent / 'main.py').write_text('class BrowserSession:\n    async def _answer(self) -> str:\n        return "ok"\n    async def _generate_on_page(self):\n        return "ok"\n')
+            with mock.patch.dict(os.environ, {'AUTONOMY_SOURCE_CANDIDATE': 'previous-candidate', 'AUTONOMY_SNAPSHOT': str(root)}):
+                prompt = repository_runner.task_prompt()
+            self.assertIn('not the original snapshot', prompt)
+            self.assertIn('async def _answer(self) -> str:', prompt)
+            self.assertIn('Restore these exact headers', prompt)

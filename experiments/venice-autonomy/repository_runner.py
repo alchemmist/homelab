@@ -262,6 +262,17 @@ def task_prompt():
         'assistant text is valid text. Preserve source failures as failures. Use inline python checks. '
         'When the SDK turn is complete, finish through the normal completion mechanism.'
     )
+    if os.getenv('AUTONOMY_SOURCE_CANDIDATE'):
+        from protocol_regression import method_spans
+        baseline = (pathlib.Path(os.environ['AUTONOMY_SNAPSHOT']) / 'agent' / 'main.py').read_text()
+        lines = baseline.splitlines()
+        headers = [lines[start - 1].strip() for start, _ in method_spans(baseline).values()]
+        prompt += ('\nThis workspace resumes a previous attempt candidate, not the original snapshot. '
+                   'The current file and any workspace backup are NOT the immutable baseline. '
+                   'The body-only restriction is relative to that original snapshot. '
+                   'Preexisting signature changes in this candidate are violations, not permission to keep them. '
+                   'Restore these exact headers even if doing so changes the input candidate annotation: '
+                   + json.dumps(headers) + '\n')
     visible = os.getenv('AUTONOMY_VISIBLE_REPRO')
     if visible:
         prompt += '\nA read-only reproduction is at /opt/repro.py. Run it before and after the edit. Do not modify it.\n'
@@ -305,7 +316,14 @@ def main(argv=None):
         'accepted': False,
         'clean_finish': False,
         'image': image,
+        'resumed_candidate': bool(os.getenv('AUTONOMY_SOURCE_CANDIDATE')),
     }
+    if summary['resumed_candidate']:
+        source = pathlib.Path(os.environ['AUTONOMY_SOURCE_CANDIDATE'])
+        summary['input_candidate_hashes'] = {
+            name: hashlib.sha256((source / name).read_bytes()).hexdigest()
+            for name in protocol.WHITELIST
+        }
     environment = None
 
     def deadline(*_):
