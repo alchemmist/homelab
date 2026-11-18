@@ -1,21 +1,26 @@
 """Exercise real queue state transitions with API/model boundaries mocked."""
 import base64
 import importlib.util
+from importlib.machinery import ModuleSpec
 import io
 import json
 import os
 from pathlib import Path
 import sqlite3
 import sys
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 import unittest
 from unittest.mock import MagicMock, patch
 
 ROOT = Path(__file__).resolve().parents[2] / 'services/swe-mini'
 
 
-def module(name):
+def module(name: str) -> ModuleType:
+    """Load local source; module identity does not certify dynamic member signatures."""
     spec = importlib.util.spec_from_file_location(name, ROOT / (name + '.py'))
+    if spec is None or spec.loader is None:
+        message = "Queue fixture source has no usable module spec or loader"
+        raise ImportError(message)
     value = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(value)
     return value
@@ -208,6 +213,43 @@ class QueueTransitions(unittest.TestCase):
         with patch.object(c, 'start_job') as start:
             c.tick()
             self.assertEqual(start.call_args.args[1], 'work')
+
+
+class LoaderContract(unittest.TestCase):
+    """Refuse incomplete loaders before source creation or execution."""
+
+    def test_absent_spec_is_refused_before_module_creation(self) -> None:
+        """Do not delegate a missing spec to importlib or execute fallback source."""
+        with (
+            patch.object(importlib.util, "spec_from_file_location", return_value=None),
+            patch.object(importlib.util, "module_from_spec") as create,
+        ):
+            try:
+                module("fixture")
+            except ImportError as error:
+                error_message = str(error)
+            else:
+                message = "Incomplete loader must be refused"
+                raise AssertionError(message)
+        create.assert_not_called()
+        assert "no usable module spec or loader" in error_message
+
+    def test_absent_loader_is_refused_before_module_creation(self) -> None:
+        """A spec object alone is not proof that source can be safely loaded."""
+        spec = ModuleSpec("fixture", loader=None)
+        with (
+            patch.object(importlib.util, "spec_from_file_location", return_value=spec),
+            patch.object(importlib.util, "module_from_spec") as create,
+        ):
+            try:
+                module("fixture")
+            except ImportError as error:
+                error_message = str(error)
+            else:
+                message = "Incomplete loader must be refused"
+                raise AssertionError(message)
+        create.assert_not_called()
+        assert "no usable module spec or loader" in error_message
 
 
 class HealthContract(unittest.TestCase):
