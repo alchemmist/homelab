@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -74,6 +75,10 @@ def run_python(source, stdin):
         return result.returncode, result.stdout.decode("utf-8", "replace")[:4000]
 
 
+class ModelBusy(Exception):
+    pass
+
+
 def llm(role, prompt):
     body = {
         "model": MODEL,
@@ -89,7 +94,13 @@ def llm(role, prompt):
         data=json.dumps(body).encode(),
         headers={"Authorization": "Bearer " + os.environ["LITELLM_KEY"], "Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(request, timeout=120) as response:
+    try:
+        response = urllib.request.urlopen(request, timeout=120)
+    except urllib.error.HTTPError as exc:
+        if exc.code in {408, 409, 429, 500, 502, 503, 504}:
+            raise ModelBusy(str(exc.code))
+        raise
+    with response:
         payload = json.load(response)
     text = payload["choices"][0]["message"].get("content") or ""
     start, end = text.find("{"), text.rfind("}")
@@ -144,6 +155,8 @@ def run_loop(task_id, statement):
             killed=(record.get("mutation") or {}).get("killed"),
             mutants=(record.get("mutation") or {}).get("total"),
         )
+    except ModelBusy as exc:
+        log("paused", task=task_id, status=str(exc))
     except Exception as exc:
         log("error", task=task_id, kind=type(exc).__name__)
     finally:
