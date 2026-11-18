@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import json
 from pathlib import Path
 
 import pytest
@@ -152,6 +153,18 @@ def test_owner_overrides_render_without_cluster_or_public_ingress_authority(
     )
     policy = _mapping(_one(rendered, "NetworkPolicy")["spec"])
     assert policy["policyTypes"] == ["Ingress", "Egress"]
+
+
+def test_openhands_mcp_inventory_is_explicitly_no_client() -> None:
+    """Do not confuse source admission with a new diagnostics/agent authorization."""
+    audit = _mapping(json.loads((ROOT / "deploy/mcp/service-audit.json").read_text()))
+    rows = [_mapping(value) for value in _list(audit["applications"])]
+    matches = [row for row in rows if row.get("application") == "openhands"]
+    assert len(matches) == 1
+    assert matches[0]["decision"] == "no-client"
+    assert "connector" not in matches[0]
+    config = _mapping(json.loads((ROOT / ".pi/mcp.json").read_text()))
+    assert "openhands" not in _mapping(config["mcpServers"])
 
 
 @pytest.mark.parametrize(
