@@ -125,13 +125,17 @@ def mask_allowed_methods(source: str) -> str:
 
 def allowed_edit_report(baseline: str, candidate: str) -> dict:
     try:
+
         def signatures(source):
             tree = ast.parse(source)
             return {
                 child.name: (
                     ast.dump(child.args, include_attributes=False),
                     ast.dump(child.returns, include_attributes=False) if child.returns else None,
-                    tuple(ast.dump(item, include_attributes=False) for item in getattr(child, "type_params", [])),
+                    tuple(
+                        ast.dump(item, include_attributes=False)
+                        for item in getattr(child, "type_params", [])
+                    ),
                     child.type_comment,
                 )
                 for node in tree.body
@@ -147,15 +151,22 @@ def allowed_edit_report(baseline: str, candidate: str) -> dict:
         )
         if not unchanged_signatures:
             expected = [
-                "async def " + child.name + "(" + ast.unparse(child.args) + ")"
+                "async def "
+                + child.name
+                + "("
+                + ast.unparse(child.args)
+                + ")"
                 + (" -> " + ast.unparse(child.returns) if child.returns else "")
                 for node in ast.parse(baseline).body
                 if isinstance(node, ast.ClassDef) and node.name == "BrowserSession"
                 for child in node.body
                 if isinstance(child, ast.AsyncFunctionDef) and child.name in ALLOWED_METHODS
             ]
-            return {"allowed": False, "detail": "candidate changes a method signature; edit only method bodies",
-                    "expected_signatures": expected}
+            return {
+                "allowed": False,
+                "detail": "candidate changes a method signature; edit only method bodies",
+                "expected_signatures": expected,
+            }
         detail = (
             "outside the two allowed methods matches the historical baseline"
             if same_outside
@@ -226,7 +237,9 @@ def verify_snapshot(snapshot: Path) -> dict:
     agent = snapshot / "agent"
     if (agent / GRADER_NAME).exists() or (agent / "tests").exists():
         problems.append("grader is inside the agent snapshot")
-    if any(path.name == ".git" or ".git" in path.parts for path in snapshot.rglob("*") if path.exists()):
+    if any(
+        path.name == ".git" or ".git" in path.parts for path in snapshot.rglob("*") if path.exists()
+    ):
         problems.append("snapshot contains .git")
     expected = {item["path"]: item for item in manifest["files"]}
     present = []
@@ -258,8 +271,14 @@ def clean_env(agent: Path, home: Path, rejection: Path) -> dict[str, str]:
 
 
 def bounded_test_process(args, cwd=None, env=None, timeout=120, limit=131072):
-    process = subprocess.Popen(args, cwd=cwd, env=env, stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE, start_new_session=True)
+    process = subprocess.Popen(
+        args,
+        cwd=cwd,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        start_new_session=True,
+    )
     selector = selectors.DefaultSelector()
     output = {"stdout": bytearray(), "stderr": bytearray()}
     deadline = time.monotonic() + timeout
@@ -279,9 +298,12 @@ def bounded_test_process(args, cwd=None, env=None, timeout=120, limit=131072):
                 if len(output[key.data]) > limit:
                     raise ValueError("test process output limit exceeded")
         code = process.wait(timeout=max(0.01, deadline - time.monotonic()))
-        return subprocess.CompletedProcess(args, code,
+        return subprocess.CompletedProcess(
+            args,
+            code,
             output["stdout"].decode("utf-8", errors="replace"),
-            output["stderr"].decode("utf-8", errors="replace"))
+            output["stderr"].decode("utf-8", errors="replace"),
+        )
     finally:
         selector.close()
         try:
@@ -294,9 +316,11 @@ def bounded_test_process(args, cwd=None, env=None, timeout=120, limit=131072):
 
 
 def test_completed(exit_code, stderr):
-    return (exit_code == 0
-            and re.search(r"(?m)^Ran 1 test in [0-9.]+s$", stderr) is not None
-            and stderr.strip().endswith("\nOK"))
+    return (
+        exit_code == 0
+        and re.search(r"(?m)^Ran 1 test in [0-9.]+s$", stderr) is not None
+        and stderr.strip().endswith("\nOK")
+    )
 
 
 def run_selected_tests(python: Path, agent: Path, grader: Path) -> dict:
@@ -316,12 +340,14 @@ def run_selected_tests(python: Path, agent: Path, grader: Path) -> dict:
                 timeout=120,
             )
             tail = "\n".join((completed.stderr or "").strip().splitlines()[-40:])
-            results.append({
-                "test": test,
-                "exit_code": completed.returncode,
-                "stderr_tail": tail,
-                "completed": test_completed(completed.returncode, completed.stderr),
-            })
+            results.append(
+                {
+                    "test": test,
+                    "exit_code": completed.returncode,
+                    "stderr_tail": tail,
+                    "completed": test_completed(completed.returncode, completed.stderr),
+                }
+            )
     return {
         "passed": all(item["exit_code"] == 0 and item["completed"] for item in results),
         "tests": results,
@@ -340,7 +366,9 @@ def grade_candidate(python: Path, snapshot: Path, candidate: Path) -> dict:
     verify_snapshot(snapshot)
     baseline = (snapshot / "agent" / "main.py").read_text(encoding="utf-8")
     candidate_main = (candidate / "main.py").read_text(encoding="utf-8")
-    protocol_same = (candidate / "agent_protocol.py").read_bytes() == (snapshot / "agent" / "agent_protocol.py").read_bytes()
+    protocol_same = (candidate / "agent_protocol.py").read_bytes() == (
+        snapshot / "agent" / "agent_protocol.py"
+    ).read_bytes()
     edit = allowed_edit_report(baseline, candidate_main)
     report = {
         "allowed_edits": edit,
@@ -364,13 +392,27 @@ def grade_candidate(python: Path, snapshot: Path, candidate: Path) -> dict:
 
 def docker_env() -> dict[str, str]:
     kept = {}
-    for key in ("PATH", "HOME", "DOCKER_HOST", "DOCKER_CONTEXT", "XDG_RUNTIME_DIR", "TMPDIR", "USER"):
+    for key in (
+        "PATH",
+        "HOME",
+        "DOCKER_HOST",
+        "DOCKER_CONTEXT",
+        "XDG_RUNTIME_DIR",
+        "TMPDIR",
+        "USER",
+    ):
         if key in os.environ:
             kept[key] = os.environ[key]
     return kept
 
 
-def docker_run(docker: str, args: list[str], check: bool = True, text: bool = True, input_bytes: bytes | None = None) -> subprocess.CompletedProcess:
+def docker_run(
+    docker: str,
+    args: list[str],
+    check: bool = True,
+    text: bool = True,
+    input_bytes: bytes | None = None,
+) -> subprocess.CompletedProcess:
     return subprocess.run(
         [docker, *args],
         check=check,
@@ -406,7 +448,9 @@ def verify_pinned_base(docker: str, dockerfile: Path) -> dict:
         if digest == pinned:
             matches.append(item.get("platform"))
     if not matches:
-        raise RuntimeError(f"pinned digest {pinned} is absent from registry manifest for {BASE_IMAGE}")
+        raise RuntimeError(
+            f"pinned digest {pinned} is absent from registry manifest for {BASE_IMAGE}"
+        )
     return {
         "base_image": BASE_IMAGE,
         "pinned_digest": pinned,
@@ -442,16 +486,25 @@ def copy_into(docker: str, container: str, dest: str, files: list[tuple[str, byt
 
 def container_limits() -> list[str]:
     return [
-        "--network", "none",
+        "--network",
+        "none",
         "--read-only",
-        "--cap-drop", "ALL",
-        "--security-opt", "no-new-privileges",
-        "--cpus", "1",
-        "--memory", "512m",
-        "--pids-limit", "128",
-        "--tmpfs", "/tmp:rw,nosuid,nodev,size=128m",
-        "--user", "nobody",
-        "--label", PILOT_LABEL,
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "512m",
+        "--pids-limit",
+        "128",
+        "--tmpfs",
+        "/tmp:rw,nosuid,nodev,size=128m",
+        "--user",
+        "nobody",
+        "--label",
+        PILOT_LABEL,
     ]
 
 
@@ -466,20 +519,34 @@ def remove_own_container(docker: str, name: str) -> None:
     )
 
 
-def run_container(docker: str, image: str, command: list[str], copies: list[tuple[str, list[tuple[str, bytes]]]], workdir: str) -> dict:
+def run_container(
+    docker: str,
+    image: str,
+    command: list[str],
+    copies: list[tuple[str, list[tuple[str, bytes]]]],
+    workdir: str,
+) -> dict:
     name = f"protocol-regression-{uuid.uuid4().hex[:12]}"
     create = docker_run(
         docker,
         [
             "create",
-            "--name", name,
-            "--workdir", workdir,
-            "--env", "PYTHONDONTWRITEBYTECODE=1",
-            "--env", "PYTHONNOUSERSITE=1",
-            "--env", "PYTHONPATH=/opt/agent",
-            "--env", "HOME=/tmp",
-            "--env", "LC_ALL=C",
-            "--env", "LANG=C",
+            "--name",
+            name,
+            "--workdir",
+            workdir,
+            "--env",
+            "PYTHONDONTWRITEBYTECODE=1",
+            "--env",
+            "PYTHONNOUSERSITE=1",
+            "--env",
+            "PYTHONPATH=/opt/agent",
+            "--env",
+            "HOME=/tmp",
+            "--env",
+            "LC_ALL=C",
+            "--env",
+            "LANG=C",
             *container_limits(),
             image,
             *command,
@@ -497,13 +564,19 @@ def run_container(docker: str, image: str, command: list[str], copies: list[tupl
             env=docker_env(),
             timeout=180,
         )
-        inspect = docker_run(docker, ["inspect", "--format", "{{.State.ExitCode}}", name], check=False)
+        inspect = docker_run(
+            docker, ["inspect", "--format", "{{.State.ExitCode}}", name], check=False
+        )
         exit_code = started.returncode
         if started.returncode == 0 and inspect.returncode == 0 and inspect.stdout.strip().isdigit():
             exit_code = int(inspect.stdout.strip())
         tail = "\n".join((started.stderr or started.stdout or "").strip().splitlines()[-40:])
-        return {"exit_code": exit_code, "stderr_tail": tail, "container": name,
-                "completed": test_completed(exit_code, started.stderr)}
+        return {
+            "exit_code": exit_code,
+            "stderr_tail": tail,
+            "container": name,
+            "completed": test_completed(exit_code, started.stderr),
+        }
     finally:
         remove_own_container(docker, name)
 
@@ -537,16 +610,27 @@ def run_selected_tests_container(docker: str, image: str, candidate: Path, snaps
             copies,
             "/opt/grader",
         )
-        results.append({"test": test, "exit_code": result["exit_code"], "stderr_tail": result["stderr_tail"],
-                        "completed": result["completed"]})
-    return {"passed": all(item["exit_code"] == 0 and item["completed"] for item in results), "tests": results}
+        results.append(
+            {
+                "test": test,
+                "exit_code": result["exit_code"],
+                "stderr_tail": result["stderr_tail"],
+                "completed": result["completed"],
+            }
+        )
+    return {
+        "passed": all(item["exit_code"] == 0 and item["completed"] for item in results),
+        "tests": results,
+    }
 
 
 def grade_candidate_container(docker: str, image: str, snapshot: Path, candidate: Path) -> dict:
     verify_snapshot(snapshot)
     baseline = (snapshot / "agent" / "main.py").read_text(encoding="utf-8")
     candidate_main = (candidate / "main.py").read_text(encoding="utf-8")
-    protocol_same = (candidate / "agent_protocol.py").read_bytes() == (snapshot / "agent" / "agent_protocol.py").read_bytes()
+    protocol_same = (candidate / "agent_protocol.py").read_bytes() == (
+        snapshot / "agent" / "agent_protocol.py"
+    ).read_bytes()
     edit = allowed_edit_report(baseline, candidate_main)
     report = {
         "allowed_edits": edit,
@@ -667,7 +751,11 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(f"{args.command} requires --snapshot")
     if args.command == "verify":
         manifest = verify_snapshot(args.snapshot)
-        print(json.dumps({"files": len(manifest["files"]), "label": manifest["label"]}, sort_keys=True))
+        print(
+            json.dumps(
+                {"files": len(manifest["files"]), "label": manifest["label"]}, sort_keys=True
+            )
+        )
         return 0
     if args.command == "grade":
         if args.candidate is None:
@@ -675,7 +763,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.container:
             if not args.image:
                 parser.error("container grade requires --image")
-            report = grade_candidate_container(args.docker, args.image, args.snapshot, args.candidate)
+            report = grade_candidate_container(
+                args.docker, args.image, args.snapshot, args.candidate
+            )
         else:
             report = grade_candidate(python, args.snapshot, args.candidate)
         print(json.dumps(report, indent=2, sort_keys=True))

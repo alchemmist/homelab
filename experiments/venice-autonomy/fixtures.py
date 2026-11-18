@@ -6,72 +6,88 @@ import secrets
 import shlex
 
 FIXTURES = {
-    'median': {
-        'source': 'exports.solve = values => { const a=values.sort(); return a[Math.floor(a.length/2)]; };\n',
-        'contract': 'Return the numeric median of an array: numerically sort a copy, use the middle value for odd lengths, average both middle values for even lengths, throw RangeError for empty input. Never mutate caller input.',
-        'visible': [([1, 2, 3],)],
+    "median": {
+        "source": "exports.solve = values => { const a=values.sort(); return a[Math.floor(a.length/2)]; };\n",
+        "contract": "Return the numeric median of an array: numerically sort a copy, use the middle value for odd lengths, average both middle values for even lengths, throw RangeError for empty input. Never mutate caller input.",
+        "visible": [([1, 2, 3],)],
     },
-    'clamp': {
-        'source': 'exports.solve = (value, low, high) => Math.max(low || value, Math.min(high || value, value));\n',
-        'contract': 'Clamp a finite number value into inclusive finite numeric bounds low and high. Zero bounds are valid. Throw RangeError when low exceeds high. Never mutate caller input.',
-        'visible': [(5, 1, 10)],
+    "clamp": {
+        "source": "exports.solve = (value, low, high) => Math.max(low || value, Math.min(high || value, value));\n",
+        "contract": "Clamp a finite number value into inclusive finite numeric bounds low and high. Zero bounds are valid. Throw RangeError when low exceeds high. Never mutate caller input.",
+        "visible": [(5, 1, 10)],
     },
-    'escape_html': {
-        'source': '''exports.solve = text => text.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/&/g, '&amp;');\n''',
-        'contract': 'Escape raw text for HTML: replace & with &amp;, < with &lt;, > with &gt;, double quote with &quot;, and single quote with &#39;. Escape exactly once per input character, including ampersands already part of text such as &lt;. Preserve all other characters and do not mutate input.',
-        'visible': [('hello',)],
+    "escape_html": {
+        "source": """exports.solve = text => text.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/&/g, '&amp;');\n""",
+        "contract": "Escape raw text for HTML: replace & with &amp;, < with &lt;, > with &gt;, double quote with &quot;, and single quote with &#39;. Escape exactly once per input character, including ampersands already part of text such as &lt;. Preserve all other characters and do not mutate input.",
+        "visible": [("hello",)],
     },
 }
 
 
 def expected(task, args):
-    if task == 'median':
+    if task == "median":
         values = sorted(args[0])
         if not values:
-            return {'error': 'RangeError'}
+            return {"error": "RangeError"}
         n = len(values)
-        value = values[n//2] if n % 2 else (values[n//2-1] + values[n//2])/2
-    elif task == 'clamp':
+        value = values[n // 2] if n % 2 else (values[n // 2 - 1] + values[n // 2]) / 2
+    elif task == "clamp":
         value, low, high = args
         if low > high:
-            return {'error': 'RangeError'}
+            return {"error": "RangeError"}
         value = max(low, min(high, value))
     else:
-        value = html.escape(args[0], quote=True).replace('&#x27;', '&#39;')
-    return {'value': value}
+        value = html.escape(args[0], quote=True).replace("&#x27;", "&#39;")
+    return {"value": value}
 
 
 def fixture_files(task):
     definition = FIXTURES[task]
     tests = "const a=require('node:assert/strict');const {solve}=require('./lib.cjs');\n"
-    for args in definition['visible']:
-        tests += 'a.deepEqual(solve(...' + json.dumps(args) + '),' + json.dumps(expected(task, args)['value']) + ');\n'
+    for args in definition["visible"]:
+        tests += (
+            "a.deepEqual(solve(..."
+            + json.dumps(args)
+            + "),"
+            + json.dumps(expected(task, args)["value"])
+            + ");\n"
+        )
     tests += "console.log('visible tests passed');\n"
-    return {'lib.cjs': definition['source'], 'test.cjs': tests}
+    return {"lib.cjs": definition["source"], "test.cjs": tests}
 
 
 def task_prompt(task):
-    return ('Find and fix bugs in lib.cjs, exported function solve. Contract: ' + FIXTURES[task]['contract'] +
-            ' Work at /workspace. Edit only lib.cjs; never change test.cjs or leave extra files. '
-            'Do not add comments. Node and bash are installed. No installations, network, git, credentials, host access or user input. '
-            'Inspect actual files, execute a failing reproduction, implement a minimal fix, run actual tests. '
-            'Do not invent files or test results. Use inline node -e for extra tests. '
-            'When complete use your agent completion mechanism; for mini-SWE-agent execute '
-            'echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT as a standalone command.')
+    return (
+        "Find and fix bugs in lib.cjs, exported function solve. Contract: "
+        + FIXTURES[task]["contract"]
+        + " Work at /workspace. Edit only lib.cjs; never change test.cjs or leave extra files. "
+        "Do not add comments. Node and bash are installed. No installations, network, git, credentials, host access or user input. "
+        "Inspect actual files, execute a failing reproduction, implement a minimal fix, run actual tests. "
+        "Do not invent files or test results. Use inline node -e for extra tests. "
+        "When complete use your agent completion mechanism; for mini-SWE-agent execute "
+        "echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT as a standalone command."
+    )
 
 
 def cases_for(task, seed):
     rng = random.Random(seed)
-    if task == 'median':
+    if task == "median":
         cases = [[[]], [[1]], [[10, 2, 1]], [[1, 2]], [[-1, -4, -2, -3]]]
-        cases += [[[rng.randint(-1000, 1000) for _ in range(rng.randint(1, 16))]] for _ in range(60)]
-    elif task == 'clamp':
+        cases += [
+            [[rng.randint(-1000, 1000) for _ in range(rng.randint(1, 16))]] for _ in range(60)
+        ]
+    elif task == "clamp":
         cases = [[-1, 0, 3], [5, -3, 0], [1, 2, -2], [0, 0, 0]]
-        cases += [[rng.randint(-100, 100), rng.randint(-100, 100), rng.randint(-100, 100)] for _ in range(60)]
+        cases += [
+            [rng.randint(-100, 100), rng.randint(-100, 100), rng.randint(-100, 100)]
+            for _ in range(60)
+        ]
     else:
-        cases = [[''], ['<a title="x">&\'</a>'], ['&lt;'], ['plain text'], ['<&>']]
-        alphabet = 'abc xyz<&>\'"é\n'
-        cases += [[''.join(rng.choice(alphabet) for _ in range(rng.randint(1, 60)))] for _ in range(60)]
+        cases = [[""], ['<a title="x">&\'</a>'], ["&lt;"], ["plain text"], ["<&>"]]
+        alphabet = "abc xyz<&>'\"é\n"
+        cases += [
+            ["".join(rng.choice(alphabet) for _ in range(rng.randint(1, 60)))] for _ in range(60)
+        ]
     return copy.deepcopy(cases)
 
 
@@ -166,7 +182,7 @@ process.stdout.write(JSON.stringify({results}));
 def verifier_command(task, seed):
     cases = cases_for(task, seed)
     nonce = secrets.token_hex(16)
-    return 'node -e ' + shlex.quote(VERIFIER_SCRIPT), nonce, cases
+    return "node -e " + shlex.quote(VERIFIER_SCRIPT), nonce, cases
 
 
 def seal_execution(nonce, result):
@@ -174,33 +190,47 @@ def seal_execution(nonce, result):
         return result
     sealed = dict(result)
     try:
-        data = json.loads(result.get('output'))
+        data = json.loads(result.get("output"))
     except (ValueError, TypeError):
         return sealed
-    if (not isinstance(data, dict) or 'nonce' in data or not isinstance(data.get('results'), list)):
-        sealed['output'] = ''
+    if not isinstance(data, dict) or "nonce" in data or not isinstance(data.get("results"), list):
+        sealed["output"] = ""
         return sealed
-    sealed['output'] = json.dumps({'nonce': nonce, 'results': data['results']})
+    sealed["output"] = json.dumps({"nonce": nonce, "results": data["results"]})
     return sealed
 
 
 def check_verdict(task, nonce, cases, result):
     if not isinstance(result, dict):
-        return {'accepted': False, 'reason': 'missing or invalid verifier output'}
-    code = result.get('returncode')
+        return {"accepted": False, "reason": "missing or invalid verifier output"}
+    code = result.get("returncode")
     if type(code) is not int or code != 0:
-        return {'accepted': False, 'reason': 'verifier process failed', 'exit_code': code}
+        return {"accepted": False, "reason": "verifier process failed", "exit_code": code}
     try:
-        data = json.loads(result.get('output'))
+        data = json.loads(result.get("output"))
     except (ValueError, TypeError):
-        return {'accepted': False, 'reason': 'missing or invalid verifier output'}
-    if (not isinstance(data, dict) or data.get('nonce') != nonce or
-            not isinstance(data.get('results'), list) or len(data['results']) != len(cases)):
-        return {'accepted': False, 'reason': 'incomplete verifier output'}
-    for index, (args, actual) in enumerate(zip(cases, data['results'])):
-        want = expected(task, args) | {'mutated': False}
-        if (not isinstance(actual, dict) or actual.get('mutated') is not False or
-                isinstance(actual.get('value'), bool) or actual != want):
-            return {'accepted': False, 'reason': 'contract mismatch', 'case': index,
-                    'arguments': args, 'expected': want, 'actual': actual}
-    return {'accepted': True, 'cases': len(cases)}
+        return {"accepted": False, "reason": "missing or invalid verifier output"}
+    if (
+        not isinstance(data, dict)
+        or data.get("nonce") != nonce
+        or not isinstance(data.get("results"), list)
+        or len(data["results"]) != len(cases)
+    ):
+        return {"accepted": False, "reason": "incomplete verifier output"}
+    for index, (args, actual) in enumerate(zip(cases, data["results"])):
+        want = expected(task, args) | {"mutated": False}
+        if (
+            not isinstance(actual, dict)
+            or actual.get("mutated") is not False
+            or isinstance(actual.get("value"), bool)
+            or actual != want
+        ):
+            return {
+                "accepted": False,
+                "reason": "contract mismatch",
+                "case": index,
+                "arguments": args,
+                "expected": want,
+                "actual": actual,
+            }
+    return {"accepted": True, "cases": len(cases)}
