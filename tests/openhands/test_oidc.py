@@ -108,6 +108,26 @@ class OIDCRender(unittest.TestCase):
         canvas = next(v for v in self.objects() if v['kind']=='StatefulSet')
         self.assertNotIn('openhands-oidc',str(canvas['spec']['template']['spec'].get('volumes',[])))
 
+    def test_refresh_uses_server_side_sessions_without_weakening_expiry(self):
+        d=next(v for v in self.objects() if v['kind']=='Deployment' and v['metadata']['name']=='openhands-oidc')
+        c=d['spec']['template']['spec']['containers'][0]
+        for flag in ['--session-store-type=redis','--cookie-expire=8h','--cookie-refresh=2m']:
+            self.assertIn(flag,c['args'])
+        env=next(x for x in c['env'] if x['name']=='OAUTH2_PROXY_REDIS_PASSWORD')
+        self.assertEqual(env['valueFrom']['secretKeyRef'],{'name':'openhands-oidc-sessions','key':'password'})
+
+    def test_session_cache_is_private_nonpersistent_and_restricted(self):
+        d=next(v for v in self.objects() if v['kind']=='Deployment' and v['metadata']['name']=='openhands-oidc-sessions')
+        pod=d['spec']['template']['spec'];c=pod['containers'][0]
+        self.assertEqual(d['spec']['strategy']['type'],'Recreate')
+        self.assertFalse(pod['automountServiceAccountToken'])
+        self.assertTrue(c['securityContext']['readOnlyRootFilesystem'])
+        self.assertIn('@sha256:',c['image'])
+        self.assertFalse(any('persistentVolumeClaim' in v for v in pod['volumes']))
+        p=next(v for v in self.objects() if v['kind']=='NetworkPolicy' and v['metadata']['name']=='openhands-oidc-sessions')
+        self.assertEqual(p['spec']['ingress'],[{'from':[{'podSelector':{'matchLabels':{'app':'openhands-oidc'}}}],'ports':[{'port':6379,'protocol':'TCP'}]}])
+        self.assertEqual(p['spec']['egress'],[])
+
     def test_no_unprotected_ingress_or_bootstrap(self):
         self.assertNotEqual(self.helm('--set','ingress.enabled=true').returncode,0)
         self.assertNotEqual(self.helm('--set','oidc.enabled=false').returncode,0)

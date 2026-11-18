@@ -53,6 +53,10 @@ spec:
             - --cookie-httponly=true
             - --cookie-samesite=lax
             - --cookie-path=/
+            # Server-side storage provides per-session refresh locking and avoids
+            # oversized split cookies racing rotated refresh tokens in parallel.
+            - --session-store-type=redis
+            - --redis-connection-url=redis://openhands-oidc-sessions.identity.svc.cluster.local:6379/0
             - --cookie-expire=8h
             - --cookie-refresh=2m
             - --cookie-csrf-per-request=true
@@ -77,6 +81,8 @@ spec:
               valueFrom: {secretKeyRef: {name: openhands-oidc, key: client-secret}}
             - name: OAUTH2_PROXY_COOKIE_SECRET
               valueFrom: {secretKeyRef: {name: openhands-oidc, key: cookie-secret}}
+            - name: OAUTH2_PROXY_REDIS_PASSWORD
+              valueFrom: {secretKeyRef: {name: openhands-oidc-sessions, key: password}}
           ports: [{name: http, containerPort: 4180}]
           startupProbe:
             httpGet: {path: /ping, port: http}
@@ -153,6 +159,9 @@ spec:
         - ipBlock: {cidr: 10.42.0.0/32}
       ports: [{port: 4180, protocol: TCP}]
   egress:
+    - to:
+        - podSelector: {matchLabels: {app: openhands-oidc-sessions}}
+      ports: [{port: 6379, protocol: TCP}]
     - to:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
       ports: [{port: 53, protocol: UDP}, {port: 53, protocol: TCP}]

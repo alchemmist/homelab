@@ -57,3 +57,5 @@ oidc:
     - ip: 10.43.218.222 # Existing traefik.kube-system Service clusterIP.
       hostnames: [auth.socrat.alchemmist.xyz]
   image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.6@sha256:01da265f8e371e6d3043b97829e171f3e4d53f9dc3817be15fb4fc29c92fe2a6
+
+  sessionImage: docker.io/library/redis:8.2-alpine@sha256:da23c2478319ceb4903857d77a2fd7aa5137d9e9d4c8165dafbacedac6403e95

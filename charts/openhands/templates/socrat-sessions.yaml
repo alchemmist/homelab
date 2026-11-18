@@ -1,0 +1,71 @@
+{{- if and .Values.oidc .Values.oidc.enabled }}
+# Dedicated auth cache, never shared with IdP or coding tools. Loss invalidates
+# sessions (reauthentication), not Canvas conversations/workspaces. No persistence.
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: openhands-oidc-sessions, namespace: identity}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: openhands-oidc-sessions}
+  template:
+    metadata:
+      labels: {app: openhands-oidc-sessions}
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector: {kubernetes.io/hostname: socrat-5}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: redis
+          image: {{ .Values.oidc.sessionImage | quote }}
+          command: [redis-server, /etc/redis/redis.conf]
+          ports: [{name: redis, containerPort: 6379}]
+          readinessProbe:
+            tcpSocket: {port: redis}
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket: {port: redis}
+            initialDelaySeconds: 10
+          resources:
+            requests: {cpu: 25m, memory: 32Mi, ephemeral-storage: 8Mi}
+            limits: {cpu: 250m, memory: 128Mi, ephemeral-storage: 32Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: config, mountPath: /etc/redis, readOnly: true}
+            - {name: data, mountPath: /data}
+      volumes:
+        - name: config
+          secret:
+            secretName: openhands-oidc-sessions
+            defaultMode: 0440
+            items: [{key: redis.conf, path: redis.conf}]
+        - name: data
+          emptyDir: {medium: Memory, sizeLimit: 8Mi}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: openhands-oidc-sessions, namespace: identity}
+spec:
+  selector: {app: openhands-oidc-sessions}
+  ports: [{name: redis, port: 6379, targetPort: redis}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: openhands-oidc-sessions, namespace: identity}
+spec:
+  podSelector: {matchLabels: {app: openhands-oidc-sessions}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from: [{podSelector: {matchLabels: {app: openhands-oidc}}}]
+      ports: [{port: 6379, protocol: TCP}]
+  egress: []
+{{- end }}
