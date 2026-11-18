@@ -15,10 +15,10 @@ def test_inset_runtime_scope_and_compacted_layout(mode):
 const fs=require('fs'),vm=require('vm'),mode=process.argv[1];
 const token='a'.repeat(32), styles={}, calls=[];
 const grid={style:{height:'106px'},parentElement:{style:{width:'400px'}},clientWidth:400,classList:{add(){}}};
-const items=[{style:{transform:'translate(0px, 0px)',width:'26px',height:'68px'},parentElement:grid,getAttribute(){return 'grid-item-3'}},
+const items=[{style:{transform:'translate(0px, 0px)',width:'26px',height:'68px'},parentElement:grid,getAttribute(){return 'grid-item-931'}},
  {style:{transform:'translate(0px, 76px)',width:'26px',height:'30px'},parentElement:grid,getAttribute(){return 'grid-item-4'}}];
 const page={querySelectorAll(){return items}};
-const model={uid:mode==='wrong_uid'?'another-dashboard':'socrat-traffic-light',panels:[{id:3,gridPos:{x:0,y:0,w:2,h:2}},{id:4,gridPos:{x:0,y:mode==='legacy_kiosk'?2:1,w:2,h:1}}]};
+const model={uid:mode==='wrong_uid'?'another-dashboard':'socrat-traffic-light',panels:[{id:931,type:'stat',options:{graphMode:'area'},gridPos:{x:0,y:0,w:2,h:3}},{id:4,gridPos:{x:0,y:mode==='legacy_kiosk'?3:1,w:2,h:1}}]};
 const location={pathname:mode.startsWith('legacy')?'/d/socrat-traffic-light':mode==='unrelated'?'/login':'/public-dashboards/'+token,
  search:mode==='legacy_kiosk'||mode==='legacy_overlap'?'?kiosk=1&autofitpanels=true':mode==='legacy_edit'?'?kiosk=1&autofitpanels=true&editPanel=3':mode==='not_opted_in'?'?kiosk=1':'?kiosk=1&socratTv=1'};
 const document={getElementById:id=>styles[id],createElement:()=>({textContent:''}),head:{appendChild(s){styles[s.id]=s}},documentElement:{},
@@ -35,13 +35,14 @@ console.log(JSON.stringify({css:styles['socrat-tv-inset']?.textContent||'',calls
     else:
         assert 'padding:5px' in result['css']
         assert len(result['calls']) == (0 if mode in ['legacy', 'legacy_edit'] else 1)
+        assert ('transform:scale(0.625)' in result['css']) == (mode == 'public')
         if mode == 'public':
             assert 'grid-template-rows:repeat(3,' in result['css']
             assert '[data-griditem-key="grid-item-4"]{grid-column:1 / span 2!important;grid-row:3 / span 1!important;}' in result['css']
             assert 'public-dashboard-footer' in result['css']
             assert 'pointer-events:none' in result['css']
         elif mode == 'legacy_kiosk':
-            assert 'grid-template-rows:repeat(3,' in result['css']
+            assert 'grid-template-rows:repeat(4,' in result['css']
             assert 'socrat-tv-auth-grid' in result['css']
             assert 'pointer-events:none' not in result['css']
             assert result['calls'] == [['GET', '/api/dashboards/uid/socrat-traffic-light']]

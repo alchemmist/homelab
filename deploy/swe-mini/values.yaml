@@ -3,8 +3,8 @@ paused: true
 nodeName: socrat-5
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/swe-mini
-  tag: 7c9de534d6cd505fcd1f04645b19b9e2437319e6
-  digest: sha256:df206a56efe83b0ddf7ee88ae4c9214bd5e7b87bcc3d60beaf8b911f64adf109
+  tag: 0422d6a10e3efbb07f7ad28f6fa1fec6268265e5
+  digest: sha256:da5e4f7b8397ecfeb89db0c3f20d75ddfcf4e547ccb4ec68111ecf944e4e9b82
 imagePullSecrets:
   - name: swe-mini-harbor-pull
 minIntervalSeconds: 300

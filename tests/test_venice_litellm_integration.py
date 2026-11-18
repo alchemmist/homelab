@@ -14,19 +14,20 @@ class VeniceLiteLLMIntegrationTests(unittest.TestCase):
         cls.models = {m["model_name"]: m for m in cls.values["proxy_config"]["model_list"]}
 
     def test_routes_to_internal_browser_bridge(self):
-        params = self.models["venice-deepseek"]["litellm_params"]
+        params = self.models["v-deepseek-uc"]["litellm_params"]
         self.assertEqual(params["model"], "openai/venice-agentic-deepseek-v4.1-flash-uncensored")
+        self.assertNotIn("venice-deepseek", self.models)
         self.assertEqual(params["api_base"], "http://venice-api.venice-api.svc.cluster.local:8080/v1")
         self.assertNotIn("api.venice.ai", params["api_base"])
 
     def test_credential_is_an_explicit_secret_reference(self):
-        self.assertEqual(self.models["venice-deepseek"]["litellm_params"]["api_key"], "os.environ/VENICE_BRIDGE_API_KEY")
+        self.assertEqual(self.models["v-deepseek-uc"]["litellm_params"]["api_key"], "os.environ/VENICE_BRIDGE_API_KEY")
         env = next(x for x in self.values["extraEnvVars"] if x["name"] == "VENICE_BRIDGE_API_KEY")
         self.assertNotIn("value", env)
         self.assertEqual(env["valueFrom"]["secretKeyRef"], {"name": "venice-bridge-upstream", "key": "api-key"})
 
     def test_single_browser_is_not_overloaded_or_replayed(self):
-        params = self.models["venice-deepseek"]["litellm_params"]
+        params = self.models["v-deepseek-uc"]["litellm_params"]
         self.assertEqual(params["max_parallel_requests"], 4)
         browser = yaml.safe_load((ROOT / "charts/venice-api/values.yaml").read_text())["browserCandidate"]
         self.assertEqual(params["max_parallel_requests"], browser["maxPendingRequests"])
@@ -46,7 +47,7 @@ class VeniceLiteLLMIntegrationTests(unittest.TestCase):
     def test_no_database_upgrade_or_synthetic_credit_billing(self):
         self.assertFalse(self.values["migrationJob"]["enabled"])
         self.assertEqual(self.values["image"]["tag"], "1.105.1")
-        info = self.models["venice-deepseek"]["model_info"]
+        info = self.models["v-deepseek-uc"]["model_info"]
         self.assertEqual(info["input_cost_per_token"], 0)
         self.assertEqual(info["output_cost_per_token"], 0)
 

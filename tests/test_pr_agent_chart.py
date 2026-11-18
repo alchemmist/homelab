@@ -13,7 +13,7 @@ class PrAgentChartTest(unittest.TestCase):
             text=True,
         )
         self.assertIn("pragent/pr-agent:0.50.0-github_app", rendered)
-        self.assertIn("openai/venice-deepseek", rendered)
+        self.assertIn("openai/v-deepseek-uc", rendered)
         self.assertIn("http://litellm.llm.svc.cluster.local:4000/v1", rendered)
         self.assertIn("pr-agent.socrat.alchemmist.xyz", rendered)
         self.assertIn("github-webhook-secret", rendered)
@@ -32,7 +32,7 @@ class PrAgentChartTest(unittest.TestCase):
         self.assertIn("CONFIG__FALLBACK_MODELS", rendered)
         fallback_at = next(i for i, line in enumerate(rendered.splitlines()) if "CONFIG__FALLBACK_MODELS" in line)
         fallback_value = rendered.splitlines()[fallback_at + 1]
-        self.assertEqual(fallback_value.count("openai/venice-deepseek"), 9)
+        self.assertEqual(fallback_value.count("openai/v-deepseek-uc"), 9)
         self.assertIn("CONFIG__MAX_MODEL_TOKENS", rendered)
         self.assertIn('value: "24576"', rendered)
         self.assertIn('value: "15"', rendered)

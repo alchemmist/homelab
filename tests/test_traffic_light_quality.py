@@ -38,7 +38,7 @@ class QualityPanelsTest(unittest.TestCase):
 
     def test_preserves_future_manual_network_geometry(self):
         panel=next(p for p in self.d['panels'] if p['id']==931)
-        panel['gridPos']={'x':12,'y':10,'w':3,'h':3}
+        panel['gridPos']={'x':12,'y':13,'w':3,'h':3}
         built=Q.build(self.d)
         self.assertEqual(next(p for p in built['panels'] if p['id']==931)['gridPos'],panel['gridPos'])
 
@@ -106,11 +106,11 @@ class QualityPanelsTest(unittest.TestCase):
         self.assertNotIn('socrat:node_pressure',json.dumps([self.p[i] for i in Q.IDS & self.p.keys()]))
 
     def test_cascade_split_cards_without_new_css(self):
-        for i,x in [(934,12),(935,14)]:
-            self.assertEqual(self.p[i]['gridPos'],{'x':x,'y':16,'w':2,'h':2})
-        for i,x in [(936,12),(939,14)]:
+        for i,x,y in [(934,4,12),(935,6,14)]:
+            self.assertEqual(self.p[i]['gridPos'],{'x':x,'y':y,'w':2,'h':2})
+        for i,x in [(936,2),(939,0)]:
             p=self.p[i]
-            self.assertEqual(p['gridPos'],{'x':x,'y':18,'w':2,'h':2})
+            self.assertEqual(p['gridPos'],{'x':x,'y':12,'w':2,'h':2})
             self.assertEqual(len(p['targets']),1)
             t=p['targets'][0]
             self.assertTrue(t['instant'])

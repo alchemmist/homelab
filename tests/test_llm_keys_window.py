@@ -42,7 +42,7 @@ def test_chart_titles_use_litellm_route_names():
     d = json.loads((Path(__file__).resolve().parents[1] / 'charts/monitoring-k3s/dashboards/llm-keys.json').read_text())
     assert [p['title'] for p in d['panels'][:2]] == [
         'Requests by API key — qwen3.8-27b',
-        'Requests by API key — venice-deepseek',
+        'Requests by API key — v-deepseek-uc',
     ]
 
 

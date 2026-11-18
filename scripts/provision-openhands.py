@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Explicit operator bootstrap of OpenHands' native settings; never prints secrets.
 
-Requires kubectl access. Creates a distinct LiteLLM venice-deepseek-only virtual
+Requires kubectl access. Creates a distinct LiteLLM v-deepseek-uc-only virtual
 key, NOT a personal Pi key. Uses the already running native settings API; model
 credentials and policy are persisted by OpenHands, not a custom runtime service.
 """
@@ -35,7 +35,7 @@ def main():
                 except OSError: time.sleep(.25)
             headers = {'Authorization': 'Bearer ' + master, 'Content-Type': 'application/json'}
             request = urllib.request.Request(f'http://127.0.0.1:{port}/key/generate', headers=headers,
-                data=json.dumps({'key_alias':'openhands-monori','models':['venice-deepseek'],'max_parallel_requests':1,
+                data=json.dumps({'key_alias':'openhands-monori','models':['v-deepseek-uc'],'max_parallel_requests':1,
                                  'metadata':{'purpose':'owner-approved OpenHands; no paid fallback'}}).encode())
             created = json.load(urllib.request.urlopen(request, timeout=30))['key']
             payload = {'apiVersion':'v1','kind':'Secret','metadata':{'name':'openhands-model','namespace':'openhands',
@@ -52,7 +52,7 @@ def main():
     key = base64.b64decode(kube_secret('openhands','openhands-model')['data']['api-key']).decode()
     policy = Path(__file__).resolve().parents[1].joinpath('services/openhands/READY_TO_REVIEW.md').read_text()
     settings = {'agent_settings_diff':{'agent_kind':'openhands','llm':{
-        'model':'openai/venice-deepseek','base_url':'http://litellm.llm.svc.cluster.local:4000/v1',
+        'model':'openai/v-deepseek-uc','base_url':'http://litellm.llm.svc.cluster.local:4000/v1',
         'api_key':key,'api_mode':'chat','native_tool_calling':True,
         'max_input_tokens':30000,'max_output_tokens':4096,'num_retries':5,'timeout':900,
         'reasoning_effort':None,'enable_encrypted_reasoning':False,'caching_prompt':False,
