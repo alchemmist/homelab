@@ -1,0 +1,12 @@
+"""Extract one binary from a pinned wheel, no pip / postinstall or GitHub credential."""
+from pathlib import Path
+import hashlib,io,sys,urllib.request,zipfile
+url='https://files.pythonhosted.org/packages/a0/2d/43c8522a2038e9d0e7dbdf3a61195ecc31ca576fb1527a528c877e87d973/imageio_ffmpeg-0.6.0-py3-none-manylinux2014_x86_64.whl'
+p=Path(sys.argv[1]);p.parent.mkdir(parents=True,exist_ok=True)
+with urllib.request.urlopen(url,timeout=60) as r:data=r.read(30000000)
+assert hashlib.sha256(data).hexdigest()=='c7e46fcec401dd990405049d2e2f475e2b397779df2519b544b8aab515195282'
+with zipfile.ZipFile(io.BytesIO(data)) as z:
+ names=[n for n in z.namelist() if n.startswith('imageio_ffmpeg/binaries/ffmpeg-linux')];assert len(names)==1
+ with z.open(names[0]) as src,p.open('wb') as dst:
+  import shutil;shutil.copyfileobj(src,dst)
+p.chmod(0o555)

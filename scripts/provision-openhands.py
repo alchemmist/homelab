@@ -35,7 +35,7 @@ def main():
                 except OSError: time.sleep(.25)
             headers = {'Authorization': 'Bearer ' + master, 'Content-Type': 'application/json'}
             request = urllib.request.Request(f'http://127.0.0.1:{port}/key/generate', headers=headers,
-                data=json.dumps({'key_alias':'openhands-monori','models':['v-deepseek-uc'],'max_parallel_requests':1,
+                data=json.dumps({'key_alias':'openhands-monori','models':['v-deepseek-uc','o-deepseek'],'max_parallel_requests':3,
                                  'metadata':{'purpose':'owner-approved OpenHands; no paid fallback'}}).encode())
             created = json.load(urllib.request.urlopen(request, timeout=30))['key']
             payload = {'apiVersion':'v1','kind':'Secret','metadata':{'name':'openhands-model','namespace':'openhands',
@@ -64,7 +64,7 @@ def main():
         headers = {'Authorization': 'Bearer ' + master, 'Content-Type': 'application/json'}
         request = urllib.request.Request(f'http://127.0.0.1:{port}/key/update',
             headers=headers,
-            data=json.dumps({'key': key, 'models': ['v-deepseek-uc'], 'max_parallel_requests': 1}).encode())
+            data=json.dumps({'key': key, 'models': ['v-deepseek-uc','o-deepseek'], 'max_parallel_requests': 3}).encode())
         urllib.request.urlopen(request, timeout=30).close()
     finally:
         forward.terminate(); forward.wait(timeout=10)
