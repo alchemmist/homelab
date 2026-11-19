@@ -429,3 +429,19 @@ facts and one next action. QA checkout is repo/web, not web at workspace root.
 review and trusted MP4 encoding. Encoder smoke is not proof of a published
 bug recording. #512 open with PNGs; #511 merged with manual assistance. No
 new PR, published MP4 or proven end-to-end campaign at this snapshot.
+
+Recovery: `tools/openhands-workers/recover_condenser.py` admits only the two
+legacy mutation lanes in error with proven old-condenser failure. Creates a
+fresh native Qwen conversation, verifies both LLM settings before admission,
+keeps original worktree and prior_ids in registry. Transfer replacement
+`c7968163`, workbook `0ec9d0da`. Do not resume superseded failed writers.
+The QA continuation exception only probes the observed spurious request for
+permission to read the campaign ledger, once per controller lifetime; never
+generically retry `[БЛОКЕР QA]`, real access denials, pauses or auth failures.
+
+Routing preference: reserve o-deepseek for the mutation coordinator, keep
+its single-flight limit. QA parent/native roles and newly dispatched workers
+prefer v-deepseek-uc. Admit one active external worker per campaign. Existing
+workbook Qwen lane is a bounded exception, not the default model. A profile
+switch does not guarantee condenser migration. Common key admission can reject
+work even across different models. A failed lane is unfinished, not Ready.
