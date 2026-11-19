@@ -115,8 +115,9 @@ SET phase = $2, data = $3::jsonb, updated_at = clock_timestamp(),
 lease_until = CASE WHEN $2 IN ('certified','needs_review') THEN NULL ELSE clock_timestamp() + interval '15 minutes' END
 WHERE owner = $1 AND lease_until > clock_timestamp()
 RETURNING phase, data''', '[$execution.id, $json.phase, JSON.stringify($json.data)]', 1480, -380)
-release = pg('Pause and release lease', '''UPDATE lms_certification.pilot SET lease_until = NULL
-WHERE owner = $1 RETURNING phase''', '[$execution.id]', 1140, -580)
+release = pg('Pause and release lease', '''UPDATE lms_certification.pilot SET lease_until = NULL,
+ data = data || jsonb_build_object('lastPause',$2::text,'pausedAt',clock_timestamp())
+WHERE owner = $1 RETURNING phase''', "[$execution.id, $json.reason || 'not_idle_or_stale']", 1140, -580)
 terminal = pg('Private outcome recorded', '''SELECT phase, count(*)::int AS tasks,
  max(updated_at) AS latest_update FROM lms_certification.pilot GROUP BY phase ORDER BY phase''', '[]', 4900, -380)
 
@@ -129,7 +130,7 @@ def ref(name):
 def reducer(name, route, js, x, y):
     n = code(name, f'''const {{phase,data}} = {ref(route)};
 const status = $json.statusCode;
-if ($json.error || status === 429 || status >= 500) return {{json: {{pause:true}}}};
+if ($json.error || status === 429 || status >= 500) return {{json: {{pause:true,reason:$json.error?'transport':'http_'+status}}}};
 if (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);
 {js}''', x, y)
     ok = check(name + ' checkpoint?', '$json.pause !== true', x+220, y)
@@ -161,6 +162,7 @@ for i, (phase, title) in enumerate(phase_specs):
                        'Добавь допустимые граничные случаи: нули, отрицательные числа или особенности строк, если они разрешены условием. ' + 'Не придумывай недопустимые входы. Верни не менее 6 различных случаев. ')
         if phase in {'tests','expand'}:
             prompt = json.dumps(test_prompt, ensure_ascii=False) + f" + '\\nУсловие: ' + {r}.data.statement"
+            prompt = f"({r}.data.contract === 'mult_table' ? " + json.dumps('Предложи четыре разных маленьких натуральных размера таблицы от 1 до 6 кроме публичного примера 3. Только входы: JSON {"cases":[{"input":"1\\n"}]}. Не генерируй таблицы вывода. Условие: ') + f" + {r}.data.statement : (" + prompt + "))"
             if phase == 'expand':
                 prompt += f''' + '\\nУже проверенные входы: ' + JSON.stringify({r}.data.cases.map(c => c.input)) + '\\nЧто не поймано: ' + JSON.stringify({r}.data.survivors) + '\\nЦелевые условия для покрытия: ' + JSON.stringify({r}.data.coverageHints || '')'''
         else:
@@ -214,10 +216,12 @@ __BATCH_ORACLE__
 const cases=data.cases || [], seen=new Set(cases.map(c=>c.input));
 const proposals = [...(phase === 'expand' ? data.targetedCases || [] : []), ...(Array.isArray(payload?.cases)?payload.cases.slice(0,16):[])];
 for (const c of proposals) {
- if (typeof c?.input !== 'string' || c.input.length>256 || typeof c.output !== 'string' ||
-     expected(c.input) !== c.output || seen.has(c.input) ||
+ if (typeof c?.input !== 'string' || c.input.length>256) continue;
+ const oracle = expected(c.input);
+ const output = data.contract==='mult_table' && c.output===undefined ? oracle : c.output;
+ if (typeof output !== 'string' || oracle !== output || seen.has(c.input) ||
      data.examples.some(e=>e.input===c.input) || cases.length>=16) continue;
- cases.push({input:c.input,output:c.output});seen.add(c.input);
+ cases.push({input:c.input,output});seen.add(c.input);
 }
 data.cases=cases;
 return out(cases.length<3?phase:'public');'''

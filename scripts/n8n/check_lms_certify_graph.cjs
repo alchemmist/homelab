@@ -34,14 +34,14 @@ for (let i=0;i<5;i++) mutation = run('Count killed variants or request more cove
 assert.equal(mutation.phase,'expand');
 assert.equal(mutation.data.faultsKilled,4);
 assert.deepEqual(mutation.data.survivors,['strip whitespace']);
-assert.deepEqual(run('Validate repaired solution format',{statusCode:429},bad),{pause:true});
+assert.deepEqual(run('Validate repaired solution format',{statusCode:429},bad),{pause:true,reason:'http_429'});
 console.log('Graph routing, admission and reducers passed');
 for (const [contract,input,output] of [['sum','999999999999999999999999\n1\n','1000000000000000000000000\n'],['length',' а😀 \n','Слово  а😀  имеет длину 4\n'],['parity','-2\n','чётное\n'],['sign','-0.25\n','-\n']]) {
  const r=run('Verify new tests against reviewed specification',response({cases:[{input,output},{input,output:'wrong\n'}]}),{phase:'tests',data:{contract,cases:[],examples:[],calls:0}});
  assert.equal(r.data.cases.length,1,contract);
 }
 console.log('Reviewed queue oracles passed');
-assert.deepEqual(run('Validate repaired solution format',{error:'socket timeout'},bad),{pause:true});
+assert.deepEqual(run('Validate repaired solution format',{error:'socket timeout'},bad),{pause:true,reason:'transport'});
 for (const [year,answer] of [['2000','Високосный'],['2100','Не високосный'],['2024','Високосный'],['2023','Не високосный']]) {
  const r=run('Verify new tests against reviewed specification',response({cases:[{input:year+'\n',output:answer+'\n'}]}),{phase:'tests',data:{contract:'leap',calls:0,cases:[],examples:[]}});
  assert.equal(r.data.cases.length,1,year);
@@ -82,3 +82,5 @@ for (const [contract,input,output] of [['xmas2','один\nдва\nтри\n','Н
 for(const [contract,input,output] of [['thank_count','спасибо.\n Спасибо. \nСпасибо.\n','3\n'],['mult_table','2\n','1 * 1 = 1\n1 * 2 = 2\n2 * 1 = 2\n2 * 2 = 4\n']]) {
  const r=run('Verify new tests against reviewed specification',response({cases:[{input,output}]}),{phase:'tests',data:{contract,calls:0,cases:[],examples:[]}});assert.deepEqual(r.data.cases,[{input,output}]);
 }
+
+assert.deepEqual(run('Verify new tests against reviewed specification',response({cases:[{input:"1\n"}]}),{phase:"tests",data:{contract:"mult_table",calls:0,cases:[],examples:[]}}).data.cases,[{input:"1\n",output:"1 * 1 = 1\n"}]);
