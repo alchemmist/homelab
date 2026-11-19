@@ -94,10 +94,14 @@ return {{json: {{idle: expected.every(n => v.some(r => r.metric.__name__ === n))
 
 start = node('Every minute', 'scheduleTrigger', 1.2, {'rule': {'interval': [{'field': 'minutes', 'minutesInterval': 1}]}}, 0, 0)
 entry, gate = idle('Admission:', 220, 0)
-claim = pg('Claim next queued task and load checkpoint', '''WITH candidate AS (
+# One allowlist computed from reviewed source, never from untrusted queue rows.
+reviewed = sorted({'echo','sum','length','parity','sign','leap'} | {spec[0] for spec in SPECS.values()})
+assert all(name.isidentifier() and name.isascii() for name in reviewed)
+contract_list = ','.join(repr(name) for name in reviewed)
+claim = pg('Claim next queued task and load checkpoint', f'''WITH candidate AS (
  SELECT id FROM lms_certification.pilot
  WHERE phase NOT IN ('certified','needs_review')
- AND data->>'contract' IN ('echo','sum','length','parity','sign','leap','repeat4','python_exact','zen','meow','yes_no','xmas','parrot','reverse','temperature','heights','until_zero','until_nonmultiple','until_empty','xmas2','xmas3')
+ AND data->>'contract' IN ({contract_list})
  AND (lease_until IS NULL OR lease_until < clock_timestamp())
  AND NOT EXISTS (SELECT 1 FROM lms_certification.pilot WHERE lease_until > clock_timestamp())
  ORDER BY CASE WHEN owner IS NOT NULL THEN 0 ELSE 1 END, updated_at, id FOR UPDATE SKIP LOCKED LIMIT 1

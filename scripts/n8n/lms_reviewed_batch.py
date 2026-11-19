@@ -107,3 +107,19 @@ ORACLE_JS += r'''
   return (seq==='раз\nдва\nтри'||seq==='1\n2\n3'||(data.contract==='xmas3'&&seq==='один\nдва\nтри')?'ГОРИ':'НЕ ГОРИ')+'\n';
  }
 '''
+
+_fb_value="'FizzBuzz' if i%15==0 else 'Fizz' if i%3==0 else 'Buzz' if i%5==0 else i"
+def _fb_loop(bounds, value):
+ return 'a=int(input()); b=int(input())\nfor i in range('+bounds+'):\n print('+value+')'
+SPECS['break-continue/fizzbuzz']=('fizzbuzz','','',[
+ ('skip right endpoint',_fb_loop('a,b',_fb_value)),
+ ('miss common multiple',_fb_loop('a,b+1',"'Fizz' if i%3==0 else 'Buzz' if i%5==0 else i")),
+ ('omit plain numbers',_fb_loop('a,b+1',_fb_value).replace(' print(', ' if i%3==0 or i%5==0: print('))])
+ORACLE_JS += r'''
+ if(data.contract==='fizzbuzz') {
+  if(lines.length!==2 || !lines.every(x=>/^[1-9]\d{0,5}$/.test(x)))return null;
+  const [a,b]=lines.map(Number); if(a>=b || b-a>50)return null;
+  const result=[]; for(let i=a;i<=b;i++)result.push((i%3===0?'Fizz':'')+(i%5===0?'Buzz':'')||String(i));
+  return result.join('\n')+'\n';
+ }
+'''
