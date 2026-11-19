@@ -18,32 +18,40 @@
       - path: /etc/homelab-otel/scrape.yaml
         sha256: 7b580cb2bc73bc3cec47c0994ca5b8bb10bc2da74844f8d5350dd3bf05adc2ab
   tasks:
-    - ansible.builtin.assert:
+    - name: Require the Moscow gateway host
+      ansible.builtin.assert:
         that: inventory_hostname == 'socrat-4'
-    - ansible.builtin.command: getconf _NPROCESSORS_ONLN
+    - name: Read the online processor count
+      ansible.builtin.command: getconf _NPROCESSORS_ONLN
       register: cpu_count
       changed_when: false
-    - ansible.builtin.assert:
+    - name: Require exactly one online processor
+      ansible.builtin.assert:
         that: cpu_count.stdout == '1'
-    - ansible.builtin.stat:
+    - name: Hash the protected telemetry files before the override
+      ansible.builtin.stat:
         path: '{{ item.path }}'
         checksum_algorithm: sha256
       loop: '{{ protected_files }}'
       register: preimages
-    - ansible.builtin.assert:
+    - name: Stop when a protected telemetry file has drifted
+      ansible.builtin.assert:
         that: item.stat.checksum == item.item.sha256
         fail_msg: 'STOP: configuration drift; inspect rather than replay.'
       loop: '{{ preimages.results }}'
       loop_control:
         label: '{{ item.item.path }}'
-    - ansible.builtin.stat:
+    - name: Hash any staged processor override
+      ansible.builtin.stat:
         path: '{{ override_path }}'
         checksum_algorithm: sha256
       register: old_override
-    - ansible.builtin.command: systemctl show homelab-otel-agent.service -p DropInPaths --value
+    - name: Read loaded systemd drop-in paths
+      ansible.builtin.command: systemctl show homelab-otel-agent.service -p DropInPaths --value
       register: loaded_overrides
       changed_when: false
-    - ansible.builtin.assert:
+    - name: Stop when an override exists or is already loaded
+      ansible.builtin.assert:
         that:
           - not old_override.stat.exists or ((otel_socrat4_resume_staged_override | default(false) | bool) and old_override.stat.checksum == (lookup('file', playbook_dir + '/../files/otel/socrat4-cpu.conf', rstrip=false) | hash('sha256')))
           - loaded_overrides.stdout == ''
@@ -52,7 +60,8 @@
       ansible.builtin.uri:
         url: http://127.0.0.1:13133/
         status_code: 200
-    - ansible.builtin.file:
+    - name: Create the telemetry agent drop-in directory
+      ansible.builtin.file:
         path: /etc/systemd/system/homelab-otel-agent.service.d
         state: directory
         owner: root
@@ -67,11 +76,13 @@
         mode: '0644'
     - name: Activate only the telemetry-agent override
       block:
-        - ansible.builtin.systemd_service:
+        - name: Reload and restart only the telemetry agent
+          ansible.builtin.systemd_service:
             name: homelab-otel-agent.service
             daemon_reload: true
             state: restarted
-        - ansible.builtin.uri:
+        - name: Require the telemetry agent health endpoint after restart
+          ansible.builtin.uri:
             url: http://127.0.0.1:13133/
             status_code: 200
           register: health
@@ -83,19 +94,24 @@
           ansible.builtin.file:
             path: '{{ override_path }}'
             state: absent
-        - ansible.builtin.systemd_service:
+        - name: Reload and restart the telemetry agent after rollback
+          ansible.builtin.systemd_service:
             name: homelab-otel-agent.service
             daemon_reload: true
             state: restarted
-        - ansible.builtin.fail:
+        - name: Fail closed after restoring the previous telemetry configuration
+          ansible.builtin.fail:
             msg: 'New override failed acceptance; previous service configuration restored. Inspect telemetry.'
-    - ansible.builtin.stat:
+    - name: Hash the protected telemetry files after the override
+      ansible.builtin.stat:
         path: '{{ item.path }}'
         checksum_algorithm: sha256
       loop: '{{ protected_files }}'
       register: postimages
-    - ansible.builtin.assert:
+    - name: Require the protected telemetry files to be unchanged
+      ansible.builtin.assert:
         that: item.stat.checksum == item.item.sha256
       loop: '{{ postimages.results }}'
       loop_control:
         label: '{{ item.item.path }}'
+...

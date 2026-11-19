@@ -115,3 +115,4 @@
       - "{{ ha_dependency.name }}"
       - "{{ ha_dependency_nodes | to_json }}"
   changed_when: false
+...

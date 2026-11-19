@@ -7,3 +7,4 @@
   roles:
     - role: node_shutdown
       when: homelab_shutdown_enabled | default(false)
+...

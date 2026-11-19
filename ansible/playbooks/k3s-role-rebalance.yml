@@ -144,7 +144,22 @@
 
     - name: Merge server settings while preserving worker configuration
       ansible.builtin.command:
-        argv: [python3, /var/lib/homelab-k3s-rebalance/configure_role.py, --config, /etc/rancher/k3s/config.yaml, --role, server, --node-name, socrat-3, --node-ip, 10.250.0.5, --advertise-ip, 10.250.0.5, --server, 'https://10.250.0.1:6443', --token-file, /etc/rancher/k3s/ha-server-token]
+        argv: [python3,
+               /var/lib/homelab-k3s-rebalance/configure_role.py,
+               --config,
+               /etc/rancher/k3s/config.yaml,
+               --role,
+               server,
+               --node-name,
+               socrat-3,
+               --node-ip,
+               10.250.0.5,
+               --advertise-ip,
+               10.250.0.5,
+               --server,
+               'https://10.250.0.1:6443',
+               --token-file,
+               /etc/rancher/k3s/ha-server-token]
       register: rebalance_server_config
       changed_when: (rebalance_server_config.stdout | from_json).changed
 
@@ -245,7 +260,22 @@
 
     - name: Stage the dedicated control-plane configuration immediately before vote removal
       ansible.builtin.command:
-        argv: [python3, /var/lib/homelab-k3s-rebalance/configure_role.py, --config, /etc/rancher/k3s/config.yaml, --role, control-plane, --node-name, socrat-1, --node-ip, 192.168.0.24, --advertise-ip, 10.250.0.3, --server, 'https://10.250.0.1:6443', --token-file, /etc/rancher/k3s/ha-server-token]
+        argv: [python3,
+               /var/lib/homelab-k3s-rebalance/configure_role.py,
+               --config,
+               /etc/rancher/k3s/config.yaml,
+               --role,
+               control-plane,
+               --node-name,
+               socrat-1,
+               --node-ip,
+               192.168.0.24,
+               --advertise-ip,
+               10.250.0.3,
+               --server,
+               'https://10.250.0.1:6443',
+               --token-file,
+               /etc/rancher/k3s/ha-server-token]
       register: rebalance_cp_config
       changed_when: (rebalance_cp_config.stdout | from_json).changed
 
@@ -254,14 +284,14 @@
         - name: Transfer leadership if needed and commit removal of socrat-1
           ansible.builtin.command: python3 /var/lib/homelab-k3s-rebalance/etcd_members.py remove-socrat-1
           delegate_to: socrat-0
-          become_method: sudo
+          become_method: ansible.builtin.sudo
           register: rebalance_remove
           changed_when: (rebalance_remove.stdout | from_json).changed
       rescue:
         - name: Inspect committed membership before choosing recovery
           ansible.builtin.command: python3 /var/lib/homelab-k3s-rebalance/etcd_members.py inspect
           delegate_to: socrat-0
-          become_method: sudo
+          become_method: ansible.builtin.sudo
           register: rebalance_failed_members
           changed_when: false
           failed_when: false
@@ -349,10 +379,11 @@
         dest: /var/lib/homelab-k3s-rebalance/verified.snapshot
         mode: '0600'
       delegate_to: socrat-3
-      become_method: su
+      become_method: ansible.builtin.su
 
     - name: Mark the new topology as authoritative
       ansible.builtin.copy:
         dest: /var/lib/homelab-k3s-rebalance/complete
         content: "etcd=socrat-0,socrat-2,socrat-3\ncontrol-plane=socrat-0,socrat-1,socrat-3\n"
         mode: '0600'
+...

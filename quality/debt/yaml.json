@@ -1,0 +1,942 @@
+{
+  "version": 1,
+  "acceptance": false,
+  "reason": "Initial raw non-Helm YAML audit; preserve reviewed runtime intent rather than globally reformat operational sources.",
+  "findings": [
+    {
+      "id": "f5bf94e619f218f178a5483ac7cd1f220fb5a44c6a52c90e159ba8952a7bdebb.1",
+      "path": ".github/workflows/observer-profile.yml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "71cce963a18cae14e1c639525bb083d6f4e9b9c5e1018bcc448e398e74c5e1f3.1",
+      "path": ".github/workflows/vpn-hardening.yml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "ff17f5634556dec6c26ea3ab50836a97b6b621a0bc0b3b3ce2420720d57f62e4.1",
+      "path": "ansible/playbooks/argocd.yml",
+      "rule": "yaml-commas"
+    },
+    {
+      "id": "4dc996b711079f42bbb9db75705f2684641a79fe276cb041ebde6ca13e894634.1",
+      "path": "ansible/playbooks/k3s.yml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "4dc996b711079f42bbb9db75705f2684641a79fe276cb041ebde6ca13e894634.2",
+      "path": "ansible/playbooks/k3s.yml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "42b516374a443725bf1fb4f45cfd278aabb5a1d2de083db287b6e882d2b9beb6.1",
+      "path": "ansible/playbooks/k3s.yml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "42b516374a443725bf1fb4f45cfd278aabb5a1d2de083db287b6e882d2b9beb6.2",
+      "path": "ansible/playbooks/k3s.yml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "6b1d533f3b0af2cc29d1cf5980317e3c109c781883d55246b33139a54dbd10fc.1",
+      "path": "ansible/playbooks/k3s.yml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "6b1d533f3b0af2cc29d1cf5980317e3c109c781883d55246b33139a54dbd10fc.2",
+      "path": "ansible/playbooks/k3s.yml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "b4f859d433d6fc0984e4e275f17f7aa0c12d63b1529f33614ce3846518735e84.1",
+      "path": "ansible/roles/starship/tasks/main.yml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "b4f859d433d6fc0984e4e275f17f7aa0c12d63b1529f33614ce3846518735e84.2",
+      "path": "ansible/roles/starship/tasks/main.yml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "abdf25881201a8db23cdce45eb7708f926f897d29c9f6994b106185cc61854cf.1",
+      "path": "ansible/roles/starship/tasks/main.yml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "abdf25881201a8db23cdce45eb7708f926f897d29c9f6994b106185cc61854cf.2",
+      "path": "ansible/roles/starship/tasks/main.yml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "8c9550f4221715d93d8d0b1c8f66582b497063b9926f0521e74388d836feb8aa.1",
+      "path": "charts/authentik/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "9867e367d6a24ce76d70a616211a58dbad176cc84563aeee533a8102799fe3b8.1",
+      "path": "charts/authentik/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "f0964202347f795991ff9709dcc2c84cb5c41dbfa762af44745063adafddf5a6.1",
+      "path": "charts/authentik/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "2071cb174f7e3a59c918637de0e82a6f3b9535d462ac91b69a0f458bc7428a3d.1",
+      "path": "charts/authentik/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "8c9550f4221715d93d8d0b1c8f66582b497063b9926f0521e74388d836feb8aa.2",
+      "path": "charts/authentik/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "9867e367d6a24ce76d70a616211a58dbad176cc84563aeee533a8102799fe3b8.2",
+      "path": "charts/authentik/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "f0964202347f795991ff9709dcc2c84cb5c41dbfa762af44745063adafddf5a6.2",
+      "path": "charts/authentik/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "2071cb174f7e3a59c918637de0e82a6f3b9535d462ac91b69a0f458bc7428a3d.2",
+      "path": "charts/authentik/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "a5dd42244139b2a82ea8ac50532966ea4e347f8da7634073ec3cb410c2f608a1.1",
+      "path": "charts/blog/values.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "a5dd42244139b2a82ea8ac50532966ea4e347f8da7634073ec3cb410c2f608a1.2",
+      "path": "charts/blog/values.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "b3b78522c7d19b65a1e3e2207488e2b2ff14151e8c1749279b5b861d062a87ce.1",
+      "path": "charts/blog/values.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "b3b78522c7d19b65a1e3e2207488e2b2ff14151e8c1749279b5b861d062a87ce.2",
+      "path": "charts/blog/values.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "8e3daaddd0a344b3c7ff173f305b4d719e8406ff3b713ad3e9061accb4e94557.1",
+      "path": "charts/format-quorum/values.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "8e3daaddd0a344b3c7ff173f305b4d719e8406ff3b713ad3e9061accb4e94557.2",
+      "path": "charts/format-quorum/values.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "69803a1ffec627836a20179312e12f2ba007ba5766c8f770ce92df25065e7907.1",
+      "path": "charts/format-quorum/values.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "69803a1ffec627836a20179312e12f2ba007ba5766c8f770ce92df25065e7907.2",
+      "path": "charts/format-quorum/values.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "d7b2a9652c2841fc6285c50c9547c936886fc423ed50f5bc10078b7be85d3317.1",
+      "path": "charts/format-quorum/values.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "d7b2a9652c2841fc6285c50c9547c936886fc423ed50f5bc10078b7be85d3317.2",
+      "path": "charts/format-quorum/values.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "76c853608ff32f4fa58fe03318a3d7556875ea95c401c52117f0238ee38e8f0f.1",
+      "path": "charts/format-quorum/values.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "76c853608ff32f4fa58fe03318a3d7556875ea95c401c52117f0238ee38e8f0f.2",
+      "path": "charts/format-quorum/values.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "94add637a8bbb4bce9913efba0f89578068070f3900bb769e2dc00dfb1e83c02.1",
+      "path": "charts/format-quorum/values.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "94add637a8bbb4bce9913efba0f89578068070f3900bb769e2dc00dfb1e83c02.2",
+      "path": "charts/format-quorum/values.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "d2130f5ef31e1ad7274e8c6c0bc09188ff874ada36146cb9a0abf59a1b840497.1",
+      "path": "charts/grafana/alert-graphs.runtime.values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "1d06056da93738ca9fecccc2a4dcc3fd1580bf284c57bb453381d4be287714e6.1",
+      "path": "charts/grafana/files/datasources.yaml",
+      "rule": "yaml-new-line-at-end-of-file"
+    },
+    {
+      "id": "929745c203b313a0c371dc46a1e5a5f3b2196ba412c1cef61aeb11cc8dcd0db0.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "2fc6a36465c9244a42c994f8694cedbccc6b115f0e5f650782c8927beabdaf03.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "b31765cec6527ec74f249fe6dc26d836d9b8836201dcb4053ed122a3f966a0db.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "32bb7e8e61d3d9d9204920e6ce71779d53ae59e8dd84f556845c094262d9a14c.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "bacf9088b493cdc27eeda7167491d5bf12adb28168793dd885b3853d5000eed8.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "03c1f725b4df2a301b407c530d134234cfa8edcf5352f805eb0564eb6b20ac76.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "b39c70b70b6dedda1ad4bd157ba60ab25e68d89ba154e4b962c8dc0a036c98de.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "914237e2d1dd8dd1df2427bc7dfe139795565e65a618daa03201104982a406b9.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "285fa4af6b422793be40db32a3c7b321e79d21cb77017a40e70e86030d4ac0c6.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "a8a55d2a0458075fe5e09801286654abb1f1355c356b58f4aa8dbb3f415c4816.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "800bb8562ed48f67fac54ef0be4764be4a1a013d1c3557dd3298219974245cc1.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "5ec17a377ce6a4af8549277207e3448fec88128f82c02e8a84e716a80037e54c.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "30325cf568a5661a538deabed2fa75382421565901e3c4d2cd11cd3139835bb2.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "32bb7e8e61d3d9d9204920e6ce71779d53ae59e8dd84f556845c094262d9a14c.2",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "985563574d9d874aa2038f94e7fb533ec9bf831bc96d8dd39e8d373f31ba6f71.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "43c49827afa469d9055ecc1afbbe6cc51528477928f7907556e7f527cb731897.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "ad61b9303e832a550241b83c2ab3b652d91ec82e5537b9b92ab47d0bbf9af8a2.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "a32d4d90b81f0145f73cb832e988cf1b77dc772f3d13b7a5f2e3cb47ffc7f267.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "a4b3b2623dac14f08063d01ee405d0bac895f5cb13e71bc9b0c0e54d790e511b.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "b7692e91c04a9dbff196e48f098cf8e8b7052e3c3284a57943f5110bfdbc94b0.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "9506013e00ba48a23fdc6427647baededc5063d9734ef9801906befe7a84eec1.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "32c095a651b1170dd824f8884c5e27411097f8aafc4e86e2d9da98fd0baa58b5.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "4bddeb9ede6733399e7ec197d8c39e819eac259ae373fe306a86a5cdeba65f81.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "0123735b6ade0836813da9448509a8d2e3f7af594c69794b0cfea108a835a584.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "4fd24b1b3901df0cd0d54a0bb7a7ea6051263dec453c1eb93dd7053370956b0e.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "d530b81904ef55c4baa2140dd6ddee1e1a2b043389827e345e085b85dfa2886b.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "bfc092cd2417338ee3b7189b113622b6762e0eebeb943b8b69a8302bb6603f6a.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "27385ab1ac2d1b733757484cf9a6a3a9b054d09986e814df3bf1fef9e49a72d4.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "b83781449f685d4a294422e3fab7f151e5f5522d2af91ea4c3fa967455a7f8d3.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "196fe8adbc65e49404d74bd1514828b6c6786beda19f5111987da80c6ef80fe4.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "7c9d100b711c3cf1660442018e769f301f561a3cfd86ad304ab1b37a3962bdc7.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "1f44864d31e07a961f9b1d4c51fbdd2026f2e950363fdfd862330540577d6257.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "9f681b5631ae552a81b2c2cb909864d8e45d27a9e65e5cb6d4bd769712010e0d.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "3702729f46adf5165e83e4f2ff3e18bcd7c9b39bb4596e52d1db318c670f3a92.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "b9adf120d31a6bbcfc53b6908e8f1dfe8e3404386a5e4a7a45431992096e28df.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "188a901f625e74995488eb5d377d8c6fb830d3d52d8bf96820958490e6f66b09.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "285fa4af6b422793be40db32a3c7b321e79d21cb77017a40e70e86030d4ac0c6.2",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "800bb8562ed48f67fac54ef0be4764be4a1a013d1c3557dd3298219974245cc1.2",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "b6d5a67d7ce7fcd329443dd8c8ea6eafe1c125bf8fbca5e29b7d4dcc2a5b90e9.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "33eb96b1a8ea4c368297e8fcd45714dc65016cf66524147b835c19d8daf74cd5.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "5f9b1b7e444054676a93b0e804b0d5a7b099cfd7e3d52df3097924535a4eee87.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "4e186ce970d756daebcea8b7a3a68d0b3749bf98d64d3e877174d99cc057cf6e.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "4e186ce970d756daebcea8b7a3a68d0b3749bf98d64d3e877174d99cc057cf6e.2",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "b076ec56ec92d2eea515e4502294f6dccfe0b0e059d2499b5166f58bac9423d6.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "40bf5a860cb4ca140686a71ddf50f9ca100235224fb657d6722aac93a588c597.1",
+      "path": "charts/harbor/values.yaml",
+      "rule": "yaml-trailing-spaces"
+    },
+    {
+      "id": "fad5ef2768344706be6bb6a7e23b22624bf3b86f8c3b22c41d7bcfed6d325d9a.1",
+      "path": "charts/lms/values.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "fad5ef2768344706be6bb6a7e23b22624bf3b86f8c3b22c41d7bcfed6d325d9a.2",
+      "path": "charts/lms/values.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "13108106e402a7b106f5ea6989ed6373718b4faf9ae71c68537c899aae7e9108.1",
+      "path": "charts/lms/values.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "13108106e402a7b106f5ea6989ed6373718b4faf9ae71c68537c899aae7e9108.2",
+      "path": "charts/lms/values.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "d0defc4f565bb6b3bee1a09a342a8513ad86a10794c2b56b2132ed849b92c0d8.1",
+      "path": "charts/monori/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "4c4158a26b0dca0441fd93e4c06fe78b24c4fc36565bb8823dad8af4215174cf.1",
+      "path": "charts/remark42/values.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "4c4158a26b0dca0441fd93e4c06fe78b24c4fc36565bb8823dad8af4215174cf.2",
+      "path": "charts/remark42/values.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "028bc6a34cdecd61271eef4d1e3ad3828564455ae9f4099876b8cb148de55fd3.1",
+      "path": "charts/remark42/values.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "028bc6a34cdecd61271eef4d1e3ad3828564455ae9f4099876b8cb148de55fd3.2",
+      "path": "charts/remark42/values.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "800d0192956c258cc98e2b2766fa7e693c0673469e7bd9327d556cc58e8629eb.1",
+      "path": "charts/spi-triage/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "b2f9565d0bf678f33495e9b0f0d2f46ccce0f0acf2390bf8b14b8d9967b2c723.1",
+      "path": "deploy/blog/values.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "b2f9565d0bf678f33495e9b0f0d2f46ccce0f0acf2390bf8b14b8d9967b2c723.2",
+      "path": "deploy/blog/values.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "547da3897031d683aaf2ff889194a8ed28e712e2f0ca28c12f588888dc31c80a.1",
+      "path": "deploy/blog/values.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "547da3897031d683aaf2ff889194a8ed28e712e2f0ca28c12f588888dc31c80a.2",
+      "path": "deploy/blog/values.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "f300633ebff422ebb3c12910d098a061ab34059004a609d0610d98d90e96f148.1",
+      "path": "deploy/spi-triage/values.yaml",
+      "rule": "yaml-comments"
+    },
+    {
+      "id": "cdcd30f6a8dd3e5d9fbd6799354a434831144a186195214a52064968896b7b60.1",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "cdcd30f6a8dd3e5d9fbd6799354a434831144a186195214a52064968896b7b60.2",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "57be3a4de5c000ae85bc9167ec4ac22e69324a01298568e44d0a035e3ac6ed1c.1",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "57be3a4de5c000ae85bc9167ec4ac22e69324a01298568e44d0a035e3ac6ed1c.2",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "55e0766a4cc7ee4ff0ef4767c58085e22cddd4db4ce1bf0ae4465b37deb27f5b.1",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "55e0766a4cc7ee4ff0ef4767c58085e22cddd4db4ce1bf0ae4465b37deb27f5b.2",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "814830f98d67bd8786818c90ea2e575684a0eacf2fcdfc35fdb3eb6e4cbe3ee9.1",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "814830f98d67bd8786818c90ea2e575684a0eacf2fcdfc35fdb3eb6e4cbe3ee9.2",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "814830f98d67bd8786818c90ea2e575684a0eacf2fcdfc35fdb3eb6e4cbe3ee9.3",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "814830f98d67bd8786818c90ea2e575684a0eacf2fcdfc35fdb3eb6e4cbe3ee9.4",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "cdcd30f6a8dd3e5d9fbd6799354a434831144a186195214a52064968896b7b60.3",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "cdcd30f6a8dd3e5d9fbd6799354a434831144a186195214a52064968896b7b60.4",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "35db439e19b24bac3b3d957b2a5092424e3a393ebd5c53ae652cb5112c9aee03.1",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "35db439e19b24bac3b3d957b2a5092424e3a393ebd5c53ae652cb5112c9aee03.2",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "f3043c7cb38aa7e798c6f81fdfd2fcafbe0556a8a474b961e386372c1889a6c6.1",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "f3043c7cb38aa7e798c6f81fdfd2fcafbe0556a8a474b961e386372c1889a6c6.2",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "814830f98d67bd8786818c90ea2e575684a0eacf2fcdfc35fdb3eb6e4cbe3ee9.5",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "814830f98d67bd8786818c90ea2e575684a0eacf2fcdfc35fdb3eb6e4cbe3ee9.6",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "814830f98d67bd8786818c90ea2e575684a0eacf2fcdfc35fdb3eb6e4cbe3ee9.7",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "814830f98d67bd8786818c90ea2e575684a0eacf2fcdfc35fdb3eb6e4cbe3ee9.8",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "6b5d4dccbd9bbde9bbe1ebaf5a113e4caef51708775f656a3a8456f18dd86fe1.1",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "6b5d4dccbd9bbde9bbe1ebaf5a113e4caef51708775f656a3a8456f18dd86fe1.2",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "d34bb32b4b7bb4d53280f86bbac861c36a274bc849c42d9d3f0756c1fcad28e2.1",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "d34bb32b4b7bb4d53280f86bbac861c36a274bc849c42d9d3f0756c1fcad28e2.2",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "c19d5866d6d2c2f567f2ca845231e2feafdfe0c1ddc5d0ef64afe6b04d2ae8f6.1",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "c19d5866d6d2c2f567f2ca845231e2feafdfe0c1ddc5d0ef64afe6b04d2ae8f6.2",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "1ee842f4c19508663267a2722b80af6f32881d4f988a4d609803965eb7364835.1",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "1ee842f4c19508663267a2722b80af6f32881d4f988a4d609803965eb7364835.2",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "1ee842f4c19508663267a2722b80af6f32881d4f988a4d609803965eb7364835.3",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "1ee842f4c19508663267a2722b80af6f32881d4f988a4d609803965eb7364835.4",
+      "path": "deploy/storage/format-quorum-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "b5c1e5d2e740bb17fc49bcd6cea5cedab10377eb87c0c7d6bb6b24157fe20d13.1",
+      "path": "deploy/storage/litellm-branding-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "b5c1e5d2e740bb17fc49bcd6cea5cedab10377eb87c0c7d6bb6b24157fe20d13.2",
+      "path": "deploy/storage/litellm-branding-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "2f6714bff70e7893af237aa34cc1bbc3d29ade86684327d8bc914c63d5a6c859.1",
+      "path": "deploy/storage/litellm-branding-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "2f6714bff70e7893af237aa34cc1bbc3d29ade86684327d8bc914c63d5a6c859.2",
+      "path": "deploy/storage/litellm-branding-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "6bb431cbdc2da192c8587cb454f29d6ce2c3b29ce85d5bf624f05bb5d6d84270.1",
+      "path": "deploy/storage/litellm-branding-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "6bb431cbdc2da192c8587cb454f29d6ce2c3b29ce85d5bf624f05bb5d6d84270.2",
+      "path": "deploy/storage/litellm-branding-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "8285cb317b2c7ec39bf8f526cad4bf31fe25c4b5e4c16962fbe4592c57131747.1",
+      "path": "deploy/storage/litellm-branding-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "8285cb317b2c7ec39bf8f526cad4bf31fe25c4b5e4c16962fbe4592c57131747.2",
+      "path": "deploy/storage/litellm-branding-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "8285cb317b2c7ec39bf8f526cad4bf31fe25c4b5e4c16962fbe4592c57131747.3",
+      "path": "deploy/storage/litellm-branding-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "8285cb317b2c7ec39bf8f526cad4bf31fe25c4b5e4c16962fbe4592c57131747.4",
+      "path": "deploy/storage/litellm-branding-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "9a9349e93573a3fc43cec5df8d9c3637acc31db6753aea15f4f23949f55da28e.1",
+      "path": "deploy/storage/monori-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "9a9349e93573a3fc43cec5df8d9c3637acc31db6753aea15f4f23949f55da28e.2",
+      "path": "deploy/storage/monori-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "1f9a8ed3593774db2c25b84c98a934d01b1e448a46d83329cabd53eec8ef21ab.1",
+      "path": "deploy/storage/monori-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "1f9a8ed3593774db2c25b84c98a934d01b1e448a46d83329cabd53eec8ef21ab.2",
+      "path": "deploy/storage/monori-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "02f58ffeae421f08f7a1648d99a3048f1416f22320bf828122c4d06ce977a6ec.1",
+      "path": "deploy/storage/monori-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "02f58ffeae421f08f7a1648d99a3048f1416f22320bf828122c4d06ce977a6ec.2",
+      "path": "deploy/storage/monori-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "44f0dbaa23ce347b973066b04039cdd3ea53ff27761c23059b38cd1200dbaa01.1",
+      "path": "deploy/storage/monori-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "44f0dbaa23ce347b973066b04039cdd3ea53ff27761c23059b38cd1200dbaa01.2",
+      "path": "deploy/storage/monori-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "44f0dbaa23ce347b973066b04039cdd3ea53ff27761c23059b38cd1200dbaa01.3",
+      "path": "deploy/storage/monori-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "44f0dbaa23ce347b973066b04039cdd3ea53ff27761c23059b38cd1200dbaa01.4",
+      "path": "deploy/storage/monori-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "8dedc7939554ec3a06e5b9040f8cfea6176ede66203b2f3df220f7e4074d45e2.1",
+      "path": "deploy/storage/monori-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "8dedc7939554ec3a06e5b9040f8cfea6176ede66203b2f3df220f7e4074d45e2.2",
+      "path": "deploy/storage/monori-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "3200d2422056bb49a164c07c9d2a9b9d253914e861d7006d926feb9917ed0403.1",
+      "path": "deploy/storage/monori-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "3200d2422056bb49a164c07c9d2a9b9d253914e861d7006d926feb9917ed0403.2",
+      "path": "deploy/storage/monori-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "7bfcbc1fe49c1e513cc23084604f921cdd2b0dc195ef252433efe23b06ca63b7.1",
+      "path": "deploy/storage/monori-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "7bfcbc1fe49c1e513cc23084604f921cdd2b0dc195ef252433efe23b06ca63b7.2",
+      "path": "deploy/storage/monori-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "87e430efefb90aa90bddf749a544d58cc8219121cf54e94f7505e551e2e800d5.1",
+      "path": "deploy/storage/monori-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "87e430efefb90aa90bddf749a544d58cc8219121cf54e94f7505e551e2e800d5.2",
+      "path": "deploy/storage/monori-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "87e430efefb90aa90bddf749a544d58cc8219121cf54e94f7505e551e2e800d5.3",
+      "path": "deploy/storage/monori-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "87e430efefb90aa90bddf749a544d58cc8219121cf54e94f7505e551e2e800d5.4",
+      "path": "deploy/storage/monori-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "ae139285f5930483bdaf03610bc5eb55b82b773d767a94281ed6d67216709835.1",
+      "path": "deploy/storage/spi-triage-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "ae139285f5930483bdaf03610bc5eb55b82b773d767a94281ed6d67216709835.2",
+      "path": "deploy/storage/spi-triage-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "a161cc504e86a9efb45b26ff150579831724da3cb79350713383dc4d09ed493d.1",
+      "path": "deploy/storage/spi-triage-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "a161cc504e86a9efb45b26ff150579831724da3cb79350713383dc4d09ed493d.2",
+      "path": "deploy/storage/spi-triage-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "a8422702ffb842ab2b59f6553e1b067fa92cc873fe8ad6f6bc74fe3204bba1d7.1",
+      "path": "deploy/storage/spi-triage-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "a8422702ffb842ab2b59f6553e1b067fa92cc873fe8ad6f6bc74fe3204bba1d7.2",
+      "path": "deploy/storage/spi-triage-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "f8def63046d4d8cef38680e0e4e2feb12e8520859744bd4a3e97d981b3f36baf.1",
+      "path": "deploy/storage/spi-triage-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "f8def63046d4d8cef38680e0e4e2feb12e8520859744bd4a3e97d981b3f36baf.2",
+      "path": "deploy/storage/spi-triage-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "f8def63046d4d8cef38680e0e4e2feb12e8520859744bd4a3e97d981b3f36baf.3",
+      "path": "deploy/storage/spi-triage-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "f8def63046d4d8cef38680e0e4e2feb12e8520859744bd4a3e97d981b3f36baf.4",
+      "path": "deploy/storage/spi-triage-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "ad45295ad10ec22baa3da4d82c8d3a2be8b903e1c0e9f8ab6e5e946cbe15f190.1",
+      "path": "deploy/storage/wiki-runtime-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "ad45295ad10ec22baa3da4d82c8d3a2be8b903e1c0e9f8ab6e5e946cbe15f190.2",
+      "path": "deploy/storage/wiki-runtime-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "7a066630f450eb517a60250da1caf0d2f93461ad6a6f9cc4ddbcb7506ab6b9cf.1",
+      "path": "deploy/storage/wiki-runtime-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "7a066630f450eb517a60250da1caf0d2f93461ad6a6f9cc4ddbcb7506ab6b9cf.2",
+      "path": "deploy/storage/wiki-runtime-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "40e3eecba15df35d51cbc5e88f419cb7eb43cc0138238d88b444f0f885b33b91.1",
+      "path": "deploy/storage/wiki-runtime-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "40e3eecba15df35d51cbc5e88f419cb7eb43cc0138238d88b444f0f885b33b91.2",
+      "path": "deploy/storage/wiki-runtime-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "ea100a29bc3a5625f2cdac047a19028736efe144ae603bd9a21719fcbcd5c7f8.1",
+      "path": "deploy/storage/wiki-runtime-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "ea100a29bc3a5625f2cdac047a19028736efe144ae603bd9a21719fcbcd5c7f8.2",
+      "path": "deploy/storage/wiki-runtime-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "ea100a29bc3a5625f2cdac047a19028736efe144ae603bd9a21719fcbcd5c7f8.3",
+      "path": "deploy/storage/wiki-runtime-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "ea100a29bc3a5625f2cdac047a19028736efe144ae603bd9a21719fcbcd5c7f8.4",
+      "path": "deploy/storage/wiki-runtime-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "ce759905e687a411a9a470aa032349e3d1c39aa7946030bed59b927af3efebd9.1",
+      "path": "deploy/storage/wishlist-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "ce759905e687a411a9a470aa032349e3d1c39aa7946030bed59b927af3efebd9.2",
+      "path": "deploy/storage/wishlist-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "0bbe61b2091ad0d367c5b85f6983955bf6bf20ce3b995ae1bae3d408be360652.1",
+      "path": "deploy/storage/wishlist-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "0bbe61b2091ad0d367c5b85f6983955bf6bf20ce3b995ae1bae3d408be360652.2",
+      "path": "deploy/storage/wishlist-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "747d6790ca39d66c63c6bc2cf38bf2f19ef43295959e2c8c3a1e5beea7c4a779.1",
+      "path": "deploy/storage/wishlist-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "747d6790ca39d66c63c6bc2cf38bf2f19ef43295959e2c8c3a1e5beea7c4a779.2",
+      "path": "deploy/storage/wishlist-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "1598cf297eb04f806cbbfd4a7b356d47321d6d409e63245a91c184dcb06d1a27.1",
+      "path": "deploy/storage/wishlist-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "1598cf297eb04f806cbbfd4a7b356d47321d6d409e63245a91c184dcb06d1a27.2",
+      "path": "deploy/storage/wishlist-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "1598cf297eb04f806cbbfd4a7b356d47321d6d409e63245a91c184dcb06d1a27.3",
+      "path": "deploy/storage/wishlist-socrat5.yaml",
+      "rule": "yaml-braces"
+    },
+    {
+      "id": "1598cf297eb04f806cbbfd4a7b356d47321d6d409e63245a91c184dcb06d1a27.4",
+      "path": "deploy/storage/wishlist-socrat5.yaml",
+      "rule": "yaml-braces"
+    }
+  ]
+}

@@ -117,7 +117,10 @@
       always:
         - name: Remove only this run's temporary RBAC and copied source credentials
           ansible.builtin.command:
-            argv: [python3, "{{ otel_real_canary_stage }}/canary.py", --cleanup-workspace, "{{ otel_real_canary_stage }}/run-{{ otel_real_canary_suffix }}"]
+            argv: [python3,
+                   "{{ otel_real_canary_stage }}/canary.py",
+                   --cleanup-workspace,
+                   "{{ otel_real_canary_stage }}/run-{{ otel_real_canary_suffix }}"]
           changed_when: false
           timeout: 180
 
@@ -132,3 +135,4 @@
         mode: '0600'
       delegate_to: localhost
       become: false
+...

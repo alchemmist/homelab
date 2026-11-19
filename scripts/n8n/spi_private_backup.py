@@ -3,6 +3,7 @@
 POSIX main-thread deadline assumes normally interruptible OS I/O; no guarantee
 is possible for uninterruptible kernel I/O. Never invoke in HTTP worker threads.
 """
+
 import argparse
 import os
 import signal
@@ -12,98 +13,126 @@ import tempfile
 import time
 
 
-def backup(source, directory, max_bytes=512*1024*1024, deadline_seconds=60):
+def backup(source, directory, max_bytes=512 * 1024 * 1024, deadline_seconds=60):
     if deadline_seconds <= 0 or max_bytes <= 0:
-        raise ValueError('invalid bounds')
-    start=time.monotonic()
-    old_handler=signal.getsignal(signal.SIGALRM)
-    old_timer=signal.getitimer(signal.ITIMER_REAL)
-    path=None; fd=None; src=None; dst=None
+        raise ValueError("invalid bounds")
+    start = time.monotonic()
+    old_handler = signal.getsignal(signal.SIGALRM)
+    old_timer = signal.getitimer(signal.ITIMER_REAL)
+    path = None
+    fd = None
+    src = None
+    dst = None
+
     def expired(*args):
-        signal.setitimer(signal.ITIMER_REAL,0)
-        raise TimeoutError('backup deadline exceeded')
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        raise TimeoutError("backup deadline exceeded")
+
     def check():
-        if time.monotonic()-start >= deadline_seconds:
+        if time.monotonic() - start >= deadline_seconds:
             expired()
-    signal.signal(signal.SIGALRM,expired)
-    signal.setitimer(signal.ITIMER_REAL,deadline_seconds)
+
+    signal.signal(signal.SIGALRM, expired)
+    signal.setitimer(signal.ITIMER_REAL, deadline_seconds)
     try:
         # Block return/assignment boundaries until ownership is recorded.
-        mask=signal.pthread_sigmask(signal.SIG_BLOCK,{signal.SIGALRM})
+        mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGALRM})
         try:
-            fd,path=tempfile.mkstemp(prefix='.spi-prechange-',suffix='.sqlite',dir=directory)
+            fd, path = tempfile.mkstemp(prefix=".spi-prechange-", suffix=".sqlite", dir=directory)
         finally:
-            signal.pthread_sigmask(signal.SIG_SETMASK,mask)
-        os.close(fd); fd=None
-        mask=signal.pthread_sigmask(signal.SIG_BLOCK,{signal.SIGALRM})
+            signal.pthread_sigmask(signal.SIG_SETMASK, mask)
+        os.close(fd)
+        fd = None
+        mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGALRM})
         try:
-            src=sqlite3.connect('file:'+source+'?mode=ro',uri=True,timeout=min(0.05,deadline_seconds))
-            dst=sqlite3.connect(path,timeout=min(0.05,deadline_seconds))
+            src = sqlite3.connect(
+                "file:" + source + "?mode=ro", uri=True, timeout=min(0.05, deadline_seconds)
+            )
+            dst = sqlite3.connect(path, timeout=min(0.05, deadline_seconds))
         finally:
-            signal.pthread_sigmask(signal.SIG_SETMASK,mask)
-        page_size=src.execute('PRAGMA page_size').fetchone()[0]
-        def progress(status,remaining,total):
+            signal.pthread_sigmask(signal.SIG_SETMASK, mask)
+        page_size = src.execute("PRAGMA page_size").fetchone()[0]
+
+        def progress(status, remaining, total):
             check()
-            if total*page_size>max_bytes:
-                raise RuntimeError('backup size exceeded')
-        src.backup(dst,pages=128,progress=progress,sleep=0.01)
-        dst.set_progress_handler(lambda: int(time.monotonic()-start >= deadline_seconds),100)
-        if dst.execute('PRAGMA integrity_check').fetchone()[0]!='ok':
-            raise RuntimeError('backup integrity failure')
+            if total * page_size > max_bytes:
+                raise RuntimeError("backup size exceeded")
+
+        src.backup(dst, pages=128, progress=progress, sleep=0.01)
+        dst.set_progress_handler(lambda: int(time.monotonic() - start >= deadline_seconds), 100)
+        if dst.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
+            raise RuntimeError("backup integrity failure")
         check()
-        dst.close();dst=None
-        src.close();src=None
-        if os.path.getsize(path)>max_bytes:
-            raise RuntimeError('backup size exceeded')
-        with open(path,'rb') as f:
+        dst.close()
+        dst = None
+        src.close()
+        src = None
+        if os.path.getsize(path) > max_bytes:
+            raise RuntimeError("backup size exceeded")
+        with open(path, "rb") as f:
             while True:
                 check()
-                chunk=f.read(64*1024)
-                if not chunk:break
+                chunk = f.read(64 * 1024)
+                if not chunk:
+                    break
                 sys.stdout.buffer.write(chunk)
         sys.stdout.buffer.flush()
         check()
     finally:
         # Cancel before cleanup. Independent attempts; never retry or re-arm.
-        mask=signal.pthread_sigmask(signal.SIG_BLOCK,{signal.SIGALRM})
-        signal.setitimer(signal.ITIMER_REAL,0)
-        errors=[]
+        mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGALRM})
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        errors = []
         try:
-            for conn in (dst,src):
+            for conn in (dst, src):
                 try:
-                    if conn is not None:conn.close()
-                except BaseException as exc:errors.append(exc)
+                    if conn is not None:
+                        conn.close()
+                except BaseException as exc:
+                    errors.append(exc)
             try:
-                if fd is not None:os.close(fd)
-            except BaseException as exc:errors.append(exc)
+                if fd is not None:
+                    os.close(fd)
+            except BaseException as exc:
+                errors.append(exc)
             if path:
-                for suffix in ('','-wal','-shm','-journal'):
-                    try:os.unlink(path+suffix)
-                    except FileNotFoundError:pass
-                    except BaseException as exc:errors.append(exc)
+                for suffix in ("", "-wal", "-shm", "-journal"):
+                    try:
+                        os.unlink(path + suffix)
+                    except FileNotFoundError:
+                        pass
+                    except BaseException as exc:
+                        errors.append(exc)
         finally:
             # Drain our pending one-shot before restoring a default handler.
             if signal.SIGALRM in signal.sigpending():
                 signal.sigwait({signal.SIGALRM})
-            signal.signal(signal.SIGALRM,old_handler)
+            signal.signal(signal.SIGALRM, old_handler)
             if old_timer[0]:
-                signal.setitimer(signal.ITIMER_REAL,max(0.000001,old_timer[0]-(time.monotonic()-start)),old_timer[1])
-            signal.pthread_sigmask(signal.SIG_SETMASK,mask)
-        if errors:raise errors[0]
+                signal.setitimer(
+                    signal.ITIMER_REAL,
+                    max(0.000001, old_timer[0] - (time.monotonic() - start)),
+                    old_timer[1],
+                )
+            signal.pthread_sigmask(signal.SIG_SETMASK, mask)
+        if errors:
+            raise errors[0]
 
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--source',default='/data/spi.sqlite')
-    p.add_argument('--private-pvc-directory',required=True)
-    p.add_argument('--deadline-seconds',type=float,default=60)
-    a=p.parse_args()
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--source", default="/data/spi.sqlite")
+    p.add_argument("--private-pvc-directory", required=True)
+    p.add_argument("--deadline-seconds", type=float, default=60)
+    a = p.parse_args()
     try:
-        backup(a.source,a.private_pvc_directory,deadline_seconds=a.deadline_seconds)
+        backup(a.source, a.private_pvc_directory, deadline_seconds=a.deadline_seconds)
     except Exception:
         # Do not expose SQLite messages, paths, source data or credentials.
-        print('BACKUP_FAILED: output invalid; delete private host file',file=sys.stderr)
+        print("BACKUP_FAILED: output invalid; delete private host file", file=sys.stderr)
         # Avoid interpreter shutdown re-flushing a broken/blocked stdout pipe.
         os._exit(1)
 
-if __name__=='__main__':main()
+
+if __name__ == "__main__":
+    main()

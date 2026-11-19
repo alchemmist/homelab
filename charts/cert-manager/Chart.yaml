@@ -1,3 +1,4 @@
+---
 # Vendored from https://charts.jetstack.io chart cert-manager v1.16.2 so
 # Argo CD does not helm-pull this chart on refresh. This chart has no
 # subchart dependencies.
@@ -18,7 +19,7 @@ keywords:
 - kube-lego
 - letsencrypt
 - tls
-kubeVersion: '>= 1.22.0-0'
+kubeVersion: ">= 1.22.0-0"
 maintainers:
 - email: cert-manager-maintainers@googlegroups.com
   name: cert-manager-maintainers
@@ -27,3 +28,4 @@ name: cert-manager
 sources:
 - https://github.com/cert-manager/cert-manager
 version: v1.16.2
+...

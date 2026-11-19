@@ -57,3 +57,4 @@
   changed_when: false
   failed_when: homelab_alacritty_font_family not in homelab_alacritty_font_verified.stdout.split(',')
   when: not ansible_check_mode
+...

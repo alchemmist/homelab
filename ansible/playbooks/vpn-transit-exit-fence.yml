@@ -9,7 +9,7 @@
       ansible.builtin.copy:
         src: ../../scripts/vpn-exit-transit-fence.py
         dest: /usr/local/libexec/vpn-exit-transit-fence.py
-        mode: '0700'
+        mode: "0700"
     - name: Inspect prior owned state before applying
       ansible.builtin.stat:
         path: /var/lib/homelab-vpn-transit/exit-fence
@@ -20,7 +20,7 @@
     - name: Install persistent counter-independent validation
       ansible.builtin.copy:
         dest: /etc/systemd/system/homelab-msk-exit-fence.service
-        mode: '0644'
+        mode: "0644"
         content: |
           [Unit]
           Description=Reject direct raw VPN ingress on Netherlands WAN; shared HTTPS unchanged
@@ -40,3 +40,4 @@
         enabled: true
         state: started
         daemon_reload: true
+...

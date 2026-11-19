@@ -7,9 +7,9 @@
 
 - name: Download verified Rancher dashboards chart
   ansible.builtin.get_url:
-    url: "https://raw.githubusercontent.com/rancher/charts/release-v2.15/assets/rancher-monitoring-dashboards/rancher-monitoring-dashboards-{{ monitoring_rancher_chart_version }}.tgz"
+    url: https://raw.githubusercontent.com/rancher/charts/release-v2.15/assets/rancher-monitoring-dashboards/rancher-monitoring-dashboards-{{ monitoring_rancher_chart_version }}.tgz
     dest: "{{ monitoring_rancher_workdir }}/rancher-monitoring-dashboards-{{ monitoring_rancher_chart_version }}.tgz"
-    checksum: "sha256:{{ monitoring_rancher_chart_sha256 }}"
+    checksum: sha256:{{ monitoring_rancher_chart_sha256 }}
     mode: "0600"
 
 - name: Stage Rancher dashboard integration values
@@ -28,14 +28,14 @@
   ansible.builtin.copy:
     src: "{{ playbook_dir }}/../files/dashboard_descriptions.py"
     dest: "{{ monitoring_rancher_workdir }}/dashboard_descriptions.py"
-    mode: '0600'
+    mode: "0600"
 
 - name: Install the versioned dashboard descriptions
   ansible.builtin.copy:
     src: "{{ monitoring_rancher_repo_root }}/deploy/monitoring/dashboard-descriptions/"
     dest: "{{ monitoring_rancher_workdir }}/dashboard-descriptions/"
-    mode: '0600'
-    directory_mode: '0700'
+    mode: "0600"
+    directory_mode: "0700"
 
 - name: Verify the dashboard renderer YAML dependency
   ansible.builtin.command: python3 -c 'import yaml'
@@ -64,19 +64,44 @@
 
 - name: Inspect the obsolete public Grafana release
   ansible.builtin.command:
-    argv: [helm, list, --namespace, "{{ monitoring_rancher_namespace }}", --kubeconfig, "{{ monitoring_rancher_kubeconfig }}", --filter, '^monitoring-access$', --output, json]
+    argv: [helm,
+           list,
+           --namespace,
+           "{{ monitoring_rancher_namespace }}",
+           --kubeconfig,
+           "{{ monitoring_rancher_kubeconfig }}",
+           --filter,
+           ^monitoring-access$,
+           --output,
+           json]
   register: monitoring_public_release
   changed_when: false
 
 - name: Remove the obsolete public Grafana ingress release
   ansible.builtin.command:
-    argv: [helm, uninstall, monitoring-access, --namespace, "{{ monitoring_rancher_namespace }}", --kubeconfig, "{{ monitoring_rancher_kubeconfig }}", --wait, --timeout, 2m]
+    argv: [helm,
+           uninstall,
+           monitoring-access,
+           --namespace,
+           "{{ monitoring_rancher_namespace }}",
+           --kubeconfig,
+           "{{ monitoring_rancher_kubeconfig }}",
+           --wait,
+           --timeout,
+           2m]
   when: monitoring_public_release.stdout | from_json | length > 0
   changed_when: true
 
 - name: Remove obsolete public Grafana resources
   ansible.builtin.command:
-    argv: [kubectl, --kubeconfig, "{{ monitoring_rancher_kubeconfig }}", -n, "{{ monitoring_rancher_namespace }}", delete, "{{ item }}", --ignore-not-found]
+    argv: [kubectl,
+           --kubeconfig,
+           "{{ monitoring_rancher_kubeconfig }}",
+           -n,
+           "{{ monitoring_rancher_namespace }}",
+           delete,
+           "{{ item }}",
+           --ignore-not-found]
   loop:
     - ingress/grafana-public
     - middleware/grafana-local-only
@@ -94,3 +119,4 @@
   loop:
     - monitoring-access
     - grafana_ingress_auth.py
+...

@@ -25,3 +25,4 @@ k3s_ha_dependencies_manifest_servers:
   - socrat-1
   - socrat-3
 k3s_ha_dependencies_cert_manager_chart_version: v1.16.2
+...

@@ -1,0 +1,11 @@
+target-version = "py313"
+line-length = 100
+
+[lint]
+select = ["ALL"]
+# Unsatisfiable rule pairs. Documented in docs/quality/strict-policy.md.
+ignore = ["D203", "D213", "ISC001", "COM812"]
+
+[lint.per-file-ignores]
+# Pytest rewrites assert. No other test rule is ignored.
+"**/tests/**" = ["S101"]

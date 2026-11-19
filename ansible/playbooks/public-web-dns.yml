@@ -33,7 +33,11 @@
   any_errors_fatal: true
   tasks:
     - ansible.builtin.command:
-        argv: [/usr/local/sbin/homelab-public-web-dns, --apply, --approve-plan-hash, "{{ public_web_dns_hash }}"]
+        argv: [/usr/local/sbin/homelab-public-web-dns,
+               --apply,
+               --approve-plan-hash,
+               "{{ public_web_dns_hash }}"]
       when: public_web_dns_apply | default(false) | bool
       register: dns_apply
       changed_when: (dns_apply.stdout | from_json).applied
+...

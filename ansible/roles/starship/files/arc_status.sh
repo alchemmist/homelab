@@ -8,23 +8,31 @@ sb=$(arc status -sb 2>/dev/null) || exit 0
 
 total=0 conflicted=0 modified=0 staged=0 renamed=0 deleted=0 untracked=0
 while IFS= read -r line; do
-  [ -z "$line" ] && continue
-  case "$line" in '## '*) continue ;; esac
+  [[ -z "${line}" ]] && continue
+  case "${line}" in
+    '## '*) continue ;;
+    *) ;;
+  esac
   total=$((total + 1))
-  x=${line:0:1}; y=${line:1:1}; code="$x$y"
-  case "$code" in
+  x=${line:0:1}; y=${line:1:1}; code="${x}${y}"
+  case "${code}" in
     '??') untracked=$((untracked + 1)); continue ;;
     *U*|AA|DD) conflicted=$((conflicted + 1)); continue ;;
+    *) ;;
   esac
-  case "$x" in [AMDRC]) staged=$((staged + 1)) ;; esac
-  [ "$x" = "R" ] && renamed=$((renamed + 1))
-  [ "$y" = "M" ] && modified=$((modified + 1))
-  [ "$y" = "D" ] && deleted=$((deleted + 1))
-done <<< "$sb"
+  case "${x}" in
+    [AMDRC]) staged=$((staged + 1)) ;;
+    *) ;;
+  esac
+  [[ "${x}" = "R" ]] && renamed=$((renamed + 1))
+  [[ "${y}" = "M" ]] && modified=$((modified + 1))
+  [[ "${y}" = "D" ]] && deleted=$((deleted + 1))
+done <<< "${sb}"
 
-stashed=$(arc stash list 2>/dev/null | grep -c .)
+stash_list=$(arc stash list 2>/dev/null)
+stashed=$(printf '%s\n' "${stash_list}" | grep -c .)
 
 out=""
-[ "$total"   -gt 0 ] && out+=" ${total} "
-[ "$stashed" -gt 0 ] && out+="📦 "
-printf '%s' "$out"
+[[ "${total}" -gt 0 ]] && out+=" ${total} "
+[[ "${stashed}" -gt 0 ]] && out+="📦 "
+printf '%s' "${out}"

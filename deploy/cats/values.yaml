@@ -1,3 +1,4 @@
+---
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/cats
   tag: 079390c7bf05a76eb823990a28275eef181d63d9
@@ -6,3 +7,4 @@ image:
 
 imagePullSecrets:
   - cats-harbor-pull
+...

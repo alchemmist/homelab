@@ -3,8 +3,7 @@ import getpass
 import json
 import subprocess
 
-
-PROGRAM = r'''
+PROGRAM = r"""
 const { io } = require("socket.io-client");
 const settings = SETTINGS;
 const socket = io("http://127.0.0.1:3001", { reconnection: false });
@@ -73,29 +72,43 @@ socket.on("connect", async () => {
             url: result.monitor.url, active: result.monitor.active });
     } catch (error) { finish(error); }
 });
-'''
+"""
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--host', default='socrat-3')
-    parser.add_argument('--username', default='alchemmist')
-    parser.add_argument('--activate', action='store_true')
-    parser.add_argument('--publish', action='store_true')
+    parser.add_argument("--host", default="socrat-3")
+    parser.add_argument("--username", default="alchemmist")
+    parser.add_argument("--activate", action="store_true")
+    parser.add_argument("--publish", action="store_true")
     args = parser.parse_args()
     settings = {
-        'username': args.username,
-        'password': getpass.getpass('Uptime Kuma password: '),
-        'url': 'https://wiki.socrat.alchemmist.xyz/',
-        'activate': args.activate,
-        'publish': args.publish,
+        "username": args.username,
+        "password": getpass.getpass("Uptime Kuma password: "),
+        "url": "https://wiki.socrat.alchemmist.xyz/",
+        "activate": args.activate,
+        "publish": args.publish,
     }
-    program = PROGRAM.replace('SETTINGS', json.dumps(settings), 1)
-    subprocess.run([
-        'ssh', args.host, 'kubectl', '-n', 'uptime-kuma', 'exec', '-i',
-        'deployment/uptime-kuma', '--', 'node', '-'
-    ], input=program, text=True, check=True)
+    program = PROGRAM.replace("SETTINGS", json.dumps(settings), 1)
+    subprocess.run(
+        [
+            "ssh",
+            args.host,
+            "kubectl",
+            "-n",
+            "uptime-kuma",
+            "exec",
+            "-i",
+            "deployment/uptime-kuma",
+            "--",
+            "node",
+            "-",
+        ],
+        input=program,
+        text=True,
+        check=True,
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -27,3 +27,4 @@
         python /tmp/configure-webui-compaction.py
       register: webui_compaction_config
       changed_when: (webui_compaction_config.stdout | from_json).changed
+...

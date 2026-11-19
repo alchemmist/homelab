@@ -1,3 +1,4 @@
+---
 serviceClusterIP: "" # Optional fixed existing Service VIP; never a Pod/public address.
 # Full-service image is activated only after a protected, naturally drained release.
 tokenAccountingMode: byte-bound-v1
@@ -15,7 +16,7 @@ s3Evidence:
   publicOrigin: https://spi-evidence.socrat.alchemmist.xyz
   enabled: false
   retainCredentials: false
-  writerSecret: ''
+  writerSecret: ""
 durableWaitEnabled: false
 llmMinuteTokens: 30000
 queueUI:
@@ -48,3 +49,4 @@ maintenanceIngressPaused: false
 
 # App-only migration must not drag the existing installation-token broker.
 brokerNodeName: socrat-1
+...

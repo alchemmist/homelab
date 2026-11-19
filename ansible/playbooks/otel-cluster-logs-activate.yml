@@ -57,3 +57,4 @@
       ansible.builtin.command:
         argv: [k3s, crictl, stop, '--timeout', '90', '{{ otel_cluster_container_id }}']
       changed_when: true
+...

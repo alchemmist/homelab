@@ -1,4 +1,6 @@
+---
 apiVersion: v2
 name: loki
 version: 1.0.0
 description: Standalone loki backend; existing runtime and persistent host path retained.
+...

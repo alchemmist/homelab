@@ -1,3 +1,4 @@
+---
 # Adopted existing objects; no Secret values or PVC contents. Change through Git only.
 image:
   repository: netbirdio/dashboard
@@ -1518,3 +1519,4 @@ resources:
         - name: state
           persistentVolumeClaim:
             claimName: machine-socrat-5
+...

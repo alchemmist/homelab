@@ -40,3 +40,4 @@ homelab_waybar_profiles:
   - custom/pinglo
 homelab_waybar_modules_right: '{{ homelab_waybar_profiles[homelab_waybar_profile]
   }}'
+...

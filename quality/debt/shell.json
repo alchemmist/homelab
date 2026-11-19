@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "acceptance": false,
+  "reason": "Initial full owned shell source audit; static analysis only, never invoke operational shell scripts.",
+  "findings": [
+    {
+      "id": "b08e356a0b85511d20ca56547f7532334b44cb256f42aec774e25109e13c3fbe.1",
+      "path": "services/spi-tokenizer/build-local.sh",
+      "rule": "SC1007"
+    },
+    {
+      "id": "bae3af006fa687c52204999d72bf8ad5c9cf181c1016b0a56258da23722e3a6b.1",
+      "path": "ansible/roles/desktop_panel/files/battery-degradation.sh",
+      "rule": "SC2046"
+    }
+  ]
+}

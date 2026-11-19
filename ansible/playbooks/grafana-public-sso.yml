@@ -16,3 +16,4 @@
     - ansible.builtin.debug:
         var: sso.stdout
       when: not ansible_check_mode
+...

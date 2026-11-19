@@ -71,7 +71,7 @@
           - --
           - sh
           - -ec
-          - 'ip link set lo up; exec python3 "$@"'
+          - ip link set lo up; exec python3 "$@"
           - otel-privacy-smoke
           - "{{ otel_smoke_stage }}/smoke.py"
           - --binary
@@ -97,3 +97,4 @@
         mode: "0600"
       delegate_to: localhost
       become: false
+...

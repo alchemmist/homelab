@@ -5,97 +5,102 @@
   become: true
   any_errors_fatal: true
   pre_tasks:
-    - name: Reject single-server bootstrap for the HA cluster
-      ansible.builtin.assert:
-        that: not (k3s_ha_enabled | default(false) | bool)
-        fail_msg: Use playbooks/k3s-ha.yml and playbooks/home-ingress-ha.yml for the HA cluster.
+  - name: Reject single-server bootstrap for the HA cluster
+    ansible.builtin.assert:
+      that: not (k3s_ha_enabled | default(false) | bool)
+      fail_msg: Use playbooks/k3s-ha.yml and playbooks/home-ingress-ha.yml for the HA cluster.
   vars:
     k3s_server_ip: 192.168.0.23
   tasks:
-    - name: Set primary hostname
-      ansible.builtin.hostname:
-        name: socrat-0
+  - name: Set primary hostname
+    ansible.builtin.hostname:
+      name: socrat-0
 
-    - name: Stop and disable host Caddy before Traefik takes 80/443
-      ansible.builtin.systemd:
-        name: caddy
-        state: stopped
-        enabled: false
-      failed_when: false
+  - name: Stop and disable host Caddy before Traefik takes 80/443
+    ansible.builtin.systemd:
+      name: caddy
+      state: stopped
+      enabled: false
+    failed_when: false
 
-    - name: Install k3s server with default Traefik and ServiceLB
-      ansible.builtin.shell: |
-        set -eu
-        curl -sfL https://get.k3s.io | \
-          INSTALL_K3S_EXEC="server --node-name socrat-0 --node-ip {{ k3s_server_ip }} --advertise-address {{ k3s_server_ip }} --write-kubeconfig-mode 640 --write-kubeconfig-group alchemmist --flannel-iface wg-socrat" \
-          sh -
+  - name: Install k3s server with default Traefik and ServiceLB
+    ansible.builtin.shell: |
+      set -o pipefail
+      set -eu
+      curl -sfL https://get.k3s.io | \
+        INSTALL_K3S_EXEC="server --node-name socrat-0 --node-ip {{ k3s_server_ip }} --advertise-address {{ k3s_server_ip }} --write-kubeconfig-mode 640 --write-kubeconfig-group alchemmist --flannel-iface wg-socrat" \
+        sh -
 
-    - name: Ensure k3s server is running
-      ansible.builtin.systemd:
-        name: k3s
-        state: restarted
-        enabled: true
-        daemon_reload: true
+    args:
+      executable: /bin/bash
+  - name: Ensure k3s server is running
+    ansible.builtin.systemd:
+      name: k3s
+      state: restarted
+      enabled: true
+      daemon_reload: true
 
-    - name: Wait for Kubernetes API
-      ansible.builtin.command: k3s kubectl get nodes
-      register: k3s_api
-      retries: 30
-      delay: 5
-      until: k3s_api.rc == 0
-      changed_when: false
+  - name: Wait for Kubernetes API
+    ansible.builtin.command: k3s kubectl get nodes
+    register: k3s_api
+    retries: 30
+    delay: 5
+    until: k3s_api.rc == 0
+    changed_when: false
 
-    - name: Read k3s node token
-      ansible.builtin.slurp:
-        src: /var/lib/rancher/k3s/server/node-token
-      register: k3s_node_token_raw
+  - name: Read k3s node token
+    ansible.builtin.slurp:
+      src: /var/lib/rancher/k3s/server/node-token
+    register: k3s_node_token_raw
 
-    - name: Store k3s token for agent play
-      ansible.builtin.set_fact:
-        k3s_node_token: "{{ k3s_node_token_raw.content | b64decode | trim }}"
+  - name: Store k3s token for agent play
+    ansible.builtin.set_fact:
+      k3s_node_token: "{{ k3s_node_token_raw.content | b64decode | trim }}"
 
 - name: Install k3s agents
   hosts: Socrat:!socrat-0
   gather_facts: true
   become: true
   roles:
-    - k3s_agent_network
+  - k3s_agent_network
   vars:
     k3s_server_ip: 192.168.0.23
     k3s_node_ip_map:
       socrat-1: 192.168.0.24
       socrat-2: 10.250.0.2
   tasks:
-    - name: Install k3s agent
-      ansible.builtin.shell: |
-        set -eu
-        curl -sfL https://get.k3s.io | \
-          K3S_URL="https://{% if inventory_hostname == 'socrat-2' %}10.250.0.1{% else %}{{ k3s_server_ip }}{% endif %}:6443" \
-          K3S_TOKEN="{{ hostvars['socrat-0'].k3s_node_token }}" \
-          INSTALL_K3S_EXEC="agent --node-name {{ inventory_hostname }} --node-ip {{ k3s_node_ip_map[inventory_hostname] }} --flannel-iface wg-socrat" \
-          sh -
-      args:
-        creates: /usr/local/bin/k3s
+  - name: Install k3s agent
+    ansible.builtin.shell: |
+      set -o pipefail
+      set -eu
+      curl -sfL https://get.k3s.io | \
+        K3S_URL="https://{% if inventory_hostname == 'socrat-2' %}10.250.0.1{% else %}{{ k3s_server_ip }}{% endif %}:6443" \
+        K3S_TOKEN="{{ hostvars['socrat-0'].k3s_node_token }}" \
+        INSTALL_K3S_EXEC="agent --node-name {{ inventory_hostname }} --node-ip {{ k3s_node_ip_map[inventory_hostname] }} --flannel-iface wg-socrat" \
+        sh -
+    args:
+      creates: /usr/local/bin/k3s
 
-    - name: Ensure k3s agent is running
-      ansible.builtin.systemd:
-        name: k3s-agent
-        state: started
-        enabled: true
+      executable: /bin/bash
+  - name: Ensure k3s agent is running
+    ansible.builtin.systemd:
+      name: k3s-agent
+      state: started
+      enabled: true
 
 - name: Configure ServiceLB node eligibility
   hosts: socrat-0
   gather_facts: false
   become: true
   tasks:
-    - name: Allow ServiceLB only on home nodes while VPS uses its dedicated ingress
-      ansible.builtin.command: >-
-        k3s kubectl label node {{ item.name }} svccontroller.k3s.cattle.io/enablelb={{ item.enablelb }} --overwrite
-      loop:
-        - { name: socrat-0, enablelb: "true" }
-        - { name: socrat-1, enablelb: "true" }
-        - { name: socrat-2, enablelb: "false" }
-      changed_when: false
+  - name: Allow ServiceLB only on home nodes while VPS uses its dedicated ingress
+    ansible.builtin.command: >-
+      k3s kubectl label node {{ item.name }} svccontroller.k3s.cattle.io/enablelb={{ item.enablelb }} --overwrite
+    loop:
+    - {name: socrat-0, enablelb: "true"}
+    - {name: socrat-1, enablelb: "true"}
+    - {name: socrat-2, enablelb: "false"}
+    changed_when: false
 
 - name: Install cluster addons and migrate homepage
   hosts: socrat-0
@@ -105,273 +110,285 @@
     letsencrypt_email: antropophag@gmail.com
     cert_manager_version: v1.16.2
   tasks:
-    - name: Wait until control-plane node is Ready
-      ansible.builtin.shell: |
-        set -eu
-        k3s kubectl wait --for=condition=Ready node/socrat-0 --timeout=180s
-      changed_when: false
+  - name: Wait until control-plane node is Ready
+    ansible.builtin.shell: |
+      set -eu
+      k3s kubectl wait --for=condition=Ready node/socrat-0 --timeout=180s
+    changed_when: false
 
-    - name: Install Helm if missing
-      ansible.builtin.shell: |
-        set -eu
-        if ! command -v helm >/dev/null 2>&1; then
-          curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-        fi
-      args:
-        creates: /usr/local/bin/helm
+  - name: Install Helm if missing
+    ansible.builtin.shell: |
+      set -o pipefail
+      set -eu
+      if ! command -v helm >/dev/null 2>&1; then
+        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      fi
+    args:
+      creates: /usr/local/bin/helm
 
-    - name: Add Jetstack Helm repository
-      ansible.builtin.command: helm repo add jetstack https://charts.jetstack.io
-      register: jetstack_repo_add
-      failed_when: jetstack_repo_add.rc not in [0, 1]
-      changed_when: jetstack_repo_add.rc == 0 and 'already exists' not in (jetstack_repo_add.stderr + jetstack_repo_add.stdout)
+      executable: /bin/bash
+  - name: Add Jetstack Helm repository
+    ansible.builtin.command: helm repo add jetstack https://charts.jetstack.io
+    register: jetstack_repo_add
+    failed_when: jetstack_repo_add.rc not in [0, 1]
+    changed_when: jetstack_repo_add.rc == 0 and 'already exists' not in (jetstack_repo_add.stderr + jetstack_repo_add.stdout)
 
-    - name: Update Helm repositories
-      ansible.builtin.command: helm repo update
-      changed_when: false
+  - name: Update Helm repositories
+    ansible.builtin.command: helm repo update
+    changed_when: false
 
-    - name: Ensure cert-manager namespace exists
-      ansible.builtin.command: k3s kubectl create namespace cert-manager
-      register: cert_manager_ns
-      failed_when: cert_manager_ns.rc not in [0, 1]
-      changed_when: cert_manager_ns.rc == 0
+  - name: Ensure cert-manager namespace exists
+    ansible.builtin.command: k3s kubectl create namespace cert-manager
+    register: cert_manager_ns
+    failed_when: cert_manager_ns.rc not in [0, 1]
+    changed_when: cert_manager_ns.rc == 0
 
-    - name: Adopt existing cert-manager resources into Helm release
-      ansible.builtin.shell: |
-        set -eu
-        adopt_namespaced() {
-          kind="$1"
-          for name in cert-manager cert-manager-cainjector cert-manager-webhook; do
-            if k3s kubectl -n cert-manager get "$kind" "$name" >/dev/null 2>&1; then
-              k3s kubectl -n cert-manager label "$kind" "$name" app.kubernetes.io/managed-by=Helm --overwrite
-              k3s kubectl -n cert-manager annotate "$kind" "$name" meta.helm.sh/release-name=cert-manager meta.helm.sh/release-namespace=cert-manager --overwrite
-            fi
-          done
-        }
-        adopt_cluster() {
-          kind="$1"
-          shift
-          for name in "$@"; do
-            if k3s kubectl get "$kind" "$name" >/dev/null 2>&1; then
-              k3s kubectl label "$kind" "$name" app.kubernetes.io/managed-by=Helm --overwrite
-              k3s kubectl annotate "$kind" "$name" meta.helm.sh/release-name=cert-manager meta.helm.sh/release-namespace=cert-manager --overwrite
-            fi
-          done
-        }
+  - name: Adopt existing cert-manager resources into Helm release
+    ansible.builtin.shell: |
+      set -o pipefail
+      set -eu
+      adopt_namespaced() {
+        kind="$1"
+        for name in cert-manager cert-manager-cainjector cert-manager-webhook; do
+          if k3s kubectl -n cert-manager get "$kind" "$name" >/dev/null 2>&1; then
+            k3s kubectl -n cert-manager label "$kind" "$name" app.kubernetes.io/managed-by=Helm --overwrite
+            k3s kubectl -n cert-manager annotate "$kind" "$name" meta.helm.sh/release-name=cert-manager meta.helm.sh/release-namespace=cert-manager --overwrite
+          fi
+        done
+      }
+      adopt_cluster() {
+        kind="$1"
+        shift
+        for name in "$@"; do
+          if k3s kubectl get "$kind" "$name" >/dev/null 2>&1; then
+            k3s kubectl label "$kind" "$name" app.kubernetes.io/managed-by=Helm --overwrite
+            k3s kubectl annotate "$kind" "$name" meta.helm.sh/release-name=cert-manager meta.helm.sh/release-namespace=cert-manager --overwrite
+          fi
+        done
+      }
 
-        for namespace in cert-manager kube-system; do
-          for kind in serviceaccount service deployment role rolebinding; do
-            for name in $(k3s kubectl -n "$namespace" get "$kind" -o name 2>/dev/null | grep cert-manager || true); do
-              k3s kubectl -n "$namespace" label "$name" app.kubernetes.io/managed-by=Helm --overwrite
-              k3s kubectl -n "$namespace" annotate "$name" meta.helm.sh/release-name=cert-manager meta.helm.sh/release-namespace=cert-manager --overwrite
-            done
+      for namespace in cert-manager kube-system; do
+        for kind in serviceaccount service deployment role rolebinding; do
+          for name in $(k3s kubectl -n "$namespace" get "$kind" -o name 2>/dev/null | grep cert-manager || true); do
+            k3s kubectl -n "$namespace" label "$name" app.kubernetes.io/managed-by=Helm --overwrite
+            k3s kubectl -n "$namespace" annotate "$name" meta.helm.sh/release-name=cert-manager meta.helm.sh/release-namespace=cert-manager --overwrite
           done
         done
+      done
 
-        for kind in clusterrole clusterrolebinding mutatingwebhookconfiguration validatingwebhookconfiguration; do
-          for name in $(k3s kubectl get "$kind" -o name 2>/dev/null | grep cert-manager || true); do
-            k3s kubectl label "$name" app.kubernetes.io/managed-by=Helm --overwrite
-            k3s kubectl annotate "$name" meta.helm.sh/release-name=cert-manager meta.helm.sh/release-namespace=cert-manager --overwrite
-          done
+      for kind in clusterrole clusterrolebinding mutatingwebhookconfiguration validatingwebhookconfiguration; do
+        for name in $(k3s kubectl get "$kind" -o name 2>/dev/null | grep cert-manager || true); do
+          k3s kubectl label "$name" app.kubernetes.io/managed-by=Helm --overwrite
+          k3s kubectl annotate "$name" meta.helm.sh/release-name=cert-manager meta.helm.sh/release-namespace=cert-manager --overwrite
         done
-        adopt_cluster crd certificaterequests.cert-manager.io certificates.cert-manager.io challenges.acme.cert-manager.io clusterissuers.cert-manager.io issuers.cert-manager.io orders.acme.cert-manager.io
-      changed_when: false
+      done
+      adopt_cluster crd certificaterequests.cert-manager.io certificates.cert-manager.io challenges.acme.cert-manager.io clusterissuers.cert-manager.io issuers.cert-manager.io orders.acme.cert-manager.io
+    changed_when: false
 
-    - name: Render cert-manager Helm values
-      ansible.builtin.copy:
-        dest: /tmp/cert-manager-values.yaml
-        owner: root
-        group: root
-        mode: "0644"
-        content: |
-          crds:
-            enabled: true
-          extraArgs:
-            - --acme-http01-solver-nameservers=1.1.1.1:53,9.9.9.9:53
+    args:
+      executable: /bin/bash
+  - name: Render cert-manager Helm values
+    ansible.builtin.copy:
+      dest: /tmp/cert-manager-values.yaml
+      owner: root
+      group: root
+      mode: "0644"
+      content: |
+        crds:
+          enabled: true
+        extraArgs:
+          - --acme-http01-solver-nameservers=1.1.1.1:53,9.9.9.9:53
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            memory: 512Mi
+        webhook:
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+        cainjector:
           resources:
             requests:
               cpu: 50m
               memory: 128Mi
             limits:
               memory: 512Mi
-          webhook:
-            resources:
-              requests:
-                cpu: 20m
-                memory: 64Mi
-              limits:
-                memory: 256Mi
-          cainjector:
-            resources:
-              requests:
-                cpu: 50m
-                memory: 128Mi
-              limits:
-                memory: 512Mi
-          startupapicheck:
-            resources:
-              requests:
-                cpu: 10m
-                memory: 32Mi
-              limits:
-                memory: 128Mi
+        startupapicheck:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
 
-    - name: Install cert-manager with Helm
-      ansible.builtin.command: >-
-        helm upgrade --install cert-manager jetstack/cert-manager
-        --namespace cert-manager
-        --kubeconfig /etc/rancher/k3s/k3s.yaml
-        --version {{ cert_manager_version }}
-        --values /tmp/cert-manager-values.yaml
-        --wait
-        --timeout 5m
-      register: cert_manager_helm
-      changed_when: "'has been upgraded' in cert_manager_helm.stdout or 'has been installed' in cert_manager_helm.stdout"
+  - name: Install cert-manager with Helm
+    ansible.builtin.command: >-
+      helm upgrade --install cert-manager jetstack/cert-manager
+      --namespace cert-manager
+      --kubeconfig /etc/rancher/k3s/k3s.yaml
+      --version {{ cert_manager_version }}
+      --values /tmp/cert-manager-values.yaml
+      --wait
+      --timeout 5m
+    register: cert_manager_helm
+    changed_when: "'has been upgraded' in cert_manager_helm.stdout or 'has been installed' in cert_manager_helm.stdout"
 
-    - name: Wait for cert-manager deployments
-      ansible.builtin.shell: |
-        set -eu
-        k3s kubectl -n cert-manager rollout status deploy/cert-manager --timeout=180s
-        k3s kubectl -n cert-manager rollout status deploy/cert-manager-cainjector --timeout=180s
-        k3s kubectl -n cert-manager rollout status deploy/cert-manager-webhook --timeout=180s
-      changed_when: false
+  - name: Wait for cert-manager deployments
+    ansible.builtin.shell: |
+      set -eu
+      k3s kubectl -n cert-manager rollout status deploy/cert-manager --timeout=180s
+      k3s kubectl -n cert-manager rollout status deploy/cert-manager-cainjector --timeout=180s
+      k3s kubectl -n cert-manager rollout status deploy/cert-manager-webhook --timeout=180s
+    changed_when: false
 
-    - name: Configure k3s Traefik resources
-      ansible.builtin.shell: |
-        set -eu
-        cat <<'EOF' | k3s kubectl apply -f -
-        apiVersion: helm.cattle.io/v1
-        kind: HelmChartConfig
-        metadata:
-          name: traefik
-          namespace: kube-system
-        spec:
-          valuesContent: |-
-            providers:
-              kubernetesIngress:
-                ingressClass: traefik
-            deployment:
-              nodeSelector:
-                kubernetes.io/hostname: socrat-0
-            resources:
-              requests:
-                cpu: 100m
-                memory: 128Mi
-              limits:
-                memory: 512Mi
-        EOF
-      register: traefik_config_apply
-      changed_when: "'created' in traefik_config_apply.stdout or 'configured' in traefik_config_apply.stdout"
+  - name: Configure k3s Traefik resources
+    ansible.builtin.shell: |
+      set -o pipefail
+      set -eu
+      cat <<'EOF' | k3s kubectl apply -f -
+      apiVersion: helm.cattle.io/v1
+      kind: HelmChartConfig
+      metadata:
+        name: traefik
+        namespace: kube-system
+      spec:
+        valuesContent: |-
+          providers:
+            kubernetesIngress:
+              ingressClass: traefik
+          deployment:
+            nodeSelector:
+              kubernetes.io/hostname: socrat-0
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+      EOF
+    register: traefik_config_apply
+    changed_when: "'created' in traefik_config_apply.stdout or 'configured' in traefik_config_apply.stdout"
 
-    - name: Create Let's Encrypt ClusterIssuer
-      ansible.builtin.shell: |
-        set -eu
-        cat <<'EOF' | k3s kubectl apply -f -
-        apiVersion: cert-manager.io/v1
-        kind: ClusterIssuer
-        metadata:
-          name: letsencrypt-http01
-        spec:
-          acme:
-            email: {{ letsencrypt_email }}
-            server: https://acme-v02.api.letsencrypt.org/directory
-            privateKeySecretRef:
-              name: letsencrypt-http01-account-key
-            solvers:
-              - http01:
-                  ingress:
-                    ingressClassName: traefik
-        EOF
-      register: issuer_apply
-      changed_when: "'created' in issuer_apply.stdout or 'configured' in issuer_apply.stdout"
-      tags: [cert_manager_issuer]
+    args:
+      executable: /bin/bash
+  - name: Create Let's Encrypt ClusterIssuer
+    ansible.builtin.shell: |
+      set -o pipefail
+      set -eu
+      cat <<'EOF' | k3s kubectl apply -f -
+      apiVersion: cert-manager.io/v1
+      kind: ClusterIssuer
+      metadata:
+        name: letsencrypt-http01
+      spec:
+        acme:
+          email: {{ letsencrypt_email }}
+          server: https://acme-v02.api.letsencrypt.org/directory
+          privateKeySecretRef:
+            name: letsencrypt-http01-account-key
+          solvers:
+            - http01:
+                ingress:
+                  ingressClassName: traefik
+      EOF
+    register: issuer_apply
+    changed_when: "'created' in issuer_apply.stdout or 'configured' in issuer_apply.stdout"
+    tags: [cert_manager_issuer]
+    args:
+      executable: /bin/bash
 
-    - name: Create homepage namespace
-      ansible.builtin.command: k3s kubectl create namespace socrat-home
-      register: ns_create
-      failed_when: ns_create.rc not in [0, 1]
-      changed_when: ns_create.rc == 0
+  - name: Create homepage namespace
+    ansible.builtin.command: k3s kubectl create namespace socrat-home
+    register: ns_create
+    failed_when: ns_create.rc not in [0, 1]
+    changed_when: ns_create.rc == 0
 
-    - name: Build homepage container image from /var/www/socrat
-      ansible.builtin.shell: |
-        set -eu
-        workdir=/tmp/socrat-home-image
-        rm -rf "$workdir"
-        mkdir -p "$workdir"
-        cp -a /var/www/socrat/. "$workdir/"
-        cat > "$workdir/Dockerfile" <<'EOF'
-        FROM nginx:1.27-alpine
-        COPY . /usr/share/nginx/html/
-        EOF
-        docker build -t localhost/socrat-home:latest "$workdir"
-        docker save localhost/socrat-home:latest -o /tmp/socrat-home-image.tar
-        k3s ctr -n k8s.io images import /tmp/socrat-home-image.tar
-      register: home_image_build
-      changed_when: true
+  - name: Build homepage container image from /var/www/socrat
+    ansible.builtin.shell: |
+      set -eu
+      workdir=/tmp/socrat-home-image
+      rm -rf "$workdir"
+      mkdir -p "$workdir"
+      cp -a /var/www/socrat/. "$workdir/"
+      cat > "$workdir/Dockerfile" <<'EOF'
+      FROM nginx:1.27-alpine
+      COPY . /usr/share/nginx/html/
+      EOF
+      docker build -t localhost/socrat-home:latest "$workdir"
+      docker save localhost/socrat-home:latest -o /tmp/socrat-home-image.tar
+      k3s ctr -n k8s.io images import /tmp/socrat-home-image.tar
+    register: home_image_build
+    changed_when: true
 
-    - name: Fetch homepage image archive locally
-      ansible.builtin.fetch:
-        src: /tmp/socrat-home-image.tar
-        dest: /tmp/socrat-home-image.tar
-        flat: true
+  - name: Fetch homepage image archive locally
+    ansible.builtin.fetch:
+      src: /tmp/socrat-home-image.tar
+      dest: /tmp/socrat-home-image.tar
+      flat: true
 
-    - name: Copy homepage image archive to worker nodes
-      ansible.builtin.copy:
-        src: /tmp/socrat-home-image.tar
-        dest: /tmp/socrat-home-image.tar
-        mode: "0644"
-      delegate_to: "{{ item }}"
-      loop: "{{ groups['Socrat'] | difference(['socrat-0']) }}"
-      become: true
+  - name: Copy homepage image archive to worker nodes
+    ansible.builtin.copy:
+      src: /tmp/socrat-home-image.tar
+      dest: /tmp/socrat-home-image.tar
+      mode: "0644"
+    delegate_to: "{{ item }}"
+    loop: "{{ groups['Socrat'] | difference(['socrat-0']) }}"
+    become: true
 
-    - name: Import homepage image on worker nodes
-      ansible.builtin.command: k3s ctr -n k8s.io images import /tmp/socrat-home-image.tar
-      delegate_to: "{{ item }}"
-      loop: "{{ groups['Socrat'] | difference(['socrat-0']) }}"
-      become: true
-      changed_when: true
+  - name: Import homepage image on worker nodes
+    ansible.builtin.command: k3s ctr -n k8s.io images import /tmp/socrat-home-image.tar
+    delegate_to: "{{ item }}"
+    loop: "{{ groups['Socrat'] | difference(['socrat-0']) }}"
+    become: true
+    changed_when: true
 
-    - name: Copy homepage Helm chart to control-plane
-      ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../../charts/socrat-home/"
-        dest: /tmp/charts/socrat-home/
-        owner: root
-        group: root
-        mode: preserve
+  - name: Copy homepage Helm chart to control-plane
+    ansible.builtin.copy:
+      src: "{{ playbook_dir }}/../../charts/socrat-home/"
+      dest: /tmp/charts/socrat-home/
+      owner: root
+      group: root
+      mode: preserve
 
-    - name: Adopt existing homepage resources into Helm release
-      ansible.builtin.shell: |
-        set -eu
-        for resource in deployment/socrat-home service/socrat-home ingress/socrat-home; do
-          if k3s kubectl -n socrat-home get "$resource" >/dev/null 2>&1; then
-            k3s kubectl -n socrat-home label "$resource" app.kubernetes.io/managed-by=Helm --overwrite
-            k3s kubectl -n socrat-home annotate "$resource" meta.helm.sh/release-name=socrat-home meta.helm.sh/release-namespace=socrat-home --overwrite
-          fi
-        done
-      changed_when: false
+  - name: Adopt existing homepage resources into Helm release
+    ansible.builtin.shell: |
+      set -eu
+      for resource in deployment/socrat-home service/socrat-home ingress/socrat-home; do
+        if k3s kubectl -n socrat-home get "$resource" >/dev/null 2>&1; then
+          k3s kubectl -n socrat-home label "$resource" app.kubernetes.io/managed-by=Helm --overwrite
+          k3s kubectl -n socrat-home annotate "$resource" meta.helm.sh/release-name=socrat-home meta.helm.sh/release-namespace=socrat-home --overwrite
+        fi
+      done
+    changed_when: false
 
-    - name: Install or upgrade homepage Helm release
-      ansible.builtin.command: >-
-        helm upgrade --install socrat-home /tmp/charts/socrat-home
-        --namespace socrat-home
-        --kubeconfig /etc/rancher/k3s/k3s.yaml
-        --wait
-        --timeout 5m
-      register: home_helm
-      changed_when: "'has been upgraded' in home_helm.stdout or 'has been installed' in home_helm.stdout"
+  - name: Install or upgrade homepage Helm release
+    ansible.builtin.command: >-
+      helm upgrade --install socrat-home /tmp/charts/socrat-home
+      --namespace socrat-home
+      --kubeconfig /etc/rancher/k3s/k3s.yaml
+      --wait
+      --timeout 5m
+    register: home_helm
+    changed_when: "'has been upgraded' in home_helm.stdout or 'has been installed' in home_helm.stdout"
 
-    - name: Wait for homepage deployment
-      ansible.builtin.command: k3s kubectl -n socrat-home rollout status deploy/socrat-home --timeout=180s
-      changed_when: false
+  - name: Wait for homepage deployment
+    ansible.builtin.command: k3s kubectl -n socrat-home rollout status deploy/socrat-home --timeout=180s
+    changed_when: false
 
-    - name: Show cluster status
-      ansible.builtin.shell: |
-        k3s kubectl get nodes -o wide
-        k3s kubectl -n kube-system get svc traefik
-        k3s kubectl -n socrat-home get ingress,certificate,pod,svc
-      changed_when: false
-      register: cluster_status
+  - name: Show cluster status
+    ansible.builtin.shell: |
+      k3s kubectl get nodes -o wide
+      k3s kubectl -n kube-system get svc traefik
+      k3s kubectl -n socrat-home get ingress,certificate,pod,svc
+    changed_when: false
+    register: cluster_status
 
-    - name: Print cluster status
-      ansible.builtin.debug:
-        var: cluster_status.stdout_lines
+  - name: Print cluster status
+    ansible.builtin.debug:
+      var: cluster_status.stdout_lines
+...

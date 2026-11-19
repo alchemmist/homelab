@@ -26,65 +26,84 @@ class MethodSignatureTests(unittest.TestCase):
 
     def test_signature_changes_are_rejected(self):
         changes = [
-            ('self, page,', 'self, injected_parameter, page,'),
-            ('fallback=None', 'fallback=42'),
-            ('-> str', '-> int'),
-            ('self, page,', 'self, page: str,'),
+            ("self, page,", "self, injected_parameter, page,"),
+            ("fallback=None", "fallback=42"),
+            ("-> str", "-> int"),
+            ("self, page,", "self, page: str,"),
         ]
         for old, new in changes:
             with self.subTest(new=new):
                 report = pilot.allowed_edit_report(self.baseline, self.baseline.replace(old, new))
-                self.assertFalse(report['allowed'], report)
-                self.assertIn('method signature', report['detail'])
-                self.assertTrue(any('_answer' in value for value in report['expected_signatures']))
+                self.assertFalse(report["allowed"], report)
+                self.assertIn("method signature", report["detail"])
+                self.assertTrue(any("_answer" in value for value in report["expected_signatures"]))
 
     def test_body_changes_remain_allowed(self):
-        report = pilot.allowed_edit_report(self.baseline, self.baseline.replace("return 'answer'", "return 'fixed'"))
-        self.assertTrue(report['allowed'], report)
+        report = pilot.allowed_edit_report(
+            self.baseline, self.baseline.replace("return 'answer'", "return 'fixed'")
+        )
+        self.assertTrue(report["allowed"], report)
 
     def test_duplicate_allowed_method_is_rejected(self):
-        candidate = self.baseline + "    async def _answer(self, page, fallback=None) -> str:\n        return 'override'\n"
-        self.assertFalse(pilot.allowed_edit_report(self.baseline, candidate)['allowed'])
+        candidate = (
+            self.baseline
+            + "    async def _answer(self, page, fallback=None) -> str:\n        return 'override'\n"
+        )
+        self.assertFalse(pilot.allowed_edit_report(self.baseline, candidate)["allowed"])
 
 
 class TestCompletionTests(unittest.TestCase):
     def grade(self, body):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            grader = root / 'grader'
+            grader = root / "grader"
             grader.mkdir()
-            methods = ''.join('    def ' + name.rsplit('.', 1)[1] + '(self):\n        ' + body + '\n' for name in pilot.SELECTED_TESTS)
-            (grader / pilot.GRADER_NAME).write_text('import unittest\nclass RecoveryTests(unittest.TestCase):\n' + methods)
+            methods = "".join(
+                "    def " + name.rsplit(".", 1)[1] + "(self):\n        " + body + "\n"
+                for name in pilot.SELECTED_TESTS
+            )
+            (grader / pilot.GRADER_NAME).write_text(
+                "import unittest\nclass RecoveryTests(unittest.TestCase):\n" + methods
+            )
             return pilot.run_selected_tests(Path(sys.executable), root, grader)
 
     def test_early_zero_exit_is_not_a_pass(self):
-        self.assertFalse(self.grade("__import__('os')._exit(0)")['passed'])
+        self.assertFalse(self.grade("__import__('os')._exit(0)")["passed"])
 
     def test_skipped_tests_are_not_a_pass(self):
-        self.assertFalse(self.grade("self.skipTest('not executed')")['passed'])
+        self.assertFalse(self.grade("self.skipTest('not executed')")["passed"])
 
     def test_executed_successful_tests_pass(self):
-        self.assertTrue(self.grade('self.assertEqual(1, 1)')['passed'])
+        self.assertTrue(self.grade("self.assertEqual(1, 1)")["passed"])
 
 
 class GraderProcessTests(unittest.TestCase):
     def test_both_output_channels_are_bounded(self):
         for channel in (1, 2):
-            with self.subTest(channel=channel), self.assertRaisesRegex(ValueError, 'output limit'):
-                pilot.bounded_test_process([sys.executable, '-c', "import os;os.write(" + str(channel) + ",b'x'*65536)"], limit=1024)
+            with self.subTest(channel=channel), self.assertRaisesRegex(ValueError, "output limit"):
+                pilot.bounded_test_process(
+                    [sys.executable, "-c", "import os;os.write(" + str(channel) + ",b'x'*65536)"],
+                    limit=1024,
+                )
 
     def test_process_timeout_is_bounded(self):
         with self.assertRaises(TimeoutError):
-            pilot.bounded_test_process([sys.executable, '-c', 'import time;time.sleep(30)'], timeout=0.1)
+            pilot.bounded_test_process(
+                [sys.executable, "-c", "import time;time.sleep(30)"], timeout=0.1
+            )
 
     def test_failed_docker_start_is_not_overwritten_by_inspect(self):
-        created = subprocess.CompletedProcess([], 0, 'container', '')
-        inspected = subprocess.CompletedProcess([], 0, '0', '')
-        failed = subprocess.CompletedProcess([], 1, '', 'start failed')
-        with mock.patch.object(pilot, 'docker_run', side_effect=[created, inspected]), mock.patch.object(pilot, 'bounded_test_process', return_value=failed), mock.patch.object(pilot, 'remove_own_container'):
-            result = pilot.run_container('docker', 'image', ['python'], [], '/opt/grader')
-        self.assertEqual(result['exit_code'], 1)
-        self.assertFalse(result['completed'])
+        created = subprocess.CompletedProcess([], 0, "container", "")
+        inspected = subprocess.CompletedProcess([], 0, "0", "")
+        failed = subprocess.CompletedProcess([], 1, "", "start failed")
+        with (
+            mock.patch.object(pilot, "docker_run", side_effect=[created, inspected]),
+            mock.patch.object(pilot, "bounded_test_process", return_value=failed),
+            mock.patch.object(pilot, "remove_own_container"),
+        ):
+            result = pilot.run_container("docker", "image", ["python"], [], "/opt/grader")
+        self.assertEqual(result["exit_code"], 1)
+        self.assertFalse(result["completed"])
 
 
 class SnapshotTests(unittest.TestCase):
@@ -133,7 +152,10 @@ class SnapshotTests(unittest.TestCase):
             pilot.verify_snapshot(self.dest)
         self.assertIn("differ from manifest", str(unexpected.exception))
         extra.unlink()
-        shutil.copyfile(self.dest / "grader" / "test_protocol_recovery.py", self.dest / "agent" / "test_protocol_recovery.py")
+        shutil.copyfile(
+            self.dest / "grader" / "test_protocol_recovery.py",
+            self.dest / "agent" / "test_protocol_recovery.py",
+        )
         with self.assertRaises(ValueError) as embedded:
             pilot.verify_snapshot(self.dest)
         self.assertIn("grader is inside the agent snapshot", str(embedded.exception))
@@ -156,7 +178,9 @@ class SnapshotTests(unittest.TestCase):
         protocol = Path(self.temp.name) / "protocol"
         shutil.copytree(self.dest / "agent", protocol)
         protocol_text = (protocol / "agent_protocol.py").read_text(encoding="utf-8")
-        (protocol / "agent_protocol.py").write_text(protocol_text + "\nPROTOCOL_TAMPER = 1\n", encoding="utf-8")
+        (protocol / "agent_protocol.py").write_text(
+            protocol_text + "\nPROTOCOL_TAMPER = 1\n", encoding="utf-8"
+        )
         rejected_protocol = pilot.grade_candidate(python, self.dest, protocol)
         self.assertFalse(rejected_protocol["graded"])
         self.assertFalse(rejected_protocol["passed"])
@@ -190,6 +214,7 @@ class SnapshotTests(unittest.TestCase):
         graded = pilot.grade_candidate(python, self.dest, commented)
         self.assertTrue(graded["passed"], json.dumps(graded, sort_keys=True))
         from repository_runner import artifact_accepted
+
         self.assertFalse(artifact_accepted(graded, self.dest, commented))
 
 

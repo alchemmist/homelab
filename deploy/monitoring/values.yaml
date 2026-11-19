@@ -1,3 +1,4 @@
+---
 defaultRules:
   disabled:
     # Full largest-node N-1 memory capacity is not a requirement for this homelab.
@@ -13,17 +14,17 @@ defaultRules:
     KubeletServerCertificateRenewalErrors: true
   additionalRuleAnnotations:
     KubeMemoryOvercommit:
-      rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer'
+      rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer
     KubeCPUOvercommit:
-      rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer'
+      rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer
     KubePodNotReady:
-      rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/{{ $labels.namespace }}/{{ $labels.pod }}'
+      rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/{{ $labels.namespace }}/{{ $labels.pod }}
     KubePodCrashLooping:
-      rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/{{ $labels.namespace }}/{{ $labels.pod }}'
+      rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/{{ $labels.namespace }}/{{ $labels.pod }}
     KubeNodeNotReady:
-      rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ $labels.node }}'
+      rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ $labels.node }}
     KubeNodeUnreachable:
-      rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ $labels.node }}'
+      rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ $labels.node }}
   rules:
     etcd: false
     kubeControllerManager: false
@@ -44,14 +45,14 @@ kubeApiServer:
     relabelings:
       - action: keep
         sourceLabels: [__address__]
-        regex: '10\.250\.0\.(1|3|5):6443'
+        regex: 10\.250\.0\.(1|3|5):6443
 kubelet:
   serviceMonitor:
     insecureSkipVerify: false
     metricRelabelings:
       - action: drop
         sourceLabels: [instance, __name__]
-        regex: '(192\.168\.0\.(23|24)|10\.250\.0\.5):10250;(apiserver|etcd|scheduler|workqueue|kubeproxy)_.*'
+        regex: (192\.168\.0\.(23|24)|10\.250\.0\.5):10250;(apiserver|etcd|scheduler|workqueue|kubeproxy)_.*
 prometheus:
   prometheusSpec:
     replicas: 1
@@ -282,3 +283,4 @@ prometheus-node-exporter:
       memory: 24Mi
     limits:
       memory: 64Mi
+...

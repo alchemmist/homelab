@@ -43,3 +43,4 @@
       ansible.builtin.command: k3s kubectl -n cattle-monitoring-system rollout status statefulset/prometheus-kube-prometheus-stack-prometheus --timeout=600s
       changed_when: false
       timeout: 630
+...

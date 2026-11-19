@@ -1,3 +1,4 @@
+---
 container_resource_policy_profiles:
 - namespace: blog
   ownerKind: ReplicaSet
@@ -995,3 +996,4 @@ container_resource_policy_profiles:
       removeCpuLimit: true
   nodeSelector:
     kubernetes.io/hostname: socrat-3
+...

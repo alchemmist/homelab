@@ -140,3 +140,4 @@
       ansible.builtin.debug:
         msg: "{{ netbird_node_reconcile.stdout | from_json }}"
       when: not ansible_check_mode
+...

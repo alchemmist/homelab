@@ -1,3 +1,4 @@
+---
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/blog
   tag: "9628aad3c257ec4b4171d8eff808908742c9b640"
@@ -16,8 +17,8 @@ ingress:
   tlsSecretName: blog-tls
   clusterIssuer: letsencrypt-http01
 resources:
-  requests: { cpu: 20m, memory: 64Mi }
-  limits: { memory: 256Mi }
+  requests: {cpu: 20m, memory: 64Mi}
+  limits: {memory: 256Mi}
 imagePullSecrets:
   - blog-harbor-pull
 
@@ -29,3 +30,4 @@ nodeAffinity:
           - key: kubernetes.io/hostname
             operator: In
             values: [socrat-0, socrat-5]
+...

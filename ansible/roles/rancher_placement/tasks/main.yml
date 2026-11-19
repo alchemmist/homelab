@@ -22,3 +22,4 @@
 
 - name: Verify Rancher replica placement
   ansible.builtin.include_tasks: verify.yml
+...

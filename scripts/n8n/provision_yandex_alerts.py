@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """Provision narrowly routed Grafana alerts; admin credentials never leave the host."""
-import json,shlex,subprocess,sys
+
+import json
+import shlex
+import subprocess
+import sys
 from pathlib import Path
-BASE=Path(__file__).resolve().parents[2]
-REMOTE=r'''
+
+BASE = Path(__file__).resolve().parents[2]
+REMOTE = r"""
 import sys,json,subprocess,urllib.request,urllib.error,base64
 r=json.load(sys.stdin);k=['kubectl','--kubeconfig','/etc/rancher/k3s/k3s.yaml','-n','cattle-monitoring-system']
 s=json.loads(subprocess.check_output(k+['get','secret','socrat-grafana-admin','-o','json'],stderr=subprocess.DEVNULL))['data']
@@ -21,25 +26,52 @@ except urllib.error.HTTPError as e:status=e.code;raw=e.read().decode()
 try:body=json.loads(raw)
 except ValueError:body={}
 print(json.dumps({'status':status,'body':body}))
-'''
-def api(method,path,body=None):
-    r=subprocess.run(['ssh','socrat-0','python3 -c '+shlex.quote(REMOTE)],input=json.dumps({'method':method,'path':path,'body':body}),text=True,capture_output=True,check=True)
+"""
+
+
+def api(method, path, body=None):
+    r = subprocess.run(
+        ["ssh", "socrat-0", "python3 -c " + shlex.quote(REMOTE)],
+        input=json.dumps({"method": method, "path": path, "body": body}),
+        text=True,
+        capture_output=True,
+        check=True,
+    )
     return json.loads(r.stdout)
+
+
 def main():
-    definition=json.loads((BASE/(sys.argv[1] if len(sys.argv)>1 else 'docs/n8n/yandex-session-alerts.json')).read_text())
-    folder=api('GET','/api/folders/automation')
-    if folder['status']==404:
-        assert api('POST','/api/folders',{'uid':'automation','title':'Automation'})['status']<300
-    else:assert folder['status']==200
-    cp=definition['contactPoint'];existing=api('GET','/api/v1/provisioning/contact-points');assert existing['status']==200
-    method='PUT'if any(c.get('uid')==cp['uid']for c in existing['body'])else'POST'
-    path='/api/v1/provisioning/contact-points'+('/'+cp['uid']if method=='PUT'else'')
-    result=api(method,path,cp);assert result['status']<300, 'Grafana provisioning failed with HTTP '+str(result['status'])
-    for rule in definition['rules']:
-        current=api('GET','/api/v1/provisioning/alert-rules/'+rule['uid'])
-        method='PUT'if current['status']==200 else 'POST'
-        assert current['status']in [200,404]
-        path='/api/v1/provisioning/alert-rules'+('/'+rule['uid']if method=='PUT'else'')
-        result=api(method,path,rule);assert result['status']<300, 'Grafana provisioning failed with HTTP '+str(result['status'])
-        print('Grafana alert provisioned:',rule['uid'])
-if __name__=='__main__':main()
+    definition = json.loads(
+        (
+            BASE / (sys.argv[1] if len(sys.argv) > 1 else "docs/n8n/yandex-session-alerts.json")
+        ).read_text()
+    )
+    folder = api("GET", "/api/folders/automation")
+    if folder["status"] == 404:
+        assert (
+            api("POST", "/api/folders", {"uid": "automation", "title": "Automation"})["status"]
+            < 300
+        )
+    else:
+        assert folder["status"] == 200
+    cp = definition["contactPoint"]
+    existing = api("GET", "/api/v1/provisioning/contact-points")
+    assert existing["status"] == 200
+    method = "PUT" if any(c.get("uid") == cp["uid"] for c in existing["body"]) else "POST"
+    path = "/api/v1/provisioning/contact-points" + ("/" + cp["uid"] if method == "PUT" else "")
+    result = api(method, path, cp)
+    assert result["status"] < 300, "Grafana provisioning failed with HTTP " + str(result["status"])
+    for rule in definition["rules"]:
+        current = api("GET", "/api/v1/provisioning/alert-rules/" + rule["uid"])
+        method = "PUT" if current["status"] == 200 else "POST"
+        assert current["status"] in [200, 404]
+        path = "/api/v1/provisioning/alert-rules" + ("/" + rule["uid"] if method == "PUT" else "")
+        result = api(method, path, rule)
+        assert result["status"] < 300, "Grafana provisioning failed with HTTP " + str(
+            result["status"]
+        )
+        print("Grafana alert provisioned:", rule["uid"])
+
+
+if __name__ == "__main__":
+    main()

@@ -1,3 +1,4 @@
+---
 apiVersion: traefik.io/v1alpha1
 kind: ServersTransport
 metadata:
@@ -12,3 +13,4 @@ metadata:
 spec:
   serverName: argocd.socrat.alchemmist.xyz
   insecureSkipVerify: false
+...

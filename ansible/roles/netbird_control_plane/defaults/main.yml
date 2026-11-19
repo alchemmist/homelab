@@ -9,3 +9,4 @@ netbird_confirm: ""
 netbird_deploy_routers: false
 netbird_touch_wireguard: false
 netbird_touch_k3s: false
+...

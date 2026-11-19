@@ -1,3 +1,4 @@
+---
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/socrat-home
   tag: latest
@@ -15,3 +16,4 @@ nodeAffinity:
           - key: kubernetes.io/hostname
             operator: In
             values: [socrat-1, socrat-5]
+...

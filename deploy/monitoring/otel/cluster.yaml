@@ -1,3 +1,4 @@
+---
 extensions:
   file_storage:
     create_directory: true
@@ -169,3 +170,4 @@ service:
       - batch/traces
       exporters:
       - otlp/traces
+...

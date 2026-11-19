@@ -5,3 +5,4 @@ monitoring_rancher_chart_sha256: aaf7d4ab13a153f817b993c387e18cca391ebda3382e96f
 monitoring_rancher_workdir: "{{ homelab_user_home | default('/home/alchemmist') }}/.cache/homelab-monitoring-rancher"
 monitoring_rancher_kubeconfig: /etc/rancher/k3s/k3s.yaml
 monitoring_rancher_repo_root: "{{ playbook_dir }}/../.."
+...

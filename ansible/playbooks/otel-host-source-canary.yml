@@ -53,3 +53,4 @@
     - name: Report source comparison availability
       ansible.builtin.debug:
         msg: '{{ native_host_source.stdout | from_json }}'
+...

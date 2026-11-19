@@ -7,7 +7,7 @@
     - name: Install private-only fixed DNS relay configuration
       ansible.builtin.copy:
         dest: /etc/homelab-vpn-transit/dns.json
-        mode: '0644'
+        mode: "0644"
         content: |
           {"log":{"loglevel":"warning"},"inbounds":[{"tag":"private-dns-tcp","listen":"10.250.0.40","port":53,"protocol":"tunnel","settings":{"rewriteAddress":"10.250.0.2","rewritePort":5354,"allowedNetwork":"tcp","followRedirect":false}},{"tag":"private-dns-udp","listen":"10.250.0.40","port":53,"protocol":"tunnel","settings":{"rewriteAddress":"10.250.0.2","rewritePort":5354,"allowedNetwork":"udp","followRedirect":false}}],"outbounds":[{"protocol":"freedom","sendThrough":"10.250.0.40"}]}
     - name: Validate DNS relay before activation
@@ -16,7 +16,7 @@
     - name: Install bounded DNS-only service without restarting production VPN relay
       ansible.builtin.copy:
         dest: /etc/systemd/system/homelab-vpn-dns-transit.service
-        mode: '0644'
+        mode: "0644"
         content: |
           [Unit]
           Description=Private fixed-destination HOME Moscow NL authoritative DNS relay
@@ -44,3 +44,4 @@
         state: started
         enabled: true
         daemon_reload: true
+...

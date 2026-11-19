@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "acceptance": false,
+  "reason": "Trusted compiler-owned workflow_run publisher is deliberate; graph freshness and permission boundary checks protect it, no arbitrary publisher exemption.",
+  "findings": [
+    {
+      "id": "bcb8abb241c8df91d5984d8b6f1c4080c97b9530ef0961afe497330fe1fbc107.1",
+      "path": ".github/workflows/quality-graph-publish.yml",
+      "rule": "zizmor/dangerous-triggers"
+    }
+  ]
+}

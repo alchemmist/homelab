@@ -15,9 +15,9 @@
 - name: Require the reviewed host and at least one installed kernel
   ansible.builtin.assert:
     that:
-      - inventory_hostname == 'socrat-3'
-      - homelab_alx_boot_kernels | length > 0
-      - ansible_facts.kernel in homelab_alx_boot_kernels
+    - inventory_hostname == 'socrat-3'
+    - homelab_alx_boot_kernels | length > 0
+    - ansible_facts.kernel in homelab_alx_boot_kernels
 
 - name: Preserve each existing normal initramfs once
   ansible.builtin.copy:
@@ -36,14 +36,14 @@
 - name: Inspect DKMS installation for every bootable kernel
   ansible.builtin.command:
     argv:
-      - dkms
-      - status
-      - -m
-      - homelab-alx
-      - -v
-      - 6.12.111-1
-      - -k
-      - "{{ item }}"
+    - dkms
+    - status
+    - -m
+    - homelab-alx
+    - -v
+    - 6.12.111-1
+    - -k
+    - "{{ item }}"
   loop: "{{ homelab_alx_boot_kernels }}"
   register: homelab_alx_boot_status
   changed_when: false
@@ -52,15 +52,15 @@
 - name: Build the protected module for kernels that need it
   ansible.builtin.command:
     argv:
-      - dkms
-      - build
-      - -m
-      - homelab-alx
-      - -v
-      - 6.12.111-1
-      - -k
-      - "{{ item.item }}"
-      - --force
+    - dkms
+    - build
+    - -m
+    - homelab-alx
+    - -v
+    - 6.12.111-1
+    - -k
+    - "{{ item.item }}"
+    - --force
   loop: "{{ homelab_alx_boot_status.results }}"
   loop_control:
     label: "{{ item.item }}"
@@ -71,15 +71,15 @@
 - name: Install the protected module for kernels that need it
   ansible.builtin.command:
     argv:
-      - dkms
-      - install
-      - -m
-      - homelab-alx
-      - -v
-      - 6.12.111-1
-      - -k
-      - "{{ item.item }}"
-      - --force
+    - dkms
+    - install
+    - -m
+    - homelab-alx
+    - -v
+    - 6.12.111-1
+    - -k
+    - "{{ item.item }}"
+    - --force
   loop: "{{ homelab_alx_boot_status.results }}"
   loop_control:
     label: "{{ item.item }}"
@@ -97,15 +97,16 @@
 - name: Rebuild every bootable kernel initramfs with the guard
   ansible.builtin.command:
     argv:
-      - update-initramfs
-      - -u
-      - -k
-      - "{{ item }}"
+    - update-initramfs
+    - -u
+    - -k
+    - "{{ item }}"
   loop: "{{ homelab_alx_boot_kernels }}"
   changed_when: true
 
 - name: Verify protected module resolution and wireless blacklist in every boot image
   ansible.builtin.shell: |
+    set -o pipefail
     set -eu
     work=$(mktemp -d)
     trap 'rm -rf "$work"' EXIT
@@ -124,3 +125,6 @@
     fi
   loop: "{{ homelab_alx_boot_kernels }}"
   changed_when: false
+  args:
+    executable: /bin/bash
+...

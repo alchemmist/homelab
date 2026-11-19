@@ -54,7 +54,7 @@
     - name: Persist the dedicated worker peer
       ansible.builtin.blockinfile:
         path: /etc/wireguard/wg-socrat.conf
-        marker: '# {mark} homelab socrat-3 peer'
+        marker: "# {mark} homelab socrat-3 peer"
         block: |
           [Peer]
           PublicKey = {{ wg_socrat_nodes['socrat-3'].public_key }}
@@ -62,7 +62,7 @@
           PersistentKeepalive = {{ wg_socrat_keepalive }}
         owner: root
         group: root
-        mode: '0600'
+        mode: "0600"
         backup: true
       no_log: true
       when: not (worker_peer_state.stdout | from_json).persisted
@@ -87,3 +87,4 @@
       changed_when: false
       failed_when: (wg_socrat_nodes['socrat-3'].public_key + '\t' + wg_socrat_nodes['socrat-3'].address + '/32') not in worker_peer_addresses.stdout_lines
       when: not ansible_check_mode
+...

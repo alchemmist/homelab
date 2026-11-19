@@ -4,3 +4,4 @@ k3s_ha_routes_peers:
   - socrat-0
   - socrat-1
 k3s_ha_routes_interface: wg-socrat
+...

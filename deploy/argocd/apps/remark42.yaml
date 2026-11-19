@@ -1,3 +1,4 @@
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -31,3 +32,4 @@ spec:
       namespace: remark42
       jsonPointers:
         - /data
+...

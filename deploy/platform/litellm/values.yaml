@@ -1,3 +1,4 @@
+---
 db:
   database: litellm
   deployStandalone: false
@@ -220,3 +221,4 @@ terminationGracePeriodSeconds: 7260
 hostAliases:
 - ip: 10.43.218.222
   hostnames: [auth.socrat.alchemmist.xyz]
+...

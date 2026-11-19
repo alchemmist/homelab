@@ -1,3 +1,4 @@
+---
 # Harbor chart 1.19.4 / app 2.15.4. Credentials are generated on the control plane.
 externalURL: https://harbor.socrat.alchemmist.xyz
 expose:
@@ -134,3 +135,4 @@ redis:
       limits:
         memory: 512Mi
         ephemeral-storage: 1Gi
+...

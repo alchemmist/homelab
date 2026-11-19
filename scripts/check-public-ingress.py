@@ -6,7 +6,6 @@ import tempfile
 from pathlib import Path
 from urllib.parse import urlsplit
 
-
 ADDRESSES = ("109.173.40.247", "109.120.141.60")
 HOSTS = (
     "alchemmist.xyz",
@@ -37,22 +36,27 @@ PROBES = {
 
 
 LOGIN_REDIRECTS = {
-    'lms.alchemmist.xyz': '/auth/login',
-    'vpn.alchemmist.xyz': '/outpost.goauthentik.io/start',
+    "lms.alchemmist.xyz": "/auth/login",
+    "vpn.alchemmist.xyz": "/outpost.goauthentik.io/start",
 }
 
 
 def redirect_matches(host, headers):
     if host not in LOGIN_REDIRECTS:
         return True
-    locations = [line.partition(':')[2].strip() for line in headers.splitlines()
-                 if line.lower().startswith('location:')]
+    locations = [
+        line.partition(":")[2].strip()
+        for line in headers.splitlines()
+        if line.lower().startswith("location:")
+    ]
     if len(locations) != 1:
         return False
     target = urlsplit(locations[0])
-    return (target.path == LOGIN_REDIRECTS[host]
-            and target.scheme in ('', 'https')
-            and target.netloc in ('', host))
+    return (
+        target.path == LOGIN_REDIRECTS[host]
+        and target.scheme in ("", "https")
+        and target.netloc in ("", host)
+    )
 
 
 def check_endpoint(item):
@@ -63,13 +67,28 @@ def check_endpoint(item):
         headers = Path(directory) / "headers"
         result = subprocess.run(
             [
-                "curl", "--noproxy", "*", "--silent", "--show-error",
-                "--connect-timeout", "5", "--max-time", "15",
-                "--resolve", f"{host}:443:{address}",
-                "--output", str(body), "--dump-header", str(headers), "--write-out", "%{http_code}",
+                "curl",
+                "--noproxy",
+                "*",
+                "--silent",
+                "--show-error",
+                "--connect-timeout",
+                "5",
+                "--max-time",
+                "15",
+                "--resolve",
+                f"{host}:443:{address}",
+                "--output",
+                str(body),
+                "--dump-header",
+                str(headers),
+                "--write-out",
+                "%{http_code}",
                 f"https://{host}{path}",
             ],
-            capture_output=True, text=True, timeout=20,
+            capture_output=True,
+            text=True,
+            timeout=20,
         )
         code = result.stdout.strip()
         content = body.read_bytes() if body.exists() else b""
@@ -93,18 +112,28 @@ def check_dns(host):
     for authority in ADDRESSES:
         result = subprocess.run(
             ["dig", "@" + authority, host, "A", "+short", "+time=3", "+tries=1"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         addresses = set(result.stdout.split())
         good = result.returncode == 0 and addresses == set(ADDRESSES)
         valid = good and valid
-        print(f"DNS {host:25} authority={authority} {','.join(sorted(addresses)) or 'no answer'} {'ok' if good else 'FAILED'}")
+        print(
+            f"DNS {host:25} authority={authority} {','.join(sorted(addresses)) or 'no answer'} {'ok' if good else 'FAILED'}"
+        )
     return valid
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Check both public HTTPS entrances without depending on DNS propagation.")
-    parser.add_argument("--check-dns", action="store_true", help="Also require both A records at both owned authoritative entrances.")
+    parser = argparse.ArgumentParser(
+        description="Check both public HTTPS entrances without depending on DNS propagation."
+    )
+    parser.add_argument(
+        "--check-dns",
+        action="store_true",
+        help="Also require both A records at both owned authoritative entrances.",
+    )
     args = parser.parse_args()
     endpoints = [(host, address) for host in HOSTS for address in ADDRESSES]
     try:

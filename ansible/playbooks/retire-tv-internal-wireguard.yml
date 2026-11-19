@@ -25,7 +25,11 @@
   any_errors_fatal: true
   tasks:
     - ansible.builtin.command:
-        argv: [/usr/local/sbin/homelab-retire-tv-internal-wireguard, --apply, --approve-plan-hash, '{{ tv_peer_hashes[inventory_hostname] }}']
+        argv: [/usr/local/sbin/homelab-retire-tv-internal-wireguard,
+               --apply,
+               --approve-plan-hash,
+               '{{ tv_peer_hashes[inventory_hostname] }}']
       when: tv_peer_apply | default(false) | bool
       register: tv_peer_result
       changed_when: (tv_peer_result.stdout | from_json).applied
+...

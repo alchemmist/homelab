@@ -58,3 +58,4 @@
       changed_when: false
 
 - ansible.builtin.import_playbook: rancher-namespaces.yml
+...

@@ -108,3 +108,4 @@
                 argv: [rmdir, /run/homelab-authentik-ssh-apply.lock]
               become: true
               changed_when: true
+...

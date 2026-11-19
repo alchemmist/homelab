@@ -24,3 +24,4 @@ homelab_hypr_environment:
   MOZ_ENABLE_WAYLAND: '1'
   GDK_SCALE: '1'
   OLLAMA_VULKAN: '1'
+...

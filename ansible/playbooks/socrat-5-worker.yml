@@ -97,3 +97,4 @@
     - name: Reload new-worker unit dependencies without restarting it
       ansible.builtin.systemd_service:
         daemon_reload: true
+...

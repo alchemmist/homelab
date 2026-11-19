@@ -5,6 +5,7 @@ Requires kubectl access. Creates a distinct LiteLLM v-deepseek-uc-only virtual
 key, NOT a personal Pi key. Uses the already running native settings API; model
 credentials and policy are persisted by OpenHands, not a custom runtime service.
 """
+
 import base64
 import json
 import os
@@ -16,70 +17,157 @@ import urllib.request
 
 
 def kube_secret(ns, name):
-    raw = subprocess.check_output(['kubectl', '-n', ns, 'get', 'secret', name, '-o', 'json', '--ignore-not-found'], stderr=subprocess.DEVNULL)
+    raw = subprocess.check_output(
+        ["kubectl", "-n", ns, "get", "secret", name, "-o", "json", "--ignore-not-found"],
+        stderr=subprocess.DEVNULL,
+    )
     return json.loads(raw) if raw.strip() else None
 
 
 def main():
-    current = kube_secret('openhands', 'openhands-model')
-    if not current or current['metadata'].get('annotations', {}).get('homelab/key-alias') != 'openhands-monori':
-        master = base64.b64decode(kube_secret('llm', 'litellm-env')['data']['LITELLM_MASTER_KEY']).decode().strip()
+    current = kube_secret("openhands", "openhands-model")
+    if (
+        not current
+        or current["metadata"].get("annotations", {}).get("homelab/key-alias") != "openhands-monori"
+    ):
+        master = (
+            base64.b64decode(kube_secret("llm", "litellm-env")["data"]["LITELLM_MASTER_KEY"])
+            .decode()
+            .strip()
+        )
         with socket.socket() as s:
-            s.bind(('127.0.0.1', 0)); port = s.getsockname()[1]
-        forward = subprocess.Popen(['kubectl', '-n', 'llm', 'port-forward', 'svc/litellm', f'{port}:4000'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            s.bind(("127.0.0.1", 0))
+            port = s.getsockname()[1]
+        forward = subprocess.Popen(
+            ["kubectl", "-n", "llm", "port-forward", "svc/litellm", f"{port}:4000"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
         created = None
         try:
             for _ in range(40):
                 try:
-                    with socket.create_connection(('127.0.0.1', port), timeout=1): break
-                except OSError: time.sleep(.25)
-            headers = {'Authorization': 'Bearer ' + master, 'Content-Type': 'application/json'}
-            request = urllib.request.Request(f'http://127.0.0.1:{port}/key/generate', headers=headers,
-                data=json.dumps({'key_alias':'openhands-monori','models':['v-deepseek-uc','o-deepseek','qwen3.8-27b'],'max_parallel_requests':3,
-                                 'metadata':{'purpose':'owner-approved OpenHands; no paid fallback'}}).encode())
-            created = json.load(urllib.request.urlopen(request, timeout=30))['key']
-            payload = {'apiVersion':'v1','kind':'Secret','metadata':{'name':'openhands-model','namespace':'openhands',
-                'annotations':{'homelab/key-alias':'openhands-monori'}},'type':'Opaque',
-                'data':{'api-key':base64.b64encode(created.encode()).decode()}}
-            subprocess.run(['kubectl','apply','-f','-'],input=json.dumps(payload),text=True,check=True,stdout=subprocess.DEVNULL)
+                    with socket.create_connection(("127.0.0.1", port), timeout=1):
+                        break
+                except OSError:
+                    time.sleep(0.25)
+            headers = {"Authorization": "Bearer " + master, "Content-Type": "application/json"}
+            request = urllib.request.Request(
+                f"http://127.0.0.1:{port}/key/generate",
+                headers=headers,
+                data=json.dumps(
+                    {
+                        "key_alias": "openhands-monori",
+                        "models": ["v-deepseek-uc", "o-deepseek", "qwen3.8-27b"],
+                        "max_parallel_requests": 3,
+                        "metadata": {"purpose": "owner-approved OpenHands; no paid fallback"},
+                    }
+                ).encode(),
+            )
+            created = json.load(urllib.request.urlopen(request, timeout=30))["key"]
+            payload = {
+                "apiVersion": "v1",
+                "kind": "Secret",
+                "metadata": {
+                    "name": "openhands-model",
+                    "namespace": "openhands",
+                    "annotations": {"homelab/key-alias": "openhands-monori"},
+                },
+                "type": "Opaque",
+                "data": {"api-key": base64.b64encode(created.encode()).decode()},
+            }
+            subprocess.run(
+                ["kubectl", "apply", "-f", "-"],
+                input=json.dumps(payload),
+                text=True,
+                check=True,
+                stdout=subprocess.DEVNULL,
+            )
         except Exception:
             if created:
-                request = urllib.request.Request(f'http://127.0.0.1:{port}/key/delete',headers=headers,data=json.dumps({'keys':[created]}).encode())
-                urllib.request.urlopen(request,timeout=30).close()
-            raise RuntimeError('Scoped model provisioning failed; values withheld') from None
+                request = urllib.request.Request(
+                    f"http://127.0.0.1:{port}/key/delete",
+                    headers=headers,
+                    data=json.dumps({"keys": [created]}).encode(),
+                )
+                urllib.request.urlopen(request, timeout=30).close()
+            raise RuntimeError("Scoped model provisioning failed; values withheld") from None
         finally:
-            forward.terminate(); forward.wait(timeout=10)
-    key = base64.b64decode(kube_secret('openhands','openhands-model')['data']['api-key']).decode()
+            forward.terminate()
+            forward.wait(timeout=10)
+    key = base64.b64decode(kube_secret("openhands", "openhands-model")["data"]["api-key"]).decode()
     # Keep the virtual key aligned with this script. A later run must not leave a
     # hand-edited higher parallelism or the web-bridge model in place.
-    master = base64.b64decode(kube_secret('llm', 'litellm-env')['data']['LITELLM_MASTER_KEY']).decode().strip()
+    master = (
+        base64.b64decode(kube_secret("llm", "litellm-env")["data"]["LITELLM_MASTER_KEY"])
+        .decode()
+        .strip()
+    )
     with socket.socket() as s:
-        s.bind(('127.0.0.1', 0)); port = s.getsockname()[1]
-    forward = subprocess.Popen(['kubectl', '-n', 'llm', 'port-forward', 'svc/litellm', f'{port}:4000'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    forward = subprocess.Popen(
+        ["kubectl", "-n", "llm", "port-forward", "svc/litellm", f"{port}:4000"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
     try:
         for _ in range(40):
             try:
-                with socket.create_connection(('127.0.0.1', port), timeout=1): break
-            except OSError: time.sleep(.25)
-        headers = {'Authorization': 'Bearer ' + master, 'Content-Type': 'application/json'}
-        request = urllib.request.Request(f'http://127.0.0.1:{port}/key/update',
+                with socket.create_connection(("127.0.0.1", port), timeout=1):
+                    break
+            except OSError:
+                time.sleep(0.25)
+        headers = {"Authorization": "Bearer " + master, "Content-Type": "application/json"}
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{port}/key/update",
             headers=headers,
-            data=json.dumps({'key': key, 'models': ['v-deepseek-uc','o-deepseek','qwen3.8-27b'], 'max_parallel_requests': 3}).encode())
+            data=json.dumps(
+                {
+                    "key": key,
+                    "models": ["v-deepseek-uc", "o-deepseek", "qwen3.8-27b"],
+                    "max_parallel_requests": 3,
+                }
+            ).encode(),
+        )
         urllib.request.urlopen(request, timeout=30).close()
     finally:
-        forward.terminate(); forward.wait(timeout=10)
-    policy = Path(__file__).resolve().parents[1].joinpath('services/openhands/READY_TO_REVIEW.md').read_text()
-    settings = {'agent_settings_diff':{'agent_kind':'openhands','llm':{
-        'model':'openai/v-deepseek-uc','base_url':'http://litellm.llm.svc.cluster.local:4000/v1',
-        'api_key':key,'api_mode':'chat','native_tool_calling':True,
-        'max_input_tokens':30000,'max_output_tokens':4096,'num_retries':5,'timeout':900,
-        'reasoning_effort':None,'enable_encrypted_reasoning':False,'caching_prompt':False,
-        'prompt_cache_retention':None,'input_cost_per_token':0,'output_cost_per_token':0},
-        'agent_context':{'system_message_suffix':policy},
-        'condenser':{'max_size':240,'max_tokens':24000}},
-        'conversation_settings_diff':{'max_iterations':200}}
+        forward.terminate()
+        forward.wait(timeout=10)
+    policy = (
+        Path(__file__)
+        .resolve()
+        .parents[1]
+        .joinpath("services/openhands/READY_TO_REVIEW.md")
+        .read_text()
+    )
+    settings = {
+        "agent_settings_diff": {
+            "agent_kind": "openhands",
+            "llm": {
+                "model": "openai/v-deepseek-uc",
+                "base_url": "http://litellm.llm.svc.cluster.local:4000/v1",
+                "api_key": key,
+                "api_mode": "chat",
+                "native_tool_calling": True,
+                "max_input_tokens": 30000,
+                "max_output_tokens": 4096,
+                "num_retries": 5,
+                "timeout": 900,
+                "reasoning_effort": None,
+                "enable_encrypted_reasoning": False,
+                "caching_prompt": False,
+                "prompt_cache_retention": None,
+                "input_cost_per_token": 0,
+                "output_cost_per_token": 0,
+            },
+            "agent_context": {"system_message_suffix": policy},
+            "condenser": {"max_size": 240, "max_tokens": 24000},
+        },
+        "conversation_settings_diff": {"max_iterations": 200},
+    }
     # Input travels on a private exec stream, not argv, logs, chat or Git.
-    code = '''import json,sys,pathlib,urllib.request
+    code = """import json,sys,pathlib,urllib.request
 settings=json.load(sys.stdin)
 key=pathlib.Path('/home/openhands/.openhands/agent-canvas/api-key.txt').read_text().strip()
 def api(path,body=None,method=None):
@@ -98,20 +186,38 @@ api('/api/agent-profiles/'+name,{'agent_kind':'openhands','llm_profile_ref':name
 p=api('/api/agent-profiles/'+name)['profile']
 api('/api/agent-profiles/'+p['id']+'/activate',{})
 d=api('/api/settings');print('Native agent profile active:',name,'key_set:',d['llm_api_key_is_set'])
-'''
-    subprocess.run(['kubectl','-n','openhands','exec','-i','openhands-0','--','python','-c',code],input=json.dumps(settings),text=True,check=True)
-    private = Path.home() / '.config/homelab/openhands'
+"""
+    subprocess.run(
+        ["kubectl", "-n", "openhands", "exec", "-i", "openhands-0", "--", "python", "-c", code],
+        input=json.dumps(settings),
+        text=True,
+        check=True,
+    )
+    private = Path.home() / ".config/homelab/openhands"
     private.mkdir(mode=0o700, parents=True, exist_ok=True)
-    if private.is_symlink(): raise RuntimeError('Unsafe private state directory')
+    if private.is_symlink():
+        raise RuntimeError("Unsafe private state directory")
     os.chmod(private, 0o700)
-    owner_key = subprocess.check_output(['kubectl','-n','openhands','exec','openhands-0','--','cat','/home/openhands/.openhands/agent-canvas/api-key.txt'])
-    fd = os.open(private / 'session-key', os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
-    with os.fdopen(fd, 'wb') as stream:
+    owner_key = subprocess.check_output(
+        [
+            "kubectl",
+            "-n",
+            "openhands",
+            "exec",
+            "openhands-0",
+            "--",
+            "cat",
+            "/home/openhands/.openhands/agent-canvas/api-key.txt",
+        ]
+    )
+    fd = os.open(
+        private / "session-key", os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600
+    )
+    with os.fdopen(fd, "wb") as stream:
         os.fchmod(stream.fileno(), 0o600)
         stream.write(owner_key)
-    print('Owner login key saved privately: ~/.config/homelab/openhands/session-key')
+    print("Owner login key saved privately: ~/.config/homelab/openhands/session-key")
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

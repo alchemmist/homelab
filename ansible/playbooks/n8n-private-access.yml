@@ -27,12 +27,29 @@
 
     - name: Wait for private gateway certificate
       ansible.builtin.command:
-        argv: [kubectl, --kubeconfig, "{{ n8n_private_kubeconfig }}", -n, syncthing, wait, '--for=condition=Ready', 'certificate/{{ n8n_private_tls_secret }}', --timeout=300s]
+        argv: [kubectl,
+               --kubeconfig,
+               "{{ n8n_private_kubeconfig }}",
+               -n,
+               syncthing,
+               wait,
+               '--for=condition=Ready',
+               'certificate/{{ n8n_private_tls_secret }}',
+               --timeout=300s]
       changed_when: false
 
     - name: Read existing private gateway values
       ansible.builtin.command:
-        argv: [helm, get, values, private-gateway, --namespace, syncthing, --kubeconfig, "{{ n8n_private_kubeconfig }}", --output, json]
+        argv: [helm,
+               get,
+               values,
+               private-gateway,
+               --namespace,
+               syncthing,
+               --kubeconfig,
+               "{{ n8n_private_kubeconfig }}",
+               --output,
+               json]
       register: n8n_private_gateway
       changed_when: false
       no_log: true
@@ -63,13 +80,38 @@
 
     - name: Compare private gateway manifests
       ansible.builtin.command:
-        argv: [python3, "{{ n8n_private_directory }}/helm_manifest_changed.py", --release, private-gateway, --chart, "{{ n8n_private_directory }}/gateway-chart", --namespace, syncthing, --values, "{{ n8n_private_directory }}/gateway-values.yaml", --kubeconfig, "{{ n8n_private_kubeconfig }}"]
+        argv: [python3,
+               "{{ n8n_private_directory }}/helm_manifest_changed.py",
+               --release,
+               private-gateway,
+               --chart,
+               "{{ n8n_private_directory }}/gateway-chart",
+               --namespace,
+               syncthing,
+               --values,
+               "{{ n8n_private_directory }}/gateway-values.yaml",
+               --kubeconfig,
+               "{{ n8n_private_kubeconfig }}"]
       register: n8n_private_gateway_diff
       changed_when: false
 
     - name: Publish the n8n endpoint inside WireGuard
       ansible.builtin.command:
-        argv: [helm, upgrade, private-gateway, "{{ n8n_private_directory }}/gateway-chart", --namespace, syncthing, --kubeconfig, "{{ n8n_private_kubeconfig }}", --reuse-values, --values, "{{ n8n_private_directory }}/gateway-values.yaml", --atomic, --wait, --timeout, 5m]
+        argv: [helm,
+               upgrade,
+               private-gateway,
+               "{{ n8n_private_directory }}/gateway-chart",
+               --namespace,
+               syncthing,
+               --kubeconfig,
+               "{{ n8n_private_kubeconfig }}",
+               --reuse-values,
+               --values,
+               "{{ n8n_private_directory }}/gateway-values.yaml",
+               --atomic,
+               --wait,
+               --timeout,
+               5m]
       when: (n8n_private_gateway_diff.stdout | from_json).changed
       changed_when: true
 
@@ -107,3 +149,4 @@
         name: homelab-private-dns.service
         state: restarted
       when: n8n_dns_record.changed
+...

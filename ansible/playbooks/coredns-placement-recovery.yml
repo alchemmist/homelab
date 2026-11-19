@@ -109,3 +109,4 @@
             os.chmod(new,0o644)
             os.replace(new,old)
       changed_when: true
+...

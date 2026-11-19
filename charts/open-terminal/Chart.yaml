@@ -1,4 +1,6 @@
+---
 apiVersion: v2
 name: open-terminal
 version: 0.1.0
-appVersion: '0.14.1'
+appVersion: 0.14.1
+...

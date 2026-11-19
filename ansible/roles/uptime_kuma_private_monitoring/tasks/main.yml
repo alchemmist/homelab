@@ -1,7 +1,17 @@
 ---
 - name: Inspect the current Kuma deployment
   ansible.builtin.command:
-    argv: [k3s, kubectl, --kubeconfig, "{{ kuma_private_kubeconfig }}", -n, "{{ kuma_private_namespace }}", get, deployment, "{{ kuma_private_deployment }}", -o, json]
+    argv: [k3s,
+           kubectl,
+           --kubeconfig,
+           "{{ kuma_private_kubeconfig }}",
+           -n,
+           "{{ kuma_private_namespace }}",
+           get,
+           deployment,
+           "{{ kuma_private_deployment }}",
+           -o,
+           json]
   register: kuma_private_current
   changed_when: false
 
@@ -77,7 +87,11 @@
 
 - name: Inspect the Rancher monitor without changing the live database
   ansible.builtin.command:
-    argv: [python3, "{{ kuma_private_workdir }}/configure_monitor.py", --db, "{{ kuma_private_data }}/kuma.db", --check]
+    argv: [python3,
+           "{{ kuma_private_workdir }}/configure_monitor.py",
+           --db,
+           "{{ kuma_private_data }}/kuma.db",
+           --check]
   delegate_to: "{{ kuma_private_node }}"
   become: true
   register: kuma_private_monitor
@@ -88,17 +102,40 @@
   block:
     - name: Stop Kuma for the targeted database update
       ansible.builtin.command:
-        argv: [k3s, kubectl, --kubeconfig, "{{ kuma_private_kubeconfig }}", -n, "{{ kuma_private_namespace }}", scale, deployment, "{{ kuma_private_deployment }}", --replicas=0]
+        argv: [k3s,
+               kubectl,
+               --kubeconfig,
+               "{{ kuma_private_kubeconfig }}",
+               -n,
+               "{{ kuma_private_namespace }}",
+               scale,
+               deployment,
+               "{{ kuma_private_deployment }}",
+               --replicas=0]
       changed_when: true
 
     - name: Wait until the Kuma writer has exited
       ansible.builtin.command:
-        argv: [k3s, kubectl, --kubeconfig, "{{ kuma_private_kubeconfig }}", -n, "{{ kuma_private_namespace }}", wait, --for=delete, pod, -l, app=uptime-kuma, --timeout=120s]
+        argv: [k3s,
+               kubectl,
+               --kubeconfig,
+               "{{ kuma_private_kubeconfig }}",
+               -n,
+               "{{ kuma_private_namespace }}",
+               wait,
+               --for=delete,
+               pod,
+               -l,
+               app=uptime-kuma,
+               --timeout=120s]
       changed_when: false
 
     - name: Back up the database and configure the existing Rancher monitor
       ansible.builtin.command:
-        argv: [python3, "{{ kuma_private_workdir }}/configure_monitor.py", --db, "{{ kuma_private_data }}/kuma.db"]
+        argv: [python3,
+               "{{ kuma_private_workdir }}/configure_monitor.py",
+               --db,
+               "{{ kuma_private_data }}/kuma.db"]
       delegate_to: "{{ kuma_private_node }}"
       become: true
       register: kuma_private_migration
@@ -123,17 +160,39 @@
   always:
     - name: Ensure Kuma is running after maintenance
       ansible.builtin.command:
-        argv: [k3s, kubectl, --kubeconfig, "{{ kuma_private_kubeconfig }}", -n, "{{ kuma_private_namespace }}", scale, deployment, "{{ kuma_private_deployment }}", --replicas=1]
+        argv: [k3s,
+               kubectl,
+               --kubeconfig,
+               "{{ kuma_private_kubeconfig }}",
+               -n,
+               "{{ kuma_private_namespace }}",
+               scale,
+               deployment,
+               "{{ kuma_private_deployment }}",
+               --replicas=1]
       changed_when: true
 
     - name: Wait for Kuma to become available
       ansible.builtin.command:
-        argv: [k3s, kubectl, --kubeconfig, "{{ kuma_private_kubeconfig }}", -n, "{{ kuma_private_namespace }}", rollout, status, "deployment/{{ kuma_private_deployment }}", --timeout=180s]
+        argv: [k3s,
+               kubectl,
+               --kubeconfig,
+               "{{ kuma_private_kubeconfig }}",
+               -n,
+               "{{ kuma_private_namespace }}",
+               rollout,
+               status,
+               "deployment/{{ kuma_private_deployment }}",
+               --timeout=180s]
       changed_when: false
 
 - name: Confirm the monitor settings after deployment
   ansible.builtin.command:
-    argv: [python3, "{{ kuma_private_workdir }}/configure_monitor.py", --db, "{{ kuma_private_data }}/kuma.db", --check]
+    argv: [python3,
+           "{{ kuma_private_workdir }}/configure_monitor.py",
+           --db,
+           "{{ kuma_private_data }}/kuma.db",
+           --check]
   delegate_to: "{{ kuma_private_node }}"
   become: true
   register: kuma_private_verified
@@ -161,3 +220,4 @@
   retries: 12
   delay: 10
   changed_when: false
+...

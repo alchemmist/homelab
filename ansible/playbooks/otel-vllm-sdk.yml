@@ -48,3 +48,4 @@
         mode: '0600'
         content: |
           {{ (vllm_existing_epoch.content | b64decode | from_json) | combine({'vllmSdkConfigurationSHA256': hostvars['localhost'].vllm_sdk_configuration_sha256, 'switcherSourceSHA256': hostvars['localhost'].switcher_source_sha256}) | to_json(sort_keys=True) }}
+...

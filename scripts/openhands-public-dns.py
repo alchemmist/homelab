@@ -27,7 +27,7 @@ def load(path, name):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         return module
-    except Exception:  # noqa: BLE001 - contain trusted renderer import errors before any DNS write
+    except Exception:  # Contain renderer import errors before any DNS write.
         raise RuntimeError("Invalid DNS renderer: " + path.name) from None
 
 
@@ -99,9 +99,7 @@ def main():
             "after": hashlib.sha256(new).hexdigest(),
             "name": "openhands.socrat",
         }
-        digest = hashlib.sha256(
-            json.dumps(context, sort_keys=True).encode()
-        ).hexdigest()
+        digest = hashlib.sha256(json.dumps(context, sort_keys=True).encode()).hexdigest()
         if a.apply and changed:
             require(a.approve_plan_hash == digest, "Fresh hash approval required")
             (ROOT / "before.py").write_bytes(old)
@@ -127,15 +125,11 @@ def main():
             )
             require(
                 "A" in result.split()
-                and any(
-                    ip in result.split() for ip in newmod.healthy_addresses(True, True)
-                ),
+                and any(ip in result.split() for ip in newmod.healthy_addresses(True, True)),
                 "New authoritative record not confirmed",
             )
             (ROOT / "after.json").write_text(
-                json.dumps(
-                    {"renderer_sha256": context["after"], "zone_read_confirmed": True}
-                )
+                json.dumps({"renderer_sha256": context["after"], "zone_read_confirmed": True})
             )
             (ROOT / "uncertain.json").unlink()
         print(

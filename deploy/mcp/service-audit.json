@@ -265,9 +265,39 @@
       "reason": "No suitable first-party operational MCP identified in upstream source/docs; do not install community wrappers."
     },
     {
-      "application": "xui-auth-gateway",
-      "decision": "infrastructure-covered",
-      "reason": "Controller/exporter/instrumentation/gateway, not a separate agent-facing business API. Read desired/live state with Argo CD and telemetry with Grafana; no MCP per YAML/controller sidecar."
+      "application": "password-self-service",
+      "decision": "no-client",
+      "reason": "Source-only review: no dedicated deployed read-only MCP endpoint is declared for this Application; no client or credential access authorized."
+    },
+    {
+      "application": "venice-api",
+      "decision": "no-client",
+      "reason": "Source-only review: no dedicated deployed read-only MCP endpoint is declared for this Application; no client or credential access authorized."
+    },
+    {
+      "application": "vpn-transit",
+      "decision": "no-client",
+      "reason": "Source-only review: no dedicated deployed read-only MCP endpoint is declared for this Application; no client or credential access authorized."
+    },
+    {
+      "application": "wishlist",
+      "decision": "no-client",
+      "reason": "Source-only review: no dedicated deployed read-only MCP endpoint is declared for this Application; no client or credential access authorized."
+    },
+    {
+      "application": "swe-mini",
+      "decision": "no-client",
+      "reason": "Source-only controller/job queue review: no dedicated first-party read-only MCP endpoint is declared; no new client, credential access or runtime acceptance is authorized."
+    },
+    {
+      "application": "openhands",
+      "decision": "no-client",
+      "reason": "Source-only Canvas/Agent Server review: no deployed read-only operational MCP endpoint is declared. Agent tools/automation are not routine read-only diagnostics; no client, credential access, model invocation or runtime acceptance is authorized. Upstream MCP capabilities and authorization remain unverified."
+    },
+    {
+      "application": "deeperseeker",
+      "decision": "no-client",
+      "reason": "Source-only owner web-bridge service inventory: no dedicated reviewed read-only operational MCP endpoint is declared. Browser/provider/session workers are not routine diagnostic tools; no new client, credential access or runtime execution is authorized."
     }
   ],
   "workloads": [

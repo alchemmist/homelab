@@ -31,7 +31,7 @@ def directory_bytes(path):
 def host_path(path, host_root):
     prefix = host_root.rstrip("/")
     if path == prefix or path.startswith(prefix + "/"):
-        return "/var/lib" + path[len(prefix):]
+        return "/var/lib" + path[len(prefix) :]
     return path
 
 
@@ -59,7 +59,8 @@ def render(node, entries):
     ]
     for role, path, size in entries:
         lines.append(
-            'socrat_metrics_directory_bytes{node="%s",role="%s",path="%s"} %d' % (node, role, path, size)
+            'socrat_metrics_directory_bytes{node="%s",role="%s",path="%s"} %d'
+            % (node, role, path, size)
         )
     return "\n".join(lines) + "\n"
 
@@ -83,4 +84,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

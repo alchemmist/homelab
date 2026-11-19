@@ -1,3 +1,4 @@
 ---
 homelab_node_ssh_hosts: "{{ wg_socrat_nodes }}"
 homelab_node_ssh_port: "{{ homelab_ssh_port | default(2222) }}"
+...

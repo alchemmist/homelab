@@ -8,6 +8,7 @@ It writes a ready-to-print file the starship module just `cat`s.
   gh-prompt.py refresh <root> <branch> <base>
     writes <base>.pr -> "(#123)" or empty
 """
+
 import os
 import subprocess
 import sys
@@ -16,8 +17,11 @@ import sys
 def gh(args, cwd=None):
     try:
         return subprocess.run(
-            ["gh"] + args, cwd=cwd,
-            capture_output=True, text=True, timeout=15,
+            ["gh"] + args,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=15,
         ).stdout.strip()
     except Exception:
         return ""
@@ -33,10 +37,8 @@ def write_atomic(path, content):
 def refresh(root, branch, base):
     os.makedirs(os.path.dirname(base), exist_ok=True)
     pr_out = ""
-    if root and gh(["repo", "view", "--json", "nameWithOwner",
-                    "-q", ".nameWithOwner"], cwd=root):
-        pr = gh(["pr", "view", branch or "", "--json", "number",
-                 "-q", ".number"], cwd=root)
+    if root and gh(["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"], cwd=root):
+        pr = gh(["pr", "view", branch or "", "--json", "number", "-q", ".number"], cwd=root)
         if pr:
             pr_out = f"(#{pr})"
     write_atomic(base + ".pr", pr_out)

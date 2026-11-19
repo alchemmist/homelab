@@ -5,7 +5,7 @@
     content: "{{ 'etcd-and-agent' if k3s_ha_nodes[inventory_hostname].etcd_only else 'control-plane-etcd-and-agent' }}\n"
     owner: root
     group: root
-    mode: '0600'
+    mode: "0600"
 
 - name: Disable and stop the former agent without killing its containers
   ansible.builtin.systemd_service:
@@ -30,6 +30,7 @@
 
 - name: Verify the member registered its etcd role and remained Ready
   ansible.builtin.shell: |
+    set -o pipefail
     /usr/local/bin/k3s kubectl get node {{ inventory_hostname | quote }} -o json | python3 -c '
     import json,sys
     node=json.load(sys.stdin)
@@ -45,3 +46,6 @@
   retries: 60
   delay: 5
   until: k3s_ha_member_ready.rc == 0
+  args:
+    executable: /bin/bash
+...

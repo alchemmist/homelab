@@ -55,7 +55,12 @@
 
     - name: Verify private and public DNS resolution
       ansible.builtin.command: "dig @{{ homelab_private_dns_listen_address }} {{ item }} A +short +time=3 +tries=1"
-      loop: [0.socrat.alchemmist.xyz, 1.socrat.alchemmist.xyz, 2.socrat.alchemmist.xyz, 3.socrat.alchemmist.xyz, debian.org]
+      loop: [0.socrat.alchemmist.xyz,
+             1.socrat.alchemmist.xyz,
+             2.socrat.alchemmist.xyz,
+             3.socrat.alchemmist.xyz,
+             debian.org]
       register: tim_dns_result
       changed_when: false
       failed_when: tim_dns_result.rc != 0 or tim_dns_result.stdout | trim == ''
+...

@@ -9,7 +9,17 @@
   tasks:
     - name: Detect LiteLLM OIDC activation without reading credentials
       ansible.builtin.command:
-        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, -n, llm, get, secret, socrat-authentik-litellm, --ignore-not-found, -o, name]
+        argv: [kubectl,
+               --kubeconfig,
+               /etc/rancher/k3s/k3s.yaml,
+               -n,
+               llm,
+               get,
+               secret,
+               socrat-authentik-litellm,
+               --ignore-not-found,
+               -o,
+               name]
       register: litellm_identity_active
       changed_when: false
     - name: Reconcile only an already activated LiteLLM integration
@@ -18,3 +28,4 @@
       vars:
         identity_oidc_services: [litellm]
       when: litellm_identity_active.stdout | trim | length > 0
+...

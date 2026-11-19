@@ -10,3 +10,4 @@
     K3S_CONFIG_FILE: /dev/null
   roles:
     - container_resource_policy
+...

@@ -11,8 +11,8 @@
     - name: Install read-only topology verification helpers
       ansible.builtin.copy:
         src: "{{ playbook_dir }}/../roles/k3s_role_rebalance/files/{{ item }}"
-        dest: "/var/lib/homelab-k3s-rebalance/{{ item }}"
-        mode: '0700'
+        dest: /var/lib/homelab-k3s-rebalance/{{ item }}
+        mode: "0700"
       loop: [etcd_members.py, verify_worker_topology.py]
 
     - name: Verify three healthy voters with matching member identities
@@ -29,7 +29,7 @@
         that:
           - "'node-role.kubernetes.io/control-plane' not in (worker_topology_node.stdout | from_json).metadata.labels"
           - "'node-role.kubernetes.io/etcd' not in (worker_topology_node.stdout | from_json).metadata.labels"
-          - "(worker_topology_node.stdout | from_json).status.conditions | selectattr('type', 'equalto', 'Ready') | map(attribute='status') | list == ['True']"
+          - (worker_topology_node.stdout | from_json).status.conditions | selectattr('type', 'equalto', 'Ready') | map(attribute='status') | list == ['True']
 
 - name: Verify agent mode without changing workloads
   hosts: socrat-3
@@ -46,3 +46,4 @@
         test -f /etc/rancher/k3s/worker-mode
         test ! -e /etc/rancher/k3s/server-mode
       changed_when: false
+...

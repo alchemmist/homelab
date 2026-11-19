@@ -16,8 +16,8 @@ FIVE_RESOLUTION = 300000
 HOUR_RESOLUTION = 3600000
 RAW_KEEP_MS = 5 * 86400000
 FIVE_KEEP_MS = 30 * 86400000
-DISK_FLOOR_BYTES = 40 * 1024 ** 3
-FIVE_BYTES_PER_DAY = int(0.35 * 1024 ** 3)
+DISK_FLOOR_BYTES = 40 * 1024**3
+FIVE_BYTES_PER_DAY = int(0.35 * 1024**3)
 DAY_MS = 86400000
 
 
@@ -54,7 +54,9 @@ def selected(blocks):
     return sorted(block["ulid"] for block in blocks)
 
 
-def plan(raw_blocks, five_blocks, hour_blocks, now_ms, disk_free_bytes, five_reachable, hour_reachable):
+def plan(
+    raw_blocks, five_blocks, hour_blocks, now_ms, disk_free_bytes, five_reachable, hour_reachable
+):
     raw_hours = [block for block in raw_blocks if block.get("resolution") == HOUR_RESOLUTION]
     raw_fives = [block for block in raw_blocks if block.get("resolution") == FIVE_RESOLUTION]
     shelf_five_ids = {block["ulid"] for block in five_blocks}
@@ -84,7 +86,8 @@ def plan(raw_blocks, five_blocks, hour_blocks, now_ms, disk_free_bytes, five_rea
                 copy_hour.append(block)
 
     mark_raw = [
-        block for block in raw_blocks
+        block
+        for block in raw_blocks
         if block.get("resolution") == RAW_RESOLUTION
         and not block.get("deletionMark")
         and block["maxTime"] <= now_ms - RAW_KEEP_MS
@@ -94,7 +97,8 @@ def plan(raw_blocks, five_blocks, hour_blocks, now_ms, disk_free_bytes, five_rea
     mark_five_shelf = []
     if hour_reachable:
         eligible = [
-            block for block in five_blocks
+            block
+            for block in five_blocks
             if block.get("resolution") == FIVE_RESOLUTION
             and not block.get("deletionMark")
             and fully_covered(block, shelf_hours)
@@ -136,14 +140,16 @@ def parse_ls(text):
         if index >= length:
             break
         meta, index = decoder.raw_decode(text, index)
-        downsample = ((meta.get("thanos") or {}).get("downsample") or {})
-        blocks.append({
-            "ulid": meta["ulid"],
-            "minTime": int(meta["minTime"]),
-            "maxTime": int(meta["maxTime"]),
-            "resolution": int(downsample.get("resolution") or 0),
-            "deletionMark": False,
-        })
+        downsample = (meta.get("thanos") or {}).get("downsample") or {}
+        blocks.append(
+            {
+                "ulid": meta["ulid"],
+                "minTime": int(meta["minTime"]),
+                "maxTime": int(meta["maxTime"]),
+                "resolution": int(downsample.get("resolution") or 0),
+                "deletionMark": False,
+            }
+        )
     return blocks
 
 
@@ -170,7 +176,9 @@ def kubernetes_request(method, path, body=None, timeout=30):
     token = Path("/var/run/secrets/kubernetes.io/serviceaccount/token").read_text().strip()
     host = os.environ.get("KUBERNETES_SERVICE_HOST", "kubernetes.default.svc")
     port = os.environ.get("KUBERNETES_SERVICE_PORT", "443")
-    context = ssl.create_default_context(cafile="/var/run/secrets/kubernetes.io/serviceaccount/ca.crt")
+    context = ssl.create_default_context(
+        cafile="/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+    )
     data = None if body is None else json.dumps(body).encode()
     request = urllib.request.Request(
         f"https://{host}:{port}{path}",
@@ -212,17 +220,21 @@ def wait_compactor_idle(namespace, name, timeout=180):
 
 
 def default_runner(argv):
-    completed = subprocess.run(argv, check=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    completed = subprocess.run(
+        argv, check=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
     if completed.returncode != 0:
         sys.stderr.write(completed.stderr)
-        raise subprocess.CalledProcessError(completed.returncode, argv, completed.stdout, completed.stderr)
+        raise subprocess.CalledProcessError(
+            completed.returncode, argv, completed.stdout, completed.stderr
+        )
     return completed.stdout
 
 
 def disk_free_bytes(prometheus_url):
     query = (
-        "max(node_filesystem_avail_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype=~\"ext4|xfs\"}"
-        " * on(instance) group_left(nodename) node_uname_info{job=\"node-exporter\",nodename=\"socrat-1\"})"
+        'max(node_filesystem_avail_bytes{job="node-exporter",mountpoint="/",fstype=~"ext4|xfs"}'
+        ' * on(instance) group_left(nodename) node_uname_info{job="node-exporter",nodename="socrat-1"})'
     )
     url = prometheus_url.rstrip("/") + "/api/v1/query?" + urllib.parse.urlencode({"query": query})
     try:
@@ -257,14 +269,22 @@ def command_code(result, label):
 
 def mark_blocks(ulids, config, thanos_bin, runner):
     for ulid in ulids:
-        command_code(runner([
-            thanos_bin, "tools", "bucket", "mark",
-            "--id=" + ulid,
-            "--marker=deletion-mark.json",
-            "--details=cascade",
-            "--objstore.config-file=" + config,
-            "--log.level=error",
-        ]), ulid)
+        command_code(
+            runner(
+                [
+                    thanos_bin,
+                    "tools",
+                    "bucket",
+                    "mark",
+                    "--id=" + ulid,
+                    "--marker=deletion-mark.json",
+                    "--details=cascade",
+                    "--objstore.config-file=" + config,
+                    "--log.level=error",
+                ]
+            ),
+            ulid,
+        )
 
 
 def shelf_open(url, token, method, data=None, timeout=120):
@@ -300,7 +320,9 @@ def upload_block(base, token, directory, ulid):
             full = os.path.join(dirpath, filename)
             relative = os.path.relpath(full, root).replace(os.sep, "/")
             with open(full, "rb") as handle:
-                with shelf_open(prefix + "/files/" + relative, token, "PUT", handle, timeout=600) as response:
+                with shelf_open(
+                    prefix + "/files/" + relative, token, "PUT", handle, timeout=600
+                ) as response:
                     response.read()
     with shelf_open(prefix + "/commit", token, "POST", b"") as response:
         response.read()
@@ -308,7 +330,9 @@ def upload_block(base, token, directory, ulid):
 
 def mark_shelf(base, token, ulids):
     for ulid in ulids:
-        with shelf_open(base.rstrip("/") + "/v1/blocks/" + ulid + "/deletion-mark", token, "POST", b"{}") as response:
+        with shelf_open(
+            base.rstrip("/") + "/v1/blocks/" + ulid + "/deletion-mark", token, "POST", b"{}"
+        ) as response:
             response.read()
 
 
@@ -337,8 +361,13 @@ def execute():
         five_blocks, five_reachable = fetch_shelf(five_url, token)
         hour_blocks, hour_reachable = fetch_shelf(hour_url, token)
         current = plan(
-            raw_blocks, five_blocks, hour_blocks, int(time.time() * 1000),
-            disk_free_bytes(prometheus_url), five_reachable, hour_reachable,
+            raw_blocks,
+            five_blocks,
+            hour_blocks,
+            int(time.time() * 1000),
+            disk_free_bytes(prometheus_url),
+            five_reachable,
+            hour_reachable,
         )
         if five_reachable:
             for ulid in current["copyFive"]:
@@ -350,12 +379,19 @@ def execute():
         hour_blocks, hour_reachable = fetch_shelf(hour_url, token)
         raw_blocks = list_blocks(raw_config, thanos_bin, default_runner)
         confirmed = plan(
-            raw_blocks, five_blocks, hour_blocks, int(time.time() * 1000),
-            disk_free_bytes(prometheus_url), five_reachable, hour_reachable,
+            raw_blocks,
+            five_blocks,
+            hour_blocks,
+            int(time.time() * 1000),
+            disk_free_bytes(prometheus_url),
+            five_reachable,
+            hour_reachable,
         )
         mark_blocks(
             confirmed["markRaw"] + confirmed["markFiveSource"] + confirmed["markHourSource"],
-            raw_config, thanos_bin, default_runner,
+            raw_config,
+            thanos_bin,
+            default_runner,
         )
         if five_reachable:
             mark_shelf(five_url, token, confirmed["markFiveShelf"])

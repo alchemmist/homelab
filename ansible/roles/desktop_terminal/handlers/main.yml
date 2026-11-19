@@ -3,6 +3,7 @@
   become: true
   become_user: "{{ homelab_user }}"
   ansible.builtin.shell: |
+    set -o pipefail
     set -eu
     if /usr/bin/tmux has-session -t {{ homelab_terminal_session | quote }} 2>/dev/null; then
       /usr/bin/tmux list-panes -s -t {{ homelab_terminal_session | quote }} -F '#{pane_id} #{pane_current_command}' |
@@ -15,3 +16,6 @@
     fi
   register: homelab_monitor_restart
   changed_when: "'restarted' in homelab_monitor_restart.stdout"
+  args:
+    executable: /bin/bash
+...

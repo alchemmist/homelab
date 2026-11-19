@@ -1,6 +1,8 @@
+---
 apiVersion: v2
 name: cats
 description: Cats static service
 version: 0.1.0
 appVersion: latest
 type: application
+...

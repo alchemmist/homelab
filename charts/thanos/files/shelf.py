@@ -30,13 +30,15 @@ def read_block(directory, ulid):
     meta_path = os.path.join(block_path(directory, ulid), "meta.json")
     with open(meta_path, encoding="utf-8") as handle:
         meta = json.load(handle)
-    downsample = ((meta.get("thanos") or {}).get("downsample") or {})
+    downsample = (meta.get("thanos") or {}).get("downsample") or {}
     return {
         "ulid": meta.get("ulid") or ulid,
         "minTime": int(meta["minTime"]),
         "maxTime": int(meta["maxTime"]),
         "resolution": int(downsample.get("resolution") or 0),
-        "deletionMark": os.path.isfile(os.path.join(block_path(directory, ulid), "deletion-mark.json")),
+        "deletionMark": os.path.isfile(
+            os.path.join(block_path(directory, ulid), "deletion-mark.json")
+        ),
     }
 
 
@@ -105,12 +107,14 @@ def mark_deleted(directory, ulid, details="cascade"):
     root = block_path(directory, ulid)
     if not os.path.isdir(root):
         raise FileNotFoundError(ulid)
-    body = json.dumps({
-        "id": ulid,
-        "version": 1,
-        "details": details,
-        "deletion_time": int(time.time()),
-    })
+    body = json.dumps(
+        {
+            "id": ulid,
+            "version": 1,
+            "details": details,
+            "deletion_time": int(time.time()),
+        }
+    )
     target = os.path.join(root, "deletion-mark.json")
     temporary = target + ".tmp"
     with open(temporary, "w", encoding="utf-8") as handle:

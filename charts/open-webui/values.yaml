@@ -1,3 +1,4 @@
+---
 replicaCount: 1
 image: ghcr.io/open-webui/open-webui:v0.12.3-slim@sha256:5adfb0355bbe4a5860c0ba9482cc0b40f573de3749a21a64cf4789391a14fffc
 nodeName: socrat-5
@@ -85,3 +86,4 @@ migrationStorage:
 hostAliases:
   - ip: 10.43.218.222
     hostnames: [auth.socrat.alchemmist.xyz]
+...

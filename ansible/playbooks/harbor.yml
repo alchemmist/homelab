@@ -6,8 +6,8 @@
   tasks:
     - name: Create Harbor namespace idempotently
       ansible.builtin.command:
-        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, apply, -f, '-']
-        stdin: '{"apiVersion":"v1","kind":"Namespace","metadata":{"name":"harbor"}}'
+        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, apply, -f, "-"]
+        stdin: "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"name\":\"harbor\"}}"
       environment:
         K3S_CONFIG_FILE: /dev/null
       register: harbor_namespace_prepare
@@ -22,3 +22,4 @@
   any_errors_fatal: true
   roles:
     - harbor
+...

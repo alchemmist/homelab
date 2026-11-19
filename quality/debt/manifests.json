@@ -1,0 +1,2052 @@
+{
+  "version": 1,
+  "acceptance": false,
+  "reason": "Mechanical union of the previously reviewed chart inventories; no additional finding was accepted by this migration.",
+  "findings": [
+    {
+      "id": "6fcd19698f92058837016fa4b9ee667e93efeadc47e1cddd882d149617aba6e7.1",
+      "path": "deploy/argocd/apps/authentik.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "9c6f263cc309c483f30e000e5f17cbb7378b151b99388d216f63d8350ea77f60.1",
+      "path": "deploy/argocd/apps/authentik.yaml",
+      "rule": "kube-linter-non-existent-service-account"
+    },
+    {
+      "id": "76e902b5b291a387450c3b5413babb92887f2550d0b5def36032b0d8c686cb03.1",
+      "path": "deploy/argocd/apps/authentik.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "e22bfac440483c508ac9a0b0d8a7ac98d231ccd847206380fc474c49956b17c8.1",
+      "path": "deploy/argocd/apps/authentik.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "dca10a0df8b280a83f76cc3ba62621e618aa3dc0228577f432fcdede9ab928cb.1",
+      "path": "deploy/argocd/apps/authentik.yaml",
+      "rule": "kube-linter-non-existent-service-account"
+    },
+    {
+      "id": "4336f637ca151658b1ce89735a6de35e5f471de8526297fbdddbccb843e46734.1",
+      "path": "deploy/argocd/apps/authentik.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "9b0f92c886ce0ffb6f637ff0ade8b7afc396022857cc913b58d6eda90f81ab5d.1",
+      "path": "deploy/argocd/apps/authentik.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "00f4401bba3621a148e2c0676ab5d5733703e90973b41dc3eee3a15670da9150.1",
+      "path": "deploy/argocd/apps/authentik.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "ad00436d9eb3c9e0aad86970c9a8cc37e42ec60e0300de5c62d4ffd6c0bf7a6a.1",
+      "path": "charts/lms-database-ha/Chart.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "c526e7f596abc899e05f23789a06db772fdec299b52b3e05fca707f3135bcabb.1",
+      "path": "charts/lms-database-ha/Chart.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "d31e6cc41a71a7984a366ff2b3ceb93090938dbaaf9c87b2befba02f558b8ef2.1",
+      "path": "deploy/argocd/apps/format-quorum.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "9d8fe4dc3d0e41a89a9832503811847918f40da2b10a97af272b7a865476cfde.1",
+      "path": "deploy/argocd/apps/format-quorum.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "50588a52c348f0f819ca4847fbba1aa81429f1027df2711cf0537fa22f305638.1",
+      "path": "deploy/argocd/apps/format-quorum.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "db7c607ed5666353046d7e78455a61aa0ec4b320f46eeaf43f68663a11e0ddec.1",
+      "path": "deploy/argocd/apps/format-quorum.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "6d09de2ca200484e95e4b1428a3361754c4a53a9faff109eb104e1760a99a147.1",
+      "path": "deploy/argocd/apps/format-quorum.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "9cdfeeab399c34299f4502cfad7e141642d67721089cff97a013396f58f2ded3.1",
+      "path": "deploy/argocd/apps/format-quorum.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    },
+    {
+      "id": "5539c51307b23919693cd05db8b10d242ca209c0d887d1725c37388d3bd45935.1",
+      "path": "deploy/argocd/apps/harbor.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "f30894e4a33a0098336bb20098dbe48a41af3966a4fdaca903eeb4ef3b78688d.1",
+      "path": "deploy/argocd/apps/harbor.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "d7d5a1cfbf41048a87a1778c5fb31c3c3d0512be576f62f8669b783ececcfdf8.1",
+      "path": "deploy/argocd/apps/harbor.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "9408361159ad25c791b35a344ef9fae1cd4383f9a211b05583357360b252b509.1",
+      "path": "deploy/argocd/apps/harbor.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "b6e98d271b2e9f810cb8a1edaaa3338d66435e968a166c9e8bbed305dea51a82.1",
+      "path": "deploy/argocd/apps/harbor.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "d9c9a79fc2b2397e762cf2ef79b49c64bbfe59338aa3b7710200767a012f99cb.1",
+      "path": "deploy/argocd/apps/harbor.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "e996a4745f6c5d0d3386754152f89c73604fdf0f1a6a580418b86483ee681a3b.1",
+      "path": "deploy/argocd/apps/harbor.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "abdd23a9d734388b1fb26b6c5b70d7c0d58b87e80f7f6c52cd57a6167b03b7d9.1",
+      "path": "deploy/argocd/apps/harbor.yaml",
+      "rule": "kube-linter-liveness-port"
+    },
+    {
+      "id": "fe45cfed07efb108ce9075dd8f22643e546d743ea7a0e1e055c282782f5e5e5a.1",
+      "path": "deploy/argocd/apps/harbor.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "0fc2ab2d0b59c8ed70f72b612d8437ae4992b7744d561f1ca5b689c32a41a563.1",
+      "path": "deploy/argocd/apps/harbor.yaml",
+      "rule": "kube-linter-readiness-port"
+    },
+    {
+      "id": "956bb7bc43240c750ac5180fbb7fd807b91a6e44ebef196c666f35b635b57f6f.1",
+      "path": "deploy/argocd/apps/harbor.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "ee8b0d20549d9ddecad1eaa3c148c10ae3d17010c5bfcce56e7a38434e7ad692.1",
+      "path": "deploy/argocd/apps/harbor.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "ffdf2afb7f113661051b31e649bbb01ae4ed164ce3608d120183b8ec526abf0d.1",
+      "path": "deploy/argocd/apps/harbor.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "407603ff7a994d6375720878db9f5d0e54b3e1c73c282627f396b91fdc01ab21.1",
+      "path": "deploy/argocd/apps/harbor.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "2f6bdb4a60773ee3d98a78f6eced1c2fae230a02c24c122677c9fc2eb26a5f4b.1",
+      "path": "deploy/argocd/apps/harbor.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "e0fde96ed5bdfa97d2a517d4379c239c92e91beff50f406ddcfb729deab2100d.1",
+      "path": "deploy/argocd/apps/harbor.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "8e79a9e518fae054aeebd103c88f9c179d3838ccd557b06086083cfb436eb15c.1",
+      "path": "deploy/argocd/apps/harbor.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "e0ff0016dcabaa7f3c431497be3206b0c10c610498331aba36490ca44b864e75.1",
+      "path": "deploy/argocd/apps/harbor.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "efa35c4275b326521c61f0eb31b2cb9ac0ffe8e963998d91c81cb610dd56615d.1",
+      "path": "deploy/argocd/apps/harbor.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "bf220344bbfff33567693b5ba141b3c766c6148f3c0260f3b7ec272926f41aef.1",
+      "path": "deploy/argocd/apps/harbor.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "f467fb509bba9d54d1a7119656596f0475ac37cdd4e7b84be7bc7c5d56f507d9.1",
+      "path": "deploy/argocd/apps/lms.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "8808e61ec360b227b8f85670945242f2524c82a2c83c5709a369898005feb533.1",
+      "path": "deploy/argocd/apps/lms.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "53e7ea9f498a4509557028056d330dba6c06c84240f2520a70d82fce13f0c898.1",
+      "path": "deploy/argocd/apps/lms.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "b99f9e08d60d1aac92532091a5b4235048c1f36e89e7b50c0c3f9633ecde6994.1",
+      "path": "deploy/argocd/apps/lms.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "d2043baf7954545c31812bbb26af0c05d58529833f339309a45df87fe358255c.1",
+      "path": "deploy/argocd/apps/lms.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "fee84f7d88316dc7005ec4826fe6c6fc9db9b5049a97ae19fd61c4e59e002a1e.1",
+      "path": "deploy/argocd/apps/lms.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "3572848b8d801f8e12331e5146f40837c06c93cb0e6cdaa2c0ea5fa562bc4122.1",
+      "path": "deploy/argocd/apps/lms.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "f46a79bd4b3eb13b2095e5d84de523d10ef3928aaaa4320a6838e39e802cac6d.1",
+      "path": "deploy/argocd/apps/loki.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "6fe309b57f728ac082dd6b18084ea087465df3e3bfd1d5b9c81504943178238d.1",
+      "path": "deploy/argocd/apps/monitoring-llm.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "58b5d8fdc8737d74da021a2b0dcdf83fde7ec7f346d75e42e0998dc139fda890.1",
+      "path": "deploy/argocd/apps/monitoring-llm.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "0f9c4b2912ac20a3873990d9d1f56b145ade474917093afe935fe7785e69f19d.1",
+      "path": "deploy/argocd/apps/rustfs.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "aa31218ed696a6cc648e982ee80fc2b5e6362e7864e61b095abb0891dcf9894e.1",
+      "path": "deploy/argocd/apps/thanos.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "69a2edc3edc01198702524cec96e133a269190db78161ebf072505d5f7a2071e.1",
+      "path": "deploy/argocd/apps/thanos.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "238342294808009d56f709fe43e7dffebef8352e30f2bdc9ac424eb8122ee331.1",
+      "path": "deploy/argocd/apps/thanos.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "1fe1388f3239110cd76f6303f285127e213cd6faf00516de36cf718c4af9c0c1.1",
+      "path": "deploy/argocd/apps/thanos.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "0ef88e7b77d784cbc6c9007d8a73ae5e87ce8063a48ac0e97def48bb3015a693.1",
+      "path": "deploy/argocd/apps/thanos.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "8f542743f8232c44a4ba5cc92196e893d1c0d9b8374ba6e6cc854dc717a1ecf2.1",
+      "path": "deploy/argocd/apps/thanos.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "b65a7e4427e8cc1ca3c65e21f125a19c43d4e734389d924cb56ec06f781da6d5.1",
+      "path": "deploy/argocd/apps/thanos.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "c63bc31339e76e990675959393ccc6742718084d8ac9a6ba7eeaf9219313d2b2.1",
+      "path": "deploy/argocd/apps/thanos.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "bea82be33d66677db9e92d7641ef85f2bd785588ab6470c4fbba9b449f024cb8.1",
+      "path": "deploy/argocd/apps/thanos.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "778b00a1e6df94e7a4300087c2ed97c09ded82e4440ab53617e449a4386ded63.1",
+      "path": "deploy/argocd/apps/thanos.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "b131fe7be3e82593289069c05950006d2626294dc81dec9f6ede10a9cb1596a7.1",
+      "path": "deploy/argocd/apps/thanos.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "81becad5712e18b43ffc3e0d82884751a9133491d47a590340102e8e6dc0efe2.1",
+      "path": "deploy/argocd/apps/thanos.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "1f0b330ddda44cc8f22caf41fdbbc2a328423dd62bbdbb901042eb4d1a54da33.1",
+      "path": "deploy/argocd/apps/thanos.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "5532161f2789c06bc993dc0deb28b8f1571a5748a29a1b0a976a4d09af280c46.1",
+      "path": "deploy/argocd/apps/thanos.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "d1ad13c9d3d8d77c4eae0fad5b3e9a200d80c35e013c0041c51e22ef4993a642.1",
+      "path": "deploy/argocd/apps/venice-api.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "40ca5bd192ef1428f9e7064733ecd07d3b6098c297482a1f30c76733d0c4f5df.1",
+      "path": "deploy/argocd/apps/venice-api.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "d92e2a7d40b0d652a41a009ed7a99eb2710aa358c04e04e4460c21223030840c.1",
+      "path": "deploy/argocd/apps/venice-api.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "e94444696992dffd17100d55d3956f47f2d3f3d8bff30cf202f363e99675d079.1",
+      "path": "deploy/argocd/apps/venice-api.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "35575d7b100377d5b77dc786b4036a0ac157925efeca2c35f0da6686b8c622c6.1",
+      "path": "deploy/argocd/apps/venice-api.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "8b43dba94bdd6bee1f33e78f66a3180bc25ac901bdbffbe5321cf144e26469cd.1",
+      "path": "deploy/argocd/apps/vpn-transit.yaml",
+      "rule": "kube-linter-host-network"
+    },
+    {
+      "id": "7f2296075397e389c27896472a40fd318f9f26387decc56a97dd755d6ab77145.1",
+      "path": "deploy/argocd/apps/vpn-transit.yaml",
+      "rule": "kube-linter-readiness-port"
+    },
+    {
+      "id": "a960a7838be222f51310baae6fbff0035946682cf40fcbcdbd41ea75480af5e2.1",
+      "path": "deploy/argocd/apps/vpn-transit.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "c89748dd3c24c0b29ab1d2d25c17129799c49211b743d57bd57cb31e1ca6c8a7.1",
+      "path": "deploy/argocd/apps/vpn-transit.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "98013d89c8328f26fa3046a66cd9936672f722464753cb04b7245466989de16b.1",
+      "path": "deploy/argocd/apps/x-ui.yaml",
+      "rule": "kube-linter-drop-net-raw-capability"
+    },
+    {
+      "id": "a6037ec60f9817370159f91d1c5e67a734988d784f64a9880fc623b1e86ec3f9.1",
+      "path": "deploy/argocd/apps/x-ui.yaml",
+      "rule": "kube-linter-drop-net-raw-capability"
+    },
+    {
+      "id": "45c0b59c3b9f60eb0a656f66c54b81d934c47c5af0fec5f63935d58fe5c48ca2.1",
+      "path": "deploy/argocd/apps/x-ui.yaml",
+      "rule": "kube-linter-host-network"
+    },
+    {
+      "id": "9202eeac7d9cbcf47b0eae6c9fbaff09ddd7cc1651a53429f7f4b74dc5473533.1",
+      "path": "deploy/argocd/apps/x-ui.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "8b15312669d9961dfbd177b040eb3b9bf1a93c7342d8c6c2d201e42236f24911.1",
+      "path": "deploy/argocd/apps/x-ui.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "70d91a4d3061cee87f6bea97cc9ec74e966ce3596743ce31cf8813fc5d1d1384.1",
+      "path": "charts/grafana/charts/grafana/Chart.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "4bf7039aecd172d7b47541ab8cc938e716e02c20eb10aaeeaea290c3fcf7ced3.1",
+      "path": "charts/grafana/charts/grafana/Chart.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    },
+    {
+      "id": "72267dc371a768dc199946128cfbc10907903ee14cf8d429e965991c1beed677.1",
+      "path": "charts/grafana/charts/grafana/Chart.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "4a85c00229e569a9bf35081e7575d4ced3726a48d29132f28389bb601fb661a0.1",
+      "path": "charts/grafana/charts/grafana/Chart.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    },
+    {
+      "id": "f74f3b644ccba15c326fc7cdac0cd83e0150a5d6048dce99e916243cceb6d3b6.1",
+      "path": "charts/grafana/charts/grafana/Chart.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "91611c49d49b2aceed7f3b162f81ff862794c01466c12dd097de1f054a3fa345.1",
+      "path": "charts/grafana/charts/grafana/Chart.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "7e3580fe2ad7d2e254a522e01a343b46c60233b344295056944e6818de8acd39.1",
+      "path": "charts/litellm/charts/postgresql/charts/common/Chart.yaml",
+      "rule": "helm-lint-render"
+    },
+    {
+      "id": "4d3e94ab661391da23ea6ae53f8c9ae1fc787ecc491052a5647229c92ca89229.1",
+      "path": "charts/litellm/charts/redis/Chart.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "35806bf31b4199ad86c8c11e39ed49b32008c839b11547ef67e9930e9e13a7f6.1",
+      "path": "charts/litellm/charts/redis/Chart.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "ec1c7b3df3cb5e251d7e9579400615d9a6274f6db22742d764516bc5780991b0.1",
+      "path": "charts/litellm/charts/redis/Chart.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    },
+    {
+      "id": "ab2ba56db5aa0d5036d2cc210217521081b3a8ac228c56faf94458f17ab09cbd.1",
+      "path": "charts/litellm/charts/redis/Chart.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "0d1ee63070a34326f630c12086c5f31f217724baa168321629a0b36fec49a2f8.1",
+      "path": "charts/litellm/charts/redis/Chart.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "b9e470be8cfeda1c0d376f0559695c0d45136e12999d845cd54ec522dc1e5021.1",
+      "path": "charts/litellm/charts/redis/Chart.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    },
+    {
+      "id": "7e523b5bc3b90a70bc154c2cfd78082b0ff1be2b26a36c1222909d65af94c307.1",
+      "path": "charts/litellm/charts/redis/Chart.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "e5d61fe743211ad4aca1c34ade8d007095f2bb714f40a92df9eed489c6529512.1",
+      "path": "charts/litellm/charts/redis/Chart.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "ac3e06bb2f5ed245d253bf42cbb9ed199de05c0068ec7a74b04a6a41882ecea1.1",
+      "path": "charts/litellm/charts/redis/charts/common/Chart.yaml",
+      "rule": "helm-lint-render"
+    },
+    {
+      "id": "5984a58683589d10aec05bc78c6463413da51469f5160db2867cd33c2d602813.1",
+      "path": "deploy/argocd/apps/img-proxy.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "38ba61e617afdaac5d1747b8c7fea508bd7e7df65813aa8eeb1b37f8ea0db91b.1",
+      "path": "deploy/argocd/apps/img-proxy.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "9216af5edb67e05328f1c53eb1f252b22c7a9d4b24336d6b0812e0b87fb1f162.1",
+      "path": "deploy/argocd/apps/img-proxy.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "dfc0ba5e81e37a9fe298e32fcff9e2d366d08b827a4913d6b5a051a81fce1632.1",
+      "path": "deploy/argocd/apps/kube-state-metrics.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "cc71833bf33702b050ef7dc22a1645fa3af3b6fdc159fb438f951a728fee17e1.1",
+      "path": "deploy/argocd/apps/kube-state-metrics.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "3de4783fb5b1a0896a4f564049d7caecb155290894d524eb04c4a8ef4be517f6.1",
+      "path": "deploy/argocd/apps/kube-state-metrics.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "e3458e175de3a1603b3b83a2de065d96bacbcd9761389b816ff3b49c650599bc.1",
+      "path": "deploy/argocd/apps/node-exporter.yaml",
+      "rule": "kube-linter-host-network"
+    },
+    {
+      "id": "d290f7ddf73e279224780977d7fe84e2a9e90af06911b2e2933cd466f69b65e5.1",
+      "path": "deploy/argocd/apps/node-exporter.yaml",
+      "rule": "kube-linter-host-pid"
+    },
+    {
+      "id": "bf370cb1167b16b4a6d3cd986bf0c072f0da39c908d1086a59598d1ad2b9f380.1",
+      "path": "deploy/argocd/apps/node-exporter.yaml",
+      "rule": "kube-linter-sensitive-host-mounts"
+    },
+    {
+      "id": "8d11d97fba0c898edf236aea18e39e31922c1275b8ed30ef445f44a3e39038e6.1",
+      "path": "deploy/argocd/apps/node-exporter.yaml",
+      "rule": "kube-linter-sensitive-host-mounts"
+    },
+    {
+      "id": "61c6ac938e7585d8a734484996308a54ff073642dae55640156055e5b0ebf0ba.1",
+      "path": "deploy/argocd/apps/node-exporter.yaml",
+      "rule": "kube-linter-sensitive-host-mounts"
+    },
+    {
+      "id": "cd470ed45c6c998551259df5cdbdf04a301d430aa1bd376cf7be5774d2a64a9c.1",
+      "path": "deploy/argocd/apps/node-exporter.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "a9f6e54b0d10229ea3a52ec5e9e4ae044b2bb7710a4a0db6d34c3705c6dfb7c5.1",
+      "path": "deploy/argocd/apps/node-exporter.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "58e5a0bfec9b029860b4a51b52fb4808ad0acc22c896c10365cae146426c121d.1",
+      "path": "deploy/argocd/apps/node-exporter.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "67ad1b5129afd1f02540607a42126a68fedb33b19fdc24562abf526dc23301e2.1",
+      "path": "deploy/argocd/apps/node-exporter.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "7c862427c2993ffd01bc6a93c6805d7310c55b3f7515191876c25b904f8b94e7.1",
+      "path": "deploy/argocd/apps/pr-agent.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "9d03ed69fdc367a0df0f7bce1f042f2288ebe6e496a7e08d0c09aefba54e0faf.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "kube-linter-dangling-service"
+    },
+    {
+      "id": "ad77e2c26b9a7a04e1c0d05b3ea8f002d43ad4f243623a857f2ec9c0366bb0ff.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "kube-linter-dangling-service"
+    },
+    {
+      "id": "d599e7847a2c6e54a7edbd7e0be3d86d4a22933c88b337d24c9f39a3b8573858.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "kube-linter-dangling-service"
+    },
+    {
+      "id": "b0affc9fdefb54480c9379febec7c1ec136c9a6ce181266038942c060a7c8a36.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "cb0fecab3ffa369e9a8ffb69b4c2787a596388b539312d73e9f467a16546856b.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "e91d1f4d814c34f3ed1988657b27bf5cbcd795bd7e8fe74253546651593ddd4f.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "b29fa7eaffece321c8f7e3daf470148b4b7f5bdfb96e32a6e9aded2b41a4d77b.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "f135ad5d49e7a7622569449c5de62c89d6b2b29b66f01893d2e785fae520023a.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "61130b8c3786afa2492239ab696b0ce71cddc012b92073480c0af5c77d86d79c.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "8d8f838c5c7514b3e5f31003c02b6834ca2ab22b906c6f6ca5b69c72ad490e37.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "42b90eb3bbf9645f222d4387bb49d402f7b4fb1bfbed51dd4ae9d9f7b6ee6dda.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "c8c648bd1e13c47e74334091b6e65afb18d4edc64ac90adb2daa806b0e868507.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "ccea81e0e8ed9c88ffeb50e6b7b4349a3cae01e6d18dedae79bffa5b83af4455.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "0ee571edc51decc58d408eab913be60e34b616e9d18004f661fae0b2ecce560a.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "20909c218ac1c4318ee5209cc8964136591bee3273474fe7f0a1e5b68c5d038e.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "0ed2fa861a4fd9217c4e37f09ab098ad684ca7e787bde87f467f9baa2b17100c.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "efb9c40cb82850a19e0122b5a8ccc317b94bc7c011f2183ab9b4f459b1c6f540.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "f225a05928df30c028f39e130136bd9940aa5356e79e3fe77c99c43cb152f5eb.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "a5e4dfcc2b6d77d7cf21a0453c12f6bd1f82a80828ac0e3ec032b35fe1351c94.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "dad61c9733036d8c702a63f925871f3d94fd4a3e12eacb18f29871406d578670.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "b9c679140a4f33664b3b0542d6ace1f3bc59846b13a4aa292d9f5b16860a6da2.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "c762210568e73104a57b3e553d28056f87f7b971dd6e9aaeefb6a4f484b46de5.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "7bdd9f2256ab857191a1ba1885319aba993cc807418be87adb7ae5ed7e60a1f0.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "3712a313c362717ed7820fb5a08082b60a170319dc3089f484d822d9a2fc7e40.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "0aae4aa00f0b19a38631aa9ee998653ab3dc61963f457e618829efa253206ccb.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "9c2679f51141c76bc4b2303d9130808016b269b03cd5e2945b2d75193da8fb59.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "332c3c12356cddbb15235e74acae70975aa585586ab45791f0c330f388869906.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "72e9dbd4b32ff96d793353bebd8b1b0fe4ad8b5dbe34a63f9f34d616659915a2.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "28abacdf24466194a03534397f6e82800b8cbfeff049bd1697c8bdf589fb7462.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "a497e6d709948461b5669fafaf81eb5d21c7a149da9c6b2ced8fd408dc8a2992.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "f58ac584db08c5634c0d83f9afaa356e123d8e5c275a511ea1d72215c2c09108.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "573fd60e8fe38ae8fbea39dcfcf20fc3a5e1fcabb603801a1481bb0683aad647.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "cc7737d81bb184279b3359032d25f0aea76457edf80894b8f2e5950f227e803e.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "082b21984f5533f37f873143b583c2b65fb1e6440fe075266313d29630e2d983.1",
+      "path": "deploy/argocd/apps/prometheus.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "752fc79698264fffca1b4c95f2a5de7feab3bf02bfef3fcb51bde99dfbe52a11.1",
+      "path": "deploy/argocd/apps/rancher.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "998881e823b10f29c044f2a8fb4c80fc317da9a7d3dc1923de80a0851d15b57e.1",
+      "path": "deploy/argocd/apps/rancher.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "67d9248d9b4bdc6e5aa8eaf26b1a12ca985d59f3fca86e992acfa5e38675cda7.1",
+      "path": "deploy/argocd/apps/rancher.yaml",
+      "rule": "kube-linter-job-ttl-seconds-after-finished"
+    },
+    {
+      "id": "c4283fb69ce6e8913112a3d7e17ea59b33727663cd54fb18c7489725eaa858b9.1",
+      "path": "deploy/argocd/apps/rancher.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "4ec00fef8318e27e53b0f0e2a05e57a88050a2271cb7ad75cb9b8a7d3feca0d9.1",
+      "path": "deploy/argocd/apps/rancher.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "ee1876f06eb3b285ef9ef7cb1b6968283819e831a83dd5c63414f847a234b00d.1",
+      "path": "deploy/argocd/apps/rancher.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "e9bc8bf98f9b282a69777ada49bc2e976a66b200178fbf432ec6f0de5102cf2c.1",
+      "path": "deploy/argocd/apps/rancher.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    },
+    {
+      "id": "33b2d63f541902ea87346408f19272756f10dd6170bc0dfa9984717b2c137a04.1",
+      "path": "deploy/argocd/apps/rancher.yaml",
+      "rule": "kube-linter-job-ttl-seconds-after-finished"
+    },
+    {
+      "id": "d0972520645b8fbba6a30ad05f3be6e937fe213bde781dd4680473c28241dc5b.1",
+      "path": "deploy/argocd/apps/rancher.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "d3d4188f7c2f264cb6da3d2ae4b48912ba19f706541381c89e74dd637e1697a0.1",
+      "path": "deploy/argocd/apps/rancher.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "3ce7791699bda2b3db1714b25cee5ba27619e078a361e07e3ae8b74e7237edcb.1",
+      "path": "deploy/argocd/apps/rancher.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "65200afa61863c2592c28ff7998ab8255bc7bfa5989d3a058d160a69f0f0b811.1",
+      "path": "deploy/argocd/apps/rancher.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    },
+    {
+      "id": "515fa944178ffb9b30b72547cf8a8a9ae48714e92f33cf92fc1f53457fcacd45.1",
+      "path": "deploy/argocd/apps/rancher.yaml",
+      "rule": "cluster-admin-binding"
+    },
+    {
+      "id": "66d6085685dbab76d2bb06fa4779416b2e3743caf690eb5ef4df911262204f42.1",
+      "path": "deploy/argocd/apps/rancher.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "b708e3f632d0b933f3d75b2dea984a90fdd10c35727749a64c664c1e35095388.1",
+      "path": "deploy/argocd/apps/rancher.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "6b41ffb9c98ae7b0f3745bb32cce878a2ff3da7739099aabd8e7179a455772ff.1",
+      "path": "deploy/argocd/apps/rancher.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "d7ec28dbc6bbc81d01c939461c003a9afd7a6ffb6037e4d0327829eb653b1e8c.1",
+      "path": "deploy/argocd/apps/rancher.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "b703b0459a4bb6d62403243007e7e3ce504185c151fc6766ca778aa8c74cc19d.1",
+      "path": "deploy/argocd/apps/remark42.yaml",
+      "rule": "kube-linter-host-network"
+    },
+    {
+      "id": "2af9c915b4911ae962183420f8953957bac5a8351e8b6940aa933215f414aa52.1",
+      "path": "deploy/argocd/apps/remark42.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "125e6a20ca068be8ef44ff4b84003b9d138c6cc05691a7b0c30d2be17e8d2637.1",
+      "path": "deploy/argocd/apps/remark42.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "f937000ac44d33ab6f1d0045adcadf2cb70002538c4dd09a101d3ee27886d2b6.1",
+      "path": "deploy/argocd/apps/remark42.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "0acb12d836476a4c9e4d05c7f43aaee9e4b19148c9ef2e8002146ad49e3d5257.1",
+      "path": "deploy/argocd/apps/socrat-home.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "e2779b9dbc589eedb45edf58d6b1ba83f662aa6ca064914ccf78a2f6161be6ee.1",
+      "path": "deploy/argocd/apps/socrat-home.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "417de3665e38d91e93144e8dab5c144bcdf9694a21aab2fdc14ea973daa9026b.1",
+      "path": "deploy/argocd/apps/syncthing.yaml",
+      "rule": "kube-linter-dangling-service"
+    },
+    {
+      "id": "82df2b03d40716b216244fc4276cf0b648aa54565110d41072d8507fa3cb8e51.1",
+      "path": "deploy/argocd/apps/syncthing.yaml",
+      "rule": "kube-linter-dangling-service"
+    },
+    {
+      "id": "210489b4963af48f9d496f3872319794133141d1d0d6ec18bc0adabcf2a5703d.1",
+      "path": "deploy/argocd/apps/syncthing.yaml",
+      "rule": "kube-linter-host-network"
+    },
+    {
+      "id": "9525ca9324a2c6f4a31fd657aab92789400ccf8d7aa23cf049680dff254b262d.1",
+      "path": "deploy/argocd/apps/syncthing.yaml",
+      "rule": "kube-linter-latest-tag"
+    },
+    {
+      "id": "0e7e85410cf545bce10325d95674167edb0409b21a58e244a49f540cb6d75cca.1",
+      "path": "deploy/argocd/apps/syncthing.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "b9b5df39a9ab5fffedf5f2fe48429e95ed2432952151f149abb05af4aa11a570.1",
+      "path": "deploy/argocd/apps/syncthing.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "65bf73b753131c20621d8bdf9fed496b512d9549fdaf59aad16940b0b25147fc.1",
+      "path": "deploy/argocd/apps/syncthing.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "d672e79cf5bf637686a83f3fcfd46446ce409b47097cf2b4d36ce921c21600e3.1",
+      "path": "deploy/argocd/apps/syncthing.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "f34c35d798638f1d8e521fd2b5ae7c3d1bc042f43d0b5c594ba2322700317e4c.1",
+      "path": "deploy/argocd/apps/traefik-edge.yaml",
+      "rule": "kube-linter-dangling-service"
+    },
+    {
+      "id": "bdc96fdf8f4ba02a2631a074a164f63a5df13b3eaf2b6bbb700ea9e20159e02f.1",
+      "path": "deploy/argocd/apps/traefik-edge.yaml",
+      "rule": "kube-linter-dangling-service"
+    },
+    {
+      "id": "0db6955e6281c82552f4573739d0b4b6079b3626d3d1fb0600feab489e6a300d.1",
+      "path": "deploy/argocd/apps/traefik-edge.yaml",
+      "rule": "kube-linter-dangling-service"
+    },
+    {
+      "id": "3e7584820a61f5cd1c21e8f628d0f1319f401e3c8e02e519a103a4997d495777.1",
+      "path": "deploy/argocd/apps/traefik-edge.yaml",
+      "rule": "kube-linter-dangling-service"
+    },
+    {
+      "id": "a71f4d3091a3e23f22e2fdb5194c0a133db060bb2e50235021f1ac61441de322.1",
+      "path": "deploy/argocd/apps/traefik-edge.yaml",
+      "rule": "kube-linter-host-network"
+    },
+    {
+      "id": "2cf6145f2194354d46389f1541a9ff84e016c889afdca88bbcc419bed7f00b1c.1",
+      "path": "deploy/argocd/apps/traefik-edge.yaml",
+      "rule": "kube-linter-liveness-port"
+    },
+    {
+      "id": "e1e91fb0e6f06b02c15abae1bf86a7f10316485288df51fc3e879b24c38bf16b.1",
+      "path": "deploy/argocd/apps/traefik-edge.yaml",
+      "rule": "kube-linter-readiness-port"
+    },
+    {
+      "id": "022740279b09eff2aa162b4dfa654ac2700a89e574a051fa2eb4f73973386189.1",
+      "path": "deploy/argocd/apps/traefik-edge.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "cc0e12d3e57164e8a39d1446f4549dff5664b2488f6f6cfb81890f351fb2e578.1",
+      "path": "deploy/argocd/apps/traefik-edge.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "b02b69b89a64aaa0f5547259131b0968f9cc56932d55125eedc3a350648a44f9.1",
+      "path": "deploy/argocd/apps/traefik-edge.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "d0ec1b5f701a317059b82e61e0a4d57adad4aaee57e6911b6aba6d21743fc325.1",
+      "path": "deploy/argocd/apps/traefik-edge.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "deb1c2222af202667587320434d6c1ec2fb0b7cb108a434576b3066990bf4ee9.1",
+      "path": "deploy/argocd/apps/wiki-runtime.yaml",
+      "rule": "kube-linter-env-var-secret"
+    },
+    {
+      "id": "b0a0af6339a92018a57fd56c214048598249e69a4fd6d1f4c338da938576f15d.1",
+      "path": "deploy/argocd/apps/wiki-runtime.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "e88aca20bcd4bb94f24f15a04fef3946ad921aba00a281fdcfdc17afaf3a51e8.1",
+      "path": "deploy/argocd/apps/wiki-runtime.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "80536d06e80ffa91507bb5496589460582849a75d42223569789824be9510d23.1",
+      "path": "deploy/argocd/apps/wiki-runtime.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "d096b2d0f10997037f412c0336317dd05d1b17e76986fb409b4bbc278cc25bf3.1",
+      "path": "deploy/argocd/apps/wiki-runtime.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "9e22d84534e30d5af8b5f367d9ddc206a788d458591395cff1fe5b6697999d21.1",
+      "path": "deploy/argocd/apps/wiki-runtime.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    },
+    {
+      "id": "ccb37521f33cbc7c432d61e30496158cb447cd8cd09cf5e2a11804ac992c9e8f.1",
+      "path": "deploy/argocd/apps/alertmanager.yaml",
+      "rule": "kube-linter-dangling-service"
+    },
+    {
+      "id": "35284bda28a95ec77fe10fdddd9d208212fa04acd57076bfedb5e30ad864a586.1",
+      "path": "deploy/argocd/apps/alertmanager.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "9a7f039f5c01fbd2bad559e9003a3de3226d589c657dad9a37a9d68a3ae06fee.1",
+      "path": "deploy/argocd/apps/alertmanager.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "edc8a733b0433de4659118f1bbfde93049a50911e05dfdce7ea24c733ee635da.1",
+      "path": "deploy/argocd/apps/alertmanager.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "5ad6d2316a874b2469709fd4bc60773b8d650000b4c83c7e12d1c47db08b7b0d.1",
+      "path": "charts/litellm/charts/postgresql/Chart.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "4ee51d98dd7de373515a907834d0dda3706cc9419e4382d58d9b1fe61e2b4c2c.1",
+      "path": "charts/litellm/charts/postgresql/Chart.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "2f325708b32fccfc8f629d325833e81094940424ba441069a3a05bccb2d14e59.1",
+      "path": "charts/litellm/charts/postgresql/Chart.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    },
+    {
+      "id": "b50b16550e7aec8833de349453b387d54e2d262eea28bd7d3b8ebc87bcd74db8.1",
+      "path": "charts/litellm/charts/postgresql/Chart.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "a27a5079ec2f6cdab936590060f8ac8f0de2e56e612a8d4f3b00210fb78a08de.1",
+      "path": "deploy/argocd/apps/litellm-infra.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "f44518c37ddc91a7325fdd623d8211c0c293ac788be31ef51e4b0f3323c2e72a.1",
+      "path": "deploy/argocd/apps/litellm-infra.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "da804a36ee34fa613b393faef37b90fdc0c4506faec1d72915242cfc677f21c8.1",
+      "path": "deploy/argocd/apps/litellm-infra.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    },
+    {
+      "id": "af054f5db695c24455f9cb066f0c5d5d0f628bfa81dc99396197c0221c76c63c.1",
+      "path": "deploy/argocd/apps/litellm-infra.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "014549f16ce8a44a05a6933aaf2684c5121de4813e9302470961b5a5d1230d03.1",
+      "path": "deploy/argocd/apps/litellm-infra.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "f87cb55ae0003d6ab1aa113824a14ae18c0403feddc63830439a0e301de294f5.1",
+      "path": "deploy/argocd/apps/litellm-infra.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "5cd4ec874f1e22b5aa54f0bf7d9a126c86c765b3bfaf49428b9c91f3f630c9c8.1",
+      "path": "deploy/argocd/apps/litellm-infra.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "bd8440f4fa0ba593de4acc5e9c8b6b8c7775ef401157b8abde57cf41efdfa683.1",
+      "path": "deploy/argocd/apps/monitoring-k3s.yaml",
+      "rule": "kube-linter-dangling-service"
+    },
+    {
+      "id": "6b1da7f394b053f3434ee54bc6e9df965485e10b86a3f7f22fca8ba80cfd6c52.1",
+      "path": "deploy/argocd/apps/monitoring-k3s.yaml",
+      "rule": "kube-linter-dangling-service"
+    },
+    {
+      "id": "1af7c198a64231afd6798c9c94661c2311235a8408530e901eeddaf9a5970b17.1",
+      "path": "deploy/argocd/apps/monitoring-k3s.yaml",
+      "rule": "kube-linter-dangling-service"
+    },
+    {
+      "id": "7deea7cf97ca457baf18d047ee6cb89f7749d1421f24601142ecbb67af93cde8.1",
+      "path": "deploy/argocd/apps/monitoring-k3s.yaml",
+      "rule": "kube-linter-dangling-service"
+    },
+    {
+      "id": "d5782c79e73d8a5c3eb9cdab8573102b7a37670aed199963433e8616e0507abd.1",
+      "path": "deploy/argocd/apps/monitoring-k3s.yaml",
+      "rule": "kube-linter-dangling-service"
+    },
+    {
+      "id": "ccae8265a72fb33dfb94e559562ecb4ed3974cff8a544b06dff20eaab1d557c0.1",
+      "path": "deploy/argocd/apps/monitoring-k3s.yaml",
+      "rule": "kube-linter-host-network"
+    },
+    {
+      "id": "ad9866be431c6ec8e9c08eaf07aedd7e60c494ed6c7867ee01c940e534670b80.1",
+      "path": "deploy/argocd/apps/monitoring-k3s.yaml",
+      "rule": "kube-linter-host-network"
+    },
+    {
+      "id": "959028faac3693b2cddbc97a643ed2a14057356614d777151d51ed353d5023f5.1",
+      "path": "deploy/argocd/apps/monitoring-k3s.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "2da1d05817bebc1227f783495ae56ae996548226c5dc1c9b11858ce020fb6843.1",
+      "path": "deploy/argocd/apps/monitoring-k3s.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "eb2989b8e668342aadfe805017f2e0f695ccc20a3a385c4ac14728f74f1a182c.1",
+      "path": "deploy/argocd/apps/monitoring-k3s.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "e436dd499ebb467dcb29be5f2891525b88d6df69682e645b2020aba9a33e4019.1",
+      "path": "deploy/argocd/apps/monitoring-k3s.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "2178d31f05a7784b9bbd690d05c7c7fc3887f1db42f52cbe7a8dc7a1ca21803f.1",
+      "path": "deploy/argocd/apps/monitoring-k3s.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "9fccbeae506ca3cfc6de1ed185b244a6c0ad83e167c050a288f920c25170c93c.1",
+      "path": "deploy/argocd/apps/monitoring-k3s.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "ca91bf35fadc17f10b60e7b4f699776a3a13fc5eba20e927c71340a0b7407eb8.1",
+      "path": "deploy/argocd/apps/monitoring-k3s.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "e33cf9ca16a7978575acada044d7c178e04074ba53f52f361ba3b5c9e376ab31.1",
+      "path": "deploy/argocd/apps/monitoring-k3s.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "57b6431e6de79fef9be2f364cc9696e3bc729be7b8b7842b210f728ac5d6efbc.1",
+      "path": "deploy/argocd/apps/monitoring-k3s.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "dc0fc9dcd25e7c0d3ad87242303d8cb8a9ece07526e0df27a0ae1e8b3320f85c.1",
+      "path": "deploy/argocd/apps/monitoring-k3s.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "90099d8aa3be3552ac8320e3e39f0925bd17fb0e1e64e792a531167c25db4962.1",
+      "path": "deploy/argocd/apps/monitoring-k3s.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "1bcd727a42ae188c739402b8fb08008ad704e7da2ea8880ca5cef15501da7ba4.1",
+      "path": "deploy/argocd/apps/monitoring-k3s.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "c4e5d7d7e9d8fc860df048f144e9c996d82027b18705e1e63168f3dbfa2c1214.1",
+      "path": "deploy/argocd/apps/monitoring-k3s.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "edf2077b11643f93121c0ab46fa2f63f014433837eb6f8553e5931a5977c0184.1",
+      "path": "deploy/argocd/apps/monori.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "674ddcaa69a28844880c61dbd1d074a810360baf1cd550ab1b0d2bec605bb7fc.1",
+      "path": "deploy/argocd/apps/monori.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "9bd17340fbb56fa6ee3198c08de4ff365cf000e39e1c0e3d8ffa52fd21833429.1",
+      "path": "deploy/argocd/apps/monori.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "c1a2a6ec209ee69165a6cd0f7f17be7aff7a5a489719a48f7439596912b1f49c.1",
+      "path": "deploy/argocd/apps/monori.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "057b954a1553755e6dce9c4c071134f64488a08b480fbafcc3ed12bf9db49891.1",
+      "path": "deploy/argocd/apps/monori.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "351c1734dd1dca74d24346110c1836e6c1489e27321ee61069ed1d91b8580a2a.1",
+      "path": "deploy/argocd/apps/monori.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "de9b2133800a9644116431f6009c5f207d25062eb87e6d74fd04c88a39313dec.1",
+      "path": "deploy/argocd/apps/monori.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    },
+    {
+      "id": "02cfbf8f36a56faf3ae8128bf5f694d9afdb773678c9085b0fb174a50f7e5b71.1",
+      "path": "deploy/argocd/apps/monori.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    },
+    {
+      "id": "1bf06ed6255e2d9df26a6259bf45faf5ffd88b568e76483df3090038d75a9836.1",
+      "path": "deploy/argocd/apps/monori.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "fb139408d1b405cbda942a2f3cc185f61b6ca6687856603d5c3236811e801cea.1",
+      "path": "deploy/argocd/apps/monori.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "efc14813b860deb8db9aca592291715fded0c239c88edd9a7bfcb295c1ffd63a.1",
+      "path": "deploy/argocd/apps/monori.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "d9136ffebaac6dcadb529074dcbc0cdfca8131ff720aa01ca5acec0a20e0712f.1",
+      "path": "deploy/argocd/apps/monori.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "558acd3346c5d69824f7a0feed541ba0c856d097171d7a54b89f95edb0e43fc9.1",
+      "path": "deploy/argocd/apps/monori.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "72cc91526f43ff1c2be4cf04e95baf8fc32edce74103c43e2d86db4666941af4.1",
+      "path": "deploy/argocd/apps/monori.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "1c2d309050a497f08678689cabe136bb5b621c433fb3d4eebfe229af2db9b3e0.1",
+      "path": "deploy/argocd/apps/monori.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    },
+    {
+      "id": "cd1b4389e7bec9a602281c45d3eae83d41a6a941001d0f92bd4557e4b36b6d87.1",
+      "path": "deploy/argocd/apps/monori.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    },
+    {
+      "id": "d5969ef80ca9567db5bf5f33ef8b43f668e0281a4c5b8eb9699db1c56749009a.1",
+      "path": "deploy/argocd/apps/monori.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "72a81e2251847899277827a328d7757e1ce4b0a42b08853a495eeee61e3e70c6.1",
+      "path": "deploy/argocd/apps/monori.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "9fabd3641ec33d4616d45366042aaee2f787d28945c95f110bfd9a696bcad566.1",
+      "path": "deploy/argocd/apps/monori.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "81c45985d826d4f7e211517897ba13d404951b3d506439e86c36dd70459599a6.1",
+      "path": "deploy/argocd/apps/monori.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    },
+    {
+      "id": "9495e132fdb97552f7916d723df189015662f8a11100573ba3329e4eacfdd677.1",
+      "path": "deploy/argocd/apps/searxng.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "3ac03ea0adbb57944986e0dd30e9fe2909900a2069ea49b5ed0d994e0e1e236b.1",
+      "path": "deploy/argocd/apps/vllm.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "6fa55339e7a4aafbf8f2b3116b5dffaf63b9ea8cefe7c83fc89dcc483b7d24ee.1",
+      "path": "deploy/argocd/apps/vllm.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "ed2159fbfbf2324630b34e562c4dd629826a5fc0503996f9191061220fc7ff17.1",
+      "path": "deploy/argocd/apps/blog.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "21a034cf8204f739b3fe7874e90f6a77f791491a9f0398b5a98b903b08b17c61.1",
+      "path": "deploy/argocd/apps/blog.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "425c053a14065af6c1404ab4acf0786fa68e083f16fb2ed16e495b4b33c89c16.1",
+      "path": "deploy/argocd/apps/cats.yaml",
+      "rule": "kube-linter-no-anti-affinity"
+    },
+    {
+      "id": "8357ed47dca28ab76128fda6d11f5eed8c6895d8b9c8a4bab7c80694b954436b.1",
+      "path": "deploy/argocd/apps/cats.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "36af1221185c755c1d62c81462713f494c667deb199bdcca8909940100dce555.1",
+      "path": "deploy/argocd/apps/cats.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "eced14ddcc230f76e074d30d0cda25d5cc2a920c727c775f37f53ebac0ee0942.1",
+      "path": "deploy/argocd/apps/cert-manager.yaml",
+      "rule": "kube-linter-job-ttl-seconds-after-finished"
+    },
+    {
+      "id": "58b52dfe9ddb6d29611548f7221652df4c909d14249a76b76bce9f104fcbaa1c.1",
+      "path": "deploy/argocd/apps/cert-manager.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "eb50b4cc2110aaf200776a261abfe796100ad3dd27672f4530624a2bfd507bd3.1",
+      "path": "deploy/argocd/apps/cert-manager.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "a5b4189bacbfcd685fb9b7a0becd6f645223ecb0cd4c01777de32b63b3b48d2e.1",
+      "path": "deploy/argocd/apps/cert-manager.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "1ae6dfbeb9cfbc8ac5d600cf40472a09eed1caccccfb73e12750f5910b86250c.1",
+      "path": "deploy/argocd/apps/cert-manager.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "3cc73e4276e22b247672ba89f9d630877f0e13da1c69755e1582f1f35fee4cd4.1",
+      "path": "deploy/argocd/apps/cert-manager.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "1b1f15bc93e56c3c2fbb3182bb4ac8f3feb52458202ca187285f602f19dfae3c.1",
+      "path": "deploy/argocd/apps/cert-manager.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "1b8a5e435fe48be62cae38afb827f085c349adab28af6aa70d2eaec142623f29.1",
+      "path": "deploy/argocd/apps/cert-manager.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "58097fa34d62d5ae7c85f2d255aa348cfc10c95d9bdb333ef65c26ddc0dbfb04.1",
+      "path": "deploy/argocd/apps/cert-manager.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "f9a2efca13d688decc7e1414a2dc7379d344010abd8ebfcf010cf981f6b2f7d2.1",
+      "path": "deploy/argocd/apps/cert-manager.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "f2163061056d2df34f7cfb9367eb6f05c0d39500231bc3a7f554907b06c53ece.1",
+      "path": "deploy/argocd/apps/cert-manager.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "bbfc74f5acd23e82c4f92be01e24fca2d87b68881579d6d1dad4c6a837230339.1",
+      "path": "deploy/argocd/apps/grafana.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "656dbce0f2a79aa0d536733c5f00551982b06cf82801b7215f0647fd243abb68.1",
+      "path": "deploy/argocd/apps/grafana.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "e1dc0fd8014ae03455693768ab5df8e86b09a6f6f8a858cd6e3dfcac351a6dbf.1",
+      "path": "deploy/argocd/apps/grafana.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "52e16f7445decf998baa72c330bc5432dfc2b86ef71c6fdfc01cba0b6162098b.1",
+      "path": "deploy/argocd/apps/grafana.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    },
+    {
+      "id": "59d89d8a72686f280d32c6ca4abcb97c384c4014d892e0625927d3f4b45cee9c.1",
+      "path": "deploy/argocd/apps/grafana.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "cfd900f6bb5d694ce0b6edeec6d1db712c34a62adf4546e537881c5a3766f2a2.1",
+      "path": "deploy/argocd/apps/grafana.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "7cd82c90e421a6bd34769d06872290265b9d4979e35ea152ca81dc6991320394.1",
+      "path": "deploy/argocd/apps/grafana.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "d37ef55f49434cf91cf920535a92451a82774913becca7ec05c50b546c60521a.1",
+      "path": "deploy/argocd/apps/grafana.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "7e7aeaf1ddcc1ad6dd51bc921329a493c8be978877d97de57cad7d07ccff0053.1",
+      "path": "deploy/argocd/apps/grafana.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "e0ad52b2813ed1c19ef809a52c550ac57dcffe4376f42a8e06a76d1fb6bb0c87.1",
+      "path": "deploy/argocd/apps/grafana.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "b64190408cd0f98da48522e469f971dd580375c6ac6503f0ac3902685e701f2e.1",
+      "path": "deploy/argocd/apps/litellm.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "6507a3452181add914b6fe5747970d786d9fea296da003803a64cac2cacbd6b8.1",
+      "path": "deploy/argocd/apps/litellm.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "0793b84180be84167d204b666f4c5ccf88669d31ecb633ebd35f7a5c08a360af.1",
+      "path": "deploy/argocd/apps/litellm.yaml",
+      "rule": "kube-linter-latest-tag"
+    },
+    {
+      "id": "9c0ee77965852b5f70cff482e75cec6652a7abae2c8fbd4dda5594c91cb98fbf.1",
+      "path": "deploy/argocd/apps/litellm.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "22542c94471824791a0813e25cca0ee00b80622e9aa14c2d73c4ed64310d2395.1",
+      "path": "deploy/argocd/apps/litellm.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "e93ab3165b658893bbf820efd94aea549c5508840c46309852defd7ce7b7d8db.1",
+      "path": "deploy/argocd/apps/litellm.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "2b115568d8a41f70697887a51f390160ae91acb8d35e0ddcd7ccb3a8eb487e89.1",
+      "path": "deploy/argocd/apps/litellm.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    },
+    {
+      "id": "0fd2af70aee58ff07b23a9fcb9d9cfbe11f6a923cb029a70e34e2993f184d459.1",
+      "path": "deploy/argocd/apps/litellm.yaml",
+      "rule": "kube-linter-latest-tag"
+    },
+    {
+      "id": "57a4b1d8e4ddfd53e302361476471904da381fbcd24adb18db12ca11f9acedd8.1",
+      "path": "deploy/argocd/apps/litellm.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "4a50693c09643e325fba86c30cdbaa5924570a247f5eba324d790c65a2923fc0.1",
+      "path": "deploy/argocd/apps/litellm.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "c33d8518c5d90414c46f2bd79d3ee818f080e8ba923c1b5113242cce47b9e63c.1",
+      "path": "deploy/argocd/apps/litellm.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "e08209874410dc822a424ec2a617c155335626261eca2de4d3d03b18522f2dba.1",
+      "path": "deploy/argocd/apps/litellm.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    },
+    {
+      "id": "2992127def63b2ec24c908a2a52bae50d103e36b3445963386c4aeceb34cf200.1",
+      "path": "deploy/argocd/apps/litellm.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "8e4411e79538c4c5f737998df9e784e9e4b521b15b1e3d18678841c2cf1795c5.1",
+      "path": "deploy/argocd/apps/litellm.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "5a24ee5566f42693e7dc78cee35e20658b83d0763a0734b1a20139c5cf51565b.1",
+      "path": "deploy/argocd/apps/litellm.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "05b40b4a3accf161c9f5419da80c7ae0e40f2d99ad04d55d3ea592f918007b51.1",
+      "path": "deploy/argocd/apps/n8n.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "5d13d47caa13c516e34c2e024ad4c267776f17bb2378a20d7c55514060eaf2b0.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "41594391f70fe9dd0eb03c9b17c71fb4a3667f5e14bb3b7512040b43fc71d140.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "094d64617e39d11d8b3dcdd1f20ed9257fe3c5957aab6ad4bde2bd3cecac45dc.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "40cbe57b41f49d24cbca603574e39cce953b197e1b8110cd0d3f3b002dc7cee3.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "0a063c104c212b47e92506e4106722614afe5b3e0c67097b5cfd424d2a43a6d2.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-host-network"
+    },
+    {
+      "id": "98f94995108d5ea86459864194e8e3e9438f4276b344894b6d7584e1f535b766.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-drop-net-raw-capability"
+    },
+    {
+      "id": "664c983b1b2f4f94e1cbbc32b5b5eec9b04058a01dbcc40bd6f126029418be28.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-host-network"
+    },
+    {
+      "id": "d2aaa521e18583ba68f7b70c5cff80d8494ab7d3ebfdbce1e1e36ed24b5bcd04.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "a42bdc1c0fc217f5181eaf11d46313daebd2b30fda47f3fea93d5e93a157f4b9.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "ac7254efdd186407f491b36548b9a523afa597b298f9d7d4972e83d41ca63637.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-drop-net-raw-capability"
+    },
+    {
+      "id": "d823f58c09c80aea1e5796118e954ada297e452868aa7180e0e4fc9223fea10e.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-host-network"
+    },
+    {
+      "id": "0a0b89f09ee3aeefc4d6918f084cf71894d818ef7e3cefdbd9da02975f5804f3.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "fe1775e5eeedbb128f5804f24d9275acb153f2ad76158e9400f0a4f9e6c47ba5.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "d968fad0fdc736b001d9a2f88e38e6ff03570bd15b4394f698cf7b9a7189e5e8.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-drop-net-raw-capability"
+    },
+    {
+      "id": "f08bac72b6709cfa9cb55fcbf2b2986346d570033f3a3e96ef848a017ca6ae55.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-host-network"
+    },
+    {
+      "id": "032de3c999904ecdb7d9819fe1350469e8e6dbf10dd3e4d30506d6542286dcfc.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "58c54f8be8fa28c61625fce8cab164844dc357e34b661e032124e7dd5571903e.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "f515a022f2508a47706ee0f638a05568347515e31fefae6da147850c3067c562.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-drop-net-raw-capability"
+    },
+    {
+      "id": "0f6f152bbdee94858b6f56ee2cf7ebd457267e42b12e3c4057e52935cbd94546.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-host-network"
+    },
+    {
+      "id": "9aeaf03471bc5b46e1c22cf2b95c982674377138396f066a670de68145b15863.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "237c8a708daa58a886594cb3efc32ce5ca82898292a0d3e0b161218e69f20dc6.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "89f8b0802e6e17394812400ea2a01e22bb18309772b85293f9a8e9928bcc8418.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "30eb4851bcee151f9d4276190b4ed0785dbe35f3b3738c1933eb25dfe1c00875.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-readiness-port"
+    },
+    {
+      "id": "3fc33785d090582b3c9b644b4308b4bdd9307603d29b3244eba5a2e00169617b.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "d92606e899cf5945d3335eb34362a3ef073da10d0d84101abd578dc3eb365b79.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-liveness-port"
+    },
+    {
+      "id": "7c36364eebfbbecff70375a509241f04cfd819e4d3ac85dea62304cc712de827.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-readiness-port"
+    },
+    {
+      "id": "760e00e3c8a45f5e4d75e412b92f9d2befe685ca627644a7c708bcfefbf59d7f.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-liveness-port"
+    },
+    {
+      "id": "6e18a9f91e2482610ae8b5d7dec9144eb4ec7cf088f4e8f02efca5547c437371.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-readiness-port"
+    },
+    {
+      "id": "6b8ee5d4da0833c0a0c6b114a7d12e8aba3b351a7ced2abc3112923262cf44cd.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-drop-net-raw-capability"
+    },
+    {
+      "id": "078fa5bc524db416aaefefd6d7755e32a3ba9dbcef066ca31c247c5e1b219c59.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-host-network"
+    },
+    {
+      "id": "309df8ea7c9aee9efb1349b5e52fb48bf47082688746e09414e05c09e22b5829.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "77fe7efe6126c50c10c76594048b2454beca34fb18b6a0de698b87645a430666.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "4959f257c7d5521bf9601a94d05e439290d88cc1164eabc513bf06845e7a0d95.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "569dad0e87543b9e19328cefb057599095d3835adcf7a6d4d3758e8b10a590fd.1",
+      "path": "deploy/argocd/apps/netbird.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "a141bc073fcf93f699cb3940e9ec5812d6f38a38fabf753197231f8881fbc0a6.1",
+      "path": "deploy/argocd/apps/nvidia-device-plugin.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "12f2da205bf2b08840310a56c5ff70d5831f44deb839f2a215335ee3af875795.1",
+      "path": "deploy/argocd/apps/nvidia-device-plugin.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "26cde3f7f7244a91c4762f3f766d6724bde2baf9161ee19b16425c155519a0a5.1",
+      "path": "deploy/argocd/apps/nvidia-device-plugin.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "c39c29d12641f42c51e1d4b5a7191f35e751a5f2c564b6080f279d1c8659d97d.1",
+      "path": "deploy/argocd/apps/open-terminal.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "ae0df28fab0caa7c370f9d84fd32ee58398c96865e9accce699bd332bd4839d5.1",
+      "path": "deploy/argocd/apps/open-terminal.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "7b785d54184fce6444a67ac4937ea70ad613d39142c7c087f1cd5f4c79e4b5f3.1",
+      "path": "deploy/argocd/apps/open-terminal.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "35e5f07c2a6170ec5433b935e8cb5bfd70ccf971b4295c6fbede8bfe0a2101d4.1",
+      "path": "deploy/argocd/apps/open-terminal.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "95381e65b732cd53c0778fd9f2ea92a0166f5ed356b2651753d7353443fd57e4.1",
+      "path": "deploy/argocd/apps/open-terminal.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "05d2a0ba895996396abfb40d37cf3d58893eb37bf991ddf6f7bb86f39d6062c9.1",
+      "path": "deploy/argocd/apps/open-terminal.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "fb546859cfbfa53c8db8028fa0e54be0929472d7c458faf10e3c32488c53aec1.1",
+      "path": "deploy/argocd/apps/open-terminal.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    },
+    {
+      "id": "71c87d9587ce1a45e45560836535629c49499f09e5348a3ea18845e67e5f4403.1",
+      "path": "deploy/argocd/apps/open-webui.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "64edc4579c9881771029078cf0286559124a75aba0cccf5bff26f053cc700f71.1",
+      "path": "deploy/argocd/apps/open-webui.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "32be92a4a34df9732316232b0a9e9962d12e5a952f81bde3cfc0c7d377372c11.1",
+      "path": "deploy/argocd/apps/open-webui.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "9b0d7f768bf2669615f85b5739727fe5d14eac58960f3f10abd41e3456bdd32b.1",
+      "path": "deploy/argocd/apps/open-webui.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "3d0b776aa6bc3bded39919f75f5e9e3dc7dcbdf3f6ab9cafa6f7ca5307aa847d.1",
+      "path": "deploy/argocd/apps/open-webui.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "a2d2b6d8ab27afa1b224b11754d709091b54617b9318a03921aaf5bed8d7756d.1",
+      "path": "deploy/argocd/apps/open-webui.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "5438bf2a23278a18636aa86faf2708e98c60e262b0a2c650b43773470c980afb.1",
+      "path": "deploy/argocd/apps/open-webui.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "8314e55b85cf190b9cef112c7bfc01e13a90c68e73daa2ab9b08202f9587b428.1",
+      "path": "deploy/argocd/apps/open-webui.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "24c5e81f8c2d3bff84cbf7c59e4c5e9d039315b422efc624f5170bd5652c2554.1",
+      "path": "deploy/argocd/apps/open-webui.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    },
+    {
+      "id": "a1ceaffd472caaf5ac316116c2e5aa8ef39acdc98f9afa3ddf5c25630ad29f1f.1",
+      "path": "deploy/argocd/apps/open-webui.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    },
+    {
+      "id": "7d76b22b50bb32ab2d06faf979e69ddd8780798be7358dd6545960683105b1d9.1",
+      "path": "deploy/argocd/apps/open-webui.yaml",
+      "rule": "kube-linter-host-network"
+    },
+    {
+      "id": "b05296b55e81629de12442b7ad1cdc24eee081d60d0e51e7127d9a4c4f3a758e.1",
+      "path": "deploy/argocd/apps/open-webui.yaml",
+      "rule": "kube-linter-liveness-port"
+    },
+    {
+      "id": "94e9309fa22d1de3b0160675160f855a52e92eadfd33700ad29394ad76c1791e.1",
+      "path": "deploy/argocd/apps/open-webui.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "4453c8f7f031e9da8d1e74c7a22870ba62960101f4c3d63209bec9f5f68dd875.1",
+      "path": "deploy/argocd/apps/open-webui.yaml",
+      "rule": "kube-linter-readiness-port"
+    },
+    {
+      "id": "d10b9451edcaa607502124a268c082a1329d3777efb71d3ca2a480ec3331b103.1",
+      "path": "deploy/argocd/apps/open-webui.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "dba31ca83f654921fb5f05c4a45e5f3483061196e438c0e926353ad111d68b79.1",
+      "path": "deploy/argocd/apps/open-webui.yaml",
+      "rule": "kube-linter-startup-port"
+    },
+    {
+      "id": "daf6e279542bd25a6a6377a25897d816756a6120ff7c27aba65a9e0346810a6d.1",
+      "path": "deploy/argocd/apps/open-webui.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "9530451afa98d641e83e22e15baa8a459bcd21f0561c8780bea49cbe2af52a8c.1",
+      "path": "deploy/argocd/apps/private-gateway.yaml",
+      "rule": "kube-linter-host-network"
+    },
+    {
+      "id": "fe60567a64daff9fd09dc3a5eec961c1975e1a5c840c6aa1ed289120304216cf.1",
+      "path": "deploy/argocd/apps/private-gateway.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "9176078ca888e678d9b9f55f2d31fd671ab15ad05bef864534f4b613fdad2a23.1",
+      "path": "deploy/argocd/apps/private-gateway.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "dfb2a47da44227efbe7a4806d70f5b71d9bee7164a3d625c90b39fc99d310177.1",
+      "path": "deploy/argocd/apps/private-gateway.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "7a4e1fe310c701434b8a45fd286afdbb3e469c4088678c6a88dbc894f665b631.1",
+      "path": "deploy/argocd/apps/private-gateway.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    },
+    {
+      "id": "f2b11b8569359021ab02f5ca73643032501bd106c32c128a36f8751e79e7bd38.1",
+      "path": "deploy/argocd/apps/private-gateway.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "ccabdf4c7bb475f201bde295f834764e4b19a5905bf6ce7c4554f5bcbf181077.1",
+      "path": "deploy/argocd/apps/prometheus-operator.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "249b49d238a3811e5da1a5f6c4ad93b8772c082c62531ce906deb38ee5c2c332.1",
+      "path": "deploy/argocd/apps/prometheus-operator.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "273b7827572514d261e435158fcbbade36bfba558358e936c6098155a159fc72.1",
+      "path": "deploy/argocd/apps/prometheus-operator.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "4549b1290f2586fcb1d06e312f63cd3c4e85b63406debe7a83ac7d9aa6d71a76.1",
+      "path": "deploy/argocd/apps/prometheus-operator.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "c1ed30cca96779672d613b9c2ba9fc6d1c6f852376b13e37b50b4207bc2de107.1",
+      "path": "deploy/argocd/apps/prometheus-operator.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "d9e0acfcfa8f34b0c310fc7295e64f059c1ab6551d811234bc6e371c4809a2b9.1",
+      "path": "deploy/argocd/apps/prometheus-operator.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "6e80d460c4989a4076a96f200998efc3c3da8a428e521dab729bf6139ba62dba.1",
+      "path": "deploy/argocd/apps/prometheus-operator.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "35d877b8c850e6c062d9eb1ef36c8849dba0a3b983ac819ceddf4d0c7cd474ec.1",
+      "path": "deploy/argocd/apps/prometheus-operator.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "9e260073612bbff84b98359aea23fcdf047dd48ad4fea90c15f760da2fe54e52.1",
+      "path": "deploy/argocd/apps/prometheus-operator.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "f1d4975bba17cffd6309cbaa5b0d900fe402b925a7d19c3d47c8a45c13b03b66.1",
+      "path": "deploy/argocd/apps/prometheus-operator.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "f53f7e0ec57528ddb8daa69bdc75391436823e3418b42029603b767bebe09f10.1",
+      "path": "deploy/argocd/apps/prometheus-operator.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "a55d908dcfa2b416c814cd31730afc0ff128780ecae27f5cd14f7abb31e216cf.1",
+      "path": "deploy/argocd/apps/prometheus-operator.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "6c07954192fc0a1359ca334caaaf149ed43c7f6b8fc002cb93d7bada0052b505.1",
+      "path": "deploy/argocd/apps/prometheus-operator.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "025bb4922dc8519965e05b21d18f3572f93ade53b800def1e6f7de7d8988f329.1",
+      "path": "deploy/argocd/apps/prometheus-operator.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "0294fbc01e744570c4609ab3a2dd1a4c7d56ea23c049bca4522a25db105a5c85.1",
+      "path": "deploy/argocd/apps/prometheus-operator.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "7335af1826e455dbf795abdb5fd917545e33b6800b563998b82a7078c440f4aa.1",
+      "path": "deploy/argocd/apps/prometheus-operator.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "fc0dc3557adccc9da2378bfe560c7812e37767019af997c44f58d777dc17d55e.1",
+      "path": "deploy/argocd/apps/rancher.yaml",
+      "rule": "kube-linter-job-ttl-seconds-after-finished"
+    },
+    {
+      "id": "8033384191e0edc08a8afa0f183f62bcbf72bfba8dc5b09fbfc4d0bd8fdbac55.1",
+      "path": "deploy/argocd/apps/rancher.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "73a66a01ad1b85c379bbf794ec7b4d901da662731f098adcdc61fe18f602de2e.1",
+      "path": "deploy/argocd/apps/rancher.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "6a184fd4ae24e485c6787beb8bbcc08b4f8dcfd0b71b6f54d62941dd865d43bd.1",
+      "path": "deploy/argocd/apps/rancher.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "0cf662923cc906afd4fb43affb3486c2b5d40a8ec8c38658658bd42c23c8d082.1",
+      "path": "deploy/argocd/apps/rancher.yaml",
+      "rule": "schema-unavailable"
+    },
+    {
+      "id": "cef2d9bcab387527cb6b39b7749fcfa1880472ab89f87fecd520f467810be1c8.1",
+      "path": "deploy/argocd/apps/socrat-bot.yaml",
+      "rule": "kube-linter-host-network"
+    },
+    {
+      "id": "c15aad6835c2de05539886336dff2098d900dfae5a368ec589ce818cd8bfdd8a.1",
+      "path": "deploy/argocd/apps/socrat-bot.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "04efdf39a22a7254f2beb5b950518f9664f39225b529ad803073ee62ed8b7cfb.1",
+      "path": "deploy/argocd/apps/socrat-bot.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "e31ed41f273c2c747f9edf68c836c8566d830ed7e9592e9c0a13d2ad3fb42562.1",
+      "path": "deploy/argocd/apps/socrat-bot.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "de76f4c0ad9e0c06d074ce2477abbb3802b584645c02a0011d9ff038d7da8de0.1",
+      "path": "deploy/argocd/apps/socrat-bot.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "da3bb4cb49bf1fc161b4a538d1089b2c70612b670e865163bbebf1f62a693e09.1",
+      "path": "deploy/argocd/apps/socrat-bot.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "ab80504247f9c6cfe651f701f7c6acce0ade2c877acb68a98c728091a254f34d.1",
+      "path": "deploy/argocd/apps/spi-triage.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "83911a45090e75d27b235a6d153f9d446a30aebcc5b27c5d3d3ca02cb0c58a79.1",
+      "path": "deploy/argocd/apps/spi-triage.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "e74165b51b98c2e0d19f653be222f85dd60f5916fddc4aff976f75f4ba3982f7.1",
+      "path": "deploy/argocd/apps/spi-triage.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    },
+    {
+      "id": "8610db0912adaf71b4e41aef6e067974cffdc5100904f3efd156827f8977181d.1",
+      "path": "deploy/argocd/apps/umami.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "4733f00ea7b64bd19563b588d0950fced3cf7549b6dcd1fc777c4f960fce3950.1",
+      "path": "deploy/argocd/apps/umami.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "b62948830933e05bd5339383667265b1886c34a4c164d8a6510369f0580b846a.1",
+      "path": "deploy/argocd/apps/umami.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "e00d5363d010a1164374c90fd6e19d5368d78fe998ced7cd9fea94bb33a7ef85.1",
+      "path": "deploy/argocd/apps/umami.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    },
+    {
+      "id": "3b73585628233949210862df7c92b9e5b05fda4243ed736ac4dd5cda6f96d28e.1",
+      "path": "deploy/argocd/apps/umami.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "50c3f6a9707286c5e4f3b321dcfb2ef55a59609a183136e0db17d503798b318a.1",
+      "path": "deploy/argocd/apps/umami.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "b693f385f16b752d8fa78e56913f6483e93dea9784b4000bf7164d7032f47f58.1",
+      "path": "deploy/argocd/apps/umami.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "37249b4821b7c3e632c60cb1612df0dff4730bc7d724ba0b051865c080408314.1",
+      "path": "deploy/argocd/apps/umami.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    },
+    {
+      "id": "6362fb8c400ceb0148e40d88c1b9f904ac4a5f86e1a378ee4de530b2ea36c156.1",
+      "path": "deploy/argocd/apps/umami.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "97a85d99c96500a435de66e8ad6644a1a48ef4127bb240db4cef209332670ca1.1",
+      "path": "deploy/argocd/apps/uptime-kuma.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "6886f997498ce57dd57056d22a9cc5725c8ccf9dca347dff0c53756c2bc36074.1",
+      "path": "deploy/argocd/apps/uptime-kuma.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "4cd9432a5a4be76614483f81e09a3eba11f5a5d74f1b9c6f89dfde8542c007fe.1",
+      "path": "deploy/argocd/apps/uptime-kuma.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "b543000896dcdf87eecb0b43324c6ba2012974fd065964deb1bc943875b56ca7.1",
+      "path": "deploy/argocd/apps/uptime-kuma.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "7a4f226f623027e3d0470c22d0b98ce235651163c0aad12f7b64557dc394ff1f.1",
+      "path": "deploy/argocd/apps/uptime-kuma.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "89ef0299598254e738298f06f19a611e7772594911f1f046cca477671e551a7b.1",
+      "path": "deploy/argocd/apps/uptime-kuma.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    },
+    {
+      "id": "26a72f8d2ab1d736206e498c7bc2868520fbcac10610d41b99c1d60083430e7d.1",
+      "path": "deploy/argocd/apps/uptime-kuma.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "7b31fdbc2255aa5b89c8b1a57d8ec28794da370d3502401dc9ddc28001fc79cc.1",
+      "path": "deploy/argocd/apps/uptime-kuma.yaml",
+      "rule": "image-digest"
+    },
+    {
+      "id": "825af83ffe8212b72b21340928a760c819f61a584dcdd34e163b5d959c9a7446.1",
+      "path": "deploy/argocd/apps/wishlist.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "14d92b1f2139c2e6bcd2d3d989c0fa258db50e9d7a743dda86a53e87a2f17438.1",
+      "path": "deploy/argocd/apps/wishlist.yaml",
+      "rule": "kube-linter-no-read-only-root-fs"
+    },
+    {
+      "id": "c756ae957344fce75867a3ee71c04d3e7c78422a7b8d7bb4f2e049ba9fcb10a6.1",
+      "path": "deploy/argocd/apps/wishlist.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "53d9d1b8a2a0763ceb6cc0bf23ebcf6e04ee3b60a3446d0a1df8f732dddceb39.1",
+      "path": "deploy/argocd/apps/wishlist.yaml",
+      "rule": "kube-linter-run-as-non-root"
+    },
+    {
+      "id": "fe4ebfa98e0e14fedccf40ef82852eae0d8601e1964e98e306d714e47aac2973.1",
+      "path": "deploy/argocd/apps/wishlist.yaml",
+      "rule": "kube-linter-unset-cpu-requirements"
+    },
+    {
+      "id": "76ac783301f21e80c99a534fbf529bffec28d21743b0e051fbcbf2ad99070aa8.1",
+      "path": "deploy/argocd/apps/wishlist.yaml",
+      "rule": "kube-linter-unset-memory-requirements"
+    }
+  ]
+}

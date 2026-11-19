@@ -1,0 +1,259 @@
+{
+  "ruff": {
+    "select": [
+      "ALL"
+    ],
+    "ignore": [
+      "D203",
+      "D213",
+      "ISC001",
+      "COM812"
+    ],
+    "perFileIgnores": {
+      "**/tests/**": [
+        "S101"
+      ]
+    },
+    "ignoreReasons": {
+      "D203": "Unsatisfiable with D211. PEP 257 keeps no blank line before a class docstring, so D211 stays.",
+      "D213": "Unsatisfiable with D212. PEP 257 keeps the summary on the first docstring line, so D212 stays.",
+      "ISC001": "Unsatisfiable with the Ruff formatter, which can introduce single-line implicit concatenations. ruff format --check stays mandatory.",
+      "COM812": "Redundant with the Ruff formatter, which owns trailing commas. ruff format --check reports the same defect.",
+      "S101": "Pytest rewrites assert. This is the only test-framework exception; no other test rule is ignored."
+    }
+  },
+  "mypy": {
+    "strict": true,
+    "extra": [
+      "warn_unreachable",
+      "explicit_package_bases",
+      "disallow_any_explicit",
+      "disallow_any_unimported",
+      "disallow_any_decorated",
+      "strict_equality_for_none"
+    ],
+    "errorCodes": [
+      "explicit-override",
+      "mutable-override",
+      "truthy-bool",
+      "truthy-iterable",
+      "possibly-undefined",
+      "redundant-expr",
+      "unused-awaitable",
+      "ignore-without-code"
+    ]
+  },
+  "ansible": {
+    "enable": [
+      "avoid-implicit",
+      "command-instead-of-module",
+      "command-instead-of-shell",
+      "deprecated-bare-vars",
+      "deprecated-local-action",
+      "deprecated-module",
+      "empty-string-compare",
+      "fqcn",
+      "ignore-errors",
+      "inline-env-var",
+      "jinja",
+      "jinja-template-extension",
+      "key-order",
+      "latest",
+      "literal-compare",
+      "loop-var-prefix",
+      "name",
+      "no-changed-when",
+      "no-free-form",
+      "no-handler",
+      "no-jinja-when",
+      "no-log-password",
+      "no-prompting",
+      "no-relative-paths",
+      "no-same-owner",
+      "no-tabs",
+      "package-latest",
+      "partial-become",
+      "playbook-extension",
+      "risky-file-permissions",
+      "risky-octal",
+      "risky-shell-pipe",
+      "run-once",
+      "sanity",
+      "schema"
+    ],
+    "profileMin": [
+      "internal-error",
+      "load-failure",
+      "parser-error",
+      "syntax-check"
+    ],
+    "excluded": {
+      "args": "Experimental in ansible-lint 26.11.0. Not a stable module-argument contract.",
+      "complexity": "Experimental numeric threshold. Not an operational safety property.",
+      "event-query": "Applies only to Ansible Automation Platform event_query.yml catalogs, which this tree does not ship.",
+      "galaxy": "Galaxy and Automation Hub publication metadata. ansible/ is operational playbooks, not a published collection.",
+      "galaxy-version-incorrect": "Requires a published collection version above 1.0.0. Same publication scope as galaxy.",
+      "meta-incorrect": "Rewrites published role meta/main.yml defaults. Operational playbooks have no Galaxy metadata contract.",
+      "meta-no-tags": "Galaxy tag character set for published content.",
+      "meta-runtime": "Published collection runtime metadata. The pinned quality environment selects Ansible, not meta/runtime.yml.",
+      "meta-video-links": "Galaxy video_links formatting, not an operational play property.",
+      "only-builtins": "Experimental rule that forbids the pinned Kubernetes and other collections these plays intentionally use.",
+      "role-argument-spec": "Galaxy role argument_spec publication file. Not required for internal playbook roles.",
+      "role-name": "Role directory names are include and path contracts. They are not renamed to a Galaxy pattern without a consumer map.",
+      "var-naming": "Would rename play and role variables that are external interfaces. Consumers are not remapped by a linter rule.",
+      "warning": "Experimental catch-all. strict: true already fails warnings emitted by real rules.",
+      "yaml": "ansible-lint runs a second yamllint with its own config. quality/yamllint.yaml is the strict YAML authority for the whole tree."
+    }
+  },
+  "kubeLinter": {
+    "include": [
+      "access-to-create-pods",
+      "access-to-secrets",
+      "cluster-admin-role-binding",
+      "dangling-horizontalpodautoscaler",
+      "dangling-ingress",
+      "dangling-networkpolicy",
+      "dangling-networkpolicypeer-podselector",
+      "dangling-servicemonitor",
+      "default-service-account",
+      "env-value-from",
+      "no-liveness-probe",
+      "no-readiness-probe",
+      "non-isolated-pod",
+      "privileged-ports",
+      "read-secret-from-env-var",
+      "scc-deny-privileged-container",
+      "sorted-keys",
+      "unsafe-proc-mount",
+      "use-namespace",
+      "wildcard-in-rules",
+      "writable-host-mount"
+    ],
+    "omitted": {
+      "dnsconfig-options": "Forces ndots=2. Cluster DNS search behavior is an existing network contract, not a generic pod default.",
+      "exposed-services": "Forbids NodePort and LoadBalancer. This homelab intentionally publishes selected services that way.",
+      "hpa-minimum-three-replicas": "Forces three replicas. Capacity and single-writer data volumes are explicit constraints, not a replica quota.",
+      "minimum-three-replicas": "Same replica quota. It would contradict measured-capacity and single-writer deployment intent.",
+      "no-node-affinity": "Requires node affinity on every workload. Placement stays in the existing scheduler and inventory contracts.",
+      "no-rolling-update-strategy": "Requires RollingUpdate. Recreate is required for single-writer ReadWriteOnce volumes.",
+      "priority-class-name": "No cluster-wide priority class contract exists. The check would invent one.",
+      "required-annotation-email": "Organization email annotation. Not a security or runtime property of this repository.",
+      "required-label-owner": "Organization owner label. Not a security or runtime property of this repository.",
+      "restart-policy": "Requires restartPolicy Always on deployment-like objects. Jobs and CronJobs intentionally use Never or OnFailure.",
+      "schema-validation": "kube-linter ships an unlocked schema set. Checksum-locked kubeconform schemas at Kubernetes 1.36.0 remain the schema authority."
+    }
+  },
+  "yamllint": {
+    "enabled": {
+      "line-length": {
+        "max": 100
+      },
+      "truthy": {
+        "allowed-values": [
+          "true",
+          "false"
+        ],
+        "check-keys": false,
+        "level": "error"
+      },
+      "comments": {
+        "level": "error"
+      },
+      "comments-indentation": {
+        "level": "error"
+      },
+      "document-start": {
+        "level": "error",
+        "present": true
+      },
+      "document-end": {
+        "level": "error",
+        "present": true
+      },
+      "octal-values": {
+        "forbid-implicit-octal": true,
+        "forbid-explicit-octal": false
+      },
+      "float-values": {
+        "require-numeral-before-decimal": true,
+        "forbid-scientific-notation": false,
+        "forbid-nan": false,
+        "forbid-inf": false
+      },
+      "empty-values": {
+        "level": "error",
+        "forbid-in-block-mappings": true,
+        "forbid-in-flow-mappings": true,
+        "forbid-in-block-sequences": true
+      },
+      "quoted-strings": {
+        "level": "error",
+        "quote-type": "double",
+        "required": "only-when-needed",
+        "check-keys": false,
+        "allow-quoted-quotes": false
+      }
+    },
+    "disabled": {
+      "key-ordering": "Unsatisfiable beside ansible-lint key-order. Task mappings use that semantic order, not Unicode alphabetical order, so both rules cannot pass on the same mapping."
+    }
+  },
+  "generatedWorkflows": {
+    "trusted": false,
+    "waiver": false,
+    "publisher": ".github/workflows/quality-graph-publish.yml",
+    "compiler": "quality-graph-github==0.2.0 _publication_workflow",
+    "triggers": {
+      "workflow_run": {
+        "workflows": [
+          "Quality Graph"
+        ],
+        "types": [
+          "requested",
+          "completed"
+        ]
+      },
+      "issue_comment": {
+        "types": [
+          "created",
+          "edited"
+        ]
+      }
+    },
+    "topPermissions": {},
+    "jobs": {
+      "publish": {
+        "actions": "read",
+        "checks": "write",
+        "contents": "read",
+        "issues": "write",
+        "pull-requests": "write"
+      },
+      "command": {
+        "actions": "write",
+        "contents": "read",
+        "issues": "write",
+        "pull-requests": "write"
+      }
+    },
+    "zizmor": [
+      "zizmor/dangerous-triggers",
+      "zizmor/undocumented-permissions"
+    ],
+    "blocker": "The pinned compiler hardcodes workflow_run and issue_comment plus job permissions with no comment field. qg.yaml cannot narrow those triggers or document the token. Hand-editing the generated file is overwritten by qg generate. Findings stay blocking; generated workflows are not trusted code."
+  },
+  "vendorPaths": [
+    "charts/_vendor",
+    "charts/litellm",
+    "charts/rancher",
+    "deploy/wiki-runtime/chart"
+  ],
+  "reviewedExceptionDigest": "f0adf5e9ed7cbb4c0315d51c014aa019e7ff9320e9d7bf4ae8ef01ef6058c1fd",
+  "frozenCompatibility": {
+    "manifest": "charts/spi-triage/LEGACY-SOURCE-MANIFEST.json",
+    "sha256": "914d01d41c891823fafc9f911183fc5ec2c9fc1e509e42cb9245300d26ea8847",
+    "canonicalRepository": "https://github.com/alchemmist/spi-triage",
+    "directory": "charts/spi-triage/files",
+    "count": 17
+  }
+}

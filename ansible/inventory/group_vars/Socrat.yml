@@ -36,7 +36,7 @@ wg_socrat_peer_endpoints:
   socrat-1:
     socrat-2: 127.0.0.1:51840
   socrat-2:
-    socrat-1: ''
+    socrat-1: ""
 wg_socrat_admin_clients:
   tim-phone:
     address: 10.250.0.7
@@ -74,7 +74,8 @@ homelab_users:
     sudo: false
     groups: []
     authorized_keys:
-      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILjT3ii4vL1FL9TRws08QCzIZhrHFG69Q5K9Adtm0y1F antropophag@gmail.com"
-      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN1C4WZYz4ma1tgpP4Bzw509lCXlHva6ybdSV79nNyv0 phone"
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILjT3ii4vL1FL9TRws08QCzIZhrHFG69Q5K9Adtm0y1F antropophag@gmail.com
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN1C4WZYz4ma1tgpP4Bzw509lCXlHva6ybdSV79nNyv0 phone
 
 homelab_private_dns_upstream_servers: [1.1.1.1, 9.9.9.9]
+...

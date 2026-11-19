@@ -21,7 +21,7 @@
     state: directory
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
-    mode: '0755'
+    mode: "0755"
 
 - name: Resolve the bottom configuration target
   ansible.builtin.command:
@@ -44,12 +44,12 @@
     value: "{{ item.value | to_json }}"
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
-    mode: '0644'
+    mode: "0644"
     backup: true
   loop:
     - {section: temperature, option: default_sort, value: Temperature}
     - {section: temperature, option: sort_order, value: Descending}
-    - {section: processes, option: default_sort, value: 'CPU%'}
+    - {section: processes, option: default_sort, value: CPU%}
     - {section: processes, option: sort_order, value: Descending}
     - {section: disk, option: default_sort, value: Used}
     - {section: disk, option: sort_order, value: Descending}
@@ -60,7 +60,8 @@
     argv:
       - /usr/bin/python3
       - -c
-      - 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))'
+      - import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))
       - "{{ homelab_bottom_config.stdout }}"
   changed_when: false
   when: not ansible_check_mode
+...

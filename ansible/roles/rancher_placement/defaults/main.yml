@@ -9,3 +9,4 @@ rancher_ssl_cert_file: /var/lib/ca-certificates/ca-bundle.pem
 rancher_host_aliases:
   - ip: 10.43.218.222
     hostnames: [auth.socrat.alchemmist.xyz]
+...

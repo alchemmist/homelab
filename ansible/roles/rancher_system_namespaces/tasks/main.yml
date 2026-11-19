@@ -29,3 +29,4 @@
     - item.metadata.name in rancher_system_namespace_names
     - (item.metadata.annotations | default({})).get('management.cattle.io/system-namespace', '') != 'true'
   changed_when: true
+...

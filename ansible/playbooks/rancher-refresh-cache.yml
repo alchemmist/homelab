@@ -41,3 +41,4 @@
     - name: Report verified node names
       ansible.builtin.debug:
         var: rancher_cache_verification.stdout_lines
+...

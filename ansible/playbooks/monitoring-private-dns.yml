@@ -33,3 +33,4 @@
         name: homelab-private-dns.service
         state: restarted
       when: monitoring_dns_record.changed
+...

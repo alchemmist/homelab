@@ -140,3 +140,4 @@
         path: "{{ ha_cert_values_file.path }}"
         state: absent
       when: ha_cert_values_file is defined and ha_cert_values_file.path is defined
+...

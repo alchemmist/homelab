@@ -27,3 +27,4 @@
     - ansible.builtin.debug:
         var: maintenance.stdout
       when: not ansible_check_mode
+...

@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """Regenerate only the public, reviewed x-ui gateway manifest; no deployment."""
+
+import json
 import os
 from pathlib import Path
-import json,yaml
-ROOT=Path(__file__).resolve().parents[1]
+
+import yaml
+
+ROOT = Path(__file__).resolve().parents[1]
 os.chdir(ROOT)
-image=json.load(open('deploy/authentik/quiet-mono/static-image.json'))['image']
-icon=Path('deploy/xui-auth-gateway/xui-icon.png').read_bytes()
-icon_name=__import__('hashlib').sha256(icon).hexdigest()[:12]+'.png'
-config='''worker_processes 1;
+image = json.load(open("deploy/authentik/quiet-mono/static-image.json"))["image"]
+icon = Path("deploy/xui-auth-gateway/xui-icon.png").read_bytes()
+icon_name = __import__("hashlib").sha256(icon).hexdigest()[:12] + ".png"
+config = """worker_processes 1;
 pid /tmp/nginx.pid;
 error_log /dev/stderr crit;
 events { worker_connections 256; }
@@ -93,11 +97,92 @@ http {
   }
  }
 }
-'''
-config=config.replace('__ICON__',icon_name)
-Path('deploy/xui-auth-gateway/nginx.conf').write_text(config)
-labels={'app.kubernetes.io/name':'xui-auth-gateway'};meta={'name':'xui-auth-gateway','namespace':'traefik-edge'}
-resources=[{'apiVersion':'v1','kind':'ConfigMap','metadata':meta,'data':{'nginx.conf':config},'binaryData':{'xui-icon.png':__import__('base64').b64encode(icon).decode()}},
-{'apiVersion':'apps/v1','kind':'Deployment','metadata':meta,'spec':{'replicas':1,'selector':{'matchLabels':labels},'template':{'metadata':{'labels':labels,'annotations':{'checksum/config':__import__('hashlib').sha256(config.encode()).hexdigest()}},'spec':{'automountServiceAccountToken':False,'nodeSelector':{'kubernetes.io/hostname':'socrat-2'},'securityContext':{'runAsNonRoot':True,'runAsUser':101,'runAsGroup':101,'fsGroup':101,'seccompProfile':{'type':'RuntimeDefault'}},'containers':[{'name':'gateway','image':image,'args':['nginx','-g','daemon off;'],'securityContext':{'readOnlyRootFilesystem':True,'allowPrivilegeEscalation':False,'capabilities':{'drop':['ALL']}},'ports':[{'containerPort':8080,'name':'http'}],'resources':{'requests':{'cpu':'10m','memory':'16Mi'},'limits':{'cpu':'200m','memory':'64Mi'}},'readinessProbe':{'httpGet':{'path':'/healthz','port':'http'}},'livenessProbe':{'httpGet':{'path':'/healthz','port':'http'}},'volumeMounts':[{'name':'config','mountPath':'/etc/nginx/nginx.conf','subPath':'nginx.conf','readOnly':True},{'name':'config','mountPath':'/etc/nginx/xui-icon.png','subPath':'xui-icon.png','readOnly':True},{'name':'tmp','mountPath':'/tmp'}]}],'volumes':[{'name':'config','configMap':{'name':'xui-auth-gateway'}},{'name':'tmp','emptyDir':{'sizeLimit':'32Mi'}}]}}}},
-{'apiVersion':'v1','kind':'Service','metadata':meta,'spec':{'selector':labels,'ports':[{'name':'http','port':80,'targetPort':'http'}]}}]
-Path('deploy/xui-auth-gateway/resources.yaml').write_text('---\n'.join(yaml.safe_dump(x,sort_keys=False) for x in resources))
+"""
+config = config.replace("__ICON__", icon_name)
+Path("deploy/xui-auth-gateway/nginx.conf").write_text(config)
+labels = {"app.kubernetes.io/name": "xui-auth-gateway"}
+meta = {"name": "xui-auth-gateway", "namespace": "traefik-edge"}
+resources = [
+    {
+        "apiVersion": "v1",
+        "kind": "ConfigMap",
+        "metadata": meta,
+        "data": {"nginx.conf": config},
+        "binaryData": {"xui-icon.png": __import__("base64").b64encode(icon).decode()},
+    },
+    {
+        "apiVersion": "apps/v1",
+        "kind": "Deployment",
+        "metadata": meta,
+        "spec": {
+            "replicas": 1,
+            "selector": {"matchLabels": labels},
+            "template": {
+                "metadata": {
+                    "labels": labels,
+                    "annotations": {
+                        "checksum/config": __import__("hashlib").sha256(config.encode()).hexdigest()
+                    },
+                },
+                "spec": {
+                    "automountServiceAccountToken": False,
+                    "nodeSelector": {"kubernetes.io/hostname": "socrat-2"},
+                    "securityContext": {
+                        "runAsNonRoot": True,
+                        "runAsUser": 101,
+                        "runAsGroup": 101,
+                        "fsGroup": 101,
+                        "seccompProfile": {"type": "RuntimeDefault"},
+                    },
+                    "containers": [
+                        {
+                            "name": "gateway",
+                            "image": image,
+                            "args": ["nginx", "-g", "daemon off;"],
+                            "securityContext": {
+                                "readOnlyRootFilesystem": True,
+                                "allowPrivilegeEscalation": False,
+                                "capabilities": {"drop": ["ALL"]},
+                            },
+                            "ports": [{"containerPort": 8080, "name": "http"}],
+                            "resources": {
+                                "requests": {"cpu": "10m", "memory": "16Mi"},
+                                "limits": {"cpu": "200m", "memory": "64Mi"},
+                            },
+                            "readinessProbe": {"httpGet": {"path": "/healthz", "port": "http"}},
+                            "livenessProbe": {"httpGet": {"path": "/healthz", "port": "http"}},
+                            "volumeMounts": [
+                                {
+                                    "name": "config",
+                                    "mountPath": "/etc/nginx/nginx.conf",
+                                    "subPath": "nginx.conf",
+                                    "readOnly": True,
+                                },
+                                {
+                                    "name": "config",
+                                    "mountPath": "/etc/nginx/xui-icon.png",
+                                    "subPath": "xui-icon.png",
+                                    "readOnly": True,
+                                },
+                                {"name": "tmp", "mountPath": "/tmp"},
+                            ],
+                        }
+                    ],
+                    "volumes": [
+                        {"name": "config", "configMap": {"name": "xui-auth-gateway"}},
+                        {"name": "tmp", "emptyDir": {"sizeLimit": "32Mi"}},
+                    ],
+                },
+            },
+        },
+    },
+    {
+        "apiVersion": "v1",
+        "kind": "Service",
+        "metadata": meta,
+        "spec": {"selector": labels, "ports": [{"name": "http", "port": 80, "targetPort": "http"}]},
+    },
+]
+Path("deploy/xui-auth-gateway/resources.yaml").write_text(
+    "---\n".join(yaml.safe_dump(x, sort_keys=False) for x in resources)
+)

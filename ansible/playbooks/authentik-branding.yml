@@ -80,14 +80,29 @@
 
     - name: Apply isolated static assets with server-side apply (no large last-applied annotation)
       ansible.builtin.command:
-        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, apply, --server-side, --field-manager=quiet-mono-brand, -f, '{{ authentik_directory }}/quiet-mono-static.yaml']
+        argv: [kubectl,
+               --kubeconfig,
+               /etc/rancher/k3s/k3s.yaml,
+               apply,
+               --server-side,
+               --field-manager=quiet-mono-brand,
+               -f,
+               '{{ authentik_directory }}/quiet-mono-static.yaml']
       changed_when: false
       no_log: true
       when: authentik_branding_action != 'rollback'
 
     - name: Wait for the static server only (no IdP restart)
       ansible.builtin.command:
-        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, -n, identity, rollout, status, deployment/socrat-authentik-theme, --timeout=180s]
+        argv: [kubectl,
+               --kubeconfig,
+               /etc/rancher/k3s/k3s.yaml,
+               -n,
+               identity,
+               rollout,
+               status,
+               deployment/socrat-authentik-theme,
+               --timeout=180s]
       changed_when: false
       when: authentik_branding_action != 'rollback'
 
@@ -112,3 +127,4 @@
       changed_when: "'titles updated' in authentik_title_result.stdout"
       no_log: true
       when: authentik_branding_action in ['apply', 'rollback']
+...

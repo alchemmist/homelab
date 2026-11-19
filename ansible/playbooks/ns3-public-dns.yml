@@ -45,7 +45,11 @@
          if inventory_hostname == 'socrat-2' else '-o ProxyJump=none -o StrictHostKeyChecking=yes' }}
   tasks:
     - ansible.builtin.command:
-        argv: [/usr/local/sbin/homelab-ns3-public-dns, --apply, --approve-plan-hash, "{{ ns3_public_dns_hash }}"]
+        argv: [/usr/local/sbin/homelab-ns3-public-dns,
+               --apply,
+               --approve-plan-hash,
+               "{{ ns3_public_dns_hash }}"]
       when: ns3_public_dns_apply | default(false) | bool
       register: dns_apply
       changed_when: (dns_apply.stdout | from_json).applied
+...

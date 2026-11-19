@@ -9,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+
 def load(name, relative):
     source = ROOT / relative
     spec = importlib.util.spec_from_file_location(name, source)
@@ -16,17 +17,26 @@ def load(name, relative):
     spec.loader.exec_module(module)
     return module
 
+
 SHELF = load("shelf_server", "charts/thanos/files/shelf.py")
 CASCADE = load("cascade_shelf", "charts/thanos/files/cascade.py")
 ULID = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
 
 
 class ShelfTransferTest(unittest.TestCase):
-    def test_upload_lists_and_marks_without_path_escape(self):
+    """Upload, list, and mark one shelf block without leaving the temp root."""
+
+    def test_upload_lists_and_marks_without_path_escape(self) -> None:
+        """Store one block, mark it deleted, and reject a path escape."""
         with tempfile.TemporaryDirectory() as tmp:
             source = Path(tmp) / "raw" / ULID
             (source / "chunks").mkdir(parents=True)
-            meta = {"ulid": ULID, "minTime": 1, "maxTime": 2, "thanos": {"downsample": {"resolution": 300000}}}
+            meta = {
+                "ulid": ULID,
+                "minTime": 1,
+                "maxTime": 2,
+                "thanos": {"downsample": {"resolution": 300000}},
+            }
             (source / "meta.json").write_text(json.dumps(meta))
             (source / "chunks" / "000001").write_bytes(b"abc")
             shelf_dir = Path(tmp) / "shelf"

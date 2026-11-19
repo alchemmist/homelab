@@ -3,9 +3,8 @@ import json
 import subprocess
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
-REMOTE_AUDIT = '''
+REMOTE_AUDIT = """
 import concurrent.futures
 import json
 import subprocess
@@ -20,44 +19,52 @@ uids = [entry['uid'] for entry in get('search?limit=1000') if entry['type'] == '
 with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
     dashboards = list(pool.map(lambda uid: get('dashboards/uid/' + uid)['dashboard'], uids))
 print(json.dumps(dashboards))
-'''
+"""
 
 
 def panel_descriptions(dashboard):
     result = {}
-    for panel in dashboard.get('panels', []):
-        if panel.get('type') not in {'row', 'text'}:
-            result[str(panel['id'])] = panel.get('description', '')
+    for panel in dashboard.get("panels", []):
+        if panel.get("type") not in {"row", "text"}:
+            result[str(panel["id"])] = panel.get("description", "")
         result.update(panel_descriptions(panel))
     return result
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--ssh-host', default='socrat-0')
+    parser.add_argument("--ssh-host", default="socrat-0")
     args = parser.parse_args()
-    catalog = ROOT / 'deploy/monitoring/dashboard-descriptions/rancher-core.json'
+    catalog = ROOT / "deploy/monitoring/dashboard-descriptions/rancher-core.json"
     expected = json.loads(catalog.read_text())
-    for path in sorted((ROOT / 'charts/monitoring-k3s/dashboards').glob('*.json')):
+    for path in sorted((ROOT / "charts/monitoring-k3s/dashboards").glob("*.json")):
         dashboard = json.loads(path.read_text())
-        expected[dashboard['uid']] = panel_descriptions(dashboard)
-    result = subprocess.run(['ssh', '-o', 'BatchMode=yes', args.ssh_host, 'python3', '-'],
-                            input=REMOTE_AUDIT, capture_output=True, text=True, timeout=180, check=True)
+        expected[dashboard["uid"]] = panel_descriptions(dashboard)
+    result = subprocess.run(
+        ["ssh", "-o", "BatchMode=yes", args.ssh_host, "python3", "-"],
+        input=REMOTE_AUDIT,
+        capture_output=True,
+        text=True,
+        timeout=180,
+        check=True,
+    )
     dashboards = json.loads(result.stdout)
-    actual = {dashboard['uid']: panel_descriptions(dashboard) for dashboard in dashboards}
+    actual = {dashboard["uid"]: panel_descriptions(dashboard) for dashboard in dashboards}
     if actual.keys() != expected.keys():
-        raise RuntimeError(f'Dashboard catalog differs: {sorted(actual.keys() ^ expected.keys())}')
+        raise RuntimeError(f"Dashboard catalog differs: {sorted(actual.keys() ^ expected.keys())}")
     total = 0
     for dashboard in dashboards:
-        uid = dashboard['uid']
+        uid = dashboard["uid"]
         if actual[uid] != expected[uid]:
-            raise RuntimeError(f'Descriptions differ from the repository: {dashboard["title"]}')
+            raise RuntimeError(f"Descriptions differ from the repository: {dashboard['title']}")
         for panel_id, description in actual[uid].items():
             if not isinstance(description, str) or not description.strip():
-                raise RuntimeError(f'Missing description: {uid}, panel {panel_id}')
+                raise RuntimeError(f"Missing description: {uid}, panel {panel_id}")
         total += len(actual[uid])
-    print(f'PASS: {total} panels across {len(dashboards)} dashboards have provisioned descriptions matching the repository')
+    print(
+        f"PASS: {total} panels across {len(dashboards)} dashboards have provisioned descriptions matching the repository"
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

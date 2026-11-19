@@ -1,3 +1,4 @@
+---
 kube-prometheus-stack:
   grafana:
     enabled: false
@@ -97,3 +98,4 @@ kube-prometheus-stack:
         memory: 24Mi
     service:
       listenOnAllInterfaces: false
+...

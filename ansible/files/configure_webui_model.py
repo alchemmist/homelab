@@ -79,7 +79,10 @@ def configure(args):
         if not args.admin_email:
             result["skipped"] = True
             return result
-        credentials = {"email": args.admin_email, "password": getpass.getpass("Open WebUI password: ")}
+        credentials = {
+            "email": args.admin_email,
+            "password": getpass.getpass("Open WebUI password: "),
+        }
     else:
         credentials = {"email": "admin@localhost", "password": "admin"}
     session = request_json(
@@ -96,20 +99,50 @@ def configure(args):
     if not isinstance(available, list) or not any(
         isinstance(model, dict) and model.get("id") == args.model for model in available
     ):
-        raise ConfigurationError("Requested model is absent from the refreshed Open WebUI model list")
+        raise ConfigurationError(
+            "Requested model is absent from the refreshed Open WebUI model list"
+        )
     if args.share_with_users:
         records = request_json(opener, base_url, "/api/v1/models/all", token)
         if not any(model.get("id") == args.model for model in records):
-            request_json(opener, base_url, "/api/v1/models/create", token, {
-                "id": args.model, "name": args.display_name or args.model,
-                "base_model_id": None,
-                "meta": {
-                    "capabilities": {"code_interpreter": False, "terminal": True, "builtin_tools": True},
-                    "builtinTools": {name: False for name in ["skills", "tasks", "notes", "automations", "calendar", "channels", "notifications", "knowledge", "chats", "memory", "subagents"]},
+            request_json(
+                opener,
+                base_url,
+                "/api/v1/models/create",
+                token,
+                {
+                    "id": args.model,
+                    "name": args.display_name or args.model,
+                    "base_model_id": None,
+                    "meta": {
+                        "capabilities": {
+                            "code_interpreter": False,
+                            "terminal": True,
+                            "builtin_tools": True,
+                        },
+                        "builtinTools": {
+                            name: False
+                            for name in [
+                                "skills",
+                                "tasks",
+                                "notes",
+                                "automations",
+                                "calendar",
+                                "channels",
+                                "notifications",
+                                "knowledge",
+                                "chats",
+                                "memory",
+                                "subagents",
+                            ]
+                        },
+                    },
+                    "params": {},
+                    "access_grants": [
+                        {"principal_type": "user", "principal_id": "*", "permission": "read"}
+                    ],
                 },
-                "params": {},
-                "access_grants": [{"principal_type": "user", "principal_id": "*", "permission": "read"}],
-            })
+            )
             result["changed"] = True
     defaults = request_json(opener, base_url, "/api/v1/configs/models", token)
     if not isinstance(defaults, dict):

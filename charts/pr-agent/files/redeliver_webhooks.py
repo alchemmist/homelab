@@ -8,9 +8,8 @@ that share a guid are retried until one of them succeeds, at most three times.
 import json
 import os
 import time
-import urllib.error
-import urllib.request
-from datetime import datetime, timezone
+import http.client
+from datetime import UTC, datetime
 
 import jwt
 
@@ -38,23 +37,28 @@ def token() -> str:
 
 
 def request(method: str, path: str, bearer: str):
-    req = urllib.request.Request(
-        API + path,
-        method=method,
-        headers={
-            "Authorization": f"Bearer {bearer}",
-            "Accept": "application/vnd.github+json",
-            "User-Agent": "pr-agent-webhook-redelivery",
-            "X-GitHub-Api-Version": "2022-11-28",
-        },
-    )
+    if not path.startswith("/app/hook/deliveries") or "\r" in path or "\n" in path:
+        raise ValueError("Only GitHub App delivery paths are allowed")
+    # HTTPSConnection verifies TLS and never follows redirects with the bearer.
+    connection = http.client.HTTPSConnection("api.github.com", timeout=30)
     try:
-        with urllib.request.urlopen(req, timeout=30) as response:
-            raw = response.read()
-            return json.loads(raw) if raw else {}
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode()[:300]
-        raise RuntimeError(f"{method} {path} -> {exc.code} {detail}") from exc
+        connection.request(
+            method,
+            path,
+            headers={
+                "Authorization": f"Bearer {bearer}",
+                "Accept": "application/vnd.github+json",
+                "User-Agent": "pr-agent-webhook-redelivery",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+        )
+        response = connection.getresponse()
+        if not 200 <= response.status < 300:
+            raise RuntimeError(f"GitHub delivery request failed: HTTP {response.status}")
+        raw = response.read()
+        return json.loads(raw) if raw else {}
+    finally:
+        connection.close()
 
 
 def main() -> None:
@@ -65,7 +69,7 @@ def main() -> None:
         guid = delivery.get("guid") or str(delivery.get("id"))
         grouped.setdefault(guid, []).append(delivery)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     retried = 0
     for guid, attempts in grouped.items():
         if any(item.get("status") == "OK" for item in attempts):

@@ -1,3 +1,4 @@
+---
 # Role intent. No new human grants until owner approves exact assignments.
 # Host/network sources remain homelab_users and wg_socrat_admin_clients.
 # App admission/roles: services.json; exact existing IdP lifecycle: lifecycle.json.
@@ -53,3 +54,4 @@ network:
   nodeIPs: [10.250.0.1, 10.250.0.3, 10.250.0.2, 10.250.0.5]
   migration: no-automatic-route-change
   reason: A subnet cannot be assigned to multiple direct WireGuard peers. A stable gateway topology requires separate ACL and failover design.
+...

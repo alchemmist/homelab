@@ -8,10 +8,18 @@
     otel_ops_root: /var/lib/homelab-otel-operations
     otel_ops_memory_bytes: 3221225472
     otel_ops_artifacts:
-      - {name: otelcol-contrib, source: /var/tmp/otel-signals-smoke/bin/otelcol-contrib, sha256: 57911a9d902cfe2c287dac09fcee4b054630b4ec248fa190a3115d860a32f81f}
-      - {name: loki, source: /var/tmp/otel-signals-smoke/bin/loki, sha256: cfcaf9b519b514584d010791d7f2dd06472a62f0ba1bf922e619031db03f3464}
-      - {name: tempo, source: /var/tmp/otel-signals-smoke/bin/tempo, sha256: 465af41aeac81580ccb802b0f98b2c07ab69e1895190b8583a785a834944666e}
-      - {name: prometheus, source: /var/tmp/otel-metrics-smoke-20261029/prometheus, sha256: dac83d1d1007961de3b9ba624942c9af0c192ee3df262ac47ef390bcade71c65}
+      - {name: otelcol-contrib,
+         source: /var/tmp/otel-signals-smoke/bin/otelcol-contrib,
+         sha256: 57911a9d902cfe2c287dac09fcee4b054630b4ec248fa190a3115d860a32f81f}
+      - {name: loki,
+         source: /var/tmp/otel-signals-smoke/bin/loki,
+         sha256: cfcaf9b519b514584d010791d7f2dd06472a62f0ba1bf922e619031db03f3464}
+      - {name: tempo,
+         source: /var/tmp/otel-signals-smoke/bin/tempo,
+         sha256: 465af41aeac81580ccb802b0f98b2c07ab69e1895190b8583a785a834944666e}
+      - {name: prometheus,
+         source: /var/tmp/otel-metrics-smoke-20261029/prometheus,
+         sha256: dac83d1d1007961de3b9ba624942c9af0c192ee3df262ac47ef390bcade71c65}
   tasks:
     - ansible.builtin.assert:
         that:
@@ -107,3 +115,4 @@
         mode: '0600'
       delegate_to: localhost
       become: false
+...

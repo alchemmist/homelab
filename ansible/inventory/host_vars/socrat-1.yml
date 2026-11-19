@@ -6,8 +6,8 @@ homelab_desktop_remove_sway: true
 homelab_desktop_disable_idle_shutdown: true
 homelab_desktop_caffeine_default: true
 homelab_desktop_environment:
-  _JAVA_AWT_WM_NONREPARENTING: '1'
-  XCURSOR_SIZE: '24'
+  _JAVA_AWT_WM_NONREPARENTING: "1"
+  XCURSOR_SIZE: "24"
   QT_QPA_PLATFORM: wayland
   ELECTRON_OZONE_PLATFORM_HINT: wayland
   SDL_VIDEODRIVER: wayland
@@ -30,10 +30,10 @@ homelab_hypr_extra_rules:
 - layerrule = blur on, match:namespace logout_dialog
 - bind = $mainMod, V, exec, ~/scripts/wireguard-manager.sh -t && pkill -SIGRTMIN+1 waybar
 - bind = $mainMod SHIFT, C, exec, kitty /home/alchemmist/scripts/start_nvim_in_kb.sh
-- 'bind = $mainMod SHIFT, T, exec, kitty --title termdown -e termdown '
+- "bind = $mainMod SHIFT, T, exec, kitty --title termdown -e termdown "
 - bind = $mainMod, SPACE, exec, wofi-emoji
-- 'bind = ,237, exec, brightnessctl -d asus::kbd_backlight set 33%- # Keyboard brightness down FN+F2'
-- 'bind = ,238, exec, brightnessctl -d asus::kbd_backlight set 33%+ # Keyboard brightnes up FN+F3'
+- "bind = ,237, exec, brightnessctl -d asus::kbd_backlight set 33%- # Keyboard brightness down FN+F2"
+- "bind = ,238, exec, brightnessctl -d asus::kbd_backlight set 33%+ # Keyboard brightnes up FN+F3"
 - windowrule = float on, center on, size 500 500, match:title ^termdown$
 - layerrule = blur on, ignore_alpha 0, match:namespace notifications
 
@@ -65,3 +65,4 @@ homelab_kubelet_disk_config:
   evictionMaxPodGracePeriod: 60
   imageGCHighThresholdPercent: 96
   imageGCLowThresholdPercent: 95
+...

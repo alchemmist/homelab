@@ -69,6 +69,13 @@
           "grafana",
           "hostAliases"
         ]
+      },
+      {
+        "file": "deploy/openhands/values.yaml",
+        "path": [
+          "oidc",
+          "hostAliases"
+        ]
       }
     ]
   },

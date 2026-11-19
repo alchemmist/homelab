@@ -11,7 +11,7 @@
     dest: /usr/local/sbin/homelab-ethernet-guard
     owner: root
     group: root
-    mode: '0700'
+    mode: "0700"
     validate: /bin/sh -n %s
 
 - name: Inspect the existing maintenance guard
@@ -31,3 +31,4 @@
       - /usr/local/sbin/homelab-ethernet-guard
   when: homelab_ethernet_guard_active.stdout | trim != 'active'
   changed_when: true
+...

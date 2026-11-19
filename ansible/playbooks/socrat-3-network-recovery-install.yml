@@ -94,3 +94,4 @@
 
     - name: Restore scheduling on the verified worker
       ansible.builtin.command: kubectl uncordon socrat-3
+...

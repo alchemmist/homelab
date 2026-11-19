@@ -38,3 +38,4 @@
     state: "{{ 'restarted' if wg_tcp_guard_helper.changed or wg_tcp_guard_unit.changed else 'started' }}"
     enabled: true
     daemon_reload: true
+...

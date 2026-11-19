@@ -198,7 +198,7 @@ authentik:
     # performance data to sentry.beryju.org, and is fully opt-in
     enabled: false
     # -- This is a string that is sent to sentry with your error reports
-    environment: "k8s"
+    environment: k8s
     # -- Send PII (Personally identifiable information) data to sentry
     send_pii: false
   postgresql:
@@ -208,10 +208,10 @@ authentik:
     host: "{{ .Release.Name }}-postgresql"
     # -- postgresql Database name
     # @default -- `authentik`
-    name: "authentik"
+    name: authentik
     # -- postgresql Username
     # @default -- `authentik`
-    user: "authentik"
+    user: authentik
     # -- postgresql password
     password: ""
     # -- postgresql port
@@ -994,7 +994,7 @@ geoip:
   # -- enable GeoIP sidecars for the authentik server and worker pods
   enabled: false
 
-  editionIds: "GeoLite2-City GeoLite2-ASN"
+  editionIds: GeoLite2-City GeoLite2-ASN
   # -- GeoIP update frequency, in hours
   updateInterval: 8
   # -- sign up under https://www.maxmind.com/en/geolite2/signup
@@ -1006,9 +1006,9 @@ geoip:
     # -- name of an existing secret to use instead of values above
     secretName: ""
     # -- key in the secret containing the account ID
-    accountId: "account_id"
+    accountId: account_id
     # -- key in the secret containing the license key
-    licenseKey: "license_key"
+    licenseKey: license_key
 
   image:
     # -- If defined, a repository for GeoIP images
@@ -1094,7 +1094,7 @@ postgresql:
   image:
     registry: docker.io
     repository: library/postgres
-    tag: "17.11-trixie"
+    tag: 17.11-trixie
   auth:
     username: authentik
     database: authentik
@@ -1127,7 +1127,7 @@ postgresql:
     extraEnvVars:
       - name: POSTGRES_DB
         value: '{{ (include "postgresql.v1.database" .) }}'
-    resourcesPreset: "none"
+    resourcesPreset: none
     # persistence:
     #   enabled: true
     #   storageClass:
@@ -1143,21 +1143,22 @@ postgresql:
         emptyDir: {}
 
   readReplicas:
-    resourcesPreset: "none"
+    resourcesPreset: none
   backup:
-    resourcesPreset: "none"
+    resourcesPreset: none
   passwordUpdateJob:
-    resourcesPreset: "none"
+    resourcesPreset: none
   volumePermissions:
-    resourcesPreset: "none"
+    resourcesPreset: none
     image:
       repository: debian
       tag: 13-slim
   metrics:
-    resourcesPreset: "none"
+    resourcesPreset: none
     image:
       repository: prometheuscommunity/postgres-exporter
       tag: v0.19.1
 
 # -- additional resources to deploy. Those objects are templated.
 additionalObjects: []
+...

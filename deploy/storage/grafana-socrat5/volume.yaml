@@ -1,4 +1,5 @@
 # Restored and sealed cold before activation; old claim retained, never pruned.
+---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -21,6 +22,7 @@ spec:
   storageClassName: local-path
   volumeMode: Filesystem
   volumeName: pvc-cd9b0a0f-2794-466e-9f48-52b9cc884b8d
+...
 ---
 apiVersion: v1
 kind: PersistentVolume
@@ -34,7 +36,7 @@ spec:
   accessModes:
   - ReadWriteOnce
   persistentVolumeReclaimPolicy: Retain
-  storageClassName: ''
+  storageClassName: ""
   volumeMode: Filesystem
   local:
     path: /mnt/files/homelab/grafana/data
@@ -49,6 +51,7 @@ spec:
           operator: In
           values:
           - socrat-5
+...
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -63,5 +66,6 @@ spec:
   resources:
     requests:
       storage: 1Gi
-  storageClassName: ''
+  storageClassName: ""
   volumeName: grafana-socrat5
+...

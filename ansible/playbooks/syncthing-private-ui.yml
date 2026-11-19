@@ -1,3 +1,4 @@
+---
 - name: Record Syncthing identities and folder policy before migration
   hosts: Socrat
   any_errors_fatal: true
@@ -10,7 +11,7 @@
         state: directory
         owner: root
         group: root
-        mode: '0755'
+        mode: "0755"
 
     - name: Install the read-only Syncthing state verifier
       ansible.builtin.copy:
@@ -18,7 +19,7 @@
         dest: /usr/local/libexec/syncthing-private-snapshot.py
         owner: root
         group: root
-        mode: '0644'
+        mode: "0644"
 
     - name: Record certificate identity and folder pause state
       ansible.builtin.command: python3 /usr/local/libexec/syncthing-private-snapshot.py /srv/syncthing/config
@@ -78,3 +79,4 @@
   become: true
   roles:
     - syncthing_private_monitors
+...

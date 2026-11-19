@@ -1,3 +1,4 @@
+---
 applicationSet:
   replicas: 1
   resources:
@@ -147,3 +148,4 @@ extraObjects:
   spec:
     serverName: argocd.socrat.alchemmist.xyz
     insecureSkipVerify: false
+...

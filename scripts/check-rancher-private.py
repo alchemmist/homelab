@@ -3,8 +3,7 @@ import shlex
 import subprocess
 import sys
 
-
-REMOTE = r'''
+REMOTE = r"""
 import http.client
 import json
 import socket
@@ -96,38 +95,60 @@ try:
 except Exception as error:
     print('FAIL:', str(error), file=sys.stderr)
     sys.exit(1)
-'''
+"""
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--ssh-host', default='socrat-0')
-    parser.add_argument('--external-ssh-host', default='socrat-2-direct')
-    parser.add_argument('--public-address', default='109.173.40.247')
+    parser.add_argument("--ssh-host", default="socrat-0")
+    parser.add_argument("--external-ssh-host", default="socrat-2-direct")
+    parser.add_argument("--public-address", default="109.173.40.247")
     args = parser.parse_args()
-    result = subprocess.run(['ssh', '-o', 'BatchMode=yes', args.ssh_host, 'python3 -'],
-                            input=REMOTE, text=True, timeout=240)
+    result = subprocess.run(
+        ["ssh", "-o", "BatchMode=yes", args.ssh_host, "python3 -"],
+        input=REMOTE,
+        text=True,
+        timeout=240,
+    )
     if result.returncode:
         return result.returncode
-    for scheme, port in [('http', 80), ('https', 443)]:
+    for scheme, port in [("http", 80), ("https", 443)]:
         for forwarded in [False, True]:
-            command = ['curl', '--silent', '--show-error', '--noproxy', '*',
-                       '--connect-timeout', '10', '--max-time', '20', '--insecure',
-                       '--write-out', '\n%{http_code}', '--resolve',
-                       f'rancher.socrat.alchemmist.xyz:{port}:{args.public_address}']
+            command = [
+                "curl",
+                "--silent",
+                "--show-error",
+                "--noproxy",
+                "*",
+                "--connect-timeout",
+                "10",
+                "--max-time",
+                "20",
+                "--insecure",
+                "--write-out",
+                "\n%{http_code}",
+                "--resolve",
+                f"rancher.socrat.alchemmist.xyz:{port}:{args.public_address}",
+            ]
             if forwarded:
-                command += ['--header', 'X-Forwarded-For: 10.250.0.1']
-            command += [scheme + '://rancher.socrat.alchemmist.xyz/ping']
-            result = subprocess.run(['ssh', '-o', 'BatchMode=yes', args.external_ssh_host,
-                                     shlex.join(command)], capture_output=True, text=True, timeout=45)
-            body, _, status = result.stdout.rpartition('\n')
-            if result.returncode or status != '404' or body.strip() != '404 page not found':
-                print(f'FAIL: Public {scheme} did not return only the default 404 (forwarded={forwarded})',
-                      file=sys.stderr)
+                command += ["--header", "X-Forwarded-For: 10.250.0.1"]
+            command += [scheme + "://rancher.socrat.alchemmist.xyz/ping"]
+            result = subprocess.run(
+                ["ssh", "-o", "BatchMode=yes", args.external_ssh_host, shlex.join(command)],
+                capture_output=True,
+                text=True,
+                timeout=45,
+            )
+            body, _, status = result.stdout.rpartition("\n")
+            if result.returncode or status != "404" or body.strip() != "404 page not found":
+                print(
+                    f"FAIL: Public {scheme} did not return only the default 404 (forwarded={forwarded})",
+                    file=sys.stderr,
+                )
                 return 1
-            print(f'PASS: Public {scheme} returns default 404 (forwarded={forwarded})')
+            print(f"PASS: Public {scheme} returns default 404 (forwarded={forwarded})")
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

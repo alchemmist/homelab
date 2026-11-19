@@ -4,6 +4,7 @@ The HTTP call returns as soon as the loop is started. The loop keeps the same
 task across model calls, isolated runs and mutation rounds. If other requests
 are waiting on vLLM, the loop saves its place and the next idle minute resumes it.
 """
+
 import json
 import os
 import resource
@@ -34,7 +35,10 @@ LOCK = ROOT / "step.lock"
 
 
 def log(event, **fields):
-    print(json.dumps({"service": "lms-certify", "event": event, **fields}, ensure_ascii=False), flush=True)
+    print(
+        json.dumps({"service": "lms-certify", "event": event, **fields}, ensure_ascii=False),
+        flush=True,
+    )
 
 
 def load_json(path, default):
@@ -68,7 +72,11 @@ def run_python(source, stdin):
                 capture_output=True,
                 timeout=2,
                 cwd=folder,
-                env={"PATH": "/usr/local/bin:/usr/bin", "PYTHONNOUSERSITE": "1", "PYTHONDONTWRITEBYTECODE": "1"},
+                env={
+                    "PATH": "/usr/local/bin:/usr/bin",
+                    "PYTHONNOUSERSITE": "1",
+                    "PYTHONDONTWRITEBYTECODE": "1",
+                },
                 start_new_session=True,
                 preexec_fn=_limits,
             )
@@ -86,6 +94,7 @@ def _wait_budget(detail):
     delay = 20
     if match:
         from datetime import datetime, timezone
+
         reset = datetime.strptime(match.group(1), "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
         delay = min(90, max(1, int((reset - datetime.now(timezone.utc)).total_seconds()) + 1))
     log("wait_budget", seconds=delay)
@@ -105,7 +114,10 @@ def llm(role, prompt):
     request = urllib.request.Request(
         BASE + "/chat/completions",
         data=json.dumps(body).encode(),
-        headers={"Authorization": "Bearer " + os.environ["LITELLM_KEY"], "Content-Type": "application/json"},
+        headers={
+            "Authorization": "Bearer " + os.environ["LITELLM_KEY"],
+            "Content-Type": "application/json",
+        },
     )
     for attempt in range(6):
         try:
@@ -125,7 +137,7 @@ def llm(role, prompt):
     start, end = text.find("{"), text.rfind("}")
     if start < 0 or end <= start:
         raise ValueError("model json")
-    return json.loads(text[start:end + 1])
+    return json.loads(text[start : end + 1])
 
 
 def others_waiting():
@@ -154,11 +166,19 @@ def open_task(queue, state):
 def run_loop(task_id, statement):
     try:
         state = load_json(ROOT / "state.json", {"tasks": {}})
+
         def hook(record):
             current = load_json(ROOT / "state.json", {"tasks": {}})
             current["tasks"][task_id] = record
             save_json(ROOT / "state.json", current)
-            log("round", task=task_id, status=record.get("phase"), reason=record.get("reason", ""), rounds=record.get("rounds"), cases=len(record.get("cases") or []))
+            log(
+                "round",
+                task=task_id,
+                status=record.get("phase"),
+                reason=record.get("reason", ""),
+                rounds=record.get("rounds"),
+                cases=len(record.get("cases") or []),
+            )
 
         record = certify(
             {"statement": statement},

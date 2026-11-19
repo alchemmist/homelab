@@ -1,6 +1,8 @@
+---
 apiVersion: v2
 name: open-webui
 description: Chat interface for Socrat local inference
 type: application
 version: 0.1.1
 appVersion: "0.12.3"
+...

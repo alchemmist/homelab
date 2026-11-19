@@ -452,3 +452,5 @@ sending credentials, health traffic or model requests. For the pinned mutation
 parent only, on its o-deepseek connection error and observed not-ready -> ready
 edge, resume once. No automatic quarantine reset, re-login, probe chat or
 continuous retry; pauses, auth errors and other models stay outside this rule.
+
+Quality continuation: executable DNS approval binds exact helper source bytes; any drift invalidates an earlier plan. Obtain a fresh independently reviewed plan. CI/refactoring scope does not authorize DNS, identity, backup or autonomous execution.

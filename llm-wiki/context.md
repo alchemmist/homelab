@@ -133,3 +133,5 @@ its subscription with an official Pod VPN client, NOT a new SSH-to-NL tunnel.
 [Reusable service-VPN runbook](service-vpn-egress.md). N8N corrected in5b722c5c;
 [finite acceptance and cleanup](../docs/n8n/service-vpn-20261117.md). Venice's
 pre-existing SSH-egress remains a separately recorded deviation, not a template.
+
+Quality CI/refactoring integration scope: see [current quality runbook](../docs/quality/README.md). Strict findings remain blocking in CI; operator permits a separate red-CI integration decision, not suppressions or source-green claims. No production operation is authorized by this scope.

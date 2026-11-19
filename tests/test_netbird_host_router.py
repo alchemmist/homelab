@@ -1,4 +1,5 @@
 """Plans for NetBird on the existing socrat-0 and socrat-2 hosts."""
+
 import importlib.util
 import json
 import os
@@ -9,7 +10,9 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = importlib.util.spec_from_file_location("netbird_host_router", ROOT / "scripts/netbird-host-router.py")
+SPEC = importlib.util.spec_from_file_location(
+    "netbird_host_router", ROOT / "scripts/netbird-host-router.py"
+)
 hr = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(hr)
 
@@ -31,8 +34,11 @@ def load_frontend(source):
 
 class HostRouterTests(unittest.TestCase):
     def test_default_check_is_render_only_and_blocked(self):
-        result = subprocess.run([os.sys.executable, str(ROOT / "scripts/netbird-host-router.py"), "check"],
-                                capture_output=True, text=True)
+        result = subprocess.run(
+            [os.sys.executable, str(ROOT / "scripts/netbird-host-router.py"), "check"],
+            capture_output=True,
+            text=True,
+        )
         self.assertEqual(result.returncode, 2)
         payload = json.loads(result.stdout)
         self.assertFalse(payload["apply_allowed"])
@@ -42,8 +48,17 @@ class HostRouterTests(unittest.TestCase):
 
     def test_plan_refuses_the_git_worktree(self):
         target = ROOT / "deploy/netbird/host-router-out"
-        result = subprocess.run([os.sys.executable, str(ROOT / "scripts/netbird-host-router.py"),
-                                 "plan", "--out", str(target)], capture_output=True, text=True)
+        result = subprocess.run(
+            [
+                os.sys.executable,
+                str(ROOT / "scripts/netbird-host-router.py"),
+                "plan",
+                "--out",
+                str(target),
+            ],
+            capture_output=True,
+            text=True,
+        )
         self.assertEqual(result.returncode, 2)
         self.assertIn("outside the Git worktree", result.stderr)
         self.assertFalse(target.exists())
@@ -51,32 +66,62 @@ class HostRouterTests(unittest.TestCase):
     def test_default_plan_records_memory_and_ssh_split(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary) / "plan"
-            result = subprocess.run([os.sys.executable, str(ROOT / "scripts/netbird-host-router.py"),
-                                     "plan", "--out", str(target)], capture_output=True, text=True)
+            result = subprocess.run(
+                [
+                    os.sys.executable,
+                    str(ROOT / "scripts/netbird-host-router.py"),
+                    "plan",
+                    "--out",
+                    str(target),
+                ],
+                capture_output=True,
+                text=True,
+            )
             self.assertEqual(result.returncode, 2)
             plan = json.loads((target / "plan.json").read_text())
         self.assertFalse(plan["apply_allowed"])
         self.assertIn("socrat-2 MemAvailable is 446 MiB (455948 KiB)", plan["notes"])
-        self.assertEqual(plan["ssh"], {
-            "address": "10.250.0.2", "port": 2222, "routers": ["socrat-0"],
-            "destination": "socrat-2", "destination_delivery": "input", "ha": False,
-        })
+        self.assertEqual(
+            plan["ssh"],
+            {
+                "address": "10.250.0.2",
+                "port": 2222,
+                "routers": ["socrat-0"],
+                "destination": "socrat-2",
+                "destination_delivery": "input",
+                "ha": False,
+            },
+        )
         self.assertEqual(plan["grafana"]["upstream"], "10.250.0.3:443")
         self.assertFalse(plan["grafana"]["shared_vip_published"])
-        self.assertEqual(plan["grafana"]["policies"], ["overlay-peer:socrat-0", "overlay-peer:socrat-2"])
-        image = json.loads((ROOT / "deploy/netbird/images.lock.json").read_text())["images"]["client"]
-        self.assertEqual(plan["image"], image["repository"] + ":" + image["tag"] + "@" + image["digest"])
+        self.assertEqual(
+            plan["grafana"]["policies"], ["overlay-peer:socrat-0", "overlay-peer:socrat-2"]
+        )
+        image = json.loads((ROOT / "deploy/netbird/images.lock.json").read_text())["images"][
+            "client"
+        ]
+        self.assertEqual(
+            plan["image"], image["repository"] + ":" + image["tag"] + "@" + image["digest"]
+        )
 
     def test_firewall_uses_forward_on_socrat0_and_input_on_socrat2(self):
         _plan, rendered = hr.build(hr.default_facts())
         home = rendered["socrat-0"]["table.nft.sh"]
         vps = rendered["socrat-2"]["table.nft.sh"]
         self.assertNotEqual(home, vps)
-        home_forward = [line for line in hr.firewall_rules(home, "forward") if line.endswith("accept")]
-        vps_forward = [line for line in hr.firewall_rules(vps, "forward") if line.endswith("accept")]
+        home_forward = [
+            line for line in hr.firewall_rules(home, "forward") if line.endswith("accept")
+        ]
+        vps_forward = [
+            line for line in hr.firewall_rules(vps, "forward") if line.endswith("accept")
+        ]
         self.assertEqual(len(home_forward), 2)
-        self.assertTrue(any("daddr 10.250.0.2 tcp dport 2222" in line and 'oifname "wg-socrat"' in line
-                            for line in home_forward))
+        self.assertTrue(
+            any(
+                "daddr 10.250.0.2 tcp dport 2222" in line and 'oifname "wg-socrat"' in line
+                for line in home_forward
+            )
+        )
         self.assertEqual(vps_forward, [])
         self.assertEqual(hr.firewall_rules(vps, "postrouting"), [])
         self.assertIn("snat to 10.250.0.1", "\n".join(hr.firewall_rules(home, "postrouting")))
@@ -84,7 +129,12 @@ class HostRouterTests(unittest.TestCase):
         self.assertNotIn("10.250.0.3", home)
         self.assertNotIn("10.250.0.3", vps)
         self.assertFalse(any("dport 2222" in line for line in hr.firewall_rules(home, "input")))
-        self.assertFalse(any("dport 2222" in line or "dport 22 " in line for line in hr.firewall_rules(vps, "input")))
+        self.assertFalse(
+            any(
+                "dport 2222" in line or "dport 22 " in line
+                for line in hr.firewall_rules(vps, "input")
+            )
+        )
         self.assertIn('iifname != "nb-host" tcp dport 8443 drop', home)
         self.assertIn("add table ip netbird_host_router", home)
         self.assertNotIn("/etc/wireguard", home)
@@ -124,8 +174,12 @@ class HostRouterTests(unittest.TestCase):
         frontend = load_frontend(rendered["socrat-0"]["grafana-frontend.py"])
         self.assertEqual(frontend["UPSTREAM_IP"], "10.250.0.3")
         self.assertEqual(frontend["UPSTREAM_PORT"], 443)
-        self.assertTrue(frontend["admit"]("grafana.socrat.alchemmist.xyz", "grafana.socrat.alchemmist.xyz"))
-        self.assertTrue(frontend["admit"]("Grafana.socrat.alchemmist.xyz", "grafana.socrat.alchemmist.xyz:8443"))
+        self.assertTrue(
+            frontend["admit"]("grafana.socrat.alchemmist.xyz", "grafana.socrat.alchemmist.xyz")
+        )
+        self.assertTrue(
+            frontend["admit"]("Grafana.socrat.alchemmist.xyz", "grafana.socrat.alchemmist.xyz:8443")
+        )
         for sni, host in (
             ("rancher.socrat.alchemmist.xyz", "grafana.socrat.alchemmist.xyz"),
             ("grafana.socrat.alchemmist.xyz", "rancher.socrat.alchemmist.xyz"),
@@ -138,11 +192,22 @@ class HostRouterTests(unittest.TestCase):
         context = frontend["upstream_context"]()
         self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
         self.assertTrue(context.check_hostname)
-        self.assertEqual(frontend["sni_callback"](None, "rancher.socrat.alchemmist.xyz", None),
-                         ssl.ALERT_DESCRIPTION_UNRECOGNIZED_NAME)
-        self.assertIsNone(frontend["sni_callback"](type("S", (), {})(), "grafana.socrat.alchemmist.xyz", None))
+        self.assertEqual(
+            frontend["sni_callback"](None, "rancher.socrat.alchemmist.xyz", None),
+            ssl.ALERT_DESCRIPTION_UNRECOGNIZED_NAME,
+        )
+        self.assertIsNone(
+            frontend["sni_callback"](type("S", (), {})(), "grafana.socrat.alchemmist.xyz", None)
+        )
         self.assertTrue(frontend["bind_allowed"]("100.96.0.8"))
-        for address in ("0.0.0.0", "109.120.141.60", "10.250.0.1", "10.250.0.2", "10.250.0.3", "192.168.0.23"):
+        for address in (
+            "0.0.0.0",
+            "109.120.141.60",
+            "10.250.0.1",
+            "10.250.0.2",
+            "10.250.0.3",
+            "192.168.0.23",
+        ):
             self.assertFalse(frontend["bind_allowed"](address), address)
 
     def test_client_unit_is_pinned_and_constrained(self):
@@ -150,7 +215,10 @@ class HostRouterTests(unittest.TestCase):
         home = rendered["socrat-0"]["netbird-host-router.service"]
         vps = rendered["socrat-2"]["netbird-host-router.service"]
         for unit in (home, vps):
-            self.assertIn("netbirdio/netbird:0.82.0@sha256:eca5b274c635bfbb04ec6724a0712d1146190dd450eea199eeb83916fdd94965", unit)
+            self.assertIn(
+                "netbirdio/netbird:0.82.0@sha256:eca5b274c635bfbb04ec6724a0712d1146190dd450eea199eeb83916fdd94965",
+                unit,
+            )
             self.assertIn("--cap-drop=ALL", unit)
             self.assertIn("--cap-add=NET_ADMIN", unit)
             self.assertIn("--memory=96m", unit)
@@ -170,7 +238,9 @@ class HostRouterTests(unittest.TestCase):
         self.assertIn("stat -c %a", up)
         self.assertIn("netbird_host_router_apply: false", rendered["socrat-2"]["install.yml"])
         self.assertNotIn("99-netbird-host-router.conf", rendered["socrat-2"]["install.yml"])
-        self.assertIn("net.ipv4.ip_forward=1\n", rendered["socrat-0"]["99-netbird-host-router.conf"])
+        self.assertIn(
+            "net.ipv4.ip_forward=1\n", rendered["socrat-0"]["99-netbird-host-router.conf"]
+        )
 
     def test_memory_cap_above_vps_headroom_blocks_apply(self):
         facts = hr.default_facts()
@@ -204,29 +274,86 @@ class HostRouterTests(unittest.TestCase):
             facts_path = base / "facts.json"
             facts_path.write_text(json.dumps(ready()))
             out = base / "plan"
-            planned = subprocess.run([os.sys.executable, str(ROOT / "scripts/netbird-host-router.py"),
-                                      "plan", "--facts", str(facts_path), "--out", str(out)],
-                                     capture_output=True, text=True)
+            planned = subprocess.run(
+                [
+                    os.sys.executable,
+                    str(ROOT / "scripts/netbird-host-router.py"),
+                    "plan",
+                    "--facts",
+                    str(facts_path),
+                    "--out",
+                    str(out),
+                ],
+                capture_output=True,
+                text=True,
+            )
             self.assertEqual(planned.returncode, 0, planned.stderr)
-            blocked = subprocess.run([os.sys.executable, str(ROOT / "scripts/netbird-host-router.py"),
-                                      "apply", "--plan", str(out), "--root", str(base / "nope"), "--host", "socrat-2"],
-                                     capture_output=True, text=True)
+            blocked = subprocess.run(
+                [
+                    os.sys.executable,
+                    str(ROOT / "scripts/netbird-host-router.py"),
+                    "apply",
+                    "--plan",
+                    str(out),
+                    "--root",
+                    str(base / "nope"),
+                    "--host",
+                    "socrat-2",
+                ],
+                capture_output=True,
+                text=True,
+            )
             # ready() facts have no blockers, so replace the plan with the default blocked one
             self.assertEqual(blocked.returncode, 0, blocked.stderr)
             default_out = base / "blocked"
-            blocked_plan = subprocess.run([os.sys.executable, str(ROOT / "scripts/netbird-host-router.py"),
-                                           "plan", "--out", str(default_out)], capture_output=True, text=True)
+            blocked_plan = subprocess.run(
+                [
+                    os.sys.executable,
+                    str(ROOT / "scripts/netbird-host-router.py"),
+                    "plan",
+                    "--out",
+                    str(default_out),
+                ],
+                capture_output=True,
+                text=True,
+            )
             self.assertEqual(blocked_plan.returncode, 2)
-            refused = subprocess.run([os.sys.executable, str(ROOT / "scripts/netbird-host-router.py"),
-                                      "apply", "--plan", str(default_out), "--root", str(base / "refused"),
-                                      "--host", "socrat-2"], capture_output=True, text=True)
+            refused = subprocess.run(
+                [
+                    os.sys.executable,
+                    str(ROOT / "scripts/netbird-host-router.py"),
+                    "apply",
+                    "--plan",
+                    str(default_out),
+                    "--root",
+                    str(base / "refused"),
+                    "--host",
+                    "socrat-2",
+                ],
+                capture_output=True,
+                text=True,
+            )
             self.assertEqual(refused.returncode, 2)
             self.assertIn("blockers remain", refused.stderr)
             self.assertFalse((base / "refused").exists())
             root = base / "root"
-            applied = subprocess.run([os.sys.executable, str(ROOT / "scripts/netbird-host-router.py"),
-                                      "apply", "--plan", str(out), "--root", str(root), "--host", "socrat-0",
-                                      "--overlay-ip", "100.96.8.8"], capture_output=True, text=True)
+            applied = subprocess.run(
+                [
+                    os.sys.executable,
+                    str(ROOT / "scripts/netbird-host-router.py"),
+                    "apply",
+                    "--plan",
+                    str(out),
+                    "--root",
+                    str(root),
+                    "--host",
+                    "socrat-0",
+                    "--overlay-ip",
+                    "100.96.8.8",
+                ],
+                capture_output=True,
+                text=True,
+            )
             self.assertEqual(applied.returncode, 0, applied.stderr)
             installed = (root / "usr/local/libexec/netbird-host-router/table.nft.sh").read_text()
             self.assertIn("100.96.8.8", installed)
@@ -235,17 +362,42 @@ class HostRouterTests(unittest.TestCase):
             self.assertTrue((root / "etc/sysctl.d/99-netbird-host-router.conf").is_file())
             self.assertFalse((root / "etc/wireguard").exists())
             self.assertFalse(list(root.rglob("*wg-socrat*")))
-            public = subprocess.run([os.sys.executable, str(ROOT / "scripts/netbird-host-router.py"),
-                                     "apply", "--plan", str(out), "--root", str(base / "public"),
-                                     "--host", "socrat-0", "--overlay-ip", "109.120.141.60"],
-                                    capture_output=True, text=True)
+            public = subprocess.run(
+                [
+                    os.sys.executable,
+                    str(ROOT / "scripts/netbird-host-router.py"),
+                    "apply",
+                    "--plan",
+                    str(out),
+                    "--root",
+                    str(base / "public"),
+                    "--host",
+                    "socrat-0",
+                    "--overlay-ip",
+                    "109.120.141.60",
+                ],
+                capture_output=True,
+                text=True,
+            )
             self.assertEqual(public.returncode, 2)
             self.assertFalse((base / "public").exists())
             tampered = out / "socrat-0" / "netbird-up.sh"
             tampered.write_text(tampered.read_text() + "\n# tamper\n")
-            again = subprocess.run([os.sys.executable, str(ROOT / "scripts/netbird-host-router.py"),
-                                    "apply", "--plan", str(out), "--root", str(base / "tamper"),
-                                    "--host", "socrat-0"], capture_output=True, text=True)
+            again = subprocess.run(
+                [
+                    os.sys.executable,
+                    str(ROOT / "scripts/netbird-host-router.py"),
+                    "apply",
+                    "--plan",
+                    str(out),
+                    "--root",
+                    str(base / "tamper"),
+                    "--host",
+                    "socrat-0",
+                ],
+                capture_output=True,
+                text=True,
+            )
             self.assertEqual(again.returncode, 2)
             self.assertIn("digest mismatch", again.stderr)
 
@@ -255,19 +407,42 @@ class HostRouterTests(unittest.TestCase):
             out = base / "plan"
             facts = base / "facts.json"
             facts.write_text(json.dumps(ready()))
-            planned = subprocess.run([os.sys.executable, str(ROOT / "scripts/netbird-host-router.py"),
-                                      "plan", "--facts", str(facts), "--out", str(out)],
-                                     capture_output=True, text=True)
+            planned = subprocess.run(
+                [
+                    os.sys.executable,
+                    str(ROOT / "scripts/netbird-host-router.py"),
+                    "plan",
+                    "--facts",
+                    str(facts),
+                    "--out",
+                    str(out),
+                ],
+                capture_output=True,
+                text=True,
+            )
             self.assertEqual(planned.returncode, 0, planned.stderr)
             outside = base / "outside"
             outside.mkdir()
             root = base / "root"
             root.mkdir()
             (root / "etc").symlink_to(outside)
-            result = subprocess.run([os.sys.executable, str(ROOT / "scripts/netbird-host-router.py"),
-                                     "apply", "--plan", str(out), "--root", str(root),
-                                     "--host", "socrat-2", "--overlay-ip", "100.96.9.9"],
-                                    capture_output=True, text=True)
+            result = subprocess.run(
+                [
+                    os.sys.executable,
+                    str(ROOT / "scripts/netbird-host-router.py"),
+                    "apply",
+                    "--plan",
+                    str(out),
+                    "--root",
+                    str(root),
+                    "--host",
+                    "socrat-2",
+                    "--overlay-ip",
+                    "100.96.9.9",
+                ],
+                capture_output=True,
+                text=True,
+            )
             self.assertEqual(result.returncode, 2)
             self.assertFalse(list(outside.rglob("*")))
 

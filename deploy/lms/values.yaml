@@ -1,3 +1,4 @@
+---
 image:
   repository: ghcr.io/alchemmist/lms
   tag: 10307eea58e346b560749cc6861b1bbb53b209f5
@@ -5,7 +6,7 @@ image:
   pullPolicy: IfNotPresent
 tracing:
   enabled: true
-  sampleRatio: '1'
+  sampleRatio: "1"
   endpoint: https://10.250.0.3:44318/v1/traces
   secretName: otel-app-tls-lms
   grafanaDashboard: true
@@ -25,3 +26,4 @@ webNodes: [socrat-5]
 hostAliases:
   - ip: 10.43.218.222
     hostnames: [auth.socrat.alchemmist.xyz]
+...

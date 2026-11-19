@@ -1,3 +1,4 @@
+---
 - name: Check for the existing Uptime Kuma database
   ansible.builtin.stat:
     path: "{{ syncthing_private_monitors_database }}"
@@ -12,7 +13,7 @@
         state: directory
         owner: root
         group: root
-        mode: '0700'
+        mode: "0700"
       loop:
         - "{{ syncthing_private_monitors_plan | dirname }}"
 
@@ -22,7 +23,7 @@
         state: directory
         owner: root
         group: root
-        mode: '0755'
+        mode: "0755"
 
     - name: Install the scoped monitor migration utility
       ansible.builtin.copy:
@@ -30,7 +31,7 @@
         dest: /usr/local/libexec/migrate-syncthing-health-monitors.py
         owner: root
         group: root
-        mode: '0644'
+        mode: "0644"
 
     - name: Initialize the node health endpoint plan
       ansible.builtin.set_fact:
@@ -49,7 +50,7 @@
         content: "{{ syncthing_private_monitors_nodes | to_nice_json }}\n"
         owner: root
         group: root
-        mode: '0600'
+        mode: "0600"
 
     - name: Check whether existing monitors need migration
       ansible.builtin.command:
@@ -70,21 +71,21 @@
         - name: Record the current Kuma replica count
           become: false
           delegate_to: "{{ syncthing_private_monitors_controller }}"
-          ansible.builtin.command: "kubectl -n {{ syncthing_private_monitors_namespace }} get deployment {{ syncthing_private_monitors_deployment }} -o jsonpath={.spec.replicas}"
+          ansible.builtin.command: kubectl -n {{ syncthing_private_monitors_namespace }} get deployment {{ syncthing_private_monitors_deployment }} -o jsonpath={.spec.replicas}
           register: syncthing_private_monitors_replicas
           changed_when: false
 
         - name: Pause Kuma before updating its database
           become: false
           delegate_to: "{{ syncthing_private_monitors_controller }}"
-          ansible.builtin.command: "kubectl -n {{ syncthing_private_monitors_namespace }} scale deployment {{ syncthing_private_monitors_deployment }} --replicas=0"
+          ansible.builtin.command: kubectl -n {{ syncthing_private_monitors_namespace }} scale deployment {{ syncthing_private_monitors_deployment }} --replicas=0
           register: syncthing_private_monitors_pause
           changed_when: true
 
         - name: Wait for Kuma to stop
           become: false
           delegate_to: "{{ syncthing_private_monitors_controller }}"
-          ansible.builtin.command: "kubectl -n {{ syncthing_private_monitors_namespace }} wait --for=delete pod -l app=uptime-kuma --timeout=90s"
+          ansible.builtin.command: kubectl -n {{ syncthing_private_monitors_namespace }} wait --for=delete pod -l app=uptime-kuma --timeout=90s
           changed_when: false
 
         - name: Back up the database and migrate only Syncthing monitors
@@ -102,7 +103,7 @@
         - name: Restore the previous Kuma replica count
           become: false
           delegate_to: "{{ syncthing_private_monitors_controller }}"
-          ansible.builtin.command: "kubectl -n {{ syncthing_private_monitors_namespace }} scale deployment {{ syncthing_private_monitors_deployment }} --replicas={{ syncthing_private_monitors_replicas.stdout | int }}"
+          ansible.builtin.command: kubectl -n {{ syncthing_private_monitors_namespace }} scale deployment {{ syncthing_private_monitors_deployment }} --replicas={{ syncthing_private_monitors_replicas.stdout | int }}
           changed_when: true
           when:
             - syncthing_private_monitors_pause is defined
@@ -112,10 +113,11 @@
         - name: Verify Kuma has recovered
           become: false
           delegate_to: "{{ syncthing_private_monitors_controller }}"
-          ansible.builtin.command: "kubectl -n {{ syncthing_private_monitors_namespace }} rollout status deployment {{ syncthing_private_monitors_deployment }} --timeout=120s"
+          ansible.builtin.command: kubectl -n {{ syncthing_private_monitors_namespace }} rollout status deployment {{ syncthing_private_monitors_deployment }} --timeout=120s
           changed_when: false
           when:
             - syncthing_private_monitors_pause is defined
             - syncthing_private_monitors_replicas is defined
             - syncthing_private_monitors_replicas.rc | default(1) == 0
             - syncthing_private_monitors_replicas.stdout | int > 0
+...

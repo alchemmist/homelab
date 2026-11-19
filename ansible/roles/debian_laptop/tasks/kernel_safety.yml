@@ -14,7 +14,7 @@
     content: "options rtl8723ae ips=0 fwlps=0 swlps=0 msi={{ homelab_wifi_msi | bool | ternary('1', '0') }}\n"
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
 
 - name: Inspect the running Realtek MSI mode without reloading the driver
   ansible.builtin.command: cat /sys/module/rtl8723ae/parameters/msi
@@ -41,3 +41,4 @@
     - not homelab_wifi_autoconnect | bool
     - homelab_wifi_autoconnect_state.rc == 0
     - homelab_wifi_autoconnect_state.stdout | trim == 'yes'
+...

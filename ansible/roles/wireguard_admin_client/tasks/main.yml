@@ -72,7 +72,7 @@
   ansible.builtin.file:
     path: "{{ wireguard_admin_config_dir }}"
     state: directory
-    mode: '0700'
+    mode: "0700"
   tags: prepare
 
 - name: Check for existing Mac private key
@@ -133,7 +133,7 @@
   ansible.builtin.copy:
     content: "{{ wireguard_admin_public_key_command.stdout | trim }}\n"
     dest: "{{ wireguard_admin_public_key_path }}"
-    mode: '0644'
+    mode: "0644"
   no_log: true
   tags: prepare
 
@@ -157,7 +157,7 @@
     state: directory
     owner: root
     group: wheel
-    mode: '0755'
+    mode: "0755"
   when: wireguard_admin_dns_mode == 'split'
   tags: dns
 
@@ -173,6 +173,7 @@
       options attempts:{{ wireguard_admin_dns_attempts }}
     owner: root
     group: wheel
-    mode: '0644'
+    mode: "0644"
   when: wireguard_admin_dns_mode == 'split'
   tags: dns
+...

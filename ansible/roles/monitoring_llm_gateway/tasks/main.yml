@@ -29,3 +29,4 @@
   register: monitoring_llm_gateway_result
   changed_when: "'changed=true' in monitoring_llm_gateway_result.stdout"
   no_log: true
+...

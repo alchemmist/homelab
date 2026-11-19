@@ -51,3 +51,4 @@
         src: ../../scripts/vpn-home-transit-egress.py
         dest: '{{ tool }}'
         mode: '0700'
+...

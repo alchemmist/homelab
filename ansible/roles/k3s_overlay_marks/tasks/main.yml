@@ -5,7 +5,7 @@
     dest: /usr/local/sbin/homelab-k3s-overlay-marks
     owner: root
     group: root
-    mode: '0700'
+    mode: "0700"
   register: overlay_helper
 
 - name: Install boot persistence without restarting any network or Kubernetes service
@@ -14,7 +14,7 @@
     dest: /etc/systemd/system/homelab-k3s-overlay-marks.service
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
   register: overlay_unit
 
 - name: Activate only the owned overlay boundary service
@@ -30,3 +30,4 @@
   register: overlay_verify
   failed_when: overlay_verify.rc != 0 or (overlay_verify.stdout | from_json).operations != 0
   when: not ansible_check_mode
+...

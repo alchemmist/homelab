@@ -1,3 +1,4 @@
+---
 apiVersion: v2
 name: lms
 description: lms app
@@ -9,3 +10,4 @@ dependencies:
     version: 0.1.0
     repository: file://../lms-database-ha
     condition: database.ha.resources
+...

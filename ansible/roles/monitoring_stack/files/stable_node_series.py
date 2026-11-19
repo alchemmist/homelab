@@ -41,8 +41,8 @@ def render(resources):
                 dashboard = json.loads(value)
             except (TypeError, json.JSONDecodeError):
                 continue
-            if isinstance(dashboard, dict) and dashboard.get("uid") and 'panels' in dashboard:
-                if dashboard['uid'] in DASHBOARD_UIDS:
+            if isinstance(dashboard, dict) and dashboard.get("uid") and "panels" in dashboard:
+                if dashboard["uid"] in DASHBOARD_UIDS:
                     rewrite_panels(dashboard.get("panels", []))
                 apply_descriptions(dashboard)
                 resource["data"][key] = json.dumps(dashboard, separators=(",", ":"))

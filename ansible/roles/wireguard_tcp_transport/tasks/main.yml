@@ -277,3 +277,4 @@
     wg_tcp_verified_server_endpoints.rc != 0 or
     (wg_socrat_nodes[wg_tcp_client].public_key + '\t127.0.0.1:') not in wg_tcp_verified_server_endpoints.stdout
   when: inventory_hostname == wg_tcp_client and not ansible_check_mode
+...

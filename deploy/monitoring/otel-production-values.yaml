@@ -1,3 +1,4 @@
+---
 prometheus:
   prometheusSpec:
     containers:
@@ -160,3 +161,4 @@ prometheus:
 prometheus-node-exporter:
   nodeSelector:
     homelab.alchemmist.xyz/legacy-node-exporter-enabled: 'true'
+...

@@ -17,7 +17,7 @@
     path: "{{ homelab_user_home }}/.local/state/homelab/config-isolation"
     state: directory
     owner: "{{ homelab_user }}"
-    mode: '0700'
+    mode: "0700"
 
 - name: Detach node configuration from personal dotfiles
   become: false
@@ -31,3 +31,4 @@
   register: homelab_config_isolation
   check_mode: false
   changed_when: (homelab_config_isolation.stdout | from_json).changed
+...

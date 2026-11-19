@@ -5,3 +5,4 @@
   become: true
   roles:
     - syncthing_node
+...

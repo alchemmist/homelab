@@ -131,3 +131,4 @@
   become: true
   roles:
     - netbird_node
+...

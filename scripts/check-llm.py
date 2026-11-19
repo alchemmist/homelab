@@ -5,7 +5,6 @@ import time
 import urllib.error
 import urllib.request
 
-
 BASE_URL = os.environ.get("LLM_BASE_URL", "http://127.0.0.1:8000/v1").rstrip("/")
 API_KEY = os.environ.get("LLM_API_KEY", "")
 MODEL = os.environ.get("LLM_MODEL", "qwen3.8-27b")
@@ -69,11 +68,19 @@ def main():
     report("model listing", started)
 
     started = time.monotonic()
-    result = complete([
-        {"role": "user", "content": "Write a Python function add(a, b) that returns their sum. Return only the function."}
-    ])
+    result = complete(
+        [
+            {
+                "role": "user",
+                "content": "Write a Python function add(a, b) that returns their sum. Return only the function.",
+            }
+        ]
+    )
     content = result["choices"][0]["message"].get("content") or ""
-    require("def add(" in content and "return" in content and "+" in content, "Coding response lacks the requested function")
+    require(
+        "def add(" in content and "return" in content and "+" in content,
+        "Coding response lacks the requested function",
+    )
     report("coding response", started, result.get("usage"))
 
     started = time.monotonic()
@@ -90,7 +97,9 @@ def main():
         "chat_template_kwargs": {"enable_thinking": False},
     }
     with request("chat/completions", payload) as response:
-        require("text/event-stream" in response.headers.get("Content-Type", ""), "Response is not SSE")
+        require(
+            "text/event-stream" in response.headers.get("Content-Type", ""), "Response is not SSE"
+        )
         for line in response:
             require(time.monotonic() - started < TIMEOUT, "Streaming exceeded time limit")
             line = line.decode().strip()
@@ -109,29 +118,40 @@ def main():
     require(done and bool(content.strip()), "Streaming lacked content or [DONE]")
     report("SSE streaming", started, usage)
 
-    tools = [{
-        "type": "function",
-        "function": {
-            "name": "get_weather",
-            "description": "Get the current weather for a city.",
-            "parameters": {
-                "type": "object",
-                "properties": {"city": {"type": "string"}},
-                "required": ["city"],
-                "additionalProperties": False,
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "get_weather",
+                "description": "Get the current weather for a city.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"city": {"type": "string"}},
+                    "required": ["city"],
+                    "additionalProperties": False,
+                },
             },
-        },
-    }]
+        }
+    ]
     messages = [
-        {"role": "system", "content": "Use get_weather for current weather. Pass the city name in English. Report its temperature exactly after receiving the result."},
-        {"role": "user", "content": "What is the current weather in Moscow? Use the available tool."},
+        {
+            "role": "system",
+            "content": "Use get_weather for current weather. Pass the city name in English. Report its temperature exactly after receiving the result.",
+        },
+        {
+            "role": "user",
+            "content": "What is the current weather in Moscow? Use the available tool.",
+        },
     ]
     started = time.monotonic()
     result = complete(messages, tools=tools, tool_choice="auto")
     choice = result["choices"][0]
     message = choice["message"]
     calls = message.get("tool_calls") or []
-    require(choice.get("finish_reason") == "tool_calls" and len(calls) == 1, "Expected one automatic tool call")
+    require(
+        choice.get("finish_reason") == "tool_calls" and len(calls) == 1,
+        "Expected one automatic tool call",
+    )
     call = calls[0]
     require(bool(call.get("id")) and call.get("type") == "function", "Invalid tool call envelope")
     require(call["function"]["name"] == "get_weather", "Unexpected tool name")
@@ -140,15 +160,27 @@ def main():
     report("automatic tool call", started, result.get("usage"))
 
     messages.append({"role": "assistant", "content": message.get("content"), "tool_calls": calls})
-    messages.append({
-        "role": "tool",
-        "tool_call_id": call["id"],
-        "content": json.dumps({"city": "Moscow", "temperature_c": 17, "condition": "sunny", "synthetic_test_data": True}),
-    })
+    messages.append(
+        {
+            "role": "tool",
+            "tool_call_id": call["id"],
+            "content": json.dumps(
+                {
+                    "city": "Moscow",
+                    "temperature_c": 17,
+                    "condition": "sunny",
+                    "synthetic_test_data": True,
+                }
+            ),
+        }
+    )
     started = time.monotonic()
     result = complete(messages, tools=tools, tool_choice="none")
     message = result["choices"][0]["message"]
-    require(not message.get("tool_calls") and "17" in (message.get("content") or ""), "Continuation did not use the supplied tool result")
+    require(
+        not message.get("tool_calls") and "17" in (message.get("content") or ""),
+        "Continuation did not use the supplied tool result",
+    )
     report("tool result continuation", started, result.get("usage"))
 
     if os.environ.get("LLM_TEST_LONG_CONTEXT") == "1":
@@ -157,12 +189,26 @@ def main():
             f"def function_{index}(value): return value + {index}"
             for index in range(int(os.environ.get("LLM_LONG_CONTEXT_LINES", "700")))
         )
-        result = complete([
-            {"role": "user", "content": "CONTEXT_CHECK_VALUE = violet-river-7291\n" + context + "\nReturn only the value of CONTEXT_CHECK_VALUE from the beginning of this message."}
-        ], max_tokens=int(os.environ.get("LLM_LONG_CONTEXT_MAX_OUTPUT_TOKENS", "8192")))
+        result = complete(
+            [
+                {
+                    "role": "user",
+                    "content": "CONTEXT_CHECK_VALUE = violet-river-7291\n"
+                    + context
+                    + "\nReturn only the value of CONTEXT_CHECK_VALUE from the beginning of this message.",
+                }
+            ],
+            max_tokens=int(os.environ.get("LLM_LONG_CONTEXT_MAX_OUTPUT_TOKENS", "8192")),
+        )
         usage = result.get("usage") or {}
-        require(usage.get("prompt_tokens", 0) > 8192, "Long-context check did not exceed the old 8K limit")
-        require("violet-river-7291" in (result["choices"][0]["message"].get("content") or ""), "Long-context response did not recover the value from the beginning")
+        require(
+            usage.get("prompt_tokens", 0) > 8192,
+            "Long-context check did not exceed the old 8K limit",
+        )
+        require(
+            "violet-river-7291" in (result["choices"][0]["message"].get("content") or ""),
+            "Long-context response did not recover the value from the beginning",
+        )
         report("long context", started, usage)
 
 

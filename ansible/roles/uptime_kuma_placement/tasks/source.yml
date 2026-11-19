@@ -1,3 +1,4 @@
+---
 - name: Prepare the stopped source archive
   delegate_to: "{{ uptime_kuma_source }}"
   become: true
@@ -18,7 +19,14 @@
 
     - name: Archive the complete data directory
       ansible.builtin.command:
-        argv: [tar, --acls, --xattrs, -cpf, "{{ kuma_source_transfer.path }}", -C, "{{ uptime_kuma_directory }}", .]
+        argv: [tar,
+               --acls,
+               --xattrs,
+               -cpf,
+               "{{ kuma_source_transfer.path }}",
+               -C,
+               "{{ uptime_kuma_directory }}",
+               .]
       changed_when: true
 
     - name: Calculate the source archive digest
@@ -32,3 +40,4 @@
         src: "{{ kuma_source_transfer.path }}"
         dest: "{{ kuma_local_transfer.path }}/data.tar"
         flat: true
+...

@@ -9,7 +9,17 @@
   tasks:
     - name: Detect activation without reading credentials
       ansible.builtin.command:
-        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, -n, llm, get, secret, socrat-authentik-webui, --ignore-not-found, -o, name]
+        argv: [kubectl,
+               --kubeconfig,
+               /etc/rancher/k3s/k3s.yaml,
+               -n,
+               llm,
+               get,
+               secret,
+               socrat-authentik-webui,
+               --ignore-not-found,
+               -o,
+               name]
       register: webui_identity_active
       changed_when: false
     - name: Reconcile activated identity configuration
@@ -18,3 +28,4 @@
       vars:
         identity_oidc_services: [open-webui]
       when: webui_identity_active.stdout | trim | length > 0
+...

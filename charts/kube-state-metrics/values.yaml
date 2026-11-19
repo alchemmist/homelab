@@ -1,3 +1,4 @@
+---
 kube-prometheus-stack:
   grafana:
     enabled: false
@@ -91,3 +92,4 @@ kube-prometheus-stack:
       requests:
         cpu: 20m
         memory: 64Mi
+...

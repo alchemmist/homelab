@@ -1,3 +1,4 @@
+---
 - name: Read current Kuma placement
   ansible.builtin.command: /usr/local/bin/kubectl -n {{ uptime_kuma_namespace }} get deployment {{ uptime_kuma_release }} -o json
   register: kuma_deployment
@@ -115,9 +116,9 @@
               - "{{ uptime_kuma_namespace }}"
               - --reset-values
               - --set-string
-              - "nodeName={{ uptime_kuma_source }}"
+              - nodeName={{ uptime_kuma_source }}
               - --set-string
-              - "hostPath={{ uptime_kuma_directory }}"
+              - hostPath={{ uptime_kuma_directory }}
               - --wait
               - --timeout
               - 5m
@@ -125,7 +126,7 @@
 
         - name: Report the failed migration
           ansible.builtin.fail:
-            msg: "Kuma migration failed; the preserved source was restored. {{ ansible_failed_result.msg | default('Inspect the failed task above.') }}"
+            msg: Kuma migration failed; the preserved source was restored. {{ ansible_failed_result.msg | default('Inspect the failed task above.') }}
 
       always:
         - name: Remove the private local transfer
@@ -153,3 +154,4 @@
 - name: Reconcile an already migrated singleton
   ansible.builtin.include_tasks: deploy.yml
   when: (kuma_deployment.stdout | from_json).spec.template.spec.nodeSelector['kubernetes.io/hostname'] == uptime_kuma_destination
+...

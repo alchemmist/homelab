@@ -27,5 +27,5 @@ metadata:
     grafana_folder: /tmp/dashboards
 data:
   socrat-{{ $name }}.json: |
-{{ $content | indent 4 }}
+{{ $content | fromJson | toJson | indent 4 }}
 {{- end }}

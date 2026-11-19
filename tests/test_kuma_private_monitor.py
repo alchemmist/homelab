@@ -32,8 +32,10 @@ class KumaPrivateMonitorTests(unittest.TestCase):
             db.executemany(
                 "INSERT INTO monitor VALUES (?, ?, 'http', ?, '', 'GET', "
                 "'[\"200-299\"]', 0, 0, 0, 10, 60, 'preserved')",
-                [(7, "Control plane", f"https://{MODULE.HOSTNAME}"),
-                 (8, "Other service", "https://status.example.org")],
+                [
+                    (7, "Control plane", f"https://{MODULE.HOSTNAME}"),
+                    (8, "Other service", "https://status.example.org"),
+                ],
             )
             db.execute("INSERT INTO heartbeat VALUES (7, 0)")
             db.execute("INSERT INTO monitor_group VALUES (7, 4)")
@@ -67,8 +69,9 @@ class KumaPrivateMonitorTests(unittest.TestCase):
 
     def test_check_is_read_only_and_apply_is_idempotent(self):
         before = self.path.read_bytes()
-        self.assertEqual(MODULE.configure(self.path, check=True),
-                         {"changed": True, "monitor_id": 7})
+        self.assertEqual(
+            MODULE.configure(self.path, check=True), {"changed": True, "monitor_id": 7}
+        )
         self.assertEqual(self.path.read_bytes(), before)
         self.assertFalse((self.path.parent / "backups").exists())
         MODULE.configure(self.path)
@@ -79,8 +82,9 @@ class KumaPrivateMonitorTests(unittest.TestCase):
 
     def test_ambiguous_monitor_is_refused_without_writes(self):
         with closing(sqlite3.connect(self.path)) as db, db:
-            db.execute("UPDATE monitor SET url = ? WHERE id = 8",
-                       (f"https://{MODULE.HOSTNAME}/ping",))
+            db.execute(
+                "UPDATE monitor SET url = ? WHERE id = 8", (f"https://{MODULE.HOSTNAME}/ping",)
+            )
         before = self.path.read_bytes()
         for check in (True, False):
             with self.assertRaisesRegex(ValueError, "found 2"):

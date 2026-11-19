@@ -2,8 +2,8 @@
 - name: Gather desktop platform facts
   ansible.builtin.setup:
     gather_subset:
-      - '!all'
-      - '!min'
+      - "!all"
+      - "!min"
       - distribution
       - os_family
 
@@ -26,7 +26,7 @@
     quiet: true
 
 - name: Ensure Sway is not the active session before cleanup
-  ansible.builtin.command: "pgrep -u {{ ansible_facts.getent_passwd[homelab_user][1] }} -x sway"
+  ansible.builtin.command: pgrep -u {{ ansible_facts.getent_passwd[homelab_user][1] }} -x sway
   register: homelab_sway_process
   check_mode: false
   changed_when: false
@@ -39,7 +39,7 @@
     state: directory
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
   loop:
     - /usr/local/bin
     - /usr/local/libexec
@@ -51,7 +51,7 @@
     state: directory
     owner: "{{ homelab_user }}"
     group: "{{ ansible_facts.getent_passwd[homelab_user][2] }}"
-    mode: '0700'
+    mode: "0700"
 
 - name: Install the direct Hyprland launcher
   ansible.builtin.template:
@@ -59,7 +59,7 @@
     dest: /usr/local/bin/start-socrat-hyprland
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
     backup: true
     validate: /bin/sh -n %s
 
@@ -69,7 +69,7 @@
     dest: /usr/local/libexec/homelab-desktop-startup.py
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
   register: homelab_desktop_startup_install
 
 - name: Check availability of the installed desktop migration helper
@@ -108,7 +108,7 @@
     dest: /etc/systemd/system/getty@tty1.service.d/50-homelab-autologin.conf
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
 
 - name: Enable tty1 without restarting the current graphical session
   ansible.builtin.systemd_service:
@@ -125,6 +125,7 @@
 - name: Verify the effective autologin user
   ansible.builtin.assert:
     that:
-      - "('--autologin ' ~ homelab_user) in homelab_getty_command.stdout"
+      - ('--autologin ' ~ homelab_user) in homelab_getty_command.stdout
     quiet: true
   when: not ansible_check_mode
+...

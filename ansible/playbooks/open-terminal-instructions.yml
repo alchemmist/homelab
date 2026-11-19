@@ -43,3 +43,4 @@
         stdin: "{{ lookup('file', playbook_dir + '/../files/open-terminal-AGENTS.md') }}"
       register: terminal_instructions
       changed_when: (terminal_instructions.stdout | from_json).changed
+...
