@@ -97,7 +97,7 @@ entry, gate = idle('Admission:', 220, 0)
 claim = pg('Claim next queued task and load checkpoint', '''WITH candidate AS (
  SELECT id FROM lms_certification.pilot
  WHERE phase NOT IN ('certified','needs_review')
- AND data->>'contract' IN ('echo','sum','length','parity','sign','leap','repeat4','python_exact','zen','meow','yes_no','xmas','parrot','reverse','temperature','heights','until_zero','until_nonmultiple','until_empty')
+ AND data->>'contract' IN ('echo','sum','length','parity','sign','leap','repeat4','python_exact','zen','meow','yes_no','xmas','parrot','reverse','temperature','heights','until_zero','until_nonmultiple','until_empty','xmas2','xmas3')
  AND (lease_until IS NULL OR lease_until < clock_timestamp())
  AND NOT EXISTS (SELECT 1 FROM lms_certification.pilot WHERE lease_until > clock_timestamp())
  ORDER BY CASE WHEN owner IS NOT NULL THEN 0 ELSE 1 END, updated_at, id FOR UPDATE SKIP LOCKED LIMIT 1

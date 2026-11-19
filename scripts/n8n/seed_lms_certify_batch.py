@@ -11,6 +11,10 @@ for key,(contract,stdin,stdout,faults) in SPECS.items():
  suite=yaml.safe_load((path/'tests.yaml').read_text())
  examples=[{'input':c['input'],'output':c['output']} for c in suite.get('cases',[]) if c.get('public')]
  data=dict(statement=(path/'statement.md').read_text(),contract=contract,calls=0,cases=[],examples=examples or [dict(input=stdin,output=stdout)],example_origin='canonical' if examples else 'operator_fixture',faults=[['empty','pass'],*faults])
+ if contract in ('xmas2','xmas3'):
+  prereqs=['xmas-tree']+(['xmas-tree-2'] if contract=='xmas3' else [])
+  data['statement']='\n\n'.join([(path.parent / name / 'statement.md').read_text() for name in prereqs]+[data['statement']])
+  data['targetedCases']=[dict(input=x,output='НЕ ГОРИ\n') for x in ('раз\n2\nтри\n','3\n2\n1\n','1 \n2\n3\n')]
  if contract.startswith('until_'):
   assert examples, 'Loop contract requires canonical examples'
   cases={'until_zero':('-2\n1\n0\n9\n','-2\n1\n'),'until_nonmultiple':('0\n-20\n4\n10\n','0\n-20\n'),'until_empty':(' \na\n\nлишнее\n',' \na\n')}

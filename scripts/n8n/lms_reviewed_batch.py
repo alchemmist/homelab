@@ -91,3 +91,19 @@ ORACLE_JS += r'''
   return null;
  }
 '''
+
+for version in (2,3):
+ contract=f'xmas{version}'
+ valid=[['раз','два','три'],['1','2','3']]+([['один','два','три']] if version==3 else [])
+ def probe(expr):return "a=[input() for _ in range(3)];print('ГОРИ' if "+expr+" else 'НЕ ГОРИ')"
+ SPECS[f'conditionals/xmas-tree-{version}']=(contract,'','',[
+ ('accept mixed encodings',probe("all(any(x==v[i] for v in "+repr(valid)+") for i,x in enumerate(a))")),
+ ('ignore order',probe('any(sorted(a)==sorted(v) for v in '+repr(valid)+')')),
+ ('strip significant spaces',probe('[x.strip() for x in a] in '+repr(valid)))])
+ORACLE_JS += r'''
+ if(data.contract==='xmas2'||data.contract==='xmas3') {
+  if(lines.length!==3 || input.includes('\r'))return null;
+  const seq=lines.join('\n');
+  return (seq==='раз\nдва\nтри'||seq==='1\n2\n3'||(data.contract==='xmas3'&&seq==='один\nдва\nтри')?'ГОРИ':'НЕ ГОРИ')+'\n';
+ }
+'''

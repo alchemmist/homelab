@@ -72,3 +72,6 @@ for (const [contract,input,output] of [['until_zero','-2\n1\n0\n9\n','-2\n1\n'],
  const r=run('Verify new tests against reviewed specification',response({cases:[{input,output},{input:'9\n',output:'9\n'}]}),{phase:'tests',data:{contract,calls:0,cases:[],examples:[]}});
  assert.deepEqual(r.data.cases,[{input,output}]);
 }
+for (const [contract,input,output] of [['xmas2','один\nдва\nтри\n','НЕ ГОРИ\n'],['xmas3','один\nдва\nтри\n','ГОРИ\n'],['xmas3','один\n2\n3\n','НЕ ГОРИ\n'],['xmas2','1\n2\n3\n','ГОРИ\n']]){
+ const r=run('Verify new tests against reviewed specification',response({cases:[{input,output}]}),{phase:'tests',data:{contract,calls:0,cases:[],examples:[]}});assert.deepEqual(r.data.cases,[{input,output}]);
+}
