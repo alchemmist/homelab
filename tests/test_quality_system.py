@@ -410,7 +410,7 @@ def test_new_issuer_alias_is_invisible_to_the_registered_list(tmp_path):
     rogue.write_text(
         "hostAliases:\n  - ip: 10.43.218.222\n    hostnames: [auth.socrat.alchemmist.xyz]\n"
     )
-    assert infra.check(tmp_path) == 9
+    assert infra.check(tmp_path) == 10
     with pytest.raises(ValueError, match="Unregistered issuer transport consumer"):
         boundaries.check(tmp_path)
 
