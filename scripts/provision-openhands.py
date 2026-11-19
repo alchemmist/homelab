@@ -59,7 +59,7 @@ def main():
                     {
                         "key_alias": "openhands-monori",
                         "models": ["v-deepseek-uc"],
-                        "max_parallel_requests": 2,
+                        "max_parallel_requests": 1,
                         "metadata": {"purpose": "owner-approved OpenHands; no paid fallback"},
                     }
                 ).encode(),

@@ -27,6 +27,7 @@ spec:
   policyTypes: [Ingress, Egress]
   ingress: []
   egress: []
+{{- if not .Values.retireFailedBackup }}
 ---
 apiVersion: batch/v1
 kind: Job
@@ -72,3 +73,4 @@ spec:
           configMap: {name: openhands-backup-pre142}
         - name: tmp
           emptyDir: {sizeLimit: 16Mi}
+{{- end }}
