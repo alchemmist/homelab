@@ -438,3 +438,10 @@ keeps original worktree and prior_ids in registry. Transfer replacement
 The QA continuation exception only probes the observed spurious request for
 permission to read the campaign ledger, once per controller lifetime; never
 generically retry `[БЛОКЕР QA]`, real access denials, pauses or auth failures.
+
+Routing preference: reserve o-deepseek for the mutation coordinator, keep
+its single-flight limit. QA parent/native roles and newly dispatched workers
+prefer v-deepseek-uc. Admit one active external worker per campaign. Existing
+workbook Qwen lane is a bounded exception, not the default model. A profile
+switch does not guarantee condenser migration. Common key admission can reject
+work even across different models. A failed lane is unfinished, not Ready.
