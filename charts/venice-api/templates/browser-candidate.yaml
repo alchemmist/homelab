@@ -100,8 +100,8 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 3
           resources:
-            requests: {cpu: 200m, memory: 1Gi}
-            limits: {memory: 3Gi}
+            requests: {cpu: 200m, memory: 2Gi}
+            limits: {memory: 8Gi}
           volumeMounts:
             - {name: profile, mountPath: /data}
             - {name: shm, mountPath: /dev/shm}
@@ -156,7 +156,7 @@ spec:
           persistentVolumeClaim:
             claimName: venice-browser-profile
         - name: shm
-          emptyDir: {medium: Memory, sizeLimit: 1Gi}
+          emptyDir: {medium: Memory, sizeLimit: 2Gi}
         - name: operator
           secret:
             secretName: venice-browser-operator
