@@ -48,3 +48,13 @@ for (const [year,answer] of [['2000','Високосный'],['2100','Не ви�
 }
 assert(graph.nodes.find(n=>n.name==='Claim next queued task and load checkpoint').parameters.query.includes("'leap'"));
 console.log('Leap-year oracle and transport timeout recovery passed');
+for (const [contract,input,output] of [
+ ['repeat4',' a \n',' a  a  a  a \n'],['python_exact','python\n','НЕТ\n'],['zen',' \n','НЕТ\n'],
+ ['meow','скотина\n','МЯУ\n'],['yes_no','да\nнет\n','ВЕРНО\n'],['xmas','1\n2\n3\n','НЕ ГОРИ\n'],
+ ['parrot',' a \nb\n\n',' a \nb\n\n'],['reverse',' a \nb\n\n','\nb\n a \n'],
+ ['temperature','15.5\n','НОРМАЛЬНО\n'],['temperature','28\n','НОРМАЛЬНО\n'],['heights','9\n100\n9\n','100\n9\n9\n']
+]) {
+ const r=run('Verify new tests against reviewed specification',response({cases:[{input,output},{input,output:'wrong\n'}]}),{phase:'tests',data:{contract,calls:0,cases:[],examples:[]}});
+ assert.equal(r.data.cases.length,1,contract);
+}
+console.log('Batch boundary oracles passed');
