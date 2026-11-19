@@ -1,4 +1,6 @@
 image:
+  # Built from artyom08-dev/deeperseeker 1b1148e plus local proxy wiring
+  # (DEEPSEEKER_BROWSER_PROXY / DEEPSEEKER_UPSTREAM_PROXY / DEEPSEEKER_TOKEN_CONCURRENCY).
   repository: harbor.socrat.alchemmist.xyz/homelab/deeperseeker
   tag: "1b1148ec1e2a"
   digest: "sha256:8bda1721167d3859ea09564f43da7e98b3bfd1cb17bf999ea3855b439e2a4be9"
