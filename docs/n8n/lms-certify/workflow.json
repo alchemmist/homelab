@@ -132,6 +132,29 @@
       }
     },
     {
+      "id": "4cd1281e-9e84-5a0f-83ca-660be243d4da",
+      "name": "Admit equivalent import if reviewed queue is empty",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1060,
+        -160
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH match AS (\n SELECT d.id, c.id AS origin, c.data AS ref\n FROM lms_certification.pilot d JOIN lms_certification.pilot c\n ON trim(replace(d.data->>'statement', E'\\n', ' '))=trim(replace(c.data->>'statement', E'\\n', ' '))\n WHERE d.phase='solve' AND d.data->>'contract'='draft_stdin' AND coalesce((d.data->>'calls')::int,0)=0\n AND c.phase='certified' AND c.id IN ('basics/conditionals/meow','basics/builtin-functions/add-two-numbers',\n 'basics/conditionals/echo-2','basics/environment-intro/parrot','basics/environment-intro/reverse-parrot')\n AND jsonb_array_length(d.data->'examples') BETWEEN 1 AND 16\n AND NOT EXISTS(SELECT 1 FROM lms_certification.pilot pending WHERE pending.phase NOT IN ('certified','needs_review')\n AND pending.data->>'contract' IN ('echo','fizzbuzz','heights','leap','length','meow','mult_table','parity','parrot','python_exact','repeat4','reverse','sign','sum','temperature','thank_count','until_empty','until_nonmultiple','until_zero','xmas','xmas2','xmas3','yes_no','zen'))\n ORDER BY d.id LIMIT 1 FOR UPDATE OF d SKIP LOCKED\n), admitted AS (\n UPDATE lms_certification.pilot d SET phase=CASE WHEN jsonb_array_length(kept.cases)>=3 THEN 'public' ELSE 'tests' END,\n data=d.data || jsonb_build_object('contract',m.ref->'contract','source',m.ref->'source','cases',kept.cases,\n 'importedExamplesRaw',dest.data->'examples','examples',display.cases,'faults',m.ref->'faults','equivalentTo',m.origin,'calls',0,'coverageHints',m.ref->'coverageHints',\n 'targetedCases',coalesce(m.ref->'targetedCases','[]'::jsonb)), updated_at=clock_timestamp()\n FROM match m JOIN lms_certification.pilot dest ON dest.id=m.id\n CROSS JOIN LATERAL (SELECT jsonb_agg(jsonb_build_object(\n 'input',CASE WHEN right(x->>'input',1)=chr(10) THEN x->>'input' ELSE (x->>'input')||chr(10) END,\n 'output',CASE WHEN right(x->>'output',1)=chr(10) OR x->>'output'='' THEN x->>'output' ELSE (x->>'output')||chr(10) END) ORDER BY ord) AS cases\n FROM jsonb_array_elements(dest.data->'examples') WITH ORDINALITY e(x,ord)) display\n CROSS JOIN LATERAL (SELECT coalesce(jsonb_agg(x ORDER BY ord),'[]'::jsonb) AS cases\n FROM jsonb_array_elements(m.ref->'cases') WITH ORDINALITY e(x,ord)\n WHERE NOT EXISTS(SELECT 1 FROM jsonb_array_elements(display.cases) pub WHERE pub->>'input'=x->>'input')) kept\n WHERE d.id=m.id RETURNING d.id\n) SELECT count(*)::int AS admitted FROM admitted",
+        "options": {
+          "queryReplacement": "={{ [] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_CERTIFICATION_DB",
+          "name": "CERTIFICATION_DB"
+        }
+      }
+    },
+    {
       "id": "3e35d6a7-a38f-565f-9b36-6b64b5569dcb",
       "name": "Claim next queued task and load checkpoint",
       "type": "n8n-nodes-base.postgres",
@@ -1487,6 +1510,17 @@
       ]
     },
     "Admission: model idle?": {
+      "main": [
+        [
+          {
+            "node": "Admit equivalent import if reviewed queue is empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Admit equivalent import if reviewed queue is empty": {
       "main": [
         [
           {

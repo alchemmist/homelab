@@ -98,6 +98,35 @@ entry, gate = idle('Admission:', 220, 0)
 reviewed = sorted({'echo','sum','length','parity','sign','leap'} | {spec[0] for spec in SPECS.values()})
 assert all(name.isidentifier() and name.isascii() for name in reviewed)
 contract_list = ','.join(repr(name) for name in reviewed)
+# Only rebind reviewed, plain-prose contracts; do not normalize whitespace inside
+# source listings, formatted templates or arbitrary statements. SQL folds only
+# single newline word wraps in these five explicitly reviewed source texts.
+refill = pg('Admit equivalent import if reviewed queue is empty', """WITH match AS (
+ SELECT d.id, c.id AS origin, c.data AS ref
+ FROM lms_certification.pilot d JOIN lms_certification.pilot c
+ ON trim(replace(d.data->>'statement', E'\\n', ' '))=trim(replace(c.data->>'statement', E'\\n', ' '))
+ WHERE d.phase='solve' AND d.data->>'contract'='draft_stdin' AND coalesce((d.data->>'calls')::int,0)=0
+ AND c.phase='certified' AND c.id IN ('basics/conditionals/meow','basics/builtin-functions/add-two-numbers',
+ 'basics/conditionals/echo-2','basics/environment-intro/parrot','basics/environment-intro/reverse-parrot')
+ AND jsonb_array_length(d.data->'examples') BETWEEN 1 AND 16
+ AND NOT EXISTS(SELECT 1 FROM lms_certification.pilot pending WHERE pending.phase NOT IN ('certified','needs_review')
+ AND pending.data->>'contract' IN (""" + contract_list + """))
+ ORDER BY d.id LIMIT 1 FOR UPDATE OF d SKIP LOCKED
+), admitted AS (
+ UPDATE lms_certification.pilot d SET phase=CASE WHEN jsonb_array_length(kept.cases)>=3 THEN 'public' ELSE 'tests' END,
+ data=d.data || jsonb_build_object('contract',m.ref->'contract','source',m.ref->'source','cases',kept.cases,
+ 'importedExamplesRaw',dest.data->'examples','examples',display.cases,'faults',m.ref->'faults','equivalentTo',m.origin,'calls',0,'coverageHints',m.ref->'coverageHints',
+ 'targetedCases',coalesce(m.ref->'targetedCases','[]'::jsonb)), updated_at=clock_timestamp()
+ FROM match m JOIN lms_certification.pilot dest ON dest.id=m.id
+ CROSS JOIN LATERAL (SELECT jsonb_agg(jsonb_build_object(
+ 'input',CASE WHEN right(x->>'input',1)=chr(10) THEN x->>'input' ELSE (x->>'input')||chr(10) END,
+ 'output',CASE WHEN right(x->>'output',1)=chr(10) OR x->>'output'='' THEN x->>'output' ELSE (x->>'output')||chr(10) END) ORDER BY ord) AS cases
+ FROM jsonb_array_elements(dest.data->'examples') WITH ORDINALITY e(x,ord)) display
+ CROSS JOIN LATERAL (SELECT coalesce(jsonb_agg(x ORDER BY ord),'[]'::jsonb) AS cases
+ FROM jsonb_array_elements(m.ref->'cases') WITH ORDINALITY e(x,ord)
+ WHERE NOT EXISTS(SELECT 1 FROM jsonb_array_elements(display.cases) pub WHERE pub->>'input'=x->>'input')) kept
+ WHERE d.id=m.id RETURNING d.id
+) SELECT count(*)::int AS admitted FROM admitted""", '[]', 1060, -160)
 claim = pg('Claim next queued task and load checkpoint', f'''WITH candidate AS (
  SELECT id FROM lms_certification.pilot
  WHERE phase NOT IN ('certified','needs_review')
@@ -109,7 +138,8 @@ claim = pg('Claim next queued task and load checkpoint', f'''WITH candidate AS (
 UPDATE lms_certification.pilot p SET owner=$1, lease_until=clock_timestamp()+interval '15 minutes'
 FROM candidate c WHERE p.id=c.id RETURNING p.phase,p.data''', '[$execution.id]', 1100, 0)
 chain(start, entry)
-link(gate, claim)
+link(gate, refill)
+link(refill, claim)
 checkpoint = pg('Checkpoint and dispatch next phase', '''UPDATE lms_certification.pilot
 SET phase = $2, data = $3::jsonb, updated_at = clock_timestamp(),
 lease_until = CASE WHEN $2 IN ('certified','needs_review') THEN NULL ELSE clock_timestamp() + interval '15 minutes' END
