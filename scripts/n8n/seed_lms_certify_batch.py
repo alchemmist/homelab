@@ -11,6 +11,8 @@ for key,(contract,stdin,stdout,faults) in SPECS.items():
  suite=yaml.safe_load((path/'tests.yaml').read_text())
  examples=[{'input':c['input'],'output':c['output']} for c in suite.get('cases',[]) if c.get('public')]
  data=dict(statement=(path/'statement.md').read_text(),contract=contract,calls=0,cases=[],examples=examples or [dict(input=stdin,output=stdout)],example_origin='canonical' if examples else 'operator_fixture',faults=[['empty','pass'],*faults])
+ if contract=='thank_count':
+  data['targetedCases']=[dict(input='спасибо.\n Спасибо. \nСпасибо.\n',output='3\n')]
  if contract in ('xmas2','xmas3'):
   prereqs=['xmas-tree']+(['xmas-tree-2'] if contract=='xmas3' else [])
   data['statement']='\n\n'.join([(path.parent / name / 'statement.md').read_text() for name in prereqs]+[data['statement']])

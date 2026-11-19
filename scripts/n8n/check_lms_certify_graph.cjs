@@ -79,3 +79,6 @@ for (const [contract,input,output] of [['xmas2','один\nдва\nтри\n','Н
  const input='14\n16\n',output='14\nFizzBuzz\n16\n';
  const r=run('Verify new tests against reviewed specification',response({cases:[{input,output},{input:'4\n4\n',output:'4\n'}]}),{phase:'tests',data:{contract:'fizzbuzz',calls:0,cases:[],examples:[]}});assert.deepEqual(r.data.cases,[{input,output}]);
 }
+for(const [contract,input,output] of [['thank_count','спасибо.\n Спасибо. \nСпасибо.\n','3\n'],['mult_table','2\n','1 * 1 = 1\n1 * 2 = 2\n2 * 1 = 2\n2 * 2 = 4\n']]) {
+ const r=run('Verify new tests against reviewed specification',response({cases:[{input,output}]}),{phase:'tests',data:{contract,calls:0,cases:[],examples:[]}});assert.deepEqual(r.data.cases,[{input,output}]);
+}

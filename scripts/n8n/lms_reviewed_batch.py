@@ -123,3 +123,29 @@ ORACLE_JS += r'''
   return result.join('\n')+'\n';
  }
 '''
+
+def count_probe(initial, condition):
+ return f'n={initial}\nwhile True:\n s=input(); n+=1\n if {condition}: break\nprint(n)'
+SPECS['while-intro/count-lines']=('thank_count','','',[
+ ('exclude final line',count_probe(-1,"s=='Спасибо.'")),
+ ('ignore case',count_probe(0,"s.lower()=='спасибо.'")),
+ ('ignore spaces',count_probe(0,"s.strip()=='Спасибо.'"))])
+
+def table_probe(i,j,value):
+ return f'n=int(input())\nfor i in {i}:\n for j in {j}:\n  print(f"{{i}} * {{j}} = {{{value}}}")'
+SPECS['nested-loops/table-as-list']=('mult_table','','',[
+ ('omit last row',table_probe('range(1,n)','range(1,n+1)','i*j')),
+ ('upper triangle only',table_probe('range(1,n+1)','range(i,n+1)','i*j')),
+ ('add instead of multiply',table_probe('range(1,n+1)','range(1,n+1)','i+j'))])
+ORACLE_JS += r'''
+ if(data.contract==='thank_count') {
+  if(!input.endsWith('\n') || input.includes('\r'))return null;
+  const idx=lines.indexOf('Спасибо.'); return idx<0?null:String(idx+1)+'\n';
+ }
+ if(data.contract==='mult_table') {
+  if(lines.length!==1 || !/^[1-6]$/.test(lines[0]))return null;
+  const n=Number(lines[0]), rows=[];
+  for(let i=1;i<=n;i++)for(let j=1;j<=n;j++)rows.push(`${i} * ${j} = ${i*j}`);
+  return rows.join('\n')+'\n';
+ }
+'''
