@@ -25,7 +25,14 @@ def kube_secret(ns, name):
 
 
 def main():
+    dry = os.environ.get("PROVISION_OPENHANDS_DRY_RUN") == "1"
     current = kube_secret("openhands", "openhands-model")
+    if dry and (
+        not current
+        or current["metadata"].get("annotations", {}).get("homelab/key-alias") != "openhands-monori"
+    ):
+        print("dry-run: would create openhands-monori without o-deepseek, max_parallel_requests 3")
+        return
     if (
         not current
         or current["metadata"].get("annotations", {}).get("homelab/key-alias") != "openhands-monori"
@@ -58,7 +65,7 @@ def main():
                 data=json.dumps(
                     {
                         "key_alias": "openhands-monori",
-                        "models": ["v-deepseek-uc", "o-deepseek", "qwen3.8-27b"],
+                        "models": ["v-deepseek-uc", "qwen3.8-27b"],
                         "max_parallel_requests": 3,
                         "metadata": {"purpose": "owner-approved OpenHands; no paid fallback"},
                     }
@@ -96,8 +103,8 @@ def main():
             forward.terminate()
             forward.wait(timeout=10)
     key = base64.b64decode(kube_secret("openhands", "openhands-model")["data"]["api-key"]).decode()
-    # Keep the virtual key aligned with this script. A later run must not leave a
-    # hand-edited higher parallelism or the web-bridge model in place.
+    # o-deepseek rpm is shared. This key must not hold that model. Parallelism
+    # stays at least 3 and is never lowered below the live key.
     master = (
         base64.b64decode(kube_secret("llm", "litellm-env")["data"]["LITELLM_MASTER_KEY"])
         .decode()
@@ -119,15 +126,34 @@ def main():
             except OSError:
                 time.sleep(0.25)
         headers = {"Authorization": "Bearer " + master, "Content-Type": "application/json"}
+        info = json.load(
+            urllib.request.urlopen(
+                urllib.request.Request(
+                    f"http://127.0.0.1:{port}/key/info",
+                    headers=headers,
+                    data=json.dumps({"key": key}).encode(),
+                ),
+                timeout=30,
+            )
+        ).get("info") or {}
+        live_parallel = int(info.get("max_parallel_requests") or 0)
+        parallel = max(live_parallel, 3)
+        models = ["v-deepseek-uc", "qwen3.8-27b"]
+        if dry:
+            print(
+                "dry-run openhands-monori models",
+                models,
+                "max_parallel_requests",
+                parallel,
+                "live",
+                live_parallel,
+            )
+            return
         request = urllib.request.Request(
             f"http://127.0.0.1:{port}/key/update",
             headers=headers,
             data=json.dumps(
-                {
-                    "key": key,
-                    "models": ["v-deepseek-uc", "o-deepseek", "qwen3.8-27b"],
-                    "max_parallel_requests": 3,
-                }
+                {"key": key, "models": models, "max_parallel_requests": parallel}
             ).encode(),
         )
         urllib.request.urlopen(request, timeout=30).close()

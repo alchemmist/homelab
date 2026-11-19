@@ -150,7 +150,7 @@ Values: `deploy/platform/litellm/values.yaml`. Имя модели для кли
 Проверка из пода LiteLLM мастер-ключом, после первого rollout: `model=o-deepseek` вернул
 **200** и `pong`. Это один короткий вызов, не сутки стабильности и не нагрузка агента.
 
-Ключ `openhands-monori` получил `o-deepseek`. `v-deepseek-uc` — отдельный маршрут Venice, не этот мост.
+`v-deepseek-uc` — отдельный маршрут Venice, не этот мост. `openhands-monori` к `o-deepseek` не подключён.
 
 ## Чего эта приёмка не закрывает
 
@@ -207,8 +207,7 @@ signature и открывают разные чаты upstream. Обрыв ст�
 `charts/deeperseeker/templates/deployment.yaml`. Argo берёт чарт и поверх него
 `deploy/deeperseeker/values.yaml`; этот overlay лимиты не перетирает.
 
-Ключи LiteLLM, которым выдан `o-deepseek`: `alchemmist` и `openhands-monori`.
-У `openhands-monori` свой `max_parallel_requests` равен 3. Это глубина очереди ключа, не параллелизм `o-deepseek`: модель всё равно пускает один запрос. Модельный `rpm` общий, поэтому агент может занять весь бюджет ручного чата. Модель на ключе оставлена по решению владельца. `scripts/provision-openhands.py` выдаёт тот же набор: `v-deepseek-uc`, `o-deepseek`, `qwen3.8-27b`, parallel 3.
+Ключ LiteLLM с `o-deepseek`: `alchemmist`. У `openhands-monori` модели `qwen3.8-27b` и `v-deepseek-uc`, `max_parallel_requests` 3 (в живой базе тоже 3; скрипт не опускает его ниже этого значения и не возвращает `o-deepseek`). Модельный `rpm` общий, поэтому агент с parallel 3 выедал весь потолок ручного чата.
 
 19 ноября 2026 токен `main` был `QUARANTINED`. Один Restore вернул его в `ACTIVE`, один короткий ход ответил `40003 INVALID_TOKEN`, и мост снова поставил карантин. Второй Restore не делался. До 21 ноября 2026, 23:48, это не лечится новым логином того же аккаунта, если `main` и есть забаненный аккаунт; совпадение по-прежнему не доказано, но сессия отозвана.
 
