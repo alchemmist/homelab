@@ -214,9 +214,9 @@
     },
     {
       "id": 5,
-      "title": "Web chats created per hour",
+      "title": "Web chat log lines per hour (incomplete)",
       "type": "timeseries",
-      "description": "Rolling count of DeeperSeeker log lines that record a web chat_session create, over the preceding hour. This is chats per hour, not LiteLLM requests per minute. The bridge logs chat_session/create when that call fails; a success line is not emitted by image 1b1148ec1e2a, so an empty series is a valid zero. Do not sum adjacent points.",
+      "description": "\u0421\u0447\u0438\u0442\u0430\u0435\u0442 \u043d\u0435\u043f\u043e\u043b\u043d\u043e. Image 1b1148ec1e2a does not log a successful chat_session create. This rolling hour counts log lines that mention chat_session/create, which are errors and other noise, not chats. Do not use it to decide pace or bans. Do not sum adjacent points.",
       "datasource": {
         "type": "loki",
         "uid": "loki"
@@ -231,7 +231,7 @@
         {
           "refId": "A",
           "expr": "sum(count_over_time({service_name=\"deeperseeker\", k8s_namespace_name=\"deeperseeker\"} |~ \"chat_session/create|created chat_session\" [1h]))",
-          "legendFormat": "chats / rolling hour"
+          "legendFormat": "incomplete log lines / rolling hour"
         }
       ],
       "fieldConfig": {
@@ -245,7 +245,7 @@
             "fillOpacity": 10,
             "showPoints": "never",
             "spanNulls": false,
-            "axisLabel": "chats / rolling hour"
+            "axisLabel": "incomplete log lines / rolling hour"
           }
         },
         "overrides": []

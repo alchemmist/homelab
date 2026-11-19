@@ -39,6 +39,7 @@ metadata:
     app: deeperseeker
 spec:
   replicas: 1
+  progressDeadlineSeconds: 604800
   strategy:
     type: Recreate
   selector:

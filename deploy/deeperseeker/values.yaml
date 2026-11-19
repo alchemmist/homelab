@@ -11,5 +11,5 @@ imagePullSecrets:
 browserPlatform: Linux
 browserUserAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36"
 clientVersion: "2.8.0"
-cookieHeadless: "false"
-warmupNonHeadless: "true"
+cookieHeadless: "true"
+warmupNonHeadless: "false"

@@ -1,0 +1,14 @@
+diff --git a/functions.py b/functions.py
+--- a/functions.py
++++ b/functions.py
+@@ -4323,7 +4323,9 @@ async def create_new_chat(auth_token):
+         )
+         async with response:
+             data = await _safe_json(response, "chat_session/create", auth_token)
+-        return _biz_data(data, "chat_session/create")["chat_session"]["id"]
++        session_id = _biz_data(data, "chat_session/create")["chat_session"]["id"]
++        logger.info("created chat_session %s", session_id)
++        return session_id
+ 
+ 
+ async def purge_chats_for_token(token_id: int):

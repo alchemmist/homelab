@@ -49,7 +49,9 @@ def test_temporary_acceptance_keys_are_not_user_activity() -> None:
     assert all('api_key_alias!~"venice-acceptance-.*"' in t["expr"] for t in targets)
     chats = next(p for p in d["panels"] if p["id"] == 5)
     assert "[1h]" in chats["targets"][0]["expr"] and "chat_session" in chats["targets"][0]["expr"]
-    assert chats["fieldConfig"]["defaults"]["custom"]["axisLabel"] == "chats / rolling hour"
+    assert "incomplete" in chats["title"]
+    assert "\u0441\u0447\u0438\u0442\u0430\u0435\u0442 \u043d\u0435\u043f\u043e\u043b\u043d\u043e" in chats["description"].lower()
+    assert chats["fieldConfig"]["defaults"]["custom"]["axisLabel"] == "incomplete log lines / rolling hour"
 
 
 def test_models_are_separate_and_public_content_is_aggregate() -> None:
