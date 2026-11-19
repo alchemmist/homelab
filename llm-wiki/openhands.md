@@ -383,3 +383,24 @@ from the pinned image are SHA-checked and compiled in emptyDir; read-only overla
 is mounted solely in Canvas. Remove/disable the value to restore stock behavior;
 image changes must explicitly revalidate or remove overlay. Does not suppress
 confirmation, pause, finish, errors, stuck detection, provider limits or quotas.
+
+## Cold full-claim recovery checkpoint —19 Nov 2026
+
+Retained `data-openhands-0` while Canvas was scaled to zero via Argo. Offline
+`openhands-cold-backup-20261119` archived both full PVC directories without
+exclusions. Streamed gzip + AES256-GCM; separate retained 3Gi claim
+`openhands-cold-backups`, `canvas-cold-20261119.{gcm,json}`. OAEP/SHA256
+recipient private key stays on operator laptop. Job authenticated reread of
+ciphertext before parsing tar, verified critical restored bytes against cold
+source, restored automation DB/WAL into disposable tmpfs, SQLite integrity OK,
+settings/HANDOFF and both conversation base JSONs and history present. No writes
+to source or restoration over live history. Owner-key unwrap proof and private
+receipt: `scripts/verify-openhands-cold-receipt.py`; 798911317 ciphertext bytes,
+125353 members, SHA256 2a556be3e9da39732dc03455b65517ceb8cd233447047b85657cc5af0a14ecdc.
+For disaster recovery, authenticate entire ciphertext **before** trusting tar.
+Use AES GCM IV/tag from receipt, AAD = ASCII `openhands-full-claim-v2`, wrapped
+key RSA-OAEP-SHA256/MGF1-SHA256. Restore into an isolated empty volume first,
+not over live data. This is a same-node checkpoint, not off-site DR or a full
+application boot test. Do not replay this dated Job against a running Canvas.
+Old failed pre142 attempt (UID fc7f87f8-226f-4ef5-a357-38d3358feed0) ran
+18 Nov18:15 UTC, exit1, no retries; reason unavailable. Both old claims kept.
