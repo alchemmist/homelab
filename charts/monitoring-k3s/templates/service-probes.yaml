@@ -19,7 +19,7 @@ data:
         http:
           preferred_ip_protocol: ip4
           follow_redirects: false
-          valid_status_codes: [200, 302, 307]
+          valid_status_codes: [200, 302, 303, 307]
       tcp_connect:
         prober: tcp
         timeout: 3s

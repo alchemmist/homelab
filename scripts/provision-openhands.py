@@ -35,7 +35,7 @@ def main():
                 except OSError: time.sleep(.25)
             headers = {'Authorization': 'Bearer ' + master, 'Content-Type': 'application/json'}
             request = urllib.request.Request(f'http://127.0.0.1:{port}/key/generate', headers=headers,
-                data=json.dumps({'key_alias':'openhands-monori','models':['v-deepseek-uc'],'max_parallel_requests':2,
+                data=json.dumps({'key_alias':'openhands-monori','models':['v-deepseek-uc'],'max_parallel_requests':1,
                                  'metadata':{'purpose':'owner-approved OpenHands; no paid fallback'}}).encode())
             created = json.load(urllib.request.urlopen(request, timeout=30))['key']
             payload = {'apiVersion':'v1','kind':'Secret','metadata':{'name':'openhands-model','namespace':'openhands',
