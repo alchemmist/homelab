@@ -70,4 +70,18 @@ compactor:
   compaction_interval: 2m
 analytics:
   reporting_enabled: false
+ruler:
+  evaluation_interval: 1m
+  enable_api: true
+  storage:
+    type: local
+    local:
+      directory: /etc/otel/loki-rules
+  rule_path: /tmp/loki-ruler
+  alertmanager_url: http://127.0.0.1:9093
+  ring:
+    kvstore:
+      store: inmemory
+  remote_write:
+    enabled: false
 ...

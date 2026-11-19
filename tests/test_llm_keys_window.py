@@ -8,7 +8,7 @@ import pytest
 
 TABLE_PANEL_ID = 4
 REQUEST_TARGET_COUNT = 5
-DASHBOARD_PANEL_COUNT = 4
+DASHBOARD_PANEL_COUNT = 5
 TABLE_GRID_Y = 16
 REQUEST_PANEL_HEIGHT = 8
 REQUEST_MODELS = ("qwen3.8-27b", "venice-agentic-deepseek-v4.1-flash-uncensored", "o-deepseek")
@@ -36,15 +36,20 @@ def test_requests_window_is_independent_of_time_picker(panel_id: int) -> None:
 
 
 def test_temporary_acceptance_keys_are_not_user_activity() -> None:
-    """Temporary acceptance keys stay excluded from every dashboard query."""
+    """Temporary acceptance keys stay excluded from every Prometheus query."""
     d = json.loads(
         (
             Path(__file__).resolve().parents[1] / "charts/monitoring-k3s/dashboards/llm-keys.json"
         ).read_text()
     )
-    targets = [t for p in d["panels"] for t in p.get("targets", [])]
+    targets = [
+        t for p in d["panels"] for t in p.get("targets", []) if "api_key_alias" in t["expr"]
+    ]
     assert len(targets) == REQUEST_TARGET_COUNT
     assert all('api_key_alias!~"venice-acceptance-.*"' in t["expr"] for t in targets)
+    chats = next(p for p in d["panels"] if p["id"] == 5)
+    assert "[1h]" in chats["targets"][0]["expr"] and "chat_session" in chats["targets"][0]["expr"]
+    assert chats["fieldConfig"]["defaults"]["custom"]["axisLabel"] == "chats / rolling hour"
 
 
 def test_models_are_separate_and_public_content_is_aggregate() -> None:
@@ -55,7 +60,7 @@ def test_models_are_separate_and_public_content_is_aggregate() -> None:
         ).read_text()
     )
     assert len(d["panels"]) == DASHBOARD_PANEL_COUNT
-    assert [p["id"] for p in d["panels"]] == [1, 2, 3, TABLE_PANEL_ID]
+    assert [p["id"] for p in d["panels"]] == [1, 2, 3, 5, TABLE_PANEL_ID]
     assert d["annotations"] == {"list": []}
     assert d["time"]["from"] == "now-1h"
     for panel, model in zip(d["panels"][:3], REQUEST_MODELS, strict=True):
@@ -65,7 +70,7 @@ def test_models_are_separate_and_public_content_is_aggregate() -> None:
         assert "sum by (api_key_alias)" in expr
         assert "[1m]" in expr
         assert "$__interval" not in expr
-    assert d["panels"][3]["gridPos"]["y"] == TABLE_GRID_Y
+    assert next(p for p in d["panels"] if p["id"] == TABLE_PANEL_ID)["gridPos"]["y"] == TABLE_GRID_Y
     assert all(p["gridPos"]["h"] == REQUEST_PANEL_HEIGHT for p in d["panels"][:3])
 
 
@@ -132,6 +137,10 @@ def test_owner_three_chart_grid_and_legend() -> None:
         ).read_text()
     )
     assert [p["gridPos"] for p in d["panels"]] == [
-        dict(x=x, y=y, w=w, h=8) for x, y, w in [(0, 0, 12), (12, 0, 12), (0, 8, 12), (0, 16, 24)]
+        {"x": 0, "y": 0, "w": 12, "h": 8},
+        {"x": 12, "y": 0, "w": 12, "h": 8},
+        {"x": 0, "y": 8, "w": 12, "h": 8},
+        {"x": 12, "y": 8, "w": 12, "h": 8},
+        {"x": 0, "y": 16, "w": 24, "h": 8},
     ]
     assert all(p["options"]["legend"]["placement"] == "bottom" for p in d["panels"][:3])

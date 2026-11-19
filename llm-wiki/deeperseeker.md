@@ -211,9 +211,28 @@ signature и открывают разные чаты upstream. Обрыв ст�
 
 19 ноября 2026 токен `main` был `QUARANTINED`. Один Restore вернул его в `ACTIVE`, один короткий ход ответил `40003 INVALID_TOKEN`, и мост снова поставил карантин. Второй Restore не делался. До 21 ноября 2026, 23:48, это не лечится новым логином того же аккаунта, если `main` и есть забаненный аккаунт; совпадение по-прежнему не доказано, но сессия отозвана.
 
-Readiness требует 200 от `/health?deep=1`. Пока токен в карантине, под `1/2`, Argo Degraded. Это ожидаемо. Откатывать лимиты из-за Degraded не нужно.
+`Argo Health=Degraded` при `QUARANTINED`-токене — ожидаемое поведение, readiness честно красный, откатывать лимиты не надо.
 
-Сессии этого алиаса, накопленные до карантина, удалены до следующего живого токена: иначе первый трафик продолжил бы мёртвые чаты и открыл новые.
+Счётчик созданных веб-чатов: панель `Web chats created per hour` на дашборде `socrat-llm-keys`, рядом с запросами `o-deepseek`. Запрос — скользящий час, не минута. То же выражение — правило Loki `deeperseeker:web_chats:created:1h` в `charts/loki/files/rules/fake/deeperseeker-web-chats.yaml`. Образ `1b1148ec1e2a` пишет `chat_session/create` в лог при ошибке создания и молчит при успехе, поэтому пустая панель значит «в логах нет такой строки», а не сломанный запрос.
+
+### Сбросить сессии перед возвратом аккаунта
+
+Делать это в последние минуты перед первым разрешённым логином, не раньше: рестарт пода до конца бана прогревает браузер и трогает upstream. `POST /tokens/{id}/purge` и `/tokens/purge_all` не использовать: они шлют `chat_session/delete_all` на `chat.deepseek.com`.
+
+1. Убедиться, что чат на `o-deepseek` никто не шлёт (ключ `openhands-monori` этой модели не имеет).
+2. Посмотреть алиасы, не печатая токен:
+
+```bash
+kubectl -n deeperseeker exec deploy/deeperseeker -c deeperseeker -- python -c 'import sqlite3; c=sqlite3.connect("/app/data/deeperseeker.db"); print(c.execute("select id, alias, status from tokens").fetchall())'
+```
+
+3. Для id этого алиаса стереть только локальные signature. `device_id` не трогать.
+
+```bash
+kubectl -n deeperseeker exec deploy/deeperseeker -c deeperseeker -- python -c 'import sqlite3,sys; tid=int(sys.argv[1]); c=sqlite3.connect("/app/data/deeperseeker.db"); c.execute("delete from sessions where token_id=?", (tid,)); c.execute("delete from session_map where token_id=?", (tid,)); c.commit(); print("cleared", tid)' ID
+```
+
+База на PVC: `/app/deeperseeker.db` — ссылка на `/app/data/deeperseeker.db`. После очистки следующий ход не найдёт старый чат и откроет один новый, а не пачку по старым signature.
 
 Старый под в namespace `llm` снят: чарт, образ в `services/` и Application удалены из Git.
 PVC профиля и секреты этого пода удаляются вместе с ним. Secret `deeperseeker-service-vpn` не трогать.

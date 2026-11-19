@@ -1,0 +1,10 @@
+groups:
+  - name: deeperseeker-web-chats
+    interval: 1m
+    rules:
+      # Chats per rolling hour. The bridge names the upstream call chat_session/create
+      # in the log line. Success on image 1b1148ec1e2a is silent, so the series is empty
+      # until a create is logged. This is not requests per minute.
+      - record: deeperseeker:web_chats:created:1h
+        expr: |
+          sum(count_over_time({service_name="deeperseeker", k8s_namespace_name="deeperseeker"} |~ "chat_session/create|created chat_session" [1h]))
