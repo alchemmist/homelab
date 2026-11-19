@@ -163,6 +163,7 @@ for i, (phase, title) in enumerate(phase_specs):
         if phase in {'tests','expand'}:
             prompt = json.dumps(test_prompt, ensure_ascii=False) + f" + '\\nУсловие: ' + {r}.data.statement"
             prompt = f"({r}.data.contract === 'mult_table' ? " + json.dumps('Предложи четыре разных маленьких натуральных размера таблицы от 1 до 6 кроме публичного примера 3. Только входы: JSON {"cases":[{"input":"1\\n"}]}. Не генерируй таблицы вывода. Условие: ') + f" + {r}.data.statement : (" + prompt + "))"
+            prompt = f"({r}.data.contract === 'thank_count' ? " + json.dumps('Предложи 6 разных входов, включая немедленное завершение, пустую строку до завершения и похожие, но неточные варианты маркера. Каждый вход содержит отдельную строку ровно Спасибо. и перевод строки после неё. Только JSON {"cases":[{"input":"Спасибо.\\n"}]}; ожидаемые ответы вычисляет проверяющая программа. Условие: ') + f" + {r}.data.statement : (" + prompt + "))"
             if phase == 'expand':
                 prompt += f''' + '\\nУже проверенные входы: ' + JSON.stringify({r}.data.cases.map(c => c.input)) + '\\nЧто не поймано: ' + JSON.stringify({r}.data.survivors) + '\\nЦелевые условия для покрытия: ' + JSON.stringify({r}.data.coverageHints || '')'''
         else:
@@ -218,7 +219,7 @@ const proposals = [...(phase === 'expand' ? data.targetedCases || [] : []), ...(
 for (const c of proposals) {
  if (typeof c?.input !== 'string' || c.input.length>256) continue;
  const oracle = expected(c.input);
- const output = data.contract==='mult_table' && c.output===undefined ? oracle : c.output;
+ const output = ['mult_table','thank_count'].includes(data.contract) && c.output===undefined ? oracle : c.output;
  if (typeof output !== 'string' || oracle !== output || seen.has(c.input) ||
      data.examples.some(e=>e.input===c.input) || cases.length>=16) continue;
  cases.push({input:c.input,output});seen.add(c.input);
