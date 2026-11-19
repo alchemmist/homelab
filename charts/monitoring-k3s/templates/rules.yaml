@@ -266,3 +266,18 @@ spec:
             summary: Container is restarting frequently.
             description: 'Container {{ "{{ $labels.container }}" }} in pod {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }} on node {{ "{{ $labels.node }}" }} has an estimated increase of at least 3 restarts in the trailing 30m for 1m. This includes regular and init containers and does not require continuous unready or CrashLoopBackOff states. Check termination reasons and previous container logs; Prometheus increase extrapolates between samples.'
             rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/{{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }}'
+        - alert: SocratDeeperSeekerSessionLoggedOut
+          expr: |
+            kube_pod_container_status_ready{job="kube-state-metrics",namespace="deeperseeker",container="deeperseeker"} == 0
+            and
+            kube_pod_container_status_running{job="kube-state-metrics",namespace="deeperseeker",container="deeperseeker"} == 1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "SocratDeeperSeekerSessionLoggedOut" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
+            summary: DeeperSeeker web session is logged out.
+            description: 'Container deeperseeker in {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }} has been running but not Ready for 5m. Readiness calls /health?deep=1 and stays red when the token pool has no ACTIVE token, which is what a DeepSeek logout and 40003 INVALID_TOKEN quarantine look like. One Restore, then one short call. A second 40003 needs a new userToken from a normal browser; close that tab without logging out. This rule does not fire when the container is stopped or crash-looping.'
+            rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/deeperseeker/{{ "{{ $labels.pod }}" }}'

@@ -1024,6 +1024,37 @@
   },
   {
     "owner": "monitoring-k3s",
+    "resource": "monitoring-k3s-shared-registry",
+    "group": "socrat.containers.health",
+    "alert": "SocratDeeperSeekerSessionLoggedOut",
+    "expr": "kube_pod_container_status_ready{job=\"kube-state-metrics\",namespace=\"deeperseeker\",container=\"deeperseeker\"} == 0\nand\nkube_pod_container_status_running{job=\"kube-state-metrics\",namespace=\"deeperseeker\",container=\"deeperseeker\"} == 1\n",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratDeeperSeekerSessionLoggedOut",
+          "dashboard_uid": "alerts-45608093acd53723",
+          "panel_id": 5,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratDeeperSeekerSessionLoggedOut / rule evaluations",
+          "dashboard_uid": "alerts-45608093acd53723",
+          "panel_id": 6,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
     "resource": "socrat-control-plane-safety",
     "group": "socrat.control-plane.safety",
     "alert": "SocratEtcdQuorumHealthUnproven",
@@ -2577,7 +2608,7 @@
     "resource": "monitoring-update-watch",
     "group": "socrat.software.updates",
     "alert": "SocratSoftwareUpdateAvailable",
-    "expr": "socrat_software_update_available{job=\"monitoring-update-watch\"} == 1",
+    "expr": "sum(max by (app) (socrat_software_update_available{job=\"monitoring-update-watch\",latest!=\"\"})) > 0",
     "uid": null,
     "graphs": {
       "version": 1,

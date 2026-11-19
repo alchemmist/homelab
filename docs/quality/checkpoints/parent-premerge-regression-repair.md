@@ -2,7 +2,7 @@
 
 ## Scope and owner synchronization
 
-The operator requested repairing the problems identified in the13-failure review. Merge `c87fdc3f` incorporates owner main `9b2501dc520c25615e71db0e9d42f492ca380c44`. Provisioning conflict resolution retains the complete owner AST/comments and formats source only; it was never imported/executed. Dashboard tests retain the local absence/window/model negatives and incoming three-panel/grid/legend assertions. Retired free-deepseek source is not restored. This receipt is not production or independent reviewer acceptance.
+The operator requested repairing the problems identified in the13-failure review. Merge `c87fdc3f` incorporates owner main `df10f291260e2505eda2d960210440541f133fb5`. Provisioning conflict resolution retains the complete owner AST/comments and formats source only; it was never imported/executed. Dashboard tests retain the local absence/window/model negatives and incoming three-panel/grid/legend assertions. Retired free-deepseek source is not restored. This receipt is not production or independent reviewer acceptance.
 
 ## LMS actual-source fix
 
@@ -39,3 +39,5 @@ Native Python admission remains a distinct infrastructure limitation: the prior 
 Private evidence: `~/Library/Application Support/homelab/quality-strict/premerge-regression-review/`, including canonical-main equivalence for the original review, all30initial reproductions, and separate repair proofs. Main may advance again; publication must still pass the sole fresh-ancestry fail-closed publisher.
 
 The first broad run passed all13previously failing cases and medium326tests, but correctly caught one new owner-retirement inventory drift: main removed the free-deepseek-api Application while its no-client audit row remained. Remove exactly that row; all other application/workload/client fields are unchanged and the existing complete-set test is retained. No MCP client or credential is admitted.
+
+A subsequent frozen-SHA owner synchronization targets `e0c1a93e138629fd308ef8472fd6a630a51dd9c8`: preserve owner alert additions/conditions and controller source without executing controller loops. The alert generator retains owner AST/comments with only the two previously reviewed YAML document-framing keyword pairs; the source count increases205→206 only for the actual additive logout alert. New owner registry mounts are two explicit read-only native PVC subpaths, not a broad mount allowance. No registry, provider, DNS or worker operation runs.

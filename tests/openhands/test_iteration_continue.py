@@ -18,3 +18,10 @@ class Resume(unittest.TestCase):
  def test_read_probe_is_narrow(self):
   def event(t):return dict(id='qa',kind='MessageEvent',source='agent',llm_message={'content':[{'text':t}]})
   msg='[БЛОКЕР QA] Жду разрешения хост-рантайма на чтение QA_PROGRESS.md';self.assertEqual(m.ledger_probe([event(msg)]),'qa');self.assertIsNone(m.ledger_probe([event(msg+' EACCES')]));self.assertIsNone(m.ledger_probe([event('[БЛОКЕР QA] нет доступа к GitHub')]));self.assertIsNone(m.ledger_probe([dict(event(msg),source='user')]))
+ def test_bridge_is_route_and_error_specific(self):
+  e=dict(kind='ConversationErrorEvent',code='LLMServiceUnavailableError',detail="Connection error. model group 'o-deepseek'");self.assertTrue(m.bridge_disconnected(e));self.assertFalse(m.bridge_disconnected(dict(e,code='LLMAuthenticationError')));self.assertFalse(m.bridge_disconnected(dict(e,detail="Connection error. model group 'v-deepseek-uc'")))
+ def test_worker_resume(self):
+  def ev(t):return dict(kind='MessageEvent',source='agent',id='p',llm_message={'content':[{'text':t}]})
+  self.assertEqual(m.pending_worker('finished',[ev('I need to look at the tests.')],0),('plan','p'))
+  for t in ['I need to get permission.', 'Done: https://github.com/example', '[БЛОКЕР QA]','Tests passed.']:self.assertIsNone(m.pending_worker('finished',[ev(t)],0))
+  self.assertIsNone(m.pending_worker('paused',[ev('I need to read tests.')],0))

@@ -36,7 +36,7 @@ class AlertGraphInventoryTests(unittest.TestCase):
         """Every source variant links to a real panel containing its exact condition."""
         rows = json.loads((ROOT / "docs/monitoring/alert-graphs.inventory.json").read_text())
         # Main split PSI and CPU steal into ordinary-node and socrat-4 variants.
-        expected_source_rule_count = 205
+        expected_source_rule_count = 206
         assert len(rows) == expected_source_rule_count
         expected_graph_spec_version = 1
         for row in rows:

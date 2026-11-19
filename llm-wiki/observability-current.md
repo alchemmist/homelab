@@ -125,7 +125,7 @@ finalizers: это может каскадно удалить workload. Обыч
 
 ## Software update alerts
 
-Third-party images are compared with the newest stable GitHub release by `monitoring-update-watch` in `charts/monitoring-k3s` (`updateWatch.targets`). The Prometheus rule is `SocratSoftwareUpdateAvailable` (`for: 15m`, severity warning). It uses the same Grafana alert graphs, Alertmanager, n8n workflow and socrat-bot `POST /v1/messages` path as other warning alerts. Nothing in this path upgrades a workload.
+Third-party images are compared with the newest stable GitHub release by `monitoring-update-watch` in `charts/monitoring-k3s` (`updateWatch.targets`). The Prometheus rule is `SocratSoftwareUpdateAvailable` (`for: 15m`, severity warning). It uses the same Grafana alert graphs, Alertmanager, n8n workflow and socrat-bot `POST /v1/messages` path as other warning alerts. This is one cluster-wide alert, not one instance per app: its value counts apps with an update. The primary graph shows one step line per catalog app (0 = checked and current, 1 = newer stable release, missing = unknown). Version changes do not create new lines. A new release appears after the next successful lookup, not at publication time. While the alert is already firing, another app switching to 1 changes the graph and count, not the alert identity. Nothing in this path upgrades a workload.
 
 Installed version comes from the running container tag when the tag contains `x.y.z`. Digest-only images use `updateWatch.targets[].current`, which must be changed in the same commit as the chart pin. Open WebUI and 3x-ui are in the catalog. Xray is not a separate Deployment; it ships inside the 3x-ui image. Apps released from this homelab's own repositories are not in the catalog.
 

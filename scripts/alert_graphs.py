@@ -6,13 +6,12 @@ not changed. Requires Helm and PyYAML, like the repository's chart contract test
 """
 
 import argparse
+from collections import defaultdict
 import hashlib
 import json
+from pathlib import Path
 import re
 import subprocess
-from collections import defaultdict
-from pathlib import Path
-
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -299,6 +298,28 @@ def build(rules, panel_ids=None):
                 for i, item in enumerate(variants)
             ],
         }
+        if (owner, name) == ("monitoring-k3s", "SocratSoftwareUpdateAvailable"):
+            # The alert has a single cluster identity; the diagnostic keeps stable app identities.
+            panel["targets"] = [
+                {
+                    "refId": "1",
+                    "datasource": panel["datasource"],
+                    "legendFormat": "{{app}}",
+                    "expr": 'max by (app) (socrat_software_update_available{job="monitoring-update-watch",latest!=""})',
+                }
+            ]
+            panel["description"] = (
+                "One line per application: 0 = up to date, 1 = newer stable release. Failed checks leave gaps."
+            )
+            panel["fieldConfig"] = {
+                "defaults": {
+                    "min": 0,
+                    "max": 1,
+                    "decimals": 0,
+                    "custom": {"lineInterpolation": "stepAfter", "spanNulls": False},
+                },
+                "overrides": [],
+            }
         dashboard["panels"].append(state)
         spec = {
             "version": 1,

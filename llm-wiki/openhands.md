@@ -446,4 +446,11 @@ workbook Qwen lane is a bounded exception, not the default model. A profile
 switch does not guarantee condenser migration. Common key admission can reject
 work even across different models. A failed lane is unfinished, not Ready.
 
+Mutation coordinator recovery: `deeperseeker-ready` headless Service publishes
+only ready addresses; the continuation sidecar resolves its DNS name without
+sending credentials, health traffic or model requests. For the pinned mutation
+parent only, on its o-deepseek connection error and observed not-ready -> ready
+edge, resume once. No automatic quarantine reset, re-login, probe chat or
+continuous retry; pauses, auth errors and other models stay outside this rule.
+
 Quality continuation: executable DNS approval binds exact helper source bytes; any drift invalidates an earlier plan. Obtain a fresh independently reviewed plan. CI/refactoring scope does not authorize DNS, identity, backup or autonomous execution.

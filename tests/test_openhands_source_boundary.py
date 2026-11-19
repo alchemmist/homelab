@@ -293,7 +293,19 @@ def _assert_owner_canvas_extensions(documents: list[dict[str, object]]) -> None:
             "mountPath": "/session-key",
             "subPath": "openhands/agent-canvas/api-key.txt",
             "readOnly": True,
-        }
+        },
+        {
+            "name": "data",
+            "mountPath": "/mutation-registry",
+            "subPath": "openhands/agent-canvas/workspaces/75ad056ce4354c2e86fd12f8e1f4f6fe/.worker-registry",
+            "readOnly": True,
+        },
+        {
+            "name": "data",
+            "mountPath": "/qa-registry",
+            "subPath": "openhands/agent-canvas/workspaces/e74a67536db4498196f4a961070bf471/.worker-registry",
+            "readOnly": True,
+        },
     ], "Continuation session mount changed"
 
 
@@ -626,6 +638,7 @@ def _replace_path(value: object, path: tuple[str | int, ...], replacement: objec
         "publisher-write",
         "backup-volume-write",
         "backup-mount-write",
+        "registry-write",
         "publisher-token",
         "redis-egress",
         "duplicate-identity",
@@ -677,6 +690,9 @@ def test_current_owner_extensions_reject_targeted_mutations(
             if violation == "backup-volume-write"
             else ("spec", "template", "spec", "containers", 0, "volumeMounts", 0, "readOnly")
         )
+        replacement = False
+    elif violation == "registry-write":
+        path = ("spec", "template", "spec", "containers", 1, "volumeMounts", 1, "readOnly")
         replacement = False
     elif violation == "publisher-token":
         role, kind = "monori-publisher", "Deployment"

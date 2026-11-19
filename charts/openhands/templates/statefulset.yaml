@@ -178,6 +178,12 @@ spec:
               mountPath: /session-key
               subPath: openhands/agent-canvas/api-key.txt
               readOnly: true
+            {{- range $mount, $dir := .Values.workerRegistries }}
+            - name: {{ include "agent-canvas.pvcClaimName" $ }}
+              mountPath: /{{ $mount }}-registry
+              subPath: openhands/agent-canvas/workspaces/{{ $dir }}/.worker-registry
+              readOnly: true
+            {{- end }}
         {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:

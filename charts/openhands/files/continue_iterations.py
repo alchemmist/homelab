@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import re
 import os
 import time
+import socket
 import uuid
 from pathlib import Path
 from urllib.request import Request, build_opener, ProxyHandler, HTTPRedirectHandler
@@ -66,19 +67,74 @@ NUDGE=('Продолжай задачу #509 по-русски. Предыдущ
 
 QA_NUDGE=('Продолжай QA автономно, без повторного подтверждения владельца. Используй QA_PUBLICATION.md из своего workspace. Делегируй следующую конкретную работу ролям: публикуй проверенные issues с безопасными PNG, после партии исправляй каждый issue отдельным PR и проверяй CI/reviews. Не мержи. Не дублируй опубликованные issues. Только при внешнем блокере начни ответ ровно с [БЛОКЕР QA] и объясни причину. Только при завершении всей задачи начни ответ с [ИТОГ QA] и приложи доказательства.')
 
-def monitor(cid,qa=False):
-    cid=str(uuid.UUID(cid))
-    url='http://127.0.0.1:8000/api/conversations/'+cid
+def bridge_disconnected(event):
+    detail=event.get('detail','')
+    return (event.get('kind')=='ConversationErrorEvent' and event.get('code')=='LLMServiceUnavailableError'
+            and "model group 'o-deepseek'" in detail and 'Connection error' in detail)
+
+def bridge_ready():
+    try:return bool(socket.getaddrinfo('deeperseeker-ready.deeperseeker.svc.cluster.local.',4000,type=socket.SOCK_STREAM))
+    except socket.gaierror:return False
+
+def client(cid):
+    url='http://127.0.0.1:8000/api/conversations/'+str(uuid.UUID(cid))
     def api(suffix='',method='GET',data=None):
         key=Path('/session-key').read_text().strip();req=Request(url+suffix,method=method,headers={'X-Session-API-Key':key,'Content-Type':'application/json'},data=json.dumps(data).encode() if data else None)
         with build_opener(ProxyHandler({}),NoRedirect()).open(req,timeout=15) as r:return json.load(r)
-    probed=False; attempted=None; after=0; parallel_failures=0; last_parallel=None
+    return api
+
+WORKER_NUDGE='Предыдущий ответ содержит только план. Выполни следующий шаг в своём worktree инструментом. Если закончил, укажи проверяемый результат и запиши его в PROGRESS.md; при реальном препятствии укажи причину. Не мержи.'
+
+def pending_worker(status,events,now):
+    for e in events:
+        if e['kind']=='ConversationStateUpdateEvent':continue
+        if status=='error':
+            reset=retry_parallel(e)
+            if reset and now>=reset:return ('parallel',e['id'])
+        if status=='finished' and e['kind']=='MessageEvent' and e.get('source')=='agent':
+            text=' '.join(x.get('text','') for x in e['llm_message']['content'] if isinstance(x,dict)).strip()
+            if len(text)<800 and re.match(r'^(I (need to|will|should) |Next I will |Мне (нужно|надо) |Сначала я )',text,re.I) and not re.search(r'blocked|блокер|denied|permission|approval|разрешени|https?://',text,re.I):return ('plan',e['id'])
+        break
+    return None
+
+def monitor_workers(parent,directory):
+    # Registry stores current ids; never discover workers from arbitrary text.
+    attempted=set();delay={};failures={};parent_api=client(parent)
     while True:
         try:
-            status=api()['execution_status'];now=time.time()
+            if parent_api()['execution_status'] not in ('running','finished'):continue
+            rows=[]
+            for f in sorted(Path(directory).glob('*.json')):
+                r=json.loads(f.read_text());cid=str(uuid.UUID(r['id']));api=client(cid);child=api()
+                if child.get('parent_conversation_id')!=parent:raise ValueError('wrong parent')
+                rows.append((cid,api,child['execution_status']))
+            if any(st not in ('error','finished') for _,_,st in rows):continue
+            for cid,api,st in rows:
+                now=time.time()
+                if delay.get(cid,0)>now:continue
+                ev=api('/events/search?sort_order=TIMESTAMP_DESC&limit=12')['items'];action=pending_worker(st,ev,now)
+                if not action or action in attempted:continue
+                if api()['execution_status']!=st or parent_api()['execution_status'] not in ('running','finished'):break
+                attempted.add(action);failures[cid]=failures.get(cid,0)+1;delay[cid]=now+min(3600,120*2**min(5,failures[cid]-1))
+                result=api('/run','POST') if action[0]=='parallel' else api('/events','POST',{'role':'user','content':[{'type':'text','text':WORKER_NUDGE}],'run':True})
+                print('worker continuation',cid,action[0],bool(result.get('success')),flush=True);break
+        except Exception as exc:print('worker check:',type(exc).__name__,flush=True)
+        finally:time.sleep(45)
+
+def monitor(cid,qa=False):
+    api=client(cid)
+    bridge_was_down=False; probed=False; attempted=None; after=0; parallel_failures=0; last_parallel=None
+    while True:
+        try:
+            conv=api();status=conv['execution_status'];now=time.time()
             if status in ('finished','error') and now>=after:
                 events=api('/events/search?sort_order=TIMESTAMP_DESC&limit=8')['items'];ev=events[0] if events else {};eid=ev.get('id');action=None
                 if eligible(status,ev):action='iteration'
+                elif not qa and status=='error' and bridge_disconnected(ev) and conv['agent']['llm']['model']=='openai/o-deepseek':
+                    # One run on a down -> ready transition; no credential probes, no blind retries.
+                    if not bridge_ready():bridge_was_down=True
+                    elif bridge_was_down and eid!=attempted:
+                        bridge_was_down=False;action='bridge_restored'
                 elif status=='error' and (reset:=retry_parallel(ev)) is not None:
                     if last_parallel!=eid:
                         last_parallel=eid;parallel_failures+=1;after=max(reset,now+min(900,30*2**min(parallel_failures-1,5)))
@@ -99,4 +155,6 @@ def monitor(cid,qa=False):
 if __name__=='__main__':
     import threading
     if os.getenv('QA_CONVERSATION_ID'): threading.Thread(target=monitor,args=(os.environ['QA_CONVERSATION_ID'],True),daemon=True).start()
+    for env,folder in [('CONVERSATION_ID','/mutation-registry'),('QA_CONVERSATION_ID','/qa-registry')]:
+        if os.getenv(env) and Path(folder).is_dir():threading.Thread(target=monitor_workers,args=(os.environ[env],folder),daemon=True).start()
     monitor(os.environ['CONVERSATION_ID'])
