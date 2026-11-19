@@ -6,7 +6,16 @@ R = pathlib.Path(__file__).resolve().parents[1]
 BASE = "ba7a1f34"
 
 
-def render(root, chart, values, ns, release, *, release_image: dict[str, str] | None = None):
+def render(
+    root,
+    chart,
+    values,
+    ns,
+    release,
+    *,
+    release_image: dict[str, str] | None = None,
+    monori_images: dict[str, dict[str, str]] | None = None,
+):
     cmd = ["helm", "template", release, str(root / chart), "-n", ns]
     if values:
         cmd += ["-f", str(root / values)]
@@ -15,11 +24,32 @@ def render(root, chart, values, ns, release, *, release_image: dict[str, str] | 
         # the before-render receives it; a wrong current template still differs.
         for key, value in release_image.items():
             cmd += ["--set-string", f"image.{key}={value}"]
+    if monori_images is not None:
+        for component, fields in monori_images.items():
+            for key, value in fields.items():
+                cmd += ["--set-string", f"images.{component}.{key}={value}"]
     return {
         (d["kind"], d["metadata"]["name"]): d
         for d in yaml.safe_load_all(subprocess.check_output(cmd, text=True))
         if d
     }
+
+
+def assert_monori_release_images(documents, images):
+    """Check actual current images independently from before-render CLI overrides."""
+    for component in ("front", "back", "sync"):
+        matches = [
+            d
+            for (kind, name), d in documents.items()
+            if kind in {"Deployment", "DaemonSet"}
+            and name == ("monori" if component == "front" else "monori-" + component)
+        ]
+        assert len(matches) == 1
+        image = images[component]
+        expected = image["repository"] + "@" + image["digest"]
+        pod = matches[0]["spec"]["template"]["spec"]
+        for container in pod["containers"] + pod.get("initContainers", []):
+            assert container["image"] == expected, "Current Monori release image differs"
 
 
 class StatefulBoundaries(unittest.TestCase):
@@ -82,16 +112,36 @@ class StatefulBoundaries(unittest.TestCase):
         for chart, values, ns, release, allowed in cases:
             with self.subTest(chart=chart):
                 release_image = None
+                monori_images = None
                 if chart == "charts/spi-triage":
                     # Do not freeze the SPI application version at the migration
                     # date or revert a subsequent canonical release from main.
                     release_image = yaml.safe_load((R / values).read_text())["image"]
                     self.assertEqual(set(release_image), {"repository", "tag", "digest"})
                     self.assertTrue(all(isinstance(value, str) for value in release_image.values()))
+                if chart == "charts/monori":
+                    # The owner release is independent of the placement handoff.
+                    # Inject only before-render inputs; retain all current-render
+                    # image/strategy/PVC/identity and full payload comparisons.
+                    monori_images = yaml.safe_load((R / values).read_text())["images"]
+                    self.assertEqual(set(monori_images), {"front", "back", "sync"})
+                    for fields in monori_images.values():
+                        self.assertEqual(set(fields), {"repository", "tag", "digest", "fallback"})
+                        self.assertTrue(all(isinstance(v, str) for v in fields.values()))
                 a, b = (
-                    render(self.old, chart, values, ns, release, release_image=release_image),
+                    render(
+                        self.old,
+                        chart,
+                        values,
+                        ns,
+                        release,
+                        release_image=release_image,
+                        monori_images=monori_images,
+                    ),
                     render(R, chart, values, ns, release),
                 )
+                if monori_images is not None:
+                    assert_monori_release_images(b, monori_images)
                 self.assertEqual(set(a), set(b))
                 for k in a:
                     if a[k] == b[k]:
@@ -194,3 +244,16 @@ class StatefulBoundaries(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CurrentMonoriRelease(unittest.TestCase):
+    def test_current_image_mutation_is_not_hidden_by_historical_input(self):
+        images = yaml.safe_load((R / "deploy/monori/values.yaml").read_text())["images"]
+        documents = render(R, "charts/monori", "deploy/monori/values.yaml", "monori", "monori")
+        assert_monori_release_images(documents, images)
+        changed = copy.deepcopy(documents)
+        changed[("Deployment", "monori-back")]["spec"]["template"]["spec"]["containers"][0][
+            "image"
+        ] = "unreviewed:latest"
+        with self.assertRaisesRegex(AssertionError, "Current Monori release image differs"):
+            assert_monori_release_images(changed, images)

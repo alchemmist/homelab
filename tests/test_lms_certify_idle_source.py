@@ -10,6 +10,7 @@ import pytest
 from scripts.quality.common import command
 
 ROOT = Path(__file__).resolve().parents[1]
+PREDICATE_CASE_COUNT = 40
 PREFIXES = (
     "Admission:",
     "Generate solution:",
@@ -120,7 +121,9 @@ def test_queue_selector_preserves_both_metric_names_without_or_collision(prefix:
         "parameters": [
             {
                 "name": "query",
-                "value": '{__name__=~"vllm:num_requests_(running|waiting)",model_name="qwen3.8-27b"}',
+                "value": (
+                    '{__name__=~"vllm:num_requests_(running|waiting)",model_name="qwen3.8-27b"}'
+                ),
             }
         ]
     }
@@ -149,4 +152,4 @@ def test_queue_predicate_refuses_incomplete_or_invalid_telemetry(prefix: str) ->
     report = _mapping(json.loads(result.stdout))
     passed = report["passed"]
     assert isinstance(passed, list)
-    assert len(passed) == 40
+    assert len(passed) == PREDICATE_CASE_COUNT

@@ -16,6 +16,8 @@ import yaml
 from scripts.quality.common import command
 
 ROOT = Path(__file__).resolve().parents[1]
+VOLUME_FIELD_COUNT = 2
+BACKUP_DEADLINE_SECONDS = 2400
 IMAGE = (
     "ghcr.io/openhands/agent-canvas:1.41.0@sha256:"
     "dcae97b63c9845fd1d4313857af6b10fb5888324a154238c4795ef86233d227c"
@@ -51,7 +53,7 @@ def _pod(documents: list[dict[str, object]]) -> dict[str, object]:
     return _mapping(_mapping(stateful["template"])["spec"])
 
 
-def _assert_boundary(documents: list[dict[str, object]]) -> None:
+def _assert_isolated_boundary(documents: list[dict[str, object]]) -> None:
     """Guard rendered privileges, storage and image without certifying runtime isolation."""
     allowed = {
         "Namespace",
@@ -120,6 +122,387 @@ def _assert_boundary(documents: list[dict[str, object]]) -> None:
     ]
 
 
+def _get(value: object, *path: str) -> object:
+    """Traverse validated mappings without importing operational code."""
+    for key in path:
+        value = _mapping(value)[key]
+    return value
+
+
+def _named(documents: list[dict[str, object]], kind: str, name: str) -> dict[str, object]:
+    """Select a unique named role, never the first resource of an expanded kind."""
+    matches = [
+        d for d in documents if d.get("kind") == kind and _get(d, "metadata", "name") == name
+    ]
+    assert len(matches) == 1
+    return matches[0]
+
+
+def _embedded(relative: str) -> str:
+    """Read source as inert text using YAML literal-block trailing-newline semantics."""
+    return (ROOT / "charts/openhands" / relative).read_text().rstrip("\n") + "\n"
+
+
+def _assert_owner_inventory(documents: list[dict[str, object]]) -> None:
+    """Check the explicit owner inventory without executing its source."""
+    expected = {
+        ("Namespace", "", "openhands"),
+        ("ResourceQuota", "openhands", "openhands-budget"),
+        ("ServiceAccount", "openhands", "openhands"),
+        ("StatefulSet", "openhands", "openhands"),
+        ("Service", "openhands", "openhands"),
+        ("Service", "openhands", "openhands-headless"),
+        ("NetworkPolicy", "openhands", "openhands-boundary"),
+        ("NetworkPolicy", "openhands", "monori-publisher-canvas-out"),
+        ("NetworkPolicy", "openhands", "monori-publisher-canvas-in"),
+        ("NetworkPolicy", "identity", "openhands-oidc"),
+        ("NetworkPolicy", "identity", "openhands-oidc-sessions"),
+        ("NetworkPolicy", "openhands", "openhands-backup-pre142"),
+        ("ConfigMap", "openhands", "openhands-cold-backup-20261119"),
+        ("ConfigMap", "openhands", "monori-publisher-code"),
+        ("ConfigMap", "openhands", "openhands-backup-pre142"),
+        ("PersistentVolumeClaim", "openhands", "openhands-cold-backups"),
+        ("PersistentVolumeClaim", "openhands", "openhands-upgrade-backups"),
+        ("Service", "openhands", "monori-publisher"),
+        ("Service", "identity", "openhands-oidc"),
+        ("Service", "identity", "openhands-oidc-sessions"),
+        ("Deployment", "openhands", "monori-publisher"),
+        ("Deployment", "identity", "openhands-oidc"),
+        ("Deployment", "identity", "openhands-oidc-sessions"),
+        ("Job", "openhands", "openhands-cold-backup-20261119"),
+        ("Ingress", "identity", "openhands-oidc"),
+        ("Certificate", "identity", "openhands-oidc-tls"),
+    }
+    identities: set[tuple[str, str, str]] = set()
+    for document in documents:
+        kind = document.get("kind")
+        assert isinstance(kind, str), "Unexpected OpenHands resource kind"
+        assert isinstance(document.get("metadata"), dict), "Unexpected OpenHands resource kind"
+        metadata = _mapping(document["metadata"])
+        name = metadata.get("name")
+        namespace = metadata.get("namespace", "" if kind == "Namespace" else "openhands")
+        assert isinstance(name, str), "Unexpected OpenHands resource kind"
+        assert isinstance(namespace, str), "Unexpected OpenHands resource kind"
+        identity = (kind, namespace, name)
+        assert identity in expected, "Unexpected OpenHands resource kind or identity"
+        assert identity not in identities, "Unexpected OpenHands resource kind or identity"
+        identities.add(identity)
+    assert identities == expected, "Missing owner resource"
+
+
+def _assert_owner_pods(documents: list[dict[str, object]]) -> None:
+    """Check the explicit owner pods without executing its source."""
+    values = _mapping(yaml.safe_load((ROOT / "deploy/openhands/values.yaml").read_text()))
+    for document in documents:
+        if document.get("kind") not in {"Deployment", "StatefulSet", "Job"}:
+            continue
+        pod = _mapping(_get(document, "spec", "template", "spec"))
+        assert pod.get("automountServiceAccountToken") is False, "Pod token automount enabled"
+        assert not any(k in pod for k in ("hostNetwork", "hostPID", "hostIPC")), (
+            "Host or extra mounts/process namespaces enabled"
+        )
+        assert _get(pod, "securityContext", "runAsNonRoot") is True
+        assert _get(pod, "securityContext", "seccompProfile") == {"type": "RuntimeDefault"}
+        assert pod["nodeSelector"] == {"kubernetes.io/hostname": "socrat-5"}
+        for volume in _list(pod.get("volumes", [])):
+            v = _mapping(volume)
+            assert len(v) == VOLUME_FIELD_COUNT, "Host or extra mounts enabled"
+            assert set(v) <= {
+                "name",
+                "emptyDir",
+                "secret",
+                "configMap",
+                "persistentVolumeClaim",
+            }, "Host or extra mounts enabled"
+        role = _get(document, "metadata", "name")
+        assert isinstance(role, str)
+        names = {
+            "openhands": ["agent-canvas", "iteration-continuation"],
+            "monori-publisher": ["publisher"],
+            "openhands-oidc": ["oauth2-proxy"],
+            "openhands-oidc-sessions": ["redis"],
+            "openhands-cold-backup-20261119": ["backup"],
+        }
+        containers = [_mapping(c) for c in _list(pod["containers"])]
+        assert [c["name"] for c in containers] == names[role]
+        init = [_mapping(c) for c in _list(pod.get("initContainers", []))]
+        expected_init = {
+            "openhands": ["prepare-iteration-policy"],
+            "monori-publisher": ["prepare-encoder"],
+        }
+        assert [c["name"] for c in init] == expected_init.get(role, [])
+        for container in containers + init:
+            security = _mapping(container["securityContext"])
+            assert security["allowPrivilegeEscalation"] is False
+            assert security["capabilities"] == {"drop": ["ALL"]}
+            if container["name"] != "agent-canvas":
+                assert security["readOnlyRootFilesystem"] is True
+            expected_image = (
+                _get(values, "oidc", "image")
+                if role == "openhands-oidc"
+                else _get(values, "oidc", "sessionImage")
+                if role == "openhands-oidc-sessions"
+                else IMAGE
+            )
+            assert container["image"] == expected_image, "Image pin changed"
+
+
+def _assert_owner_canvas_extensions(documents: list[dict[str, object]]) -> None:
+    """Check the explicit owner canvas extensions without executing its source."""
+    pod = _pod(documents)
+    assert pod["volumes"] == [{"name": "sdk-iteration-policy", "emptyDir": {"sizeLimit": "2Mi"}}], (
+        "Host or extra mounts enabled"
+    )
+    init = _mapping(_list(pod["initContainers"])[0])
+    assert init["command"] == ["python", "-IB", "-c"]
+    assert init["args"] == [_embedded("files/uncap_sdk_iterations.py")]
+    assert init["volumeMounts"] == [{"name": "sdk-iteration-policy", "mountPath": "/overlay"}]
+    containers = [_mapping(c) for c in _list(pod["containers"])]
+    overlay = [
+        {
+            "name": "sdk-iteration-policy",
+            "mountPath": (
+                "/usr/local/lib/python3.13/site-packages/openhands/sdk/conversation/"
+                "impl/local_conversation.py"
+            ),
+            "subPath": "local_conversation.py",
+            "readOnly": True,
+        },
+        {
+            "name": "sdk-iteration-policy",
+            "mountPath": (
+                "/usr/local/lib/python3.13/site-packages/openhands/sdk/conversation/"
+                "goal/controller.py"
+            ),
+            "subPath": "controller.py",
+            "readOnly": True,
+        },
+    ]
+    mounts = _list(containers[0]["volumeMounts"])
+    assert mounts[:2] == overlay, "SDK overlay mount boundary changed"
+    sidecar = containers[1]
+    assert sidecar["command"] == ["python", "-IBu", "-c"]
+    assert sidecar["args"] == [_embedded("files/continue_iterations.py")]
+    assert sidecar["env"] == [
+        {"name": "CONVERSATION_ID", "value": "1ab3985a-2193-4177-8dd2-8ec7d54dbfeb"},
+        {"name": "QA_CONVERSATION_ID", "value": "51a35822-a870-43cc-a775-fd5e662f0039"},
+    ]
+    assert sidecar["volumeMounts"] == [
+        {
+            "name": "data",
+            "mountPath": "/session-key",
+            "subPath": "openhands/agent-canvas/api-key.txt",
+            "readOnly": True,
+        }
+    ], "Continuation session mount changed"
+
+
+def _assert_owner_publisher_extensions(documents: list[dict[str, object]]) -> None:
+    """Check the explicit owner publisher extensions without executing its source."""
+    publisher = _named(documents, "Deployment", "monori-publisher")
+    pub = _get(publisher, "spec", "template", "spec")
+    assert _get(pub, "volumes") == [
+        {"name": "encoder", "emptyDir": {"sizeLimit": "120Mi"}},
+        {"name": "temp", "emptyDir": {"sizeLimit": "24Mi"}},
+        {"name": "code", "configMap": {"name": "monori-publisher-code"}},
+        {
+            "name": "credential",
+            "secret": {"secretName": "monori-publisher-user", "defaultMode": 288},
+        },
+    ]
+    writer = _mapping(_list(_get(pub, "containers"))[0])
+    assert writer["command"] == ["python", "-IB", "/code/publisher.py"]
+    assert writer["volumeMounts"] == [
+        {"name": "code", "mountPath": "/code", "readOnly": True},
+        {"name": "encoder", "mountPath": "/encoder", "readOnly": True},
+        {"name": "temp", "mountPath": "/tmp"},
+        {"name": "credential", "mountPath": "/credential", "readOnly": True},
+    ], "Publisher credential mount changed"
+    encoder = _mapping(_list(_get(pub, "initContainers"))[0])
+    assert encoder["volumeMounts"] == [{"name": "encoder", "mountPath": "/encoder"}]
+    assert encoder["args"] == [_embedded("files/steward/install_ffmpeg.py"), "/encoder/ffmpeg"]
+
+
+def _assert_owner_oidc_extensions(documents: list[dict[str, object]]) -> None:
+    """Check the explicit owner oidc extensions without executing its source."""
+    gateway = _named(documents, "Deployment", "openhands-oidc")
+    oauth = _mapping(_list(_get(gateway, "spec", "template", "spec", "containers"))[0])
+    args = _list(oauth["args"])
+    required = [
+        "--provider=oidc",
+        "--oidc-issuer-url=https://auth.socrat.alchemmist.xyz/application/o/openhands/",
+        "--redirect-url=https://openhands.socrat.alchemmist.xyz/oauth2/callback",
+        "--upstream=http://openhands.openhands.svc.cluster.local:8000/",
+        "--allowed-group=homelab-owner",
+        "--code-challenge-method=S256",
+        "--skip-jwt-bearer-tokens=false",
+        "--cookie-secure=true",
+        "--cookie-httponly=true",
+        "--session-store-type=redis",
+        "--pass-access-token=false",
+        "--pass-authorization-header=false",
+        "--set-authorization-header=false",
+    ]
+    for required_arg in required:
+        prefix = required_arg.split("=", 1)[0] + "="
+        assert [a for a in args if isinstance(a, str) and a.startswith(prefix)] == [required_arg], (
+            "OIDC authorization weakened"
+        )
+    assert not any(
+        isinstance(a, str) and a.startswith(("--skip-auth", "--insecure-oidc", "--ssl-insecure"))
+        for a in args
+    ), "OIDC authorization weakened"
+    ingress = _named(documents, "Ingress", "openhands-oidc")
+    assert ingress["spec"] == {
+        "ingressClassName": "traefik",
+        "tls": [{"hosts": ["openhands.socrat.alchemmist.xyz"], "secretName": "openhands-oidc-tls"}],
+        "rules": [
+            {
+                "host": "openhands.socrat.alchemmist.xyz",
+                "http": {
+                    "paths": [
+                        {
+                            "path": "/",
+                            "pathType": "Prefix",
+                            "backend": {
+                                "service": {"name": "openhands-oidc", "port": {"number": 4180}}
+                            },
+                        }
+                    ]
+                },
+            }
+        ],
+    }, "Public route bypasses OIDC"
+    certificate = _named(documents, "Certificate", "openhands-oidc-tls")
+    assert certificate["spec"] == {
+        "secretName": "openhands-oidc-tls",
+        "dnsNames": ["openhands.socrat.alchemmist.xyz"],
+        "issuerRef": {"name": "letsencrypt-http01", "kind": "ClusterIssuer"},
+    }
+
+
+def _assert_owner_backup_declarations(documents: list[dict[str, object]]) -> None:
+    """Check the explicit owner backup declarations without executing its source."""
+    backup = _named(documents, "Job", "openhands-cold-backup-20261119")
+    assert _get(backup, "spec", "backoffLimit") == 0
+    assert _get(backup, "spec", "activeDeadlineSeconds") == BACKUP_DEADLINE_SECONDS
+    backup_pod = _get(backup, "spec", "template", "spec")
+    assert _get(backup_pod, "restartPolicy") == "Never"
+    assert _get(backup_pod, "volumes") == [
+        {
+            "name": "source",
+            "persistentVolumeClaim": {"claimName": "data-openhands-0", "readOnly": True},
+        },
+        {"name": "backup", "persistentVolumeClaim": {"claimName": "openhands-cold-backups"}},
+        {"name": "config", "configMap": {"name": "openhands-cold-backup-20261119"}},
+        {"name": "tmp", "emptyDir": {"medium": "Memory", "sizeLimit": "128Mi"}},
+    ], "Backup source authority changed"
+    backup_container = _mapping(_list(_get(backup_pod, "containers"))[0])
+    assert backup_container["volumeMounts"] == [
+        {"name": "source", "mountPath": "/source", "readOnly": True},
+        {"name": "backup", "mountPath": "/backup"},
+        {"name": "config", "mountPath": "/config", "readOnly": True},
+        {"name": "tmp", "mountPath": "/tmp"},
+    ], "Backup source authority changed"
+    for name, size in [("openhands-cold-backups", "3Gi"), ("openhands-upgrade-backups", "1Gi")]:
+        claim = _named(documents, "PersistentVolumeClaim", name)
+        assert _get(claim, "metadata", "annotations") == {
+            "argocd.argoproj.io/sync-options": "Prune=false,Delete=false"
+        }
+        assert claim["spec"] == {
+            "accessModes": ["ReadWriteOnce"],
+            "storageClassName": "local-path",
+            "resources": {"requests": {"storage": size}},
+        }
+
+
+def _assert_owner_policy_declarations(documents: list[dict[str, object]]) -> None:
+    """Check the explicit owner policy declarations without executing its source."""
+    # Compare static policy declarations independently of Helm, not frozen hashes.
+    # Only these exact framing directives occur outside the literal policy YAML.
+    for relative in (
+        "templates/scoped-publisher.yaml",
+        "templates/socrat-oidc.yaml",
+        "templates/socrat-sessions.yaml",
+        "templates/upgrade-backup.yaml",
+    ):
+        for fragment in (ROOT / "charts/openhands" / relative).read_text().split("\n---\n"):
+            if "\nkind: NetworkPolicy\n" not in fragment:
+                continue
+            literal = fragment.rstrip()
+            for suffix in ("{{- end }}", "{{- if not .Values.retireFailedBackup }}"):
+                literal = literal.removesuffix(suffix).rstrip()
+            assert "{{" not in literal, "Policy template requires explicit review"
+            declaration = _mapping(yaml.safe_load(literal))
+            name = _get(declaration, "metadata", "name")
+            assert isinstance(name, str)
+            assert _named(documents, "NetworkPolicy", name)["spec"] == declaration["spec"], (
+                "Network policy differs from declared edges"
+            )
+    boundary = _named(documents, "NetworkPolicy", "openhands-boundary")
+    assert _get(boundary, "spec", "ingress") == [
+        {
+            "from": [
+                {
+                    "namespaceSelector": {
+                        "matchLabels": {"kubernetes.io/metadata.name": "identity"}
+                    },
+                    "podSelector": {"matchLabels": {"app": "openhands-oidc"}},
+                }
+            ],
+            "ports": [{"port": 8000, "protocol": "TCP"}],
+        }
+    ], "Canvas ingress bypasses OIDC"
+
+
+def _assert_owner_core_projection(documents: list[dict[str, object]]) -> None:
+    """Check the explicit owner core projection without executing its source."""
+    containers = [_mapping(c) for c in _list(_pod(documents)["containers"])]
+    mounts = _list(containers[0]["volumeMounts"])
+    # Only explicitly checked extensions are projected out. The original core
+    # function and every original assertion remain intact, including exact mounts.
+    core = copy.deepcopy(
+        [
+            d
+            for d in documents
+            if d.get("kind") in {"Namespace", "ResourceQuota", "ServiceAccount", "StatefulSet"}
+            or (
+                d.get("kind") == "Service"
+                and _get(d, "metadata", "name") in {"openhands", "openhands-headless"}
+            )
+            or (
+                d.get("kind") == "NetworkPolicy"
+                and _get(d, "metadata", "name") == "openhands-boundary"
+            )
+        ]
+    )
+    stateful = _one(core, "StatefulSet")
+    spec = _mapping(stateful["spec"])
+    template = _mapping(spec["template"])
+    plain_pod = _pod(core)
+    plain_pod.pop("volumes")
+    plain_pod.pop("initContainers")
+    canvas = _mapping(containers[0])
+    canvas["volumeMounts"] = mounts[2:]
+    plain_pod["containers"] = [canvas]
+    template["spec"] = plain_pod
+    spec["template"] = template
+    stateful["spec"] = spec
+    _assert_isolated_boundary(core)
+
+
+def _assert_boundary(documents: list[dict[str, object]]) -> None:
+    """Validate every extension before invoking the unchanged original core guard."""
+    _assert_owner_inventory(documents)
+    _assert_owner_pods(documents)
+    _assert_owner_canvas_extensions(documents)
+    _assert_owner_publisher_extensions(documents)
+    _assert_owner_oidc_extensions(documents)
+    _assert_owner_backup_declarations(documents)
+    _assert_owner_policy_declarations(documents)
+    _assert_owner_core_projection(documents)
+
+
 @pytest.fixture(scope="module")
 def rendered() -> list[dict[str, object]]:
     """Use only local Helm source/values with an explicitly empty kubeconfig."""
@@ -147,7 +530,7 @@ def test_owner_overrides_render_without_cluster_or_public_ingress_authority(
     _assert_boundary(rendered)
     namespace = _mapping(_one(rendered, "Namespace")["metadata"])
     assert _mapping(namespace["labels"])["pod-security.kubernetes.io/enforce"] == "restricted"
-    policy = _mapping(_one(rendered, "NetworkPolicy")["spec"])
+    policy = _mapping(_named(rendered, "NetworkPolicy", "openhands-boundary")["spec"])
     assert policy["policyTypes"] == ["Ingress", "Egress"]
 
 
@@ -181,6 +564,7 @@ def test_boundary_rejects_real_rendered_graph_mutations(
     message: str,
 ) -> None:
     """Each critical synthetic violation must fail the same compiled-graph guard."""
+    _assert_boundary(rendered)
     documents = copy.deepcopy(rendered)
     pod = _pod(documents)
     # Helpers copy mappings, so explicitly replace the relevant source resource.
@@ -214,6 +598,104 @@ def test_boundary_rejects_real_rendered_graph_mutations(
     spec["template"] = template
     stateful["spec"] = spec
     with pytest.raises(AssertionError, match=message):
+        _assert_boundary(documents)
+
+
+def _replace_path(value: object, path: tuple[str | int, ...], replacement: object) -> object:
+    """Replace one real nested fixture field, rebuilding its validated parents."""
+    if not path:
+        return replacement
+    key, *tail = path
+    if isinstance(key, int):
+        items = _list(value)
+        items[key] = _replace_path(items[key], tuple(tail), replacement)
+        return items
+    mapping = _mapping(value)
+    mapping[key] = _replace_path(mapping[key], tuple(tail), replacement)
+    return mapping
+
+
+@pytest.mark.parametrize(
+    "violation",
+    [
+        "oidc-pkce",
+        "oidc-bypass",
+        "public-backend",
+        "overlay-write",
+        "session-write",
+        "publisher-write",
+        "backup-volume-write",
+        "backup-mount-write",
+        "publisher-token",
+        "redis-egress",
+        "duplicate-identity",
+    ],
+)
+def test_current_owner_extensions_reject_targeted_mutations(
+    rendered: list[dict[str, object]], violation: str
+) -> None:
+    """Prove a passing full baseline before mutating one actual authority edge."""
+    _assert_boundary(rendered)
+    documents = copy.deepcopy(rendered)
+    role = "openhands"
+    kind = "StatefulSet"
+    path: tuple[str | int, ...]
+    replacement: object
+    if violation.startswith("oidc-"):
+        role, kind = "openhands-oidc", "Deployment"
+        path = ("spec", "template", "spec", "containers", 0, "args")
+        container = _mapping(
+            _list(_get(_named(documents, kind, role), "spec", "template", "spec", "containers"))[0]
+        )
+        args = _list(container["args"])
+        replacement = (
+            [
+                "--code-challenge-method=plain" if a == "--code-challenge-method=S256" else a
+                for a in args
+            ]
+            if violation == "oidc-pkce"
+            else [*args, "--skip-auth-regex=.*"]
+        )
+    elif violation == "public-backend":
+        role, kind = "openhands-oidc", "Ingress"
+        path = ("spec", "rules", 0, "http", "paths", 0, "backend", "service", "name")
+        replacement = "openhands"
+    elif violation == "overlay-write":
+        path = ("spec", "template", "spec", "containers", 0, "volumeMounts", 0, "readOnly")
+        replacement = False
+    elif violation == "session-write":
+        path = ("spec", "template", "spec", "containers", 1, "volumeMounts", 0, "readOnly")
+        replacement = False
+    elif violation == "publisher-write":
+        role, kind = "monori-publisher", "Deployment"
+        path = ("spec", "template", "spec", "containers", 0, "volumeMounts", 3, "readOnly")
+        replacement = False
+    elif violation.startswith("backup-"):
+        role, kind = "openhands-cold-backup-20261119", "Job"
+        path = (
+            ("spec", "template", "spec", "volumes", 0, "persistentVolumeClaim", "readOnly")
+            if violation == "backup-volume-write"
+            else ("spec", "template", "spec", "containers", 0, "volumeMounts", 0, "readOnly")
+        )
+        replacement = False
+    elif violation == "publisher-token":
+        role, kind = "monori-publisher", "Deployment"
+        path = ("spec", "template", "spec", "automountServiceAccountToken")
+        replacement = True
+    elif violation == "redis-egress":
+        role, kind = "openhands-oidc-sessions", "NetworkPolicy"
+        path = ("spec", "egress")
+        replacement = [{}]
+    elif violation == "duplicate-identity":
+        documents.append(copy.deepcopy(_named(documents, "Ingress", "openhands-oidc")))
+        with pytest.raises(AssertionError, match="Unexpected OpenHands resource kind or identity"):
+            _assert_boundary(documents)
+        return
+    else:
+        raise AssertionError(violation)
+    resource = _named(documents, kind, role)
+    documents[documents.index(resource)] = _mapping(_replace_path(resource, path, replacement))
+    with pytest.raises(AssertionError):
         _assert_boundary(documents)
 
 

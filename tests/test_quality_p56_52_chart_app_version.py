@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -99,6 +100,12 @@ def test_chart_app_versions_stay_plain_strings() -> None:
     """Drop redundant appVersion quotes without changing chart identity or tags."""
     for relative, name, version, app_version in CHARTS:
         text = (ROOT / relative).read_text()
+        if name == "syncthing":
+            # Version upgrades remain independent of the unchanged quote/tag proof.
+            image = yaml.safe_load((ROOT / "charts/syncthing/values.yaml").read_text())["image"]
+            release = image["tag"]
+            assert isinstance(release, str)
+            app_version = release
         plain = f"appVersion: {app_version}"
         quoted = f'appVersion: "{app_version}"'
         assert plain in text.splitlines()
@@ -115,3 +122,28 @@ def test_chart_app_versions_stay_plain_strings() -> None:
             assert _scalar(document, "version").value == version
             app = _scalar(document, "appVersion")
             assert (app.tag, app.value, app.style) == (STRING_TAG, app_version, None)
+
+
+@pytest.mark.parametrize("violation", ["version", "quotes", "identity"])
+def test_current_owner_version_input_does_not_hide_drift(
+    monkeypatch: pytest.MonkeyPatch, violation: str
+) -> None:
+    """Keep current image consistency, exact metadata and scalar-style negatives."""
+    test_chart_app_versions_stay_plain_strings()
+    original = Path.read_text
+
+    def changed(path: Path, encoding: str | None = None, errors: str | None = None) -> str:
+        text = original(path, encoding=encoding, errors=errors)
+        if path == ROOT / "charts/syncthing/Chart.yaml":
+            before, after = {
+                "version": ("appVersion: 2.1.7", "appVersion: 99.0.0"),
+                "quotes": ("appVersion: 2.1.7", 'appVersion: "2.1.7"'),
+                "identity": ("name: syncthing", "name: unreviewed"),
+            }[violation]
+            assert before in text
+            text = text.replace(before, after, 1)
+        return text
+
+    monkeypatch.setattr(Path, "read_text", changed)
+    with pytest.raises(AssertionError):
+        test_chart_app_versions_stay_plain_strings()

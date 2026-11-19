@@ -1,11 +1,64 @@
 """Migration contracts: exact payload preservation and one owner per resource."""
 
+import copy
+import subprocess
+from unittest.mock import patch
+
+import pytest
+
 import hashlib
 import json
 from pathlib import Path
 import unittest
 import yaml
 from tests.public_entry_contract import CHARTS, ROOT, render
+
+
+PUBLIC_HANDOFF = "c6121e1975eb6218804a9be43d7c2a8e99584838"
+
+
+def migration_payload(resource):
+    """Keep immutable handoff hashes; supply later source payloads independently.
+
+    Only the two source-owned Grafana text inputs/checksum may differ. Validate
+    their entire live rendering before projecting the original reviewed inputs.
+    No fixture hashes or resource/ownership/security fields are refreshed.
+    """
+    name = resource["metadata"]["name"]
+    if name not in {"public-web-grafana-policy", "public-web-grafana-proxy"}:
+        return resource
+    base = "deploy/platform/grafana/public-entry/files/"
+    current = {
+        key: (ROOT / base / key).read_bytes()
+        for key in ("grafana-policy.conf", "traffic-light-inset.js")
+    }
+    original = {
+        key: subprocess.check_output(
+            ["git", "-C", str(ROOT), "show", PUBLIC_HANDOFF + ":" + base + key]
+        )
+        for key in current
+    }
+    result = copy.deepcopy(resource)
+    if resource["kind"] == "ConfigMap":
+        native = {
+            "nginx.conf": "grafana-policy.conf",
+            "traffic-light-inset.js": "traffic-light-inset.js",
+        }
+        assert resource["data"] == {
+            key: current[source].decode().rstrip("\n") + "\n" for key, source in native.items()
+        }, "Live Grafana policy payload differs from owner inputs"
+        result["data"] = {
+            key: original[source].decode().rstrip("\n") + "\n" for key, source in native.items()
+        }
+    elif resource["kind"] == "Deployment":
+        annotations = resource["spec"]["template"]["metadata"]["annotations"]
+        assert annotations == {
+            "checksum/config": hashlib.sha256(b"".join(current.values())).hexdigest()
+        }, "Live Grafana checksum differs from owner inputs"
+        result["spec"]["template"]["metadata"]["annotations"] = {
+            "checksum/config": hashlib.sha256(b"".join(original.values())).hexdigest()
+        }
+    return result
 
 
 class OwnershipTests(unittest.TestCase):
@@ -23,7 +76,9 @@ class OwnershipTests(unittest.TestCase):
                 )
                 self.assertNotIn(key, actual, "Multiple application owners: " + key)
                 digest = hashlib.sha256(
-                    json.dumps(resource, sort_keys=True, separators=(",", ":")).encode()
+                    json.dumps(
+                        migration_payload(resource), sort_keys=True, separators=(",", ":")
+                    ).encode()
                 ).hexdigest()
                 actual[key] = {"owner": owner, "sha256": digest}
         self.assertEqual(actual, fixture)
@@ -47,3 +102,27 @@ class OwnershipTests(unittest.TestCase):
             self.assertFalse(any(s.get("path") == "charts/public-web-entry" for s in sources))
         litellm = yaml.safe_load((ROOT / "deploy/argocd/apps/litellm.yaml").read_text())
         self.assertIsNot(litellm["spec"]["syncPolicy"]["automated"].get("enabled"), False)
+
+
+@pytest.mark.parametrize("violation", ["payload", "checksum", "token", "image"])
+def test_live_grafana_input_projection_rejects_mutations(violation):
+    """A passing baseline is required; normalization must not hide other changes."""
+    OwnershipTests().test_every_transferred_payload_is_identical_to_reviewed_pre_migration_render()
+    resources = copy.deepcopy(render("grafana"))
+    config = next(d for d in resources if d["kind"] == "ConfigMap")
+    deployment = next(d for d in resources if d["kind"] == "Deployment")
+    if violation == "payload":
+        config["data"]["nginx.conf"] += "synthetic drift"
+    elif violation == "checksum":
+        deployment["spec"]["template"]["metadata"]["annotations"]["checksum/config"] = "wrong"
+    elif violation == "token":
+        deployment["spec"]["template"]["spec"]["automountServiceAccountToken"] = True
+    else:
+        deployment["spec"]["template"]["spec"]["containers"][0]["image"] = "unverified:latest"
+    original_render = render
+    with patch(
+        "tests.test_public_entry_ownership.render",
+        side_effect=lambda owner: resources if owner == "grafana" else original_render(owner),
+    ):
+        with pytest.raises(AssertionError):
+            OwnershipTests().test_every_transferred_payload_is_identical_to_reviewed_pre_migration_render()
