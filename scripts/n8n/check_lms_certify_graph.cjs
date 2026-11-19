@@ -58,3 +58,17 @@ for (const [contract,input,output] of [
  assert.equal(r.data.cases.length,1,contract);
 }
 console.log('Batch boundary oracles passed');
+const existing = Array.from({length:12},(_,i)=>({input:`a${i}\nb\nc\n`,output:`c\nb\na${i}\n`}));
+const targeted = {input:' left \n mid \n right \n',output:' right \n mid \n left \n'};
+const expanded = run('Verify added cases and preserve existing tests',response({cases:[]}),{phase:'expand',data:{contract:'reverse',calls:3,cases:existing,examples:[],targetedCases:[targeted]}});
+assert.equal(expanded.phase,'public');
+assert.equal(expanded.data.cases.length,13);
+assert.deepEqual(expanded.data.cases.slice(0,12),existing.slice(0,12));
+const boundedRepair = run('Validate repaired solution format',response({source:'print(input())'}),{phase:'repair',data:{calls:13,callLimit:16,source:'pass',cases:[]}});
+assert.equal(boundedRepair.phase,'public');
+assert.equal(boundedRepair.data.calls,14);
+console.log('Targeted expansion preserves full suites; explicit repair budget passed');
+for (const [contract,input,output] of [['until_zero','-2\n1\n0\n9\n','-2\n1\n'],['until_nonmultiple','0\n-20\n4\n10\n','0\n-20\n'],['until_empty',' \na\n\nextra\n',' \na\n']]) {
+ const r=run('Verify new tests against reviewed specification',response({cases:[{input,output},{input:'9\n',output:'9\n'}]}),{phase:'tests',data:{contract,calls:0,cases:[],examples:[]}});
+ assert.deepEqual(r.data.cases,[{input,output}]);
+}

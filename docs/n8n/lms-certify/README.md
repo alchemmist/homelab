@@ -102,3 +102,18 @@ execution `53812` reached certified with 12 cases and 4/4 probes, preserving
 existing cases. Echo-2 then completed with 12 cases and 4/4 probes. The workflow
 automatically moved to meow while seven further batch tasks remained queued.
 These observations are not a claim that all ten have completed.
+
+### Supervised convergence fixes
+
+Repair prompts now carry explicit diagnosis and prohibit unrequested case/space
+normalization. A per-task `callLimit` can be increased deliberately while
+retaining cumulative call counts (default stays 12). Yes/no was resumed with
+its eight existing tests and a limit of 16, completing at call 14 in execution
+`53853` with 4/4 fault probes. No counters or tests were reset.
+
+Private suite capacity now matches runner's maximum of 16. The former 12-case
+cap prevented adding a missing boundary once full. Operator-authored
+`targetedCases` enter only the expansion branch and pass the SAME independent
+oracle as generated proposals; existing tests remain intact. Reverse parrot
+completed in `53858` at 16 tests and 4/4 probes. Regression checks cover preserving
+12 existing cases while adding a targeted case, plus bounded repair continuation.
