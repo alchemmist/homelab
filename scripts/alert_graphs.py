@@ -174,6 +174,13 @@ def build(rules, panel_ids=None):
                  'description': 'Exact firing-condition query. Empty is not zero: it may mean false condition or missing telemetry.',
                  'gridPos': {'x': 0, 'y': (base-1)*8+8, 'w': 24, 'h': 8},
                  'targets': [{'refId': str(i+1), 'expr': str(item['rule']['expr']), 'datasource': {'type': 'prometheus', 'uid': 'prometheus'}} for i,item in enumerate(variants)]}
+        if (owner, name) == ('monitoring-k3s', 'SocratSoftwareUpdateAvailable'):
+            # The alert has a single cluster identity; the diagnostic keeps stable app identities.
+            panel['targets'] = [{'refId': '1', 'datasource': panel['datasource'], 'legendFormat': '{{app}}',
+                                 'expr': 'max by (app) (socrat_software_update_available{job="monitoring-update-watch",latest!=""})'}]
+            panel['description'] = 'One line per application: 0 = up to date, 1 = newer stable release. Failed checks leave gaps.'
+            panel['fieldConfig'] = {'defaults': {'min': 0, 'max': 1, 'decimals': 0,
+                'custom': {'lineInterpolation': 'stepAfter', 'spanNulls': False}}, 'overrides': []}
         dashboard['panels'].append(state)
         spec = {'version': 1, 'graphs': [
             {'id': 'primary', 'title': name, 'dashboard_uid': uid, 'panel_id': base,

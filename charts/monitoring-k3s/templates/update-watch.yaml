@@ -150,7 +150,7 @@ spec:
     - name: socrat.software.updates
       rules:
         - alert: SocratSoftwareUpdateAvailable
-          expr: socrat_software_update_available{job="monitoring-update-watch"} == 1
+          expr: sum(max by (app) (socrat_software_update_available{job="monitoring-update-watch",latest!=""})) > 0
           for: 15m
           labels:
             severity: warning
@@ -158,8 +158,8 @@ spec:
             {{- with index ($.Values.alertGraphAnnotations | default dict) "SocratSoftwareUpdateAvailable" }}
             spi_graphs: {{ . | quote }}
             {{- end }}
-            summary: '{{ `{{ $labels.title }}` }} has a newer stable release.'
-            description: '{{ `{{ $labels.title }}` }} is pinned at {{ `{{ $labels.current }}` }} and the newest stable GitHub release is {{ `{{ $labels.latest }}` }}. Shown in Grafana with the other Prometheus alerts. The running image tag is used when it contains a version; otherwise updateWatch current is the installed version. This alert does not upgrade the workload.'
+            summary: Stable software updates are available in the cluster.
+            description: '{{ `{{ $value }}` }} monitored applications have a newer stable release. See the per-application graph (1 = update available, 0 = up to date). No workload is upgraded automatically.'
         - alert: SocratSoftwareUpdateCheckFailed
           expr: socrat_software_update_check_success{job="monitoring-update-watch"} == 0
           for: 6h

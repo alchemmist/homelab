@@ -2608,7 +2608,7 @@
     "resource": "monitoring-update-watch",
     "group": "socrat.software.updates",
     "alert": "SocratSoftwareUpdateAvailable",
-    "expr": "socrat_software_update_available{job=\"monitoring-update-watch\"} == 1",
+    "expr": "sum(max by (app) (socrat_software_update_available{job=\"monitoring-update-watch\",latest!=\"\"})) > 0",
     "uid": null,
     "graphs": {
       "version": 1,
