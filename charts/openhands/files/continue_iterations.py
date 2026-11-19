@@ -23,14 +23,15 @@ def retry_parallel(event):
     return datetime.strptime(m[1],'%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc).timestamp()+15 if m else None
 
 
-def final_message(events):
+def final_message(events,qa=False):
     # Never infer an agent finish from arbitrary user/file/tool text.
     for ev in events:
         if ev.get('kind')=='ConversationStateUpdateEvent' and ev.get('key') in ('execution_status','stats'):continue
         if ev.get('kind')=='MessageEvent' and ev.get('source')=='agent':
             content=(ev.get('llm_message') or {}).get('content') or []
             text=' '.join(str(x.get('text','')) for x in content if isinstance(x,dict)).strip()
-            if text and not any(mark in text for mark in ('[ИТОГ #509]','[БЛОКЕР #509]')):return ev.get('id')
+            markers=('[ИТОГ QA]','[БЛОКЕР QA]') if qa else ('[ИТОГ #509]','[БЛОКЕР #509]')
+            if text and not any(mark in text for mark in markers):return ev.get('id')
         break
     return None
 
@@ -49,8 +50,10 @@ NUDGE=('Продолжай задачу #509 по-русски. Предыдущ
        'при реальном внешнем препятствии укажи факт и [БЛОКЕР #509]. Не выдавай план за результат.')
 
 
-def main():
-    cid=str(uuid.UUID(os.environ['CONVERSATION_ID']))
+QA_NUDGE=('Продолжай QA автономно, без повторного подтверждения владельца. Используй QA_PUBLICATION.md из своего workspace. Делегируй следующую конкретную работу ролям: публикуй проверенные issues с безопасными PNG, после партии исправляй каждый issue отдельным PR и проверяй CI/reviews. Не мержи. Не дублируй опубликованные issues. При реальном внешнем блокере укажи факт и [БЛОКЕР QA], при завершении всей задачи приложи доказательства и [ИТОГ QA].')
+
+def monitor(cid,qa=False):
+    cid=str(uuid.UUID(cid))
     url='http://127.0.0.1:8000/api/conversations/'+cid
     def api(suffix='',method='GET',data=None):
         key=Path('/session-key').read_text().strip();req=Request(url+suffix,method=method,headers={'X-Session-API-Key':key,'Content-Type':'application/json'},data=json.dumps(data).encode() if data else None)
@@ -66,14 +69,17 @@ def main():
                     if last_parallel!=eid:
                         last_parallel=eid;parallel_failures+=1;after=max(reset,now+min(900,30*2**min(parallel_failures-1,5)))
                     if now>=after:action='parallel'
-                elif status=='finished' and (eid:=final_message(events)) and eid!=attempted:
+                elif status=='finished' and (eid:=final_message(events,qa)) and eid!=attempted:
                     after=now+300
-                    if issue_open():action='unfinished'
+                    if qa or issue_open():action='unfinished'
                 if action and eid and eid!=attempted and api()['execution_status']==status:
                     attempted=eid
-                    ok=(api('/events','POST',{'role':'user','content':[{'type':'text','text':NUDGE}],'run':True}) if action=='unfinished' else api('/run','POST'))
+                    ok=(api('/events','POST',{'role':'user','content':[{'type':'text','text':QA_NUDGE if qa else NUDGE}],'run':True}) if action=='unfinished' else api('/run','POST'))
                     print('continue',action,eid,'acknowledged',bool(ok.get('success')),flush=True)
             elif status=='running' and last_parallel and now>after+600:parallel_failures=0
         except Exception as exc:print('continuation check:',type(exc).__name__,flush=True)
         time.sleep(30)
-if __name__=='__main__':main()
+if __name__=='__main__':
+    import threading
+    if os.getenv('QA_CONVERSATION_ID'): threading.Thread(target=monitor,args=(os.environ['QA_CONVERSATION_ID'],True),daemon=True).start()
+    monitor(os.environ['CONVERSATION_ID'])

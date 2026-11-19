@@ -136,6 +136,10 @@ spec:
           env:
             - name: CONVERSATION_ID
               value: {{ .Values.continueIterationChat | quote }}
+            {{- with .Values.continueQaChat }}
+            - name: QA_CONVERSATION_ID
+              value: {{ . | quote }}
+            {{- end }}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

@@ -66,3 +66,5 @@ monoriPublisher: true
 # Continue only MaxIterationsReached for the owner's Monori mutation task.
 # Set to an empty string to disarm. No other chat or error is retried.
 continueIterationChat: '1ab3985a-2193-4177-8dd2-8ec7d54dbfeb'
+
+continueQaChat: '51a35822-a870-43cc-a775-fd5e662f0039'
