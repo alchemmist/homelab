@@ -30,7 +30,7 @@ extraEnvVars:
   valueFrom:
     secretKeyRef:
       key: api-key
-      name: free-deepseek-upstream
+      name: deeperseeker-upstream
 - name: GENERIC_CLIENT_ID
   valueFrom:
     secretKeyRef:
@@ -179,15 +179,15 @@ proxy_config:
       output_cost_per_token: 0
   - model_name: o-deepseek
     litellm_params:
-      model: openai/deepseek-chat
-      api_base: http://free-deepseek-api.llm.svc.cluster.local:9655/v1
+      model: openai/v4.1flash
+      api_base: http://deeperseeker.deeperseeker.svc.cluster.local:4000/v1
       api_key: os.environ/DEEPSEEK_PROXY_API_KEY
       timeout: 600
       stream_timeout: 600
       num_retries: 0
     model_info:
       mode: chat
-      max_input_tokens: 32768
+      max_input_tokens: 369228
       max_output_tokens: 8192
       input_cost_per_token: 0
       output_cost_per_token: 0
