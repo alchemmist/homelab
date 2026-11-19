@@ -36,3 +36,6 @@ proxy:
 
 callGapSeconds: "4"
 tokenConcurrency: "1"
+maxUpstreamAttempts: "1"
+rateLimitCooldown: "300"
+persistSessions: "true"

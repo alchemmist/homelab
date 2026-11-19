@@ -1,6 +1,0 @@
-apiVersion: v2
-name: free-deepseek-api
-description: OpenAI-compatible proxy for a logged-in DeepSeek web session
-type: application
-version: 0.1.0
-appVersion: "648e708498bf"

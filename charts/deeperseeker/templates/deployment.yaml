@@ -143,6 +143,12 @@ spec:
               value: {{ .Values.callGapSeconds | quote }}
             - name: DEEPSEEKER_TOKEN_CONCURRENCY
               value: {{ .Values.tokenConcurrency | quote }}
+            - name: DEEPSEEKER_MAX_UPSTREAM_ATTEMPTS
+              value: {{ .Values.maxUpstreamAttempts | quote }}
+            - name: DEEPSEEKER_RATE_LIMIT_COOLDOWN
+              value: {{ .Values.rateLimitCooldown | quote }}
+            - name: DEEPSEEKER_PERSIST_SESSIONS
+              value: {{ .Values.persistSessions | quote }}
             - name: DEEPSEEKER_BROWSER_PROXY
               value: {{ .Values.proxy.browser | quote }}
             - name: DEEPSEEKER_UPSTREAM_PROXY

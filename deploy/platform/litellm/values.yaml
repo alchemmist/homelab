@@ -185,6 +185,11 @@ proxy_config:
       api_key: os.environ/DEEPSEEK_PROXY_API_KEY
       timeout: 600
       stream_timeout: 600
+      # One in flight and eight calls a minute. Concurrency 1 only queues;
+      # rpm is what stops a drained queue from opening a new web chat per request.
+      rpm: 8
+      max_parallel_requests: 1
+      max_retries: 0
       num_retries: 0
     model_info:
       mode: chat

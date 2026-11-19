@@ -1,7 +1,7 @@
 {
   "uid": "socrat-llm-keys",
   "title": "LLM key activity",
-  "description": "LiteLLM completed requests by API key alias, separately for Qwen and Venice DeepSeek, plus combined 30-day tokens and requests. pi is shown as vladislav; antex-agent and pi-agent as alchemmist. No key hashes, emails or client addresses are exposed.",
+  "description": "LiteLLM completed requests by API key alias, separately for qwen3.8-27b, v-deepseek-uc and o-deepseek, plus combined 30-day tokens and requests. pi is shown as vladislav; antex-agent and pi-agent as alchemmist. No key hashes, emails or client addresses are exposed.",
   "tags": [
     "Primary"
   ],
@@ -41,7 +41,7 @@
       "gridPos": {
         "x": 0,
         "y": 0,
-        "w": 24,
+        "w": 12,
         "h": 8
       },
       "targets": [
@@ -76,7 +76,7 @@
       "options": {
         "legend": {
           "displayMode": "table",
-          "placement": "right",
+          "placement": "bottom",
           "calcs": [
             "lastNotNull",
             "max"
@@ -100,9 +100,9 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 0,
-        "y": 8,
-        "w": 24,
+        "x": 12,
+        "y": 0,
+        "w": 12,
         "h": 8
       },
       "targets": [
@@ -137,7 +137,68 @@
       "options": {
         "legend": {
           "displayMode": "table",
-          "placement": "right",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Requests by API key — o-deepseek",
+      "type": "timeseries",
+      "description": "Estimated LiteLLM requests over the preceding minute, by API key alias. Fixed rolling 1m window, independent of dashboard range and pixel width; adjacent points overlap and must not be summed. Counter extrapolation can produce fractional estimates. Missing telemetry is not zero activity. Completed request activity only; an unfinished request is not yet visible.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (api_key_alias) (label_replace(label_replace(increase(litellm_requests_metric_total{job=\"litellm\",requested_model=\"o-deepseek\",api_key_alias!=\"\",api_key_alias!=\"None\",api_key_alias!~\"venice-acceptance-.*\"}[1m]), \"api_key_alias\", \"vladislav\", \"api_key_alias\", \"^pi$\"), \"api_key_alias\", \"alchemmist\", \"api_key_alias\", \"^(antex-agent|pi-agent)$\"))",
+          "legendFormat": "{{api_key_alias}}",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisLabel": "requests / rolling minute"
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
           "calcs": [
             "lastNotNull",
             "max"

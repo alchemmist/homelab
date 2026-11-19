@@ -58,8 +58,8 @@ def main():
                 data=json.dumps(
                     {
                         "key_alias": "openhands-monori",
-                        "models": ["v-deepseek-uc"],
-                        "max_parallel_requests": 1,
+                        "models": ["v-deepseek-uc", "o-deepseek", "qwen3.8-27b"],
+                        "max_parallel_requests": 3,
                         "metadata": {"purpose": "owner-approved OpenHands; no paid fallback"},
                     }
                 ).encode(),
@@ -123,7 +123,11 @@ def main():
             f"http://127.0.0.1:{port}/key/update",
             headers=headers,
             data=json.dumps(
-                {"key": key, "models": ["v-deepseek-uc"], "max_parallel_requests": 1}
+                {
+                    "key": key,
+                    "models": ["v-deepseek-uc", "o-deepseek", "qwen3.8-27b"],
+                    "max_parallel_requests": 3,
+                }
             ).encode(),
         )
         urllib.request.urlopen(request, timeout=30).close()
