@@ -39,10 +39,11 @@ production-операции. Датированные результаты не 
   Новые записи на `socrat-5` авторитетны. Старые claims — stale recovery, не
   актуальная копия. Rollback после новых записей требует fresh reverse handoff.
 - `socrat-5`: [SWE Mini](swe-mini.md), автономная очередь mini-swe-agent для Monori; приём новых задач приостановлен, PVC сохранён.
+- `socrat-5`: [DeeperSeeker](deeperseeker.md), namespace `deeperseeker`, отдельно от `free-deepseek-api`. LiteLLM `o-deepseek` смотрит сюда. Логин с домашнего Chrome, токен в дашборде; VPN — уже существующий `svc-free-deepseek`.
+- `socrat-5`: [OpenHands Canvas](openhands.md), готовый upstream UI + Agent Server. Browser→закрытая вкладка→shell/result и native Stop-hook fixture прошли; полный длинный PR loop не принят. Стандартный oauth2-proxy/Authentik OIDC ingress (owner-only) развёрнут; точечный DNS исправлен, trusted TLS и SSO-denial приняты через HOME/VPS; реальный owner MFA/browser roundtrip ещё не принят. GitHub publisher не подключён. PR#500 закрыт извне как superseded, не выдан за Ready.
   Durable SQLite PVC, отдельные non-root Jobs, только `venice-deepseek` через LiteLLM.
   Реальный smoke и переход к Monori приняты17ноября; первый PR/review ещё не принят.
   Production Monori/PVC/банковские credentials не подключены, merge не автоматический.
-- `socrat-5`: [OpenHands Canvas](openhands.md), готовый upstream UI + Agent Server. Короткий model/tool smoke прошёл; длинный пилот преждевременно остановился. Ingress выключен, DNS требует sudo, полный PR lifecycle не подключён/не принят.
 - Wiki: `deploy/wiki-runtime/values.yaml`, claim `wiki-runtime-socrat5`;
   `/mnt/files/homelab/wiki-runtime/data`. Runtime volume авторитетен, Git sync
   может отставать. Нельзя править managed tree параллельно writer.
@@ -117,13 +118,6 @@ refuse before all remote tasks/imports; chart-owned protection remains unchanged
 Old-PVC backup/upgrade instructions are not a fallback. Within the literal Helm
 gate only k3s/storage-nfs remain review-required; no maintenance was performed.
 
-Quality Graph research/expansion: compatible0.2.0compiler/provider/runtime bootstrap
-is published; minimal bootstrap55666f1b, main CI43937624526success. Semantic cost-layered redesign,
-rule/tool matrix and initial failed-regression audit: [quality runbook](../docs/quality/README.md).
-Fast gates run in parallel; tool integrations precede a disposable Kind lifecycle
-job (hosted run43954132178:4passed/0skipped). Full-graph acceptance remains a
-separate PR result, not a new required-check policy. No production/backup/GPU/VPN/identity operations authorized.
-
 2026-11-16 LLM key activity short-range No data fixed (50de2fac): Requests by API
 key used increase(counter[$__interval]); small pickers/pixel step made lookback5s,
 insufficient counter samples. Live reproduction:5s empty,15s/1m populated. Replaced
@@ -139,3 +133,5 @@ its subscription with an official Pod VPN client, NOT a new SSH-to-NL tunnel.
 [Reusable service-VPN runbook](service-vpn-egress.md). N8N corrected in5b722c5c;
 [finite acceptance and cleanup](../docs/n8n/service-vpn-20261117.md). Venice's
 pre-existing SSH-egress remains a separately recorded deviation, not a template.
+
+Quality CI/refactoring integration scope: see [current quality runbook](../docs/quality/README.md). Strict findings remain blocking in CI; operator permits a separate red-CI integration decision, not suppressions or source-green claims. No production operation is authorized by this scope.

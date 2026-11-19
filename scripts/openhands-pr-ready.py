@@ -12,7 +12,7 @@ import re
 import subprocess
 
 QUERY = """query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$number){
-url headRefOid isDraft mergeable
+url headRefOid state isDraft mergeable
 commits(last:100){nodes{commit{oid}} pageInfo{hasPreviousPage}}
 reviews(first:100){nodes{id author{login __typename} state body url commit{oid}} pageInfo{hasNextPage}}
 comments(first:100){nodes{id author{login __typename} body url} pageInfo{hasNextPage}}
@@ -37,6 +37,8 @@ def _complete_connection(value: object, direction: str) -> bool:
 
 def assess(pr, reviewers, handlers):
     blockers = []
+    if pr.get("state") != "OPEN":
+        blockers.append("PR is not open")
     head = pr.get("headRefOid")
     if not isinstance(head, str) or not re.fullmatch("[0-9a-f]{40}", head):
         blockers.append("Missing or invalid current head identity")
@@ -131,6 +133,7 @@ def assess(pr, reviewers, handlers):
     return {
         "ready_to_review": not blockers,
         "head": pr.get("headRefOid"),
+        "state": pr.get("state"),
         "url": pr.get("url"),
         "blockers": blockers,
     }

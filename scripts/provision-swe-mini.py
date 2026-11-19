@@ -88,7 +88,7 @@ def main():
         body = json.dumps(
             {
                 "key_alias": "swe-mini-monori",
-                "models": ["venice-deepseek"],
+                "models": ["v-deepseek-uc"],
                 "max_parallel_requests": 1,
                 "metadata": {
                     "purpose": "owner-approved background Monori maintenance; no other models"

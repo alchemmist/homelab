@@ -61,6 +61,18 @@
       var p = positions[i];
       css += '[data-griditem-key="' + p.key + '"]{grid-column:' + (p.x+1) + ' / span ' + p.w + '!important;grid-row:' + (p.y+1) + ' / span ' + p.h + '!important;}';
     }
+    // Native stacked Stat omits the sparkline below 101 layout pixels. Give
+    // only these two compact public-TV Stats more layout pixels, then paint
+    // them back into the original grid cells. No copied data or custom chart.
+    if (publicTv) {
+      for (var k = 0; k < model.panels.length; k++) {
+        var stat = model.panels[k];
+        if ((stat.id !== 931 && stat.id !== 932) || stat.type !== "stat" ||
+            !stat.options || stat.options.graphMode !== "area" || stat.gridPos.h !== 3) continue;
+        css += '@media(max-height:650px){.socrat-tv-public-grid>.react-grid-item[data-griditem-key="grid-item-' + stat.id +
+          '"]{width:160%!important;height:160%!important;transform-origin:top left!important;transform:scale(0.625)!important;}}';
+      }
+    }
     return css;
   }
   function compactArgoRules() {

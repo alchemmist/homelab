@@ -92,7 +92,7 @@
     },
     {
       "id": 2,
-      "title": "Requests by API key — venice-deepseek",
+      "title": "Requests by API key — v-deepseek-uc",
       "type": "timeseries",
       "description": "Estimated LiteLLM requests over the preceding minute, by API key alias. Fixed rolling 1m window, independent of dashboard range and pixel width; adjacent points overlap and must not be summed. Counter extrapolation can produce fractional estimates. Missing telemetry is not zero activity. Completed request activity only; an unfinished request is not yet visible.",
       "datasource": {

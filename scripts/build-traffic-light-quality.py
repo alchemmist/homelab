@@ -366,7 +366,8 @@ def panels():
 def build(source=None):
     d = copy.deepcopy(source if source is not None else json.loads(SOURCE.read_text()))
     existing = {p["id"]: p for p in d["panels"]}
-    additions = panels()
+    # Owner deletions are authoritative; never resurrect retired/removed widgets.
+    additions = [copy.deepcopy(existing[p["id"]]) for p in panels() if p["id"] in existing]
     occupied = set()
     for p in d["panels"]:
         if p["id"] not in IDS:
@@ -387,7 +388,8 @@ def build(source=None):
                         "Quality panel overlaps owner layout; stop rather than move panels"
                     )
                 occupied.add((x, y))
-    d["panels"] = [p for p in d["panels"] if p["id"] not in IDS] + additions
+    replacements = {p["id"]: p for p in additions}
+    d["panels"] = [replacements.get(p["id"], p) for p in d["panels"]]
     return d
 
 

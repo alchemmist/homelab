@@ -22,7 +22,35 @@ class InfrastructureContracts(unittest.TestCase):
 
     def test_registered_consumers_and_mesh(self) -> None:
         """Accept the canonical repository contract set unchanged."""
-        self.assertEqual(contract.check(ROOT), 9)
+        self.assertEqual(contract.check(ROOT), 10)
+
+    def test_openhands_issuer_consumer_is_exact_and_refuses_drift(self) -> None:
+        """Review the sole additive consumer and reject IP/scope drift in copied files."""
+        configuration = json.loads((ROOT / "deploy/contracts/infrastructure.json").read_text())
+        matches = [
+            row
+            for row in configuration["issuerTransport"]["consumers"]
+            if row["file"] == "deploy/openhands/values.yaml"
+        ]
+        self.assertEqual(
+            matches, [{"file": "deploy/openhands/values.yaml", "path": ["oidc", "hostAliases"]}]
+        )
+        for violation in ("ip", "scope"):
+            with self.subTest(violation=violation), tempfile.TemporaryDirectory() as directory:
+                root = self.fixture(directory)
+                target = root / "deploy/openhands/values.yaml"
+                text = target.read_text()
+                if violation == "ip":
+                    text = text.replace("10.43.218.222", "10.43.218.223")
+                else:
+                    text = text.replace(
+                        "[auth.socrat.alchemmist.xyz]",
+                        "[auth.socrat.alchemmist.xyz, unrelated.example]",
+                    )
+                self.assertNotEqual(text, target.read_text())
+                target.write_text(text)
+                with self.assertRaises(ValueError):
+                    contract.check(root)
 
     def fixture(self, directory):
         root = Path(directory)
@@ -103,7 +131,7 @@ class InfrastructureContracts(unittest.TestCase):
                 {"file": first["file"], "path": ["contractTestAliases"]}
             )
             config.write_text(json.dumps(c))
-            self.assertEqual(contract.check(root, write=True), 10)
+            self.assertEqual(contract.check(root, write=True), 11)
             self.assertEqual(p.read_text(), expected)
 
     def test_scope_widening_not_regenerated(self) -> None:
@@ -135,7 +163,7 @@ class InfrastructureContracts(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             root = self.fixture(d)
             p = root / "scripts/wg-peer15-relay.py"
-            self.assertEqual(contract.check(root), 9)
+            self.assertEqual(contract.check(root), 10)
             original = p.read_text()
             tree = ast.parse(original)
             front = [

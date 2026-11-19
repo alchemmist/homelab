@@ -95,7 +95,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
 
     model_class = LitellmTextbasedModel if engine == "mini_text" else LitellmModel
     model = model_class(
-        model_name="openai/venice-deepseek",
+        model_name="openai/v-deepseek-uc",
         cost_tracking="ignore_errors",
         model_kwargs={
             "api_base": base_url,
@@ -240,7 +240,7 @@ def run_openhands(
 
     register_tool(BashTool.name, BashTool)
     llm = LLM(
-        model="openai/venice-deepseek",
+        model="openai/v-deepseek-uc",
         base_url=base_url,
         api_key=SecretStr(key),
         native_tool_calling=True,

@@ -544,3 +544,50 @@ independently counted, goldnumericpixels confirmed; nativeRustFS/Harbor curves
 stillvisible, no scroll/clipping. Fully55%/font75%/network unchanged; socketabsent,
 forwards closed, ownXMLremoved, Fullyforeground. At finalimage age48min/todo0/
 halted0/~48.3ksamples/s are time-bound observations, not all-clusterhealthy/DR claims.
+
+## Owner compact capture + model timelines — 18November2026
+
+Owner manually removed930AI and923/924/925n8nreadouts, compacted network/backup/
+service tiles, then explicitly requested capture followed by two model timelines.
+Captured fresh live59panels in a461f58b before additions. Other concurrent primary
+worktree files left untouched; isolated worktree /tmp/homelab-tv-model-charts.
+Final61panels: ALL59owner panels/settings preserved exactly (database id omitted).
+937qwen3.8-27b x6,y14,w6,h5;938venice-deepseek x16,y16,w8,h4. No existingblock moved.
+Both nativeTimeSeries, nolegend, perkeycolorsbyname, nativehover, fixedrolling1m
+completedrequests, actualmodelselectors fromLLMkeydashboard. No in-flightclaim,
+no zero-fill, acceptancefixturesexcluded. Inheritdashboard12h (no1hoverride).
+Bottom20 remains exactlyArgo909bottom;Qwenends19,Veniceends20. NoCSSchange.
+
+Nativepublicquery12h both panels successful withliveframes. Isolated1024×575/DPR2
+browser preview inspected:61panels, scrollheight575, Qwen bounds x260.48/y406.09/
+w247.5/h135.25;Venice x686.33/y463.39/w332.66/h106.59. Venicebottom569.98 EXACT
+Argo bottom569.98. Preview /tmp/tv-models-browser-preview.png is NOTphysicalTV.
+TVADB saved192.168.0.19:5555 currently No route to host; physicalacceptance and
+Fullyreload BLOCKED. No device/settings/VPN changes or restarts performed. Owner
+must refresh existingTV page to receive updatedmodel. Do not claimactualTVfit.
+
+CMbudget preserved (<240000 unchanged): compactJSONformatting ONLY for21/22/23/
+909 and ownedwidgets, final235814bytes measuredUTF8. Initial sizechecks failed;
+fixed formatting, not modelorlimit. Generator scripts/build-traffic-light-models.py
+preserves futuremanualgeometry and rejects overlap/belowArgobottom. Qualitybuilder
+now preserves EXISTINGownerwidgetcontent/order/deletions ratherthanresurrectingAI;
+Argo builder retains absent emptyoverrides. Ownerlayoutfixture/tests updated;
+50traffic-light tests pass. ExistingdirectIPfixture updated for priorwishlistjob.
+Publicshare UID unchanged. No instrumentation/inference/plugin/silence changes.
+
+### Gold footer split —18November, a8fb6abc/6419721b
+
+Owner accepted two model charts, requested removing Downsample/Halted entirely,
+splitting age/ingest to two goldcards underbackupcards and expandingVeniceupwards.
+Freshlive model matchedGit before edit.936nowCascadeage x12,y18,w2,h2;939Samples/s
+x14,y18,w2,h2. Both retain EXACTformerA/D expressions, freshness/missing guards,
+units/agewarningbands; no fabricatedzero. Removed formerB/C queries. Nativefont9/
+15 fits names+value+units inside77.17×49.30CSSpx cards (11/20wrapped/clipped in
+preview; fixed ONLY newcards). Backups unchanged. Venice938 y14,h6 (wasy16,h4),
+useswholefreed2-rowblock, samebottom20; all59otherpanels exact.62panels/5holes.
+51traffic-light tests pass, ConfigMapbudget<240000 unchanged. Updated ownerfixture;
+modelbuilder preserves order and futuremanualgeometry. Inspected isolatedbrowser
+1024×575/DPR2 screenshot /tmp/tv-split-browser-preview.png: newcardlabel/value/unit
+rectangles fullycontained, Venicebottom569.98=Argo569.98, no scroll. This is NOTan
+actualTVscreenshot; TVstillNo route to host at192.168.0.19. No deviceprefs/restart/
+CSS/pipeline changes. Physicalacceptance blocked; owner refresh needed.

@@ -43,6 +43,26 @@ spec:
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.unlimitedIterations }}
+      {{- if ne (include "agent-canvas.image" .) "ghcr.io/openhands/agent-canvas:1.41.0@sha256:dcae97b63c9845fd1d4313857af6b10fb5888324a154238c4795ef86233d227c" }}
+      {{- fail "Revalidate SDK iteration overlay before changing Canvas image" }}
+      {{- end }}
+      initContainers:
+        - name: prepare-iteration-policy
+          image: {{ include "agent-canvas.image" . }}
+          command: [python, -IB, -c]
+          args:
+            - |
+{{ .Files.Get "files/uncap_sdk_iterations.py" | indent 14 }}
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {cpu: 200m, memory: 96Mi}
+          volumeMounts: [{name: sdk-iteration-policy, mountPath: /overlay}]
+      {{- end }}
       containers:
         - name: agent-canvas
           image: {{ include "agent-canvas.image" . }}
@@ -116,8 +136,13 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- if .Values.persistence.enabled }}
+          {{- if or .Values.persistence.enabled .Values.unlimitedIterations }}
           volumeMounts:
+            {{- if .Values.unlimitedIterations }}
+            - {name: sdk-iteration-policy, mountPath: /usr/local/lib/python3.13/site-packages/openhands/sdk/conversation/impl/local_conversation.py, subPath: local_conversation.py, readOnly: true}
+            - {name: sdk-iteration-policy, mountPath: /usr/local/lib/python3.13/site-packages/openhands/sdk/conversation/goal/controller.py, subPath: controller.py, readOnly: true}
+            {{- end }}
+            {{- if .Values.persistence.enabled }}
             {{- range .Values.persistence.mounts }}
             - name: {{ include "agent-canvas.pvcClaimName" $ }}
               mountPath: {{ .mountPath }}
@@ -126,6 +151,34 @@ spec:
               {{- end }}
             {{- end }}
           {{- end }}
+          {{- end }}
+        {{- if .Values.continueIterationChat }}
+        - name: iteration-continuation
+          image: {{ include "agent-canvas.image" . }}
+          command: [python, -IBu, -c]
+          args:
+            - |
+{{ .Files.Get "files/continue_iterations.py" | indent 14 }}
+          env:
+            - name: CONVERSATION_ID
+              value: {{ .Values.continueIterationChat | quote }}
+            {{- with .Values.continueQaChat }}
+            - name: QA_CONVERSATION_ID
+              value: {{ . | quote }}
+            {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 10m, memory: 24Mi}
+            limits: {cpu: 100m, memory: 96Mi}
+          volumeMounts:
+            - name: {{ include "agent-canvas.pvcClaimName" . }}
+              mountPath: /session-key
+              subPath: openhands/agent-canvas/api-key.txt
+              readOnly: true
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -142,11 +195,16 @@ spec:
       topologySpreadConstraints:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if and .Values.persistence.enabled .Values.persistence.existingClaim }}
+      {{- if or .Values.unlimitedIterations (and .Values.persistence.enabled .Values.persistence.existingClaim) }}
       volumes:
+        {{- if .Values.unlimitedIterations }}
+        - {name: sdk-iteration-policy, emptyDir: {sizeLimit: 2Mi}}
+        {{- end }}
+        {{- if and .Values.persistence.enabled .Values.persistence.existingClaim }}
         - name: {{ include "agent-canvas.pvcClaimName" . }}
           persistentVolumeClaim:
             claimName: {{ .Values.persistence.existingClaim }}
+        {{- end }}
       {{- end }}
   {{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) }}
   volumeClaimTemplates:

@@ -404,3 +404,15 @@ proven. Original workflow resumed; execution 16303 stopped under prior owner
 authorization, kept for review/no automatic replay; paid reservations not cleared.
 1037 job identities and 549 prior terminal hashes preserved. Full dated receipt
 in [SPI runbook](../docs/identity/spi-triage-oidc.md).
+
+## OpenHands Canvas —18November2026, owner-only OIDC gateway
+
+Official Canvas1.41.0 lacks native human OIDC/RBAC. Its dedicated, official
+**oauth2-proxy7.15.6** uses native Authentik Code+PKCE, existing MFA/consent flows,
+strict callback and the existing `homelab-owner` group only. This is an explicit
+single-tenant shell-service exception, NOT restoration of universal proxy gates.
+No users, memberships, IdP keys or other applications changed. Proxy credentials
+live in identity, outside coding tools; the native direct ingress stays disabled.
+GitOps source, dedicated native-API bootstrap, network/TLS details and remaining
+public DNS/TLS acceptance and remaining positive-MFA acceptance:
+[OpenHands runbook](openhands.md).

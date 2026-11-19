@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Explicit operator bootstrap of OpenHands' native settings; never prints secrets.
 
-Requires kubectl access. Creates a distinct LiteLLM venice-deepseek-only virtual
+Requires kubectl access. Creates a distinct LiteLLM v-deepseek-uc-only virtual
 key, NOT a personal Pi key. Uses the already running native settings API; model
 credentials and policy are persisted by OpenHands, not a custom runtime service.
 """
@@ -58,8 +58,8 @@ def main():
                 data=json.dumps(
                     {
                         "key_alias": "openhands-monori",
-                        "models": ["venice-deepseek"],
-                        "max_parallel_requests": 1,
+                        "models": ["v-deepseek-uc"],
+                        "max_parallel_requests": 2,
                         "metadata": {"purpose": "owner-approved OpenHands; no paid fallback"},
                     }
                 ).encode(),
@@ -96,6 +96,40 @@ def main():
             forward.terminate()
             forward.wait(timeout=10)
     key = base64.b64decode(kube_secret("openhands", "openhands-model")["data"]["api-key"]).decode()
+    # Keep the virtual key aligned with this script. A later run must not leave a
+    # hand-edited higher parallelism or the web-bridge model in place.
+    master = (
+        base64.b64decode(kube_secret("llm", "litellm-env")["data"]["LITELLM_MASTER_KEY"])
+        .decode()
+        .strip()
+    )
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    forward = subprocess.Popen(
+        ["kubectl", "-n", "llm", "port-forward", "svc/litellm", f"{port}:4000"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    try:
+        for _ in range(40):
+            try:
+                with socket.create_connection(("127.0.0.1", port), timeout=1):
+                    break
+            except OSError:
+                time.sleep(0.25)
+        headers = {"Authorization": "Bearer " + master, "Content-Type": "application/json"}
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{port}/key/update",
+            headers=headers,
+            data=json.dumps(
+                {"key": key, "models": ["v-deepseek-uc"], "max_parallel_requests": 1}
+            ).encode(),
+        )
+        urllib.request.urlopen(request, timeout=30).close()
+    finally:
+        forward.terminate()
+        forward.wait(timeout=10)
     policy = (
         Path(__file__)
         .resolve()
@@ -107,14 +141,14 @@ def main():
         "agent_settings_diff": {
             "agent_kind": "openhands",
             "llm": {
-                "model": "openai/venice-deepseek",
+                "model": "openai/v-deepseek-uc",
                 "base_url": "http://litellm.llm.svc.cluster.local:4000/v1",
                 "api_key": key,
                 "api_mode": "chat",
                 "native_tool_calling": True,
                 "max_input_tokens": 30000,
                 "max_output_tokens": 4096,
-                "num_retries": 0,
+                "num_retries": 5,
                 "timeout": 900,
                 "reasoning_effort": None,
                 "enable_encrypted_reasoning": False,

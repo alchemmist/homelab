@@ -38,10 +38,36 @@ ingress:
 config:
   extraEnv:
     - name: AGENT_CANVAS_ALLOW_LAN_SESSION_KEY
-      value: 'false'
+      value: 'true'
+    # Local automation workers need key-authenticated loopback callbacks, not
+    # the public browser OIDC gate. Public UI still uses its same-origin proxy.
     - name: AUTOMATION_BASE_URL
-      value: https://openhands.socrat.alchemmist.xyz
+      value: http://127.0.0.1:8000
 statefulSet:
   persistentVolumeClaimRetentionPolicy:
     whenDeleted: Retain
     whenScaled: Retain
+
+# Public route terminates at standard Authentik OIDC, never directly at Canvas.
+oidc:
+  enabled: true
+  # Same existing S5 IdP route as SPI: retain public issuer/SNI/verified TLS,
+  # avoid the unreachable split-DNS HA VIP; no global/public DNS changes.
+  hostAliases:
+    - ip: 10.43.218.222 # Existing traefik.kube-system Service clusterIP.
+      hostnames: [auth.socrat.alchemmist.xyz]
+  image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.6@sha256:01da265f8e371e6d3043b97829e171f3e4d53f9dc3817be15fb4fc29c92fe2a6
+
+  sessionImage: docker.io/library/redis:8.2-alpine@sha256:da23c2478319ceb4903857d77a2fd7aa5137d9e9d4c8165dafbacedac6403e95
+
+# Issue #509: trusted GitHub writer, no credentials in Canvas.
+monoriPublisher: true
+
+# Continue only MaxIterationsReached for the owner's Monori mutation task.
+# Set to an empty string to disarm. No other chat or error is retried.
+continueIterationChat: '1ab3985a-2193-4177-8dd2-8ec7d54dbfeb'
+
+continueQaChat: '51a35822-a870-43cc-a775-fd5e662f0039'
+
+# Owner explicitly requested no iteration-count stop for main agents, task workers or goals.
+unlimitedIterations: true

@@ -11,7 +11,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 CHART = ROOT / "charts" / "pr-agent"
 EXPECTED_FALLBACK_MODEL_COUNT = 9
-EXPECTED_REVIEW_MODEL = "openai/venice-deepseek"
+EXPECTED_REVIEW_MODEL = "openai/v-deepseek-uc"
 
 
 class PrAgentChartTest(unittest.TestCase):
@@ -23,7 +23,7 @@ class PrAgentChartTest(unittest.TestCase):
             ["helm", "template", "pr-agent", str(CHART), "--namespace", "pr-agent"],
             text=True,
         )
-        assert "pragent/pr-agent:0.49.0-github_app" in rendered
+        assert "pragent/pr-agent:0.50.0-github_app" in rendered
         assert EXPECTED_REVIEW_MODEL in rendered
         assert "http://litellm.llm.svc.cluster.local:4000/v1" in rendered
         assert "pr-agent.socrat.alchemmist.xyz" in rendered
@@ -47,8 +47,18 @@ class PrAgentChartTest(unittest.TestCase):
         fallback_value = rendered.splitlines()[fallback_at + 1]
         assert fallback_value.count(EXPECTED_REVIEW_MODEL) == EXPECTED_FALLBACK_MODEL_COUNT
         assert "CONFIG__MAX_MODEL_TOKENS" in rendered
-        assert 'value: "12288"' in rendered
+        assert 'value: "24576"' in rendered
         assert 'value: "100"' in rendered
+        assert 'value: "15"' in rendered
+        assert "PR_REVIEWER__PUBLISH_OUTPUT_NO_SUGGESTIONS" in rendered
+        assert "PR_REVIEWER__MAX_PREVIOUS_FINDINGS_CHARS" in rendered
+        assert "CONFIG__SYSTEM_INSTRUCTIONS" in rendered
+        assert "CONFIG__PATCH_EXTRA_LINES_BEFORE" in rendered
+        assert 'value: "40"' in rendered
+        assert "CONFIG__MAX_EXTRA_LINES_BEFORE_DYNAMIC_CONTEXT" in rendered
+        assert 'value: "80"' in rendered
+        assert "PR_REVIEWER__MINIMAL_MINUTES_FOR_INCREMENTAL_REVIEW" in rendered
+        assert 'value: "10"' in rendered
         assert "PR_REVIEWER__ENABLE_LARGE_PR_CHUNKING" in rendered
         assert "PR_REVIEWER__INLINE_KEY_ISSUES" in rendered
         assert "PR_CODE_SUGGESTIONS__COMMITTABLE_CODE_SUGGESTIONS" in rendered
@@ -60,7 +70,7 @@ class PrAgentChartTest(unittest.TestCase):
             for i, line in enumerate(rendered.splitlines())
             if "GITHUB__PUBLISH_AS_CHECK_RUN" in line
         )
-        assert '"true"' in rendered.splitlines()[check_at + 1]
+        assert '"false"' in rendered.splitlines()[check_at + 1]
         lines = rendered.splitlines()
         push_at = next(i for i, line in enumerate(lines) if "GITHUB_APP__PUSH_COMMANDS" in line)
         push_value = lines[push_at + 1]
@@ -71,8 +81,10 @@ class PrAgentChartTest(unittest.TestCase):
 
 EXPECTED_MODEL_SETTINGS = {
     "CONFIG__MODEL": EXPECTED_REVIEW_MODEL,
+    "GITHUB_APP__HANDLE_PUSH_TRIGGER": "true",
+    "GITHUB_APP__PUSH_COMMANDS": '["/review -i"]',
     "CONFIG__CUSTOM_MODEL_MAX_TOKENS": "32768",
-    "CONFIG__MAX_MODEL_TOKENS": "12288",
+    "CONFIG__MAX_MODEL_TOKENS": "24576",
     "OPENAI__API_BASE": "http://litellm.llm.svc.cluster.local:4000/v1",
 }
 
@@ -107,6 +119,8 @@ def _review_model_contract(rendered: str) -> None:
 @pytest.mark.parametrize(
     ("field", "bad_value"),
     [
+        ("GITHUB_APP__HANDLE_PUSH_TRIGGER", "false"),
+        ("GITHUB_APP__PUSH_COMMANDS", "[]"),
         ("CONFIG__MODEL", "openai/qwen3.8-27b"),
         ("CONFIG__CUSTOM_MODEL_MAX_TOKENS", "131072"),
         ("CONFIG__MAX_MODEL_TOKENS", "131072"),

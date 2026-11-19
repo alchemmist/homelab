@@ -105,7 +105,7 @@ def test_chart_titles_use_litellm_route_names() -> None:
     )
     assert [p["title"] for p in d["panels"][:2]] == [
         "Requests by API key — qwen3.8-27b",
-        "Requests by API key — venice-deepseek",
+        "Requests by API key — v-deepseek-uc",
     ]
 
 

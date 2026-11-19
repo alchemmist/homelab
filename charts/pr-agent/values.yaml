@@ -1,5 +1,4 @@
----
-image: pragent/pr-agent:0.49.0-github_app@sha256:b57649785c4366eed39aab698f6d0fe944fa21cb7c2312ddc9bc8e4db2192a60
+image: pragent/pr-agent:0.50.0-github_app
 replicaCount: 1
 nodeName: socrat-5
 host: pr-agent.socrat.alchemmist.xyz
@@ -8,29 +7,55 @@ clusterIssuer: letsencrypt-http01
 secretName: pr-agent
 port: 3000
 openaiApiBase: http://litellm.llm.svc.cluster.local:4000/v1
-model: openai/venice-deepseek
+model: openai/v-deepseek-uc
 # Invalid YAML is retried only by walking fallback models. The chart repeats the
 # primary model so one review gets this many generations before the check fails.
 invalidOutputAttempts: 10
-# venice-deepseek is the LiteLLM alias of the 32768-context Venice bridge model.
+# v-deepseek-uc is the LiteLLM alias of the 32768-context Venice bridge model.
 customModelMaxTokens: "32768"
-# Per-call cap. A diff is split once it exceeds this. 12288 leaves room for the
-# prompt and the answer inside the 32768 window. max calls is only the ceiling:
-# unused slots are not extra chunks. PR-Agent has no unlimited setting, so the
-# ceiling is deliberately high.
-maxModelTokens: "12288"
+# Per-call cap. A diff is split once it exceeds this. 24576 keeps the call inside the
+# 32768 window and avoids cutting one function across many independent reviews.
+# max calls is only the ceiling: unused slots are not extra chunks.
+maxModelTokens: "24576"
 inlineKeyIssues: true
 largePrChunking: true
+# Ceilings, not quotas. The prompt asks for 0..N verified issues and accepts an empty list.
+# Earlier findings also count toward N, so the ceiling has to leave room for a real new one.
 reviewMaxCalls: "100"
-numMaxFindings: "12"
+numMaxFindings: "15"
+# Earlier findings are shown back to the model so it repeats them instead of paraphrasing.
+maxPreviousFindingsChars: "24000"
+# An empty finding list is still published, as "No major issues detected".
+publishOutputNoSuggestions: true
+# Host-only. Repository settings and /review arguments cannot override this.
+systemInstructions: >-
+  Act like a careful human reviewer. Publish only a defect you can point at in the shown code.
+  Zero findings is a complete review. Do not add remarks to reach a count.
+  When you find no verified defect, say that there are no further remarks.
+  Do not publish a finding when your own reasoning concludes that the code is correct.
+  Do not propose a constraint that contradicts behavior the diff or ticket explicitly requires.
+  Do not report a missing feature when the diff already adds it.
+  Do not publish a defensive check or a style remark as a correctness defect.
+  Do not claim a statement was removed unless that line is absent from the diff.
+  Do not restate an open inline thread, even in different words.
+  Skip cosmetic import aliases and formatting-only hunks.
+  If the hunk does not contain the whole function, do not invent the missing part.
+# Include the enclosing function, not only the changed lines.
+patchExtraLinesBefore: "40"
+maxExtraLinesBeforeDynamicContext: "80"
+# A burst of pushes becomes one incremental review.
+incrementalReviewMinMinutes: "10"
 committableSuggestions: true
 suggestionsMaxCalls: "100"
 persistentInlineComments: true
+# Push reviews only the commits added since the previous review. A full /review rewrites
+# old findings, the inline fingerprint misses the paraphrase, and the PR gets another copy.
+# A manual /review comment still reviews the whole pull request.
 handlePushTrigger: true
-# /improve stays manual. Automatic runs on every push reposted the same inline suggestion.
-pushCommands: "[\"/review\"]"
-# Publish describe/review as GitHub checks: in progress while the agent runs, then success or failure.
-publishAsCheckRun: true
+pushCommands: '["/review -i"]'
+# The review summary is one comment that later runs update. A check run replaces that
+# comment with an empty review body, which is not how people read CodeRabbit.
+publishAsCheckRun: false
 gunicornWorkers: "6"
 # Match LiteLLM's request_timeout. The webhook returns immediately, but each model
 # call used to give up after 120s while the proxy would still be waiting in queue.
@@ -53,4 +78,3 @@ tolerations:
     operator: Equal
     value: "true"
     effect: NoSchedule
-...

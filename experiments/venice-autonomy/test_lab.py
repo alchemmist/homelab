@@ -379,9 +379,7 @@ class MiniAdapterTests(unittest.TestCase):
                 output = sandbox.execute({"command": "echo observed"})
             self.assertIsNone(output["exception_info"])
             for model_type in (LitellmModel, LitellmTextbasedModel):
-                model = model_type(
-                    model_name="openai/venice-deepseek", cost_tracking="ignore_errors"
-                )
+                model = model_type(model_name="openai/v-deepseek-uc", cost_tracking="ignore_errors")
                 message = {
                     "extra": {
                         "actions": [{"command": "echo observed", "tool_call_id": "call_fixture"}]

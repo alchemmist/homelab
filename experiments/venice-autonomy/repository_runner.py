@@ -490,7 +490,7 @@ def main(argv=None):
         "task": "historical venice-api repository regression",
         "engine": "openhands",
         "adapter": "repository_runner.invoke_openhands",
-        "model": "litellm/venice-deepseek",
+        "model": "litellm/v-deepseek-uc",
         "accepted": False,
         "clean_finish": False,
         "image": image,

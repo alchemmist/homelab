@@ -108,7 +108,10 @@
       "tests/test_webui_tool_guard.py",
       "tests/test_wg_peer15_relay.py",
       "tests/test_wishlist_images.py",
-      "tests/test_wishlist_observability.py"
+      "tests/test_wishlist_observability.py",
+      "tests/openhands/test_iteration_continue.py",
+      "tests/openhands/test_publisher.py",
+      "tests/test_traffic_light_models.py"
     ],
     "medium": [
       "tests/test_alert_graph_inventory.py",
@@ -160,7 +163,8 @@
       "tests/test_vm105_renderer_lms_litellm.py",
       "tests/test_vm105_stateful_batch.py",
       "tests/test_wiki_socrat0_placement.py",
-      "tests/test_wishlist_vm105.py"
+      "tests/test_wishlist_vm105.py",
+      "tests/openhands/test_upgrade.py"
     ],
     "cluster": [
       "tests/kubernetes/test_cluster.py"
@@ -314,6 +318,8 @@
     "experiments/venice-autonomy/test_controller_faults.py": "Owner upstream experimental autonomy source; not imported or executed. Provider/container/archive operations are outside this mission; individual offline isolation review required before scheduling.",
     "experiments/venice-autonomy/test_lab.py": "Owner upstream experimental autonomy source; not imported or executed. Provider/container/archive operations are outside this mission; individual offline isolation review required before scheduling.",
     "experiments/venice-autonomy/test_protocol_regression.py": "Owner upstream experimental autonomy source; not imported or executed. Provider/container/archive operations are outside this mission; individual offline isolation review required before scheduling.",
-    "experiments/venice-autonomy/test_runner_decision.py": "Owner upstream experimental autonomy source; not imported or executed. Provider/container/archive operations are outside this mission; individual offline isolation review required before scheduling."
+    "experiments/venice-autonomy/test_runner_decision.py": "Owner upstream experimental autonomy source; not imported or executed. Provider/container/archive operations are outside this mission; individual offline isolation review required before scheduling.",
+    "tests/openhands/test_loop.py": "Owner source synchronized from main; imports an operational provisioning/validation entrypoint. Not imported or run in this source-only mission. Pending bounded offline interface/isolation review; not passed or runtime acceptance.",
+    "tests/openhands/test_oidc.py": "Owner source synchronized from main; imports an operational provisioning/validation entrypoint. Not imported or run in this source-only mission. Pending bounded offline interface/isolation review; not passed or runtime acceptance."
   }
 }

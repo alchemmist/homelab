@@ -25,7 +25,7 @@ proof that the installed OpenHands automation has enforced it.
    record their disposition, rather than falsely claiming a resolve operation.
 5. Every new push INVALIDATES the previous green/review snapshot. Repeat CI, bot
    review and comment handling until the current head satisfies every condition.
-6. Ready to Review requires ALL applicable checks SUCCESS, no pending checks/reviews,
+6. Ready to Review requires an OPEN, non-draft PR, ALL applicable checks SUCCESS, no pending checks/reviews,
    no merge conflict, all configured bot reviews completed, all bot remarks accounted
    for with replies/evidence, and all bot review threads resolved. Skipped/neutral
    is not green by default; any exemption needs an explicitly reviewed policy.

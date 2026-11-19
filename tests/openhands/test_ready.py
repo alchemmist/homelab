@@ -14,6 +14,7 @@ class ReadyContract(unittest.TestCase):
     def setUp(self):
         self.sha = "a" * 40
         self.p = {
+            "state": "OPEN",
             "url": "https://github.com/o/r/pull/1",
             "headRefOid": self.sha,
             "mergeable": "MERGEABLE",
@@ -71,6 +72,11 @@ class ReadyContract(unittest.TestCase):
                 },
             }
         ]
+
+    def test_closed_merged_unknown_state_are_not_ready(self):
+        for state in ("CLOSED", "MERGED", None):
+            self.p["state"] = state
+            self.assertFalse(self.result()["ready_to_review"])
 
     def test_green_complete(self):
         self.assertTrue(self.result()["ready_to_review"])

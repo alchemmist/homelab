@@ -27,6 +27,11 @@ extraEnvVars:
     secretKeyRef:
       key: api-key
       name: vllm-api
+- name: DEEPSEEK_PROXY_API_KEY
+  valueFrom:
+    secretKeyRef:
+      key: api-key
+      name: deeperseeker-upstream
 - name: GENERIC_CLIENT_ID
   valueFrom:
     secretKeyRef:
@@ -160,7 +165,7 @@ proxy_config:
   # Four admitted calls = one browser generation plus at most three waiters.
   # Browser adapter: one shared page, buffered SSE, approximate token usage.
   # Zero synthetic price is not a measurement of Venice subscription credits.
-  - model_name: venice-deepseek
+  - model_name: v-deepseek-uc
     litellm_params:
       model: openai/venice-agentic-deepseek-v4.1-flash-uncensored
       api_base: http://venice-api.venice-api.svc.cluster.local:8080/v1
@@ -171,6 +176,20 @@ proxy_config:
       num_retries: 0
     model_info:
       mode: chat
+      input_cost_per_token: 0
+      output_cost_per_token: 0
+  - model_name: o-deepseek
+    litellm_params:
+      model: openai/v4.1flash
+      api_base: http://deeperseeker.deeperseeker.svc.cluster.local:4000/v1
+      api_key: os.environ/DEEPSEEK_PROXY_API_KEY
+      timeout: 600
+      stream_timeout: 600
+      num_retries: 0
+    model_info:
+      mode: chat
+      max_input_tokens: 369228
+      max_output_tokens: 8192
       input_cost_per_token: 0
       output_cost_per_token: 0
 redis:

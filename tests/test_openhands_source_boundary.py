@@ -242,6 +242,7 @@ def _handoff_snapshot() -> dict[str, object]:
     """Construct only synthetic GitHub shapes, without authentication or API access."""
     head = "a" * 40
     snapshot: dict[str, object] = {
+        "state": "OPEN",
         "url": "https://github.com/example/example/pull/1",
         "headRefOid": head,
         "isDraft": False,

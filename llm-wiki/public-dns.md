@@ -129,3 +129,14 @@ nodes; that does not expand the three-node authoritative DNS deployment.
 Use the existing trusted homelab known-hosts file for Ansible IP-based targets,
 as configured for the restored normal SSH aliases; never disable host checking.
 Earlier missing-trust/prepared receipts above are historical.
+
+## OpenHands exact-name addition —18November2026
+
+`openhands.socrat.alchemmist.xyz` added to FAILOVER via Git and the dedicated
+`openhands-public-dns.py`/Ansible guarded helper, following explicit owner sudo
+authorization. All four nodes had identical fresh preflight hash; all four health
+combinations preserved unrelated records; serial zone refresh/private receipts,
+no daemon/node/network restart. REG.RU delegation/glue unchanged. All three current
+authoritative NS and Google/Cloudflare answer HOME+VPS; native HTTP-01 Certificate
+Ready, trusted TLS and SSO protection checked on both edges. This is an exact-name
+addition, not a wildcard or permission to expose other services. [App scope](openhands.md).
