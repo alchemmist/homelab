@@ -1,0 +1,10 @@
+# DNS advertises only Ready addresses. Consumers resolve, never connect to this service.
+apiVersion: v1
+kind: Service
+metadata:
+  name: deeperseeker-ready
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: false
+  selector: {app: deeperseeker}
+  ports: [{name: http, port: 4000, targetPort: 4000}]
