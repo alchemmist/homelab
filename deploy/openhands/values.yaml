@@ -75,3 +75,6 @@ unlimitedIterations: true
 replicaCount: 1
 coldBackup20261119: true
 retireFailedBackup: true
+workerRegistries:
+  mutation: 75ad056ce4354c2e86fd12f8e1f4f6fe
+  qa: e74a67536db4498196f4a961070bf471
