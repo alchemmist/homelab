@@ -74,19 +74,57 @@ def idle(prefix, x, y):
                   query=' or '.join('label_replace(timestamp(vllm:num_requests_' + metric +
                       '{model_name="' + MODEL + '"}), "queue_metric", "' + metric + '", "model_name", ".*")'
                       for metric in ('running', 'waiting')))
-    valid = code(prefix + ' verify both metrics', f'''const values = $({json.dumps(values)}).item.json;
+    valid = code(prefix + ' verify both metrics', r'''const values = $(__VALUES__).item.json;
 const stamps = $json;
-function rows(r) {{ return r.statusCode === 200 && r.body?.status === 'success' &&
-  Array.isArray(r.body?.data?.result) ? r.body.data.result : []; }}
-const expected = ['vllm:num_requests_running','vllm:num_requests_waiting'];
-const v = rows(values), t = rows(stamps), now = Date.now()/1000;
-const key = (r, metric) => JSON.stringify([metric, Object.entries(r.metric || {{}})
-  .filter(([k]) => !['__name__','queue_metric'].includes(k)).sort(([a],[b]) => a.localeCompare(b))]);
-const fresh = new Set(t.filter(r => {{const age = now - Number(r.value?.[1]); return age >= -5 && age <= 45;}})
-  .map(r => key(r, r.metric.queue_metric)));
-return {{json: {{idle: expected.every(n => v.some(r => r.metric.__name__ === n)) &&
-  t.length === v.length && v.every(r => r.value?.[1] === '0' &&
-    fresh.has(key(r, r.metric.__name__.split('_').at(-1))))}}}};''', x+440, y)
+const invalid = {json: {idle: false, telemetryValid: false}};
+const model = __MODEL__;
+const names = ['running', 'waiting'];
+const now = Date.now()/1000;
+function rows(r) {
+  return r && !Object.hasOwn(r, 'error') && r.statusCode === 200 &&
+    r.body?.status === 'success' && !Object.hasOwn(r.body, 'error') &&
+    r.body.data?.resultType === 'vector' && Array.isArray(r.body.data.result)
+    ? r.body.data.result : null;
+}
+function sample(r, timestamp) {
+  if (!r || !r.metric || typeof r.metric !== 'object' || Array.isArray(r.metric) ||
+      Object.values(r.metric).some(v => typeof v !== 'string') ||
+      r.metric.model_name !== model || !Array.isArray(r.value) || r.value.length !== 2 ||
+      typeof r.value[0] !== 'number' || !Number.isFinite(r.value[0]) || r.value[0] <= 0 ||
+      typeof r.value[1] !== 'string' ||
+      !/^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/.test(r.value[1]) ||
+      !Number.isFinite(Number(r.value[1]))) return null;
+  const metric = timestamp ? r.metric.queue_metric :
+    r.metric.__name__?.replace(/^vllm:num_requests_/, '');
+  if (!names.includes(metric) || (!timestamp &&
+      (r.metric.__name__ !== 'vllm:num_requests_'+metric || Object.hasOwn(r.metric, 'queue_metric')))) return null;
+  const labels = JSON.stringify(Object.entries(r.metric)
+    .filter(([k]) => !['__name__', 'queue_metric'].includes(k))
+    .sort(([a],[b]) => a.localeCompare(b)));
+  return {metric, labels, key: JSON.stringify([metric, labels]), value: Number(r.value[1])};
+}
+const v = rows(values), t = rows(stamps);
+if (!v || !t || !v.length || v.length !== t.length) return invalid;
+const valuesByKey = new Map(), pairs = new Map();
+let idle = true;
+for (const row of v) {
+  const s = sample(row, false);
+  if (!s || valuesByKey.has(s.key)) return invalid;
+  valuesByKey.set(s.key, s);
+  if (!pairs.has(s.labels)) pairs.set(s.labels, new Set());
+  pairs.get(s.labels).add(s.metric);
+  idle = idle && s.value === 0;
+}
+if ([...pairs.values()].some(metrics => !names.every(n => metrics.has(n)))) return invalid;
+const seen = new Set();
+for (const row of t) {
+  const s = sample(row, true);
+  if (!s || seen.has(s.key) || !valuesByKey.has(s.key)) return invalid;
+  const age = now - s.value;
+  if (!Number.isFinite(age) || age < -5 || age > 45) return invalid;
+  seen.add(s.key);
+}
+return {json: {idle, telemetryValid: true}};'''.replace('__VALUES__', json.dumps(values)).replace('__MODEL__', json.dumps(MODEL)), x+440, y)
     gate = check(prefix + ' model idle?', '$json.idle === true', x+660, y)
     chain(values, stamps, valid, gate)
     return values, gate

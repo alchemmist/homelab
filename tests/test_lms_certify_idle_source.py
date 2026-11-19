@@ -4,11 +4,19 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from urllib.parse import parse_qs, urlsplit
+
+import pytest
 
 from scripts.quality.common import command
 
 ROOT = Path(__file__).resolve().parents[1]
+PREFIXES = (
+    "Admission:",
+    "Generate solution:",
+    "Author blind tests:",
+    "Repair solution:",
+    "Add missing corner cases:",
+)
 RUNNER = """
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -43,18 +51,39 @@ const wrongModel = sample('running'); wrongModel.metric.model_name='other';
 cases.push(['wrong-model',payload([wrongModel,sample('waiting')]),null]);
 const badStamp = sample('running'); badStamp.value[0]=0;
 cases.push(['timestamp',payload([badStamp,sample('waiting')]),null]);
+const envelope = body => ({statusCode:200,body});
+const stamps = body => envelope(payload((body?.data?.result || []).map(r => ({
+ metric:{...r.metric,queue_metric:r.metric?.__name__?.split('_').at(-1)},
+ value:[1700000000,'1700000000']
+}))));
 const answers=[];
-for (const [name,data,expected] of cases) {
- let actual, rejected=false;
- try {
-  const result=vm.runInNewContext(
-    '(function(){'+input.source+'\\n})()',{$json:data},{timeout:1000});
-  actual=result[0].json.action;
- } catch {rejected=true;}
- const ok=expected===null ? rejected : (!rejected && actual===expected);
+function verify(name, values, timestamps, expected) {
+ const result=vm.runInNewContext('(function(){'+input.source+'\\n})()', {
+  $json:timestamps, $:()=>({item:{json:values}}), Date:{now:()=>1700000000000}
+ },{timeout:1000}).json;
+ const ok=expected===null ? result.idle===false && result.telemetryValid===false :
+   result.telemetryValid===true && result.idle===(expected==='step');
  if (!ok) throw new Error('Queue predicate contract failed: '+name);
  answers.push(name);
 }
+for (const [name,data,expected] of cases) verify(name,envelope(data),stamps(data),expected);
+const good = payload(pair());
+verify('both-targets-idle',envelope(payload([...pair(),sample('running','0','other'),sample('waiting','0','other')])),
+ stamps(payload([...pair(),sample('running','0','other'),sample('waiting','0','other')])), 'step');
+verify('duplicate-complete-pairs',envelope(payload([...pair(),...pair()])),stamps(payload([...pair(),...pair()])),null);
+verify('http-failure',{statusCode:503,body:good},stamps(good),null);
+verify('transport-error',{...envelope(good),error:'synthetic'},stamps(good),null);
+verify('freshness-type',envelope(good),{statusCode:200,body:{...good,data:{...good.data,resultType:'matrix'}}},null);
+for (const value of ['1699999954','1700000006','NaN','Infinity','',' 1700000000 ','1e999']) {
+ const t=stamps(good);t.body.data.result[0].value[1]=value;
+ verify('bad-freshness-'+value,envelope(good),t,null);
+}
+const duplicate=stamps(good);duplicate.body.data.result[1]=duplicate.body.data.result[0];
+verify('duplicate-freshness',envelope(good),duplicate,null);
+const missing=stamps(good);missing.body.data.result.pop();
+verify('missing-freshness',envelope(good),missing,null);
+const mismatch=stamps(good);mismatch.body.data.result[0].metric.instance='other';
+verify('mismatched-freshness',envelope(good),mismatch,null);
 console.log(JSON.stringify({passed:answers}));
 """
 
@@ -79,25 +108,45 @@ def _parameters(name: str) -> dict[str, object]:
     return _mapping(matches[0]["parameters"])
 
 
-def test_queue_selector_preserves_both_metric_names_without_or_collision() -> None:
-    """A direct metric selector cannot discard waiting via vector-union label matching."""
-    url = _parameters("Qwen queue")["url"]
-    assert isinstance(url, str)
-    assert parse_qs(urlsplit(url).query) == {
-        "query": ['{__name__=~"vllm:num_requests_(running|waiting)",model_name="qwen3.8-27b"}'],
+@pytest.mark.parametrize("prefix", PREFIXES)
+def test_queue_selector_preserves_both_metric_names_without_or_collision(prefix: str) -> None:
+    """Every actual phase keeps both counters and independent original-sample stamps."""
+    params = _parameters(prefix + " queue depth")
+    assert (
+        params["url"]
+        == "http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090/api/v1/query"
+    )
+    assert params["queryParameters"] == {
+        "parameters": [
+            {
+                "name": "query",
+                "value": '{__name__=~"vllm:num_requests_(running|waiting)",model_name="qwen3.8-27b"}',
+            }
+        ]
     }
+    stamps = _parameters(prefix + " sample freshness")
+    expected = " or ".join(
+        "label_replace(timestamp(vllm:num_requests_"
+        + metric
+        + '{model_name="qwen3.8-27b"}), "queue_metric", "'
+        + metric
+        + '", "model_name", ".*")'
+        for metric in ("running", "waiting")
+    )
+    assert stamps["queryParameters"] == {"parameters": [{"name": "query", "value": expected}]}
+    gate = _parameters(prefix + " model idle?")
+    assert "$json.idle === true" in json.dumps(gate)
 
 
-def test_queue_predicate_refuses_incomplete_or_invalid_telemetry() -> None:
-    """Run the actual pure JS predicate only, with no HTTP nodes/activation/inference."""
-    source = _parameters("Model free?")["jsCode"]
+@pytest.mark.parametrize("prefix", PREFIXES)
+def test_queue_predicate_refuses_incomplete_or_invalid_telemetry(prefix: str) -> None:
+    """Retain all25legacy cases, distinguish malformed from busy, and test freshness."""
+    source = _parameters(prefix + " verify both metrics")["jsCode"]
     assert isinstance(source, str)
     result = command(
-        ["node", "--input-type=module", "-e", RUNNER],
-        stdin=json.dumps({"source": source}),
+        ["node", "--input-type=module", "-e", RUNNER], stdin=json.dumps({"source": source})
     )
     report = _mapping(json.loads(result.stdout))
     passed = report["passed"]
     assert isinstance(passed, list)
-    expected_count = 25
-    assert len(passed) == expected_count
+    assert len(passed) == 40
