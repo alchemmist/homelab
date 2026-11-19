@@ -20,35 +20,39 @@ def test_requests_window_is_independent_of_time_picker():
 def test_temporary_acceptance_keys_are_not_user_activity():
     d = json.loads((Path(__file__).resolve().parents[1] / 'charts/monitoring-k3s/dashboards/llm-keys.json').read_text())
     targets = [t for p in d['panels'] for t in p.get('targets', [])]
-    assert len(targets) == 4
+    assert len(targets) == 5
     assert all('api_key_alias!~"venice-acceptance-.*"' in t['expr'] for t in targets)
 
 
 def test_models_are_separate_and_public_content_is_aggregate():
     d = json.loads((Path(__file__).resolve().parents[1] / 'charts/monitoring-k3s/dashboards/llm-keys.json').read_text())
-    assert len(d['panels']) == 3
+    assert len(d['panels']) == 4
     assert d['annotations'] == {'list': []}
     assert d['time']['from'] == 'now-1h'
-    for panel, model in zip(d['panels'][:2], ['qwen3.8-27b', 'venice-agentic-deepseek-v4.1-flash-uncensored']):
+    for panel, model in zip(d['panels'][:3], ['qwen3.8-27b', 'venice-agentic-deepseek-v4.1-flash-uncensored', 'o-deepseek']):
         expr = panel['targets'][0]['expr']
-        assert 'model="' + model + '"' in expr
+        label = 'requested_model' if model == 'o-deepseek' else 'model'
+        assert f'{label}="{model}"' in expr
         assert 'sum by (api_key_alias)' in expr
         assert '[1m]' in expr and '$__interval' not in expr
-    assert d['panels'][2]['gridPos']['y'] == 16
-    assert all(p['gridPos']['h'] == 8 for p in d['panels'][:2])
+    assert [p['gridPos'] for p in d['panels']] == [
+        dict(x=x, y=y, w=w, h=8) for x, y, w in [(0, 0, 12), (12, 0, 12), (0, 8, 12), (0, 16, 24)]
+    ]
+    assert all(p['options']['legend']['placement'] == 'bottom' for p in d['panels'][:3])
 
 
 def test_chart_titles_use_litellm_route_names():
     d = json.loads((Path(__file__).resolve().parents[1] / 'charts/monitoring-k3s/dashboards/llm-keys.json').read_text())
-    assert [p['title'] for p in d['panels'][:2]] == [
+    assert [p['title'] for p in d['panels'][:3]] == [
         'Requests by API key — qwen3.8-27b',
         'Requests by API key — v-deepseek-uc',
+        'Requests by API key — o-deepseek',
     ]
 
 
 def test_key_colors_are_stable_across_model_charts():
     d = json.loads((Path(__file__).resolve().parents[1] / 'charts/monitoring-k3s/dashboards/llm-keys.json').read_text())
-    for p in d['panels'][:2]:
+    for p in d['panels'][:3]:
         assert p['fieldConfig']['defaults']['color']['mode'] == 'palette-classic-by-name'
         assert p['targets'][0]['legendFormat'] == '{{api_key_alias}}'
         assert p['fieldConfig']['overrides'] == []

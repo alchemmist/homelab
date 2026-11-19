@@ -5,6 +5,8 @@ metadata: {name: monori-publisher-code}
 data:
   publisher.py: |
 {{ .Files.Get "files/steward/publisher.py" | indent 4 }}
+  qa_video.py: |
+{{ .Files.Get "files/steward/qa_video.py" | indent 4 }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -22,6 +24,19 @@ spec:
       automountServiceAccountToken: false
       nodeSelector: {kubernetes.io/hostname: socrat-5}
       securityContext: {runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001, seccompProfile: {type: RuntimeDefault}}
+      initContainers:
+        - name: prepare-encoder
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          command: [python, -IB, -c]
+          args:
+            - |
+{{ .Files.Get "files/steward/install_ffmpeg.py" | indent 14 }}
+            - /encoder/ffmpeg
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          securityContext: {readOnlyRootFilesystem: true, allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+          volumeMounts: [{name: encoder, mountPath: /encoder}]
       containers:
         - name: publisher
           image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -29,12 +44,16 @@ spec:
           securityContext: {readOnlyRootFilesystem: true, allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
           resources:
             requests: {cpu: 20m, memory: 48Mi}
-            limits: {cpu: 200m, memory: 160Mi}
+            limits: {cpu: 750m, memory: 384Mi}
           readinessProbe: {tcpSocket: {port: 8081}}
           volumeMounts:
             - {name: code, mountPath: /code, readOnly: true}
+            - {name: encoder, mountPath: /encoder, readOnly: true}
+            - {name: temp, mountPath: /tmp}
             - {name: credential, mountPath: /credential, readOnly: true}
       volumes:
+        - {name: encoder, emptyDir: {sizeLimit: 120Mi}}
+        - {name: temp, emptyDir: {sizeLimit: 24Mi}}
         - name: code
           configMap: {name: monori-publisher-code}
         - name: credential

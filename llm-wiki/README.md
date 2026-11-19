@@ -19,7 +19,8 @@ Research is not a pending deployment task. Private recovery evidence remains off
    native app links, ограничения Umami и отсутствие автоматического invitation.
 4. [Деплой](cluster-deploy.md) — Git → Argo, per-app ingress, image release contract.
 5. [Наблюдаемость сейчас](observability-current.md) — новые monitoring owners,
-   paused legacy apps, source/status и проверенное размещение.
+   paused legacy apps, source/status и проверенное размещение. Для дыр на графиках —
+   [диагностика свежих метрик в Thanos](observability-current.md#пропуски-свежих-метрик-в-thanos--19-ноября-2026).
 
 ## Справочники по задаче
 

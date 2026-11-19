@@ -1,0 +1,65 @@
+{{- if .Values.coldBackup20261119 }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: openhands-cold-backups
+  annotations: {argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'}
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources: {requests: {storage: 3Gi}}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: openhands-cold-backup-20261119}
+data:
+  backup.py: |
+{{ .Files.Get "files/cold_backup.py" | indent 4 }}
+  recipient.pem: |
+{{ .Files.Get "files/backup-recipient.pem" | indent 4 }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata: {name: openhands-cold-backup-20261119}
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 2400
+  template:
+    metadata:
+      labels: {app: openhands-backup-pre142}
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      nodeSelector: {kubernetes.io/hostname: socrat-5}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: backup
+          image: ghcr.io/openhands/agent-canvas:1.41.0@sha256:dcae97b63c9845fd1d4313857af6b10fb5888324a154238c4795ef86233d227c
+          command: [python, -B, /config/backup.py]
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 1, memory: 512Mi}
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: source, mountPath: /source, readOnly: true}
+            - {name: backup, mountPath: /backup}
+            - {name: config, mountPath: /config, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: source
+          persistentVolumeClaim: {claimName: data-openhands-0, readOnly: true}
+        - name: backup
+          persistentVolumeClaim: {claimName: openhands-cold-backups}
+        - name: config
+          configMap: {name: openhands-cold-backup-20261119}
+        - name: tmp
+          emptyDir: {medium: Memory, sizeLimit: 128Mi}
+{{- end }}

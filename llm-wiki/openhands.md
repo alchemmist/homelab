@@ -383,3 +383,49 @@ from the pinned image are SHA-checked and compiled in emptyDir; read-only overla
 is mounted solely in Canvas. Remove/disable the value to restore stock behavior;
 image changes must explicitly revalidate or remove overlay. Does not suppress
 confirmation, pause, finish, errors, stuck detection, provider limits or quotas.
+
+## Cold full-claim recovery checkpoint —19 Nov 2026
+
+Retained `data-openhands-0` while Canvas was scaled to zero via Argo. Offline
+`openhands-cold-backup-20261119` archived both full PVC directories without
+exclusions. Streamed gzip + AES256-GCM; separate retained 3Gi claim
+`openhands-cold-backups`, `canvas-cold-20261119.{gcm,json}`. OAEP/SHA256
+recipient private key stays on operator laptop. Job authenticated reread of
+ciphertext before parsing tar, verified critical restored bytes against cold
+source, restored automation DB/WAL into disposable tmpfs, SQLite integrity OK,
+settings/HANDOFF and both conversation base JSONs and history present. No writes
+to source or restoration over live history. Owner-key unwrap proof and private
+receipt: `scripts/verify-openhands-cold-receipt.py`; 798911317 ciphertext bytes,
+125353 members, SHA256 2a556be3e9da39732dc03455b65517ceb8cd233447047b85657cc5af0a14ecdc.
+For disaster recovery, authenticate entire ciphertext **before** trusting tar.
+Use AES GCM IV/tag from receipt, AAD = ASCII `openhands-full-claim-v2`, wrapped
+key RSA-OAEP-SHA256/MGF1-SHA256. Restore into an isolated empty volume first,
+not over live data. This is a same-node checkpoint, not off-site DR or a full
+application boot test. Do not replay this dated Job against a running Canvas.
+Old failed pre142 attempt (UID fc7f87f8-226f-4ef5-a357-38d3358feed0) ran
+18 Nov18:15 UTC, exit1, no retries; reason unavailable. Both old claims kept.
+
+### Monori campaigns — verified 2026-11-19 12:26 UTC
+
+QA parent `51a35822` still delegates using synchronous native TaskToolSet
+(inherited Venice model; resume by task_id). Separate long-lived children from
+`tools/openhands-workers/dispatch.py` use Qwen profiles for new conversations.
+All three existing workers reported primary `openai/qwen3.8-27b` (local vLLM,
+scoped LiteLLM key concurrency 3). `switch_profile` does NOT reliably migrate
+the condenser: `fd7c0bd8` failed on its old o-deepseek condenser. Workbook
+`5ca45016` and QA-512 `1764d721` returned actual terminal observations.
+Mutation parent `1ab3985a` remains on requested o-deepseek; endpoint not ready,
+upstream 401 quarantined token at 12:11:47 UTC. No automatic fallback/retry
+storm. Recover provider auth before resuming. Preserve old child, worktree and
+registry lineage on profile migration; never run two writers on one tree.
+
+`services/openhands/qa/QA_PUBLICATION.md` defines sequential batch discovery
+(~10 verified findings, no quota) then one issue through browser retest,
+current-head CI and independent reviews, replies before resolve, no merge.
+Keep QA_PROGRESS.md on PVC; after condensation reconcile against GitHub. Its
+bootstrap was stale despite #512; preserved old version and seeded verified
+facts and one next action. QA checkout is repo/web, not web at workspace root.
+`tools/openhands-qa-video/record.cjs` captures actual browser frames for
+review and trusted MP4 encoding. Encoder smoke is not proof of a published
+bug recording. #512 open with PNGs; #511 merged with manual assistance. No
+new PR, published MP4 or proven end-to-end campaign at this snapshot.

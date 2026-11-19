@@ -27,13 +27,19 @@ def clean_text(t,lo,hi):
 def qa_issue(x):
     import io,hashlib
     from PIL import Image
-    check(set(x)=={'action','key','title','kind','head','steps','expected','actual','pngs','reviewed_synthetic'} and x['reviewed_synthetic'] is True)
+    check(set(x)-{'frames'}=={'action','key','title','kind','head','steps','expected','actual','pngs','reviewed_synthetic'} and x['reviewed_synthetic'] is True)
     key=x['key'];check(isinstance(key,str) and re.fullmatch('[a-z0-9][a-z0-9-]{4,64}',key));marker=f'<!-- socrat-qa:{key} -->';title=clean_text(x['title'],8,110);check('\n' not in title and x['kind'] in ('bug','improvement'));sha=x['head'];check(isinstance(sha,str) and re.fullmatch('[a-f0-9]{40}',sha));fields=[clean_text(x[k],6,3500) for k in ('steps','expected','actual')];check(isinstance(x['pngs'],list) and 1<=len(x['pngs'])<=4)
     images=[]
     for encoded in x['pngs']:
         check(isinstance(encoded,str) and len(encoded)<=1100000);raw=base64.b64decode(encoded,validate=True)
         with Image.open(io.BytesIO(raw),formats=['PNG']) as im:
             check(im.width*im.height<=3000000 and im.n_frames==1);rgb=im.convert('RGB');rgb.info.clear();out=io.BytesIO();rgb.save(out,'PNG');images.append(out.getvalue())
+    video=None
+    if 'frames' in x:
+        import sys
+        if '/code' not in sys.path:sys.path.insert(0,'/code')
+        from qa_video import encode
+        video=encode(x['frames'])
     # Stable marker; check open AND closed issues before writing. Fail closed on pagination ceiling.
     for page in range(1,21):
         items=api(f'issues?state=all&sort=created&direction=desc&per_page=100&page={page}')
@@ -41,15 +47,19 @@ def qa_issue(x):
             if 'pull_request' not in item and item['user']['login']=='alchemmist' and marker in (item['body'] or ''):return {'issue':item['number'],'url':item['html_url'],'existing':True}
         if len(items)<100:break
     else: raise ValueError('Incomplete duplicate scan')
-    check(api('git/commits/'+sha)['sha']==sha);digest=hashlib.sha256(b''.join(images)).hexdigest()[:24];branch='openhands/qa-evidence/'+key+'-'+digest
+    check(api('git/commits/'+sha)['sha']==sha);digest=hashlib.sha256(b''.join(images)+(video or b'')).hexdigest()[:24];branch='openhands/qa-evidence/'+key+'-'+digest
     try:oid=api('git/ref/heads/'+branch)['object']['sha']
     except HTTPError as exc:
         if exc.code!=404:raise
         entries=[]
         for i,image in enumerate(images,1):
             blob=api('git/blobs',{'content':base64.b64encode(image).decode(),'encoding':'base64'});entries.append({'path':f'{i}.png','mode':'100644','type':'blob','sha':blob['sha']})
+        if video:
+            blob=api('git/blobs',{'content':base64.b64encode(video).decode(),'encoding':'base64'});entries.append({'path':'repro.mp4','mode':'100644','type':'blob','sha':blob['sha']})
         tree=api('git/trees',{'tree':entries});oid=api('git/commits',{'message':'QA synthetic screenshot evidence','tree':tree['sha'],'parents':[]})['sha'];api('git/refs',{'ref':'refs/heads/'+branch,'sha':oid})
-    links=[f'https://raw.githubusercontent.com/{REPO}/{oid}/{i}.png' for i in range(1,len(images)+1)];body=f'{marker}\nTested revision: `{sha}` (local synthetic data).\n\n## Steps\n{fields[0]}\n\n## Expected\n{fields[1]}\n\n## Actual\n{fields[2]}\n\n## Evidence\n'+'\n'.join(f'![Reproduction step {i}]({u})' for i,u in enumerate(links,1));issue=api('issues',{'title':'[QA '+x['kind']+'] '+title,'body':body});return {'issue':issue['number'],'url':issue['html_url'],'evidence':links}
+    links=[f'https://raw.githubusercontent.com/{REPO}/{oid}/{i}.png' for i in range(1,len(images)+1)];body=f'{marker}\nTested revision: `{sha}` (local synthetic data).\n\n## Steps\n{fields[0]}\n\n## Expected\n{fields[1]}\n\n## Actual\n{fields[2]}\n\n## Evidence\n'+'\n'.join(f'![Reproduction step {i}]({u})' for i,u in enumerate(links,1))
+    if video:body+=f'\n\n[Play the browser recording (MP4)](https://github.com/{REPO}/blob/{oid}/repro.mp4) · [Download MP4](https://raw.githubusercontent.com/{REPO}/{oid}/repro.mp4)'
+    issue=api('issues',{'title':'[QA '+x['kind']+'] '+title,'body':body});return {'issue':issue['number'],'url':issue['html_url'],'evidence':links}
 
 def changes(files,qa=False):
     check(isinstance(files,dict) and 1<=len(files)<=12); result=[]
@@ -87,7 +97,7 @@ def review(x):
 def dispatch(x):
     check(isinstance(x,dict));action=x.get('action')
     if action=='qa_issue':return qa_issue(x)
-    if action=='qa_capabilities':return {'actions':['qa_issue','qa_create','update','threads','reply_then_resolve','report'],'evidence':'reviewed synthetic PNG only','merge':False}
+    if action=='qa_capabilities':return {'actions':['qa_issue','qa_create','update','threads','reply_then_resolve','report'],'evidence':'reviewed synthetic PNG and optional 6fps H.264 MP4 from frames','merge':False}
     if action=='capabilities':return {'repository':REPO,'issue':509,'actions':['create','update','report','threads','reply_then_resolve'],'merge':False,'main_write':False}
     if action in ('report','threads','reply_then_resolve'):return review(x)
     check(action in ('create','qa_create','update')); required={'action','head','files','title'}|({'pr'} if action=='update' else {'issue'} if action=='qa_create' else set());check(set(x)==required)
@@ -114,7 +124,7 @@ class Handler(BaseHTTPRequestHandler):
         raw=json.dumps(obj).encode();self.send_response(status);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(raw)
     def do_POST(self):
         try:
-            self.connection.settimeout(10);check(self.path=='/v1' and not self.headers.get('Transfer-Encoding'));n=int(self.headers['Content-Length']);check(0<n<=4600000);x=json.loads(self.rfile.read(n));check(x.get('action')=='qa_issue' or n<=250000);self.send(200,dispatch(x))
+            self.connection.settimeout(10);check(self.path=='/v1' and not self.headers.get('Transfer-Encoding'));n=int(self.headers['Content-Length']);check(0<n<=20000000);x=json.loads(self.rfile.read(n));check(x.get('action')=='qa_issue' or n<=250000);self.send(200,dispatch(x))
         except HTTPError as e:self.send(502,{'github_status':e.code,'retry':'Inspect existing branch/PR before retrying'})
         except (ValueError,TypeError):self.send(400,{'error':'Invalid request, stale head or operation outside policy'})
         except Exception:self.send(503,{'error':'Publisher unavailable; inspect GitHub before retrying'})

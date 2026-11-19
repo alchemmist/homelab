@@ -71,3 +71,7 @@ continueQaChat: '51a35822-a870-43cc-a775-fd5e662f0039'
 
 # Owner explicitly requested no iteration-count stop for main agents, task workers or goals.
 unlimitedIterations: true
+
+replicaCount: 1
+coldBackup20261119: true
+retireFailedBackup: true
