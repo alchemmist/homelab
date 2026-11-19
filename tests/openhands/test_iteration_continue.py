@@ -10,3 +10,8 @@ class Resume(unittest.TestCase):
  def test_final_gate(self):
   def ev(source,text):return {'id':'x','kind':'MessageEvent','source':source,'llm_message':{'content':[{'text':text}]}}
   self.assertEqual(m.final_message([{'kind':'ConversationStateUpdateEvent','key':'execution_status'},ev('agent','Next step…')]),'x');self.assertIsNone(m.final_message([ev('user','stop'),ev('agent','plan')]));self.assertIsNone(m.final_message([ev('agent','[БЛОКЕР #509] нужна авторизация')]))
+ def test_quoted_stop_in_qa_plan_is_not_a_stop(self):
+  def event(text):return [{'kind':'MessageEvent','source':'agent','id':'qa-turn','llm_message':{'content':[{'type':'text','text':text}]}}]
+  self.assertEqual(m.final_message(event('Ограничение внутреннее, не [БЛОКЕР QA]. Следующий шаг — пагинация.'),True),'qa-turn')
+  for marker in ('[ИТОГ QA]','[БЛОКЕР QA]'):
+   self.assertIsNone(m.final_message(event('\n'+marker+' Причина или доказательства.'),True))
