@@ -13,6 +13,7 @@ from pathlib import Path
 import socket
 import subprocess
 import time
+import urllib.parse
 import urllib.request
 
 
@@ -129,9 +130,9 @@ def main():
         info = json.load(
             urllib.request.urlopen(
                 urllib.request.Request(
-                    f"http://127.0.0.1:{port}/key/info",
+                    f"http://127.0.0.1:{port}/key/info?key=" + urllib.parse.quote(key),
                     headers=headers,
-                    data=json.dumps({"key": key}).encode(),
+                    method="GET",
                 ),
                 timeout=30,
             )
