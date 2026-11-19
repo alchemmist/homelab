@@ -15,3 +15,6 @@ class Resume(unittest.TestCase):
   self.assertEqual(m.final_message(event('Ограничение внутреннее, не [БЛОКЕР QA]. Следующий шаг — пагинация.'),True),'qa-turn')
   for marker in ('[ИТОГ QA]','[БЛОКЕР QA]'):
    self.assertIsNone(m.final_message(event('\n'+marker+' Причина или доказательства.'),True))
+ def test_read_probe_is_narrow(self):
+  def event(t):return dict(id='qa',kind='MessageEvent',source='agent',llm_message={'content':[{'text':t}]})
+  msg='[БЛОКЕР QA] Жду разрешения хост-рантайма на чтение QA_PROGRESS.md';self.assertEqual(m.ledger_probe([event(msg)]),'qa');self.assertIsNone(m.ledger_probe([event(msg+' EACCES')]));self.assertIsNone(m.ledger_probe([event('[БЛОКЕР QA] нет доступа к GitHub')]));self.assertIsNone(m.ledger_probe([dict(event(msg),source='user')]))

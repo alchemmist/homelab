@@ -37,6 +37,19 @@ def final_message(events,qa=False):
     return None
 
 
+QA_READ_PROBE='Проверь фактический доступ: один вызов file_editor view только для QA_PROGRESS.md в корне своего workspace. Не обходи отказ; при отказе приведи ошибку инструмента. Ручная пауза обязательна.'
+
+def ledger_probe(events):
+    # Exactly the known pseudo-blocker; no generic removal of blocker semantics.
+    messages=[e for e in events if e.get('kind') not in ('ConversationStateUpdateEvent',)]
+    if not messages:return None
+    e=messages[0]
+    if e.get('kind')!='MessageEvent' or e.get('source')!='agent':return None
+    text=' '.join(x.get('text','') for x in (e.get('llm_message') or {}).get('content',[]) if isinstance(x,dict)).strip()
+    if not (text.startswith('[БЛОКЕР QA]') and 'Жду разрешения хост-рантайма на чтение QA_PROGRESS.md' in text):return None
+    if any(t in text.lower() for t in ('permission denied','eacces','403','errno','отказано в доступе')):return None
+    return e.get('id')
+
 def issue_open():
     req=Request('https://api.github.com/repos/alchemmist/monori/issues/509',headers={'User-Agent':'socrat-monori-continuation'})
     with build_opener(ProxyHandler({}),NoRedirect()).open(req,timeout=10) as r:j=json.load(r)
@@ -59,7 +72,7 @@ def monitor(cid,qa=False):
     def api(suffix='',method='GET',data=None):
         key=Path('/session-key').read_text().strip();req=Request(url+suffix,method=method,headers={'X-Session-API-Key':key,'Content-Type':'application/json'},data=json.dumps(data).encode() if data else None)
         with build_opener(ProxyHandler({}),NoRedirect()).open(req,timeout=15) as r:return json.load(r)
-    attempted=None; after=0; parallel_failures=0; last_parallel=None
+    probed=False; attempted=None; after=0; parallel_failures=0; last_parallel=None
     while True:
         try:
             status=api()['execution_status'];now=time.time()
@@ -70,12 +83,15 @@ def monitor(cid,qa=False):
                     if last_parallel!=eid:
                         last_parallel=eid;parallel_failures+=1;after=max(reset,now+min(900,30*2**min(parallel_failures-1,5)))
                     if now>=after:action='parallel'
+                elif qa and not probed and status=='finished' and (eid:=ledger_probe(events)) and eid!=attempted:
+                    action='ledger_probe'
                 elif status=='finished' and (eid:=final_message(events,qa)) and eid!=attempted:
                     after=now+300
                     if qa or issue_open():action='unfinished'
                 if action and eid and eid!=attempted and api()['execution_status']==status:
+                    if action=='ledger_probe':probed=True
                     attempted=eid
-                    ok=(api('/events','POST',{'role':'user','content':[{'type':'text','text':QA_NUDGE if qa else NUDGE}],'run':True}) if action=='unfinished' else api('/run','POST'))
+                    ok=(api('/events','POST',{'role':'user','content':[{'type':'text','text':QA_READ_PROBE if action=='ledger_probe' else QA_NUDGE if qa else NUDGE}],'run':True}) if action in ('unfinished','ledger_probe') else api('/run','POST'))
                     print('continue',action,eid,'acknowledged',bool(ok.get('success')),flush=True)
             elif status=='running' and last_parallel and now>after+600:parallel_failures=0
         except Exception as exc:print('continuation check:',type(exc).__name__,flush=True)
