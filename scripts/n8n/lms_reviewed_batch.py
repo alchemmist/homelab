@@ -149,3 +149,23 @@ ORACLE_JS += r'''
   return rows.join('\n')+'\n';
  }
 '''
+
+_digits="a,b,c=map(int,input()); "
+_yes="'Вы ввели красивое число'"; _no="'Жаль, вы ввели обычное число'"
+SPECS['builtin-functions/beautiful-number']=('beautiful_digits','','',[
+ ('assume middle digit is median',_digits+f'print({_yes} if a+c==2*b else {_no})'),
+ ('round the mean down',_digits+f'x,y,z=sorted((a,b,c)); print({_yes} if (x+z)//2==y else {_no})'),
+ ('exclude equal digits',_digits+f'x,y,z=sorted((a,b,c)); print({_yes} if x<z and x+z==2*y else {_no})')])
+SPECS['builtin-functions/assemble-number']=('adjacent_sums','','',[
+ ('keep input order',_digits+"print(str(a+b)+str(b+c))"),
+ ('sort sums as text',_digits+"print(''.join(sorted([str(a+b),str(b+c)],reverse=True)))"),
+ ('add instead of concatenating',_digits+'print(a+b+b+c)')])
+ORACLE_JS += r'''
+ if(data.contract==='beautiful_digits'||data.contract==='adjacent_sums') {
+  if(lines.length!==1||!/^[1-9][0-9]{2}$/.test(lines[0]))return null;
+  const [a,b,c]=Array.from(lines[0],Number);
+  if(data.contract==='adjacent_sums')return [a+b,b+c].sort((x,y)=>y-x).join('')+'\n';
+  const lo=Math.min(a,b,c),hi=Math.max(a,b,c),mid=a+b+c-lo-hi;
+  return (2*mid===hi+lo?'Вы ввели красивое число':'Жаль, вы ввели обычное число')+'\n';
+ }
+'''

@@ -85,3 +85,6 @@ for(const [contract,input,output] of [['thank_count','спасибо.\n Спас
 
 assert.deepEqual(run('Verify new tests against reviewed specification',response({cases:[{input:"1\n"}]}),{phase:"tests",data:{contract:"mult_table",calls:0,cases:[],examples:[]}}).data.cases,[{input:"1\n",output:"1 * 1 = 1\n"}]);
 assert.deepEqual(run('Verify new tests against reviewed specification',response({cases:[{input:'Спасибо.\n'},{input:'Спасибо\n'}]}),{phase:'tests',data:{contract:'thank_count',calls:0,cases:[],examples:[]}}).data.cases,[{input:'Спасибо.\n',output:'1\n'}]);
+for (const [contract,input,output] of [['beautiful_digits','513\n','Вы ввели красивое число\n'],['beautiful_digits','124\n','Жаль, вы ввели обычное число\n'],['adjacent_sums','258\n','137\n']]){
+ const r=run('Verify new tests against reviewed specification',response({cases:[{input,output}]}),{phase:'tests',data:{contract,calls:0,cases:[],examples:[]}});assert.deepEqual(r.data.cases,[{input,output}]);
+}
