@@ -55,7 +55,9 @@ def http(name, url, x, y, *, body=None, role=None, query=None):
         credential = ('httpHeaderAuth', role)
     if query:
         params.update(sendQuery=True, queryParameters={'parameters': [{'name': 'query', 'value': query}]})
-    return node(name, 'httpRequest', 4.2, params, x, y, credential)
+    result = node(name, 'httpRequest', 4.2, params, x, y, credential)
+    nodes[-1]['onError'] = 'continueRegularOutput'
+    return result
 
 
 def pg(name, sql, args, x, y):
@@ -94,9 +96,10 @@ entry, gate = idle('Admission:', 220, 0)
 claim = pg('Claim next queued task and load checkpoint', '''WITH candidate AS (
  SELECT id FROM lms_certification.pilot
  WHERE phase NOT IN ('certified','needs_review')
+ AND data->>'contract' IN ('echo','sum','length','parity','sign','leap')
  AND (lease_until IS NULL OR lease_until < clock_timestamp())
  AND NOT EXISTS (SELECT 1 FROM lms_certification.pilot WHERE lease_until > clock_timestamp())
- ORDER BY updated_at, id FOR UPDATE SKIP LOCKED LIMIT 1
+ ORDER BY CASE WHEN owner IS NOT NULL THEN 0 ELSE 1 END, updated_at, id FOR UPDATE SKIP LOCKED LIMIT 1
 )
 UPDATE lms_certification.pilot p SET owner=$1, lease_until=clock_timestamp()+interval '15 minutes'
 FROM candidate c WHERE p.id=c.id RETURNING p.phase,p.data''', '[$execution.id]', 1100, 0)
@@ -121,7 +124,7 @@ def ref(name):
 def reducer(name, route, js, x, y):
     n = code(name, f'''const {{phase,data}} = {ref(route)};
 const status = $json.statusCode;
-if (status === 429 || status >= 500) return {{json: {{pause:true}}}};
+if ($json.error || status === 429 || status >= 500) return {{json: {{pause:true}}}};
 if (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);
 {js}''', x, y)
     ok = check(name + ' checkpoint?', '$json.pause !== true', x+220, y)
@@ -180,6 +183,11 @@ function expected(input) {
   if (lines.length !== 1 || input.includes('\r')) return null;
   return data.contract === 'echo' ? input : `Слово ${lines[0]} имеет длину ${[...lines[0]].length}\n`;
  }
+ if (data.contract === 'leap') {
+  if (lines.length!==1 || !/^[1-9]\d{0,5}$/.test(lines[0])) return null;
+  const year=Number(lines[0]);
+  return (year%400===0 || (year%4===0 && year%100!==0) ? 'Високосный' : 'Не високосный')+'\n';
+ }
  if (data.contract === 'sum') {
   if (lines.length !== 2 || !lines.every(x => /^[+-]?\d{1,30}$/.test(x))) return null;
   return String(BigInt(lines[0])+BigInt(lines[1]))+'\n';
@@ -236,7 +244,7 @@ link(previous, terminal, 1)
 
 workflow = dict(name='LMS certification — reviewed queue', nodes=nodes, connections=edges,
                 settings=dict(errorWorkflow='iZn7biFh6321a1w8', executionOrder='v1', timezone='Europe/Moscow',
-                              executionTimeout=720, saveDataSuccessExecution='none', saveDataErrorExecution='none',
+                              executionTimeout=720, saveDataSuccessExecution='none', saveDataErrorExecution='all',
                               saveExecutionProgress=False, saveManualExecutions=False))
 if __name__ == '__main__':
     (ROOT / 'workflow.json').write_text(json.dumps(workflow, ensure_ascii=False, indent=2)+'\n')

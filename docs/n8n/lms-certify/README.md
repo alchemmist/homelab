@@ -64,3 +64,24 @@ length 2 / 6 / 4; parity 2 / 6 / 4; sign 3 / 7 / 4. Sign initially killed only
 `certified` after re-running examples, suite and all probes. `queue-audit.sql`
 records sanitized phase transitions keyed by n8n execution ID; apply it to an
 existing database explicitly (init scripts only run on empty databases).
+
+## Convergence-first admission (supersedes draft rollout)
+
+Mass draft admission is disabled. Only reviewed contracts (`echo`, `sum`,
+`length`, `parity`, `sign`, `leap`) may be claimed. Existing `draft_stdin` rows
+remain private and unprocessed. Partially completed reviewed tasks are preferred
+on resume rather than rotating across fresh tasks. Drafts are not completions.
+
+Leap-year live result: 2 model responses, 7 oracle-verified private cases,
+5/5 fault probes. Independent control `validation/leap-repair-v1` intentionally
+started with the wrong rule “divisible by four”. Execution `53737` traversed
+`repair -> public -> suite -> mutate -> certified`, preserving all seven cases,
+with one model repair and 5/5 killed probes. This control is NOT an additional
+completed curriculum task. Audit records distinguish it by its validation ID.
+
+HTTP transport errors now enter the pause/release branch instead of leaving
+an orphaned lease until expiry. Errors are retained in private n8n execution
+storage for diagnosis; successful payloads are not retained. The exact cause
+of the earlier draft stall was not established because error execution saving
+had been disabled at that time. Fixed probes still do not constitute automatic
+AST mutation or general semantic certification for arbitrary imported tasks.

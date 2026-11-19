@@ -41,3 +41,10 @@ for (const [contract,input,output] of [['sum','999999999999999999999999\n1\n','1
  assert.equal(r.data.cases.length,1,contract);
 }
 console.log('Reviewed queue oracles passed');
+assert.deepEqual(run('Validate repaired solution format',{error:'socket timeout'},bad),{pause:true});
+for (const [year,answer] of [['2000','Високосный'],['2100','Не високосный'],['2024','Високосный'],['2023','Не високосный']]) {
+ const r=run('Verify new tests against reviewed specification',response({cases:[{input:year+'\n',output:answer+'\n'}]}),{phase:'tests',data:{contract:'leap',calls:0,cases:[],examples:[]}});
+ assert.equal(r.data.cases.length,1,year);
+}
+assert(graph.nodes.find(n=>n.name==='Claim next queued task and load checkpoint').parameters.query.includes("'leap'"));
+console.log('Leap-year oracle and transport timeout recovery passed');

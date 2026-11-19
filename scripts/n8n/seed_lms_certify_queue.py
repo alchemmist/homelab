@@ -22,6 +22,11 @@ contracts={
  ('truncate decimals',"n=int(float(input()));print('+' if n>0 else '-' if n<0 else '0')"),
  ('ignore negative',"n=float(input());print('+' if n!=0 else '0')")],[{'input':'2.5\n','output':'+\n'}]),
 }
+contracts['leap-year']=('leap',[
+ ('only divisible by four',"y=int(input());print('Високосный' if y%4==0 else 'Не високосный')"),
+ ('exclude all centuries',"y=int(input());print('Високосный' if y%4==0 and y%100!=0 else 'Не високосный')"),
+ ('only multiples of 400',"y=int(input());print('Високосный' if y%400==0 else 'Не високосный')"),
+ ('always leap',"input();print('Високосный')")],[])
 print('BEGIN;')
 for task,(contract,faults,fixtures) in contracts.items():
  path=root/task
@@ -29,5 +34,5 @@ for task,(contract,faults,fixtures) in contracts.items():
  examples=[{'input':c['input'],'output':c['output']} for c in suite.get('cases',[]) if c.get('public')]
  data={'statement':(path/'statement.md').read_text(),'contract':contract,'examples':examples or fixtures,'example_origin':'canonical' if examples else 'operator_fixture','faults':[['empty program','pass'],*faults],'calls':0,'cases':[]}
  def sql(s):return "'"+s.replace("'","''")+"'"
- print('INSERT INTO lms_certification.pilot(id,phase,data) VALUES ('+sql('basics/builtin-functions/'+task)+",'solve',"+sql(json.dumps(data,ensure_ascii=False))+"::jsonb) ON CONFLICT DO NOTHING;")
+ print('INSERT INTO lms_certification.pilot(id,phase,data) VALUES ('+sql('basics/builtin-functions/'+task)+",'solve',"+sql(json.dumps(data,ensure_ascii=False))+"::jsonb) ON CONFLICT (id) DO UPDATE SET data=EXCLUDED.data WHERE pilot.phase='solve' AND pilot.data->>'contract'='draft_stdin' AND coalesce((pilot.data->>'calls')::int,0)=0;")
 print('COMMIT;')
