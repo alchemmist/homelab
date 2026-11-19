@@ -40,6 +40,10 @@ components:
       - store
       - --objstore.config-file=/etc/thanos/objstore.yml
       - --data-dir=/var/thanos/store
+      # A sparse out-of-order block can ship before its regular 2h block.
+      # Read recent data from the live sidecar; 12h local retention leaves
+      # 6h of overlap at the raw archive handoff. Read filter only.
+      - --max-time=-6h
       - --consistency-delay=30m
       - --ignore-deletion-marks-delay=1h
       - --http-address=0.0.0.0:10902
