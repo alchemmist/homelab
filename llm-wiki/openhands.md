@@ -404,3 +404,28 @@ not over live data. This is a same-node checkpoint, not off-site DR or a full
 application boot test. Do not replay this dated Job against a running Canvas.
 Old failed pre142 attempt (UID fc7f87f8-226f-4ef5-a357-38d3358feed0) ran
 18 Nov18:15 UTC, exit1, no retries; reason unavailable. Both old claims kept.
+
+### Monori campaigns — verified 2026-11-19 12:26 UTC
+
+QA parent `51a35822` still delegates using synchronous native TaskToolSet
+(inherited Venice model; resume by task_id). Separate long-lived children from
+`tools/openhands-workers/dispatch.py` use Qwen profiles for new conversations.
+All three existing workers reported primary `openai/qwen3.8-27b` (local vLLM,
+scoped LiteLLM key concurrency 3). `switch_profile` does NOT reliably migrate
+the condenser: `fd7c0bd8` failed on its old o-deepseek condenser. Workbook
+`5ca45016` and QA-512 `1764d721` returned actual terminal observations.
+Mutation parent `1ab3985a` remains on requested o-deepseek; endpoint not ready,
+upstream 401 quarantined token at 12:11:47 UTC. No automatic fallback/retry
+storm. Recover provider auth before resuming. Preserve old child, worktree and
+registry lineage on profile migration; never run two writers on one tree.
+
+`services/openhands/qa/QA_PUBLICATION.md` defines sequential batch discovery
+(~10 verified findings, no quota) then one issue through browser retest,
+current-head CI and independent reviews, replies before resolve, no merge.
+Keep QA_PROGRESS.md on PVC; after condensation reconcile against GitHub. Its
+bootstrap was stale despite #512; preserved old version and seeded verified
+facts and one next action. QA checkout is repo/web, not web at workspace root.
+`tools/openhands-qa-video/record.cjs` captures actual browser frames for
+review and trusted MP4 encoding. Encoder smoke is not proof of a published
+bug recording. #512 open with PNGs; #511 merged with manual assistance. No
+new PR, published MP4 or proven end-to-end campaign at this snapshot.
