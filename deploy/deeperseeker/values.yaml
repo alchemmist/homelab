@@ -1,7 +1,7 @@
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/deeperseeker
   tag: "1b1148ec1e2a"
-  digest: "sha256:8bda1721167d3859ea09564f43da7e98b3bfd1cb17bf999ea3855b439e2a4be9"
+  digest: "sha256:696884aa3c846f4471b6876b4b3455e8fa047dfd2638f050c5f0b8cf270e16ac"
   pullPolicy: IfNotPresent
 
 imagePullSecrets:
