@@ -32,12 +32,22 @@ def migration_payload(resource):
         key: (ROOT / base / key).read_bytes()
         for key in ("grafana-policy.conf", "traffic-light-inset.js")
     }
+    # Materialize existing reviewed inputs, not a new current-state baseline.
+    # CI must not depend on historical path availability in its checkout.
     original = {
-        key: subprocess.check_output(
-            ["git", "-C", str(ROOT), "show", PUBLIC_HANDOFF + ":" + base + key]
-        )
+        key: (ROOT / "tests/fixtures/public-entry-handoff-inputs" / (key + ".txt")).read_bytes()
         for key in current
     }
+    pins = {
+        "grafana-policy.conf": "843f21304c914bf70378b71e8c05172d83bd1f75",
+        "traffic-light-inset.js": "27ec9fe426ee10f74d35bc7be55556a53e72e762",
+    }
+    for key, data in original.items():
+        # hash-object without -w is local identity calculation, not a write/fetch.
+        assert (
+            subprocess.check_output(["git", "hash-object", "--stdin"], input=data).decode().strip()
+            == pins[key]
+        )
     result = copy.deepcopy(resource)
     if resource["kind"] == "ConfigMap":
         native = {
