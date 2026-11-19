@@ -97,7 +97,7 @@ entry, gate = idle('Admission:', 220, 0)
 claim = pg('Claim next queued task and load checkpoint', '''WITH candidate AS (
  SELECT id FROM lms_certification.pilot
  WHERE phase NOT IN ('certified','needs_review')
- AND data->>'contract' IN ('echo','sum','length','parity','sign','leap','repeat4','python_exact','zen','meow','yes_no','xmas','parrot','reverse','temperature','heights')
+ AND data->>'contract' IN ('echo','sum','length','parity','sign','leap','repeat4','python_exact','zen','meow','yes_no','xmas','parrot','reverse','temperature','heights','until_zero','until_nonmultiple','until_empty')
  AND (lease_until IS NULL OR lease_until < clock_timestamp())
  AND NOT EXISTS (SELECT 1 FROM lms_certification.pilot WHERE lease_until > clock_timestamp())
  ORDER BY CASE WHEN owner IS NOT NULL THEN 0 ELSE 1 END, updated_at, id FOR UPDATE SKIP LOCKED LIMIT 1
@@ -163,16 +163,18 @@ for i, (phase, title) in enumerate(phase_specs):
             prompt = json.dumps('Верни решение на Python 3 в формате JSON {"source":"..."}. Только учебный Python, без файлов и сети. Условие: ', ensure_ascii=False) + f' + {r}.data.statement'
             if phase == 'repair':
                 prompt += f''' + '\\nПредыдущее решение: ' + JSON.stringify({r}.data.source) + '\\nПроваленный проверенный тест: ' + JSON.stringify({r}.data.failure)'''
+                prompt += f" + '\\nДиагностика: ' + JSON.stringify({r}.data.repairGuidance || '') + '\\nНе нормализуй пробелы и регистр, если условие этого явно не требует. Исправь причину ошибки, не меняй проверенный тест. Верни JSON с diagnosis и source. Не повторяй прежнюю программу.'"
         req = http('LLM: ' + title, LLM, x+880, y, role='LITELLM', body=
                    f'''{{model:{json.dumps(MODEL)}, temperature:0, max_tokens:1000, response_format:{{type:'json_object'}}, messages:[{{role:'user', content: {prompt}}}]}}''')
         parse = '''let payload;
 try { payload = JSON.parse($json.body.choices[0].message.content); } catch { payload = {}; }
  data.calls = (data.calls || 0) + 1;
- const out = next => ({json:{phase:data.calls >= 12 && ['solve','repair','tests','expand'].includes(next) ? 'needs_review' : next,data}});
+ const out = next => ({json:{phase:data.calls >= (data.callLimit || 12) && ['solve','repair','tests','expand'].includes(next) ? 'needs_review' : next,data}});
 '''
         if phase in {'solve','repair'}:
             logic = '''const source = typeof payload?.source === 'string' ? payload.source.trim() : '';
 if (!source || source.length > 6000 || (data.contract === 'echo' && (/[\\r\\n]/.test(source) || [...source].length > 14))) return out(phase);
+data.repeatedSource = phase === 'repair' && source === data.source;
 data.source = source;
 return out(phase === 'solve' ? 'tests' : 'public');'''
             label = 'Validate solution format' if phase == 'solve' else 'Validate repaired solution format'
@@ -206,10 +208,11 @@ __BATCH_ORACLE__
  throw new Error('Unsupported reviewed contract');
 }
 const cases=data.cases || [], seen=new Set(cases.map(c=>c.input));
-for (const c of (Array.isArray(payload?.cases)?payload.cases.slice(0,16):[])) {
+const proposals = [...(phase === 'expand' ? data.targetedCases || [] : []), ...(Array.isArray(payload?.cases)?payload.cases.slice(0,16):[])];
+for (const c of proposals) {
  if (typeof c?.input !== 'string' || c.input.length>256 || typeof c.output !== 'string' ||
      expected(c.input) !== c.output || seen.has(c.input) ||
-     data.examples.some(e=>e.input===c.input) || cases.length>=12) continue;
+     data.examples.some(e=>e.input===c.input) || cases.length>=16) continue;
  cases.push({input:c.input,output:c.output});seen.add(c.input);
 }
 data.cases=cases;
@@ -230,7 +233,7 @@ if (!['accepted','wrong_answer','runtime_error','time_limit','output_limit','mem
 if (verdict !== 'wrong_answer') data.survivors.push(variants[data.variant][0]);
 data.variant++;
 const next = data.variant < variants.length ? 'mutate' :
-  !data.survivors.length ? 'certified' : data.calls < 12 ? 'expand' : 'needs_review';
+  !data.survivors.length ? 'certified' : data.calls < (data.callLimit || 12) ? 'expand' : 'needs_review';
 data.faultsKilled = data.variant - data.survivors.length;
 return {{json: {{phase:next,data}}}};'''
             label = 'Count killed variants or request more coverage'
@@ -238,7 +241,7 @@ return {{json: {{phase:next,data}}}};'''
             logic += f'''let next = {json.dumps('suite' if phase == 'public' else 'mutate')};
 if (verdict !== 'accepted') {{
   data.failure = {{case: ({cases})[$json.body.test_index-1], verdict}};
-  next = data.calls < 12 ? 'repair' : 'needs_review';
+  next = data.calls < (data.callLimit || 12) ? 'repair' : 'needs_review';
 }} else if (next === 'mutate') {{ data.variant = 0; data.survivors = []; data.faultsKilled = 0; }}
 return {{json: {{phase:next,data}}}};'''
             label = 'Route public example verdict' if phase == 'public' else 'Route private test verdict'

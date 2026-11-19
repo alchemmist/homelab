@@ -67,3 +67,27 @@ ORACLE_JS = r'''
   return lines.map(Number).sort((a,b)=>b-a).join('\n')+'\n';
  }
 '''
+
+# Three reviewed loop contracts. Data after the sentinel must not be printed.
+for slug, contract, stop, wrong_stop, alternate in [
+ ('numbers-to-zero','until_zero','int(s)==0','int(s)<=0','int(s)==1'),
+ ('round-numbers','until_nonmultiple','int(s)%10!=0','int(s)%10!=0 or int(s)==0','int(s)%2!=0'),
+ ('strings-to-empty','until_empty',"s==''","s.strip()==''","len(s)<=1"),
+]:
+ def probe(condition, inclusive=False):
+  return 'import sys\nfor line in sys.stdin:\n s=line.rstrip("\\n")\n if '+condition+':\n  '+('print(s); ' if inclusive else '')+'break\n print(s)'
+ SPECS['while-intro/'+slug]=(contract,'','',[
+  ('include terminator',probe(stop,True)),('wrong stopping condition',probe(wrong_stop)),('alternate terminator',probe(alternate))])
+ORACLE_JS += r'''
+ if(['until_zero','until_nonmultiple','until_empty'].includes(data.contract)) {
+  if(!lines.length || input.includes('\r'))return null;
+  const prefix=[];
+  for(const s of lines){
+   if(data.contract!=='until_empty' && !/^(?:0|-?[1-9]\d{0,8})$/.test(s))return null;
+   if(data.contract==='until_empty'?s==='':data.contract==='until_zero'?Number(s)===0:Number(s)%10!==0)
+    return prefix.map(x=>x+'\n').join('');
+   prefix.push(s);
+  }
+  return null;
+ }
+'''
