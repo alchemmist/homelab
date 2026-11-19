@@ -33,3 +33,8 @@ reviewed, validated result. It does not authorize debt acceptance, weakened
 checks, truncation, hidden skips, trusted-base application promotion to bypass
 CI, production execution or any of the data/security exclusions above.
 PR181's historical ratchet green is not sufficient under this authorization.
+
+
+## Latest operator scope: CI enablement/refactoring integration
+
+The operator subsequently explicitly requested completing and publishing PR182 as CI setup plus refactoring, with source findings remaining red for later main-based cleanup. The former zero-source-findings prerequisite no longer blocks preparation of this integration. The owner may separately decide red-CI merge/bypass; this instruction does not itself run an admin merge or weaken checks. No debt baseline, finding approval, suppression, cap bypass, weakened assertion, secret/DNS approval refresh or production execution is authorized. Preserve strictest applicable adopted-tool configuration and explicit reviewed exceptions. Synchronize owner main, classify test inventory, review conflicts, validate actual candidate, publish local changes through the existing fail-closed publisher and update honest PR metadata. See docs/quality/ci-enablement.md. Genuine CI-infrastructure/coverage limitations remain disclosed, not mislabeled source debt or green acceptance.

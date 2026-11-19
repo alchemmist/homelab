@@ -1,10 +1,12 @@
 # Home Lab Quality Graph
 
-The current design is a **semantic, cost-layered DAG**, not a job per application
-or a job per hash bucket. `qg.yaml` is authoritative; generated workflows and
-`.quality-graph/manifest.json` must be updated with `uv run qg generate`.
+## PR182: CI enablement and reviewed refactoring
 
-## Execution order
+The operator changed the integration scope: PR182 sets up CI and integrates reviewed refactoring; eliminating every pre-existing source finding is follow-up work based on main. Red source checks are visible and do not become accepted baselines or approvals. An owner may separately decide to merge red CI; this is not an instruction to bypass protection, weaken tests or claim strict green. See [integration checklist](ci-enablement.md), [enforcement policy](strict-policy.md) and [historical evidence](strict-status.md).
+
+`qg.yaml` is authoritative. Generate workflows and `.quality-graph/manifest.json` only through the pinned owning compiler (`uv run qg generate`); never hand-edit generated YAML. `qg validate` verifies freshness, not source cleanliness.
+
+## Semantic 15-node DAG
 
 ```mermaid
 flowchart TD
@@ -24,90 +26,50 @@ flowchart TD
     M & A & I & V --> K[Cluster lifecycle]
 ```
 
-- Graph/schema/tool/test inventory integrity is the initial prerequisite.
-- Independent fast checks run together, including unit tests. A formatter failure
-  does not prevent other checks at the same level from reporting their findings.
-- Ownership contracts are the real readiness gate after every fast check passes,
-  not an artificial no-op barrier. The other middle-stage checks depend on this
-  source/ownership validation and run in parallel. This keeps the graph readable
-  without an all-to-all tangle of duplicated prerequisite edges.
-- A real disposable Kubernetes cluster starts only after the entire middle stage
-  passes. No `always()`, fake-success fallback or ignore approval bypasses this.
-- All node titles have distinct leading names. Helm covers all58local chart roots
-  in **one** manifest-validation node, not four artificial shards.
+Independent fast nodes collect failures together. Ownership is a real source-contract gate. Integration, manifests, Ansible and dependencies run after it; the disposable cluster runs after the middle stage. Downstream skipped jobs are **not passed**. There is no always-success path, approval escape, cap bypass or artificial shard. Do not infer hosted downstream coverage from separately running local checks.
 
-The graph's execution order/unique titles are regression-tested. Tool profiles
-install only the relevant binaries, rather than downloading every linter in each
-job. Checkout/Helm actions use reviewed Node24-compatible commit pins.
+## Enforcement and owning files
 
-## Three test levels, one runner
+| Surface | Actual enforced checks | Owner |
+| --- | --- | --- |
+| Python | Ruff ALL, mandatory formatter, strict mypy plus additional error codes, owned-file/syntax coverage | `quality/ruff.toml`, `quality/mypy.ini`, `scripts/quality/lint.py` |
+| YAML | strict yamllint, duplicate keys, tags/typing/quotes, framing, comments, length and whitespace | `quality/yamllint.yaml` |
+| Shell | ShellCheck `--enable=all`; supported workflow shell bodies also checked | `scripts/quality/lint.py` |
+| Delivery | actionlint; zizmor auditor, including generated workflows | `scripts/quality/lint.py` |
+| Credentials | Gitleaks; immutable exact reviewed false positives; context drift remains blocking | `quality/secret-false-positives.json`, `quality/strict-policy.json` |
+| Containers | hadolint at style threshold; owned Dockerfile basename admission | `quality/hadolint.yaml`, `scripts/quality/lint.py` |
+| JavaScript | Node syntax checks; actual Node/PromQL/parser regression fixtures in reviewed suites | `scripts/quality/lint.py`, `quality/test-suites.json` |
+| Ansible | offline strict ansible-lint, parser floor plus enumerated non-conflicting rules | `quality/ansible-lint.yaml` |
+| Kubernetes | Helm rendering, local checksum-locked schema validation, default plus additional kube-linter checks and source contracts | `scripts/quality/charts.py`, `quality/kube-linter.yaml`, `quality/schemas.lock.json` |
+| Dependencies | Python requirement/hash validation and pip-audit; exact npm lock/manifest integrity and TLS OSV auditing; unsupported locks block | `scripts/quality/lint.py` |
+| Architecture | mesh/inventory, native issuer transport, deployment/source/vendor ownership and operational entrypoint contracts | `deploy/contracts/`, `scripts/check_*`, `scripts/quality/boundaries.py` |
+| Test coverage | explicit disjoint test inventory, offline fast/medium suites, real disposable Kind suite | `quality/test-suites.json`, `scripts/quality/tests.py`, `tests/kubernetes/` |
 
-**pytest runs all tests**, including existing `unittest.TestCase` classes. There
-is no second unittest execution pass and no pointless assertion-syntax migration.
+`quality/rules.json` and `quality/debt/` are historical catalogs/receipts, not current enforcement or acceptance. Tool/collection/schema locks live under `quality/`. Root project defaults are not interchangeable with the owning quality formatter config.
 
-1. **Unit tests**: pure algorithms, fail-closed interfaces and source contracts.
-   Small local substitutes remain appropriate for checking refusal/no-side-effect
-   behavior. They are not called runtime integration acceptance.
-2. **Integration tests**: actual Helm/Ansible/parser processes and cross-file
-   contracts. Modules using external processes are grouped here; not one CI node
-   per service. Actual ansible-lint negative cases prove unsafe pipelines and
-   unresolved modules are rejected without executing the plays.
-3. **Cluster lifecycle**: actual Kind Kubernetes1.36.4API server, scheduler,
-   kubelet and RBAC. Tests exercise a repository Cats chart release using an
-   explicit public nginx test workload, real Service HTTP and replica changes;
-   API rejection of an invalid rendered Deployment; source-owned application
-   reader permissions; local PV binding and Retain after PVC deletion.
+## Exceptions: small, explicit, not a debt waiver
 
-Kind was selected after reviewing its official guide and Chainsaw's declarative
-assertion/lifecycle/reporting model. pytest fixtures fit this Python repository
-without introducing a second test DSL. Kind is upstream Kubernetes, **not** a
-claim that K3s/Traefik/WireGuard/NFS or private application business logic ran.
+- Ruff ignores only four documented conflicting rule choices: D203/D213/ISC001/COM812. Tests additionally allow S101 because pytest rewrites assertions. Other test/style/security findings are not ignored.
+- YAML key-ordering conflicts with semantic Ansible task ordering. Compatible implicit-null and quoted-string checks are enabled. Cross-schema truthy key handling preserves GitHub `on`.
+- Installed Ansible/Kubernetes optional rules are either enabled or have precise applicability/architecture reasons in `strict-policy.md` and `strict-policy.json`; replica/scheduler/single-writer identities are not rewritten to satisfy arbitrary optional rules.
+- Hadolint's single DL3064 false-positive exception binds one exact public ENV line. Reviewed non-secret contexts are immutable and exact, not secret waivers. Drift fails.
+- Vendor boundaries are centrally declared. Generated workflows are still scanned and have no finding waiver. Inline suppressions remain forbidden and checked.
 
-Fast/medium Linux test processes have loopback-only network namespaces, no SSH
-agent/cloud credentials and no operator kubeconfig. That is accidental-network
-protection, not a hostile-code sandbox. The cluster suite instead creates a
-UUID-named cluster with an explicit private kubeconfig, validates its loopback
-API/context and always deletes only that exact cluster. It never merges/writes
-`~/.kube/config`, mounts production data or uses production credentials.
+This is strict configuration for the adopted tools, **not a claim that every conceivable checker is installed**. ESLint/Prettier execution, separate Bandit/Vulture runs and broader mutation coverage are not enabled; do not count them as passes. Those are explicit coverage/tool-lock follow-ups, not hidden successful nodes.
 
-The inventory now counts nested test directories honestly:116of275modules are
-scheduled;159remain explicitly unreviewed/deferred, **not passed**. Adding a test
-without classifying it fails integrity checks. The old241count covered root-level
-modules only. Neither historical migration fixtures nor current source assertions
-are proof of production runtime, backup coverage or disaster recovery.
+## Test inventory and safety
 
-## Ansible policy, not an accidental API migration
+pytest is the single runner, including unittest classes. All test modules under `tests/` and `experiments/` must be explicitly scheduled or named with a reason in `notScheduled`; unknown/stale/overlapping entries fail Graph integrity. No global pytest discovery of operational or autonomous experiments is authorized. The synchronization inventory is 162 scheduled of 312 modules; the remaining150 are explicit coverage gaps, not passed tests. Re-run contracts for current counts.
 
-The original broad `safety` preset inherited style rules for task names, role
-variable prefixes and line lengths. Its865finding audit is **not claimed fixed**.
-Renaming stable public role variables would be an infrastructure API migration,
-not an honest way to repair this CI implementation. YAML hygiene is separately
-checked across all owned source; CI Python formatting remains strict.
+Newly reviewed pure helper/publisher-negative/dashboard tests join fast; source-only Helm upgrade assertions join medium and do not execute Jobs or backups. Two newly synchronized owner tests import provisioning/validation entrypoints and remain explicitly unexecuted pending bounded isolation review. Five experimental autonomy test modules remain deferred. No previously scheduled module was removed.
 
-The required gate now positively enumerates mandatory parser/syntax checks,
-schema and12correctness/security rules in `quality/ansible-lint.yaml` and
-`quality/rules.json`. It scans all358owned Ansible YAML files, with **no** mock
-modules, skipped files, warn-only findings or technical-debt baseline. Real
-parse/schema/module errors were repaired, collection dependencies are checksum
-locked,19shell pipelines now propagate upstream failures, and the kernel's
-intentional install/update flow uses a distinct update-only step. Nothing ran
-against a managed host. Stylistic modernization is a separate explicit review,
-not a hidden successful result from the broad preset.
+Linux fast/medium use loopback-only network namespaces and stripped cloud/SSH/operator-kubeconfig variables. This prevents accidents, not hostile-code execution. Kind uses locked binaries, a UUID cluster, a private loopback kubeconfig, no production data/credentials and exact cleanup; never docker prune. It exercises actual scheduling, Service HTTP, scale, invalid Deployment rejection, RBAC and local PV Retain. It is not K3s/SSO/backup/runtime acceptance. Historical hosted Kind success is not current-head hosted green.
 
-## Reports and retained debt
+## Failure and report semantics
 
-- Native lint reports and pytest JUnit are admitted/published by Quality Graph.
-  Setup/parser/tool errors are failures, never accepted quality findings.
-- Existing Python/YAML/shell/resource debt is still visible as known-not-fixed
-  metrics. Combining chart inventories was a mechanical union of existing IDs,
-  **not** a new baseline capture. No regression test was xfailed/removed to pass.
-- Gitleaks non-secret contexts remain separately reviewed, never secret waivers.
-- Hadolint DL3064 misidentifies the public `TOKENIZERS_PARALLELISM=false` flag as
-  a credential. The adapter permits only that exact existing option line in one
-  Dockerfile; an adversarial test proves changed values lose the exception.
-  Seven other Docker findings were repaired, not ignored.
-- All declared nodes disallow finding/file/node approval escapes. `/qg help` and
-  `/qg status` use the native provider; no custom command bot is introduced.
+Findings, incomplete audit coverage, adapter failures and absent/oversized native artifacts all remain failures. In particular, a failed envelope with an empty finding list is **not clean**. Native Python report admission previously exceeded10MiB; unchanged admission limits and the generated publisher security findings remain open CI-infrastructure limitations, separate from source cleanup. Do not truncate/shard reports or refresh approvals to hide them.
+
+Private complete audit evidence is outside Git at `~/Library/Application Support/homelab/quality-strict/` (directories0700/files0600). `strict_report.py` returns1 when findings remain; configurationReady/snapshotStable must also be checked. Old receipts describing exit0-with-findings are historical behavior, not the current contract. A current audit binds an exact clean source head; dirty/in-progress merge evidence is not exact-head acceptance.
 
 ## Reproduce
 
@@ -115,33 +77,13 @@ not a hidden successful result from the broad preset.
 uv sync --locked
 uv run qg validate
 uv run python scripts/quality/contracts.py
+uv run python scripts/quality/strict_guard.py
 uv run python scripts/quality/lint.py python
 uv run python scripts/quality/lint.py yaml
 uv run python scripts/quality/tests.py fast
 uv run python scripts/quality/tests.py medium
 ```
 
-Actual Linux CI adds `--isolate-network` to fast/medium. External binaries come
-from `quality/tools.lock.json`; Ansible parsing dependencies come from
-`quality/collections.lock.json`. Install only the required tools:
+Actual Linux jobs add `--isolate-network` to fast/medium. Install only required pinned binaries via `scripts/quality/install_tools.py` and parsing collections via `scripts/quality/install_collections.py`; do not substitute system versions silently. Use `.venv/bin:.quality-tools/bin` in scoped PATH and `KUBECONFIG=/dev/null` for offline checks. Cluster testing requires an explicitly reviewed disposable Docker/Kind environment; it is not implicitly run by these offline commands.
 
-```sh
-uv run python scripts/quality/install_tools.py --tools kubeconform kube-linter
-uv run python scripts/quality/install_collections.py
-export PATH="$PWD/.quality-tools/bin:$PATH"
-uv run python scripts/quality/charts.py
-# Explicitly creates/deletes a disposable cluster; requires supported Docker:
-uv run python scripts/quality/install_tools.py --tools kind kubectl
-uv run python scripts/quality/tests.py cluster
-```
-
-A rootless local Podman provider refused Kind because its VM lacks systemd
-Delegate configuration. No host/VM settings were changed and no mock fallback was
-used. Actual hosted Linux acceptance [43954132178](https://github.com/alchemmist/homelab/actions/runs/43954132178)
-passed all4cluster tests with0skips. That targeted diagnostic run is not a claim
-that the full graph passed; see the latest full PR run separately.
-
-[Research and primary sources](research-20261116.md) and
-[dated initial failures/repair evidence](initial-findings-20261116.md).
-No production, backup implementation, GPU/VPN maintenance or public Wiki writes
-are authorized by this quality package. Branch protection remains unchanged.
+Publication uses the private fail-closed draft publisher: fresh main/remote ancestry, stable clean head, complete audit metadata, verified open draft and one non-force push. Any refusal means no separate push. PR metadata must identify actual published head and real results. No main merge, admin bypass, production execution, backup/identity/model/worker/provider operation is performed by CI/refactoring preparation.

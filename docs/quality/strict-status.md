@@ -1,3 +1,7 @@
+# Historical strict audit receipts
+
+> Historical evidence follows. Old counts, exit semantics, disabled-rule descriptions and branch/main references are NOT current configuration. For current integration scope and enforcement read [README](README.md), [CI enablement](ci-enablement.md), and [strict policy](strict-policy.md). Use the exact-head private audit and published PR evidence for current results.
+
 # Strict audit status
 
 This is the tracked receipt for the strict configuration on `quality/strict-all`. It is not a clean-tree claim and not production acceptance. The full per-finding report is private, mode `0700`/`0600`, at `~/Library/Application Support/homelab/quality-strict/`. No raw secret values are in that report.
