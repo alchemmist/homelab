@@ -5,6 +5,8 @@ import re
 import os
 import time
 import socket
+import sqlite3
+from contextlib import closing
 import uuid
 from pathlib import Path
 from urllib.request import Request, build_opener, ProxyHandler, HTTPRedirectHandler
@@ -19,10 +21,39 @@ def eligible(status,event):
 def retry_parallel(event):
     if event.get('kind')!='ConversationErrorEvent' or event.get('source')!='environment':return None
     text=event.get('detail','')
-    if 'RateLimitError' not in text or 'Limit type: max_parallel_requests.' not in text:return None
+    if event.get('code','LLMRateLimitError')!='LLMRateLimitError' or 'RateLimitError' not in text:return None
+    if re.search(r'\bmax_parallel_requests=[1-9]\d* requests in flight\b',text):return 0
+    if 'Limit type: max_parallel_requests.' not in text:return None
     m=re.search(r'Limit resets at: (\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) UTC',text)
     return datetime.strptime(m[1],'%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc).timestamp()+15 if m else None
 
+
+def busy_resume(cid,api,events,now,allowed=lambda: True,path='/wait-state/waits.db'):
+    """Persist only scheduling metadata. Never replay a tool call or user message."""
+    ev=next((e for e in events if e['kind']!='ConversationStateUpdateEvent'),{})
+    reset=retry_parallel(ev);eid=ev.get('id')
+    if reset is None or not eid:return False
+    c=api()
+    if c['execution_status']!='error':return False
+    model=c['agent']['llm']['model']
+    group=re.search(r"model group '([a-zA-Z0-9_.-]+)'",ev['detail'])
+    if group:model='openai/'+group[1]
+    with closing(sqlite3.connect(path,timeout=8)) as db, db:
+        db.execute('create table if not exists waits(cid text primary key, model text, eid text, due real, n integer)')
+        db.execute('create table if not exists gates(model text primary key, until_ts real)')
+        db.execute('begin immediate')
+        row=db.execute('select eid,due,n from waits where cid=?',(cid,)).fetchone()
+        if not row or row[0]!=eid:
+            n=min(5,row[2]+1) if row and now-row[1]<1800 else 0
+            due=max(reset,now+min(900,60*2**n));db.execute('insert or replace into waits values(?,?,?,?,?)',(cid,model,eid,due,n));return False
+        gate=db.execute('select until_ts from gates where model=?',(model,)).fetchone()
+        if now<row[1] or (gate and now<gate[0]):return False
+        if not allowed() or api()['execution_status']!='error':return False
+        latest=api('/events/search?sort_order=TIMESTAMP_DESC&limit=12')['items']
+        if next((e.get('id') for e in latest if e['kind']!='ConversationStateUpdateEvent'),None)!=eid:return False
+        # Commit cooldown before HTTP: lost acknowledgement cannot trigger a burst.
+        db.execute('update waits set due=? where cid=?',(now+900,cid));db.execute('insert or replace into gates values(?,?)',(model,now+60));db.commit()
+        ok=api('/run','POST').get('success');print('capacity resume',cid,model,bool(ok),flush=True);return bool(ok)
 
 def final_message(events,qa=False):
     # Never infer an agent finish from arbitrary user/file/tool text.
@@ -112,7 +143,11 @@ def monitor_workers(parent,directory):
             for cid,api,st in rows:
                 now=time.time()
                 if delay.get(cid,0)>now:continue
-                ev=api('/events/search?sort_order=TIMESTAMP_DESC&limit=12')['items'];action=pending_worker(st,ev,now)
+                ev=api('/events/search?sort_order=TIMESTAMP_DESC&limit=12')['items']
+                if st=='error':
+                    if busy_resume(cid,api,ev,now,lambda: parent_api()['execution_status'] in ('running','finished')):break
+                    continue
+                action=pending_worker(st,ev,now)
                 if not action or action in attempted:continue
                 if api()['execution_status']!=st or parent_api()['execution_status'] not in ('running','finished'):break
                 attempted.add(action);failures[cid]=failures.get(cid,0)+1;delay[cid]=now+min(3600,120*2**min(5,failures[cid]-1))
@@ -135,10 +170,7 @@ def monitor(cid,qa=False):
                     if not bridge_ready():bridge_was_down=True
                     elif bridge_was_down and eid!=attempted:
                         bridge_was_down=False;action='bridge_restored'
-                elif status=='error' and (reset:=retry_parallel(ev)) is not None:
-                    if last_parallel!=eid:
-                        last_parallel=eid;parallel_failures+=1;after=max(reset,now+min(900,30*2**min(parallel_failures-1,5)))
-                    if now>=after:action='parallel'
+                elif status=='error':busy_resume(cid,api,events,now)
                 elif qa and not probed and status=='finished' and (eid:=ledger_probe(events)) and eid!=attempted:
                     action='ledger_probe'
                 elif status=='finished' and (eid:=final_message(events,qa)) and eid!=attempted:

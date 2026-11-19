@@ -175,6 +175,9 @@ spec:
             limits: {cpu: 100m, memory: 96Mi}
           volumeMounts:
             - name: {{ include "agent-canvas.pvcClaimName" . }}
+              mountPath: /wait-state
+              subPath: iteration-wait-state
+            - name: {{ include "agent-canvas.pvcClaimName" . }}
               mountPath: /session-key
               subPath: openhands/agent-canvas/api-key.txt
               readOnly: true

@@ -454,3 +454,9 @@ edge, resume once. No automatic quarantine reset, re-login, probe chat or
 continuous retry; pauses, auth errors and other models stay outside this rule.
 
 Quality continuation: executable DNS approval binds exact helper source bytes; any drift invalidates an earlier plan. Obtain a fresh independently reviewed plan. CI/refactoring scope does not authorize DNS, identity, backup or autonomous execution.
+
+Capacity wait: continuation uses SQLite on a dedicated subdirectory of the retained PVC.
+Both explicit LiteLLM parallel-cap errors are eligible, not arbitrary 429/auth/OOM.
+Timers survive restart; retries target the same errored chat, one admission per model
+per minute across both campaigns, with increasing delay. No provider probe or change
+to pr-agent. This is timed re-admission, not a notification that a slot is free.

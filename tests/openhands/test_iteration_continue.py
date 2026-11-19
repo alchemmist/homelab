@@ -25,3 +25,17 @@ class Resume(unittest.TestCase):
   self.assertEqual(m.pending_worker('finished',[ev('I need to look at the tests.')],0),('plan','p'))
   for t in ['I need to get permission.', 'Done: https://github.com/example', '[БЛОКЕР QA]','Tests passed.']:self.assertIsNone(m.pending_worker('finished',[ev(t)],0))
   self.assertIsNone(m.pending_worker('paused',[ev('I need to read tests.')],0))
+ def test_capacity_restart_release_and_pause(self):
+  import tempfile
+  with tempfile.TemporaryDirectory() as d:
+   path=d+'/db';held=True;observations=[]
+   def chat(cid):
+    state={'execution_status':'error','agent':{'llm':{'model':'test'}}};ev=dict(id=cid,kind='ConversationErrorEvent',source='environment',code='LLMRateLimitError',detail='RateLimitError max_parallel_requests=1 requests in flight')
+    def api(s='',method='GET'):
+     if s.startswith('/events'):return {'items':[ev]}
+     if not s:return state
+     self.assertFalse(held);state['execution_status']='running';observations.append((cid,'tool result'));return {'success':True}
+    return state,lambda now:m.busy_resume(cid,api,[ev],now,path=path)
+   a,tick=chat('a');b,other=chat('b');self.assertFalse(tick(100));self.assertFalse(other(100));self.assertFalse(tick(159));held=False
+   # New client/controller, same database and same chat/event, no manual run.
+   a,tick=chat('a');self.assertTrue(tick(160));self.assertFalse(other(160));b['execution_status']='paused';self.assertFalse(other(221));self.assertEqual(observations,[('a','tool result')])
