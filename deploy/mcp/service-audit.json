@@ -298,11 +298,6 @@
       "application": "deeperseeker",
       "decision": "no-client",
       "reason": "Source-only owner web-bridge service inventory: no dedicated reviewed read-only operational MCP endpoint is declared. Browser/provider/session workers are not routine diagnostic tools; no new client, credential access or runtime execution is authorized."
-    },
-    {
-      "application": "free-deepseek-api",
-      "decision": "no-client",
-      "reason": "Source-only owner web-bridge service inventory: no dedicated reviewed read-only operational MCP endpoint is declared. Browser/provider/session workers are not routine diagnostic tools; no new client, credential access or runtime execution is authorized."
     }
   ],
   "workloads": [
