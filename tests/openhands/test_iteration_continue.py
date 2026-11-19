@@ -18,3 +18,5 @@ class Resume(unittest.TestCase):
  def test_read_probe_is_narrow(self):
   def event(t):return dict(id='qa',kind='MessageEvent',source='agent',llm_message={'content':[{'text':t}]})
   msg='[БЛОКЕР QA] Жду разрешения хост-рантайма на чтение QA_PROGRESS.md';self.assertEqual(m.ledger_probe([event(msg)]),'qa');self.assertIsNone(m.ledger_probe([event(msg+' EACCES')]));self.assertIsNone(m.ledger_probe([event('[БЛОКЕР QA] нет доступа к GitHub')]));self.assertIsNone(m.ledger_probe([dict(event(msg),source='user')]))
+ def test_bridge_is_route_and_error_specific(self):
+  e=dict(kind='ConversationErrorEvent',code='LLMServiceUnavailableError',detail="Connection error. model group 'o-deepseek'");self.assertTrue(m.bridge_disconnected(e));self.assertFalse(m.bridge_disconnected(dict(e,code='LLMAuthenticationError')));self.assertFalse(m.bridge_disconnected(dict(e,detail="Connection error. model group 'v-deepseek-uc'")))

@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import re
 import os
 import time
+import socket
 import uuid
 from pathlib import Path
 from urllib.request import Request, build_opener, ProxyHandler, HTTPRedirectHandler
@@ -66,19 +67,33 @@ NUDGE=('Продолжай задачу #509 по-русски. Предыдущ
 
 QA_NUDGE=('Продолжай QA автономно, без повторного подтверждения владельца. Используй QA_PUBLICATION.md из своего workspace. Делегируй следующую конкретную работу ролям: публикуй проверенные issues с безопасными PNG, после партии исправляй каждый issue отдельным PR и проверяй CI/reviews. Не мержи. Не дублируй опубликованные issues. Только при внешнем блокере начни ответ ровно с [БЛОКЕР QA] и объясни причину. Только при завершении всей задачи начни ответ с [ИТОГ QA] и приложи доказательства.')
 
+def bridge_disconnected(event):
+    detail=event.get('detail','')
+    return (event.get('kind')=='ConversationErrorEvent' and event.get('code')=='LLMServiceUnavailableError'
+            and "model group 'o-deepseek'" in detail and 'Connection error' in detail)
+
+def bridge_ready():
+    try:return bool(socket.getaddrinfo('deeperseeker-ready.deeperseeker.svc.cluster.local.',4000,type=socket.SOCK_STREAM))
+    except socket.gaierror:return False
+
 def monitor(cid,qa=False):
     cid=str(uuid.UUID(cid))
     url='http://127.0.0.1:8000/api/conversations/'+cid
     def api(suffix='',method='GET',data=None):
         key=Path('/session-key').read_text().strip();req=Request(url+suffix,method=method,headers={'X-Session-API-Key':key,'Content-Type':'application/json'},data=json.dumps(data).encode() if data else None)
         with build_opener(ProxyHandler({}),NoRedirect()).open(req,timeout=15) as r:return json.load(r)
-    probed=False; attempted=None; after=0; parallel_failures=0; last_parallel=None
+    bridge_was_down=False; probed=False; attempted=None; after=0; parallel_failures=0; last_parallel=None
     while True:
         try:
-            status=api()['execution_status'];now=time.time()
+            conv=api();status=conv['execution_status'];now=time.time()
             if status in ('finished','error') and now>=after:
                 events=api('/events/search?sort_order=TIMESTAMP_DESC&limit=8')['items'];ev=events[0] if events else {};eid=ev.get('id');action=None
                 if eligible(status,ev):action='iteration'
+                elif not qa and status=='error' and bridge_disconnected(ev) and conv['agent']['llm']['model']=='openai/o-deepseek':
+                    # One run on a down -> ready transition; no credential probes, no blind retries.
+                    if not bridge_ready():bridge_was_down=True
+                    elif bridge_was_down and eid!=attempted:
+                        bridge_was_down=False;action='bridge_restored'
                 elif status=='error' and (reset:=retry_parallel(ev)) is not None:
                     if last_parallel!=eid:
                         last_parallel=eid;parallel_failures+=1;after=max(reset,now+min(900,30*2**min(parallel_failures-1,5)))
