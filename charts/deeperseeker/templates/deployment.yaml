@@ -150,9 +150,21 @@ spec:
             - name: DEEPSEEKER_COOKIE_HEADLESS
               value: "true"
           readinessProbe:
-            httpGet:
-              path: /health?deep=1
-              port: http
+            exec:
+              command:
+                - python
+                - -c
+                - |
+                  import os, sys, urllib.request, urllib.error
+                  req = urllib.request.Request(
+                      "http://127.0.0.1:4000/health?deep=1",
+                      headers={"Authorization": "Bearer " + os.environ["DEEPSEEKER_API_KEY"]},
+                  )
+                  try:
+                      with urllib.request.urlopen(req, timeout=25) as r:
+                          sys.exit(0 if r.status == 200 else 1)
+                  except urllib.error.HTTPError:
+                      sys.exit(1)
             periodSeconds: 60
             timeoutSeconds: 30
             failureThreshold: 2
