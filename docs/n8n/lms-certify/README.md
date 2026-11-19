@@ -85,3 +85,20 @@ storage for diagnosis; successful payloads are not retained. The exact cause
 of the earlier draft stall was not established because error execution saving
 had been disabled at that time. Fixed probes still do not constitute automatic
 AST mutation or general semantic certification for arbitrary imported tasks.
+
+## Continued reviewed batch
+
+`seed_lms_certify_batch.py` admits ten additional real tasks using explicit
+reviewed contracts in `lms_reviewed_batch.py`: repeated strings, exact Python
+comparison, empty-string detection, substring matching, yes/no validation,
+ordered xmas inputs, forward/reverse parrot, temperature boundaries and numeric
+height sorting. No unverified draft contract is admitted. Each has independent
+expected-output validation and task-specific fault probes. `coverageHints`
+provides targeted input guidance to the blind test author (never candidate code).
+
+Observed on cluster: heights stalled at 3/4 probes because all generated numbers
+were three digits. After supplying differing-length numeric coverage guidance,
+execution `53812` reached certified with 12 cases and 4/4 probes, preserving
+existing cases. Echo-2 then completed with 12 cases and 4/4 probes. The workflow
+automatically moved to meow while seven further batch tasks remained queued.
+These observations are not a claim that all ten have completed.

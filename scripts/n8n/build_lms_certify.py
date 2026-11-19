@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 from uuid import NAMESPACE_URL, uuid5
+from lms_reviewed_batch import SPECS, ORACLE_JS
 
 ROOT = Path(__file__).resolve().parents[2] / 'docs/n8n/lms-certify'
 PROM = 'http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090/api/v1/query'
@@ -96,7 +97,7 @@ entry, gate = idle('Admission:', 220, 0)
 claim = pg('Claim next queued task and load checkpoint', '''WITH candidate AS (
  SELECT id FROM lms_certification.pilot
  WHERE phase NOT IN ('certified','needs_review')
- AND data->>'contract' IN ('echo','sum','length','parity','sign','leap')
+ AND data->>'contract' IN ('echo','sum','length','parity','sign','leap','repeat4','python_exact','zen','meow','yes_no','xmas','parrot','reverse','temperature','heights')
  AND (lease_until IS NULL OR lease_until < clock_timestamp())
  AND NOT EXISTS (SELECT 1 FROM lms_certification.pilot WHERE lease_until > clock_timestamp())
  ORDER BY CASE WHEN owner IS NOT NULL THEN 0 ELSE 1 END, updated_at, id FOR UPDATE SKIP LOCKED LIMIT 1
@@ -157,7 +158,7 @@ for i, (phase, title) in enumerate(phase_specs):
         if phase in {'tests','expand'}:
             prompt = json.dumps(test_prompt, ensure_ascii=False) + f" + '\\nУсловие: ' + {r}.data.statement"
             if phase == 'expand':
-                prompt += f''' + '\\nУже проверенные входы: ' + JSON.stringify({r}.data.cases.map(c => c.input)) + '\\nЧто не поймано: ' + JSON.stringify({r}.data.survivors)'''
+                prompt += f''' + '\\nУже проверенные входы: ' + JSON.stringify({r}.data.cases.map(c => c.input)) + '\\nЧто не поймано: ' + JSON.stringify({r}.data.survivors) + '\\nЦелевые условия для покрытия: ' + JSON.stringify({r}.data.coverageHints || '')'''
         else:
             prompt = json.dumps('Верни решение на Python 3 в формате JSON {"source":"..."}. Только учебный Python, без файлов и сети. Условие: ', ensure_ascii=False) + f' + {r}.data.statement'
             if phase == 'repair':
@@ -179,6 +180,7 @@ return out(phase === 'solve' ? 'tests' : 'public');'''
             logic = r'''// Reviewed deterministic oracle: no candidate source is read here.
 function expected(input) {
  const lines = input.endsWith('\n') ? input.slice(0,-1).split('\n') : [];
+__BATCH_ORACLE__
  if (data.contract === 'echo' || data.contract === 'length') {
   if (lines.length !== 1 || input.includes('\r')) return null;
   return data.contract === 'echo' ? input : `Слово ${lines[0]} имеет длину ${[...lines[0]].length}\n`;
@@ -212,6 +214,7 @@ for (const c of (Array.isArray(payload?.cases)?payload.cases.slice(0,16):[])) {
 }
 data.cases=cases;
 return out(cases.length<3?phase:'public');'''
+            logic = logic.replace('__BATCH_ORACLE__', ORACLE_JS)
             label = 'Verify new tests against reviewed specification' if phase == 'tests' else 'Verify added cases and preserve existing tests'
         chain(free, req, reducer(label, route, parse+logic, x+1100, y))
     else:
