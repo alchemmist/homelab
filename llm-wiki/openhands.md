@@ -372,3 +372,14 @@ paused, approval waits, auth/budget failures or other chats. No cross-run cap.
 Disable by clearing this Helm value. Sidecar mounts only existing Canvas session
 key read-only (not workspace, IdP, SA or publisher credentials). This is not a
 PR readiness evaluator, all-error recovery, auto-merge or guarantee of progress.
+
+## No iteration-count termination (owner opt-in, Canvas1.41 / SDK1.62)
+`deploy/openhands/values.yaml: unlimitedIterations` disables only the six local
+SDK comparisons against the per-run step counter and the goal audit cap. Native
+schemas still store positive 30/200/500 etc.; these are no longer stopping
+conditions for this deployment, including restored conversations and task workers.
+No PVC edits or secret mounts in the preparing init container. Two Python sources
+from the pinned image are SHA-checked and compiled in emptyDir; read-only overlay
+is mounted solely in Canvas. Remove/disable the value to restore stock behavior;
+image changes must explicitly revalidate or remove overlay. Does not suppress
+confirmation, pause, finish, errors, stuck detection, provider limits or quotas.
