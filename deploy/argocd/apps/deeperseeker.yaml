@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: deeperseeker
+  namespace: argocd
+  annotations:
+    homelab/service-vpn: chart-includes-socks-sidecar
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/alchemmist/homelab.git
+    targetRevision: main
+    path: charts/deeperseeker
+    helm:
+      releaseName: deeperseeker
+      valueFiles:
+        - ../../deploy/deeperseeker/values.yaml
+      parameters: []
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: deeperseeker
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

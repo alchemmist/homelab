@@ -1,0 +1,36 @@
+image:
+  repository: harbor.socrat.alchemmist.xyz/homelab/deeperseeker
+  tag: "1b1148ec1e2a"
+  digest: "sha256:8bda1721167d3859ea09564f43da7e98b3bfd1cb17bf999ea3855b439e2a4be9"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - deeperseeker-harbor-pull
+
+nodeName: socrat-5
+
+secretName: deeperseeker
+vpnSecretName: deeperseeker-service-vpn
+
+service:
+  port: 4000
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 1Gi
+  limits:
+    cpu: "2"
+    memory: 4Gi
+
+vpn:
+  image: ghcr.io/mhsanaei/3x-ui@sha256:1628adbd9bed680d25d6f714bef4a20f132105f4612ea294952f6665dad32e5b
+  endpoint: 91.189.82.238
+  port: "32053"
+
+proxy:
+  browser: socks5://127.0.0.1:1080
+  upstream: socks5h://127.0.0.1:1080
+
+callGapSeconds: "4"
+tokenConcurrency: "1"
