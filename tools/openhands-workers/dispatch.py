@@ -13,7 +13,7 @@ def main():
  assert sum(s in ('running','idle','waiting_for_confirmation') for s in statuses.values())<(2 if mode=='mutation' else 1),'Capacity in use: poll existing children, do not duplicate'
  task=sys.argv[3];assert 20<=len(task)<=2200
  cid=str(uuid.uuid5(uuid.NAMESPACE_URL,parent+':'+lane));d=root/'worker-trees'/lane/'monori';d.parent.mkdir(parents=True,exist_ok=True);assert not d.exists();git(repo,'fetch','https://github.com/alchemmist/monori.git','main','--depth=1');base=git(repo,'rev-parse','FETCH_HEAD');git(repo,'worktree','add','--detach',str(d),base)
- prof='socrat-mutation-worker-o' if mode=='mutation' else 'socrat-qa-fix-worker';llm='o-deepseek' if mode=='mutation' else 'v-deepseek-uc';profiles=api('agent-profiles')['profiles'];p=next((x for x in profiles if x['name']==prof),None)
+ prof='socrat-'+mode+'-worker-qwen';llm='qwen3.8-27b';profiles=api('agent-profiles')['profiles'];p=next((x for x in profiles if x['name']==prof),None)
  if not p:
   api('agent-profiles/'+prof,{'agent_kind':'openhands','llm_profile_ref':llm,'tools':[{'name':'terminal'},{'name':'file_editor'}],'mcp_server_refs':[],'secret_refs':[],'integration_refs':[],'public_skills':[],'system_message_suffix':'Work only in your assigned worktree. Keep output short. Do not request credentials or merge. Report evidence, PR URL or exact blocker to parent. Russian owner-facing text.','condenser':{'max_size':32,'max_tokens':10000,'keep_first':1}});p=api('agent-profiles/'+prof)['profile']
  assert p['llm_profile_ref']==llm
