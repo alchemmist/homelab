@@ -12,6 +12,8 @@ alertGraphAnnotations:
     / rule evaluations","dashboard_uid":"alerts-ba089cb9438969be","panel_id":2,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
   SocratControlPlaneOnBattery: '{"version":1,"graphs":[{"id":"primary","title":"SocratControlPlaneOnBattery","dashboard_uid":"alerts-ba089cb9438969be","panel_id":3,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratControlPlaneOnBattery
     / rule evaluations","dashboard_uid":"alerts-ba089cb9438969be","panel_id":4,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
+  SocratDeeperSeekerSessionLoggedOut: '{"version":1,"graphs":[{"id":"primary","title":"SocratDeeperSeekerSessionLoggedOut","dashboard_uid":"alerts-45608093acd53723","panel_id":5,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratDeeperSeekerSessionLoggedOut
+    / rule evaluations","dashboard_uid":"alerts-45608093acd53723","panel_id":6,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
   SocratEtcdQuorumHealthUnproven: '{"version":1,"graphs":[{"id":"primary","title":"SocratEtcdQuorumHealthUnproven","dashboard_uid":"alerts-ba089cb9438969be","panel_id":5,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratEtcdQuorumHealthUnproven
     / rule evaluations","dashboard_uid":"alerts-ba089cb9438969be","panel_id":6,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
   SocratEtcdVoterHealthUnavailable: '{"version":1,"graphs":[{"id":"primary","title":"SocratEtcdVoterHealthUnavailable","dashboard_uid":"alerts-ba089cb9438969be","panel_id":7,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratEtcdVoterHealthUnavailable

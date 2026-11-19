@@ -76,7 +76,8 @@
     },
     "alerts-45608093acd53723": {
       "SocratContainerOOMKilled": 1,
-      "SocratContainerRestartsFrequent": 3
+      "SocratContainerRestartsFrequent": 3,
+      "SocratDeeperSeekerSessionLoggedOut": 5
     },
     "alerts-5a5665aada7ae623": {
       "CPUThrottlingHigh": 1,

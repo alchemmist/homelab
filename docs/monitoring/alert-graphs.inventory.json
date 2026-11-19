@@ -1024,6 +1024,37 @@
   },
   {
     "owner": "monitoring-k3s",
+    "resource": "monitoring-k3s-shared-registry",
+    "group": "socrat.containers.health",
+    "alert": "SocratDeeperSeekerSessionLoggedOut",
+    "expr": "kube_pod_container_status_ready{job=\"kube-state-metrics\",namespace=\"deeperseeker\",container=\"deeperseeker\"} == 0\nand\nkube_pod_container_status_running{job=\"kube-state-metrics\",namespace=\"deeperseeker\",container=\"deeperseeker\"} == 1\n",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratDeeperSeekerSessionLoggedOut",
+          "dashboard_uid": "alerts-45608093acd53723",
+          "panel_id": 5,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratDeeperSeekerSessionLoggedOut / rule evaluations",
+          "dashboard_uid": "alerts-45608093acd53723",
+          "panel_id": 6,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
     "resource": "socrat-control-plane-safety",
     "group": "socrat.control-plane.safety",
     "alert": "SocratEtcdQuorumHealthUnproven",
@@ -1089,7 +1120,38 @@
     "resource": "monitoring-k3s-shared-registry",
     "group": "socrat.nodes.hardware",
     "alert": "SocratNodeCPUStealHigh",
-    "expr": "socrat:node_cpu_steal:ratio5m > 0.10",
+    "expr": "socrat:node_cpu_steal:ratio5m{node!=\"socrat-4\"} > 0.10",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratNodeCPUStealHigh",
+          "dashboard_uid": "alerts-9943c0b05432b778",
+          "panel_id": 1,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratNodeCPUStealHigh / rule evaluations",
+          "dashboard_uid": "alerts-9943c0b05432b778",
+          "panel_id": 2,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
+    "resource": "monitoring-k3s-shared-registry",
+    "group": "socrat.nodes.hardware",
+    "alert": "SocratNodeCPUStealHigh",
+    "expr": "socrat:node_cpu_steal:ratio5m{node=\"socrat-4\"} > 0.30",
     "uid": null,
     "graphs": {
       "version": 1,
@@ -1213,7 +1275,38 @@
     "resource": "monitoring-k3s-shared-registry",
     "group": "socrat.nodes.hardware",
     "alert": "SocratNodeResourceContention",
-    "expr": "socrat:node_pressure_waiting:ratio5m{resource=\"cpu\"} > 0.50 or socrat:node_pressure_waiting:ratio5m{resource=~\"memory|io\"} > 0.25",
+    "expr": "socrat:node_pressure_waiting:ratio5m{node!=\"socrat-4\",resource=\"cpu\"} > 0.50 or socrat:node_pressure_waiting:ratio5m{node!=\"socrat-4\",resource=~\"memory|io\"} > 0.25",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratNodeResourceContention",
+          "dashboard_uid": "alerts-9943c0b05432b778",
+          "panel_id": 5,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratNodeResourceContention / rule evaluations",
+          "dashboard_uid": "alerts-9943c0b05432b778",
+          "panel_id": 6,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
+    "resource": "monitoring-k3s-shared-registry",
+    "group": "socrat.nodes.hardware",
+    "alert": "SocratNodeResourceContention",
+    "expr": "socrat:node_pressure_waiting:ratio5m{node=\"socrat-4\",resource=\"cpu\"} > 0.90 or socrat:node_pressure_waiting:ratio5m{node=\"socrat-4\",resource=\"memory\"} > 0.50 or socrat:node_pressure_waiting:ratio5m{node=\"socrat-4\",resource=\"io\"} > 0.60",
     "uid": null,
     "graphs": {
       "version": 1,
