@@ -1,0 +1,59 @@
+--- functions.py.orig	2026-11-19 18:09:39
++++ hints.py	2026-11-19 18:09:52
+@@ -521,8 +521,20 @@
+ DEEPSEEKER_BROWSER_UA_DEFAULT = get_browser_user_agent(
+     DEEPSEEKER_BROWSER_PLATFORM_DEFAULT
+ )
++
++
++def _chrome_major(ua: str) -> str:
++    match = re.search(r"Chrome/(\d+)", ua or "")
++    return match.group(1) if match else "156"
++
++
++def _sec_ch_ua(ua: str) -> str:
++    major = _chrome_major(ua)
++    return f'"Not-A.Brand";v="99", "Google Chrome";v="{major}", "Chromium";v="{major}"'
+ 
+ 
++
++
+ def normalize_shumei_device_id(val: str | None) -> str | None:
+     if not val:
+         return None
+@@ -895,7 +907,7 @@
+         "origin": "https://chat.deepseek.com",
+         "referer": "https://chat.deepseek.com/",
+         "user-agent": browser_ua,
+-        "sec-ch-ua": '"Not-A.Brand";v="99", "Google Chrome";v="157", "Chromium";v="157"',
++        "sec-ch-ua": _sec_ch_ua(browser_ua),
+         "sec-ch-ua-mobile": "?0",
+         "sec-ch-ua-platform": f'"{browser_platform}"',
+         "sec-fetch-dest": "empty",
+@@ -960,7 +972,7 @@
+         "origin": "https://chat.deepseek.com",
+         "referer": "https://chat.deepseek.com/",
+         "user-agent": browser_ua,
+-        "sec-ch-ua": '"Not-A.Brand";v="99", "Google Chrome";v="157", "Chromium";v="157"',
++        "sec-ch-ua": _sec_ch_ua(browser_ua),
+         "sec-ch-ua-mobile": "?0",
+         "sec-ch-ua-platform": f'"{browser_platform}"',
+         "sec-fetch-dest": "empty",
+@@ -1465,13 +1477,14 @@
+         browser_ua = ua or get_browser_user_agent(browser_platform)
+         plat = "Windows" if "windows" in str(browser_platform).lower() else ("macOS" if "mac" in str(browser_platform).lower() else "Linux")
+         cdp = await context.new_cdp_session(page)
++        major = _chrome_major(browser_ua)
+         meta = {
+             "brands": [
+                 {"brand": "Not-A.Brand", "version": "99"},
+-                {"brand": "Google Chrome", "version": "157"},
+-                {"brand": "Chromium", "version": "157"},
++                {"brand": "Google Chrome", "version": major},
++                {"brand": "Chromium", "version": major},
+             ],
+-            "fullVersion": "157.0.0.0",
++            "fullVersion": f"{major}.0.0.0",
+             "platform": plat,
+             "platformVersion": "10.0.0" if plat == "Windows" else "",
+             "architecture": "x86",

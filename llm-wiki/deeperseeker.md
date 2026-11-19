@@ -33,7 +33,7 @@ claim на `socrat-5` не встанет. Данные: claim `deeperseeker-dat
 
 Образ — не чистый git форка. В него входит локальная проводка прокси; патч лежит
 рядом с чартом: `charts/deeperseeker/files/proxy-wiring.patch`, копия для повторной сборки —
-`deploy/deeperseeker/patches/proxy-wiring.patch`. При смене коммита форка патч накладывается заново.
+`deploy/deeperseeker/patches/proxy-wiring.patch`. При смене коммита форка патч накладывается заново. Поверх текущего digest собран, но не выкачен `harbor.socrat.alchemmist.xyz/homelab/deeperseeker:1b1148ec1e2a-hints` (`sha256:3cab7de3a4c23787e808d62364abc079ff98c60b8b8713edb55e1800e840d1df`). В нём те же слои и Chromium 156, плюс `log-created-chat-session.patch` и `client-hints-follow-ua.patch`. Values на него не переведены: роллаут после смены выхода, одним `helm upgrade`.
 Тег `1b1148ec1e2a` совпадает с коммитом форка, digest — с уже пропатченным деревом.
 Повторная сборка из чистого клона без патча снова пойдёт в DeepSeek напрямую.
 
@@ -198,7 +198,7 @@ signature и открывают разные чаты upstream. Обрыв ст�
 | `DEEPSEEKER_TOKEN_CONCURRENCY` | 1 | не поднимать |
 | `DEEPSEEKER_PERSIST_SESSIONS` | `true` | чарт теперь задаёт явно; рестарт без этого открывает новый чат на каждый следующий ход |
 | `DEEPSEEKER_BROWSER_PLATFORM` | `Linux` | токен снимается в Selkies, не на Windows |
-| `DEEPSEEKER_BROWSER_USER_AGENT` | Chrome/158 на X11 Linux | дефолт форка — Chrome/157 на Windows; расхождение `Sec-CH-UA` отзывов сессию |
+| `DEEPSEEKER_BROWSER_USER_AGENT` | Chrome/156 на X11 Linux | движок в образе — Chrome for Testing 156.0.8078.4; 158 врал бы относительно бинарника |
 | `DEEPSEEKER_CLIENT_VERSION` | `2.8.0` | не снято: и прямой curl, и headless Chromium через SOCKS моста получили HTTP 403 до JS. Снять в Selkies до возврата аккаунта |
 | `DEEPSEEKER_COOKIE_HEADLESS` | `true` | headful без рабочего X падает; вернули headless |
 | `DEEPSEEKER_WARMUP_NON_HEADLESS` | `false` | то же |
@@ -250,11 +250,13 @@ PVC профиля и секреты этого пода удаляются вм
 
 ## Headful, версия клиента, дедлайн выката
 
-19 ноября: в образе есть `/usr/bin/Xvfb` и `xvfb-run`, `DISPLAY` у процесса пустой, код форка Xvfb не запускает. Прогрев при старте пропускает `QUARANTINED` токены, поэтому рестарт не пишет строк cookie. Отдельный запуск Patchright: `headless=True` проходит, `headless=False` даже при живом `Xvfb :99` падает `SIGTRAP`. Headful оставлен выключенным. Отдельная задача на образ: поднять X так, чтобы Chrome из `/ms-playwright/chromium-1248` жил в headful, и только потом снова ставить `DEEPSEEKER_WARMUP_NON_HEADLESS=true`. Этот Chromium не равен Chrome 158 из User-Agent; при следующей сборке ставить ту же мажорную версию, не только подмену UA.
+19 ноября: в образе есть `/usr/bin/Xvfb` и `xvfb-run`, `DISPLAY` у процесса пустой, код форка Xvfb не запускает. Прогрев при старте пропускает `QUARANTINED` токены, поэтому рестарт не пишет строк cookie. Отдельный запуск Patchright: `headless=True` проходит, `headless=False` даже при живом `Xvfb :99` падает `SIGTRAP`. Headful оставлен выключенным. Отдельная задача на образ: поднять X так, чтобы Chrome из `/ms-playwright/chromium-1248` жил в headful, и только потом снова ставить `DEEPSEEKER_WARMUP_NON_HEADLESS=true`. `/ms-playwright/chromium-1248/chrome-linux64/chrome --version` печатает `Google Chrome for Testing 156.0.8078.4`. Пути `chrome-linux/chrome` в образе нет. `sec-ch-ua` в `get_headers` и в CDP зашит как 157 и не читает UA. Пока крутится digest `696884aa`, запрос несёт UA 156 и client hints 157. Патч `deploy/deeperseeker/patches/client-hints-follow-ua.patch` берёт мажор из UA; он войдёт в образ, который собран, но не выкачен.
+
+`x-client-version` снимать сначала в Selkies: там headed Chrome, он может открыть страницу там, где headless с этого SOCKS получил 403. Если и Selkies получает 403, выход мёртв. Логин откладывается до смены выхода, а не до следующей попытки тем же адресом.
 
 `x-client-version` снять до возврата аккаунта, логин не нужен. В Selkies открыть `chat.deepseek.com`, DevTools → Network, на любом запросе прочитать заголовок `x-client-version`, записать в `DEEPSEEKER_CLIENT_VERSION` обоих values и выкатить. Пока там `2.8.0`, мост называет сборку, которой на сайте может уже не быть.
 
-`progressDeadlineSeconds` у Deployment — 604800. Пока токен в карантине, под не Ready, дефолтные 600 секунд дали бы `ProgressDeadlineExceeded` и алерт `KubeDeploymentRolloutStuck`. Авто-отката у Argo нет (`selfHeal` только подтягивает Git). `Argo Health=Degraded` или долгий `Progressing` при `QUARANTINED` — ожидаемо, лимиты не откатывать.
+`progressDeadlineSeconds` у Deployment — 604800, чтобы карантин не превращался в `KubeDeploymentRolloutStuck`. Это не единственный сигнал. `SocratDeeperSeekerSessionLoggedOut` смотрит `ready=0` при `running=1` пять минут и не зависит от Argo и от дедлайна выката. Пока токен в карантине, он будет гореть — это ожидаемо. Останов контейнера и частые рестарты ловит `SocratContainerRestartsFrequent` (три рестарта за 30 минут), не недельный дедлайн.
 
 ## Устройство и возврат аккаунтов
 
@@ -292,6 +294,12 @@ SMSdk.getDeviceId()
 
 Оба забаненных аккаунта за всю жизнь не имели ни одного касания с резидентного IP. 19 ноября headless Chromium через тот же SOCKS получил HTTP 403 на `https://chat.deepseek.com/`. Cookie-регенерация идёт с этого же выхода, поэтому 21-го она может не пройти даже с живым токеном. Токен, снятый с домашнего IP, мост всё равно потратит с датацентра.
 
-Резидентный выход нужен до 21 ноября, отдельной identity, не повторным `svc-free-deepseek`. В чартах такого выхода нет, и эта задача его не создаёт. План Б на 21-е: мост к аккаунту не подключать, пока вручную с текущего выхода не откроется `chat.deepseek.com` без 403. Если снова 403, токен в дашборд не вставлять.
+403 до JavaScript с текущего SOCKS — отказ эджа по адресу. 21-го с этим выходом можно не дойти ни до страницы, ни до токена. Ждать и «проверить в тот день» нельзя: это третий бан.
+
+Смена выхода, в этом порядке:
+
+1. WireGuard с кластера на домашнее устройство, которое не спит (`caffeinate` на маке или всегда включённый роутер). Домашний адрес — единственный выход для `chat.deepseek.com` и для регистрации, логина и моста. Остальной трафик кластера не переводить. Identity новая, не `svc-free-deepseek`. Межнодовый WireGuard и NetBird для этого не годятся: они не выпускают под в домашний IP.
+2. Если за сутки туннель не собран — временный покупной резидентный прокси, тоже отдельной identity, только на трафик моста.
+3. Подключать аккаунт только после того, как с нового выхода страница открывается без 403. Текущий `91.189.82.238` для возврата не использовать.
 
 Контрольный эксперимент, единственный способ разделить окружение моста и регистрацию: новый аккаунт открывается с резидентного IP, к мосту не подключается, неделю используется только руками из того же браузера. Выжил — виновато окружение моста. Не выжил — виноваты регистрация и IP.
