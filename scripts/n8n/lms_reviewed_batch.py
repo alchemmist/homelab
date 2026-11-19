@@ -169,3 +169,16 @@ ORACLE_JS += r'''
   return (2*mid===hi+lo?'Вы ввели красивое число':'Жаль, вы ввели обычное число')+'\n';
  }
 '''
+
+# A no-input exercise has a singleton input domain. Three invented stdin
+# cases cannot add coverage; compare the entire output, then run fault probes.
+NOINPUT={
+ 'environment-intro/hello-world':('Привет, Мир!', ['Привет Мир!', 'Привет, мир!', 'Привет, Мир']),
+ 'environment-intro/nice-to-meet':('Привет, Мир!\nПриятно познакомиться.', ['Привет, Мир!', 'Привет, Мир! Приятно познакомиться.', 'Приятно познакомиться.\nПривет, Мир!']),
+ 'environment-intro/greeting-report':('Моя первая программа напечатала "Привет, Яндекс!" :)', ['Привет, Яндекс!', 'Моя первая программа напечатала Привет, Яндекс! :)', 'Моя первая программа напечатала "Привет, Яндекс!"']),
+ 'builtin-functions/factorial-intro':(str(1*2*3*4*5*6*7*8*9), ['40320','3628800','45']),
+ 'builtin-functions/diggers':(str((1400+2*3-1)//(2*3)), ['233','467','700']),
+}
+for key,(answer,wrong) in NOINPUT.items():
+ SPECS[key]=('noinput_reviewed','',answer+'\n',[(f'wrong answer {i}',f'print({text!r})') for i,text in enumerate(wrong,1)])
+ORACLE_JS += "\n if(data.contract==='noinput_reviewed')return input===''?data.reviewedOutput:null;\n"

@@ -11,6 +11,8 @@ for key,(contract,stdin,stdout,faults) in SPECS.items():
  suite=yaml.safe_load((path/'tests.yaml').read_text())
  examples=[{'input':c['input'],'output':c['output']} for c in suite.get('cases',[]) if c.get('public')]
  data=dict(statement=(path/'statement.md').read_text(),contract=contract,calls=0,cases=[],examples=examples or [dict(input=stdin,output=stdout)],example_origin='canonical' if examples else 'operator_fixture',faults=[['empty','pass'],*faults])
+ if contract=='noinput_reviewed':
+  data.update(examples=examples,example_origin='canonical' if examples else 'none',reviewedOutput=stdout)
  if contract=='beautiful_digits':
   data['targetedCases']=[dict(input='513\n',output='Вы ввели красивое число\n'),dict(input='777\n',output='Вы ввели красивое число\n'),dict(input='124\n',output='Жаль, вы ввели обычное число\n')]
  if contract=='adjacent_sums':

@@ -232,6 +232,7 @@ for i, (phase, title) in enumerate(phase_specs):
             prompt = json.dumps(test_prompt, ensure_ascii=False) + f" + '\\nУсловие: ' + {r}.data.statement"
             prompt = f"({r}.data.contract === 'mult_table' ? " + json.dumps('Предложи четыре разных маленьких натуральных размера таблицы от 1 до 6 кроме публичного примера 3. Только входы: JSON {"cases":[{"input":"1\\n"}]}. Не генерируй таблицы вывода. Условие: ') + f" + {r}.data.statement : (" + prompt + "))"
             prompt = f"({r}.data.contract === 'thank_count' ? " + json.dumps('Предложи 6 разных входов, включая немедленное завершение, пустую строку до завершения и похожие, но неточные варианты маркера. Каждый вход содержит отдельную строку ровно Спасибо. и перевод строки после неё. Только JSON {"cases":[{"input":"Спасибо.\\n"}]}; ожидаемые ответы вычисляет проверяющая программа. Условие: ') + f" + {r}.data.statement : (" + prompt + "))"
+            prompt = f"({r}.data.contract === 'noinput_reviewed' ? " + json.dumps('У задачи нет ввода. Независимо выведи единственный полный ожидаемый stdout с финальным переводом строки. JSON {"cases":[{"input":"","output":"..."}]}. Условие: ') + f" + {r}.data.statement : (" + prompt + "))"
             if phase == 'expand':
                 prompt += f''' + '\\nУже проверенные входы: ' + JSON.stringify({r}.data.cases.map(c => c.input)) + '\\nЧто не поймано: ' + JSON.stringify({r}.data.survivors) + '\\nЦелевые условия для покрытия: ' + JSON.stringify({r}.data.coverageHints || '')'''
         else:
@@ -251,7 +252,7 @@ try { payload = JSON.parse($json.body.choices[0].message.content); } catch { pay
 if (!source || source.length > 6000 || (data.contract === 'echo' && (/[\\r\\n]/.test(source) || [...source].length > 14))) return out(phase);
 data.repeatedSource = phase === 'repair' && source === data.source;
 data.source = source;
-return out(phase === 'solve' ? 'tests' : 'public');'''
+return out(phase === 'solve' ? 'tests' : (data.contract==='noinput_reviewed' && !data.examples.length ? 'suite' : 'public'));'''
             label = 'Validate solution format' if phase == 'solve' else 'Validate repaired solution format'
         else:
             logic = r'''// Reviewed deterministic oracle: no candidate source is read here.
@@ -289,10 +290,11 @@ for (const c of proposals) {
  const oracle = expected(c.input);
  const output = ['mult_table','thank_count'].includes(data.contract) && c.output===undefined ? oracle : c.output;
  if (typeof output !== 'string' || oracle !== output || seen.has(c.input) ||
-     data.examples.some(e=>e.input===c.input) || cases.length>=16) continue;
+     (data.contract!=='noinput_reviewed' && data.examples.some(e=>e.input===c.input)) || cases.length>=16) continue;
  cases.push({input:c.input,output});seen.add(c.input);
 }
 data.cases=cases;
+if(data.contract==='noinput_reviewed')return out(!cases.length?phase:data.examples.length?'public':'suite');
 return out(cases.length<3?phase:'public');'''
             logic = logic.replace('__BATCH_ORACLE__', ORACLE_JS)
             label = 'Verify new tests against reviewed specification' if phase == 'tests' else 'Verify added cases and preserve existing tests'
