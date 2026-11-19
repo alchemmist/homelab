@@ -2,8 +2,8 @@ frontNodeName: socrat-5
 images:
   front:
     repository: harbor.socrat.alchemmist.xyz/homelab/monori
-    tag: b753ac4add116a7ee50a90be4a54f1f94549e1e2
-    digest: sha256:0361e620579b341638b9fdd851b12b058e5f908609b45b5322286007cd85461f
+    tag: 61ca009312ee850c70cd87ed4c60296e2a78abcc
+    digest: sha256:dc05641ae3f74f017c6d23f2ccd643a6bc62faa523890f0ffee695d740dafe16
     fallback: ghcr.io/alchemmist/homelab-monori-front:latest
   back:
     repository: harbor.socrat.alchemmist.xyz/homelab/monori
