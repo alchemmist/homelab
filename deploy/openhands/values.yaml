@@ -74,3 +74,4 @@ unlimitedIterations: true
 
 # Temporary quiesce for full retained-claim backup; restore after archive creation.
 replicaCount: 0
+coldBackup20261119: true
