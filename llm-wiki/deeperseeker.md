@@ -32,9 +32,10 @@ claim на `socrat-5` не встанет. Данные: claim `deeperseeker-dat
 | VPN sidecar | `ghcr.io/mhsanaei/3x-ui@sha256:1628adbd9bed680d25d6f714bef4a20f132105f4612ea294952f6665dad32e5b` |
 
 Образ — не чистый git форка. В него входит локальная проводка прокси; патч лежит
-рядом с чартом: `charts/deeperseeker/files/proxy-wiring.patch`. Тег `1b1148ec1e2a`
-совпадает с коммитом форка, digest — с уже пропатченным деревом. Повторная сборка
-из чистого клона без патча снова пойдёт в DeepSeek напрямую.
+рядом с чартом: `charts/deeperseeker/files/proxy-wiring.patch`, копия для повторной сборки —
+`deploy/deeperseeker/patches/proxy-wiring.patch`. При смене коммита форка патч накладывается заново.
+Тег `1b1148ec1e2a` совпадает с коммитом форка, digest — с уже пропатченным деревом.
+Повторная сборка из чистого клона без патча снова пойдёт в DeepSeek напрямую.
 
 Первый локальный `RepoDigest` (`sha256:8bda1721…`) Harbor не отдавал: манифест
 тега другой, `sha256:696884aa…`. Пока values ссылались на первый digest, под был в
@@ -196,6 +197,11 @@ signature и открывают разные чаты upstream. Обрыв ст�
 | `DEEPSEEKER_CALL_GAP_SECONDS` | 4 | пауза после хода, не вместо `rpm` |
 | `DEEPSEEKER_TOKEN_CONCURRENCY` | 1 | не поднимать |
 | `DEEPSEEKER_PERSIST_SESSIONS` | `true` | чарт теперь задаёт явно; рестарт без этого открывает новый чат на каждый следующий ход |
+| `DEEPSEEKER_BROWSER_PLATFORM` | `Linux` | токен снимается в Selkies, не на Windows |
+| `DEEPSEEKER_BROWSER_USER_AGENT` | Chrome/158 на X11 Linux | дефолт форка — Chrome/157 на Windows; расхождение `Sec-CH-UA` отзывов сессию |
+| `DEEPSEEKER_CLIENT_VERSION` | `2.8.0` | страница `chat.deepseek.com` с этой сети отдала WAF, актуальное `x-client-version` не снято |
+| `DEEPSEEKER_COOKIE_HEADLESS` | `false` | регенерация WAF-cookie в видимом режиме |
+| `DEEPSEEKER_WARMUP_NON_HEADLESS` | `true` | прогрев не headless |
 
 Источники: `deploy/platform/litellm/values.yaml`, `charts/deeperseeker/values.yaml`,
 `charts/deeperseeker/templates/deployment.yaml`. Argo берёт чарт и поверх него

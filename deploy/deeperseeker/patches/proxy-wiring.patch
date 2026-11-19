@@ -1,0 +1,102 @@
+diff --git a/functions.py b/functions.py
+index bbf1816..e66fd96 100644
+--- a/functions.py
++++ b/functions.py
+@@ -341,7 +341,7 @@ async def get_session_for_token(auth_token: str | None = None):
+         sess = _token_sessions.get(auth_token)
+         curr_loop = asyncio.get_running_loop()
+         if sess is None or sess.closed or getattr(sess._session, "loop", None) is not curr_loop:
+-            raw = AsyncSession(impersonate="chrome152", timeout=600)
++            raw = _curl_session()
+             sess = CurlSessionWrapper(raw)
+             _token_sessions[auth_token] = sess
+         return sess
+@@ -353,7 +353,7 @@ async def get_session():
+     if _session is None or getattr(_session, "closed", False) or getattr(getattr(_session, "_session", None), "loop", None) is not curr_loop:
+         async with _session_lock:
+             if _session is None or getattr(_session, "closed", False) or getattr(getattr(_session, "_session", None), "loop", None) is not curr_loop:
+-                raw = AsyncSession(impersonate="chrome152", timeout=600)
++                raw = _curl_session()
+                 _session = CurlSessionWrapper(raw)
+     return _session
+ 
+@@ -1486,16 +1486,39 @@ async def _mask_page_cdp(context, page, ua: str | None = None, platform_name: st
+         pass
+ 
+ 
++def _env_proxy(*names):
++    for name in names:
++        value = (os.getenv(name) or "").strip()
++        if value:
++            return value
++    return ""
++
++
++def _curl_session():
++    proxy = _env_proxy("DEEPSEEKER_UPSTREAM_PROXY", "ALL_PROXY", "HTTPS_PROXY")
++    if proxy:
++        return AsyncSession(impersonate="chrome152", timeout=600, proxy=proxy)
++    return AsyncSession(impersonate="chrome152", timeout=600)
++
++
++def _chromium_launch_kwargs(headless, launch_args):
++    kwargs = {
++        "headless": headless,
++        "args": list(launch_args),
++        "ignore_default_args": ["--enable-automation"],
++    }
++    proxy = _env_proxy("DEEPSEEKER_BROWSER_PROXY", "ALL_PROXY", "HTTPS_PROXY")
++    if proxy:
++        kwargs["proxy"] = {"server": proxy, "bypass": "localhost,127.0.0.1"}
++    return kwargs
++
++
+ async def _generate_isolated_cookies_payload():
+     if async_playwright is None:
+         raise CookieGenerationError("patchright is not installed")
+     headless = is_cookie_headless()
+     launch_args = list(_CHROMIUM_STEALTH_ARGS)
+-    launch_kwargs = {
+-        "headless": headless,
+-        "args": launch_args,
+-        "ignore_default_args": ["--enable-automation"],
+-    }
++    launch_kwargs = _chromium_launch_kwargs(headless, launch_args)
+     async with async_playwright() as p:
+         browser = await p.chromium.launch(**launch_kwargs)
+         try:
+@@ -1785,11 +1808,7 @@ async def _generate_shumei_ids_batch(tokens: list[tuple[int, str]]):
+         return
+ 
+     headless = is_cookie_headless()
+-    launch_kwargs = {
+-        "headless": headless,
+-        "args": _CHROMIUM_STEALTH_ARGS,
+-        "ignore_default_args": ["--enable-automation"],
+-    }
++    launch_kwargs = _chromium_launch_kwargs(headless, _CHROMIUM_STEALTH_ARGS)
+ 
+     try:
+         async with async_playwright() as p:
+@@ -1974,11 +1993,7 @@ async def solve_captcha_interactive(token_id: int) -> bool:
+ 
+     auth_token = tok["token"]
+     launch_args = list(_CHROMIUM_STEALTH_ARGS)
+-    launch_kwargs = {
+-        "headless": False,
+-        "args": launch_args,
+-        "ignore_default_args": ["--enable-automation"],
+-    }
++    launch_kwargs = _chromium_launch_kwargs(False, launch_args)
+ 
+     try:
+         async with async_playwright() as p:
+@@ -2301,7 +2316,7 @@ def delete_token(token_id):
+ # ==============================================================================
+ 
+ TOKEN_COOLDOWN_SECONDS = max(1, int(os.getenv("DEEPSEEKER_RATE_LIMIT_COOLDOWN", "60")))
+-TOKEN_CONCURRENCY_CAP = 1
++TOKEN_CONCURRENCY_CAP = max(1, int(os.getenv("DEEPSEEKER_TOKEN_CONCURRENCY", "1")))
+ 
+ # P0-3: a 403 seen this many times in a row (no successful turn in between) is
+ # not a transient refusal — it is the ban ladder, so the token leaves rotation

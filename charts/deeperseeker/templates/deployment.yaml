@@ -153,8 +153,16 @@ spec:
               value: {{ .Values.proxy.browser | quote }}
             - name: DEEPSEEKER_UPSTREAM_PROXY
               value: {{ .Values.proxy.upstream | quote }}
+            - name: DEEPSEEKER_BROWSER_PLATFORM
+              value: {{ .Values.browserPlatform | quote }}
+            - name: DEEPSEEKER_BROWSER_USER_AGENT
+              value: {{ .Values.browserUserAgent | quote }}
+            - name: DEEPSEEKER_CLIENT_VERSION
+              value: {{ .Values.clientVersion | quote }}
             - name: DEEPSEEKER_COOKIE_HEADLESS
-              value: "true"
+              value: {{ .Values.cookieHeadless | quote }}
+            - name: DEEPSEEKER_WARMUP_NON_HEADLESS
+              value: {{ .Values.warmupNonHeadless | quote }}
           readinessProbe:
             exec:
               command:

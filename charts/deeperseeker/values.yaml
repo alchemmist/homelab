@@ -39,3 +39,10 @@ tokenConcurrency: "1"
 maxUpstreamAttempts: "1"
 rateLimitCooldown: "300"
 persistSessions: "true"
+# Token is captured in Selkies: Linux, Chrome 158. Fork defaults are Windows / Chrome 157.
+browserPlatform: Linux
+browserUserAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36"
+# chat.deepseek.com returned a WAF challenge from this network; do not invent a newer value.
+clientVersion: "2.8.0"
+cookieHeadless: "false"
+warmupNonHeadless: "true"
