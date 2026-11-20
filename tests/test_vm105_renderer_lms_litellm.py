@@ -117,7 +117,7 @@ class MigrationTests(unittest.TestCase):
         with self.assertRaises(subprocess.CalledProcessError):
             render("charts/litellm", broken, "litellm", "llm")
         self.assertEqual(v["envVars"]["DISABLE_SCHEMA_UPDATE"].lower(), "true")
-        self.assertRegex(v["image"]["tag"], r"^fbbf40f35bd1e871f4f4a994f9be30d7ea225a25@sha256:[a-f0-9]{64}$")
+        self.assertRegex(v["image"]["tag"], r"^a691e23abfac6dd0f2b69f9f5b4f714241f39ac4@sha256:[a-f0-9]{64}$")
         self.assertEqual(v["masterkeySecretName"], "litellm-env")
 
     def test_app_source_keeps_version_and_selective_sync_safety(self):

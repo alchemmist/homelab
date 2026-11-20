@@ -97,7 +97,7 @@ fullnameOverride: litellm
 image:
   pullPolicy: IfNotPresent
   repository: harbor.socrat.alchemmist.xyz/homelab/litellm
-  tag: fbbf40f35bd1e871f4f4a994f9be30d7ea225a25@sha256:e982dddf6a3da10ea76fa4c9b5f05ab166a128b83f653cd0e07e96493e6506d9
+  tag: a691e23abfac6dd0f2b69f9f5b4f714241f39ac4@sha256:21245d86b352d55f42404dfc7be5bcdb53028aa0be10077e9bb606c5e534e5f3
 imagePullSecrets:
 - name: litellm-harbor-pull
 ingress:
@@ -120,7 +120,7 @@ masterkeySecretName: litellm-env
 migrationJob:
   # Last migration succeeded and its Job was deleted; do not recreate it for placement.
   # Chart fails closed on image changes until normal upgrade migrations are reviewed.
-  placementOnlyImage: harbor.socrat.alchemmist.xyz/homelab/litellm:fbbf40f35bd1e871f4f4a994f9be30d7ea225a25@sha256:e982dddf6a3da10ea76fa4c9b5f05ab166a128b83f653cd0e07e96493e6506d9
+  placementOnlyImage: harbor.socrat.alchemmist.xyz/homelab/litellm:a691e23abfac6dd0f2b69f9f5b4f714241f39ac4@sha256:21245d86b352d55f42404dfc7be5bcdb53028aa0be10077e9bb606c5e534e5f3
   enabled: false
   hooks:
     argocd:
@@ -160,6 +160,7 @@ proxy_config:
       stream_timeout: 7200
       timeout: 7200
     model_info:
+      access_groups: [socrat-group-local]
       input_cost_per_token: 0
       max_input_tokens: 114688
       max_output_tokens: 16384
@@ -178,6 +179,7 @@ proxy_config:
       max_parallel_requests: 4
       num_retries: 0
     model_info:
+      access_groups: [socrat-group-external]
       mode: chat
       input_cost_per_token: 0
       output_cost_per_token: 0
@@ -195,6 +197,7 @@ proxy_config:
       max_retries: 0
       num_retries: 0
     model_info:
+      access_groups: [socrat-group-external]
       mode: chat
       max_input_tokens: 369228
       max_output_tokens: 8192

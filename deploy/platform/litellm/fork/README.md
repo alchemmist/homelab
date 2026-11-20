@@ -14,3 +14,9 @@ Rollback by reverting the values to the previous image and matching migration gu
 no database rollback. Do not change Authentik grants, keys or passwords.
 
 `build-owner.sh` layers the owner-only Regenerate Key handler and dashboard chunk over the pinned OIDC image. Only `socrat-admin` with proxy-admin role and a dashboard session is admitted for virtual keys. Existing master-key rotation checks remain upstream. Roll back to the OIDC image to remove this feature.
+
+`build-owner-controls.sh` adds the owner dashboard's global spend report and per-model
+budgets on virtual keys. Group labels `socrat-group-local` and `socrat-group-external`
+are static `model_info.access_groups`, without wildcard routes. No virtual keys are
+updated on release. Current local/subscription model prices are zero: a dollar cap
+cannot limit token usage on zero-priced routes. Do not invent token prices.
