@@ -265,7 +265,7 @@ for i, (phase, title) in enumerate(phase_specs):
             prompt = f"({r}.data.contract === 'mult_table' ? " + json.dumps('Предложи четыре разных маленьких натуральных размера таблицы от 1 до 6 кроме публичного примера 3. Только входы: JSON {"cases":[{"input":"1\\n"}]}. Не генерируй таблицы вывода. Условие: ') + f" + {r}.data.statement : (" + prompt + "))"
             prompt = f"({r}.data.contract === 'thank_count' ? " + json.dumps('Предложи 6 разных входов, включая немедленное завершение, пустую строку до завершения и похожие, но неточные варианты маркера. Каждый вход содержит отдельную строку ровно Спасибо. и перевод строки после неё. Только JSON {"cases":[{"input":"Спасибо.\\n"}]}; ожидаемые ответы вычисляет проверяющая программа. Условие: ') + f" + {r}.data.statement : (" + prompt + "))"
             prompt = f"({r}.data.contract === 'noinput_reviewed' ? " + json.dumps('У задачи нет ввода. Независимо выведи единственный полный ожидаемый stdout с финальным переводом строки. JSON {"cases":[{"input":"","output":"..."}]}. Условие: ') + f" + {r}.data.statement : (" + prompt + "))"
-            prompt += f" + ({r}.data.contract==='differential_v1' ? '\\nИспользуй только бесспорно допустимые входы. Если требуется слово — непустые буквенные слова, в том числе односимвольные. Не тестируй неоговоренные пробелы, пустой ввод, ошибки или неоднозначное форматирование. Буквальные публичные примеры не повторяй: '+JSON.stringify({r}.data.examples) : '')"
+            prompt += f" + ({r}.data.contract==='differential_v1' ? '\\nИспользуй только бесспорно допустимые входы. Если требуется слово — непустые буквенные слова, в том числе односимвольные. Возьми короткие примеры: для перечисления чисел выбирай n до 8, не используй большие ответы или многоточия. Общий ответ JSON до 700 токенов. Чередуй разные длины и состав входа. Не тестируй неоговоренные пробелы, пустой ввод, ошибки или неоднозначное форматирование. Буквальные публичные примеры не повторяй: '+JSON.stringify({r}.data.examples) : '')"
             if phase == 'expand':
                 prompt += f''' + '\\nУже проверенные входы: ' + JSON.stringify({r}.data.cases.map(c => c.input)) + '\\nЧто не поймано: ' + JSON.stringify({r}.data.survivors) + '\\nЦелевые условия для покрытия: ' + JSON.stringify({r}.data.coverageHints || '')'''
         else:
@@ -283,7 +283,7 @@ for i, (phase, title) in enumerate(phase_specs):
         req = http('LLM: ' + title, LLM, x+880, y, role='LITELLM', body=
                    f'''{{model:{json.dumps(MODEL)}, temperature:0, max_tokens:1000, response_format:{{type:'json_object'}}, messages:[{{role:'user', content: {prompt}}}]}}''')
         parse = '''let payload;
-try { payload = JSON.parse($json.body.choices[0].message.content); } catch { payload = {}; }
+try { payload = JSON.parse($json.body.choices[0].message.content); } catch { payload = {}; data.modelFormatErrors=(data.modelFormatErrors||0)+1; data.lastFinishReason=String($json.body?.choices?.[0]?.finish_reason||'unknown').slice(0,40); }
  data.calls = (data.calls || 0) + 1;
  const out = next => ({json:{phase:data.calls >= (data.callLimit || 12) && ['solve','repair','tests','expand','witness','wrepair','audit','probes'].includes(next) ? 'needs_review' : next,data}});
 '''

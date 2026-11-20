@@ -172,3 +172,11 @@ HTTP 429 do not consume transport retries. Live differential example `cold`
 passed both references, nine private cases and three plausible fault probes;
 three operator-supplied additional inputs are explicitly recorded, so this
 is a supervised end-to-end completion, not autonomous throughput evidence.
+
+First fully model-generated differential completion observed on live backlog:
+`basics/for-intro/bunny-walk`, 8 model responses, 6 private cases, 3 plausible
+variants killed; always-wrong controls not counted. No task source, expected
+answer, or test case was manually supplied for this run. Following admission
+picked `basics/builtin-functions/four-digit-minimum`. This is evidence of
+end-to-end unattended task selection and certification under the bounded
+checks, not a guarantee of a high completion rate across arbitrary tasks.
