@@ -17,7 +17,8 @@ kind: Deployment
 metadata:
   name: public-web-rancher-proxy
   namespace: cattle-system
-  annotations: {argocd.argoproj.io/sync-wave: '-1'}
+  # Backend and proxy must reconcile in the same wave: proxy readiness depends on Rancher.
+  annotations: {argocd.argoproj.io/sync-wave: '0'}
 spec:
   replicas: 1
   selector: {matchLabels: {app: public-web-rancher-proxy}}
