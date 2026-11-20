@@ -11,7 +11,7 @@
   pre_tasks:
     - name: Require the drill fallback node to be ready
       ansible.builtin.command:
-        argv: [kubectl, wait, node/socrat-0, --for=condition=Ready, --timeout=30s]
+        argv: [kubectl, wait, node/socrat-0, node/socrat-1, --for=condition=Ready, --timeout=30s]
       changed_when: false
 
     - name: Keep the resource-policy rollout limited to future pod admission

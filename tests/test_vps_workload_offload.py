@@ -36,11 +36,16 @@ class VPSWorkloadOffloadTests(unittest.TestCase):
             ],
         )
         deployment = (ROOT / "ansible/roles/vps_workload_offload/tasks/deployment.yml").read_text()
-        self.assertIn("rollout", yaml.safe_load(deployment)[1]["ansible.builtin.command"]["argv"])
-        template = yaml.safe_load(deployment)[0]["vars"]["offload_patch_spec"]["spec"]["template"]["spec"]
+        self.assertIn("rollout", yaml.safe_load(deployment)[2]["ansible.builtin.command"]["argv"])
+        template = yaml.safe_load(deployment)[1]["vars"]["offload_patch_spec"]["spec"]["template"]["spec"]
         self.assertIsNone(template["nodeSelector"]["kubernetes.io/hostname"])
-        terms = template["affinity"]["nodeAffinity"]["requiredDuringSchedulingIgnoredDuringExecution"]
-        self.assertEqual(terms["nodeSelectorTerms"][0]["matchExpressions"][0]["values"], ["socrat-0", "socrat-1"])
+        def term(nodes):
+            return {"matchExpressions": [{"key": "kubernetes.io/hostname", "operator": "In", "values": nodes}]}
+
+        self.assertEqual(template["affinity"]["nodeAffinity"], {
+            "requiredDuringSchedulingIgnoredDuringExecution": {"nodeSelectorTerms": [term(["socrat-0", "socrat-1"])]},
+            "preferredDuringSchedulingIgnoredDuringExecution": [{"weight": 100, "preference": term(["socrat-0"])}],
+        })
         self.assertNotIn("delete", deployment)
         self.assertFalse(
             any("helm" in str(task.get("ansible.builtin.command", {})) for task in tasks)
