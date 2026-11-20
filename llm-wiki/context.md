@@ -135,3 +135,15 @@ its subscription with an official Pod VPN client, NOT a new SSH-to-NL tunnel.
 pre-existing SSH-egress remains a separately recorded deviation, not a template.
 
 Quality CI/refactoring integration scope: see [current quality runbook](../docs/quality/README.md). Strict findings remain blocking in CI; operator permits a separate red-CI integration decision, not suppressions or source-green claims. No production operation is authorized by this scope.
+
+
+## Storage runtime update —20 November 2026
+
+Containerd on socrat-5 now runs from HDD `/mnt/files/homelab/runtime/containerd`
+bound at its original `/var/lib/rancher/k3s/agent/containerd` path. OS/K3s server
+state remain SSD; existing application PVCs unchanged. A55GiB stale runtime
+preimage remains on SSD, not automatically deleted. Day-2 owner:
+`ansible/playbooks/socrat-5-runtime-storage.yml`. See
+[completion receipt](../docs/socrat5-runtime-hdd-complete-20261120.md) for checks,
+post-reboot exact peer-endpoint correction, downtime and remaining acceptance
+limits. Dynamic storage tiers and all-app migration are NOT implied.

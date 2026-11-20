@@ -1,0 +1,51 @@
+---
+# Day-2 persistence ONLY. Refuses unmigrated nodes; never copies data or restarts K3s.
+- name: Maintain the accepted socrat-5 containerd HDD mount
+  hosts: socrat-5
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Require the already accepted runtime bind identity
+      ansible.builtin.command:
+        argv: [findmnt, -nro, SOURCE, --mountpoint, /var/lib/rancher/k3s/agent/containerd]
+      register: runtime_mount
+      changed_when: false
+      failed_when: >-
+        runtime_mount.rc != 0 or
+        runtime_mount.stdout != '/dev/sdb1[/homelab/runtime/containerd]'
+    - name: Persist bind without moving data or remounting a running runtime
+      ansible.posix.mount:
+        src: /mnt/files/homelab/runtime/containerd
+        path: /var/lib/rancher/k3s/agent/containerd
+        fstype: none
+        opts: bind,x-systemd.requires-mounts-for=/mnt/files
+        state: present
+    - name: Install fail-closed mount identity check
+      ansible.builtin.copy:
+        src: ../files/socrat5-containerd-hdd-check
+        dest: /usr/local/libexec/socrat5-containerd-hdd-check
+        owner: root
+        group: root
+        mode: '0755'
+    - name: Ensure actual server unit drop-in directory
+      ansible.builtin.file:
+        path: /etc/systemd/system/k3s.service.d
+        state: directory
+        mode: '0755'
+    - name: Require HDD and runtime bind before starting actual server unit
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/k3s.service.d/60-containerd-hdd.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          [Unit]
+          RequiresMountsFor=/mnt/files /var/lib/rancher/k3s/agent/containerd
+          [Service]
+          ExecStartPre=/usr/local/libexec/socrat5-containerd-hdd-check
+      notify: Reload systemd without service restart
+  handlers:
+    - name: Reload systemd without service restart
+      ansible.builtin.systemd_service:
+        daemon_reload: true
