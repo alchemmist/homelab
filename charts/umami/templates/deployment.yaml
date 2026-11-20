@@ -26,7 +26,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata: { name: umami }
 spec:
-  replicas: 1
+  replicas: {{ .Values.appReplicas }}
   selector: { matchLabels: { app: umami } }
   template:
     metadata: { labels: { app: umami } }
@@ -37,6 +37,17 @@ spec:
         image: {{ .Values.umamiImage }}
         envFrom: [{ secretRef: { name: {{ .Values.secretName }} } }]
         env:
+        - name: DATABASE_URL
+          valueFrom: { secretKeyRef: { name: umami-pg-common, key: DATABASE_URL } }
+        - { name: NODE_EXTRA_CA_CERTS, value: /etc/pg-common/ca.crt }
         - { name: DISABLE_TELEMETRY, value: "true" }
         - { name: TRACKER_SCRIPT_NAME, value: script.js }
         ports: [{ name: http, containerPort: 3000 }]
+        volumeMounts:
+        - { name: pg-ca, mountPath: /etc/pg-common, readOnly: true }
+        readinessProbe:
+          httpGet: { path: /api/heartbeat, port: http }
+          periodSeconds: 5
+      volumes:
+      - name: pg-ca
+        configMap: { name: pg-common-ca }

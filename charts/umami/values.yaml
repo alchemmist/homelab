@@ -8,6 +8,7 @@ tlsSecret: umami-tls
 secretName: umami-env
 clusterIssuer: letsencrypt-http01
 
-# App only; the authoritative PostgreSQL data stays on socrat-0.
+appReplicas: 0
+# Legacy DB hostPath stays on socrat-0.
 nodeName: socrat-5
 ...
