@@ -262,6 +262,7 @@ for i, (phase, title) in enumerate(phase_specs):
             prompt = f"({r}.data.contract === 'mult_table' ? " + json.dumps('Предложи четыре разных маленьких натуральных размера таблицы от 1 до 6 кроме публичного примера 3. Только входы: JSON {"cases":[{"input":"1\\n"}]}. Не генерируй таблицы вывода. Условие: ') + f" + {r}.data.statement : (" + prompt + "))"
             prompt = f"({r}.data.contract === 'thank_count' ? " + json.dumps('Предложи 6 разных входов, включая немедленное завершение, пустую строку до завершения и похожие, но неточные варианты маркера. Каждый вход содержит отдельную строку ровно Спасибо. и перевод строки после неё. Только JSON {"cases":[{"input":"Спасибо.\\n"}]}; ожидаемые ответы вычисляет проверяющая программа. Условие: ') + f" + {r}.data.statement : (" + prompt + "))"
             prompt = f"({r}.data.contract === 'noinput_reviewed' ? " + json.dumps('У задачи нет ввода. Независимо выведи единственный полный ожидаемый stdout с финальным переводом строки. JSON {"cases":[{"input":"","output":"..."}]}. Условие: ') + f" + {r}.data.statement : (" + prompt + "))"
+            prompt += f" + ({r}.data.contract==='differential_v1' ? '\\nИспользуй только бесспорно допустимые входы. Если требуется слово — непустые буквенные слова, в том числе односимвольные. Не тестируй неоговоренные пробелы, пустой ввод, ошибки или неоднозначное форматирование. Буквальные публичные примеры не повторяй: '+JSON.stringify({r}.data.examples) : '')"
             if phase == 'expand':
                 prompt += f''' + '\\nУже проверенные входы: ' + JSON.stringify({r}.data.cases.map(c => c.input)) + '\\nЧто не поймано: ' + JSON.stringify({r}.data.survivors) + '\\nЦелевые условия для покрытия: ' + JSON.stringify({r}.data.coverageHints || '')'''
         else:
@@ -272,7 +273,7 @@ for i, (phase, title) in enumerate(phase_specs):
         if phase=='witness':
             prompt=json.dumps('Независимо реши задачу на Python 3, только stdin/stdout. По возможности используй альтернативный простой подход. JSON {"source":"..."}. Условие: ') + f' + {r}.data.statement'
         if phase=='audit':
-            prompt=json.dumps('Проверь по условию каждую пару вход/выход, границы и допустимость входов, покрытие обычных и крайних случаев, а также соответствие решения ограничениям урока. Не одобряй неоднозначные, неполные задачи, неверный формат или тесты вне области. Верни JSON {"approved":true/false,"reason":"..."}. Материалы: ') + f' + JSON.stringify({{statement:{r}.data.statement,examples:{r}.data.examples,cases:{r}.data.cases,source:{r}.data.source}})'
+            prompt=json.dumps('Проверь по условию каждую пару вход/выход, границы и допустимость входов, покрытие обычных и крайних случаев, а также соответствие решения ограничениям урока. Не одобряй неоднозначные, неполные задачи, неверный формат или тесты вне области. Верни JSON {"approved":true/false,"reason":"...","issue":"cases|spec|solution","badIndices":[]}. Для изолированной ошибки частных тестов укажи issue=cases и точные нумерованные с нуля индексы неверных случаев. Не меняй публичные примеры. Материалы: ') + f' + JSON.stringify({{statement:{r}.data.statement,examples:{r}.data.examples,cases:{r}.data.cases,source:{r}.data.source}})'
         if phase=='probes':
             prompt=json.dumps('По условию составь три разных правдоподобных ошибочных решения школьника на Python: ошибка границы, пропущенное условие или неверное преобразование. Каждое должно читать корректный ввод, завершаться без исключений и отличаться от правильного результата на части (не всех) допустимых входов. Не возвращай пустые программы или константы. JSON {"faults":[{"label":"...","source":"..."}]}. Условие: ') + f' + {r}.data.statement'
         req = http('LLM: ' + title, LLM, x+880, y, role='LITELLM', body=
@@ -285,7 +286,10 @@ try { payload = JSON.parse($json.body.choices[0].message.content); } catch { pay
         if phase=='witness':
             logic='''const w=payload?.source;if(typeof w!=='string'||!w.trim()||w.length>6000||w.replace(/\\s/g,'')===data.source.replace(/\\s/g,'')){data.reviewReason='no_distinct_witness';return out('needs_review');} data.witness=w;return out('tests');''';label='Validate blind witness'
         elif phase=='audit':
-            logic='''if(payload?.approved!==true){data.reviewReason='semantic_review_failed';data.reviewDetail=String(payload?.reason||'').slice(0,500);return out('needs_review');}return out(data.faults?.length?'public':'probes');''';label='Require semantic approval'
+            logic='''if(payload?.approved!==true){data.reviewReason='semantic_review_failed';data.reviewDetail=String(payload?.reason||'').slice(0,500);
+const ids=payload?.badIndices; if(payload?.issue==='cases' && Array.isArray(ids)&&ids.length && ids.every(i=>Number.isInteger(i)&&i>=0&&i<data.cases.length)&& (data.auditRetries||0)<2 && !data.semanticApproved){
+ data.quarantine=[...(data.quarantine||[]),...data.cases.filter((c,i)=>ids.includes(i))];data.cases=data.cases.filter((c,i)=>!ids.includes(i));data.coverageHints=data.reviewDetail;data.auditRetries=(data.auditRetries||0)+1;return out('expand');
+}return out('needs_review');}data.semanticApproved=true;return out(data.faults?.length?'public':'probes');''';label='Require semantic approval'
         elif phase=='probes':
             logic='''const probes=Array.isArray(payload?.faults)?payload.faults:[];const seen=new Set([data.source.trim(),data.witness.trim()]);data.faults=[];for(const p of probes){if(typeof p?.source!=='string'||!p.source.includes('input(')||p.source.length>6000||typeof p.label!=='string'||seen.has(p.source.trim()))continue;seen.add(p.source.trim());data.faults.push([p.label.slice(0,100),p.source]);}if(data.faults.length<3){data.reviewReason='insufficient_distinct_probes';return out('needs_review');}data.faults=data.faults.slice(0,3);return out('public');''';label='Require three distinct probes'
         elif phase in {'solve','repair'}:
@@ -299,7 +303,7 @@ return out(phase === 'solve' ? 'tests' : (data.contract==='noinput_reviewed' && 
             label = 'Validate solution format' if phase == 'solve' else 'Validate repaired solution format'
         else:
             logic = r'''if(data.contract==='differential_v1'){
- const cases=data.cases||[],seen=new Set([...data.examples,...cases].map(c=>c.input));
+ const cases=data.cases||[],seen=new Set([...data.examples,...cases,...(data.quarantine||[])].map(c=>c.input));
  for(const c of Array.isArray(payload?.cases)?payload.cases:[]){if(typeof c?.input!=='string'||typeof c.output!=='string'||Math.max(c.input.length,c.output.length)>1500||seen.has(c.input)||cases.length>=16)continue;cases.push({input:c.input,output:c.output});seen.add(c.input);}
  data.cases=cases;return out(cases.length>=4?'audit':phase);
 }

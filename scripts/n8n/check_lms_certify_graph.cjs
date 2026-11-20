@@ -107,3 +107,9 @@ const sandboxOnly = nodes.get('Resume sandbox-only checkpoint').parameters.query
 assert.match(sandboxOnly,/phase IN \('public','suite','mutate','plausible','wpublic','wsuite'\)/);
 assert(!sandboxOnly.includes("'repair'"));
 assert.deepEqual(graph.connections['Record busy or telemetry skip'].main[0].map(x=>x.node),['Resume sandbox-only checkpoint']);
+{
+ const submitted=[{input:'xy\n',output:'y\n'},{input:'\n',output:'\n'}];const feedback=response({approved:false,issue:'cases',badIndices:[1],reason:'empty word'});
+ const r=run('Require semantic approval',feedback,{phase:'audit',data:{...diff,cases:submitted}});
+ assert.equal(r.phase,'expand');assert.deepEqual(r.data.cases,submitted.slice(0,1));assert.deepEqual(r.data.quarantine,submitted.slice(1));
+ assert.equal(run('Require semantic approval',feedback,{phase:'audit',data:{...diff,cases:submitted,semanticApproved:true}}).phase,'needs_review');
+}
