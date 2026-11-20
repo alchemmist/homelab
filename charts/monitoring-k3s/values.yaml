@@ -159,12 +159,12 @@ serviceProbes:
     alertName: SocratServiceXUiUnavailable
   - id: litellm-db
     title: LiteLLM DB
-    url: litellm-postgres.llm.svc.cluster.local:5432
+    url: pg-common-rw.postgres.svc.cluster.local:5432
     module: tcp_connect
     alertName: SocratServiceLitellmDbUnavailable
   - id: umami-db
     title: Umami DB
-    url: umami-db.umami.svc.cluster.local:5432
+    url: pg-common-rw.postgres.svc.cluster.local:5432
     module: tcp_connect
     alertName: SocratServiceUmamiDbUnavailable
   - id: litellm-branding
