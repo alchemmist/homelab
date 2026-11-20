@@ -37,3 +37,14 @@ On 20 November both new endpoints and kube-dns VIP answered A queries via UDP
 and TCP from both 0 and 3. At 15:35 UTC node 5 was Ready=Unknown and unreachable
 via SSH/API; writer-5 final overlay and n8n pod-side checks were not confirmed.
 Do not count those as DNS failures or restart the node. Retry when available.
+
+Completion after node 5 returned (16:00 UTC): the post-rollout endpoint gate
+applies **only once `kubectl rollout status deployment/coredns` completes**;
+not during the overlap described above. All six nodes were Ready, both 0/1 API
+readyz endpoints passed, and 0/1/2 were healthy etcd voters. On 5, the skip
+and staged receipt survived; the final HA overlay was absent. The live DNS spec
+still matched the known-good candidate. The same overlay was installed without
+replacing any existing file and its digest was verified on 5. From the existing
+n8n container, three A lookups per DNS destination (endpoint on 0, endpoint on 3,
+and the Service VIP) all returned the expected Kubernetes API Service address.
+No workflow invocation, database operation, disk migration or restart was used.

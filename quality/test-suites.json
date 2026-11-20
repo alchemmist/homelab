@@ -87,6 +87,7 @@
       "tests/test_rustfs_private_auth.py",
       "tests/test_rustfs_provisioning.py",
       "tests/test_rustfs_unified_identity.py",
+      "tests/test_runtime_boot_migration.py",
       "tests/test_socrat5_app_placement.py",
       "tests/test_socrat5_bootstrap.py",
       "tests/test_socrat5_storage_guard.py",
