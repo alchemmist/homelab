@@ -192,7 +192,18 @@ VALUES(true,clock_timestamp(),$1,$2,1) ON CONFLICT(singleton) DO UPDATE SET at=E
 execution_id=EXCLUDED.execution_id,decision=EXCLUDED.decision,ticks=lms_certification.heartbeat.ticks+1 RETURNING decision"""
 ready = pg('Record idle tick',heartbeat_sql,"[$execution.id,'idle']",920,-180)
 skipped = pg('Record busy or telemetry skip',heartbeat_sql,"[$execution.id,$json.telemetryValid?'busy':'telemetry_unavailable']",920,200)
+# A busy GPU blocks inference, not a previously checkpointed Docker verdict.
+# No new admission from this branch. Every subsequent LLM phase still has its
+# own strict fresh-series check, including a transition from suite to repair.
+sandbox_claim = pg('Resume sandbox-only checkpoint',f'''WITH candidate AS (
+ SELECT id FROM lms_certification.pilot WHERE phase IN ('public','suite','mutate','plausible','wpublic','wsuite')
+ AND data->>'contract' IN ({contract_list}) AND (lease_until IS NULL OR lease_until < clock_timestamp())
+ AND NOT EXISTS (SELECT 1 FROM lms_certification.pilot WHERE lease_until>clock_timestamp())
+ ORDER BY updated_at,id FOR UPDATE SKIP LOCKED LIMIT 1)
+UPDATE lms_certification.pilot p SET owner=$1,lease_until=clock_timestamp()+interval '15 minutes'
+FROM candidate c WHERE p.id=c.id RETURNING p.phase,p.data''','[$execution.id]',1160,240)
 link(gate, skipped, 1)
+link(skipped,sandbox_claim)
 chain(gate, ready, refill)
 chain(refill, admit, claim)
 checkpoint = pg('Checkpoint and dispatch next phase', '''UPDATE lms_certification.pilot
@@ -235,6 +246,7 @@ for i, (phase, title) in enumerate(phase_specs):
         link(previous, route, 1)
     else:
         link(claim, route)
+        link(sandbox_claim,route)
         link(checkpoint, route)
     previous = route
     r = ref(route)

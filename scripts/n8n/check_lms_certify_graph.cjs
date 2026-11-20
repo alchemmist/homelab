@@ -103,3 +103,7 @@ assert.equal(run('Count killed variants or request more coverage',verdict('accep
 assert.equal(run('Count killed variants or request more coverage',verdict('wrong_answer',1),{phase:'mutate',data:{...diff,faults}}).phase,'plausible');
 assert.equal(run('Reject crashes and always-wrong probes',verdict('wrong_answer',1),{phase:'plausible',data:{...diff,faults,probeCase:0}}).phase,'needs_review');
 assert.equal(run('Reject crashes and always-wrong probes',verdict('accepted'),{phase:'plausible',data:{...diff,faults,variant:2,probeCase:0}}).phase,'certified');
+const sandboxOnly = nodes.get('Resume sandbox-only checkpoint').parameters.query;
+assert.match(sandboxOnly,/phase IN \('public','suite','mutate','plausible','wpublic','wsuite'\)/);
+assert(!sandboxOnly.includes("'repair'"));
+assert.deepEqual(graph.connections['Record busy or telemetry skip'].main[0].map(x=>x.node),['Resume sandbox-only checkpoint']);

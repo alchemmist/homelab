@@ -247,6 +247,29 @@
       }
     },
     {
+      "id": "6c6841d8-e5ae-527b-9be6-61fc5d48701c",
+      "name": "Resume sandbox-only checkpoint",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1160,
+        240
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH candidate AS (\n SELECT id FROM lms_certification.pilot WHERE phase IN ('public','suite','mutate','plausible','wpublic','wsuite')\n AND data->>'contract' IN ('adjacent_sums','beautiful_digits','differential_v1','echo','fizzbuzz','heights','leap','length','meow','mult_table','noinput_reviewed','parity','parrot','python_exact','repeat4','reverse','sign','sum','temperature','thank_count','until_empty','until_nonmultiple','until_zero','xmas','xmas2','xmas3','yes_no','zen') AND (lease_until IS NULL OR lease_until < clock_timestamp())\n AND NOT EXISTS (SELECT 1 FROM lms_certification.pilot WHERE lease_until>clock_timestamp())\n ORDER BY updated_at,id FOR UPDATE SKIP LOCKED LIMIT 1)\nUPDATE lms_certification.pilot p SET owner=$1,lease_until=clock_timestamp()+interval '15 minutes'\nFROM candidate c WHERE p.id=c.id RETURNING p.phase,p.data",
+        "options": {
+          "queryReplacement": "={{ [$execution.id] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_CERTIFICATION_DB",
+          "name": "CERTIFICATION_DB"
+        }
+      }
+    },
+    {
       "id": "0e06520b-b2ac-555b-a290-915972673d09",
       "name": "Checkpoint and dispatch next phase",
       "type": "n8n-nodes-base.postgres",
@@ -2592,6 +2615,17 @@
         ]
       ]
     },
+    "Record busy or telemetry skip": {
+      "main": [
+        [
+          {
+            "node": "Resume sandbox-only checkpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Record idle tick": {
       "main": [
         [
@@ -2626,6 +2660,17 @@
       ]
     },
     "Claim next queued task and load checkpoint": {
+      "main": [
+        [
+          {
+            "node": "Phase: solve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resume sandbox-only checkpoint": {
       "main": [
         [
           {

@@ -144,3 +144,12 @@ artifacts. Metrics busy/missing/stale continue to block inference. Existing
 certificates are not relabeled. For API maintenance if the configured VPN
 address is unavailable, use the verified TLS hostname's resolved address via
 `N8N_API_RESOLVE_ADDRESS`; do not disable TLS validation.
+
+Busy or unavailable inference telemetry does not block **already admitted
+sandbox-only** work. That branch can only lease a public/suite/mutation/witness
+execution phase, never admit new work or call LiteLLM directly. At a subsequent
+model phase the ordinary per-call admission check still applies. `diggers`
+and `greeting-report` required explicit operator source repairs after the old
+12-call loop; provenance and previous source are retained privately. Both then
+passed the singleton input suite and 4/4 pre-reviewed fault probes in the live
+workflow. These two completions are not evidence of autonomous model repair.
