@@ -23,7 +23,7 @@ def main():
                 for path in Path(root).rglob("*"):
                     total += path.lstat().st_blocks * 512
                 measured[:] = [(time.monotonic(), total)]
-            except OSError:
+            except (OSError, RuntimeError):
                 pass  # Racing compaction: do not replace a valid sample with zero.
             time.sleep(60)
 
