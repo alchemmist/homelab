@@ -1,6 +1,6 @@
 # Alertmanager state migration for the socrat-1 drill
 
-**Staged only. Do not activate the overlay on an empty claim.** One Alertmanager,
+**Active after the 2026-11-20 cold migration. Do not re-run the copy or replace the claim.** One Alertmanager,
 not an HA pair. The target NFS server is socrat-0, so this does not cover loss
 of socrat-0. There is no automatic data merge or rollback after writing to NFS.
 
@@ -11,7 +11,13 @@ socrat-0. No source files were touched. Keep this claim: it has the exact name
 for ordinal 0 and template `alert-state-nfs`. An API dry-run of the overlay
 checks the CR only, not StatefulSet recreation or persisted state.
 
-## Cutover gates (operator maintenance window)
+Production cutover: Git #189 stopped the single writer; a restricted pod copied
+and verified all source files with hashes before unmounting both claims. #190
+started the same singleton on socrat-0. The live ordinal mounted the pre-staged
+NFS claim, the active silence IDs matched, and Prometheus discovered the new pod.
+Both PVs are Retain; the earlier source is a recovery point, not current state.
+
+## Original cutover gates (historical; not a routine restart procedure)
 
 1. Capture live claim/PV UIDs, mount subPath, active silence IDs and alert counts
    privately; don't print receiver configuration or tokens. Verify source PV is
