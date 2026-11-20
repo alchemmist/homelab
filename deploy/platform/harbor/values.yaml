@@ -2,7 +2,6 @@
 # Runtime credentials and signing keys are preserved in existing cluster Secrets.
 externallyManagedRuntimeSecrets: true
 core:
-  replicas: 0 # pg-common migration freeze
   extraEnvVars:
   - name: CONFIG_OVERWRITE_JSON
     valueFrom:
@@ -69,7 +68,6 @@ expose:
   type: ingress
 externalURL: https://harbor.socrat.alchemmist.xyz
 jobservice:
-  replicas: 0 # pg-common migration freeze
   jobLoggers:
   - stdout
   maxJobWorkers: 2
@@ -122,7 +120,6 @@ redis:
         ephemeral-storage: 64Mi
         memory: 128Mi
 registry:
-  replicas: 0 # pg-common migration freeze
   controller:
     resources:
       limits:
@@ -144,7 +141,6 @@ registry:
         ephemeral-storage: 64Mi
         memory: 256Mi
 trivy:
-  replicas: 0 # pg-common migration freeze
   enabled: true
   resources:
     requests:

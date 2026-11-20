@@ -16,6 +16,7 @@ spec:
       releaseName: harbor
       valueFiles:
         - ../../deploy/platform/harbor/values.yaml
+        - ../../deploy/platform/harbor/pg-common.yaml
   destination:
     namespace: harbor
     server: https://kubernetes.default.svc

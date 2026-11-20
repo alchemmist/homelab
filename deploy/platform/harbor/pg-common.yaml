@@ -1,5 +1,4 @@
 ---
-# Cutover overlay. NOT referenced by the production Argo application.
 database:
   type: external
   external:
