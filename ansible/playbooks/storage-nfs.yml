@@ -127,12 +127,19 @@
       register: nfs_helm
       changed_when: "'has been upgraded' in nfs_helm.stdout or 'has been installed' in nfs_helm.stdout"
 
-    - name: Ensure local-path is not default storage class
-      ansible.builtin.command: >-
-        k3s kubectl patch storageclass local-path
-        -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
+    - name: Verify Git-owned local-path is not a competing default
+      ansible.builtin.command:
+        argv:
+          - k3s
+          - kubectl
+          - get
+          - storageclass
+          - local-path
+          - -o
+          - 'jsonpath={.metadata.annotations.storageclass\.kubernetes\.io/is-default-class}'
+      register: local_path_default
       changed_when: false
-      failed_when: false
+      failed_when: local_path_default.rc != 0 or local_path_default.stdout != 'false'
 
     - name: Show storage classes
       ansible.builtin.command: k3s kubectl get storageclass

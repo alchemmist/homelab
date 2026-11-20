@@ -1,4 +1,8 @@
 ---
+- name: Establish Git storage ownership before starting/promoting a server
+  ansible.builtin.import_role:
+    name: k3s_storage_owner
+
 - name: Render the primary HA configuration
   ansible.builtin.template:
     src: config.yaml.j2

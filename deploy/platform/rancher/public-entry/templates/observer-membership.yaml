@@ -110,5 +110,7 @@ spec:
         - ipBlock: {cidr: 10.250.0.2/32}
         - ipBlock: {cidr: 10.250.0.3/32}
         - ipBlock: {cidr: 10.250.0.5/32}
+        # socrat-5 is now an advertised API server; keep exact /32 and port6443.
+        - ipBlock: {cidr: 10.250.0.41/32}
       ports: [{protocol: TCP, port: 6443}]
 {{- end }}

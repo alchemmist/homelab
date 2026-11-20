@@ -33,6 +33,8 @@ alertGraphAnnotations:
     / rule evaluations","dashboard_uid":"alerts-78cc217981bbb8aa","panel_id":8,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
   SocratNodeThermalThrottling: '{"version":1,"graphs":[{"id":"primary","title":"SocratNodeThermalThrottling","dashboard_uid":"alerts-9943c0b05432b778","panel_id":7,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratNodeThermalThrottling
     / rule evaluations","dashboard_uid":"alerts-9943c0b05432b778","panel_id":8,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
+  SocratRequiredHddMountUnobserved: '{"version":1,"graphs":[{"id":"primary","title":"SocratRequiredHddMountUnobserved","dashboard_uid":"alerts-273f3d3273d5e92e","panel_id":1,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratRequiredHddMountUnobserved
+    / rule evaluations","dashboard_uid":"alerts-273f3d3273d5e92e","panel_id":2,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
   SocratServiceAlertmanagerUnavailable: '{"version":1,"graphs":[{"id":"primary","title":"SocratServiceAlertmanagerUnavailable","dashboard_uid":"alerts-8bcf7e7a450f9592","panel_id":1,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratServiceAlertmanagerUnavailable
     / rule evaluations","dashboard_uid":"alerts-8bcf7e7a450f9592","panel_id":2,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
   SocratServiceArgocdUnavailable: '{"version":1,"graphs":[{"id":"primary","title":"SocratServiceArgocdUnavailable","dashboard_uid":"alerts-8bcf7e7a450f9592","panel_id":3,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratServiceArgocdUnavailable
@@ -115,6 +117,10 @@ alertGraphAnnotations:
     / rule evaluations","dashboard_uid":"alerts-02b1bb4d009e59f4","panel_id":2,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
   SocratSoftwareUpdateCheckFailed: '{"version":1,"graphs":[{"id":"primary","title":"SocratSoftwareUpdateCheckFailed","dashboard_uid":"alerts-02b1bb4d009e59f4","panel_id":3,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratSoftwareUpdateCheckFailed
     / rule evaluations","dashboard_uid":"alerts-02b1bb4d009e59f4","panel_id":4,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
+  SocratStorageInodesLow: '{"version":1,"graphs":[{"id":"primary","title":"SocratStorageInodesLow","dashboard_uid":"alerts-273f3d3273d5e92e","panel_id":3,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratStorageInodesLow
+    / rule evaluations","dashboard_uid":"alerts-273f3d3273d5e92e","panel_id":4,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
+  SocratStorageSpaceLow: '{"version":1,"graphs":[{"id":"primary","title":"SocratStorageSpaceLow","dashboard_uid":"alerts-273f3d3273d5e92e","panel_id":5,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratStorageSpaceLow
+    / rule evaluations","dashboard_uid":"alerts-273f3d3273d5e92e","panel_id":6,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
   SocratVPNFallbackActive: '{"version":1,"graphs":[{"id":"primary","title":"SocratVPNFallbackActive","dashboard_uid":"alerts-5ff273a38f679e5c","panel_id":1,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratVPNFallbackActive
     / rule evaluations","dashboard_uid":"alerts-5ff273a38f679e5c","panel_id":2,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
 ...

@@ -1,0 +1,219 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: local-path-provisioner-service-account
+  namespace: kube-system
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+rules:
+- apiGroups:
+  - ''
+  resources:
+  - nodes
+  - persistentvolumeclaims
+  - configmaps
+  - pods/log
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ''
+  resources:
+  - endpoints
+  - persistentvolumes
+  - pods
+  verbs:
+  - '*'
+- apiGroups:
+  - ''
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - storage.k8s.io
+  resources:
+  - storageclasses
+  verbs:
+  - get
+  - list
+  - watch
+metadata:
+  name: local-path-provisioner-role
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: local-path-provisioner-role
+subjects:
+- kind: ServiceAccount
+  name: local-path-provisioner-service-account
+  namespace: kube-system
+metadata:
+  name: local-path-provisioner-bind
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+---
+apiVersion: apps/v1
+kind: Deployment
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 0
+  selector:
+    matchLabels:
+      app: local-path-provisioner
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: local-path-provisioner
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - socrat-0
+            weight: 100
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - socrat-0
+                - socrat-1
+      containers:
+      - command:
+        - local-path-provisioner
+        - start
+        - --config
+        - /etc/config/config.json
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        image: rancher/local-path-provisioner:v0.0.37
+        imagePullPolicy: IfNotPresent
+        name: local-path-provisioner
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/config/
+          name: config-volume
+      dnsPolicy: ClusterFirst
+      nodeSelector:
+        kubernetes.io/os: linux
+      priorityClassName: system-node-critical
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: local-path-provisioner-service-account
+      serviceAccountName: local-path-provisioner-service-account
+      terminationGracePeriodSeconds: 30
+      tolerations:
+      - key: CriticalAddonsOnly
+        operator: Exists
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/control-plane
+        operator: Exists
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: local-path-config
+        name: config-volume
+metadata:
+  name: local-path-provisioner
+  namespace: kube-system
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+provisioner: rancher.io/local-path
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+metadata:
+  name: local-path
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+    storageclass.kubernetes.io/is-default-class: 'false'
+---
+apiVersion: v1
+data:
+  config.json: "{\n  \"nodePathMap\": [],\n  \"storageClassConfigs\": {\n    \"lms-db-retain\"\
+    : {\n      \"nodePathMap\": [\n        {\n          \"node\": \"DEFAULT_PATH_FOR_NON_LISTED_NODES\"\
+    ,\n          \"paths\": [\n            \"/var/lib/rancher/k3s/storage\"\n    \
+    \      ]\n        }\n      ]\n    },\n    \"local-path\": {\n      \"nodePathMap\"\
+    : [\n        {\n          \"node\": \"DEFAULT_PATH_FOR_NON_LISTED_NODES\",\n \
+    \         \"paths\": [\n            \"/var/lib/rancher/k3s/storage\"\n       \
+    \   ]\n        },\n        {\n          \"node\": \"socrat-5\",\n          \"\
+    paths\": [\n            \"/mnt/files/homelab/volumes\"\n          ]\n        }\n\
+    \      ]\n    },\n    \"pg-local-retain\": {\n      \"nodePathMap\": [\n     \
+    \   {\n          \"node\": \"DEFAULT_PATH_FOR_NON_LISTED_NODES\",\n          \"\
+    paths\": [\n            \"/var/lib/rancher/k3s/storage\"\n          ]\n      \
+    \  }\n      ]\n    },\n    \"rustfs-retain\": {\n      \"nodePathMap\": [\n  \
+    \      {\n          \"node\": \"DEFAULT_PATH_FOR_NON_LISTED_NODES\",\n       \
+    \   \"paths\": [\n            \"/var/lib/rancher/k3s/storage\"\n          ]\n\
+    \        }\n      ]\n    },\n    \"socrat-bot-retain\": {\n      \"nodePathMap\"\
+    : [\n        {\n          \"node\": \"DEFAULT_PATH_FOR_NON_LISTED_NODES\",\n \
+    \         \"paths\": [\n            \"/var/lib/rancher/k3s/storage\"\n       \
+    \   ]\n        }\n      ]\n    },\n    \"venice-browser-retain\": {\n      \"\
+    nodePathMap\": [\n        {\n          \"node\": \"DEFAULT_PATH_FOR_NON_LISTED_NODES\"\
+    ,\n          \"paths\": [\n            \"/var/lib/rancher/k3s/storage\"\n    \
+    \      ]\n        }\n      ]\n    },\n    \"local-hdd\": {\n      \"nodePathMap\"\
+    : [\n        {\n          \"node\": \"DEFAULT_PATH_FOR_NON_LISTED_NODES\",\n \
+    \         \"paths\": []\n        },\n        {\n          \"node\": \"socrat-5\"\
+    ,\n          \"paths\": [\n            \"/mnt/files/homelab/volumes\"\n      \
+    \    ]\n        }\n      ]\n    },\n    \"local-ssd\": {\n      \"nodePathMap\"\
+    : [\n        {\n          \"node\": \"DEFAULT_PATH_FOR_NON_LISTED_NODES\",\n \
+    \         \"paths\": []\n        },\n        {\n          \"node\": \"socrat-5\"\
+    ,\n          \"paths\": [\n            \"/var/lib/rancher/k3s/fast-storage\"\n\
+    \          ]\n        }\n      ]\n    }\n  }\n}"
+  helperPod.yaml: "apiVersion: v1\nkind: Pod\nmetadata:\n  name: helper-pod\nspec:\n\
+    \  containers:\n  - name: helper-pod\n    image: \"rancher/mirrored-library-busybox:1.37.0\"\
+    \n    imagePullPolicy: IfNotPresent"
+  setup: "#!/bin/sh\nset -eu\nPARENT=${VOL_DIR%/*}\ncase \"${VOL_DIR}\" in\n  /mnt/files/homelab/volumes/*)\n\
+    \    [ \"$(stat -c %d \"${PARENT}\")\" = 2065 ] || { echo HDD_DEVICE_MISMATCH\
+    \ >&2; exit 1; }\n    [ \"$(cat \"${PARENT}/.homelab-filesystem-id\")\" = 3ec3263e-32e3-4b38-84e6-17cd168244b9\
+    \ ] || exit 1\n    ;;\n  /var/lib/rancher/k3s/fast-storage/*)\n    [ \"$(stat\
+    \ -c %d \"${PARENT}\")\" = 2049 ] || { echo SSD_DEVICE_MISMATCH >&2; exit 1; }\n\
+    \    [ \"$(cat \"${PARENT}/.homelab-filesystem-id\")\" = 60fd0998-0598-4672-88b5-3bec59f697c9\
+    \ ] || exit 1\n    ;;\n  /var/lib/rancher/k3s/storage/*) ;; # Preserve legacy\
+    \ lifecycle on every node.\n  *) echo UNOWNED_VOLUME_PATH >&2; exit 1 ;;\nesac\n\
+    mkdir -m 0777 -p \"${VOL_DIR}\"\nchmod 700 \"${PARENT}\"\n"
+  teardown: "#!/bin/sh\nset -eu\nPARENT=${VOL_DIR%/*}\ncase \"${VOL_DIR}\" in\n  /mnt/files/homelab/volumes/*)\n\
+    \    [ \"$(stat -c %d \"${PARENT}\")\" = 2065 ] || { echo HDD_DEVICE_MISMATCH\
+    \ >&2; exit 1; }\n    [ \"$(cat \"${PARENT}/.homelab-filesystem-id\")\" = 3ec3263e-32e3-4b38-84e6-17cd168244b9\
+    \ ] || exit 1\n    ;;\n  /var/lib/rancher/k3s/fast-storage/*)\n    [ \"$(stat\
+    \ -c %d \"${PARENT}\")\" = 2049 ] || { echo SSD_DEVICE_MISMATCH >&2; exit 1; }\n\
+    \    [ \"$(cat \"${PARENT}/.homelab-filesystem-id\")\" = 60fd0998-0598-4672-88b5-3bec59f697c9\
+    \ ] || exit 1\n    ;;\n  /var/lib/rancher/k3s/storage/*) ;; # Preserve legacy\
+    \ lifecycle on every node.\n  *) echo UNOWNED_VOLUME_PATH >&2; exit 1 ;;\nesac\n\
+    rm -rf \"${VOL_DIR}\"\n"
+kind: ConfigMap
+metadata:
+  name: local-path-config
+  namespace: kube-system
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false

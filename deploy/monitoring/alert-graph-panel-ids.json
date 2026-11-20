@@ -46,6 +46,11 @@
     "alerts-21116c7cdd670d44": {
       "KubeMemoryOvercommit": 1
     },
+    "alerts-273f3d3273d5e92e": {
+      "SocratRequiredHddMountUnobserved": 1,
+      "SocratStorageInodesLow": 3,
+      "SocratStorageSpaceLow": 5
+    },
     "alerts-2c6c096d53241ff0": {
       "KubeAPIDown": 1,
       "KubeAPIInstanceUnreachable": 3,

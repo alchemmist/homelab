@@ -1,4 +1,8 @@
 ---
+- name: Establish Git storage ownership before starting/promoting a server
+  ansible.builtin.import_role:
+    name: k3s_storage_owner
+
 - name: Require a joining member
   ansible.builtin.assert:
     that:

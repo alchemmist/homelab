@@ -1396,6 +1396,37 @@
   },
   {
     "owner": "monitoring-k3s",
+    "resource": "socrat-storage",
+    "group": "socrat.storage",
+    "alert": "SocratRequiredHddMountUnobserved",
+    "expr": "absent_over_time(node_filesystem_size_bytes{job=\"node-exporter\",node=\"socrat-5\",mountpoint=\"/mnt/files\",device=\"/dev/sdb1\",fstype=\"ext4\"}[5m])",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratRequiredHddMountUnobserved",
+          "dashboard_uid": "alerts-273f3d3273d5e92e",
+          "panel_id": 1,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratRequiredHddMountUnobserved / rule evaluations",
+          "dashboard_uid": "alerts-273f3d3273d5e92e",
+          "panel_id": 2,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
     "resource": "monitoring-service-availability",
     "group": "socrat.services.availability",
     "alert": "SocratServiceAlertmanagerUnavailable",
@@ -2658,6 +2689,68 @@
           "title": "SocratSoftwareUpdateCheckFailed / rule evaluations",
           "dashboard_uid": "alerts-02b1bb4d009e59f4",
           "panel_id": 4,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
+    "resource": "socrat-storage",
+    "group": "socrat.storage",
+    "alert": "SocratStorageInodesLow",
+    "expr": "node_filesystem_files_free{job=\"node-exporter\",node=\"socrat-5\",mountpoint=~\"/|/mnt/files\"}\n/ node_filesystem_files{job=\"node-exporter\",node=\"socrat-5\",mountpoint=~\"/|/mnt/files\"} < 0.10\n",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratStorageInodesLow",
+          "dashboard_uid": "alerts-273f3d3273d5e92e",
+          "panel_id": 3,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratStorageInodesLow / rule evaluations",
+          "dashboard_uid": "alerts-273f3d3273d5e92e",
+          "panel_id": 4,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
+    "resource": "socrat-storage",
+    "group": "socrat.storage",
+    "alert": "SocratStorageSpaceLow",
+    "expr": "(node_filesystem_avail_bytes{job=\"node-exporter\",node=\"socrat-5\",mountpoint=~\"/|/mnt/files\"}\n/ node_filesystem_size_bytes{job=\"node-exporter\",node=\"socrat-5\",mountpoint=~\"/|/mnt/files\"} < 0.15)\nand (node_filesystem_readonly{job=\"node-exporter\",node=\"socrat-5\",mountpoint=~\"/|/mnt/files\"} == 0)\n",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratStorageSpaceLow",
+          "dashboard_uid": "alerts-273f3d3273d5e92e",
+          "panel_id": 5,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratStorageSpaceLow / rule evaluations",
+          "dashboard_uid": "alerts-273f3d3273d5e92e",
+          "panel_id": 6,
           "variables": {},
           "before_seconds": 7200,
           "after_seconds": 300

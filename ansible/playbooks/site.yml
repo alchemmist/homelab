@@ -15,6 +15,7 @@
     - role: node_disk_reserve
       when: homelab_kubelet_disk_config is defined
     - base
+    - k3s_storage_owner
     - wallpaper_asset
     - users
     - starship
