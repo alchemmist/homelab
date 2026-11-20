@@ -552,3 +552,13 @@ admitting webhook data alone is not permission to execute arbitrary targets. Ser
 logs: `journalctl --user -u mutation-report-consumer`; stop the service to pause (the
 legacy PAUSE-CAMPAIGN marker is only for the retired entrypoint). Gates include the
 project's pinned Ruff in the author's sandbox and a fresh independent behavioral proof.
+
+The configured Monori adapter discovers subsequent signed reports for its repository,
+rotating between admissions at stage boundaries. Publishing a scoped PR for another
+issue requires a valid signer and an open owner-authored `mutation-report` on that
+repo. Unknown catalog families are not silently mutated; an entirely unknown report
+is marked `adapter_required`. Versioned mutation catalogs/fresh dependencies are
+still necessary for new projects/changed schemas. `restore_worker.py` can restore
+a lost scratch venv from the operator-owned checksum-pinned bundle. A future nightly
+census/runner is NOT deployed by this change. Do not conflate repo-wide existing
+frontend lint failures with failures introduced by a Python-only mutation PR.

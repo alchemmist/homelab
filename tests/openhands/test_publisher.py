@@ -29,3 +29,8 @@ class Publisher(unittest.TestCase):
   self.assertEqual(len(m.changes(f,pi_ci=True)),1)
   for p in ('ci/tests/conftest.py','ci/lib/mutation_gate.py','ci/tests/test_mutation_123456abcdef.sh'):
    with self.assertRaises(ValueError):m.changes({p:'bad'},pi_ci=True)
+ def test_signed_report_must_be_an_open_owner_labeled_issue(self):
+  base={'state':'open','user':{'id':104511335},'labels':[{'name':'mutation-report'}]}
+  with patch.object(m,'api',return_value=base):self.assertEqual(m.mutation_target(642),642)
+  for change in ({'state':'closed'},{'user':{'id':123}},{'labels':[]},{'pull_request':{}}):
+   with patch.object(m,'api',return_value=base|change),self.assertRaises(ValueError):m.mutation_target(642)

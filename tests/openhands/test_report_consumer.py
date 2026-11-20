@@ -1,5 +1,6 @@
 import base64, hashlib, hmac, importlib.util, json, sqlite3, tempfile, unittest
 from pathlib import Path
+from contextlib import closing
 ROOT=Path(__file__).resolve().parents[2]; src=ROOT/'charts/openhands/files/report-intake';sp=importlib.util.spec_from_file_location('report_intake',src/'intake.py');intake=importlib.util.module_from_spec(sp);sp.loader.exec_module(intake)
 class Reports(unittest.TestCase):
  def test_observed_report_and_replayed_transport(self):
@@ -10,4 +11,5 @@ class Reports(unittest.TestCase):
    d=Path(td)/'db';call=lambda:intake.ingest(envelope(),registry,b'test',d)
    with self.assertRaises(PermissionError):intake.ingest(envelope(),registry,b'bad',d)
    e['sender']={'id':1};self.assertEqual(call()['status'],'ignored_sender');e['sender']=owner
-   self.assertEqual(call()['cards'],405); self.assertEqual(call()['status'],'duplicate');e['issue']['body']+=' changed';self.assertEqual(call()['status'],'changed_report_requires_review');self.assertEqual(sqlite3.connect(d).execute('select count(*) from cards').fetchone(),(405,))
+   self.assertEqual(call()['cards'],405); self.assertEqual(call()['status'],'duplicate');e['issue']['body']+=' changed';self.assertEqual(call()['status'],'changed_report_requires_review')
+   with closing(sqlite3.connect(d)) as db:self.assertEqual(db.execute('select count(*) from cards').fetchone(),(405,))

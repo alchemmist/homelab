@@ -122,7 +122,7 @@ def dispatch(x):
         prs=api('pulls?state=open&per_page=100');check(len(prs)<100 and sum(p['head']['ref'].startswith(MUT) for p in prs)<5)
         check(action!='qa_create' or not any(p['head']['ref'].startswith(prefix) for p in prs));check(sum(p['head']['ref'].startswith(QA) for p in prs)<5);branch=prefix+uuid.uuid4().hex;api('git/refs',{'ref':'refs/heads/'+branch,'sha':sha})
     else:
-        p=owned_pr(x['pr'],sha);branch=p['head']['ref'];files=changes(x['files'],branch.startswith(QA),signed_update and branch.startswith(MUT))
+        p=owned_pr(x['pr'],sha);branch=p['head']['ref'];check(not branch.startswith(MUT) or branch.startswith(PREFIX) or signed_update);files=changes(x['files'],branch.startswith(QA),signed_update and branch.startswith(MUT))
     mutation='mutation($i:CreateCommitOnBranchInput!){createCommitOnBranch(input:$i){commit{oid}}}'
     res=api('graphql',{'query':mutation,'variables':{'i':{'branch':{'repositoryNameWithOwner':REPO,'branchName':branch},'expectedHeadOid':sha,'message':{'headline':title},'fileChanges':{'additions':files}}}});oid=res['data']['createCommitOnBranch']['commit']['oid']
     if action!='update':p=api('pulls',{'head':branch,'base':'main','draft':False,'title':title,'body':f'Follow-up for #{target}. Published via the scoped OpenHands publisher. Human review and merge required.'})

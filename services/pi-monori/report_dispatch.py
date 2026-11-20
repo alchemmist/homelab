@@ -1,6 +1,7 @@
 """Trusted systemd consumer. Only enrolled repo adapters; never execute issue text here."""
 import fcntl, json, os, re, subprocess, sys, time
 import campaign as c
+import restore_worker
 # Remote RPC via the existing operator transport. No pod gets kube credentials.
 RPC='''import json,sqlite3,sys
 m=json.load(sys.stdin); db=sqlite3.connect('/state/reports.db',timeout=10);db.row_factory=sqlite3.Row
@@ -50,6 +51,7 @@ def main():
     live=c.remote_json('issues/'+str(c.ISSUE))
     if live['state']!='open' or ADAPTER['label'] not in [x['name'] for x in live['labels']]:
      rpc('sync',rows=[],outputs=[],digest=r['digest'],state='closed');return
+    restore_worker.ensure(c)
     c.git('fetch','--depth=1','origin','main');sha=c.git('rev-parse','FETCH_HEAD').strip();c.install_base(sha);prs=c.remote_json('pulls?state=open&per_page=100');c.reconcile(prs,sha);slots=max(0,ADAPTER['publication_limit']-sum(p['head']['ref'].startswith('openhands/issue-') for p in prs)) if len(prs)<100 else 0;cache=time.time()+240
    if slots:
     ready=next((x for x in c.query("select * from tasks where state='verified' order by updated") if x['id'] in allowed),None)
@@ -61,7 +63,8 @@ def main():
    if re.search(r'connector|credential|access_denied|auth(?:entication|orization)?_|subprocess|webhook|password|token|crypto',t['fam'],re.I):c.mark(t,'needs_triage','Requires human scope review; no agent assigned',sha);continue
    sync(t['id']);c.mark(t,'screening','Leased from signed issue admission',sha)
    try:c.screen(t,sha)
-   except (RuntimeError,subprocess.TimeoutExpired) as ex:c.mark(t,'transport_wait',str(ex)[:360],sha)
+   except (RuntimeError,subprocess.TimeoutExpired) as ex:
+    cache=0;c.K('judge',['rm','-f','/scratch/campaign-base'],ok=False);c.mark(t,'transport_wait',str(ex)[:360],sha)
    sync()
   except Exception as ex:print('adapter backoff:',type(ex).__name__,str(ex)[:360],flush=True);time.sleep(45)
 if __name__=='__main__':main()
