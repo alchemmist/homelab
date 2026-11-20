@@ -221,7 +221,21 @@ otelBackendExternalIP: 10.250.0.3
 updateWatch:
   enabled: true
   image: python:3.13-alpine@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8
-  node: socrat-1
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values: [socrat-0, socrat-1]
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values: [socrat-0]
   intervalSeconds: "21600"
   timeoutSeconds: "20"
   targets:
