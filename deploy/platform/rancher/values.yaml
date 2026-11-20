@@ -19,6 +19,12 @@ letsEncrypt:
     class: traefik
 # Single non-HA server; verified scoped issuer transport enables VM105 return.
 replicas: 1
+# Cold catalog restoration and CRD initialization can exceed two minutes.
+# Keep health checks; permit up to ten minutes for an honest cold start.
+startupProbe:
+  failureThreshold: 60
+  periodSeconds: 10
+  timeoutSeconds: 5
 resources:
   limits:
     memory: 3Gi
