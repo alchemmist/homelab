@@ -43,7 +43,7 @@ spec:
               app: {{ $name }}
       {{- else }}
       nodeSelector:
-        kubernetes.io/hostname: {{ $component.node }}
+        kubernetes.io/hostname: {{ required (printf "components.%s.node is required for pinned components" $name) $component.node | quote }}
       {{- end }}
       securityContext:
         runAsNonRoot: true
@@ -66,6 +66,9 @@ spec:
           {{- if $component.spreadQuery }}
           readinessProbe:
             httpGet: {path: /-/ready, port: http}
+            timeoutSeconds: 3
+            periodSeconds: 5
+            failureThreshold: 3
           {{- end }}
           resources:
             {{- toYaml $component.resources | nindent 12 }}
