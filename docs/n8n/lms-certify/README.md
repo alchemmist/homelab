@@ -153,3 +153,13 @@ and `greeting-report` required explicit operator source repairs after the old
 12-call loop; provenance and previous source are retained privately. Both then
 passed the singleton input suite and 4/4 pre-reviewed fault probes in the live
 workflow. These two completions are not evidence of autonomous model repair.
+
+Differential probe quality: propose up to five distinct source mutations. Keep
+the suite blind to candidate code. A crash is not a kill. A variant wrong on
+all sampled inputs is rejected as a control, not counted; continue evaluating
+the rest of the bank. Certification still needs at least three distinct
+variants with observed correct AND wrong behavior. Any surviving private-suite
+variant routes to expansion, not certification. Failed plausibility can request
+a bounded new bank. Before semantic approval, a reviewer can identify specific
+invalid private cases by index; quarantine only those, preserve all others and
+require review again. Never drop approved cases this way.
