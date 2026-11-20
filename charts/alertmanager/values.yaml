@@ -10,7 +10,7 @@ kube-prometheus-stack:
       - spi-alert-ingress
       nodeSelector:
         kubernetes.io/hostname: socrat-1
-      replicas: 1
+      replicas: 0
       resources:
         limits:
           memory: 128Mi
