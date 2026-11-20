@@ -35,7 +35,7 @@ spec:
             - name: PROMPT_FILE
               value: /app/docs/n8n/blog-updates/prompt.md
             - name: WRITE_ENABLED
-              value: 'false'
+              value: "false"
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

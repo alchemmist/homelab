@@ -12,19 +12,19 @@ spec:
   failurePolicy: Fail
   matchConstraints:
     resourceRules:
-      - apiGroups: ['']
+      - apiGroups: [""]
         apiVersions: [v1]
         operations: [CREATE, UPDATE]
         resources: [pods]
   variables:
     - name: pinnedHere
-      expression: "has(object.spec.nodeName) && object.spec.nodeName == 'socrat-5'"
+      expression: has(object.spec.nodeName) && object.spec.nodeName == 'socrat-5'
     - name: pinnedElsewhere
-      expression: "has(object.spec.nodeName) && object.spec.nodeName != '' && object.spec.nodeName != 'socrat-5'"
+      expression: has(object.spec.nodeName) && object.spec.nodeName != '' && object.spec.nodeName != 'socrat-5'
     - name: selectorElsewhere
-      expression: "has(object.spec.nodeSelector) && 'kubernetes.io/hostname' in object.spec.nodeSelector && object.spec.nodeSelector['kubernetes.io/hostname'] != 'socrat-5'"
+      expression: has(object.spec.nodeSelector) && 'kubernetes.io/hostname' in object.spec.nodeSelector && object.spec.nodeSelector['kubernetes.io/hostname'] != 'socrat-5'
     - name: selectsHere
-      expression: "has(object.spec.nodeSelector) && 'kubernetes.io/hostname' in object.spec.nodeSelector && object.spec.nodeSelector['kubernetes.io/hostname'] == 'socrat-5'"
+      expression: has(object.spec.nodeSelector) && 'kubernetes.io/hostname' in object.spec.nodeSelector && object.spec.nodeSelector['kubernetes.io/hostname'] == 'socrat-5'
     - name: toleratesLocalOnly
       expression: >-
         has(object.spec.tolerations) && object.spec.tolerations.exists(t,

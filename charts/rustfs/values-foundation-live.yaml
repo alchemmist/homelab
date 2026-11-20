@@ -20,7 +20,7 @@ authViaTraefik: true
 # socrat-0 allocatable 32545144Ki; existing requests 29392Mi.
 resources:
   requests: {cpu: 500m, memory: 2Gi}
-  limits: {cpu: '2', memory: 4Gi}
+  limits: {cpu: "2", memory: 4Gi}
 
 catsMedia:
   enabled: true

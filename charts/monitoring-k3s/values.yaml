@@ -241,96 +241,96 @@ updateWatch:
   targets:
     - id: openhands
       title: OpenHands Agent Canvas
-      current: "1.41.0"
+      current: 1.41.0
       github: OpenHands/OpenHands
       namespace: openhands
       statefulset: openhands
       container: agent-canvas
     - id: open-webui
       title: Open WebUI
-      current: "0.12.3"
+      current: 0.12.3
       github: open-webui/open-webui
       namespace: llm
       deployment: open-webui
       container: open-webui
     - id: x-ui
       title: 3x-ui
-      current: "3.10.2"
+      current: 3.10.2
       github: MHSanaei/3x-ui
       namespace: x-ui
       deployment: x-ui
       container: primary
     - id: open-terminal
       title: Open Terminal
-      current: "0.14.1"
+      current: 0.14.1
       github: open-webui/open-terminal
     - id: n8n
       title: n8n
-      current: "1.123.87"
+      current: 1.123.87
       github: n8n-io/n8n
     - id: authentik
       title: Authentik
-      current: "2026.8.5"
+      current: 2026.8.5
       github: goauthentik/authentik
     - id: litellm
       title: LiteLLM
-      current: "1.105.1"
+      current: 1.105.1
       github: BerriAI/litellm
     - id: searxng
       title: SearXNG
-      current: "2026.10.19"
+      current: 2026.10.19
       github: searxng/searxng
     - id: remark42
       title: Remark42
-      current: "1.17.1"
+      current: 1.17.1
       github: umputun/remark42
     - id: uptime-kuma
       title: Uptime Kuma
-      current: "2.5.7"
+      current: 2.5.7
       github: louislam/uptime-kuma
     - id: syncthing
       title: Syncthing
-      current: "2.1.7"
+      current: 2.1.7
       github: syncthing/syncthing
     - id: traefik
       title: Traefik
-      current: "3.7.13"
+      current: 3.7.13
       github: traefik/traefik
     - id: cert-manager
       title: cert-manager
-      current: "1.16.2"
+      current: 1.16.2
       github: cert-manager/cert-manager
     - id: harbor
       title: Harbor
-      current: "2.15.4"
+      current: 2.15.4
       github: goharbor/harbor
     - id: rancher
       title: Rancher
-      current: "2.15.2"
+      current: 2.15.2
       github: rancher/rancher
     - id: grafana
       title: Grafana
-      current: "13.2.4"
+      current: 13.2.4
       github: grafana/grafana
     - id: pyroscope
       title: Pyroscope
-      current: "2.4.3"
+      current: 2.4.3
       github: grafana/pyroscope
     - id: thanos
       title: Thanos
-      current: "0.42.4"
+      current: 0.42.4
       github: thanos-io/thanos
     - id: netbird
       title: NetBird
-      current: "0.82.0"
+      current: 0.82.0
       github: netbirdio/netbird
     - id: nvidia-device-plugin
       title: NVIDIA device plugin
-      current: "0.20.1"
+      current: 0.20.1
       github: NVIDIA/k8s-device-plugin
     - id: pr-agent
       title: PR-Agent
-      current: "0.50.0"
+      current: 0.50.0
       github: The-PR-Agent/pr-agent
       namespace: pr-agent
       deployment: pr-agent

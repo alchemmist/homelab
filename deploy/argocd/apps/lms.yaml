@@ -35,7 +35,7 @@ spec:
     namespace: lms
     jsonPointers:
     - /spec/template/metadata/annotations/homelab.alchemmist.xyz~1client-certificate-sha256
-  - group: ''
+  - group: ""
     kind: Secret
     name: lms-db
     namespace: lms
