@@ -47,12 +47,20 @@ spec:
       {{- if and $.Values.graphs.enabled (eq $component.component "bot") }}
       securityContext:
         fsGroup: 65532
+      {{- end }}
+      {{- if or $.Values.databaseSecret (and $.Values.graphs.enabled (eq $component.component "bot")) }}
       volumes:
+        {{- if $.Values.databaseSecret }}
+        - name: pg-common-ca
+          secret: {secretName: pg-common-ca}
+        {{- end }}
+        {{- if and $.Values.graphs.enabled (eq $component.component "bot") }}
         - name: graph-client
           secret:
             secretName: {{ required "graphs.existingSecret is required" $.Values.graphs.existingSecret | quote }}
             defaultMode: 0440
             items: [{key: telegram, path: telegram}]
+        {{- end }}
       {{- end }}
       containers:
         - name: {{ $component.container }}
@@ -62,9 +70,14 @@ spec:
           ports:
             - name: http
               containerPort: {{ $component.port }}
-          {{- if and $.Values.graphs.enabled (eq $component.component "bot") }}
+          {{- if or $.Values.databaseSecret (and $.Values.graphs.enabled (eq $component.component "bot")) }}
           volumeMounts:
+            {{- if $.Values.databaseSecret }}
+            - {name: pg-common-ca, mountPath: /etc/pg-common, readOnly: true}
+            {{- end }}
+            {{- if and $.Values.graphs.enabled (eq $component.component "bot") }}
             - {name: graph-client, mountPath: /graph-client, readOnly: true}
+            {{- end }}
           {{- end }}
           env:
             {{- if and $.Values.graphs.enabled (eq $component.component "bot") }}

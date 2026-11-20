@@ -26,7 +26,7 @@ items:
 - name: DATABASE_URL
   valueFrom:
     secretKeyRef:
-      name: {{ .Values.envSecret }}
+      name: {{ default .Values.envSecret .Values.databaseSecret }}
       key: DATABASE_URL
 - name: TELEGRAM_BOT_TOKEN
   valueFrom:
