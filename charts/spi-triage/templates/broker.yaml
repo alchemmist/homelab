@@ -44,8 +44,8 @@ spec:
       backoffLimit: 2
       template:
         spec:
-          nodeSelector:
-            kubernetes.io/hostname: {{ .Values.brokerNodeName | quote }}
+          affinity:
+            {{- toYaml .Values.brokerAffinity | nindent 12 }}
           {{- if .Values.bundleEnabled }}
           {{- with .Values.imagePullSecrets }}
           imagePullSecrets:
