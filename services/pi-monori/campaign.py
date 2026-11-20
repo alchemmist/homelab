@@ -8,7 +8,11 @@ def query(q,a=()):
  with contextlib.closing(sqlite3.connect(D,timeout=15)) as db,db:
   db.row_factory=sqlite3.Row;return [dict(x) for x in db.execute(q,a)]
 def init():
+ global C,A
  query('create table if not exists tasks(id text primary key,fam text,num integer,category text,ord integer,state text,base text,note text,pr integer,updated real)');query('create table if not exists audit(t real,id text,state text,note text)');query('create table if not exists meta(k text primary key,v text)')
+ wave=query("select v from meta where k='active_census'")
+ if wave:
+  root=R/'waves'/wave[0]['v'];C=json.load(gzip.open(root/'catalog.json.gz'));A=root/'artifacts';A.mkdir(exist_ok=True);return
  with contextlib.closing(sqlite3.connect(D)) as db,db:
   for r in BACK:
    fam,_,single=r['family'].partition('__mutmut_');f=C.get(fam);nums=[single] if single else list(f['diffs']) if f else ['0'];
@@ -81,8 +85,10 @@ def candidate_guard(text,src):
    if x.startswith('__') or x in {'eval','exec','compile','globals','locals','exit','quit','getattr','setattr','delattr','skip','skipif','xfail','importorskip','open','read_bytes','read_text','write_bytes','write_text','unlink','system','popen','connect_ex','socket','subprocess','os','sys','builtins','importlib','pytest_plugins'}:raise ValueError('test uses unsupported introspection, I/O or bypass')
   if isinstance(n,ast.Constant) and isinstance(n.value,str) and ('/scratch/' in n.value or '/proc/' in n.value or 'PYTEST_CURRENT_TEST' in n.value):raise ValueError('environment-dependent test')
 
-def try_pi(t,sha,mid,detail,oldtests,folder):
+def try_pi(t,sha,mid,detail,oldtests,folder,repair=None):
  src=C[t['fam']]['file'];slug=key(t);dest=('ci/tests/' if src.startswith('ci/') else 'server/tests/unit/')+'test_mutation_'+slug+'.py';wt='/scratch/campaign/'+slug+'/monori';folder.mkdir(exist_ok=True);K('author',['sh','-ec','if test -d "$1";then git --git-dir=/scratch/base.git worktree remove --force "$1";fi;git --git-dir=/scratch/base.git worktree prune;git --git-dir=/scratch/base.git worktree add --detach "$1" "$2"','sh',wt,sha]);feedback=''
+ if repair:
+  dest=repair['dest'];pilot.write('author',wt+'/'+dest,repair['previous']);feedback='Repair this existing PR test in place, retain the behavioral assertion and remove all lint suppressions. Red current-head checks: '+', '.join(repair['fails'])
  try:
   for attempt in range(1,4):
    prompt=f'''Take one atomic item from alchemmist/monori#509: {t['category']}, {mid}, base {sha}. Work directly in this worktree. Write an actual English annotated regression test to {dest} and no other tracked file. Original/mutant diff:\n{detail[:7800]}\nExisting tests {oldtests} passed on both. Read source/dependencies and existing tests, use actual /scratch/monori/.venv/bin/python with PYTHONPATH set to worktree parent, check actual output before proposing. Follow existing formatting and annotation gates: no type: ignore/noqa, no object/Any parameter annotations, prefer the project type alias. No external systems, networking, credentials, exploits, PoCs, bypasses, live banking, gh, merge or dummy PR. Only ordinary offline behavior on fixtures. The independent judge runs your file on original and mutant. If not distinguishable write OUTCOME.md with concrete evidence; not a fictional test. Plans do not count: write your file with tools. Feedback: {feedback[:750]}''';(folder/'prompt.md').write_text(prompt);mark(t,'authoring',f'attempt {attempt}',sha)
@@ -96,11 +102,22 @@ def try_pi(t,sha,mid,detail,oldtests,folder):
     feedback='No test file exists. Use write tool on exact path now; do not finish with a plan.';continue
    text=r.stdout
    try:
-    candidate_guard(text,src);changed=K('author',['git','-C',wt,'diff','--name-only',sha]).stdout.strip();assert changed in ('',dest),'unrelated edits present';receipt=prove(t,sha,dest,text,oldtests)
+    candidate_guard(text,src)
+    if repair and text==repair['previous']:raise ValueError('CI repair did not change the failed file')
+    changed=K('author',['git','-C',wt,'diff','--name-only',sha]).stdout.strip();assert changed in ('',dest),'unrelated edits present';receipt=prove(t,sha,dest,text,oldtests)
    except (ValueError,AssertionError,SyntaxError) as ex:feedback=str(ex)[-750:];mark(t,'rejected',feedback,sha);continue
-   (folder/'test.py.txt').write_text(text);(folder/'proof.json').write_text(json.dumps(receipt,indent=2));mark(t,'verified','Independent proof archived; awaiting publisher slot',sha);return
+   (folder/'test.py.txt').write_text(text);(folder/'proof.json').write_text(json.dumps(receipt,indent=2))
+   if repair:
+    payload={'action':'update','pr':t['pr'],'head':repair['head'],'title':'test: address current-head CI for #'+str(t['pr']),'files':{dest:text}};mark(t,'update_uncertain','Update in flight; inspect current head if acknowledgement lost',sha)
+    r=pilot.cmd(['kubectl','-n','openhands','exec','-i','openhands-0','-c','mutation-pilot','--','python','-c',pilot.PUBLISH],json.dumps(payload),timeout=95);obj=json.loads(r.stdout);assert obj['pr']==t['pr'];mark(t,'published',obj['head'],sha,obj['pr'])
+   else:mark(t,'verified','Independent proof archived; awaiting publisher slot',sha)
+   return
   mark(t,'needs_triage','No proof after 3 attempts. '+feedback,sha)
- finally:K('author',['git','--git-dir=/scratch/base.git','worktree','remove','--force',wt],ok=False)
+ finally:
+  if repair:
+   event=query('select state from tasks where id=?',(t['id'],))[0]['state']
+   if event not in ('published','update_uncertain'):mark(t,'published','CI repair attempt did not meet proof; PR remains open',sha,t['pr'])
+  K('author',['git','--git-dir=/scratch/base.git','worktree','remove','--force',wt],ok=False)
 
 def prove(t,sha,dest,text,oldtests):
  src,orig,mut,_=patch(t,sha);reset_source(src,orig)
@@ -155,16 +172,63 @@ def reconcile(prs,sha):
   p=remote_json('pulls/'+str(t['pr']))
   if p['state']=='closed':mark(t,'merged' if p['merged'] else 'closed_unmerged','GitHub reconciliation; full rerun still required',sha,t['pr'])
 
+def repair_one(prs,sha):
+ bynum={p['number']:p for p in prs};now=time.time()
+ for t in query("select * from tasks where state='published' and pr is not null order by updated"):
+  p=bynum.get(t['pr'])
+  if not p or p.get('draft') or not p['head']['ref'].startswith('openhands/issue-509/'):continue
+  head=p['head']['sha'];cache='checks:'+head;cached=query('select v from meta where k=?',(cache,))
+  if cached and now-float(cached[0]['v'])<900:continue
+  query('insert or replace into meta values(?,?)',(cache,str(now)));checks=remote_json('commits/'+head+'/check-runs?per_page=100');fails=[r['name'] for r in checks['check_runs'] if r['conclusion']=='failure']
+  if not fails:continue
+  keyfix='fix:'+str(p['number']);attempts=query('select v from meta where k=?',(keyfix,))
+  if attempts and int(attempts[0]['v'])>=3:continue
+  files=remote_json('pulls/'+str(p['number'])+'/files?per_page=30')
+  if len(files)!=1 or files[0]['status']!='added' or not re.fullmatch(r'(?:ci/tests|server/tests/unit)/test_(?:mutation_[0-9a-f]{12}|pi509_[a-z_]+)\.py',files[0]['filename']):continue
+  dest=files[0]['filename'];git('fetch','--depth=1','origin','refs/pull/'+str(p['number'])+'/head');previous=source(head,dest);src,_,_,diff=patch(t,sha);olds,_=select_suite(t,sha)
+  query('insert or replace into meta values(?,?)',(keyfix,str(1+(int(attempts[0]['v']) if attempts else 0))));folder=A/key(t)/('repair-'+head[:10]);folder.mkdir(parents=True,exist_ok=True)
+  try_pi(t,sha,t['id'],diff,olds,folder,{'dest':dest,'previous':previous,'head':head,'fails':fails});return
+
+def census(sha,prs):
+ # No blanket merge; only after queued work drained and GitHub writes reconciled.
+ if sha==BASE0 or any(p['head']['ref'].startswith('openhands/issue-509/') for p in prs):return False
+ if query("select id from tasks where state in ('published','verified','publishing','publication_uncertain','update_uncertain') limit 1"):return False
+ token='census:'+sha
+ if query('select v from meta where k=?',(token,)):return False
+ pre=K('judge',['/scratch/census-venv/bin/python','-m','mutmut','run','--help'],ok=False)
+ if pre.returncode:raise RuntimeError('full mutation environment not seeded')
+ root=R/'waves'/sha;root.mkdir(parents=True,exist_ok=True);query('insert into meta values(?,?)',(token,'running'));print('full mutation census',sha,flush=True)
+ with (root/'mutation.log').open('wb') as log:
+  rr=subprocess.run(['kubectl','-n','openhands','exec','deploy/pi-monori-judge','-c','sandbox','--','sh','-ec','cd /scratch/monori; rm -rf mutants; export PATH=/scratch/census-venv/bin:$PATH PYTHONPATH=/scratch;exec timeout -k 30 86400 /scratch/census-venv/bin/python -m mutmut run --max-children 1'],stdout=log,stderr=log,timeout=86500)
+ if rr.returncode:
+  query('update meta set v=? where k=?',('failed '+str(rr.returncode),token));return False
+ extractor=(R/'index_catalog.py').read_text().split("if __name__=='__main__':")[0]+"\nroot=pathlib.Path('/scratch/monori/mutants'); c=extract(root); statuses={k:v for f in root.rglob('*.py.meta') for k,v in json.loads(f.read_text())['exit_code_by_key'].items()};sys.stdout.buffer.write(gzip.compress(json.dumps([c,statuses]).encode()))"
+ with (root/'raw.json.gz').open('wb') as out:subprocess.run(['kubectl','-n','openhands','exec','-i','deploy/pi-monori-judge','-c','sandbox','--','python','-'],input=extractor.encode(),stdout=out,check=True,timeout=180)
+ catalog,status=json.load(gzip.open(root/'raw.json.gz'));expect=sum(len(f['diffs']) for f in catalog.values());assert expect and len(status)>=expect and all(type(v) is int for v in status.values()),'incomplete census; never mark as clear';rows=[];classes={0:'Survivors by area',33:'No coverage by area',-24:'Timeouts'}
+ for uid,rc in status.items():
+  if rc not in classes:continue
+  u=uid if uid.startswith('monori.') else 'monori.'+uid;fam,_,num=u.rpartition('__mutmut_');rows.append((u,fam,int(num),classes[rc],100,'queued' if num in catalog.get(fam,{}).get('diffs',{}) else 'catalog_drift',sha,'fresh full census',None,0))
+ (root/'catalog.json.gz').write_bytes(gzip.compress(json.dumps(catalog).encode()));(root/'summary.json').write_text(json.dumps({'base':sha,'total':len(status),'exit_codes':dict(collections.Counter(status.values())),'remaining':len(rows)}));
+ with contextlib.closing(sqlite3.connect(D)) as db, contextlib.closing(sqlite3.connect(root/'previous.sqlite')) as backup:
+  db.backup(backup)
+  with db:
+   db.execute('delete from tasks');db.executemany('insert into tasks values(?,?,?,?,?,?,?,?,?,?)',rows);db.execute('insert or replace into meta values(?,?)',('active_census',sha));db.execute('update meta set v=? where k=?',('complete',token))
+ init();print('census complete; residual tasks',len(rows),flush=True);return True
+
 def loop():
- lock=(R/'run.lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX);init();query("update tasks set state='queued' where state in ('authoring','survived','rejected','screening')");query("update tasks set state='publication_uncertain' where state='publishing'");lastfetch=0;sha=None;slots=0
+ lock=(R/'run.lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX);init();query("update tasks set state='published' where pr is not null and state in ('authoring','survived','rejected')");query("update tasks set state='queued' where pr is null and state in ('authoring','survived','rejected','screening')");query("update tasks set state='publication_uncertain' where state='publishing'");lastfetch=0;sha=None;slots=0
  while not (R/'PAUSE-CAMPAIGN').exists():
   try:
    if time.time()-lastfetch>180 or not sha:
     git('fetch','--depth=1','origin','main');head=git('rev-parse','FETCH_HEAD').strip();install_base(head);sha=head;prs=remote_json('pulls?state=open&per_page=100');slots=0 if len(prs)>=100 else max(0,5-sum(p['head']['ref'].startswith('openhands/issue-509/') for p in prs));reconcile(prs,sha);lastfetch=time.time()
+    try:repair_one(prs,sha)
+    except Exception as ex:print('CI repair deferred',type(ex).__name__,str(ex)[:180],flush=True)
    ready=query("select * from tasks where state='verified' order by updated limit 1")
    if slots and ready:publish(ready[0],sha);slots-=1;continue
    ts=query("select * from tasks where state='queued' order by case when ord<0 then ord else 0 end, num, ord, id limit 1")
-   if not ts:time.sleep(90);continue
+   if not ts:
+    if not census(sha,prs):time.sleep(90)
+    continue
    c=ts[0]
    try:mark(c,'screening','Independent old-suite check on current main',sha);screen(c,sha)
    except (subprocess.TimeoutExpired,RuntimeError,ValueError) as ex:mark(c,'infra_triage',str(ex)[:400],sha)

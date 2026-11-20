@@ -514,3 +514,13 @@ failures/timeouts, source drift and inconclusive answers are not fixes. PR publi
 is not Ready. Preserve closed-unmerged/uncertain writes; reconcile before retry. After
 merge/backlog reconciliation run the next full mutation census and replan the residual;
 the narrow focused proofs are not a substitute for that project-wide census.
+
+The full dispatcher also samples checks for owned open PRs and gives red current-head
+checks back to Pi for a bounded in-place repair, requiring new independent proof and
+expected-head update (never merge). It does not silently resolve human/bot threads.
+Once a changed main is reached, the wave has drained and published writes are
+reconciled, `census()` runs full `mutmut run --max-children 1` in the offline judge,
+archives the old database, saves the actual statuses and builds the next queue from
+0/33/-24 on that SHA. One census per SHA, incomplete/failing runs are not success;
+lockfile drift and ambiguous writes fail closed. This final full scan is a future
+post-merge stage, not a test already performed on the projects' unmerged PRs.
