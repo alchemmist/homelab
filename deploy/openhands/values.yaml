@@ -65,9 +65,9 @@ monoriPublisher: true
 
 # Continue only MaxIterationsReached for the owner's Monori mutation task.
 # Set to an empty string to disarm. No other chat or error is retried.
-continueIterationChat: '1ab3985a-2193-4177-8dd2-8ec7d54dbfeb'
+continueIterationChat: ''
 
-continueQaChat: '51a35822-a870-43cc-a775-fd5e662f0039'
+continueQaChat: ''
 
 # Owner explicitly requested no iteration-count stop for main agents, task workers or goals.
 unlimitedIterations: true
@@ -78,3 +78,5 @@ retireFailedBackup: true
 workerRegistries:
   mutation: 75ad056ce4354c2e86fd12f8e1f4f6fe
   qa: e74a67536db4498196f4a961070bf471
+
+monoriPilot: true

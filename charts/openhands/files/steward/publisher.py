@@ -1,4 +1,5 @@
 """Closed set of GitHub actions. Never execute candidate code or accept URLs/refs."""
+import hmac
 import base64, json, re, uuid
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -96,6 +97,8 @@ def review(x):
 
 def dispatch(x):
     check(isinstance(x,dict));action=x.get('action')
+    if action=='create' and Path('/proof').is_dir():
+        signature=x.pop('proof','');check(isinstance(signature,str) and hmac.compare_digest(signature,hmac.new(Path('/proof/key').read_bytes(),json.dumps(x,sort_keys=True).encode(),'sha256').hexdigest()))
     if action=='qa_issue':return qa_issue(x)
     if action=='qa_capabilities':return {'actions':['qa_issue','qa_create','update','threads','reply_then_resolve','report'],'evidence':'reviewed synthetic PNG and optional 6fps H.264 MP4 from frames','merge':False}
     if action=='capabilities':return {'repository':REPO,'issue':509,'actions':['create','update','report','threads','reply_then_resolve'],'merge':False,'main_write':False}

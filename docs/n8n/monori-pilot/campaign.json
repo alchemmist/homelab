@@ -1,0 +1,59 @@
+{
+  "name": "Monori mutation pilot — durable two-card loop",
+  "nodes": [
+    {
+      "id": "a1baac3f-cb58-407f-ba3a-993403a2ff61",
+      "name": "Every minute",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "0d3caf14-9258-4351-a665-19e7259b1676",
+      "name": "Reconcile one card",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        230,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://mutation-pilot.openhands.svc.cluster.local:8083/tick",
+        "options": {
+          "timeout": 10000
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every minute": {
+      "main": [
+        [
+          {
+            "node": "Reconcile one card",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "iZn7biFh6321a1w8"
+  }
+}

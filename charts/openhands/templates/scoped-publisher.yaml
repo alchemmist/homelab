@@ -51,11 +51,17 @@ spec:
             - {name: encoder, mountPath: /encoder, readOnly: true}
             - {name: temp, mountPath: /tmp}
             - {name: credential, mountPath: /credential, readOnly: true}
+            {{- if .Values.monoriPilot }}
+            - {name: proof, mountPath: /proof, readOnly: true}
+            {{- end }}
       volumes:
         - {name: encoder, emptyDir: {sizeLimit: 120Mi}}
         - {name: temp, emptyDir: {sizeLimit: 24Mi}}
         - name: code
           configMap: {name: monori-publisher-code}
+        {{- if .Values.monoriPilot }}
+        - {name: proof, secret: {secretName: monori-proof-ticket, defaultMode: 0440}}
+        {{- end }}
         - name: credential
           secret: {secretName: monori-publisher-user, defaultMode: 0440}
 ---
