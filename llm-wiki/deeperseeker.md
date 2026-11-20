@@ -213,7 +213,7 @@ signature и открывают разные чаты upstream. Обрыв ст�
 
 `Argo Health=Degraded` при `QUARANTINED`-токене — ожидаемое поведение, readiness честно красный, откатывать лимиты не надо.
 
-Панель `Web chat log lines per hour (incomplete)` на `socrat-llm-keys` считает неполно. Правило Loki `deeperseeker:web_chats:created:1h` ищет строки `chat_session/create`. Образ `1b1148ec1e2a` пишет эту строку при ошибке и молчит при успешном создании, поэтому цифра — не число чатов. На неё не опираться. Следующая сборка образа накладывает `deploy/deeperseeker/patches/log-created-chat-session.patch` после прокси-патча: успех пишет `created chat_session`. Пока образ не пересобран, панель остаётся неполной.
+График веб-чатов убран с публичного `socrat-llm-keys`: свободное место зарезервировано для четвёртой модели. Диагностика остаётся в Loki. Правило Loki `deeperseeker:web_chats:created:1h` ищет строки `chat_session/create`. Образ `1b1148ec1e2a` пишет эту строку при ошибке и молчит при успешном создании, поэтому цифра — не число чатов. На неё не опираться. Следующая сборка образа накладывает `deploy/deeperseeker/patches/log-created-chat-session.patch` после прокси-патча: успех пишет `created chat_session`. До проверки нового образа не считать строки лога числом чатов.
 
 ### Сбросить сессии перед возвратом аккаунта
 

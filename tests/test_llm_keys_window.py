@@ -8,7 +8,7 @@ import pytest
 
 TABLE_PANEL_ID = 4
 REQUEST_TARGET_COUNT = 5
-DASHBOARD_PANEL_COUNT = 5
+DASHBOARD_PANEL_COUNT = 4
 TABLE_GRID_Y = 16
 REQUEST_PANEL_HEIGHT = 8
 REQUEST_MODELS = ("qwen3.8-27b", "venice-agentic-deepseek-v4.1-flash-uncensored", "o-deepseek")
@@ -47,11 +47,6 @@ def test_temporary_acceptance_keys_are_not_user_activity() -> None:
     ]
     assert len(targets) == REQUEST_TARGET_COUNT
     assert all('api_key_alias!~"venice-acceptance-.*"' in t["expr"] for t in targets)
-    chats = next(p for p in d["panels"] if p["id"] == 5)
-    assert "[1h]" in chats["targets"][0]["expr"] and "chat_session" in chats["targets"][0]["expr"]
-    assert "incomplete" in chats["title"]
-    assert "\u0441\u0447\u0438\u0442\u0430\u0435\u0442 \u043d\u0435\u043f\u043e\u043b\u043d\u043e" in chats["description"].lower()
-    assert chats["fieldConfig"]["defaults"]["custom"]["axisLabel"] == "incomplete log lines / rolling hour"
 
 
 def test_models_are_separate_and_public_content_is_aggregate() -> None:
@@ -62,7 +57,7 @@ def test_models_are_separate_and_public_content_is_aggregate() -> None:
         ).read_text()
     )
     assert len(d["panels"]) == DASHBOARD_PANEL_COUNT
-    assert [p["id"] for p in d["panels"]] == [1, 2, 3, 5, TABLE_PANEL_ID]
+    assert [p["id"] for p in d["panels"]] == [1, 2, 3, TABLE_PANEL_ID]
     assert d["annotations"] == {"list": []}
     assert d["time"]["from"] == "now-1h"
     for panel, model in zip(d["panels"][:3], REQUEST_MODELS, strict=True):
@@ -142,7 +137,6 @@ def test_owner_three_chart_grid_and_legend() -> None:
         {"x": 0, "y": 0, "w": 12, "h": 8},
         {"x": 12, "y": 0, "w": 12, "h": 8},
         {"x": 0, "y": 8, "w": 12, "h": 8},
-        {"x": 12, "y": 8, "w": 12, "h": 8},
         {"x": 0, "y": 16, "w": 24, "h": 8},
     ]
     assert all(p["options"]["legend"]["placement"] == "bottom" for p in d["panels"][:3])

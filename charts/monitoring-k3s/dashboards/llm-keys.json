@@ -213,51 +213,6 @@
       }
     },
     {
-      "id": 5,
-      "title": "Web chat log lines per hour (incomplete)",
-      "type": "timeseries",
-      "description": "\u0421\u0447\u0438\u0442\u0430\u0435\u0442 \u043d\u0435\u043f\u043e\u043b\u043d\u043e. Image 1b1148ec1e2a does not log a successful chat_session create. This rolling hour counts log lines that mention chat_session/create, which are errors and other noise, not chats. Do not use it to decide pace or bans. Do not sum adjacent points.",
-      "datasource": {
-        "type": "loki",
-        "uid": "loki"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 8,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum(count_over_time({service_name=\"deeperseeker\", k8s_namespace_name=\"deeperseeker\"} |~ \"chat_session/create|created chat_session\" [1h]))",
-          "legendFormat": "incomplete log lines / rolling hour"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "min": 0,
-          "decimals": 0,
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "showPoints": "never",
-            "spanNulls": false,
-            "axisLabel": "incomplete log lines / rolling hour"
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        }
-      }
-    },
-    {
       "id": 4,
       "title": "Usage over the last 30 days",
       "type": "table",
