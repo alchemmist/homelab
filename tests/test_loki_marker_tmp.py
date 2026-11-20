@@ -31,7 +31,13 @@ class LokiMarkerScratchTests(unittest.TestCase):
             self.assertEqual(mounts["data"]["mountPath"], "/var/lib/otel")
             self.assertTrue(mounts["tls"]["readOnly"])
             if name == "otel-loki":
-                self.assertEqual(volumes["data"]["hostPath"]["path"], "/var/lib/private/homelab-otel-loki")
+                affinity = spec["affinity"]["nodeAffinity"]
+                required = affinity["requiredDuringSchedulingIgnoredDuringExecution"]["nodeSelectorTerms"]
+                self.assertEqual(required, [{"matchExpressions": [{"key": "kubernetes.io/hostname", "operator": "In", "values": ["socrat-0", "socrat-1"]}]}])
+                self.assertEqual(affinity["preferredDuringSchedulingIgnoredDuringExecution"][0]["preference"]["matchExpressions"][0]["values"], ["socrat-0"])
+                self.assertNotIn("hostPath", volumes["data"])
+                self.assertEqual(volumes["data"]["persistentVolumeClaim"]["claimName"],
+                                 yaml.safe_load((ROOT / "deploy/storage/loki-drill/pvc.yaml").read_text())["metadata"]["name"])
                 self.assertEqual(mounts["marker-tmp"]["mountPath"], "/tmp")
                 self.assertEqual(volumes["marker-tmp"]["emptyDir"], {"sizeLimit": "1Gi"})
             else:
