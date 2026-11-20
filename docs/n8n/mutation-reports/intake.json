@@ -1,0 +1,87 @@
+{
+  "name": "Mutation reports \u2014 signed issue admission",
+  "nodes": [
+    {
+      "id": "ceb57dc8-fb88-46ed-af1f-4419ffc449c1",
+      "name": "GitHub issues",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mutation-reports-v1",
+        "responseMode": "lastNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "webhookId": "c16e73f8-4e2f-4ccd-b829-59265e82dfe1"
+    },
+    {
+      "id": "afaab89a-c2a4-4ee6-a94a-fb8cc35598c2",
+      "name": "Preserve signed bytes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        230,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const i=$input.first(); const raw=i.binary?.data ? await this.helpers.getBinaryDataBuffer(0,'data') : i.json.body?.type==='Buffer' && Array.isArray(i.json.body.data) ? Buffer.from(i.json.body.data) : null; if (!raw || raw.length>210000) throw Error('invalid raw body'); return [{json:{signature:i.json.headers['x-hub-signature-256']||'',raw:raw.toString('base64')}}];"
+      }
+    },
+    {
+      "id": "a438d2f9-46d0-4cd9-991b-d3e0dee31d7a",
+      "name": "Verify sender and queue unique cards",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        460,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://mutation-report-intake.openhands.svc.cluster.local:8091/intake",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {
+          "timeout": 10000
+        }
+      }
+    }
+  ],
+  "connections": {
+    "GitHub issues": {
+      "main": [
+        [
+          {
+            "node": "Preserve signed bytes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preserve signed bytes": {
+      "main": [
+        [
+          {
+            "node": "Verify sender and queue unique cards",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "iZn7biFh6321a1w8",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none"
+  }
+}

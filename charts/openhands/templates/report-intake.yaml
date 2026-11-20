@@ -1,0 +1,56 @@
+{{- if .Values.piMonori }}
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: mutation-report-intake}
+data:
+{{- range $p, $_ := .Files.Glob "files/report-intake/*" }}
+  {{ base $p }}: |
+{{ $.Files.Get $p | indent 4 }}
+{{- end }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: {name: mutation-report-intake, annotations: {argocd.argoproj.io/sync-options: Prune=false}}
+spec: {accessModes: [ReadWriteOnce], storageClassName: local-path, resources: {requests: {storage: 128Mi}}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: mutation-report-intake}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector: {matchLabels: {app: mutation-report-intake}}
+  template:
+    metadata:
+      labels: {app: mutation-report-intake}
+      annotations: {code: {{ print (.Files.Get "files/report-intake/intake.py") (.Files.Get "files/report-intake/repos.json") | sha256sum | quote }}}
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector: {kubernetes.io/hostname: socrat-5}
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: intake
+          image: {{ include "agent-canvas.image" . }}
+          command: [python, -IBu, /code/intake.py]
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          resources: {requests: {cpu: 10m, memory: 32Mi}, limits: {cpu: 100m, memory: 128Mi}}
+          readinessProbe: {tcpSocket: {port: 8091}}
+          volumeMounts: [{name: code, mountPath: /code, readOnly: true}, {name: auth, mountPath: /auth, readOnly: true}, {name: state, mountPath: /state}]
+      volumes: [{name: code, configMap: {name: mutation-report-intake}}, {name: auth, secret: {secretName: mutation-report-hook, defaultMode: 0440}}, {name: state, persistentVolumeClaim: {claimName: mutation-report-intake}}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: mutation-report-intake}
+spec: {selector: {app: mutation-report-intake}, ports: [{port: 8091}]}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: mutation-report-intake}
+spec:
+  podSelector: {matchLabels: {app: mutation-report-intake}}
+  policyTypes: [Ingress, Egress]
+  egress: []
+  ingress:
+    - from: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: automation}}, podSelector: {matchLabels: {app: n8n}}}]
+      ports: [{port: 8091, protocol: TCP}]
+{{- end }}
