@@ -589,3 +589,11 @@ are not silently exempted. Current-head review requests bounded per head; CodeRa
 rate limit is a blocker, not an approval. No merges. Only reply before resolve;
 uncertain/human discussion stays open. New CI or review events re-audit even a
 previously ready PR; labels are asynchronous, not a substitute for branch protection.
+
+2026-11-20 live receipt: separate webhook got HTTP 200 for real check_run,
+check_suite, workflow_run and issue_comment; output queue tracked only #514/#515.
+The worker published an individual evidenced disposition on #514
+(https://github.com/alchemmist/monori/pull/514#issuecomment-7042647700) and requested
+new independent review on #515 head `9dc709f0` (comment 7042694855). Neither was
+ready. CodeRabbit explicitly reported an OSS review limit. No completed Ready or
+red-CI → repair → fully-green cycle claimed solely from this wiring.

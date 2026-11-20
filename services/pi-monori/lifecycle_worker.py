@@ -35,6 +35,8 @@ def audit(item):
   a=api('life_snapshot',n,h);note='; '.join(a['blockers'])[:1250];files=a['files'];valid=len(files)==1 and files[0]['status']=='added' and re.fullmatch(r'(server/tests/unit|ci/tests)/test_\w+\.py',files[0]['filename']);dest=files[0]['filename'] if valid else '';test='\n'.join(v[1:] for v in files[0].get('patch','').splitlines() if v.startswith('+') and not v.startswith('+++')) if valid else ''
   if a['ready_to_review']:api('life_ready',n,h);state='ready';note='All current-head checks, bot reviews and dispositions confirmed twice'
   elif valid:
+   # Persist a factual snapshot before a potentially slow or rate-limited agent call.
+   queue('ack',pr=n,dirty=item['dirty'],state='blocked',head=h,note=note[:1500])
    failures=[x for x in a['checks'] if x.get('conclusion') in ('FAILURE','TIMED_OUT','CANCELLED','ACTION_REQUIRED') or x['status'] in ('FAILURE','ERROR')];matches=[]
    if failures:
     diag=api('life_ci',n,h);matches=diag['owned'];other=diag['other']
@@ -54,7 +56,8 @@ def audit(item):
     if r.get('human_discussion') or r['truncated'] or 'Incomplete pagination; cannot authorize handoff' in a['blockers']:continue
     v=decide(r,test)
     if r['thread'] and v and v['decision']=='irrelevant' and v['quote'] not in test:v=None
-    if v is None or v['decision']=='uncertain':sql('insert or replace into seen values(?,?,?)',(k,time.time()+21600,'needs evidence'));continue
+    if v is None or v['decision']=='uncertain':
+     sql('insert or replace into seen values(?,?,?)',(k,time.time()+(180 if v is None else 21600),'retry assessment' if v is None else 'needs evidence'));break
     why=v['reason']+' Evidence: '+v['quote'];fixed=sql("select result from fixes where pr=? and remark=? and state='updated' and result=?",(n,r['id'],h));
     # Also recognize a fix already pushed BEFORE this workflow was installed.
     # Use the remark's original commit and an actual added line, not author prose.
