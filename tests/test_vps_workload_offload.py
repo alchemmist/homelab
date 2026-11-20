@@ -47,7 +47,7 @@ class VPSWorkloadOffloadTests(unittest.TestCase):
         )
 
     def test_playbook_refuses_cluster_wide_eviction(self) -> None:
-        """Keep reconcile disabled and the play limited to the two roles."""
+        """Keep reconcile disabled and the play limited to the scoped role."""
         play = yaml.safe_load((ROOT / "ansible/playbooks/socrat-2-offload.yml").read_text())[0]
         checks = [
             task["ansible.builtin.assert"]
@@ -57,7 +57,7 @@ class VPSWorkloadOffloadTests(unittest.TestCase):
         self.assertEqual(
             checks[0]["that"], "not (container_resource_policy_reconcile | default(false) | bool)"
         )
-        self.assertEqual(play["roles"], ["container_resource_policy", "vps_workload_offload"])
+        self.assertEqual(play["roles"], ["vps_workload_offload"])
 
     def test_image_proxy_helm_values_require_vps_placement(self) -> None:
         """Require the image-proxy chart to select the VPS node."""

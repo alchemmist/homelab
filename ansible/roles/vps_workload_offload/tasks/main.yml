@@ -1,5 +1,12 @@
 ---
 # img-proxy is managed by Argo CD and pinned to socrat-2; do not offload it.
+- name: Remove only the two obsolete admission pins without reinstalling cluster-wide policy
+  ansible.builtin.script: unpin_admission.py --apply
+  args:
+    executable: python3
+  register: offload_admission
+  changed_when: "'updated two workload profiles' in offload_admission.stdout"
+
 - name: Converge and verify each selected deployment sequentially
   ansible.builtin.include_tasks: deployment.yml
   loop:
