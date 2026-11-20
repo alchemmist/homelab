@@ -7,7 +7,7 @@ remained, on socrat-1. The packaged digest on 0, 1 and 5 was identical, but only
 etcd-only node 2 has no server manifests directory. Do not restart K3s or replay
 the broad HA role to fix this drift. No disk, VM or database migration is needed.
 
-Scope: keep the two **existing intended DNS replicas** on 0/3; prevent the new
+Scope: restore the two **intended DNS replicas** on 0/3; prevent the new
 server 5 from reapplying the packaged singleton. Do not modify `coredns.yaml`,
 Corefile, Service, ClusterIP, RBAC or unrelated AddOns. `.skip` suppresses future
 packaged reconciliation, not the currently running Deployment.
@@ -22,3 +22,18 @@ verify Ready endpoints and real DNS queries before atomically installing the
 byte-identical overlay on 5. Recheck all writers when adding another API server.
 If rollout fails, inspect events and use an inverse UID/spec-guarded patch only
 against the exact attempted spec. Do not delete the Deployment or its Service.
+
+## Endpoint gates and writer identities
+
+- Before: exactly one Ready endpoint on 1; none on 0 or 3. Only writers 0/1
+  had the matching skip/HA overlay; writer 5 had only the packaged file.
+- Transition: skip staged on 5, writers 0/1 unchanged. During the guarded
+  rollout the old pod on 1 may briefly coexist with new endpoints.
+- After: require exactly two non-terminating Ready endpoints on 0 and 3;
+  no endpoint on 1 or 5. The intended **writers** are 0, 1 and 5, not 0/3.
+  Verify the staged skip and final overlay digest independently on each writer.
+
+On 20 November both new endpoints and kube-dns VIP answered A queries via UDP
+and TCP from both 0 and 3. At 15:35 UTC node 5 was Ready=Unknown and unreachable
+via SSH/API; writer-5 final overlay and n8n pod-side checks were not confirmed.
+Do not count those as DNS failures or restart the node. Retry when available.
