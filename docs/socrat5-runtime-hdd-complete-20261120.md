@@ -87,3 +87,17 @@ proxy; do not substitute readiness for full SSO/whole-cluster acceptance.
 
 Dynamic HDD/SSD StorageClasses and application-tier migrations remain separate
 work. The earlier static-tier draft is not the final automatic HDD-first policy.
+
+
+## Final accepted runtime snapshot
+
+- Kubelet summary: nodeFs capacity99,677,949,952 bytes (SSD); imageFs
+  capacity2,163,348,520,960 bytes (HDD), available~2.078TB. This independently
+  confirms kubelet/runtime capacity accounting follows the new HDD filesystem.
+- 40 node5 Pods Ready; only DeeperSeeker remains unready with the already observed
+  external401. SearXNG and Umami subsequently reached Synced/Healthy.
+- Grafana, Grafana MCP, n8n, OpenHands Synced/Healthy; n8n2/2 with0 restarts.
+  Rancher native backend/proxy remain Ready; aggregate Argo Degraded remains open.
+- Original21 node5 application PVC identities match the pre-migration inventory.
+- Day-2 Ansible applied successfully; repeat run ok5 changed0 failed0, no restart.
+- SSD preimage retained, not deleted; runtime growth/updates now occur on HDD.
