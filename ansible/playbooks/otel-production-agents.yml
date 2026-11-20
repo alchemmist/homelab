@@ -200,13 +200,13 @@
         enabled: true
         state: started
       loop: [homelab-otel-node-exporter.service, homelab-otel-agent.service]
-    - name: Discover the cluster DNS service address for the native gRPC resolver
+    - name: Discover the Tempo Service IPv4 address for the native gateway
       ansible.builtin.command:
-        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, -n, kube-system, get, service, kube-dns,
+        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, -n, cattle-monitoring-system, get, service, otel-tempo,
                -o, 'jsonpath={.spec.clusterIP}']
-      register: trace_gateway_dns
+      register: trace_gateway_service
       changed_when: false
-      failed_when: trace_gateway_dns.rc != 0 or not (trace_gateway_dns.stdout is match('^[0-9]+(?:\.[0-9]+){3}$'))
+      failed_when: trace_gateway_service.rc != 0 or not (trace_gateway_service.stdout is match('^[0-9]+(?:\.[0-9]+){3}$'))
       when: inventory_hostname == 'socrat-0'
     - name: Install trace gateway configuration on its planned host
       ansible.builtin.copy:
@@ -231,13 +231,13 @@
           Environment=OTEL_BIND_IP=10.250.0.1
           Environment=OTEL_STORAGE_DIR=/var/lib/homelab-otel-traces
           Environment=OTEL_TLS_DIR=%d
-          Environment=OTEL_TEMPO_ENDPOINT=dns://{{ trace_gateway_dns.stdout }}:53/otel-tempo.cattle-monitoring-system.svc.cluster.local:4317
+          Environment=OTEL_TEMPO_ENDPOINT={{ trace_gateway_service.stdout }}:4317
           Environment=GOMEMLIMIT=768MiB
           Environment=GOMAXPROCS=2
           {% for file in native_files %}
           LoadCredential={{ file }}:/var/lib/homelab-otel/tls/{{ file }}
           {% endfor %}
-          ExecStart=/usr/local/lib/homelab-otel/otelcol-contrib --config=/etc/homelab-otel/traces.yaml
+          ExecStart=/usr/local/lib/homelab-otel/otelcol-contrib --config=/etc/homelab-otel/traces.yaml --set=exporters.otlp/tempo.tls.server_name_override=otel-tempo.cattle-monitoring-system.svc.cluster.local
           Restart=on-failure
           RestartSec=5
           TimeoutStopSec=90
