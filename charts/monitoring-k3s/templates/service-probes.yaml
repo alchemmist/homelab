@@ -31,7 +31,9 @@ kind: Deployment
 metadata:
   name: monitoring-service-probes
 spec:
-  replicas: 1
+  replicas: 2
+  strategy:
+    rollingUpdate: {maxUnavailable: 0, maxSurge: 1}
   selector:
     matchLabels:
       app: monitoring-service-probes
@@ -43,8 +45,21 @@ spec:
         app: monitoring-service-probes
     spec:
       automountServiceAccountToken: false
-      nodeSelector:
-        kubernetes.io/hostname: socrat-1
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: [socrat-0, socrat-1]
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: monitoring-service-probes
       securityContext:
         runAsNonRoot: true
         runAsUser: 65534
