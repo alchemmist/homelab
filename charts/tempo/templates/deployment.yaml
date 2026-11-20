@@ -6,7 +6,7 @@ metadata:
     app: otel-tempo
     app.kubernetes.io/part-of: otel-backends
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: otel-tempo
