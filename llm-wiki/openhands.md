@@ -476,3 +476,12 @@ single-writer handoff. Do not resume old writers alongside the new pilot.
 Two-card pilot (`docs/n8n/monori-pilot/campaign.json`): one n8n minute tick, no user-supplied actions. Restricted pod-local adapter stores cursor/attempt/chat in SQLite on the private PVC subpath. One writer; two independent Canvas clones of `61ca009` under `workspace/monori-pilot-v1/{day_number,_amount}/monori`. Agent can suggest scalar input/output, never supply code to the judge. Fresh pinned checkout and locked uv group; actual catalog replacements must match the exact line in the named function. Only assertion failure, passing pre-existing focused tests on mutant, passing combined suite on original qualify. Not a claim about whole-suite survivors or CI/review. Ambiguous publication stays `publishing` for reconciliation. New mutation creates require HMAC with the separate `monori-proof-ticket/key` mounted only in verifier and publisher. No new API keys in n8n/Canvas. Stop via workflow deactivation and pause outstanding conversation. Legacy continuation disabled. Do not rotate ticket in flight.
 
 Active n8n workflow `0KMZHxCWdTw7oC0o`; first scheduled executions 57404/57407/57410 (UTC). An initial real worker read files but spent its 20 turns without returning a case. Use a dedicated tool-free proposal profile with the pinned source facts instead. Main intentionally does not track uv.lock: independent cluster resolution captured as compressed data with verified SHA-256 before locked sync. Historical #511 control in separate checkout: 19 old passed on mutant, 1 failed/19 passed with new test, original 20 passed. This control is not a new PR.
+
+Survivor-first v2: v1 SQLite and conversations retained untouched. Separate database,
+same two scoped catalogs, _amount first. Production schedule now reads state and
+routes through explicit n8n branches: screen, assign, collect, verify, publish.
+`/tick` no longer advances anything. Each stage rechecks eligibility on the server;
+only the server owns testing/signing. Screen records individual pytest verdicts,
+uses a green baseline, restores source and hands a confirmed focused-suite survivor
+and its exact diff to the proposer. No survivor != equivalent. Four unsuccessful
+proposals still stop; no dummy PR to satisfy the workflow.

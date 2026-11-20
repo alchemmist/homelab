@@ -26,11 +26,13 @@ class Pilot(unittest.TestCase):
                 cid=path.split('/')[1]
                 if cid not in chats:raise m.HTTPError('',404,'missing',{},None)
                 if path.endswith('/events'):prompts.append(cid);chats[cid]='finished';return {}
-                if '/events/search?' in path:return {'items': [] if chats[cid]=='idle' else [{'kind':'MessageEvent','source':'agent','llm_message':{'content':[{'text':'{}'}]}}]}
+                if '/events/search?' in path:return {'items': [] if chats[cid]=='idle' else [{'kind':'MessageEvent','source':'agent','llm_message':{'content':[{'text':'{"input":"2020-01-01","expected":3,"why":"test fixture"}'}]}}]}
                 return {'execution_status':chats[cid],'agent':{'llm':{'model':'openai/v-deepseek-uc'}}}
-            for step in range(4):
+            for step in range(10):
                 m=load();m.DB=db;m.init()
-                with patch.object(pathlib.Path,'read_text',return_value=json.dumps({'day_number':'facts','_amount':'facts'})), patch.object(m,'api',side_effect=api), patch.object(m,'verify',return_value=('test.py','test','receipt')), patch.object(m,'http',side_effect=lambda *a: published.append(1) or {'pr':len(published)}),patch.object(pathlib.Path,'read_bytes',return_value=b'test'),patch.object(m.time,'time',return_value=100*step):m.tick()
+                def screen(c):
+                    mid=next(iter(m.CAT[c['name']]));m.sql('insert into scans values(?,?,?)',(c['name'],mid,'survived'));m.save(c,'queued',mid)
+                with patch.object(m,'screen',side_effect=screen), patch.object(pathlib.Path,'read_text',return_value=json.dumps({'day_number':'facts','_amount':'facts'})), patch.object(m,'api',side_effect=api), patch.object(m,'verify',return_value=('test.py','test','receipt')), patch.object(m,'http',side_effect=lambda *a: published.append(1) or {'pr':len(published)}),patch.object(pathlib.Path,'read_bytes',return_value=b'test'),patch.object(m.time,'time',return_value=100*step):m.step(m.decision())
             self.assertEqual([r['state'] for r in m.state()],['published','published']);self.assertEqual(len(set(prompts)),2);self.assertEqual(len(published),2)
 
     def test_case_is_data_not_python(self):

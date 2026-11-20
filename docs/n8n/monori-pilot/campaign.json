@@ -23,7 +23,7 @@
     },
     {
       "id": "0d3caf14-9258-4351-a665-19e7259b1676",
-      "name": "Reconcile one card",
+      "name": "Read durable card and verdicts",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -32,7 +32,257 @@
       ],
       "parameters": {
         "method": "POST",
-        "url": "http://mutation-pilot.openhands.svc.cluster.local:8083/tick",
+        "url": "http://mutation-pilot.openhands.svc.cluster.local:8083/status",
+        "options": {
+          "timeout": 10000
+        }
+      }
+    },
+    {
+      "id": "487cf18d-6628-4278-8cd3-a0cad0c8d45b",
+      "name": "screen?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        490,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0a11bf23-9e81-420b-8cab-db89625f5b39",
+              "leftValue": "={{ $json.next }}",
+              "rightValue": "screen",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "ec6c0b46-7980-4cc7-844f-9b59931f4f95",
+      "name": "Run old tests on catalog mutants",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        710,
+        -140
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://mutation-pilot.openhands.svc.cluster.local:8083/screen",
+        "options": {
+          "timeout": 10000
+        }
+      }
+    },
+    {
+      "id": "9c06f4ab-429a-4a0d-9c9d-1c7f2d9ed826",
+      "name": "assign?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        720,
+        100
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "96e504e3-e96e-4e01-889d-63b305cb6133",
+              "leftValue": "={{ $json.next }}",
+              "rightValue": "assign",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "5ab30fc8-11e8-4eab-b1d4-a72834830469",
+      "name": "Assign exact survivor and diff",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        940,
+        -40
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://mutation-pilot.openhands.svc.cluster.local:8083/assign",
+        "options": {
+          "timeout": 10000
+        }
+      }
+    },
+    {
+      "id": "af08d32a-9625-4b38-8c9d-e0fd9f7b51c4",
+      "name": "collect?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        950,
+        200
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "5350aa78-fcba-462c-ab4d-b92f97ba3e74",
+              "leftValue": "={{ $json.next }}",
+              "rightValue": "collect",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "52005a7f-a22d-4a0a-bac9-689c380f12f4",
+      "name": "Collect OpenHands proposal",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1170,
+        60
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://mutation-pilot.openhands.svc.cluster.local:8083/collect",
+        "options": {
+          "timeout": 10000
+        }
+      }
+    },
+    {
+      "id": "365bcd30-8b74-495e-a3e7-8f0bc3b62cba",
+      "name": "verify?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1180,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ddb24424-3b5b-4eee-ad1d-d3099f49c826",
+              "leftValue": "={{ $json.next }}",
+              "rightValue": "verify",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "57681d67-4dea-4f59-922c-8c5a3ca077b7",
+      "name": "Prove red on mutant and green on main",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1400,
+        160
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://mutation-pilot.openhands.svc.cluster.local:8083/verify",
+        "options": {
+          "timeout": 10000
+        }
+      }
+    },
+    {
+      "id": "0dc6f940-dc3c-4715-9a6f-f62467ec13fa",
+      "name": "publish?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1410,
+        400
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "86f738e5-326a-4348-a4db-33950cdde92c",
+              "leftValue": "={{ $json.next }}",
+              "rightValue": "publish",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "71941557-52e2-4a7a-9679-a4119d881496",
+      "name": "Publish verified regression only",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1630,
+        260
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://mutation-pilot.openhands.svc.cluster.local:8083/publish",
         "options": {
           "timeout": 10000
         }
@@ -44,7 +294,101 @@
       "main": [
         [
           {
-            "node": "Reconcile one card",
+            "node": "Read durable card and verdicts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read durable card and verdicts": {
+      "main": [
+        [
+          {
+            "node": "screen?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "screen?": {
+      "main": [
+        [
+          {
+            "node": "Run old tests on catalog mutants",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "assign?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "assign?": {
+      "main": [
+        [
+          {
+            "node": "Assign exact survivor and diff",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "collect?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "collect?": {
+      "main": [
+        [
+          {
+            "node": "Collect OpenHands proposal",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "verify?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "verify?": {
+      "main": [
+        [
+          {
+            "node": "Prove red on mutant and green on main",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "publish?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "publish?": {
+      "main": [
+        [
+          {
+            "node": "Publish verified regression only",
             "type": "main",
             "index": 0
           }
