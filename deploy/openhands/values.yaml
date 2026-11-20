@@ -80,3 +80,5 @@ workerRegistries:
   qa: e74a67536db4498196f4a961070bf471
 
 monoriPilot: true
+
+piMonori: true
