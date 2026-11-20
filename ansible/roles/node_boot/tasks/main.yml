@@ -57,7 +57,8 @@
 
 - name: Read Wi-Fi automatic connection settings
   ansible.builtin.command: >-
-    nmcli --get-values connection.autoconnect,connection.permissions,802-11-wireless-security.psk-flags
+    nmcli --get-values
+    connection.autoconnect,connection.permissions,802-11-wireless-security.psk-flags
     connection show uuid {{ homelab_boot_wifi_uuid | quote }}
   register: homelab_wifi_boot
   check_mode: false
@@ -71,7 +72,9 @@
       - homelab_wifi_boot.stdout_lines[0] == 'yes'
       - homelab_wifi_boot.stdout_lines[1] == ''
       - homelab_wifi_boot.stdout_lines[2] == '0'
-    fail_msg: Wi-Fi must autoconnect using a system-wide profile with a stored secret; credentials must stay on the node.
+    fail_msg: >-
+      Wi-Fi must autoconnect using a system-wide profile with a stored secret;
+      credentials must stay on the node.
     quiet: true
   when: homelab_boot_wifi_uuid is defined
 

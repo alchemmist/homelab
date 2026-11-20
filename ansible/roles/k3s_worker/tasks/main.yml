@@ -12,7 +12,9 @@
       - k3s_worker_ip.split('.')[-1] | int > 0
       - k3s_worker_ip.split('.')[-1] | int < 255
       - k3s_worker_ip not in (wg_socrat_admin_clients.values() | map(attribute='address') | list)
-      - (wg_socrat_nodes.values() | map(attribute='address') | list | length) == (wg_socrat_nodes.values() | map(attribute='address') | unique | list | length)
+      - >-
+        (wg_socrat_nodes.values() | map(attribute='address') | list | length)
+        == (wg_socrat_nodes.values() | map(attribute='address') | unique | list | length)
 
 - name: Inspect existing server datastore
   ansible.builtin.stat:
@@ -41,7 +43,8 @@
 - name: Require the stable management address
   ansible.builtin.assert:
     that: >-
-      k3s_worker_ip in ((k3s_worker_interface.stdout | from_json)[0].addr_info | map(attribute='local') | list)
+      k3s_worker_ip in ((k3s_worker_interface.stdout | from_json)[0].addr_info
+      | map(attribute='local') | list)
 
 - name: Verify the API is reachable through WireGuard
   ansible.builtin.wait_for:
@@ -102,9 +105,12 @@
         from pathlib import Path
         memory = dict(line.split(':', 1) for line in Path('/proc/meminfo').read_text().splitlines())
         available = int(memory['MemAvailable'].split()[0])
-        used = sum(int(line.split()[3]) for line in Path('/proc/swaps').read_text().splitlines()[1:])
+        used = sum(
+            int(line.split()[3]) for line in Path('/proc/swaps').read_text().splitlines()[1:])
         if available < used + 262144:
-            raise SystemExit('Insufficient available RAM to disable swap safely; stop desktop applications first')
+            raise SystemExit(
+                'Insufficient available RAM to disable swap safely; '
+                'stop desktop applications first')
   when:
     - not k3s_worker_swap_enabled | bool
     - k3s_worker_swap.stdout_lines | length > 1
@@ -167,7 +173,8 @@
 - name: Download the pinned verified Kubernetes binary
   ansible.builtin.get_url:
     url: https://github.com/k3s-io/k3s/releases/download/{{ k3s_worker_version }}/k3s
-    checksum: sha256:https://github.com/k3s-io/k3s/releases/download/{{ k3s_worker_version }}/sha256sum-amd64.txt
+    checksum: sha256:https://github.com/k3s-io/k3s/releases/download/{{
+      k3s_worker_version }}/sha256sum-amd64.txt
     dest: /usr/local/bin/k3s
     owner: root
     group: root

@@ -9,7 +9,9 @@
 - name: Refuse to restore the obsolete home-majority configuration
   ansible.builtin.assert:
     that: not k3s_ha_rebalanced.stat.exists
-    fail_msg: Use playbooks/k3s-role-rebalance.yml for the external-quorum topology; k3s-ha.yml is the original bootstrap workflow.
+    fail_msg: >-
+      Use playbooks/k3s-role-rebalance.yml for the external-quorum topology;
+      k3s-ha.yml is the original bootstrap workflow.
 
 - name: Check the installed k3s version
   ansible.builtin.command: /usr/local/bin/k3s --version
