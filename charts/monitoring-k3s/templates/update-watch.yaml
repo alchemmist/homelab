@@ -1,4 +1,10 @@
 {{- if .Values.updateWatch.enabled }}
+{{- if hasKey .Values.updateWatch "node" }}
+{{- fail "updateWatch.node is obsolete; configure updateWatch.affinity instead" }}
+{{- end }}
+{{- if not .Values.updateWatch.affinity }}
+{{- fail "updateWatch.affinity is required when updateWatch is enabled" }}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -73,8 +79,8 @@ spec:
     spec:
       serviceAccountName: monitoring-update-watch
       automountServiceAccountToken: true
-      nodeSelector:
-        kubernetes.io/hostname: {{ .Values.updateWatch.node }}
+      affinity:
+        {{- toYaml .Values.updateWatch.affinity | nindent 8 }}
       securityContext:
         runAsNonRoot: true
         runAsUser: 65534
