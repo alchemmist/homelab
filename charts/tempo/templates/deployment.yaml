@@ -6,7 +6,8 @@ metadata:
     app: otel-tempo
     app.kubernetes.io/part-of: otel-backends
 spec:
-  replicas: {{ .Values.replicas }}
+  # Single writer: Recreate is not a storage fence for multiple replicas.
+  replicas: 1
   selector:
     matchLabels:
       app: otel-tempo

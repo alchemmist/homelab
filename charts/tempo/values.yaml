@@ -1,5 +1,4 @@
 ---
-replicas: 1
 externalIP: 10.250.0.3
 image: docker.io/grafana/tempo@sha256:12b0820f13ffa10ce956b6e9acc3b03f3cffded99109be6cc09d106fe56e5d38
 existingClaim: tempo-s1-candidate
