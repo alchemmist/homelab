@@ -460,3 +460,15 @@ Both explicit LiteLLM parallel-cap errors are eligible, not arbitrary 429/auth/O
 Timers survive restart; retries target the same errored chat, one admission per model
 per minute across both campaigns, with increasing delay. No provider probe or change
 to pr-agent. This is timed re-admission, not a notification that a slot is free.
+
+### Monori n8n pilot — negative control only
+
+Manual workflow `ix3FjzljwePmO17w` (template `docs/n8n/monori-pilot/negative-control.json`)
+reads the immutable public GitHub commit for #513 and returns `publicationAllowed:false`
+for the known vacuous diff. A changed/missing fixture fails closed. No credentials,
+writer, trigger schedule, OpenHands call, or merge. The template ran with the deployed
+n8n CLI in an isolated temporary user folder/database; this is not a saved execution
+in the production editor. The manual workflow is installed inactive. This regression
+fixture is **not** a general judge. Before enabling dispatch, enforce independent
+old-suite/mutant/new-suite/original verification, current-head publication and durable
+single-writer handoff. Do not resume old writers alongside the new pilot.

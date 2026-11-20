@@ -1,0 +1,73 @@
+{
+  "name": "Monori pilot — #513 negative control",
+  "nodes": [
+    {
+      "id": "a1baac3f-cb58-407f-ba3a-993403a2ff61",
+      "name": "Run negative control",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "0d3caf14-9258-4351-a665-19e7259b1676",
+      "name": "Fetch pinned public commit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        230,
+        0
+      ],
+      "parameters": {
+        "url": "https://api.github.com/repos/alchemmist/monori/commits/8fa0b4b6a566fb172fed26f823329ea5e9e7abe6",
+        "options": {
+          "timeout": 15000
+        }
+      }
+    },
+    {
+      "id": "e69c4dc8-3426-43ab-a403-28336424d9e2",
+      "name": "Reject probe before publication",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const c = $input.first().json;\nif (c.sha !== '8fa0b4b6a566fb172fed26f823329ea5e9e7abe6' || c.files?.length !== 1) throw Error('Unexpected control revision');\nconst f = c.files[0];\nconst added = (f.patch || '').split('\\n').filter(l => l.startsWith('+')).map(l => l.slice(1).trim());\nif (f.filename !== 'server/tests/test_probe_509.py' || added.join('\\n') !== 'def test_x():\\nassert True') throw Error('Unexpected control diff; stop');\nreturn [{json:{control:'monori-513', head:c.sha, decision:'rejected', reason:'unconditional assertion; no mutation evidence', publicationAllowed:false}}];"
+      }
+    }
+  ],
+  "connections": {
+    "Run negative control": {
+      "main": [
+        [
+          {
+            "node": "Fetch pinned public commit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch pinned public commit": {
+      "main": [
+        [
+          {
+            "node": "Reject probe before publication",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "iZn7biFh6321a1w8"
+  }
+}
