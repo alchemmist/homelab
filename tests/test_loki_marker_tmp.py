@@ -40,3 +40,31 @@ class LokiMarkerScratchTests(unittest.TestCase):
                 })
                 self.assertNotIn("marker-tmp", mounts)
                 self.assertNotIn("marker-tmp", volumes)
+
+    def test_loki_storage_phases(self):
+        chart = ROOT / 'charts/loki'
+        claim = yaml.safe_load((ROOT / 'deploy/storage/loki-drill/pvc.yaml').read_text())['metadata']['name']
+        for phase in ('local', 'paused', 'shared', 'typo'):
+            with self.subTest(phase=phase):
+                result = subprocess.run(['helm', 'template', 'loki', str(chart), '-f', str(chart / 'alert-graphs.values.yaml'), '--set-string', f'storagePhase={phase}', '--show-only', 'templates/deployment.yaml'], text=True, capture_output=True)
+                if phase == 'typo':
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn('storagePhase must be', result.stderr)
+                    continue
+                self.assertEqual(result.returncode, 0, result.stderr)
+                dep = yaml.safe_load(result.stdout)['spec']
+                self.assertEqual(dep['replicas'], 0 if phase == 'paused' else 1)
+                self.assertEqual(dep['strategy']['type'], 'Recreate')
+                pod = dep['template']['spec']
+                data = next(v for v in pod['volumes'] if v['name'] == 'data')
+                if phase != 'shared':
+                    self.assertEqual(data['hostPath']['path'], '/var/lib/private/homelab-otel-loki')
+                    self.assertEqual(pod['nodeSelector'], {'kubernetes.io/hostname': 'socrat-1'})
+                    continue
+                self.assertEqual(data, {'name': 'data', 'persistentVolumeClaim': {'claimName': claim}})
+                self.assertEqual(pod['nodeSelector'], {'kubernetes.io/os': 'linux'})
+                affinity = pod['affinity']['nodeAffinity']
+                terms = affinity['requiredDuringSchedulingIgnoredDuringExecution']['nodeSelectorTerms']
+                self.assertEqual(len(terms), 1)
+                self.assertIn({'key': 'kubernetes.io/hostname', 'operator': 'In', 'values': ['socrat-0', 'socrat-1']}, terms[0]['matchExpressions'])
+                self.assertIn({'weight': 100, 'preference': {'matchExpressions': [{'key': 'kubernetes.io/hostname', 'operator': 'In', 'values': ['socrat-0']}]}}, affinity['preferredDuringSchedulingIgnoredDuringExecution'])

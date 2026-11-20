@@ -1,3 +1,5 @@
+{{- $phase := .Values.storagePhase -}}
+{{- if not (has $phase (list "local" "paused" "shared")) -}}{{ fail "storagePhase must be local, paused or shared" }}{{- end -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6,7 +8,7 @@ metadata:
     app: otel-loki
     app.kubernetes.io/part-of: otel-backends
 spec:
-  replicas: 1
+  replicas: {{ ternary 0 1 (eq $phase "paused") }}
   selector:
     matchLabels:
       app: otel-loki
@@ -22,8 +24,28 @@ spec:
         app.kubernetes.io/part-of: otel-backends
     spec:
       automountServiceAccountToken: false
+{{- if eq $phase "shared" }}
+      nodeSelector:
+        kubernetes.io/os: linux
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: [socrat-0, socrat-1]
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: [socrat-0]
+{{- else }}
       nodeSelector:
         kubernetes.io/hostname: {{ .Values.node | quote }}
+{{- end }}
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
@@ -105,6 +127,11 @@ spec:
         configMap:
           name: otel-loki-deeperseeker-rules
       - name: data
+{{- if eq $phase "shared" }}
+        persistentVolumeClaim:
+          claimName: loki-s1-candidate
+{{- else }}
         hostPath:
           path: {{ .Values.storagePath | quote }}
           type: DirectoryOrCreate
+{{- end }}
