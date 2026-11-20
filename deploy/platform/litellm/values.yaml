@@ -205,7 +205,7 @@ volumes:
     secret: {secretName: pg-common-ca}
 volumeMounts:
   - {name: pg-common-ca, mountPath: /etc/pg-common, readOnly: true}
-replicaCount: 0
+replicaCount: 1
 resources:
   limits:
     cpu: "2"
