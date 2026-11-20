@@ -99,7 +99,7 @@ def configure(bundle, cutover):
     native_scrape = importlib.util.module_from_spec(scrape_spec)
     scrape_spec.loader.exec_module(native_scrape)
     scrape = native_scrape.refresh_public_edge_probe(
-        native_scrape.add_logging_self_monitoring(scrape)
+        native_scrape.add_pg_platform_scrape(native_scrape.add_logging_self_monitoring(scrape))
     )
     cm = bootstrap.resource("ConfigMap", "otel-cluster-config", api="v1")
     cm["data"] = {

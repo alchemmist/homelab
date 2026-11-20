@@ -1,0 +1,12 @@
+{{- if .Values.enabled }}
+{{- range $tier := list "common" "critical" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pg-{{ $tier }}-primary-metrics
+spec:
+  selector: {cnpg.io/cluster: pg-{{ $tier }}, cnpg.io/instanceRole: primary}
+  ports: [{name: metrics, port: 9187, targetPort: metrics}]
+{{- end }}
+{{- end }}

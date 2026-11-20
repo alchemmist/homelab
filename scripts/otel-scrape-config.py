@@ -209,6 +209,23 @@ def add_logging_self_monitoring(scrape):
     return result
 
 
+def add_pg_platform_scrape(scrape):
+    result = copy.deepcopy(scrape)
+    job = {
+        "job_name": "postgres-platform", "scrape_interval": "15s", "scrape_timeout": "5s",
+        "static_configs": [{"targets": [f"pg-{tier}-primary-metrics.postgres.svc:9187"],
+                            "labels": {"pg_cluster": f"pg-{tier}"}} for tier in ("common", "critical")],
+        "metric_relabel_configs": [{"source_labels": ["__name__"], "action": "keep",
+                                    "regex": "cnpg_(collector_sync_replicas|pg_replication_streaming_replicas|pg_stat_replication_replay_lag_seconds|pg_replication_slots_pg_wal_lsn_diff)"}],
+    }
+    existing = [x for x in result["scrape_configs"] if x["job_name"] == job["job_name"]]
+    if existing and existing != [job]:
+        raise ValueError("Conflicting postgres-platform scrape job")
+    if not existing:
+        result["scrape_configs"].append(job)
+    return result
+
+
 def compile_config(source, targets, monitors=None):
     monitors = {} if monitors is None else monitors
     active = targets["activeTargets"]
@@ -329,7 +346,7 @@ def compile_config(source, targets, monitors=None):
         "intervalSeconds": 5,
         "timeoutSeconds": 4,
     }
-    outputs["cluster"] = refresh_public_edge_probe(add_logging_self_monitoring(outputs["cluster"]))
+    outputs["cluster"] = add_pg_platform_scrape(refresh_public_edge_probe(add_logging_self_monitoring(outputs["cluster"])))
     outputs = escape_literals(outputs)
     contract["dollarEscaping"] = (
         "literal Prometheus dollars escaped before Collector confmap resolution"
