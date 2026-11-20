@@ -1,6 +1,12 @@
 ---
 # Single-node identity foundation, not HA. Preserve local break-glass service logins.
 global:
+  env:
+    - {name: AUTHENTIK_POSTGRESQL__HOST, value: pg-critical-rw.postgres.svc.cluster.local}
+    - {name: AUTHENTIK_POSTGRESQL__SSLMODE, value: verify-full}
+    - {name: AUTHENTIK_POSTGRESQL__SSLROOTCERT, value: /etc/pg-critical/ca.crt}
+    - name: AUTHENTIK_POSTGRESQL__PASSWORD
+      valueFrom: {secretKeyRef: {name: authentik-pg-critical, key: password}}
   image:
     tag: 2026.8.5
   nodeSelector:
@@ -10,10 +16,12 @@ global:
   securityContext:
     fsGroup: 1000
   volumes:
+    - {name: pg-critical-ca, secret: {secretName: pg-critical-ca}}
     - name: data
       persistentVolumeClaim:
         claimName: authentik-data
   volumeMounts:
+    - {name: pg-critical-ca, mountPath: /etc/pg-critical, readOnly: true}
     - name: data
       mountPath: /data
 authentik:

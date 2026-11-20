@@ -8,6 +8,12 @@ authentik:
 geoip:
   enabled: false
 global:
+  env:
+    - {name: AUTHENTIK_POSTGRESQL__HOST, value: pg-critical-rw.postgres.svc.cluster.local}
+    - {name: AUTHENTIK_POSTGRESQL__SSLMODE, value: verify-full}
+    - {name: AUTHENTIK_POSTGRESQL__SSLROOTCERT, value: /etc/pg-critical/ca.crt}
+    - name: AUTHENTIK_POSTGRESQL__PASSWORD
+      valueFrom: {secretKeyRef: {name: authentik-pg-critical, key: password}}
   deploymentStrategy:
     type: Recreate
   image:
@@ -17,9 +23,11 @@ global:
   securityContext:
     fsGroup: 1000
   volumeMounts:
+  - {name: pg-critical-ca, mountPath: /etc/pg-critical, readOnly: true}
   - mountPath: /data
     name: data
   volumes:
+  - {name: pg-critical-ca, secret: {secretName: pg-critical-ca}}
   - name: data
     persistentVolumeClaim:
       claimName: authentik-data
@@ -38,7 +46,7 @@ server:
     - hosts:
       - auth.socrat.alchemmist.xyz
       secretName: authentik-tls
-  replicas: 1
+  replicas: 0
   resources:
     limits:
       ephemeral-storage: 1Gi
@@ -52,7 +60,7 @@ serviceAccount:
   create: false
 worker:
   automountServiceAccountToken: false
-  replicas: 1
+  replicas: 0
   resources:
     limits:
       ephemeral-storage: 1Gi
