@@ -524,3 +524,18 @@ archives the old database, saves the actual statuses and builds the next queue f
 0/33/-24 on that SHA. One census per SHA, incomplete/failing runs are not success;
 lockfile drift and ambiguous writes fail closed. This final full scan is a future
 post-merge stage, not a test already performed on the projects' unmerged PRs.
+
+### Mutation report admission, not the old two-card n8n timer
+
+`docs/n8n/mutation-reports/intake.json`, live `NxrIqSsMQSeipfXH`, receives actual
+GitHub issues webhooks. `mutation-report` on open or label-added, signed raw bytes,
+repo ID/name + reporter ID allowlist. No payload-provided URL, shell or checkout.
+GitHub hook 714461492 → n8n → credential-free (except webhook verification key),
+no-egress `mutation-report-intake`; its own retained PVC, transaction per report.
+Replays dedup by repo+issue, changed body requires review. Onboarding requires a
+reviewed registry entry, matching report adapter and per-repo publisher scope;
+do not blindly reuse one repository's webhook key across independent trust domains.
+Monori #509 real label delivery verified: 275 + 106 + 24 = 405 queued family cards.
+Admission is live, **not a PR consumer**. No nightly workflow or self-hosted runner
+registered. Legacy Pi pause marker retained; archive and reconcile #514 before
+leasing a matching target in the new executor. Never run two publishers for a card.

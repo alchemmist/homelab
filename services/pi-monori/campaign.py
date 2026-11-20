@@ -94,6 +94,8 @@ def try_pi(t,sha,mid,detail,oldtests,folder,repair=None):
    prompt=f'''Take one atomic item from alchemmist/monori#509: {t['category']}, {mid}, base {sha}. Work directly in this worktree. Write an actual English annotated regression test to {dest} and no other tracked file. Original/mutant diff:\n{detail[:7800]}\nExisting tests {oldtests} passed on both. Read source/dependencies and existing tests, use actual /scratch/monori/.venv/bin/python with PYTHONPATH set to worktree parent, check actual output before proposing. Follow existing formatting and annotation gates: no type: ignore/noqa, no object/Any parameter annotations, prefer the project type alias. No external systems, networking, credentials, exploits, PoCs, bypasses, live banking, gh, merge or dummy PR. Only ordinary offline behavior on fixtures. The independent judge runs your file on original and mutant. If not distinguishable write OUTCOME.md with concrete evidence; not a fictional test. Plans do not count: write your file with tools. Feedback: {feedback[:750]}''';(folder/'prompt.md').write_text(prompt);mark(t,'authoring',f'attempt {attempt}',sha)
    with (folder/f'pi-{attempt}.log').open('wb') as log:
     res=subprocess.run(['kubectl','-n','openhands','exec','-i','deploy/pi-monori-author','-c','sandbox','--','sh','-ec','cd "$1";export PYTHONPATH="$(dirname "$1")";exec timeout -k 5 900 /opt/pi/node_modules/.bin/pi --provider litellm --model v-deepseek-uc --no-approve --no-extensions --no-mcp --no-skills --no-prompt-templates --no-context-files --no-session --tools read,bash,edit,write -p "$(cat)"','sh',wt],input=prompt.encode(),stdout=log,stderr=log,timeout=950)
+   if res.returncode and re.search(rb'unable to upgrade connection|502 Bad Gateway|error dialing backend|i/o timeout', (folder/f'pi-{attempt}.log').read_bytes()[-2000:], re.I):
+    mark(t,'transport_wait','kubectl transport unavailable; no model verdict or attempt charged',sha);return
    if res.returncode:feedback='executor ended without a verified result, exit '+str(res.returncode);time.sleep(60);continue
    get="import pathlib,sys;p=pathlib.Path(sys.argv[1]);assert p.is_file() and not p.is_symlink() and p.stat().st_size<20000;sys.stdout.write(p.read_text())";r=K('author',['python','-c',get,wt+'/'+dest],ok=False)
    if r.returncode:
@@ -226,6 +228,9 @@ def loop():
     git('fetch','--depth=1','origin','main');head=git('rev-parse','FETCH_HEAD').strip();install_base(head);sha=head;prs=remote_json('pulls?state=open&per_page=100');slots=0 if len(prs)>=100 else max(0,5-sum(p['head']['ref'].startswith('openhands/issue-509/') for p in prs));reconcile(prs,sha);lastfetch=time.time()
     try:repair_one(prs,sha)
     except Exception as ex:print('CI repair deferred',type(ex).__name__,str(ex)[:180],flush=True)
+   if query("select id from tasks where state='transport_wait' and updated<? limit 1",(time.time()-180,)):
+    if K('author',['true'],ok=False).returncode==0:
+     query("update tasks set state='queued' where state='transport_wait' and pr is null and updated<?",(time.time()-180,))
    ready=query("select * from tasks where state='verified' order by updated limit 1")
    if slots and ready:publish(ready[0],sha);slots-=1;continue
    ts=query("select * from tasks where state='queued' order by case when ord<0 then ord else 0 end, num, ord, id limit 1")

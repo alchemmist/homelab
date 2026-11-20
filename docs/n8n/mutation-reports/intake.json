@@ -30,7 +30,7 @@
         0
       ],
       "parameters": {
-        "jsCode": "const i=$input.first(); const raw=i.binary?.data ? await this.helpers.getBinaryDataBuffer(0,'data') : i.json.body?.type==='Buffer' && Array.isArray(i.json.body.data) ? Buffer.from(i.json.body.data) : null; if (!raw || raw.length>210000) throw Error('invalid raw body'); return [{json:{signature:i.json.headers['x-hub-signature-256']||'',raw:raw.toString('base64')}}];"
+        "jsCode": "const i=$input.first(); const b=i.binary?.data; if(!b)throw Error('missing binary body'); const raw=b.data && b.data!=='filesystem-v2' ? b.data : (await this.helpers.getBinaryDataBuffer(0,'data')).toString('base64');return [{json:{signature:i.json.headers['x-hub-signature-256']||'',raw}}];"
       }
     },
     {
