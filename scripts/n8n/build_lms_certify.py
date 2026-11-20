@@ -196,7 +196,7 @@ skipped = pg('Record busy or telemetry skip',heartbeat_sql,"[$execution.id,$json
 # No new admission from this branch. Every subsequent LLM phase still has its
 # own strict fresh-series check, including a transition from suite to repair.
 sandbox_claim = pg('Resume sandbox-only checkpoint',f'''WITH candidate AS (
- SELECT id FROM lms_certification.pilot WHERE phase IN ('public','suite','mutate','plausible','wpublic','wsuite')
+ SELECT id FROM lms_certification.pilot WHERE phase IN ('public','suite','mutate','plausible','wpublic','wsuite','triage')
  AND data->>'contract' IN ({contract_list}) AND (lease_until IS NULL OR lease_until < clock_timestamp())
  AND NOT EXISTS (SELECT 1 FROM lms_certification.pilot WHERE lease_until>clock_timestamp())
  ORDER BY updated_at,id FOR UPDATE SKIP LOCKED LIMIT 1)
@@ -240,7 +240,7 @@ if (status !== 200) throw new Error('Unexpected service HTTP status: ' + status)
 
 phase_specs = [('solve','Generate solution'), ('tests','Author blind tests'), ('public','Run public examples'),
                ('repair','Repair solution'), ('suite','Run verified private tests'), ('mutate','Run one fault variant'),
-               ('expand','Add missing corner cases'), ('witness','Independent blind solution'), ('wrepair','Repair witness against public example'), ('audit','Review suite and curriculum'), ('probes','Design realistic wrong solutions'), ('wpublic','Cross-check witness on examples'), ('wsuite','Cross-check witness on private tests'), ('plausible','Check probe on a correct case')]
+               ('expand','Add missing corner cases'), ('witness','Independent blind solution'), ('wrepair','Repair witness against public example'), ('audit','Review suite and curriculum'), ('probes','Design realistic wrong solutions'), ('wpublic','Cross-check witness on examples'), ('wsuite','Cross-check witness on private tests'), ('triage','Run disputed case on witness'), ('plausible','Check probe on a correct case')]
 previous = None
 for i, (phase, title) in enumerate(phase_specs):
     y = i * 300 + 120
@@ -277,7 +277,7 @@ for i, (phase, title) in enumerate(phase_specs):
             prompt=json.dumps('Независимо реши задачу на Python 3, только stdin/stdout. По возможности используй альтернативный простой подход. Код краткий, без комментариев и черновых рассуждений. Не считывай вход дважды. JSON {"source":"..."}. Условие: ') + f' + {r}.data.statement'
             if phase=='wrepair':prompt += f" + '\\nСвой предыдущий исходник и собственный проваленный публичный пример: ' + JSON.stringify([{r}.data.witness,{r}.data.witnessFailure])"
         if phase=='audit':
-            prompt=json.dumps('Проверь по условию каждую пару вход/выход, границы и допустимость входов, покрытие обычных и крайних случаев, а также соответствие решения ограничениям урока. Не требуй обработки недопустимых входов, если их нет среди предложенных тестов. Например, слово из букв непустое; ошибка на пустом вводе вне области сама по себе не недостаток. Не одобряй реально спорные результаты на допустимых входах, неполные задачи, неверный формат или тесты вне области. Верни JSON {"approved":true/false,"reason":"...","issue":"cases|spec|solution","badIndices":[]}. Для изолированной ошибки частных тестов укажи issue=cases и точные нумерованные с нуля индексы неверных случаев. Не меняй публичные примеры. Материалы: ') + f' + JSON.stringify({{statement:{r}.data.statement,examples:{r}.data.examples,cases:{r}.data.cases,source:{r}.data.source}})'
+            prompt=json.dumps('Проверь по условию каждую пару вход/выход, границы и допустимость входов, покрытие обычных и крайних случаев, а также соответствие решения ограничениям урока. Не требуй обработки недопустимых входов, если их нет среди предложенных тестов. Например, слово из букв непустое; ошибка на пустом вводе вне области сама по себе не недостаток. Не одобряй реально спорные результаты на допустимых входах, неполные задачи, неверный формат или тесты вне области. Верни JSON {"approved":true/false,"reason":"...","issue":"cases|spec|solution","badIndices":[]}. Для изолированной ошибки частных тестов укажи issue=cases и точные нумерованные с нуля индексы неверных случаев. Не меняй публичные примеры. Материалы: ') + f' + JSON.stringify({{statement:{r}.data.statement,examples:{r}.data.examples,cases:{r}.data.cases,source:{r}.data.source,disputedIndex:{r}.data.disputedIndex,disputeNote:{r}.data.disputeNote}})'
         if phase=='probes':
             prompt=json.dumps('По условию составь от трёх до пяти разных правдоподобных ошибочных решения школьника на Python: ошибка границы, пропущенное условие или неверное преобразование. Каждое должно читать корректный ввод, завершаться без исключений и отличаться от правильного результата на части (не всех) допустимых входов. Не возвращай пустые программы или константы. JSON {"faults":[{"label":"...","source":"..."}]}. Условие: ') + f" + {r}.data.statement + '\\nИзмени одну содержательную операцию в данном решении, сохрани ввод, вывод и все остальные строки. Для каждой версии оставь часть допустимых входов верной. Не подгоняй под примеры. Исходник: ' + JSON.stringify({r}.data.source) + '\\nРанее непригодные модели ошибок: ' + JSON.stringify({r}.data.rejectedProbeLabels||[]) + '\\nСписок входов, на которых будут проверены варианты: '+JSON.stringify([...{r}.data.examples,...{r}.data.cases].map(c=>c.input)) + '\\nДля каждого варианта мысленно проверь два конкретных входа из списка: один проходит, другой нет. Выбери содержательные ошибки (например, ошибочное приведение регистра, неверная граница). Запрещены сравнения с конкретным тестовым входом и зашитые ответы.'"
         req = http('LLM: ' + title, LLM, x+880, y, role='LITELLM', body=
@@ -288,12 +288,12 @@ try { payload = JSON.parse($json.body.choices[0].message.content); } catch { pay
  const out = next => ({json:{phase:data.calls >= (data.callLimit || 12) && ['solve','repair','tests','expand','witness','wrepair','audit','probes'].includes(next) ? 'needs_review' : next,data}});
 '''
         if phase in ('witness','wrepair'):
-            logic='''const w=payload?.source;if(typeof w!=='string'||!w.trim()||w.length>6000||w.replace(/\\s/g,'')===data.source.replace(/\\s/g,'')){data.reviewReason='no_distinct_witness';return out('needs_review');} data.witness=w;return out('wpublic');''';label='Validate blind witness'
+            logic='''const w=payload?.source;if(typeof w!=='string'||!w.trim()||w.length>6000||w.replace(/\\s/g,'')===data.source.replace(/\\s/g,'')){data.reviewReason='no_distinct_witness';return out('needs_review');} data.witness=w;return out('wpublic');''';label='Validate blind witness' if phase=='witness' else 'Validate repaired witness'
         elif phase=='audit':
             logic='''if(payload?.approved!==true){data.reviewReason='semantic_review_failed';data.reviewDetail=String(payload?.reason||'').slice(0,500);
-const ids=payload?.badIndices; if(payload?.issue==='cases' && Array.isArray(ids)&&ids.length && ids.every(i=>Number.isInteger(i)&&i>=0&&i<data.cases.length)&& (data.auditRetries||0)<2 && !data.semanticApproved){
- data.quarantine=[...(data.quarantine||[]),...data.cases.filter((c,i)=>ids.includes(i))];data.cases=data.cases.filter((c,i)=>!ids.includes(i));data.coverageHints=data.reviewDetail;data.auditRetries=(data.auditRetries||0)+1;return out('expand');
-}return out('needs_review');}data.semanticApproved=true;return out(data.faults?.length?'public':'probes');''';label='Require semantic approval'
+const ids=payload?.badIndices; if(payload?.issue==='cases' && Array.isArray(ids)&&ids.length && ids.every(i=>Number.isInteger(i)&&i>=0&&i<data.cases.length)&& (data.auditRetries||0)<2 && (!data.semanticApproved || (ids.length===1 && ids[0]===data.disputedIndex))){
+ data.disputedIndex=null;data.disputeNote=null;data.quarantine=[...(data.quarantine||[]),...data.cases.filter((c,i)=>ids.includes(i))];data.cases=data.cases.filter((c,i)=>!ids.includes(i));data.coverageHints=data.reviewDetail;data.auditRetries=(data.auditRetries||0)+1;return out('expand');
+}return out('needs_review');}data.semanticApproved=true;if(Number.isInteger(data.disputedIndex)){data.reviewReason='both_references_disagree_with_approved_expected';return out('needs_review');}return out(data.faults?.length?'public':'probes');''';label='Require semantic approval'
         elif phase=='probes':
             logic='''const probes=Array.isArray(payload?.faults)?payload.faults:[];const seen=new Set([data.source.trim(),data.witness.trim()]);data.faults=[];for(const p of probes){if(typeof p?.source!=='string'||!p.source.includes('input(')||p.source.length>6000||typeof p.label!=='string'||seen.has(p.source.trim()))continue;seen.add(p.source.trim());data.faults.push([p.label.slice(0,100),p.source]);}if(data.faults.length<3){data.reviewReason='insufficient_distinct_probes';return out('needs_review');}data.faults=data.faults.slice(0,5);return out('public');''';label='Require three distinct probes'
         elif phase in {'solve','repair'}:
@@ -361,13 +361,18 @@ return out(cases.length<3?phase:'public');'''
         if phase=='plausible':
             source=r+'.data.faults['+r+'.data.variant][1]'
             cases='[['+r+'.data.examples,'+r+'.data.cases].flat()['+r+'.data.probeCase]]'
-        if phase in ('wpublic','wsuite'):source=r+'.data.witness'
+        if phase=='triage':cases='['+r+'.data.failure.case]'
+        if phase in ('wpublic','wsuite','triage'):source=r+'.data.witness'
         req = http('Sandbox: ' + title, RUNNER, x, y, role='SANDBOX', body=f'{{source:{source}, cases:{cases}}}')
         logic = '''const verdict = $json.body?.verdict;
 if (!['accepted','wrong_answer','runtime_error','time_limit','output_limit','memory_limit'].includes(verdict))
   throw new Error('Invalid sandbox verdict');
 '''
-        if phase in ('wpublic','wsuite'):
+        if phase=='triage':
+            logic+='''if(verdict==='accepted')return {json:{phase:data.calls<(data.callLimit||12)?'repair':'needs_review',data}};
+if(verdict!=='wrong_answer'){data.reviewReason='dispute_inconclusive';return {json:{phase:'needs_review',data}};}
+data.disputedIndex=data.failure.index;data.disputeNote='Both independently written programs failed this proposed case. Recompute its expected output from the statement; do not change the statement or public examples.';return {json:{phase:data.calls<(data.callLimit||12)?'audit':'needs_review',data}};''';label='Distinguish bad case from bad solution'
+        elif phase in ('wpublic','wsuite'):
             logic+=("if(verdict!=='accepted'){data.witnessFailure=data.examples[$json.body.test_index-1];data.witnessRetries=(data.witnessRetries||0)+1;return {json:{phase:data.witnessRetries<=2 && data.calls<(data.callLimit||12)?'wrepair':'needs_review',data}};}" if phase=='wpublic' else "if(verdict!=='accepted'){data.reviewReason='independent_witness_disagrees';return {json:{phase:'needs_review',data}};}")+ ("return {json:{phase:data.semanticApproved?'wsuite':'tests',data}};" if phase=='wpublic' else "data.variant=0;data.survivors=[];data.faultsKilled=0;return {json:{phase:'mutate',data}};")
             label='Check witness verdict '+phase
         elif phase=='plausible':
@@ -397,7 +402,8 @@ return {{json: {{phase:next,data}}}};'''
             logic += f'''let next = {json.dumps('suite' if phase == 'public' else 'mutate')};
 if(next==='mutate' && data.contract==='differential_v1')next='wpublic';
 if (verdict !== 'accepted') {{
-  data.failure = {{case: ({cases})[$json.body.test_index-1], verdict}};
+  data.failure = {{case: ({cases})[$json.body.test_index-1], index:$json.body.test_index-1, verdict}};
+  if(data.contract==='differential_v1' && phase==='suite' && verdict==='wrong_answer') return {{json:{{phase:'triage',data}}}};
   next = data.calls < (data.callLimit || 12) ? 'repair' : 'needs_review';
 }} else if (next === 'mutate') {{ data.variant = 0; data.survivors = []; data.faultsKilled = 0; }}
 return {{json: {{phase:next,data}}}};'''
@@ -405,6 +411,7 @@ return {{json: {{phase:next,data}}}};'''
         chain(route, req, reducer(label, route, logic, x+220, y))
 link(previous, terminal, 1)
 
+assert len({n['name'] for n in nodes}) == len(nodes) == len({n['id'] for n in nodes}), 'Duplicate node names or IDs'
 workflow = dict(name='LMS certification — reviewed queue', nodes=nodes, connections=edges,
                 settings=dict(errorWorkflow='iZn7biFh6321a1w8', executionOrder='v1', timezone='Europe/Moscow',
                               executionTimeout=720, saveDataSuccessExecution='none', saveDataErrorExecution='all',

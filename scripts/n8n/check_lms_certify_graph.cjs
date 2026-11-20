@@ -104,7 +104,7 @@ assert.equal(run('Count killed variants or request more coverage',verdict('wrong
 assert.equal(run('Reject crashes and always-wrong probes',verdict('wrong_answer',1),{phase:'plausible',data:{...diff,faults,variant:2,probeCase:0,probeRetries:2}}).phase,'needs_review');
 assert.equal(run('Reject crashes and always-wrong probes',verdict('accepted'),{phase:'plausible',data:{...diff,faults,variant:2,probeCase:0,faultsKilled:2}}).phase,'certified');
 const sandboxOnly = nodes.get('Resume sandbox-only checkpoint').parameters.query;
-assert.match(sandboxOnly,/phase IN \('public','suite','mutate','plausible','wpublic','wsuite'\)/);
+assert.match(sandboxOnly,/phase IN \('public','suite','mutate','plausible','wpublic','wsuite','triage'\)/);
 assert(!sandboxOnly.includes("'repair'"));
 assert.deepEqual(graph.connections['Record busy or telemetry skip'].main[0].map(x=>x.node),['Resume sandbox-only checkpoint']);
 {
@@ -118,4 +118,12 @@ assert.deepEqual(graph.connections['Record busy or telemetry skip'].main[0].map(
  const bad=run('Check witness verdict wpublic',verdict('wrong_answer',1),{phase:'wpublic',data:{...diff}});assert.equal(bad.phase,'wrepair');
  assert.equal(run('Check witness verdict wpublic',verdict('accepted'),{phase:'wpublic',data:{...diff}}).phase,'tests');
  assert.equal(run('Check witness verdict wpublic',verdict('accepted'),{phase:'wpublic',data:{...diff,semanticApproved:true}}).phase,'wsuite');
+}
+assert.equal(nodes.size,graph.nodes.length);assert.equal(new Set(graph.nodes.map(n=>n.id)).size,graph.nodes.length);
+{
+ const d={...diff,cases:[{input:'a\n',output:'x\n'}],semanticApproved:true, failure:{index:0}};
+ assert.equal(run('Distinguish bad case from bad solution',verdict('accepted'),{phase:'triage',data:{...d}}).phase,'repair');
+ const q=run('Distinguish bad case from bad solution',verdict('wrong_answer',1),{phase:'triage',data:{...d}});assert.equal(q.phase,'audit');assert.equal(q.data.disputedIndex,0);
+ assert.equal(run('Require semantic approval',response({approved:true}),q).phase,'needs_review');
+ assert.equal(run('Require semantic approval',response({approved:false,issue:'cases',badIndices:[0],reason:'invalid expected'}),q).phase,'expand');
 }

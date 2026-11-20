@@ -257,7 +257,7 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH candidate AS (\n SELECT id FROM lms_certification.pilot WHERE phase IN ('public','suite','mutate','plausible','wpublic','wsuite')\n AND data->>'contract' IN ('adjacent_sums','beautiful_digits','differential_v1','echo','fizzbuzz','heights','leap','length','meow','mult_table','noinput_reviewed','parity','parrot','python_exact','repeat4','reverse','sign','sum','temperature','thank_count','until_empty','until_nonmultiple','until_zero','xmas','xmas2','xmas3','yes_no','zen') AND (lease_until IS NULL OR lease_until < clock_timestamp())\n AND NOT EXISTS (SELECT 1 FROM lms_certification.pilot WHERE lease_until>clock_timestamp())\n ORDER BY updated_at,id FOR UPDATE SKIP LOCKED LIMIT 1)\nUPDATE lms_certification.pilot p SET owner=$1,lease_until=clock_timestamp()+interval '15 minutes'\nFROM candidate c WHERE p.id=c.id RETURNING p.phase,p.data",
+        "query": "WITH candidate AS (\n SELECT id FROM lms_certification.pilot WHERE phase IN ('public','suite','mutate','plausible','wpublic','wsuite','triage')\n AND data->>'contract' IN ('adjacent_sums','beautiful_digits','differential_v1','echo','fizzbuzz','heights','leap','length','meow','mult_table','noinput_reviewed','parity','parrot','python_exact','repeat4','reverse','sign','sum','temperature','thank_count','until_empty','until_nonmultiple','until_zero','xmas','xmas2','xmas3','yes_no','zen') AND (lease_until IS NULL OR lease_until < clock_timestamp())\n AND NOT EXISTS (SELECT 1 FROM lms_certification.pilot WHERE lease_until>clock_timestamp())\n ORDER BY updated_at,id FOR UPDATE SKIP LOCKED LIMIT 1)\nUPDATE lms_certification.pilot p SET owner=$1,lease_until=clock_timestamp()+interval '15 minutes'\nFROM candidate c WHERE p.id=c.id RETURNING p.phase,p.data",
         "options": {
           "queryReplacement": "={{ [$execution.id] }}"
         }
@@ -857,7 +857,7 @@
         720
       ],
       "parameters": {
-        "jsCode": "const {phase,data} = $(\"Phase: public\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nconst verdict = $json.body?.verdict;\nif (!['accepted','wrong_answer','runtime_error','time_limit','output_limit','memory_limit'].includes(verdict))\n  throw new Error('Invalid sandbox verdict');\nlet next = \"suite\";\nif(next==='mutate' && data.contract==='differential_v1')next='wpublic';\nif (verdict !== 'accepted') {\n  data.failure = {case: ($(\"Phase: public\").item.json.data.examples)[$json.body.test_index-1], verdict};\n  next = data.calls < (data.callLimit || 12) ? 'repair' : 'needs_review';\n} else if (next === 'mutate') { data.variant = 0; data.survivors = []; data.faultsKilled = 0; }\nreturn {json: {phase:next,data}};"
+        "jsCode": "const {phase,data} = $(\"Phase: public\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nconst verdict = $json.body?.verdict;\nif (!['accepted','wrong_answer','runtime_error','time_limit','output_limit','memory_limit'].includes(verdict))\n  throw new Error('Invalid sandbox verdict');\nlet next = \"suite\";\nif(next==='mutate' && data.contract==='differential_v1')next='wpublic';\nif (verdict !== 'accepted') {\n  data.failure = {case: ($(\"Phase: public\").item.json.data.examples)[$json.body.test_index-1], index:$json.body.test_index-1, verdict};\n  if(data.contract==='differential_v1' && phase==='suite' && verdict==='wrong_answer') return {json:{phase:'triage',data}};\n  next = data.calls < (data.callLimit || 12) ? 'repair' : 'needs_review';\n} else if (next === 'mutate') { data.variant = 0; data.survivors = []; data.faultsKilled = 0; }\nreturn {json: {phase:next,data}};"
       }
     },
     {
@@ -1189,7 +1189,7 @@
         1320
       ],
       "parameters": {
-        "jsCode": "const {phase,data} = $(\"Phase: suite\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nconst verdict = $json.body?.verdict;\nif (!['accepted','wrong_answer','runtime_error','time_limit','output_limit','memory_limit'].includes(verdict))\n  throw new Error('Invalid sandbox verdict');\nlet next = \"mutate\";\nif(next==='mutate' && data.contract==='differential_v1')next='wpublic';\nif (verdict !== 'accepted') {\n  data.failure = {case: ($(\"Phase: suite\").item.json.data.cases)[$json.body.test_index-1], verdict};\n  next = data.calls < (data.callLimit || 12) ? 'repair' : 'needs_review';\n} else if (next === 'mutate') { data.variant = 0; data.survivors = []; data.faultsKilled = 0; }\nreturn {json: {phase:next,data}};"
+        "jsCode": "const {phase,data} = $(\"Phase: suite\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nconst verdict = $json.body?.verdict;\nif (!['accepted','wrong_answer','runtime_error','time_limit','output_limit','memory_limit'].includes(verdict))\n  throw new Error('Invalid sandbox verdict');\nlet next = \"mutate\";\nif(next==='mutate' && data.contract==='differential_v1')next='wpublic';\nif (verdict !== 'accepted') {\n  data.failure = {case: ($(\"Phase: suite\").item.json.data.cases)[$json.body.test_index-1], index:$json.body.test_index-1, verdict};\n  if(data.contract==='differential_v1' && phase==='suite' && verdict==='wrong_answer') return {json:{phase:'triage',data}};\n  next = data.calls < (data.callLimit || 12) ? 'repair' : 'needs_review';\n} else if (next === 'mutate') { data.variant = 0; data.survivors = []; data.faultsKilled = 0; }\nreturn {json: {phase:next,data}};"
       }
     },
     {
@@ -1954,8 +1954,8 @@
       "onError": "continueRegularOutput"
     },
     {
-      "id": "215d26c2-192b-527f-af9c-8bd2e48e892c",
-      "name": "Validate blind witness",
+      "id": "ea300f96-ddd3-5e99-b78f-5d70158ccacf",
+      "name": "Validate repaired witness",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -1967,8 +1967,8 @@
       }
     },
     {
-      "id": "c4d090c6-e6bf-577d-8dbb-e3dddde45e17",
-      "name": "Validate blind witness checkpoint?",
+      "id": "99f76b71-0444-52e8-9aed-b121a6f24fde",
+      "name": "Validate repaired witness checkpoint?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
@@ -2162,7 +2162,7 @@
         "method": "POST",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({model:\"qwen3.8-27b\", temperature:0, max_tokens:1000, response_format:{type:'json_object'}, messages:[{role:'user', content: \"\\u041f\\u0440\\u043e\\u0432\\u0435\\u0440\\u044c \\u043f\\u043e \\u0443\\u0441\\u043b\\u043e\\u0432\\u0438\\u044e \\u043a\\u0430\\u0436\\u0434\\u0443\\u044e \\u043f\\u0430\\u0440\\u0443 \\u0432\\u0445\\u043e\\u0434/\\u0432\\u044b\\u0445\\u043e\\u0434, \\u0433\\u0440\\u0430\\u043d\\u0438\\u0446\\u044b \\u0438 \\u0434\\u043e\\u043f\\u0443\\u0441\\u0442\\u0438\\u043c\\u043e\\u0441\\u0442\\u044c \\u0432\\u0445\\u043e\\u0434\\u043e\\u0432, \\u043f\\u043e\\u043a\\u0440\\u044b\\u0442\\u0438\\u0435 \\u043e\\u0431\\u044b\\u0447\\u043d\\u044b\\u0445 \\u0438 \\u043a\\u0440\\u0430\\u0439\\u043d\\u0438\\u0445 \\u0441\\u043b\\u0443\\u0447\\u0430\\u0435\\u0432, \\u0430 \\u0442\\u0430\\u043a\\u0436\\u0435 \\u0441\\u043e\\u043e\\u0442\\u0432\\u0435\\u0442\\u0441\\u0442\\u0432\\u0438\\u0435 \\u0440\\u0435\\u0448\\u0435\\u043d\\u0438\\u044f \\u043e\\u0433\\u0440\\u0430\\u043d\\u0438\\u0447\\u0435\\u043d\\u0438\\u044f\\u043c \\u0443\\u0440\\u043e\\u043a\\u0430. \\u041d\\u0435 \\u0442\\u0440\\u0435\\u0431\\u0443\\u0439 \\u043e\\u0431\\u0440\\u0430\\u0431\\u043e\\u0442\\u043a\\u0438 \\u043d\\u0435\\u0434\\u043e\\u043f\\u0443\\u0441\\u0442\\u0438\\u043c\\u044b\\u0445 \\u0432\\u0445\\u043e\\u0434\\u043e\\u0432, \\u0435\\u0441\\u043b\\u0438 \\u0438\\u0445 \\u043d\\u0435\\u0442 \\u0441\\u0440\\u0435\\u0434\\u0438 \\u043f\\u0440\\u0435\\u0434\\u043b\\u043e\\u0436\\u0435\\u043d\\u043d\\u044b\\u0445 \\u0442\\u0435\\u0441\\u0442\\u043e\\u0432. \\u041d\\u0430\\u043f\\u0440\\u0438\\u043c\\u0435\\u0440, \\u0441\\u043b\\u043e\\u0432\\u043e \\u0438\\u0437 \\u0431\\u0443\\u043a\\u0432 \\u043d\\u0435\\u043f\\u0443\\u0441\\u0442\\u043e\\u0435; \\u043e\\u0448\\u0438\\u0431\\u043a\\u0430 \\u043d\\u0430 \\u043f\\u0443\\u0441\\u0442\\u043e\\u043c \\u0432\\u0432\\u043e\\u0434\\u0435 \\u0432\\u043d\\u0435 \\u043e\\u0431\\u043b\\u0430\\u0441\\u0442\\u0438 \\u0441\\u0430\\u043c\\u0430 \\u043f\\u043e \\u0441\\u0435\\u0431\\u0435 \\u043d\\u0435 \\u043d\\u0435\\u0434\\u043e\\u0441\\u0442\\u0430\\u0442\\u043e\\u043a. \\u041d\\u0435 \\u043e\\u0434\\u043e\\u0431\\u0440\\u044f\\u0439 \\u0440\\u0435\\u0430\\u043b\\u044c\\u043d\\u043e \\u0441\\u043f\\u043e\\u0440\\u043d\\u044b\\u0435 \\u0440\\u0435\\u0437\\u0443\\u043b\\u044c\\u0442\\u0430\\u0442\\u044b \\u043d\\u0430 \\u0434\\u043e\\u043f\\u0443\\u0441\\u0442\\u0438\\u043c\\u044b\\u0445 \\u0432\\u0445\\u043e\\u0434\\u0430\\u0445, \\u043d\\u0435\\u043f\\u043e\\u043b\\u043d\\u044b\\u0435 \\u0437\\u0430\\u0434\\u0430\\u0447\\u0438, \\u043d\\u0435\\u0432\\u0435\\u0440\\u043d\\u044b\\u0439 \\u0444\\u043e\\u0440\\u043c\\u0430\\u0442 \\u0438\\u043b\\u0438 \\u0442\\u0435\\u0441\\u0442\\u044b \\u0432\\u043d\\u0435 \\u043e\\u0431\\u043b\\u0430\\u0441\\u0442\\u0438. \\u0412\\u0435\\u0440\\u043d\\u0438 JSON {\\\"approved\\\":true/false,\\\"reason\\\":\\\"...\\\",\\\"issue\\\":\\\"cases|spec|solution\\\",\\\"badIndices\\\":[]}. \\u0414\\u043b\\u044f \\u0438\\u0437\\u043e\\u043b\\u0438\\u0440\\u043e\\u0432\\u0430\\u043d\\u043d\\u043e\\u0439 \\u043e\\u0448\\u0438\\u0431\\u043a\\u0438 \\u0447\\u0430\\u0441\\u0442\\u043d\\u044b\\u0445 \\u0442\\u0435\\u0441\\u0442\\u043e\\u0432 \\u0443\\u043a\\u0430\\u0436\\u0438 issue=cases \\u0438 \\u0442\\u043e\\u0447\\u043d\\u044b\\u0435 \\u043d\\u0443\\u043c\\u0435\\u0440\\u043e\\u0432\\u0430\\u043d\\u043d\\u044b\\u0435 \\u0441 \\u043d\\u0443\\u043b\\u044f \\u0438\\u043d\\u0434\\u0435\\u043a\\u0441\\u044b \\u043d\\u0435\\u0432\\u0435\\u0440\\u043d\\u044b\\u0445 \\u0441\\u043b\\u0443\\u0447\\u0430\\u0435\\u0432. \\u041d\\u0435 \\u043c\\u0435\\u043d\\u044f\\u0439 \\u043f\\u0443\\u0431\\u043b\\u0438\\u0447\\u043d\\u044b\\u0435 \\u043f\\u0440\\u0438\\u043c\\u0435\\u0440\\u044b. \\u041c\\u0430\\u0442\\u0435\\u0440\\u0438\\u0430\\u043b\\u044b: \" + JSON.stringify({statement:$(\"Phase: audit\").item.json.data.statement,examples:$(\"Phase: audit\").item.json.data.examples,cases:$(\"Phase: audit\").item.json.data.cases,source:$(\"Phase: audit\").item.json.data.source})}]}) }}",
+        "jsonBody": "={{ JSON.stringify({model:\"qwen3.8-27b\", temperature:0, max_tokens:1000, response_format:{type:'json_object'}, messages:[{role:'user', content: \"\\u041f\\u0440\\u043e\\u0432\\u0435\\u0440\\u044c \\u043f\\u043e \\u0443\\u0441\\u043b\\u043e\\u0432\\u0438\\u044e \\u043a\\u0430\\u0436\\u0434\\u0443\\u044e \\u043f\\u0430\\u0440\\u0443 \\u0432\\u0445\\u043e\\u0434/\\u0432\\u044b\\u0445\\u043e\\u0434, \\u0433\\u0440\\u0430\\u043d\\u0438\\u0446\\u044b \\u0438 \\u0434\\u043e\\u043f\\u0443\\u0441\\u0442\\u0438\\u043c\\u043e\\u0441\\u0442\\u044c \\u0432\\u0445\\u043e\\u0434\\u043e\\u0432, \\u043f\\u043e\\u043a\\u0440\\u044b\\u0442\\u0438\\u0435 \\u043e\\u0431\\u044b\\u0447\\u043d\\u044b\\u0445 \\u0438 \\u043a\\u0440\\u0430\\u0439\\u043d\\u0438\\u0445 \\u0441\\u043b\\u0443\\u0447\\u0430\\u0435\\u0432, \\u0430 \\u0442\\u0430\\u043a\\u0436\\u0435 \\u0441\\u043e\\u043e\\u0442\\u0432\\u0435\\u0442\\u0441\\u0442\\u0432\\u0438\\u0435 \\u0440\\u0435\\u0448\\u0435\\u043d\\u0438\\u044f \\u043e\\u0433\\u0440\\u0430\\u043d\\u0438\\u0447\\u0435\\u043d\\u0438\\u044f\\u043c \\u0443\\u0440\\u043e\\u043a\\u0430. \\u041d\\u0435 \\u0442\\u0440\\u0435\\u0431\\u0443\\u0439 \\u043e\\u0431\\u0440\\u0430\\u0431\\u043e\\u0442\\u043a\\u0438 \\u043d\\u0435\\u0434\\u043e\\u043f\\u0443\\u0441\\u0442\\u0438\\u043c\\u044b\\u0445 \\u0432\\u0445\\u043e\\u0434\\u043e\\u0432, \\u0435\\u0441\\u043b\\u0438 \\u0438\\u0445 \\u043d\\u0435\\u0442 \\u0441\\u0440\\u0435\\u0434\\u0438 \\u043f\\u0440\\u0435\\u0434\\u043b\\u043e\\u0436\\u0435\\u043d\\u043d\\u044b\\u0445 \\u0442\\u0435\\u0441\\u0442\\u043e\\u0432. \\u041d\\u0430\\u043f\\u0440\\u0438\\u043c\\u0435\\u0440, \\u0441\\u043b\\u043e\\u0432\\u043e \\u0438\\u0437 \\u0431\\u0443\\u043a\\u0432 \\u043d\\u0435\\u043f\\u0443\\u0441\\u0442\\u043e\\u0435; \\u043e\\u0448\\u0438\\u0431\\u043a\\u0430 \\u043d\\u0430 \\u043f\\u0443\\u0441\\u0442\\u043e\\u043c \\u0432\\u0432\\u043e\\u0434\\u0435 \\u0432\\u043d\\u0435 \\u043e\\u0431\\u043b\\u0430\\u0441\\u0442\\u0438 \\u0441\\u0430\\u043c\\u0430 \\u043f\\u043e \\u0441\\u0435\\u0431\\u0435 \\u043d\\u0435 \\u043d\\u0435\\u0434\\u043e\\u0441\\u0442\\u0430\\u0442\\u043e\\u043a. \\u041d\\u0435 \\u043e\\u0434\\u043e\\u0431\\u0440\\u044f\\u0439 \\u0440\\u0435\\u0430\\u043b\\u044c\\u043d\\u043e \\u0441\\u043f\\u043e\\u0440\\u043d\\u044b\\u0435 \\u0440\\u0435\\u0437\\u0443\\u043b\\u044c\\u0442\\u0430\\u0442\\u044b \\u043d\\u0430 \\u0434\\u043e\\u043f\\u0443\\u0441\\u0442\\u0438\\u043c\\u044b\\u0445 \\u0432\\u0445\\u043e\\u0434\\u0430\\u0445, \\u043d\\u0435\\u043f\\u043e\\u043b\\u043d\\u044b\\u0435 \\u0437\\u0430\\u0434\\u0430\\u0447\\u0438, \\u043d\\u0435\\u0432\\u0435\\u0440\\u043d\\u044b\\u0439 \\u0444\\u043e\\u0440\\u043c\\u0430\\u0442 \\u0438\\u043b\\u0438 \\u0442\\u0435\\u0441\\u0442\\u044b \\u0432\\u043d\\u0435 \\u043e\\u0431\\u043b\\u0430\\u0441\\u0442\\u0438. \\u0412\\u0435\\u0440\\u043d\\u0438 JSON {\\\"approved\\\":true/false,\\\"reason\\\":\\\"...\\\",\\\"issue\\\":\\\"cases|spec|solution\\\",\\\"badIndices\\\":[]}. \\u0414\\u043b\\u044f \\u0438\\u0437\\u043e\\u043b\\u0438\\u0440\\u043e\\u0432\\u0430\\u043d\\u043d\\u043e\\u0439 \\u043e\\u0448\\u0438\\u0431\\u043a\\u0438 \\u0447\\u0430\\u0441\\u0442\\u043d\\u044b\\u0445 \\u0442\\u0435\\u0441\\u0442\\u043e\\u0432 \\u0443\\u043a\\u0430\\u0436\\u0438 issue=cases \\u0438 \\u0442\\u043e\\u0447\\u043d\\u044b\\u0435 \\u043d\\u0443\\u043c\\u0435\\u0440\\u043e\\u0432\\u0430\\u043d\\u043d\\u044b\\u0435 \\u0441 \\u043d\\u0443\\u043b\\u044f \\u0438\\u043d\\u0434\\u0435\\u043a\\u0441\\u044b \\u043d\\u0435\\u0432\\u0435\\u0440\\u043d\\u044b\\u0445 \\u0441\\u043b\\u0443\\u0447\\u0430\\u0435\\u0432. \\u041d\\u0435 \\u043c\\u0435\\u043d\\u044f\\u0439 \\u043f\\u0443\\u0431\\u043b\\u0438\\u0447\\u043d\\u044b\\u0435 \\u043f\\u0440\\u0438\\u043c\\u0435\\u0440\\u044b. \\u041c\\u0430\\u0442\\u0435\\u0440\\u0438\\u0430\\u043b\\u044b: \" + JSON.stringify({statement:$(\"Phase: audit\").item.json.data.statement,examples:$(\"Phase: audit\").item.json.data.examples,cases:$(\"Phase: audit\").item.json.data.cases,source:$(\"Phase: audit\").item.json.data.source,disputedIndex:$(\"Phase: audit\").item.json.data.disputedIndex,disputeNote:$(\"Phase: audit\").item.json.data.disputeNote})}]}) }}",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth"
       },
@@ -2184,7 +2184,7 @@
         2820
       ],
       "parameters": {
-        "jsCode": "const {phase,data} = $(\"Phase: audit\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nlet payload;\ntry { payload = JSON.parse($json.body.choices[0].message.content); } catch { payload = {}; }\n data.calls = (data.calls || 0) + 1;\n const out = next => ({json:{phase:data.calls >= (data.callLimit || 12) && ['solve','repair','tests','expand','witness','wrepair','audit','probes'].includes(next) ? 'needs_review' : next,data}});\nif(payload?.approved!==true){data.reviewReason='semantic_review_failed';data.reviewDetail=String(payload?.reason||'').slice(0,500);\nconst ids=payload?.badIndices; if(payload?.issue==='cases' && Array.isArray(ids)&&ids.length && ids.every(i=>Number.isInteger(i)&&i>=0&&i<data.cases.length)&& (data.auditRetries||0)<2 && !data.semanticApproved){\n data.quarantine=[...(data.quarantine||[]),...data.cases.filter((c,i)=>ids.includes(i))];data.cases=data.cases.filter((c,i)=>!ids.includes(i));data.coverageHints=data.reviewDetail;data.auditRetries=(data.auditRetries||0)+1;return out('expand');\n}return out('needs_review');}data.semanticApproved=true;return out(data.faults?.length?'public':'probes');"
+        "jsCode": "const {phase,data} = $(\"Phase: audit\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nlet payload;\ntry { payload = JSON.parse($json.body.choices[0].message.content); } catch { payload = {}; }\n data.calls = (data.calls || 0) + 1;\n const out = next => ({json:{phase:data.calls >= (data.callLimit || 12) && ['solve','repair','tests','expand','witness','wrepair','audit','probes'].includes(next) ? 'needs_review' : next,data}});\nif(payload?.approved!==true){data.reviewReason='semantic_review_failed';data.reviewDetail=String(payload?.reason||'').slice(0,500);\nconst ids=payload?.badIndices; if(payload?.issue==='cases' && Array.isArray(ids)&&ids.length && ids.every(i=>Number.isInteger(i)&&i>=0&&i<data.cases.length)&& (data.auditRetries||0)<2 && (!data.semanticApproved || (ids.length===1 && ids[0]===data.disputedIndex))){\n data.disputedIndex=null;data.disputeNote=null;data.quarantine=[...(data.quarantine||[]),...data.cases.filter((c,i)=>ids.includes(i))];data.cases=data.cases.filter((c,i)=>!ids.includes(i));data.coverageHints=data.reviewDetail;data.auditRetries=(data.auditRetries||0)+1;return out('expand');\n}return out('needs_review');}data.semanticApproved=true;if(Number.isInteger(data.disputedIndex)){data.reviewReason='both_references_disagree_with_approved_expected';return out('needs_review');}return out(data.faults?.length?'public':'probes');"
       }
     },
     {
@@ -2662,13 +2662,124 @@
       }
     },
     {
-      "id": "a3d49e82-7990-5acc-a911-2564aacd1fd4",
-      "name": "Phase: plausible",
+      "id": "bf1bc981-034d-51d0-96b0-bdc3b1625ee0",
+      "name": "Phase: triage",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
         4610,
         4020
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "yes",
+              "leftValue": "={{ $json.phase === \"triage\" }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "eee1eb6a-291a-50de-b70d-4f04ce7fdb4f",
+      "name": "Sandbox: Run disputed case on witness",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4890,
+        4020
+      ],
+      "parameters": {
+        "url": "http://REPLACE_RUNNER:9000/certification/check-suite",
+        "options": {
+          "timeout": 90000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        },
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({source:$(\"Phase: triage\").item.json.data.witness, cases:[$(\"Phase: triage\").item.json.data.failure.case]}) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_SANDBOX",
+          "name": "SANDBOX"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "f5088d33-992a-51f4-9bad-7d81e690fc3d",
+      "name": "Distinguish bad case from bad solution",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5110,
+        4020
+      ],
+      "parameters": {
+        "jsCode": "const {phase,data} = $(\"Phase: triage\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nconst verdict = $json.body?.verdict;\nif (!['accepted','wrong_answer','runtime_error','time_limit','output_limit','memory_limit'].includes(verdict))\n  throw new Error('Invalid sandbox verdict');\nif(verdict==='accepted')return {json:{phase:data.calls<(data.callLimit||12)?'repair':'needs_review',data}};\nif(verdict!=='wrong_answer'){data.reviewReason='dispute_inconclusive';return {json:{phase:'needs_review',data}};}\ndata.disputedIndex=data.failure.index;data.disputeNote='Both independently written programs failed this proposed case. Recompute its expected output from the statement; do not change the statement or public examples.';return {json:{phase:data.calls<(data.callLimit||12)?'audit':'needs_review',data}};"
+      }
+    },
+    {
+      "id": "77dc9373-82ca-59aa-b798-158d93de3815",
+      "name": "Distinguish bad case from bad solution checkpoint?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        5330,
+        4020
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "yes",
+              "leftValue": "={{ $json.pause !== true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "a3d49e82-7990-5acc-a911-2564aacd1fd4",
+      "name": "Phase: plausible",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4850,
+        4320
       ],
       "parameters": {
         "conditions": {
@@ -2698,8 +2809,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4890,
-        4020
+        5130,
+        4320
       ],
       "parameters": {
         "url": "http://REPLACE_RUNNER:9000/certification/check-suite",
@@ -2734,8 +2845,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5110,
-        4020
+        5350,
+        4320
       ],
       "parameters": {
         "jsCode": "const {phase,data} = $(\"Phase: plausible\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nconst verdict = $json.body?.verdict;\nif (!['accepted','wrong_answer','runtime_error','time_limit','output_limit','memory_limit'].includes(verdict))\n  throw new Error('Invalid sandbox verdict');\nif(verdict==='wrong_answer' && ++data.probeCase<data.examples.length+data.cases.length)return {json:{phase:'plausible',data}};\nif(verdict==='accepted') data.faultsKilled=(data.faultsKilled||0)+1;\nelse {data.rejectedProbeLabels=[...(data.rejectedProbeLabels||[]),data.faults[data.variant][0]];}\ndata.variant++; data.probeCase=0;\nif(data.variant<data.faults.length)return {json:{phase:'mutate',data}};\nif(data.faultsKilled>=3)return {json:{phase:'certified',data}};\ndata.reviewReason='probe_not_plausible';data.probeRetries=(data.probeRetries||0)+1;return {json:{phase:data.probeRetries<=2 && data.calls<(data.callLimit||12)?'probes':'needs_review',data}};"
@@ -2747,8 +2858,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        5330,
-        4020
+        5570,
+        4320
       ],
       "parameters": {
         "conditions": {
@@ -3599,11 +3710,6 @@
             "node": "Validate blind witness checkpoint?",
             "type": "main",
             "index": 0
-          },
-          {
-            "node": "Validate blind witness checkpoint?",
-            "type": "main",
-            "index": 0
           }
         ]
       ]
@@ -3615,19 +3721,9 @@
             "node": "Checkpoint and dispatch next phase",
             "type": "main",
             "index": 0
-          },
-          {
-            "node": "Checkpoint and dispatch next phase",
-            "type": "main",
-            "index": 0
           }
         ],
         [
-          {
-            "node": "Pause and release lease",
-            "type": "main",
-            "index": 0
-          },
           {
             "node": "Pause and release lease",
             "type": "main",
@@ -3716,11 +3812,40 @@
         ]
       ]
     },
+    "Validate repaired witness": {
+      "main": [
+        [
+          {
+            "node": "Validate repaired witness checkpoint?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate repaired witness checkpoint?": {
+      "main": [
+        [
+          {
+            "node": "Checkpoint and dispatch next phase",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pause and release lease",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "LLM: Repair witness against public example": {
       "main": [
         [
           {
-            "node": "Validate blind witness",
+            "node": "Validate repaired witness",
             "type": "main",
             "index": 0
           }
@@ -4043,7 +4168,7 @@
         ],
         [
           {
-            "node": "Phase: plausible",
+            "node": "Phase: triage",
             "type": "main",
             "index": 0
           }
@@ -4055,6 +4180,64 @@
         [
           {
             "node": "Check witness verdict wsuite",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Distinguish bad case from bad solution": {
+      "main": [
+        [
+          {
+            "node": "Distinguish bad case from bad solution checkpoint?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Distinguish bad case from bad solution checkpoint?": {
+      "main": [
+        [
+          {
+            "node": "Checkpoint and dispatch next phase",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pause and release lease",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phase: triage": {
+      "main": [
+        [
+          {
+            "node": "Sandbox: Run disputed case on witness",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Phase: plausible",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sandbox: Run disputed case on witness": {
+      "main": [
+        [
+          {
+            "node": "Distinguish bad case from bad solution",
             "type": "main",
             "index": 0
           }
