@@ -84,6 +84,9 @@ kube-prometheus-stack:
       windows: false
     create: true
   kube-state-metrics:
+    # SSA must replace the atomic nodeSelector inherited from the old Helm release.
+    nodeSelector:
+      kubernetes.io/os: linux
     affinity:
       nodeAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:
