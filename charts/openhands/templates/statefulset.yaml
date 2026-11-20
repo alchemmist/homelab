@@ -157,7 +157,7 @@ spec:
           image: {{ include "agent-canvas.image" . }}
           command: [python, -IBu, /code/loop.py]
           env:
-            - {name: PILOT_CODE_REVISION, value: {{ .Files.Get "files/pilot/loop.py" | sha256sum | quote }}}
+            - {name: PILOT_CODE_REVISION, value: {{ printf "%s/v2" (.Files.Get "files/pilot/loop.py" | sha256sum) | quote }}}
           ports: [{containerPort: 8083, name: pilot}]
           securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
           resources:

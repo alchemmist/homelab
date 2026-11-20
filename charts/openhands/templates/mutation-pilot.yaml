@@ -1,7 +1,9 @@
 {{- if .Values.monoriPilot }}
 apiVersion: v1
 kind: ConfigMap
-metadata: {name: mutation-pilot-code}
+metadata:
+  name: mutation-pilot-code
+  annotations: {argocd.argoproj.io/sync-options: ServerSideApply=true}
 binaryData:
   uv.lock.gz: {{ .Files.Get "files/pilot/uv.lock.gz" | b64enc | quote }}
 data:
