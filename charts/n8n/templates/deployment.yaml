@@ -54,6 +54,10 @@ spec:
         - name: n8n
           image: {{ .Values.image | quote }}
           env:
+            {{- if .Values.postgresCaConfigMap }}
+            - name: NODE_EXTRA_CA_CERTS
+              value: /etc/pg-common/ca.crt
+            {{- end }}
             {{- if .Values.googleTransportEnabled }}
             - name: NODE_OPTIONS
               value: '--require=/opt/n8n/yandex-extension/google-transport-preload.js'
@@ -110,6 +114,9 @@ spec:
               port: http
             initialDelaySeconds: 30
           volumeMounts:
+            {{- if .Values.postgresCaConfigMap }}
+            - {name: pg-common-ca, mountPath: /etc/pg-common, readOnly: true}
+            {{- end }}
             - name: yandex-extension
               mountPath: /opt/n8n/yandex-extension
               readOnly: true
@@ -137,6 +144,10 @@ spec:
             - {name: service-vpn-runtime, mountPath: /vpn-runtime, readOnly: true}
         {{- end }}
       volumes:
+        {{- if .Values.postgresCaConfigMap }}
+        - name: pg-common-ca
+          configMap: {name: {{ .Values.postgresCaConfigMap | quote }}}
+        {{- end }}
         {{- if .Values.serviceVpn.enabled }}
         - name: service-vpn-identity
           secret:
