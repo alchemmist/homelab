@@ -8,8 +8,12 @@
     ansible_host: "{{ '10.250.0.2' if inventory_hostname == 'socrat-2' else inventory_hostname }}"
     ansible_port: "{{ 2223 if inventory_hostname == 'socrat-1' else 2222 }}"
     ansible_ssh_common_args: >-
-      {{ '-o ProxyJump=socrat-4 -o HostKeyAlias=[socrat.alchemmist.xyz]:2224 -o UserKnownHostsFile=~/.ssh/known_hosts.d/homelab -o StrictHostKeyChecking=yes'
-         if inventory_hostname == 'socrat-2' else '-o ProxyJump=none -o StrictHostKeyChecking=yes' }}
+      {{ '-o ProxyJump=socrat-4
+      -o HostKeyAlias=[socrat.alchemmist.xyz]:2224
+      -o UserKnownHostsFile=~/.ssh/known_hosts.d/homelab
+      -o StrictHostKeyChecking=yes'
+      if inventory_hostname == 'socrat-2'
+      else '-o ProxyJump=none -o StrictHostKeyChecking=yes' }}
   tasks:
     - ansible.builtin.file:
         path: /var/lib/homelab-ns3-public-dns
@@ -41,8 +45,12 @@
     ansible_host: "{{ '10.250.0.2' if inventory_hostname == 'socrat-2' else inventory_hostname }}"
     ansible_port: "{{ 2223 if inventory_hostname == 'socrat-1' else 2222 }}"
     ansible_ssh_common_args: >-
-      {{ '-o ProxyJump=socrat-4 -o HostKeyAlias=[socrat.alchemmist.xyz]:2224 -o UserKnownHostsFile=~/.ssh/known_hosts.d/homelab -o StrictHostKeyChecking=yes'
-         if inventory_hostname == 'socrat-2' else '-o ProxyJump=none -o StrictHostKeyChecking=yes' }}
+      {{ '-o ProxyJump=socrat-4
+      -o HostKeyAlias=[socrat.alchemmist.xyz]:2224
+      -o UserKnownHostsFile=~/.ssh/known_hosts.d/homelab
+      -o StrictHostKeyChecking=yes'
+      if inventory_hostname == 'socrat-2'
+      else '-o ProxyJump=none -o StrictHostKeyChecking=yes' }}
   tasks:
     - ansible.builtin.command:
         argv: [/usr/local/sbin/homelab-ns3-public-dns,

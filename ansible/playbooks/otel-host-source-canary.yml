@@ -39,7 +39,9 @@
         - name: Run owned loopback canary with cleanup
           ansible.builtin.command:
             argv: [python3, '-', --directory, '{{ otel_host_source_directory }}']
-            stdin: "{{ lookup('ansible.builtin.file', playbook_dir + '/../../scripts/otel-host-source-canary.py') }}"
+            stdin: >-
+              {{ lookup('ansible.builtin.file',
+              playbook_dir + '/../../scripts/otel-host-source-canary.py') }}
           changed_when: false
           register: native_host_source
           timeout: 180

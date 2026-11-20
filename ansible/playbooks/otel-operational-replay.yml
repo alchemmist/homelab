@@ -39,7 +39,9 @@
       changed_when: false
     - ansible.builtin.assert:
         that:
-          - (ops_memory.stdout | from_json).MemAvailable - otel_ops_memory_bytes >= (ops_memory.stdout | from_json).MemTotal / 5
+          - >-
+            (ops_memory.stdout | from_json).MemAvailable - otel_ops_memory_bytes
+            >= (ops_memory.stdout | from_json).MemTotal / 5
         fail_msg: No workload eviction or reserve waiver for the isolated test
     - ansible.builtin.file:
         path: '{{ otel_ops_root }}/{{ item }}'
@@ -68,7 +70,10 @@
       loop: [ca.crt, server.crt, server.key, client.crt, client.key]
       no_log: true
     - ansible.builtin.copy:
-        content: '{{ lookup("file", playbook_dir + "/../../deploy/monitoring/otel/" + item + ".yaml") | from_yaml | to_json }}'
+        content: >-
+          {{ lookup("file",
+          playbook_dir + "/../../deploy/monitoring/otel/"
+          + item + ".yaml") | from_yaml | to_json }}
         dest: '{{ otel_ops_root }}/config/{{ item }}.json'
         mode: '0600'
       loop: [cluster, trace-gateway, loki, tempo]

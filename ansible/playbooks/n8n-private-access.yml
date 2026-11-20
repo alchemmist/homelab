@@ -21,9 +21,19 @@
     - name: Request private gateway certificate
       ansible.builtin.command:
         argv: [kubectl, --kubeconfig, "{{ n8n_private_kubeconfig }}", apply, -f, '-']
-        stdin: "{{ {'apiVersion': 'cert-manager.io/v1', 'kind': 'Certificate', 'metadata': {'name': n8n_private_tls_secret, 'namespace': 'syncthing'}, 'spec': {'secretName': n8n_private_tls_secret, 'dnsNames': [n8n_private_host], 'issuerRef': {'name': 'letsencrypt-http01', 'kind': 'ClusterIssuer'}}} | to_nice_yaml }}"
+        stdin: >-
+          {{ {'apiVersion': 'cert-manager.io/v1',
+          'kind': 'Certificate',
+          'metadata': {'name': n8n_private_tls_secret,
+          'namespace': 'syncthing'},
+          'spec': {'secretName': n8n_private_tls_secret,
+          'dnsNames': [n8n_private_host],
+          'issuerRef': {'name': 'letsencrypt-http01',
+          'kind': 'ClusterIssuer'}}} | to_nice_yaml }}
       register: n8n_private_certificate
-      changed_when: "'created' in n8n_private_certificate.stdout or 'configured' in n8n_private_certificate.stdout"
+      changed_when: >-
+        'created' in n8n_private_certificate.stdout
+        or 'configured' in n8n_private_certificate.stdout
 
     - name: Wait for private gateway certificate
       ansible.builtin.command:
@@ -56,7 +66,21 @@
 
     - name: Merge n8n virtual host while preserving existing hosts
       ansible.builtin.set_fact:
-        n8n_private_gateway_values: "{{ (n8n_private_gateway.stdout | from_json) | combine({'extraVirtualHosts': ((n8n_private_gateway.stdout | from_json).extraVirtualHosts | default([]) | rejectattr('name', 'equalto', 'n8n') | list) + [{'name': 'n8n', 'host': n8n_private_host, 'nodeName': n8n_private_node, 'upstream': 'http://n8n.automation.svc.cluster.local:80', 'tlsSecret': n8n_private_tls_secret, 'resolver': '10.43.0.10', 'clearAuthorization': false}]}, recursive=true) }}"
+        n8n_private_gateway_values: >-
+          {{ (n8n_private_gateway.stdout | from_json)
+          | combine({'extraVirtualHosts':
+          ((n8n_private_gateway.stdout | from_json).extraVirtualHosts
+          | default([])
+          | rejectattr('name', 'equalto', 'n8n')
+          | list)
+          + [{'name': 'n8n',
+          'host': n8n_private_host,
+          'nodeName': n8n_private_node,
+          'upstream': 'http://n8n.automation.svc.cluster.local:80',
+          'tlsSecret': n8n_private_tls_secret,
+          'resolver': '10.43.0.10',
+          'clearAuthorization': false}]},
+          recursive=true) }}
       no_log: true
 
     - name: Stage private gateway chart
@@ -133,7 +157,9 @@
 
     - name: Add only the n8n private DNS record
       ansible.builtin.copy:
-        content: "host-record=n8n.socrat.alchemmist.xyz,{{ wg_socrat_nodes['socrat-0'].address }}\nlocal=/n8n.socrat.alchemmist.xyz/\n"
+        content: |
+          host-record=n8n.socrat.alchemmist.xyz,{{ wg_socrat_nodes['socrat-0'].address }}
+          local=/n8n.socrat.alchemmist.xyz/
         dest: /etc/homelab-private-dns.d/n8n.conf
         owner: root
         group: root
