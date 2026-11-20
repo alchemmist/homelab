@@ -1,0 +1,22 @@
+---
+# Inactive until the owner adds this file to the Alertmanager Argo Application.
+# Never activate before the cold copy is complete and both PVCs are retained.
+kube-prometheus-stack:
+  alertmanager:
+    alertmanagerSpec:
+      replicas: 1
+      nodeSelector:
+        # Deterministic first mount; remove the hostname in the owning chart after acceptance.
+        kubernetes.io/hostname: socrat-0
+        kubernetes.io/os: linux
+      storage:
+        volumeClaimTemplate:
+          metadata:
+            name: alert-state-nfs
+          spec:
+            accessModes: [ReadWriteOnce]
+            storageClassName: nfs-shared
+            resources:
+              requests:
+                storage: 1Gi
+...
