@@ -55,8 +55,8 @@
               - wget
               - -qO-
               - -T
-              - '10'
-              - "http://{{ item.1.status.podIP }}:8080"
+              - "10"
+              - http://{{ item.1.status.podIP }}:8080
           loop: "{{ (worker_probe_pods.stdout | from_json)['items'] | product((worker_probe_pods.stdout | from_json)['items']) | list }}"
           loop_control:
             label: "{{ item.0.spec.nodeName }} -> {{ item.1.spec.nodeName }}"
