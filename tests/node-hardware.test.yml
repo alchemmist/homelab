@@ -131,9 +131,9 @@ tests:
         resource: cpu
       exp_annotations:
         summary: Tasks are persistently waiting for a node resource.
-        description: 'Node test-node has sustained cpu PSI some pressure for 10m: above 50% for CPU or 25% for memory or I/O,
+        description: "Node test-node has sustained cpu PSI some pressure for 10m: above 50% for CPU or 25% for memory or I/O,
           averaged over 5m. This measures time with at least one stalled task, not resource utilization or Kubernetes eviction
-          pressure.'
+          pressure."
         rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/test-node
 - name: memory psi waits for sustained stall
   interval: 1m
@@ -154,9 +154,9 @@ tests:
         resource: memory
       exp_annotations:
         summary: Tasks are persistently waiting for a node resource.
-        description: 'Node test-node has sustained memory PSI some pressure for 10m: above 50% for CPU or 25% for memory or
+        description: "Node test-node has sustained memory PSI some pressure for 10m: above 50% for CPU or 25% for memory or
           I/O, averaged over 5m. This measures time with at least one stalled task, not resource utilization or Kubernetes
-          eviction pressure.'
+          eviction pressure."
         rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/test-node
 - name: io psi waits for sustained stall
   interval: 1m
@@ -177,9 +177,9 @@ tests:
         resource: io
       exp_annotations:
         summary: Tasks are persistently waiting for a node resource.
-        description: 'Node test-node has sustained io PSI some pressure for 10m: above 50% for CPU or 25% for memory or I/O,
+        description: "Node test-node has sustained io PSI some pressure for 10m: above 50% for CPU or 25% for memory or I/O,
           averaged over 5m. This measures time with at least one stalled task, not resource utilization or Kubernetes eviction
-          pressure.'
+          pressure."
         rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/test-node
 - name: steal averages cpus and waits fifteen minutes
   interval: 1m
