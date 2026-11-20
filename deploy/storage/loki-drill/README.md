@@ -3,7 +3,9 @@
 Only `pvc.yaml` has been provisioned. Production still uses its original
 hostPath. The target is single-writer, NFS on socrat-0, not protection from
 loss of the NFS server. Requested capacity does not impose a hard directory
-quota. Preserve 336h global retention, stream policies, mTLS, ruler and existing
+quota. Both the bound PV and PVC report ReadWriteOnce; this does not fence a
+second writer. Require one replica, Recreate, and verified writer shutdown
+before remounting, as in the sequential two-node pilot. Preserve 336h global retention, stream policies, mTLS, ruler and existing
 compactor marker paths; no change to other storage consumers.
 
 The production Loki image digest was tested in two disposable, sequential pods

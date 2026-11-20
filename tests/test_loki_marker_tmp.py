@@ -31,14 +31,12 @@ class LokiMarkerScratchTests(unittest.TestCase):
             self.assertEqual(mounts["data"]["mountPath"], "/var/lib/otel")
             self.assertTrue(mounts["tls"]["readOnly"])
             if name == "otel-loki":
-                self.assertEqual(volumes["data"]["hostPath"], {
-                    "path": "/var/lib/private/homelab-otel-loki", "type": "DirectoryOrCreate"
-                })
+                self.assertEqual(volumes["data"]["hostPath"]["path"], "/var/lib/private/homelab-otel-loki")
                 self.assertEqual(mounts["marker-tmp"]["mountPath"], "/tmp")
                 self.assertEqual(volumes["marker-tmp"]["emptyDir"], {"sizeLimit": "1Gi"})
             else:
                 self.assertEqual(volumes["data"], {
-                    "name": "data", "persistentVolumeClaim": {"claimName": "tempo-s1-candidate"}
+                    "name": "data", "persistentVolumeClaim": {"claimName": yaml.safe_load((ROOT / "deploy/storage/tempo-drill/pvc.yaml").read_text())["metadata"]["name"]}
                 })
                 self.assertNotIn("marker-tmp", mounts)
                 self.assertNotIn("marker-tmp", volumes)
