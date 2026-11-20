@@ -96,8 +96,10 @@ extraEnvVars:
 fullnameOverride: litellm
 image:
   pullPolicy: IfNotPresent
-  repository: ghcr.io/berriai/litellm
-  tag: 1.105.1
+  repository: harbor.socrat.alchemmist.xyz/homelab/litellm
+  tag: 6675023dfafac962781c33f7bf57743e57e80e19@sha256:f1bc742715223bf9a16236670493c7d6b75b4e7f995764f7c678cb6ca60ad174
+imagePullSecrets:
+- name: litellm-harbor-pull
 ingress:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-http01
@@ -118,7 +120,7 @@ masterkeySecretName: litellm-env
 migrationJob:
   # Last migration succeeded and its Job was deleted; do not recreate it for placement.
   # Chart fails closed on image changes until normal upgrade migrations are reviewed.
-  placementOnlyImage: ghcr.io/berriai/litellm:1.105.1
+  placementOnlyImage: harbor.socrat.alchemmist.xyz/homelab/litellm:6675023dfafac962781c33f7bf57743e57e80e19@sha256:f1bc742715223bf9a16236670493c7d6b75b4e7f995764f7c678cb6ca60ad174
   enabled: false
   hooks:
     argocd:
