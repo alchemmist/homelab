@@ -47,8 +47,21 @@ spec:
       backoffLimit: 2
       template:
         spec:
-          nodeSelector:
-            kubernetes.io/hostname: socrat-1
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: kubernetes.io/hostname
+                        operator: In
+                        values: [socrat-0, socrat-1]
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 100
+                  preference:
+                    matchExpressions:
+                      - key: kubernetes.io/hostname
+                        operator: In
+                        values: [socrat-0]
           serviceAccountName: wiki-openapi-broker
           restartPolicy: Never
           securityContext:

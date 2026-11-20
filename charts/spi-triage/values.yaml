@@ -48,5 +48,19 @@ requireExistingData: false
 maintenanceIngressPaused: false
 
 # App-only migration must not drag the existing installation-token broker.
-brokerNodeName: socrat-1
+brokerAffinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [socrat-0, socrat-1]
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        preference:
+          matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [socrat-0]
 ...
