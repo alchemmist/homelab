@@ -97,6 +97,9 @@ spec:
 {{ toYaml .Values.jobservice.resources | indent 10 }}
 {{- end }}
         env:
+          {{- if and (eq .Values.database.type "external") .Values.database.external.caConfigMap }}
+          - {name: PGSSLROOTCERT, value: /etc/pg-common/ca.crt}
+          {{- end }}
           - name: CORE_SECRET
             valueFrom:
               secretKeyRef:
@@ -140,6 +143,9 @@ spec:
         ports:
         - containerPort: {{ template "harbor.jobservice.containerPort" . }}
         volumeMounts:
+        {{- if and (eq .Values.database.type "external") .Values.database.external.caConfigMap }}
+        - {name: postgres-server-ca, mountPath: /etc/pg-common, readOnly: true}
+        {{- end }}
         - name: jobservice-config
           mountPath: /etc/jobservice/config.yml
           subPath: config.yml
@@ -154,6 +160,10 @@ spec:
 {{ include "harbor.caBundleVolumeMount" . | indent 8 }}
         {{- end }}
       volumes:
+      {{- if and (eq .Values.database.type "external") .Values.database.external.caConfigMap }}
+      - name: postgres-server-ca
+        configMap: {name: {{ .Values.database.external.caConfigMap | quote }}}
+      {{- end }}
       - name: jobservice-config
         configMap:
           name: "{{ template "harbor.jobservice" . }}"
