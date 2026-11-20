@@ -122,7 +122,7 @@ def try_pi(t,sha,mid,detail,oldtests,folder,repair=None):
 def prove(t,sha,dest,text,oldtests):
  src,orig,mut,_=patch(t,sha);reset_source(src,orig)
  try:
-  sandbox_write(dest,text);a=tests([dest]);assert green(a),'original did not pass: '+a[1][-450:];reset_source(src,mut);b=tests(oldtests);assert green(b),'old suite no longer survives';red=tests([dest]);assert killed(red) and 'FAILED '+dest+'::test_' in red[1] and re.search(r'AssertionError|^E\s+assert |DID NOT RAISE|Regex pattern did not match',red[1],re.M),'no assertion kill: '+red[1][-450:];reset_source(src,orig);g=tests(oldtests+[dest]);assert green(g),'combined original failed: '+g[1][-450:];return {'base':sha,'mutant':t['id'],'dest':dest,'sha256':hashlib.sha256(text.encode()).hexdigest(),'old_suite':oldtests,'old_on_mutant':b[1].splitlines()[-1],'new_on_mutant':red[1][-2400:],'original':g[1].splitlines()[-1]}
+  sandbox_write(dest,text);a=tests([dest]);assert green(a),'original did not pass: '+a[1][-450:];reset_source(src,mut);b=tests(['--ignore='+dest,*oldtests]);assert green(b),'old suite did not survive independently: '+b[1][-260:];red=tests([dest]);assert killed(red) and 'FAILED '+dest+'::test_' in red[1] and re.search(r'AssertionError|^E\s+assert |DID NOT RAISE|Regex pattern did not match',red[1],re.M),'no assertion kill: '+red[1][-450:];reset_source(src,orig);g=tests(oldtests+[dest]);assert green(g),'combined original failed: '+g[1][-450:];return {'base':sha,'mutant':t['id'],'dest':dest,'sha256':hashlib.sha256(text.encode()).hexdigest(),'old_suite':oldtests,'old_on_mutant':b[1].splitlines()[-1],'new_on_mutant':red[1][-2400:],'original':g[1].splitlines()[-1]}
  finally:reset_source(src,orig);K('judge',['rm','-f',J+dest])
 
 def screen(t,sha):
@@ -216,7 +216,10 @@ def census(sha,prs):
  init();print('census complete; residual tasks',len(rows),flush=True);return True
 
 def loop():
- lock=(R/'run.lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX);init();query("update tasks set state='published' where pr is not null and state in ('authoring','survived','rejected')");query("update tasks set state='queued' where pr is null and state in ('authoring','survived','rejected','screening')");query("update tasks set state='publication_uncertain' where state='publishing'");lastfetch=0;sha=None;slots=0
+ lock=(R/'run.lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX);init();
+ if not query("select v from meta where k='old_dir_exclusion'"):
+  query("update tasks set state='queued',note='Replay: old suite previously included new file' where state='needs_triage' and note like '%old suite no longer survives%'");query("insert into meta values('old_dir_exclusion','1')")
+ query("update tasks set state='published' where pr is not null and state in ('authoring','survived','rejected')");query("update tasks set state='queued' where pr is null and state in ('authoring','survived','rejected','screening')");query("update tasks set state='publication_uncertain' where state='publishing'");lastfetch=0;sha=None;slots=0
  while not (R/'PAUSE-CAMPAIGN').exists():
   try:
    if time.time()-lastfetch>180 or not sha:
