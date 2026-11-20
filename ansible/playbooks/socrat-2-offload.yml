@@ -9,9 +9,9 @@
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
     K3S_CONFIG_FILE: /dev/null
   pre_tasks:
-    - name: Require the destination node to be ready
+    - name: Require the drill fallback node to be ready
       ansible.builtin.command:
-        argv: [kubectl, wait, node/socrat-1, --for=condition=Ready, --timeout=30s]
+        argv: [kubectl, wait, node/socrat-0, --for=condition=Ready, --timeout=30s]
       changed_when: false
 
     - name: Keep the resource-policy rollout limited to future pod admission

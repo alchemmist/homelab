@@ -11,32 +11,15 @@ class VPSWorkloadOffloadTests(unittest.TestCase):
     """Read-only placement checks for the selected VPS offload sources."""
 
     def test_selected_profiles_preserve_explicit_node_placement(self) -> None:
-        """Keep img-proxy and kube-system profiles on their explicit nodes."""
+        """Do not let pod admission reintroduce the old singleton pin."""
         profiles = yaml.safe_load((ROOT / "ansible/vars/container-resources.yml").read_text())[
             "container_resource_policy_profiles"
         ]
-        selected = [
-            profile
-            for profile in profiles
-            if profile.get("nodeSelector") and profile["namespace"] in ("img-proxy", "kube-system")
-        ]
-        self.assertEqual(
-            {(profile["namespace"], profile["ownerPattern"]) for profile in selected},
-            {
-                ("img-proxy", r"^img\-proxy-[a-z0-9]+$"),
-                ("kube-system", r"^metrics\-server-[a-z0-9]+$"),
-                ("kube-system", r"^local\-path\-provisioner-[a-z0-9]+$"),
-            },
-        )
-        for profile in selected:
-            self.assertEqual(
-                profile["nodeSelector"],
-                {
-                    "kubernetes.io/hostname": "socrat-2"
-                    if profile["namespace"] == "img-proxy"
-                    else "socrat-1"
-                },
-            )
+        by_owner = {(p["namespace"], p["ownerPattern"]): p for p in profiles}
+        self.assertEqual(by_owner[("img-proxy", r"^img\-proxy-[a-z0-9]+$")]["nodeSelector"],
+                         {"kubernetes.io/hostname": "socrat-2"})
+        for owner in (r"^metrics\-server-[a-z0-9]+$", r"^local\-path\-provisioner-[a-z0-9]+$"):
+            self.assertNotIn("kubernetes.io/hostname", by_owner[("kube-system", owner)].get("nodeSelector", {}))
 
     def test_rollout_is_sequential_and_scoped(self) -> None:
         """Include exactly the two kube-system workloads, without Helm or deletion."""
@@ -53,8 +36,11 @@ class VPSWorkloadOffloadTests(unittest.TestCase):
             ],
         )
         deployment = (ROOT / "ansible/roles/vps_workload_offload/tasks/deployment.yml").read_text()
-        self.assertIn("rollout, status", deployment)
-        self.assertIn("pod['spec'].get('nodeName') == 'socrat-1'", deployment)
+        self.assertIn("rollout", yaml.safe_load(deployment)[1]["ansible.builtin.command"]["argv"])
+        template = yaml.safe_load(deployment)[0]["vars"]["offload_patch_spec"]["spec"]["template"]["spec"]
+        self.assertIsNone(template["nodeSelector"]["kubernetes.io/hostname"])
+        terms = template["affinity"]["nodeAffinity"]["requiredDuringSchedulingIgnoredDuringExecution"]
+        self.assertEqual(terms["nodeSelectorTerms"][0]["matchExpressions"][0]["values"], ["socrat-0", "socrat-1"])
         self.assertNotIn("delete", deployment)
         self.assertFalse(
             any("helm" in str(task.get("ansible.builtin.command", {})) for task in tasks)
