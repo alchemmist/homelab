@@ -13,6 +13,11 @@
         name: homelab-otel-agent.service
         daemon_reload: true
         state: restarted
+    - name: Restart native trace gateway
+      ansible.builtin.systemd_service:
+        name: homelab-otel-traces.service
+        daemon_reload: true
+        state: restarted
   tasks:
     - name: Prepare immutable upstream executable and configuration locations
       ansible.builtin.file:
@@ -195,12 +200,21 @@
         enabled: true
         state: started
       loop: [homelab-otel-node-exporter.service, homelab-otel-agent.service]
+    - name: Discover the cluster DNS service address for the native gRPC resolver
+      ansible.builtin.command:
+        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, -n, kube-system, get, service, kube-dns,
+               -o, 'jsonpath={.spec.clusterIP}']
+      register: trace_gateway_dns
+      changed_when: false
+      failed_when: trace_gateway_dns.rc != 0 or not (trace_gateway_dns.stdout is match('^[0-9]+(?:\.[0-9]+){3}$'))
+      when: inventory_hostname == 'socrat-0'
     - name: Install trace gateway configuration on its planned host
       ansible.builtin.copy:
         src: '{{ otel_production_artifacts }}/trace.yaml'
         dest: /etc/homelab-otel/traces.yaml
         mode: '0644'
       when: inventory_hostname == 'socrat-0'
+      notify: Restart native trace gateway
     - name: Install native tail sampling gateway
       ansible.builtin.copy:
         dest: /etc/systemd/system/homelab-otel-traces.service
@@ -217,7 +231,7 @@
           Environment=OTEL_BIND_IP=10.250.0.1
           Environment=OTEL_STORAGE_DIR=/var/lib/homelab-otel-traces
           Environment=OTEL_TLS_DIR=%d
-          Environment=OTEL_TEMPO_ENDPOINT=10.250.0.3:4317
+          Environment=OTEL_TEMPO_ENDPOINT=dns://{{ trace_gateway_dns.stdout }}:53/otel-tempo.cattle-monitoring-system.svc.cluster.local:4317
           Environment=GOMEMLIMIT=768MiB
           Environment=GOMAXPROCS=2
           {% for file in native_files %}
@@ -238,6 +252,7 @@
           [Install]
           WantedBy=multi-user.target
       when: inventory_hostname == 'socrat-0'
+      notify: Restart native trace gateway
     - name: Enable native trace gateway
       ansible.builtin.systemd_service:
         name: homelab-otel-traces.service

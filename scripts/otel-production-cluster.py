@@ -147,7 +147,7 @@ def run(bundle, output, cutover):
                 "OTEL_STORAGE_DIR": "/var/lib/otel-data/otel-cluster",
                 "OTEL_SCRAPE_CONFIG": "/etc/otel/config/scrape.yaml",
                 "OTEL_LOG_INGESTION_START_NS": boundary,
-                "OTEL_LOKI_ENDPOINT": "https://10.250.0.3:3100/otlp",
+                "OTEL_LOKI_ENDPOINT": "https://otel-loki.cattle-monitoring-system.svc:3100/otlp",
                 "OTEL_TRACE_GATEWAY_ENDPOINT": "10.250.0.1:44317",
                 "GOMEMLIMIT": "768MiB",
                 "GOMAXPROCS": "2",
