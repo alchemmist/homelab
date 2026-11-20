@@ -14,7 +14,7 @@ kind: Deployment
 metadata:
   name: pyroscope
 spec:
-  replicas: 0
+  replicas: 1
   strategy:
     type: Recreate
   selector:
@@ -25,6 +25,21 @@ spec:
       labels:
         app.kubernetes.io/name: pyroscope
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: [socrat-0, socrat-1]
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: [socrat-0]
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
@@ -89,7 +104,7 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: pyroscope-data
+            claimName: pyroscope-s1-candidate
         - name: tmp
           emptyDir:
             sizeLimit: 128Mi
