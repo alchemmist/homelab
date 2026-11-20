@@ -37,7 +37,11 @@ def test_backend_is_persistent_bounded_unprivileged_and_private() -> None:
     assert "-usage-stats.enabled=false" in c["args"]
     assert c["resources"]["limits"]["memory"] == "1Gi"
     assert c["workingDir"] == "/data"
-    assert any(d["kind"] == "PersistentVolumeClaim" for d in docs)
+    assert dep["spec"]["replicas"] == 1 and dep["spec"]["strategy"]["type"] == "Recreate"
+    claim = yaml.safe_load((ROOT / "deploy/storage/pyroscope-drill/pvc.yaml").read_text())
+    data = next(v for v in pod["volumes"] if v["name"] == "data")
+    assert data == {"name": "data", "persistentVolumeClaim": {"claimName": claim["metadata"]["name"]}}
+    assert any(d["kind"] == "PersistentVolumeClaim" and d["metadata"]["name"] == "pyroscope-data" for d in docs)
     service = next(d for d in docs if d["kind"] == "Service")
     assert service["spec"]["type"] == "ClusterIP"
     assert not any(d["kind"] == "Ingress" for d in docs)
