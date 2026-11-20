@@ -1,3 +1,4 @@
+---
 rule_files: []
 evaluation_interval: 30s
 tests:
