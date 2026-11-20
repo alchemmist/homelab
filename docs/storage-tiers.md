@@ -90,3 +90,19 @@ Native DeepSeek account reauthorization and physical Proxmox capacity evidence
 are separate owner/external prerequisites; do not bypass authorization or claim
 them green from storage checks. Historical runtime handoff:
 [socrat5-runtime-hdd-complete-20261120.md](socrat5-runtime-hdd-complete-20261120.md).
+
+
+## Existing SSD exceptions and archive move
+
+Keep the small active agent SQLite/work-state claims (OpenHands, SWE Mini,
+mutation intake), browser profile state and node identity on SSD for active
+state/interactive responsiveness; critical PostgreSQL placement remains owned by
+its explicit database policy. These are bounded exceptions, not a policy that
+all future databases or workspaces need SSD. Reassess actual growth against the
+40GiB budget; quota enforcement is not claimed.
+
+The existing OpenHands cold/upgrade archive claims are capacity data, not fast
+state. They are handed off to `/mnt/files/homelab/openhands-archives/...` with
+binds at original PV paths, preserving claim identity. No backup Job is run or
+replayed. Day-2 playbook refuses absent/unaccepted archive mounts and requires
+them before K3s can start. See the followup receipt for actual acceptance.
