@@ -2,9 +2,10 @@
 db:
   database: litellm
   deployStandalone: false
-  endpoint: litellm-postgres.llm.svc.cluster.local
+  endpoint: pg-common-rw.postgres.svc.cluster.local
+  url: "postgresql://$(DATABASE_USERNAME):$(DATABASE_PASSWORD)@$(DATABASE_HOST)/$(DATABASE_NAME)?sslmode=require&sslaccept=strict&sslcert=/etc/pg-common/ca.crt"
   secret:
-    name: litellm-db
+    name: litellm-pg-common
     passwordKey: password
     usernameKey: username
   useExisting: true
@@ -199,7 +200,12 @@ proxy_config:
       output_cost_per_token: 0
 redis:
   enabled: false
-replicaCount: 1
+volumes:
+  - name: pg-common-ca
+    secret: {secretName: pg-common-ca}
+volumeMounts:
+  - {name: pg-common-ca, mountPath: /etc/pg-common, readOnly: true}
+replicaCount: 0
 resources:
   limits:
     cpu: "2"
