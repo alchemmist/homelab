@@ -13,6 +13,8 @@ def k(args, body=None):
 def put(kind,name,**body):
  v={'Deployment':'apps/v1','NetworkPolicy':'networking.k8s.io/v1'}.get(kind,'v1'); version={'apiVersion':v,'kind':kind,'metadata':{'name':name,'namespace':ns},**body}; k('apply -f -',json.dumps(version))
 runner='lms-certification-runner'; db='lms-certification-db'; secret='lms-certification-pilot'
+if k('get secret certification-pg-common --ignore-not-found -o name').strip():
+ raise SystemExit('Certification uses pg-common: refusing to reprovision the legacy pilot database or replace its workflow')
 prior=k(f'get secret {secret} --ignore-not-found -o json'); keys={x:base64.b64decode(y).decode() for x,y in json.loads(prior)['data'].items()} if prior.strip() else {i:secrets.token_urlsafe(32) for i in ('RUNNER','JUDGE','POSTGRES_PASSWORD')}
 if not prior.strip(): put('Secret',secret,stringData=keys)
 def env(name,key):return dict(name=name,valueFrom={'secretKeyRef':{'name':secret,'key':key}})
