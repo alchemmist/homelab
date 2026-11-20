@@ -32,3 +32,22 @@ Never point Loki at the warm tree or treat it as a backup. At cutover require:
    cluster Collector, queue drain, /ready and a successful retention pass. TCP
    readiness alone is insufficient. Do not switch back to the stale source
    after new writes without preserving and reconciling both copies.
+
+## Second-window result and next launch guard
+
+The 82,606,080-byte cold delta and its inventory were transferred directly;
+37,040 target paths matched the stopped source. No production writer used the
+claim. A squash/remerge propagated `replicas: 0` into the proposed resume;
+server dry-run caught this, #206 was closed, #207 restored the original writer.
+The candidate now has a `loki/` tree **as of that stop**, not a current copy.
+Do not reapply the original empty-target pilot or replay the previous delta.
+
+The chart's single `storagePhase` chooses local (one writer, original disk),
+paused (zero writers, original disk), or shared (one writer, verified claim).
+Never merge `shared` until the newest cold inventory matches and helpers have
+unmounted. Base resume on the **actual squash-merged paused main**; change
+only that values line. Verify the prospective merge tree through Helm using
+Argo's values file and Kubernetes server dry-run (replicas, strategy, claim,
+node selection). Reject mismatch; after new writes never restore `local`
+without reconciling both histories. Changing a phase is a maintenance action,
+not part of installing this neutral chart change.
