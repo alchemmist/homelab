@@ -623,99 +623,6 @@
     "owner": "lms",
     "resource": "lms-availability",
     "group": "lms.availability",
-    "alert": "LMSDatabaseBackupOverdue",
-    "expr": "time() - ((kube_cronjob_status_last_successful_time{namespace=\"lms\",cronjob=\"lms-database-backup\"} > 0) or on(namespace,cronjob) kube_cronjob_created{namespace=\"lms\",cronjob=\"lms-database-backup\"}) > 28800",
-    "uid": null,
-    "graphs": {
-      "version": 1,
-      "graphs": [
-        {
-          "id": "primary",
-          "title": "LMSDatabaseBackupOverdue",
-          "dashboard_uid": "alerts-925d6eacc71e120f",
-          "panel_id": 1,
-          "variables": {},
-          "before_seconds": 1800,
-          "after_seconds": 300
-        },
-        {
-          "id": "condition",
-          "title": "LMSDatabaseBackupOverdue / rule evaluations",
-          "dashboard_uid": "alerts-925d6eacc71e120f",
-          "panel_id": 2,
-          "variables": {},
-          "before_seconds": 7200,
-          "after_seconds": 300
-        }
-      ]
-    }
-  },
-  {
-    "owner": "lms",
-    "resource": "lms-availability",
-    "group": "lms.availability",
-    "alert": "LMSDatabaseQuorumAtRisk",
-    "expr": "(sum(max by (pod) (kube_pod_status_ready{namespace=\"lms\",condition=\"true\",pod=~\"lms-ha-[0-9]+\"})) or vector(0)) < 2",
-    "uid": null,
-    "graphs": {
-      "version": 1,
-      "graphs": [
-        {
-          "id": "primary",
-          "title": "LMSDatabaseQuorumAtRisk",
-          "dashboard_uid": "alerts-925d6eacc71e120f",
-          "panel_id": 3,
-          "variables": {},
-          "before_seconds": 1800,
-          "after_seconds": 300
-        },
-        {
-          "id": "condition",
-          "title": "LMSDatabaseQuorumAtRisk / rule evaluations",
-          "dashboard_uid": "alerts-925d6eacc71e120f",
-          "panel_id": 4,
-          "variables": {},
-          "before_seconds": 7200,
-          "after_seconds": 300
-        }
-      ]
-    }
-  },
-  {
-    "owner": "lms",
-    "resource": "lms-availability",
-    "group": "lms.availability",
-    "alert": "LMSDatabaseRedundancyDegraded",
-    "expr": "(sum(max by (pod) (kube_pod_status_ready{namespace=\"lms\",condition=\"true\",pod=~\"lms-ha-[0-9]+\"})) or vector(0)) < 3",
-    "uid": null,
-    "graphs": {
-      "version": 1,
-      "graphs": [
-        {
-          "id": "primary",
-          "title": "LMSDatabaseRedundancyDegraded",
-          "dashboard_uid": "alerts-925d6eacc71e120f",
-          "panel_id": 5,
-          "variables": {},
-          "before_seconds": 1800,
-          "after_seconds": 300
-        },
-        {
-          "id": "condition",
-          "title": "LMSDatabaseRedundancyDegraded / rule evaluations",
-          "dashboard_uid": "alerts-925d6eacc71e120f",
-          "panel_id": 6,
-          "variables": {},
-          "before_seconds": 7200,
-          "after_seconds": 300
-        }
-      ]
-    }
-  },
-  {
-    "owner": "lms",
-    "resource": "lms-availability",
-    "group": "lms.availability",
     "alert": "LMSWebUnavailable",
     "expr": "kube_deployment_status_replicas_available{namespace=\"lms\",deployment=\"lms\"} < 1",
     "uid": null,
@@ -1387,6 +1294,192 @@
           "title": "SocratNodeThermalThrottling / rule evaluations",
           "dashboard_uid": "alerts-9943c0b05432b778",
           "panel_id": 8,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
+    "resource": "socrat-postgres-platform",
+    "group": "postgres-platform",
+    "alert": "SocratPgCommonReplicaLag",
+    "expr": "cnpg_pg_stat_replication_replay_lag_seconds{pg_cluster=\"pg-common\"} > 60 or cnpg_pg_replication_slots_pg_wal_lsn_diff{pg_cluster=\"pg-common\"} > 268435456",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratPgCommonReplicaLag",
+          "dashboard_uid": "alerts-068de8cd81fbc8d7",
+          "panel_id": 1,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratPgCommonReplicaLag / rule evaluations",
+          "dashboard_uid": "alerts-068de8cd81fbc8d7",
+          "panel_id": 2,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
+    "resource": "socrat-postgres-platform",
+    "group": "postgres-platform",
+    "alert": "SocratPgCommonStandbyUnavailable",
+    "expr": "cnpg_pg_replication_streaming_replicas{pg_cluster=\"pg-common\"} < 1",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratPgCommonStandbyUnavailable",
+          "dashboard_uid": "alerts-068de8cd81fbc8d7",
+          "panel_id": 3,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratPgCommonStandbyUnavailable / rule evaluations",
+          "dashboard_uid": "alerts-068de8cd81fbc8d7",
+          "panel_id": 4,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
+    "resource": "socrat-postgres-platform",
+    "group": "postgres-platform",
+    "alert": "SocratPgCriticalNoSyncAcknowledgement",
+    "expr": "cnpg_collector_sync_replicas{pg_cluster=\"pg-critical\",value=\"observed\"} < 1",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratPgCriticalNoSyncAcknowledgement",
+          "dashboard_uid": "alerts-068de8cd81fbc8d7",
+          "panel_id": 5,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratPgCriticalNoSyncAcknowledgement / rule evaluations",
+          "dashboard_uid": "alerts-068de8cd81fbc8d7",
+          "panel_id": 6,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
+    "resource": "socrat-postgres-platform",
+    "group": "postgres-platform",
+    "alert": "SocratPgCriticalRedundancyReduced",
+    "expr": "cnpg_pg_replication_streaming_replicas{pg_cluster=\"pg-critical\"} < 2",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratPgCriticalRedundancyReduced",
+          "dashboard_uid": "alerts-068de8cd81fbc8d7",
+          "panel_id": 7,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratPgCriticalRedundancyReduced / rule evaluations",
+          "dashboard_uid": "alerts-068de8cd81fbc8d7",
+          "panel_id": 8,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
+    "resource": "socrat-postgres-platform",
+    "group": "postgres-platform",
+    "alert": "SocratPgNodeRootSpaceLow",
+    "expr": "node_filesystem_avail_bytes{job=\"node-exporter\",node=~\"socrat-[01]\",mountpoint=\"/\"} / node_filesystem_size_bytes{job=\"node-exporter\",node=~\"socrat-[01]\",mountpoint=\"/\"} < 0.15",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratPgNodeRootSpaceLow",
+          "dashboard_uid": "alerts-068de8cd81fbc8d7",
+          "panel_id": 9,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratPgNodeRootSpaceLow / rule evaluations",
+          "dashboard_uid": "alerts-068de8cd81fbc8d7",
+          "panel_id": 10,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
+    "resource": "socrat-postgres-platform",
+    "group": "postgres-platform",
+    "alert": "SocratPgPlatformMetricsMissing",
+    "expr": "absent_over_time(cnpg_pg_replication_streaming_replicas{pg_cluster=\"pg-common\"}[3m]) or absent_over_time(cnpg_collector_sync_replicas{pg_cluster=\"pg-critical\",value=\"observed\"}[3m])",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratPgPlatformMetricsMissing",
+          "dashboard_uid": "alerts-068de8cd81fbc8d7",
+          "panel_id": 11,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratPgPlatformMetricsMissing / rule evaluations",
+          "dashboard_uid": "alerts-068de8cd81fbc8d7",
+          "panel_id": 12,
           "variables": {},
           "before_seconds": 7200,
           "after_seconds": 300

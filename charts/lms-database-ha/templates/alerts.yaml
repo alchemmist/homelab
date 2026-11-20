@@ -22,6 +22,7 @@ spec:
             {{- end }}
             summary: LMS has no available web worker.
             description: Check the database primary endpoint, app startup and node readiness. Do not create a blank database to restore availability.
+        {{- if not .Values.hibernate }}
         - alert: LMSDatabaseQuorumAtRisk
           expr: (sum(max by (pod) (kube_pod_status_ready{namespace="lms",condition="true",pod=~"lms-ha-[0-9]+"})) or vector(0)) < 2
           for: 2m
@@ -52,3 +53,4 @@ spec:
             {{- end }}
             summary: LMS encrypted database backup is overdue.
             description: Inspect backup Job status and storage without printing credentials or dump contents. Replicas are not backups.
+        {{- end }}

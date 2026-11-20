@@ -13,3 +13,7 @@ Inventory deployed volume refs before rotating. Sources are `postgres/pg-common-
 ## Retention
 
 Never prune all retained volumes. Keep source PVCs and Umami `/srv/umami/postgres` on socrat-0 for at least 14 full days after the corresponding cutover. For this batch do not review for disposal before **2026-12-05 UTC**. No automatic deletion. Compare the recorded PVC UID, PV name, mount/host, live consumers and Git references first. Decide explicitly whether a separate restorable copy is needed; no ongoing PITR. Deleting a retained source is not rollback; restoring the old DSN would discard subsequent writes. Do not delete working CA/DSN/robot/OIDC secrets, registry blobs or backup archives.
+
+## Monitoring after cutover
+
+LiteLLM and Umami keep separate TCP probe identities but both check `pg-common-rw:5432`; neither probe authenticates to its database. The active OTel scrape bundle (not just the ServiceMonitor) must use the new endpoint. The production LMS web rule stays enabled. Its experimental `lms-ha` readiness and dump rules apply only when that experiment is active. The production replication rules check the current primary of each tier. The former LMS dump tile now shows the common primary’s streaming standby count (expected 1; missing telemetry is unknown). Neither this count nor retained LMS dumps certify a backup.

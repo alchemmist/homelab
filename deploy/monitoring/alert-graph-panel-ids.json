@@ -13,6 +13,14 @@
       "ThanosScrapeNodeMemoryLow": 11,
       "ThanosSidecarDown": 13
     },
+    "alerts-068de8cd81fbc8d7": {
+      "SocratPgCommonReplicaLag": 1,
+      "SocratPgCommonStandbyUnavailable": 3,
+      "SocratPgCriticalNoSyncAcknowledgement": 5,
+      "SocratPgCriticalRedundancyReduced": 7,
+      "SocratPgNodeRootSpaceLow": 9,
+      "SocratPgPlatformMetricsMissing": 11
+    },
     "alerts-1025f972a9e83dc0": {
       "PrometheusBadConfig": 1,
       "PrometheusDuplicateTimestamps": 3,

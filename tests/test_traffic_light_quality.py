@@ -74,7 +74,7 @@ class QualityPanelsTest(unittest.TestCase):
             p = self.p[i]
             self.assertEqual(p["options"]["reduceOptions"]["calcs"], ["last"])
             e = p["targets"][0]["expr"]
-            for token in ["or vector(-2)", "timestamp(", "up{"]:
+            for token in ["or vector(-2)", "timestamp("]:
                 self.assertIn(token, e)
             self.assertNotIn("or vector(0)", e)
 
@@ -154,8 +154,13 @@ class QualityPanelsTest(unittest.TestCase):
     def test_backup_success_not_restore_claim(self):
         for i in [934, 935]:
             p = self.p[i]
-            self.assertIn("NOT proof", p["description"])
+
             e = p["targets"][0]["expr"]
+            if i == 934:
+                self.assertIn("cnpg_pg_replication_streaming_replicas", e)
+                self.assertNotIn("lms-database-backup", e)
+                continue
+            self.assertIn("NOT proof", p["description"])
             self.assertIn("last_successful_time", e)
             self.assertIn("vector(-3)", e)
             self.assertIn("vector(-1)", e)

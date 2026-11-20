@@ -11,29 +11,53 @@ spec:
           expr: cnpg_pg_replication_streaming_replicas{pg_cluster="pg-common"} < 1
           for: 2m
           labels: {severity: critical}
-          annotations: {summary: 'pg-common has no streaming standby; new writes are unprotected.'}
+          annotations:
+            {{- with index (.Values.alertGraphAnnotations | default dict) "SocratPgCommonStandbyUnavailable" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
+            summary: 'pg-common has no streaming standby; new writes are unprotected.'
         - alert: SocratPgCommonReplicaLag
           expr: cnpg_pg_stat_replication_replay_lag_seconds{pg_cluster="pg-common"} > 60 or cnpg_pg_replication_slots_pg_wal_lsn_diff{pg_cluster="pg-common"} > 268435456
           for: 5m
           labels: {severity: warning}
-          annotations: {summary: 'pg-common replay delay exceeds 60s or a physical slot retains over 256 MiB of WAL.'}
+          annotations:
+            {{- with index (.Values.alertGraphAnnotations | default dict) "SocratPgCommonReplicaLag" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
+            summary: 'pg-common replay delay exceeds 60s or a physical slot retains over 256 MiB of WAL.'
         - alert: SocratPgCriticalRedundancyReduced
           expr: cnpg_pg_replication_streaming_replicas{pg_cluster="pg-critical"} < 2
           for: 2m
           labels: {severity: warning}
-          annotations: {summary: 'pg-critical has lost at least one of its two streaming standbys.'}
+          annotations:
+            {{- with index (.Values.alertGraphAnnotations | default dict) "SocratPgCriticalRedundancyReduced" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
+            summary: 'pg-critical has lost at least one of its two streaming standbys.'
         - alert: SocratPgCriticalNoSyncAcknowledgement
           expr: cnpg_collector_sync_replicas{pg_cluster="pg-critical",value="observed"} < 1
           for: 1m
           labels: {severity: critical}
-          annotations: {summary: 'No synchronous standby observed on pg-critical; writes may be blocked.'}
+          annotations:
+            {{- with index (.Values.alertGraphAnnotations | default dict) "SocratPgCriticalNoSyncAcknowledgement" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
+            summary: 'No synchronous standby observed on pg-critical; writes may be blocked.'
         - alert: SocratPgPlatformMetricsMissing
           expr: absent_over_time(cnpg_pg_replication_streaming_replicas{pg_cluster="pg-common"}[3m]) or absent_over_time(cnpg_collector_sync_replicas{pg_cluster="pg-critical",value="observed"}[3m])
           for: 2m
           labels: {severity: warning}
-          annotations: {summary: 'No primary replication observations. Check scraper, endpoint, network policy and database.'}
+          annotations:
+            {{- with index (.Values.alertGraphAnnotations | default dict) "SocratPgPlatformMetricsMissing" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
+            summary: 'No primary replication observations. Check scraper, endpoint, network policy and database.'
         - alert: SocratPgNodeRootSpaceLow
           expr: node_filesystem_avail_bytes{job="node-exporter",node=~"socrat-[01]",mountpoint="/"} / node_filesystem_size_bytes{job="node-exporter",node=~"socrat-[01]",mountpoint="/"} < 0.15
           for: 15m
           labels: {severity: warning}
-          annotations: {summary: 'Less than 15% free on a PostgreSQL NVMe host filesystem. Do not delete retained volumes.'}
+          annotations:
+            {{- with index (.Values.alertGraphAnnotations | default dict) "SocratPgNodeRootSpaceLow" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
+            summary: 'Less than 15% free on a PostgreSQL NVMe host filesystem. Do not delete retained volumes.'
