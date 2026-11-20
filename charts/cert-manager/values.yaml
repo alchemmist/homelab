@@ -398,17 +398,17 @@ nodeSelector:
 # +docs:ignore
 ingressShim: {}
 
-  # Optional default issuer to use for ingress resources.
-  # +docs:property=ingressShim.defaultIssuerName
-  # defaultIssuerName: ""
+# Optional default issuer to use for ingress resources.
+# +docs:property=ingressShim.defaultIssuerName
+# defaultIssuerName: ""
 
-  # Optional default issuer kind to use for ingress resources.
-  # +docs:property=ingressShim.defaultIssuerKind
-  # defaultIssuerKind: ""
+# Optional default issuer kind to use for ingress resources.
+# +docs:property=ingressShim.defaultIssuerKind
+# defaultIssuerKind: ""
 
-  # Optional default issuer group to use for ingress resources.
-  # +docs:property=ingressShim.defaultIssuerGroup
-  # defaultIssuerGroup: ""
+# Optional default issuer group to use for ingress resources.
+# +docs:property=ingressShim.defaultIssuerGroup
+# defaultIssuerGroup: ""
 
 # Use these variables to configure the HTTP_PROXY environment variables.
 
@@ -936,7 +936,7 @@ webhook:
   # Overrides the mutating webhook and validating webhook so they reach the webhook
   # service using the `url` field instead of a service.
   url: {}
-    # host:
+  # host:
 
   # Enables default network policies for webhooks.
   networkPolicy:

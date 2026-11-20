@@ -56,14 +56,14 @@ expose:
     annotations: {}
     # References to the parent gateways
     parentRefs: []
-      # - name: envoy-internal
-      #   namespace: networking
-      #   sectionName: https
-      #   group: gateway.networking.k8s.io
-      #   kind: Gateway
+    # - name: envoy-internal
+    #   namespace: networking
+    #   sectionName: https
+    #   group: gateway.networking.k8s.io
+    #   kind: Gateway
     # The hostnames for the HTTPRoute
     hosts: []
-      # - "harbor.example.com"
+    # - "harbor.example.com"
   clusterIP:
     # The name of ClusterIP service
     name: harbor
@@ -444,8 +444,8 @@ metrics:
       #   separator: ;
       #   regex: ^(.*)$
       #   targetLabel: nodename
-    #   replacement: $1
-    #   action: replace
+      #   replacement: $1
+      #   action: replace
 
 trace:
   enabled: false
