@@ -1,7 +1,24 @@
-# Loki: socrat-1 migration staging (not active)
+# Loki production storage: shared PVC on socrat-0
 
-Only `pvc.yaml` has been provisioned. Production still uses its original
-hostPath. The target is single-writer, NFS on socrat-0, not protection from
+**Active production data. Do not empty, replay a delta onto, or delete
+`loki-s1-candidate`.** Despite its historical name this is the live Loki PVC.
+The singleton now runs on socrat-0 with `storagePhase: shared`. The retained
+hostPath on socrat-1 is stale. Do not revert to local after new writes.
+The NFS server is on 0; this covers the drill for loss of 1, not loss of 0.
+
+After #209 stopped the sole writer, a 59,269,120-byte delta was sent directly
+from 1 to 0. Both archive and inventory checksums matched. All 37,242 target
+paths matched the stopped source, including WAL, index, chunks and compactor.
+Copy workers exited before #210 started the sole writer. Post-start checks:
+original log matched its private timestamp and body hash; a real log newer
+than pod startup was queried, collector queue drained to zero, mTLS `/ready`
+returned ready, and compaction and retention each reported a successful pass
+after startup. The TCP readiness probe alone was not sufficient. Archives
+and earlier preseed quarantines are preserved; do not merge them into Loki.
+
+## Historical staging notes (not current operational instructions)
+
+The target is single-writer, NFS on socrat-0, not protection from
 loss of the NFS server. Requested capacity does not impose a hard directory
 quota. Both the bound PV and PVC report ReadWriteOnce; this does not fence a
 second writer. Require one replica, Recreate, and verified writer shutdown
