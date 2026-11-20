@@ -145,7 +145,7 @@ testFramework:
     # -- The Docker registry
     registry: docker.io
     repository: bats/bats
-    tag: "1.14.0"
+    tag: 1.14.0
   imagePullPolicy: IfNotPresent
   # @schema skipProperties:true;additionalProperties:true
   securityContext:
@@ -608,7 +608,7 @@ initChownData:
     # -- The Docker registry
     registry: docker.io
     repository: library/busybox
-    tag: "1.38.0"
+    tag: 1.38.0
     sha: ""
     pullPolicy: IfNotPresent
 
@@ -968,12 +968,12 @@ dashboardProviders: {}
 ## -f  - fail fast
 ## See the curl documentation for additional options
 ##
-defaultCurlOptions: "-skf"
+defaultCurlOptions: -skf
 
 ## Configure shell options for downloading dashboards. The beginning dash is added automatically.
 ## Add `x` to enable command tracing. This can expose sensitive values in logs.
 ##
-defaultShellOptions: "eufo pipefail"
+defaultShellOptions: eufo pipefail
 
 ## Configure grafana dashboard to import
 ## NOTE: To use dashboards you must also enable/configure dashboardProviders
@@ -1108,8 +1108,8 @@ smtp:
   # `existingSecret` is a reference to an existing secret containing the smtp configuration
   # for Grafana.
   existingSecret: ""
-  userKey: "user"
-  passwordKey: "password"
+  userKey: user
+  passwordKey: password
 
 ## Sidecars that collect the configmaps with specified label and stores the included files them into the respective folders
 ## Requires at least Grafana 5 to work and can't be used together with parameters dashboardProviders, datasources and dashboards
@@ -1215,7 +1215,7 @@ sidecar:
     # maxReadRetries: 5
     #
     # Endpoint to send request to reload alerts
-    reloadURL: "http://localhost:3000/api/admin/provisioning/alerting/reload"
+    reloadURL: http://localhost:3000/api/admin/provisioning/alerting/reload
     # Absolute path to a script to execute after a configmap got reloaded.
     # It runs before calls to REQ_URI. If the file is not executable it will be passed to sh.
     # Otherwise, it's executed as is. Shebangs known to work are #!/bin/sh and #!/usr/bin/env python
@@ -1311,7 +1311,7 @@ sidecar:
     # maxReadRetries: 5
     #
     # Endpoint to send request to reload alerts
-    reloadURL: "http://localhost:3000/api/admin/provisioning/dashboards/reload"
+    reloadURL: http://localhost:3000/api/admin/provisioning/dashboards/reload
     # Absolute path to a script to execute after a configmap got reloaded.
     # It runs before calls to REQ_URI. If the file is not executable it will be passed to sh.
     # Otherwise, it's executed as is. Shebangs known to work are #!/bin/sh and #!/usr/bin/env python
@@ -1349,9 +1349,9 @@ sidecar:
       # @schema type:[string, integer]
       orgid: 1
       # folder in which the dashboards should be imported in grafana
-      folder: ''
+      folder: ""
       # <string> folder UID. will be automatically generated if not specified
-      folderUid: ''
+      folderUid: ""
       # type of the provider
       type: file
       # disableDelete to activate a import-only behaviour
@@ -1436,7 +1436,7 @@ sidecar:
     # maxReadRetries: 5
     #
     # Endpoint to send request to reload datasources
-    reloadURL: "http://localhost:3000/api/admin/provisioning/datasources/reload"
+    reloadURL: http://localhost:3000/api/admin/provisioning/datasources/reload
     # Absolute path to a script to execute after a configmap got reloaded.
     # It runs before calls to REQ_URI. If the file is not executable it will be passed to sh.
     # Otherwise, it's executed as is. Shebangs known to work are #!/bin/sh and #!/usr/bin/env python
@@ -1519,7 +1519,7 @@ sidecar:
     # maxReadRetries: 5
     #
     # Endpoint to send request to reload plugins
-    reloadURL: "http://localhost:3000/api/admin/provisioning/plugins/reload"
+    reloadURL: http://localhost:3000/api/admin/provisioning/plugins/reload
     # Absolute path to a script to execute after a configmap got reloaded.
     # It runs before calls to REQ_URI. If the file is not executable it will be passed to sh.
     # Otherwise, it's executed as is. Shebangs known to work are #!/bin/sh and #!/usr/bin/env python
@@ -1592,7 +1592,7 @@ sidecar:
     # maxReadRetries: 5
     #
     # Endpoint to send request to reload notifiers
-    reloadURL: "http://localhost:3000/api/admin/provisioning/notifications/reload"
+    reloadURL: http://localhost:3000/api/admin/provisioning/notifications/reload
     # Absolute path to a script to execute after a configmap got reloaded.
     # It runs before calls to REQ_URI. If the file is not executable it will be passed to sh.
     # Otherwise, it's executed as is. Shebangs known to work are #!/bin/sh and #!/usr/bin/env python
@@ -1681,7 +1681,7 @@ imageRenderer:
   # extra environment variables
   # @schema skipProperties:true;additionalProperties:true
   env:
-    HTTP_HOST: "0.0.0.0"
+    HTTP_HOST: 0.0.0.0
     # Fixes "Error: Failed to launch the browser process!\nchrome_crashpad_handler: --database is required"
     XDG_CONFIG_HOME: /tmp/.chromium
     XDG_CACHE_HOME: /tmp/.chromium
@@ -1724,7 +1724,7 @@ imageRenderer:
     seccompProfile:
       type: RuntimeDefault
     capabilities:
-      drop: ['ALL']
+      drop: [ALL]
     allowPrivilegeEscalation: false
     privileged: false
     readOnlyRootFilesystem: true
@@ -1734,9 +1734,9 @@ imageRenderer:
   # image-renderer deployment Host Aliases
   hostAliases: []
   # image-renderer deployment priority class
-  priorityClassName: ''
+  priorityClassName: ""
   # Path to the healthcheck endpoint. On Image Renderer v5.0.0 or newer, this is '/healthz'. Older versions use '/'.
-  healthcheckPath: '/healthz'
+  healthcheckPath: /healthz
   # image-renderer container readinessProbe. Disabled by default.
   # readinessProbe:
   #   httpGet:
@@ -1747,7 +1747,7 @@ imageRenderer:
     # Enable the image-renderer service
     enabled: true
     # image-renderer service port name
-    portName: 'http'
+    portName: http
     # image-renderer service port used by both service and deployment
     port: 8081
     targetPort: 8081
@@ -1969,11 +1969,11 @@ verticalPodAutoscaler:
   # Default safety bounds
   # @schema skipProperties:true;additionalProperties:{"type":["string","number"]}
   minAllowed:
-    cpu: "25m"
-    memory: "128Mi"
+    cpu: 25m
+    memory: 128Mi
 
   # @schema skipProperties:true;additionalProperties:{"type":["string","number"]}
   maxAllowed:
-    cpu: "1000m"
-    memory: "1Gi"
+    cpu: 1000m
+    memory: 1Gi
 ...

@@ -58,11 +58,11 @@
 
 - name: Ensure private SSH directories
   ansible.builtin.file:
-    path: "/home/{{ item.name }}/.ssh"
+    path: /home/{{ item.name }}/.ssh
     state: directory
     owner: "{{ item.name }}"
     group: "{{ item.name }}"
-    mode: '0700'
+    mode: "0700"
   become: true
   loop: "{{ homelab_assigned_users }}"
   loop_control:
@@ -71,10 +71,10 @@
 - name: Replace managed key sets so removed keys are actually revoked
   ansible.builtin.copy:
     content: "{{ '' if item.state | default('present') == 'disabled' else (item.authorized_keys | join('\n')) + '\n' }}"
-    dest: "/home/{{ item.name }}/.ssh/authorized_keys"
+    dest: /home/{{ item.name }}/.ssh/authorized_keys
     owner: "{{ item.name }}"
     group: "{{ item.name }}"
-    mode: '0600'
+    mode: "0600"
   become: true
   loop: "{{ homelab_assigned_users }}"
   loop_control:
@@ -82,7 +82,7 @@
 
 - name: Remove legacy direct sudoers grants for managed non-sudo accounts
   ansible.builtin.file:
-    path: "/etc/sudoers.d/{{ item.name }}"
+    path: /etc/sudoers.d/{{ item.name }}
     state: absent
   become: true
   loop: "{{ homelab_assigned_users }}"
@@ -91,14 +91,14 @@
 
 - name: Inspect effective SSH, sudo and Kubernetes credential isolation
   ansible.builtin.script:
-    cmd: 'verify.py {{ item.name }}'
+    cmd: verify.py {{ item.name }}
     executable: python3
   become: true
   changed_when: false
   register: homelab_user_access_checks
-  loop: '{{ homelab_assigned_users }}'
+  loop: "{{ homelab_assigned_users }}"
   loop_control:
-    label: '{{ item.name }}'
+    label: "{{ item.name }}"
 
 - name: Require managed users to remain non-privileged
   ansible.builtin.assert:
@@ -108,7 +108,7 @@
       - (item.stdout | regex_search('(?m)\{"username":.*\}') | from_json).pubkeyAuthentication == 'yes'
       - (item.stdout | regex_search('(?m)\{"username":.*\}') | from_json).usePAM == 'yes'
     fail_msg: Effective user isolation failed. Review host policy before onboarding.
-  loop: '{{ homelab_user_access_checks.results }}'
+  loop: "{{ homelab_user_access_checks.results }}"
   loop_control:
-    label: '{{ item.item.name }}'
+    label: "{{ item.item.name }}"
 ...

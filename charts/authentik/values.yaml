@@ -1126,7 +1126,7 @@ postgresql:
       max_connections = 500
     extraEnvVars:
       - name: POSTGRES_DB
-        value: '{{ (include "postgresql.v1.database" .) }}'
+        value: "{{ (include \"postgresql.v1.database\" .) }}"
     resourcesPreset: none
     # persistence:
     #   enabled: true

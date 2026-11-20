@@ -24,7 +24,7 @@
     state: directory
     owner: root
     group: wheel
-    mode: '0755'
+    mode: "0755"
 
 - name: Install resolver updater
   ansible.builtin.copy:
@@ -32,7 +32,7 @@
     dest: /usr/local/libexec/socrat-wiki-resolver
     owner: root
     group: wheel
-    mode: '0755'
+    mode: "0755"
 
 - name: Install launch daemon
   ansible.builtin.copy:
@@ -40,7 +40,7 @@
     dest: /Library/LaunchDaemons/xyz.alchemmist.wiki-resolver.plist
     owner: root
     group: wheel
-    mode: '0644'
+    mode: "0644"
   register: wiki_editor_resolver_launch
 
 - name: Inspect launch daemon

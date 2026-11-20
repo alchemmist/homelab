@@ -1,7 +1,7 @@
 ---
 apiVersion: 1
 datasources:
-- name: "Prometheus"
+- name: Prometheus
   type: prometheus
   uid: prometheus
   url: http://thanos-query.cattle-monitoring-system.svc.cluster.local:9090
@@ -10,7 +10,7 @@ datasources:
   jsonData:
     httpMethod: POST
     timeInterval: 5s
-- name: "Alertmanager"
+- name: Alertmanager
   type: alertmanager
   uid: alertmanager
   url: http://kube-prometheus-stack-alertmanager.cattle-monitoring-system:9093/

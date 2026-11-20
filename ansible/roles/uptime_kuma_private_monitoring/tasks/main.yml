@@ -38,7 +38,7 @@
       - -n
       - "{{ kuma_private_namespace }}"
       - exec
-      - "deployment/{{ kuma_private_deployment }}"
+      - deployment/{{ kuma_private_deployment }}
       - --
       - node
       - -e
@@ -73,7 +73,7 @@
   ansible.builtin.file:
     path: "{{ kuma_private_workdir }}"
     state: directory
-    mode: '0700'
+    mode: "0700"
   delegate_to: "{{ kuma_private_node }}"
   become: true
 
@@ -81,7 +81,7 @@
   ansible.builtin.copy:
     src: configure_monitor.py
     dest: "{{ kuma_private_workdir }}/configure_monitor.py"
-    mode: '0700'
+    mode: "0700"
   delegate_to: "{{ kuma_private_node }}"
   become: true
 
