@@ -13,3 +13,8 @@ class Reports(unittest.TestCase):
    e['sender']={'id':1};self.assertEqual(call()['status'],'ignored_sender');e['sender']=owner
    self.assertEqual(call()['cards'],405); self.assertEqual(call()['status'],'duplicate');e['issue']['body']+=' changed';self.assertEqual(call()['status'],'changed_report_requires_review')
    with closing(sqlite3.connect(d)) as db:self.assertEqual(db.execute('select count(*) from cards').fetchone(),(405,))
+ def test_artifact_protocol_rejects_plans_and_multiple_files(self):
+  spec=importlib.util.spec_from_file_location('artifact',ROOT/'services/pi-monori/artifact.py');art=importlib.util.module_from_spec(spec);spec.loader.exec_module(art)
+  sample='```python\ndef test_fixture() -> None:\n    assert 1 == 1\n```';self.assertTrue(art.artifact_response('transport warning\n'+sample).startswith('def test_fixture'))
+  for raw in ('I will write a test.',sample+'\n'+sample,'```sh\necho test\n```'):
+   with self.assertRaises(ValueError):art.artifact_response(raw)

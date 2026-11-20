@@ -2,6 +2,7 @@
 import ast,collections,contextlib,difflib,fcntl,gzip,hashlib,json,os,re,sqlite3,subprocess,sys,time
 from pathlib import Path
 import dispatcher as pilot
+from artifact import artifact_response
 R=pilot.ROOT; BASE0=pilot.BASE; D=R/'campaign.sqlite'; A=R/'campaign-artifacts';A.mkdir(exist_ok=True); C=json.load(gzip.open(R/'catalog-full.json.gz')); BACK=json.loads((R/'backlog.json').read_text()); J='/scratch/monori/'; K=pilot.k
 
 ISSUE=509
@@ -95,11 +96,23 @@ def try_pi(t,sha,mid,detail,oldtests,folder,repair=None):
  try:
   for attempt in range(1,4):
    prompt=f'''Take one atomic item from alchemmist/monori#{ISSUE}: {t['category']}, {mid}, base {sha}. Work directly in this worktree. Keep this atomic: prefer one direct assertion or a small parametrized test of the assigned symbol, not separate caller/integration tests. Import from monori.{src[:-3].replace(chr(47),chr(46))} or pytest. Write an actual English annotated regression test to {dest} and no other tracked file. Original/mutant diff:\n{detail[:7800]}\nExisting tests {oldtests} passed on both. Read source/dependencies and existing tests, use actual /scratch/monori/.venv/bin/python with PYTHONPATH set to worktree parent, check actual output before proposing. Follow existing formatting and annotation gates: no type: ignore/noqa, no object/Any parameter annotations, prefer the project type alias. No external systems, networking, credentials, exploits, PoCs, bypasses, live banking, gh, merge or dummy PR. Only ordinary offline behavior on fixtures. The independent judge runs your file on original and mutant. If not distinguishable write OUTCOME.md with concrete evidence; not a fictional test. Plans do not count: write your file with tools. Feedback: {feedback[:750]}''';(folder/'prompt.md').write_text(prompt);mark(t,'authoring',f'attempt {attempt}',sha)
+   # Print-mode agents sometimes end with plans. The alternate protocol exchanges a typed
+   # file, not a tool invocation; the judge and allowlist are identical on both paths.
+   artifact=attempt>=2 or (not repair and len(C[t['fam']]['old'])<=16)
+   if artifact:
+    context=''.join(C[t['fam']]['old'])[:7000]
+    prompt=f"Return exactly one Markdown ```python block containing the complete new English pytest file. No plan or tool calls. Actual source module: monori.{src[:-3].replace('/', '.')}. Test only this function directly using literal ordinary fixture values. One shortest meaningful test, annotated -> None, no suppressions, skips, arbitrary I/O, or unrelated caller imports. Must pass on original and fail on exact mutant. Source:\n{context}\nOriginal-to-mutant diff:\n{detail[:6000]}\nFeedback: {feedback[:700]}"+(('\nExisting test to repair:\n'+repair['previous'][:5000]) if repair else '')
+    (folder/f'artifact-prompt-{attempt}.md').write_text(prompt)
    with (folder/f'pi-{attempt}.log').open('wb') as log:
-    res=subprocess.run(['kubectl','-n','openhands','exec','-i','deploy/pi-monori-author','-c','sandbox','--','sh','-ec','cd "$1";export PYTHONPATH="$(dirname "$1")";exec timeout -k 5 900 /opt/pi/node_modules/.bin/pi --provider litellm --model v-deepseek-uc --no-approve --no-extensions --no-mcp --no-skills --no-prompt-templates --no-context-files --no-session --tools read,bash,edit,write -p "$(cat)"','sh',wt],input=prompt.encode(),stdout=log,stderr=log,timeout=950)
+    res=subprocess.run(['kubectl','-n','openhands','exec','-i','deploy/pi-monori-author','-c','sandbox','--','sh','-ec','cd "$1";export PYTHONPATH="$(dirname "$1")";exec timeout -k 5 900 /opt/pi/node_modules/.bin/pi --provider litellm --model v-deepseek-uc --no-approve --no-extensions --no-mcp --no-skills --no-prompt-templates --no-context-files --no-session $2 -p "$(cat)"','sh',wt,'--no-tools' if artifact else '--tools read,bash,edit,write'],input=prompt.encode(),stdout=log,stderr=log,timeout=950)
    if res.returncode and re.search(rb'unable to upgrade connection|502 Bad Gateway|error dialing backend|i/o timeout', (folder/f'pi-{attempt}.log').read_bytes()[-2000:], re.I):
     mark(t,'transport_wait','kubectl transport unavailable; no model verdict or attempt charged',sha);return
    if res.returncode:feedback='executor ended without a verified result, exit '+str(res.returncode);time.sleep(60);continue
+   if artifact:
+    try:
+     proposed=artifact_response((folder/f'pi-{attempt}.log').read_text(errors='replace'));candidate_guard(proposed,src)
+    except (SyntaxError,ValueError) as err:feedback=str(err);mark(t,'rejected',feedback,sha);continue
+    pilot.write('author',wt+'/'+dest,proposed)
    get="import pathlib,sys;p=pathlib.Path(sys.argv[1]);assert p.is_file() and not p.is_symlink() and p.stat().st_size<20000;sys.stdout.write(p.read_text())";r=K('author',['python','-c',get,wt+'/'+dest],ok=False)
    if r.returncode:
     outcome=K('author',['python','-c',get,wt+'/OUTCOME.md'],ok=False)

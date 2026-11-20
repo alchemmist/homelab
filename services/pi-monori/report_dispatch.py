@@ -31,6 +31,8 @@ def main():
  if not allowed:
   rpc('sync',rows=[[x['section'],x['target'],'catalog_required'] for x in rows],outputs=[],digest=r['digest'],state='adapter_required');return
  c.query("insert or replace into meta values('last_admission',?)",(str(c.ISSUE),));discovery=time.time()+300
+ if not c.query("select v from meta where k='artifact_protocol_v1'"):
+  c.query("update tasks set state='queued' where pr is null and state='needs_triage' and note like '%outside offline unit-test scope%'");c.query("insert into meta values('artifact_protocol_v1','1')")
  # Recover only historical infra failures with concrete evidence; no model retries for real red tests.
  for t in c.query("select * from tasks where state='needs_triage' and note like '%executor ended%'"):
   log=c.A/c.key(t)/'pi-3.log'
