@@ -4,6 +4,8 @@ from pathlib import Path
 import dispatcher as pilot
 R=pilot.ROOT; BASE0=pilot.BASE; D=R/'campaign.sqlite'; A=R/'campaign-artifacts';A.mkdir(exist_ok=True); C=json.load(gzip.open(R/'catalog-full.json.gz')); BACK=json.loads((R/'backlog.json').read_text()); J='/scratch/monori/'; K=pilot.k
 
+ISSUE=509
+
 def query(q,a=()):
  with contextlib.closing(sqlite3.connect(D,timeout=15)) as db,db:
   db.row_factory=sqlite3.Row;return [dict(x) for x in db.execute(q,a)]
@@ -91,7 +93,7 @@ def try_pi(t,sha,mid,detail,oldtests,folder,repair=None):
   dest=repair['dest'];pilot.write('author',wt+'/'+dest,repair['previous']);feedback='Repair this existing PR test in place, retain the behavioral assertion and remove all lint suppressions. Red current-head checks: '+', '.join(repair['fails'])
  try:
   for attempt in range(1,4):
-   prompt=f'''Take one atomic item from alchemmist/monori#509: {t['category']}, {mid}, base {sha}. Work directly in this worktree. Write an actual English annotated regression test to {dest} and no other tracked file. Original/mutant diff:\n{detail[:7800]}\nExisting tests {oldtests} passed on both. Read source/dependencies and existing tests, use actual /scratch/monori/.venv/bin/python with PYTHONPATH set to worktree parent, check actual output before proposing. Follow existing formatting and annotation gates: no type: ignore/noqa, no object/Any parameter annotations, prefer the project type alias. No external systems, networking, credentials, exploits, PoCs, bypasses, live banking, gh, merge or dummy PR. Only ordinary offline behavior on fixtures. The independent judge runs your file on original and mutant. If not distinguishable write OUTCOME.md with concrete evidence; not a fictional test. Plans do not count: write your file with tools. Feedback: {feedback[:750]}''';(folder/'prompt.md').write_text(prompt);mark(t,'authoring',f'attempt {attempt}',sha)
+   prompt=f'''Take one atomic item from alchemmist/monori#{ISSUE}: {t['category']}, {mid}, base {sha}. Work directly in this worktree. Write an actual English annotated regression test to {dest} and no other tracked file. Original/mutant diff:\n{detail[:7800]}\nExisting tests {oldtests} passed on both. Read source/dependencies and existing tests, use actual /scratch/monori/.venv/bin/python with PYTHONPATH set to worktree parent, check actual output before proposing. Follow existing formatting and annotation gates: no type: ignore/noqa, no object/Any parameter annotations, prefer the project type alias. No external systems, networking, credentials, exploits, PoCs, bypasses, live banking, gh, merge or dummy PR. Only ordinary offline behavior on fixtures. The independent judge runs your file on original and mutant. If not distinguishable write OUTCOME.md with concrete evidence; not a fictional test. Plans do not count: write your file with tools. Feedback: {feedback[:750]}''';(folder/'prompt.md').write_text(prompt);mark(t,'authoring',f'attempt {attempt}',sha)
    with (folder/f'pi-{attempt}.log').open('wb') as log:
     res=subprocess.run(['kubectl','-n','openhands','exec','-i','deploy/pi-monori-author','-c','sandbox','--','sh','-ec','cd "$1";export PYTHONPATH="$(dirname "$1")";exec timeout -k 5 900 /opt/pi/node_modules/.bin/pi --provider litellm --model v-deepseek-uc --no-approve --no-extensions --no-mcp --no-skills --no-prompt-templates --no-context-files --no-session --tools read,bash,edit,write -p "$(cat)"','sh',wt],input=prompt.encode(),stdout=log,stderr=log,timeout=950)
    if res.returncode and re.search(rb'unable to upgrade connection|502 Bad Gateway|error dialing backend|i/o timeout', (folder/f'pi-{attempt}.log').read_bytes()[-2000:], re.I):
@@ -102,7 +104,10 @@ def try_pi(t,sha,mid,detail,oldtests,folder,repair=None):
     outcome=K('author',['python','-c',get,wt+'/OUTCOME.md'],ok=False)
     if not outcome.returncode:(folder/'outcome.md').write_text(outcome.stdout);mark(t,'needs_triage','Agent supplied explanation; not certified equivalent',sha);return
     feedback='No test file exists. Use write tool on exact path now; do not finish with a plan.';continue
-   text=r.stdout
+   # Apply only the repo-pinned formatter to the one proposed file, inside the disposable author sandbox.
+   fmt=K('author',['sh','-ec','cd "$1"; f="$2"; r=/scratch/tools/ruff/bin/ruff; test "$("$r" --version)" = "ruff 0.17.5"; "$r" check --fix --no-cache "$f"; "$r" format --no-cache "$f"; "$r" check --no-cache "$f"','sh',wt,dest],ok=False)
+   if fmt.returncode:feedback='Project Ruff gate failed: '+fmt.stdout[-550:];mark(t,'rejected',feedback,sha);continue
+   text=K('author',['python','-c',get,wt+'/'+dest]).stdout
    try:
     candidate_guard(text,src)
     if repair and text==repair['previous']:raise ValueError('CI repair did not change the failed file')
@@ -124,7 +129,7 @@ def try_pi(t,sha,mid,detail,oldtests,folder,repair=None):
 def prove(t,sha,dest,text,oldtests):
  src,orig,mut,_=patch(t,sha);reset_source(src,orig)
  try:
-  sandbox_write(dest,text);a=tests([dest]);assert green(a),'original did not pass: '+a[1][-450:];reset_source(src,mut);b=tests(['--ignore='+dest,*oldtests]);assert green(b),'old suite did not survive independently: '+b[1][-260:];red=tests([dest]);assert killed(red) and 'FAILED '+dest+'::test_' in red[1] and re.search(r'AssertionError|^E\s+assert |DID NOT RAISE|Regex pattern did not match',red[1],re.M),'no assertion kill: '+red[1][-450:];reset_source(src,orig);g=tests(oldtests+[dest]);assert green(g),'combined original failed: '+g[1][-450:];return {'base':sha,'mutant':t['id'],'dest':dest,'sha256':hashlib.sha256(text.encode()).hexdigest(),'old_suite':oldtests,'old_on_mutant':b[1].splitlines()[-1],'new_on_mutant':red[1][-2400:],'original':g[1].splitlines()[-1]}
+  sandbox_write(dest,text);a=tests([dest]);assert green(a),'original did not pass: '+a[1][-450:];reset_source(src,mut);b=tests(['--ignore='+dest,*oldtests]);assert green(b),'old suite did not survive independently: '+b[1][-260:];red=tests([dest]);assert killed(red) and 'FAILED '+dest+'::test_' in red[1] and re.search(r'AssertionError|^E\s+assert |DID NOT RAISE|Regex pattern did not match',red[1],re.M),'no assertion kill: '+red[1][-450:];reset_source(src,orig);g=tests(oldtests if any(dest.startswith(p.rstrip('/')+'/') for p in oldtests) else oldtests+[dest]);assert green(g),'combined original failed: '+g[1][-450:];return {'base':sha,'mutant':t['id'],'dest':dest,'sha256':hashlib.sha256(text.encode()).hexdigest(),'old_suite':oldtests,'old_on_mutant':b[1].splitlines()[-1],'new_on_mutant':red[1][-2400:],'original':g[1].splitlines()[-1]}
  finally:reset_source(src,orig);K('judge',['rm','-f',J+dest])
 
 def screen(t,sha):
@@ -157,7 +162,7 @@ def publish(t,sha):
   try:receipt=prove(t,sha,dest,text,oldtests)
   except (AssertionError,ValueError):mark(t,'rebase_triage','Proof no longer holds on new main',sha);return
   (folder/'proof.json').write_text(json.dumps(receipt,indent=2))
- title='test: cover '+t['fam'].split('.')[-1].replace('ǁ','.')[:60]+' [509:'+key(t)+']';payload={'action':'create','head':sha,'title':title,'files':{dest:text}};mark(t,'publishing','Reconcile this unique title on any ambiguous acknowledgement: '+title,sha)
+ title='test: cover '+t['fam'].split('.')[-1].replace('ǁ','.')[:60]+f' [{ISSUE}:'+key(t)+']';payload={'action':'create','issue':ISSUE,'head':sha,'title':title,'files':{dest:text}};mark(t,'publishing','Reconcile this unique title on any ambiguous acknowledgement: '+title,sha)
  try:r=pilot.cmd(['kubectl','-n','openhands','exec','-i','openhands-0','-c','mutation-pilot','--','python','-c',pilot.PUBLISH],json.dumps(payload),timeout=95);obj=json.loads(r.stdout);assert obj['pr'] and obj['head']
  except Exception:mark(t,'publication_uncertain',title,sha);return
  (folder/'publication.json').write_text(json.dumps(obj));mark(t,'published',obj['head'],sha,obj['pr'])
@@ -166,7 +171,7 @@ def reconcile(prs,sha):
  open_by={p['number']:p for p in prs}
  # Repair lost acknowledgements by unique title, never replay a blind create.
  for t in query("select * from tasks where state='publication_uncertain'"):
-  matches=[p for p in prs if p['title'].endswith('[509:'+key(t)+']') and p['head']['ref'].startswith('openhands/issue-509/') and p['user']['login']=='alchemmist']
+  matches=[p for p in prs if p['title'].endswith(f'[{ISSUE}:'+key(t)+']') and p['head']['ref'].startswith(f'openhands/issue-{ISSUE}/') and p['user']['login']=='alchemmist']
   if len(matches)==1:mark(t,'published',matches[0]['head']['sha'],t['base'],matches[0]['number'])
  if len(prs)>=100:return
  for t in query("select * from tasks where state='published' and pr is not null"):
@@ -178,7 +183,7 @@ def repair_one(prs,sha):
  bynum={p['number']:p for p in prs};now=time.time()
  for t in query("select * from tasks where state='published' and pr is not null order by updated"):
   p=bynum.get(t['pr'])
-  if not p or p.get('draft') or not p['head']['ref'].startswith('openhands/issue-509/'):continue
+  if not p or p.get('draft') or not p['head']['ref'].startswith(f'openhands/issue-{ISSUE}/'):continue
   head=p['head']['sha'];cache='checks:'+head;cached=query('select v from meta where k=?',(cache,))
   if cached and now-float(cached[0]['v'])<900:continue
   query('insert or replace into meta values(?,?)',(cache,str(now)));checks=remote_json('commits/'+head+'/check-runs?per_page=100');fails=[r['name'] for r in checks['check_runs'] if r['conclusion']=='failure']
@@ -193,7 +198,7 @@ def repair_one(prs,sha):
 
 def census(sha,prs):
  # No blanket merge; only after queued work drained and GitHub writes reconciled.
- if sha==BASE0 or any(p['head']['ref'].startswith('openhands/issue-509/') for p in prs):return False
+ if sha==BASE0 or any(p['head']['ref'].startswith(f'openhands/issue-{ISSUE}/') for p in prs):return False
  if query("select id from tasks where state in ('published','verified','publishing','publication_uncertain','update_uncertain') limit 1"):return False
  token='census:'+sha
  if query('select v from meta where k=?',(token,)):return False
@@ -225,7 +230,7 @@ def loop():
  while not (R/'PAUSE-CAMPAIGN').exists():
   try:
    if time.time()-lastfetch>180 or not sha:
-    git('fetch','--depth=1','origin','main');head=git('rev-parse','FETCH_HEAD').strip();install_base(head);sha=head;prs=remote_json('pulls?state=open&per_page=100');slots=0 if len(prs)>=100 else max(0,5-sum(p['head']['ref'].startswith('openhands/issue-509/') for p in prs));reconcile(prs,sha);lastfetch=time.time()
+    git('fetch','--depth=1','origin','main');head=git('rev-parse','FETCH_HEAD').strip();install_base(head);sha=head;prs=remote_json('pulls?state=open&per_page=100');slots=0 if len(prs)>=100 else max(0,5-sum(p['head']['ref'].startswith(f'openhands/issue-{ISSUE}/') for p in prs));reconcile(prs,sha);lastfetch=time.time()
     try:repair_one(prs,sha)
     except Exception as ex:print('CI repair deferred',type(ex).__name__,str(ex)[:180],flush=True)
    if query("select id from tasks where state='transport_wait' and updated<? limit 1",(time.time()-180,)):

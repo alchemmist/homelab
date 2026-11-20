@@ -20,6 +20,9 @@ def check(condition):
     if not condition:raise ValueError('Invalid or disallowed operation')
 
 QA='openhands/qa-issue-'
+MUT='openhands/issue-'
+def mutation_target(issue):
+    check(type(issue) is int and 0<issue<2**31);i=api('issues/'+str(issue));check('pull_request' not in i and i['state']=='open' and i['user']['id']==104511335 and any(l['name']=='mutation-report' for l in i['labels']));return issue
 
 def clean_text(t,lo,hi):
     check(isinstance(t,str) and lo<=len(t)<=hi and all(c.isprintable() or c=='\n' for c in t))
@@ -71,7 +74,7 @@ def changes(files,qa=False,pi_ci=False):
 
 def owned_pr(n,sha):
     check(type(n) is int and n>0 and isinstance(sha,str) and re.fullmatch('[a-f0-9]{40}',sha))
-    p=api('pulls/'+str(n));check(p['state']=='open' and p['base']['ref']=='main' and p['head']['repo']['full_name']==REPO and p['user']['login']=='alchemmist' and re.fullmatch('(?:'+PREFIX+'|'+QA+'[0-9]+/)[a-f0-9]{32}',p['head']['ref']) and p['head']['sha']==sha)
+    p=api('pulls/'+str(n));check(p['state']=='open' and p['base']['ref']=='main' and p['head']['repo']['full_name']==REPO and p['user']['login']=='alchemmist' and re.fullmatch('(?:'+MUT+'[1-9][0-9]*/|'+QA+'[0-9]+/)[a-f0-9]{32}',p['head']['ref']) and p['head']['sha']==sha)
     return p
 
 def review(x):
@@ -85,7 +88,7 @@ def review(x):
             cursor=page['pageInfo']['endCursor'];check(cursor)
         raise ValueError('Incomplete pagination')
     if a=='report':
-        check(set(x)=={'action','pr','head'});ref=p['head']['ref'];target=509 if ref.startswith(PREFIX) else int(ref[len(QA):].split('/')[0]);res=api(f'issues/{target}/comments',{'body':f"OpenHands: mutation coverage PR #{p['number']}, head `{sha}`. Review/CI status is tracked on the PR."});return {'url':res['html_url']}
+        check(set(x)=={'action','pr','head'});ref=p['head']['ref'];target=int(ref.split('/')[1].rsplit('-',1)[1]);res=api(f'issues/{target}/comments',{'body':f"OpenHands: mutation coverage PR #{p['number']}, head `{sha}`. Review/CI status is tracked on the PR."});return {'url':res['html_url']}
     check(set(x)=={'action','pr','head','thread','reason','decision'});t=x['thread'];reason=x['reason'];check(isinstance(t,str) and re.fullmatch('PRRT_[A-Za-z0-9_-]{4,150}',t));check(x['decision'] in ('fixed','declined') and isinstance(reason,str) and 30<=len(reason)<=2000 and all(c.isprintable() for c in reason) and '@' not in reason and not any(c in reason for c in '<>'))
     def gql(q,v):
         r=api('graphql',{'query':q,'variables':v});check(not r.get('errors') and r.get('data'));return r['data']
@@ -105,19 +108,21 @@ def dispatch(x):
     if action=='qa_capabilities':return {'actions':['qa_issue','qa_create','update','threads','reply_then_resolve','report'],'evidence':'reviewed synthetic PNG and optional 6fps H.264 MP4 from frames','merge':False}
     if action=='capabilities':return {'repository':REPO,'issue':509,'actions':['create','update','report','threads','reply_then_resolve'],'merge':False,'main_write':False}
     if action in ('report','threads','reply_then_resolve'):return review(x)
-    check(action in ('create','qa_create','update')); required={'action','head','files','title'}|({'pr'} if action=='update' else {'issue'} if action=='qa_create' else set());check(set(x)==required)
+    check(action in ('create','qa_create','update')); required={'action','head','files','title'}|({'pr'} if action=='update' else {'issue'} if action=='qa_create' or signed_create and 'issue' in x else set());check(set(x)==required)
     sha=x['head'];check(isinstance(sha,str) and re.fullmatch('[a-f0-9]{40}',sha)); title=x['title'];check(isinstance(title,str) and 4<=len(title)<=110 and all(c.isprintable() for c in title) and '@' not in title)
     target=509;prefix=PREFIX
+    if signed_create and 'issue' in x:
+        target=mutation_target(x['issue']);prefix=MUT+str(target)+'/'
     if action=='qa_create':
         target=x['issue'];check(type(target) is int and target>0);issue=api('issues/'+str(target));check('pull_request' not in issue and issue['state']=='open' and issue['user']['login']=='alchemmist' and re.match(r'<!-- socrat-qa:[a-z0-9-]+ -->',issue.get('body') or ''));prefix=QA+str(target)+'/'
     if action!='update':
         files=changes(x['files'],action=='qa_create',signed_create)
         check(api('git/ref/heads/main')['object']['sha']==sha)
         # cap outstanding work; use a bounded list fail-closed if incomplete.
-        prs=api('pulls?state=open&per_page=100');check(len(prs)<100 and sum(p['head']['ref'].startswith(PREFIX) for p in prs)<5)
+        prs=api('pulls?state=open&per_page=100');check(len(prs)<100 and sum(p['head']['ref'].startswith(MUT) for p in prs)<5)
         check(action!='qa_create' or not any(p['head']['ref'].startswith(prefix) for p in prs));check(sum(p['head']['ref'].startswith(QA) for p in prs)<5);branch=prefix+uuid.uuid4().hex;api('git/refs',{'ref':'refs/heads/'+branch,'sha':sha})
     else:
-        p=owned_pr(x['pr'],sha);branch=p['head']['ref'];files=changes(x['files'],branch.startswith(QA),signed_update and branch.startswith(PREFIX))
+        p=owned_pr(x['pr'],sha);branch=p['head']['ref'];files=changes(x['files'],branch.startswith(QA),signed_update and branch.startswith(MUT))
     mutation='mutation($i:CreateCommitOnBranchInput!){createCommitOnBranch(input:$i){commit{oid}}}'
     res=api('graphql',{'query':mutation,'variables':{'i':{'branch':{'repositoryNameWithOwner':REPO,'branchName':branch},'expectedHeadOid':sha,'message':{'headline':title},'fileChanges':{'additions':files}}}});oid=res['data']['createCommitOnBranch']['commit']['oid']
     if action!='update':p=api('pulls',{'head':branch,'base':'main','draft':False,'title':title,'body':f'Follow-up for #{target}. Published via the scoped OpenHands publisher. Human review and merge required.'})

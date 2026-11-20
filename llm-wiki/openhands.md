@@ -539,3 +539,16 @@ Monori #509 real label delivery verified: 275 + 106 + 24 = 405 queued family car
 Admission is live, **not a PR consumer**. No nightly workflow or self-hosted runner
 registered. Legacy Pi pause marker retained; archive and reconcile #514 before
 leasing a matching target in the new executor. Never run two publishers for a card.
+
+The signed issue queue now has a consumer (`services/pi-monori/report_dispatch.py`),
+not a second tmux loop. The trusted control node runs a lingering systemd user unit
+`mutation-report-consumer`; author and independent offline judge remain separate
+cluster deployments. No agent gets the host's Kubernetes config. One flock excludes
+the superseded dispatchers. The adapter loads actual signed report rows from intake
+PVC, selects only their catalog IDs, reuses proofs and #514, mirrors family progress
+and PR IDs to the intake DB, spools when publication slots are full. It uses scoped
+publication, no merges. A new repo needs its own enrolled catalog, runner and publisher;
+admitting webhook data alone is not permission to execute arbitrary targets. Service
+logs: `journalctl --user -u mutation-report-consumer`; stop the service to pause (the
+legacy PAUSE-CAMPAIGN marker is only for the retired entrypoint). Gates include the
+project's pinned Ruff in the author's sandbox and a fresh independent behavioral proof.
