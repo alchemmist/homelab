@@ -1,5 +1,7 @@
 {{- $token := "thanos-shelf-token" }}
 {{- range $name, $shelf := .Values.shelves }}
+{{- $five := eq $name "thanos-shelf-5m" }}
+{{- $shared := and $five (has $.Values.fivePhase (list "shared" "shared-hold")) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -9,6 +11,10 @@ metadata:
 data:
   shelf.py: |
 {{ $.Files.Get "files/shelf.py" | indent 4 }}
+{{- if $shared }}
+  five_metrics.py: |
+{{ $.Files.Get "files/five_metrics.py" | indent 4 }}
+{{- end }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -17,7 +23,7 @@ metadata:
   labels:
     app: {{ $name }}
 spec:
-  replicas: 1
+  replicas: {{ if and $five (eq $.Values.fivePhase "cold") }}0{{ else }}1{{ end }}
   selector:
     matchLabels:
       app: {{ $name }}
@@ -29,10 +35,17 @@ spec:
         app: {{ $name }}
       annotations:
         checksum/script: {{ $.Files.Get "files/shelf.py" | sha256sum }}
+        {{- if $shared }}
+        checksum/five-metrics: {{ $.Files.Get "files/five_metrics.py" | sha256sum }}
+        {{- end }}
     spec:
       automountServiceAccountToken: false
+      {{- if $shared }}
+{{ include "thanos.fivePlacement" . | indent 6 }}
+      {{- else }}
       nodeSelector:
         kubernetes.io/hostname: {{ $shelf.node }}
+      {{- end }}
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -44,7 +57,7 @@ spec:
         - name: shelf
           image: {{ $.Values.images.cascade }}
           imagePullPolicy: IfNotPresent
-          command: ["python3", "-u", "/scripts/shelf.py"]
+          command: ["python3", "-u", {{ if $shared }}"/scripts/five_metrics.py"{{ else }}"/scripts/shelf.py"{{ end }}]
           env:
             - name: SHELF_DIRECTORY
               value: {{ $shelf.directory }}
@@ -73,6 +86,9 @@ spec:
               readOnly: true
             - name: data
               mountPath: {{ $shelf.directory }}
+              {{- if $shared }}
+              subPath: active
+              {{- end }}
             - name: token
               mountPath: /etc/shelf
               readOnly: true
@@ -83,9 +99,13 @@ spec:
           configMap:
             name: {{ $name }}
         - name: data
+          {{- if $shared }}
+          persistentVolumeClaim: {claimName: thanos-5m-s1-candidate}
+          {{- else }}
           hostPath:
             path: {{ $shelf.directory }}
             type: Directory
+          {{- end }}
         - name: token
           secret:
             secretName: {{ $token }}
