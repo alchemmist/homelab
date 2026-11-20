@@ -111,6 +111,7 @@
       "tests/test_wishlist_observability.py",
       "tests/openhands/test_iteration_continue.py",
       "tests/openhands/test_monori_pilot.py",
+      "tests/openhands/test_lifecycle_protocol.py",
       "tests/openhands/test_pi_monori.py",
       "tests/openhands/test_report_consumer.py",
       "tests/openhands/test_publisher.py",
