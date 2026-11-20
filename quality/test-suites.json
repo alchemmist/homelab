@@ -110,6 +110,8 @@
       "tests/test_wishlist_images.py",
       "tests/test_wishlist_observability.py",
       "tests/openhands/test_iteration_continue.py",
+      "tests/openhands/test_monori_pilot.py",
+      "tests/openhands/test_pi_monori.py",
       "tests/openhands/test_publisher.py",
       "tests/test_traffic_light_models.py"
     ],

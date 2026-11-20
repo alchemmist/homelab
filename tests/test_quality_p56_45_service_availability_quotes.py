@@ -10,7 +10,7 @@ from yaml.nodes import MappingNode, Node, ScalarNode, SequenceNode
 _FIXTURE = Path(__file__).resolve().parent / "service-availability.test.yml"
 _EMPTY_LABEL = "{}"
 _REPEAT_VALUE = "0x20"
-_EMPTY_LABEL_QUOTES = 321
+_EMPTY_LABEL_QUOTES = 324
 _REPEAT_VALUE_QUOTES = 37
 _STRING_TAG = "tag:yaml.org,2002:str"
 _DOUBLE_QUOTE = '"'

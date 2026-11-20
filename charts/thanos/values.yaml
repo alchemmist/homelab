@@ -9,7 +9,7 @@ sidecarService: kube-prometheus-stack-thanos-discovery.cattle-monitoring-system.
 prometheusURL: http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090
 components:
   thanos-query:
-    node: socrat-1
+    spreadQuery: true
     servicePort: 9090
     args:
       - query

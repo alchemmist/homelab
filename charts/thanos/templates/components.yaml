@@ -7,12 +7,17 @@ metadata:
     app: {{ $name }}
     app.kubernetes.io/part-of: thanos
 spec:
-  replicas: 1
+  replicas: {{ if $component.spreadQuery }}2{{ else }}1{{ end }}
   selector:
     matchLabels:
       app: {{ $name }}
   strategy:
+    {{- if $component.spreadQuery }}
+    type: RollingUpdate
+    rollingUpdate: {maxUnavailable: 0, maxSurge: 1}
+    {{- else }}
     type: Recreate
+    {{- end }}
   template:
     metadata:
       labels:
@@ -20,8 +25,27 @@ spec:
         app.kubernetes.io/part-of: thanos
     spec:
       automountServiceAccountToken: false
+      {{- if $component.spreadQuery }}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: [socrat-0, socrat-1]
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          matchLabelKeys: [pod-template-hash]
+          labelSelector:
+            matchLabels:
+              app: {{ $name }}
+      {{- else }}
       nodeSelector:
-        kubernetes.io/hostname: {{ $component.node }}
+        kubernetes.io/hostname: {{ required (printf "components.%s.node is required for pinned components" $name) $component.node | quote }}
+      {{- end }}
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -40,6 +64,13 @@ spec:
               containerPort: 10902
             - name: grpc
               containerPort: 10901
+          {{- if $component.spreadQuery }}
+          readinessProbe:
+            httpGet: {path: /-/ready, port: http}
+            timeoutSeconds: 3
+            periodSeconds: 5
+            failureThreshold: 3
+          {{- end }}
           resources:
             {{- toYaml $component.resources | nindent 12 }}
           securityContext:
