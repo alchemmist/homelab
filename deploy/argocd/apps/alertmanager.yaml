@@ -16,6 +16,7 @@ spec:
       releaseName: kube-prometheus-stack
       valueFiles:
       - alert-graphs.values.yaml
+      - ../../deploy/storage/alertmanager-nfs/cutover.values.yaml
       parameters: []
   destination:
     namespace: cattle-monitoring-system
