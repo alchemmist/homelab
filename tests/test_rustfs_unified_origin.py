@@ -33,10 +33,12 @@ class UnifiedOrigin(unittest.TestCase):
         )
         docs = text.split("---")
         console = next(d for d in docs if "name: rustfs-console-browser" in d)
-        self.assertIn("identity-rustfs-browser-auth@kubernetescrd", console)
+        self.assertIn("argocd-rustfs-browser-auth@kubernetescrd", console)
         self.assertIn("service: {name: rustfs-console-http, port: {number: 80}}", console)
         self.assertNotIn("number: 9000", console)
         middleware = next(d for d in docs if "kind: Middleware" in d)
+        self.assertIn("namespace: argocd", middleware)
+        self.assertIn("homelab.alchemmist.xyz/edge-transport: argocd", middleware)
         self.assertIn("trustForwardHeader: false", middleware)
         self.assertIn(
             "https://rustfs.socrat.alchemmist.xyz/outpost.goauthentik.io/auth/traefik", middleware

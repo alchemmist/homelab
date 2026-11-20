@@ -7,7 +7,14 @@
 # No backend is reachable until the middleware has authenticated the request.
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
-metadata: {name: rustfs-browser-auth, namespace: identity}
+metadata:
+  name: rustfs-browser-auth
+  # Both ingress controllers discover this scoped CRD bucket.
+  namespace: argocd
+  labels:
+    homelab.alchemmist.xyz/edge-transport: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: '-5'
 spec:
   forwardAuth:
     address: https://rustfs.socrat.alchemmist.xyz/outpost.goauthentik.io/auth/traefik
@@ -22,7 +29,7 @@ metadata:
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: 'true'
     traefik.ingress.kubernetes.io/router.priority: '100'
-    traefik.ingress.kubernetes.io/router.middlewares: identity-rustfs-browser-auth@kubernetescrd
+    traefik.ingress.kubernetes.io/router.middlewares: argocd-rustfs-browser-auth@kubernetescrd
 spec:
   ingressClassName: traefik
   rules:
