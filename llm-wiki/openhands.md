@@ -485,3 +485,10 @@ only the server owns testing/signing. Screen records individual pytest verdicts,
 uses a green baseline, restores source and hands a confirmed focused-suite survivor
 and its exact diff to the proposer. No survivor != equivalent. Four unsuccessful
 proposals still stop; no dummy PR to satisfy the workflow.
+
+Survivor-first feedback: persist rejected scalar pairs per card/mutant (not rationale);
+duplicates never invoke pytest. A failing assertion on the pinned original now carries
+its measured scalar result from a fixed subprocess, not agent-supplied code. The date
+validator accepts valid proleptic calendar dates in year 0000 (leap year); retains
+strict ASCII YYYY-MM-DD. Spend at most four author attempts per target, then record
+inconclusive and continue the bounded catalog, never infer equivalence.

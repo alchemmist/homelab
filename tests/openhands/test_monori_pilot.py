@@ -37,3 +37,12 @@ class Pilot(unittest.TestCase):
 
     def test_case_is_data_not_python(self):
         m=load();self.assertRaises(AssertionError,m.render,'day_number',{'input':{},'expected':1,'why':'candidate input'});self.assertRaises(ValueError,m.render,'_amount',{'input':2,'expected':2,'why':'candidate input','code':'assert True'})
+
+    def test_proleptic_gregorian_and_rejection_identity(self):
+        m=load();case={'input':'0000-02-29','expected':2,'why':'calendar fixture'}
+        self.assertIn('0000-02-29',m.render('day_number',case))
+        for date in ('0000-02-30','0001-02-29','2025-13-01','0000/01/01'):
+            with self.assertRaises((ValueError,AssertionError)):m.render('day_number',{**case,'input':date})
+        with tempfile.TemporaryDirectory() as d:
+            m.DB=str(pathlib.Path(d)/'cards.db');m.init();m.sql('insert into rejections values(?,?,?,?)',('_amount','m',m.pair(case),'measured null'))
+            self.assertTrue(m.rejected('_amount','m',{**case,'why':'different explanation'}));self.assertFalse(m.rejected('_amount','other',case));self.assertFalse(m.rejected('_amount','m',{**case,'expected':None}))
