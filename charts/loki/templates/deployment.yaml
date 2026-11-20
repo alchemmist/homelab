@@ -6,7 +6,7 @@ metadata:
     app: otel-loki
     app.kubernetes.io/part-of: otel-backends
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: otel-loki
