@@ -562,3 +562,12 @@ still necessary for new projects/changed schemas. `restore_worker.py` can restor
 a lost scratch venv from the operator-owned checksum-pinned bundle. A future nightly
 census/runner is NOT deployed by this change. Do not conflate repo-wide existing
 frontend lint failures with failures introduced by a Python-only mutation PR.
+
+Live acceptance 2026-11-20 16:54 MSK: signed #509 intake → systemd consumer →
+Pi authored `server/tests/unit/test_mutation_62834fe5dc72.py` → offline judge:
+409 old unit tests passed with `x_optional_string__mutmut_1`; candidate failed
+`None == 'hello'`; 410 passed on restored base `61ca0093`. At 16:54:11 publisher
+created https://github.com/alchemmist/monori/pull/515 at `2fe0f9b9`; GitHub
+confirmed one test file, REVIEW_REQUIRED. At 16:54:14 the same consumer began
+screening `x_kop_from_rub__mutmut_3` without another instruction. Intake PVC
+mirrored #514 and #515. This proves issue → PR → next card, not Ready or merge.
