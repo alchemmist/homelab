@@ -12,3 +12,18 @@ spec:
   podMetricsEndpoints:
     - port: http
       interval: 30s
+{{- if has .Values.fivePhase (list "shared" "shared-hold") }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: thanos-five-bucket
+  labels: {release: kube-prometheus-stack}
+spec:
+  selector:
+    matchLabels: {app: thanos-shelf-5m}
+  podMetricsEndpoints:
+    - port: http
+      interval: 30s
+      honorLabels: true
+{{- end }}
