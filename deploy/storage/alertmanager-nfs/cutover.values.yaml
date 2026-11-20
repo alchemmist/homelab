@@ -1,14 +1,26 @@
 ---
-# Inactive until the owner adds this file to the Alertmanager Argo Application.
-# Never activate before the cold copy is complete and both PVCs are retained.
+# Active: preserve the migrated PVC identity and its storage settings.
 kube-prometheus-stack:
   alertmanager:
     alertmanagerSpec:
       replicas: 1
       nodeSelector:
-        # Deterministic first mount; see README gate 5 before removing this pin.
-        kubernetes.io/hostname: socrat-0
         kubernetes.io/os: linux
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: [socrat-0, socrat-1]
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: [socrat-0]
       storage:
         volumeClaimTemplate:
           metadata:
