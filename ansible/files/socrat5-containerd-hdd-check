@@ -1,0 +1,6 @@
+#!/bin/sh
+# Never let K3s silently write runtime data into the root SSD beneath a missing bind.
+set -eu
+[ "$(findmnt -nro SOURCE --mountpoint /mnt/files)" = /dev/sdb1 ]
+[ "$(findmnt -nro SOURCE --mountpoint /var/lib/rancher/k3s/agent/containerd)" = "/dev/sdb1[/homelab/runtime/containerd]" ]
+[ "$(stat -c '%d:%i' /var/lib/rancher/k3s/agent/containerd)" = "$(stat -c '%d:%i' /mnt/files/homelab/runtime/containerd)" ]
