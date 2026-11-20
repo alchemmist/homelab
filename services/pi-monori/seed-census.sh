@@ -6,7 +6,8 @@ cd "$HOME/pi-monori-509-v1"
 s=(kubectl -n openhands exec openhands-0 -c mutation-pilot --)
 d=(kubectl -n openhands exec -i deploy/pi-monori-judge -c sandbox --)
 "${s[@]}" sh -ec 'cd /scratch/monori; UV_PROJECT_ENVIRONMENT=/scratch/census-venv UV_CACHE_DIR=/scratch/uv-cache HOME=/scratch uv sync --locked --group mutation; cd /scratch; tar czf census-env.tgz census-venv'
-read -r sha _ < <("${s[@]}" sha256sum /scratch/census-env.tgz)
+sha_line=$("${s[@]}" sha256sum /scratch/census-env.tgz)
+read -r sha _ <<< "${sha_line}"
 bytes=$("${s[@]}" stat -c %s /scratch/census-env.tgz)
 "${d[@]}" sh -c ': >/scratch/census-seed.tmp' </dev/null
 for ((i=0;i*2097152<bytes;i++));do "${s[@]}" dd if=/scratch/census-env.tgz bs=2097152 skip="$i" count=1 status=none | "${d[@]}" sh -c 'cat >>/scratch/census-seed.tmp';done

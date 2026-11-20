@@ -5,7 +5,8 @@ umask 077
 cd "$HOME/pi-monori-509-v1"
 sourcepod=(kubectl -n openhands exec openhands-0 -c mutation-pilot --)
 "${sourcepod[@]}" sh -ec 'test -s /scratch/pi-pilot-deps.tgz || (cd /scratch/monori; tar czf /scratch/pi-pilot-deps.tmp .venv; mv /scratch/pi-pilot-deps.tmp /scratch/pi-pilot-deps.tgz)'
-read -r expected _ < <("${sourcepod[@]}" sha256sum /scratch/pi-pilot-deps.tgz)
+checksum_line=$("${sourcepod[@]}" sha256sum /scratch/pi-pilot-deps.tgz)
+read -r expected _ <<< "${checksum_line}"
 bytes=$("${sourcepod[@]}" stat -c %s /scratch/pi-pilot-deps.tgz)
 if ! echo "$expected  deps.tar.gz" | sha256sum -c - >/dev/null 2>&1;then
  : >deps.tmp
