@@ -510,7 +510,7 @@
       "targets": [
         {
           "refId": "1",
-          "expr": "node_filesystem_avail_bytes{job=\"node-exporter\",node=~\"socrat-[01]\",mountpoint=\"/\"} / node_filesystem_size_bytes{job=\"node-exporter\",node=~\"socrat-[01]\",mountpoint=\"/\"}",
+          "expr": "node_filesystem_avail_bytes{job=\"node-exporter\",instance=~\"192[.]168[.]0[.]2[34]:9100\",mountpoint=\"/\"} / node_filesystem_size_bytes{job=\"node-exporter\",instance=~\"192[.]168[.]0[.]2[34]:9100\",mountpoint=\"/\"}",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -568,7 +568,7 @@
       "targets": [
         {
           "refId": "1",
-          "expr": "node_filesystem_avail_bytes{job=\"node-exporter\",node=~\"socrat-[01]\",mountpoint=\"/\"} / node_filesystem_size_bytes{job=\"node-exporter\",node=~\"socrat-[01]\",mountpoint=\"/\"} < 0.15",
+          "expr": "node_filesystem_avail_bytes{job=\"node-exporter\",instance=~\"192[.]168[.]0[.]2[34]:9100\",mountpoint=\"/\"} / node_filesystem_size_bytes{job=\"node-exporter\",instance=~\"192[.]168[.]0[.]2[34]:9100\",mountpoint=\"/\"} < 0.15",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"

@@ -180,3 +180,15 @@ def test_dashboard_starts_with_waterfall_without_instruction_text_panel():
     assert not any(panel["type"] == "text" or panel["id"] == 1 for panel in dashboard["panels"])
     first = min(dashboard["panels"], key=lambda panel: panel["gridPos"]["y"])
     assert first["id"] == 3 and first["gridPos"]["y"] == 0
+
+
+def test_hibernated_database_alerts_do_not_page_for_production_lms():
+    def rules(*override):
+        docs = render('-f', str(ROOT / 'deploy/lms/values.yaml'), *override)
+        group = next(d for d in docs if d and d['kind'] == 'PrometheusRule' and d['metadata']['name'] == 'lms-availability')['spec']['groups'][0]
+        return {r['alert'] for r in group['rules']}
+
+    assert rules() == {'LMSWebUnavailable'}
+    assert rules('--set', 'lms-database-ha.hibernate=false') == {
+        'LMSWebUnavailable', 'LMSDatabaseQuorumAtRisk', 'LMSDatabaseRedundancyDegraded', 'LMSDatabaseBackupOverdue'
+    }
