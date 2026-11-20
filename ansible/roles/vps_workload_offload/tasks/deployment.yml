@@ -1,18 +1,59 @@
 ---
-- name: Pin the selected deployment to the home worker
+- name: Inspect live placement before replacing the two node affinity lists
   ansible.builtin.command:
-    argv:
-      - kubectl
-      - -n
-      - "{{ offload_workload.namespace }}"
-      - patch
-      - deployment
-      - "{{ offload_workload.name }}"
-      - --type=merge
-      - -p
-      - "{{ {'spec': {'template': {'spec': {'nodeSelector': {'kubernetes.io/hostname': 'socrat-1'}}}}} | to_json }}"
-  register: offload_patch
-  changed_when: "'(no change)' not in offload_patch.stdout"
+    argv: [kubectl, -n, "{{ offload_workload.namespace }}", get, deployment, "{{ offload_workload.name }}", -o, json]
+  register: offload_current
+  changed_when: false
+
+- name: Allow the selected singleton on either home node
+  vars:
+    offload_live: "{{ offload_current.stdout | from_json }}"
+    offload_template: "{{ offload_live.spec.template.spec }}"
+    offload_patch_spec:
+      metadata:
+        resourceVersion: "{{ offload_live.metadata.resourceVersion }}"
+      spec:
+        template:
+          spec:
+            nodeSelector:
+              kubernetes.io/hostname: null  # JSON merge patch removes only this key.
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: kubernetes.io/hostname
+                          operator: In
+                          values: [socrat-0, socrat-1]
+                preferredDuringSchedulingIgnoredDuringExecution:
+                  - weight: 100
+                    preference:
+                      matchExpressions:
+                        - key: kubernetes.io/hostname
+                          operator: In
+                          values: [socrat-0]
+  block:
+    - name: Refuse unknown selector or foreign node affinity
+      ansible.builtin.assert:
+        that:
+          - offload_template.nodeSelector | default({}) | difference(['kubernetes.io/hostname', 'kubernetes.io/os']) | length == 0
+          - (offload_template.nodeSelector | default({})).get('kubernetes.io/hostname', 'socrat-1') == 'socrat-1'
+          - (offload_template.nodeSelector | default({})).get('kubernetes.io/os', 'linux') == 'linux'
+          - (offload_template.affinity | default({})).get('nodeAffinity', {}) in [{}, offload_patch_spec.spec.template.spec.affinity.nodeAffinity]
+    - name: Apply the version-guarded placement change
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - -n
+          - "{{ offload_workload.namespace }}"
+          - patch
+          - deployment
+          - "{{ offload_workload.name }}"
+          - --type=merge
+          - -p
+          - "{{ offload_patch_spec | to_json }}"
+      register: offload_patch
+      changed_when: "'(no change)' not in offload_patch.stdout"
 
 - name: Wait for this deployment before moving the next one
   ansible.builtin.command:
@@ -25,7 +66,7 @@
            --timeout=300s]
   changed_when: false
 
-- name: Verify the new ready pod is on socrat-1
+- name: Verify the new ready pod can run on either home node
   ansible.builtin.command:
     argv:
       - python3
@@ -42,9 +83,10 @@
         active = [pod for pod in pods if not pod['metadata'].get('deletionTimestamp') and pod['status'].get('phase') not in ('Succeeded', 'Failed')]
         assert len(active) == deployment['spec']['replicas'], [(pod['metadata']['name'], pod['status']) for pod in active]
         for pod in active:
-            assert pod['spec'].get('nodeName') == 'socrat-1', pod['metadata']['name']
+            assert 'kubernetes.io/hostname' not in pod['spec'].get('nodeSelector', {}), pod['metadata']['name']
+            assert pod['spec'].get('nodeName') in ('socrat-0', 'socrat-1'), pod['metadata']['name']
             assert any(condition['type'] == 'Ready' and condition['status'] == 'True' for condition in pod['status'].get('conditions', [])), pod['metadata']['name']
-        print(sys.argv[2] + ': ready on socrat-1')
+        print(sys.argv[2] + ': ready on ' + ', '.join(p['spec']['nodeName'] for p in active))
       - "{{ offload_workload.namespace }}"
       - "{{ offload_workload.name }}"
   changed_when: false
