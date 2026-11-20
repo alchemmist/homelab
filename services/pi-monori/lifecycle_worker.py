@@ -56,6 +56,10 @@ def audit(item):
     if r['thread'] and v and v['decision']=='irrelevant' and v['quote'] not in test:v=None
     if v is None or v['decision']=='uncertain':sql('insert or replace into seen values(?,?,?)',(k,time.time()+21600,'needs evidence'));continue
     why=v['reason']+' Evidence: '+v['quote'];fixed=sql("select result from fixes where pr=? and remark=? and state='updated' and result=?",(n,r['id'],h));
+    # Also recognize a fix already pushed BEFORE this workflow was installed.
+    # Use the remark's original commit and an actual added line, not author prose.
+    if v['decision']=='irrelevant' and r.get('thread') and not fixed and re.fullmatch('[a-f0-9]{40}',r.get('original') or '') and r['original']!=h and v['quote'] in test:
+     cmp=c.remote_json('compare/'+r['original']+'...'+h);added=[line[1:] for f in cmp.get('files',[]) if f['filename']==dest for line in f.get('patch','').splitlines() if line.startswith('+') and not line.startswith('+++')];fixed=cmp.get('status')=='ahead' and any(v['quote'] in line for line in added)
     if v['decision']=='fix':enqueue(n,h,r['id'],why);state='repair_queued'
     else:api('life_dispose',n,h,remark=r['id'],digest=r['digest'],decision='fixed' if fixed else 'irrelevant',reason=why,commit=h)
     sql('insert or replace into seen values(?,?,?)',(k,time.time()+900,v['decision']));break # fair: next PR then next remark

@@ -6,7 +6,7 @@ G=runpy.run_path(str(Path(__file__).with_name('ready_gate.py')));REVIEWERS={'soc
 def lifecycle(x,api,owned,check):
  n=x['pr'];head=x['head'];p=owned(n,head);check(p['head']['ref'].startswith('openhands/issue-') and 'mutation-pr' in {l['name'] for l in p['labels']});mode=x['action'];issue=f'issues/{n}'
  def snap():
-  q=api('graphql',{'query':G['QUERY'],'variables':{'owner':'alchemmist','repo':'monori','number':n}});check(not q.get('errors'));v=q['data']['repository']['pullRequest'];check(v['headRefOid']==head);v['statusCheckRollup']=(v['tip']['nodes'][-1]['commit']['statusCheckRollup'] or {});a=G['assess'](v,REVIEWERS,HANDLERS);ctx=v['statusCheckRollup'].get('contexts',{}).get('nodes',[])
+  q=api('graphql',{'query':G['QUERY'].replace('reviewThreads(first:100){nodes{id isResolved comments(first:100){nodes{id author','reviewThreads(first:100){nodes{id isResolved comments(first:100){nodes{id originalCommit{oid} author'),'variables':{'owner':'alchemmist','repo':'monori','number':n}});check(not q.get('errors'));v=q['data']['repository']['pullRequest'];check(v['headRefOid']==head);v['statusCheckRollup']=(v['tip']['nodes'][-1]['commit']['statusCheckRollup'] or {});a=G['assess'](v,REVIEWERS,HANDLERS);ctx=v['statusCheckRollup'].get('contexts',{}).get('nodes',[])
   if not any(y.get('name')=='Quality Graph' and y.get('conclusion')=='SUCCESS' for y in ctx):a['blockers'].append('Missing successful Quality Graph aggregate')
   # Required gate above is in addition to all visible checks, not a replacement.
   rows=[];replies=v['comments']['nodes']+[c for t in v['reviewThreads']['nodes'] for c in t['comments']['nodes']];seen={}
@@ -20,7 +20,7 @@ def lifecycle(x,api,owned,check):
    if not body or auth.get('__typename')!='Bot' and auth.get('login') not in REVIEWERS:return
    digest=hashlib.sha256(body.encode()).hexdigest();replied=(c['id'],digest,head) in seen
    if not replied or thread and not resolved:
-    rows.append({'id':c['id'],'thread':thread,'resolved':resolved,'replied':replied,'author':auth['login'],'body':body[:24000],'truncated':len(body)>24000,'digest':digest,'url':c.get('url')});a['blockers'].append('Current disposition pending: '+c['id'])
+    rows.append({'id':c['id'],'thread':thread,'resolved':resolved,'replied':replied,'author':auth['login'],'original':(c.get('originalCommit') or {}).get('oid'),'body':body[:24000],'truncated':len(body)>24000,'digest':digest,'url':c.get('url')});a['blockers'].append('Current disposition pending: '+c['id'])
   for c in v['comments']['nodes']+v['reviews']['nodes']:add(c)
   for t in v['reviewThreads']['nodes']:
    mixed=any((c.get('author') or {}).get('__typename')!='Bot' and not ((c.get('author') or {}).get('login') in HANDLERS and '<!-- rtr:' in c['body']) for c in t['comments']['nodes'])
