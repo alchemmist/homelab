@@ -254,3 +254,4 @@ tests:
     exp_samples:
     - labels: '{}'
       value: -2
+...

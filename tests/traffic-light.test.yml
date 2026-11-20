@@ -113,3 +113,4 @@ tests:
       == 1) and on(instance) (time() - socrat_vpn_collection_timestamp_seconds < 90))
     eval_time: 5m
     exp_samples: []
+...
