@@ -3,6 +3,7 @@ kind: ServiceAccount
 metadata:
   name: wiki-openapi-broker
   namespace: pr-agent
+...
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -14,6 +15,7 @@ rules:
     resources: [secrets]
     resourceNames: [wiki-openapi-github]
     verbs: [patch]
+...
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -28,6 +30,7 @@ subjects:
   - kind: ServiceAccount
     name: wiki-openapi-broker
     namespace: pr-agent
+...
 ---
 apiVersion: batch/v1
 kind: CronJob
@@ -105,6 +108,7 @@ spec:
             - name: code
               configMap:
                 name: wiki-openapi-broker-code
+...
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -182,6 +186,7 @@ spec:
             secretName: wiki-openapi-github
         - name: tmp
           emptyDir: {}
+...
 ---
 apiVersion: v1
 kind: Service
@@ -194,3 +199,4 @@ spec:
   ports:
     - port: 8080
       targetPort: 8080
+...

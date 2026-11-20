@@ -256,3 +256,4 @@ tests:
     values: 0+1x40
   alert_rule_test:
   - *id003
+...

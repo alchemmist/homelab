@@ -21,6 +21,7 @@ spec:
   issuerRef:
     name: otel-ca
     kind: Issuer
+...
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -45,6 +46,7 @@ spec:
   issuerRef:
     name: otel-ca
     kind: Issuer
+...
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -69,6 +71,7 @@ spec:
   issuerRef:
     name: otel-ca
     kind: Issuer
+...
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -93,6 +96,7 @@ spec:
   issuerRef:
     name: otel-ca
     kind: Issuer
+...
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -117,6 +121,7 @@ spec:
   issuerRef:
     name: otel-ca
     kind: Issuer
+...
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -141,6 +146,7 @@ spec:
   issuerRef:
     name: otel-ca
     kind: Issuer
+...
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -151,6 +157,7 @@ metadata:
     app.kubernetes.io/part-of: homelab-otel
     homelab-otel-role: application-client
 automountServiceAccountToken: false
+...
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -174,6 +181,7 @@ rules:
   - otel-app-tls-wishlist
   verbs:
   - get
+...
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -191,3 +199,4 @@ subjects:
 - kind: ServiceAccount
   name: otel-application-credentials
   namespace: cattle-monitoring-system
+...

@@ -5,6 +5,7 @@ metadata:
   namespace: kube-system
   annotations:
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
+...
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -47,6 +48,7 @@ metadata:
   name: local-path-provisioner-role
   annotations:
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
+...
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -62,6 +64,7 @@ metadata:
   name: local-path-provisioner-bind
   annotations:
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
+...
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -147,6 +150,7 @@ metadata:
   namespace: kube-system
   annotations:
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
+...
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
@@ -158,6 +162,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
     storageclass.kubernetes.io/is-default-class: 'false'
+...
 ---
 apiVersion: v1
 data:
@@ -217,3 +222,4 @@ metadata:
   namespace: kube-system
   annotations:
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
+...
