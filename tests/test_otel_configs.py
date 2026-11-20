@@ -55,6 +55,21 @@ class ObservabilityConfigTests(unittest.TestCase):
                 if "reload_interval" in protocol["tls"]:
                     self.assertEqual(protocol["tls"]["reload_interval"], "1m")
 
+    def test_production_ingestion_uses_the_service_identity(self) -> None:
+        """The host dials the Service IP but verifies its DNS SAN without a DNS dependency."""
+        repo = ROOT.parents[2]
+        play, = yaml.safe_load((repo / "ansible/playbooks/otel-production-agents.yml").read_text())
+        tasks = {task["name"]: task for task in play["tasks"]}
+        unit = tasks["Install native tail sampling gateway"]["ansible.builtin.copy"]["content"]
+        self.assertIn("Environment=OTEL_TEMPO_ENDPOINT={{ trace_gateway_service.stdout }}:4317", unit)
+        self.assertIn("--set=exporters.otlp/tempo.tls.server_name_override="
+                      "otel-tempo.cattle-monitoring-system.svc.cluster.local", unit)
+        for source in ("charts/prometheus/values.yaml", "deploy/monitoring/otel-production-values.yaml",
+                       "scripts/otel-production-cluster.py"):
+            text = (repo / source).read_text()
+            self.assertIn("https://otel-loki.cattle-monitoring-system.svc:3100/otlp", text)
+            self.assertNotIn("https://10.250.0.3:3100/otlp", text)
+
     def test_retention_is_not_shortened(self) -> None:
         """Require Loki and Tempo retention periods to stay at their current lengths."""
         self.assertEqual(config("loki")["limits_config"]["retention_period"], "336h")

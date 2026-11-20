@@ -16,7 +16,7 @@ prometheus:
       - name: OTEL_LOG_INGESTION_START_NS
         value: '1793447920650563000'
       - name: OTEL_LOKI_ENDPOINT
-        value: https://10.250.0.3:3100/otlp
+        value: https://otel-loki.cattle-monitoring-system.svc:3100/otlp
       - name: OTEL_TRACE_GATEWAY_ENDPOINT
         value: 10.250.0.1:44317
       - name: GOMEMLIMIT
