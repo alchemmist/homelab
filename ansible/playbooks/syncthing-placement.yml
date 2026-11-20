@@ -13,7 +13,7 @@
         mode: preserve
 
     - name: Validate the chart
-      ansible.builtin.command: "helm lint {{ syncthing_placement_chart }}"
+      ansible.builtin.command: helm lint {{ syncthing_placement_chart }}
       changed_when: false
 
     - name: Upgrade placement while retaining the installed values

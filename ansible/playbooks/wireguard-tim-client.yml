@@ -9,7 +9,7 @@
       ansible.builtin.copy:
         dest: /etc/sysctl.d/91-homelab-wg-forwarding.conf
         content: "net.ipv4.ip_forward = 1\n"
-        mode: '0644'
+        mode: "0644"
 
     - name: Inspect gateway forwarding
       ansible.builtin.command: sysctl -n net.ipv4.ip_forward
@@ -54,7 +54,7 @@
       ansible.builtin.meta: flush_handlers
 
     - name: Verify private and public DNS resolution
-      ansible.builtin.command: "dig @{{ homelab_private_dns_listen_address }} {{ item }} A +short +time=3 +tries=1"
+      ansible.builtin.command: dig @{{ homelab_private_dns_listen_address }} {{ item }} A +short +time=3 +tries=1
       loop: [0.socrat.alchemmist.xyz,
              1.socrat.alchemmist.xyz,
              2.socrat.alchemmist.xyz,

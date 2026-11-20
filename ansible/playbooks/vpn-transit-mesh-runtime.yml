@@ -19,7 +19,7 @@
       failed_when: vpn_transit_xray_sha256 not in binary.stdout
     - name: Check new runtime files are not uncertain prior work
       ansible.builtin.stat:
-        path: '{{ item }}'
+        path: "{{ item }}"
       loop:
         - /etc/homelab-vpn-transit/user.json
         - /etc/homelab-vpn-transit/management.json
@@ -31,21 +31,21 @@
         fail_msg: Prior preparation exists; inspect receipt, do not blindly replay.
     - name: Copy public shared configs, not identities or private keys
       ansible.builtin.copy:
-        src: '{{ playbook_dir }}/../../deploy/vpn-hardening/{{ item.src }}'
-        dest: '/etc/homelab-vpn-transit/{{ item.dest }}'
-        mode: '0644'
+        src: "{{ playbook_dir }}/../../deploy/vpn-hardening/{{ item.src }}"
+        dest: /etc/homelab-vpn-transit/{{ item.dest }}
+        mode: "0644"
       loop:
         - {src: moscow-transit.json, dest: user.json}
         - {src: moscow-management.json, dest: management.json}
     - name: Validate both exact native configurations
-      ansible.builtin.command: '/usr/local/libexec/xray-transit run -test -config /etc/homelab-vpn-transit/{{ item }}.json'
+      ansible.builtin.command: /usr/local/libexec/xray-transit run -test -config /etc/homelab-vpn-transit/{{ item }}.json
       loop: [user, management]
       changed_when: false
     - name: Install independent node-local tools
       ansible.builtin.copy:
-        src: '{{ playbook_dir }}/../../scripts/{{ item }}.py'
-        dest: '/usr/local/libexec/{{ item }}.py'
-        mode: '0700'
+        src: "{{ playbook_dir }}/../../scripts/{{ item }}.py"
+        dest: /usr/local/libexec/{{ item }}.py
+        mode: "0700"
       loop: [vpn-transit-image, vpn-transit-failover]
     - name: Build deterministic offline image from same exact binary as native fallback
       ansible.builtin.command: python3 /usr/local/libexec/vpn-transit-image.py /usr/local/libexec/xray-transit /var/tmp/homelab-vpn-transit-image.tar
@@ -55,12 +55,12 @@
     - name: Configure real data-path probe without user credentials
       ansible.builtin.copy:
         dest: /etc/homelab-vpn-transit/failover.json
-        mode: '0600'
-        content: '{{ {"binary_sha256": vpn_transit_xray_sha256, "ws_path": (edge.routes | selectattr("name", "equalto", "trojan") | first).path} | to_nice_json }}'
+        mode: "0600"
+        content: "{{ {'binary_sha256': vpn_transit_xray_sha256, 'ws_path': (edge.routes | selectattr('name', 'equalto', 'trojan') | first).path} | to_nice_json }}"
     - name: Install split relay units, do not activate or stop existing traffic
       ansible.builtin.copy:
-        dest: '/etc/systemd/system/{{ item.name }}.service'
-        mode: '0644'
+        dest: /etc/systemd/system/{{ item.name }}.service
+        mode: "0644"
         content: |
           [Unit]
           Description={{ item.name }}; independent of cluster control-plane
@@ -98,17 +98,17 @@
       ansible.builtin.file:
         path: /etc/systemd/system/k3s-agent.service.d
         state: directory
-        mode: '0755'
+        mode: "0755"
     - ansible.builtin.copy:
         dest: /etc/systemd/system/k3s-agent.service.d/40-vpn-relay-fallback.conf
-        mode: '0644'
+        mode: "0644"
         content: |
           [Service]
           ExecCondition=/usr/bin/test ! -e /var/lib/homelab-vpn-transit/relay-failover/fallback.active
     - name: Install watchdog oneshot, only controls worker relay
       ansible.builtin.copy:
         dest: /etc/systemd/system/homelab-vpn-transit-watchdog.service
-        mode: '0644'
+        mode: "0644"
         content: |
           [Unit]
           Description=Actual local TLS WebSocket user relay health; sticky fenced native recovery
@@ -120,7 +120,7 @@
           UMask=0077
     - ansible.builtin.copy:
         dest: /etc/systemd/system/homelab-vpn-transit-watchdog.timer
-        mode: '0644'
+        mode: "0644"
         content: |
           [Unit]
           Description=Bounded local relay data-path watchdog
@@ -140,6 +140,6 @@
     - name: Seal preparation receipt; runtime not activated
       ansible.builtin.copy:
         dest: /var/lib/homelab-vpn-transit/mesh-runtime-prepared.json
-        mode: '0600'
-        content: '{{ {"prepared":true,"image":image_build.stdout | from_json,"activated":false} | to_nice_json }}'
+        mode: "0600"
+        content: "{{ {'prepared':true,'image':image_build.stdout | from_json,'activated':false} | to_nice_json }}"
 ...

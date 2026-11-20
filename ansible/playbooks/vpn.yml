@@ -125,7 +125,7 @@
       when: ansible_facts.services.get('docker.service', {}).get('state') == 'running'
 
     - name: Inspect host container units
-      ansible.builtin.command: "systemctl show {{ item }} --property=LoadState --value"
+      ansible.builtin.command: systemctl show {{ item }} --property=LoadState --value
       loop:
         - docker.socket
         - docker.service

@@ -15,9 +15,9 @@
       ansible.builtin.assert:
         that:
           - inventory_hostname == 'socrat-0'
-          - "wg_socrat_nodes['socrat-0']['address'] in (relay_mesh_addresses.stdout | from_json | map(attribute='addr_info') | flatten | map(attribute='local') | list)"
+          - wg_socrat_nodes['socrat-0']['address'] in (relay_mesh_addresses.stdout | from_json | map(attribute='addr_info') | flatten | map(attribute='local') | list)
     - name: Stop only owned bounded diagnostic relay units
-      ansible.builtin.command: 'systemctl stop {{ item }}'
+      ansible.builtin.command: systemctl stop {{ item }}
       loop:
         - homelab-wg15-relay-canary
         - homelab-wg15-relay-canary-b
@@ -26,19 +26,19 @@
       failed_when: false
     - name: Install fixed-address no-key relay
       ansible.builtin.copy:
-        src: '{{ playbook_dir }}/../../scripts/wg-peer15-relay.py'
+        src: "{{ playbook_dir }}/../../scripts/wg-peer15-relay.py"
         dest: /usr/local/libexec/homelab-wg-peer15-relay.py
         owner: root
         group: root
-        mode: '0755'
+        mode: "0755"
       notify: Restart only keyless peer15 relay
     - name: Install sandboxed relay unit
       ansible.builtin.copy:
-        src: '{{ playbook_dir }}/../files/wg-peer15-relay.service'
+        src: "{{ playbook_dir }}/../files/wg-peer15-relay.service"
         dest: /etc/systemd/system/homelab-wg-peer15-relay.service
         owner: root
         group: root
-        mode: '0644'
+        mode: "0644"
       notify: Restart only keyless peer15 relay
     - name: Apply relay-only handlers
       ansible.builtin.meta: flush_handlers

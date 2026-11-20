@@ -13,7 +13,7 @@
       ansible.builtin.file:
         path: /etc/homelab-vpn-transit
         state: directory
-        mode: '0755'
+        mode: "0755"
     - name: Inspect the installed proxy binary
       ansible.builtin.stat:
         path: /usr/local/libexec/xray-transit
@@ -29,11 +29,11 @@
       failed_when: vpn_transit_xray_sha256 not in transit_binary_hash.stdout
     - name: Install the fixed-port forwarding configuration
       ansible.builtin.copy:
-        src: '{{ playbook_dir }}/../../deploy/vpn-hardening/moscow-transit.json'
+        src: "{{ playbook_dir }}/../../deploy/vpn-hardening/moscow-transit.json"
         dest: /etc/homelab-vpn-transit/xray.json
         owner: root
         group: root
-        mode: '0644'
+        mode: "0644"
         backup: true
     - name: Validate the exact native proxy configuration
       ansible.builtin.command: /usr/local/libexec/xray-transit run -test -config /etc/homelab-vpn-transit/xray.json
@@ -41,7 +41,7 @@
     - name: Install the independent bounded proxy service
       ansible.builtin.copy:
         dest: /etc/systemd/system/homelab-vpn-transit.service
-        mode: '0644'
+        mode: "0644"
         content: |
           [Unit]
           Description=Fixed-destination Moscow to Netherlands VPN transit

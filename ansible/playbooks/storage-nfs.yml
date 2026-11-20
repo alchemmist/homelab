@@ -45,7 +45,7 @@
         dest: /etc/sysctl.d/99-inotify.conf
         owner: root
         group: root
-        mode: '0644'
+        mode: "0644"
         content: |
           fs.inotify.max_user_instances = 1024
           fs.inotify.max_user_watches = 1048576
@@ -61,7 +61,7 @@
         state: directory
         owner: nobody
         group: nogroup
-        mode: '0775'
+        mode: "0775"
 
     - name: Ensure exports.d exists
       ansible.builtin.file:
@@ -69,14 +69,14 @@
         state: directory
         owner: root
         group: root
-        mode: '0755'
+        mode: "0755"
 
     - name: Configure Kubernetes NFS export
       ansible.builtin.copy:
         dest: /etc/exports.d/k8s-nfs.exports
         owner: root
         group: root
-        mode: '0644'
+        mode: "0644"
         content: |
           {{ nfs_export_path }} 192.168.0.0/24(rw,sync,no_subtree_check,no_root_squash,fsid=0) 10.250.0.0/24(rw,sync,no_subtree_check,no_root_squash,fsid=0)
       notify: Reload NFS exports
@@ -87,7 +87,7 @@
         state: touch
         owner: root
         group: root
-        mode: '0644'
+        mode: "0644"
 
     - name: Enable and start NFS server
       ansible.builtin.systemd:
@@ -136,7 +136,7 @@
           - storageclass
           - local-path
           - -o
-          - 'jsonpath={.metadata.annotations.storageclass\.kubernetes\.io/is-default-class}'
+          - jsonpath={.metadata.annotations.storageclass\.kubernetes\.io/is-default-class}
       register: local_path_default
       changed_when: false
       failed_when: local_path_default.rc != 0 or local_path_default.stdout != 'false'
