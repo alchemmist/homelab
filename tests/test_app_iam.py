@@ -313,6 +313,7 @@ class AppIAMTests(unittest.TestCase):
         self.assertIn("'app-grafana-editor') && 'Editor'", expression)
         webui = json.loads((ROOT / "deploy/identity/open-webui-env.json").read_text())
         self.assertEqual(webui["OAUTH_ADMIN_ROLES"], "homelab-owner")
+        self.assertEqual(webui["ENABLE_OAUTH_EMAIL_FALLBACK"], "True")
         self.assertEqual(webui["OAUTH_MERGE_ACCOUNTS_BY_EMAIL"], "False")
         self.assertIn("app-open-webui-user", webui["OAUTH_ALLOWED_ROLES"])
         self.assertEqual(self.reviewed["antropophag"]["wikiRole"], "editor")
