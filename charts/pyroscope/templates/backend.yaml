@@ -14,7 +14,7 @@ kind: Deployment
 metadata:
   name: pyroscope
 spec:
-  replicas: 1
+  replicas: 0
   strategy:
     type: Recreate
   selector:
