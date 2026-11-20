@@ -12,6 +12,8 @@ tracing:
   grafanaDashboard: true
 profiling:
   enabled: true
+lms-database-ha:
+  hibernate: true # Historical experiment only; retain PVCs and stop legacy dumps.
 database:
   appSecretName: lms-pg-common
   ha:
