@@ -38,7 +38,7 @@ metadata:
   namespace: identity
 spec:
   serviceName: authentik-postgres
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: authentik-postgres

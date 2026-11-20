@@ -46,7 +46,7 @@ server:
     - hosts:
       - auth.socrat.alchemmist.xyz
       secretName: authentik-tls
-  replicas: 0
+  replicas: 1
   resources:
     limits:
       ephemeral-storage: 1Gi
@@ -60,7 +60,7 @@ serviceAccount:
   create: false
 worker:
   automountServiceAccountToken: false
-  replicas: 0
+  replicas: 1
   resources:
     limits:
       ephemeral-storage: 1Gi
