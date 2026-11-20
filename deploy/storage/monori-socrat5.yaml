@@ -4,13 +4,13 @@ kind: PersistentVolume
 metadata:
   name: monori-back-socrat5
 spec:
-  capacity: { storage: 20Gi }
+  capacity: {storage: 20Gi}
   accessModes: [ReadWriteOnce]
   persistentVolumeReclaimPolicy: Retain
   storageClassName: ""
   volumeMode: Filesystem
-  local: { path: /mnt/files/homelab/monori/data }
-  claimRef: { namespace: monori, name: monori-back-socrat5 }
+  local: {path: /mnt/files/homelab/monori/data}
+  claimRef: {namespace: monori, name: monori-back-socrat5}
   nodeAffinity:
     required:
       nodeSelectorTerms:
@@ -28,7 +28,7 @@ metadata:
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
 spec:
   accessModes: [ReadWriteOnce]
-  resources: { requests: { storage: 20Gi } }
+  resources: {requests: {storage: 20Gi}}
   storageClassName: ""
   volumeName: monori-back-socrat5
 ---
@@ -38,13 +38,13 @@ kind: PersistentVolume
 metadata:
   name: monori-sync-socrat5
 spec:
-  capacity: { storage: 2Gi }
+  capacity: {storage: 2Gi}
   accessModes: [ReadWriteOnce]
   persistentVolumeReclaimPolicy: Retain
   storageClassName: ""
   volumeMode: Filesystem
-  local: { path: /mnt/files/homelab/monori/sync-debug }
-  claimRef: { namespace: monori, name: monori-sync-socrat5 }
+  local: {path: /mnt/files/homelab/monori/sync-debug}
+  claimRef: {namespace: monori, name: monori-sync-socrat5}
   nodeAffinity:
     required:
       nodeSelectorTerms:
@@ -62,6 +62,6 @@ metadata:
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
 spec:
   accessModes: [ReadWriteOnce]
-  resources: { requests: { storage: 2Gi } }
+  resources: {requests: {storage: 2Gi}}
   storageClassName: ""
   volumeName: monori-sync-socrat5

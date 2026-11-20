@@ -4,13 +4,13 @@ kind: PersistentVolume
 metadata:
   name: wiki-runtime-socrat5
 spec:
-  capacity: { storage: 5Gi }
+  capacity: {storage: 5Gi}
   accessModes: [ReadWriteOnce]
   persistentVolumeReclaimPolicy: Retain
   storageClassName: ""
   volumeMode: Filesystem
-  local: { path: /mnt/files/homelab/wiki-runtime/data }
-  claimRef: { namespace: wiki, name: wiki-runtime-socrat5 }
+  local: {path: /mnt/files/homelab/wiki-runtime/data}
+  claimRef: {namespace: wiki, name: wiki-runtime-socrat5}
   nodeAffinity:
     required:
       nodeSelectorTerms:
@@ -28,6 +28,6 @@ metadata:
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
 spec:
   accessModes: [ReadWriteOnce]
-  resources: { requests: { storage: 5Gi } }
+  resources: {requests: {storage: 5Gi}}
   storageClassName: ""
   volumeName: wiki-runtime-socrat5

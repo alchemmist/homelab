@@ -4,13 +4,13 @@ kind: PersistentVolume
 metadata:
   name: wishlist-socrat5
 spec:
-  capacity: { storage: 1Gi }
+  capacity: {storage: 1Gi}
   accessModes: [ReadWriteOnce]
   persistentVolumeReclaimPolicy: Retain
   storageClassName: ""
   volumeMode: Filesystem
-  local: { path: /mnt/files/homelab/wishlist/data }
-  claimRef: { namespace: wishlist, name: wishlist-socrat5 }
+  local: {path: /mnt/files/homelab/wishlist/data}
+  claimRef: {namespace: wishlist, name: wishlist-socrat5}
   nodeAffinity:
     required:
       nodeSelectorTerms:
@@ -28,6 +28,6 @@ metadata:
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
 spec:
   accessModes: [ReadWriteOnce]
-  resources: { requests: { storage: 1Gi } }
+  resources: {requests: {storage: 1Gi}}
   storageClassName: ""
   volumeName: wishlist-socrat5

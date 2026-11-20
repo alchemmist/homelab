@@ -4,13 +4,13 @@ kind: PersistentVolume
 metadata:
   name: format-quorum-clang-versions-socrat5
 spec:
-  capacity: { storage: 2Gi }
+  capacity: {storage: 2Gi}
   accessModes: [ReadWriteOnce]
   persistentVolumeReclaimPolicy: Retain
   storageClassName: ""
   volumeMode: Filesystem
-  local: { path: /mnt/files/homelab/format-quorum/clang-versions }
-  claimRef: { namespace: format-quorum, name: format-quorum-clang-versions-socrat5 }
+  local: {path: /mnt/files/homelab/format-quorum/clang-versions}
+  claimRef: {namespace: format-quorum, name: format-quorum-clang-versions-socrat5}
   nodeAffinity:
     required:
       nodeSelectorTerms:
@@ -28,7 +28,7 @@ metadata:
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
 spec:
   accessModes: [ReadWriteOnce]
-  resources: { requests: { storage: 2Gi } }
+  resources: {requests: {storage: 2Gi}}
   storageClassName: ""
   volumeName: format-quorum-clang-versions-socrat5
 ---
@@ -38,13 +38,13 @@ kind: PersistentVolume
 metadata:
   name: format-quorum-tests-socrat5
 spec:
-  capacity: { storage: 2Gi }
+  capacity: {storage: 2Gi}
   accessModes: [ReadWriteOnce]
   persistentVolumeReclaimPolicy: Retain
   storageClassName: ""
   volumeMode: Filesystem
-  local: { path: /mnt/files/homelab/format-quorum/tests }
-  claimRef: { namespace: format-quorum, name: format-quorum-tests-socrat5 }
+  local: {path: /mnt/files/homelab/format-quorum/tests}
+  claimRef: {namespace: format-quorum, name: format-quorum-tests-socrat5}
   nodeAffinity:
     required:
       nodeSelectorTerms:
@@ -62,7 +62,7 @@ metadata:
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
 spec:
   accessModes: [ReadWriteOnce]
-  resources: { requests: { storage: 2Gi } }
+  resources: {requests: {storage: 2Gi}}
   storageClassName: ""
   volumeName: format-quorum-tests-socrat5
 ---
@@ -72,13 +72,13 @@ kind: PersistentVolume
 metadata:
   name: format-quorum-config-history-socrat5
 spec:
-  capacity: { storage: 1Gi }
+  capacity: {storage: 1Gi}
   accessModes: [ReadWriteOnce]
   persistentVolumeReclaimPolicy: Retain
   storageClassName: ""
   volumeMode: Filesystem
-  local: { path: /mnt/files/homelab/format-quorum/config-history }
-  claimRef: { namespace: format-quorum, name: format-quorum-config-history-socrat5 }
+  local: {path: /mnt/files/homelab/format-quorum/config-history}
+  claimRef: {namespace: format-quorum, name: format-quorum-config-history-socrat5}
   nodeAffinity:
     required:
       nodeSelectorTerms:
@@ -96,6 +96,6 @@ metadata:
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
 spec:
   accessModes: [ReadWriteOnce]
-  resources: { requests: { storage: 1Gi } }
+  resources: {requests: {storage: 1Gi}}
   storageClassName: ""
   volumeName: format-quorum-config-history-socrat5
