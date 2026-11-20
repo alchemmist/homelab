@@ -93,3 +93,13 @@ for (const [contract,input,output] of [['beautiful_digits','513\n','Вы вве�
  const r=run('Verify new tests against reviewed specification',response({cases:[{input:'0\n',output:'234\n'},{input:'',output:'233\n'},{input:'',output:'234\n'}]}),args);
  assert.equal(r.phase,'suite');assert.deepEqual(r.data.cases,[{input:'',output:'234\n'}]);
 }
+const diff={contract:'differential_v1',source:'print(input())',witness:'s=input();print(s)',examples:[{input:'x\n',output:'x\n'}],cases:[],faults:[],calls:1,variant:0};
+assert.equal(run('Validate blind witness',response({source:'print(input())'}),{phase:'witness',data:{...diff}}).phase,'needs_review');
+assert.equal(run('Require semantic approval',response({approved:false,reason:'ambiguous'}),{phase:'audit',data:{...diff}}).phase,'needs_review');
+assert.equal(run('Check witness verdict wsuite',verdict('wrong_answer',1),{phase:'wsuite',data:{...diff}}).phase,'needs_review');
+const faults=[['edge','source1'],['branch','source2'],['order','source3']];
+assert.equal(run('Count killed variants or request more coverage',verdict('runtime_error',1),{phase:'mutate',data:{...diff,faults}}).phase,'needs_review');
+assert.equal(run('Count killed variants or request more coverage',verdict('accepted'),{phase:'mutate',data:{...diff,faults}}).phase,'expand');
+assert.equal(run('Count killed variants or request more coverage',verdict('wrong_answer',1),{phase:'mutate',data:{...diff,faults}}).phase,'plausible');
+assert.equal(run('Reject crashes and always-wrong probes',verdict('wrong_answer',1),{phase:'plausible',data:{...diff,faults,probeCase:0}}).phase,'needs_review');
+assert.equal(run('Reject crashes and always-wrong probes',verdict('accepted'),{phase:'plausible',data:{...diff,faults,variant:2,probeCase:0}}).phase,'certified');

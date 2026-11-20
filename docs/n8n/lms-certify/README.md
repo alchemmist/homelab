@@ -117,3 +117,30 @@ cap prevented adding a missing boundary once full. Operator-authored
 oracle as generated proposals; existing tests remain intact. Reverse parrot
 completed in `53858` at 16 tests and 4/4 probes. Regression checks cover preserving
 12 existing cases while adding a targeted case, plus bounded repair continuation.
+
+### Continuous differential admission
+
+When no reviewed task or matched equivalent is pending, `Admit next elementary
+stdin exercise` selects ONE prefiltered elementary stdin task with canonical
+examples. At rollout 160 existing rows satisfied the filter. This does not
+admit function tasks, all drafts, or entire courses indiscriminately. For
+already reviewed zero-input tasks, the single valid test is derived directly
+from `reviewedOutput`; never spend calls repeatedly guessing a known oracle.
+
+New differential certificates have explicit scope `bounded_same_model_differential`:
+solution and distinct witness generated in separate calls, blind test author,
+semantic review, both solutions accepted against public examples and >=4
+private cases, >=3 distinct nonempty fault variants. Every variant must produce
+`wrong_answer` on the suite and `accepted` on at least one input. Crashes and
+always-wrong variants cannot pass. Surviving variants trigger expansion;
+failed audit, witness disagreement, or exhausted budget do not count as success.
+These are bounded behavioral checks with correlated model risk, not a human
+semantic proof. A separate reviewer model is not wired here. A finite backlog
+may eventually exhaust; diagnosis and verified completions are distinct.
+
+Apply `upgrade-differential.sql` on an existing DB before activating. Use
+`status.sql` against the private pilot database to report state without leaking
+artifacts. Metrics busy/missing/stale continue to block inference. Existing
+certificates are not relabeled. For API maintenance if the configured VPN
+address is unavailable, use the verified TLS hostname's resolved address via
+`N8N_API_RESOLVE_ADDRESS`; do not disable TLS validation.

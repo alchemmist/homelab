@@ -35,7 +35,7 @@ def api(method, path, body=None):
     if body is not None:
         cmd += ["--data-binary", "@-"]
     r = subprocess.run(
-        cmd, input=json.dumps(body) if body is not None else None, text=True, capture_output=True
+        cmd, input=json.dumps(body, ensure_ascii=False, separators=(",", ":")) if body is not None else None, text=True, capture_output=True
     )
     if r.returncode:
         raise RuntimeError("API request failed: " + method + " " + path)
