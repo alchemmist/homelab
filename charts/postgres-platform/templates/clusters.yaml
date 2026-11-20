@@ -21,7 +21,7 @@ spec:
   enableSuperuserAccess: false
   storage:
     size: {{ ternary "5Gi" "20Gi" (eq $tier "critical") }}
-    storageClass: pg-local-retain
+    storageClass: {{ ternary "pg-local-retain" "pg-common-local" (eq $tier "critical") }}
   affinity:
     enablePodAntiAffinity: true
     podAntiAffinityType: required
@@ -32,7 +32,7 @@ spec:
           - matchExpressions:
               - key: kubernetes.io/hostname
                 operator: In
-                values: {{ ternary (list "socrat-0" "socrat-1" "socrat-5") (list "socrat-1" "socrat-5") (eq $tier "critical") | toJson }}
+                values: {{ ternary (list "socrat-0" "socrat-1" "socrat-5") (list "socrat-0" "socrat-5") (eq $tier "critical") | toJson }}
   resources:
     requests: {cpu: 100m, memory: 256Mi}
   {{- if eq $tier "critical" }}

@@ -1,0 +1,36 @@
+{{- if .Values.enabled }}
+# One class for the CNPG cluster; bind each ordinal to its designated device.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: pg-common-local
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain
+{{- range $v := list (dict "id" 1 "node" "socrat-0" "path" "/srv/postgres/pg-common-1") (dict "id" 2 "node" "socrat-5" "path" "/mnt/files/homelab/postgres/pg-common-2") }}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pg-common-local-{{ $v.id }}
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  capacity: {storage: 20Gi}
+  accessModes: [ReadWriteOnce]
+  storageClassName: pg-common-local
+  persistentVolumeReclaimPolicy: Retain
+  claimRef:
+    namespace: {{ $.Release.Namespace }}
+    name: pg-common-{{ $v.id }}
+  local:
+    path: {{ $v.path }}
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [{{ $v.node }}]
+{{- end }}
+{{- end }}
