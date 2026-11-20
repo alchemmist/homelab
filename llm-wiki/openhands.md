@@ -497,3 +497,20 @@ Pi handoff: disable native n8n workflow `0KMZHxCWdTw7oC0o` before dispatch; v2 h
 `services/pi-monori/`: issue snapshot -> 405 scoped backlog rows, only `integer_value` and `_amount` admitted to initial sequential pilot. `socrat-0:~/pi-monori-509-v1` contains trusted dispatcher, tmux `pi509`, queue.sqlite, per-attempt stdout, receipts. Agent never runs in the control-plane shell: isolated `pi-monori-author` and zero-egress `pi-monori-judge` workloads on socrat-5. No SA tokens, host mounts, Canvas FS, PAT or signer in either sandbox. npm lock, Pi 1.5.2, matching local model protocol/window 32768/output 4096 through fixed loopback relay using existing scoped key. Operator-only preflight transfers pinned public tree and independent verifier venv via size-bounded chunks and SHA; do not substitute an agent-authored tar. Distinct worktrees per card; restore production file in judge finally. Uncertain creation stays `publishing`; do not retry before reading GitHub. Never merge. PR creation does not prove Ready; independent bot review/current-head CI still required. Query `sqlite3 queue.sqlite 'select card,state,note from events order by rowid desc limit 8'` or `tail dispatcher.log`. Stop after pilot, review receipts before allowing broader catalog/admission. A node reboot ends tmux, not durable SQLite history; resume with operator check, not blanket re-run after ambiguous publication.
 
 First live Pi proof 2026-11-20: n8n confirmed inactive. Attempt one returned a plan and no file; dispatcher rejected it. Fresh Pi wrote a real test on attempt two. Offline receipt for `x_integer_value__mutmut_1`: old focused 8 passed on mutant, 6 new failures, 14 passed on restored original. Published [#514](https://github.com/alchemmist/monori/pull/514) head `7d52113cf60b7edfba6edc336110ec09afd8bbf9` at 14:49:15 MSK; one new test file. At 14:49:55 the same tmux dispatcher independently confirmed 77 old focused tests passed on `x__amount__mutmut_4` and launched Pi for the second card. No operator prompt between cards. CI/reviews still pending at this observation; not Ready, not the full #509 campaign.
+
+Full #509 campaign supersedes the two-card admission cap. Operator runtime is
+`socrat-0:~/pi-monori-509-v1`, tmux `pi509-campaign`, `python3 status.py`; durable
+`campaign.sqlite` + `campaign-artifacts/`, separate author worktrees and offline judge
+on socrat-5. No manual merge or `main` writes. `PAUSE-CAMPAIGN` parks at next boundary.
+`index_catalog.py` extracts canonical mutation bodies from generated 3.8.1 sources:
+all 405 report entries map to the index; deduplicating section overlaps gives 12,284
+candidate IDs across 385 families to recheck. **Not** 12,284 proven survivors. The
+cache contained no run exit codes, so current old-suite green is measured, not inferred.
+Every candidate is eligible, not just the original two cards. Screen on current main,
+try bounded Pi authors, independently replay assertion failure and combined green,
+compare sibling proofs before minting another PR. At five outstanding publisher PRs,
+continue preparing patches; revalidate changed base before publication. Offline-ci
+failures/timeouts, source drift and inconclusive answers are not fixes. PR publication
+is not Ready. Preserve closed-unmerged/uncertain writes; reconcile before retry. After
+merge/backlog reconciliation run the next full mutation census and replan the residual;
+the narrow focused proofs are not a substitute for that project-wide census.

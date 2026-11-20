@@ -23,3 +23,9 @@ class Publisher(unittest.TestCase):
   self.assertEqual(len(m.changes({'web/e2e/filter.spec.ts':'abc'},True)),1)
   for v in ['Bearer token','github_pat_fake','https://host']:
    with self.assertRaises(ValueError):m.clean_text(v,1,90)
+ def test_campaign_ci_test_path_requires_proof(self):
+  f={'ci/tests/test_mutation_123456abcdef.py':'# regression'}
+  with self.assertRaises(ValueError):m.changes(f)
+  self.assertEqual(len(m.changes(f,pi_ci=True)),1)
+  for p in ('ci/tests/conftest.py','ci/lib/mutation_gate.py','ci/tests/test_mutation_123456abcdef.sh'):
+   with self.assertRaises(ValueError):m.changes({p:'bad'},pi_ci=True)

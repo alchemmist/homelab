@@ -1,0 +1,172 @@
+"""Full report campaign. Trusted scheduler on socrat-0; no agent or pytest on host."""
+import ast,collections,contextlib,difflib,fcntl,gzip,hashlib,json,os,re,sqlite3,subprocess,sys,time
+from pathlib import Path
+import dispatcher as pilot
+R=pilot.ROOT; BASE0=pilot.BASE; D=R/'campaign.sqlite'; A=R/'campaign-artifacts';A.mkdir(exist_ok=True); C=json.load(gzip.open(R/'catalog-full.json.gz')); BACK=json.loads((R/'backlog.json').read_text()); J='/scratch/monori/'; K=pilot.k
+
+def query(q,a=()):
+ with contextlib.closing(sqlite3.connect(D,timeout=15)) as db,db:
+  db.row_factory=sqlite3.Row;return [dict(x) for x in db.execute(q,a)]
+def init():
+ query('create table if not exists tasks(id text primary key,fam text,num integer,category text,ord integer,state text,base text,note text,pr integer,updated real)');query('create table if not exists audit(t real,id text,state text,note text)');query('create table if not exists meta(k text primary key,v text)')
+ with contextlib.closing(sqlite3.connect(D)) as db,db:
+  for r in BACK:
+   fam,_,single=r['family'].partition('__mutmut_');f=C.get(fam);nums=[single] if single else list(f['diffs']) if f else ['0'];
+   for num in nums:
+    uid=fam+'__mutmut_'+num;priority=int(r['id']);
+    if fam.endswith('common.json_values.x_optional_string'):priority=-3
+    if fam.endswith('server.app.importer.x_parse_amount_kop'):priority=-2
+    if fam.endswith('server.app.workbook.spec.x_kop_from_rub'):priority=-1
+    db.execute('insert or ignore into tasks values(?,?,?,?,?,?,?,?,?,?)',(uid,fam,int(num),r['section'],priority,'queued' if f and num in f['diffs'] else 'catalog_drift','','',None,0))
+ # Seed actual published pilot coverage, never re-publish it.
+ for name in ('integer_value','_amount'):
+  proof=R/(name+'-proof.json');
+  if proof.exists():
+   published=pilot.sql("select note from events where card=? and state='published' order by rowid desc limit 1",(name,));
+   if published:
+    v=json.loads(proof.read_text());uid=next((k for k in C if k.endswith('.x_'+name)),None)
+    if uid:query("update tasks set state='published',pr=?,base=?,note=? where id=? and state='queued'",(json.loads(published[0][0])['pr'],v['base'],'pilot proof',uid.rsplit('.',1)[0]+'.'+v['mutmut']))
+
+def mark(t,state,note='',base=None,pr=None):
+ q=(state,note[:1500],base or t['base'],pr or t['pr'],time.time(),t['id']);query('update tasks set state=?,note=?,base=?,pr=?,updated=? where id=?',q);query('insert into audit values(?,?,?,?)',(time.time(),t['id'],state,note[:1500]));print(time.strftime('%FT%T%z'),state,t['id'],note[:120].replace('\n',' '),flush=True)
+def key(t):return hashlib.sha256(t['id'].encode()).hexdigest()[:12]
+def remote_json(path):
+ # Public GET only; no publisher/host credentials in workers.
+ import urllib.request
+ with urllib.request.urlopen(urllib.request.Request('https://api.github.com/repos/alchemmist/monori/'+path,headers={'User-Agent':'socrat-campaign'}),timeout=15) as r:return json.load(r)
+def git(*a):return pilot.cmd(['git','--git-dir=base.git',*a]).stdout
+def source(sha,file):return git('show',sha+':'+file)
+
+def patch(t,sha):
+ f=C[t['fam']];file=f['file'];s=source(sha,file);old=''.join(f['old']);start,end,repl=f['diffs'][str(t['num'])];mut=''.join(f['old'][:start]+repl+f['old'][end:]);
+ if s.count(old)!=1:raise ValueError('Generated function body not unique/exact on current base; refresh required')
+ return file,s,s.replace(old,mut,1),''.join(difflib.unified_diff(old.splitlines(True),mut.splitlines(True),n=3))
+
+def select_suite(t,sha):
+ mod=C[t['fam']]['file'];leaf=Path(mod).stem;func=t['fam'].split('.')[-1].split('ǁ')[-1];func=func.removeprefix('x_');area='ci/tests' if mod.startswith('ci/') else 'server/tests/unit';files=git('ls-tree','-r','--name-only',sha,'--',area).splitlines();tests=[p for p in files if Path(p).name.startswith('test_') and p.endswith('.py')];module=mod[:-3].replace('/','.');p=pilot.cmd(['git','--git-dir=base.git','grep','-l','-F',module,sha,'--',area],ok=False);imports={line.split(':',1)[-1] for line in p.stdout.splitlines()};p=pilot.cmd(['git','--git-dir=base.git','grep','-l','-Fw',func,sha,'--',area],ok=False);refs={line.split(':',1)[-1] for line in p.stdout.splitlines()};top=sorted(tests,key=lambda p:(-(10*(p in imports)+6*(p in refs)+4*(leaf in Path(p).stem)),p));direct=[p for p in top if p in imports|refs or leaf in Path(p).stem];return (direct[:6] or [area]),area
+
+def sandbox_write(path,text):pilot.write('judge',J+path,text)
+def reset_source(src,original):sandbox_write(src,original);K('judge',['rm','-rf',J+str(Path(src).parent/'__pycache__')])
+def tests(paths,limit=250):
+ # Timeout INSIDE the pod, including children, not just the kubectl client.
+ r=K('judge',['sh','-ec','cd /scratch/monori; export PYTHONPATH=/scratch PYTHONDONTWRITEBYTECODE=1;exec timeout -k 5 "$1" .venv/bin/python -m pytest -q --tb=short --disable-warnings -m "not integration" "${@:2}"'.replace('"${@:2}"','"$@"').replace('exec timeout -k 5 "$1"','budget=$1;shift;exec timeout -k 5 "$budget"'),'sh',str(limit),*paths],timeout=limit+25,ok=False);return r.returncode,r.stdout[-5000:]
+def green(p):return p[0]==0 and bool(re.search(r'\b[1-9]\d* passed',p[1]))
+def killed(p):return p[0]==1 and bool(re.search(r'\b[1-9]\d* failed',p[1]))
+
+def install_base(sha):
+ """Stream tracked files only. No untrusted tar input on the SSH host."""
+ for file in ('pyproject.toml','server/pyproject.toml','common/pyproject.toml','ci/pyproject.toml'):
+  if source(sha,file)!=source(BASE0,file):raise RuntimeError('dependency drift: rebuild locked offline verifier before admitting this base')
+ prep=K('judge',['sh','-ec','cd /scratch/monori; if test -f /scratch/campaign-base && test "$(cat /scratch/campaign-base)" = "$1";then echo ready;fi','sh',sha]);
+ if 'ready' not in prep.stdout:
+  with subprocess.Popen(['git','--git-dir=base.git','archive',sha],stdout=subprocess.PIPE) as inp:
+   subprocess.run(['kubectl','-n','openhands','exec','-i','deploy/pi-monori-judge','-c','sandbox','--','sh','-ec','cd /scratch/monori; find . -mindepth 1 -maxdepth 1 ! -name .venv -exec rm -rf -- {} +;tar xf -;echo "$1" >/scratch/campaign-base','sh',sha],stdin=inp.stdout,check=True,timeout=120);assert inp.wait()==0
+ # Author fetches public main; no host key or git credential is passed in.
+ K('author',['sh','-ec','git --git-dir=/scratch/base.git cat-file -e "$1^{commit}" 2>/dev/null || git --git-dir=/scratch/base.git fetch --depth=1 https://github.com/alchemmist/monori.git main','sh',sha])
+
+def candidate_guard(text,src):
+ if not 40<len(text)<20000:raise ValueError('missing/oversized candidate')
+ if re.search(r'#\s*(?:type:\s*ignore|noqa|nosec)',text):raise ValueError('repo forbids lint/type suppressions')
+ tree=ast.parse(text)
+ if any(isinstance(n,ast.arg) and n.annotation and any(isinstance(a,ast.Name) and a.id in {'object','Any'} for a in ast.walk(n.annotation)) for n in ast.walk(tree)):raise ValueError('use a concrete project type, not object/Any')
+ allowed=('monori.'+src.split('/')[0]+'.','monori.common.');safe={'pytest','datetime','decimal','collections','dataclasses','typing','pathlib','io','json','re','math','unittest.mock','openpyxl','sqlite3','uuid'}
+ if not any(isinstance(n,ast.FunctionDef) and n.name.startswith('test_') for n in tree.body):raise ValueError('missing test')
+ for n in ast.walk(tree):
+  if isinstance(n,(ast.Import,ast.ImportFrom)):
+   mods=[n.module or ''] if isinstance(n,ast.ImportFrom) else [a.name for a in n.names]
+   if any(not (m.startswith(allowed) or any(m==v or m.startswith(v+'.') for v in safe)) for m in mods):raise ValueError('test import outside offline unit-test scope')
+   if any(a.name.startswith('__') or a.name=='*' for a in n.names):raise ValueError('dynamic import')
+  if isinstance(n,(ast.Name,ast.Attribute)):
+   x=n.id if isinstance(n,ast.Name) else n.attr
+   if x.startswith('__') or x in {'eval','exec','compile','globals','locals','exit','quit','getattr','setattr','delattr','skip','skipif','xfail','importorskip','open','read_bytes','read_text','write_bytes','write_text','unlink','system','popen','connect_ex','socket','subprocess','os','sys','builtins','importlib','pytest_plugins'}:raise ValueError('test uses unsupported introspection, I/O or bypass')
+  if isinstance(n,ast.Constant) and isinstance(n.value,str) and ('/scratch/' in n.value or '/proc/' in n.value or 'PYTEST_CURRENT_TEST' in n.value):raise ValueError('environment-dependent test')
+
+def try_pi(t,sha,mid,detail,oldtests,folder):
+ src=C[t['fam']]['file'];slug=key(t);dest=('ci/tests/' if src.startswith('ci/') else 'server/tests/unit/')+'test_mutation_'+slug+'.py';wt='/scratch/campaign/'+slug+'/monori';folder.mkdir(exist_ok=True);K('author',['sh','-ec','if test -d "$1";then git --git-dir=/scratch/base.git worktree remove --force "$1";fi;git --git-dir=/scratch/base.git worktree prune;git --git-dir=/scratch/base.git worktree add --detach "$1" "$2"','sh',wt,sha]);feedback=''
+ try:
+  for attempt in range(1,4):
+   prompt=f'''Take one atomic item from alchemmist/monori#509: {t['category']}, {mid}, base {sha}. Work directly in this worktree. Write an actual English annotated regression test to {dest} and no other tracked file. Original/mutant diff:\n{detail[:7800]}\nExisting tests {oldtests} passed on both. Read source/dependencies and existing tests, use actual /scratch/monori/.venv/bin/python with PYTHONPATH set to worktree parent, check actual output before proposing. Follow existing formatting and annotation gates: no type: ignore/noqa, no object/Any parameter annotations, prefer the project type alias. No external systems, networking, credentials, exploits, PoCs, bypasses, live banking, gh, merge or dummy PR. Only ordinary offline behavior on fixtures. The independent judge runs your file on original and mutant. If not distinguishable write OUTCOME.md with concrete evidence; not a fictional test. Plans do not count: write your file with tools. Feedback: {feedback[:750]}''';(folder/'prompt.md').write_text(prompt);mark(t,'authoring',f'attempt {attempt}',sha)
+   with (folder/f'pi-{attempt}.log').open('wb') as log:
+    res=subprocess.run(['kubectl','-n','openhands','exec','-i','deploy/pi-monori-author','-c','sandbox','--','sh','-ec','cd "$1";export PYTHONPATH="$(dirname "$1")";exec timeout -k 5 900 /opt/pi/node_modules/.bin/pi --provider litellm --model v-deepseek-uc --no-approve --no-extensions --no-mcp --no-skills --no-prompt-templates --no-context-files --no-session --tools read,bash,edit,write -p "$(cat)"','sh',wt],input=prompt.encode(),stdout=log,stderr=log,timeout=950)
+   if res.returncode:feedback='executor ended without a verified result, exit '+str(res.returncode);time.sleep(60);continue
+   get="import pathlib,sys;p=pathlib.Path(sys.argv[1]);assert p.is_file() and not p.is_symlink() and p.stat().st_size<20000;sys.stdout.write(p.read_text())";r=K('author',['python','-c',get,wt+'/'+dest],ok=False)
+   if r.returncode:
+    outcome=K('author',['python','-c',get,wt+'/OUTCOME.md'],ok=False)
+    if not outcome.returncode:(folder/'outcome.md').write_text(outcome.stdout);mark(t,'needs_triage','Agent supplied explanation; not certified equivalent',sha);return
+    feedback='No test file exists. Use write tool on exact path now; do not finish with a plan.';continue
+   text=r.stdout
+   try:
+    candidate_guard(text,src);changed=K('author',['git','-C',wt,'diff','--name-only',sha]).stdout.strip();assert changed in ('',dest),'unrelated edits present';receipt=prove(t,sha,dest,text,oldtests)
+   except (ValueError,AssertionError,SyntaxError) as ex:feedback=str(ex)[-750:];mark(t,'rejected',feedback,sha);continue
+   (folder/'test.py.txt').write_text(text);(folder/'proof.json').write_text(json.dumps(receipt,indent=2));mark(t,'verified','Independent proof archived; awaiting publisher slot',sha);return
+  mark(t,'needs_triage','No proof after 3 attempts. '+feedback,sha)
+ finally:K('author',['git','--git-dir=/scratch/base.git','worktree','remove','--force',wt],ok=False)
+
+def prove(t,sha,dest,text,oldtests):
+ src,orig,mut,_=patch(t,sha);reset_source(src,orig)
+ try:
+  sandbox_write(dest,text);a=tests([dest]);assert green(a),'original did not pass: '+a[1][-450:];reset_source(src,mut);b=tests(oldtests);assert green(b),'old suite no longer survives';red=tests([dest]);assert killed(red) and 'FAILED '+dest+'::test_' in red[1] and re.search(r'AssertionError|^E\s+assert |DID NOT RAISE|Regex pattern did not match',red[1],re.M),'no assertion kill: '+red[1][-450:];reset_source(src,orig);g=tests(oldtests+[dest]);assert green(g),'combined original failed: '+g[1][-450:];return {'base':sha,'mutant':t['id'],'dest':dest,'sha256':hashlib.sha256(text.encode()).hexdigest(),'old_suite':oldtests,'old_on_mutant':b[1].splitlines()[-1],'new_on_mutant':red[1][-2400:],'original':g[1].splitlines()[-1]}
+ finally:reset_source(src,orig);K('judge',['rm','-f',J+dest])
+
+def screen(t,sha):
+ try:src,orig,mut,detail=patch(t,sha)
+ except (ValueError,KeyError):mark(t,'catalog_drift','Cannot apply exact mutation to current main',sha);return
+ oldtests,area=select_suite(t,sha);reset_source(src,orig);cache='baseline:'+sha+':'+hashlib.sha256(json.dumps(oldtests).encode()).hexdigest()
+ if not query('select v from meta where k=?',(cache,)):
+  g=tests(oldtests)
+  if not green(g):mark(t,'baseline_blocked','Original focused suite not green: '+g[1][-240:],sha);return
+  query('insert or replace into meta values(?,?)',(cache,g[1].splitlines()[-1]))
+ try:reset_source(src,mut);p=tests(oldtests,50 if t['category']=='Timeouts' else 220)
+ finally:reset_source(src,orig)
+ if killed(p):mark(t,'already_killed',p[1].splitlines()[-1],sha);return
+ if not green(p):mark(t,'timeout_triage' if p[0] in (124,137) else 'needs_triage','Focused suite exit '+str(p[0])+'; not counted as fixed',sha);return
+ # Prior proven test on a sibling mutation may already cover this one. Do not open a duplicate PR.
+ for prior in query("select * from tasks where fam=? and state in ('verified','published','merged')",(t['fam'],)):
+  folder=A/key(prior);pf=folder/'proof.json';tf=folder/'test.py.txt'
+  if not pf.exists() or not tf.exists():continue
+  receipt=json.loads(pf.read_text())
+  if receipt['base']!=sha:continue
+  try:prove(t,sha,receipt['dest'],tf.read_text(),oldtests)
+  except (AssertionError,ValueError):continue
+  mark(t,'covered_pending_merge','Covered by '+prior['id'],sha,prior['pr']);return
+ mark(t,'survived',p[1].splitlines()[-1],sha);try_pi(t,sha,t['id'],detail,oldtests,A/key(t))
+
+def publish(t,sha):
+ folder=A/key(t);receipt=json.loads((folder/'proof.json').read_text());text=(folder/'test.py.txt').read_text();assert hashlib.sha256(text.encode()).hexdigest()==receipt['sha256'];dest=receipt['dest']
+ if receipt['base']!=sha:
+  oldtests,_=select_suite(t,sha)
+  try:receipt=prove(t,sha,dest,text,oldtests)
+  except (AssertionError,ValueError):mark(t,'rebase_triage','Proof no longer holds on new main',sha);return
+  (folder/'proof.json').write_text(json.dumps(receipt,indent=2))
+ title='test: cover '+t['fam'].split('.')[-1].replace('ǁ','.')[:60]+' [509:'+key(t)+']';payload={'action':'create','head':sha,'title':title,'files':{dest:text}};mark(t,'publishing','Reconcile this unique title on any ambiguous acknowledgement: '+title,sha)
+ try:r=pilot.cmd(['kubectl','-n','openhands','exec','-i','openhands-0','-c','mutation-pilot','--','python','-c',pilot.PUBLISH],json.dumps(payload),timeout=95);obj=json.loads(r.stdout);assert obj['pr'] and obj['head']
+ except Exception:mark(t,'publication_uncertain',title,sha);return
+ (folder/'publication.json').write_text(json.dumps(obj));mark(t,'published',obj['head'],sha,obj['pr'])
+
+def reconcile(prs,sha):
+ open_by={p['number']:p for p in prs}
+ # Repair lost acknowledgements by unique title, never replay a blind create.
+ for t in query("select * from tasks where state='publication_uncertain'"):
+  matches=[p for p in prs if p['title'].endswith('[509:'+key(t)+']') and p['head']['ref'].startswith('openhands/issue-509/') and p['user']['login']=='alchemmist']
+  if len(matches)==1:mark(t,'published',matches[0]['head']['sha'],t['base'],matches[0]['number'])
+ if len(prs)>=100:return
+ for t in query("select * from tasks where state='published' and pr is not null"):
+  if t['pr'] in open_by:continue
+  p=remote_json('pulls/'+str(t['pr']))
+  if p['state']=='closed':mark(t,'merged' if p['merged'] else 'closed_unmerged','GitHub reconciliation; full rerun still required',sha,t['pr'])
+
+def loop():
+ lock=(R/'run.lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX);init();query("update tasks set state='queued' where state in ('authoring','survived','rejected','screening')");query("update tasks set state='publication_uncertain' where state='publishing'");lastfetch=0;sha=None;slots=0
+ while not (R/'PAUSE-CAMPAIGN').exists():
+  try:
+   if time.time()-lastfetch>180 or not sha:
+    git('fetch','--depth=1','origin','main');head=git('rev-parse','FETCH_HEAD').strip();install_base(head);sha=head;prs=remote_json('pulls?state=open&per_page=100');slots=0 if len(prs)>=100 else max(0,5-sum(p['head']['ref'].startswith('openhands/issue-509/') for p in prs));reconcile(prs,sha);lastfetch=time.time()
+   ready=query("select * from tasks where state='verified' order by updated limit 1")
+   if slots and ready:publish(ready[0],sha);slots-=1;continue
+   ts=query("select * from tasks where state='queued' order by case when ord<0 then ord else 0 end, num, ord, id limit 1")
+   if not ts:time.sleep(90);continue
+   c=ts[0]
+   try:mark(c,'screening','Independent old-suite check on current main',sha);screen(c,sha)
+   except (subprocess.TimeoutExpired,RuntimeError,ValueError) as ex:mark(c,'infra_triage',str(ex)[:400],sha)
+  except Exception as ex:print('controller backoff',type(ex).__name__,str(ex)[:250],flush=True);time.sleep(60)
+if __name__=='__main__':loop()

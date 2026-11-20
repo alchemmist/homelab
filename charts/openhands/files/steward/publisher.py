@@ -62,10 +62,10 @@ def qa_issue(x):
     if video:body+=f'\n\n[Play the browser recording (MP4)](https://github.com/{REPO}/blob/{oid}/repro.mp4) · [Download MP4](https://raw.githubusercontent.com/{REPO}/{oid}/repro.mp4)'
     issue=api('issues',{'title':'[QA '+x['kind']+'] '+title,'body':body});return {'issue':issue['number'],'url':issue['html_url'],'evidence':links}
 
-def changes(files,qa=False):
+def changes(files,qa=False,pi_ci=False):
     check(isinstance(files,dict) and 1<=len(files)<=12); result=[]
     for p,value in files.items():
-        check((re.fullmatch(r'server/(?:tests|app)/(?:[A-Za-z0-9_]+/)*[A-Za-z0-9_]+\.py',p) or (qa and re.fullmatch(r'web/(?:src|e2e|tests)/(?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+(?:\.(?:spec|test))?\.(?:tsx?|jsx?|css)',p))) and isinstance(value,str) and '\x00' not in value)
+        check((re.fullmatch(r'server/(?:tests|app)/(?:[A-Za-z0-9_]+/)*[A-Za-z0-9_]+\.py',p) or (pi_ci and re.fullmatch(r'ci/tests/test_mutation_[0-9a-f]{12}\.py',p)) or (qa and re.fullmatch(r'web/(?:src|e2e|tests)/(?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+(?:\.(?:spec|test))?\.(?:tsx?|jsx?|css)',p))) and isinstance(value,str) and '\x00' not in value)
         result.append({'path':p,'contents':base64.b64encode(value.encode()).decode()})
     return result
 
@@ -97,7 +97,8 @@ def review(x):
 
 def dispatch(x):
     check(isinstance(x,dict));action=x.get('action')
-    if action=='create' and Path('/proof').is_dir():
+    signed_create=action=='create' and Path('/proof').is_dir()
+    if signed_create:
         signature=x.pop('proof','');check(isinstance(signature,str) and hmac.compare_digest(signature,hmac.new(Path('/proof/key').read_bytes(),json.dumps(x,sort_keys=True).encode(),'sha256').hexdigest()))
     if action=='qa_issue':return qa_issue(x)
     if action=='qa_capabilities':return {'actions':['qa_issue','qa_create','update','threads','reply_then_resolve','report'],'evidence':'reviewed synthetic PNG and optional 6fps H.264 MP4 from frames','merge':False}
@@ -109,7 +110,7 @@ def dispatch(x):
     if action=='qa_create':
         target=x['issue'];check(type(target) is int and target>0);issue=api('issues/'+str(target));check('pull_request' not in issue and issue['state']=='open' and issue['user']['login']=='alchemmist' and re.match(r'<!-- socrat-qa:[a-z0-9-]+ -->',issue.get('body') or ''));prefix=QA+str(target)+'/'
     if action!='update':
-        files=changes(x['files'],action=='qa_create')
+        files=changes(x['files'],action=='qa_create',signed_create)
         check(api('git/ref/heads/main')['object']['sha']==sha)
         # cap outstanding work; use a bounded list fail-closed if incomplete.
         prs=api('pulls?state=open&per_page=100');check(len(prs)<100 and sum(p['head']['ref'].startswith(PREFIX) for p in prs)<5)
