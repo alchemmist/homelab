@@ -13,11 +13,13 @@ tracing:
 profiling:
   enabled: true
 database:
+  appSecretName: lms-pg-common
   ha:
-    enabled: false
+    caSecretName: lms-pg-common-ca
+    enabled: true
     resources: true
   legacyReplicas: 1
-replicaCount: 1
+replicaCount: 0
 persistence:
   mountInApp: false
 
