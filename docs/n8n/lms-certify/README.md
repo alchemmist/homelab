@@ -163,3 +163,12 @@ variant routes to expansion, not certification. Failed plausibility can request
 a bounded new bank. Before semantic approval, a reviewer can identify specific
 invalid private cases by index; quarantine only those, preserve all others and
 require review again. Never drop approved cases this way.
+
+Inference timeout is 180s (sandbox timeout remains 90s). Three consecutive
+transport failures at the same checkpoint park the task with `resumePhase`
+and `consecutive_transport_failures` rather than blocking the entire queue.
+A successful checkpoint clears the retry counter; busy/stale admission and
+HTTP 429 do not consume transport retries. Live differential example `cold`
+passed both references, nine private cases and three plausible fault probes;
+three operator-supplied additional inputs are explicitly recorded, so this
+is a supervised end-to-end completion, not autonomous throughput evidence.

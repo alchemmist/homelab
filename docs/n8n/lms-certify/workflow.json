@@ -280,7 +280,7 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE lms_certification.pilot\nSET phase = $2, data = $3::jsonb, updated_at = clock_timestamp(),\nlease_until = CASE WHEN $2 IN ('certified','needs_review') THEN NULL ELSE clock_timestamp() + interval '15 minutes' END\nWHERE owner = $1 AND lease_until > clock_timestamp()\nRETURNING phase, data",
+        "query": "UPDATE lms_certification.pilot\nSET phase = $2, data = ($3::jsonb - 'transportRetries'), updated_at = clock_timestamp(),\nlease_until = CASE WHEN $2 IN ('certified','needs_review') THEN NULL ELSE clock_timestamp() + interval '15 minutes' END\nWHERE owner = $1 AND lease_until > clock_timestamp()\nRETURNING phase, data",
         "options": {
           "queryReplacement": "={{ [$execution.id, $json.phase, JSON.stringify($json.data)] }}"
         }
@@ -303,7 +303,7 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE lms_certification.pilot SET lease_until = NULL,\n data = data || jsonb_build_object('lastPause',$2::text,'pausedAt',clock_timestamp())\nWHERE owner = $1 RETURNING phase",
+        "query": "UPDATE lms_certification.pilot SET lease_until = NULL,\n phase=CASE WHEN $2='transport' AND coalesce((data->>'transportRetries')::int,0)>=2 THEN 'needs_review' ELSE phase END,\n data=data || jsonb_build_object('lastPause',$2::text,'pausedAt',clock_timestamp()) ||\n CASE WHEN $2='transport' THEN jsonb_build_object('transportRetries',coalesce((data->>'transportRetries')::int,0)+1) ELSE '{}'::jsonb END ||\n CASE WHEN $2='transport' AND coalesce((data->>'transportRetries')::int,0)>=2 THEN jsonb_build_object('reviewReason','consecutive_transport_failures','resumePhase',phase) ELSE '{}'::jsonb END\nWHERE owner = $1 RETURNING phase",
         "options": {
           "queryReplacement": "={{ [$execution.id, $json.reason || 'not_idle_or_stale'] }}"
         }
@@ -491,7 +491,7 @@
       "parameters": {
         "url": "http://litellm.llm.svc.cluster.local:4000/v1/chat/completions",
         "options": {
-          "timeout": 90000,
+          "timeout": 180000,
           "response": {
             "response": {
               "fullResponse": true,
@@ -712,7 +712,7 @@
       "parameters": {
         "url": "http://litellm.llm.svc.cluster.local:4000/v1/chat/completions",
         "options": {
-          "timeout": 90000,
+          "timeout": 180000,
           "response": {
             "response": {
               "fullResponse": true,
@@ -1044,7 +1044,7 @@
       "parameters": {
         "url": "http://litellm.llm.svc.cluster.local:4000/v1/chat/completions",
         "options": {
-          "timeout": 90000,
+          "timeout": 180000,
           "response": {
             "response": {
               "fullResponse": true,
@@ -1487,7 +1487,7 @@
       "parameters": {
         "url": "http://litellm.llm.svc.cluster.local:4000/v1/chat/completions",
         "options": {
-          "timeout": 90000,
+          "timeout": 180000,
           "response": {
             "response": {
               "fullResponse": true,
@@ -1708,7 +1708,7 @@
       "parameters": {
         "url": "http://litellm.llm.svc.cluster.local:4000/v1/chat/completions",
         "options": {
-          "timeout": 90000,
+          "timeout": 180000,
           "response": {
             "response": {
               "fullResponse": true,
@@ -1929,7 +1929,7 @@
       "parameters": {
         "url": "http://litellm.llm.svc.cluster.local:4000/v1/chat/completions",
         "options": {
-          "timeout": 90000,
+          "timeout": 180000,
           "response": {
             "response": {
               "fullResponse": true,
@@ -2150,7 +2150,7 @@
       "parameters": {
         "url": "http://litellm.llm.svc.cluster.local:4000/v1/chat/completions",
         "options": {
-          "timeout": 90000,
+          "timeout": 180000,
           "response": {
             "response": {
               "fullResponse": true,

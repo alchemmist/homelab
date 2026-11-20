@@ -47,7 +47,7 @@ def check(name, expr, x, y):
 
 
 def http(name, url, x, y, *, body=None, role=None, query=None):
-    params = {'url': url, 'options': {'timeout': 90000 if body else 8000,
+    params = {'url': url, 'options': {'timeout': 180000 if role=='LITELLM' else 90000 if body else 8000,
               'response': {'response': {'fullResponse': True, 'neverError': True, 'responseFormat': 'json'}}}}
     credential = None
     if body:
@@ -207,12 +207,15 @@ link(skipped,sandbox_claim)
 chain(gate, ready, refill)
 chain(refill, admit, claim)
 checkpoint = pg('Checkpoint and dispatch next phase', '''UPDATE lms_certification.pilot
-SET phase = $2, data = $3::jsonb, updated_at = clock_timestamp(),
+SET phase = $2, data = ($3::jsonb - 'transportRetries'), updated_at = clock_timestamp(),
 lease_until = CASE WHEN $2 IN ('certified','needs_review') THEN NULL ELSE clock_timestamp() + interval '15 minutes' END
 WHERE owner = $1 AND lease_until > clock_timestamp()
 RETURNING phase, data''', '[$execution.id, $json.phase, JSON.stringify($json.data)]', 1480, -380)
 release = pg('Pause and release lease', '''UPDATE lms_certification.pilot SET lease_until = NULL,
- data = data || jsonb_build_object('lastPause',$2::text,'pausedAt',clock_timestamp())
+ phase=CASE WHEN $2='transport' AND coalesce((data->>'transportRetries')::int,0)>=2 THEN 'needs_review' ELSE phase END,
+ data=data || jsonb_build_object('lastPause',$2::text,'pausedAt',clock_timestamp()) ||
+ CASE WHEN $2='transport' THEN jsonb_build_object('transportRetries',coalesce((data->>'transportRetries')::int,0)+1) ELSE '{}'::jsonb END ||
+ CASE WHEN $2='transport' AND coalesce((data->>'transportRetries')::int,0)>=2 THEN jsonb_build_object('reviewReason','consecutive_transport_failures','resumePhase',phase) ELSE '{}'::jsonb END
 WHERE owner = $1 RETURNING phase''', "[$execution.id, $json.reason || 'not_idle_or_stale']", 1140, -580)
 terminal = pg('Private outcome recorded', '''SELECT phase, count(*)::int AS tasks,
  max(updated_at) AS latest_update FROM lms_certification.pilot GROUP BY phase ORDER BY phase''', '[]', 4900, -380)
