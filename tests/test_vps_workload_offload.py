@@ -22,7 +22,7 @@ class VPSWorkloadOffloadTests(unittest.TestCase):
             self.assertNotIn("kubernetes.io/hostname", by_owner[("kube-system", owner)].get("nodeSelector", {}))
 
     def test_rollout_is_sequential_and_scoped(self) -> None:
-        """Include exactly the two kube-system workloads, without Helm or deletion."""
+        """Only metrics-server remains imperative; storage-tiers owns provisioner placement."""
         tasks = yaml.safe_load(
             (ROOT / "ansible/roles/vps_workload_offload/tasks/main.yml").read_text()
         )
@@ -32,9 +32,13 @@ class VPSWorkloadOffloadTests(unittest.TestCase):
             loops[0]["loop"],
             [
                 {"namespace": "kube-system", "name": "metrics-server"},
-                {"namespace": "kube-system", "name": "local-path-provisioner"},
             ],
         )
+        platform = list(yaml.safe_load_all((ROOT / "deploy/storage/tiers/platform.yaml").read_text()))
+        provisioner = next(d for d in platform if d["kind"] == "Deployment")
+        self.assertEqual(provisioner["metadata"]["name"], "local-path-provisioner")
+        affinity = provisioner["spec"]["template"]["spec"]["affinity"]["nodeAffinity"]
+        self.assertEqual(affinity["requiredDuringSchedulingIgnoredDuringExecution"]["nodeSelectorTerms"][0]["matchExpressions"][0]["values"], ["socrat-0", "socrat-1"])
         deployment = (ROOT / "ansible/roles/vps_workload_offload/tasks/deployment.yml").read_text()
         self.assertIn("rollout", yaml.safe_load(deployment)[2]["ansible.builtin.command"]["argv"])
         template = yaml.safe_load(deployment)[1]["vars"]["offload_patch_spec"]["spec"]["template"]["spec"]

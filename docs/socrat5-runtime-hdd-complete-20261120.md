@@ -1,5 +1,11 @@
 # socrat-5: containerd moved to HDD — 20 November 2026
 
+## Current followup status
+
+The retained SSD preimage has since been removed after acceptance; dynamic tiers,
+monitoring and archive handoff are complete. The following original snapshot is
+historical. Current state: [followup closeout](storage-followup-20261120.md).
+
 ## Accepted scope
 
 **Runtime relocation completed.** This receipt does not claim all application

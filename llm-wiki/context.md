@@ -141,9 +141,16 @@ Quality CI/refactoring integration scope: see [current quality runbook](../docs/
 
 Containerd on socrat-5 now runs from HDD `/mnt/files/homelab/runtime/containerd`
 bound at its original `/var/lib/rancher/k3s/agent/containerd` path. OS/K3s server
-state remain SSD; existing application PVCs unchanged. A55GiB stale runtime
-preimage remains on SSD, not automatically deleted. Day-2 owner:
-`ansible/playbooks/socrat-5-runtime-storage.yml`. See
-[completion receipt](../docs/socrat5-runtime-hdd-complete-20261120.md) for checks,
-post-reboot exact peer-endpoint correction, downtime and remaining acceptance
-limits. Dynamic storage tiers and all-app migration are NOT implied.
+state remain SSD; existing application claim identities unchanged. The55GiB stale
+runtime preimage was removed after acceptance; SSD now has about78GiB available.
+Two OpenHands archive claims also moved to HDD through original-path binds.
+Day-2 owner: `ansible/playbooks/socrat-5-runtime-storage.yml`.
+
+Dynamic `local-hdd`/`local-ssd` and HDD-first new node5 local-path provisioning are
+accepted; `storage-tiers` is the sole Git owner. Only `nfs-shared` is cluster
+default. Filesystem monitoring is live. Rancher observer API policy fixed and
+Application Healthy. See [followup closeout](../docs/storage-followup-20261120.md)
+and [historical runtime receipt](../docs/socrat5-runtime-hdd-complete-20261120.md).
+Physical hypervisor capacity remains unverified. DeepSeek is an external
+quarantined-session blocker; respect its no-login/no-restart runbook window until
+21 November2026 23:48 MSK. Do not extend the existing alert silence.

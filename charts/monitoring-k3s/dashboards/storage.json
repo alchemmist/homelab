@@ -18,7 +18,7 @@
       "id": 1,
       "title": "Filesystem capacity",
       "type": "timeseries",
-      "description": "Per node and mountpoint; do not sum bind mounts. Missing telemetry is unknown. Available space excludes reserved blocks. Forecast is a linear estimate, not guaranteed time to full.",
+      "description": "Per node and filesystem mountpoint, excluding K3s bind aliases. On socrat-5 / is SSD and /mnt/files is HDD. Missing telemetry is unknown; forecasts are estimates, not guarantees.",
       "gridPos": {
         "x": 0,
         "y": 0,
@@ -32,7 +32,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(node_filesystem_size_bytes{job=\"node-exporter\",fstype=~\"ext[234]|xfs|btrfs|zfs\",mountpoint!~\"/var/lib/kubelet/.*|/run/.*\"}) * on(instance) group_left(nodename) max by(instance,nodename) (node_uname_info{job=\"node-exporter\"})",
+          "expr": "(node_filesystem_size_bytes{job=\"node-exporter\",fstype=~\"ext[234]|xfs|btrfs|zfs\",mountpoint!~\"/var/lib/kubelet/.*|/var/lib/rancher/k3s/.*|/run/.*\"}) * on(instance) group_left(nodename) max by(instance,nodename) (node_uname_info{job=\"node-exporter\"})",
           "legendFormat": "{{nodename}} {{mountpoint}} {{device}}"
         }
       ],
@@ -59,7 +59,7 @@
       "id": 2,
       "title": "Available to applications",
       "type": "timeseries",
-      "description": "Per node and mountpoint; do not sum bind mounts. Missing telemetry is unknown. Available space excludes reserved blocks. Forecast is a linear estimate, not guaranteed time to full.",
+      "description": "Per node and filesystem mountpoint, excluding K3s bind aliases. On socrat-5 / is SSD and /mnt/files is HDD. Missing telemetry is unknown; forecasts are estimates, not guarantees.",
       "gridPos": {
         "x": 12,
         "y": 0,
@@ -73,7 +73,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(node_filesystem_avail_bytes{job=\"node-exporter\",fstype=~\"ext[234]|xfs|btrfs|zfs\",mountpoint!~\"/var/lib/kubelet/.*|/run/.*\"}) * on(instance) group_left(nodename) max by(instance,nodename) (node_uname_info{job=\"node-exporter\"})",
+          "expr": "(node_filesystem_avail_bytes{job=\"node-exporter\",fstype=~\"ext[234]|xfs|btrfs|zfs\",mountpoint!~\"/var/lib/kubelet/.*|/var/lib/rancher/k3s/.*|/run/.*\"}) * on(instance) group_left(nodename) max by(instance,nodename) (node_uname_info{job=\"node-exporter\"})",
           "legendFormat": "{{nodename}} {{mountpoint}} {{device}}"
         }
       ],
@@ -100,7 +100,7 @@
       "id": 3,
       "title": "Space unavailable to applications (%)",
       "type": "timeseries",
-      "description": "Per node and mountpoint; do not sum bind mounts. Missing telemetry is unknown. Available space excludes reserved blocks. Forecast is a linear estimate, not guaranteed time to full.",
+      "description": "Per node and filesystem mountpoint, excluding K3s bind aliases. On socrat-5 / is SSD and /mnt/files is HDD. Missing telemetry is unknown; forecasts are estimates, not guarantees.",
       "gridPos": {
         "x": 0,
         "y": 8,
@@ -114,7 +114,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(100 * (1 - node_filesystem_avail_bytes{job=\"node-exporter\",fstype=~\"ext[234]|xfs|btrfs|zfs\",mountpoint!~\"/var/lib/kubelet/.*|/run/.*\"} / node_filesystem_size_bytes{job=\"node-exporter\",fstype=~\"ext[234]|xfs|btrfs|zfs\",mountpoint!~\"/var/lib/kubelet/.*|/run/.*\"})) * on(instance) group_left(nodename) max by(instance,nodename) (node_uname_info{job=\"node-exporter\"})",
+          "expr": "(100 * (1 - node_filesystem_avail_bytes{job=\"node-exporter\",fstype=~\"ext[234]|xfs|btrfs|zfs\",mountpoint!~\"/var/lib/kubelet/.*|/var/lib/rancher/k3s/.*|/run/.*\"} / node_filesystem_size_bytes{job=\"node-exporter\",fstype=~\"ext[234]|xfs|btrfs|zfs\",mountpoint!~\"/var/lib/kubelet/.*|/var/lib/rancher/k3s/.*|/run/.*\"})) * on(instance) group_left(nodename) max by(instance,nodename) (node_uname_info{job=\"node-exporter\"})",
           "legendFormat": "{{nodename}} {{mountpoint}} {{device}}"
         }
       ],
@@ -141,7 +141,7 @@
       "id": 4,
       "title": "Inodes available (%)",
       "type": "timeseries",
-      "description": "Per node and mountpoint; do not sum bind mounts. Missing telemetry is unknown. Available space excludes reserved blocks. Forecast is a linear estimate, not guaranteed time to full.",
+      "description": "Per node and filesystem mountpoint, excluding K3s bind aliases. On socrat-5 / is SSD and /mnt/files is HDD. Missing telemetry is unknown; forecasts are estimates, not guarantees.",
       "gridPos": {
         "x": 12,
         "y": 8,
@@ -155,7 +155,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(100 * node_filesystem_files_free{job=\"node-exporter\",fstype=~\"ext[234]|xfs|btrfs|zfs\",mountpoint!~\"/var/lib/kubelet/.*|/run/.*\"} / node_filesystem_files{job=\"node-exporter\",fstype=~\"ext[234]|xfs|btrfs|zfs\",mountpoint!~\"/var/lib/kubelet/.*|/run/.*\"}) * on(instance) group_left(nodename) max by(instance,nodename) (node_uname_info{job=\"node-exporter\"})",
+          "expr": "(100 * node_filesystem_files_free{job=\"node-exporter\",fstype=~\"ext[234]|xfs|btrfs|zfs\",mountpoint!~\"/var/lib/kubelet/.*|/var/lib/rancher/k3s/.*|/run/.*\"} / node_filesystem_files{job=\"node-exporter\",fstype=~\"ext[234]|xfs|btrfs|zfs\",mountpoint!~\"/var/lib/kubelet/.*|/var/lib/rancher/k3s/.*|/run/.*\"}) * on(instance) group_left(nodename) max by(instance,nodename) (node_uname_info{job=\"node-exporter\"})",
           "legendFormat": "{{nodename}} {{mountpoint}} {{device}}"
         }
       ],
@@ -182,7 +182,7 @@
       "id": 5,
       "title": "Available-space change / second",
       "type": "timeseries",
-      "description": "Per node and mountpoint; do not sum bind mounts. Missing telemetry is unknown. Available space excludes reserved blocks. Forecast is a linear estimate, not guaranteed time to full.",
+      "description": "Per node and filesystem mountpoint, excluding K3s bind aliases. On socrat-5 / is SSD and /mnt/files is HDD. Missing telemetry is unknown; forecasts are estimates, not guarantees.",
       "gridPos": {
         "x": 0,
         "y": 16,
@@ -196,7 +196,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(deriv(node_filesystem_avail_bytes{job=\"node-exporter\",fstype=~\"ext[234]|xfs|btrfs|zfs\",mountpoint!~\"/var/lib/kubelet/.*|/run/.*\"}[1h])) * on(instance) group_left(nodename) max by(instance,nodename) (node_uname_info{job=\"node-exporter\"})",
+          "expr": "(deriv(node_filesystem_avail_bytes{job=\"node-exporter\",fstype=~\"ext[234]|xfs|btrfs|zfs\",mountpoint!~\"/var/lib/kubelet/.*|/var/lib/rancher/k3s/.*|/run/.*\"}[1h])) * on(instance) group_left(nodename) max by(instance,nodename) (node_uname_info{job=\"node-exporter\"})",
           "legendFormat": "{{nodename}} {{mountpoint}} {{device}}"
         }
       ],
@@ -223,7 +223,7 @@
       "id": 6,
       "title": "Predicted available in 24h",
       "type": "timeseries",
-      "description": "Per node and mountpoint; do not sum bind mounts. Missing telemetry is unknown. Available space excludes reserved blocks. Forecast is a linear estimate, not guaranteed time to full.",
+      "description": "Per node and filesystem mountpoint, excluding K3s bind aliases. On socrat-5 / is SSD and /mnt/files is HDD. Missing telemetry is unknown; forecasts are estimates, not guarantees.",
       "gridPos": {
         "x": 12,
         "y": 16,
@@ -237,7 +237,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(predict_linear(node_filesystem_avail_bytes{job=\"node-exporter\",fstype=~\"ext[234]|xfs|btrfs|zfs\",mountpoint!~\"/var/lib/kubelet/.*|/run/.*\"}[6h], 86400)) * on(instance) group_left(nodename) max by(instance,nodename) (node_uname_info{job=\"node-exporter\"})",
+          "expr": "(predict_linear(node_filesystem_avail_bytes{job=\"node-exporter\",fstype=~\"ext[234]|xfs|btrfs|zfs\",mountpoint!~\"/var/lib/kubelet/.*|/var/lib/rancher/k3s/.*|/run/.*\"}[6h], 86400)) * on(instance) group_left(nodename) max by(instance,nodename) (node_uname_info{job=\"node-exporter\"})",
           "legendFormat": "{{nodename}} {{mountpoint}} {{device}}"
         }
       ],
@@ -261,5 +261,6 @@
       }
     }
   ],
-  "links": []
+  "links": [],
+  "description": "Physical filesystem overview. socrat-5: / is SSD, /mnt/files is HDD. K3s bind-mount aliases are excluded; missing telemetry is unknown."
 }

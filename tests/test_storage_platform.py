@@ -1,5 +1,6 @@
 """Offline platform/tier guards; no network or production writes."""
 import json
+import importlib.util
 import os
 from pathlib import Path
 import subprocess
@@ -66,6 +67,22 @@ class StoragePlatformTest(unittest.TestCase):
         text = (ROOT / 'deploy/platform/rancher/public-entry/templates/observer-membership.yaml').read_text()
         self.assertIn('ipBlock: {cidr: 10.250.0.41/32}', text)
         self.assertIn('port: 6443', text)
+
+    def test_archive_day2_refuses_unaccepted_mounts_and_never_restarts(self):
+        text = (ROOT / 'ansible/playbooks/socrat-5-runtime-storage.yml').read_text()
+        self.assertIn('Require already accepted archive binds', text)
+        self.assertIn('/mnt/files/homelab/openhands-archives/cold-backups', text)
+        self.assertNotIn('state: restarted', text)
+        guard = (ROOT / 'ansible/files/socrat5-containerd-hdd-check').read_text()
+        self.assertIn('/dev/sdb1[/homelab/openhands-archives/cold-backups]', guard)
+        self.assertIn('/dev/sdb1[/homelab/openhands-archives/upgrade-backups]', guard)
+
+    def test_inventory_matches_claim_namespace_not_only_name(self):
+        spec = importlib.util.spec_from_file_location('audit_storage', ROOT / 'scripts/audit_storage.py')
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        pv = {'metadata': {'name': 'fixture'}, 'spec': {'claimRef': {'namespace': 'a', 'name': 'data'}, 'capacity': {'storage': '1Gi'}, 'persistentVolumeReclaimPolicy': 'Retain'}}
+        pods = [{'metadata': {'namespace': ns, 'name': ns}, 'spec': {'nodeName': 'socrat-5', 'volumes': [{'persistentVolumeClaim': {'claimName': 'data'}}]}} for ns in ['a', 'b']]
+        self.assertEqual(module.inventory([pv], pods)[0]['consumers'], [{'pod': 'a', 'node': 'socrat-5'}])
 
     def test_storage_dashboard_keeps_missing_as_unknown(self):
         d = json.loads((ROOT / 'charts/monitoring-k3s/dashboards/storage.json').read_text())
