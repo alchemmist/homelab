@@ -51,7 +51,7 @@
     state: directory
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
   loop:
     - "{{ homelab_recovery_root }}/alx"
     - "{{ homelab_recovery_root }}/initramfs-tools"
@@ -61,7 +61,7 @@
   ansible.builtin.copy:
     src: "{{ playbook_dir }}/../roles/debian_laptop/files/alx-guard.patch"
     dest: "{{ homelab_recovery_root }}/alx-guard.patch"
-    mode: '0644'
+    mode: "0644"
   register: homelab_recovery_patch
 
 - name: Inspect the staged source marker
@@ -85,7 +85,7 @@
       - make
       - -C
       - /lib/modules/6.12.111+deb13-amd64/build
-      - "M={{ homelab_recovery_root }}/alx"
+      - M={{ homelab_recovery_root }}/alx
       - CONFIG_ALX=m
       - modules
   changed_when: true
@@ -94,7 +94,7 @@
   ansible.builtin.copy:
     src: "{{ playbook_dir }}/../roles/debian_laptop/files/ssdt-socrat3-wifi.dsl"
     dest: /usr/local/lib/homelab/acpi/ssdt-socrat3-wifi.dsl
-    mode: '0644'
+    mode: "0644"
 
 - name: Compile the candidate ACPI table
   ansible.builtin.command:
@@ -118,12 +118,12 @@
   ansible.builtin.template:
     src: "{{ playbook_dir }}/../roles/debian_laptop/templates/socrat3-wifi-initramfs-hook.j2"
     dest: "{{ homelab_recovery_root }}/initramfs-tools/hooks/homelab-socrat3-wifi"
-    mode: '0755'
+    mode: "0755"
 
 - name: Add the Ethernet module only to the candidate image
   ansible.builtin.copy:
     dest: "{{ homelab_recovery_root }}/initramfs-tools/hooks/zz-homelab-alx"
-    mode: '0755'
+    mode: "0755"
     content: |
       #!/bin/sh
       set -eu
@@ -220,7 +220,7 @@
     dest: /etc/grub.d/42_homelab_network_recovery
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
     validate: /bin/sh -n %s
   register: homelab_recovery_boot_entry
 

@@ -68,7 +68,7 @@
     path: "{{ homelab_user_home }}/.config/flameshot/flameshot.ini"
     section: General
     option: disabledTrayIcon
-    value: 'true'
+    value: "true"
     no_extra_spaces: true
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"

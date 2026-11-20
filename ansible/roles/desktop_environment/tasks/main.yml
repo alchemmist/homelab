@@ -30,7 +30,7 @@
 
 - name: Preserve a separate place for local Hyprland overrides
   ansible.builtin.copy:
-    content: ''
+    content: ""
     dest: "{{ homelab_user_home }}/.config/hypr/local.conf"
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
