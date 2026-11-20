@@ -44,7 +44,22 @@ alertGraphs:
   imagePullSecrets:
     - name: alert-graphs-harbor-pull
   nodeSelector:
-    kubernetes.io/hostname: socrat-1
+    kubernetes.io/os: linux
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values: [socrat-0, socrat-1]
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values: [socrat-0]
   # Cross-node socket source is flannel.1 on socrat-2 after service DNAT/SNAT.
   botSourceCIDRs:
     - 10.42.0.0/32
