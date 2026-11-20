@@ -6,7 +6,8 @@ metadata:
     app: otel-tempo
     app.kubernetes.io/part-of: otel-backends
 spec:
-  replicas: 0
+  # Single writer: Recreate is not a storage fence for multiple replicas.
+  replicas: 1
   selector:
     matchLabels:
       app: otel-tempo
@@ -20,7 +21,22 @@ spec:
     spec:
       automountServiceAccountToken: false
       nodeSelector:
-        kubernetes.io/hostname: {{ .Values.node | quote }}
+        kubernetes.io/os: linux
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: [socrat-0, socrat-1]
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: [socrat-0]
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
@@ -93,6 +109,5 @@ spec:
           - key: tls.key
             path: server.key
       - name: data
-        hostPath:
-          path: {{ .Values.storagePath | quote }}
-          type: DirectoryOrCreate
+        persistentVolumeClaim:
+          claimName: {{ required "tempo claim must be configured" .Values.existingClaim | quote }}
