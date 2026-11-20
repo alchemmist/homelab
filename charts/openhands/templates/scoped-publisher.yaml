@@ -5,6 +5,10 @@ metadata: {name: monori-publisher-code}
 data:
   publisher.py: |
 {{ .Files.Get "files/steward/publisher.py" | indent 4 }}
+  ready_gate.py: |
+{{ .Files.Get "files/steward/ready_gate.py" | indent 4 }}
+  pr_lifecycle.py: |
+{{ .Files.Get "files/steward/pr_lifecycle.py" | indent 4 }}
   qa_video.py: |
 {{ .Files.Get "files/steward/qa_video.py" | indent 4 }}
 ---
@@ -19,7 +23,7 @@ spec:
     metadata:
       labels: {app: monori-publisher}
       annotations:
-        code-sha: {{ .Files.Get "files/steward/publisher.py" | sha256sum | quote }}
+        code-sha: {{ print (.Files.Get "files/steward/publisher.py") (.Files.Get "files/steward/pr_lifecycle.py") (.Files.Get "files/steward/ready_gate.py") | sha256sum | quote }}
     spec:
       automountServiceAccountToken: false
       nodeSelector: {kubernetes.io/hostname: socrat-5}

@@ -1,5 +1,5 @@
 """Authenticated report admission only. No GitHub/model/cluster credential or egress."""
-import base64, hashlib, hmac, json, re, sqlite3
+import time, base64, hashlib, hmac, json, re, sqlite3
 from contextlib import closing
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -37,10 +37,26 @@ def ingest(envelope, registry, secret, db):
         if prior:return {'status':'duplicate' if prior==(digest,) else 'changed_report_requires_review'}
         status='queued' if rows else 'unsupported_report';c.execute('insert into reports values(?,?,?,?)',(rid,num,digest,status));c.executemany('insert into cards values(?,?,?,?,?,\'queued\')',[(rid,num,*row) for row in rows]);return {'status':status,'cards':len(rows),'issue':num}
 
+def lifecycle(path,x,db,secret,registry):
+    ids=None; event='reconcile'
+    if path=='/review':
+        raw=base64.b64decode(x['raw'],validate=True)
+        if not hmac.compare_digest(x['signature'],'sha256='+hmac.new(secret,raw,hashlib.sha256).hexdigest()):raise PermissionError
+        e=json.loads(raw);repo=e['repository'];cfg=registry.get(str(repo['id']))
+        if not cfg or cfg['name']!=repo['full_name']:raise PermissionError
+        p=e.get('pull_request') or e.get('issue') or {};event=e.get('action','ping');ids=[p['number']] if p.get('number') else []
+        if not ids:
+            obj=e.get('check_run') or e.get('check_suite') or e.get('workflow_run') or {};ids=[p['number'] for p in obj.get('pull_requests',[])];
+            if not ids and (obj or 'sha' in e):ids=None
+    with closing(sqlite3.connect(db)) as c,c:
+        c.execute('create table if not exists review_queue(pr integer primary key,dirty real,state text,head text,note text,processed real)');known={r[0] for r in c.execute("select distinct pr from outputs where state='published' and pr is not null")};targets=known if ids is None else known.intersection(ids)
+        for n in targets:c.execute("insert into review_queue values(?,?,'pending','','',0) on conflict(pr) do update set dirty=excluded.dirty",(n,time.time()))
+        return {'event':event,'enrolled':sorted(targets)}
+
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
-            n=int(self.headers.get('Content-Length',0));assert self.path=='/intake' and 0<n<300000 and not self.headers.get('Transfer-Encoding');out=ingest(json.loads(self.rfile.read(n)),json.loads(Path('/code/repos.json').read_text()),Path('/auth/key').read_bytes(),'/state/reports.db');code=200
+            n=int(self.headers.get('Content-Length',0));assert self.path in ('/intake','/review','/review-tick') and 0<n<300000 and not self.headers.get('Transfer-Encoding');x=json.loads(self.rfile.read(n));registry=json.loads(Path('/code/repos.json').read_text());db='/state/reports.db';out=ingest(x,registry,Path('/auth/key').read_bytes(),db) if self.path=='/intake' else lifecycle(self.path,x,db,Path('/review-auth/key').read_bytes(),registry);code=200
         except PermissionError:code,out=403,{}
         except (ValueError,KeyError,TypeError,AssertionError):code,out=400,{}
         except Exception:code,out=503,{}

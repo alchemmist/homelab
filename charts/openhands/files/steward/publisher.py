@@ -10,11 +10,12 @@ REPO='alchemmist/monori'; PREFIX='openhands/issue-509/'
 class NoRedirect(HTTPRedirectHandler):
     def redirect_request(self,*args):return None
 
-def api(path, data=None):
+def api(path, data=None,method=None):
     url='https://api.github.com/'+('graphql' if path=='graphql' else 'repos/'+REPO+'/'+path)
     token=Path('/credential/token').read_text().strip()
-    req=Request(url,data=json.dumps(data).encode() if data is not None else None,headers={'Authorization':'Bearer '+token,'Content-Type':'application/json','User-Agent':'openhands-scoped-publisher'})
-    with build_opener(NoRedirect).open(req,timeout=20) as resp:return json.load(resp)
+    req=Request(url,method=method,data=json.dumps(data).encode() if data is not None else None,headers={'Authorization':'Bearer '+token,'Content-Type':'application/json','User-Agent':'openhands-scoped-publisher'})
+    with build_opener(NoRedirect).open(req,timeout=20) as resp:
+        raw=resp.read();return json.loads(raw) if raw else {}
 
 def check(condition):
     if not condition:raise ValueError('Invalid or disallowed operation')
@@ -102,8 +103,12 @@ def dispatch(x):
     check(isinstance(x,dict));action=x.get('action')
     signed_create=action=='create' and Path('/proof').is_dir()
     signed_update=action=='update' and 'proof' in x and Path('/proof').is_dir()
-    if signed_create or signed_update:
+    life=action in ('life_snapshot','life_dispose','life_ready');check(not life or Path('/proof').is_dir())
+    if signed_create or signed_update or life:
         signature=x.pop('proof','');check(isinstance(signature,str) and hmac.compare_digest(signature,hmac.new(Path('/proof/key').read_bytes(),json.dumps(x,sort_keys=True).encode(),'sha256').hexdigest()))
+    if life:
+        import runpy
+        return runpy.run_path(str(Path(__file__).with_name('pr_lifecycle.py')))['lifecycle'](x,api,owned_pr,check)
     if action=='qa_issue':return qa_issue(x)
     if action=='qa_capabilities':return {'actions':['qa_issue','qa_create','update','threads','reply_then_resolve','report'],'evidence':'reviewed synthetic PNG and optional 6fps H.264 MP4 from frames','merge':False}
     if action=='capabilities':return {'repository':REPO,'issue':509,'actions':['create','update','report','threads','reply_then_resolve'],'merge':False,'main_write':False}
@@ -126,6 +131,7 @@ def dispatch(x):
     mutation='mutation($i:CreateCommitOnBranchInput!){createCommitOnBranch(input:$i){commit{oid}}}'
     res=api('graphql',{'query':mutation,'variables':{'i':{'branch':{'repositoryNameWithOwner':REPO,'branchName':branch},'expectedHeadOid':sha,'message':{'headline':title},'fileChanges':{'additions':files}}}});oid=res['data']['createCommitOnBranch']['commit']['oid']
     if action!='update':p=api('pulls',{'head':branch,'base':'main','draft':False,'title':title,'body':f'Follow-up for #{target}. Published via the scoped OpenHands publisher. Human review and merge required.'})
+    if signed_create:api('issues/'+str(p['number'])+'/labels',{'labels':['mutation-pr']})
     return {'pr':p['number'],'head':oid,'url':p['html_url']}
 
 class Handler(BaseHTTPRequestHandler):
