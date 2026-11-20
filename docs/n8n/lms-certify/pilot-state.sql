@@ -4,7 +4,7 @@ CREATE SCHEMA IF NOT EXISTS lms_certification;
 REVOKE ALL ON SCHEMA lms_certification FROM PUBLIC;
 CREATE TABLE IF NOT EXISTS lms_certification.pilot (
     id text PRIMARY KEY,
-    phase text NOT NULL CHECK (phase IN ('solve','tests','public','repair','suite','mutate','expand','witness','audit','probes','wpublic','wsuite','plausible','certified','needs_review')),
+    phase text NOT NULL CHECK (phase IN ('solve','tests','public','repair','suite','mutate','expand','witness','wrepair','audit','probes','wpublic','wsuite','plausible','certified','needs_review')),
     data jsonb NOT NULL DEFAULT '{}'::jsonb,
     owner text,
     lease_until timestamptz,

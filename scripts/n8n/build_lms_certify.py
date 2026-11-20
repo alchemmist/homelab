@@ -240,7 +240,7 @@ if (status !== 200) throw new Error('Unexpected service HTTP status: ' + status)
 
 phase_specs = [('solve','Generate solution'), ('tests','Author blind tests'), ('public','Run public examples'),
                ('repair','Repair solution'), ('suite','Run verified private tests'), ('mutate','Run one fault variant'),
-               ('expand','Add missing corner cases'), ('witness','Independent blind solution'), ('audit','Review suite and curriculum'), ('probes','Design realistic wrong solutions'), ('wpublic','Cross-check witness on examples'), ('wsuite','Cross-check witness on private tests'), ('plausible','Check probe on a correct case')]
+               ('expand','Add missing corner cases'), ('witness','Independent blind solution'), ('wrepair','Repair witness against public example'), ('audit','Review suite and curriculum'), ('probes','Design realistic wrong solutions'), ('wpublic','Cross-check witness on examples'), ('wsuite','Cross-check witness on private tests'), ('plausible','Check probe on a correct case')]
 previous = None
 for i, (phase, title) in enumerate(phase_specs):
     y = i * 300 + 120
@@ -254,7 +254,7 @@ for i, (phase, title) in enumerate(phase_specs):
     previous = route
     r = ref(route)
     x = 1770+i*240
-    if phase in {'solve','tests','repair','expand','witness','audit','probes'}:
+    if phase in {'solve','tests','repair','expand','witness','wrepair','audit','probes'}:
         first, free = idle(title + ':', x, y)
         link(route, first)
         link(free, release, 1)
@@ -273,8 +273,9 @@ for i, (phase, title) in enumerate(phase_specs):
             if phase == 'repair':
                 prompt += f''' + '\\nПредыдущее решение: ' + JSON.stringify({r}.data.source) + '\\nПроваленный проверенный тест: ' + JSON.stringify({r}.data.failure)'''
                 prompt += f" + '\\nДиагностика: ' + JSON.stringify({r}.data.repairGuidance || '') + '\\nНе нормализуй пробелы и регистр, если условие этого явно не требует. Исправь причину ошибки, не меняй проверенный тест. Верни JSON с diagnosis и source. Не повторяй прежнюю программу.'"
-        if phase=='witness':
-            prompt=json.dumps('Независимо реши задачу на Python 3, только stdin/stdout. По возможности используй альтернативный простой подход. JSON {"source":"..."}. Условие: ') + f' + {r}.data.statement'
+        if phase in ('witness','wrepair'):
+            prompt=json.dumps('Независимо реши задачу на Python 3, только stdin/stdout. По возможности используй альтернативный простой подход. Код краткий, без комментариев и черновых рассуждений. Не считывай вход дважды. JSON {"source":"..."}. Условие: ') + f' + {r}.data.statement'
+            if phase=='wrepair':prompt += f" + '\\nСвой предыдущий исходник и собственный проваленный публичный пример: ' + JSON.stringify([{r}.data.witness,{r}.data.witnessFailure])"
         if phase=='audit':
             prompt=json.dumps('Проверь по условию каждую пару вход/выход, границы и допустимость входов, покрытие обычных и крайних случаев, а также соответствие решения ограничениям урока. Не требуй обработки недопустимых входов, если их нет среди предложенных тестов. Например, слово из букв непустое; ошибка на пустом вводе вне области сама по себе не недостаток. Не одобряй реально спорные результаты на допустимых входах, неполные задачи, неверный формат или тесты вне области. Верни JSON {"approved":true/false,"reason":"...","issue":"cases|spec|solution","badIndices":[]}. Для изолированной ошибки частных тестов укажи issue=cases и точные нумерованные с нуля индексы неверных случаев. Не меняй публичные примеры. Материалы: ') + f' + JSON.stringify({{statement:{r}.data.statement,examples:{r}.data.examples,cases:{r}.data.cases,source:{r}.data.source}})'
         if phase=='probes':
@@ -284,10 +285,10 @@ for i, (phase, title) in enumerate(phase_specs):
         parse = '''let payload;
 try { payload = JSON.parse($json.body.choices[0].message.content); } catch { payload = {}; }
  data.calls = (data.calls || 0) + 1;
- const out = next => ({json:{phase:data.calls >= (data.callLimit || 12) && ['solve','repair','tests','expand','witness','audit','probes'].includes(next) ? 'needs_review' : next,data}});
+ const out = next => ({json:{phase:data.calls >= (data.callLimit || 12) && ['solve','repair','tests','expand','witness','wrepair','audit','probes'].includes(next) ? 'needs_review' : next,data}});
 '''
-        if phase=='witness':
-            logic='''const w=payload?.source;if(typeof w!=='string'||!w.trim()||w.length>6000||w.replace(/\\s/g,'')===data.source.replace(/\\s/g,'')){data.reviewReason='no_distinct_witness';return out('needs_review');} data.witness=w;return out('tests');''';label='Validate blind witness'
+        if phase in ('witness','wrepair'):
+            logic='''const w=payload?.source;if(typeof w!=='string'||!w.trim()||w.length>6000||w.replace(/\\s/g,'')===data.source.replace(/\\s/g,'')){data.reviewReason='no_distinct_witness';return out('needs_review');} data.witness=w;return out('wpublic');''';label='Validate blind witness'
         elif phase=='audit':
             logic='''if(payload?.approved!==true){data.reviewReason='semantic_review_failed';data.reviewDetail=String(payload?.reason||'').slice(0,500);
 const ids=payload?.badIndices; if(payload?.issue==='cases' && Array.isArray(ids)&&ids.length && ids.every(i=>Number.isInteger(i)&&i>=0&&i<data.cases.length)&& (data.auditRetries||0)<2 && !data.semanticApproved){
@@ -367,7 +368,7 @@ if (!['accepted','wrong_answer','runtime_error','time_limit','output_limit','mem
   throw new Error('Invalid sandbox verdict');
 '''
         if phase in ('wpublic','wsuite'):
-            logic+="if(verdict!=='accepted'){data.reviewReason='independent_witness_disagrees';return {json:{phase:'needs_review',data}};}"+ ("return {json:{phase:'wsuite',data}};" if phase=='wpublic' else "data.variant=0;data.survivors=[];data.faultsKilled=0;return {json:{phase:'mutate',data}};")
+            logic+=("if(verdict!=='accepted'){data.witnessFailure=data.examples[$json.body.test_index-1];data.witnessRetries=(data.witnessRetries||0)+1;return {json:{phase:data.witnessRetries<=2 && data.calls<(data.callLimit||12)?'wrepair':'needs_review',data}};}" if phase=='wpublic' else "if(verdict!=='accepted'){data.reviewReason='independent_witness_disagrees';return {json:{phase:'needs_review',data}};}")+ ("return {json:{phase:data.semanticApproved?'wsuite':'tests',data}};" if phase=='wpublic' else "data.variant=0;data.survivors=[];data.faultsKilled=0;return {json:{phase:'mutate',data}};")
             label='Check witness verdict '+phase
         elif phase=='plausible':
             logic+='''if(verdict==='wrong_answer' && ++data.probeCase<data.examples.length+data.cases.length)return {json:{phase:'plausible',data}};

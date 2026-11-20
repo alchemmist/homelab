@@ -113,3 +113,9 @@ assert.deepEqual(graph.connections['Record busy or telemetry skip'].main[0].map(
  assert.equal(r.phase,'expand');assert.deepEqual(r.data.cases,submitted.slice(0,1));assert.deepEqual(r.data.quarantine,submitted.slice(1));
  assert.equal(run('Require semantic approval',feedback,{phase:'audit',data:{...diff,cases:submitted,semanticApproved:true}}).phase,'needs_review');
 }
+{
+ const w=run('Validate blind witness',response({source:'s=input(); print(s)'}),{phase:'witness',data:{...diff}});assert.equal(w.phase,'wpublic');
+ const bad=run('Check witness verdict wpublic',verdict('wrong_answer',1),{phase:'wpublic',data:{...diff}});assert.equal(bad.phase,'wrepair');
+ assert.equal(run('Check witness verdict wpublic',verdict('accepted'),{phase:'wpublic',data:{...diff}}).phase,'tests');
+ assert.equal(run('Check witness verdict wpublic',verdict('accepted'),{phase:'wpublic',data:{...diff,semanticApproved:true}}).phase,'wsuite');
+}

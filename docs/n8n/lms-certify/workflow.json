@@ -525,7 +525,7 @@
         120
       ],
       "parameters": {
-        "jsCode": "const {phase,data} = $(\"Phase: solve\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nlet payload;\ntry { payload = JSON.parse($json.body.choices[0].message.content); } catch { payload = {}; }\n data.calls = (data.calls || 0) + 1;\n const out = next => ({json:{phase:data.calls >= (data.callLimit || 12) && ['solve','repair','tests','expand','witness','audit','probes'].includes(next) ? 'needs_review' : next,data}});\nconst source = typeof payload?.source === 'string' ? payload.source.trim() : '';\nif (!source || source.length > 6000 || (data.contract === 'echo' && (/[\\r\\n]/.test(source) || [...source].length > 14))) return out(phase);\ndata.repeatedSource = phase === 'repair' && source === data.source;\ndata.source = source;\nif(data.contract==='noinput_reviewed'){data.cases=[{input:'',output:data.reviewedOutput}];return out(data.examples.length?'public':'suite');}\nif(data.contract==='differential_v1')return out(phase==='solve'?'witness':'audit');\nreturn out(phase === 'solve' ? 'tests' : (data.contract==='noinput_reviewed' && !data.examples.length ? 'suite' : 'public'));"
+        "jsCode": "const {phase,data} = $(\"Phase: solve\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nlet payload;\ntry { payload = JSON.parse($json.body.choices[0].message.content); } catch { payload = {}; }\n data.calls = (data.calls || 0) + 1;\n const out = next => ({json:{phase:data.calls >= (data.callLimit || 12) && ['solve','repair','tests','expand','witness','wrepair','audit','probes'].includes(next) ? 'needs_review' : next,data}});\nconst source = typeof payload?.source === 'string' ? payload.source.trim() : '';\nif (!source || source.length > 6000 || (data.contract === 'echo' && (/[\\r\\n]/.test(source) || [...source].length > 14))) return out(phase);\ndata.repeatedSource = phase === 'repair' && source === data.source;\ndata.source = source;\nif(data.contract==='noinput_reviewed'){data.cases=[{input:'',output:data.reviewedOutput}];return out(data.examples.length?'public':'suite');}\nif(data.contract==='differential_v1')return out(phase==='solve'?'witness':'audit');\nreturn out(phase === 'solve' ? 'tests' : (data.contract==='noinput_reviewed' && !data.examples.length ? 'suite' : 'public'));"
       }
     },
     {
@@ -746,7 +746,7 @@
         420
       ],
       "parameters": {
-        "jsCode": "const {phase,data} = $(\"Phase: tests\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nlet payload;\ntry { payload = JSON.parse($json.body.choices[0].message.content); } catch { payload = {}; }\n data.calls = (data.calls || 0) + 1;\n const out = next => ({json:{phase:data.calls >= (data.callLimit || 12) && ['solve','repair','tests','expand','witness','audit','probes'].includes(next) ? 'needs_review' : next,data}});\nif(data.contract==='differential_v1'){\n const cases=data.cases||[],seen=new Set([...data.examples,...cases,...(data.quarantine||[])].map(c=>c.input));\n for(const c of Array.isArray(payload?.cases)?payload.cases:[]){if(typeof c?.input!=='string'||typeof c.output!=='string'||Math.max(c.input.length,c.output.length)>1500||seen.has(c.input)||cases.length>=16)continue;cases.push({input:c.input,output:c.output});seen.add(c.input);}\n data.cases=cases;return out(cases.length>=4?'audit':phase);\n}\n// Reviewed deterministic oracle: no candidate source is read here.\nfunction expected(input) {\n const lines = input.endsWith('\\n') ? input.slice(0,-1).split('\\n') : [];\n\n const single = lines.length===1 && !input.includes('\\r');\n if (['repeat4','python_exact','zen','meow'].includes(data.contract)) {\n  if (!single) return null;\n  const x=lines[0];\n  if(data.contract==='repeat4')return x.repeat(4)+'\\n';\n  if(data.contract==='python_exact')return (x==='Python'?'ДА':'НЕТ')+'\\n';\n  if(data.contract==='zen')return (x===''?'ДА':'НЕТ')+'\\n';\n  return (x.includes('кот')?'МЯУ':'ГАВ')+'\\n';\n }\n if(data.contract==='yes_no') {\n  if(lines.length!==2 || input.includes('\\r')) return null;\n  return (lines.every(x=>['да','нет'].includes(x))?'ВЕРНО':'НЕВЕРНО')+'\\n';\n }\n if(['xmas','parrot','reverse'].includes(data.contract)) {\n  if(lines.length!==3 || input.includes('\\r'))return null;\n  if(data.contract==='xmas')return (JSON.stringify(lines)===JSON.stringify(['раз','два','три'])?'ГОРИ':'НЕ ГОРИ')+'\\n';\n  return (data.contract==='reverse'?[...lines].reverse():lines).join('\\n')+'\\n';\n }\n if(data.contract==='temperature') {\n  if(!single || !/^[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)$/.test(lines[0]))return null;\n  const n=Number(lines[0]); if(!Number.isFinite(n))return null;\n  return (n<15.5?'ХОЛОДНО':n>28?'ЖАРКО':'НОРМАЛЬНО')+'\\n';\n }\n if(data.contract==='heights') {\n  if(lines.length!==3 || !lines.every(x=>/^[1-9]\\d{0,3}$/.test(x)))return null;\n  return lines.map(Number).sort((a,b)=>b-a).join('\\n')+'\\n';\n }\n\n if(['until_zero','until_nonmultiple','until_empty'].includes(data.contract)) {\n  if(!lines.length || input.includes('\\r'))return null;\n  const prefix=[];\n  for(const s of lines){\n   if(data.contract!=='until_empty' && !/^(?:0|-?[1-9]\\d{0,8})$/.test(s))return null;\n   if(data.contract==='until_empty'?s==='':data.contract==='until_zero'?Number(s)===0:Number(s)%10!==0)\n    return prefix.map(x=>x+'\\n').join('');\n   prefix.push(s);\n  }\n  return null;\n }\n\n if(data.contract==='xmas2'||data.contract==='xmas3') {\n  if(lines.length!==3 || input.includes('\\r'))return null;\n  const seq=lines.join('\\n');\n  return (seq==='раз\\nдва\\nтри'||seq==='1\\n2\\n3'||(data.contract==='xmas3'&&seq==='один\\nдва\\nтри')?'ГОРИ':'НЕ ГОРИ')+'\\n';\n }\n\n if(data.contract==='fizzbuzz') {\n  if(lines.length!==2 || !lines.every(x=>/^[1-9]\\d{0,5}$/.test(x)))return null;\n  const [a,b]=lines.map(Number); if(a>=b || b-a>50)return null;\n  const result=[]; for(let i=a;i<=b;i++)result.push((i%3===0?'Fizz':'')+(i%5===0?'Buzz':'')||String(i));\n  return result.join('\\n')+'\\n';\n }\n\n if(data.contract==='thank_count') {\n  if(!input.endsWith('\\n') || input.includes('\\r'))return null;\n  const idx=lines.indexOf('Спасибо.'); return idx<0?null:String(idx+1)+'\\n';\n }\n if(data.contract==='mult_table') {\n  if(lines.length!==1 || !/^[1-6]$/.test(lines[0]))return null;\n  const n=Number(lines[0]), rows=[];\n  for(let i=1;i<=n;i++)for(let j=1;j<=n;j++)rows.push(`${i} * ${j} = ${i*j}`);\n  return rows.join('\\n')+'\\n';\n }\n\n if(data.contract==='beautiful_digits'||data.contract==='adjacent_sums') {\n  if(lines.length!==1||!/^[1-9][0-9]{2}$/.test(lines[0]))return null;\n  const [a,b,c]=Array.from(lines[0],Number);\n  if(data.contract==='adjacent_sums')return [a+b,b+c].sort((x,y)=>y-x).join('')+'\\n';\n  const lo=Math.min(a,b,c),hi=Math.max(a,b,c),mid=a+b+c-lo-hi;\n  return (2*mid===hi+lo?'Вы ввели красивое число':'Жаль, вы ввели обычное число')+'\\n';\n }\n\n if(data.contract==='noinput_reviewed')return input===''?data.reviewedOutput:null;\n\n if (data.contract === 'echo' || data.contract === 'length') {\n  if (lines.length !== 1 || input.includes('\\r')) return null;\n  return data.contract === 'echo' ? input : `Слово ${lines[0]} имеет длину ${[...lines[0]].length}\\n`;\n }\n if (data.contract === 'leap') {\n  if (lines.length!==1 || !/^[1-9]\\d{0,5}$/.test(lines[0])) return null;\n  const year=Number(lines[0]);\n  return (year%400===0 || (year%4===0 && year%100!==0) ? 'Високосный' : 'Не високосный')+'\\n';\n }\n if (data.contract === 'sum') {\n  if (lines.length !== 2 || !lines.every(x => /^[+-]?\\d{1,30}$/.test(x))) return null;\n  return String(BigInt(lines[0])+BigInt(lines[1]))+'\\n';\n }\n if (data.contract === 'parity') {\n  if (lines.length !== 1 || !/^[+-]?\\d{1,30}$/.test(lines[0])) return null;\n  return BigInt(lines[0])%2n === 0n ? 'чётное\\n' : 'нечётное\\n';\n }\n if (data.contract === 'sign') {\n  if (lines.length !== 1 || !/^[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)$/.test(lines[0])) return null;\n  const n=Number(lines[0]); if (!Number.isFinite(n) || Math.abs(n)>1e100) return null;\n  return (n>0?'+':n<0?'-':'0')+'\\n';\n }\n throw new Error('Unsupported reviewed contract');\n}\nconst cases=data.cases || [], seen=new Set(cases.map(c=>c.input));\nconst proposals = [...(phase === 'expand' ? data.targetedCases || [] : []), ...(Array.isArray(payload?.cases)?payload.cases.slice(0,16):[])];\nfor (const c of proposals) {\n if (typeof c?.input !== 'string' || c.input.length>256) continue;\n const oracle = expected(c.input);\n const output = ['mult_table','thank_count'].includes(data.contract) && c.output===undefined ? oracle : c.output;\n if (typeof output !== 'string' || oracle !== output || seen.has(c.input) ||\n     (data.contract!=='noinput_reviewed' && data.examples.some(e=>e.input===c.input)) || cases.length>=16) continue;\n cases.push({input:c.input,output});seen.add(c.input);\n}\ndata.cases=cases;\nif(data.contract==='noinput_reviewed')return out(!cases.length?phase:data.examples.length?'public':'suite');\nreturn out(cases.length<3?phase:'public');"
+        "jsCode": "const {phase,data} = $(\"Phase: tests\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nlet payload;\ntry { payload = JSON.parse($json.body.choices[0].message.content); } catch { payload = {}; }\n data.calls = (data.calls || 0) + 1;\n const out = next => ({json:{phase:data.calls >= (data.callLimit || 12) && ['solve','repair','tests','expand','witness','wrepair','audit','probes'].includes(next) ? 'needs_review' : next,data}});\nif(data.contract==='differential_v1'){\n const cases=data.cases||[],seen=new Set([...data.examples,...cases,...(data.quarantine||[])].map(c=>c.input));\n for(const c of Array.isArray(payload?.cases)?payload.cases:[]){if(typeof c?.input!=='string'||typeof c.output!=='string'||Math.max(c.input.length,c.output.length)>1500||seen.has(c.input)||cases.length>=16)continue;cases.push({input:c.input,output:c.output});seen.add(c.input);}\n data.cases=cases;return out(cases.length>=4?'audit':phase);\n}\n// Reviewed deterministic oracle: no candidate source is read here.\nfunction expected(input) {\n const lines = input.endsWith('\\n') ? input.slice(0,-1).split('\\n') : [];\n\n const single = lines.length===1 && !input.includes('\\r');\n if (['repeat4','python_exact','zen','meow'].includes(data.contract)) {\n  if (!single) return null;\n  const x=lines[0];\n  if(data.contract==='repeat4')return x.repeat(4)+'\\n';\n  if(data.contract==='python_exact')return (x==='Python'?'ДА':'НЕТ')+'\\n';\n  if(data.contract==='zen')return (x===''?'ДА':'НЕТ')+'\\n';\n  return (x.includes('кот')?'МЯУ':'ГАВ')+'\\n';\n }\n if(data.contract==='yes_no') {\n  if(lines.length!==2 || input.includes('\\r')) return null;\n  return (lines.every(x=>['да','нет'].includes(x))?'ВЕРНО':'НЕВЕРНО')+'\\n';\n }\n if(['xmas','parrot','reverse'].includes(data.contract)) {\n  if(lines.length!==3 || input.includes('\\r'))return null;\n  if(data.contract==='xmas')return (JSON.stringify(lines)===JSON.stringify(['раз','два','три'])?'ГОРИ':'НЕ ГОРИ')+'\\n';\n  return (data.contract==='reverse'?[...lines].reverse():lines).join('\\n')+'\\n';\n }\n if(data.contract==='temperature') {\n  if(!single || !/^[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)$/.test(lines[0]))return null;\n  const n=Number(lines[0]); if(!Number.isFinite(n))return null;\n  return (n<15.5?'ХОЛОДНО':n>28?'ЖАРКО':'НОРМАЛЬНО')+'\\n';\n }\n if(data.contract==='heights') {\n  if(lines.length!==3 || !lines.every(x=>/^[1-9]\\d{0,3}$/.test(x)))return null;\n  return lines.map(Number).sort((a,b)=>b-a).join('\\n')+'\\n';\n }\n\n if(['until_zero','until_nonmultiple','until_empty'].includes(data.contract)) {\n  if(!lines.length || input.includes('\\r'))return null;\n  const prefix=[];\n  for(const s of lines){\n   if(data.contract!=='until_empty' && !/^(?:0|-?[1-9]\\d{0,8})$/.test(s))return null;\n   if(data.contract==='until_empty'?s==='':data.contract==='until_zero'?Number(s)===0:Number(s)%10!==0)\n    return prefix.map(x=>x+'\\n').join('');\n   prefix.push(s);\n  }\n  return null;\n }\n\n if(data.contract==='xmas2'||data.contract==='xmas3') {\n  if(lines.length!==3 || input.includes('\\r'))return null;\n  const seq=lines.join('\\n');\n  return (seq==='раз\\nдва\\nтри'||seq==='1\\n2\\n3'||(data.contract==='xmas3'&&seq==='один\\nдва\\nтри')?'ГОРИ':'НЕ ГОРИ')+'\\n';\n }\n\n if(data.contract==='fizzbuzz') {\n  if(lines.length!==2 || !lines.every(x=>/^[1-9]\\d{0,5}$/.test(x)))return null;\n  const [a,b]=lines.map(Number); if(a>=b || b-a>50)return null;\n  const result=[]; for(let i=a;i<=b;i++)result.push((i%3===0?'Fizz':'')+(i%5===0?'Buzz':'')||String(i));\n  return result.join('\\n')+'\\n';\n }\n\n if(data.contract==='thank_count') {\n  if(!input.endsWith('\\n') || input.includes('\\r'))return null;\n  const idx=lines.indexOf('Спасибо.'); return idx<0?null:String(idx+1)+'\\n';\n }\n if(data.contract==='mult_table') {\n  if(lines.length!==1 || !/^[1-6]$/.test(lines[0]))return null;\n  const n=Number(lines[0]), rows=[];\n  for(let i=1;i<=n;i++)for(let j=1;j<=n;j++)rows.push(`${i} * ${j} = ${i*j}`);\n  return rows.join('\\n')+'\\n';\n }\n\n if(data.contract==='beautiful_digits'||data.contract==='adjacent_sums') {\n  if(lines.length!==1||!/^[1-9][0-9]{2}$/.test(lines[0]))return null;\n  const [a,b,c]=Array.from(lines[0],Number);\n  if(data.contract==='adjacent_sums')return [a+b,b+c].sort((x,y)=>y-x).join('')+'\\n';\n  const lo=Math.min(a,b,c),hi=Math.max(a,b,c),mid=a+b+c-lo-hi;\n  return (2*mid===hi+lo?'Вы ввели красивое число':'Жаль, вы ввели обычное число')+'\\n';\n }\n\n if(data.contract==='noinput_reviewed')return input===''?data.reviewedOutput:null;\n\n if (data.contract === 'echo' || data.contract === 'length') {\n  if (lines.length !== 1 || input.includes('\\r')) return null;\n  return data.contract === 'echo' ? input : `Слово ${lines[0]} имеет длину ${[...lines[0]].length}\\n`;\n }\n if (data.contract === 'leap') {\n  if (lines.length!==1 || !/^[1-9]\\d{0,5}$/.test(lines[0])) return null;\n  const year=Number(lines[0]);\n  return (year%400===0 || (year%4===0 && year%100!==0) ? 'Високосный' : 'Не високосный')+'\\n';\n }\n if (data.contract === 'sum') {\n  if (lines.length !== 2 || !lines.every(x => /^[+-]?\\d{1,30}$/.test(x))) return null;\n  return String(BigInt(lines[0])+BigInt(lines[1]))+'\\n';\n }\n if (data.contract === 'parity') {\n  if (lines.length !== 1 || !/^[+-]?\\d{1,30}$/.test(lines[0])) return null;\n  return BigInt(lines[0])%2n === 0n ? 'чётное\\n' : 'нечётное\\n';\n }\n if (data.contract === 'sign') {\n  if (lines.length !== 1 || !/^[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)$/.test(lines[0])) return null;\n  const n=Number(lines[0]); if (!Number.isFinite(n) || Math.abs(n)>1e100) return null;\n  return (n>0?'+':n<0?'-':'0')+'\\n';\n }\n throw new Error('Unsupported reviewed contract');\n}\nconst cases=data.cases || [], seen=new Set(cases.map(c=>c.input));\nconst proposals = [...(phase === 'expand' ? data.targetedCases || [] : []), ...(Array.isArray(payload?.cases)?payload.cases.slice(0,16):[])];\nfor (const c of proposals) {\n if (typeof c?.input !== 'string' || c.input.length>256) continue;\n const oracle = expected(c.input);\n const output = ['mult_table','thank_count'].includes(data.contract) && c.output===undefined ? oracle : c.output;\n if (typeof output !== 'string' || oracle !== output || seen.has(c.input) ||\n     (data.contract!=='noinput_reviewed' && data.examples.some(e=>e.input===c.input)) || cases.length>=16) continue;\n cases.push({input:c.input,output});seen.add(c.input);\n}\ndata.cases=cases;\nif(data.contract==='noinput_reviewed')return out(!cases.length?phase:data.examples.length?'public':'suite');\nreturn out(cases.length<3?phase:'public');"
       }
     },
     {
@@ -1078,7 +1078,7 @@
         1020
       ],
       "parameters": {
-        "jsCode": "const {phase,data} = $(\"Phase: repair\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nlet payload;\ntry { payload = JSON.parse($json.body.choices[0].message.content); } catch { payload = {}; }\n data.calls = (data.calls || 0) + 1;\n const out = next => ({json:{phase:data.calls >= (data.callLimit || 12) && ['solve','repair','tests','expand','witness','audit','probes'].includes(next) ? 'needs_review' : next,data}});\nconst source = typeof payload?.source === 'string' ? payload.source.trim() : '';\nif (!source || source.length > 6000 || (data.contract === 'echo' && (/[\\r\\n]/.test(source) || [...source].length > 14))) return out(phase);\ndata.repeatedSource = phase === 'repair' && source === data.source;\ndata.source = source;\nif(data.contract==='noinput_reviewed'){data.cases=[{input:'',output:data.reviewedOutput}];return out(data.examples.length?'public':'suite');}\nif(data.contract==='differential_v1')return out(phase==='solve'?'witness':'audit');\nreturn out(phase === 'solve' ? 'tests' : (data.contract==='noinput_reviewed' && !data.examples.length ? 'suite' : 'public'));"
+        "jsCode": "const {phase,data} = $(\"Phase: repair\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nlet payload;\ntry { payload = JSON.parse($json.body.choices[0].message.content); } catch { payload = {}; }\n data.calls = (data.calls || 0) + 1;\n const out = next => ({json:{phase:data.calls >= (data.callLimit || 12) && ['solve','repair','tests','expand','witness','wrepair','audit','probes'].includes(next) ? 'needs_review' : next,data}});\nconst source = typeof payload?.source === 'string' ? payload.source.trim() : '';\nif (!source || source.length > 6000 || (data.contract === 'echo' && (/[\\r\\n]/.test(source) || [...source].length > 14))) return out(phase);\ndata.repeatedSource = phase === 'repair' && source === data.source;\ndata.source = source;\nif(data.contract==='noinput_reviewed'){data.cases=[{input:'',output:data.reviewedOutput}];return out(data.examples.length?'public':'suite');}\nif(data.contract==='differential_v1')return out(phase==='solve'?'witness':'audit');\nreturn out(phase === 'solve' ? 'tests' : (data.contract==='noinput_reviewed' && !data.examples.length ? 'suite' : 'public'));"
       }
     },
     {
@@ -1521,7 +1521,7 @@
         1920
       ],
       "parameters": {
-        "jsCode": "const {phase,data} = $(\"Phase: expand\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nlet payload;\ntry { payload = JSON.parse($json.body.choices[0].message.content); } catch { payload = {}; }\n data.calls = (data.calls || 0) + 1;\n const out = next => ({json:{phase:data.calls >= (data.callLimit || 12) && ['solve','repair','tests','expand','witness','audit','probes'].includes(next) ? 'needs_review' : next,data}});\nif(data.contract==='differential_v1'){\n const cases=data.cases||[],seen=new Set([...data.examples,...cases,...(data.quarantine||[])].map(c=>c.input));\n for(const c of Array.isArray(payload?.cases)?payload.cases:[]){if(typeof c?.input!=='string'||typeof c.output!=='string'||Math.max(c.input.length,c.output.length)>1500||seen.has(c.input)||cases.length>=16)continue;cases.push({input:c.input,output:c.output});seen.add(c.input);}\n data.cases=cases;return out(cases.length>=4?'audit':phase);\n}\n// Reviewed deterministic oracle: no candidate source is read here.\nfunction expected(input) {\n const lines = input.endsWith('\\n') ? input.slice(0,-1).split('\\n') : [];\n\n const single = lines.length===1 && !input.includes('\\r');\n if (['repeat4','python_exact','zen','meow'].includes(data.contract)) {\n  if (!single) return null;\n  const x=lines[0];\n  if(data.contract==='repeat4')return x.repeat(4)+'\\n';\n  if(data.contract==='python_exact')return (x==='Python'?'ДА':'НЕТ')+'\\n';\n  if(data.contract==='zen')return (x===''?'ДА':'НЕТ')+'\\n';\n  return (x.includes('кот')?'МЯУ':'ГАВ')+'\\n';\n }\n if(data.contract==='yes_no') {\n  if(lines.length!==2 || input.includes('\\r')) return null;\n  return (lines.every(x=>['да','нет'].includes(x))?'ВЕРНО':'НЕВЕРНО')+'\\n';\n }\n if(['xmas','parrot','reverse'].includes(data.contract)) {\n  if(lines.length!==3 || input.includes('\\r'))return null;\n  if(data.contract==='xmas')return (JSON.stringify(lines)===JSON.stringify(['раз','два','три'])?'ГОРИ':'НЕ ГОРИ')+'\\n';\n  return (data.contract==='reverse'?[...lines].reverse():lines).join('\\n')+'\\n';\n }\n if(data.contract==='temperature') {\n  if(!single || !/^[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)$/.test(lines[0]))return null;\n  const n=Number(lines[0]); if(!Number.isFinite(n))return null;\n  return (n<15.5?'ХОЛОДНО':n>28?'ЖАРКО':'НОРМАЛЬНО')+'\\n';\n }\n if(data.contract==='heights') {\n  if(lines.length!==3 || !lines.every(x=>/^[1-9]\\d{0,3}$/.test(x)))return null;\n  return lines.map(Number).sort((a,b)=>b-a).join('\\n')+'\\n';\n }\n\n if(['until_zero','until_nonmultiple','until_empty'].includes(data.contract)) {\n  if(!lines.length || input.includes('\\r'))return null;\n  const prefix=[];\n  for(const s of lines){\n   if(data.contract!=='until_empty' && !/^(?:0|-?[1-9]\\d{0,8})$/.test(s))return null;\n   if(data.contract==='until_empty'?s==='':data.contract==='until_zero'?Number(s)===0:Number(s)%10!==0)\n    return prefix.map(x=>x+'\\n').join('');\n   prefix.push(s);\n  }\n  return null;\n }\n\n if(data.contract==='xmas2'||data.contract==='xmas3') {\n  if(lines.length!==3 || input.includes('\\r'))return null;\n  const seq=lines.join('\\n');\n  return (seq==='раз\\nдва\\nтри'||seq==='1\\n2\\n3'||(data.contract==='xmas3'&&seq==='один\\nдва\\nтри')?'ГОРИ':'НЕ ГОРИ')+'\\n';\n }\n\n if(data.contract==='fizzbuzz') {\n  if(lines.length!==2 || !lines.every(x=>/^[1-9]\\d{0,5}$/.test(x)))return null;\n  const [a,b]=lines.map(Number); if(a>=b || b-a>50)return null;\n  const result=[]; for(let i=a;i<=b;i++)result.push((i%3===0?'Fizz':'')+(i%5===0?'Buzz':'')||String(i));\n  return result.join('\\n')+'\\n';\n }\n\n if(data.contract==='thank_count') {\n  if(!input.endsWith('\\n') || input.includes('\\r'))return null;\n  const idx=lines.indexOf('Спасибо.'); return idx<0?null:String(idx+1)+'\\n';\n }\n if(data.contract==='mult_table') {\n  if(lines.length!==1 || !/^[1-6]$/.test(lines[0]))return null;\n  const n=Number(lines[0]), rows=[];\n  for(let i=1;i<=n;i++)for(let j=1;j<=n;j++)rows.push(`${i} * ${j} = ${i*j}`);\n  return rows.join('\\n')+'\\n';\n }\n\n if(data.contract==='beautiful_digits'||data.contract==='adjacent_sums') {\n  if(lines.length!==1||!/^[1-9][0-9]{2}$/.test(lines[0]))return null;\n  const [a,b,c]=Array.from(lines[0],Number);\n  if(data.contract==='adjacent_sums')return [a+b,b+c].sort((x,y)=>y-x).join('')+'\\n';\n  const lo=Math.min(a,b,c),hi=Math.max(a,b,c),mid=a+b+c-lo-hi;\n  return (2*mid===hi+lo?'Вы ввели красивое число':'Жаль, вы ввели обычное число')+'\\n';\n }\n\n if(data.contract==='noinput_reviewed')return input===''?data.reviewedOutput:null;\n\n if (data.contract === 'echo' || data.contract === 'length') {\n  if (lines.length !== 1 || input.includes('\\r')) return null;\n  return data.contract === 'echo' ? input : `Слово ${lines[0]} имеет длину ${[...lines[0]].length}\\n`;\n }\n if (data.contract === 'leap') {\n  if (lines.length!==1 || !/^[1-9]\\d{0,5}$/.test(lines[0])) return null;\n  const year=Number(lines[0]);\n  return (year%400===0 || (year%4===0 && year%100!==0) ? 'Високосный' : 'Не високосный')+'\\n';\n }\n if (data.contract === 'sum') {\n  if (lines.length !== 2 || !lines.every(x => /^[+-]?\\d{1,30}$/.test(x))) return null;\n  return String(BigInt(lines[0])+BigInt(lines[1]))+'\\n';\n }\n if (data.contract === 'parity') {\n  if (lines.length !== 1 || !/^[+-]?\\d{1,30}$/.test(lines[0])) return null;\n  return BigInt(lines[0])%2n === 0n ? 'чётное\\n' : 'нечётное\\n';\n }\n if (data.contract === 'sign') {\n  if (lines.length !== 1 || !/^[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)$/.test(lines[0])) return null;\n  const n=Number(lines[0]); if (!Number.isFinite(n) || Math.abs(n)>1e100) return null;\n  return (n>0?'+':n<0?'-':'0')+'\\n';\n }\n throw new Error('Unsupported reviewed contract');\n}\nconst cases=data.cases || [], seen=new Set(cases.map(c=>c.input));\nconst proposals = [...(phase === 'expand' ? data.targetedCases || [] : []), ...(Array.isArray(payload?.cases)?payload.cases.slice(0,16):[])];\nfor (const c of proposals) {\n if (typeof c?.input !== 'string' || c.input.length>256) continue;\n const oracle = expected(c.input);\n const output = ['mult_table','thank_count'].includes(data.contract) && c.output===undefined ? oracle : c.output;\n if (typeof output !== 'string' || oracle !== output || seen.has(c.input) ||\n     (data.contract!=='noinput_reviewed' && data.examples.some(e=>e.input===c.input)) || cases.length>=16) continue;\n cases.push({input:c.input,output});seen.add(c.input);\n}\ndata.cases=cases;\nif(data.contract==='noinput_reviewed')return out(!cases.length?phase:data.examples.length?'public':'suite');\nreturn out(cases.length<3?phase:'public');"
+        "jsCode": "const {phase,data} = $(\"Phase: expand\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nlet payload;\ntry { payload = JSON.parse($json.body.choices[0].message.content); } catch { payload = {}; }\n data.calls = (data.calls || 0) + 1;\n const out = next => ({json:{phase:data.calls >= (data.callLimit || 12) && ['solve','repair','tests','expand','witness','wrepair','audit','probes'].includes(next) ? 'needs_review' : next,data}});\nif(data.contract==='differential_v1'){\n const cases=data.cases||[],seen=new Set([...data.examples,...cases,...(data.quarantine||[])].map(c=>c.input));\n for(const c of Array.isArray(payload?.cases)?payload.cases:[]){if(typeof c?.input!=='string'||typeof c.output!=='string'||Math.max(c.input.length,c.output.length)>1500||seen.has(c.input)||cases.length>=16)continue;cases.push({input:c.input,output:c.output});seen.add(c.input);}\n data.cases=cases;return out(cases.length>=4?'audit':phase);\n}\n// Reviewed deterministic oracle: no candidate source is read here.\nfunction expected(input) {\n const lines = input.endsWith('\\n') ? input.slice(0,-1).split('\\n') : [];\n\n const single = lines.length===1 && !input.includes('\\r');\n if (['repeat4','python_exact','zen','meow'].includes(data.contract)) {\n  if (!single) return null;\n  const x=lines[0];\n  if(data.contract==='repeat4')return x.repeat(4)+'\\n';\n  if(data.contract==='python_exact')return (x==='Python'?'ДА':'НЕТ')+'\\n';\n  if(data.contract==='zen')return (x===''?'ДА':'НЕТ')+'\\n';\n  return (x.includes('кот')?'МЯУ':'ГАВ')+'\\n';\n }\n if(data.contract==='yes_no') {\n  if(lines.length!==2 || input.includes('\\r')) return null;\n  return (lines.every(x=>['да','нет'].includes(x))?'ВЕРНО':'НЕВЕРНО')+'\\n';\n }\n if(['xmas','parrot','reverse'].includes(data.contract)) {\n  if(lines.length!==3 || input.includes('\\r'))return null;\n  if(data.contract==='xmas')return (JSON.stringify(lines)===JSON.stringify(['раз','два','три'])?'ГОРИ':'НЕ ГОРИ')+'\\n';\n  return (data.contract==='reverse'?[...lines].reverse():lines).join('\\n')+'\\n';\n }\n if(data.contract==='temperature') {\n  if(!single || !/^[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)$/.test(lines[0]))return null;\n  const n=Number(lines[0]); if(!Number.isFinite(n))return null;\n  return (n<15.5?'ХОЛОДНО':n>28?'ЖАРКО':'НОРМАЛЬНО')+'\\n';\n }\n if(data.contract==='heights') {\n  if(lines.length!==3 || !lines.every(x=>/^[1-9]\\d{0,3}$/.test(x)))return null;\n  return lines.map(Number).sort((a,b)=>b-a).join('\\n')+'\\n';\n }\n\n if(['until_zero','until_nonmultiple','until_empty'].includes(data.contract)) {\n  if(!lines.length || input.includes('\\r'))return null;\n  const prefix=[];\n  for(const s of lines){\n   if(data.contract!=='until_empty' && !/^(?:0|-?[1-9]\\d{0,8})$/.test(s))return null;\n   if(data.contract==='until_empty'?s==='':data.contract==='until_zero'?Number(s)===0:Number(s)%10!==0)\n    return prefix.map(x=>x+'\\n').join('');\n   prefix.push(s);\n  }\n  return null;\n }\n\n if(data.contract==='xmas2'||data.contract==='xmas3') {\n  if(lines.length!==3 || input.includes('\\r'))return null;\n  const seq=lines.join('\\n');\n  return (seq==='раз\\nдва\\nтри'||seq==='1\\n2\\n3'||(data.contract==='xmas3'&&seq==='один\\nдва\\nтри')?'ГОРИ':'НЕ ГОРИ')+'\\n';\n }\n\n if(data.contract==='fizzbuzz') {\n  if(lines.length!==2 || !lines.every(x=>/^[1-9]\\d{0,5}$/.test(x)))return null;\n  const [a,b]=lines.map(Number); if(a>=b || b-a>50)return null;\n  const result=[]; for(let i=a;i<=b;i++)result.push((i%3===0?'Fizz':'')+(i%5===0?'Buzz':'')||String(i));\n  return result.join('\\n')+'\\n';\n }\n\n if(data.contract==='thank_count') {\n  if(!input.endsWith('\\n') || input.includes('\\r'))return null;\n  const idx=lines.indexOf('Спасибо.'); return idx<0?null:String(idx+1)+'\\n';\n }\n if(data.contract==='mult_table') {\n  if(lines.length!==1 || !/^[1-6]$/.test(lines[0]))return null;\n  const n=Number(lines[0]), rows=[];\n  for(let i=1;i<=n;i++)for(let j=1;j<=n;j++)rows.push(`${i} * ${j} = ${i*j}`);\n  return rows.join('\\n')+'\\n';\n }\n\n if(data.contract==='beautiful_digits'||data.contract==='adjacent_sums') {\n  if(lines.length!==1||!/^[1-9][0-9]{2}$/.test(lines[0]))return null;\n  const [a,b,c]=Array.from(lines[0],Number);\n  if(data.contract==='adjacent_sums')return [a+b,b+c].sort((x,y)=>y-x).join('')+'\\n';\n  const lo=Math.min(a,b,c),hi=Math.max(a,b,c),mid=a+b+c-lo-hi;\n  return (2*mid===hi+lo?'Вы ввели красивое число':'Жаль, вы ввели обычное число')+'\\n';\n }\n\n if(data.contract==='noinput_reviewed')return input===''?data.reviewedOutput:null;\n\n if (data.contract === 'echo' || data.contract === 'length') {\n  if (lines.length !== 1 || input.includes('\\r')) return null;\n  return data.contract === 'echo' ? input : `Слово ${lines[0]} имеет длину ${[...lines[0]].length}\\n`;\n }\n if (data.contract === 'leap') {\n  if (lines.length!==1 || !/^[1-9]\\d{0,5}$/.test(lines[0])) return null;\n  const year=Number(lines[0]);\n  return (year%400===0 || (year%4===0 && year%100!==0) ? 'Високосный' : 'Не високосный')+'\\n';\n }\n if (data.contract === 'sum') {\n  if (lines.length !== 2 || !lines.every(x => /^[+-]?\\d{1,30}$/.test(x))) return null;\n  return String(BigInt(lines[0])+BigInt(lines[1]))+'\\n';\n }\n if (data.contract === 'parity') {\n  if (lines.length !== 1 || !/^[+-]?\\d{1,30}$/.test(lines[0])) return null;\n  return BigInt(lines[0])%2n === 0n ? 'чётное\\n' : 'нечётное\\n';\n }\n if (data.contract === 'sign') {\n  if (lines.length !== 1 || !/^[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)$/.test(lines[0])) return null;\n  const n=Number(lines[0]); if (!Number.isFinite(n) || Math.abs(n)>1e100) return null;\n  return (n>0?'+':n<0?'-':'0')+'\\n';\n }\n throw new Error('Unsupported reviewed contract');\n}\nconst cases=data.cases || [], seen=new Set(cases.map(c=>c.input));\nconst proposals = [...(phase === 'expand' ? data.targetedCases || [] : []), ...(Array.isArray(payload?.cases)?payload.cases.slice(0,16):[])];\nfor (const c of proposals) {\n if (typeof c?.input !== 'string' || c.input.length>256) continue;\n const oracle = expected(c.input);\n const output = ['mult_table','thank_count'].includes(data.contract) && c.output===undefined ? oracle : c.output;\n if (typeof output !== 'string' || oracle !== output || seen.has(c.input) ||\n     (data.contract!=='noinput_reviewed' && data.examples.some(e=>e.input===c.input)) || cases.length>=16) continue;\n cases.push({input:c.input,output});seen.add(c.input);\n}\ndata.cases=cases;\nif(data.contract==='noinput_reviewed')return out(!cases.length?phase:data.examples.length?'public':'suite');\nreturn out(cases.length<3?phase:'public');"
       }
     },
     {
@@ -1720,7 +1720,7 @@
         "method": "POST",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({model:\"qwen3.8-27b\", temperature:0, max_tokens:1000, response_format:{type:'json_object'}, messages:[{role:'user', content: \"\\u041d\\u0435\\u0437\\u0430\\u0432\\u0438\\u0441\\u0438\\u043c\\u043e \\u0440\\u0435\\u0448\\u0438 \\u0437\\u0430\\u0434\\u0430\\u0447\\u0443 \\u043d\\u0430 Python 3, \\u0442\\u043e\\u043b\\u044c\\u043a\\u043e stdin/stdout. \\u041f\\u043e \\u0432\\u043e\\u0437\\u043c\\u043e\\u0436\\u043d\\u043e\\u0441\\u0442\\u0438 \\u0438\\u0441\\u043f\\u043e\\u043b\\u044c\\u0437\\u0443\\u0439 \\u0430\\u043b\\u044c\\u0442\\u0435\\u0440\\u043d\\u0430\\u0442\\u0438\\u0432\\u043d\\u044b\\u0439 \\u043f\\u0440\\u043e\\u0441\\u0442\\u043e\\u0439 \\u043f\\u043e\\u0434\\u0445\\u043e\\u0434. JSON {\\\"source\\\":\\\"...\\\"}. \\u0423\\u0441\\u043b\\u043e\\u0432\\u0438\\u0435: \" + $(\"Phase: witness\").item.json.data.statement}]}) }}",
+        "jsonBody": "={{ JSON.stringify({model:\"qwen3.8-27b\", temperature:0, max_tokens:1000, response_format:{type:'json_object'}, messages:[{role:'user', content: \"\\u041d\\u0435\\u0437\\u0430\\u0432\\u0438\\u0441\\u0438\\u043c\\u043e \\u0440\\u0435\\u0448\\u0438 \\u0437\\u0430\\u0434\\u0430\\u0447\\u0443 \\u043d\\u0430 Python 3, \\u0442\\u043e\\u043b\\u044c\\u043a\\u043e stdin/stdout. \\u041f\\u043e \\u0432\\u043e\\u0437\\u043c\\u043e\\u0436\\u043d\\u043e\\u0441\\u0442\\u0438 \\u0438\\u0441\\u043f\\u043e\\u043b\\u044c\\u0437\\u0443\\u0439 \\u0430\\u043b\\u044c\\u0442\\u0435\\u0440\\u043d\\u0430\\u0442\\u0438\\u0432\\u043d\\u044b\\u0439 \\u043f\\u0440\\u043e\\u0441\\u0442\\u043e\\u0439 \\u043f\\u043e\\u0434\\u0445\\u043e\\u0434. \\u041a\\u043e\\u0434 \\u043a\\u0440\\u0430\\u0442\\u043a\\u0438\\u0439, \\u0431\\u0435\\u0437 \\u043a\\u043e\\u043c\\u043c\\u0435\\u043d\\u0442\\u0430\\u0440\\u0438\\u0435\\u0432 \\u0438 \\u0447\\u0435\\u0440\\u043d\\u043e\\u0432\\u044b\\u0445 \\u0440\\u0430\\u0441\\u0441\\u0443\\u0436\\u0434\\u0435\\u043d\\u0438\\u0439. \\u041d\\u0435 \\u0441\\u0447\\u0438\\u0442\\u044b\\u0432\\u0430\\u0439 \\u0432\\u0445\\u043e\\u0434 \\u0434\\u0432\\u0430\\u0436\\u0434\\u044b. JSON {\\\"source\\\":\\\"...\\\"}. \\u0423\\u0441\\u043b\\u043e\\u0432\\u0438\\u0435: \" + $(\"Phase: witness\").item.json.data.statement}]}) }}",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth"
       },
@@ -1742,7 +1742,7 @@
         2220
       ],
       "parameters": {
-        "jsCode": "const {phase,data} = $(\"Phase: witness\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nlet payload;\ntry { payload = JSON.parse($json.body.choices[0].message.content); } catch { payload = {}; }\n data.calls = (data.calls || 0) + 1;\n const out = next => ({json:{phase:data.calls >= (data.callLimit || 12) && ['solve','repair','tests','expand','witness','audit','probes'].includes(next) ? 'needs_review' : next,data}});\nconst w=payload?.source;if(typeof w!=='string'||!w.trim()||w.length>6000||w.replace(/\\s/g,'')===data.source.replace(/\\s/g,'')){data.reviewReason='no_distinct_witness';return out('needs_review');} data.witness=w;return out('tests');"
+        "jsCode": "const {phase,data} = $(\"Phase: witness\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nlet payload;\ntry { payload = JSON.parse($json.body.choices[0].message.content); } catch { payload = {}; }\n data.calls = (data.calls || 0) + 1;\n const out = next => ({json:{phase:data.calls >= (data.callLimit || 12) && ['solve','repair','tests','expand','witness','wrepair','audit','probes'].includes(next) ? 'needs_review' : next,data}});\nconst w=payload?.source;if(typeof w!=='string'||!w.trim()||w.length>6000||w.replace(/\\s/g,'')===data.source.replace(/\\s/g,'')){data.reviewReason='no_distinct_witness';return out('needs_review');} data.witness=w;return out('wpublic');"
       }
     },
     {
@@ -1777,8 +1777,8 @@
       }
     },
     {
-      "id": "16d8063c-f4ac-500c-a445-b2e792b87e55",
-      "name": "Phase: audit",
+      "id": "9ff5670b-4d34-5ae0-b45d-28a04b125049",
+      "name": "Phase: wrepair",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
@@ -1794,7 +1794,7 @@
           "conditions": [
             {
               "id": "yes",
-              "leftValue": "={{ $json.phase === \"audit\" }}",
+              "leftValue": "={{ $json.phase === \"wrepair\" }}",
               "rightValue": "",
               "operator": {
                 "type": "boolean",
@@ -1808,8 +1808,8 @@
       }
     },
     {
-      "id": "efc94e11-cc3b-56f2-9bc8-694d57ec40d0",
-      "name": "Review suite and curriculum: queue depth",
+      "id": "5eeb5a4d-edea-530d-aca6-c2c261159436",
+      "name": "Repair witness against public example: queue depth",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -1841,8 +1841,8 @@
       "onError": "continueRegularOutput"
     },
     {
-      "id": "35349fc8-a381-536f-89b1-8447039cf46a",
-      "name": "Review suite and curriculum: sample freshness",
+      "id": "944966b7-a7b2-59a1-9237-f6dcc0b35981",
+      "name": "Repair witness against public example: sample freshness",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -1874,8 +1874,8 @@
       "onError": "continueRegularOutput"
     },
     {
-      "id": "e05eff35-4144-5fbd-bf6c-490c7d021650",
-      "name": "Review suite and curriculum: verify both metrics",
+      "id": "6b728dc7-2add-58db-886e-9ffd6ca08391",
+      "name": "Repair witness against public example: verify both metrics",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -1883,12 +1883,12 @@
         2520
       ],
       "parameters": {
-        "jsCode": "const values = $(\"Review suite and curriculum: queue depth\").item.json;\nconst stamps = $json;\nconst invalid = {json: {idle: false, telemetryValid: false}};\nconst model = \"qwen3.8-27b\";\nconst names = ['running', 'waiting'];\nconst now = Date.now()/1000;\nfunction rows(r) {\n  return r && !Object.hasOwn(r, 'error') && r.statusCode === 200 &&\n    r.body?.status === 'success' && !Object.hasOwn(r.body, 'error') &&\n    r.body.data?.resultType === 'vector' && Array.isArray(r.body.data.result)\n    ? r.body.data.result : null;\n}\nfunction sample(r, timestamp) {\n  if (!r || !r.metric || typeof r.metric !== 'object' || Array.isArray(r.metric) ||\n      Object.values(r.metric).some(v => typeof v !== 'string') ||\n      r.metric.model_name !== model || !Array.isArray(r.value) || r.value.length !== 2 ||\n      typeof r.value[0] !== 'number' || !Number.isFinite(r.value[0]) || r.value[0] <= 0 ||\n      typeof r.value[1] !== 'string' ||\n      !/^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/.test(r.value[1]) ||\n      !Number.isFinite(Number(r.value[1]))) return null;\n  const metric = timestamp ? r.metric.queue_metric :\n    r.metric.__name__?.replace(/^vllm:num_requests_/, '');\n  if (!names.includes(metric) || (!timestamp &&\n      (r.metric.__name__ !== 'vllm:num_requests_'+metric || Object.hasOwn(r.metric, 'queue_metric')))) return null;\n  const labels = JSON.stringify(Object.entries(r.metric)\n    .filter(([k]) => !['__name__', 'queue_metric'].includes(k))\n    .sort(([a],[b]) => a.localeCompare(b)));\n  return {metric, labels, key: JSON.stringify([metric, labels]), value: Number(r.value[1])};\n}\nconst v = rows(values), t = rows(stamps);\nif (!v || !t || !v.length || v.length !== t.length) return invalid;\nconst valuesByKey = new Map(), pairs = new Map();\nlet idle = true;\nfor (const row of v) {\n  const s = sample(row, false);\n  if (!s || valuesByKey.has(s.key)) return invalid;\n  valuesByKey.set(s.key, s);\n  if (!pairs.has(s.labels)) pairs.set(s.labels, new Set());\n  pairs.get(s.labels).add(s.metric);\n  idle = idle && s.value === 0;\n}\nif ([...pairs.values()].some(metrics => !names.every(n => metrics.has(n)))) return invalid;\nconst seen = new Set();\nfor (const row of t) {\n  const s = sample(row, true);\n  if (!s || seen.has(s.key) || !valuesByKey.has(s.key)) return invalid;\n  const age = now - s.value;\n  if (!Number.isFinite(age) || age < -5 || age > 45) return invalid;\n  seen.add(s.key);\n}\nreturn {json: {idle, telemetryValid: true}};"
+        "jsCode": "const values = $(\"Repair witness against public example: queue depth\").item.json;\nconst stamps = $json;\nconst invalid = {json: {idle: false, telemetryValid: false}};\nconst model = \"qwen3.8-27b\";\nconst names = ['running', 'waiting'];\nconst now = Date.now()/1000;\nfunction rows(r) {\n  return r && !Object.hasOwn(r, 'error') && r.statusCode === 200 &&\n    r.body?.status === 'success' && !Object.hasOwn(r.body, 'error') &&\n    r.body.data?.resultType === 'vector' && Array.isArray(r.body.data.result)\n    ? r.body.data.result : null;\n}\nfunction sample(r, timestamp) {\n  if (!r || !r.metric || typeof r.metric !== 'object' || Array.isArray(r.metric) ||\n      Object.values(r.metric).some(v => typeof v !== 'string') ||\n      r.metric.model_name !== model || !Array.isArray(r.value) || r.value.length !== 2 ||\n      typeof r.value[0] !== 'number' || !Number.isFinite(r.value[0]) || r.value[0] <= 0 ||\n      typeof r.value[1] !== 'string' ||\n      !/^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/.test(r.value[1]) ||\n      !Number.isFinite(Number(r.value[1]))) return null;\n  const metric = timestamp ? r.metric.queue_metric :\n    r.metric.__name__?.replace(/^vllm:num_requests_/, '');\n  if (!names.includes(metric) || (!timestamp &&\n      (r.metric.__name__ !== 'vllm:num_requests_'+metric || Object.hasOwn(r.metric, 'queue_metric')))) return null;\n  const labels = JSON.stringify(Object.entries(r.metric)\n    .filter(([k]) => !['__name__', 'queue_metric'].includes(k))\n    .sort(([a],[b]) => a.localeCompare(b)));\n  return {metric, labels, key: JSON.stringify([metric, labels]), value: Number(r.value[1])};\n}\nconst v = rows(values), t = rows(stamps);\nif (!v || !t || !v.length || v.length !== t.length) return invalid;\nconst valuesByKey = new Map(), pairs = new Map();\nlet idle = true;\nfor (const row of v) {\n  const s = sample(row, false);\n  if (!s || valuesByKey.has(s.key)) return invalid;\n  valuesByKey.set(s.key, s);\n  if (!pairs.has(s.labels)) pairs.set(s.labels, new Set());\n  pairs.get(s.labels).add(s.metric);\n  idle = idle && s.value === 0;\n}\nif ([...pairs.values()].some(metrics => !names.every(n => metrics.has(n)))) return invalid;\nconst seen = new Set();\nfor (const row of t) {\n  const s = sample(row, true);\n  if (!s || seen.has(s.key) || !valuesByKey.has(s.key)) return invalid;\n  const age = now - s.value;\n  if (!Number.isFinite(age) || age < -5 || age > 45) return invalid;\n  seen.add(s.key);\n}\nreturn {json: {idle, telemetryValid: true}};"
       }
     },
     {
-      "id": "48147ca8-fbba-5e9c-8d8e-84419195071e",
-      "name": "Review suite and curriculum: model idle?",
+      "id": "59466fb6-bd65-5f07-9470-5ed2cea5046b",
+      "name": "Repair witness against public example: model idle?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
@@ -1918,13 +1918,234 @@
       }
     },
     {
-      "id": "e605e68a-c285-5fb7-9253-a5c3a858f95c",
-      "name": "LLM: Review suite and curriculum",
+      "id": "fb5f6f8d-bbdd-591c-9aea-98837900fcce",
+      "name": "LLM: Repair witness against public example",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
         4570,
         2520
+      ],
+      "parameters": {
+        "url": "http://litellm.llm.svc.cluster.local:4000/v1/chat/completions",
+        "options": {
+          "timeout": 180000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        },
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({model:\"qwen3.8-27b\", temperature:0, max_tokens:1000, response_format:{type:'json_object'}, messages:[{role:'user', content: \"\\u041d\\u0435\\u0437\\u0430\\u0432\\u0438\\u0441\\u0438\\u043c\\u043e \\u0440\\u0435\\u0448\\u0438 \\u0437\\u0430\\u0434\\u0430\\u0447\\u0443 \\u043d\\u0430 Python 3, \\u0442\\u043e\\u043b\\u044c\\u043a\\u043e stdin/stdout. \\u041f\\u043e \\u0432\\u043e\\u0437\\u043c\\u043e\\u0436\\u043d\\u043e\\u0441\\u0442\\u0438 \\u0438\\u0441\\u043f\\u043e\\u043b\\u044c\\u0437\\u0443\\u0439 \\u0430\\u043b\\u044c\\u0442\\u0435\\u0440\\u043d\\u0430\\u0442\\u0438\\u0432\\u043d\\u044b\\u0439 \\u043f\\u0440\\u043e\\u0441\\u0442\\u043e\\u0439 \\u043f\\u043e\\u0434\\u0445\\u043e\\u0434. \\u041a\\u043e\\u0434 \\u043a\\u0440\\u0430\\u0442\\u043a\\u0438\\u0439, \\u0431\\u0435\\u0437 \\u043a\\u043e\\u043c\\u043c\\u0435\\u043d\\u0442\\u0430\\u0440\\u0438\\u0435\\u0432 \\u0438 \\u0447\\u0435\\u0440\\u043d\\u043e\\u0432\\u044b\\u0445 \\u0440\\u0430\\u0441\\u0441\\u0443\\u0436\\u0434\\u0435\\u043d\\u0438\\u0439. \\u041d\\u0435 \\u0441\\u0447\\u0438\\u0442\\u044b\\u0432\\u0430\\u0439 \\u0432\\u0445\\u043e\\u0434 \\u0434\\u0432\\u0430\\u0436\\u0434\\u044b. JSON {\\\"source\\\":\\\"...\\\"}. \\u0423\\u0441\\u043b\\u043e\\u0432\\u0438\\u0435: \" + $(\"Phase: wrepair\").item.json.data.statement + '\\nСвой предыдущий исходник и собственный проваленный публичный пример: ' + JSON.stringify([$(\"Phase: wrepair\").item.json.data.witness,$(\"Phase: wrepair\").item.json.data.witnessFailure])}]}) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_LITELLM",
+          "name": "LITELLM"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "215d26c2-192b-527f-af9c-8bd2e48e892c",
+      "name": "Validate blind witness",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4790,
+        2520
+      ],
+      "parameters": {
+        "jsCode": "const {phase,data} = $(\"Phase: wrepair\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nlet payload;\ntry { payload = JSON.parse($json.body.choices[0].message.content); } catch { payload = {}; }\n data.calls = (data.calls || 0) + 1;\n const out = next => ({json:{phase:data.calls >= (data.callLimit || 12) && ['solve','repair','tests','expand','witness','wrepair','audit','probes'].includes(next) ? 'needs_review' : next,data}});\nconst w=payload?.source;if(typeof w!=='string'||!w.trim()||w.length>6000||w.replace(/\\s/g,'')===data.source.replace(/\\s/g,'')){data.reviewReason='no_distinct_witness';return out('needs_review');} data.witness=w;return out('wpublic');"
+      }
+    },
+    {
+      "id": "c4d090c6-e6bf-577d-8dbb-e3dddde45e17",
+      "name": "Validate blind witness checkpoint?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        5010,
+        2520
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "yes",
+              "leftValue": "={{ $json.pause !== true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "16d8063c-f4ac-500c-a445-b2e792b87e55",
+      "name": "Phase: audit",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3650,
+        2820
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "yes",
+              "leftValue": "={{ $json.phase === \"audit\" }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "efc94e11-cc3b-56f2-9bc8-694d57ec40d0",
+      "name": "Review suite and curriculum: queue depth",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3930,
+        2820
+      ],
+      "parameters": {
+        "url": "http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090/api/v1/query",
+        "options": {
+          "timeout": 8000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "{__name__=~\"vllm:num_requests_(running|waiting)\",model_name=\"qwen3.8-27b\"}"
+            }
+          ]
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "35349fc8-a381-536f-89b1-8447039cf46a",
+      "name": "Review suite and curriculum: sample freshness",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4150,
+        2820
+      ],
+      "parameters": {
+        "url": "http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090/api/v1/query",
+        "options": {
+          "timeout": 8000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "label_replace(timestamp(vllm:num_requests_running{model_name=\"qwen3.8-27b\"}), \"queue_metric\", \"running\", \"model_name\", \".*\") or label_replace(timestamp(vllm:num_requests_waiting{model_name=\"qwen3.8-27b\"}), \"queue_metric\", \"waiting\", \"model_name\", \".*\")"
+            }
+          ]
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "e05eff35-4144-5fbd-bf6c-490c7d021650",
+      "name": "Review suite and curriculum: verify both metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4370,
+        2820
+      ],
+      "parameters": {
+        "jsCode": "const values = $(\"Review suite and curriculum: queue depth\").item.json;\nconst stamps = $json;\nconst invalid = {json: {idle: false, telemetryValid: false}};\nconst model = \"qwen3.8-27b\";\nconst names = ['running', 'waiting'];\nconst now = Date.now()/1000;\nfunction rows(r) {\n  return r && !Object.hasOwn(r, 'error') && r.statusCode === 200 &&\n    r.body?.status === 'success' && !Object.hasOwn(r.body, 'error') &&\n    r.body.data?.resultType === 'vector' && Array.isArray(r.body.data.result)\n    ? r.body.data.result : null;\n}\nfunction sample(r, timestamp) {\n  if (!r || !r.metric || typeof r.metric !== 'object' || Array.isArray(r.metric) ||\n      Object.values(r.metric).some(v => typeof v !== 'string') ||\n      r.metric.model_name !== model || !Array.isArray(r.value) || r.value.length !== 2 ||\n      typeof r.value[0] !== 'number' || !Number.isFinite(r.value[0]) || r.value[0] <= 0 ||\n      typeof r.value[1] !== 'string' ||\n      !/^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/.test(r.value[1]) ||\n      !Number.isFinite(Number(r.value[1]))) return null;\n  const metric = timestamp ? r.metric.queue_metric :\n    r.metric.__name__?.replace(/^vllm:num_requests_/, '');\n  if (!names.includes(metric) || (!timestamp &&\n      (r.metric.__name__ !== 'vllm:num_requests_'+metric || Object.hasOwn(r.metric, 'queue_metric')))) return null;\n  const labels = JSON.stringify(Object.entries(r.metric)\n    .filter(([k]) => !['__name__', 'queue_metric'].includes(k))\n    .sort(([a],[b]) => a.localeCompare(b)));\n  return {metric, labels, key: JSON.stringify([metric, labels]), value: Number(r.value[1])};\n}\nconst v = rows(values), t = rows(stamps);\nif (!v || !t || !v.length || v.length !== t.length) return invalid;\nconst valuesByKey = new Map(), pairs = new Map();\nlet idle = true;\nfor (const row of v) {\n  const s = sample(row, false);\n  if (!s || valuesByKey.has(s.key)) return invalid;\n  valuesByKey.set(s.key, s);\n  if (!pairs.has(s.labels)) pairs.set(s.labels, new Set());\n  pairs.get(s.labels).add(s.metric);\n  idle = idle && s.value === 0;\n}\nif ([...pairs.values()].some(metrics => !names.every(n => metrics.has(n)))) return invalid;\nconst seen = new Set();\nfor (const row of t) {\n  const s = sample(row, true);\n  if (!s || seen.has(s.key) || !valuesByKey.has(s.key)) return invalid;\n  const age = now - s.value;\n  if (!Number.isFinite(age) || age < -5 || age > 45) return invalid;\n  seen.add(s.key);\n}\nreturn {json: {idle, telemetryValid: true}};"
+      }
+    },
+    {
+      "id": "48147ca8-fbba-5e9c-8d8e-84419195071e",
+      "name": "Review suite and curriculum: model idle?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4590,
+        2820
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "yes",
+              "leftValue": "={{ $json.idle === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "e605e68a-c285-5fb7-9253-a5c3a858f95c",
+      "name": "LLM: Review suite and curriculum",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4810,
+        2820
       ],
       "parameters": {
         "url": "http://litellm.llm.svc.cluster.local:4000/v1/chat/completions",
@@ -1959,11 +2180,11 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4790,
-        2520
+        5030,
+        2820
       ],
       "parameters": {
-        "jsCode": "const {phase,data} = $(\"Phase: audit\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nlet payload;\ntry { payload = JSON.parse($json.body.choices[0].message.content); } catch { payload = {}; }\n data.calls = (data.calls || 0) + 1;\n const out = next => ({json:{phase:data.calls >= (data.callLimit || 12) && ['solve','repair','tests','expand','witness','audit','probes'].includes(next) ? 'needs_review' : next,data}});\nif(payload?.approved!==true){data.reviewReason='semantic_review_failed';data.reviewDetail=String(payload?.reason||'').slice(0,500);\nconst ids=payload?.badIndices; if(payload?.issue==='cases' && Array.isArray(ids)&&ids.length && ids.every(i=>Number.isInteger(i)&&i>=0&&i<data.cases.length)&& (data.auditRetries||0)<2 && !data.semanticApproved){\n data.quarantine=[...(data.quarantine||[]),...data.cases.filter((c,i)=>ids.includes(i))];data.cases=data.cases.filter((c,i)=>!ids.includes(i));data.coverageHints=data.reviewDetail;data.auditRetries=(data.auditRetries||0)+1;return out('expand');\n}return out('needs_review');}data.semanticApproved=true;return out(data.faults?.length?'public':'probes');"
+        "jsCode": "const {phase,data} = $(\"Phase: audit\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nlet payload;\ntry { payload = JSON.parse($json.body.choices[0].message.content); } catch { payload = {}; }\n data.calls = (data.calls || 0) + 1;\n const out = next => ({json:{phase:data.calls >= (data.callLimit || 12) && ['solve','repair','tests','expand','witness','wrepair','audit','probes'].includes(next) ? 'needs_review' : next,data}});\nif(payload?.approved!==true){data.reviewReason='semantic_review_failed';data.reviewDetail=String(payload?.reason||'').slice(0,500);\nconst ids=payload?.badIndices; if(payload?.issue==='cases' && Array.isArray(ids)&&ids.length && ids.every(i=>Number.isInteger(i)&&i>=0&&i<data.cases.length)&& (data.auditRetries||0)<2 && !data.semanticApproved){\n data.quarantine=[...(data.quarantine||[]),...data.cases.filter((c,i)=>ids.includes(i))];data.cases=data.cases.filter((c,i)=>!ids.includes(i));data.coverageHints=data.reviewDetail;data.auditRetries=(data.auditRetries||0)+1;return out('expand');\n}return out('needs_review');}data.semanticApproved=true;return out(data.faults?.length?'public':'probes');"
       }
     },
     {
@@ -1972,8 +2193,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        5010,
-        2520
+        5250,
+        2820
       ],
       "parameters": {
         "conditions": {
@@ -2003,8 +2224,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        3650,
-        2820
+        3890,
+        3120
       ],
       "parameters": {
         "conditions": {
@@ -2034,8 +2255,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3930,
-        2820
+        4170,
+        3120
       ],
       "parameters": {
         "url": "http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090/api/v1/query",
@@ -2067,8 +2288,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4150,
-        2820
+        4390,
+        3120
       ],
       "parameters": {
         "url": "http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090/api/v1/query",
@@ -2100,8 +2321,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4370,
-        2820
+        4610,
+        3120
       ],
       "parameters": {
         "jsCode": "const values = $(\"Design realistic wrong solutions: queue depth\").item.json;\nconst stamps = $json;\nconst invalid = {json: {idle: false, telemetryValid: false}};\nconst model = \"qwen3.8-27b\";\nconst names = ['running', 'waiting'];\nconst now = Date.now()/1000;\nfunction rows(r) {\n  return r && !Object.hasOwn(r, 'error') && r.statusCode === 200 &&\n    r.body?.status === 'success' && !Object.hasOwn(r.body, 'error') &&\n    r.body.data?.resultType === 'vector' && Array.isArray(r.body.data.result)\n    ? r.body.data.result : null;\n}\nfunction sample(r, timestamp) {\n  if (!r || !r.metric || typeof r.metric !== 'object' || Array.isArray(r.metric) ||\n      Object.values(r.metric).some(v => typeof v !== 'string') ||\n      r.metric.model_name !== model || !Array.isArray(r.value) || r.value.length !== 2 ||\n      typeof r.value[0] !== 'number' || !Number.isFinite(r.value[0]) || r.value[0] <= 0 ||\n      typeof r.value[1] !== 'string' ||\n      !/^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/.test(r.value[1]) ||\n      !Number.isFinite(Number(r.value[1]))) return null;\n  const metric = timestamp ? r.metric.queue_metric :\n    r.metric.__name__?.replace(/^vllm:num_requests_/, '');\n  if (!names.includes(metric) || (!timestamp &&\n      (r.metric.__name__ !== 'vllm:num_requests_'+metric || Object.hasOwn(r.metric, 'queue_metric')))) return null;\n  const labels = JSON.stringify(Object.entries(r.metric)\n    .filter(([k]) => !['__name__', 'queue_metric'].includes(k))\n    .sort(([a],[b]) => a.localeCompare(b)));\n  return {metric, labels, key: JSON.stringify([metric, labels]), value: Number(r.value[1])};\n}\nconst v = rows(values), t = rows(stamps);\nif (!v || !t || !v.length || v.length !== t.length) return invalid;\nconst valuesByKey = new Map(), pairs = new Map();\nlet idle = true;\nfor (const row of v) {\n  const s = sample(row, false);\n  if (!s || valuesByKey.has(s.key)) return invalid;\n  valuesByKey.set(s.key, s);\n  if (!pairs.has(s.labels)) pairs.set(s.labels, new Set());\n  pairs.get(s.labels).add(s.metric);\n  idle = idle && s.value === 0;\n}\nif ([...pairs.values()].some(metrics => !names.every(n => metrics.has(n)))) return invalid;\nconst seen = new Set();\nfor (const row of t) {\n  const s = sample(row, true);\n  if (!s || seen.has(s.key) || !valuesByKey.has(s.key)) return invalid;\n  const age = now - s.value;\n  if (!Number.isFinite(age) || age < -5 || age > 45) return invalid;\n  seen.add(s.key);\n}\nreturn {json: {idle, telemetryValid: true}};"
@@ -2113,8 +2334,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        4590,
-        2820
+        4830,
+        3120
       ],
       "parameters": {
         "conditions": {
@@ -2144,8 +2365,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4810,
-        2820
+        5050,
+        3120
       ],
       "parameters": {
         "url": "http://litellm.llm.svc.cluster.local:4000/v1/chat/completions",
@@ -2180,11 +2401,11 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5030,
-        2820
+        5270,
+        3120
       ],
       "parameters": {
-        "jsCode": "const {phase,data} = $(\"Phase: probes\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nlet payload;\ntry { payload = JSON.parse($json.body.choices[0].message.content); } catch { payload = {}; }\n data.calls = (data.calls || 0) + 1;\n const out = next => ({json:{phase:data.calls >= (data.callLimit || 12) && ['solve','repair','tests','expand','witness','audit','probes'].includes(next) ? 'needs_review' : next,data}});\nconst probes=Array.isArray(payload?.faults)?payload.faults:[];const seen=new Set([data.source.trim(),data.witness.trim()]);data.faults=[];for(const p of probes){if(typeof p?.source!=='string'||!p.source.includes('input(')||p.source.length>6000||typeof p.label!=='string'||seen.has(p.source.trim()))continue;seen.add(p.source.trim());data.faults.push([p.label.slice(0,100),p.source]);}if(data.faults.length<3){data.reviewReason='insufficient_distinct_probes';return out('needs_review');}data.faults=data.faults.slice(0,5);return out('public');"
+        "jsCode": "const {phase,data} = $(\"Phase: probes\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nlet payload;\ntry { payload = JSON.parse($json.body.choices[0].message.content); } catch { payload = {}; }\n data.calls = (data.calls || 0) + 1;\n const out = next => ({json:{phase:data.calls >= (data.callLimit || 12) && ['solve','repair','tests','expand','witness','wrepair','audit','probes'].includes(next) ? 'needs_review' : next,data}});\nconst probes=Array.isArray(payload?.faults)?payload.faults:[];const seen=new Set([data.source.trim(),data.witness.trim()]);data.faults=[];for(const p of probes){if(typeof p?.source!=='string'||!p.source.includes('input(')||p.source.length>6000||typeof p.label!=='string'||seen.has(p.source.trim()))continue;seen.add(p.source.trim());data.faults.push([p.label.slice(0,100),p.source]);}if(data.faults.length<3){data.reviewReason='insufficient_distinct_probes';return out('needs_review');}data.faults=data.faults.slice(0,5);return out('public');"
       }
     },
     {
@@ -2193,8 +2414,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        5250,
-        2820
+        5490,
+        3120
       ],
       "parameters": {
         "conditions": {
@@ -2224,8 +2445,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        3890,
-        3120
+        4130,
+        3420
       ],
       "parameters": {
         "conditions": {
@@ -2255,8 +2476,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4170,
-        3120
+        4410,
+        3420
       ],
       "parameters": {
         "url": "http://REPLACE_RUNNER:9000/certification/check-suite",
@@ -2291,11 +2512,11 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4390,
-        3120
+        4630,
+        3420
       ],
       "parameters": {
-        "jsCode": "const {phase,data} = $(\"Phase: wpublic\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nconst verdict = $json.body?.verdict;\nif (!['accepted','wrong_answer','runtime_error','time_limit','output_limit','memory_limit'].includes(verdict))\n  throw new Error('Invalid sandbox verdict');\nif(verdict!=='accepted'){data.reviewReason='independent_witness_disagrees';return {json:{phase:'needs_review',data}};}return {json:{phase:'wsuite',data}};"
+        "jsCode": "const {phase,data} = $(\"Phase: wpublic\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nconst verdict = $json.body?.verdict;\nif (!['accepted','wrong_answer','runtime_error','time_limit','output_limit','memory_limit'].includes(verdict))\n  throw new Error('Invalid sandbox verdict');\nif(verdict!=='accepted'){data.witnessFailure=data.examples[$json.body.test_index-1];data.witnessRetries=(data.witnessRetries||0)+1;return {json:{phase:data.witnessRetries<=2 && data.calls<(data.callLimit||12)?'wrepair':'needs_review',data}};}return {json:{phase:data.semanticApproved?'wsuite':'tests',data}};"
       }
     },
     {
@@ -2304,8 +2525,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        4610,
-        3120
+        4850,
+        3420
       ],
       "parameters": {
         "conditions": {
@@ -2335,8 +2556,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        4130,
-        3420
+        4370,
+        3720
       ],
       "parameters": {
         "conditions": {
@@ -2366,8 +2587,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4410,
-        3420
+        4650,
+        3720
       ],
       "parameters": {
         "url": "http://REPLACE_RUNNER:9000/certification/check-suite",
@@ -2402,8 +2623,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4630,
-        3420
+        4870,
+        3720
       ],
       "parameters": {
         "jsCode": "const {phase,data} = $(\"Phase: wsuite\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nconst verdict = $json.body?.verdict;\nif (!['accepted','wrong_answer','runtime_error','time_limit','output_limit','memory_limit'].includes(verdict))\n  throw new Error('Invalid sandbox verdict');\nif(verdict!=='accepted'){data.reviewReason='independent_witness_disagrees';return {json:{phase:'needs_review',data}};}data.variant=0;data.survivors=[];data.faultsKilled=0;return {json:{phase:'mutate',data}};"
@@ -2415,8 +2636,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        4850,
-        3420
+        5090,
+        3720
       ],
       "parameters": {
         "conditions": {
@@ -2446,8 +2667,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        4370,
-        3720
+        4610,
+        4020
       ],
       "parameters": {
         "conditions": {
@@ -2477,8 +2698,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4650,
-        3720
+        4890,
+        4020
       ],
       "parameters": {
         "url": "http://REPLACE_RUNNER:9000/certification/check-suite",
@@ -2513,8 +2734,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4870,
-        3720
+        5110,
+        4020
       ],
       "parameters": {
         "jsCode": "const {phase,data} = $(\"Phase: plausible\").item.json;\nconst status = $json.statusCode;\nif ($json.error || status === 429 || status >= 500) return {json: {pause:true,reason:$json.error?'transport':'http_'+status}};\nif (status !== 200) throw new Error('Unexpected service HTTP status: ' + status);\nconst verdict = $json.body?.verdict;\nif (!['accepted','wrong_answer','runtime_error','time_limit','output_limit','memory_limit'].includes(verdict))\n  throw new Error('Invalid sandbox verdict');\nif(verdict==='wrong_answer' && ++data.probeCase<data.examples.length+data.cases.length)return {json:{phase:'plausible',data}};\nif(verdict==='accepted') data.faultsKilled=(data.faultsKilled||0)+1;\nelse {data.rejectedProbeLabels=[...(data.rejectedProbeLabels||[]),data.faults[data.variant][0]];}\ndata.variant++; data.probeCase=0;\nif(data.variant<data.faults.length)return {json:{phase:'mutate',data}};\nif(data.faultsKilled>=3)return {json:{phase:'certified',data}};\ndata.reviewReason='probe_not_plausible';data.probeRetries=(data.probeRetries||0)+1;return {json:{phase:data.probeRetries<=2 && data.calls<(data.callLimit||12)?'probes':'needs_review',data}};"
@@ -2526,8 +2747,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        5090,
-        3720
+        5330,
+        4020
       ],
       "parameters": {
         "conditions": {
@@ -3346,7 +3567,7 @@
         ],
         [
           {
-            "node": "Phase: audit",
+            "node": "Phase: wrepair",
             "type": "main",
             "index": 0
           }
@@ -3378,6 +3599,11 @@
             "node": "Validate blind witness checkpoint?",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Validate blind witness checkpoint?",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -3387,6 +3613,96 @@
         [
           {
             "node": "Checkpoint and dispatch next phase",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Checkpoint and dispatch next phase",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pause and release lease",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Pause and release lease",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM: Independent blind solution": {
+      "main": [
+        [
+          {
+            "node": "Validate blind witness",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Repair witness against public example: queue depth": {
+      "main": [
+        [
+          {
+            "node": "Repair witness against public example: sample freshness",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Repair witness against public example: sample freshness": {
+      "main": [
+        [
+          {
+            "node": "Repair witness against public example: verify both metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Repair witness against public example: verify both metrics": {
+      "main": [
+        [
+          {
+            "node": "Repair witness against public example: model idle?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phase: wrepair": {
+      "main": [
+        [
+          {
+            "node": "Repair witness against public example: queue depth",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Phase: audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Repair witness against public example: model idle?": {
+      "main": [
+        [
+          {
+            "node": "LLM: Repair witness against public example",
             "type": "main",
             "index": 0
           }
@@ -3400,7 +3716,7 @@
         ]
       ]
     },
-    "LLM: Independent blind solution": {
+    "LLM: Repair witness against public example": {
       "main": [
         [
           {
