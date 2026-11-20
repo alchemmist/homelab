@@ -120,7 +120,7 @@ def refresh_public_edge_probe(scrape):
     targets = yaml.safe_load((ROOT / "charts/monitoring-k3s/values.yaml").read_text())[
         "serviceProbes"
     ]["targets"]
-    endpoint = next(target["url"] for target in targets if target["id"] == "edge-vps")
+    tcp_targets = {t["id"]: t["url"] for t in targets if t["id"] in ("edge-vps", "litellm-db", "umami-db")}
     result = copy.deepcopy(scrape)
     for job in result.get("scrape_configs", []):
         if not job.get("job_name", "").startswith(
@@ -132,10 +132,10 @@ def refresh_public_edge_probe(scrape):
             for rule in job.get("relabel_configs", [])
             if rule.get("target_label") == "service_id"
         ]
-        if identity == ["edge-vps"]:
+        if len(identity) == 1 and identity[0] in tcp_targets:
             if job.get("params", {}).get("module") != ["tcp_connect"]:
-                raise ValueError("Unexpected VPS edge probe module")
-            job["params"]["target"] = [endpoint]
+                raise ValueError("Unexpected catalog TCP probe module")
+            job["params"]["target"] = [tcp_targets[identity[0]]]
     return add_moscow_edge_probe(result)
 
 
