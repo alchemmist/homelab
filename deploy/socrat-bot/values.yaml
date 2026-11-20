@@ -1,6 +1,6 @@
 ---
 databaseSecret: socrat-bot-pg-common
-replicaCount: 0
+replicaCount: 1
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/socrat-bot
   tag: 150cd3c8743e56d59a7b5de3ea69b956421f7cb2
@@ -23,7 +23,7 @@ alertmanagerUrl: http://kube-prometheus-stack-alertmanager.cattle-monitoring-sys
 postgres:
   image: postgres:17
   storage: 5Gi
-  replicaCount: 1
+  replicaCount: 0
   user: socrat
   database: socrat
   resources:
