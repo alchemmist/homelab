@@ -103,11 +103,15 @@ def dispatch(x):
     check(isinstance(x,dict));action=x.get('action')
     signed_create=action=='create' and Path('/proof').is_dir()
     signed_update=action=='update' and 'proof' in x and Path('/proof').is_dir()
-    life=action in ('life_snapshot','life_dispose','life_ready');check(not life or Path('/proof').is_dir())
+    life=action in ('life_snapshot','life_dispose','life_ready','life_head','life_ci','life_request');check(not life or Path('/proof').is_dir())
     if signed_create or signed_update or life:
         signature=x.pop('proof','');check(isinstance(signature,str) and hmac.compare_digest(signature,hmac.new(Path('/proof/key').read_bytes(),json.dumps(x,sort_keys=True).encode(),'sha256').hexdigest()))
     if life:
         import runpy
+        if action=='life_head':
+            n=x['pr'];check(type(n) is int and n>0);p=api('pulls/'+str(n));return {'head':p['head']['sha'],'enrolled':p['state']=='open' and p['head']['repo']['full_name']==REPO and p['user']['login']=='alchemmist' and p['base']['ref']=='main' and re.fullmatch(MUT+r'[1-9][0-9]*/[a-f0-9]{32}',p['head']['ref']) is not None and any(l['name']=='mutation-pr' for l in p['labels'])}
+        if action=='life_ci':
+            p=owned_pr(x['pr'],x['head']);check(p['head']['ref'].startswith(MUT) and any(l['name']=='mutation-pr' for l in p['labels']));return runpy.run_path(str(Path(__file__).with_name('ci_excerpt.py')))['extract'](x['pr'],x['head'],api,NoRedirect,check)
         return runpy.run_path(str(Path(__file__).with_name('pr_lifecycle.py')))['lifecycle'](x,api,owned_pr,check)
     if action=='qa_issue':return qa_issue(x)
     if action=='qa_capabilities':return {'actions':['qa_issue','qa_create','update','threads','reply_then_resolve','report'],'evidence':'reviewed synthetic PNG and optional 6fps H.264 MP4 from frames','merge':False}

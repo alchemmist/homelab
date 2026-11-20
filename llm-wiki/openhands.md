@@ -571,3 +571,21 @@ created https://github.com/alchemmist/monori/pull/515 at `2fe0f9b9`; GitHub
 confirmed one test file, REVIEW_REQUIRED. At 16:54:14 the same consumer began
 screening `x_kop_from_rub__mutmut_3` without another instruction. Intake PVC
 mirrored #514 and #515. This proves issue → PR → next card, not Ready or merge.
+
+### Mutation-only PR lifecycle — separate event admission and remote handoff gate
+
+Live n8n `smzVQVLPVhX0l1Sm` (not the issue intake), GitHub hook 714505918,
+independent HMAC key, reviewer/PR/comment/check/workflow/status events plus five-minute
+missed-delivery rescan. Only proven published outputs with current `mutation-pr`,
+owned head, main base and pinned repository qualify. #514/#515 backfilled; #513 probe,
+QA and unrelated PRs excluded. Pending work and receipts persist on intake PVC;
+`mutation-pr-lifecycle.service` evaluates GitHub, submits evidence-backed repair
+jobs; the issue executor no longer unconditionally rewrites red PRs. Shared judge
+and writer serialize proof-producing edits. Narrow file diagnostics, inconclusive or
+unrelated CI stays blocked. All head changes invalidate bot review evidence. Signed
+publisher rechecks the canonical Ready gate + Quality Graph + dispositions bound
+to bot content digest + head before applying `mutation-ready`. `NEUTRAL`/`SKIPPED`
+are not silently exempted. Current-head review requests bounded per head; CodeRabbit
+rate limit is a blocker, not an approval. No merges. Only reply before resolve;
+uncertain/human discussion stays open. New CI or review events re-audit even a
+previously ready PR; labels are asynchronous, not a substitute for branch protection.

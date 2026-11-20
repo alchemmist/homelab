@@ -2,6 +2,7 @@
 import fcntl, json, os, re, subprocess, sys, time
 import campaign as c
 import restore_worker
+import lifecycle_worker
 # Remote RPC via the existing operator transport. No pod gets kube credentials.
 RPC='''import json,sqlite3,sys
 m=json.load(sys.stdin); db=sqlite3.connect('/state/reports.db',timeout=10);db.row_factory=sqlite3.Row
@@ -37,7 +38,7 @@ def main():
  for t in c.query("select * from tasks where state='needs_triage' and note like '%executor ended%'"):
   log=c.A/c.key(t)/'pi-3.log'
   if log.exists() and b'502 Bad Gateway' in log.read_bytes()[-2000:]:c.mark(t,'queued','Recovered prior transport failure, no model verdict')
- c.query("update tasks set state='queued' where pr is null and state in ('screening','survived','authoring','rejected')");c.query("update tasks set state='published' where pr is not null and state in ('authoring','rejected')");c.query("update tasks set state='publication_uncertain' where state='publishing'");cache=0;nextrepair=time.time()+600
+ c.query("update tasks set state='queued' where pr is null and state in ('screening','survived','authoring','rejected')");c.query("update tasks set state='published' where pr is not null and state in ('authoring','rejected')");c.query("update tasks set state='publication_uncertain' where state='publishing'");cache=0;nextrepair=0
  def sync(active=''):
   tasks={x['id']:x for x in c.query('select id,state,pr from tasks')};changes=[]
   for row in rows:
@@ -59,7 +60,7 @@ def main():
     ready=next((x for x in c.query("select * from tasks where state='verified' order by updated") if x['id'] in allowed),None)
     if ready:c.publish(ready,sha);slots-=1;sync();continue
    if time.time()>nextrepair:
-    nextrepair=time.time()+1200;c.repair_one(prs,sha)
+    nextrepair=time.time()+60;lifecycle_worker.run_fix(sha)
    c.query("update tasks set state='queued' where state='transport_wait' and updated<?",(time.time()-180,));t=next((x for x in c.query("select * from tasks where state='queued' order by case when ord<0 then -1 else 0 end,num,case when category='Timeouts' then 1 else 0 end,ord,id") if x['id'] in allowed),None)
    if not t:sync();time.sleep(60);continue
    if re.search(r'connector|credential|access_denied|auth(?:entication|orization)?_|subprocess|webhook|password|token|crypto',t['fam'],re.I):c.mark(t,'needs_triage','Requires human scope review; no agent assigned',sha);continue

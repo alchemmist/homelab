@@ -18,3 +18,12 @@ class Reports(unittest.TestCase):
   sample='```python\ndef test_fixture() -> None:\n    assert 1 == 1\n```';self.assertTrue(art.artifact_response('transport warning\n'+sample).startswith('def test_fixture'))
   for raw in ('I will write a test.',sample+'\n'+sample,'```sh\necho test\n```'):
    with self.assertRaises(ValueError):art.artifact_response(raw)
+ def test_review_wake_is_signed_and_only_for_published_outputs(self):
+  with tempfile.TemporaryDirectory() as td,closing(sqlite3.connect(Path(td)/'db')) as c:
+   db=Path(td)/'db';c.execute('create table outputs(pr integer,state text)');c.executemany('insert into outputs values(?,?)',[(515,'published'),(513,'unverified')]);c.commit();reg={'1':{'name':'owner/repo'}}
+   def wake(n,key):
+    raw=json.dumps({'repository':{'id':1,'full_name':'owner/repo'},'pull_request':{'number':n},'action':'submitted'}).encode();return intake.lifecycle('/review',{'raw':base64.b64encode(raw),'signature':'sha256='+hmac.new(key,raw,hashlib.sha256).hexdigest()},db,b'review-only',reg)
+   with self.assertRaises(PermissionError):wake(515,b'other')
+   self.assertEqual(wake(513,b'review-only')['enrolled'],[]);self.assertEqual(wake(515,b'review-only')['enrolled'],[515]);wake(515,b'review-only');self.assertEqual(c.execute('select count(*) from review_queue').fetchone(),(1,))
+ def test_distributed_handoff_gate_matches_canonical_gate(self):
+  self.assertEqual((ROOT/'scripts/openhands-pr-ready.py').read_bytes(),(ROOT/'charts/openhands/files/steward/ready_gate.py').read_bytes())
