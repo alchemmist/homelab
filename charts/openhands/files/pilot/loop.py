@@ -1,4 +1,5 @@
 """Two-card #509 pilot. Only validated scalar cases cross the executor/judge boundary."""
+import gzip
 import ast, contextlib, datetime, hashlib, hmac, json, os, re, shutil, sqlite3, subprocess, threading, time, uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -21,15 +22,15 @@ def run(cmd,success=True,timeout=150):
     return p
 
 def init():
-    with sqlite3.connect(DB) as d:
+    with contextlib.closing(sqlite3.connect(DB)) as d, d:
         d.execute('create table if not exists cards(name text primary key,state text,cid text,attempt int,due real,detail text,pr integer)');d.execute('create table if not exists transitions(t real,name text,state text,note text)')
         for name in CARDS:d.execute('insert or ignore into cards values(?,?,?,0,0,?,null)',(name,'queued','',''))
 def state():
-    with sqlite3.connect(DB) as d:
+    with contextlib.closing(sqlite3.connect(DB)) as d, d:
         d.row_factory=sqlite3.Row;return [dict(r) for r in d.execute('select * from cards order by rowid')]
 def save(c,phase,note='',**kw):
     fields={'state':phase,'detail':note[:1000],**kw}; assert fields.keys()<={'state','detail','pr','due','cid','attempt'}
-    with sqlite3.connect(DB) as d:
+    with contextlib.closing(sqlite3.connect(DB)) as d, d:
         d.execute('update cards set '+','.join(k+'=?' for k in fields)+' where name=?',(*fields.values(),c['name']));d.execute('insert into transitions values(?,?,?,?)',(time.time(),c['name'],phase,note[:1000]))
     print(c['name'],phase,flush=True)
 
@@ -37,6 +38,9 @@ def fixture():
     if not (REPO/'.git').exists():
         shutil.rmtree(REPO,ignore_errors=True);run(['git','clone','--depth=1','https://github.com/alchemmist/monori.git',str(REPO)])
     if run(['git','rev-parse','HEAD']).stdout.strip()!=BASE:raise ValueError('base changed; review new fixture')
+    lock=gzip.decompress(Path('/code/uv.lock.gz').read_bytes())
+    if hashlib.sha256(lock).hexdigest()!='58013ce07ee72defe4e946f74c84c5f9e6cb50ebc7f7fe352cc625522624bf3a':raise RuntimeError('independent dependency lock drift')
+    (REPO/'uv.lock').write_bytes(lock)
     run(['git','reset','--hard',BASE]);run(['git','clean','-fd','--','server/tests/unit']);run(['uv','sync','--locked','--group','test'],timeout=360)
 
 def render(name,data):
@@ -69,19 +73,28 @@ def verify(c,data):
     finally:file.write_text(orig);path.unlink(missing_ok=True)
 
 def tick():
+    for old in state():
+        if old['state']=='blocked' and old['detail']=='Executor stopped: MaxIterationsReached' and old['attempt']==1:
+            save(old,'queued','Use the supplied facts; propose a scalar case directly without tools.')
     c=next((c for c in state() if c['state'] not in ('published','blocked')),None)
     if not c or c['state']=='publishing' or c['due']>time.time():return
     name=c['name'];phase=c['state'];cid=c['cid'];conv='conversations/'+cid
     if phase=='queued':
         if c['attempt']>=4:save(c,'blocked','Four unsuccessful proposals. Inspect action receipts.');return
         cid=str(uuid.uuid5(uuid.NAMESPACE_URL,RUN+name+str(c['attempt'])));conv='conversations/'+cid
-        prof=api('agent-profiles/socrat-compact-code')['profile'];assert prof['llm_profile_ref']==MODEL
+        prof=api('agent-profiles/socrat-pilot-proposer')['profile'];assert prof['llm_profile_ref']==MODEL
         try:j=api(conv)
         except HTTPError as e:
             if e.code!=404:raise
             api('conversations',{'conversation_id':cid,'workspace':{'kind':'LocalWorkspace','working_dir':WROOT+'/'+name+'/monori'},'agent_profile_id':prof['id'],'autotitle':False,'max_iterations':20});j=api(conv)
         assert j['agent']['llm']['model']=='openai/'+MODEL
-        prompt=f'''#509 mutation pilot, {RUN}/{name}. Work only in {WROOT}/{name}/monori on pinned {BASE}. Read {CARDS[name][0]} and the existing tests {CARDS[name][1]}. No edits, no GitHub calls, no publication. You are the author, another process actually runs the tests. Find one meaningful new input and its correct expected output for {name}. For _amount input is an openpyxl cell value (integer, short string or null); for day_number a valid YYYY-MM-DD. The independent judge tries real mutmut diffs, rejects duplicates already killed, and publishes a generated regression ONLY after red/green. Avoid pytest installations or running a full mutation scan. Conclude with exactly one JSON object only: {{"input":...,"expected":...,"why":"..."}}. Prior attempt: {c['detail'][:450]}'''
+        facts=json.loads(Path('/code/facts.json').read_text())[name]
+        prompt=(f'You are the test-case author for {name} in #509. No tools, no commands, no prose. '
+                f'Code and regression tests from immutable {BASE}:\n{facts}\n'
+                f'Choose one non-duplicate case with a real observable contract. Input is '+
+                ('a YYYY-MM-DD date' if name=='day_number' else 'the scalar value of an openpyxl cell')+
+                '. The judge independently runs pytest. Use only one JSON object, exactly these keys: '
+                '{"input": ..., "expected": integer or null, "why":"short reason"}. Previous rejection: '+c['detail'][:450])
         ev=api(conv+'/events/search?limit=4&sort_order=TIMESTAMP_DESC')['items'];
         if not any(e.get('source') in ('user','agent') for e in ev) and j['execution_status'] not in ('running','finished'):api(conv+'/events',{'role':'user','content':[{'type':'text','text':prompt}],'run':True})
         save(c,'authoring','Awaiting independent case',cid=cid,attempt=c['attempt']+1,due=time.time()+20);return
@@ -92,6 +105,7 @@ def tick():
         if e.get('code')=='LLMRateLimitError' and ('max_parallel_requests' in detail):
             if c['detail'].startswith('Capacity wait'):api(conv+'/run',{});save(c,'authoring','Resumed after capacity wait',due=time.time()+120)
             else:save(c,'authoring','Capacity wait',due=time.time()+180)
+        elif e.get('code')=='MaxIterationsReached':save(c,'queued','Attempt ended without a proposal; provide JSON only.',due=time.time()+30)
         else:save(c,'blocked','Executor stopped: '+str(e.get('code') or e['kind']))
         return
     if st!='finished':return

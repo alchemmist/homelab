@@ -1,0 +1,37 @@
+"""Exercise the production dispatch state machine with persisted test state, no live calls."""
+import json
+import pathlib
+import tempfile
+import types
+import unittest
+from unittest.mock import patch
+
+CODE = pathlib.Path(__file__).resolve().parents[2] / 'charts/openhands/files/pilot'
+
+
+def load():
+    m = types.ModuleType('pilot')
+    with patch.object(pathlib.Path, 'read_text', return_value=(CODE/'mutants.json').read_text()):
+        exec(compile((CODE/'loop.py').read_bytes(), 'loop.py', 'exec'), m.__dict__)
+    return m
+
+
+class Pilot(unittest.TestCase):
+    def test_restart_moves_to_second_card_once(self):
+        with tempfile.TemporaryDirectory() as d:
+            db = str(pathlib.Path(d)/'cards.db'); published=[]; prompts=[]; chats={}
+            def api(path, body=None):
+                if path.startswith('agent-profiles'):return {'profile':{'id':'p','llm_profile_ref':'v-deepseek-uc'}}
+                if path=='conversations':chats[body['conversation_id']]='idle';return {}
+                cid=path.split('/')[1]
+                if cid not in chats:raise m.HTTPError('',404,'missing',{},None)
+                if path.endswith('/events'):prompts.append(cid);chats[cid]='finished';return {}
+                if '/events/search?' in path:return {'items': [] if chats[cid]=='idle' else [{'kind':'MessageEvent','source':'agent','llm_message':{'content':[{'text':'{}'}]}}]}
+                return {'execution_status':chats[cid],'agent':{'llm':{'model':'openai/v-deepseek-uc'}}}
+            for step in range(4):
+                m=load();m.DB=db;m.init()
+                with patch.object(pathlib.Path,'read_text',return_value=json.dumps({'day_number':'facts','_amount':'facts'})), patch.object(m,'api',side_effect=api), patch.object(m,'verify',return_value=('test.py','test','receipt')), patch.object(m,'http',side_effect=lambda *a: published.append(1) or {'pr':len(published)}),patch.object(pathlib.Path,'read_bytes',return_value=b'test'),patch.object(m.time,'time',return_value=100*step):m.tick()
+            self.assertEqual([r['state'] for r in m.state()],['published','published']);self.assertEqual(len(set(prompts)),2);self.assertEqual(len(published),2)
+
+    def test_case_is_data_not_python(self):
+        m=load();self.assertRaises(AssertionError,m.render,'day_number',{'input':{},'expected':1,'why':'candidate input'});self.assertRaises(ValueError,m.render,'_amount',{'input':2,'expected':2,'why':'candidate input','code':'assert True'})

@@ -2,7 +2,11 @@
 apiVersion: v1
 kind: ConfigMap
 metadata: {name: mutation-pilot-code}
+binaryData:
+  uv.lock.gz: {{ .Files.Get "files/pilot/uv.lock.gz" | b64enc | quote }}
 data:
+  facts.json: |
+{{ .Files.Get "files/pilot/facts.json" | indent 4 }}
   loop.py: |
 {{ .Files.Get "files/pilot/loop.py" | indent 4 }}
   mutants.json: |
