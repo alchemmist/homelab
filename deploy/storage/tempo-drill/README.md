@@ -1,11 +1,22 @@
-# Tempo candidate volume — staging only
+# Tempo production volume — migrated from socrat-1
 
-`pvc.yaml` is a separate explicitly named 4 GiB RWO `nfs-shared` claim, not
-mounted by production Tempo. The underlying NFS service is on socrat-0, so this
-candidate addresses node **1** loss, not NFS server failure. Requested capacity
-is not an enforced per-directory quota; check free space on the actual server.
-Do not delete this PVC as part of a restart or substitute it for the live
-hostPath before backup and verified cold copy.
+**Active production data: do not empty or delete this PVC.** Despite the
+historical name `tempo-s1-candidate`, the singleton now uses this existing
+`nfs-shared` claim (4 GiB requested, Retain backend on socrat-0). Its volume
+is not node-local. Never start a second writer. This covers socrat-1 loss,
+not loss of the NFS server. The provisioner does not enforce a directory quota.
+
+On 2026-11-20, #198 quiesced the sole writer. The complete cold archive was
+extracted and verified, then compared to the stopped source. A restricted copy
+pod mounted the source read-only, verified every relative path, size and SHA256
+for 949 files (237561281 bytes) and unmounted before #199 resumed Tempo. Exactly
+one Ready pod on 0 uses the verified PVC. A preselected pre-cutover trace was
+read from completed blocks; a new production trace after restart was searched
+and read by ID. The gateway queue drained to zero. Do not publish trace IDs or
+payloads. The old hostPath and backup archives on 1 are recovery points, not
+current state. After new writes, never blindly switch back to the stale source.
+
+## Earlier isolated pilot (before production cutover)
 
 2026-11-20 scoped preflight: two sequential tokenless disposable pods used the
 production Tempo image digest and UID/GID 10001, each running an isolated Tempo
@@ -20,9 +31,3 @@ verified empty afterwards. Real telemetry and source hostPath were untouched.
 
 This is a small, graceful-restart functional test, not production acceptance,
 a benchmark, evidence of crash-safe WAL, or an indefinite NFS recommendation.
-Before cutover: verify representative source layout, space and write/queue rates,
-protect a restorable copy and a private reference TraceID. Stop the sole writer,
-verify a full cold copy including the WAL, then start one instance and check
-historical lookup, real new trace ingestion/query and exporter queue drain.
-Before writes, abort can resume the unchanged source. After writes preserve both
-copies; do not discard newer data or assume automatic merge on rollback.
