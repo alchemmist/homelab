@@ -1,0 +1,35 @@
+{
+  "persistentVolume": "pvc-936b86c1-3a15-4798-8248-4badaa67ffd9",
+  "patch": [
+    {
+      "op": "test",
+      "path": "/metadata/uid",
+      "value": "7205963f-c71b-49f1-8646-53743296eec2"
+    },
+    {
+      "op": "test",
+      "path": "/spec/claimRef/uid",
+      "value": "936b86c1-3a15-4798-8248-4badaa67ffd9"
+    },
+    {
+      "op": "test",
+      "path": "/spec/claimRef/name",
+      "value": "pyroscope-data"
+    },
+    {
+      "op": "test",
+      "path": "/spec/claimRef/namespace",
+      "value": "cattle-monitoring-system"
+    },
+    {
+      "op": "test",
+      "path": "/spec/persistentVolumeReclaimPolicy",
+      "value": "Delete"
+    },
+    {
+      "op": "replace",
+      "path": "/spec/persistentVolumeReclaimPolicy",
+      "value": "Retain"
+    }
+  ]
+}
