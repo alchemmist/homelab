@@ -67,16 +67,16 @@
   register: authentik_foundation
   changed_when: "'created' in authentik_foundation.stdout or 'configured' in authentik_foundation.stdout"
 
-- name: Wait for database readiness
+- name: Wait for the shared critical database before starting Authentik
   ansible.builtin.command:
     argv: [kubectl,
            --kubeconfig,
            /etc/rancher/k3s/k3s.yaml,
            -n,
-           identity,
-           rollout,
-           status,
-           statefulset/authentik-postgres,
+           postgres,
+           wait,
+           --for=condition=Ready,
+           cluster.postgresql.cnpg.io/pg-critical,
            --timeout=300s]
   changed_when: false
 

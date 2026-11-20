@@ -6,16 +6,26 @@ root = Path.home() / ".cache/homelab-authentik"
 k = ["kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml", "-n", "identity"]
 with tempfile.TemporaryDirectory(dir=root) as work:
     p = Path(work)
+    # Resolve the active CNPG primary on each run; never dump the retained legacy PVC.
+    pg = [*k[:-1], "postgres"]
+    primary = subprocess.check_output(
+        pg + ["get", "cluster.postgresql.cnpg.io", "pg-critical", "-o", "jsonpath={.status.currentPrimary}"],
+        text=True,
+    ).strip()
+    if not primary.startswith("pg-critical-") or not primary.removeprefix("pg-critical-").isdigit():
+        raise RuntimeError("Cannot resolve pg-critical primary")
     with (p / "database.dump").open("wb") as f:
         subprocess.run(
-            k
+            pg
             + [
                 "exec",
-                "authentik-postgres-0",
+                primary,
+                "-c",
+                "postgres",
                 "--",
                 "pg_dump",
                 "-U",
-                "authentik",
+                "postgres",
                 "-d",
                 "authentik",
                 "-Fc",
