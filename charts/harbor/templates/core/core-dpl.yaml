@@ -104,6 +104,9 @@ spec:
         - secretRef:
             name: "{{ template "harbor.core" . }}"
         env:
+          {{- if and (eq .Values.database.type "external") .Values.database.external.caConfigMap }}
+          - {name: PGSSLROOTCERT, value: /etc/pg-common/ca.crt}
+          {{- end }}
           - name: CORE_SECRET
             valueFrom:
               secretKeyRef:
@@ -165,6 +168,9 @@ spec:
         ports:
         - containerPort: {{ template "harbor.core.containerPort" . }}
         volumeMounts:
+        {{- if and (eq .Values.database.type "external") .Values.database.external.caConfigMap }}
+        - {name: postgres-server-ca, mountPath: /etc/pg-common, readOnly: true}
+        {{- end }}
         - name: config
           mountPath: /etc/core/app.conf
           subPath: app.conf
@@ -197,6 +203,10 @@ spec:
 {{ toYaml .Values.core.resources | indent 10 }}
 {{- end }}
       volumes:
+      {{- if and (eq .Values.database.type "external") .Values.database.external.caConfigMap }}
+      - name: postgres-server-ca
+        configMap: {name: {{ .Values.database.external.caConfigMap | quote }}}
+      {{- end }}
       - name: config
         configMap:
           name: {{ template "harbor.core" . }}
