@@ -18,8 +18,8 @@ database:
     caSecretName: lms-pg-common-ca
     enabled: true
     resources: true
-  legacyReplicas: 1
-replicaCount: 0
+  legacyReplicas: 0
+replicaCount: 1
 persistence:
   mountInApp: false
 
