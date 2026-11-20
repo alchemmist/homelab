@@ -17,7 +17,9 @@ checks the CR only, not StatefulSet recreation or persisted state.
    privately; don't print receiver configuration or tokens. Verify source PV is
    protected (current local-path policy is Delete; set to Retain before cutover),
    StatefulSet retains claims on scale/delete, both claims remain Bound, and a
-   restorable backup is available. Preserve originals; never delete either PVC.
+   restorable backup is available. Check the **bound target PV itself** has
+   `persistentVolumeReclaimPolicy: Retain` and its `claimRef.uid` matches the
+   target PVC UID. Preserve originals; never delete either PVC.
 2. Keep Prometheus evaluating; pause before the drill itself. Stop the old
    **Alertmanager only** via the owning Git CR (`replicas: 0`). Confirm its pod
    terminated and no writer remains. Notification delivery is interrupted here;
@@ -29,14 +31,20 @@ checks the CR only, not StatefulSet recreation or persisted state.
    sizes, hashes and readability under UID 1000/GID 2000. Unmount both claims.
 4. Only then wire this overlay into the Argo Application **last**; do not live
    patch or delete the StatefulSet/PVC to bypass errors. The Prometheus Operator
-   v0.94.1 honors the custom claim-template name. Check actual StatefulSet,
-   mounts and pod; if controller cannot reconcile stop and inspect events.
+   v0.94.1 honors the custom claim-template name. Before activation, compare
+   `<rendered CR claim-template name>-<live StatefulSet name>-0` with the staged
+   PVC name. After reconciliation check the actual ordinal-0 pod mounts that
+   claim and its UID/PV are unchanged from step 1. If not, stop; do not accept
+   an empty new claim as restored state.
 5. Verify exactly one Ready pod on 0, same silences and healthy restored state,
    and Prometheus `/api/v1/alertmanagers` points to that pod. Verify a clearly
    labeled synthetic firing AND resolved notification reaches the real recipient
-   through n8n; lack of webhook errors alone is not proof. Then remove the
-   temporary deterministic hostname pin in the owning chart, keeping home-node
-   affinity and preference for 0, and recheck actual placement before the drill.
+   through n8n; lack of webhook errors alone is not proof. Then remove the hostname selector from **both**
+   `charts/alertmanager/values.yaml` and `cutover.values.yaml` in the same change.
+   Keep the overlay active with its storage settings and Linux selector. Add
+   required hostname affinity for `socrat-0/1` and preferred affinity for `0`.
+   Render with Argo values in order, check that the merged selector has no hostname
+   (not even a null key), and verify live placement before the drill.
 6. If migration fails before writes, revert to the original claim/host while
    retaining the target. After writes, stop and preserve **both** copies, decide
    how to handle newer silences/dedup state, never overwrite the source blindly.

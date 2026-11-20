@@ -6,7 +6,7 @@ kube-prometheus-stack:
     alertmanagerSpec:
       replicas: 1
       nodeSelector:
-        # Deterministic first mount; remove the hostname in the owning chart after acceptance.
+        # Deterministic first mount; see README gate 5 before removing this pin.
         kubernetes.io/hostname: socrat-0
         kubernetes.io/os: linux
       storage:
