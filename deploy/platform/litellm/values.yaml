@@ -97,7 +97,7 @@ fullnameOverride: litellm
 image:
   pullPolicy: IfNotPresent
   repository: harbor.socrat.alchemmist.xyz/homelab/litellm
-  tag: 6675023dfafac962781c33f7bf57743e57e80e19@sha256:f1bc742715223bf9a16236670493c7d6b75b4e7f995764f7c678cb6ca60ad174
+  tag: fbbf40f35bd1e871f4f4a994f9be30d7ea225a25@sha256:e982dddf6a3da10ea76fa4c9b5f05ab166a128b83f653cd0e07e96493e6506d9
 imagePullSecrets:
 - name: litellm-harbor-pull
 ingress:
@@ -120,7 +120,7 @@ masterkeySecretName: litellm-env
 migrationJob:
   # Last migration succeeded and its Job was deleted; do not recreate it for placement.
   # Chart fails closed on image changes until normal upgrade migrations are reviewed.
-  placementOnlyImage: harbor.socrat.alchemmist.xyz/homelab/litellm:6675023dfafac962781c33f7bf57743e57e80e19@sha256:f1bc742715223bf9a16236670493c7d6b75b4e7f995764f7c678cb6ca60ad174
+  placementOnlyImage: harbor.socrat.alchemmist.xyz/homelab/litellm:fbbf40f35bd1e871f4f4a994f9be30d7ea225a25@sha256:e982dddf6a3da10ea76fa4c9b5f05ab166a128b83f653cd0e07e96493e6506d9
   enabled: false
   hooks:
     argocd:

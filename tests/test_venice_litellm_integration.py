@@ -69,7 +69,7 @@ class VeniceLiteLLMIntegrationTests(unittest.TestCase):
     def test_no_database_upgrade_or_synthetic_credit_billing(self) -> None:
         """Keep the image tag and leave migration and synthetic billing off."""
         self.assertFalse(self.values["migrationJob"]["enabled"])
-        self.assertRegex(self.values["image"]["tag"], r"^6675023dfafac962781c33f7bf57743e57e80e19@sha256:[a-f0-9]{64}$")
+        self.assertRegex(self.values["image"]["tag"], r"^fbbf40f35bd1e871f4f4a994f9be30d7ea225a25@sha256:[a-f0-9]{64}$")
         info = self.models["v-deepseek-uc"]["model_info"]
         self.assertEqual(info["input_cost_per_token"], 0)
         self.assertEqual(info["output_cost_per_token"], 0)
