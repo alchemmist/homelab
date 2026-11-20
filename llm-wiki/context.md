@@ -24,8 +24,8 @@ production-операции. Датированные результаты не 
 - `socrat-5`: Argo application-controller и Rancher; оба single-replica, не HA.
   [Management handoff](../docs/vm105-management-20261116.md): native SSO, UID/spec,
   users/roles проверены; промежуточный login incident явно сохранён.
-- `socrat-0`: остальные компоненты Argo CD, RustFS, LiteLLM database, Umami
-  database, vLLM/GPU; monitoring размещение сверять по отдельным Applications.
+- PostgreSQL: семь production-БД в `pg-common` и `pg-critical`; размещение primary смотреть в CNPG, не в старых handoff. [Runbook, CA и удержание источников](../docs/postgres-platform.md).
+- `socrat-0`: компоненты Argo CD, RustFS и vLLM/GPU; Umami и LiteLLM используют `pg-common-rw`, а не локальные standalone PostgreSQL.
 - `socrat-5`: Grafana и Grafana MCP, приняты после холодного переноса.
   [Grafana handoff](../docs/vm105-grafana-20261116.md): exact image digests,
   identity/ACL, native SSO и настоящий MCP→Grafana→Thanos запрос проверены.

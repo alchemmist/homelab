@@ -1,5 +1,7 @@
 # Identity: текущий статус и первый вход
 
+> **PostgreSQL (2026-11-20):** Рабочая БД Authentik — `pg-critical/authentik`, endpoint `pg-critical-rw`; не путать с остановленным authentik-postgres. [Эксплуатация и CA](../docs/postgres-platform.md).
+
 > **Live auth audit15Nov:** [actual browser/API boundaries](browser-auth-audit.md).
 > Current public Kuma Admin/Syncthing/Search routes do not have the previously
 > described Authentik MFA gate. Native service login is not Authentik SSO. Native

@@ -53,7 +53,7 @@ spec:
             {{- end }}
             summary: 'No primary replication observations. Check scraper, endpoint, network policy and database.'
         - alert: SocratPgNodeRootSpaceLow
-          expr: node_filesystem_avail_bytes{job="node-exporter",node=~"socrat-[01]",mountpoint="/"} / node_filesystem_size_bytes{job="node-exporter",node=~"socrat-[01]",mountpoint="/"} < 0.15
+          expr: node_filesystem_avail_bytes{job="node-exporter",instance=~"192[.]168[.]0[.]2[34]:9100",mountpoint="/"} / node_filesystem_size_bytes{job="node-exporter",instance=~"192[.]168[.]0[.]2[34]:9100",mountpoint="/"} < 0.15
           for: 15m
           labels: {severity: warning}
           annotations:
