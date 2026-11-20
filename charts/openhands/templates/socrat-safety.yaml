@@ -37,7 +37,10 @@ metadata:
 spec:
   podSelector:
     matchExpressions:
-      - {key: app, operator: NotIn, values: [openhands-backup-pre142, pi-monori-judge]}
+      - {key: app, operator: NotIn, values: [openhands-backup-pre142]}
+      {{- if .Values.piMonori }}
+      - {key: app, operator: NotIn, values: [pi-monori-judge]}
+      {{- end }}
   policyTypes: [Ingress, Egress]
   ingress:
     - from:
