@@ -87,7 +87,7 @@
       - "{{ ha_dependency.namespace }}"
       - rollout
       - status
-      - "deployment/{{ ha_dependency.name }}"
+      - deployment/{{ ha_dependency.name }}
       - --timeout=600s
   changed_when: false
 

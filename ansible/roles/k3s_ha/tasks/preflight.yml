@@ -41,7 +41,7 @@
     state: directory
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
 
 - name: Ensure private migration backup storage exists
   ansible.builtin.file:
@@ -49,5 +49,5 @@
     state: directory
     owner: root
     group: root
-    mode: '0700'
+    mode: "0700"
 ...
