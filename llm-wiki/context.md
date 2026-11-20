@@ -152,5 +152,5 @@ default. Filesystem monitoring is live. Rancher observer API policy fixed and
 Application Healthy. See [followup closeout](../docs/storage-followup-20261120.md)
 and [historical runtime receipt](../docs/socrat5-runtime-hdd-complete-20261120.md).
 Physical hypervisor capacity remains unverified. DeepSeek is an external
-quarantined-session blocker; respect its no-login/no-restart runbook window until
+invalid-session blocker; respect its no-login/no-restart runbook window until
 21 November2026 23:48 MSK. Do not extend the existing alert silence.
