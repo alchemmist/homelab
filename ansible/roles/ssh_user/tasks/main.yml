@@ -5,7 +5,9 @@
       - ssh_username is defined
       - ssh_public_key_file is defined
       - ssh_username != (ansible_user | default('alchemmist'))
-    fail_msg: Supply ssh_username and ssh_public_key_file; never target the existing transport/owner account.
+    fail_msg: >-
+      Supply ssh_username and ssh_public_key_file; never target the existing
+      transport/owner account.
 
 - name: Validate the public key with the real OpenSSH parser before any remote changes
   ansible.builtin.command:
@@ -34,15 +36,19 @@
     that:
       - item.state | default('present') == 'present'
       - item.hosts is not defined or inventory_hostname in item.hosts
-      - ssh_user_key.public_key in (item.authorized_keys | map('regex_search', '^[^ ]+ [^ ]+') | list)
-    fail_msg: This account is managed by homelab_users. Review its host/state/key set in inventory first; users.yml would otherwise undo this addition.
+      - ssh_user_key.public_key in (item.authorized_keys
+        | map('regex_search', '^[^ ]+ [^ ]+') | list)
+    fail_msg: >-
+      This account is managed by homelab_users. Review its host/state/key set
+      in inventory first; users.yml would otherwise undo this addition.
   loop: "{{ homelab_users | default([]) | selectattr('name', 'equalto', ssh_username) | list }}"
   loop_control:
     label: "{{ ssh_username }}"
 
 - name: Preflight account identity, SSH policy, existing keys and privilege isolation on every node
   ansible.builtin.script:
-    cmd: "{{ role_path }}/files/check.py inspect --username {{ ssh_user_key.username }} --fingerprint {{ ssh_user_key.fingerprint }}"
+    cmd: "{{ role_path }}/files/check.py inspect --username {{ ssh_user_key.username }}
+           --fingerprint {{ ssh_user_key.fingerprint }}"
     executable: python3
   check_mode: false
   changed_when: false
@@ -76,7 +82,8 @@
 
 - name: Verify the created account is still non-privileged before granting a key
   ansible.builtin.script:
-    cmd: "{{ role_path }}/files/check.py inspect --username {{ ssh_user_key.username }} --fingerprint {{ ssh_user_key.fingerprint }}"
+    cmd: "{{ role_path }}/files/check.py inspect --username {{ ssh_user_key.username }}
+           --fingerprint {{ ssh_user_key.fingerprint }}"
     executable: python3
   check_mode: false
   changed_when: false
@@ -135,7 +142,8 @@
 
 - name: Require the requested key, password lock, safe permissions and no privileges after apply
   ansible.builtin.script:
-    cmd: "{{ role_path }}/files/check.py inspect --username {{ ssh_user_key.username }} --fingerprint {{ ssh_user_key.fingerprint }} --enforce"
+    cmd: "{{ role_path }}/files/check.py inspect --username {{ ssh_user_key.username }}
+           --fingerprint {{ ssh_user_key.fingerprint }} --enforce"
     executable: python3
   changed_when: false
   when: not ansible_check_mode
