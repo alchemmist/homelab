@@ -20,9 +20,10 @@ k3s_ha_dependencies_deployments:
     name: cert-manager-cainjector
   - namespace: cert-manager
     name: cert-manager-webhook
+# K3s API servers which write packaged AddOns, not the desired DNS pod nodes.
 k3s_ha_dependencies_manifest_servers:
   - socrat-0
   - socrat-1
-  - socrat-3
+  - socrat-5
 k3s_ha_dependencies_cert_manager_chart_version: v1.16.2
 ...
