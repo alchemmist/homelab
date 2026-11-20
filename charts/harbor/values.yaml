@@ -361,7 +361,7 @@ ipFamily:
 imagePullPolicy: IfNotPresent
 
 # Use this set to assign a list of default pullSecrets
-imagePullSecrets:
+imagePullSecrets: []
 #  - name: docker-registry-secret
 #  - name: internal-registry-secret
 
@@ -386,8 +386,8 @@ existingSecretSecretKey: ""
 # The proxy settings for updating trivy vulnerabilities from the Internet and replicating
 # artifacts from/to the registries that cannot be reached directly
 proxy:
-  httpProxy:
-  httpsProxy:
+  httpProxy: null
+  httpsProxy: null
   noProxy: 127.0.0.1,localhost,.local,.internal
   components:
     - core
@@ -534,7 +534,7 @@ nginx:
   ## Additional deployment labels
   podLabels: {}
   ## The priority class to run the pod as
-  priorityClassName:
+  priorityClassName: null
   ## Liveness probe values
   livenessProbe:
     initialDelaySeconds: 300
@@ -585,7 +585,7 @@ portal:
   ## Additional service annotations
   serviceAnnotations: {}
   ## The priority class to run the pod as
-  priorityClassName:
+  priorityClassName: null
   ## Liveness probe values
   livenessProbe:
     initialDelaySeconds: 300
@@ -665,7 +665,7 @@ core:
   ## Additional service annotations
   serviceAnnotations: {}
   ## The priority class to run the pod as
-  priorityClassName:
+  priorityClassName: null
   # containers to be run before the controller's container starts.
   initContainers: []
   # Example:
@@ -674,7 +674,7 @@ core:
   #   image: busybox
   #   command: [ 'sh', '-c', "sleep 20" ]
   ## User settings configuration json string
-  configureUserSettings:
+  configureUserSettings: null
   # The provider for updating project quota(usage), there are 2 options, redis or db.
   # By default it is implemented by db but you can configure it to redis which
   # can improve the performance of high concurrent pushing to the same project,
@@ -714,7 +714,7 @@ core:
   # The time duration for async update artifact pull_time and repository
   # pull_count, the unit is second. Will be 10 seconds if it isn't set.
   # eg. artifactPullAsyncFlushDuration: 10
-  artifactPullAsyncFlushDuration:
+  artifactPullAsyncFlushDuration: null
   gdpr:
     deleteUser: false
     auditLogsCompliant: false
@@ -757,7 +757,7 @@ jobservice:
   tolerations: []
   affinity: {}
   # Spread Pods across failure-domains like regions, availability zones or nodes
-  topologySpreadConstraints:
+  topologySpreadConstraints: []
   # - maxSkew: 1
   #   topologyKey: topology.kubernetes.io/zone
   #   nodeTaintsPolicy: Honor
@@ -767,7 +767,7 @@ jobservice:
   ## Additional deployment labels
   podLabels: {}
   ## The priority class to run the pod as
-  priorityClassName:
+  priorityClassName: null
   # containers to be run before the controller's container starts.
   initContainers: []
   # Example:
@@ -874,7 +874,7 @@ registry:
   ## Additional deployment labels
   podLabels: {}
   ## The priority class to run the pod as
-  priorityClassName:
+  priorityClassName: null
   # containers to be run before the controller's container starts.
   initContainers: []
   # Example:
@@ -977,7 +977,7 @@ trivy:
   ## Additional deployment labels
   podLabels: {}
   ## The priority class to run the pod as
-  priorityClassName:
+  priorityClassName: null
   # containers to be run before the controller's container starts.
   initContainers: []
   # Example:
@@ -1080,7 +1080,7 @@ database:
     tolerations: []
     affinity: {}
     ## The priority class to run the pod as
-    priorityClassName:
+    priorityClassName: null
     # containers to be run before the controller's container starts.
     extrInitContainers: []
     # Example:
@@ -1168,7 +1168,7 @@ redis:
     tolerations: []
     affinity: {}
     ## The priority class to run the pod as
-    priorityClassName:
+    priorityClassName: null
     # containers to be run before the controller's container starts.
     initContainers: []
     # Example:
@@ -1262,7 +1262,7 @@ exporter:
   # Spread Pods across failure-domains like regions, availability zones or nodes
   topologySpreadConstraints: []
   ## The priority class to run the pod as
-  priorityClassName:
+  priorityClassName: null
   # - maxSkew: 1
   #   topologyKey: topology.kubernetes.io/zone
   #   nodeTaintsPolicy: Honor
