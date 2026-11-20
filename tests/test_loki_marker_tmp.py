@@ -29,11 +29,16 @@ class LokiMarkerScratchTests(unittest.TestCase):
             mounts = {v["name"]: v for v in c["volumeMounts"]}
             volumes = {v["name"]: v for v in spec["volumes"]}
             self.assertEqual(mounts["data"]["mountPath"], "/var/lib/otel")
-            self.assertIn("hostPath", volumes["data"])
             self.assertTrue(mounts["tls"]["readOnly"])
             if name == "otel-loki":
+                self.assertEqual(volumes["data"]["hostPath"], {
+                    "path": "/var/lib/private/homelab-otel-loki", "type": "DirectoryOrCreate"
+                })
                 self.assertEqual(mounts["marker-tmp"]["mountPath"], "/tmp")
                 self.assertEqual(volumes["marker-tmp"]["emptyDir"], {"sizeLimit": "1Gi"})
             else:
+                self.assertEqual(volumes["data"], {
+                    "name": "data", "persistentVolumeClaim": {"claimName": "tempo-s1-candidate"}
+                })
                 self.assertNotIn("marker-tmp", mounts)
                 self.assertNotIn("marker-tmp", volumes)
