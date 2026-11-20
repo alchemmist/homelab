@@ -1,0 +1,38 @@
+{{- if .Values.enabled }}
+{{- range $tier := $.Values.ingressTiers }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: pg-{{ $tier }}-ingress
+spec:
+  podSelector: {matchLabels: {cnpg.io/cluster: pg-{{ $tier }}}}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {matchLabels: {cnpg.io/cluster: pg-{{ $tier }}}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: cnpg-system}}
+      ports: [{port: 5432}, {port: 8000}]
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: cattle-monitoring-system}}
+          podSelector: {matchLabels: {prometheus: kube-prometheus-stack-prometheus}}
+      ports: [{port: 9187}]
+    - from:
+        {{- if eq $tier "critical" }}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: identity}}
+          podSelector: {matchLabels: {app.kubernetes.io/instance: authentik}, matchExpressions: [{key: app.kubernetes.io/component, operator: In, values: [server, worker]}]}
+        {{- else }}
+        {{- range $p := list (list "llm" "app.kubernetes.io/instance" "litellm") (list "lms" "app.kubernetes.io/name" "lms") (list "automation" "app" "n8n") (list "umami" "app" "umami") (list "socrat-bot" "app.kubernetes.io/name" "socrat-bot") }}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: {{ index $p 0 }}}}
+          podSelector: {matchLabels: { {{ index $p 1 }}: {{ index $p 2 }} }}
+        {{- end }}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: harbor}}
+          podSelector: {matchLabels: {app: harbor}, matchExpressions: [{key: component, operator: In, values: [core, jobservice, exporter]}]}
+        # The bot is hostNetwork on socrat-2. CNI can present its host or flannel address.
+        - ipBlock: {cidr: 10.250.0.2/32}
+        - ipBlock: {cidr: 10.42.0.0/32}
+        - ipBlock: {cidr: 10.42.0.1/32}
+        {{- end }}
+      ports: [{port: 5432}]
+{{- end }}
+{{- end }}
