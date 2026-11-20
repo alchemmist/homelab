@@ -51,7 +51,9 @@
     - name: Verify upstream binary identity
       ansible.builtin.command: sha256sum /usr/local/lib/homelab-otel/otelcol-contrib
       register: collector_hash
-      failed_when: "'57911a9d902cfe2c287dac09fcee4b054630b4ec248fa190a3115d860a32f81f' not in collector_hash.stdout"
+      failed_when: >-
+        '57911a9d902cfe2c287dac09fcee4b054630b4ec248fa190a3115d860a32f81f'
+        not in collector_hash.stdout
       changed_when: false
     - name: Install already independently verified stock host exporter
       ansible.builtin.command:
@@ -62,13 +64,16 @@
                root,
                -g,
                root,
-               "{{ otel_production_exporter_source | default('/var/tmp/otel-host-source-canary-20261030T1645/node_exporter') }}",
+               "{{ otel_production_exporter_source | default('/var/tmp/\
+               otel-host-source-canary-20261030T1645/node_exporter') }}",
                /usr/local/lib/homelab-otel/node_exporter]
       changed_when: false
     - name: Verify immutable native exporter identity after copy
       ansible.builtin.command: sha256sum /usr/local/lib/homelab-otel/node_exporter
       register: exporter_hash
-      failed_when: "'1108f7453ecfe4a72f131c73b69537c171840ad4f1713a2402328ad56cf12e09' not in exporter_hash.stdout"
+      failed_when: >-
+        '1108f7453ecfe4a72f131c73b69537c171840ad4f1713a2402328ad56cf12e09'
+        not in exporter_hash.stdout
       changed_when: false
     - name: Install full native logs pipeline with metrics initially unowned
       ansible.builtin.copy:
@@ -113,7 +118,15 @@
           Environment=DBUS_SYSTEM_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket
           Environment=TZ=UTC
           BindReadOnlyPaths=/var/lib/node_exporter/textfile_collector:/host/root/var/lib/node_exporter/textfile_collector
-          ExecStart=/usr/local/lib/homelab-otel/node_exporter --web.listen-address=127.0.0.1:19100 --path.procfs=/proc --path.sysfs=/sys --path.rootfs=/ --path.udev.data=/run/udev/data --collector.textfile.directory=/host/root/var/lib/node_exporter/textfile_collector --collector.systemd --collector.systemd.enable-restarts-metrics
+          ExecStart=/usr/local/lib/homelab-otel/node_exporter \
+            --web.listen-address=127.0.0.1:19100 \
+            --path.procfs=/proc \
+            --path.sysfs=/sys \
+            --path.rootfs=/ \
+            --path.udev.data=/run/udev/data \
+            --collector.textfile.directory=/host/root/var/lib/node_exporter/textfile_collector \
+            --collector.systemd \
+            --collector.systemd.enable-restarts-metrics
           MemoryMax=67108864
           MemorySwapMax=0
           NoNewPrivileges=yes
@@ -145,7 +158,8 @@
           {% for file in native_files %}
           LoadCredential={{ file }}:/var/lib/homelab-otel/tls/{{ file }}
           {% endfor %}
-          ExecStart=/usr/local/lib/homelab-otel/otelcol-contrib --config=/etc/homelab-otel/agent.yaml
+          ExecStart=/usr/local/lib/homelab-otel/otelcol-contrib \
+            --config=/etc/homelab-otel/agent.yaml
           Restart=on-failure
           RestartSec=5
           TimeoutStopSec=90
@@ -202,11 +216,14 @@
       loop: [homelab-otel-node-exporter.service, homelab-otel-agent.service]
     - name: Discover the Tempo Service IPv4 address for the native gateway
       ansible.builtin.command:
-        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, -n, cattle-monitoring-system, get, service, otel-tempo,
+        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, -n,
+               cattle-monitoring-system, get, service, otel-tempo,
                -o, 'jsonpath={.spec.clusterIP}']
       register: trace_gateway_service
       changed_when: false
-      failed_when: trace_gateway_service.rc != 0 or not (trace_gateway_service.stdout is match('^[0-9]+(?:\.[0-9]+){3}$'))
+      failed_when: >-
+        trace_gateway_service.rc != 0 or not
+        (trace_gateway_service.stdout is match('^[0-9]+(?:\.[0-9]+){3}$'))
       when: inventory_hostname == 'socrat-0'
     - name: Install trace gateway configuration on its planned host
       ansible.builtin.copy:
@@ -237,7 +254,10 @@
           {% for file in native_files %}
           LoadCredential={{ file }}:/var/lib/homelab-otel/tls/{{ file }}
           {% endfor %}
-          ExecStart=/usr/local/lib/homelab-otel/otelcol-contrib --config=/etc/homelab-otel/traces.yaml --set=exporters.otlp/tempo.tls.server_name_override=otel-tempo.cattle-monitoring-system.svc.cluster.local
+          ExecStart=/usr/local/lib/homelab-otel/otelcol-contrib \
+            --config=/etc/homelab-otel/traces.yaml \
+            --set=exporters.otlp/tempo.tls.server_name_override=\
+            otel-tempo.cattle-monitoring-system.svc.cluster.local
           Restart=on-failure
           RestartSec=5
           TimeoutStopSec=90

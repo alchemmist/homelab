@@ -21,9 +21,18 @@
     - name: Request private gateway certificate
       ansible.builtin.command:
         argv: [kubectl, --kubeconfig, "{{ searxng_private_kubeconfig }}", apply, -f, '-']
-        stdin: "{{ {'apiVersion': 'cert-manager.io/v1', 'kind': 'Certificate', 'metadata': {'name': searxng_private_tls_secret, 'namespace': 'syncthing'}, 'spec': {'secretName': searxng_private_tls_secret, 'dnsNames': [searxng_private_host], 'issuerRef': {'name': 'letsencrypt-http01', 'kind': 'ClusterIssuer'}}} | to_nice_yaml }}"
+        stdin: >-
+          {{ {'apiVersion': 'cert-manager.io/v1', 'kind': 'Certificate',
+          'metadata': {'name': searxng_private_tls_secret,
+          'namespace': 'syncthing'},
+          'spec': {'secretName': searxng_private_tls_secret,
+          'dnsNames': [searxng_private_host],
+          'issuerRef': {'name': 'letsencrypt-http01',
+          'kind': 'ClusterIssuer'}}} | to_nice_yaml }}
       register: searxng_private_certificate
-      changed_when: "'created' in searxng_private_certificate.stdout or 'configured' in searxng_private_certificate.stdout"
+      changed_when: >-
+        'created' in searxng_private_certificate.stdout or
+        'configured' in searxng_private_certificate.stdout
 
     - name: Wait for private gateway certificate
       ansible.builtin.command:
@@ -56,7 +65,19 @@
 
     - name: Merge search virtual host while preserving existing hosts
       ansible.builtin.set_fact:
-        searxng_private_gateway_values: "{{ (searxng_private_gateway.stdout | from_json) | combine({'extraVirtualHosts': ((searxng_private_gateway.stdout | from_json).extraVirtualHosts | default([]) | rejectattr('name', 'equalto', 'searxng') | list) + [{'name': 'searxng', 'host': searxng_private_host, 'nodeName': searxng_private_node, 'upstream': 'http://searxng.llm.svc.cluster.local:8080', 'tlsSecret': searxng_private_tls_secret, 'resolver': '10.43.0.10', 'clearAuthorization': false}]}, recursive=true) }}"
+        searxng_private_gateway_values: >-
+          {{ (searxng_private_gateway.stdout | from_json)
+          | combine({'extraVirtualHosts':
+          ((searxng_private_gateway.stdout | from_json).extraVirtualHosts
+          | default([])
+          | rejectattr('name', 'equalto', 'searxng')
+          | list)
+          + [{'name': 'searxng', 'host': searxng_private_host,
+          'nodeName': searxng_private_node,
+          'upstream': 'http://searxng.llm.svc.cluster.local:8080',
+          'tlsSecret': searxng_private_tls_secret,
+          'resolver': '10.43.0.10', 'clearAuthorization': false}]},
+          recursive=true) }}
       no_log: true
 
     - name: Stage private gateway chart
@@ -133,7 +154,9 @@
 
     - name: Add only the SearXNG private DNS record
       ansible.builtin.copy:
-        content: "host-record=search.socrat.alchemmist.xyz,{{ wg_socrat_nodes['socrat-0'].address }}\nlocal=/search.socrat.alchemmist.xyz/\n"
+        content: |
+          host-record=search.socrat.alchemmist.xyz,{{ wg_socrat_nodes['socrat-0'].address }}
+          local=/search.socrat.alchemmist.xyz/
         dest: /etc/homelab-private-dns.d/searxng.conf
         owner: root
         group: root

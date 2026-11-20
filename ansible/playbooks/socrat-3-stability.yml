@@ -11,7 +11,9 @@
       changed_when: false
 
     - name: Read the hardware watchdog identity and timeout
-      ansible.builtin.command: cat /sys/class/watchdog/watchdog0/identity /sys/class/watchdog/watchdog0/timeout
+      ansible.builtin.command: >-
+        cat /sys/class/watchdog/watchdog0/identity
+        /sys/class/watchdog/watchdog0/timeout
       register: host_watchdog
       changed_when: false
 
