@@ -7,7 +7,22 @@ commonLabels:
   release: kube-prometheus-stack
 monitoringProxy:
   nodeSelector:
-    kubernetes.io/hostname: socrat-1
+    kubernetes.io/os: linux
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values: [socrat-0, socrat-1]
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values: [socrat-0]
   resources:
     requests:
       cpu: 50m
