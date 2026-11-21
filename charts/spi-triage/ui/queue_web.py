@@ -239,6 +239,7 @@ class Server(http.server.ThreadingHTTPServer):
     daemon_threads = True
 
     def __init__(self, *args) -> None:
+        """Initialize the request handler."""
         self.slots = threading.BoundedSemaphore(8)
         super().__init__(*args)
 

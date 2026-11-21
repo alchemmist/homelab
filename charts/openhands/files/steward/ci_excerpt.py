@@ -3,7 +3,8 @@ import re
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.parse import urlparse
-from urllib.request import Request,build_opener
+from urllib.request import Request, build_opener
+
 
 def extract(n,head,api,no_redirect,check):
  files=api(f"pulls/{n}/files?per_page=20");

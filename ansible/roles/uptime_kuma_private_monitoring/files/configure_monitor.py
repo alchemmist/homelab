@@ -1,16 +1,15 @@
 """Configure the private-monitor entry in the Uptime Kuma database."""
 
 import argparse
-from contextlib import closing
-from datetime import datetime, timezone
 import json
 import os
-from pathlib import Path
 import sqlite3
 import sys
 import tempfile
+from contextlib import closing
+from datetime import datetime, timezone
+from pathlib import Path
 from urllib.parse import urlsplit
-
 
 HOSTNAME = "rancher.socrat.alchemmist.xyz"
 DESIRED = {

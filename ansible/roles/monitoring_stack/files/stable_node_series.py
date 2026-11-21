@@ -6,9 +6,7 @@ import json
 import sys
 
 import yaml
-
 from dashboard_descriptions import apply_alert_descriptions, apply_descriptions
-
 
 DASHBOARD_UIDS = {
     "7e0a61e486f727d763fb1d86fdd629c2",

@@ -2,7 +2,10 @@
 
 Creates/activates a dedicated native agent profile; no LLM key or global edit.
 """
-import json,pathlib,urllib.request
+import json
+import pathlib
+import urllib.request
+
 key=pathlib.Path.home().joinpath(".openhands/agent-canvas/api-key.txt").read_text().strip()
 def api(path,body=None,method=None):
     req=urllib.request.Request("http://127.0.0.1:8000/api/"+path,headers={"X-Session-API-Key":key,"Content-Type":"application/json"},data=None if body is None else json.dumps(body).encode(),method=method)

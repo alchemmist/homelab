@@ -7,14 +7,15 @@ import tempfile
 import unittest
 from unittest import mock
 
-import repository_runner
 import attempt
+import repository_runner
 
 
 class FakeEnvironment:
     """Fake repository environment for deterministic tests."""
 
     def __init__(self, _snapshot, directory, _image, protocol) -> None:
+        """Initialize the fake environment."""
 
         self.container_id = "fake"
         self.events: list[dict[str, object]] = []

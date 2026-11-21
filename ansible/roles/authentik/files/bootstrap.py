@@ -2,10 +2,10 @@
 
 import json
 import os
-from pathlib import Path
 import secrets
 import subprocess
 import sys
+from pathlib import Path
 
 root = Path(sys.argv[1])
 path = root / "credentials.json"

@@ -10,7 +10,6 @@ import time
 import urllib.parse
 import urllib.request
 
-
 FIELDS = ("ip", "local_port", "protocol", "remote_ip", "external_port", "wan", "status", "comment")
 
 
@@ -42,6 +41,7 @@ class Router:
     """Router HTTP API client using authenticated requests."""
 
     def __init__(self, credentials, address) -> None:
+        """Initialize the router client."""
 
         self.base = "http://" + str(ipaddress.IPv4Address(address))
         self.cookie = None

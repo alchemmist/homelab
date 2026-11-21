@@ -21,13 +21,13 @@ import argparse
 import hashlib
 import json
 import os
-from pathlib import Path
 import secrets
 import socket
 import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+from pathlib import Path
 
 import yaml
 
@@ -175,6 +175,7 @@ class Authentik:
     """Authentik HTTP API client for OIDC provider setup."""
 
     def __init__(self, base, token, get_only):
+        """Initialize the Authentik client."""
         self.base = base.rstrip("/")
         self.token = token
         self.get_only = get_only
