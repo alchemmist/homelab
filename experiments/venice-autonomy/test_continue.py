@@ -9,6 +9,7 @@ class Conversation:
     """Fake agent conversation with scriptable failures."""
 
     def __init__(self, failures=0) -> None:
+        """Initialize the conversation fixture."""
 
         self.failures = failures
         self.runs = 0
@@ -18,8 +19,8 @@ class Conversation:
         """Run once, failing while the configured failure budget lasts."""
         self.runs += 1
         if self.runs <= self.failures:
-            message = "provider failed"
-            raise RuntimeError(message)
+            msg = "provider failed"
+            raise RuntimeError(msg)
 
     def send_message(self, message):
         """Record a follow-up message sent to the conversation."""

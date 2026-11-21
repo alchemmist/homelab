@@ -69,7 +69,8 @@ def send(context, payload):
     with urllib.request.urlopen(request, context=context, timeout=10) as response:
         result = json.load(response)
     if int(result.get("partialSuccess", {}).get("rejectedLogRecords", 0)):
-        raise ValueError("Synthetic logs were rejected")
+        msg = "Synthetic logs were rejected"
+        raise ValueError(msg)
 
 
 def run(binary, config, tls, workspace):
@@ -168,7 +169,8 @@ def run(binary, config, tls, workspace):
         except (ssl.SSLError, ConnectionResetError, BrokenPipeError):
             pass
         else:
-            raise ValueError("Receiver accepted a request without a client certificate")
+            msg = "Receiver accepted a request without a client certificate"
+            raise ValueError(msg)
         text = await_sanitized_export(process, output, deadline)
         forbidden = [
             "FIXTURE_PASSWORD",

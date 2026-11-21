@@ -29,6 +29,7 @@ class API:
     """Public web access policy API client."""
 
     def __init__(self, path) -> None:
+        """Initialize the public API client."""
 
         self.token = json.loads(Path(path).read_text())["AUTHENTIK_BOOTSTRAP_TOKEN"]
 

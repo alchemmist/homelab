@@ -4,7 +4,6 @@ import json
 from functools import lru_cache
 from pathlib import Path
 
-
 PANEL_UNITS = {
     "3e97d1d02672cdd0861f4c97c64f89b2": {9: "pps", 12: "short"},
     "fac67cfbe174d3ef53eb473d73d9212f": {9: "pps", 12: "short"},
@@ -64,7 +63,8 @@ def apply_descriptions(dashboard, descriptions=None):
     for panel in panels(dashboard):
         description = entries.get(str(panel["id"]))
         if not isinstance(description, str) or not description.strip():
-            raise ValueError(f"Missing description for dashboard {uid}, panel {panel['id']}")
+            message = f"Missing description for dashboard {uid}, panel {panel['id']}"
+            raise ValueError(message)
         panel["description"] = description
         unit = PANEL_UNITS.get(uid, {}).get(panel["id"])
         if unit:

@@ -21,13 +21,13 @@ import argparse
 import hashlib
 import json
 import os
-from pathlib import Path
 import secrets
 import socket
 import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+from pathlib import Path
 
 import yaml
 
@@ -85,7 +85,8 @@ def callback_from_issuer(issuer):
     in that suffix, then append /callback. This does not invent a path of its own.
     """
     if not isinstance(issuer, str) or issuer == "" or any(c in issuer for c in " \t\r\n"):
-        raise RuntimeError("NetBird issuer is missing or contains whitespace")
+        msg = "NetBird issuer is missing or contains whitespace"
+        raise RuntimeError(msg)
     if issuer.endswith("/"):
         issuer = issuer[:-1]
     if not issuer.endswith("/oauth2"):
@@ -94,6 +95,7 @@ def callback_from_issuer(issuer):
 
 
 def validate_management_issuer(issuer):
+    """Document the validate management issuer operation."""
     parsed = urllib.parse.urlsplit(issuer)
     host = parsed.hostname
     if (
@@ -105,23 +107,28 @@ def validate_management_issuer(issuer):
         or parsed.fragment
         or parsed.port not in (None, 443)
     ):
-        raise RuntimeError("NetBird issuer must be https on the approved management FQDN")
+        msg = "NetBird issuer must be https on the approved management FQDN"
+        raise RuntimeError(msg)
     if host == AUTHENTIK_HOST:
-        raise RuntimeError("NetBird issuer must be the embedded IdP, not Authentik")
+        msg = "NetBird issuer must be the embedded IdP, not Authentik"
+        raise RuntimeError(msg)
     return issuer
 
 
 def issuer_from_netbird_config(path):
+    """Document the issuer from netbird config operation."""
     loaded = yaml.safe_load(Path(path).read_text())
     server = loaded.get("server") if isinstance(loaded, dict) else None
     auth = server.get("auth") if isinstance(server, dict) else None
     issuer = auth.get("issuer") if isinstance(auth, dict) else None
     if not isinstance(issuer, str):
-        raise RuntimeError("NetBird config has no server.auth.issuer string")
+        msg = "NetBird config has no server.auth.issuer string"
+        raise RuntimeError(msg)
     return validate_management_issuer(issuer.strip())
 
 
 def profile_expression():
+    """Document the profile expression operation."""
     approved = ", ".join(repr(name) for name in PROFILE_GROUP_NAMES)
     return (
         "approved = (" + approved + ",)\n"
@@ -133,13 +140,15 @@ def profile_expression():
 
 
 def authentik_issuer():
+    """Document the authentik issuer operation."""
     return "https://" + AUTHENTIK_HOST + "/application/o/" + APP_SLUG + "/"
 
 
 def _seal(body):
     encoded = json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
     if "client_secret" in encoded or "AUTHENTIK_BOOTSTRAP" in encoded:
-        raise RuntimeError("Refusing to seal a plan that contains a secret")
+        msg = "Refusing to seal a plan that contains a secret"
+        raise RuntimeError(msg)
     body["sha256"] = hashlib.sha256(encoded.encode()).hexdigest()
     return body
 
@@ -147,7 +156,8 @@ def _seal(body):
 def _private_write(path, value):
     path = Path(path)
     if path.is_symlink():
-        raise RuntimeError("Refusing to follow a private-file symlink")
+        msg = "Refusing to follow a private-file symlink"
+        raise RuntimeError(msg)
     flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
@@ -163,7 +173,8 @@ def _private_read(path):
     if not path.exists():
         return None
     if path.is_symlink():
-        raise RuntimeError("Refusing to follow a private-file symlink")
+        msg = "Refusing to follow a private-file symlink"
+        raise RuntimeError(msg)
     return json.loads(path.read_text())
 
 
@@ -171,6 +182,7 @@ class Authentik:
     """Authentik HTTP API client for OIDC provider setup."""
 
     def __init__(self, base, token, get_only):
+        """Initialize the Authentik client."""
         self.base = base.rstrip("/")
         self.token = token
         self.get_only = get_only
@@ -178,7 +190,8 @@ class Authentik:
     def __call__(self, method, path, payload=None):
         """Perform an Authentik API call, enforcing GET-only when configured."""
         if self.get_only and method != "GET":
-            raise RuntimeError("GET-only action refused an Authentik write")
+            msg = "GET-only action refused an Authentik write"
+            raise RuntimeError(msg)
         target = path if path.startswith("http") else self.base + "/api/v3/" + path.lstrip("/")
         data = None if payload is None else json.dumps(payload).encode()
         request = urllib.request.Request(
@@ -208,7 +221,8 @@ class Authentik:
         while url:
             page = self("GET", url)
             if not isinstance(page, dict) or not isinstance(page.get("results"), list):
-                raise RuntimeError("Authentik collection response is incomplete")
+                msg = "Authentik collection response is incomplete"
+                raise RuntimeError(msg)
             rows.extend(page["results"])
             nxt = (page.get("pagination") or {}).get("next")
             if not nxt:
@@ -216,28 +230,33 @@ class Authentik:
             marker = "/api/v3/"
             url = nxt.split(marker, 1)[1] if marker in str(nxt) else None
             if url is None:
-                raise RuntimeError("Authentik pagination link is not an API path")
+                msg = "Authentik pagination link is not an API path"
+                raise RuntimeError(msg)
         return rows
 
 
 def _one(rows, field, value):
     found = [row for row in rows if row.get(field) == value]
     if len(found) > 1:
-        raise RuntimeError("Ambiguous Authentik object")
+        msg = "Ambiguous Authentik object"
+        raise RuntimeError(msg)
     return found[0] if found else None
 
 
 def _managed(rows, managed):
     found = [row for row in rows if row.get("managed") == managed]
     if len(found) != 1:
-        raise RuntimeError("Reviewed Authentik scope mapping is missing")
+        msg = "Reviewed Authentik scope mapping is missing"
+        raise RuntimeError(msg)
     return found[0]
 
 
 def load_inventory(api):
+    """Document the load inventory operation."""
     version = api("GET", "admin/version/")
     if not isinstance(version, dict) or version.get("version_current") != AUTHENTIK_VERSION:
-        raise RuntimeError("Unreviewed Authentik version")
+        msg = "Unreviewed Authentik version"
+        raise RuntimeError(msg)
     return {
         "version": version["version_current"],
         "users": api.pages("core/users/"),
@@ -258,7 +277,8 @@ def _pilot_snapshot(inventory):
     for wanted in PILOT:
         matches = [row for row in inventory["users"] if row.get("username") == wanted["username"]]
         if len(matches) != 1:
-            raise RuntimeError("Reviewed pilot user is missing or ambiguous")
+            msg = "Reviewed pilot user is missing or ambiguous"
+            raise RuntimeError(msg)
         user = matches[0]
         if (
             user.get("uuid") != wanted["uuid"]
@@ -268,21 +288,26 @@ def _pilot_snapshot(inventory):
             or user.get("is_superuser") is not wanted["is_superuser"]
             or not isinstance(user.get("pk"), int)
         ):
-            raise RuntimeError("Reviewed pilot identity drifted")
+            msg = "Reviewed pilot identity drifted"
+            raise RuntimeError(msg)
         membership = user.get("groups")
         if not isinstance(membership, list):
-            raise RuntimeError("Pilot group membership is incomplete")
+            msg = "Pilot group membership is incomplete"
+            raise RuntimeError(msg)
         names = []
         for pk in membership:
             group = next((row for row in inventory["groups"] if row.get("pk") == pk), None)
             if group is None or not isinstance(group.get("name"), str):
-                raise RuntimeError("Pilot membership points at an unknown group")
+                msg = "Pilot membership points at an unknown group"
+                raise RuntimeError(msg)
             names.append(group["name"])
         for required in wanted["required_groups"]:
             if required not in names:
-                raise RuntimeError("Reviewed legacy group membership is missing")
+                msg = "Reviewed legacy group membership is missing"
+                raise RuntimeError(msg)
         if wanted["username"] != "alchemmist" and any(pk in superuser_groups for pk in membership):
-            raise RuntimeError("Pilot user has an unexpected superuser group")
+            msg = "Pilot user has an unexpected superuser group"
+            raise RuntimeError(msg)
         legacy = sorted(
             pk
             for pk in membership
@@ -334,10 +359,12 @@ def _plan_context(inventory, issuer):
     email = _managed(inventory["scopes"], EMAIL_MANAGED)
     profile = _managed(inventory["scopes"], PROFILE_MANAGED)
     if "groups" not in (profile.get("expression") or "") or profile.get("scope_name") != "profile":
-        raise RuntimeError("Reviewed default profile mapping changed")
+        msg = "Reviewed default profile mapping changed"
+        raise RuntimeError(msg)
     expression = profile_expression()
     if "ak_groups" not in expression or "request.user.email" in expression or '"sub"' in expression:
-        raise RuntimeError("Dedicated profile expression lost its identity boundary")
+        msg = "Dedicated profile expression lost its identity boundary"
+        raise RuntimeError(msg)
     flows = {row.get("slug"): row.get("pk") for row in inventory["flows"]}
     for slug in (
         "default-authentication-flow",
@@ -345,13 +372,16 @@ def _plan_context(inventory, issuer):
         "default-provider-invalidation-flow",
     ):
         if not isinstance(flows.get(slug), str):
-            raise RuntimeError("Reviewed authentication flow is missing")
+            msg = "Reviewed authentication flow is missing"
+            raise RuntimeError(msg)
     certificates = [row for row in inventory["certificates"] if row.get("name") == CERT_NAME]
     if len(certificates) != 1 or not isinstance(certificates[0].get("pk"), str):
-        raise RuntimeError("Reviewed signing key is missing or ambiguous")
+        msg = "Reviewed signing key is missing or ambiguous"
+        raise RuntimeError(msg)
     outposts = [row for row in inventory["outposts"] if row.get("managed") == OUTPOST_MANAGED]
     if len(outposts) != 1 or not isinstance(outposts[0].get("providers"), list):
-        raise RuntimeError("Expected one embedded outpost")
+        msg = "Expected one embedded outpost"
+        raise RuntimeError(msg)
     blockers = []
     callback = None
     if issuer is None:
@@ -664,17 +694,20 @@ def _load_secret(path, journal, create):
     if current is not None:
         secret = current.get("client_secret") if isinstance(current, dict) else None
         if not isinstance(secret, str) or current.get("client_id") != CLIENT_ID or len(secret) < 32:
-            raise RuntimeError("Runtime client file is incomplete")
+            msg = "Runtime client file is incomplete"
+            raise RuntimeError(msg)
         digest = hashlib.sha256(secret.encode()).hexdigest()
         recorded = (journal or {}).get("client_secret_sha256")
         if recorded and recorded != digest:
-            raise RuntimeError("Runtime client secret does not match the journal fingerprint")
+            msg = "Runtime client secret does not match the journal fingerprint"
+            raise RuntimeError(msg)
         return secret
     if not create:
         return None
     if journal and journal.get("provider_pk"):
+        msg_0 = "Provider exists but the runtime client secret is missing; refusing to rotate it"
         raise RuntimeError(
-            "Provider exists but the runtime client secret is missing; refusing to rotate it"
+            msg_0
         )
     secret = secrets.token_urlsafe(48)
     _private_write(path, {"client_id": CLIENT_ID, "client_secret": secret})
@@ -685,15 +718,17 @@ def _legacy_preserved(before, after):
     previous = {row["username"]: set(row["legacy_groups"]) for row in before}
     for row in after:
         if previous[row["username"]] - set(row["legacy_groups"]):
-            raise RuntimeError("Legacy group membership changed; stopping")
+            msg = "Legacy group membership changed; stopping"
+            raise RuntimeError(msg)
 
 
 def _prepare_journal(plan, journal, journal_path):
     """Create or verify the marker journal before issuing any changes."""
     if not journal.get("marker"):
         if journal:
+            msg = "Refusing to replace a markerless journal before generating a client secret"
             raise RuntimeError(
-                "Refusing to replace a markerless journal before generating a client secret"
+                msg
             )
         journal = {
             "version": 1,
@@ -709,7 +744,8 @@ def _prepare_journal(plan, journal, journal_path):
     for row in plan["pilot_users"]:
         recorded = (journal.get("pilot_users") or {}).get(row["username"])
         if recorded != {"pk": row["pk"], "uuid": row["uuid"]}:
-            raise RuntimeError("Journal pilot UUID/PK does not match the live user")
+            msg = "Journal pilot UUID/PK does not match the live user"
+            raise RuntimeError(msg)
     return journal
 
 
@@ -735,7 +771,8 @@ def _apply_scope_create(api, journal):
 def _apply_scope_update(api, operation, journal):
     """Update the journaled profile scope mapping."""
     if operation["pk"] != journal.get("mapping_pk"):
-        raise RuntimeError("Mapping PK does not match the journal")
+        msg = "Mapping PK does not match the journal"
+        raise RuntimeError(msg)
     api(
         "PATCH",
         "propertymappings/provider/scope/" + operation["pk"] + "/",
@@ -751,7 +788,8 @@ def _apply_provider(state, operation):
     openid = _managed(inventory["scopes"], OPENID_MANAGED)["pk"]
     email = _managed(inventory["scopes"], EMAIL_MANAGED)["pk"]
     if not isinstance(mapping_pk, str):
-        raise RuntimeError("Provider requires the journaled profile mapping PK")
+        msg = "Provider requires the journaled profile mapping PK"
+        raise RuntimeError(msg)
     body = _provider_body(
         [openid, email, mapping_pk],
         state["plan"]["callback"],
@@ -765,13 +803,15 @@ def _apply_provider(state, operation):
     if stock_profile in body["property_mappings"] or group_scopes.intersection(
         body["property_mappings"]
     ):
-        raise RuntimeError("Refusing to attach an unrestricted or unrequested groups mapping")
+        msg = "Refusing to attach an unrestricted or unrequested groups mapping"
+        raise RuntimeError(msg)
     if operation["action"] == "create":
         created = state["api"]("POST", "providers/oauth2/", body)
         journal["provider_pk"] = created["pk"]
     else:
         if operation["pk"] != journal.get("provider_pk"):
-            raise RuntimeError("Provider PK does not match the journal")
+            msg = "Provider PK does not match the journal"
+            raise RuntimeError(msg)
         state["api"]("PATCH", "providers/oauth2/" + str(operation["pk"]) + "/", body)
 
 
@@ -780,13 +820,15 @@ def _apply_application(api, operation, journal):
     fields = _application_fields()
     fields["provider"] = journal.get("provider_pk")
     if not isinstance(fields["provider"], int):
-        raise RuntimeError("Application requires the journaled provider PK")
+        msg = "Application requires the journaled provider PK"
+        raise RuntimeError(msg)
     if operation["action"] == "create":
         created = api("POST", "core/applications/", fields)
         journal["application_pk"] = created["pk"]
     else:
         if operation["pk"] != journal.get("application_pk"):
-            raise RuntimeError("Application PK does not match the journal")
+            msg = "Application PK does not match the journal"
+            raise RuntimeError(msg)
         api("PATCH", "core/applications/" + APP_SLUG + "/", fields)
 
 
@@ -794,7 +836,8 @@ def _apply_binding(api, journal):
     """Create the journaled admission binding."""
     group_pk = (journal.get("groups") or {}).get(ADMISSION_GROUP, {}).get("pk")
     if not isinstance(journal.get("application_pk"), str) or not isinstance(group_pk, str):
-        raise RuntimeError("Binding requires journaled application and admission group PKs")
+        msg = "Binding requires journaled application and admission group PKs"
+        raise RuntimeError(msg)
     created = api(
         "POST",
         "policies/bindings/",
@@ -816,7 +859,8 @@ def _apply_add_user(api, plan, operation, journal):
     if not isinstance(group_pk, str) or operation["user_pk"] != next(
         row["pk"] for row in plan["pilot_users"] if row["username"] == operation["username"]
     ):
-        raise RuntimeError("Refusing to change membership outside the journaled pilot")
+        msg = "Refusing to change membership outside the journaled pilot"
+        raise RuntimeError(msg)
     api("POST", "core/groups/" + group_pk + "/add_user/", {"pk": operation["user_pk"]})
 
 
@@ -840,7 +884,8 @@ def _apply_operations(state):
         elif operation["action"] == "add_user":
             _apply_add_user(api, state["plan"], operation, journal)
         else:
-            raise RuntimeError("Refusing an unknown apply operation")
+            msg = "Refusing an unknown apply operation"
+            raise RuntimeError(msg)
         _private_write(state["journal_path"], journal)
 
 
@@ -850,12 +895,15 @@ def _verify_post_apply(api, plan, journal, journal_path, issuer):
     _legacy_preserved(plan["pilot_users"], _pilot_snapshot(after))
     outpost = next(row for row in after["outposts"] if row.get("pk") == plan["outpost_pk"])
     if outpost.get("providers") != list(plan["outpost_providers"]):
-        raise RuntimeError("Embedded outpost changed; stopping")
+        msg = "Embedded outpost changed; stopping"
+        raise RuntimeError(msg)
     if journal.get("provider_pk") in (outpost.get("providers") or []):
-        raise RuntimeError("NetBird provider was attached to the embedded outpost")
+        msg = "NetBird provider was attached to the embedded outpost"
+        raise RuntimeError(msg)
     confirmed = build_plan(after, issuer, journal)
     if confirmed["operations"] or confirmed["blockers"]:
-        raise RuntimeError("Post-apply drift; not retrying automatically")
+        msg = "Post-apply drift; not retrying automatically"
+        raise RuntimeError(msg)
     journal["status"] = "reconciled"
     journal["plan_sha256"] = confirmed["sha256"]
     journal["outpost_pk"] = plan["outpost_pk"]
@@ -873,9 +921,11 @@ def execute_apply(api, root, issuer, approved):
     if plan["blockers"]:
         raise RuntimeError(plan["blockers"][0])
     if plan["callback"] is None:
-        raise RuntimeError("missing NetBird issuer config; callback is not invented")
+        msg = "missing NetBird issuer config; callback is not invented"
+        raise RuntimeError(msg)
     if approved != plan["sha256"]:
-        raise RuntimeError("Plan digest mismatch; review a fresh plan")
+        msg = "Plan digest mismatch; review a fresh plan"
+        raise RuntimeError(msg)
     journal = _prepare_journal(plan, journal, journal_path)
     secret = _load_secret(runtime_path, journal, create=True)
     journal["client_secret_sha256"] = hashlib.sha256(secret.encode()).hexdigest()
@@ -907,12 +957,15 @@ def _mappings_agree(path):
             or row.get("idpUserUuid") != wanted["uuid"]
             or row.get("email") != wanted["email"]
         ):
-            raise RuntimeError("Account mapping does not match the pinned pilot UUID")
+            msg = "Account mapping does not match the pinned pilot UUID"
+            raise RuntimeError(msg)
         if sorted(row.get("groups") or []) != sorted(wanted["required_groups"]):
-            raise RuntimeError("Account mapping legacy groups drifted")
+            msg = "Account mapping legacy groups drifted"
+            raise RuntimeError(msg)
 
 
 def execute(argv):
+    """Document the execute operation."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
     parser.add_argument("action", nargs="?", choices=("check", "plan", "apply"), default="check")
@@ -935,7 +988,8 @@ def execute(argv):
     credentials = _private_read(args.root / "credentials.json")
     token = credentials.get("AUTHENTIK_BOOTSTRAP_TOKEN") if isinstance(credentials, dict) else None
     if not isinstance(token, str) or not token:
-        raise RuntimeError("Authentik credential is unavailable")
+        msg = "Authentik credential is unavailable"
+        raise RuntimeError(msg)
     issuer = issuer_from_netbird_config(args.netbird_config) if args.netbird_config else None
     api = Authentik(args.base_url, token, get_only=args.action != "apply")
     journal = _private_read(args.root / JOURNAL_NAME)
@@ -966,6 +1020,7 @@ def execute(argv):
 
 
 def main(argv=None):
+    """Document the main operation."""
     try:
         return execute(argv)
     except RuntimeError as error:

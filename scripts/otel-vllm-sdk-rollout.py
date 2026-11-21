@@ -65,7 +65,8 @@ def trace_arguments(original):
             "--otlp-traces-endpoint",
             ENDPOINT,
         ]:
-            raise ValueError("Unexpected existing tracing arguments; refuse overwrite")
+            msg = "Unexpected existing tracing arguments; refuse overwrite"
+            raise ValueError(msg)
         return list(original)
     return list(original) + ["--otlp-traces-endpoint", ENDPOINT]
 
@@ -94,12 +95,14 @@ def source_gate_passed(security, bootstrap) -> bool:
 def require_healthy_baseline(deployment, container, security) -> None:
     """Fail unless the live vLLM runtime is the pinned single healthy replica."""
     if container["image"].split("@")[-1] != security["installedRuntime"]["image"].split("@")[-1]:
-        raise ValueError("Pinned runtime image differs from tested SDK image")
+        msg = "Pinned runtime image differs from tested SDK image"
+        raise ValueError(msg)
     if (
         deployment["spec"].get("replicas", 1) != 1
         or deployment.get("status", {}).get("availableReplicas") != 1
     ):
-        raise ValueError("Expected one healthy original GPU replica")
+        msg = "Expected one healthy original GPU replica"
+        raise ValueError(msg)
 
 
 def require_no_env_conflicts(container, environment) -> None:
@@ -107,7 +110,8 @@ def require_no_env_conflicts(container, environment) -> None:
     current_env = {e["name"]: e for e in container.get("env", [])}
     for name, value in environment.items():
         if name in current_env and current_env[name] != {"name": name, "value": value}:
-            raise ValueError("Conflicting SDK environment; never overwrite unreviewed settings")
+            msg = "Conflicting SDK environment; never overwrite unreviewed settings"
+            raise ValueError(msg)
 
 
 def require_no_volume_conflicts(deployment, container, desired) -> None:
@@ -118,7 +122,8 @@ def require_no_volume_conflicts(deployment, container, desired) -> None:
     ]:
         for entry in desired_entries:
             if any(v["name"] == entry["name"] and v != entry for v in current):
-                raise ValueError("Conflicting existing SDK volume or mount")
+                msg = "Conflicting existing SDK volume or mount"
+                raise ValueError(msg)
 
 
 def reconciled_state(template, container, args, volumes, mounts, environment, fingerprint) -> bool:
@@ -158,7 +163,8 @@ print(json.dumps(result))"""
         receipt["idleObservations"].append(observed)
         record()
         if observed != {"running": 0.0, "waiting": 0.0}:
-            raise ValueError("Active or queued inference; do not restart or force drain")
+            msg = "Active or queued inference; do not restart or force drain"
+            raise ValueError(msg)
         time.sleep(5)
 
 
@@ -204,7 +210,8 @@ def run(output, apply, switcher_receipt=None):
     os.umask(0o077)
     controller = Path.home() / "Library/Application Support/homelab/otel-controller"
     if not output.resolve().is_relative_to(controller.resolve()):
-        raise ValueError("Private preimages must remain in durable controller root")
+        msg = "Private preimages must remain in durable controller root"
+        raise ValueError(msg)
     evidence = ROOT / "deploy/monitoring/migration-evidence"
     security = json.loads(
         (evidence / "vllm-native-sdk-security-canaries-20261101.json").read_text()
@@ -212,7 +219,8 @@ def run(output, apply, switcher_receipt=None):
     renewal = json.loads((evidence / "vllm-sdk-leaf-renewal-20261101.json").read_text())
     bootstrap = json.loads((evidence / "vllm-sdk-early-bootstrap-20261101.json").read_text())
     if not (renewal_gate_passed(renewal) and source_gate_passed(security, bootstrap)):
-        raise ValueError("Pinned source privacy/bootstrap/renewal/backend gates have not passed")
+        msg = "Pinned source privacy/bootstrap/renewal/backend gates have not passed"
+        raise ValueError(msg)
     kube = BOOTSTRAP.kube
     deployment = kube("-n", "llm", "get", "deployment", "vllm", "-o", "json")
     container = next(
@@ -289,7 +297,8 @@ def run(output, apply, switcher_receipt=None):
     current_cm = kube("-n", "llm", "get", "configmap", cm_name, "--ignore-not-found", "-o", "json")
     if current_cm:
         if current_cm.get("data") != source_data() or not current_cm.get("immutable"):
-            raise ValueError("Immutable privacy bootstrap ConfigMap mismatch")
+            msg = "Immutable privacy bootstrap ConfigMap mismatch"
+            raise ValueError(msg)
     else:
         kube(
             "create",
@@ -343,8 +352,9 @@ def run(output, apply, switcher_receipt=None):
         record()
         print(json.dumps(receipt))
         return
+    msg_0 = "Candidate readiness/drain pending; preimages retained, no force kill or destructive automatic rollback"
     raise ValueError(
-        "Candidate readiness/drain pending; preimages retained, no force kill or destructive automatic rollback"
+        msg_0
     )
 
 

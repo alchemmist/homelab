@@ -19,25 +19,25 @@ class UnsafeInput(ValueError):
 
 def validate_event(event):
     if event.get("repository", {}).get("full_name") != REPO:
-        message = "Unexpected repository"
-        raise UnsafeInput(message)
+        msg = "Unexpected repository"
+        raise UnsafeInput(msg)
     if event.get("ref") != "refs/heads/main" or event.get("deleted"):
         return False
     for key in ("before", "after"):
         if not re.fullmatch(r"[0-9a-f]{40}", event.get(key, "")):
-            message = "Invalid commit SHA"
-            raise UnsafeInput(message)
+            msg = "Invalid commit SHA"
+            raise UnsafeInput(msg)
         if event[key] == "0" * 40:
-            message = "Branch creation/deletion needs manual review"
-            raise UnsafeInput(message)
+            msg = "Branch creation/deletion needs manual review"
+            raise UnsafeInput(msg)
     return True
 
 
 def prepare(compare, updates):
     files = compare.get("files", [])
     if not files or len(files) > MAX_FILES:
-        message = "Missing or oversized file list; do not silently truncate"
-        raise UnsafeInput(message)
+        msg = "Missing or oversized file list; do not silently truncate"
+        raise UnsafeInput(msg)
     # Github compare is limited to 300 files. Lower limit makes truncation fail closed.
     relevant = [
         f
@@ -83,62 +83,62 @@ def prepare(compare, updates):
         ],
     }
     if len(json.dumps(context, ensure_ascii=False).encode()) > MAX_INPUT_BYTES:
-        message = "Analysis exceeds budget; manual review required"
-        raise UnsafeInput(message)
+        msg = "Analysis exceeds budget; manual review required"
+        raise UnsafeInput(msg)
     return context
 
 
 def validate_decision(raw, context):
     """Model chooses a description, never a path to write or arbitrary Markdown."""
     if not isinstance(raw, dict) or set(raw) != {"should_update", "reason", "entries"}:
-        message = "Unexpected model schema"
-        raise UnsafeInput(message)
+        msg = "Unexpected model schema"
+        raise UnsafeInput(msg)
     if type(raw["should_update"]) is not bool or not isinstance(raw["reason"], str):
-        message = "Invalid decision types"
-        raise UnsafeInput(message)
+        msg = "Invalid decision types"
+        raise UnsafeInput(msg)
     entries = raw["entries"]
     if not isinstance(entries, list) or len(entries) > MAX_ENTRIES:
-        message = "Invalid entries"
-        raise UnsafeInput(message)
+        msg = "Invalid entries"
+        raise UnsafeInput(msg)
     if bool(entries) != raw["should_update"]:
-        message = "Inconsistent decision"
-        raise UnsafeInput(message)
+        msg = "Inconsistent decision"
+        raise UnsafeInput(msg)
     paths = {f["filename"] for f in context["files"]}
     for entry in entries:
         if not isinstance(entry, dict) or set(entry) != {"text", "source_paths"}:
-            message = "Invalid entry schema"
-            raise UnsafeInput(message)
+            msg = "Invalid entry schema"
+            raise UnsafeInput(msg)
         text = entry["text"]
         if not isinstance(text, str) or not 1 <= len(text) <= 240:
-            message = "Invalid entry length"
-            raise UnsafeInput(message)
+            msg = "Invalid entry length"
+            raise UnsafeInput(msg)
         # All formatting is performed by code. No links supplied by model.
         if any(c in text for c in "\n\r<>[]`\\") or re.search(r"https?://", text):
-            message = "Unsafe Markdown"
-            raise UnsafeInput(message)
+            msg = "Unsafe Markdown"
+            raise UnsafeInput(msg)
         sources = entry["source_paths"]
         if (
             not isinstance(sources, list)
             or not sources
             or not all(isinstance(p, str) and p in paths for p in sources)
         ):
-            message = "Unsubstantiated entry"
-            raise UnsafeInput(message)
+            msg = "Unsubstantiated entry"
+            raise UnsafeInput(msg)
     return raw
 
 
 def render(updates, entries, timestamp):
     if not updates.startswith("---\n"):
-        message = "Missing front matter"
-        raise UnsafeInput(message)
+        msg = "Missing front matter"
+        raise UnsafeInput(msg)
     end = updates.find("\n---\n", 4)
     if end == -1:
-        message = "Unterminated front matter"
-        raise UnsafeInput(message)
+        msg = "Unterminated front matter"
+        raise UnsafeInput(msg)
     stamp = dt.datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
     if stamp.tzinfo is None:
-        message = "Timestamp must include timezone"
-        raise UnsafeInput(message)
+        msg = "Timestamp must include timezone"
+        raise UnsafeInput(msg)
     stamp = stamp.astimezone(dt.timezone(dt.timedelta(hours=3))).strftime("%Y-%m-%d %H:%M")
     lines = [f"- [ ] *\\[{stamp}\\]* {e['text']}" for e in entries]
     # Prevent exact duplicate descriptions, including manually added ones.

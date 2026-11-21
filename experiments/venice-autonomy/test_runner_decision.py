@@ -7,14 +7,15 @@ import tempfile
 import unittest
 from unittest import mock
 
-import repository_runner
 import attempt
+import repository_runner
 
 
 class FakeEnvironment:
     """Fake repository environment for deterministic tests."""
 
     def __init__(self, _snapshot, directory, _image, protocol) -> None:
+        """Initialize the fake environment."""
 
         self.container_id = "fake"
         self.events: list[dict[str, object]] = []
@@ -75,14 +76,14 @@ class FinalDecisionTests(unittest.TestCase):
         class Environment(FakeEnvironment):
             def close(self) -> None:
                 if cleanup_error:
-                    message = "cleanup failed"
-                    raise RuntimeError(message)
+                    msg = "cleanup failed"
+                    raise RuntimeError(msg)
                 super().close()
 
         def invoke(*args, **kwargs) -> dict[str, str]:
             if not clean:
-                message = "provider failed"
-                raise RuntimeError(message)
+                msg = "provider failed"
+                raise RuntimeError(msg)
             return {"exit_status": "ConversationExecutionStatus.FINISHED"}
 
         with mock.patch.dict(os.environ, env, clear=False):

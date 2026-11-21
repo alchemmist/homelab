@@ -294,6 +294,7 @@ def _trusted_admission_updates(account: object, settings: object) -> list[dict[s
 
 
 def reconcile_plan(s):
+    """Compute the audited infrastructure updates from the reviewed state snapshot."""
     snapshot = cast("dict[str, object]", s)
     reviewed = _require_account_settings(s)
     flows = _require_provider_flows(s)
@@ -346,6 +347,7 @@ def reconcile_plan(s):
 
 
 def membership_plan(s, username, expected_uuid, revoke=False):
+    """Compute grant or revoke operations for one user against a reviewed UUID."""
     require(
         username and expected_uuid,
         "Explicit username and independently reviewed Authentik UUID required",
@@ -407,6 +409,7 @@ def subject_identity(value):
 
 
 def offboard_plan(s, username, expected_uuid):
+    """Compute revocation of every reviewed membership for the named user."""
     membership = membership_plan(s, username, expected_uuid, True)
     app = unique(s["ak_apps"], "slug", APP)
     provider = unique(s["ak_providers"], "pk", app["provider"])
@@ -471,6 +474,7 @@ class API:
     """NetBird and Authentik API client for access checks."""
 
     def __init__(self, nb_credentials, ak_credentials) -> None:
+        """Initialize API credentials."""
 
         self.nb = json.loads(Path(nb_credentials).read_text())["token"]
         self.ak = json.loads(Path(ak_credentials).read_text())["AUTHENTIK_BOOTSTRAP_TOKEN"]
@@ -547,6 +551,7 @@ class API:
 
 
 def atomic(path, value):
+    """Durably write a JSON value to disk via a temporary file and rename."""
     temp = path.with_suffix(".tmp")
     fd = os.open(temp, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
     with os.fdopen(fd, "w") as f:
@@ -557,6 +562,7 @@ def atomic(path, value):
 
 
 def check_state_folder(folder):
+    """Require a caller-owned private state directory with no unfinished receipts."""
     require(
         folder.is_absolute() and not folder.is_symlink(),
         "Absolute private state directory required",
@@ -575,6 +581,7 @@ def check_state_folder(folder):
 
 
 def build_plan(state, action, username=None, expected_uuid=None):
+    """Select and compute the operation plan for the requested action."""
     infrastructure = reconcile_plan(state)
     if action == "reconcile":
         return infrastructure
@@ -587,6 +594,7 @@ def build_plan(state, action, username=None, expected_uuid=None):
 
 
 def main():
+    """Run the requested reconciler action against the verified state snapshot."""
     os.umask(0o077)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=["reconcile", "grant", "revoke", "offboard"])

@@ -33,7 +33,8 @@ def configure(db_path, check=False):
         connection.row_factory = sqlite3.Row
         columns = {row[1] for row in connection.execute("PRAGMA table_info(monitor)")}
         if not {"id", *DESIRED}.issubset(columns):
-            raise ValueError("Unsupported monitor schema: required columns are missing")
+            message = "Unsupported monitor schema: required columns are missing"
+            raise ValueError(message)
         matches = []
         for row in connection.execute("SELECT id, url FROM monitor"):
             try:
@@ -43,7 +44,8 @@ def configure(db_path, check=False):
             if hostname == HOSTNAME:
                 matches.append(row["id"])
         if len(matches) != 1:
-            raise ValueError(f"Expected exactly one Rancher monitor; found {len(matches)}")
+            message = f"Expected exactly one Rancher monitor; found {len(matches)}"
+            raise ValueError(message)
         monitor_id = matches[0]
         selection = ", ".join(f'"{name}"' for name in DESIRED)
         current = connection.execute(
@@ -71,7 +73,8 @@ def configure(db_path, check=False):
             (*DESIRED.values(), monitor_id),
         )
         if cursor.rowcount != 1:
-            raise ValueError("Rancher monitor changed during migration")
+            message = "Rancher monitor changed during migration"
+            raise ValueError(message)
         connection.commit()
         result["backup"] = backup_path
         return result

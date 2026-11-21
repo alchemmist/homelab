@@ -44,6 +44,7 @@ class MembershipReader:
     """Cached reader for the observer membership token file."""
 
     def __init__(self, token_file, ttl=60):
+        """Initialize membership cache state."""
         self.token_file, self.ttl = Path(token_file), ttl
         self.lock, self.expires = threading.Lock(), 0
         self.users, self.groups = {}, {}

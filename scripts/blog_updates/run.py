@@ -50,8 +50,8 @@ def run(event, github, llm_url, llm_key, write=False):
     commits = compare.get("commits", [])
     head = next((c for c in commits if c["sha"] == event["after"]), None)
     if not head:
-        message = "Missing head commit metadata"
-        raise ValueError(message)
+        msg = "Missing head commit metadata"
+        raise ValueError(msg)
     content = render(updates, decision["entries"], head["commit"]["committer"]["date"])
     if not write:
         return {"status": "dry_run", "decision": decision, "proposed_updates": content}

@@ -7,5 +7,6 @@ select = ["ALL"]
 ignore = ["D203", "D213", "ISC001", "COM812"]
 
 [lint.per-file-ignores]
-# Pytest rewrites assert. No other test rule is ignored.
-"**/tests/**" = ["S101"]
+# Test method names describe behavior; do not require method docstrings.
+"**/test/**" = ["D102"]
+"**/tests/**" = ["D102", "S101"]

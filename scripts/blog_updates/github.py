@@ -13,6 +13,7 @@ class GitHub:
     """GitHub REST API client for blog updates."""
 
     def __init__(self, token) -> None:
+        """Initialize the GitHub client."""
 
         self.token = token
 
@@ -34,27 +35,26 @@ class GitHub:
             with urllib.request.urlopen(request, timeout=45) as response:
                 return json.load(response)
         except urllib.error.HTTPError as exc:
-            message = f"GitHub {method} failed (HTTP {exc.code})"
-            raise RuntimeError(message) from None
+            raise RuntimeError(f"GitHub {method} failed (HTTP {exc.code})") from None
 
     def compare(self, before, after):
         """Validate both commit SHAs before any comparison is attempted."""
         for sha in (before, after):
             if not re.fullmatch("[a-f0-9]{40}", sha):
-                message = "Full SHA required"
-                raise UnsafeInput(message)
+                msg = "Full SHA required"
+                raise UnsafeInput(msg)
         result = self.api("GET", f"compare/{before}...{after}?per_page=100&page=1")
         if result.get("status") not in ("ahead", "identical"):
-            message = "Non-forward push requires manual review"
-            raise UnsafeInput(message)
+            msg = "Non-forward push requires manual review"
+            raise UnsafeInput(msg)
         # Files are returned on page one only; reject ambiguous/truncated compares.
         if len(result.get("files", [])) >= 300:
-            message = "Compare file limit exceeded"
-            raise UnsafeInput(message)
+            msg = "Compare file limit exceeded"
+            raise UnsafeInput(msg)
         total = result.get("total_commits", 0)
         if total > 1000:
-            message = "Commit range too large"
-            raise UnsafeInput(message)
+            msg = "Commit range too large"
+            raise UnsafeInput(msg)
         commits = result.get("commits", [])
         page = 2
         while len(commits) < total:
@@ -62,8 +62,8 @@ class GitHub:
                 "commits", []
             )
             if not extra:
-                message = "Incomplete commit pagination"
-                raise UnsafeInput(message)
+                msg = "Incomplete commit pagination"
+                raise UnsafeInput(msg)
             commits.extend(extra)
             page += 1
         result["commits"] = commits
@@ -73,15 +73,15 @@ class GitHub:
         """Read and decode the updates file at the given ref."""
         f = self.api("GET", f"contents/{UPDATES}?ref={ref}")
         if f.get("encoding") != "base64":
-            message = "Unexpected GitHub content encoding"
-            raise UnsafeInput(message)
+            msg = "Unexpected GitHub content encoding"
+            raise UnsafeInput(msg)
         return base64.b64decode(f["content"]).decode(), f["sha"]
 
     def propose(self, after, content, reason, draft=False):
         """Open a pull request carrying the reviewed update content."""
         if not re.fullmatch("[a-f0-9]{40}", after):
-            message = "Full SHA required"
-            raise UnsafeInput(message)
+            msg = "Full SHA required"
+            raise UnsafeInput(msg)
         branch = "automation/blog-updates-" + after + ("-test" if draft else "")
         # Include closed PRs: closing a proposal is an editorial decision, not a retry.
         existing = self.api("GET", f"pulls?state=all&head=alchemmist:{branch}&per_page=100")
@@ -90,8 +90,8 @@ class GitHub:
         # Pin proposal to the analyzed commit. A later main change cannot be silently overwritten.
         main = self.api("GET", "git/ref/heads/main")["object"]["sha"]
         if main != after:
-            message = "main advanced; reanalysis required"
-            raise UnsafeInput(message)
+            msg = "main advanced; reanalysis required"
+            raise UnsafeInput(msg)
         original, _ = self.read_updates(after)
         if content == original:
             return {"status": "no_change"}

@@ -38,7 +38,8 @@ def token() -> str:
 
 def request(method: str, path: str, bearer: str):
     if not path.startswith("/app/hook/deliveries") or "\r" in path or "\n" in path:
-        raise ValueError("Only GitHub App delivery paths are allowed")
+        message = "Only GitHub App delivery paths are allowed"
+        raise ValueError(message)
     # HTTPSConnection verifies TLS and never follows redirects with the bearer.
     connection = http.client.HTTPSConnection("api.github.com", timeout=30)
     try:
@@ -54,7 +55,8 @@ def request(method: str, path: str, bearer: str):
         )
         response = connection.getresponse()
         if not 200 <= response.status < 300:
-            raise RuntimeError(f"GitHub delivery request failed: HTTP {response.status}")
+            message = f"GitHub delivery request failed: HTTP {response.status}"
+            raise RuntimeError(message)
         raw = response.read()
         return json.loads(raw) if raw else {}
     finally:

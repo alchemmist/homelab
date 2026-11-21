@@ -259,7 +259,8 @@ def wait_compactor_idle(namespace, name, timeout=180):
         if spec == 0 and ready == 0 and current == 0:
             return
         if time.monotonic() >= deadline:
-            raise TimeoutError("compactor did not scale to zero")
+            message = "compactor did not scale to zero"
+            raise TimeoutError(message)
         time.sleep(2)
 
 

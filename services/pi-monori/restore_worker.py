@@ -1,5 +1,6 @@
 """Rehydrate only the empty worker pod's scratch volume. Never import worker files on host."""
-import hashlib, subprocess
+import hashlib
+import subprocess
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Protocol
