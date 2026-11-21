@@ -12,6 +12,7 @@ spec.loader.exec_module(M)
 
 
 def snapshot():
+    """Test snapshot behavior."""
     return {
         "nb_accounts": [
             {

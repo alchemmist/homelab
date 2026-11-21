@@ -32,6 +32,7 @@ def test_enrollment_cannot_release_native_fence() -> None:
 
 
 def runtime_module():
+    """Test runtime module behavior."""
     import importlib.util
 
     s = importlib.util.spec_from_file_location(

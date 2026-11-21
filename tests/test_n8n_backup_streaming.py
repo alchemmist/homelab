@@ -26,6 +26,7 @@ sha256File(process.argv[2]).then(digest => {
 
 
 def run_hash(path):
+    """Test run hash behavior."""
     return subprocess.run(
         ["node", "--max-old-space-size=32", "-e", RUNNER, str(SCRIPT), str(path)],
         capture_output=True,
@@ -36,6 +37,7 @@ def run_hash(path):
 
 @pytest.mark.parametrize("content", [b"", b"abc", bytes(range(256)) * 1024])
 def test_stream_digest_matches_sha256(tmp_path, content):
+    """Test test stream digest matches sha256 behavior."""
     file = tmp_path / "snapshot"
     file.write_bytes(content)
     result = run_hash(file)
@@ -44,6 +46,7 @@ def test_stream_digest_matches_sha256(tmp_path, content):
 
 
 def test_snapshot_larger_than_container_limit(tmp_path):
+    """Test test snapshot larger than container limit behavior."""
     file = tmp_path / "snapshot"
     # Sparse synthetic fixture, not a production DB or archive.
     with file.open("wb") as out:
@@ -62,6 +65,7 @@ def test_snapshot_larger_than_container_limit(tmp_path):
 
 
 def test_missing_snapshot_is_failure_not_success_digest(tmp_path):
+    """Test test missing snapshot is failure not success digest behavior."""
     result = run_hash(tmp_path / "missing")
     assert result.returncode != 0
     assert "ENOENT" in result.stderr
@@ -69,6 +73,7 @@ def test_missing_snapshot_is_failure_not_success_digest(tmp_path):
 
 
 def test_backup_calls_stream_helper_and_preserves_safety_contract():
+    """Test test backup calls stream helper and preserves safety contract behavior."""
     source = SCRIPT.read_text()
     assert "databaseSha256: await sha256File(path.join(data, 'database.sqlite'))" in source
     assert "readFileSync" not in source

@@ -10,10 +10,12 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def load(path):
+    """Test load behavior."""
     return yaml.safe_load((ROOT / path).read_text())
 
 
 def test_four_nodes_have_unique_exact_client_host_routes():
+    """Test test four nodes have unique exact client host routes behavior."""
     defaults = load("ansible/roles/wireguard_admin_client/defaults/main.yml")
     peers = defaults["wireguard_admin_peers"]
     routes = [route for p in peers for route in p.get("allowed_ips", [p["address"] + "/32"])]
@@ -26,12 +28,14 @@ def test_four_nodes_have_unique_exact_client_host_routes():
 
 
 def test_worker_routes_mac_back_to_same_gateway_without_duplicate_peer():
+    """Test test worker routes mac back to same gateway without duplicate peer behavior."""
     worker = load("ansible/inventory/host_vars/socrat-3.yml")
     assert "10.250.0.4/32" in worker["wg_socrat_extra_allowed_peer_ips"]["socrat-3"]["socrat-0"]
     assert worker["wg_socrat_admin_clients"] == {}
 
 
 def render_firewall(rules):
+    """Test render firewall behavior."""
     env = Environment()
     env.filters["quote"] = shlex.quote
     env.filters["bool"] = bool
@@ -55,6 +59,7 @@ def render_firewall(rules):
 
 
 def test_mac_only_forwards_worker_ssh_without_snat():
+    """Test test mac only forwards worker ssh without snat behavior."""
     host = load("ansible/inventory/host_vars/socrat-0.yml")
     rule = next(r for r in host["wg_socrat_admin_forward_rules"] if r["client"] == "antonmoss-mac")
     assert rule == {
@@ -70,11 +75,13 @@ def test_mac_only_forwards_worker_ssh_without_snat():
 
 
 def test_other_forwarding_rules_keep_legacy_snat_default():
+    """Test test other forwarding rules keep legacy snat default behavior."""
     script = render_firewall([{"client": "mac", "destination": "socrat-3", "tcp_ports": [2222]}])
     assert "SNAT --to-source 10.250.0.1" in script
 
 
 def test_rendered_profile_is_split_and_carries_worker_route():
+    """Test test rendered profile is split and carries worker route behavior."""
     env = Environment()
     defaults = load("ansible/roles/wireguard_admin_client/defaults/main.yml")
     defaults.update(wireguard_admin_private_key="offline-private-placeholder")

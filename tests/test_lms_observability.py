@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def render(*args):
+    """Test render behavior."""
     return list(
         yaml.safe_load_all(
             subprocess.check_output(
@@ -20,6 +21,7 @@ def render(*args):
 
 
 def test_live_values_enable_mtls_without_secret_contents():
+    """Test test live values enable mtls without secret contents behavior."""
     docs = render("-f", str(ROOT / "deploy/lms/values.yaml"))
     dep = next(
         x for x in docs if x and x["kind"] == "Deployment" and x["metadata"]["name"] == "lms"
@@ -39,6 +41,7 @@ def test_live_values_enable_mtls_without_secret_contents():
 
 
 def test_dashboard_is_gitops_provisioned_and_uses_real_log_labels():
+    """Test test dashboard is gitops provisioned and uses real log labels behavior."""
     docs = render("-f", str(ROOT / "deploy/lms/values.yaml"))
     cm = next(
         x
@@ -60,6 +63,7 @@ def test_dashboard_is_gitops_provisioned_and_uses_real_log_labels():
 
 
 def test_disabled_chart_does_not_mount_credentials():
+    """Test test disabled chart does not mount credentials behavior."""
     docs = render("--set", "tracing.enabled=false")
     dep = next(
         x for x in docs if x and x["kind"] == "Deployment" and x["metadata"]["name"] == "lms"
@@ -68,6 +72,7 @@ def test_disabled_chart_does_not_mount_credentials():
 
 
 def test_renewal_scope_is_only_lms_leaf_and_lms_deployment():
+    """Test test renewal scope is only lms leaf and lms deployment behavior."""
     docs = list(
         yaml.safe_load_all(
             (ROOT / "deploy/monitoring/otel-application-credentials.yaml").read_text()
@@ -109,6 +114,7 @@ def test_renewal_scope_is_only_lms_leaf_and_lms_deployment():
 
 
 def test_trace_id_panel_uses_supported_traceql_id_query():
+    """Test test trace id panel uses supported traceql id query behavior."""
     dashboard = json.loads((ROOT / "charts/lms/files/lms-performance.json").read_text())
     panel = next(x for x in dashboard["panels"] if x["type"] == "traces")
     assert panel["targets"][0]["queryType"] == "traceql"
@@ -116,6 +122,7 @@ def test_trace_id_panel_uses_supported_traceql_id_query():
 
 
 def test_correlations_preserve_credentials_and_survive_refresh():
+    """Test test correlations preserve credentials and survive refresh behavior."""
     spec = importlib.util.spec_from_file_location(
         "correlations", ROOT / "scripts/lms-grafana-correlations.py"
     )
@@ -146,6 +153,7 @@ def test_correlations_preserve_credentials_and_survive_refresh():
 
 
 def test_dashboard_pins_existing_datasources_without_redundant_selectors():
+    """Test test dashboard pins existing datasources without redundant selectors behavior."""
     dashboard = json.loads((ROOT / "charts/lms/files/lms-performance.json").read_text())
     assert [variable["name"] for variable in dashboard["templating"]["list"]] == ["trace_id"]
     assert dashboard["templating"]["list"][0]["datasource"] == {"type": "tempo", "uid": "tempo"}
@@ -158,6 +166,7 @@ def test_dashboard_pins_existing_datasources_without_redundant_selectors():
 
 
 def test_selected_trace_logs_cover_tempo_retention_not_only_narrow_dashboard_range():
+    """Test test selected trace logs cover tempo retention not only narrow dashboard range behavior."""
     dashboard = json.loads((ROOT / "charts/lms/files/lms-performance.json").read_text())
     logs = next(panel for panel in dashboard["panels"] if panel["id"] == 4)
     assert logs["timeFrom"] == "7d"
@@ -167,6 +176,7 @@ def test_selected_trace_logs_cover_tempo_retention_not_only_narrow_dashboard_ran
 
 
 def test_waterfall_is_the_primary_panel_before_trace_table():
+    """Test test waterfall is the primary panel before trace table behavior."""
     dashboard = json.loads((ROOT / "charts/lms/files/lms-performance.json").read_text())
     waterfall = next(p for p in dashboard["panels"] if p["id"] == 3)
     table = next(p for p in dashboard["panels"] if p["id"] == 2)
@@ -176,6 +186,7 @@ def test_waterfall_is_the_primary_panel_before_trace_table():
 
 
 def test_dashboard_starts_with_waterfall_without_instruction_text_panel():
+    """Test test dashboard starts with waterfall without instruction text panel behavior."""
     dashboard = json.loads((ROOT / "charts/lms/files/lms-performance.json").read_text())
     assert not any(panel["type"] == "text" or panel["id"] == 1 for panel in dashboard["panels"])
     first = min(dashboard["panels"], key=lambda panel: panel["gridPos"]["y"])
@@ -183,6 +194,7 @@ def test_dashboard_starts_with_waterfall_without_instruction_text_panel():
 
 
 def test_hibernated_database_alerts_do_not_page_for_production_lms():
+    """Test test hibernated database alerts do not page for production lms behavior."""
     def rules(*override):
         docs = render('-f', str(ROOT / 'deploy/lms/values.yaml'), *override)
         group = next(d for d in docs if d and d['kind'] == 'PrometheusRule' and d['metadata']['name'] == 'lms-availability')['spec']['groups'][0]

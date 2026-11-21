@@ -24,6 +24,7 @@ RBAC = json.loads(
 
 
 def fixture():
+    """Test fixture behavior."""
     login, role, binding = copy.deepcopy(RBAC)
     for obj in [login, role, binding]:
         obj["metadata"].update(uid="uid-" + obj["metadata"]["name"], resourceVersion="17")
@@ -82,6 +83,7 @@ def fixture():
 
 
 def converge(state, operations):
+    """Test converge behavior."""
     for op in operations:
         if op["system"] == "kubernetes":
             name = op["path"].split("/")[-1]
@@ -125,6 +127,7 @@ def converge(state, operations):
 
 
 def permits(rules, group, resource, verb, name=None):
+    """Test permits behavior."""
     return any(
         group in r["apiGroups"]
         and resource in r["resources"]

@@ -18,6 +18,7 @@ SPEC.loader.exec_module(hr)
 
 
 def ready():
+    """Test ready behavior."""
     facts = hr.default_facts()
     facts["management_url"] = "https://netbird.example.test"
     for host in facts["hosts"]:
@@ -27,6 +28,7 @@ def ready():
 
 
 def load_frontend(source):
+    """Test load frontend behavior."""
     namespace = {}
     exec(source, namespace)
     return namespace

@@ -20,6 +20,7 @@ SPEC.loader.exec_module(nb)
 
 
 def inputs():
+    """Test inputs behavior."""
     # Synthetic TEST fixtures only, not discovered or proposed production addresses.
     return {
         "schema_version": 1,
@@ -64,6 +65,7 @@ def inputs():
 
 
 def bindings():
+    """Test bindings behavior."""
     return {
         "network_id": "network00001",
         "source_groups": {"pilot-web": "source000001", "pilot-ssh": "source000002"},
@@ -73,6 +75,7 @@ def bindings():
 
 
 def snapshot():
+    """Test snapshot behavior."""
     b = bindings()
     return {
         "policies": [],

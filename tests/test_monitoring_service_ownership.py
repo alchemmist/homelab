@@ -39,6 +39,7 @@ OWNERS.update({name: ("charts/" + name, "kube-prometheus-stack") for name in COM
 
 @lru_cache(maxsize=None)
 def render(path, release):
+    """Test render behavior."""
     text = subprocess.check_output(
         ["helm", "template", release, str(ROOT / path), "-n", NS, "--include-crds"], text=True
     )
@@ -50,6 +51,7 @@ def render(path, release):
 
 
 def key(d):
+    """Test key behavior."""
     return "/".join(
         [
             d["kind"],
@@ -60,10 +62,12 @@ def key(d):
 
 
 def digest(d):
+    """Test digest behavior."""
     return hashlib.sha256(json.dumps(d, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
 def normalized(d):
+    """Test normalized behavior."""
     d = json.loads(json.dumps(d))
     name = d["metadata"]["name"]
     if d["kind"] == "Deployment" and name == "kube-prometheus-stack-grafana":
@@ -82,6 +86,7 @@ def normalized(d):
 
 
 def test_existing_resources_have_one_service_owner_and_preserved_payload():
+    """Test test existing resources have one service owner and preserved payload behavior."""
     fixture = json.loads((ROOT / "tests/fixtures/monitoring-split-contract.json").read_text())
     actual = {}
     for owner, (path, release) in OWNERS.items():
@@ -101,6 +106,7 @@ def test_existing_resources_have_one_service_owner_and_preserved_payload():
 
 
 def test_grafana_native_sso_and_no_anonymous_access_are_declarative():
+    """Test test grafana native sso and no anonymous access are declarative behavior."""
     v = yaml.safe_load((ROOT / "charts/grafana/values.yaml").read_text())["grafana"]
     assert v["admin"]["existingSecret"] == "socrat-grafana-admin"
     assert v["grafana.ini"]["auth.anonymous"]["enabled"] is False
@@ -121,6 +127,7 @@ def test_grafana_native_sso_and_no_anonymous_access_are_declarative():
 
 
 def test_each_backend_owns_its_config_without_changing_config_bytes():
+    """Test test each backend owns its config without changing config bytes behavior."""
     for name in ("loki", "tempo"):
         docs = render("charts/" + name, name)
         config = next(d for d in docs if d["kind"] == "ConfigMap")
@@ -138,6 +145,7 @@ def test_each_backend_owns_its_config_without_changing_config_bytes():
 
 
 def test_prometheus_components_preserve_release_names_and_matching_labels():
+    """Test test prometheus components preserve release names and matching labels behavior."""
     for name in COMPONENTS:
         a = yaml.safe_load((ROOT / f"deploy/argocd/apps/{name}.yaml").read_text())
         source = a["spec"]["source"]
@@ -160,6 +168,7 @@ def test_prometheus_components_preserve_release_names_and_matching_labels():
 
 
 def test_retired_aggregate_owners_and_charts_are_not_reintroduced():
+    """Test test retired aggregate owners and charts are not reintroduced behavior."""
     for name in ("kube-prometheus-stack", "prometheus-stack", "otel-backends", "profiling"):
         assert not (ROOT / f"deploy/argocd/apps/{name}.yaml").exists()
     for name in ("otel-backends", "profiling"):
@@ -173,6 +182,7 @@ def test_retired_aggregate_owners_and_charts_are_not_reintroduced():
 
 
 def test_legacy_monitoring_installer_fails_before_roles_under_gitops():
+    """Test test legacy monitoring installer fails before roles under gitops behavior."""
     play = yaml.safe_load((ROOT / "ansible/playbooks/monitoring.yml").read_text())[1]
     guard = play["pre_tasks"][0]
     assert guard["ansible.builtin.include_role"] == {
@@ -193,6 +203,7 @@ def test_legacy_monitoring_installer_fails_before_roles_under_gitops():
 
 
 def test_existing_rancher_postdelete_finalizers_are_declared_not_ignored():
+    """Test test existing rancher postdelete finalizers are declared not ignored behavior."""
     app = yaml.safe_load((ROOT / "deploy/argocd/apps/rancher.yaml").read_text())
     assert app["metadata"]["finalizers"] == [
         "resources-finalizer.argocd.argoproj.io",

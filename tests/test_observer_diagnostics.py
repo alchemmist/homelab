@@ -31,12 +31,14 @@ spec.loader.exec_module(m)
     ],
 )
 def test_classify_without_exception_strings(error, kind):
+    """Test test classify without exception strings behavior."""
     result = m.classify(error)
     assert result["kind"] == kind
     assert "SECRET" not in json.dumps(result)
 
 
 def test_http_status_never_leaks_url_headers_body():
+    """Test test http status never leaks url headers body behavior."""
     error = urllib.error.HTTPError(
         "https://SECRET/", 403, "SECRET", {"Authorization": "SECRET"}, io.BytesIO(b"SECRET")
     )
@@ -44,6 +46,7 @@ def test_http_status_never_leaks_url_headers_body():
 
 
 def test_patch_failure_is_uncertain_and_not_repeated():
+    """Test test patch failure is uncertain and not repeated behavior."""
     inner = Mock()
     inner.open.side_effect = TimeoutError("SECRET")
     req = urllib.request.Request(
@@ -62,6 +65,7 @@ def test_patch_failure_is_uncertain_and_not_repeated():
 
 
 def test_body_read_failure_and_context_survives_safe_controller_wrap():
+    """Test test body read failure and context survives safe controller wrap behavior."""
     response = Mock()
     response.read.side_effect = TimeoutError("SECRET")
     inner = Mock()
@@ -81,6 +85,7 @@ def test_body_read_failure_and_context_survives_safe_controller_wrap():
 
 
 def test_runner_preserves_one_execution_and_restores_opener():
+    """Test test runner preserves one execution and restores opener behavior."""
     original = Mock()
     ctrl = types.SimpleNamespace(
         opener=original, reconcile_rancher=Mock(side_effect=RuntimeError("SECRET"))
@@ -94,6 +99,7 @@ def test_runner_preserves_one_execution_and_restores_opener():
 
 
 def test_success_no_policy_change_and_shared_wiki_module_untouched():
+    """Test test success no policy change and shared wiki module untouched behavior."""
     ctrl = types.SimpleNamespace(opener=Mock(), reconcile_rancher=Mock())
     with contextlib.redirect_stdout(io.StringIO()):
         assert m.run(ctrl) == 0

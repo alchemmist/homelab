@@ -16,6 +16,7 @@ spec.loader.exec_module(m)
 
 
 def fixture(subject="fixture-uuid"):
+    """Test fixture behavior."""
     principal = m.PREFIX + subject
     user = {"metadata": {"name": "u-fixture"}, "principalIds": [principal]}
     attr = {

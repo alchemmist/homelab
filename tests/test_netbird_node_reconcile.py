@@ -14,6 +14,7 @@ IMAGE = "netbirdio/netbird:0.82.0@sha256:" + "a" * 64
 
 
 def node(host):
+    """Test node behavior."""
     return {
         "metadata": {"uid": "node-" + host, "name": host},
         "status": {"conditions": [{"type": "Ready", "status": "True"}]},

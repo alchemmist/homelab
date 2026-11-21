@@ -14,11 +14,13 @@ PROMTOOL = os.environ.get("PROMTOOL") or shutil.which("promtool")
 
 
 def panel():
+    """Test panel behavior."""
     dashboard = json.loads(DASHBOARD.read_text())
     return next(item for item in dashboard["panels"] if item.get("id") == 215)
 
 
 def fixtures():
+    """Test fixtures behavior."""
     expr = panel()["targets"][0]["expr"].replace("$node", "socrat-3")
     source = 'up{job="kubelet",metrics_path="/metrics/cadvisor",instance="node:10250"}'
     ksm = 'up{job="kube-state-metrics"}'

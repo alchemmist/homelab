@@ -30,6 +30,7 @@ TIM_GROUPS = ["b7af46a6-6208-4a32-bfb1-4e61fd3c88ec"]
 
 
 def write_json(path, value):
+    """Test write json behavior."""
     path.write_text(json.dumps(value, indent=2) + "\n")
     os.chmod(path, 0o600)
 

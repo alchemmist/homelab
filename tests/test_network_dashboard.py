@@ -8,6 +8,7 @@ PATH = ROOT / "charts/monitoring-k3s/dashboards/network.json"
 
 
 def dashboard():
+    """Test dashboard behavior."""
     return json.loads(PATH.read_text())
 
 

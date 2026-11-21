@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 @pytest.fixture
 def env(tmp_path, monkeypatch):
+    """Test env behavior."""
     spec = importlib.util.spec_from_file_location(
         "upgrade", ROOT / "scripts/moscow-watchdog-upgrade.py"
     )

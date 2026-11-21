@@ -20,6 +20,7 @@ HTTP_TIMEOUT = object()
 
 
 def counters_payload(users):
+    """Test counters payload behavior."""
     body = json.dumps(
         {
             "cmdline": ["xray"],

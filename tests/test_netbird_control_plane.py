@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def load(name, filename):
+    """Test load behavior."""
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / filename)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -28,6 +29,7 @@ backup = load("netbird_backup", "netbird-backup.py")
 
 
 def control_inputs():
+    """Test control inputs behavior."""
     review = {key: False for key in nb.REVIEWS}
     for key in nb.CONTROL_REVIEWS:
         review[key] = True
@@ -44,6 +46,7 @@ def control_inputs():
 
 
 def cleared_audit():
+    """Test cleared audit behavior."""
     audit = json.loads((ROOT / "deploy/netbird/runtime-audit.json").read_text())
     audit.update(
         kubectl_api_read=True,

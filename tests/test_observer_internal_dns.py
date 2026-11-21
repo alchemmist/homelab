@@ -12,6 +12,7 @@ spec.loader.exec_module(m)
 
 
 def before():
+    """Test before behavior."""
     return {
         "metadata": {"uid": "owned", "resourceVersion": "123"},
         "data": {"rancher-private.server": "keep exact"},

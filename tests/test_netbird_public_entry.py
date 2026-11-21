@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def load(name, file):
+    """Test load behavior."""
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / file)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
