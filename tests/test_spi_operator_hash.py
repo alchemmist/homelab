@@ -22,7 +22,7 @@ SHA256_HEX_LENGTH = 64
 
 
 def _verify_read_only_sort(database: Path) -> None:
-    """The old sort must genuinely run out of disk, not fail for a different reason."""
+    """Require the old sort to run out of disk, not fail for a different reason."""
     with closing(
         sqlite3.connect(database.resolve().as_uri() + "?mode=ro", uri=True, isolation_level=None)
     ) as c:
@@ -33,8 +33,11 @@ def _verify_read_only_sort(database: Path) -> None:
             for _ in c.execute("SELECT * FROM payload ORDER BY 1,2"):
                 pass
         except sqlite3.OperationalError as error:
-            assert error.sqlite_errorcode == sqlite3.SQLITE_FULL
-            assert "database or disk is full" in str(error)
+            if (
+                error.sqlite_errorcode != sqlite3.SQLITE_FULL
+                or "database or disk is full" not in str(error)
+            ):
+                raise
         else:
             message = "The full-row sort did not exhaust the temporary filesystem"
             raise AssertionError(message)

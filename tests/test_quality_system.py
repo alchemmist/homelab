@@ -294,7 +294,9 @@ def test_helm_parameters_cannot_inject_a_post_renderer() -> None:
 
 @pytest.mark.parametrize("suite", ["fast", "medium"])
 @pytest.mark.parametrize("system", ["Linux", "Darwin"])
-def test_network_namespace_preserves_locked_tool_path(tmp_path, monkeypatch, system, suite) -> None:
+def test_network_namespace_preserves_locked_tool_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, system: str, suite: str
+) -> None:
     import importlib.util
     from types import SimpleNamespace
 
