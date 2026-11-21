@@ -195,9 +195,9 @@ def run(args):
                         if response.status != 200:
                             raise ValueError("Backend not ready")
                 break
-            except (OSError, ValueError) as exc:
+            except (OSError, ValueError):
                 if time.monotonic() >= deadline:
-                    raise RuntimeError("Native signal backend readiness timed out") from exc
+                    raise RuntimeError("Native signal backend readiness timed out")
                 time.sleep(1)
         now = time.time_ns()
         traces, groups = trace_fixtures(now)
@@ -308,10 +308,8 @@ def main():
     os.umask(0o077)
     try:
         print(json.dumps(run(args), indent=2))
-    except Exception:
-        raise SystemExit(
-            "Isolated signal smoke failed; inspect private root-owned run logs"
-        ) from None
+    except (OSError, RuntimeError, subprocess.SubprocessError, ValueError):
+        raise SystemExit("Isolated signal smoke failed; inspect private root-owned run logs")
 
 
 if __name__ == "__main__":
