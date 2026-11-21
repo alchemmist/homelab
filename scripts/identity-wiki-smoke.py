@@ -50,7 +50,7 @@ def admin(method, path, data=None):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *args: object) -> None:
+    def redirect_request(self, *args: object, **kwargs: object) -> None:
         return None
 
 
