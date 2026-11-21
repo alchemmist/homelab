@@ -81,7 +81,8 @@ def configure(bundle, cutover):
         ]
         if self_targets:
             if len(self_targets) != 1:
-                raise ValueError("Exactly one native Prometheus self target required")
+                msg = "Exactly one native Prometheus self target required"
+                raise ValueError(msg)
             scrape_configs[index] = {
                 "job_name": job["job_name"],
                 "scrape_interval": "5s",

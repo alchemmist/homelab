@@ -204,7 +204,8 @@ def verify_client_certificate_enforced(unauthenticated: ssl.SSLContext) -> None:
             if isinstance(error.reason, ssl.SSLError):
                 continue
             raise
-        raise ValueError("Backend unexpectedly accepted a client without a certificate")
+        msg = "Backend unexpectedly accepted a client without a certificate"
+        raise ValueError(msg)
 
 
 def run(args):
@@ -358,7 +359,8 @@ def main():
     try:
         print(json.dumps(run(args), indent=2))
     except (OSError, RuntimeError, subprocess.SubprocessError, ValueError):
-        raise SystemExit("Isolated signal smoke failed; inspect private root-owned run logs")
+        msg = "Isolated signal smoke failed; inspect private root-owned run logs"
+        raise SystemExit(msg)
 
 
 if __name__ == "__main__":
