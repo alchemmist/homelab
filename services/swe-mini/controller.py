@@ -24,6 +24,7 @@ from policy import (
     dependency_repair,
     validate_dependency_update,
 )
+from typing import cast
 
 NS = os.getenv("NAMESPACE", "swe-mini")
 REPO = "alchemmist/monori"
@@ -47,11 +48,16 @@ STATUS = {"state": "starting", "last_tick": time.time(), "error": ""}
 NEXT_IDLE_CHECK = 0
 
 
-def signing_key(run_id, phase):
+type JsonValue = None | bool | int | float | str | list["JsonValue"] | dict[str, "JsonValue"]
+
+
+def signing_key(run_id: str, phase: str) -> str:
     return hmac.new(RESULT_MASTER, f"{run_id}:{phase}".encode(), hashlib.sha256).hexdigest()
 
 
-def github(path, method="GET", data=None, auth=True):
+def github(
+    path: str, method: str = "GET", data: JsonValue = None, *, auth: bool = True
+) -> dict[str, object]:
     headers = {}
     if auth:
         if TOKEN["expires"] < time.time():
@@ -84,10 +90,14 @@ def github(path, method="GET", data=None, auth=True):
         method, "https://api.github.com/" + path, headers=headers, json=data, timeout=40
     )
     response.raise_for_status()
-    return response.json() if response.content else {}
+    return cast("dict[str, object]", response.json() if response.content else {})
 
 
+<<<<<<< ours
 def save(run_id: int | str, **fields: object) -> None:
+=======
+def save(run_id: str, **fields: object) -> None:
+>>>>>>> theirs
     DB.execute(
         "UPDATE runs SET " + ",".join(key + "=?" for key in fields) + " WHERE id=?",
         [*fields.values(), run_id],
@@ -97,7 +107,7 @@ def save(run_id: int | str, **fields: object) -> None:
         logging.info("Run %s state=%s", run_id, fields["state"])
 
 
-def start_job(run, phase):
+def start_job(run: dict[str, str], phase: str) -> None:
     run_id, lane, revision = run["id"], run["lane"], run["revision"]
     name = f"swe-{run_id}-{phase}"
     volumes = [{"name": "work", "emptyDir": {"sizeLimit": "8Gi"}}]
@@ -202,53 +212,75 @@ def start_job(run, phase):
     save(run_id, state=phase, job=name)
 
 
-def publish(run, result, review):
-    changes = validate_changes(result["changes"])
+def publish(run: dict[str, str], result: dict[str, object], review: dict[str, object]) -> str:
+    changes = validate_changes(cast("list[dict[str, str]]", result["changes"]))
     branch = "swe-mini/" + run["id"]
     # Deterministic branch is recovery journal: reconcile existing PR after a controller crash.
-    existing = github(f"repos/{REPO}/pulls?state=all&head=alchemmist:{branch}")
+    existing = cast(
+        "list[dict[str, object]]", github(f"repos/{REPO}/pulls?state=all&head=alchemmist:{branch}")
+    )
     if existing:
-        return existing[0]["html_url"]
+        return cast("str", existing[0]["html_url"])
     base = github(f"repos/{REPO}/git/commits/" + run["revision"])
-    tree = []
+    entries: list[dict[str, JsonValue]] = []
     for item in changes:
         blob = github(
             f"repos/{REPO}/git/blobs", "POST", {"content": item["content"], "encoding": "base64"}
         )
-        tree.append({"path": item["path"], "mode": "100644", "type": "blob", "sha": blob["sha"]})
+        entries.append(
+            {
+                "path": item["path"],
+                "mode": "100644",
+                "type": "blob",
+                "sha": cast("str", blob["sha"]),
+            }
+        )
     tree = github(
-        f"repos/{REPO}/git/trees", "POST", {"base_tree": base["tree"]["sha"], "tree": tree}
+        f"repos/{REPO}/git/trees",
+        "POST",
+        {
+            "base_tree": cast("str", cast("dict[str, object]", base["tree"])["sha"]),
+            "tree": cast("list[JsonValue]", entries),
+        },
     )
     commit = github(
         f"repos/{REPO}/git/commits",
         "POST",
         {
             "message": f"fix: autonomous {run['lane']} improvement ({run['id']})",
-            "tree": tree["sha"],
+            "tree": cast("str", tree["sha"]),
             "parents": [run["revision"]],
         },
     )
     try:
         github(
-            f"repos/{REPO}/git/refs", "POST", {"ref": "refs/heads/" + branch, "sha": commit["sha"]}
+            f"repos/{REPO}/git/refs",
+            "POST",
+            {"ref": "refs/heads/" + branch, "sha": cast("str", commit["sha"])},
         )
     except requests.HTTPError as exc:
         if exc.response.status_code != 422:
             raise
         # Never force-update a branch that might have acquired human edits.
         ref = github(f"repos/{REPO}/git/ref/heads/" + branch)
-        current = github(f"repos/{REPO}/git/commits/" + ref["object"]["sha"])
-        if current["tree"]["sha"] != tree["sha"] or [p["sha"] for p in current["parents"]] != [
-            run["revision"]
-        ]:
+        current = github(
+            "repos/"
+            + REPO
+            + "/git/commits/"
+            + cast("str", cast("dict[str, object]", ref["object"])["sha"])
+        )
+        tree_sha = cast("dict[str, object]", current["tree"])["sha"]
+        if tree_sha != tree["sha"] or [
+            p["sha"] for p in cast("list[dict[str, object]]", current["parents"])
+        ] != [run["revision"]]:
             raise ValueError("Existing candidate branch differs; refusing publication")
     body = (
         "Automated by mini-swe-agent v2.4.6; owner approval required. No production access or merge.\n\n"
-        + result["report"][:16000]
+        + cast("str", result["report"])[:16000]
         + "\n\n## Deterministic post-check exit codes\n```json\n"
         + json.dumps(result["checks"])
         + "\n```\n## Independent fresh-container review\n"
-        + str(review["review"].get("reason", ""))[:7000]
+        + str(cast("dict[str, object]", review["review"]).get("reason", ""))[:7000]
         + f"\n\nRun `{run['id']}`, base `{run['revision']}`. Model review is not a security guarantee. Full private run record is retained in the queue database."
     )
     pr = github(
@@ -262,7 +294,7 @@ def publish(run, result, review):
             "draft": False,
         },
     )
-    return pr["html_url"]
+    return cast("str", pr["html_url"])
 
 
 def tick():
@@ -272,7 +304,7 @@ def tick():
     ).fetchone()
     if active:
         columns = [r[1] for r in DB.execute("PRAGMA table_info(runs)")]
-        run = dict(zip(columns, active))
+        run = cast("dict[str, str]", dict(zip(columns, active)))
         if run["state"] == "queued":
             start_job(run, "work")
             return
@@ -340,10 +372,11 @@ def tick():
         ):
             save(run["id"], state="failed")
             return
-        candidate = (
+        candidate = cast(
+            "list[dict[str, str]]",
             result.get("changes", [])
             if run["state"] == "work"
-            else json.loads(run["result"] or "{}").get("changes", [])
+            else json.loads(run["result"] or "{}").get("changes", []),
         )
         repair = dependency_repair(candidate)
         try:
@@ -353,20 +386,28 @@ def tick():
                 base = github(
                     f"repos/{REPO}/contents/web/package.json?ref={run['revision']}", auth=True
                 )
-                validate_dependency_update(candidate, json.loads(base64.b64decode(base["content"])))
+                validate_dependency_update(
+                    candidate,
+                    cast(
+                        "dict[str, object]",
+                        json.loads(base64.b64decode(cast("str", base["content"]))),
+                    ),
+                )
         except (ValueError, KeyError, TypeError):
             save(run["id"], state="rejected")
             return
         # Only a narrowly validated dependency repair may start from a red frontend install.
-        baseline_ok = not any(result.get("baseline", {"missing": 1}).values())
+        baseline_ok = not any(
+            cast("dict[str, object]", result.get("baseline", {"missing": 1})).values()
+        )
         bootstrap_ok = (
             repair
-            and result.get("setup", {}).get("node", 0) != 0
-            and result.get("baseline", {}).get("backend") == 0
+            and cast("dict[str, object]", result.get("setup", {})).get("node", 0) != 0
+            and cast("dict[str, object]", result.get("baseline", {})).get("backend") == 0
         )
         if (
             not result.get("checks")
-            or any(result["checks"].values())
+            or any(cast("dict[str, object]", result.get("checks", {})).values())
             or not (baseline_ok or bootstrap_ok)
         ):
             save(run["id"], state="rejected")
@@ -375,14 +416,14 @@ def tick():
             if not result.get("changes"):
                 save(run["id"], state="done")
                 return
-            validate_changes(result["changes"])
+            validate_changes(cast("list[dict[str, str]]", result["changes"]))
             run["result"] = json.dumps(result)
             start_job(run, "review")
         else:
             if (
                 not result.get("candidate_checks")
-                or any(result["candidate_checks"].values())
-                or result.get("review", {}).get("approved") is not True
+                or any(cast("dict[str, object]", result.get("candidate_checks", {})).values())
+                or cast("dict[str, object]", result.get("review", {})).get("approved") is not True
             ):
                 save(run["id"], state="rejected")
             else:
@@ -404,12 +445,18 @@ def tick():
         return False
     NEXT_IDLE_CHECK = time.monotonic() + 300
     # Backpressure: bounded open PRs. Never keep creating PRs faster than a human can review.
-    prs = github(f"repos/{REPO}/pulls?state=open&per_page=100")
-    if sum(p["head"]["ref"].startswith("swe-mini/") for p in prs) >= 5:
+    prs = cast("list[dict[str, object]]", github(f"repos/{REPO}/pulls?state=open&per_page=100"))
+    if (
+        sum(
+            cast("str", cast("dict[str, object]", p["head"])["ref"]).startswith("swe-mini/")
+            for p in prs
+        )
+        >= 5
+    ):
         STATUS["state"] = "waiting_for_pr_review"
         return
-    revision = github(f"repos/{REPO}/commits/main", auth=True)["sha"]
-    open_urls = {p["html_url"] for p in prs}
+    revision = cast("str", github(f"repos/{REPO}/commits/main", auth=True)["sha"])
+    open_urls = {cast("str", p["html_url"]) for p in prs}
     for pr, payload in DB.execute(
         "SELECT pr,result FROM runs WHERE state='published' AND revision=? ORDER BY created DESC LIMIT 100",
         (revision,),
