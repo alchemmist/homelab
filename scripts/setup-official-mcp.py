@@ -92,7 +92,10 @@ def install_runtime(target: Path, *, offline: bool, archive: Path | None) -> Non
         raise ValueError("Upstream archive checksum mismatch")
     # Extract a single regular file, never archive paths/symlinks.
     with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as archive_file:
-        member = archive_file.getmember("prometheus-mcp-server")
+        try:
+            member = archive_file.getmember("prometheus-mcp-server")
+        except KeyError:
+            raise ValueError("Expected regular binary") from None
         extracted = archive_file.extractfile(member)
         if extracted is None or not member.isfile():
             raise ValueError("Expected regular binary")

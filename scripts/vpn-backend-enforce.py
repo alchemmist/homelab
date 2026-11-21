@@ -324,7 +324,7 @@ def apply(
     fixture = False
     process = None
     log = None
-    baseline = None
+    baseline: PublicationBaseline | None = None
     try:
         if target.semantic(target.configuration(s.database)) != target.semantic(original):
             raise ValueError("Config changed opening session")
