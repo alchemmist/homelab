@@ -22,11 +22,11 @@ from tests import test_identity as identity
 
 
 class LifecycleAPI:
-    def __init__(self, fake):
+    def __init__(self, fake) -> None:
         self.fake = fake
-        self.writes = []
+        self.writes: list[tuple[str, str, object]] = []
 
-    def __call__(self, method, path, data=None):
+    def __call__(self, method, path, data=None) -> object:
         if method != "GET":
             self.writes.append((method, path, data))
         if path.endswith(("/add_user/", "/remove_user/")):
