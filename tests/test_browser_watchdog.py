@@ -4,6 +4,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Protocol
 from unittest.mock import patch
 
 
@@ -16,7 +17,19 @@ sys.modules[SPEC.name] = MODULE
 SPEC.loader.exec_module(MODULE)
 
 
-def process(pid=10, ppid=1, start=100, executable="chrome", args=None):
+class Proc(Protocol):
+    """Structural view of a parsed process entry from the watchdog module."""
+
+    pid: int
+
+
+def process(
+    pid: int = 10,
+    ppid: int = 1,
+    start: int = 100,
+    executable: str = "chrome",
+    args: tuple[str, ...] | None = None,
+):
     if args is None:
         args = (
             "chrome",
@@ -37,7 +50,7 @@ class BrowserWatchdogTests(unittest.TestCase):
             send=lambda identity, sig: self.sent.append((identity, sig)),
         )
 
-    def step(self, now, *items):
+    def step(self, now: float, *items: Proc) -> None:
         self.guard.step({p.pid: p for p in items}, now)
 
     def test_only_specific_headless_playwright_roots_match(self):

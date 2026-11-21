@@ -58,7 +58,7 @@ class ProxyFloor(unittest.TestCase):
         counter._tokenizer = SimpleNamespace(encode=lambda *a, **kw: SimpleNamespace(ids=[1] * 10))
         return counter
 
-    def body(self, text, maximum=2500):
+    def body(self, text: str, maximum: int = 2500) -> dict[str, object]:
         return dict(
             model="qwen3.8-27b",
             messages=[dict(role="system", content="s"), dict(role="user", content=text)],

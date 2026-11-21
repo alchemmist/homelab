@@ -15,7 +15,7 @@ KEY = "spi/v1/" + "a" * 64 + "/" + "b" * 64 + "/E001-test.json"
 
 
 class ClientTests(unittest.TestCase):
-    def client(self, responses):
+    def client(self, responses: list[tuple[int, dict[str, str], bytes] | Exception]):
         self.calls = []
 
         def transport(*args):

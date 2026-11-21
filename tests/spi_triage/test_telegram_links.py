@@ -6,7 +6,7 @@ import unittest
 FILES = Path(__file__).resolve().parents[2] / "charts/spi-triage/files"
 
 
-def load(name):
+def load(name: str):
     spec = importlib.util.spec_from_file_location(name, FILES / (name + ".py"))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -42,7 +42,7 @@ class OutboxTest(unittest.TestCase):
             self.store, self.http, clock=lambda: self.now, guarded_protocol=True
         )
 
-    def http(self, method, path, **kwargs):
+    def http(self, method: str, path: str, **kwargs: object):
         self.calls.append((method, path, kwargs))
         return self.status, self.item if method == "GET" else dict(
             key="Alert/pod/ns/name", updated=[dict(chat_id=1, message_id=2)], pending=[]
@@ -172,7 +172,7 @@ class OutboxTest(unittest.TestCase):
         self.receipt()
         original = self.http
 
-        def racing(method, path, **kwargs):
+        def racing(method: str, path: str, **kwargs: object):
             if method == "POST":
                 self.outbox.record_primary_publication(
                     "resolved",
