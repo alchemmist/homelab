@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Reconcile metadata receipts with running regular containers / running host units.
+
 Consumes metadata-only snapshots; never reads application logs.
 """
 

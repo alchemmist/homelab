@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Offline classification gate for literal Helm entrypoints in Ansible YAML.
+
 Not an execution allowlist or a semantic audit of every operational script.
 """
 
@@ -82,6 +83,7 @@ def _helm_holders(root: Path) -> set[str]:
 
 
 def check(root=ROOT):
+    """Check the requested inputs."""
     c = json.loads((root / "deploy/contracts/operational-entrypoints.json").read_text())
     if c["schemaVersion"] != 1:
         raise ValueError("Unsupported entrypoint schema")

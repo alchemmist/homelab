@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Live MFA gateway acceptance, NOT a 3x-ui login or native SSO test.
+
 Explicit temporary observer/admission writes; never reads/resets owner factors or
 native panel passwords. No screenshots, traces, HTML, cookies or OTPs are saved.
 """
@@ -59,6 +60,7 @@ credential = json.loads(
 
 
 def api(method, path, data=None):
+    """Perform the HTTP request and return its response."""
     req = urllib.request.Request(
         BASE + "/api/v3/" + path,
         method=method,
@@ -124,6 +126,7 @@ try:
         authorization_scopes = []
 
         def observe(response):
+            """Perform the observe operation."""
             parsed = urllib.parse.urlparse(response.url)
             if (
                 parsed.hostname == "auth.socrat.alchemmist.xyz"

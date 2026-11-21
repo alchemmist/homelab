@@ -107,6 +107,7 @@ class Client:
     """Observer API client using local credentials."""
 
     def __init__(self, credentials) -> None:
+        """Initialize the observer API client."""
 
         class NoRedirect(urllib.request.HTTPRedirectHandler):
             def redirect_request(self, *_args, **_kwargs) -> None:

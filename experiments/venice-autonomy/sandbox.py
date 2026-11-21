@@ -126,6 +126,7 @@ class Sandbox:
     """Docker sandbox hosting a persistent working directory."""
 
     def __init__(self, files, directory, verifier=False):
+        """Initialize the sandbox environment."""
         self.directory = pathlib.Path(directory)
         self.directory.mkdir(parents=True, exist_ok=True)
         self.events = []

@@ -9,6 +9,7 @@ from pathlib import Path
 
 
 def sample():
+    """Document the sample operation."""
     tool = shutil.which("nvidia-smi")
     if tool:
         try:

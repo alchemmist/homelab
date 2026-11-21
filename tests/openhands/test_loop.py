@@ -1,8 +1,9 @@
 """Tests for OpenHands demo loop invariants: pinning, policy, and scheduling."""
 import importlib.util
 import json
-from pathlib import Path
 import unittest
+from pathlib import Path
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]

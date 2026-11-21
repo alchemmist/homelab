@@ -6,11 +6,10 @@ import io
 import json
 import math
 import os
-from pathlib import Path
 import subprocess
 import tempfile
 import time
-
+from pathlib import Path
 
 FIELDS = (
     ("temperature.gpu", "temperature_celsius", 1),
@@ -39,6 +38,7 @@ QUERY = (
 
 
 def sample(name, labels, value):
+    """Execute the sample operation."""
     suffix = (
         "{" + ",".join(key + "=" + json.dumps(value) for key, value in labels.items()) + "}"
         if labels
@@ -72,6 +72,7 @@ def _metric_lines(labels, row):
 
 
 def parse_metrics(output):
+    """Execute the parse_metrics operation."""
     metrics = []
     count = 0
     for row in csv.reader(io.StringIO(output), skipinitialspace=True):
@@ -91,6 +92,7 @@ def parse_metrics(output):
 
 
 def atomic_write(destination, content):
+    """Execute the atomic_write operation."""
     destination = Path(destination)
     descriptor, temporary = tempfile.mkstemp(prefix=".nvidia-", dir=destination.parent)
     try:
@@ -106,6 +108,7 @@ def atomic_write(destination, content):
 
 
 def collect(binary, destination):
+    """Execute the collect operation."""
     success = 0
     metrics = ""
     try:
@@ -128,6 +131,7 @@ def collect(binary, destination):
 
 
 def main():
+    """Execute the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--binary", default="/usr/bin/nvidia-smi")
     parser.add_argument("--output", required=True)

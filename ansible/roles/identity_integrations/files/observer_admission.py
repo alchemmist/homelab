@@ -4,6 +4,7 @@ PRINCIPAL = "genericoidc_group://homelab-observer"
 
 
 def retain_observer(original, allowed, roles, ttl):
+    """Document the retain observer operation."""
     result = list(allowed)
     if PRINCIPAL not in original.get("allowedPrincipalIds", []):
         return result

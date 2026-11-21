@@ -9,11 +9,11 @@ from __future__ import annotations
 import base64
 import json
 import os
-from pathlib import Path
 import secrets
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 ROOT = Path.home() / ".cache/homelab-authentik"
 CLIENTS_PATH = ROOT / "oidc-clients.json"
