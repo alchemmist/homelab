@@ -8,6 +8,7 @@ The equivalent rule is maintained in otel-production-grafana.py for rebuilds.
 import base64
 import json
 import subprocess
+from typing import cast
 
 NAMESPACE = "cattle-monitoring-system"
 SECRET = "otel-grafana-datasources"
@@ -19,15 +20,15 @@ FIELD = {
 }
 
 
-def configure(document):
+def configure(document) -> dict[str, object]:
     loki = next(source for source in document["datasources"] if source["uid"] == "loki")
     data = loki.setdefault("jsonData", {})
     fields = [field for field in data.get("derivedFields", []) if field.get("name") != "TraceID"]
     data["derivedFields"] = fields + [FIELD]
-    return document
+    return cast("dict[str, object]", document)
 
 
-def run():
+def run() -> None:
     result = subprocess.run(
         ["kubectl", "-n", NAMESPACE, "get", "secret", SECRET, "-o", "json"],
         text=True,

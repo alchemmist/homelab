@@ -28,8 +28,8 @@ class HostMigrationTests(unittest.TestCase):
         }
         expected = copy.deepcopy(group)
         expected["hosts"] = [NEW, NEW + ":443", "11.1.1.1"]
-        self.assertEqual(m.payload(group, OLD, NEW), expected)
-        self.assertEqual(group["hosts"][0], OLD)
+        assert m.payload(group, OLD, NEW) == expected
+        assert group["hosts"][0] == OLD
 
     def test_bad_group_and_port_refuse_before_network(self):
         for group in [
@@ -52,28 +52,24 @@ class HostMigrationTests(unittest.TestCase):
             "client_inbounds": [{"client_id": 1, "inbound_id": 9}],
         }
         after = m.expected_configuration(before, OLD, NEW, "one")
-        self.assertEqual(after["hosts"][0]["id"], 1)
-        self.assertEqual(after["hosts"][0]["address"], NEW)
-        self.assertEqual(after["hosts"][1], before["hosts"][1])
+        assert after["hosts"][0]["id"] == 1
+        assert after["hosts"][0]["address"] == NEW
+        assert after["hosts"][1] == before["hosts"][1]
         for k in ["inbounds", "clients", "client_inbounds"]:
-            self.assertEqual(after[k], before[k])
+            assert after[k] == before[k]
 
     def test_only_known_array_encoding_is_normalized(self):
         a = {"hosts": [{"id": 1, "tags": "[]", "snis": None, "path": "/keep", "sni": "keep"}]}
         b = {"hosts": [{"id": 1, "tags": [], "snis": [], "path": "/keep", "sni": "keep"}]}
-        self.assertEqual(m.canonical_projection(a), m.canonical_projection(b))
+        assert m.canonical_projection(a) == m.canonical_projection(b)
         b["hosts"][0]["path"] = "/changed"
-        self.assertNotEqual(m.canonical_projection(a), m.canonical_projection(b))
+        assert m.canonical_projection(a) != m.canonical_projection(b)
 
     def test_admin_scope_must_be_explicit_and_bound_to_preview(self):
-        self.assertEqual(
-            m.native.NativeSession("/tmp/vpn83-20261109-default").worker_scope, "node-sync"
-        )
-        self.assertEqual(
-            m.native.NativeSession(
-                "/tmp/vpn83-20261109-migrate", worker_scope="admin"
-            ).worker_scope,
-            "admin",
+        assert m.native.NativeSession("/tmp/vpn83-20261109-default").worker_scope == "node-sync"
+        assert (
+            m.native.NativeSession("/tmp/vpn83-20261109-migrate", worker_scope="admin").worker_scope
+            == "admin"
         )
         with self.assertRaises(ValueError):
             m.native.NativeSession("/tmp/vpn83-20261109-deny", worker_scope="unknown")
@@ -115,16 +111,16 @@ class HostMigrationTests(unittest.TestCase):
         after["hosts"][0].update(
             address=NEW, sni_shared_random=0, updated_at=int(time.time() * 1000)
         )
-        self.assertTrue(m.verify_transition(before, after, OLD, NEW, "g"))
+        assert m.verify_transition(before, after, OLD, NEW, "g")
         after["hosts"][0]["sni_shared_random"] = 1
-        self.assertFalse(m.verify_transition(before, after, OLD, NEW, "g"))
+        assert not m.verify_transition(before, after, OLD, NEW, "g")
         after["hosts"][0]["sni_shared_random"] = 0
         after["hosts"][0]["updated_at"] = 1
-        self.assertFalse(m.verify_transition(before, after, OLD, NEW, "g"))
+        assert not m.verify_transition(before, after, OLD, NEW, "g")
 
     def test_single_sni_fallback_native_pool_is_semantically_equal(self):
         a = {"hosts": [{"sni": "keep.example", "snis": None, "sni_shared_random": None}]}
         b = {"hosts": [{"sni": "keep.example", "snis": '["keep.example"]', "sni_shared_random": 0}]}
-        self.assertEqual(m.canonical_projection(a), m.canonical_projection(b))
+        assert m.canonical_projection(a) == m.canonical_projection(b)
         b["hosts"][0]["snis"] = '["different.example"]'
-        self.assertNotEqual(m.canonical_projection(a), m.canonical_projection(b))
+        assert m.canonical_projection(a) != m.canonical_projection(b)

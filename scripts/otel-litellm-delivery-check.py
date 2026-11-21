@@ -7,6 +7,7 @@ import ssl
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from typing import cast
 
 
 def run(pod, application="litellm"):
@@ -18,12 +19,13 @@ def run(pod, application="litellm"):
     context = ssl.create_default_context(cafile=str(root / "ca.crt"))
     context.load_cert_chain(str(root / "client.crt"), str(root / "client.key"))
 
-    def get(url, tls=None):
+    def get(url, tls=None) -> list[dict[str, object]]:
         with urllib.request.urlopen(url, context=tls, timeout=4) as response:
-            result = json.load(response)
+            result: dict[str, object] = json.load(response)
         if result.get("status") != "success" or result.get("warnings"):
             raise ValueError("Native query failed or returned partial/warning evidence")
-        return result["data"]["result"]
+        data = cast("dict[str, object]", result["data"])
+        return cast("list[dict[str, object]]", data["result"])
 
     metrics = get(
         "http://10.43.147.125:9090/api/v1/query?"
@@ -44,8 +46,10 @@ def run(pod, application="litellm"):
         ),
         context,
     )
-    ready = bool(metrics) and all(float(point["value"][1]) == 1 for point in metrics)
-    count = sum(float(point["value"][1]) for point in logs)
+    ready = bool(metrics) and all(
+        float(cast("list[str]", point["value"])[1]) == 1 for point in metrics
+    )
+    count = sum(float(cast("list[str]", point["value"])[1]) for point in logs)
     result = {
         "success": ready and count > 0,
         "pod": pod,
@@ -69,7 +73,7 @@ def run(pod, application="litellm"):
             ),
             context,
         )
-        private_count = sum(float(point["value"][1]) for point in private_logs)
+        private_count = sum(float(cast("list[str]", point["value"])[1]) for point in private_logs)
         result.update(
             syntheticPromptLogEntriesLast2h=private_count,
             syntheticPromptAbsentFromApplicationLogs=private_count == 0,
