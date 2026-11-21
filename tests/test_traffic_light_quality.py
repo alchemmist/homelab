@@ -1,3 +1,5 @@
+"""Tests for the quality traffic-light strip generator and writer."""
+
 import copy
 import importlib.util
 import json

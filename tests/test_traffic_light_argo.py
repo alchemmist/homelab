@@ -1,3 +1,5 @@
+"""Tests for the Argo-flavoured traffic-light dashboard generator."""
+
 import importlib.util
 import json
 import shutil

@@ -1,3 +1,5 @@
+"""Tests for the n8n SPI private stream backup script."""
+
 import importlib.util
 import os
 import stat

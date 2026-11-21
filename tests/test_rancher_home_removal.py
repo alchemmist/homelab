@@ -1,3 +1,5 @@
+"""Tests that the Rancher home landing resources stay removed."""
+
 import importlib.util
 import io
 import json

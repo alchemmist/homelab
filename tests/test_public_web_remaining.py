@@ -1,3 +1,5 @@
+"""Tests for the remaining public-facing web scripts."""
+
 import ast
 import importlib.util, json, subprocess, copy
 from pathlib import Path

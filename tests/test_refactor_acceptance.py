@@ -1,3 +1,5 @@
+"""Acceptance tests for the chart refactor invariants."""
+
 import copy
 import importlib.util
 from pathlib import Path

@@ -1,3 +1,5 @@
+"""Tests for the traffic-light Grafana dashboard loading script."""
+
 import json
 import unittest
 from pathlib import Path

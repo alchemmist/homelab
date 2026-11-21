@@ -1,3 +1,5 @@
+"""Tests for the SPI unified publication origin behaviour."""
+
 import importlib.util
 import os
 from pathlib import Path

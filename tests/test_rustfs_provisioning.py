@@ -1,3 +1,5 @@
+"""Tests for the RustFS provisioning helpers."""
+
 import contextlib
 import hashlib
 import importlib.util

@@ -1,3 +1,5 @@
+"""Tests for the SSH gateway host-key mapping tool."""
+
 import importlib.util
 import json
 from pathlib import Path

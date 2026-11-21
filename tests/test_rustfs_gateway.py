@@ -1,3 +1,5 @@
+"""Tests for the RustFS S3-compatible gateway service."""
+
 import datetime
 import hashlib
 import http.client

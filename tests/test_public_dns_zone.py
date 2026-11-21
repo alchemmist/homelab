@@ -1,3 +1,5 @@
+"""Tests for the public DNS zone publishing script."""
+
 import importlib.util
 from pathlib import Path
 

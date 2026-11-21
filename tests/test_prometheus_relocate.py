@@ -1,3 +1,5 @@
+"""Tests for relocating the Prometheus stack between nodes."""
+
 import importlib.util
 import json
 import unittest

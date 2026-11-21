@@ -1,3 +1,5 @@
+"""Tests for n8n SPI operator retry drift handling."""
+
 import importlib.util
 import json
 from pathlib import Path

@@ -1,3 +1,5 @@
+"""Tests for the Thanos downsampling cascade planner."""
+
 import importlib.util
 import json
 import unittest

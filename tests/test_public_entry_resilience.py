@@ -1,3 +1,5 @@
+"""Tests for resilience behaviour of the public entry configuration."""
+
 import copy
 import importlib.util
 from pathlib import Path

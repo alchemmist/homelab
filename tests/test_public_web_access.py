@@ -1,3 +1,5 @@
+"""Tests for the public web access helper script."""
+
 import copy, importlib.util, json
 from pathlib import Path
 import pytest

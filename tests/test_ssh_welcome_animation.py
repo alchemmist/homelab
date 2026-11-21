@@ -1,3 +1,5 @@
+"""Tests for the SSH welcome portrait animation."""
+
 import importlib.util
 import io
 import json

@@ -1,3 +1,5 @@
+"""Tests for the homelab private DNS ansible role files."""
+
 from pathlib import Path
 import json
 import os

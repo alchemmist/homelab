@@ -1,3 +1,5 @@
+"""Tests for the traffic-light dashboard VPN composite mode."""
+
 import json
 from pathlib import Path
 import shutil
