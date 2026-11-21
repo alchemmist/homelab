@@ -22,7 +22,7 @@ RUN pip install --no-cache-dir --require-hashes -r requirements.txt
 RUN playwright install-deps chromium && rm -rf /var/lib/apt/lists/*
 RUN playwright install --only-shell chromium && chmod -R a+rX /opt/browsers
 RUN useradd -u 1000 -m agent
-COPY policy.py worker.py controller.py selftest.py /app/
+COPY policy.py worker.py controller.py selftest.py dependency_smoke.py /app/
 USER 1000:1000
-RUN python /app/selftest.py
+RUN python /app/dependency_smoke.py && python /app/selftest.py
 CMD ["python", "/app/controller.py"]
