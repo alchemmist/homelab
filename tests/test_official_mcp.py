@@ -3,15 +3,17 @@
 import importlib.util
 import json
 import os
-from pathlib import Path
 import stat
+import types
+from pathlib import Path
+
 import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def module(name):
+def module(name: str) -> types.ModuleType:
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / f"{name}.py")
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
@@ -21,11 +23,21 @@ def module(name):
 def test_real_project_config_has_no_inline_credentials_and_blocks_pending_clients() -> None:
     """Require disabled pending clients and command-backed credential headers."""
     config = json.loads((ROOT / ".pi/mcp.json").read_text())["mcpServers"]
-    assert set(config) == {"socrat-grafana", "argocd", "socrat-metrics", "n8n", "umami", "github"}
+    assert set(config) == {
+        "socrat-grafana",
+        "argocd",
+        "socrat-metrics",
+        "n8n",
+        "umami",
+        "github",
+    }
     for name in ("n8n", "umami", "github"):
         assert config[name]["enabled"] is False
     assert config["n8n"]["exposure"] == "hidden"
-    assert set(config["n8n"]["toolExposure"]) == {"search_workflows", "get_workflow_details"}
+    assert set(config["n8n"]["toolExposure"]) == {
+        "search_workflows",
+        "get_workflow_details",
+    }
     for c in config.values():
         for value in c.get("headers", {}).values():
             assert value.startswith("!python3 scripts/mcp-credential.py ")
@@ -40,10 +52,17 @@ def test_all_current_applications_are_audited_with_reason() -> None:
     assert {r["application"] for r in audit["applications"]} == declared
     assert all(r["decision"] and r["reason"] for r in audit["applications"])
     assert len(audit["workloads"]) >= 100
-    assert set(audit["hostRunningUnits"]) == {"socrat-0", "socrat-1", "socrat-2", "socrat-3"}
+    assert set(audit["hostRunningUnits"]) == {
+        "socrat-0",
+        "socrat-1",
+        "socrat-2",
+        "socrat-3",
+    }
 
 
-def test_official_launchers_pin_read_only_and_do_not_override_tool_allowlist(monkeypatch) -> None:
+def test_official_launchers_pin_read_only_and_do_not_override_tool_allowlist(
+    monkeypatch,
+) -> None:
     """Pin read-only launcher args and reject an unknown server name."""
     m = module("run-official-mcp")
     monkeypatch.setattr(m.creds, "read_private", lambda p: "unit-test-token")

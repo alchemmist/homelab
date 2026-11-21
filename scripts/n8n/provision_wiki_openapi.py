@@ -16,14 +16,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from sync import CONFIG, api
 
 
-def kubectl(*args, input_text=None):
+def kubectl(*args, input_text=None) -> str:
     result = subprocess.run(["kubectl", *args], input=input_text, text=True, capture_output=True)
     if result.returncode:
         raise RuntimeError("kubectl failed: " + " ".join(args[:3]))
-    return result.stdout
+    out: str = result.stdout
+    return out
 
 
-def secret(namespace, name):
+def secret(namespace, name) -> dict[str, str] | None:
     result = subprocess.run(
         ["kubectl", "-n", namespace, "get", "secret", name, "-o", "json"],
         text=True,
@@ -35,7 +36,7 @@ def secret(namespace, name):
     return {key: base64.b64decode(value).decode() for key, value in data.items()}
 
 
-def apply_secret(namespace, name, data):
+def apply_secret(namespace, name, data) -> None:
     obj = {
         "apiVersion": "v1",
         "kind": "Secret",
@@ -46,7 +47,7 @@ def apply_secret(namespace, name, data):
     kubectl("apply", "-f", "-", input_text=json.dumps(obj))
 
 
-def ensure_worker():
+def ensure_worker() -> str:
     current = secret("automation", "wiki-openapi")
     if current and current.get("WORKER_TOKEN") and current.get("LITELLM_KEY"):
         return current["WORKER_TOKEN"]
@@ -72,12 +73,12 @@ with urllib.request.urlopen(req, timeout=30) as r:
     return token
 
 
-def ensure_github_slot():
+def ensure_github_slot() -> None:
     if secret("automation", "wiki-openapi-github") is None:
         apply_secret("automation", "wiki-openapi-github", {"token": "pending"})
 
 
-def sync_workflow(worker_token):
+def sync_workflow(worker_token) -> None:
     blog = json.loads((CONFIG / "blog-credentials.json").read_text())
     path = CONFIG / "wiki-openapi-credentials.json"
     mapping = json.loads(path.read_text()) if path.exists() else {}
@@ -117,7 +118,7 @@ def sync_workflow(worker_token):
     print("Workflow synced inactive:", result["id"])
 
 
-def main():
+def main() -> None:
     token = ensure_worker()
     ensure_github_slot()
     subprocess.run([sys.executable, str(BASE / "scripts/wiki_openapi/deploy.py")], check=True)

@@ -1,25 +1,21 @@
-import pathlib
-import subprocess
-import tempfile
-import unittest
+"""Tests for wishlist vm105 deployment moves."""
 
-import yaml
+import pathlib, subprocess, tempfile, unittest, yaml
 
 R = pathlib.Path(__file__).resolve().parents[1]
 
 
 class WishlistMove(unittest.TestCase):
-    def test_new_storage_is_local_retained_prebound_and_not_old_claim(self):
+    """Tests or helper for WishlistMove."""
+    def test_new_storage_is_local_retained_prebound_and_not_old_claim(self) -> None:
         pv, pvc = list(yaml.safe_load_all((R / "deploy/storage/wishlist-socrat5.yaml").read_text()))
-        self.assertEqual(pv["spec"]["persistentVolumeReclaimPolicy"], "Retain")
-        self.assertEqual(pv["spec"]["local"]["path"], "/mnt/files/homelab/wishlist/data")
-        self.assertEqual(
-            pv["spec"]["claimRef"], {"namespace": "wishlist", "name": "wishlist-socrat5"}
-        )
-        self.assertEqual(pvc["spec"]["volumeName"], pv["metadata"]["name"])
-        self.assertNotEqual(pvc["metadata"]["name"], "wishlist-data")
+        assert pv["spec"]["persistentVolumeReclaimPolicy"] == "Retain"
+        assert pv["spec"]["local"]["path"] == "/mnt/files/homelab/wishlist/data"
+        assert pv["spec"]["claimRef"] == {"namespace": "wishlist", "name": "wishlist-socrat5"}
+        assert pvc["spec"]["volumeName"] == pv["metadata"]["name"]
+        assert pvc["metadata"]["name"] != "wishlist-data"
 
-    def test_production_has_one_writer_exact_image_and_fails_closed_on_empty_data(self):
+    def test_production_has_one_writer_exact_image_and_fails_closed_on_empty_data(self) -> None:
         raw = subprocess.check_output(
             [
                 "helm",
@@ -36,19 +32,19 @@ class WishlistMove(unittest.TestCase):
         docs = [d for d in yaml.safe_load_all(raw) if d]
         d = next(d for d in docs if d["kind"] == "Deployment")
         s = d["spec"]["template"]["spec"]
-        self.assertEqual(d["spec"]["replicas"], 1)
-        self.assertEqual(d["spec"]["strategy"], {"type": "Recreate"})
-        self.assertEqual(s["nodeSelector"], {"kubernetes.io/hostname": "socrat-5"})
-        self.assertEqual(
+        assert d["spec"]["replicas"] == 1
+        assert d["spec"]["strategy"] == {"type": "Recreate"}
+        assert s["nodeSelector"] == {"kubernetes.io/hostname": "socrat-5"}
+        assert (
             next(v for v in s["volumes"] if v["name"] == "data")["persistentVolumeClaim"][
                 "claimName"
-            ],
-            "wishlist-socrat5",
+            ]
+            == "wishlist-socrat5"
         )
-        self.assertEqual(s["containers"][0]["image"], s["initContainers"][0]["image"])
-        self.assertEqual(
-            s["hostAliases"], [{"ip": "10.43.218.222", "hostnames": ["auth.socrat.alchemmist.xyz"]}]
-        )
+        assert s["containers"][0]["image"] == s["initContainers"][0]["image"]
+        assert s["hostAliases"] == [
+            {"ip": "10.43.218.222", "hostnames": ["auth.socrat.alchemmist.xyz"]}
+        ]
         guard = s["initContainers"][0]["args"][0]
         with tempfile.TemporaryDirectory() as t:
             p = pathlib.Path(t) / "db"
@@ -57,19 +53,17 @@ class WishlistMove(unittest.TestCase):
                 if payload is not None:
                     p.write_bytes(payload)
                 result = subprocess.run(["python3", "-c", g], capture_output=True)
-                self.assertNotEqual(result.returncode, 0)
+                assert result.returncode != 0
             p.write_bytes(b"SQLite format 3\x00" + b"verified-header")
             result = subprocess.run(["python3", "-c", g], capture_output=True)
-            self.assertEqual(result.returncode, 0, result.stderr)
+            assert result.returncode == 0, result.stderr
         old = next(d for d in docs if d["kind"] == "PersistentVolumeClaim")
-        self.assertEqual(old["metadata"]["name"], "wishlist-data")
+        assert old["metadata"]["name"] == "wishlist-data"
 
-    def test_shared_defaults_do_not_repoint_existing_data(self):
+    def test_shared_defaults_do_not_repoint_existing_data(self) -> None:
         v = yaml.safe_load((R / "charts/wishlist/values.yaml").read_text())
-        self.assertEqual(
-            v["persistence"], {"existingClaim": "wishlist-data", "requireExistingData": False}
-        )
-        self.assertEqual(v["hostAliases"], [])
+        assert v["persistence"] == {"existingClaim": "wishlist-data", "requireExistingData": False}
+        assert v["hostAliases"] == []
 
 
 if __name__ == "__main__":

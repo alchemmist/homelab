@@ -1,8 +1,10 @@
+"""Tests for the SPI unified origin configuration."""
+
 import importlib.util
 import os
-from pathlib import Path
 import sys
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,12 +31,12 @@ class PublicationOrigin(unittest.TestCase):
                 os.environ, SPI_EVIDENCE_PUBLIC_ORIGIN="https://rustfs.socrat.alchemmist.xyz"
             ):
                 text = bundle.storage_markdown(objects)
-            self.assertIn("](https://rustfs.socrat.alchemmist.xyz/" + objects[0][0] + ")", text)
-            self.assertNotIn("/spi-evidence/", text)
-            self.assertEqual(objects, before)
+            assert "](https://rustfs.socrat.alchemmist.xyz/" + objects[0][0] + ")" in text
+            assert "/spi-evidence/" not in text
+            assert objects == before
             with patch.dict(os.environ, clear=True):
                 legacy = bundle.storage_markdown(objects)
-            self.assertIn("https://spi-evidence.socrat.alchemmist.xyz/" + objects[0][0], legacy)
+            assert "https://spi-evidence.socrat.alchemmist.xyz/" + objects[0][0] in legacy
             for origin in (
                 "https://evil.invalid",
                 "https://rustfs.socrat.alchemmist.xyz/",
@@ -51,7 +53,10 @@ class PublicationOrigin(unittest.TestCase):
 
     def test_live_activation_is_only_publication_origin(self) -> None:
         """Render the live-off chart and reject an unreviewed public origin."""
-        import subprocess, yaml, copy
+        import copy
+        import subprocess
+
+        import yaml
 
         raw = subprocess.check_output(
             [
@@ -74,12 +79,12 @@ class PublicationOrigin(unittest.TestCase):
             x["name"]: x.get("value")
             for x in worker["spec"]["template"]["spec"]["containers"][0]["env"]
         }
-        self.assertEqual(env["SPI_EVIDENCE_PUBLIC_ORIGIN"], "https://rustfs.socrat.alchemmist.xyz")
-        self.assertEqual(env["SPI_LLM_MINUTE_TOKENS"], "30000")
-        self.assertEqual(worker["spec"]["strategy"]["type"], "Recreate")
-        self.assertIn(
-            "@sha256:4cd6a12c1b046c03b74195b2d93aff183d8465230d364b527fa116fd25624a91",
-            worker["spec"]["template"]["spec"]["containers"][0]["image"],
+        assert env["SPI_EVIDENCE_PUBLIC_ORIGIN"] == "https://rustfs.socrat.alchemmist.xyz"
+        assert env["SPI_LLM_MINUTE_TOKENS"] == "30000"
+        assert worker["spec"]["strategy"]["type"] == "Recreate"
+        assert (
+            "@sha256:4cd6a12c1b046c03b74195b2d93aff183d8465230d364b527fa116fd25624a91"
+            in worker["spec"]["template"]["spec"]["containers"][0]["image"]
         )
         failed = subprocess.run(
             [
@@ -92,4 +97,4 @@ class PublicationOrigin(unittest.TestCase):
             ],
             capture_output=True,
         )
-        self.assertNotEqual(failed.returncode, 0)
+        assert failed.returncode != 0

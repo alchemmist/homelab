@@ -2,9 +2,9 @@
 
 import importlib.util
 import os
-from pathlib import Path
 import sqlite3
 import unittest
+from pathlib import Path
 
 spec = importlib.util.spec_from_file_location(
     "retry", Path(__file__).resolve().parents[1] / "scripts/n8n/spi_operator_retry.py"
@@ -12,11 +12,13 @@ spec = importlib.util.spec_from_file_location(
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 
+SHA256_HEX_LENGTH = 64
+
 
 class HashTests(unittest.TestCase):
     """In-memory checks for transaction-local table hashes."""
 
-    def connection(self):
+    def connection(self) -> sqlite3.Connection:
         c = sqlite3.connect(":memory:", isolation_level=None)
         c.row_factory = sqlite3.Row
         self.addCleanup(c.close)
@@ -39,11 +41,11 @@ class HashTests(unittest.TestCase):
                     )
                 c.execute("BEGIN IMMEDIATE")
                 before = m.table_hashes(c)
-                self.assertEqual(before, m.table_hashes(c))
+                assert before == m.table_hashes(c)
                 c.execute('UPDATE "a""b" SET v=?', (b"changed",))
-                self.assertNotEqual(before, m.table_hashes(c))
+                assert before != m.table_hashes(c)
                 c.rollback()
-                self.assertEqual(before, m.table_hashes(c))
+                assert before == m.table_hashes(c)
 
     def test_shadowed_aliases_refused(self) -> None:
         """Refuse tables whose names shadow SQLite rowid aliases."""
@@ -67,7 +69,7 @@ class HashTests(unittest.TestCase):
             c.execute("CREATE TABLE t(value)")
             c.executemany("INSERT INTO t VALUES(?)", [(v,) for v in values])
             hashes.append(m.table_hashes(c))
-        self.assertNotEqual(*hashes)
+        assert hashes[0] != hashes[1]
 
     @unittest.skipUnless(
         os.environ.get("SPI_SORT_FIXTURE"), "requires host fixture and tiny container tmpfs"
@@ -79,13 +81,13 @@ class HashTests(unittest.TestCase):
         )
         self.addCleanup(c.close)
         c.row_factory = sqlite3.Row
-        self.assertEqual(c.execute("PRAGMA temp_store").fetchone()[0], 0)
+        assert c.execute("PRAGMA temp_store").fetchone()[0] == 0
         c.execute("BEGIN IMMEDIATE")
         with self.assertRaisesRegex(sqlite3.OperationalError, "database or disk is full"):
             for _ in c.execute("SELECT * FROM payload ORDER BY 1,2"):
                 pass
-        self.assertTrue(m.table_hashes(c)["payload"])
-        self.assertEqual(len(m.table_hashes(c)["payload"]), 64)
+        assert m.table_hashes(c)["payload"]
+        assert len(m.table_hashes(c)["payload"]) == SHA256_HEX_LENGTH
         c.rollback()
 
 

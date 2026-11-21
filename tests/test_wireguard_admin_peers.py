@@ -1,3 +1,5 @@
+"""Tests for the wireguard admin peers configuration."""
+
 import json
 import shutil
 import subprocess
@@ -10,7 +12,8 @@ TASKS = TEMPLATE_DIR.parent / "tasks/main.yml"
 
 
 class WireGuardTemplateTests(unittest.TestCase):
-    def setUp(self):
+    """Tests for WireGuardTemplateTests."""
+    def setUp(self) -> None:
         if shutil.which("ansible-playbook") is None:
             self.skipTest("ansible-playbook is unavailable")
         self.nodes = {
@@ -27,13 +30,14 @@ class WireGuardTemplateTests(unittest.TestCase):
             },
         }
 
-    def render(self, host, clients=None, nodes=None, peer_endpoints=None):
+    def render(self, host, clients=None, nodes=None, peer_endpoints=None) -> str:
         variables = {
             "inventory_hostname": host,
             "wg_socrat_nodes": nodes or self.nodes,
             "wg_socrat_admin_clients": clients or {},
-            "wg_socrat_peer_endpoints": peer_endpoints or {},
+            "wg_socrat_peer_endpoint_overrides": peer_endpoints or {},
             "wg_socrat_extra_allowed_peer_ips": {},
+            "wg_socrat_bootstrap_peers": {},
             "wg_socrat_port": 51830,
             "wg_socrat_keepalive": 25,
             "wg_socrat_private_key": "private",
@@ -68,44 +72,43 @@ class WireGuardTemplateTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
-            return output.read_text()
+            return str(output.read_text())
 
-    def test_admin_client_is_rendered_as_a_host_route_without_endpoint(self):
+    def test_admin_client_is_rendered_as_a_host_route_without_endpoint(self) -> None:
         config = self.render(
             "socrat-2",
             {
                 "macbook": {"address": "10.250.0.4", "public_key": "mac-key"},
             },
         )
-        self.assertIn("# macbook\nPublicKey = mac-key\nAllowedIPs = 10.250.0.4/32", config)
-        self.assertNotIn("Endpoint =", config.split("# macbook", 1)[1].split("[Peer]", 1)[0])
+        assert "# macbook\nPublicKey = mac-key\nAllowedIPs = 10.250.0.4/32" in config
+        assert "Endpoint =" not in config.split("# macbook", 1)[1].split("[Peer]", 1)[0]
 
-    def test_local_peer_endpoint_override_can_omit_unreachable_lan_endpoint(self):
+    def test_local_peer_endpoint_override_can_omit_unreachable_lan_endpoint(self) -> None:
         config = self.render("socrat-2", peer_endpoints={"socrat-2": {"socrat-1": ""}})
         peer = config.split("# socrat-1", 1)[1].split("[Peer]", 1)[0]
-        self.assertNotIn("Endpoint =", peer)
+        assert "Endpoint =" not in peer
 
-    def test_existing_peer_endpoint_remains_the_default(self):
+    def test_existing_peer_endpoint_remains_the_default(self) -> None:
         config = self.render("socrat-2")
         peer = config.split("# socrat-1", 1)[1].split("[Peer]", 1)[0]
-        self.assertIn("Endpoint = 192.168.0.24:51830", peer)
+        assert "Endpoint = 192.168.0.24:51830" in peer
 
-    def test_selected_key_is_validated_before_configuration_render(self):
+    def test_selected_key_is_validated_before_configuration_render(self) -> None:
         tasks = TASKS.read_text()
-        self.assertLess(
-            tasks.index("Verify selected wg-socrat public key before applying changes"),
-            tasks.index("Render wg-socrat config"),
-        )
-        self.assertIn(
-            "wg_socrat_derived_public_key.stdout | trim == wg_socrat_nodes[inventory_hostname].public_key",
-            tasks,
+        assert tasks.index(
+            "Verify selected wg-socrat public key before applying changes"
+        ) < tasks.index("Render wg-socrat config")
+        assert (
+            "wg_socrat_derived_public_key.stdout | trim == wg_socrat_nodes[inventory_hostname].public_key"
+            in tasks
         )
         generation = tasks[
             tasks.index("Generate wg-socrat private key if missing") : tasks.index(
                 "Store wg-socrat private key fact"
             )
         ]
-        self.assertIn("wg_socrat_runtime_private_key.rc != 0", generation)
+        assert "wg_socrat_runtime_private_key.rc != 0" in generation
 
 
 if __name__ == "__main__":

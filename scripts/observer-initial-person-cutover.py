@@ -15,6 +15,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+from typing import cast
 
 UUID = "9547c492-d757-43f0-8476-98a9c33c4155"
 READONLY = "acc10f26-5658-4ea1-9704-92bfebccaec2"
@@ -92,7 +93,7 @@ def main():
     args.state.mkdir(mode=0o700, parents=True, exist_ok=True)
     boot.private(args.state, directory=True)
 
-    def save(name, value):
+    def save(name, value) -> None:
         boot.save(args.state / name, value)
 
     with (args.state / "lock").open("a") as lock:
@@ -103,9 +104,11 @@ def main():
         )
         client = boot.Client(json.loads(args.credentials.read_text()))
 
-        def snapshot():
-            user = client.call("authentik", "GET", "core/users/94/")
-            observer = boot.planner.exact(client.rows("core/groups/"), "name", "homelab-observer")
+        def snapshot() -> tuple[dict[str, object], dict[str, object]]:
+            user: dict[str, object] = client.call("authentik", "GET", "core/users/94/")
+            observer: dict[str, object] = boot.planner.exact(
+                client.rows("core/groups/"), "name", "homelab-observer"
+            )
             return user, observer
 
         before, group = snapshot()
@@ -126,7 +129,7 @@ def main():
             require(not ops, "Interrupted group changes are incomplete; do not replay them")
             expected = set(original["groups"]) - {READONLY} | {group["pk"]}
             require(
-                set(before["groups"]) == expected
+                set(cast("list[str]", before["groups"])) == expected
                 and before["password_change_date"] == original["password_change_date"],
                 "Unexpected unrelated identity change; stop for review",
             )
@@ -199,9 +202,9 @@ def main():
             save("progress-" + str(index + 1) + ".json", {"completed": index + 1})
         after, after_group = snapshot()
         require(not plan(after, after_group), "Membership readback not converged")
-        expected = set(before["groups"]) - {READONLY} | {group["pk"]}
+        expected = set(cast("list[str]", before["groups"])) - {READONLY} | {group["pk"]}
         require(
-            set(after["groups"]) == expected
+            set(cast("list[str]", after["groups"])) == expected
             and after["password_change_date"] == before["password_change_date"],
             "Unexpected unrelated group/password metadata change; inspect receipts",
         )
