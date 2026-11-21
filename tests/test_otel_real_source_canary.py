@@ -1,3 +1,5 @@
+"""Tests for the OpenTelemetry real-source canary."""
+
 import importlib.util
 from pathlib import Path
 import unittest

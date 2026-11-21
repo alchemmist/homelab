@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Smoke tests for the vpn_failover runtime (systemd units, site backups)."""
 import argparse
 import hashlib
 import json

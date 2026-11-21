@@ -1,3 +1,4 @@
+"""Tests for the OpenHands steward PR lifecycle protocol module."""
 import importlib.util,pathlib,unittest
 from unittest.mock import Mock,patch
 root=pathlib.Path(__file__).resolve().parents[2];p=root/'charts/openhands/files/steward/pr_lifecycle.py';s=importlib.util.spec_from_file_location('life',p);m=importlib.util.module_from_spec(s);s.loader.exec_module(m)

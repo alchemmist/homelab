@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Refresh the Uptime Kuma service catalog in its SQLite database."""
+
 import sqlite3
 
 DB = "/srv/uptime-kuma/kuma.db"
