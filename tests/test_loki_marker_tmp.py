@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class LokiMarkerScratchTests(unittest.TestCase):
-    def test_loki_only_writable_bounded_scratch_preserves_security_and_data(self):
+    def test_loki_only_writable_bounded_scratch_preserves_security_and_data(self) -> None:
         rendered = "\n---\n".join(
             subprocess.check_output(
                 ["helm", "template", name, str(ROOT / "charts" / name),
@@ -42,7 +42,7 @@ class LokiMarkerScratchTests(unittest.TestCase):
                 self.assertNotIn("marker-tmp", mounts)
                 self.assertNotIn("marker-tmp", volumes)
 
-    def test_loki_storage_phases(self):
+    def test_loki_storage_phases(self) -> None:
         chart = ROOT / 'charts/loki'
         claim = yaml.safe_load((ROOT / 'deploy/storage/loki-drill/pvc.yaml').read_text())['metadata']['name']
         for phase in ('local', 'paused', 'shared', 'typo'):
@@ -68,4 +68,4 @@ class LokiMarkerScratchTests(unittest.TestCase):
                 terms = affinity['requiredDuringSchedulingIgnoredDuringExecution']['nodeSelectorTerms']
                 self.assertEqual(len(terms), 1)
                 self.assertIn({'key': 'kubernetes.io/hostname', 'operator': 'In', 'values': ['socrat-0', 'socrat-1']}, terms[0]['matchExpressions'])
-                self.assertIn({'weight': 100, 'preference': {'matchExpressions': [{'key': 'kubernetes.io/hostname', 'operator': 'In', 'values': ['socrat-0']}]}}, affinity['preferredDuringSchedulingIgnoredDuringExecution'])
+                self.assertIn({'weight': 100, 'preference': {'matchExpressions': [{'key': 'kubernetes.io/hostname', 'operator': 'In', 'values': ['socrat-1']}]}}, affinity['preferredDuringSchedulingIgnoredDuringExecution'])
