@@ -12,10 +12,12 @@ ULID = re.compile(r"^[0-9A-Z]{26}$")
 
 def safe_relative(path):
     if not path or path.startswith("/") or "\\" in path:
-        raise ValueError("bad path")
+        msg = "bad path"
+        raise ValueError(msg)
     parts = path.split("/")
     if any(part in ("", ".", "..") for part in parts):
-        raise ValueError("bad path")
+        msg = "bad path"
+        raise ValueError(msg)
     return parts
 
 
@@ -59,7 +61,8 @@ def list_blocks(directory):
 
 def begin(directory, ulid):
     if not ULID.match(ulid):
-        raise ValueError("bad ulid")
+        msg = "bad ulid"
+        raise ValueError(msg)
     path = staging_path(directory, ulid)
     if os.path.isdir(path):
         shutil.rmtree(path)
@@ -68,7 +71,8 @@ def begin(directory, ulid):
 
 def write_file(directory, ulid, relative, chunks):
     if not ULID.match(ulid):
-        raise ValueError("bad ulid")
+        msg = "bad ulid"
+        raise ValueError(msg)
     parts = safe_relative(relative)
     root = staging_path(directory, ulid)
     if not os.path.isdir(root):
@@ -83,12 +87,14 @@ def write_file(directory, ulid, relative, chunks):
 
 def commit(directory, ulid):
     if not ULID.match(ulid):
-        raise ValueError("bad ulid")
+        msg = "bad ulid"
+        raise ValueError(msg)
     staged = staging_path(directory, ulid)
     with open(os.path.join(staged, "meta.json"), encoding="utf-8") as handle:
         meta = json.load(handle)
     if meta.get("ulid") != ulid:
-        raise ValueError("ulid mismatch")
+        msg = "ulid mismatch"
+        raise ValueError(msg)
     final = block_path(directory, ulid)
     if os.path.isdir(final):
         previous = final + ".previous"
@@ -103,7 +109,8 @@ def commit(directory, ulid):
 
 def mark_deleted(directory, ulid, details="cascade"):
     if not ULID.match(ulid):
-        raise ValueError("bad ulid")
+        msg = "bad ulid"
+        raise ValueError(msg)
     root = block_path(directory, ulid)
     if not os.path.isdir(root):
         raise FileNotFoundError(ulid)
