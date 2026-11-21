@@ -82,7 +82,7 @@ def run(kubeconfig, state_directory):
     state_directory.mkdir(mode=0o700, parents=True, exist_ok=False)
     base = ["k3s", "kubectl", "--kubeconfig", kubeconfig]
 
-    def command(arguments):
+    def command(arguments) -> str:
         return subprocess.check_output(base + arguments, text=True, timeout=200)
 
     nodes = json.loads(command(["get", "nodes", "-o", "json"]))
