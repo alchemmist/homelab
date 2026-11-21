@@ -125,7 +125,7 @@ def _validate_container(resources: dict[str, dict[str, object]]) -> None:
     for name, limit in resources.get("limits", {}).items():
         if name in RESOURCES and quantity(limit) < quantity(requests[name]):
             raise ValueError("Profile limit below request: " + name)
-    remove = resources.get("removeCpuLimit")
+    remove = resources.get("removeCpuLimit", False)
     if not isinstance(remove, bool):
         raise ValueError("removeCpuLimit must be boolean")
     if remove and "cpu" in resources.get("limits", {}):

@@ -65,6 +65,10 @@ def _local_source_targets(context: _ScanContext, source: dict[str, object], path
     """Validate a local source's chart directory or required ref form."""
     local = source["repoURL"] == context.repo
     if local:
+        if source.get("targetRevision") != "main":
+            raise ValueError(
+                "Cannot verify non-main local source against current checkout: " + context.name
+            )
         if path:
             return _local_chart_targets(context, source, cast("str", path))
         if not source.get("ref"):

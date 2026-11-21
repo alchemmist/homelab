@@ -105,12 +105,15 @@ def _check_nodes(host: str) -> tuple[set[object], dict[str, str], int, int]:
     """Verify every cluster node is Ready and return per-node identities."""
     nodes = kubectl(host, "get", "nodes", "-o", "json")["items"]
     names = {node["metadata"]["name"] for node in nodes}
-    node_addresses = {
-        node["metadata"]["name"]: next(
-            a["address"] for a in node["status"]["addresses"] if a["type"] == "InternalIP"
+    node_addresses = {}
+    for node in nodes:
+        name = node["metadata"]["name"]
+        address = next(
+            (a["address"] for a in node["status"].get("addresses", []) if a["type"] == "InternalIP"),
+            None,
         )
-        for node in nodes
-    }
+        require(address is not None, f"node {name} has an InternalIP")
+        node_addresses[name] = address
     etcd_count = sum(
         "node-role.kubernetes.io/etcd" in node["metadata"].get("labels", {}) for node in nodes
     )
