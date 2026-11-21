@@ -26,7 +26,8 @@ def kube(*args, document=None) -> str:
     return r.stdout
 
 
-def run(args) -> None:
+def _verified_database_host() -> object:
+    """Return the verified application database endpoint or refuse the restore."""
     secret = json.loads(kube("-n", "lms", "get", "secret", "lms-db", "-o", "json"))
     try:
         host = urlsplit(
@@ -38,18 +39,13 @@ def run(args) -> None:
         ) from None
     if host not in {"lms-postgres", "lms-postgres.lms.svc.cluster.local"}:
         raise ValueError("Refusing to overwrite HA database: application no longer uses legacy DB")
-    if not args.rehearsal and not args.confirm_web_stopped:
-        raise ValueError("Final copy requires --confirm-web-stopped")
-    if not args.rehearsal:
-        dep = json.loads(kube("-n", "lms", "get", "deployment", "lms", "-o", "json"))
-        pods = json.loads(
-            kube("-n", "lms", "get", "pods", "-l", "app.kubernetes.io/name=lms", "-o", "json")
-        )
-        if dep["spec"]["replicas"] != 0 or pods["items"]:
-            raise ValueError("Refusing final restore: LMS is not fully stopped")
-    name = "lms-ha-copy-" + datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    return host
+
+
+def _copy_job_document(name: str, *, rehearsal: bool) -> dict[str, object]:
+    """Assemble the guarded pg_dump/restore Job spec for the given run mode."""
     script = (ROOT / "scripts/lms-ha/copy-database.sh").read_text()
-    job = {
+    return {
         "apiVersion": "batch/v1",
         "kind": "Job",
         "metadata": {"name": name, "namespace": "lms"},
@@ -87,7 +83,7 @@ def run(args) -> None:
                                 {"name": "BACKUP_ID", "value": name},
                                 {
                                     "name": "REQUIRE_EXACT_MATCH",
-                                    "value": "0" if args.rehearsal else "1",
+                                    "value": "0" if rehearsal else "1",
                                 },
                             ],
                             "resources": {
@@ -133,7 +129,10 @@ def run(args) -> None:
             },
         },
     }
-    kube("create", "-f", "-", document=job)
+
+
+def _await_job_completion(name: str) -> None:
+    """Poll the Job until it finishes, then relist only its fingerprint lines."""
     import time
 
     try:
@@ -165,6 +164,23 @@ def run(args) -> None:
                 )
             ):
                 print(line)
+
+
+def run(args) -> None:
+    _verified_database_host()
+    if not args.rehearsal and not args.confirm_web_stopped:
+        raise ValueError("Final copy requires --confirm-web-stopped")
+    if not args.rehearsal:
+        dep = json.loads(kube("-n", "lms", "get", "deployment", "lms", "-o", "json"))
+        pods = json.loads(
+            kube("-n", "lms", "get", "pods", "-l", "app.kubernetes.io/name=lms", "-o", "json")
+        )
+        if dep["spec"]["replicas"] != 0 or pods["items"]:
+            raise ValueError("Refusing final restore: LMS is not fully stopped")
+    name = "lms-ha-copy-" + datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    job = _copy_job_document(name, rehearsal=args.rehearsal)
+    kube("create", "-f", "-", document=job)
+    _await_job_completion(name)
     print(
         json.dumps(
             {

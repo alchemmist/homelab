@@ -18,7 +18,7 @@ import urllib.parse
 import urllib.request
 import uuid
 from pathlib import Path
-from typing import cast
+from typing import NamedTuple, cast
 
 ADMIN = "netbird-internal-admins"
 LEGACY_LOGIN = "netbird-pilot-login"
@@ -27,88 +27,152 @@ PROFILE_MAPPING = "homelab-netbird-profile-groups"
 EXPRESSION = 'return {"groups": [group.name for group in request.user.ak_groups.all()]}'
 
 
-def require(value, message) -> None:
+def require(value: object, message: str) -> None:
+    """Stop unless the audited invariant holds."""
     if not value:
         raise ValueError(message)
 
 
-def unique(items, key, value) -> dict[str, object]:
-    matches = [x for x in items if x.get(key) == value]
+def unique(items: list[object], key: str, value: object) -> dict[str, object]:
+    """Return the single reviewed object matching the given key and value."""
+    matches = [x for x in items if cast("dict[str, object]", x).get(key) == value]
     require(len(matches) == 1, "Missing or ambiguous reviewed object")
-    match: dict[str, object] = matches[0]
-    return match
+    return cast("dict[str, object]", matches[0])
 
 
-def safe_group(group) -> None:
+def safe_group(group: object) -> None:
+    """Admission groups must not inherit identity administration."""
+    raw = cast("dict[str, object]", group)
     require(
-        group.get("is_superuser") is False
-        and group.get("parents") == []
-        and group.get("roles") == [],
+        raw.get("is_superuser") is False and raw.get("parents") == [] and raw.get("roles") == [],
         "Admission group must not inherit identity administration",
     )
 
 
-def reconcile_plan(s) -> list[dict[str, object]]:
-    accounts = s["nb_accounts"]
+class _ReviewedAccount(NamedTuple):
+    """The one reviewed NetBird account and its validated JWT settings."""
+
+    account: object
+    settings: object
+
+
+class _ReviewedProvider(NamedTuple):
+    """The reviewed OAuth application and its provider identity."""
+
+    app: object
+    provider: object
+
+
+def _require_account_settings(s: object) -> _ReviewedAccount:
+    """Require the single reviewed account to run OIDC-only propagation."""
+    snapshot = cast("dict[str, object]", s)
+    accounts = cast("list[object]", snapshot["nb_accounts"])
     require(len(accounts) == 1, "Exactly one reviewed NetBird account required")
     account = accounts[0]
-    settings = account["settings"]
+    settings = cast("dict[str, object]", account)["settings"]
     require(
-        settings.get("local_auth_disabled") is True
-        and settings.get("jwt_groups_enabled") is True
-        and settings.get("groups_propagation_enabled") is True
-        and settings.get("jwt_groups_claim_name") == "groups",
+        cast("dict[str, object]", settings).get("local_auth_disabled") is True
+        and cast("dict[str, object]", settings).get("jwt_groups_enabled") is True
+        and cast("dict[str, object]", settings).get("groups_propagation_enabled") is True
+        and cast("dict[str, object]", settings).get("jwt_groups_claim_name") == "groups",
         "Existing OIDC-only JWT propagation required",
     )
-    group = unique(s["ak_groups"], "name", ADMIN)
-    safe_group(group)
-    app = unique(s["ak_apps"], "slug", APP)
-    require(app.get("policy_engine_mode") == "any", "Application policy mode drift")
-    provider = unique(s["ak_providers"], "pk", app["provider"])
+    return _ReviewedAccount(account=account, settings=settings)
+
+
+def _require_provider_flows(s: object) -> _ReviewedProvider:
+    """Require the stable OAuth provider to bind MFA validation with enrollment."""
+    snapshot = cast("dict[str, object]", s)
+    app = unique(cast("list[object]", snapshot["ak_apps"]), "slug", APP)
     require(
-        provider.get("sub_mode") == "user_uuid"
-        and provider.get("authentication_flow")
-        and provider.get("authorization_flow"),
+        cast("dict[str, object]", app).get("policy_engine_mode") == "any",
+        "Application policy mode drift",
+    )
+    provider = unique(
+        cast("list[object]", snapshot["ak_providers"]),
+        "pk",
+        cast("dict[str, object]", app)["provider"],
+    )
+    raw_provider = cast("dict[str, object]", provider)
+    require(
+        raw_provider.get("sub_mode") == "user_uuid"
+        and raw_provider.get("authentication_flow")
+        and raw_provider.get("authorization_flow"),
         "Stable UUID subject and authentication flows required",
     )
     stage_ids = {
-        b["stage"].get("pk") if isinstance(b.get("stage"), dict) else b.get("stage")
-        for b in s["ak_flow_bindings"]
+        cast("dict[str, object]", stage).get("pk") if isinstance(stage, dict) else stage
+        for stage in (
+            cast("dict[str, object]", binding).get("stage")
+            for binding in cast("list[object]", snapshot["ak_flow_bindings"])
+        )
     }
-    validators = [stage for stage in s["ak_mfa"] if stage["pk"] in stage_ids]
+    validators = [
+        cast("dict[str, object]", stage)
+        for stage in cast("list[object]", snapshot["ak_mfa"])
+        if cast("dict[str, object]", stage)["pk"] in stage_ids
+    ]
     require(
         validators
-        and all(stage.get("not_configured_action") == "configure" for stage in validators),
+        and all(
+            cast("dict[str, object]", stage).get("not_configured_action") == "configure"
+            for stage in validators
+        ),
         "Provider authentication flow must bind MFA validation with enrollment, not skip",
     )
-    scopes = [scope for scope in s["ak_scopes"] if scope.get("name") == PROFILE_MAPPING]
+    return _ReviewedProvider(app=app, provider=provider)
+
+
+def _reviewed_profile_scope(s: object) -> object:
+    """Require the optional profile mapping to match the reviewed expression."""
+    scopes = [
+        scope
+        for scope in cast("list[object]", cast("dict[str, object]", s)["ak_scopes"])
+        if cast("dict[str, object]", scope).get("name") == PROFILE_MAPPING
+    ]
     require(len(scopes) <= 1, "Ambiguous NetBird-specific profile mapping")
     scope = scopes[0] if scopes else None
     if scope:
+        raw = cast("dict[str, object]", scope)
         require(
-            scope.get("scope_name") == "profile" and scope.get("expression") == EXPRESSION,
+            raw.get("scope_name") == "profile" and raw.get("expression") == EXPRESSION,
             "Reviewed profile-scoped genuine groups mapping required",
         )
-    jwt_group = unique(s["nb_groups"], "name", ADMIN)
-    require(jwt_group.get("issued") == "jwt", "Never synthesize an API-issued human source group")
-    all_group = unique(s["nb_groups"], "name", "All")
-    # A group grant must never silently bless an unrelated Default/All policy.
+    return scope
+
+
+def _effective_admin_rule(s: object, jwt_id: object, all_id: object) -> bool:
+    """Require an enabled rule that genuinely sources the admin JWT group."""
+
+    def rule_ids(values: object) -> list[object]:
+        return [
+            cast("dict[str, object]", v)["id"] if isinstance(v, dict) else v
+            for v in cast("list[object]", values or [])
+        ]
+
     admin_rules = 0
-    for policy in s["nb_policies"]:
-        if not policy.get("enabled"):
+    for policy in cast("list[object]", cast("dict[str, object]", s)["nb_policies"]):
+        raw_policy = cast("dict[str, object]", policy)
+        if not raw_policy.get("enabled"):
             continue
-        for rule in policy.get("rules") or []:
+        for raw_rule in cast("list[object]", raw_policy.get("rules") or []):
+            rule = cast("dict[str, object]", raw_rule)
             if not rule.get("enabled"):
                 continue
-            ids = lambda values: [v["id"] if isinstance(v, dict) else v for v in values or []]
-            sources = ids(rule.get("sources"))
-            destinations = ids(rule.get("destinations"))
+            sources = rule_ids(rule.get("sources"))
+            destinations = rule_ids(rule.get("destinations"))
             require(
-                sources and all_group["id"] not in sources and all_group["id"] not in destinations,
+                sources and all_id not in sources and all_id not in destinations,
                 "Unreviewed All-device policy; stop before admitting a human",
             )
-            admin_rules += jwt_group["id"] in sources
-    require(admin_rules > 0, "No effective policy uses the genuine administrator JWT source")
+            admin_rules += jwt_id in sources
+    return admin_rules > 0
+
+
+def _profile_mapping_operations(
+    s: object, provider: object, scope: object
+) -> list[dict[str, object]]:
+    """Plan reviewed profile-mapping creation and provider claim changes."""
     operations: list[dict[str, object]] = []
     if scope is None:
         operations.append(
@@ -126,14 +190,16 @@ def reconcile_plan(s) -> list[dict[str, object]]:
                 "result_ref": "profile_mapping",
             }
         )
-    mappings = cast("list[object]", provider.get("property_mappings") or [])
+    raw_provider = cast("dict[str, object]", provider)
+    mappings = cast("list[object]", raw_provider.get("property_mappings") or [])
     unused = {
-        p["pk"]
-        for p in s["ak_scopes"]
-        if p.get("name") == "homelab-groups" and p.get("scope_name") == "groups"
+        cast("dict[str, object]", p)["pk"]
+        for p in cast("list[object]", cast("dict[str, object]", s)["ak_scopes"])
+        if cast("dict[str, object]", p).get("name") == "homelab-groups"
+        and cast("dict[str, object]", p).get("scope_name") == "groups"
     }
     wanted = [key for key in mappings if key not in unused]
-    scope_id = scope["pk"] if scope else "$profile_mapping"
+    scope_id = cast("dict[str, object]", scope)["pk"] if scope else "$profile_mapping"
     if scope_id not in wanted:
         wanted.append(scope_id)
     if wanted != mappings:
@@ -141,48 +207,71 @@ def reconcile_plan(s) -> list[dict[str, object]]:
             {
                 "system": "ak",
                 "method": "PATCH",
-                "path": "providers/oauth2/" + str(provider["pk"]) + "/",
+                "path": "providers/oauth2/" + str(raw_provider["pk"]) + "/",
                 "body": {"property_mappings": wanted},
                 "purpose": "profile-groups-claim",
             }
         )
-    bindings = s["ak_bindings"]
-    allowed_ids = {g["pk"] for g in s["ak_groups"] if g["name"] in (ADMIN, LEGACY_LOGIN)}
+    return operations
+
+
+def _require_valid_bindings(s: object, allowed_ids: object) -> list[object]:
+    """Application admission bindings must be enabled group rules only."""
+    bindings = cast("list[object]", cast("dict[str, object]", s)["ak_bindings"])
     for binding in bindings:
+        raw = cast("dict[str, object]", binding)
         require(
-            binding.get("group") in allowed_ids
-            and not binding.get("user")
-            and not binding.get("policy")
-            and binding.get("enabled") is True
-            and not binding.get("negate")
-            and not binding.get("failure_result"),
+            raw.get("group") in allowed_ids
+            and not raw.get("user")
+            and not raw.get("policy")
+            and raw.get("enabled") is True
+            and not raw.get("negate")
+            and not raw.get("failure_result"),
             "Unexpected application admission binding; review before changing",
         )
-    if not any(b.get("group") == group["pk"] for b in bindings):
-        operations.append(
-            {
-                "system": "ak",
-                "method": "POST",
-                "path": "policies/bindings/",
-                "body": {
-                    "target": app["pk"],
-                    "group": group["pk"],
-                    "enabled": True,
-                    "order": max([b.get("order", 0) for b in bindings] + [0]) + 1,
-                    "negate": False,
-                    "failure_result": False,
-                },
-                "purpose": "admin-application-admission",
-            }
-        )
-    allowed = settings.get("jwt_allow_groups") or []
+    return bindings
+
+
+def _admin_admission_operations(
+    bindings: list[object], group: object, app: object
+) -> list[dict[str, object]]:
+    """Plan the missing admin-group application admission binding, if any."""
+    raw_group = cast("dict[str, object]", group)
+    raw_app = cast("dict[str, object]", app)
+    orders = [cast("dict[str, object]", b).get("order", 0) for b in bindings]
+    for binding in bindings:
+        if cast("dict[str, object]", binding).get("group") == raw_group["pk"]:
+            return []
+    return [
+        {
+            "system": "ak",
+            "method": "POST",
+            "path": "policies/bindings/",
+            "body": {
+                "target": raw_app["pk"],
+                "group": raw_group["pk"],
+                "enabled": True,
+                "order": max(*orders, 0) + 1,
+                "negate": False,
+                "failure_result": False,
+            },
+            "purpose": "admin-application-admission",
+        }
+    ]
+
+
+def _trusted_admission_updates(account: object, settings: object) -> list[dict[str, object]]:
+    """Plan the trusted-group SSO admission settings updates."""
+    operations: list[dict[str, object]] = []
+    raw_settings = cast("dict[str, object]", settings)
+    allowed = cast("list[str]", raw_settings.get("jwt_allow_groups") or [])
     require(
         allowed and set(allowed).issubset({LEGACY_LOGIN, ADMIN}),
         "Unexpected login allowlist; do not relax approval",
     )
-    updated = dict(settings)
+    updated = dict(raw_settings)
     updated["jwt_allow_groups"] = allowed if ADMIN in allowed else allowed + [ADMIN]
-    extra = dict(settings.get("extra") or {})
+    extra = dict(cast("dict[str, object]", raw_settings.get("extra") or {}))
     require(
         extra.get("peer_approval_enabled") is False,
         "Manual peer approval changed; review before claiming automatic device access",
@@ -190,31 +279,73 @@ def reconcile_plan(s) -> list[dict[str, object]]:
     # IdP group+MFA admission replaces the redundant per-user approval gate.
     extra["user_approval_required"] = False
     updated["extra"] = extra
-    if updated != settings:
+    raw_account = cast("dict[str, object]", account)
+    if updated != raw_settings:
         operations.append(
             {
                 "system": "nb",
                 "method": "PUT",
-                "path": "accounts/" + account["id"],
+                "path": "accounts/" + str(raw_account["id"]),
                 "body": {"settings": updated},
                 "purpose": "trusted-group-sso-admission",
             }
         )
-    disabled = s["nb_dns"].get("disabled_management_groups") or []
-    if all_group["id"] not in disabled:
+    return operations
+
+
+def reconcile_plan(s):
+    snapshot = cast("dict[str, object]", s)
+    reviewed = _require_account_settings(s)
+    flows = _require_provider_flows(s)
+    scope = _reviewed_profile_scope(s)
+    group = unique(cast("list[object]", snapshot["ak_groups"]), "name", ADMIN)
+    safe_group(group)
+    jwt_group = unique(cast("list[object]", snapshot["nb_groups"]), "name", ADMIN)
+    require(
+        cast("dict[str, object]", jwt_group).get("issued") == "jwt",
+        "Never synthesize an API-issued human source group",
+    )
+    all_group = unique(cast("list[object]", snapshot["nb_groups"]), "name", "All")
+    # A group grant must never silently bless an unrelated Default/All policy.
+    require(
+        _effective_admin_rule(
+            s,
+            cast("dict[str, object]", jwt_group)["id"],
+            cast("dict[str, object]", all_group)["id"],
+        ),
+        "No effective policy uses the genuine administrator JWT source",
+    )
+    operations: list[dict[str, object]] = []
+    operations.extend(_profile_mapping_operations(s, flows.provider, scope))
+    allowed_ids = {
+        cast("dict[str, object]", g)["pk"]
+        for g in cast("list[object]", snapshot["ak_groups"])
+        if cast("dict[str, object]", g).get("name") in (ADMIN, LEGACY_LOGIN)
+    }
+    bindings = _require_valid_bindings(s, allowed_ids)
+    operations.extend(_admin_admission_operations(bindings, group, flows.app))
+    operations.extend(_trusted_admission_updates(reviewed.account, reviewed.settings))
+    disabled = cast("dict[str, object]", snapshot["nb_dns"]).get("disabled_management_groups") or []
+    if cast("dict[str, object]", all_group)["id"] not in cast("list[object]", disabled):
         operations.append(
             {
                 "system": "nb",
                 "method": "PUT",
                 "path": "dns/settings",
-                "body": dict(s["nb_dns"], disabled_management_groups=disabled + [all_group["id"]]),
+                "body": dict(
+                    cast("dict[str, object]", snapshot["nb_dns"]),
+                    disabled_management_groups=[
+                        *cast("list[object]", disabled),
+                        cast("dict[str, object]", all_group)["id"],
+                    ],
+                ),
                 "purpose": "server-side-dns-management-off",
             }
         )
     return operations
 
 
-def membership_plan(s, username, expected_uuid, revoke=False) -> list[dict[str, object]]:
+def membership_plan(s, username, expected_uuid, revoke=False):
     require(
         username and expected_uuid,
         "Explicit username and independently reviewed Authentik UUID required",
@@ -235,7 +366,7 @@ def membership_plan(s, username, expected_uuid, revoke=False) -> list[dict[str, 
     )
     group = unique(s["ak_groups"], "name", ADMIN)
     safe_group(group)
-    present = user["pk"] in cast("list[object]", group.get("users", []))
+    present = user["pk"] in group.get("users", [])
     if present != revoke:
         return []
     action = "remove_user" if revoke else "add_user"
@@ -243,14 +374,14 @@ def membership_plan(s, username, expected_uuid, revoke=False) -> list[dict[str, 
         {
             "system": "ak",
             "method": "POST",
-            "path": "core/groups/" + cast("str", group["pk"]) + "/" + action + "/",
+            "path": "core/groups/" + group["pk"] + "/" + action + "/",
             "body": {"pk": user["pk"]},
             "purpose": "revoke-human-admission" if revoke else "grant-human-admission",
         }
     ]
 
 
-def subject_identity(value) -> tuple[str, ...]:
+def subject_identity(value):
     """Decode Dex's exact protobuf (subject, connector); never match by email."""
     raw = base64.b64decode(value + "=" * (-len(value) % 4), validate=True)
     offset = 0
@@ -275,7 +406,7 @@ def subject_identity(value) -> tuple[str, ...]:
     return tuple(fields)
 
 
-def offboard_plan(s, username, expected_uuid) -> list[dict[str, object]]:
+def offboard_plan(s, username, expected_uuid):
     membership = membership_plan(s, username, expected_uuid, True)
     app = unique(s["ak_apps"], "slug", APP)
     provider = unique(s["ak_providers"], "pk", app["provider"])
@@ -290,9 +421,9 @@ def offboard_plan(s, username, expected_uuid) -> list[dict[str, object]]:
         "type",
         "authentik",
     )
-    connector = cast("str", idp["id"])
+    connector = idp["id"]
     require(connector.startswith("authentik-"), "Unexpected native Authentik connector identifier")
-    matches: list[dict[str, object]] = []
+    matches = []
     for user in s["nb_users"]:
         if user.get("is_service_user") or user.get("idp_id") != connector:
             continue
@@ -306,8 +437,8 @@ def offboard_plan(s, username, expected_uuid) -> list[dict[str, object]]:
         return membership
     user = matches[0]
     require(user.get("role") == "user", "Owner/admin NetBird account needs explicit owner review")
-    path = "users/" + urllib.parse.quote(cast("str", user["id"]), safe="")
-    plan: list[dict[str, object]] = []
+    path = "users/" + urllib.parse.quote(user["id"], safe="")
+    plan = []
     if not user.get("is_blocked"):
         plan.append(
             {
@@ -347,7 +478,7 @@ class API:
 
         self.opener = urllib.request.build_opener(NoRedirect)
 
-    def call(self, system, method, path, body=None) -> object:
+    def call(self, system, method, path, body=None):
         require(
             system in ("ak", "nb") and not path.startswith("/") and "://" not in path,
             "Invalid owned API path",
@@ -371,23 +502,20 @@ class API:
             content = response.read()
             return json.loads(content) if content else None
 
-    def rows(self, path) -> list[object]:
-        result: list[object] = []
+    def rows(self, path):
+        result = []
         for page in range(1, 1001):
-            data = cast(
-                "dict[str, object]",
-                self.call(
-                    "ak",
-                    "GET",
-                    path + ("&" if "?" in path else "?") + "page_size=100&page=" + str(page),
-                ),
+            data = self.call(
+                "ak",
+                "GET",
+                path + ("&" if "?" in path else "?") + "page_size=100&page=" + str(page),
             )
-            result.extend(cast("list[object]", data["results"]))
-            if not cast("dict[str, object]", data.get("pagination", {})).get("next"):
+            result.extend(data["results"])
+            if not data.get("pagination", {}).get("next"):
                 return result
         raise ValueError("Pagination limit exceeded")
 
-    def snapshot(self) -> dict[str, object]:
+    def snapshot(self):
         state = {
             "nb_" + name: self.call("nb", "GET", name)
             for name in ["accounts", "groups", "users", "peers", "policies"]
@@ -406,13 +534,13 @@ class API:
         provider = unique(state["ak_providers"], "pk", app["provider"])
         state["ak_mfa"] = self.rows("stages/authenticator/validate/")
         state["ak_flow_bindings"] = self.rows(
-            "flows/bindings/?target=" + cast("str", provider["authentication_flow"])
+            "flows/bindings/?target=" + provider["authentication_flow"]
         )
-        state["ak_bindings"] = self.rows("policies/bindings/?target=" + cast("str", app["pk"]))
+        state["ak_bindings"] = self.rows("policies/bindings/?target=" + app["pk"])
         return state
 
 
-def atomic(path, value) -> None:
+def atomic(path, value):
     temp = path.with_suffix(".tmp")
     fd = os.open(temp, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
     with os.fdopen(fd, "w") as f:
@@ -422,7 +550,7 @@ def atomic(path, value) -> None:
     os.replace(temp, path)
 
 
-def check_state_folder(folder) -> None:
+def check_state_folder(folder):
     require(
         folder.is_absolute() and not folder.is_symlink(),
         "Absolute private state directory required",
@@ -440,7 +568,7 @@ def check_state_folder(folder) -> None:
             )
 
 
-def build_plan(state, action, username=None, expected_uuid=None) -> list[dict[str, object]]:
+def build_plan(state, action, username=None, expected_uuid=None):
     infrastructure = reconcile_plan(state)
     if action == "reconcile":
         return infrastructure
@@ -452,7 +580,7 @@ def build_plan(state, action, username=None, expected_uuid=None) -> list[dict[st
     )
 
 
-def main() -> None:
+def main():
     os.umask(0o077)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=["reconcile", "grant", "revoke", "offboard"])
@@ -499,15 +627,10 @@ def main() -> None:
     )
     folder.mkdir(mode=0o700)
     atomic(folder / "before.json", before)
-    receipt: dict[str, object] = {
-        "state": "applying",
-        "plan_sha256": digest,
-        "completed": 0,
-        "plan": plan,
-    }
+    receipt = {"state": "applying", "plan_sha256": digest, "completed": 0, "plan": plan}
     atomic(folder / "receipt.json", receipt)
     try:
-        references: dict[str, object] = {}
+        references = {}
         for operation in plan:
             body = json.loads(json.dumps(operation["body"]))
             if body is not None and "property_mappings" in body:
@@ -520,10 +643,8 @@ def main() -> None:
                 )
             result = api.call(operation["system"], operation["method"], operation["path"], body)
             if operation.get("result_ref"):
-                references["$" + cast("str", operation["result_ref"])] = cast(
-                    "dict[str, object]", result
-                )["pk"]
-            receipt["completed"] = cast("int", receipt["completed"]) + 1
+                references["$" + operation["result_ref"]] = result["pk"]
+            receipt["completed"] += 1
             atomic(folder / "receipt.json", receipt)
         after = api.snapshot()
         remaining = build_plan(after, args.action, args.username, args.expected_user_uuid)

@@ -8,18 +8,22 @@ import os
 import re
 import subprocess
 from pathlib import Path
+from typing import cast
+
+_PartKey = tuple[str, str, str, int]
 
 
-def reconstruct(comments, event_key) -> dict[str, bytes]:
-    grouped: dict[tuple[str, str, str, int], dict[int, str]] = {}
+def _artifact_pieces(comments: list[object], event_key: str) -> dict[_PartKey, dict[int, str]]:
+    """Group verified comment parts by artifact and checksum."""
+    grouped: dict[_PartKey, dict[int, str]] = {}
     for comment in comments:
-        actor = comment.get("user", {})
-        app = comment.get("performed_via_github_app") or {}
+        actor = cast("dict[str, object]", comment).get("user", {})
+        app = cast("dict[str, object]", comment).get("performed_via_github_app") or {}
         if actor.get("type") != "Bot" or (
             app.get("id") != 5569869 if app.get("id") is not None else actor.get("id") != 351189559
         ):
             continue
-        body = comment.get("body") or ""
+        body = cast("str", cast("dict[str, object]", comment).get("body") or "")
         if "<!-- socrat-spi-artifact:" + event_key + ":" not in body:
             continue
         header = re.match(
@@ -38,6 +42,11 @@ def reconstruct(comments, event_key) -> dict[str, bytes]:
         if number in pieces and pieces[number] != block["data"]:
             raise ValueError("CONFLICTING_ARTIFACT_PART")
         pieces[number] = block["data"]
+    return grouped
+
+
+def _assemble_artifacts(grouped: dict[_PartKey, dict[int, str]]) -> dict[str, bytes]:
+    """Join and checksum-complete each artifact into opaque bytes."""
     output = {}
     for (aid, name, checksum, total), pieces in grouped.items():
         if set(pieces) != set(range(1, total + 1)):
@@ -46,8 +55,11 @@ def reconstruct(comments, event_key) -> dict[str, bytes]:
         if hashlib.sha256(data).hexdigest() != checksum:
             raise ValueError("ARTIFACT_CHECKSUM_MISMATCH")
         output[aid + "-" + name] = data
-    if not output:
-        raise ValueError("NO_EVIDENCE_FOR_EVENT")
+    return output
+
+
+def _validate_manifest(output: dict[str, bytes], event_key: str) -> None:
+    """Cross-check the embedded manifest against the assembled artifacts."""
     manifest = next((json.loads(v) for k, v in output.items() if k.startswith("MANIFEST-")), None)
     if not manifest or manifest.get("event_key") != event_key:
         raise ValueError("MISSING_OR_WRONG_MANIFEST")
@@ -57,10 +69,18 @@ def reconstruct(comments, event_key) -> dict[str, bytes]:
             raise ValueError("MISSING_MANIFEST_ARTIFACT")
         if key in output and hashlib.sha256(output[key]).hexdigest() != artifact["sha256"]:
             raise ValueError("MANIFEST_CHECKSUM_MISMATCH")
+
+
+def reconstruct(comments, event_key):
+    grouped = _artifact_pieces(comments, event_key)
+    output = _assemble_artifacts(grouped)
+    if not output:
+        raise ValueError("NO_EVIDENCE_FOR_EVENT")
+    _validate_manifest(output, event_key)
     return output
 
 
-def main() -> None:
+def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--issue", type=int, required=True)
     p.add_argument("--event", required=True)

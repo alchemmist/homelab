@@ -39,6 +39,17 @@ def alive(module, identities):
     ]
 
 
+def _reap_children() -> None:
+    """Collect any remaining adopted children without blocking the exit path."""
+    while True:
+        try:
+            pid, _status = os.waitpid(-1, os.WNOHANG)
+            if not pid:
+                break
+        except ChildProcessError:
+            break
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--watchdog", required=True)
@@ -135,13 +146,7 @@ def main():
                 module.signal_process(identity, signal.SIGKILL)
             for process in fixtures + [marker]:
                 process.wait(timeout=5)
-            while True:
-                try:
-                    pid, status = os.waitpid(-1, os.WNOHANG)
-                    if not pid:
-                        break
-                except ChildProcessError:
-                    break
+        _reap_children()
 
 
 if __name__ == "__main__":

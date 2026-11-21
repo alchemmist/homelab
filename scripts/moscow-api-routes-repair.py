@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """One-shot additive repair, no WG/interface/service restart or key mutation."""
 
-import argparse, fcntl, hashlib, ipaddress, json, os, pathlib, subprocess, time
+import argparse, fcntl, hashlib, ipaddress, json, os, pathlib, socket, subprocess, time
 
 CONFIG = pathlib.Path("/etc/wireguard/wg-socrat.conf")
 ROOT = pathlib.Path("/var/lib/homelab-recovery/20261113-moscow-api-routes")
@@ -11,11 +11,11 @@ PEERS = {
 }
 
 
-def run(*args) -> str:
+def run(*args):
     return subprocess.run(args, check=True, text=True, capture_output=True, timeout=10).stdout
 
 
-def allowed_ips(text) -> dict[str, list[str]]:
+def allowed_ips(text):
     result = {}
     for line in text.splitlines():
         fields = line.split()
@@ -27,9 +27,9 @@ def allowed_ips(text) -> dict[str, list[str]]:
     return result
 
 
-def project(text) -> tuple[list[list[str]], dict[str, list[str]]]:
-    blocks: list[list[str]] = []
-    current: list[str] = []
+def project(text):
+    blocks = []
+    current = []
     for line in text.splitlines(keepends=True):
         if line.strip().startswith("[") and current:
             blocks.append(current)
@@ -53,12 +53,8 @@ def project(text) -> tuple[list[list[str]], dict[str, list[str]]]:
     return blocks, parsed
 
 
-def candidate(text, runtime) -> tuple[str, dict[str, list[str]]]:
-    blocks, peers = project(text)
-    if peers != runtime:
-        raise ValueError("Boot/runtime AllowedIPs drift")
-    if not set(PEERS) <= set(peers):
-        raise ValueError("Missing pinned HOME peer")
+def _confirm_no_overlap(peers: dict[str, list[str]]) -> None:
+    """Refuse any overlap between pinned HOME routes and other peers."""
     for key, networks in peers.items():
         for network in networks:
             for owner, target in PEERS.items():
@@ -66,10 +62,10 @@ def candidate(text, runtime) -> tuple[str, dict[str, list[str]]]:
                     ipaddress.ip_network(network, strict=False)
                 ):
                     raise ValueError("API address owned by another peer")
-    after = {k: list(v) for k, v in peers.items()}
-    for key, target in PEERS.items():
-        if target not in after[key]:
-            after[key].append(target)
+
+
+def _render_config(blocks: list[list[str]], after: dict[str, list[str]]) -> str:
+    """Rewrite each pinned peer's AllowedIPs line with the repaired routes."""
     output = []
     for block in blocks:
         fields = {
@@ -77,15 +73,29 @@ def candidate(text, runtime) -> tuple[str, dict[str, list[str]]]:
             for line in block
             if "=" in line and not line.lstrip().startswith(("#", ";"))
         }
-        pub = fields.get("PublicKey")
+        key = fields.get("PublicKey")
         for line in block:
-            if pub in PEERS and line.split("=", 1)[0].strip() == "AllowedIPs":
-                line = "AllowedIPs = " + ", ".join(after[pub]) + "\n"
+            if key in PEERS and line.split("=", 1)[0].strip() == "AllowedIPs":
+                line = "AllowedIPs = " + ", ".join(after[key]) + "\n"
             output.append(line)
-    return "".join(output), after
+    return "".join(output)
 
 
-def atomic(path, data) -> None:
+def candidate(text, runtime):
+    blocks, peers = project(text)
+    if peers != runtime:
+        raise ValueError("Boot/runtime AllowedIPs drift")
+    if not set(PEERS) <= set(peers):
+        raise ValueError("Missing pinned HOME peer")
+    _confirm_no_overlap(peers)
+    after = {k: list(v) for k, v in peers.items()}
+    for key, target in PEERS.items():
+        if target not in after[key]:
+            after[key].append(target)
+    return _render_config(blocks, after), after
+
+
+def atomic(path, data):
     temp = path.with_name(path.name + ".repair-tmp")
     with temp.open("xb") as stream:
         stream.write(data)
@@ -98,7 +108,8 @@ def atomic(path, data) -> None:
     os.close(fd)
 
 
-def repair(apply=False) -> dict[str, object]:
+def _refuse_unsafe_context() -> tuple[bytes, str]:
+    """Refuse to run except as root on the designated host with a clean config."""
     if os.geteuid() != 0:
         raise RuntimeError("Root required")
     if os.uname().nodename != "socrat-4":
@@ -109,8 +120,11 @@ def repair(apply=False) -> dict[str, object]:
     text = old.decode()
     if any(line.strip().lower() == "saveconfig = true" for line in text.splitlines()):
         raise ValueError("SaveConfig would overwrite reviewed boot state")
-    runtime = allowed_ips(run("wg", "show", "wg-socrat", "allowed-ips"))
-    new, after = candidate(text, runtime)
+    return old, text
+
+
+def _refuse_existing_routes() -> None:
+    """Refuse repair when an explicit route or attempt already exists."""
     routes = {
         target: json.loads(run("ip", "-j", "route", "show", "exact", target))
         for target in PEERS.values()
@@ -119,11 +133,45 @@ def repair(apply=False) -> dict[str, object]:
         if values:
             raise ValueError("Existing explicit route/attempt; inspect, do not replace")
     # Do not add routes to a peer without checking the existing WG API transport.
-    import socket
-
     for address in ("10.250.0.1", "10.250.0.3"):
         with socket.create_connection((address, 6443), timeout=3):
             pass
+
+
+def _stage_intent(old: bytes, new: str, result: dict[str, object]) -> None:
+    """Persist the reviewed intent and swap the boot config atomically."""
+    if ROOT.exists():
+        raise ValueError("Existing recovery attempt; do not replay")
+    ROOT.mkdir(parents=True, mode=0o700)
+    atomic(ROOT / "intent.json", json.dumps(result).encode())
+    atomic(ROOT / "before.conf", old)
+    if CONFIG.read_bytes() != old:
+        raise ValueError("Concurrent boot config change")
+    atomic(CONFIG, new.encode())
+
+
+def _activate_routes(after: dict[str, list[str]]) -> None:
+    """Apply the repaired allowed-ips and add the pinned HOME routes."""
+    for key, target in PEERS.items():
+        run("wg", "set", "wg-socrat", "peer", key, "allowed-ips", ",".join(after[key]))
+        run("ip", "route", "add", target, "dev", "wg-socrat", "src", "10.250.0.40")
+
+
+def _verify_routes() -> None:
+    """Confirm kernel routes and live API reachability through the tunnel."""
+    for target in PEERS.values():
+        route = json.loads(run("ip", "-j", "route", "get", target.split("/")[0]))[0]
+        if route.get("dev") != "wg-socrat" or route.get("prefsrc") != "10.250.0.40":
+            raise ValueError("Route verification failed")
+        with socket.create_connection((target.split("/")[0], 6443), timeout=3):
+            pass
+
+
+def repair(apply=False):
+    old, text = _refuse_unsafe_context()
+    runtime = allowed_ips(run("wg", "show", "wg-socrat", "allowed-ips"))
+    new, after = candidate(text, runtime)
+    _refuse_existing_routes()
     result = {
         "host": "socrat-4",
         "targets": list(PEERS.values()),
@@ -133,23 +181,9 @@ def repair(apply=False) -> dict[str, object]:
     }
     if not apply:
         return result
-    if ROOT.exists():
-        raise ValueError("Existing recovery attempt; do not replay")
-    ROOT.mkdir(parents=True, mode=0o700)
-    atomic(ROOT / "intent.json", json.dumps(result).encode())
-    atomic(ROOT / "before.conf", old)
-    if CONFIG.read_bytes() != old:
-        raise ValueError("Concurrent boot config change")
-    atomic(CONFIG, new.encode())
-    for key, target in PEERS.items():
-        run("wg", "set", "wg-socrat", "peer", key, "allowed-ips", ",".join(after[key]))
-        run("ip", "route", "add", target, "dev", "wg-socrat", "src", "10.250.0.40")
-    for target in PEERS.values():
-        route = json.loads(run("ip", "-j", "route", "get", target.split("/")[0]))[0]
-        if route.get("dev") != "wg-socrat" or route.get("prefsrc") != "10.250.0.40":
-            raise ValueError("Route verification failed")
-        with socket.create_connection((target.split("/")[0], 6443), timeout=3):
-            pass
+    _stage_intent(old, new, result)
+    _activate_routes(after)
+    _verify_routes()
     expected = allowed_ips(run("wg", "show", "wg-socrat", "allowed-ips"))
     if expected != after or CONFIG.read_text() != new:
         raise ValueError("Postcondition drift")
