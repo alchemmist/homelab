@@ -63,59 +63,60 @@ class ClientTests(unittest.TestCase):
                     with self.assertRaises(TimeoutError):
                         conn.connect()
                     conn.close()
-                self.assertEqual(len(workers), s.MAX_RESOLVERS)
-                self.assertTrue(all(worker.is_alive() for worker in workers))
+                assert len(workers) == s.MAX_RESOLVERS
+                assert all(worker.is_alive() for worker in workers)
             finally:
                 release.set()
                 for worker in workers:
                     worker.join(1)
-            self.assertTrue(all(not worker.is_alive() for worker in workers))
+            assert all(not worker.is_alive() for worker in workers)
             make_socket.assert_not_called()
             # All slots are returned on actual completion, not caller timeout.
             for _ in range(s.MAX_RESOLVERS):
-                self.assertTrue(slots.acquire(blocking=False))
-            self.assertFalse(slots.acquire(blocking=False))
+                assert slots.acquire(blocking=False)
+            assert not slots.acquire(blocking=False)
 
     def test_existing(self) -> None:
         c = self.client([(200, {}, b"abc")])
-        self.assertTrue(c.ensure_object(KEY, b"abc")["verified"])
-        self.assertEqual(len(self.calls), 1)
+        assert c.ensure_object(KEY, b"abc")["verified"]
+        assert len(self.calls) == 1
 
     def test_private_bucket_qualified_paths_unchanged(self) -> None:
         for key in (KEY, KEY.rsplit("/", 1)[0] + "/manifest.json"):
             c = self.client([(404, {}, b""), (201, {}, b""), (200, {}, b"abc")])
             receipt = c.ensure_object(key, b"abc")
-            self.assertEqual([call[0] for call in self.calls], ["GET", "PUT", "GET"])
-            self.assertEqual([call[1] for call in self.calls], ["/spi-evidence/" + key] * 3)
-            self.assertEqual(receipt["bucket"], "spi-evidence")
-            self.assertEqual(receipt["key"], key)
-            self.assertEqual(receipt["sha256"], hashlib.sha256(b"abc").hexdigest())
+            assert [call[0] for call in self.calls] == ["GET", "PUT", "GET"]
+            assert [call[1] for call in self.calls] == ["/spi-evidence/" + key] * 3
+            assert receipt["bucket"] == "spi-evidence"
+            assert receipt["key"] == key
+            assert receipt["sha256"] == hashlib.sha256(b"abc").hexdigest()
 
     def test_conflict(self) -> None:
         c = self.client([(200, {}, b"bad")])
         with self.assertRaises(s.StorageConflict):
             c.ensure_object(KEY, b"abc")
-        self.assertEqual(len(self.calls), 1)
+        assert len(self.calls) == 1
 
     def test_conditional_and_races(self) -> None:
         for status in (200, 201, 204, 409, 412):
             c = self.client([(404, {}, b""), (status, {}, b""), (200, {}, b"abc")])
             c.ensure_object(KEY, b"abc")
-            self.assertEqual(self.calls[1][2]["If-None-Match"], "*")
-            self.assertEqual(self.calls[1][3], b"abc")
+            assert self.calls[1][2]["If-None-Match"] == "*"
+            assert self.calls[1][3] == b"abc"
 
     def test_ambiguous_recovery(self) -> None:
         c = self.client([(404, {}, b""), TimeoutError(), (200, {}, b"abc"), (200, {}, b"abc")])
         c.ensure_object(KEY, b"abc")
         c.ensure_object(KEY, b"abc")
-        self.assertEqual([x[0] for x in self.calls], ["GET", "PUT", "GET", "GET"])
+        assert [x[0] for x in self.calls] == ["GET", "PUT", "GET", "GET"]
 
     def test_status(self) -> None:
         for status in (408, 429, 500, 503):
             c = self.client([(status, {"Retry-After": "12"}, b"")])
             with self.assertRaises(s.StorageTransient) as ctx:
                 c.ensure_object(KEY, b"abc")
-            self.assertEqual(ctx.exception.retry_after, 12)
+            hint_seconds = 12
+            assert ctx.exception.retry_after == hint_seconds
         for status in (301, 403, 401):
             with self.assertRaises(s.StoragePermanent):
                 self.client([(status, {}, b"")]).ensure_object(KEY, b"abc")
@@ -145,9 +146,14 @@ class ClientTests(unittest.TestCase):
         date = (
             datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=50)
         ).strftime("%a, %d %b %Y %H:%M:%S GMT")
-        self.assertTrue(48 <= s.retry_after(date) <= 50)
-        self.assertEqual(s.retry_after("999999999"), 86400)
-        self.assertIsNone(s.retry_after("invalid"))
+        # The Retry-After date minus parser clock skew lands within ~48-50 seconds.
+        retry_floor_seconds = 48
+        retry_ceiling_seconds = 50
+        assert retry_floor_seconds <= s.retry_after(date) <= retry_ceiling_seconds
+        # Retry hints from dates are capped at one day.
+        retry_hint_cap = 86400
+        assert s.retry_after("999999999") == retry_hint_cap
+        assert s.retry_after("invalid") is None
 
     def test_signing(self) -> None:
         now = datetime.datetime(2025, 1, 2, tzinfo=datetime.timezone.utc)
@@ -159,10 +165,10 @@ class ClientTests(unittest.TestCase):
             now=now,
             payload=b"\x00\xff",
         )
-        self.assertEqual(h["x-amz-content-sha256"], hashlib.sha256(b"\x00\xff").hexdigest())
-        self.assertEqual(h["host"], "rustfs.rustfs.svc.cluster.local:9000")
-        self.assertIn("20250102/us-east-1/s3/aws4_request", h["Authorization"])
-        self.assertIn("SignedHeaders=host;x-amz-content-sha256;x-amz-date", h["Authorization"])
+        assert h["x-amz-content-sha256"] == hashlib.sha256(b"\x00\xff").hexdigest()
+        assert h["host"] == "rustfs.rustfs.svc.cluster.local:9000"
+        assert "20250102/us-east-1/s3/aws4_request" in h["Authorization"]
+        assert "SignedHeaders=host;x-amz-content-sha256;x-amz-date" in h["Authorization"]
         # Independent reference implementation already used by private gateway.
         import importlib.util
 
@@ -171,16 +177,13 @@ class ClientTests(unittest.TestCase):
         )
         gateway = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(gateway)
-        self.assertEqual(
-            h,
-            gateway.sign(
-                "PUT",
-                s.ORIGIN + "/spi-evidence/" + KEY,
-                "access",
-                "secret",
-                now=now,
-                payload=b"\x00\xff",
-            ),
+        assert h == gateway.sign(
+            "PUT",
+            s.ORIGIN + "/spi-evidence/" + KEY,
+            "access",
+            "secret",
+            now=now,
+            payload=b"\x00\xff",
         )
 
     def test_close_body_deadline_and_cleanup(self) -> None:
@@ -207,7 +210,7 @@ class ClientTests(unittest.TestCase):
         start = time.monotonic()
         conn.request("GET", "/")
         response = conn.getresponse()
-        self.assertTrue(conn.deadline_timer.is_alive())
+        assert conn.deadline_timer.is_alive()
         try:
             try:
                 response.read(1000)
@@ -217,9 +220,11 @@ class ClientTests(unittest.TestCase):
             response.close()
             conn.close()
             listener.close()
-        self.assertLess(time.monotonic() - start, 0.8)
+        # A full request/response round trip must stay well under a second.
+        request_deadline_seconds = 0.8
+        assert time.monotonic() - start < request_deadline_seconds
         conn.deadline_timer.join(0.3)
-        self.assertFalse(conn.deadline_timer.is_alive())
+        assert not conn.deadline_timer.is_alive()
 
 
 if __name__ == "__main__":

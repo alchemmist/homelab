@@ -47,15 +47,15 @@ class CalendarTests(unittest.TestCase):
     def test_render_scoped_native_node(self) -> None:
         w = self.render()
         raw = json.dumps(w)
-        self.assertNotIn("REPLACE_WITH_", raw)
-        self.assertNotIn("httpCustomAuth", raw)
-        self.assertEqual(len(w["nodes"]), 6)
+        assert "REPLACE_WITH_" not in raw
+        assert "httpCustomAuth" not in raw
+        assert len(w["nodes"]) == 6
         calls = [n for n in w["nodes"] if n["type"] == "CUSTOM.yandexStation"]
-        self.assertEqual(len(calls), 1)
-        self.assertEqual(calls[0]["parameters"]["text"], "={{ $json.text }}")
-        self.assertFalse(calls[0]["retryOnFail"])
-        self.assertNotIn("iot.quasar.yandex.ru", raw)
-        self.assertNotIn("xToken", raw)
+        assert len(calls) == 1
+        assert calls[0]["parameters"]["text"] == "={{ $json.text }}"
+        assert not calls[0]["retryOnFail"]
+        assert "iot.quasar.yandex.ru" not in raw
+        assert "xToken" not in raw
 
     def test_raw_internal_http_forbidden(self) -> None:
         for url in [
@@ -76,8 +76,8 @@ class CalendarTests(unittest.TestCase):
         t = json.loads((BASE / "docs/n8n/yandex-session-maintenance.json").read_text())
         w = sync.render_workflow(t, self.creds, {})
         n = next(n for n in w["nodes"] if n["type"] == "CUSTOM.yandexStation")
-        self.assertEqual(n["parameters"]["operation"], "check")
-        self.assertFalse(cast("bool", n["parameters"]["forceRefresh"]))
+        assert n["parameters"]["operation"] == "check"
+        assert not cast("bool", n["parameters"]["forceRefresh"])
 
     def test_failed_call_does_not_mark(self) -> None:
         code = next(n for n in self.render()["nodes"] if n["name"] == "Mark Announced")[

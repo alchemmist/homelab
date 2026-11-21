@@ -31,9 +31,9 @@ class NativeOIDC(unittest.TestCase):
     def test_cookie_secret_uses_go_raw_url_alphabet(self):
         raw = bytes([251]) * 32
         encoded = m.encode_cookie_secret(raw)
-        self.assertNotIn("+",encoded)
-        self.assertNotIn("/",encoded)
-        self.assertEqual(base64.urlsafe_b64decode(encoded),raw)
+        assert "+" not in encoded
+        assert "/" not in encoded
+        assert base64.urlsafe_b64decode(encoded) == raw
         with self.assertRaises(RuntimeError): m.encode_cookie_secret(b"too short")
 
     def test_owner_only_existing_identity(self): self.validate()
@@ -66,73 +66,73 @@ class OIDCRender(unittest.TestCase):
         return subprocess.run(["helm","template","openhands",str(ROOT/"charts/openhands"),"-n","openhands","-f",str(ROOT/"deploy/openhands/values.yaml"),*args],text=True,capture_output=True)
 
     def objects(self):
-        r = self.helm(); self.assertEqual(r.returncode,0,r.stderr)
+        r = self.helm(); assert r.returncode == 0, r.stderr
         return [v for v in yaml.safe_load_all(r.stdout) if v]
 
     def test_only_ingress_terminates_at_oidc(self):
         ingresses = [v for v in self.objects() if v["kind"]=="Ingress"]
-        self.assertEqual(len(ingresses),1)
+        assert len(ingresses) == 1
         i = ingresses[0]
-        self.assertEqual(i["metadata"]["namespace"],"identity")
-        self.assertEqual(i["spec"]["rules"][0]["http"]["paths"][0]["backend"]["service"]["name"],"openhands-oidc")
+        assert i["metadata"]["namespace"] == "identity"
+        assert i["spec"]["rules"][0]["http"]["paths"][0]["backend"]["service"]["name"] == "openhands-oidc"
 
     def test_tls_is_tracked_not_hidden_by_healthy_proxy(self):
         cert = next(v for v in self.objects() if v["kind"]=="Certificate")
-        self.assertEqual(cert["spec"]["secretName"],"openhands-oidc-tls")
-        self.assertEqual(cert["spec"]["dnsNames"],["openhands.socrat.alchemmist.xyz"])
-        self.assertEqual(cert["spec"]["issuerRef"]["kind"],"ClusterIssuer")
+        assert cert["spec"]["secretName"] == "openhands-oidc-tls"
+        assert cert["spec"]["dnsNames"] == ["openhands.socrat.alchemmist.xyz"]
+        assert cert["spec"]["issuerRef"]["kind"] == "ClusterIssuer"
 
     def test_backend_only_reachable_from_gateway(self):
         p = next(v for v in self.objects() if v["kind"]=="NetworkPolicy" and v["metadata"]["name"]=="openhands-boundary")
-        self.assertEqual(p["spec"]["ingress"][0]["from"],[{"namespaceSelector":{"matchLabels":{"kubernetes.io/metadata.name":"identity"}},"podSelector":{"matchLabels":{"app":"openhands-oidc"}}}])
+        assert p["spec"]["ingress"][0]["from"] == [{"namespaceSelector": {"matchLabels": {"kubernetes.io/metadata.name": "identity"}}, "podSelector": {"matchLabels": {"app": "openhands-oidc"}}}]
 
     def test_vps_hostnetwork_source_is_exact_and_proxy_only(self):
         p = next(v for v in self.objects() if v["kind"]=="NetworkPolicy" and v["metadata"]["name"]=="openhands-oidc")
-        self.assertIn({"ipBlock":{"cidr":"10.42.0.0/32"}},p["spec"]["ingress"][0]["from"])
-        self.assertEqual(p["spec"]["ingress"][0]["ports"],[{"port":4180,"protocol":"TCP"}])
+        assert {"ipBlock": {"cidr": "10.42.0.0/32"}} in p["spec"]["ingress"][0]["from"]
+        assert p["spec"]["ingress"][0]["ports"] == [{"port": 4180, "protocol": "TCP"}]
 
     def test_identity_uses_immutable_subject_not_unverified_mail(self):
         d = next(v for v in self.objects() if v["kind"]=="Deployment" and v["metadata"]["name"]=="openhands-oidc")
         args = d["spec"]["template"]["spec"]["containers"][0]["args"]
-        self.assertIn("--oidc-email-claim=sub",args)
-        self.assertIn("--scope=openid profile groups offline_access",args)
-        self.assertIn("--allowed-group=homelab-owner",args)
-        self.assertFalse(any("allow-unverified-email" in a or "skip-issuer-verification" in a for a in args))
+        assert "--oidc-email-claim=sub" in args
+        assert "--scope=openid profile groups offline_access" in args
+        assert "--allowed-group=homelab-owner" in args
+        assert not any("allow-unverified-email" in a or "skip-issuer-verification" in a for a in args)
 
     def test_oidc_not_custom_auth_or_bearer_bypass(self):
         d = next(v for v in self.objects() if v["kind"]=="Deployment" and v["metadata"]["name"]=="openhands-oidc")
         pod = d["spec"]["template"]["spec"]; c = pod["containers"][0]
-        self.assertFalse(pod["automountServiceAccountToken"])
-        self.assertIn("@sha256:",c["image"])
+        assert not pod["automountServiceAccountToken"]
+        assert "@sha256:" in c["image"]
         for flag in ["--provider=oidc","--allowed-group=homelab-owner","--skip-jwt-bearer-tokens=false","--cookie-secure=true","--code-challenge-method=S256"]:
-            self.assertIn(flag,c["args"])
-        self.assertFalse(any("insecure" in a or "skip-auth-route" in a for a in c["args"]))
+            assert flag in c["args"]
+        assert not any("insecure" in a or "skip-auth-route" in a for a in c["args"])
         canvas = next(v for v in self.objects() if v["kind"]=="StatefulSet")
-        self.assertNotIn("openhands-oidc",str(canvas["spec"]["template"]["spec"].get("volumes",[])))
+        assert "openhands-oidc" not in str(canvas["spec"]["template"]["spec"].get("volumes", []))
 
     def test_refresh_uses_server_side_sessions_without_weakening_expiry(self):
         d=next(v for v in self.objects() if v["kind"]=="Deployment" and v["metadata"]["name"]=="openhands-oidc")
         c=d["spec"]["template"]["spec"]["containers"][0]
         for flag in ["--session-store-type=redis","--cookie-expire=8h","--cookie-refresh=2m"]:
-            self.assertIn(flag,c["args"])
+            assert flag in c["args"]
         env=next(x for x in c["env"] if x["name"]=="OAUTH2_PROXY_REDIS_PASSWORD")
-        self.assertEqual(env["valueFrom"]["secretKeyRef"],{"name":"openhands-oidc-sessions","key":"password"})
+        assert env["valueFrom"]["secretKeyRef"] == {"name": "openhands-oidc-sessions", "key": "password"}
 
     def test_session_cache_is_private_nonpersistent_and_restricted(self):
         d=next(v for v in self.objects() if v["kind"]=="Deployment" and v["metadata"]["name"]=="openhands-oidc-sessions")
         pod=d["spec"]["template"]["spec"];c=pod["containers"][0]
-        self.assertEqual(d["spec"]["strategy"]["type"],"Recreate")
-        self.assertFalse(pod["automountServiceAccountToken"])
-        self.assertTrue(c["securityContext"]["readOnlyRootFilesystem"])
-        self.assertIn("@sha256:",c["image"])
-        self.assertFalse(any("persistentVolumeClaim" in v for v in pod["volumes"]))
+        assert d["spec"]["strategy"]["type"] == "Recreate"
+        assert not pod["automountServiceAccountToken"]
+        assert c["securityContext"]["readOnlyRootFilesystem"]
+        assert "@sha256:" in c["image"]
+        assert not any("persistentVolumeClaim" in v for v in pod["volumes"])
         p=next(v for v in self.objects() if v["kind"]=="NetworkPolicy" and v["metadata"]["name"]=="openhands-oidc-sessions")
-        self.assertEqual(p["spec"]["ingress"],[{"from":[{"podSelector":{"matchLabels":{"app":"openhands-oidc"}}}],"ports":[{"port":6379,"protocol":"TCP"}]}])
-        self.assertEqual(p["spec"]["egress"],[])
+        assert p["spec"]["ingress"] == [{"from": [{"podSelector": {"matchLabels": {"app": "openhands-oidc"}}}], "ports": [{"port": 6379, "protocol": "TCP"}]}]
+        assert p["spec"]["egress"] == []
 
     def test_no_unprotected_ingress_or_bootstrap(self):
-        self.assertNotEqual(self.helm("--set","ingress.enabled=true").returncode,0)
-        self.assertNotEqual(self.helm("--set","oidc.enabled=false").returncode,0)
+        assert self.helm("--set", "ingress.enabled=true").returncode != 0
+        assert self.helm("--set", "oidc.enabled=false").returncode != 0
 
 
 if __name__ == "__main__": unittest.main()

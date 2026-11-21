@@ -1,3 +1,5 @@
+"""Tests for traffic light quality gating."""
+
 import copy
 import importlib.util
 import json

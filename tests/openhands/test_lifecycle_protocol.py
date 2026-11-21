@@ -15,9 +15,9 @@ class Protocol(unittest.TestCase):
   api=Mock(return_value={'data':{'repository':{'pullRequest':snapshot()}}});
   with patch.dict(m.G,assess=lambda *a:{'ready_to_review':True,'blockers':[]}):
    with self.assertRaises(ValueError):m.lifecycle({'action':'life_ready','head':H,'pr':515},api,owned,check)
-  self.assertTrue(all(v.args[0]=='graphql' for v in api.call_args_list))
+  assert all(v.args[0] == 'graphql' for v in api.call_args_list)
  def test_independent_sha_reread_before_marker(self):
   a=snapshot();a['reviewThreads']['nodes']=[];b={**a,'headRefOid':'b'*40};items=iter([a,b]);api=Mock(side_effect=lambda *args:{'data':{'repository':{'pullRequest':next(items)}}});
   with patch.dict(m.G,assess=lambda *a:{'ready_to_review':True,'blockers':[]}):
    with self.assertRaises(ValueError):m.lifecycle({'action':'life_ready','head':H,'pr':514},api,owned,check)
-  self.assertEqual([c.args[0] for c in api.call_args_list],['graphql','graphql'])
+  assert [c.args[0] for c in api.call_args_list] == ['graphql', 'graphql']

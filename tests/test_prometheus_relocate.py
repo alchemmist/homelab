@@ -1,3 +1,5 @@
+"""Tests for relocating Prometheus storage and configuration."""
+
 import importlib.util
 import json
 import unittest

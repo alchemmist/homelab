@@ -1,3 +1,5 @@
+"""Tests for the remaining public web access paths."""
+
 import ast
 from types import ModuleType
 from typing import NotRequired, TypedDict

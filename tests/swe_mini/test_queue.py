@@ -89,27 +89,27 @@ class QueueTransitions(unittest.TestCase):
 
     def test_clean_no_finding_done(self) -> None:
         self.tick()
-        self.assertEqual(self.state(), "done")
+        assert self.state() == "done"
 
     def test_failed_baseline_never_published(self) -> None:
         self.result["baseline"]["backend"] = 1
         self.tick()
-        self.assertEqual(self.state(), "rejected")
+        assert self.state() == "rejected"
 
     def test_failed_postcheck_rejected(self) -> None:
         self.result["checks"]["backend"] = 1
         self.tick()
-        self.assertEqual(self.state(), "rejected")
+        assert self.state() == "rejected"
 
     def test_model_limit_not_completion(self) -> None:
         self.result["agent_status"] = "LimitsExceeded"
         self.tick()
-        self.assertEqual(self.state(), "failed")
+        assert self.state() == "failed"
 
     def test_wrong_revision_failed(self) -> None:
         self.result["revision"] = "b" * 40
         self.tick()
-        self.assertEqual(self.state(), "failed")
+        assert self.state() == "failed"
 
     def test_candidate_requires_review(self) -> None:
         self.result["changes"] = [
@@ -117,20 +117,20 @@ class QueueTransitions(unittest.TestCase):
         ]
         with patch.object(c, "start_job") as start:
             self.tick()
-            self.assertEqual(start.call_args.args[1], "review")
-            self.assertNotEqual(self.state(), "publishing")
+            assert start.call_args.args[1] == "review"
+            assert self.state() != "publishing"
 
     def test_review_rejection(self) -> None:
         c.save("test", state="review")
         self.result["review"] = {"approved": False, "reason": "reproduction fails"}
         self.tick()
-        self.assertEqual(self.state(), "rejected")
+        assert self.state() == "rejected"
 
     def test_review_approval_queues_publication(self) -> None:
         c.save("test", state="review")
         self.result["review"] = {"approved": True, "reason": "test reproduced"}
         self.tick()
-        self.assertEqual(self.state(), "publishing")
+        assert self.state() == "publishing"
         c.CORE.delete_namespaced_config_map.assert_called_once()
 
     def test_model_approval_cannot_override_fresh_candidate_test_failure(self) -> None:
@@ -138,22 +138,22 @@ class QueueTransitions(unittest.TestCase):
         self.result["candidate_checks"] = {"backend": 1}
         self.result["review"] = {"approved": True, "reason": "model claims it passes"}
         self.tick()
-        self.assertEqual(self.state(), "rejected")
+        assert self.state() == "rejected"
 
     def test_forged_unsigned_worker_result_is_refused(self) -> None:
         c.CORE.read_namespaced_pod_log.return_value = policy.encode_result(self.result)
         c.tick()
-        self.assertEqual(self.state(), "failed")
+        assert self.state() == "failed"
 
     def test_invalid_candidate_is_terminal_not_infinite_retry(self) -> None:
         self.result["changes"] = [{"path": ".github/workflows/evil.yml", "content": "dHJ1ZQ=="}]
         self.tick()
-        self.assertEqual(self.state(), "rejected")
+        assert self.state() == "rejected"
 
     def test_no_unstructured_log_completion(self) -> None:
         c.CORE.read_namespaced_pod_log.return_value = "I am done!"
         c.tick()
-        self.assertEqual(self.state(), "failed")
+        assert self.state() == "failed"
 
     def test_pending_job_is_not_restarted(self) -> None:
         c.BATCH.read_namespaced_job.return_value.status = SimpleNamespace(
@@ -162,7 +162,7 @@ class QueueTransitions(unittest.TestCase):
         with patch.object(c, "start_job") as start:
             c.tick()
             start.assert_not_called()
-        self.assertEqual(self.state(), "work")
+        assert self.state() == "work"
 
     def test_expired_job_fails_and_next_task_is_admitted(self) -> None:
         class NotFound(Exception):
@@ -171,18 +171,15 @@ class QueueTransitions(unittest.TestCase):
         c.client.ApiException = NotFound
         c.BATCH.read_namespaced_job.side_effect = NotFound()
         c.tick()
-        self.assertEqual(self.state(), "failed")
+        assert self.state() == "failed"
         with patch.object(c, "github", side_effect=[[], {"sha": "b" * 40}]):
             c.tick()
-        self.assertEqual(
-            c.DB.execute("SELECT count(*) FROM runs WHERE state='queued'").fetchone()[0],
-            1,
-        )
+        assert c.DB.execute("SELECT count(*) FROM runs WHERE state='queued'").fetchone()[0] == 1
 
     def test_missing_terminal_pod_does_not_wedge_queue(self) -> None:
         c.CORE.list_namespaced_pod.return_value.items = []
         c.tick()
-        self.assertEqual(self.state(), "failed")
+        assert self.state() == "failed"
 
     def test_dependency_pr_blocks_duplicates_until_base_changes(self) -> None:
         payload = {"changes": [{"path": p} for p in policy.DEPENDENCY_PATHS]}
@@ -200,12 +197,14 @@ class QueueTransitions(unittest.TestCase):
         ]
         with patch.object(c, "github", side_effect=[prs, {"sha": "a" * 40}]):
             c.tick()
-        self.assertEqual(c.STATUS["state"], "waiting_for_dependency_merge")
-        self.assertEqual(c.DB.execute("SELECT count(*) FROM runs").fetchone()[0], 1)
+        assert c.STATUS["state"] == "waiting_for_dependency_merge"
+        assert c.DB.execute("SELECT count(*) FROM runs").fetchone()[0] == 1
         c.NEXT_IDLE_CHECK = 0
         with patch.object(c, "github", side_effect=[prs, {"sha": "b" * 40}]):
             c.tick()
-        self.assertEqual(c.DB.execute("SELECT count(*) FROM runs").fetchone()[0], 2)
+        # A second idle run is recorded for the dependency merge wait.
+        run_count = 2
+        assert c.DB.execute("SELECT count(*) FROM runs").fetchone()[0] == run_count
 
     def test_idle_github_failure_is_backed_off(self) -> None:
         c.save("test", state="failed")
@@ -213,25 +212,25 @@ class QueueTransitions(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 c.tick()
             c.tick()
-            self.assertEqual(api.call_count, 1)
+            assert api.call_count == 1
 
     def test_main_discovery_uses_installation_auth(self) -> None:
         c.save("test", state="failed")
         with patch.object(c, "github", side_effect=[[], {"sha": "b" * 40}]) as api:
             c.tick()
-            self.assertTrue(api.call_args.kwargs.get("auth"))
+            assert api.call_args.kwargs.get("auth")
 
     def test_backoff_preserves_dependency_error_and_heartbeat(self) -> None:
         c.save("test", state="failed")
         with patch.object(c, "github", side_effect=RuntimeError("external API unavailable")):
             c.run_once()
             c.run_once()
-        self.assertEqual(c.STATUS["error"], "RuntimeError")
-        self.assertGreater(c.STATUS["last_tick"], 0)
+        assert c.STATUS["error"] == "RuntimeError"
+        assert c.STATUS["last_tick"] > 0
         c.NEXT_IDLE_CHECK = 0
         with patch.object(c, "github", side_effect=[[], {"sha": "b" * 40}]):
             c.run_once()
-        self.assertEqual(c.STATUS["error"], "")
+        assert c.STATUS["error"] == ""
 
     def test_api_error_does_not_fail_process_health(self) -> None:
         import threading, urllib.request, urllib.error, time
@@ -255,11 +254,15 @@ class QueueTransitions(unittest.TestCase):
 
         try:
             c.STATUS.update(last_tick=time.time(), error="HTTPError")
-            self.assertEqual(status("/livez"), 200)
-            self.assertEqual(status("/healthz"), 200)
-            self.assertEqual(status("/dependencies"), 503)
-            c.STATUS["last_tick"] = time.time() - 181
-            self.assertEqual(status("/livez"), 503)
+            http_ok = 200
+            service_unavailable = 503
+            assert status("/livez") == http_ok
+            assert status("/healthz") == http_ok
+            assert status("/dependencies") == service_unavailable
+            # Liveness flips once the last tick is older than the three-minute staleness cap.
+            stale_tick_seconds = 181
+            c.STATUS["last_tick"] = time.time() - stale_tick_seconds
+            assert status("/livez") == service_unavailable
         finally:
             server.shutdown()
             server.server_close()
@@ -271,7 +274,7 @@ class QueueTransitions(unittest.TestCase):
         c.save("test", state="queued")
         with patch.object(c, "start_job") as start:
             c.tick()
-            self.assertEqual(start.call_args.args[1], "work")
+            assert start.call_args.args[1] == "work"
 
     def test_paused_queue_does_not_admit_new_work(self) -> None:
         """Pause stops discovery without touching already recorded durable runs."""
@@ -362,7 +365,7 @@ class HealthContract(unittest.TestCase):
                 c.Health.do_GET(handler)
                 handler.send_response.assert_called_once_with(expected)
                 handler.end_headers.assert_called_once_with()
-                self.assertEqual(json.loads(handler.wfile.getvalue())["error"], error)
+                assert json.loads(handler.wfile.getvalue())["error"] == error
 
 
 if __name__ == "__main__":

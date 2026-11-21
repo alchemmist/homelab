@@ -18,7 +18,7 @@ class PublicationPolicy(unittest.TestCase):
         return {"path": path, "mode": mode, "content": base64.b64encode(content).decode()}
 
     def test_safe_patch(self) -> None:
-        self.assertEqual(len(p.validate_changes([self.item()])), 1)
+        assert len(p.validate_changes([self.item()])) == 1
 
     def test_protected_paths(self) -> None:
         for path in [
@@ -81,11 +81,11 @@ class PublicationPolicy(unittest.TestCase):
 
     def test_result_roundtrip(self) -> None:
         result = {"phase": "work", "checks": {"backend": 0}}
-        self.assertEqual(p.decode_result(p.encode_result(result)), result)
+        assert p.decode_result(p.encode_result(result)) == result
 
     def test_result_authentication(self) -> None:
         marker = p.encode_result({"checks": {"backend": 0}}, "parent-only-key")
-        self.assertEqual(p.decode_result(marker, "parent-only-key")["checks"]["backend"], 0)
+        assert p.decode_result(marker, "parent-only-key")["checks"]["backend"] == 0
         with self.assertRaises(ValueError):
             p.decode_result(marker, "wrong-key")
         with self.assertRaises(ValueError):

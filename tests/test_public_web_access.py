@@ -1,3 +1,5 @@
+"""Tests for public web access through the entry charts."""
+
 import copy, importlib.util, json
 from collections.abc import Callable
 from pathlib import Path

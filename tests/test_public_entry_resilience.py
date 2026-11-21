@@ -1,3 +1,5 @@
+"""Tests for public entry point resilience against transient failures."""
+
 import copy
 import importlib.util
 from pathlib import Path

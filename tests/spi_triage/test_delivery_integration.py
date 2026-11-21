@@ -37,6 +37,10 @@ class DeliveryHandle(Protocol):
         """Ingest one delivery receipt event."""
         ...
 
+# After backfill an episode settles on its second revision and fourth stage.
+SECOND_REVISION = 2
+COMPLETE_STAGE = 4
+
 
 class DeliveryIntegrationTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -60,9 +64,9 @@ class DeliveryIntegrationTests(unittest.TestCase):
         }
         key = self.process()
         r = self.store.get(key)
-        self.assertEqual(r["result"]["primary_publication"]["kind"], "issue")
-        self.assertEqual(
-            self.links.snapshot(r["episode"])["url"], self.github.request.return_value["html_url"]
+        assert r["result"]["primary_publication"]["kind"] == "issue"
+        assert (
+            self.links.snapshot(r["episode"])["url"] == self.github.request.return_value["html_url"]
         )
 
     def test_matched_issue_points_to_exact_primary_comment_not_root(self) -> None:
@@ -71,9 +75,9 @@ class DeliveryIntegrationTests(unittest.TestCase):
         url = "https://github.com/alchemmist/homelab/issues/7#issuecomment-777"
         self.github.request.return_value = {"id": 777, "html_url": url}
         key = self.process()
-        self.assertEqual(self.links.snapshot(self.store.get(key)["episode"])["url"], url)
+        assert self.links.snapshot(self.store.get(key)["episode"])["url"] == url
         self.engine.run("publish", key)
-        self.assertEqual(self.github.request.call_count, 1)
+        assert self.github.request.call_count == 1
 
     def test_ambiguous_comment_reconciles_exact_url_without_second_write(self) -> None:
         key = self.process(through=3)
@@ -93,8 +97,8 @@ class DeliveryIntegrationTests(unittest.TestCase):
             c.execute("UPDATE jobs SET available=0,lease=0")
         self.store.claim()
         self.engine.run("publish", key)
-        self.assertEqual(self.github.request.call_count, 1)
-        self.assertEqual(self.links.snapshot(self.store.get(key)["episode"])["url"], url)
+        assert self.github.request.call_count == 1
+        assert self.links.snapshot(self.store.get(key)["episode"])["url"] == url
 
     def test_save_primary_rolls_back_state_when_outbox_write_fails(self) -> None:
         key = self.process(through=3)
@@ -113,7 +117,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
                     "html_url": "https://github.com/alchemmist/homelab/issues/7",
                 },
             )
-        self.assertEqual(self.store.get(key)["result"], before)
+        assert self.store.get(key)["result"] == before
 
     def test_orphan_resolved_is_analyzed_instead_of_dropped_when_links_required(self) -> None:
         self.github.request.return_value = {
@@ -123,7 +127,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
         }
         key = self.process(fixture.event("resolved"))
         self.model.analyze.assert_called_once()
-        self.assertEqual(self.links.snapshot(self.store.get(key)["episode"])["revision"], 2)
+        assert self.links.snapshot(self.store.get(key)["episode"])["revision"] == SECOND_REVISION
 
     def test_lost_receipt_callback_recovers_by_immutable_episode(self) -> None:
         delivery = Delivery(self.store, "test", enabled=True)
@@ -159,11 +163,9 @@ class DeliveryIntegrationTests(unittest.TestCase):
         )
         delivery.discover()
         with self.store.db() as c:
-            self.assertTrue(
-                c.execute(
-                    "SELECT receipt FROM spi_card_receipts WHERE episode=?", (episode,)
-                ).fetchone()
-            )
+            assert c.execute(
+                "SELECT receipt FROM spi_card_receipts WHERE episode=?", (episode,)
+            ).fetchone()
 
     def test_new_recipient_receipt_requeues_applied_target(self) -> None:
         e = fixture.event()
@@ -191,7 +193,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
         self.links.record_card_receipt(
             e["episode"], {**base, "copies": [{"chat_id": 2, "message_id": 4}]}
         )
-        self.assertEqual(self.links.snapshot(e["episode"])["state"], "pending")
+        assert self.links.snapshot(e["episode"])["state"] == "pending"
 
     def test_closed_issue_resolution_preserves_exact_existing_comment(self) -> None:
         self.model.match.return_value = {"candidates": [{"number": 7}]}
@@ -207,8 +209,8 @@ class DeliveryIntegrationTests(unittest.TestCase):
         }
         self.process(fixture.event("resolved"))
         row = self.links.snapshot(self.store.get(key)["episode"])
-        self.assertEqual(row["url"], url)
-        self.assertEqual(row["revision"], 1)
+        assert row["url"] == url
+        assert row["revision"] == 1
 
     def test_discovery_failure_does_not_block_ready_link(self) -> None:
         d = Delivery(self.store, "test", enabled=True)
@@ -244,7 +246,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
         # Missing receipt backs off independently; ready episode is then eligible.
         for _ in range(2):
             d.links.once()
-        self.assertEqual(d.links.snapshot(other["episode"])["state"], "applied")
+        assert d.links.snapshot(other["episode"])["state"] == "applied"
 
     def test_fallback_ingress_identity_matches_python_including_unicode_and_microseconds(
         self,
@@ -282,7 +284,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
                 )
             )
             event = fixture.normalize({"source": "test", "alert": raw})
-            self.assertEqual(value, {"event_key": event["event_key"], "episode": event["episode"]})
+            assert value == {"event_key": event["event_key"], "episode": event["episode"]}
 
     def test_pre_migration_completed_job_backfills_only_trusted_reference(self) -> None:
         self.engine.delivery = None
@@ -309,11 +311,11 @@ class DeliveryIntegrationTests(unittest.TestCase):
             "id": 99,
             "html_url": url,
         }
-        self.assertTrue(d.backfill())
+        assert d.backfill()
         d.github.request.assert_not_called()
-        self.assertEqual(d.links.snapshot(episode)["url"], url)
-        self.assertEqual(self.store.get(key)["state"], "complete")
-        self.assertEqual(self.store.get(key)["stage"], 4)
+        assert d.links.snapshot(episode)["url"] == url
+        assert self.store.get(key)["state"] == "complete"
+        assert self.store.get(key)["stage"] == COMPLETE_STAGE
 
     def historical_pair(self) -> tuple[DeliveryHandle, dict[str, object]]:
         d: DeliveryHandle = Delivery(self.store, "test", enabled=True)
@@ -357,7 +359,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
         d.github.primary_reference.side_effect = reference
         d.backfill()
         d.backfill()
-        self.assertEqual(d.links.snapshot(e["episode"])["revision"], 1)
+        assert d.links.snapshot(e["episode"])["revision"] == 1
         d.github.primary_reference.side_effect = None
         url = "https://github.com/alchemmist/homelab/issues/7#issuecomment-100"
         d.github.primary_reference.return_value = {
@@ -370,9 +372,9 @@ class DeliveryIntegrationTests(unittest.TestCase):
         with self.store.db() as c:
             c.execute("UPDATE spi_primary_backfill SET available=0")
         d.backfill()
-        self.assertEqual(d.links.snapshot(e["episode"])["revision"], 2)
-        self.assertEqual(d.links.snapshot(e["episode"])["url"], url)
-        self.assertFalse(d.backfill())  # late firing cannot downgrade revision2
+        assert d.links.snapshot(e["episode"])["revision"] == SECOND_REVISION
+        assert d.links.snapshot(e["episode"])["url"] == url
+        assert not d.backfill()  # late firing cannot downgrade revision2
 
     def test_historical_resolved_becomes_complete_after_firing(self) -> None:
         d, e = self.historical_pair()
@@ -387,7 +389,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
             "html_url": "https://github.com/alchemmist/homelab/issues/7",
         }
         d.backfill()
-        self.assertEqual(d.links.snapshot(e["episode"])["revision"], 1)
+        assert d.links.snapshot(e["episode"])["revision"] == 1
         with self.store.db() as c:
             c.execute("UPDATE jobs SET state='complete' WHERE id=?", (resolved["event_key"],))
         url = "https://github.com/alchemmist/homelab/issues/7#issuecomment-100"
@@ -399,8 +401,8 @@ class DeliveryIntegrationTests(unittest.TestCase):
             "html_url": url,
         }
         d.backfill()
-        self.assertEqual(d.links.snapshot(e["episode"])["url"], url)
-        self.assertEqual(d.links.snapshot(e["episode"])["revision"], 2)
+        assert d.links.snapshot(e["episode"])["url"] == url
+        assert d.links.snapshot(e["episode"])["revision"] == SECOND_REVISION
 
     def test_historical_resolved_without_publication_keeps_valid_firing(self) -> None:
         d, e = self.historical_pair()
@@ -424,4 +426,4 @@ class DeliveryIntegrationTests(unittest.TestCase):
         d.github.primary_reference.side_effect = reference
         d.backfill()
         d.backfill()
-        self.assertEqual(d.links.snapshot(e["episode"])["revision"], 1)
+        assert d.links.snapshot(e["episode"])["revision"] == 1

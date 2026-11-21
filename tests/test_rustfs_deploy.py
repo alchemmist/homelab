@@ -1,3 +1,5 @@
+"""Tests for RustFS deployment manifests."""
+
 import os
 from pathlib import Path
 import subprocess

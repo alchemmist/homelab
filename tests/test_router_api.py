@@ -1,3 +1,5 @@
+"""Tests for the router API endpoints."""
+
 from contextlib import redirect_stdout
 import copy
 import html

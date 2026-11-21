@@ -14,7 +14,7 @@ def module(name):
 
 class PiPilot(unittest.TestCase):
     def test_report_and_admission_are_distinct(self) -> None:
-        d=module("dispatcher");rows=module("cards").plan((ROOT/"services/pi-monori/issue509.md").read_text());self.assertEqual(len(rows),405);self.assertEqual(len({x["id"] for x in rows}),405);self.assertEqual(len(d.CARDS),2)
+        d=module("dispatcher");rows=module("cards").plan((ROOT/"services/pi-monori/issue509.md").read_text());assert len(rows) == 405;assert len({x["id"] for x in rows}) == 405;assert len(d.CARDS) == 2
 
     def test_gate(self) -> None:
         d=module("dispatcher");valid="from "+ 'monori.common.json_values import integer_value\n\ndef test_case() -> None:\n    assert integer_value(3, "fixture") == 3\n';d.inspect_test(valid,"integer_value")

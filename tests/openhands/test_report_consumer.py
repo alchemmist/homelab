@@ -13,12 +13,12 @@ class Reports(unittest.TestCase):
   with tempfile.TemporaryDirectory() as td:
    d=Path(td)/"db";call=lambda:intake.ingest(envelope(),registry,b"test",d)
    with self.assertRaises(PermissionError):intake.ingest(envelope(),registry,b"bad",d)
-   e["sender"]={"id":1};self.assertEqual(call()["status"],"ignored_sender");e["sender"]=owner
-   self.assertEqual(call()["cards"],405); self.assertEqual(call()["status"],"duplicate");e["issue"]["body"]+=" changed";self.assertEqual(call()["status"],"changed_report_requires_review")
-   with closing(sqlite3.connect(d)) as db:self.assertEqual(db.execute("select count(*) from cards").fetchone(),(405,))
+   e["sender"]={"id":1};assert call()["status"] == "ignored_sender";e["sender"]=owner
+   assert call()["cards"] == 405; assert call()["status"] == "duplicate";e["issue"]["body"]+=" changed";assert call()["status"] == "changed_report_requires_review"
+   with closing(sqlite3.connect(d)) as db:assert db.execute("select count(*) from cards").fetchone() == (405,)
  def test_artifact_protocol_rejects_plans_and_multiple_files(self) -> None:
   spec=importlib.util.spec_from_file_location("artifact",ROOT/"services/pi-monori/artifact.py");art=importlib.util.module_from_spec(spec);spec.loader.exec_module(art)
-  sample="```python\ndef test_fixture() -> None:\n    assert 1 == 1\n```";self.assertTrue(art.artifact_response("transport warning\n"+sample).startswith("def test_fixture"))
+  sample="```python\ndef test_fixture() -> None:\n    assert 1 == 1\n```";assert art.artifact_response("transport warning\n" + sample).startswith("def test_fixture")
   for raw in ("I will write a test.",sample+"\n"+sample,"```sh\necho test\n```"):
    with self.assertRaises(ValueError):art.artifact_response(raw)
  def test_review_wake_is_signed_and_only_for_published_outputs(self) -> None:
@@ -27,6 +27,6 @@ class Reports(unittest.TestCase):
    def wake(n,key) -> "dict[str, object]":
     raw=json.dumps({"repository":{"id":1,"full_name":"owner/repo"},"pull_request":{"number":n},"action":"submitted"}).encode();return cast("dict[str, object]",intake.lifecycle("/review",{"raw":base64.b64encode(raw),"signature":"sha256="+hmac.new(key,raw,hashlib.sha256).hexdigest()},db,b"review-only",reg))
    with self.assertRaises(PermissionError):wake(515,b"other")
-   self.assertEqual(wake(513,b"review-only")["enrolled"],[]);self.assertEqual(wake(515,b"review-only")["enrolled"],[515]);wake(515,b"review-only");self.assertEqual(c.execute("select count(*) from review_queue").fetchone(),(1,))
+   assert wake(513, b"review-only")["enrolled"] == [];assert wake(515, b"review-only")["enrolled"] == [515];wake(515,b"review-only");assert c.execute("select count(*) from review_queue").fetchone() == (1,)
  def test_distributed_handoff_gate_matches_canonical_gate(self) -> None:
-  self.assertEqual((ROOT/"scripts/openhands-pr-ready.py").read_bytes(),(ROOT/"charts/openhands/files/steward/ready_gate.py").read_bytes())
+  assert (ROOT / "scripts/openhands-pr-ready.py").read_bytes() == (ROOT / "charts/openhands/files/steward/ready_gate.py").read_bytes()

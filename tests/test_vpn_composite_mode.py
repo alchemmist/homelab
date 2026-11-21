@@ -1,3 +1,5 @@
+"""Tests for VPN composite mode configuration."""
+
 import json
 from pathlib import Path
 import shutil

@@ -33,14 +33,14 @@ class Pilot(unittest.TestCase):
                 def screen(c, m=m) -> None:
                     mid=next(iter(m.CAT[c["name"]]));m.sql("insert into scans values(?,?,?)",(c["name"],mid,"survived"));m.save(c,"queued",mid)
                 with patch.object(m,"screen",side_effect=screen), patch.object(pathlib.Path,"read_text",return_value=json.dumps({"day_number":"facts","_amount":"facts"})), patch.object(m,"api",side_effect=api), patch.object(m,"verify",return_value=("test.py","test","receipt")), patch.object(m,"http",side_effect=lambda *a: published.append(1) or {"pr":len(published)}),patch.object(pathlib.Path,"read_bytes",return_value=b"test"),patch.object(m.time,"time",return_value=100*step):m.step(m.decision())
-            self.assertEqual([r["state"] for r in m.state()],["published","published"]);self.assertEqual(len(set(prompts)),2);self.assertEqual(len(published),2)
+            assert [r["state"] for r in m.state()] == ["published", "published"];assert len(set(prompts)) == 2;assert len(published) == 2
 
     def test_case_is_data_not_python(self) -> None:
         m=load();self.assertRaises(AssertionError,m.render,"day_number",{"input":{},"expected":1,"why":"candidate input"});self.assertRaises(ValueError,m.render,"_amount",{"input":2,"expected":2,"why":"candidate input","code":"assert True"})
 
     def test_proleptic_gregorian_and_rejection_identity(self) -> None:
         m=load();case={"input":"0000-02-29","expected":2,"why":"calendar fixture"}
-        self.assertIn("0000-02-29",m.render("day_number",case))
+        assert "0000-02-29" in m.render("day_number", case)
         for date in ("0000-02-30","0001-02-29","2025-13-01","0000/01/01"):
             with self.assertRaises((ValueError,AssertionError)):m.render("day_number",{**case,"input":date})
         with tempfile.TemporaryDirectory() as d:
@@ -50,4 +50,4 @@ class Pilot(unittest.TestCase):
                 "insert into rejections values(?,?,?,?)",
                 ("_amount","m",m.pair(case),"measured null"),
             )
-            self.assertTrue(m.rejected("_amount","m",{**case,"why":"different explanation"}));self.assertFalse(m.rejected("_amount","other",case));self.assertFalse(m.rejected("_amount","m",{**case,"expected":None}))
+            assert m.rejected("_amount", "m", {**case, "why": "different explanation"});assert not m.rejected("_amount", "other", case);assert not m.rejected("_amount", "m", {**case, "expected": None})

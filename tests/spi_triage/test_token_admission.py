@@ -28,7 +28,7 @@ class AdmissionTests(unittest.TestCase):
         s.finish_llm(r, now=111)
         with self.assertRaises(Failure) as e:
             s.reserve_llm(1, now=170.999)
-        self.assertEqual(e.exception.code, "LLM_ADMISSION_DEFERRED")
+        assert e.exception.code == "LLM_ADMISSION_DEFERRED"
         s.reserve_llm(1, now=171)
 
     def test_rpm_and_crash_expiry(self) -> None:
@@ -49,7 +49,7 @@ class AdmissionTests(unittest.TestCase):
             self.store.reserve_llm(1, now=3)
         with self.assertRaises(Failure) as e:
             self.store.reserve_llm(30001, now=100)
-        self.assertEqual(e.exception.code, "LLM_REQUEST_TOO_LARGE")
+        assert e.exception.code == "LLM_REQUEST_TOO_LARGE"
 
     @patch.dict(os.environ, {"SPI_TOKEN_ACCOUNTING_MODE": "byte-bound-v1"})
     def test_serialized_schema_output_and_analysis(self) -> None:
@@ -64,12 +64,12 @@ class AdmissionTests(unittest.TestCase):
             expected += (
                 len(json.dumps(body["response_format"], ensure_ascii=False).encode()) + 256 + output
             )
-            self.assertEqual(m.reservation(body), expected)
-            self.assertLess(m.reservation(body), len(json.dumps(body).encode()) + 2048 + output)
-            self.assertGreater(m.reservation(body), len(body["messages"][1]["content"]))
+            assert m.reservation(body) == expected
+            assert m.reservation(body) < len(json.dumps(body).encode()) + 2048 + output
+            assert m.reservation(body) > len(body["messages"][1]["content"])
         with self.assertRaises(Failure) as e:
             m.call("test", {"huge": ["x" * 12000] * 5}, REPORT_SCHEMA, time.monotonic() + 20)
-        self.assertEqual(e.exception.code, "LLM_REQUEST_TOO_LARGE")
+        assert e.exception.code == "LLM_REQUEST_TOO_LARGE"
         m.http.request.assert_not_called()
 
     def test_local_compressible_and_incompressible_before_http(self) -> None:
@@ -78,9 +78,7 @@ class AdmissionTests(unittest.TestCase):
         h = Mock()
         h.request.return_value = {"choices": [{"message": {"content": json.dumps(GOOD)}}]}
         m = Model(h, "fake", store=self.store)
-        self.assertEqual(
-            m.call("test", {"huge": ["x" * 12000] * 5}, MATCH_SCHEMA, time.monotonic() + 20), GOOD
-        )
+        assert m.call("test", {"huge": ["x" * 12000] * 5}, MATCH_SCHEMA, time.monotonic() + 20) == GOOD
         h.request.assert_called_once()
         h.reset_mock()
         import random, string
@@ -89,7 +87,7 @@ class AdmissionTests(unittest.TestCase):
         noise = "".join(rng.choice(string.ascii_letters + string.digits) for _ in range(60000))
         with self.assertRaises(Failure) as e:
             m.call("test", {"huge": noise}, MATCH_SCHEMA, time.monotonic() + 20)
-        self.assertEqual(e.exception.code, "LLM_REQUEST_TOO_LARGE")
+        assert e.exception.code == "LLM_REQUEST_TOO_LARGE"
         h.request.assert_not_called()
 
     def test_local_computed_cost_durable_clock(self) -> None:
@@ -100,29 +98,25 @@ class AdmissionTests(unittest.TestCase):
         costs = [m.counter.reservation(b) for b in bodies]
         with patch.dict(os.environ, {"SPI_TOKEN_ACCOUNTING_MODE": "byte-bound-v1"}):
             legacy = Model(Mock(), "fake")
-        self.assertLessEqual(sum(costs), 30000)
-        self.assertGreater(sum(legacy.reservation(b) for b in bodies), 30000)
+        assert sum(costs) <= 30000
+        assert sum(legacy.reservation(b) for b in bodies) > 30000
         s = self.store
         for i, cost in enumerate(costs):
             now = 100 + i * 2
             r = s.reserve_llm(cost, now=now)
             with self.assertRaises(Failure) as e:
                 Store(s.path).reserve_llm(1, now=now + 0.1)
-            self.assertEqual(e.exception.code, "LLM_ADMISSION_DEFERRED")
+            assert e.exception.code == "LLM_ADMISSION_DEFERRED"
             s.finish_llm(r, actual=1, now=now + 1)
             s = Store(s.path)
         with s.db() as db:
-            self.assertEqual(
-                [r[0] for r in db.execute("select tokens from llm_admission order by id")], costs
-            )
+            assert [r[0] for r in db.execute("select tokens from llm_admission order by id")] == costs
         with self.assertRaises(Failure):
             s.reserve_llm(1, now=161.999)
         r = s.reserve_llm(costs[0], now=162)
         s.finish_llm(r, actual=30000, now=163)
         with Store(s.path).db() as db:
-            self.assertEqual(
-                db.execute("select tokens from llm_admission where id=?", (r,)).fetchone()[0], 30000
-            )
+            assert db.execute("select tokens from llm_admission where id=?", (r,)).fetchone()[0] == 30000
         with self.assertRaises(Failure):
             Store(s.path).reserve_llm(1, now=223.999)
         Store(s.path).reserve_llm(1, now=224)
@@ -135,12 +129,12 @@ class AdmissionTests(unittest.TestCase):
         }
         m = Model(h, "fake", store=self.store)
         for _ in range(3):
-            self.assertEqual(m.call("test", {}, MATCH_SCHEMA, time.monotonic() + 20), GOOD)
+            assert m.call("test", {}, MATCH_SCHEMA, time.monotonic() + 20) == GOOD
         with self.assertRaises(Failure):
             Model(h, "fake", store=Store(self.store.path)).call(
                 "test", {}, MATCH_SCHEMA, time.monotonic() + 20
             )
-        self.assertEqual(h.request.call_count, 3)
+        assert h.request.call_count == 3
 
     def test_all120_and_oversized_single_excerpt(self) -> None:
         issues = [
@@ -153,19 +147,19 @@ class AdmissionTests(unittest.TestCase):
 
 
         def call(task, data, schema, _deadline) -> dict[str, object]:
-            self.assertLessEqual(m.reservation(m.payload(task, data, schema)), 30000)
-            self.assertLessEqual(len(data["open_issues"]), 12)
+            assert m.reservation(m.payload(task, data, schema)) <= 30000
+            assert len(data["open_issues"]) <= 12
             seen.extend(x["number"] for x in data["open_issues"])
             return dict(GOOD)
 
         m.call = call
         result = m.match(f.event(), issues, on_progress=saved.append)
-        self.assertEqual(seen, list(range(120)))
-        self.assertEqual(result["reviewed_numbers"], seen)
-        self.assertGreater(len(saved), 10)
+        assert seen == list(range(120))
+        assert result["reviewed_numbers"] == seen
+        assert len(saved) > 10
         seen.clear()
         m.match(f.event(), issues, progress=saved[-1])
-        self.assertEqual(seen, [])
+        assert seen == []
 
     def test_legacy_partition_not_reinterpreted(self) -> None:
         issues = [{"number": i} for i in range(25)]
@@ -176,19 +170,19 @@ class AdmissionTests(unittest.TestCase):
         m.call = Mock(return_value=GOOD)
         saved = []
         m.match(f.event(), issues, progress=progress, on_progress=saved.append)
-        self.assertEqual(saved[-1]["reviews"][0]["ids"], list(range(12)))
-        self.assertEqual(m.call.call_count, 3)  # Unbound legacy proof must be reviewed again.
+        assert saved[-1]["reviews"][0]["ids"] == list(range(12))
+        assert m.call.call_count == 3  # Unbound legacy proof must be reviewed again.
 
     def test_reset_delay_not_claim_backoff(self) -> None:
         key = self.store.enqueue(f.event())["job_id"]
         for _ in range(20):
             self.store.fail(key, "LLM_ADMISSION_DEFERRED", retry_after=60)
         job = self.store.get(key)
-        self.assertEqual(job["state"], "retry")
-        self.assertTrue(61 <= job["available"] - job["updated"] <= 63)
+        assert job["state"] == "retry"
+        assert 61 <= job["available"] - job["updated"] <= 63
         self.store.fail(key, "LLM_HTTP_401")
         with self.store.db() as c:
-            self.assertEqual(c.execute("select failures from job_failure_budget").fetchone()[0], 1)
+            assert c.execute("select failures from job_failure_budget").fetchone()[0] == 1
 
     def test_final_comparison_resume_and_budget(self) -> None:
         issues = [{"number": i, "body": "x" * 6000} for i in range(1, 31)]
@@ -198,7 +192,7 @@ class AdmissionTests(unittest.TestCase):
 
 
         def choose(task, data, schema, _deadline) -> dict[str, object]:
-            self.assertLessEqual(m.reservation(m.payload(task, data, schema)), 30000)
+            assert m.reservation(m.payload(task, data, schema)) <= 30000
             ids = [x["number"] for x in data["open_issues"]]
             calls.append(ids)
             if len(ids) == 2 and not any("selection" in s for s in saved):
@@ -210,14 +204,14 @@ class AdmissionTests(unittest.TestCase):
         m.call = choose
         with self.assertRaises(Failure):
             m.match(f.event(), issues, on_progress=saved.append)
-        self.assertIn("selection", saved[-1])
+        assert "selection" in saved[-1]
         completed = len(calls)
         m.call = Mock(
             side_effect=lambda t, d, s, dl: {**GOOD, "issue_number": d["open_issues"][0]["number"]}
         )
         result = m.match(f.event(), issues, progress=saved[-1])
-        self.assertEqual(result["reviewed_numbers"], list(range(1, 31)))
-        self.assertEqual(m.call.call_count, 1)
+        assert result["reviewed_numbers"] == list(range(1, 31))
+        assert m.call.call_count == 1
 
     def test_invalid_output_finite_not_hidden_by_admission(self) -> None:
         h = Mock()
@@ -225,11 +219,11 @@ class AdmissionTests(unittest.TestCase):
         m = Model(h, "fake", store=self.store)
         with self.assertRaises(Failure) as e:
             m.call("test", {}, MATCH_SCHEMA, time.monotonic() + 30)
-        self.assertEqual(e.exception.code, "LLM_INVALID_MODEL_SCHEMA")
+        assert e.exception.code == "LLM_INVALID_MODEL_SCHEMA"
         from core import LLM_TRANSIENT
 
-        self.assertNotIn(e.exception.code, LLM_TRANSIENT)
-        self.assertEqual(h.request.call_count, 1)
+        assert e.exception.code not in LLM_TRANSIENT
+        assert h.request.call_count == 1
 
     def test_numeric_rate_headers_allowlist_and_durable_metadata(self) -> None:
         import urllib.error
@@ -251,11 +245,8 @@ class AdmissionTests(unittest.TestCase):
         )
         with self.assertRaises(Failure) as e:
             h.request("POST", "http://internal")
-        self.assertEqual(e.exception.retry_after, 60)
-        self.assertEqual(
-            e.exception.rate_metadata,
-            {"tokens_remaining": 4155.0, "tokens_reset": 60.0, "retry_after": 60},
-        )
+        assert e.exception.retry_after == 60
+        assert e.exception.rate_metadata == {"tokens_remaining": 4155.0, "tokens_reset": 60.0, "retry_after": 60}
         key = self.store.enqueue(f.event())["job_id"]
         self.store.fail(
             key,
@@ -265,8 +256,8 @@ class AdmissionTests(unittest.TestCase):
         )
         with self.store.db() as c:
             data = json.loads(c.execute("select metadata from llm_rate_metadata").fetchone()[0])
-        self.assertNotIn("body", data)
-        self.assertEqual(data["tokens_remaining"], 4155)
+        assert "body" not in data
+        assert data["tokens_remaining"] == 4155
 
     def test_local_proxy_modeled_precheck_and_settlement(self) -> None:
         if os.environ.get("SPI_TOKEN_ACCOUNTING_MODE") != "local-qwen-v1":
@@ -280,8 +271,8 @@ class AdmissionTests(unittest.TestCase):
             body = m.payload("test", {"text": "x" * 16000 + str(i)}, MATCH_SCHEMA)
             cost = m.counter.reservation(body)
             proxy = sum(len(x["content"]) for x in body["messages"]) // 4 + body["max_tokens"]
-            self.assertGreaterEqual(cost, proxy)
-            self.assertLessEqual(proxy_current + proxy, 30000)
+            assert cost >= proxy
+            assert proxy_current + proxy <= 30000
             r = self.store.reserve_llm(cost, now=100 + i * 2)
             proxy_current += proxy
             actual = proxy if i == 0 else 1
@@ -292,7 +283,7 @@ class AdmissionTests(unittest.TestCase):
         body = m.payload("test", {"text": " " * 100000 + "x"}, REPORT_SCHEMA)
         cost = m.counter.reservation(body)
         proxy = sum(len(x["content"]) for x in body["messages"]) // 4 + 2500
-        self.assertGreaterEqual(cost, proxy)
+        assert cost >= proxy
         r = self.store.reserve_llm(cost, now=200)
         self.store.finish_llm(r, actual=1, now=201)
         with self.assertRaises(Failure):
@@ -306,6 +297,6 @@ class AdmissionTests(unittest.TestCase):
         with patch.object(m.counter, "_tokenizer") as native:
             with self.assertRaises(Failure) as e:
                 m.call("test", {"text": " " * 600000}, REPORT_SCHEMA, time.monotonic() + 20)
-            self.assertEqual(e.exception.code, "LLM_REQUEST_TOO_LARGE")
+            assert e.exception.code == "LLM_REQUEST_TOO_LARGE"
             native.encode.assert_not_called()
         m.http.request.assert_not_called()

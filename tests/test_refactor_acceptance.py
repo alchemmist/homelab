@@ -1,3 +1,5 @@
+"""Acceptance tests for the public entry refactor."""
+
 import copy
 import importlib.util
 from pathlib import Path

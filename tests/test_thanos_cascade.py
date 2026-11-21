@@ -1,3 +1,5 @@
+"""Tests for the Thanos compaction cascade."""
+
 import importlib.util
 import json
 import unittest

@@ -12,6 +12,10 @@ sys.path.insert(0, str(ROOT / "charts/spi-triage/files"))
 from core import Store, normalize, Failure
 from card_correlation import record_receipt
 
+# The handoff node sends two copies per receipt and waits 5s for the API answer.
+COPIES_PER_RECEIPT = 2
+HANDOFF_TIMEOUT_MS = 5000
+
 
 class CorrelationTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -40,53 +44,54 @@ class CorrelationTests(unittest.TestCase):
         expected = normalize(self.payload)
         for store in [self.store, Store(self.store.path)]:
             result = record_receipt(store, self.payload)
-            self.assertEqual(result["event_key"], expected["event_key"])
+            assert result["event_key"] == expected["event_key"]
         with self.store.db() as c:
-            self.assertEqual(c.execute("SELECT count(*) FROM telegram_receipts").fetchone()[0], 2)
-        self.assertNotIn(b"private", Path(self.store.path).read_bytes())
+            assert (
+                c.execute("SELECT count(*) FROM telegram_receipts").fetchone()[0]
+                == COPIES_PER_RECEIPT
+            )
+        assert b"private" not in Path(self.store.path).read_bytes()
 
     def test_resolved_flap_and_unknown(self) -> None:
         firing = record_receipt(self.store, self.payload)
         self.payload["alert"]["status"] = "resolved"
         resolved = record_receipt(self.store, self.payload)
-        self.assertEqual(firing["episode"], resolved["episode"])
-        self.assertNotEqual(firing["event_key"], resolved["event_key"])
+        assert firing["episode"] == resolved["episode"]
+        assert firing["event_key"] != resolved["event_key"]
         self.payload["alert"]["startsAt"] = "2026-01-02T00:00:00Z"
         self.payload["receipt"] = {"error": {"message": "private"}}
         new = record_receipt(self.store, self.payload)
-        self.assertNotEqual(new["episode"], firing["episode"])
-        self.assertEqual(new["state"], "unknown")
+        assert new["episode"] != firing["episode"]
+        assert new["state"] == "unknown"
 
     def test_invalid_copy_and_empty_receipt(self) -> None:
         self.payload["receipt"]["copies"] = [{"chat_id": 1, "message_id": "2"}]
         with self.assertRaises(Failure):
             record_receipt(self.store, self.payload)
         self.payload["receipt"]["copies"] = []
-        self.assertEqual(record_receipt(self.store, self.payload)["state"], "unknown")
+        assert record_receipt(self.store, self.payload)["state"] == "unknown"
 
     def test_workflow_graph_and_actual_splitter(self) -> None:
         w = json.loads((ROOT / "docs/n8n/socrat-bot/workflow.json").read_text())
         nodes = {n["name"]: n for n in w["nodes"]}
-        self.assertEqual(
-            nodes["Alertmanager Webhook"]["id"], "c0ffee00-0001-4000-8000-000000000001"
-        )
+        assert nodes["Alertmanager Webhook"]["id"] == "c0ffee00-0001-4000-8000-000000000001"
         handoff = nodes["Record Telegram Receipt"]
-        self.assertEqual(handoff["credentials"]["httpHeaderAuth"]["id"], "SPI_WORKER_CREDENTIAL_ID")
-        self.assertEqual(handoff["parameters"]["options"]["timeout"], 5000)
-        self.assertIn(
-            "$('One item per alert').itemMatching(index)",
-            nodes["Prepare Telegram Receipt"]["parameters"]["jsCode"],
+        assert handoff["credentials"]["httpHeaderAuth"]["id"] == "SPI_WORKER_CREDENTIAL_ID"
+        assert handoff["parameters"]["options"]["timeout"] == HANDOFF_TIMEOUT_MS
+        assert (
+            "$('One item per alert').itemMatching(index)"
+            in nodes["Prepare Telegram Receipt"]["parameters"]["jsCode"]
         )
-        self.assertNotIn(".first()", handoff["parameters"]["jsonBody"])
-        self.assertEqual(
-            w["connections"]["Post Telegram Message"]["main"][0][0]["node"],
-            "Prepare Telegram Receipt",
+        assert ".first()" not in handoff["parameters"]["jsonBody"]
+        assert (
+            w["connections"]["Post Telegram Message"]["main"][0][0]["node"]
+            == "Prepare Telegram Receipt"
         )
-        self.assertEqual(
-            w["connections"]["Prepare Telegram Receipt"]["main"][0][0]["node"],
-            "Record Telegram Receipt",
+        assert (
+            w["connections"]["Prepare Telegram Receipt"]["main"][0][0]["node"]
+            == "Record Telegram Receipt"
         )
-        self.assertEqual(nodes["Post Telegram Message"]["onError"], "continueRegularOutput")
+        assert nodes["Post Telegram Message"]["onError"] == "continueRegularOutput"
         script = nodes["One item per alert"]["parameters"]["jsCode"]
         alert = self.payload["alert"]
         alert["endsAt"] = "2026-01-01T01:00:00Z"
@@ -106,8 +111,8 @@ class CorrelationTests(unittest.TestCase):
             + "})()));"
         )
         output = json.loads(subprocess.check_output(["node", "-e", js]))
-        self.assertEqual(len(output), 2)
+        assert len(output) == COPIES_PER_RECEIPT
         for item in output:
-            self.assertEqual(item["json"]["source"], "https://am.example")
+            assert item["json"]["source"] == "https://am.example"
             for field in ["startsAt", "endsAt", "fingerprint"]:
-                self.assertEqual(item["json"]["alert"][field], alert[field])
+                assert item["json"]["alert"][field] == alert[field]

@@ -1,3 +1,5 @@
+"""Tests for SPI private backup procedures."""
+
 import importlib.util
 import os
 import stat

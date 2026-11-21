@@ -1,3 +1,5 @@
+"""Tests for removing the Rancher home landing page."""
+
 import importlib.util
 import io
 import json

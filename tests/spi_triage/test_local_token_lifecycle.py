@@ -16,7 +16,7 @@ class Lifecycle(unittest.TestCase):
     def test_retained_models_and_request_isolation(self) -> None:
         with patch.dict(os.environ, SPI_TOKEN_ACCOUNTING_MODE="local-qwen-v1"):
             models = [Model(Mock(), "unused") for _ in range(24)]
-        self.assertEqual(len({id(m.counter.tokenizer) for m in models}), 1)
+        assert len({id(m.counter.tokenizer) for m in models}) == 1
         bodies = [
             {
                 "model": "qwen3.8-27b",
@@ -38,13 +38,15 @@ class Lifecycle(unittest.TestCase):
                     zip(models, bodies, strict=True),
                 )
             )
-        self.assertEqual(actual, expected)
+        assert actual == expected
         body = bodies[0]
         body["messages"][0]["content"] = ""
         body["messages"][1]["content"] = "a" * (MAX_BYTES - 128)
         models[0].counter.reservation(body)
         body["messages"][1]["content"] += "a"
-        self.assertEqual(models[0].counter.reservation(body), 30001)
+        # Once the byte ceiling is crossed the body claims the full budget plus one.
+        full_reservation = 30001
+        assert models[0].counter.reservation(body) == full_reservation
         for m in models:
             m.http.request.assert_not_called()
 
