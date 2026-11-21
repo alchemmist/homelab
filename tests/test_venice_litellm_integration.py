@@ -17,7 +17,7 @@ class VeniceLiteLLMIntegrationTests(unittest.TestCase):
     """Pin the Venice browser bridge and the existing Qwen route."""
 
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         cls.values = yaml.safe_load((ROOT / "deploy/platform/litellm/values.yaml").read_text())
         cls.models = {m["model_name"]: m for m in cls.values["proxy_config"]["model_list"]}
 

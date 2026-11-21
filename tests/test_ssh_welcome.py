@@ -19,18 +19,18 @@ class WelcomeTests(unittest.TestCase):
     """Role labels, node links, and rendered text stay bounded and injectable-safe."""
 
     def setUp(self):
-        self.config = dict(
-            node="socrat-3",
-            labels={},
-            addresses=[dict(type="InternalIP", address="10.250.0.5")],
-            description="Old MSI",
-            admin="alchemmist",
-            contacts={},
-            rancher_url="https://rancher.socrat.alchemmist.xyz",
-            cluster="local",
-            exporter_port=9796,
-            logo="reference-16",
-        )
+        self.config = {
+            "node": "socrat-3",
+            "labels": {},
+            "addresses": [{"type": "InternalIP", "address": "10.250.0.5"}],
+            "description": "Old MSI",
+            "admin": "alchemmist",
+            "contacts": {},
+            "rancher_url": "https://rancher.socrat.alchemmist.xyz",
+            "cluster": "local",
+            "exporter_port": 9796,
+            "logo": "reference-16",
+        }
         self.portraits = json.loads((ROOT / "assets/socrates-braille.json").read_text())
 
     def test_etcd_is_not_reported_as_worker(self) -> None:

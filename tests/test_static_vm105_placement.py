@@ -13,7 +13,7 @@ REPLICA_COUNT_WITH_ANTI_AFFINITY = 2
 class StaticVMPlacementTests(unittest.TestCase):
     """Check retained failure domains, rolling updates, images, and opt-out."""
 
-    def render(self, name, *extra):
+    def render(self, name, *extra) -> dict[str, object]:
         output = subprocess.check_output(
             [
                 "helm",

@@ -15,7 +15,7 @@ GATEWAY_DOC_COUNT = 3
 class Namespace(unittest.TestCase):
     """Rendered RustFS namespace boundaries and the fixed S3 destination."""
 
-    def render(self, namespace):
+    def render(self, namespace) -> str:
         return subprocess.check_output(
             [
                 "helm",
@@ -69,11 +69,11 @@ class Namespace(unittest.TestCase):
 
     def test_fixed_destination(self) -> None:
         """Require the in-cluster S3 endpoint and reject other origins."""
-        env = dict(
-            AUTH_URL="https://rustfs.socrat.alchemmist.xyz/outpost.goauthentik.io/auth/nginx",
-            S3_ACCESS_KEY="offline",
-            S3_SECRET_KEY="offline",
-        )
+        env = {
+            "AUTH_URL": "https://rustfs.socrat.alchemmist.xyz/outpost.goauthentik.io/auth/nginx",
+            "S3_ACCESS_KEY": "offline",
+            "S3_SECRET_KEY": "offline",
+        }
         with patch.dict(os.environ, env, clear=True):
             assert Reader().s3 == "http://rustfs.rustfs.svc.cluster.local:9000"
             for endpoint in (

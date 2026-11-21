@@ -27,13 +27,13 @@ def has_cas_assertion(tree: ast.Module) -> bool:
 class BootstrapTests(unittest.TestCase):
     """Inventory, guard, and CAS checks for the socrat-5 bootstrap sources."""
 
-    def test_manifest_matches_inventory_and_scoped_template(self):
+    def test_manifest_matches_inventory_and_scoped_template(self) -> None:
         """Match the manifest peer to inventory and the rendered unit allowlist."""
         m = json.loads((ROOT / "deploy/network/socrat-5-bootstrap.json").read_text())
         v = {}
         for f in [
             "ansible/roles/wireguard_socrat/defaults/main.yml",
-            "ansible/inventory/group_vars/Socrat.yml",
+            "ansible/inventory/group_vars/Socrat/cluster.yml",
             "ansible/inventory/host_vars/socrat-4.yml",
         ]:
             v.update(yaml.safe_load((ROOT / f).read_text()))

@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class FullServiceBundleTests(unittest.TestCase):
-    def render(self, bundled=False):
+    def render(self, bundled=False) -> dict[tuple[str, str, str], dict[str, object]]:
         args = [
             "helm",
             "template",
@@ -42,7 +42,7 @@ class FullServiceBundleTests(unittest.TestCase):
             if x
         }
 
-    def test_same_release_image_for_backend_frontend_and_scoped_broker(self):
+    def test_same_release_image_for_backend_frontend_and_scoped_broker(self) -> None:
         docs = self.render(True)
         image = "harbor.socrat.alchemmist.xyz/homelab/spi-triage@sha256:" + "a" * 64
         for name in ("spi-triage", "spi-queue-ui"):
@@ -58,7 +58,7 @@ class FullServiceBundleTests(unittest.TestCase):
         assert ("ConfigMap", "pr-agent", "spi-github-broker-code") not in docs
         assert ("ConfigMap", "automation", "spi-queue-ui") not in docs
 
-    def test_queue_identity_is_not_replaced_or_exposed_to_web(self):
+    def test_queue_identity_is_not_replaced_or_exposed_to_web(self) -> None:
         docs = self.render(True)
         dep = docs["Deployment", "automation", "spi-triage"]
         assert dep["spec"]["replicas"] == 1
@@ -84,7 +84,7 @@ class FullServiceBundleTests(unittest.TestCase):
             ]["argocd.argoproj.io/sync-options"]
         )
 
-    def test_bundle_does_not_change_resources_credentials_fences_or_quotas(self):
+    def test_bundle_does_not_change_resources_credentials_fences_or_quotas(self) -> None:
         legacy = self.render()
         bundled = self.render(True)
         a = legacy["Deployment", "automation", "spi-triage"]["spec"]["template"]["spec"][
@@ -115,7 +115,7 @@ class FullServiceBundleTests(unittest.TestCase):
                 k: v for k, v in bundled.items() if k[0] == kind
             }
 
-    def test_legacy_code_is_frozen_and_no_second_argo_publisher_exists(self):
+    def test_legacy_code_is_frozen_and_no_second_argo_publisher_exists(self) -> None:
         import hashlib
 
         manifest = json.loads((ROOT / "charts/spi-triage/LEGACY-SOURCE-MANIFEST.json").read_text())

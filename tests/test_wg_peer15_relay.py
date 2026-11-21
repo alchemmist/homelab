@@ -16,13 +16,13 @@ spec.loader.exec_module(endpoint)
 class EndpointTests(unittest.TestCase):
     """Synthetic config checks and the static relay service contract."""
 
-    def config(self):
+    def config(self) -> str:
         return (
             "[Interface]\nPrivateKey = SYNTHETIC-NOT-A-KEY\nListenPort = 51830\n\n"
             "[Peer]\nPublicKey = other-peer\nEndpoint = 127.0.0.1:51840\n\n"
-            "[Peer]\n# socrat-1\nPublicKey = " + endpoint.PEER + "\n"
+            "[Peer]\n# socrat-1\nPublicKey = " + str(endpoint.PEER) + "\n"
             "AllowedIPs = 10.250.0.3/32, 10.42.1.0/24\n"
-            "Endpoint = " + endpoint.DIRECT + "\nPersistentKeepalive = 25\n\n"
+            "Endpoint = " + str(endpoint.DIRECT) + "\nPersistentKeepalive = 25\n\n"
             "[Peer]\nPublicKey = another-peer\nEndpoint = example.test:1234\n"
         )
 

@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class UnifiedLogsDashboardTest(unittest.TestCase):
     """Offline checks for the unified logs Grafana dashboard contract."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.dashboard = json.loads(
             (ROOT / "charts/monitoring-k3s/dashboards/logs.json").read_text()
         )

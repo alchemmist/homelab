@@ -7,7 +7,7 @@ def check(v):
  if not v:raise ValueError('blocked')
 def owned(n,h):return {'head':{'ref':'openhands/issue-509/'+'a'*32},'labels':[{'name':'mutation-pr'}]}
 def snapshot(author='Bot',reply=False):
- def nodes(x):return {'nodes':x,'pageInfo':{'hasNextPage':False}}
+ def nodes(x) -> 'dict[str, object]':return {'nodes':x,'pageInfo':{'hasNextPage':False}}
  ctx=nodes([{'__typename':'CheckRun','name':'Quality Graph','status':'COMPLETED','conclusion':'SUCCESS'}]);comments=[{'id':'PRRC_1','author':{'__typename':author,'login':'review-bot'},'body':'Please check coverage','url':'url'}];return {'headRefOid':H,'tip':nodes([{'commit':{'statusCheckRollup':{'contexts':ctx}}}]),'reviewThreads':nodes([{'id':'T','isResolved':False,'comments':nodes(comments)}]),'comments':nodes([]),'reviews':nodes([])}
 class Protocol(unittest.TestCase):
  def test_no_ready_if_bot_remark_pending_even_with_otherwise_green_snapshot(self):

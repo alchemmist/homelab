@@ -19,7 +19,7 @@ OLD_WRITER_LEASE = 999
 
 
 class RetryTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.path = Path(self.tmp.name) / "db"
@@ -61,7 +61,7 @@ class RetryTests(unittest.TestCase):
             }
         self.auth["target_manifest_digest"] = m.manifest_digest(self.manifest)
 
-    def test_individual_drift(self):
+    def test_individual_drift(self) -> None:
         for field, value in [
             ("result", "unreviewed"),
             ("episode", "other"),
@@ -80,27 +80,27 @@ class RetryTests(unittest.TestCase):
                     (original, self.manifest["rows"][0]["id"]),
                 )
 
-    def test_extra_column(self):
+    def test_extra_column(self) -> None:
         self.mutate("ALTER TABLE jobs ADD COLUMN extra TEXT")
         self.reject()
 
-    def test_manifest_missing(self):
+    def test_manifest_missing(self) -> None:
         self.manifest = None
         self.reject()
 
-    def test_manifest_tamper(self):
+    def test_manifest_tamper(self) -> None:
         self.manifest["rows"][0]["result"] = "tampered"
         self.reject()
 
-    def test_manifest_bad_ids(self):
+    def test_manifest_bad_ids(self) -> None:
         self.manifest["rows"][0]["id"] = "bad"
         self.reject()
 
-    def test_manifest_digest(self):
+    def test_manifest_digest(self) -> None:
         self.auth["target_manifest_digest"] = "0" * 64
         self.reject()
 
-    def test_audit_trigger_injection(self):
+    def test_audit_trigger_injection(self) -> None:
         self.mutate(
             "CREATE TABLE operator_retry_audit (nonce TEXT,job_id TEXT,authorization_hash TEXT,pre_row_hash TEXT,executed_at REAL,reason TEXT,explicit_change TEXT,manifest_digest TEXT,post_row_hash TEXT,PRIMARY KEY(nonce,job_id))"
         )
@@ -109,18 +109,18 @@ class RetryTests(unittest.TestCase):
         )
         self.reject()
 
-    def test_manifest_malformed(self):
+    def test_manifest_malformed(self) -> None:
         self.manifest = {"version": 99}
         self.reject()
 
-    def test_audit_schema_tamper(self):
+    def test_audit_schema_tamper(self) -> None:
         self.mutate("CREATE TABLE operator_retry_audit (nonce TEXT,job_id TEXT)")
         self.mutate(
             "CREATE TRIGGER operator_retry_audit_no_update BEFORE UPDATE ON operator_retry_audit BEGIN SELECT 1; END"
         )
         self.reject()
 
-    def test_audit_posthash_tamper(self):
+    def test_audit_posthash_tamper(self) -> None:
         self.mutate(
             "CREATE TABLE operator_retry_audit (nonce TEXT,job_id TEXT,authorization_hash TEXT,pre_row_hash TEXT,executed_at REAL,reason TEXT,explicit_change TEXT,manifest_digest TEXT,post_row_hash TEXT,PRIMARY KEY(nonce,job_id))"
         )
@@ -129,7 +129,7 @@ class RetryTests(unittest.TestCase):
         )
         self.reject()
 
-    def test_final_bound_target_recheck(self):
+    def test_final_bound_target_recheck(self) -> None:
         self.mutate(
             "CREATE TABLE operator_retry_audit (nonce TEXT,job_id TEXT,authorization_hash TEXT,pre_row_hash TEXT,executed_at REAL,reason TEXT,explicit_change TEXT,manifest_digest TEXT,post_row_hash TEXT,PRIMARY KEY(nonce,job_id))"
         )
@@ -138,28 +138,28 @@ class RetryTests(unittest.TestCase):
         )
         self.reject()
 
-    def rows(self):
+    def rows(self) -> list[str]:
         with sqlite3.connect(self.path) as c:
             return list(c.iterdump())
 
-    def mutate(self, sql, args=()):
+    def mutate(self, sql, args=()) -> None:
         with sqlite3.connect(self.path) as c:
             c.execute(sql, args)
 
-    def reject(self):
+    def reject(self) -> None:
         before = self.rows()
         with self.assertRaises((ValueError, sqlite3.DatabaseError)):
             m.retry(self.path, self.auth, True, self.manifest)
         assert before == self.rows()
 
-    def test_dry_run(self):
+    def test_dry_run(self) -> None:
         before = self.rows()
         assert (
             m.retry(self.path, self.auth, manifest=self.manifest)["eligible"] == ELIGIBLE_JOB_COUNT
         )
         assert before == self.rows()
 
-    def test_execute_preserves_counters_and_other_tables(self):
+    def test_execute_preserves_counters_and_other_tables(self) -> None:
         with sqlite3.connect(self.path) as c:
             c.row_factory = sqlite3.Row
             before = m.table_hashes(c)
@@ -180,51 +180,51 @@ class RetryTests(unittest.TestCase):
             with self.assertRaises(sqlite3.DatabaseError):
                 c.execute("DELETE FROM operator_retry_audit")
 
-    def test_nonce_survives_redeath_restart(self):
+    def test_nonce_survives_redeath_restart(self) -> None:
         m.retry(self.path, self.auth, True, self.manifest)
         self.mutate("UPDATE jobs SET state='dead'")
         self.reject()
 
-    def test_wrong_id(self):
+    def test_wrong_id(self) -> None:
         self.auth["job_ids"][0] = "a" * 64
         self.reject()
 
-    def test_wrong_auth(self):
+    def test_wrong_auth(self) -> None:
         self.auth["authorization_text"] = "yes"
         self.reject()
 
-    def test_lease(self):
+    def test_lease(self) -> None:
         self.mutate("UPDATE jobs SET lease=1")
         self.reject()
 
-    def test_intent(self):
+    def test_intent(self) -> None:
         self.mutate("UPDATE jobs SET intent='publication'")
         self.reject()
 
-    def test_stage(self):
+    def test_stage(self) -> None:
         self.mutate("UPDATE jobs SET stage=1")
         self.reject()
 
-    def test_error(self):
+    def test_error(self) -> None:
         self.mutate("UPDATE jobs SET error='unexpected'")
         self.reject()
 
-    def test_completed(self):
+    def test_completed(self) -> None:
         self.mutate("UPDATE jobs SET state='complete'")
         self.reject()
 
-    def test_full64_collision(self):
+    def test_full64_collision(self) -> None:
         key = next(iter(m.TARGETS))
         self.mutate("UPDATE jobs SET id=? WHERE id=?", (key[:12] + "f" * 52, key))
         self.reject()
 
-    def test_trigger_other_row_rollback(self):
+    def test_trigger_other_row_rollback(self) -> None:
         self.mutate(
             "CREATE TRIGGER sabotage AFTER UPDATE ON jobs BEGIN UPDATE ledger SET value=0; END"
         )
         self.reject()
 
-    def test_every_other_table_trigger_mutation_rolls_back(self):
+    def test_every_other_table_trigger_mutation_rolls_back(self) -> None:
         for table in (
             "job_failure_budget",
             "snapshot_budget",
@@ -242,7 +242,7 @@ class RetryTests(unittest.TestCase):
                 self.reject()
                 self.mutate("DROP TRIGGER sabotage")
 
-    def test_nonselected_row_mutation_rolls_back(self):
+    def test_nonselected_row_mutation_rolls_back(self) -> None:
         self.mutate(
             "INSERT INTO jobs(id,episode,state,result) VALUES('other','other','dead','retained')"
         )
@@ -251,7 +251,7 @@ class RetryTests(unittest.TestCase):
         )
         self.reject()
 
-    def test_without_rowid_mutation_rolls_back(self):
+    def test_without_rowid_mutation_rolls_back(self) -> None:
         self.mutate('CREATE TABLE "odd""table"(k TEXT PRIMARY KEY, v TEXT) WITHOUT ROWID')
         self.mutate("INSERT INTO \"odd\"\"table\" VALUES('a','retained')")
         self.mutate(
@@ -259,7 +259,7 @@ class RetryTests(unittest.TestCase):
         )
         self.reject()
 
-    def test_missing_row_atomic(self):
+    def test_missing_row_atomic(self) -> None:
         self.mutate("DELETE FROM jobs WHERE id=?", (next(iter(m.TARGETS)),))
         self.reject()
 
@@ -269,7 +269,7 @@ if __name__ == "__main__":
 
 
 class ProductionStoreTests(unittest.TestCase):
-    def test_v3_reopen_three_times_and_old_writer(self):
+    def test_v3_reopen_three_times_and_old_writer(self) -> None:
         import sys
 
         sys.path.insert(0, str(ROOT / "charts/spi-triage/files"))

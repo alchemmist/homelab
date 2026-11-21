@@ -21,7 +21,7 @@ MIGRATED_DB_MODE = 0o600
 class SyncthingMonitorMigrationTests(unittest.TestCase):
     """Migrate one named monitor and leave every other stored row unchanged."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.database = Path(self.directory.name) / "kuma.db"
@@ -49,7 +49,7 @@ class SyncthingMonitorMigrationTests(unittest.TestCase):
         connection.close()
         self.plan = [{"name": "Syncthing sync-0", "url": "http://10.250.0.1:18444/healthz"}]
 
-    def read_rows(self, database=None):
+    def read_rows(self, database=None) -> list[tuple[int, str, str, str, str, str, int, int]]:
         connection = sqlite3.connect(database or self.database)
         rows = connection.execute("SELECT * FROM monitor ORDER BY id").fetchall()
         connection.close()

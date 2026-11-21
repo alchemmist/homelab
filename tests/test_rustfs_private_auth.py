@@ -11,12 +11,12 @@ EMPTY_COOKIE_AUTHORIZATION_STATUS = 401
 
 
 class PrivateAuth(unittest.TestCase):
-    def test_auth_results_are_fail_closed(self):
+    def test_auth_results_are_fail_closed(self) -> None:
         reader = object.__new__(g.Reader)
         reader.auth = g.ORIGIN + "/outpost.goauthentik.io/auth/nginx"
 
         class HTTP:
-            def open(self, *args, **kwargs):
+            def open(self, *_args, **_kwargs):
                 raise self.error
 
         reader.http = HTTP()
@@ -27,12 +27,12 @@ class PrivateAuth(unittest.TestCase):
         assert reader.authorization("fixture") == OFFLINE_AUTHORIZATION_STATUS
         assert reader.authorization("") == EMPTY_COOKIE_AUTHORIZATION_STATUS
 
-    def test_denied_and_unavailable_never_loop_or_read(self):
+    def test_denied_and_unavailable_never_loop_or_read(self) -> None:
         class Reader:
             status = 403
             calls = []
 
-            def authorization(self, cookie):
+            def authorization(self, _cookie):
                 return self.status
 
             def read(self, key):

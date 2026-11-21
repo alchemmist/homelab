@@ -5,6 +5,8 @@ import io
 import json
 import os
 from pathlib import Path
+from types import ModuleType
+from typing import Self
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -19,20 +21,21 @@ POLICY_BINDING_COUNT = 2
 LAUNCHER_PROVIDER_PK = 17
 
 
-def module(name):
+def module(name: str) -> ModuleType:
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts/rustfs" / f"{name}.py")
+    assert spec is not None
     obj = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(obj)
     return obj
 
 
-def put(path, data):
+def put(path, data) -> None:
     path.write_text(json.dumps(data))
     path.chmod(0o600)
 
 
 class Provisioning(unittest.TestCase):
-    def test_policies_exact(self):
+    def test_policies_exact(self) -> None:
         b = module("bootstrap")
         assert b.POLICIES["spi-reader"]["Statement"][0]["Action"] == ["s3:GetObject"]
         for p in b.POLICIES.values():
@@ -40,7 +43,7 @@ class Provisioning(unittest.TestCase):
             assert "s3:DeleteObject" not in p["Statement"][0]["Action"]
             assert "*" not in p["Statement"][0]["Action"]
 
-    def test_policy_normalization_is_not_scope_widening(self):
+    def test_policy_normalization_is_not_scope_widening(self) -> None:
         b = module("bootstrap")
         p = b.POLICIES["spi-reader"]
         equivalent = {
@@ -59,7 +62,7 @@ class Provisioning(unittest.TestCase):
         with self.assertRaises(ValueError):
             b.canonical_policy(equivalent)
 
-    def test_private_credentials(self):
+    def test_private_credentials(self) -> None:
         b = module("bootstrap")
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "c"
@@ -73,14 +76,14 @@ class Provisioning(unittest.TestCase):
             with self.assertRaises(ValueError):
                 b.private(link)
 
-    def test_bootstrap_resumes_and_is_idempotent(self):
+    def test_bootstrap_resumes_and_is_idempotent(self) -> None:
         b = module("bootstrap")
         users = {}
         policies = {}
         buckets = []
         calls = []
 
-        def fake(mc, config, args, stdin=None):
+        def fake(_mc, _config, args, stdin=None):
             calls.append(args)
             if args[:3] == ["admin", "user", "list"]:
                 return [{"accessKey": k} for k in users]
@@ -163,7 +166,7 @@ class Provisioning(unittest.TestCase):
             ):
                 b.main()
 
-    def test_secret_outputs_private_idempotent_and_isolated(self):
+    def test_secret_outputs_private_idempotent_and_isolated(self) -> None:
         m = module("secrets")
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
@@ -194,7 +197,7 @@ class Provisioning(unittest.TestCase):
                 != json.loads((d / "rustfs-root.secret.json").read_text())["data"]
             )
 
-    def test_identity_additive_idempotent(self):
+    def test_identity_additive_idempotent(self) -> None:
         m = module("provision_identity")
         tables = {x: [] for x in m.COLLECTIONS}
         writes = []
@@ -231,13 +234,13 @@ class Provisioning(unittest.TestCase):
         ]
 
         class Response:
-            def __init__(self, data):
+            def __init__(self, data) -> None:
                 self.data = data
 
-            def __enter__(self):
+            def __enter__(self) -> Self:
                 return self
 
-            def __exit__(self, *a):
+            def __exit__(self, *a) -> None:
                 pass
 
             def read(self, *a):
@@ -347,7 +350,7 @@ class Provisioning(unittest.TestCase):
             ):
                 m.main()
 
-    def test_human_admin_claim_is_exact_identity_only(self):
+    def test_human_admin_claim_is_exact_identity_only(self) -> None:
         from types import SimpleNamespace
 
         expression = module("provision_identity").EXPRESSION
@@ -370,7 +373,7 @@ class Provisioning(unittest.TestCase):
             assert claim(**changed, member=True) == ["spi-console-reader"]
         assert claim(pk=99, username="spi-writer", member=True) == ["spi-console-reader"]
 
-    def test_builtin_scope_exact_managed_identity(self):
+    def test_builtin_scope_exact_managed_identity(self) -> None:
         m = module("provision_identity")
         official = {
             "pk": "official",

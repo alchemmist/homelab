@@ -15,11 +15,11 @@ PUBLIC_IP_TARGET_COUNT = 3
 DASH = json.loads((ROOT / "charts/monitoring-k3s/dashboards/traffic-light.json").read_text())
 
 
-def panel(n):
+def panel(n) -> dict[str, object]:
     return next(p for p in DASH["panels"] if p["id"] == n)
 
 
-def series(name, value, labels='job="node-exporter",node="socrat-4"', samples=20):
+def series(name, value, labels='job="node-exporter",node="socrat-4"', samples=20) -> dict[str, str]:
     return {
         "series": name + "{" + labels + "}",
         "values": str(value) + ("x" + str(samples) if samples else ""),
@@ -27,7 +27,7 @@ def series(name, value, labels='job="node-exporter",node="socrat-4"', samples=20
 
 
 class DirectIpTest(unittest.TestCase):
-    def test_rendered_probe_and_existing_authenticated_pipeline(self):
+    def test_rendered_probe_and_existing_authenticated_pipeline(self) -> None:
         rendered = subprocess.check_output(
             [
                 "helm",
@@ -81,7 +81,7 @@ class DirectIpTest(unittest.TestCase):
             ]
         )
 
-    def test_host4_is_a_real_kubernetes_worker_again(self):
+    def test_host4_is_a_real_kubernetes_worker_again(self) -> None:
         e = panel(926)["targets"][0]["expr"]
         assert "kube_node_status_condition" in e
         assert 'node="socrat-4"' in e
@@ -89,10 +89,10 @@ class DirectIpTest(unittest.TestCase):
         assert "or vector(-2)" in e
 
     @unittest.skipUnless(shutil.which("promtool"), "promtool required")
-    def test_actual_panel_expressions_down_pressure_stale_and_no_vpn_coupling(self):
+    def test_actual_panel_expressions_down_pressure_stale_and_no_vpn_coupling(self) -> None:
         cases = []
 
-        def add(expr, data, value, when="3m"):
+        def add(expr, data, value, when="3m") -> None:
             cases.append(
                 {
                     "interval": "15s",
@@ -166,10 +166,10 @@ class DirectIpTest(unittest.TestCase):
             assert r.returncode == 0, r.stdout + r.stderr
 
     @unittest.skipUnless(shutil.which("promtool"), "promtool required")
-    def test_mode_missing_is_not_off(self):
+    def test_mode_missing_is_not_off(self) -> None:
         e = panel(9)["targets"][0]["expr"]
 
-        def case(data, value):
+        def case(data, value) -> dict[str, object]:
             return {
                 "interval": "15s",
                 "input_series": data,
