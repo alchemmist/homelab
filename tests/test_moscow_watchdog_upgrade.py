@@ -2,14 +2,14 @@
 
 import importlib.util, json
 from pathlib import Path
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 import pytest, yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.fixture
-def env(tmp_path, monkeypatch):
+def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[ModuleType, Path, Path]:
     spec = importlib.util.spec_from_file_location(
         "upgrade", ROOT / "scripts/moscow-watchdog-upgrade.py"
     )
@@ -34,7 +34,9 @@ def env(tmp_path, monkeypatch):
     return m, candidate, dest
 
 
-def test_exact_atomic_upgrade_keeps_fence_and_state(env) -> None:
+def test_exact_atomic_upgrade_keeps_fence_and_state(
+    env: tuple[ModuleType, Path, Path],
+) -> None:
     """Install the reviewed bytes without clearing the fence or state file."""
     m, candidate, dest = env
     before = (m.STATE / "state.json").read_bytes()
@@ -51,7 +53,9 @@ def test_exact_atomic_upgrade_keeps_fence_and_state(env) -> None:
         m.install(candidate, m.sha(candidate.read_bytes()))
 
 
-def test_conflicting_active_agent_refuses_without_mutation(env, monkeypatch) -> None:
+def test_conflicting_active_agent_refuses_without_mutation(
+    env: tuple[ModuleType, Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Refuse when the agent unit is active and leave the controller untouched."""
     m, candidate, dest = env
     monkeypatch.setattr(m, "unit", lambda _: True)
@@ -60,7 +64,7 @@ def test_conflicting_active_agent_refuses_without_mutation(env, monkeypatch) -> 
     assert dest.read_bytes() == b"# old fixture\n" and not m.ROOT.exists()
 
 
-def test_unknown_candidate_refused(env) -> None:
+def test_unknown_candidate_refused(env: tuple[ModuleType, Path, Path]) -> None:
     """Refuse an unreviewed digest before creating a receipt or replacing the controller."""
     m, candidate, dest = env
     with pytest.raises(RuntimeError, match="SHA"):

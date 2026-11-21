@@ -15,6 +15,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+from collections.abc import Mapping
 from pathlib import Path
 
 root = Path.home() / ".cache/homelab-authentik"
@@ -34,7 +35,7 @@ runtime = json.loads(
 )
 
 
-def admin(method, path, data=None):
+def admin(method: str, path: str, data: Mapping[str, object] | None = None):
     req = urllib.request.Request(
         base + "/api/v3/" + path,
         method=method,
@@ -45,8 +46,8 @@ def admin(method, path, data=None):
         data=json.dumps(data).encode() if data is not None else None,
     )
     with urllib.request.urlopen(req, timeout=30) as r:
-        data = r.read()
-        return json.loads(data) if data else None
+        body = r.read()
+        return json.loads(body) if body else None
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -58,7 +59,7 @@ jar = http.cookiejar.CookieJar()
 opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar), NoRedirect)
 
 
-def browser(url, data=None):
+def browser(url: str, data: Mapping[str, object] | None = None):
     headers = {"Content-Type": "application/json", "Referer": base + "/"}
     for c in jar:
         if "csrf" in c.name and c.domain in [

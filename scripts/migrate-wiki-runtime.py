@@ -10,12 +10,12 @@ from pathlib import Path
 FORMAT_VERSION = 1
 
 
-def digest(path):
+def digest(path: Path):
     with path.open("rb") as stream:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
-def link_target(root, path):
+def link_target(root: Path, path: Path):
     target = Path(os.readlink(path))
     if target.is_absolute():
         try:
@@ -30,7 +30,7 @@ def link_target(root, path):
     return target
 
 
-def inventory(root):
+def inventory(root: Path):
     result = {}
     for path in sorted(root.rglob("*")):
         name = path.relative_to(root).as_posix()
@@ -46,7 +46,7 @@ def inventory(root):
     return result
 
 
-def validate(root):
+def validate(root: Path):
     if not (root / "repository" / ".git").is_dir():
         raise ValueError("Missing repository/.git")
     current = root / "live" / "current"
@@ -96,7 +96,7 @@ def validate(root):
     return {"commit": head, "pending_publications": pending}
 
 
-def copy_data(source, destination):
+def copy_data(source: Path, destination: Path):
     shutil.copytree(source, destination, symlinks=True)
     for path in destination.rglob("*"):
         if path.is_symlink():
@@ -106,7 +106,7 @@ def copy_data(source, destination):
             path.symlink_to(os.path.relpath(target, path.parent))
 
 
-def export_data(source, bundle):
+def export_data(source: Path, bundle: Path):
     source, bundle = source.resolve(), bundle.absolute()
     if bundle.exists() or bundle.is_relative_to(source):
         raise ValueError("Bundle must be a new path outside source data")
@@ -128,7 +128,7 @@ def export_data(source, bundle):
     return summary
 
 
-def verify(bundle):
+def verify(bundle: Path):
     bundle = bundle.resolve()
     manifest = json.loads((bundle / "manifest.json").read_text())
     if manifest.get("format") != FORMAT_VERSION:
@@ -141,7 +141,7 @@ def verify(bundle):
     return summary
 
 
-def restore(bundle, destination):
+def restore(bundle: Path, destination: Path):
     bundle, destination = bundle.resolve(), destination.absolute()
     summary = verify(bundle)
     if destination.exists() or destination.is_symlink():

@@ -32,7 +32,7 @@ LEGACY_PATHS = {
 }
 
 
-def rewrite_login(text, selected):
+def rewrite_login(text: str, *, selected: bool):
     matches = list(STARTUP_BLOCK.finditer(text))
     if len(matches) > 1:
         raise ValueError("Multiple startup blocks require manual review")
@@ -53,13 +53,13 @@ def rewrite_login(text, selected):
     )
 
 
-def remove_idle_shutdown(text):
+def remove_idle_shutdown(text: str):
     return IDLE_LISTENER.sub(
         lambda match: "" if IDLE_SHUTDOWN.search(match.group()) else match.group(), text
     )
 
 
-def replace_file(path, content, uid, gid):
+def replace_file(path: Path, content: str, uid: int, gid: int):
     previous = path.stat() if path.exists() else None
     descriptor, name = tempfile.mkstemp(prefix="." + path.name + ".homelab-", dir=path.parent)
     temporary = Path(name)
@@ -79,7 +79,15 @@ def replace_file(path, content, uid, gid):
         temporary.unlink(missing_ok=True)
 
 
-def configure(home, username, login_file, cleanup, disable_shutdown, check=False):
+def configure(
+    home: Path,
+    username: str,
+    login_file: str,
+    *,
+    cleanup: bool,
+    disable_shutdown: bool,
+    check: bool = False,
+):
     user = pwd.getpwnam(username)
     if not user.pw_shell.endswith("/zsh"):
         raise ValueError("This setup requires the existing zsh login shell")
@@ -96,7 +104,7 @@ def configure(home, username, login_file, cleanup, disable_shutdown, check=False
         if not path.exists() and filename != login_file:
             continue
         old = path.read_text() if path.exists() else ""
-        new = rewrite_login(old, filename == login_file)
+        new = rewrite_login(old, selected=filename == login_file)
         if old != new:
             with tempfile.NamedTemporaryFile(mode="w", suffix=".zsh") as candidate:
                 candidate.write(new)
@@ -167,8 +175,8 @@ def main():
                 args.home,
                 args.user,
                 args.login_file,
-                args.remove_selector,
-                args.disable_idle_shutdown,
+                cleanup=args.remove_selector,
+                disable_shutdown=args.disable_idle_shutdown,
                 check=args.check,
             )
         )

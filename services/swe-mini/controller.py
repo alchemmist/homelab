@@ -451,7 +451,7 @@ class Health(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
 
-    def log_message(self, *args):
+    def log_message(self, *args: object) -> None:
         pass
 
 

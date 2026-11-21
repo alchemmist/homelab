@@ -13,7 +13,12 @@ import tempfile
 import time
 
 
-def backup(source, directory, max_bytes=512 * 1024 * 1024, deadline_seconds=60):
+def backup(
+    source: str,
+    directory: str,
+    max_bytes: int = 512 * 1024 * 1024,
+    deadline_seconds: float = 60,
+):
     if deadline_seconds <= 0 or max_bytes <= 0:
         raise ValueError("invalid bounds")
     start = time.monotonic()
@@ -53,7 +58,7 @@ def backup(source, directory, max_bytes=512 * 1024 * 1024, deadline_seconds=60):
             signal.pthread_sigmask(signal.SIG_SETMASK, mask)
         page_size = src.execute("PRAGMA page_size").fetchone()[0]
 
-        def progress(status, remaining, total):
+        def progress(status: int, remaining: int, total: int):
             check()
             if total * page_size > max_bytes:
                 raise RuntimeError("backup size exceeded")

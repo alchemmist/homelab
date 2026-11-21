@@ -1,4 +1,5 @@
 import argparse
+from collections.abc import Mapping
 import csv
 import io
 import json
@@ -36,7 +37,7 @@ QUERY = (
 )
 
 
-def sample(name, labels, value):
+def sample(name: str, labels: Mapping[str, str], value: float):
     suffix = (
         "{" + ",".join(key + "=" + json.dumps(value) for key, value in labels.items()) + "}"
         if labels
@@ -45,7 +46,7 @@ def sample(name, labels, value):
     return name + suffix + " " + format(value, ".15g") + "\n"
 
 
-def parse_metrics(output):
+def parse_metrics(output: str):
     metrics = []
     count = 0
     for row in csv.reader(io.StringIO(output), skipinitialspace=True):
@@ -81,7 +82,7 @@ def parse_metrics(output):
     return "".join(metrics)
 
 
-def atomic_write(destination, content):
+def atomic_write(destination: str | os.PathLike[str], content: str):
     destination = Path(destination)
     descriptor, temporary = tempfile.mkstemp(prefix=".nvidia-", dir=destination.parent)
     try:
@@ -96,7 +97,7 @@ def atomic_write(destination, content):
             os.unlink(temporary)
 
 
-def collect(binary, destination):
+def collect(binary: str, destination: str | os.PathLike[str]):
     success = 0
     metrics = ""
     try:

@@ -16,14 +16,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from sync import CONFIG, api
 
 
-def kubectl(*args: str, input_text: str | None = None) -> str:
+def kubectl(*args: str, input_text: str | None = None):
     result = subprocess.run(["kubectl", *args], input=input_text, text=True, capture_output=True)
     if result.returncode:
         raise RuntimeError("kubectl failed: " + " ".join(args[:3]))
     return result.stdout
 
 
-def secret(namespace, name):
+def secret(namespace: str, name: str):
     result = subprocess.run(
         ["kubectl", "-n", namespace, "get", "secret", name, "-o", "json"],
         text=True,
@@ -35,7 +35,7 @@ def secret(namespace, name):
     return {key: base64.b64decode(value).decode() for key, value in data.items()}
 
 
-def apply_secret(namespace, name, data):
+def apply_secret(namespace: str, name: str, data: dict[str, str]):
     obj = {
         "apiVersion": "v1",
         "kind": "Secret",
@@ -77,7 +77,7 @@ def ensure_github_slot():
         apply_secret("automation", "wiki-openapi-github", {"token": "pending"})
 
 
-def sync_workflow(worker_token):
+def sync_workflow(worker_token: str):
     blog = json.loads((CONFIG / "blog-credentials.json").read_text())
     path = CONFIG / "wiki-openapi-credentials.json"
     mapping = json.loads(path.read_text()) if path.exists() else {}

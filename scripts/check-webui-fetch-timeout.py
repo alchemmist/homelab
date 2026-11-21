@@ -1,6 +1,7 @@
 import asyncio
 import json
 import time
+from typing import TypedDict, Unpack
 from unittest.mock import patch
 
 from open_webui.models.config import Config
@@ -22,7 +23,7 @@ async def main():
         }
     }
 
-    async def call(url):
+    async def call(url: str):
         return await execute_tool_call(
             {},
             metadata,
@@ -37,13 +38,15 @@ async def main():
     processes = []
     spawn = asyncio.create_subprocess_exec
 
+    class _SpawnKwargs(TypedDict, total=False):
+        stdin: int | None
+        stdout: int | None
+        stderr: int | None
+
     async def record_process(
-        *args: str | bytes,
-        stdin: int | None = None,
-        stdout: int | None = None,
-        stderr: int | None = None,
+        *args: str, **kwargs: Unpack[_SpawnKwargs]
     ) -> asyncio.subprocess.Process:
-        process = await spawn(*args, stdin=stdin, stdout=stdout, stderr=stderr)
+        process = await spawn(*args, **kwargs)
         processes.append(process)
         return process
 

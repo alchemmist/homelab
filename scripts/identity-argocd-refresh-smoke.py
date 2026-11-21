@@ -8,7 +8,7 @@ Requires Playwright + Chromium. Run from the owner Mac with --run.
 """
 
 import argparse
-from typing import Literal
+from typing import Literal, TypedDict, Unpack, cast
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
@@ -32,11 +32,49 @@ import socket
 _original_getaddrinfo = socket.getaddrinfo
 
 
+class _AddrKeywords(TypedDict, total=False):
+    port: bytes | str | int | None
+    family: int
+    type: int
+    proto: int
+    flags: int
+
+
+def _install[T](replacement: object, current: T) -> T:
+    chosen = current if replacement is current else replacement
+    return cast("T", chosen)
+
+
+def _addr_port(
+    params: tuple[bytes | str | int | None, ...], kwargs: _AddrKeywords
+) -> bytes | str | int | None:
+    if "port" in kwargs:
+        return kwargs["port"]
+    if params:
+        return params[0]
+    return None
+
+
+def _addr_int(
+    params: tuple[bytes | str | int | None, ...],
+    kwargs: _AddrKeywords,
+    name: Literal["family", "type", "proto", "flags"],
+    index: int,
+) -> int:
+    if name in kwargs:
+        return kwargs[name]
+    if len(params) > index:
+        value = params[index]
+        if isinstance(value, int):
+            return value
+        raise TypeError(value)
+    return 0
+
+
 def public_auth(
     host: bytes | str | None,
-    port: bytes | str | int | None = None,
-    *rest: int,
-    **kwargs: int,
+    *params: bytes | str | int | None,
+    **kwargs: Unpack[_AddrKeywords],
 ) -> list[
     tuple[Literal[socket.AddressFamily.AF_INET], socket.SocketKind, int, str, tuple[str, int]]
     | tuple[
@@ -51,13 +89,15 @@ def public_auth(
         args.public_edge
         if host in ["auth.socrat.alchemmist.xyz", "argocd.socrat.alchemmist.xyz"]
         else host,
-        port,
-        *rest,
-        **kwargs,
+        _addr_port(params, kwargs),
+        _addr_int(params, kwargs, "family", 1),
+        _addr_int(params, kwargs, "type", 2),
+        _addr_int(params, kwargs, "proto", 3),
+        _addr_int(params, kwargs, "flags", 4),
     )
 
 
-socket.getaddrinfo = public_auth
+socket.getaddrinfo = _install(public_auth, _original_getaddrinfo)
 SSH = [
     "ssh",
     "-o",

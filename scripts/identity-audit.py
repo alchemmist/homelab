@@ -44,7 +44,7 @@ print(json.dumps({'users':users,'passwordlessPrivilege':sudo,
 """
 
 
-def remote(host, command):
+def remote(host: str, command: str):
     return subprocess.check_output(
         ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", *HOSTS[host], command],
         text=True,

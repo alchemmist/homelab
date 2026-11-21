@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import ipaddress
 import json
@@ -5,12 +7,12 @@ import re
 import socket
 import struct
 import subprocess
-
+from typing import TypedDict
 
 ETH_P_ARP = 0x0806
 
 
-def ipv4(value):
+def ipv4(value: object):
     if not isinstance(value, str):
         raise ValueError("Expected an IPv4 address string")
     address = ipaddress.IPv4Address(value)
@@ -24,7 +26,7 @@ def ipv4(value):
     return str(address)
 
 
-def mac_bytes(value):
+def mac_bytes(value: object):
     if not isinstance(value, str) or not re.fullmatch(
         r"(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}", value
     ):
@@ -35,7 +37,7 @@ def mac_bytes(value):
     return result
 
 
-def validate_config(config):
+def validate_config(config: object) -> _Config:
     if not isinstance(config, dict) or set(config) != {"interface", "address", "vip", "neighbors"}:
         raise ValueError("Invalid configuration fields")
     interface = config["interface"]
@@ -64,7 +66,7 @@ def validate_config(config):
     return result
 
 
-def read_interface(interface):
+def read_interface(interface: str):
     output = subprocess.run(
         ["ip", "-j", "address", "show", "dev", interface],
         check=True,
@@ -78,7 +80,7 @@ def read_interface(interface):
     return records[0]
 
 
-def arp_request(source_mac, source_address, target_mac, target_address):
+def arp_request(source_mac: str, source_address: str, target_mac: str, target_address: str):
     sender = mac_bytes(source_mac)
     target = mac_bytes(target_mac)
     return (
@@ -93,7 +95,30 @@ def arp_request(source_mac, source_address, target_mac, target_address):
     )
 
 
-def frames_for_interface(config, state):
+class _Neighbor(TypedDict):
+    address: str
+    mac: str
+
+
+class _Config(TypedDict):
+    interface: str
+    address: str
+    vip: str
+    neighbors: list[_Neighbor]
+
+
+class _AddrInfo(TypedDict, total=False):
+    local: str
+    family: str
+
+
+class _InterfaceState(TypedDict, total=False):
+    ifname: str
+    address: str
+    addr_info: list[_AddrInfo]
+
+
+def frames_for_interface(config: _Config, state: _InterfaceState):
     config = validate_config(config)
     if state.get("ifname") != config["interface"]:
         raise ValueError("Interface does not match configuration")
@@ -115,7 +140,7 @@ def frames_for_interface(config, state):
     ]
 
 
-def announce(config):
+def announce(config: object):
     config = validate_config(config)
     frames = frames_for_interface(config, read_interface(config["interface"]))
     with socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.htons(ETH_P_ARP)) as connection:

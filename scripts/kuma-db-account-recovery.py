@@ -3,24 +3,33 @@
 
 import argparse, base64, fcntl, hashlib, json, os, secrets, subprocess
 from pathlib import Path
+from typing import Protocol
 
 USER = "homelab_kuma_app"
 SCHEMA = "uptime_kuma"
 STATE = Path("/var/lib/homelab-kuma-account-recovery")
 
 
-def need(ok, message):
+class Truthy(Protocol):
+    """Value whose truthiness can be tested without a positional bool annotation."""
+
+    def __bool__(self) -> bool:
+        """Return the flag's truth value."""
+        ...
+
+
+def need(ok: Truthy, message: str):
     if not ok:
         raise RuntimeError(message)
 
 
-def k(*args: str, input: str | None = None) -> str:
+def k(*args, input: str | None = None) -> str:
     return subprocess.check_output(
         ["kubectl", "-n", "uptime-kuma", *args], input=input, text=True, stderr=subprocess.DEVNULL
     )
 
 
-def sql(statement):
+def sql(statement: str):
     return k(
         "exec",
         "-i",

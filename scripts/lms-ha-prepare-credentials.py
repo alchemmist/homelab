@@ -2,12 +2,9 @@ import json
 import secrets
 import subprocess
 from collections.abc import Mapping
-from typing import cast
 
 
-def kube(
-    *args: str, document: Mapping[str, object] | None = None
-) -> dict[str, object] | list[object]:
+def kube(*args, document: Mapping[str, object] | None = None) -> Mapping[str, object]:
     r = subprocess.run(
         ["kubectl", *args],
         input=json.dumps(document) if document else None,
@@ -16,13 +13,11 @@ def kube(
     )
     if r.returncode:
         raise RuntimeError("Kubernetes operation failed; sensitive output suppressed")
-    data = json.loads(r.stdout) if r.stdout.strip() else {}
-    return cast("dict[str, object] | list[object]", data)
+    return json.loads(r.stdout) if r.stdout.strip() else {}
 
 
 existing = subprocess.run(
-    ["kubectl", "-n", "lms", "get", "secret", "lms-ha-app", "-o", "name"],
-    capture_output=True,
+    ["kubectl", "-n", "lms", "get", "secret", "lms-ha-app", "-o", "name"], capture_output=True
 )
 if existing.returncode:
     obj = {
@@ -35,8 +30,7 @@ if existing.returncode:
     kube("create", "-f", "-", "-o", "json", document=obj)
 print(json.dumps({"applicationCredentialPrepared": True, "secretsPrinted": False}))
 existing = subprocess.run(
-    ["kubectl", "-n", "lms", "get", "secret", "lms-backup-key", "-o", "name"],
-    capture_output=True,
+    ["kubectl", "-n", "lms", "get", "secret", "lms-backup-key", "-o", "name"], capture_output=True
 )
 if existing.returncode:
     obj = {

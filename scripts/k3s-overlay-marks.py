@@ -9,13 +9,42 @@ import os
 import re
 import subprocess
 from pathlib import Path
+from typing import Protocol, TypedDict
 
 TABLE = "homelab_k3s_overlay_marks"
 OWNER = "homelab:k3s-overlay-marks:v1"
 
 
+class Truthy(Protocol):
+    """Value whose truthiness can be tested without a positional bool annotation."""
+
+    def __bool__(self) -> bool:
+        """Return the flag's truth value."""
+        ...
+
+
+class NftTable(TypedDict, total=False):
+    """Owned nftables table object."""
+
+    comment: str
+    name: str
+    family: str
+
+
+class NftRecord(TypedDict, total=False):
+    """One object in an nftables JSON listing."""
+
+    table: NftTable
+
+
+class NftDocument(TypedDict):
+    """nft JSON document with a list of records."""
+
+    nftables: list[NftRecord]
+
+
 def run(
-    *args: str, input: str | None = None, ok: tuple[int, ...] = (0,)
+    *args, input: str | None = None, ok: tuple[int, ...] = (0,)
 ) -> subprocess.CompletedProcess[str]:
     p = subprocess.run(args, input=input, text=True, capture_output=True, check=False)
     if p.returncode not in ok:
@@ -23,7 +52,7 @@ def run(
     return p
 
 
-def rules(interface, cidr, exists):
+def rules(interface: str, cidr: str, exists: Truthy):
     net = ipaddress.ip_network(cidr, strict=True)
     if net.version != 4 or not net.is_private or net.prefixlen < 16:
         raise ValueError("Require a narrow private IPv4 pod network")
@@ -43,10 +72,10 @@ def rules(interface, cidr, exists):
     )
 
 
-def desired(interface, cidr):
+def desired(interface: str, cidr: str):
     net = ipaddress.ip_network(cidr)
 
-    def match(left, right, op="=="):
+    def match(left: object, right: object, op: str = "=="):
         return {"match": {"op": op, "left": left, "right": right}}
 
     prefix = {"prefix": {"addr": str(net.network_address), "len": net.prefixlen}}
@@ -83,7 +112,7 @@ def desired(interface, cidr):
     ]
 
 
-def owned(doc, text=""):
+def owned(doc: NftDocument, text: str = ""):
     table = next((x["table"] for x in doc["nftables"] if "table" in x), {})
     if "comment" in table:
         return table["comment"] == OWNER
@@ -92,8 +121,8 @@ def owned(doc, text=""):
     return len(lines) > 1 and lines[1].strip() == f'comment "{OWNER}"'
 
 
-def normalize(doc):
-    def clean(x):
+def normalize(doc: NftDocument):
+    def clean(x: object):
         if isinstance(x, list):
             return [clean(v) for v in x]
         if isinstance(x, dict):
@@ -123,7 +152,7 @@ def main():
     before = (
         json.loads(run("nft", "-j", "list", "table", "inet", TABLE).stdout)
         if exists
-        else {"nftables": []}
+        else NftDocument(nftables=[])
     )
     before_text = run("nft", "-s", "list", "table", "inet", TABLE).stdout if exists else ""
     if exists and not owned(before, before_text):
