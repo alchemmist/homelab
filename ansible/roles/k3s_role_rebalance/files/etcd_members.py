@@ -73,11 +73,13 @@ class Etcd:
 
 
 def require_members(members, names):
+    """Document the require members operation."""
     if set(members) != set(names) or any(item["learner"] for item in members.values()):
         raise RuntimeError("Unexpected voting membership; refusing reconfiguration")
 
 
 def verify_final(client):
+    """Document the verify final operation."""
     members = client.members()
     require_members(members, FINAL)
     for name in ("socrat-0", "socrat-3"):
@@ -86,6 +88,7 @@ def verify_final(client):
 
 
 def remove_socrat_1(client):
+    """Document the remove socrat 1 operation."""
     members = client.members()
     if set(members) == FINAL:
         return {"changed": False, "members": verify_final(client)}
@@ -121,6 +124,7 @@ def remove_socrat_1(client):
 
 
 def inspect(client):
+    """Document the inspect operation."""
     members = client.members()
     endpoints = {}
     for name in members:
@@ -143,6 +147,7 @@ def inspect(client):
 
 
 def main():
+    """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("action", choices=["inspect", "remove-socrat-1", "verify-final"])
     args = parser.parse_args()

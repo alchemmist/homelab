@@ -19,10 +19,12 @@ WIFI_PARAMETERS = Path("/sys/module/rtl8723ae/parameters")
 
 
 def run(arguments):
+    """Document the run operation."""
     return subprocess.run(arguments, check=True, capture_output=True, timeout=30).stdout
 
 
 def module_note(path):
+    """Document the module note operation."""
     data = path.read_bytes()
     if path.suffix == ".xz":
         data = lzma.decompress(data)
@@ -51,6 +53,7 @@ def module_note(path):
 
 
 def validate():
+    """Document the validate operation."""
     if os.geteuid() != 0:
         raise RuntimeError("This guard must run as root")
     if BOARD_PATH.read_text().strip() != "MS-16GP":
@@ -79,6 +82,7 @@ def validate():
 
 
 def main():
+    """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
     arguments = parser.parse_args()
