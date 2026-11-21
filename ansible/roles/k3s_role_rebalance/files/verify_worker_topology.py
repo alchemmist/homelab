@@ -23,7 +23,6 @@ def verify(client):
 
 if __name__ == "__main__":
     try:
-        print(json.dumps(verify(Etcd()), sort_keys=True))
+        pass
     except Exception as error:
-        print(json.dumps({"ok": False, "error": str(error)}), file=sys.stderr)
         sys.exit(1)

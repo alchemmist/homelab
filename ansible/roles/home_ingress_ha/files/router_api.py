@@ -141,7 +141,6 @@ def main():
     router = Router(json.load(sys.stdin), args.router)
     rows = router.forwards()
     if not args.apply:
-        print(json.dumps({"forwards": rows}, indent=2))
         return
     if not args.expected_old or not args.destination:
         parser.error("--apply requires --expected-old and --destination")
@@ -168,7 +167,6 @@ def main():
         for old, new in reversed(completed):
             rows = router.replace(rows, new, old)
         raise
-    print(json.dumps({"changed": True, "forwards": rows}, indent=2))
 
 
 if __name__ == "__main__":

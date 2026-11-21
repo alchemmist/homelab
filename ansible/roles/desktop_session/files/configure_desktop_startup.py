@@ -161,18 +161,6 @@ def main():
     parser.add_argument("--disable-idle-shutdown", action="store_true")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    print(
-        json.dumps(
-            configure(
-                args.home,
-                args.user,
-                args.login_file,
-                args.remove_selector,
-                args.disable_idle_shutdown,
-                check=args.check,
-            )
-        )
-    )
 
 
 if __name__ == "__main__":

@@ -145,9 +145,7 @@ def main():
             result = {"changed": False, "members": verify_final(Etcd())}
         else:
             result = remove_socrat_1(Etcd())
-        print(json.dumps(result, sort_keys=True))
     except (RuntimeError, subprocess.TimeoutExpired, ValueError, KeyError, OSError) as error:
-        print(json.dumps({"error": str(error), "ok": False}), file=sys.stderr)
         return 1
     return 0
 

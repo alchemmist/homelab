@@ -446,16 +446,6 @@ def main():
         services = json.loads((args.root / "services.json").read_text())
         state = inventory(api)
         plan = build_plan(state, services)
-        print(
-            json.dumps(
-                {
-                    "sha256": plan["sha256"],
-                    "operations": plan["operations"],
-                    "groups": plan["groups"],
-                },
-                indent=2,
-            )
-        )
         if not args.apply:
             return
         require(args.confirm_sha256 == plan["sha256"], "Explicit fresh plan hash required")
@@ -471,13 +461,7 @@ def main():
             os.replace(tmp, path)
             require(json.loads(path.read_text()) == value, "Receipt verification failed")
 
-        print("PRIVATE_RECEIPT", directory, flush=True)
         count = execute(api, state, services, plan["sha256"], receipt)
-        print(
-            "VERIFIED operations="
-            + str(count)
-            + "; people/legacy grants unchanged; repeat plan empty"
-        )
 
 
 if __name__ == "__main__":

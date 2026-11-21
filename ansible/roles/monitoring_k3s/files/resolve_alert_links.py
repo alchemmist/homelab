@@ -273,7 +273,6 @@ def main():
     finally:
         if os.path.exists(temporary):
             os.unlink(temporary)
-    print("Resolved alert links for " + str(len(result[args.values_key])) + " panels")
 
 
 if __name__ == "__main__":

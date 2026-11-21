@@ -77,7 +77,6 @@ def main():
         else problems(document)
     )
     if found:
-        print("; ".join(found), file=sys.stderr)
         return 1
     return 0
 

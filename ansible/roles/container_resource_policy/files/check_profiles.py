@@ -100,8 +100,6 @@ def check(namespace, kubectl, kubeconfig, profile, owner_name):
             if expected.get("removeCpuLimit"):
                 assert "cpu" not in actual.get("limits", {}), actual
             assert actual["limits"]["nvidia.com/gpu"] == "1", actual
-        print(container_type + ": authoritative profiles and unprofiled fallback passed")
-    print("No workload pods created.")
 
 
 def main():
@@ -122,7 +120,6 @@ def main():
     for profile in profiles:
         if id(profile) not in examples:
             raise ValueError("Profile has no live owner for dry-run verification: " + str(profile))
-    print("Profile schema and live owner matching passed: " + str(len(profiles)))
     if not args.validate_only:
         for profile in profiles:
             check(
@@ -134,8 +131,6 @@ if __name__ == "__main__":
     try:
         main()
     except subprocess.CalledProcessError as error:
-        print(error.stderr or error.stdout or str(error), file=sys.stderr, flush=True)
         sys.exit(1)
     except (ValueError, RuntimeError, AssertionError, subprocess.TimeoutExpired) as error:
-        print(str(error), file=sys.stderr, flush=True)
         sys.exit(1)

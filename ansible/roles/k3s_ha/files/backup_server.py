@@ -35,7 +35,6 @@ def backup():
         ["tar", "-C", "/var/lib/rancher/k3s", "-cpf", str(destination / "server.tar"), "server"],
         check=True,
     )
-    print(json.dumps({"backup": str(destination)}))
 
 
 def restore(directory):
@@ -61,7 +60,6 @@ def restore(directory):
             shutil.copytree(saved, path, symlinks=True)
         elif saved.exists():
             shutil.copy2(saved, path)
-    print(json.dumps({"restored": str(directory)}))
 
 
 if __name__ == "__main__":

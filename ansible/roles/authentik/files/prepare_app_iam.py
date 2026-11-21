@@ -517,10 +517,8 @@ def main():
             count = apply_plan(
                 api, args.root, services, reviewed, args.stage, evidence, args.approve_sha256
             )
-            print(f"PASS: {count} verified create requests; no assignments or native rollout")
             return 0
         plan, _ = build_plan(api, services, reviewed, args.stage, evidence)
-        print(json.dumps(plan, indent=2))  # only request allowlist + hashes, never API responses
         return int(args.action == "check" and bool(plan["operations"]))
 
 

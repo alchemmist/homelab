@@ -66,4 +66,3 @@ for name, actions in [("ci-push", ["pull", "push"]), ("cluster-pull", ["pull"])]
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as f:
         json.dump(result, f)
-print("Private homelab project and scoped 90-day robot credentials ready.")

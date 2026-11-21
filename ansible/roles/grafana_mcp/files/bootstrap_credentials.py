@@ -170,18 +170,7 @@ def main():
             ),
             has_admin=bool(credentials.get("admin_user") and credentials.get("admin_password")),
         )
-        print(json.dumps(result))
     except Exception as error:
-        print(
-            json.dumps(
-                {
-                    "error": str(error)
-                    if isinstance(error, BootstrapError)
-                    else "Credential bootstrap failed"
-                }
-            ),
-            file=sys.stderr,
-        )
         return 1
     return 0
 

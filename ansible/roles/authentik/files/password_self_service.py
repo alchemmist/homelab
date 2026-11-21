@@ -146,11 +146,7 @@ def main():
     assert {p["field_key"] for p in fields} == {"password", "password_repeat"}
     assert all(p["type"] == "password" and p["required"] for p in fields)
     assert prompt["validation_policies"], "Password policy must be preserved"
-    print(
-        "Verified native authenticated-only password/repeat, validation policy, never-create writer."
-    )
     if not args.apply:
-        print("GET-only preflight; receipt:", journal)
         return
 
     def ensure(path, key, value, spec):
@@ -258,7 +254,6 @@ def main():
     (journal / "verified.json").write_text(
         json.dumps({"flow": flow, "bindings": bindings, "route": resources}, indent=2)
     )
-    print("Verified additive native self-service and exact-path entry route. Receipt:", journal)
 
 
 if __name__ == "__main__":

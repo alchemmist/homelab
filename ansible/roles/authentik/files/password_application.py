@@ -56,12 +56,8 @@ def main():
         assert not bindings.get("next") and bindings["results"] == [], (
             "Unexpected admission restriction"
         )
-        print("Dashboard application already matches; no changes.")
         return
     if not args.apply:
-        print(
-            "Plan: create providerless Change password application; no bindings, groups or user changes."
-        )
         return
     os.umask(0o077)
     receipt = Path(tempfile.mkdtemp(prefix="password-dashboard-", dir=root))
@@ -76,10 +72,6 @@ def main():
     bindings = api("GET", "policies/bindings/?target=" + after[0]["pk"])
     assert not bindings.get("next") and bindings["results"] == []
     (receipt / "verified.json").write_text(json.dumps(after[0], indent=2))
-    print(
-        "Verified Change password / Account dashboard link, no provider or restrictive bindings. Receipt:",
-        receipt,
-    )
 
 
 if __name__ == "__main__":

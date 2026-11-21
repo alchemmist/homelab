@@ -153,7 +153,6 @@ if service == "harbor":
         after = json.load(r)
     if after["auth_mode"] != "oidc_auth":
         raise RuntimeError("Harbor OIDC config did not activate")
-    print("Harbor OIDC configured via supported override; local admin password unchanged")
 elif service == "grafana":
     # Public key/value settings were generated from the committed YAML by Ansible,
     # avoiding a PyYAML dependency on the remote machine.
@@ -207,9 +206,6 @@ elif service == "grafana":
             "deployment/" + deployment,
             "--timeout=300s",
         ]
-    )
-    print(
-        "Grafana OIDC button configured without removing local/anonymous access; browser validation pending"
     )
 elif service == "open-webui":
     accounts = json.loads((root / "account-mappings.json").read_text())
@@ -280,9 +276,6 @@ asyncio.run(main())"""
         ]
     )
     kubectl(["-n", "llm", "rollout", "status", "deployment/open-webui", "--timeout=600s"])
-    print(
-        "Open WebUI native OIDC configured; exact UUID links preserve users/chats; no email-based merging"
-    )
 elif service == "rancher":
     from observer_admission import retain_observer, authconfig_patch
 
@@ -421,9 +414,6 @@ elif service == "rancher":
             json.dumps(authconfig_patch(original, settings)),
         ]
     )
-    print(
-        "Rancher native OIDC enabled; UUID-bound external identities mirror reviewed grants; local emergency identities preserved"
-    )
 elif service == "wiki":
     import secrets
 
@@ -499,9 +489,6 @@ elif service == "wiki":
                     "--timeout=600s",
                 ]
             )
-    print(
-        "Wiki OIDC Secret reconciled; exact reviewed subjects, owner-only local fallback; no password reset"
-    )
 elif service == "lms":
     kubectl(
         ["apply", "-f", "-"],
@@ -516,6 +503,5 @@ elif service == "lms":
             },
         },
     )
-    print("LMS OIDC secret reconciled; Authentik remains the only identity provider")
 else:
     raise SystemExit("Unsupported integration")

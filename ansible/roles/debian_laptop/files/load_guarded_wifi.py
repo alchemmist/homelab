@@ -97,9 +97,7 @@ def main():
         lzma.LZMAError,
         subprocess.SubprocessError,
     ) as error:
-        print(f"Wi-Fi guard refused activation: {error}", file=sys.stderr)
         return 1
-    print("Guarded ALX identity verified" if arguments.check else "Guarded Wi-Fi module loaded")
     return 0
 
 

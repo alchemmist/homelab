@@ -76,10 +76,6 @@ def check(namespace, kubectl, kubeconfig):
                 raise AssertionError((case, container_type, actual))
             if case == "explicit" and actual != resources:
                 raise AssertionError((case, container_type, actual))
-        print(case + ": passed")
-    print(
-        "All 7 server-side dry-run cases passed for regular and init containers; no pods created."
-    )
 
 
 def main():
@@ -96,8 +92,6 @@ if __name__ == "__main__":
     try:
         main()
     except subprocess.CalledProcessError as error:
-        print(error.stderr or error.stdout or str(error), file=sys.stderr, flush=True)
         sys.exit(1)
     except (ValueError, RuntimeError, AssertionError, subprocess.TimeoutExpired) as error:
-        print(str(error), file=sys.stderr, flush=True)
         sys.exit(1)

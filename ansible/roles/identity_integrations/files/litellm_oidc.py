@@ -164,9 +164,6 @@ asyncio.run(main())
     ):
         raise RuntimeError("Reviewed non-privileged LiteLLM app group missing or drifted")
     if not args.apply:
-        print(
-            "Preflight passed: native OIDC available, reviewed owner and owner-only local password boundary; no changes"
-        )
         return
     private(args.root / "litellm-users-before-oidc.json", users)
     private(args.root / "litellm-deployment-before-oidc.json", deployment)
@@ -375,11 +372,8 @@ asyncio.run(main())
             }
         }
         kubectl(["patch", "deployment", "litellm", "--type=strategic", "-p", json.dumps(patch)])
-        print(
-            "Native OIDC configured; graceful rolling update started. Do not force-delete draining pods."
-        )
     else:
-        print("Native OIDC configuration reconciled; no deployment restart requested")
+        pass
 
 
 if __name__ == "__main__":

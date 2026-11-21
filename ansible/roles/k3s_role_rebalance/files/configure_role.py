@@ -92,9 +92,7 @@ def main():
     try:
         result = configure(args)
     except (OSError, ValueError, yaml.YAMLError) as error:
-        print(json.dumps({"error": type(error).__name__}), file=sys.stderr)
         return 1
-    print(json.dumps(result))
     return 0
 
 

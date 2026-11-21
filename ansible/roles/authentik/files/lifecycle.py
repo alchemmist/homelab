@@ -217,9 +217,8 @@ def main():
             after = build_plan(api, services, manifest, reviewed)
             if after["operations"]:
                 raise RuntimeError("Post-apply drift; replan without resetting credentials")
-            print("PASS: IdP lifecycle reconciled; native session revocation remains separate")
         else:
-            print(json.dumps(plan, indent=2))
+            pass
         return 1 if args.action == "check" and plan["operations"] else 0
 
 

@@ -27,23 +27,16 @@ for i in range(6):
     response = call() if i == 0 else response
     component = response.get("component", "")
     kind = response.get("type", "")
-    print("Login stage:", component or kind)
     if component == "ak-stage-identification":
         response = call({"uid_field": owner["username"]})
     elif component == "ak-stage-password":
         response = call({"password": owner["password"]})
     elif component in ["ak-stage-authenticator-totp", "ak-stage-authenticator-validate"]:
-        print(
-            "Owner initial password accepted; MFA enrollment/challenge required (not enrolled by automation)"
-        )
         break
     elif kind == "redirect":
         target = response.get("to", "")
         if "default-authenticator-totp-setup" in target:
-            print("MFA setup redirect required")
             break
-        print("Additional browser interaction required")
         break
     else:
-        print("Challenge keys:", list(response))
         break

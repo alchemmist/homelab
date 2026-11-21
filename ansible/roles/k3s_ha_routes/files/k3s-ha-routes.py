@@ -100,7 +100,6 @@ def main():
             ):
                 run("ip", "route", "replace", network, "dev", interface, "src", source)
                 changed = True
-    print(json.dumps({"changed": changed, "routes": sum(len(value) for value in routes.values())}))
 
 
 if __name__ == "__main__":

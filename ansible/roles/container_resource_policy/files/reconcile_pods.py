@@ -291,26 +291,9 @@ def audit(pods, excluded_nodes=(), profiles=()):
     if profiles:
         for pod, profile in coverage:
             if profile is None:
-                print(
-                    json.dumps({"pod": label(pod), "profile": "unmatched", "owner": owner(pod)}),
-                    flush=True,
-                )
+                pass
     for pod in deficient:
-        print(
-            json.dumps(
-                {
-                    "pod": label(pod),
-                    "uid": pod["metadata"]["uid"],
-                    "owner": owner(pod),
-                    "supported": supported(pod),
-                    "excluded": excluded(pod, excluded_nodes),
-                    "node": pod.get("spec", {}).get("nodeName"),
-                    "missing_resources": deficits(pod),
-                    "profile_mismatches": profile_mismatches(pod, matching_profile(pod, profiles)),
-                }
-            ),
-            flush=True,
-        )
+        pass
     actionable = [pod for pod in deficient if not excluded(pod, excluded_nodes)]
     summary = {
         "active": sum(active(pod) for pod in pods),
@@ -322,7 +305,6 @@ def audit(pods, excluded_nodes=(), profiles=()):
         "profiled_active": sum(profile is not None for _, profile in coverage),
         "unprofiled_active": sum(profile is None for _, profile in coverage),
     }
-    print(json.dumps({"summary": summary}), flush=True)
     return actionable
 
 
@@ -333,10 +315,8 @@ def reconcile_one(client, original, timeout, interval, profiles=()):
         (pod for pod in before if pod["metadata"]["uid"] == original["metadata"]["uid"]), None
     )
     if current is None or not active(current) or not needs_reconcile(current, profiles):
-        print("Already replaced or compliant: " + label(original), flush=True)
         return
     previous_uids = {pod["metadata"]["uid"] for pod in before if same_workload(original, pod)}
-    print("Evicting: " + label(original), flush=True)
     while time.monotonic() < deadline:
         result = client.evict(original)
         if result.returncode == 0:
@@ -348,7 +328,6 @@ def reconcile_one(client, original, timeout, interval, profiles=()):
             and "disruption budget" not in error.lower()
         ):
             raise RuntimeError("Eviction failed for " + label(original) + ": " + error.strip())
-        print("Waiting for disruption budget: " + label(original), flush=True)
         time.sleep(interval)
     else:
         raise TimeoutError("Disruption budget timeout: " + label(original))
@@ -362,7 +341,6 @@ def reconcile_one(client, original, timeout, interval, profiles=()):
         ]
         valid = [pod for pod in replacements if ready(pod) and not needs_reconcile(pod, profiles)]
         if not old_present and valid:
-            print("Ready with desired resources: " + label(valid[0]), flush=True)
             return
         time.sleep(interval)
     raise TimeoutError(
@@ -407,5 +385,4 @@ if __name__ == "__main__":
     try:
         main()
     except (RuntimeError, ValueError, TimeoutError, subprocess.SubprocessError) as error:
-        print(str(error), file=sys.stderr, flush=True)
         sys.exit(1)

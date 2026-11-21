@@ -820,22 +820,13 @@ def execute(argv):
         with os.fdopen(os.open(lock_path, os.O_CREAT | os.O_WRONLY, 0o600), "w") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
             digest = execute_apply(api, args.root, issuer, args.approve_sha256)
-        print("reconciled=true plan_sha256=" + digest)
         return 0
     inventory = load_inventory(api)
     plan = build_plan(inventory, issuer, journal)
     if args.action == "plan":
-        print(json.dumps(plan, indent=2, sort_keys=True))
         return 0
     if plan["blockers"] or plan["operations"]:
-        print(
-            "reconciled=false blockers="
-            + str(len(plan["blockers"]))
-            + " operations="
-            + str(len(plan["operations"]))
-        )
         return 1
-    print("reconciled=true")
     return 0
 
 
@@ -843,7 +834,6 @@ def main(argv=None):
     try:
         return execute(argv)
     except RuntimeError as error:
-        print(str(error), file=sys.stderr)
         return 1
 
 
