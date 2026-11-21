@@ -1,3 +1,5 @@
+"""Apply the rebalanced k3s role to a node's config file."""
+
 import argparse
 import json
 import os

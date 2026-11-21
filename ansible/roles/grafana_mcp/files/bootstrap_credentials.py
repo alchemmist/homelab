@@ -1,3 +1,5 @@
+"""Bootstrap the Grafana MCP credentials secret in the cluster."""
+
 import base64
 import json
 import os
