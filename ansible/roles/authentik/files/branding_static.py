@@ -258,12 +258,20 @@ http {
                 "selector": {"matchLabels": labels},
                 "strategy": {
                     "type": "RollingUpdate",
-                    "rollingUpdate": {"maxSurge": 1, "maxUnavailable": 0},
+                    "rollingUpdate": {"maxSurge": 1, "maxUnavailable": 1},
                 },
                 "template": {
                     "metadata": {"labels": labels},
                     "spec": {
                         "automountServiceAccountToken": False,
+                        "tolerations": [
+                            {
+                                "key": "homelab.io/bootstrap",
+                                "operator": "Equal",
+                                "value": "true",
+                                "effect": "NoSchedule",
+                            }
+                        ],
                         "affinity": {
                             "nodeAffinity": {
                                 "preferredDuringSchedulingIgnoredDuringExecution": [
@@ -276,8 +284,8 @@ http {
                                                     "operator": "In",
                                                     "values": [
                                                         "socrat-0",
+                                                        "socrat-1",
                                                         "socrat-5",
-                                                        "socrat-2",
                                                     ],
                                                 }
                                             ]
@@ -286,13 +294,10 @@ http {
                                 ]
                             },
                             "podAntiAffinity": {
-                                "preferredDuringSchedulingIgnoredDuringExecution": [
+                                "requiredDuringSchedulingIgnoredDuringExecution": [
                                     {
-                                        "weight": 100,
-                                        "podAffinityTerm": {
-                                            "topologyKey": "kubernetes.io/hostname",
-                                            "labelSelector": {"matchLabels": labels},
-                                        },
+                                        "topologyKey": "kubernetes.io/hostname",
+                                        "labelSelector": {"matchLabels": labels},
                                     }
                                 ]
                             },

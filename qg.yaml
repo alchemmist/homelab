@@ -140,4 +140,16 @@ nodes:
         tests/test_operational_entrypoints.py \
         tests/test_source_pointers.py \
         tests/test_vendor_contracts.py
+  docker:
+    title: Container recipes
+    profile: quality-docker
+    needs:
+    - graph
+    policy: *id001
+    run: |
+      set -euo pipefail
+      uv run pytest -q tests/test_quality_experiment_admission.py -k docker
+      uv run python scripts/quality/lint.py docker
+    results:
+      native: reports/docker.json
 ...

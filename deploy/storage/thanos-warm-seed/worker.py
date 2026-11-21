@@ -81,7 +81,10 @@ def main():
         if ident != block:
             print("starting", ident, flush=True)
             block = ident
-        if (ROOT / ident / "deletion-mark.json").exists():
+        if (
+            key != ident + "/deletion-mark.json"
+            and (ROOT / ident / "deletion-mark.json").exists()
+        ):
             raise RuntimeError("source now marked: " + ident)
         manifest[key] = transfer(key, spec)
         total += spec["bytes"]

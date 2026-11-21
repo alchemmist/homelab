@@ -1,6 +1,9 @@
 ---
 # local, local-hold, cold, shared-hold, shared
 fivePhase: shared
+warmCascade: true
+workshopHold: false
+warmWorkshopDeleteDelay: 48h
 images:
   thanos: quay.io/thanos/thanos:v0.42.4
   cascade: python:3.12-slim
@@ -40,7 +43,7 @@ components:
       - name: tmp
         emptyDir: {}
   thanos-store:
-    node: socrat-0
+    node: socrat-1
     args:
       - store
       - --objstore.config-file=/etc/thanos/objstore.yml
@@ -67,20 +70,22 @@ components:
         readOnly: true
       - name: data
         mountPath: /var/thanos/store
-      - name: raw
-        mountPath: /var/lib/socrat-thanos
+      - name: trust
+        mountPath: /trust
+        readOnly: true
       - name: tmp
         mountPath: /tmp
     volumes:
       - name: objstore
-        configMap:
-          name: thanos-objstore-raw
+        secret:
+          secretName: thanos-warm-store-reader
+          items: [{key: objstore.yml, path: objstore.yml}]
       - name: data
         emptyDir: {}
-      - name: raw
-        hostPath:
-          path: /var/lib/socrat-thanos
-          type: Directory
+      - name: trust
+        secret:
+          secretName: thanos-warm-api-tls
+          items: [{key: ca.crt, path: ca.crt}]
       - name: tmp
         emptyDir: {}
   thanos-store-5m:
@@ -172,7 +177,7 @@ components:
       - --retention.resolution-raw=0d
       - --retention.resolution-5m=0d
       - --retention.resolution-1h=0d
-      - --delete-delay=1h
+      - --delete-delay=48h
       - --consistency-delay=30m
       - --compact.enable-vertical-compaction
       - --wait
@@ -189,20 +194,22 @@ components:
       - name: objstore
         mountPath: /etc/thanos
         readOnly: true
-      - name: raw
-        mountPath: /var/lib/socrat-thanos
+      - name: trust
+        mountPath: /trust
+        readOnly: true
       - name: work
         mountPath: /var/thanos/work
       - name: tmp
         mountPath: /tmp
     volumes:
       - name: objstore
-        configMap:
-          name: thanos-objstore-raw
-      - name: raw
-        hostPath:
-          path: /var/lib/socrat-thanos
-          type: Directory
+        secret:
+          secretName: thanos-warm-compactor
+          items: [{key: objstore.yml, path: objstore.yml}]
+      - name: trust
+        secret:
+          secretName: thanos-warm-api-tls
+          items: [{key: ca.crt, path: ca.crt}]
       - name: work
         hostPath:
           path: /var/lib/socrat-thanos-work

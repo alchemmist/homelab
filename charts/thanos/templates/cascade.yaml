@@ -29,6 +29,7 @@ subjects:
   - kind: ServiceAccount
     name: thanos-cascade
 ---
+{{- if not .Values.warmCascade }}
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -146,3 +147,4 @@ spec:
               hostPath:
                 path: /var/lib/socrat-thanos
                 type: Directory
+{{- end }}

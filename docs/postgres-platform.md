@@ -1,6 +1,6 @@
 # Socrat PostgreSQL operations — 2026-11-20 cutover
 
-All application writes use the cluster `-rw.postgres.svc.cluster.local` endpoint with verified TLS, never a pod or a fixed node. `pg-common` owns `umami`, `certification`, `lms`, `socrat`, `litellm`, `registry`; `pg-critical` owns `authentik`. Common normally starts on socrat-0 NVMe with an asynchronous socrat-5 HDD copy. Critical uses ANY 1 of two standbys across 0/1/5. Ask CNPG for `.status.currentPrimary` before any primary-only operation. LMS HA is hibernated, not a production source; its old dump schedule is suspended. Neither cluster has a recurring independent backup or PITR.
+All application writes use the cluster `-rw.postgres.svc.cluster.local` endpoint with verified TLS, never a pod or a fixed node. `pg-common` owns `umami`, `certification`, `lms`, `socrat`, `litellm`, `registry`, `n8n`; `pg-critical` owns `authentik`. Common normally starts on socrat-0 NVMe with an asynchronous socrat-5 HDD copy. Critical uses ANY 1 of two standbys across 0/1/5. Ask CNPG for `.status.currentPrimary` before any primary-only operation. LMS HA is hibernated, not a production source; its old dump schedule is suspended. Neither cluster has a recurring independent backup or PITR.
 
 Acceptance receipts: Umami 27 table counts; Certification 3 table digests and advancing workflow heartbeats; LMS 11 table digests; Socrat Bot 17 table digests and sequence values (final transfer Job timed out after restore; contents independently compared); LiteLLM 91 table counts and sequences; Authentik 230 table counts and sequences, worker/server TLS and OIDC discovery (first rehearsal failed, retry succeeded); Harbor 49 table digests, sequences and separate robot push/pull. Application ACL audit: each of the seven runtime roles has CONNECT only on its own *application* database, excluding built-in/maintenance databases. This is not CPU, I/O or superuser isolation.
 
@@ -26,3 +26,9 @@ The native otel-cluster Prometheus receiver scrapes primary-only services; `up{j
 Retention follow-up: [issue #216](https://github.com/alchemmist/homelab/issues/216). Hold is intentional; the issue is a review, not a deletion timer.
 
 `pg-critical-async` is a single-instance CNPG replica cluster pinned to socrat-3. It follows `pg-critical-rw` over verified TLS, outside the two local quorum candidates. Expect three streaming peers on the source primary. The extra peer is neither a synchronous acknowledgement nor an independent backup.
+
+## n8n cutover receipt — 2026-11-21
+
+Production commit `efe90e16` switches n8n to `pg-common/n8n`. With the source stopped, verification matched 12 workflows, 15 encrypted credentials and 10,189 execution/history rows in each of `execution_entity` and `execution_data`. Workflow and encrypted credential content matched. Five ID sequences were advanced before startup. Import required `SET ON PARAMETER session_replication_role`; the temporary import role and Secret were removed. Do not grant that permission to the runtime role.
+
+Acceptance: 7 active workflows, runtime connections over TLS 1.3, new executions in PostgreSQL, readiness HTTP 200 and Argo Synced/Healthy. The PVC remains mounted for non-database files. Its SQLite file is stale after cutover: do not revert the Helm switch as a rollback without reconciling subsequent writes. The SQLite-specific CronJob is suspended.

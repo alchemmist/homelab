@@ -1,5 +1,6 @@
 ---
 # Explicit config prevents per-user settings from silently weakening CI.
 failure-threshold: style
+disable-ignore-pragma: true
 ignored: []
 ...
