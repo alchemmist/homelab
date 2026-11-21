@@ -20,6 +20,7 @@ spec:
     {{- if or (eq $tier "critical") (eq $tier "common") }}
     - from:
         {{- if eq $tier "critical" }}
+        - podSelector: {matchLabels: {cnpg.io/cluster: pg-critical-async}}
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: identity}}
           podSelector: {matchLabels: {app.kubernetes.io/instance: authentik}, matchExpressions: [{key: app.kubernetes.io/component, operator: In, values: [server, worker]}]}
         {{- else }}
