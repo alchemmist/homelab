@@ -83,45 +83,23 @@ class AlertGraphsChartTests(unittest.TestCase):
     def test_monitoring_helpers_use_one_portable_home_placement(self) -> None:
         import yaml
 
-        result = self.render(
-            extra=[
-                "-f",
-                "charts/grafana/alert-graphs.policy.values.yaml",
-                "-f",
-                "charts/grafana/alert-graphs.runtime.values.yaml",
-                "-f",
-                "deploy/grafana/values.yaml",
-                "--show-only",
-                "templates/alert-graphs.yaml",
-            ]
-        )
+        result = self.render(extra=[
+            "-f", "charts/grafana/alert-graphs.policy.values.yaml",
+            "-f", "charts/grafana/alert-graphs.runtime.values.yaml",
+            "-f", "deploy/grafana/values.yaml", "--show-only", "templates/alert-graphs.yaml",
+        ])
         self.assertEqual(result.returncode, 0, result.stderr)
-        (dep,) = [d for d in yaml.safe_load_all(result.stdout) if d and d["kind"] == "Deployment"]
+        dep, = [d for d in yaml.safe_load_all(result.stdout) if d and d["kind"] == "Deployment"]
         self.assertEqual(dep["spec"].get("replicas", 1), 1)
-        proxy = yaml.safe_load((ROOT / "deploy/monitoring/rancher-values.yaml").read_text())[
-            "monitoringProxy"
-        ]
-
-        def term(nodes):
-            return {
-                "matchExpressions": [
-                    {"key": "kubernetes.io/hostname", "operator": "In", "values": nodes}
-                ]
-            }
-
+        proxy = yaml.safe_load((ROOT / "deploy/monitoring/rancher-values.yaml").read_text())["monitoringProxy"]
+        def term(nodes) -> dict[str, object]:
+            return {"matchExpressions": [{"key": "kubernetes.io/hostname", "operator": "In", "values": nodes}]}
         for spec in [dep["spec"]["template"]["spec"], proxy]:
             self.assertEqual(spec["nodeSelector"], {"kubernetes.io/os": "linux"})
-            self.assertEqual(
-                spec["affinity"]["nodeAffinity"],
-                {
-                    "requiredDuringSchedulingIgnoredDuringExecution": {
-                        "nodeSelectorTerms": [term(["socrat-0", "socrat-1"])]
-                    },
-                    "preferredDuringSchedulingIgnoredDuringExecution": [
-                        {"weight": 100, "preference": term(["socrat-0"])}
-                    ],
-                },
-            )
+            self.assertEqual(spec["affinity"]["nodeAffinity"], {
+                "requiredDuringSchedulingIgnoredDuringExecution": {"nodeSelectorTerms": [term(["socrat-0", "socrat-1"])]},
+                "preferredDuringSchedulingIgnoredDuringExecution": [{"weight": 100, "preference": term(["socrat-0"])}],
+            })
 
     def test_requires_immutable_image(self) -> None:
         result = self.render(True, ["--set", "gateway.digest=latest"])

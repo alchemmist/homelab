@@ -241,14 +241,15 @@ class QueueTransitions(unittest.TestCase):
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
 
-        def status(path):
+        def status(path) -> int:
             try:
                 with urllib.request.urlopen(
                     "http://127.0.0.1:%d%s" % (server.server_port, path), timeout=3
                 ) as r:
-                    return r.status
+                    status: int = r.status
+                    return status
             except urllib.error.HTTPError as exc:
-                code = exc.code
+                code: int = exc.code
                 exc.close()
                 return code
 

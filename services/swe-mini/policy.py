@@ -46,7 +46,8 @@ def validate_changes(changes):
             raise ValueError("Oversize or binary patch")
     if len({item["path"] for item in changes}) != len(changes):
         raise ValueError("Duplicate paths")
-    return changes
+    validated: list[dict[str, str]] = changes
+    return validated
 
 
 def encode_result(result, key=None):
@@ -119,4 +120,5 @@ def validate_dependency_update(changes, original):
         url = entry.get("resolved", "")
         if url and not url.startswith("https://registry.npmjs.org/"):
             raise ValueError("Nonstandard dependency registry")
-    return changes
+    validated: list[dict[str, str]] = changes
+    return validated

@@ -23,11 +23,11 @@ from tests import test_identity as identity
 
 
 class LifecycleAPI:
-    def __init__(self, fake):
+    def __init__(self, fake) -> None:
         self.fake = fake
-        self.writes = []
+        self.writes: list[tuple[str, str, object]] = []
 
-    def __call__(self, method, path, data=None):
+    def __call__(self, method, path, data=None) -> object:
         if method != "GET":
             self.writes.append((method, path, data))
         if path.endswith(("/add_user/", "/remove_user/")):
@@ -258,7 +258,8 @@ class AppIAMTests(unittest.TestCase):
     def test_pagination_and_binding_duplicates(self) -> None:
         calls = []
 
-        def api(method, path):
+
+        def api(_method, path) -> dict[str, object]:
             calls.append(path)
             page = len(calls)
             return {"results": [page], "pagination": {"next": page == 1}}
@@ -271,7 +272,7 @@ class AppIAMTests(unittest.TestCase):
     def test_wiki_integration_keeps_exact_links_and_overrides(self) -> None:
         writes = []
 
-        def run(args, **kwargs):
+        def run(args, **kwargs) -> subprocess.CompletedProcess[str]:
             if "apply" in args:
                 writes.append(json.loads(kwargs["input"]))
             return subprocess.CompletedProcess(args, 0, "", "")

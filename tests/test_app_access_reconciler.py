@@ -70,11 +70,11 @@ def fixture() -> tuple[
 
 
 class FakeAPI:
-    def __init__(self, state):
+    def __init__(self, state) -> None:
         self.state = copy.deepcopy(state)
-        self.writes = []
+        self.writes: list[tuple[str, str, object]] = []
 
-    def __call__(self, method, path, payload=None):
+    def __call__(self, method, path, payload=None) -> dict[str, object]:
         base = path.split("?")[0]
         if method == "GET":
             if base.startswith("providers/oauth2/") and base != "providers/oauth2/":
