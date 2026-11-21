@@ -15,7 +15,7 @@ def require(condition: object, message: str) -> None:
         raise ValueError(message)
 
 
-def unique_json(pairs):
+def unique_json(pairs: list[tuple[str, object]]):
     result = {}
     for key, value in pairs:
         require(key not in result, "Duplicate JSON policy/schema key")
@@ -23,7 +23,7 @@ def unique_json(pairs):
     return result
 
 
-def local_refs(value):
+def local_refs(value: object):
     if isinstance(value, dict):
         for key, item in value.items():
             if key == "$ref":
