@@ -55,6 +55,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+            {{- if has .Values.fivePhase (list "shared" "shared-hold") }}
+            - name: SKIP_OLD_FIVE
+              value: "1"
+            {{- end }}
             - name: HOST_VAR_LIB
               value: /host/var/lib
             - name: OUTPUT

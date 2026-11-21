@@ -24,8 +24,8 @@
         state: directory
         owner: root
         group: root
-        mode: '0700'
-      loop: ['', bin, tls, config]
+        mode: "0700"
+      loop: ["", bin, tls, config]
 
     - name: Hash controller binaries already verified against image digests
       ansible.builtin.stat:
@@ -38,12 +38,12 @@
 
     - name: Copy cached native executables into root-owned staging
       ansible.builtin.copy:
-        src: "/home/alchemmist/.cache/homelab-otel-validation/bin/{{ item }}"
+        src: /home/alchemmist/.cache/homelab-otel-validation/bin/{{ item }}
         dest: "{{ otel_signal_stage }}/bin/{{ item }}"
         remote_src: true
         owner: root
         group: root
-        mode: '0700'
+        mode: "0700"
       loop: [otelcol-contrib, loki, tempo]
 
     - name: Hash the protected copies before executing them
@@ -69,7 +69,7 @@
         dest: "{{ otel_signal_stage }}/tls/{{ item }}"
         owner: root
         group: root
-        mode: '0600'
+        mode: "0600"
       loop: [ca.crt, server.crt, server.key, client.crt, client.key]
       no_log: true
 
@@ -79,7 +79,7 @@
         dest: "{{ otel_signal_stage }}/config/{{ item }}.json"
         owner: root
         group: root
-        mode: '0600'
+        mode: "0600"
       loop: [cluster, trace-gateway, loki, tempo]
 
     - name: Copy the synthetic-only driver
@@ -88,7 +88,7 @@
         dest: "{{ otel_signal_stage }}/smoke.py"
         owner: root
         group: root
-        mode: '0600'
+        mode: "0600"
 
     - name: Run native services in a private network namespace with hard resource bounds
       ansible.builtin.command:
@@ -98,7 +98,7 @@
           - --collect
           - --wait
           - --pipe
-          - "--unit=otel-signals-smoke-{{ otel_signal_suffix }}"
+          - --unit=otel-signals-smoke-{{ otel_signal_suffix }}
           - --property=MemoryMax=4294967296
           - --property=CPUQuota=200%
           - --property=RuntimeMaxSec=240
@@ -108,7 +108,7 @@
           - --
           - sh
           - -ec
-          - 'ip link set lo up; exec python3 "$@"'
+          - ip link set lo up; exec python3 "$@"
           - otel-signal-smoke
           - "{{ otel_signal_stage }}/smoke.py"
           - --binaries
@@ -131,7 +131,7 @@
       ansible.builtin.copy:
         content: "{{ otel_signals_smoke.stdout }}\n"
         dest: /tmp/otel-signals-smoke-result-20261029.json
-        mode: '0600'
+        mode: "0600"
       delegate_to: localhost
       become: false
 ...

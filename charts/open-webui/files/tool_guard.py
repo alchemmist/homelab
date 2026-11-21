@@ -8,6 +8,10 @@ from itertools import islice
 
 from jsonschema import Draft202012Validator
 
+# jsonschema is imported (untyped) above; its __init__ also loads the exceptions
+# submodule, so reach it through sys.modules instead of a second untyped import.
+SchemaError = sys.modules["jsonschema.exceptions"].SchemaError
+
 STATE_KEY = "homelab_terminal_validation_guard"
 STOP_MESSAGE = "Stopped repeated invalid terminal calls. Your conversation and files are preserved. Correct the tool arguments before continuing."
 MAX_IDENTICAL_FAILURES = 3
@@ -76,7 +80,7 @@ async def bounded_fetch(params):
 def validation_problem(params, schema):
     try:
         errors = list(islice(Draft202012Validator(schema).iter_errors(params), 4))
-    except Exception:
+    except (SchemaError, OSError):
         return None
     if not errors:
         return None
