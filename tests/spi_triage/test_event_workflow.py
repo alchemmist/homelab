@@ -3,10 +3,10 @@
 import copy
 import importlib.util
 import json
-from pathlib import Path
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -120,7 +120,8 @@ class EventWorkflowTests(unittest.TestCase):
             self.assertIs(settings[key], True)
 
     def test_actual_envelope_validator_rejects_unknown_and_early_terminal(self):
-        import subprocess, time
+        import subprocess
+        import time
 
         code = next(n for n in self.workflow["nodes"] if n["name"] == "Select Claimed Job")[
             "parameters"

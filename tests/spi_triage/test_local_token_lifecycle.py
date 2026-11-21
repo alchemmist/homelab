@@ -3,12 +3,13 @@
 import concurrent.futures
 import os
 import unittest
-from unittest.mock import Mock, patch
 from pathlib import Path
+from unittest.mock import Mock, patch
+
 import test_triage
-from integrations import Model
 from core import Failure
-from local_token_counter import LocalCounter, MAX_BYTES
+from integrations import Model
+from local_token_counter import MAX_BYTES, LocalCounter
 
 
 @unittest.skipUnless(Path("/opt/spi-tokenizer/tokenizer.json").exists(), "optional pinned runtime")
@@ -46,8 +47,9 @@ class Lifecycle(unittest.TestCase):
             m.http.request.assert_not_called()
 
     def test_invalid_native_contract_before_recovery_or_http(self):
-        import local_token_counter as lc
         from contextlib import ExitStack
+
+        import local_token_counter as lc
 
         for change in ("asset", "template", "library", "manifest"):
             with self.subTest(change=change), ExitStack() as stack:

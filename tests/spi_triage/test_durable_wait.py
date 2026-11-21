@@ -2,8 +2,9 @@
 
 import tempfile
 import unittest
+
 import test_triage as fixtures
-from core import Store, Failure
+from core import Failure, Store
 from durable_wait import WaitOwners
 
 

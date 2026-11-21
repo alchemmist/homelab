@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "charts/spi-triage/files"))
 from core import Failure
-from local_token_counter import configured_counter, render, LocalCounter
+from local_token_counter import LocalCounter, configured_counter, render
 
 
 class CounterContract(unittest.TestCase):

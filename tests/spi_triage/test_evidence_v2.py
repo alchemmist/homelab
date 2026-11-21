@@ -1,22 +1,22 @@
 import json
 import sys
 import unittest
-from unittest.mock import Mock, patch
 from pathlib import Path
-from urllib.parse import urlsplit, parse_qs
+from unittest.mock import Mock, patch
+from urllib.parse import parse_qs, urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "charts/spi-triage/files"))
+from core import Failure, digest
 from evidence_bundle import (
-    redact,
-    prepare_bundle,
-    publish_parts,
+    PART_SIZE,
     index_markdown,
     index_marker,
-    PART_SIZE,
+    prepare_bundle,
+    publish_parts,
+    redact,
 )
 from provenance import DeploymentCollector
 from telemetry import TelemetryCollector, absolute_window, grafana_explore_url
-from core import digest, Failure
 from test_triage import event
 
 
@@ -470,6 +470,7 @@ class ProvenanceTests(unittest.TestCase):
 class EngineArtifactTests(unittest.TestCase):
     def test_primary_is_not_repeated_after_artifact_timeout(self):
         import tempfile
+
         from core import Store
         from service import Engine
         from test_triage import report
@@ -560,10 +561,11 @@ class DownloadTests(unittest.TestCase):
 
 class ModelEvidenceTests(unittest.TestCase):
     def test_facts_require_valid_existing_evidence_ids(self):
-        from integrations import Model
-        from core import REPORT_SCHEMA
-        from test_triage import report
         import time
+
+        from core import REPORT_SCHEMA
+        from integrations import Model
+        from test_triage import report
 
         bad = report()
         bad["facts"] = ["A guessed fact [E999]"]
@@ -610,6 +612,7 @@ class PrimaryReconciliationTests(unittest.TestCase):
 class SQLiteTempStoreTests(unittest.TestCase):
     def test_all_connections_use_memory_temp_store(self):
         import tempfile
+
         from core import Store
 
         with tempfile.TemporaryDirectory() as d:

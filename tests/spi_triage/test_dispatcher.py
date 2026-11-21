@@ -107,8 +107,9 @@ class ServiceSafetyTests(unittest.TestCase):
     def test_body_validation_and_partial_timeout(self):
         import socket
         from types import SimpleNamespace
-        from service import read_request_body
+
         from core import Failure
+        from service import read_request_body
 
         def check(raw, length, code, shutdown=True):
             left, right = socket.socketpair()
@@ -137,9 +138,9 @@ class ServiceSafetyTests(unittest.TestCase):
 
 class DispatchTransportTests(unittest.TestCase):
     def test_trickling_headers_are_interrupted_without_body_read(self):
+        import http.client
         import socket
         import threading
-        import http.client
 
         class Connection:
             def __init__(self, *args, **kwargs):
