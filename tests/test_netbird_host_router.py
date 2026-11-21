@@ -17,36 +17,57 @@ hr = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(hr)
 
 
-def ready():
-    facts = hr.default_facts()
+def _text(value: str | None) -> str:
+    """Return the assert-verified non-null captured output stream."""
+    assert isinstance(value, str)
+    return value
+
+
+def _documents(value: object) -> list[dict[str, object]]:
+    """Return the assert-verified list-of-mappings view of a loaded value."""
+    assert isinstance(value, list)
+    documents: list[dict[str, object]] = value
+    return documents
+
+
+def _invoke(function: object, *args: object) -> object:
+    """Call the assert-verified loaded frontend function."""
+    assert callable(function)
+    return function(*args)
+
+
+def ready() -> dict[str, object]:
+    """Build the reviewed connection facts used by the router plan tests."""
+    facts: dict[str, object] = hr.default_facts()
     facts["management_url"] = "https://netbird.example.test"
-    for host in facts["hosts"]:
+    for host in _documents(facts["hosts"]):
         host["sudo_nopass"] = True
         host["runtime"] = "docker"
     return facts
 
 
-def load_frontend(source):
-    namespace = {}
+def load_frontend(source) -> dict[str, object]:
+    """Execute the rendered frontend source and return its module namespace."""
+    namespace: dict[str, object] = {}
     exec(source, namespace)
     return namespace
 
 
 class HostRouterTests(unittest.TestCase):
-    def test_default_check_is_render_only_and_blocked(self):
+    def test_default_check_is_render_only_and_blocked(self) -> None:
         result = subprocess.run(
             [os.sys.executable, str(ROOT / "scripts/netbird-host-router.py"), "check"],
             capture_output=True,
             text=True,
         )
         self.assertEqual(result.returncode, 2)
-        payload = json.loads(result.stdout)
+        payload = json.loads(_text(result.stdout))
         self.assertFalse(payload["apply_allowed"])
         self.assertIn("management_url_unpublished", payload["blockers"])
         self.assertTrue(any("noninteractive sudo" in item for item in payload["blockers"]))
         self.assertTrue(any("runtime not proven" in item for item in payload["blockers"]))
 
-    def test_plan_refuses_the_git_worktree(self):
+    def test_plan_refuses_the_git_worktree(self) -> None:
         target = ROOT / "deploy/netbird/host-router-out"
         result = subprocess.run(
             [
@@ -60,10 +81,10 @@ class HostRouterTests(unittest.TestCase):
             text=True,
         )
         self.assertEqual(result.returncode, 2)
-        self.assertIn("outside the Git worktree", result.stderr)
+        self.assertIn("outside the Git worktree", _text(result.stderr))
         self.assertFalse(target.exists())
 
-    def test_default_plan_records_memory_and_ssh_split(self):
+    def test_default_plan_records_memory_and_ssh_split(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary) / "plan"
             result = subprocess.run(
@@ -104,7 +125,7 @@ class HostRouterTests(unittest.TestCase):
             plan["image"], image["repository"] + ":" + image["tag"] + "@" + image["digest"]
         )
 
-    def test_firewall_uses_forward_on_socrat0_and_input_on_socrat2(self):
+    def test_firewall_uses_forward_on_socrat0_and_input_on_socrat2(self) -> None:
         _plan, rendered = hr.build(hr.default_facts())
         home = rendered["socrat-0"]["table.nft.sh"]
         vps = rendered["socrat-2"]["table.nft.sh"]
@@ -140,7 +161,7 @@ class HostRouterTests(unittest.TestCase):
         self.assertNotIn("/etc/wireguard", home)
         self.assertLess(home.index('"$nft" -c -f'), home.index('"$nft" -f "$tmp"'))
 
-    def test_ssh_port_must_be_one_observed_choice(self):
+    def test_ssh_port_must_be_one_observed_choice(self) -> None:
         for port in (22, 2222):
             facts = ready()
             facts["ssh_port"] = port
@@ -160,7 +181,7 @@ class HostRouterTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 hr.validate(facts)
 
-    def test_destination_host_cannot_be_a_second_router(self):
+    def test_destination_host_cannot_be_a_second_router(self) -> None:
         facts = hr.default_facts()
         facts["hosts"][1]["owned"] = ["109.120.141.60"]
         with self.assertRaisesRegex(ValueError, "own 10.250.0.2"):
@@ -169,16 +190,21 @@ class HostRouterTests(unittest.TestCase):
         self.assertFalse(hr.roles(hr.default_facts())["socrat-2"]["ssh_routing_peer"])
         self.assertTrue(hr.roles(hr.default_facts())["socrat-0"]["ssh_routing_peer"])
 
-    def test_grafana_frontend_denies_other_names_and_binds(self):
+    def test_grafana_frontend_denies_other_names_and_binds(self) -> None:
         _plan, rendered = hr.build(hr.default_facts())
         frontend = load_frontend(rendered["socrat-0"]["grafana-frontend.py"])
+        admit = frontend["admit"]
+        sni_callback = frontend["sni_callback"]
+        bind_allowed = frontend["bind_allowed"]
         self.assertEqual(frontend["UPSTREAM_IP"], "10.250.0.3")
         self.assertEqual(frontend["UPSTREAM_PORT"], 443)
         self.assertTrue(
-            frontend["admit"]("grafana.socrat.alchemmist.xyz", "grafana.socrat.alchemmist.xyz")
+            _invoke(
+                admit, "grafana.socrat.alchemmist.xyz", "grafana.socrat.alchemmist.xyz"
+            )
         )
         self.assertTrue(
-            frontend["admit"]("Grafana.socrat.alchemmist.xyz", "grafana.socrat.alchemmist.xyz:8443")
+            _invoke(admit, "Grafana.socrat.alchemmist.xyz", "grafana.socrat.alchemmist.xyz:8443")
         )
         for sni, host in (
             ("rancher.socrat.alchemmist.xyz", "grafana.socrat.alchemmist.xyz"),
@@ -188,18 +214,19 @@ class HostRouterTests(unittest.TestCase):
             ("", "grafana.socrat.alchemmist.xyz"),
             ("grafana.socrat.alchemmist.xyz", ""),
         ):
-            self.assertFalse(frontend["admit"](sni, host), (sni, host))
-        context = frontend["upstream_context"]()
+            self.assertFalse(_invoke(admit, sni, host), (sni, host))
+        context = _invoke(frontend["upstream_context"])
+        assert isinstance(context, ssl.SSLContext)
         self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
         self.assertTrue(context.check_hostname)
         self.assertEqual(
-            frontend["sni_callback"](None, "rancher.socrat.alchemmist.xyz", None),
+            _invoke(sni_callback, None, "rancher.socrat.alchemmist.xyz", None),
             ssl.ALERT_DESCRIPTION_UNRECOGNIZED_NAME,
         )
         self.assertIsNone(
-            frontend["sni_callback"](type("S", (), {})(), "grafana.socrat.alchemmist.xyz", None)
+            _invoke(sni_callback, type("S", (), {})(), "grafana.socrat.alchemmist.xyz", None)
         )
-        self.assertTrue(frontend["bind_allowed"]("100.96.0.8"))
+        self.assertTrue(_invoke(bind_allowed, "100.96.0.8"))
         for address in (
             "0.0.0.0",
             "109.120.141.60",
@@ -208,9 +235,9 @@ class HostRouterTests(unittest.TestCase):
             "10.250.0.3",
             "192.168.0.23",
         ):
-            self.assertFalse(frontend["bind_allowed"](address), address)
+            self.assertFalse(_invoke(bind_allowed, address), address)
 
-    def test_client_unit_is_pinned_and_constrained(self):
+    def test_client_unit_is_pinned_and_constrained(self) -> None:
         _plan, rendered = hr.build(hr.default_facts())
         home = rendered["socrat-0"]["netbird-host-router.service"]
         vps = rendered["socrat-2"]["netbird-host-router.service"]
@@ -242,7 +269,7 @@ class HostRouterTests(unittest.TestCase):
             "net.ipv4.ip_forward=1\n", rendered["socrat-0"]["99-netbird-host-router.conf"]
         )
 
-    def test_memory_cap_above_vps_headroom_blocks_apply(self):
+    def test_memory_cap_above_vps_headroom_blocks_apply(self) -> None:
         facts = hr.default_facts()
         facts["client_memory"] = "256m"
         plan, _rendered = hr.build(facts)
@@ -250,7 +277,7 @@ class HostRouterTests(unittest.TestCase):
         self.assertTrue(any("memory caps" in item for item in plan["blockers"]))
         self.assertIn("446 MiB", plan["notes"][0])
 
-    def test_shared_vip_and_existing_interfaces_fail_closed(self):
+    def test_shared_vip_and_existing_interfaces_fail_closed(self) -> None:
         facts = hr.default_facts()
         facts["upstream_address"] = "10.250.0.1"
         with self.assertRaisesRegex(ValueError, "upstream"):
@@ -268,7 +295,7 @@ class HostRouterTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             hr.validate(facts)
 
-    def test_apply_copies_only_owned_files_after_blockers_clear(self):
+    def test_apply_copies_only_owned_files_after_blockers_clear(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             base = Path(temporary)
             facts_path = base / "facts.json"
@@ -334,7 +361,7 @@ class HostRouterTests(unittest.TestCase):
                 text=True,
             )
             self.assertEqual(refused.returncode, 2)
-            self.assertIn("blockers remain", refused.stderr)
+            self.assertIn("blockers remain", _text(refused.stderr))
             self.assertFalse((base / "refused").exists())
             root = base / "root"
             applied = subprocess.run(
@@ -399,9 +426,9 @@ class HostRouterTests(unittest.TestCase):
                 text=True,
             )
             self.assertEqual(again.returncode, 2)
-            self.assertIn("digest mismatch", again.stderr)
+            self.assertIn("digest mismatch", _text(again.stderr))
 
-    def test_apply_refuses_a_symlink_outside_root(self):
+    def test_apply_refuses_a_symlink_outside_root(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             base = Path(temporary)
             out = base / "plan"

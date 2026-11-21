@@ -43,7 +43,7 @@ def configuration(database):
 
 
 def semantic(config):
-    def normalize(value):
+    def normalize(value) -> object:
         if isinstance(value, str) and value.lstrip().startswith(("{", "[")):
             try:
                 return normalize(json.loads(value))

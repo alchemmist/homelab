@@ -96,7 +96,7 @@ Ansible now manages the public topology and per-node config rendering:
 ```text
 ansible/playbooks/wireguard.yml
 ansible/roles/wireguard_socrat/
-ansible/inventory/group_vars/Socrat.yml
+ansible/inventory/group_vars/Socrat/cluster.yml
 ```
 
 Private keys are kept on nodes and are not committed. The role preserves existing private keys, generates a new one only if absent, renders `/etc/wireguard/wg-socrat.conf`, starts/enables `wg-quick@wg-socrat`, applies peer changes with `wg syncconf`, and verifies public keys against inventory.
