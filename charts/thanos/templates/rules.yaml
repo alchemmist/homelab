@@ -89,11 +89,8 @@ spec:
             rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/socrat-0'
         - alert: ThanosFiveDiskLow
           expr: |
-            max(
-              node_filesystem_avail_bytes{job="node-exporter",mountpoint="/",fstype=~"ext4|xfs"}
-              * on(instance) group_left(nodename)
-              node_uname_info{job="node-exporter",nodename="socrat-1"}
-            ) < 50 * 1024 * 1024 * 1024
+            (socrat_five_bucket_available_bytes{backing_node="socrat-0"} < 50 * 1024 * 1024 * 1024)
+            or absent(socrat_five_bucket_available_bytes{backing_node="socrat-0"})
           for: 15m
           labels:
             severity: warning
@@ -101,9 +98,9 @@ spec:
             {{- with index ($.Values.alertGraphAnnotations | default dict) "ThanosFiveDiskLow" }}
             spi_graphs: {{ . | quote }}
             {{- end }}
-            summary: socrat-1 has less than 50 GiB free.
-            description: The filesystem on socrat-1 has been under 50 GiB free for 15m. The shipping job starts removing the oldest 5-minute blocks that already have an hourly copy when free space falls under 40 GiB. This alert does not delete data by itself.
-            rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/socrat-1'
+            summary: The shared Thanos 5m shelf has low or unknown free space.
+            description: The active bucket has reported less than 50 GiB free or no pressure metric for 15m. Extra pressure-driven deletion starts below 40 GiB and requires a confirmed coarser copy; missing capacity does not authorize extra deletion.
+            rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/socrat-0'
         - alert: ThanosScrapeNodeMemoryLow
           expr: |
             max(

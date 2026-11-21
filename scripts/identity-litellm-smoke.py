@@ -204,7 +204,7 @@ try:
         page.locator("input[type=password]").filter(visible=True).fill(password)
         page.locator("button[type=submit]").click()
         page.wait_for_timeout(2000)
-        for step in range(60):
+        for _step in range(60):
             if page.locator("ak-stage-authenticator-totp").is_visible():
                 print("Native TOTP enrollment presented")
                 source = (
