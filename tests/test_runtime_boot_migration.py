@@ -3,7 +3,7 @@ import ast
 from pathlib import Path
 import unittest
 
-SCRIPT = Path(__file__).resolve().parents[1] / 'scripts/socrat5-runtime-boot-migrate.py'
+SCRIPT = Path(__file__).resolve().parents[1] / "scripts/socrat5-runtime-boot-migrate.py"
 
 
 class RuntimeBootMigrationTest(unittest.TestCase):
@@ -18,16 +18,16 @@ class RuntimeBootMigrationTest(unittest.TestCase):
 
     def test_copy_is_checked_before_original_rename(self):
         text = SCRIPT.read_text()
-        self.assertLess(text.index("assert not v.stdout.strip()"), text.index('S.rename(old)'))
+        self.assertLess(text.index("assert not v.stdout.strip()"), text.index("S.rename(old)"))
         self.assertIn("'--numeric-ids'", text)
         self.assertIn("'cold-verify'", text)
 
     def test_no_original_removal_or_pvc_relocation(self):
         text = SCRIPT.read_text()
-        self.assertNotIn('rmtree', text)
-        self.assertNotIn('k3s/storage', text)
-        self.assertIn('ssd-retained-boot-20261120', text)
+        self.assertNotIn("rmtree", text)
+        self.assertNotIn("k3s/storage", text)
+        self.assertIn("ssd-retained-boot-20261120", text)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
