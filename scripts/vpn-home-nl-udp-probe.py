@@ -18,11 +18,11 @@ PREFIX = b"hl-home-nl-v1:"
 PORT = 51843
 
 
-def valid(data, peer):
+def valid(data, peer) -> bool:
     return peer[0] == HOME and len(data) == len(PREFIX) + 16 and data.startswith(PREFIX)
 
 
-def server(timeout=40):
+def server(timeout=40) -> "dict[str, object]":
     assert socket.gethostname() == "socrat-2"
     assert 1 <= timeout <= 45
     deadline = time.monotonic() + timeout
@@ -42,7 +42,7 @@ def server(timeout=40):
     raise TimeoutError("No valid HOME datagram in bounded window")
 
 
-def client():
+def client() -> "dict[str, object]":
     assert socket.gethostname() == "socrat-0"
     payload = PREFIX + secrets.token_bytes(16)
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:

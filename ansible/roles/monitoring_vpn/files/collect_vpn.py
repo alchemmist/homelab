@@ -218,8 +218,8 @@ def collect(
     return 0
 
 
-def _ports(raw):
-    ports = []
+def _ports(raw) -> list[int]:
+    ports: list[int] = []
     for item in raw.split(","):
         item = item.strip()
         if item:

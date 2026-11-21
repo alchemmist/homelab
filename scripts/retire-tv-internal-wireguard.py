@@ -18,20 +18,24 @@ CONF = Path("/etc/wireguard/wg-socrat.conf")
 
 
 def need(ok, msg):
+    """Execute need."""
     if not ok:
         raise RuntimeError(msg)
 
 
 def digest(b):
+    """Execute digest."""
     return hashlib.sha256(b).hexdigest()
 
 
 def peers():
+    """Execute peers."""
     out = subprocess.check_output(["wg", "show", "wg-socrat", "allowed-ips"], text=True)
     return dict(line.split("\t", 1) for line in out.splitlines())
 
 
 def main():
+    """Execute main."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")

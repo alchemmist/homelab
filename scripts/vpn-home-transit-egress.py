@@ -10,16 +10,16 @@ import argparse
 import hashlib
 import json
 import os
-from pathlib import Path
 import socket
 import subprocess
+from pathlib import Path
 
 ROOT = Path("/var/lib/homelab-vpn-transit/home-egress")
 TABLE = "homelab_msk_home_egress"
 EXIT = "109.120.141.60"
 
 
-def command(args):
+def command(args) -> str:
     return subprocess.check_output(args, text=True, stderr=subprocess.PIPE)
 
 
@@ -27,7 +27,7 @@ DIRECT_PROBE_UID = 19091
 DIRECT_PROBE_COMMENT = "homelab-direct-ip-probe"
 
 
-def rules(direct_probe=None):
+def rules(direct_probe=None) -> str:
     body = """
  ip daddr 109.120.141.60 tcp dport 53 counter dnat ip to 10.250.0.40:53
  ip daddr 109.120.141.60 udp dport 53 counter dnat ip to 10.250.0.40:53
@@ -63,10 +63,13 @@ def rules(direct_probe=None):
     )
 
 
-def projection():
-    value = json.loads(command(["nft", "-j", "list", "table", "inet", TABLE]))
+def projection() -> dict[str, object]:
+    value: object = json.loads(command(["nft", "-j", "list", "table", "inet", TABLE]))
+    if not isinstance(value, dict):
+        reason = "nft returned a non-object projection"
+        raise TypeError(reason)
 
-    def clean(v):
+    def clean(v) -> object:
         if isinstance(v, list):
             return [clean(x) for x in v if not isinstance(x, dict) or "metainfo" not in x]
         if isinstance(v, dict):
@@ -76,7 +79,7 @@ def projection():
     return clean(value)
 
 
-def upgrade_direct_probe():
+def upgrade_direct_probe() -> None:
     """One-shot CAS migration of HOME0's owned table; no flush/delete/reload."""
     assert os.geteuid() == 0 and socket.gethostname() == "socrat-0"
     os.umask(0o077)
@@ -108,6 +111,9 @@ def upgrade_direct_probe():
     command(["nft", "-c", "-f", str(receipt / "insert.nft")])
     command(["nft", "-f", str(receipt / "insert.nft")])
     after = projection()
+    if not isinstance(after, dict):
+        reason = "Unexpected nftables projection"
+        raise TypeError(reason)
     added = [
         v for v in after["nftables"] if v.get("rule", {}).get("comment") == DIRECT_PROBE_COMMENT
     ]
@@ -161,7 +167,7 @@ def upgrade_direct_probe():
     )
 
 
-def run(boot=False):
+def run(boot=False) -> None:
     assert os.geteuid() == 0 and socket.gethostname() in ("socrat-0", "socrat-1", "socrat-3")
     os.umask(0o077)
     source = rules()

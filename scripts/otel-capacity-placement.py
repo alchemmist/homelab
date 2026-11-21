@@ -1,3 +1,4 @@
+"""Pin Rancher Fleet controller pods to specific nodes for OTEL capacity."""
 import argparse
 import copy
 import json
@@ -82,7 +83,7 @@ def run(kubeconfig, state_directory):
     state_directory.mkdir(mode=0o700, parents=True, exist_ok=False)
     base = ["k3s", "kubectl", "--kubeconfig", kubeconfig]
 
-    def command(arguments):
+    def command(arguments) -> str:
         return subprocess.check_output(base + arguments, text=True, timeout=200)
 
     nodes = json.loads(command(["get", "nodes", "-o", "json"]))
@@ -146,13 +147,13 @@ def run(kubeconfig, state_directory):
                     "nodes": sorted({p["spec"]["nodeName"] for p in active}),
                 }
             )
-        except Exception:
+        except Exception as exc:
             live = json.loads(command(get))
             if (
                 live["metadata"]["uid"] != rollback["uid"]
                 or live["spec"]["template"]["spec"].get("affinity") != rollback["appliedAffinity"]
             ):
-                raise RuntimeError("Concurrent placement change: manual rollback required")
+                raise RuntimeError("Concurrent placement change: manual rollback required") from exc
             restore = {
                 "metadata": {"resourceVersion": live["metadata"]["resourceVersion"]},
                 "spec": {

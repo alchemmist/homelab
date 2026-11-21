@@ -45,7 +45,7 @@ print(json.dumps({'worker':worker['WORKER_TOKEN'],'ingress':ingress['token']}))
 """
 
 
-def main():
+def main() -> None:
     r = subprocess.run(
         ["ssh", "socrat-0", "python3 -c " + shlex.quote(REMOTE)],
         text=True,
