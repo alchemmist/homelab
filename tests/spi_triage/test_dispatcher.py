@@ -11,14 +11,17 @@ from dispatcher import Dispatcher
 
 class DispatchTests(unittest.TestCase):
     def setUp(self):
+        """Create a scratch dispatcher store."""
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.store = Store(self.tmp.name + "/queue.sqlite")
 
     def enqueue(self, key="a"):
+        """Enqueue one event and return its key."""
         return self.store.enqueue({"event_key": key, "episode": key})
 
     def test_empty_disabled_and_coalescing(self):
+        """Verify empty, disabled, and coalesced dispatch behavior."""
         calls = []
         d = Dispatcher(self.store, "unused", post=lambda: calls.append(1))
         self.enqueue()
@@ -31,10 +34,12 @@ class DispatchTests(unittest.TestCase):
         self.assertGreater(self.store.dispatch_status()["deadline"], 0)
 
     def test_empty(self):
+        """Verify an empty dispatch ticks without work."""
         d = Dispatcher(self.store, "unused", True, lambda: self.fail("network"))
         self.assertIsNone(d.tick())
 
     def test_ambiguous_persists_and_ack_race(self):
+        """Verify ambiguous events persist safely across an ack race."""
         self.enqueue()
 
         def post():
@@ -46,6 +51,7 @@ class DispatchTests(unittest.TestCase):
         self.assertIsNone(self.store.reserve_dispatch()[0])
 
     def test_deadlines_recovery_and_terminal_lease(self):
+        """Verify deadlines, recovery, and terminal lease transitions."""
         self.enqueue()
         self.enqueue("b")
         self.store.claim()
@@ -56,6 +62,7 @@ class DispatchTests(unittest.TestCase):
         self.assertIsNotNone(self.store.reserve_dispatch()[0])
 
     def test_backoff_restart_and_due_retry(self):
+        """Verify backoff, restart and due retry scheduling."""
         with (
             patch("core.time.time", return_value=100),
             patch("core.random.uniform", return_value=1),
@@ -71,6 +78,7 @@ class DispatchTests(unittest.TestCase):
             self.assertEqual(self.store.reserve_dispatch(101), (None, 160))
 
     def test_expired_processing_lease(self):
+        """Verify an expired processing lease is reclaimed."""
         with patch("core.time.time", return_value=100):
             self.enqueue()
             self.store.claim()
@@ -80,6 +88,7 @@ class DispatchTests(unittest.TestCase):
 
 class ServiceSafetyTests(unittest.TestCase):
     def test_expired_lease_while_stage_busy(self):
+        """Verify lease expiry is deferred while the stage is busy."""
         from service import Engine
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -105,6 +114,7 @@ class ServiceSafetyTests(unittest.TestCase):
             self.assertEqual(engine.claim(), {"job_id": "a"})
 
     def test_body_validation_and_partial_timeout(self):
+        """Verify webhook body validation and partial-request timeouts."""
         import socket
         from types import SimpleNamespace
         from service import read_request_body
@@ -137,6 +147,7 @@ class ServiceSafetyTests(unittest.TestCase):
 
 class DispatchTransportTests(unittest.TestCase):
     def test_trickling_headers_are_interrupted_without_body_read(self):
+        """Verify trickling-header requests abort without reading bodies."""
         import socket
         import threading
         import http.client

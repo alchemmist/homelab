@@ -9,6 +9,7 @@ from engine import UnsafeInput
 
 class ModelBoundaryTests(unittest.TestCase):
     def test_retry_schema_failure(self):
+        """Verify schema failures are retried without marking success."""
         calls = []
         valid = {
             "should_update": True,
@@ -24,6 +25,7 @@ class ModelBoundaryTests(unittest.TestCase):
         self.assertEqual(len(calls), 2)
 
     def test_bad_output_stays_rejected(self):
+        """Verify malformed stage output stays rejected across retries."""
         calls = []
 
         def model(prompt, data):

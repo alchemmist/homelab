@@ -19,10 +19,12 @@ spec.loader.exec_module(sync)
 
 class EventWorkflowTests(unittest.TestCase):
     def setUp(self):
+        """Load the shipped workflow manifest."""
         self.workflow = json.loads((ROOT / RELATIVE).read_text())
         self.mapping = {"worker": {"id": "existing-worker-id", "name": "SPI worker internal"}}
 
     def test_authenticated_immediate_webhook_and_linear_pipeline(self):
+        """Verify the webhook authenticates and the pipeline stays linear."""
         w = self.workflow
         nodes = {n["name"]: n for n in w["nodes"]}
         self.assertFalse(any("schedule" in n["type"].lower() for n in w["nodes"]))
@@ -120,6 +122,7 @@ class EventWorkflowTests(unittest.TestCase):
             self.assertIs(settings[key], True)
 
     def test_actual_envelope_validator_rejects_unknown_and_early_terminal(self):
+        """Verify the envelope validator rejects unknown or early terminal entries."""
         import subprocess, time
 
         code = next(n for n in self.workflow["nodes"] if n["name"] == "Select Claimed Job")[
@@ -160,6 +163,7 @@ class EventWorkflowTests(unittest.TestCase):
         self.assertEqual(results, [1, 1, 1, "error", "error", "error", "error", "error", 1, 0])
 
     def test_render_reuses_worker_identity_without_mutating_template(self):
+        """Verify render reuses the worker identity without mutating it."""
         original = copy.deepcopy(self.workflow)
         rendered = sync.render(self.workflow, self.mapping)
         for node in rendered["nodes"]:
@@ -170,6 +174,7 @@ class EventWorkflowTests(unittest.TestCase):
             sync.render(self.workflow, {})
 
     def run_sync(self, pages):
+        """Run the sync over scripted API pages and return results and calls."""
         with tempfile.TemporaryDirectory() as config:
             Path(config, "spi-credentials.json").write_text(json.dumps(self.mapping))
             with (
@@ -180,6 +185,7 @@ class EventWorkflowTests(unittest.TestCase):
                 return result, api.call_args_list
 
     def test_sync_updates_existing_id_on_later_page_without_activation(self):
+        """Verify sync updates ids on later pages without new activations."""
         result, calls = self.run_sync(
             [
                 {"data": [], "nextCursor": "next/page"},
@@ -195,6 +201,7 @@ class EventWorkflowTests(unittest.TestCase):
         self.assertEqual(body["nodes"], sync.render(self.workflow, self.mapping)["nodes"])
 
     def test_sync_refuses_active_or_ambiguous_workflows_before_write(self):
+        """Verify sync refuses active or ambiguous workflows before any write."""
         for entries in [
             [{"name": self.workflow["name"], "id": "original-id", "active": True}],
             [{"name": self.workflow["name"], "id": str(i), "active": False} for i in range(2)],
@@ -203,6 +210,7 @@ class EventWorkflowTests(unittest.TestCase):
                 self.run_sync([{"data": entries}])
 
     def test_sync_refuses_missing_original_without_write(self):
+        """Verify sync refuses a missing original workflow before any write."""
         with tempfile.TemporaryDirectory() as config:
             Path(config, "spi-credentials.json").write_text(json.dumps(self.mapping))
             with (
@@ -217,6 +225,7 @@ class EventWorkflowTests(unittest.TestCase):
                 self.assertTrue(all(call.args[0] == "GET" for call in api.call_args_list))
 
     def test_sync_refuses_duplicate_names_across_pages(self):
+        """Verify sync refuses duplicate names across pagination pages."""
         entry = {"name": self.workflow["name"], "id": "original-id", "active": False}
         with self.assertRaisesRegex(RuntimeError, "Ambiguous workflow name"):
             self.run_sync(

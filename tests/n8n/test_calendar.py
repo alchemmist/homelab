@@ -12,6 +12,7 @@ spec.loader.exec_module(sync)
 
 class CalendarTests(unittest.TestCase):
     def setUp(self):
+        """Load the rendered calendar workflow fixture."""
         self.template = json.loads((BASE / "docs/n8n/calendar-voice-reminder.json").read_text())
         self.creds = {
             k: {"id": "test-id", "name": "Test"}
@@ -19,11 +20,13 @@ class CalendarTests(unittest.TestCase):
         }
 
     def render(self):
+        """Render the workflow under the validated test inputs."""
         return sync.render_workflow(
             self.template, self.creds, {"calendar_ids": ["primary", "work@example.test"]}
         )
 
     def test_render_scoped_native_node(self):
+        """Verify the workflow renders the scoped native node."""
         w = self.render()
         raw = json.dumps(w)
         self.assertNotIn("REPLACE_WITH_", raw)
@@ -37,6 +40,7 @@ class CalendarTests(unittest.TestCase):
         self.assertNotIn("xToken", raw)
 
     def test_raw_internal_http_forbidden(self):
+        """Verify raw internal HTTP request nodes are forbidden."""
         for url in [
             "https://iot.quasar.yandex.ru/m/user/scenarios/x/actions",
             "http://api.iot.yandex.net/v1.0/scenarios/x/actions",
@@ -48,10 +52,12 @@ class CalendarTests(unittest.TestCase):
                 sync.require_yandex_policy(w)
 
     def test_missing_auth_rejected(self):
+        """Verify a node without the prepared auth is rejected."""
         with self.assertRaises(RuntimeError):
             sync.render_workflow(self.template, {}, {})
 
     def test_maintenance_renews_without_speech(self):
+        """Verify session maintenance renews silently, not over speech."""
         t = json.loads((BASE / "docs/n8n/yandex-session-maintenance.json").read_text())
         w = sync.render_workflow(t, self.creds, {})
         n = next(n for n in w["nodes"] if n["type"] == "CUSTOM.yandexStation")
@@ -59,6 +65,7 @@ class CalendarTests(unittest.TestCase):
         self.assertFalse(n["parameters"]["forceRefresh"])
 
     def test_failed_call_does_not_mark(self):
+        """Verify a failed voice call does not mark attendance."""
         code = next(n for n in self.render()["nodes"] if n["name"] == "Mark Announced")[
             "parameters"
         ]["jsCode"]
@@ -70,6 +77,7 @@ class CalendarTests(unittest.TestCase):
         subprocess.check_call(["node", "-e", script])
 
     def test_due_matching_and_dedup(self):
+        """Verify due-event matching and per-episode deduplication."""
         code = next(n for n in self.render()["nodes"] if n["name"] == "Match Due Reminders")[
             "parameters"
         ]["jsCode"]

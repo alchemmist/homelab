@@ -431,6 +431,7 @@ def tick():
 
 class Health(BaseHTTPRequestHandler):
     def do_GET(self):
+        """Serve health/dependency/readiness endpoints."""
         if self.path in ("/healthz", "/livez", "/dependencies"):
             # External API failures cannot be repaired by restarting this process.
             alive = time.time() - STATUS["last_tick"] < 180
@@ -452,6 +453,7 @@ class Health(BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
     def log_message(self, *args):
+        """Suppress default request-line logging."""
         pass
 
 

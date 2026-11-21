@@ -21,13 +21,16 @@ def renderer(source):
 
 class DNSDelta(unittest.TestCase):
     def setUp(self):
+        """Load the rendered DNS zone sources."""
         self.source = (ROOT / "scripts/public_dns_zone.py").read_text()
         self.before = self.source.replace('    "openhands.socrat",\n', "")
 
     def test_exact_addition_all_health_states(self):
+        """Verify the draft adds exactly one record for every health state."""
         guard.delta(renderer(self.before), renderer(self.source))
 
     def test_unrelated_record_rejected(self):
+        """Verify any unrelated record change is rejected."""
         with self.assertRaises(RuntimeError):
             guard.delta(
                 renderer(self.before),
@@ -35,6 +38,7 @@ class DNSDelta(unittest.TestCase):
             )
 
     def test_changed_entrance_rejected(self):
+        """Verify changes to the entrance record are rejected."""
         with self.assertRaises(RuntimeError):
             guard.delta(
                 renderer(self.before),
@@ -42,6 +46,7 @@ class DNSDelta(unittest.TestCase):
             )
 
     def test_missing_new_record_rejected(self):
+        """Verify omitting the new record from the draft is rejected."""
         with self.assertRaises(RuntimeError):
             guard.delta(renderer(self.before), renderer(self.before))
 

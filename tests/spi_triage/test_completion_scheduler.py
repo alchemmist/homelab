@@ -10,6 +10,7 @@ from service import Engine
 
 class CompletionSchedulerTests(unittest.TestCase):
     def setUp(self):
+        """Build a fresh scheduler over a scratch store."""
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.s = Store(self.tmp.name + "/db")
@@ -19,6 +20,7 @@ class CompletionSchedulerTests(unittest.TestCase):
         self.addCleanup(self.clock.stop)
 
     def add(self, key, stage=0, state="queued", available=None, error=None):
+        """Enqueue one event with the given scheduling state."""
         self.s.enqueue({"event_key": key, "episode": key})
         with self.s.db() as c:
             c.execute(
@@ -27,11 +29,13 @@ class CompletionSchedulerTests(unittest.TestCase):
             )
 
     def test_competition_expiry_jitter_publication_and_resume(self):
+        """Verify competition expiry, jitter, publication and resume paths."""
         for jitter in (1, 2, 3):
             with self.subTest(jitter=jitter):
                 self.set_competition(jitter)
 
     def set_competition(self, jitter):
+        """Seed the competition outcome for the next scheduler run."""
         with self.s.db() as c:
             c.execute("DELETE FROM jobs")
             c.execute("DELETE FROM llm_admission")
@@ -74,6 +78,7 @@ class CompletionSchedulerTests(unittest.TestCase):
         self.assertEqual(self.s.claim()["job_id"], "older-match")
 
     def test_safe_continuations_unknown_backoff_and_cancelled(self):
+        """Verify continuations, unknowns, backoff and cancellations stay safe."""
         self.add("match")
         self.add("analysis", 2, "retry", 3700, "LLM_HTTP_429")
         for i in range(119):
@@ -87,12 +92,14 @@ class CompletionSchedulerTests(unittest.TestCase):
         self.assertEqual(self.s.claim()["job_id"], "match")
 
     def test_stale_unbounded_deadline_does_not_hold(self):
+        """Verify a stale unbounded deadline never holds the queue."""
         self.add("match")
         self.add("analysis", 2, "retry", 4000, "LLM_ADMISSION_DEFERRED")
         self.s.reserve_llm(30000, timeout=4000)
         self.assertEqual(self.s.claim()["job_id"], "match")
 
     def test_due_analysis_priority_and_safe_write_during_hold(self):
+        """Verify due-analysis priority and safe writes during a hold."""
         self.add("match")
         self.add("analysis", 2, "retry", 164, "LLM_ADMISSION_DEFERRED")
         r = self.s.reserve_llm(30000)
@@ -105,6 +112,7 @@ class CompletionSchedulerTests(unittest.TestCase):
         self.assertEqual(self.s.claim()["job_id"], "analysis")
 
     def test_abandoned_active_ledger_bounded_wake_and_expiry(self):
+        """Verify abandoned ledgers wake bounded and eventually expire."""
         self.add("match")
         self.add("analysis", 2, "retry", 764, "LLM_ADMISSION_DEFERRED")
         self.s.reserve_llm(30000)  # active request lost on restart, expires at 761
@@ -119,6 +127,7 @@ class CompletionSchedulerTests(unittest.TestCase):
             self.s.reserve_llm(1)
 
     def test_stage_ties_and_age_alert_remain_natural(self):
+        """Verify stage ties and age alerts order naturally."""
         self.add("old-match")
         self.now = 110
         self.add("z-analysis", 2)

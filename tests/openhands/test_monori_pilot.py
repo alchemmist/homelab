@@ -18,6 +18,7 @@ def load():
 
 class Pilot(unittest.TestCase):
     def test_restart_moves_to_second_card_once(self):
+        """Verify restart advances to the second card exactly once."""
         with tempfile.TemporaryDirectory() as d:
             db = str(pathlib.Path(d)/'cards.db'); published=[]; prompts=[]; chats={}
             def api(path, body=None):
@@ -36,9 +37,11 @@ class Pilot(unittest.TestCase):
             self.assertEqual([r['state'] for r in m.state()],['published','published']);self.assertEqual(len(set(prompts)),2);self.assertEqual(len(published),2)
 
     def test_case_is_data_not_python(self):
+        """Verify pilot cases ship as data, not executable python."""
         m=load();self.assertRaises(AssertionError,m.render,'day_number',{'input':{},'expected':1,'why':'candidate input'});self.assertRaises(ValueError,m.render,'_amount',{'input':2,'expected':2,'why':'candidate input','code':'assert True'})
 
     def test_proleptic_gregorian_and_rejection_identity(self):
+        """Verify calendar identity is proleptic Gregorian and fails closed."""
         m=load();case={'input':'0000-02-29','expected':2,'why':'calendar fixture'}
         self.assertIn('0000-02-29',m.render('day_number',case))
         for date in ('0000-02-30','0001-02-29','2025-13-01','0000/01/01'):

@@ -9,6 +9,7 @@ from durable_wait import WaitOwners
 
 class WaitTests(unittest.TestCase):
     def setUp(self):
+        """Create a scratch store and wait keys."""
         self.tmp = tempfile.TemporaryDirectory()
         self.store = Store(self.tmp.name + "/db", minute_token_limit=60000)
         self.key = self.store.enqueue(fixtures.event())["job_id"]
@@ -17,9 +18,11 @@ class WaitTests(unittest.TestCase):
         self.owner = self.owners.bind(self.key, "1234", "revision1", "match", 100)
 
     def tearDown(self):
+        """Close the scratch store."""
         self.tmp.cleanup()
 
     def test_repeat_wait_restart_fence_and_deadline(self):
+        """Verify repeat waits, restart fencing and deadlines."""
         owner = self.owner
         for now in (100, 200, 300):
             waiting = self.owners.defer(owner, "LLM_ADMISSION_DEFERRED", 61, now)
@@ -37,6 +40,7 @@ class WaitTests(unittest.TestCase):
             self.assertEqual(c.execute("SELECT count(*) FROM llm_admission").fetchone()[0], 0)
 
     def test_strict_errors_and_owners(self):
+        """Verify strict error handling for every owner and error code."""
         for code in ("LLM_INVALID_EVIDENCE_REFERENCE", "LLM_HTTP_401", "UNKNOWN"):
             with self.assertRaises(Failure):
                 self.owners.defer(self.owner, code, 61, 100)
@@ -56,6 +60,7 @@ class WaitTests(unittest.TestCase):
             self.owners.resume(waiting, waiting["expires"])
 
     def test_opt_in_preserves_rpm_parallel_and_restart(self):
+        """Verify opt-in keeps RPM, parallelism and restart semantics."""
         reservation = self.store.reserve_llm(1, now=100)
         restarted = Store(self.store.path, minute_token_limit=60000)
         with self.assertRaises(Failure):
@@ -69,6 +74,7 @@ class WaitTests(unittest.TestCase):
         restarted.reserve_llm(1, now=162)
 
     def test_idempotent_bind_and_invalid_wait_bounds(self):
+        """Verify binding idempotence and rejected out-of-bound waits."""
         self.assertEqual(self.owner, self.owners.bind(self.key, "1234", "revision1", "match", 101))
         for value in (float("nan"), float("inf"), -1, True, "61"):
             with self.assertRaises(Failure):
@@ -79,6 +85,7 @@ class WaitTests(unittest.TestCase):
             self.owners.defer(self.owner, "LLM_ADMISSION_DEFERRED", 61, 100)
 
     def test_minute_budget_not_context_bound(self):
+        """Verify waits budget by minute, not by context size."""
         for now in (100, 101):
             reservation = self.store.reserve_llm(30000, now=now)
             self.store.finish_llm(reservation, now=now)
