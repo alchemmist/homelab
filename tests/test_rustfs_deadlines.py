@@ -146,7 +146,8 @@ class Deadlines(unittest.TestCase):
                             acquired = True
                             break
                         time.sleep(0.01)
-                    assert acquired, "slot not returned before deadline"
+                    if not acquired:
+                        raise AssertionError("slot not returned before deadline")
                     server.slots.release()
                     with socket.create_connection(server.server_address) as c:
                         c.settimeout(1)
