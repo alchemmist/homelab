@@ -4,13 +4,13 @@ import hashlib
 import importlib.util
 import json
 import os
-from pathlib import Path
 import subprocess
 import tempfile
 import threading
 import unittest
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from typing import override
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -405,8 +405,8 @@ class NetBirdOIDCTests(unittest.TestCase):
 
     def run_tool(self, *args: object) -> tuple[int, str, str]:
         """Run the offline tool with redirected standard streams."""
-        from io import StringIO
         import contextlib
+        from io import StringIO
 
         stdout, stderr = StringIO(), StringIO()
         with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):

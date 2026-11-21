@@ -7,9 +7,9 @@ import json
 import os
 import subprocess
 import tempfile
-from typing import TypedDict
 import unittest
 from pathlib import Path
+from typing import TypedDict
 from unittest.mock import patch
 
 import yaml
