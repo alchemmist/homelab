@@ -10,7 +10,9 @@ import tempfile
 import time
 import urllib.request
 import uuid
+from collections.abc import Mapping
 from concurrent import futures
+from typing import cast
 
 import yaml
 
@@ -22,11 +24,17 @@ TAG = "log-test-" + uuid.uuid4().hex[:8]
 NAMES = []
 
 
-def docker(*args: str, check=True):
+def docker(*args: str, check: bool = True):
     return subprocess.run(["docker", *args], check=check, capture_output=True)
 
 
-def launch(name, config, network=None, publish=False):
+def launch(
+    name: str,
+    config: dict[str, object],
+    network: str | None = None,
+    *,
+    publish: bool = False,
+):
     NAMES.append(name)
     args = ["create", "--user", "0", "--name", name]
     if network:
@@ -48,7 +56,7 @@ def launch(name, config, network=None, publish=False):
         return "http://127.0.0.1:" + port + "/v1/logs"
 
 
-def config(processors, exporter):
+def config(processors: dict[str, object], exporter: Mapping[str, object]):
     return {
         "receivers": {"otlp": {"protocols": {"http": {"endpoint": "0.0.0.0:4318"}}}},
         "processors": processors,
@@ -65,7 +73,7 @@ def config(processors, exporter):
     }
 
 
-def value(v):
+def value(v: object):
     if isinstance(v, dict):
         return {"kvlistValue": {"values": [{"key": k, "value": value(x)} for k, x in v.items()]}}
     if isinstance(v, list):
@@ -73,7 +81,7 @@ def value(v):
     return {"stringValue": str(v)}
 
 
-def send(url, ident, body):
+def send(url: str, ident: str, body: object):
     payload = {
         "resourceLogs": [
             {
@@ -109,7 +117,7 @@ def send(url, ident, body):
         assert response.status == 200
 
 
-def output(name):
+def output(name: str):
     with tempfile.TemporaryDirectory() as directory:
         path = pathlib.Path(directory) / "out"
         docker("cp", name + ":/tmp/output.json", str(path))
@@ -122,11 +130,11 @@ def output(name):
         ]
 
 
-def ids(records):
+def ids(records: list[dict[str, object]]):
     return {
-        a["value"]["stringValue"]
+        cast("dict[str, object]", a["value"])["stringValue"]
         for r in records
-        for a in r.get("attributes", [])
+        for a in cast("list[dict[str, object]]", r.get("attributes", []))
         if a["key"] == "test.id"
     }
 
@@ -218,7 +226,7 @@ def main():
         cfg["service"]["extensions"] = ["file_storage"]
         url = launch(sender, cfg, network, publish=True)
 
-        def retry(i):
+        def retry(i: int):
             deadline = time.monotonic() + 60
             while time.monotonic() < deadline:
                 try:

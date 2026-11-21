@@ -12,7 +12,7 @@ SA = "otel-host-" + NODE
 LEAF = "otel-tls-" + NODE
 
 
-def k(*args: str, document=None):
+def k(*args: str, document: dict[str, object] | None = None):
     p = subprocess.run(
         ["k3s", "kubectl", *args],
         input=json.dumps(document) if document else None,

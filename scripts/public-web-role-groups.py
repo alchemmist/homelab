@@ -13,27 +13,27 @@ from pathlib import Path
 ROLES = {"syncthing-web-admins": "syncthing", "uptime-kuma-web-admins": "uptime-kuma"}
 
 
-def require(ok, message):
+def require(message: str, *, ok: bool):
     if not ok:
         raise RuntimeError(message)
 
 
-def plan(groups):
+def plan(groups: list[dict[str, object]]):
     ops = []
     for name, service in ROLES.items():
         rows = [g for g in groups if g["name"] == name]
-        require(len(rows) <= 1, "Ambiguous role group")
+        require("Ambiguous role group", ok=len(rows) <= 1)
         attrs = {"homelab_public_web_role": service}
         if rows:
             g = rows[0]
             require(
-                g["attributes"] == attrs
+                "Foreign/inherited role group; stop",
+                ok=g["attributes"] == attrs
                 and g["is_superuser"] is False
                 and g["parents"] == []
                 and g["children"] == []
                 and g["roles"] == []
                 and isinstance(g["users"], list),
-                "Foreign/inherited role group; stop",
             )
         else:
             ops.append(
@@ -64,12 +64,14 @@ def main():
     loader.exec_module(m)
     api = m.API("/home/alchemmist/.cache/homelab-authentik/credentials.json")
     root = Path("/var/lib/homelab-public-web-role-groups")
-    require(not root.is_symlink(), "Unsafe state path")
+    require("Unsafe state path", ok=not root.is_symlink())
     root.mkdir(mode=0o700, exist_ok=True)
-    require(root.stat().st_uid == 0 and not root.stat().st_mode & 0o077, "Unsafe state ownership")
+    require(
+        "Unsafe state ownership", ok=root.stat().st_uid == 0 and not root.stat().st_mode & 0o077
+    )
     with (root / "lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        require(not (root / "uncertain.json").exists(), "Uncertain previous write")
+        require("Uncertain previous write", ok=not (root / "uncertain.json").exists())
         before = api.rows("core/groups/")
         ops = plan(before)
         digest = hashlib.sha256(
@@ -78,14 +80,14 @@ def main():
             ).encode()
         ).hexdigest()
         if a.apply and ops:
-            require(a.approve_plan_hash == digest, "Fresh plan hash approval required")
+            require("Fresh plan hash approval required", ok=a.approve_plan_hash == digest)
             (root / "before.json").write_text(json.dumps(before))
             (root / "uncertain.json").write_text(json.dumps(ops))
             for op in ops:
                 api.call("POST", "core/groups/", op)
             after = api.rows("core/groups/")
-            require(not plan(after), "Creation not confirmed")
-            require(all(g in after for g in before), "Existing groups/memberships changed")
+            require("Creation not confirmed", ok=not plan(after))
+            require("Existing groups/memberships changed", ok=all(g in after for g in before))
             (root / "after.json").write_text(json.dumps(after))
             (root / "uncertain.json").unlink()
         print(
