@@ -36,6 +36,11 @@ load_config() {
       value="${value#"${value%%[![:space:]]*}"}"
       value="${value%"${value##*[![:space:]]}"}"
       [[ "${key}" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]] || die "config key is not a shell identifier: ${key}"
+      case "${value}" in
+        \"*\") value="${value:1:${#value}-2}" ;;
+        \'*\') value="${value:1:${#value}-2}" ;;
+        *) ;;
+      esac
       export "${key}=${value}"
     done < "${CONFIG_FILE}"
   fi
