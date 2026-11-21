@@ -25,6 +25,7 @@ JS = ROOT / "deploy/platform/grafana/public-entry/files/traffic-light-inset.js"
     ],
 )
 def test_inset_runtime_scope_and_compacted_layout(mode):
+    """Run test inset runtime scope and compacted layout."""
     script = r"""
 const fs=require('fs'),vm=require('vm'),mode=process.argv[1];
 const token='a'.repeat(32), styles={}, calls=[];
@@ -70,6 +71,7 @@ console.log(JSON.stringify({css:styles['socrat-tv-inset']?.textContent||'',calls
 
 
 def test_only_one_dashboard_and_no_anonymous_org_fallback():
+    """Run test only one dashboard and no anonymous org fallback."""
     s = (ROOT / "scripts/grafana-tv-public.py").read_text()
     assert "UID='socrat-traffic-light'" in s
     assert "'annotationsEnabled':False" in s
@@ -82,6 +84,7 @@ def test_only_one_dashboard_and_no_anonymous_org_fallback():
 
 
 def test_live_update_is_url_only_and_does_not_reprovision_tv():
+    """Run test live update is url only and does not reprovision tv."""
     s = (ROOT / "ansible/playbooks/tv-public-dashboard.yml").read_text()
     assert "{'startURL':tv_start_url}" in s
     assert "tv_public_hash == tv_plan_hash" in s
@@ -94,6 +97,7 @@ def test_live_update_is_url_only_and_does_not_reprovision_tv():
 
 
 def test_no_dedicated_tv_alias_or_internal_vpn_in_helpers():
+    """Run test no dedicated tv alias or internal vpn in helpers."""
     import yaml
     from tests.public_entry_contract import CHARTS, values
 
@@ -114,6 +118,7 @@ def test_no_dedicated_tv_alias_or_internal_vpn_in_helpers():
     ["public", "normal", "auth_kiosk", "wrong_uid", "horizontal", "missing_fill", "duplicate_name"],
 )
 def test_compact_argo_is_guarded_public_tv_only_and_preserves_native_data(mode):
+    """Run test compact argo is guarded public tv only and preserves native data."""
     script = r"""
 const fs=require('fs'),vm=require('vm'),mode=process.argv[1],styles={};
 const node=(style={})=>({style,children:[],classes:new Set(),classList:{add(c){this.owner.classes.add(c)}}});

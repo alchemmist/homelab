@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def controller():
+    """Run controller."""
     path = ROOT / "ansible/roles/identity_integrations/files/litellm_oidc.py"
     spec = importlib.util.spec_from_file_location("litellm_oidc", path)
     module = importlib.util.module_from_spec(spec)

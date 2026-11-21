@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
     not shutil.which("helm") or not shutil.which("promtool"), reason="Native Helm/promtool required"
 )
 def test_power_and_quorum_with_native_promtool(tmp_path):
+    """Run test power and quorum with native promtool."""
     rendered = subprocess.check_output(
         ["helm", "template", "monitoring", str(ROOT / "charts/monitoring-k3s")], text=True
     )
@@ -102,6 +103,7 @@ def test_power_and_quorum_with_native_promtool(tmp_path):
 
 
 def test_agent_native_compaction_keeps_durable_barrier():
+    """Run test agent native compaction keeps durable barrier."""
     agent = yaml.safe_load((ROOT / "deploy/monitoring/otel/agent.yaml").read_text())
     storage = agent["extensions"]["file_storage"]
     assert storage["fsync"] is True

@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def rendered(chart, *args):
+    """Run rendered."""
     return [
         d
         for d in yaml.safe_load_all(
@@ -19,6 +20,7 @@ def rendered(chart, *args):
 
 
 def test_database_has_three_separate_failure_domains_and_required_sync_quorum():
+    """Run test database has three separate failure domains and required sync quorum."""
     docs = rendered("lms-database-ha")
     c = next(d for d in docs if d["kind"] == "Cluster")["spec"]
     assert c["instances"] == 3
@@ -41,6 +43,7 @@ def test_database_has_three_separate_failure_domains_and_required_sync_quorum():
 
 
 def test_backups_are_encrypted_and_not_shared_plaintext_files():
+    """Run test backups are encrypted and not shared plaintext files."""
     docs = rendered("lms-database-ha", "--set", "backup.enabled=true")
     cron = next(d for d in docs if d["kind"] == "CronJob")
     assert cron["spec"]["concurrencyPolicy"] == "Forbid"
@@ -59,6 +62,7 @@ def test_backups_are_encrypted_and_not_shared_plaintext_files():
 
 
 def test_single_worker_recreate_and_bounded_node_eviction_are_preserved():
+    """Run test single worker recreate and bounded node eviction are preserved."""
     docs = rendered("lms", "--set", "database.ha.enabled=true")
     dep = next(d for d in docs if d["kind"] == "Deployment" and d["metadata"]["name"] == "lms")
     assert dep["spec"]["replicas"] == 1 and dep["spec"]["strategy"]["type"] == "Recreate"
@@ -70,6 +74,7 @@ def test_single_worker_recreate_and_bounded_node_eviction_are_preserved():
 
 
 def test_copy_tool_refuses_live_ha_overwrite_and_final_restore_without_freeze():
+    """Run test copy tool refuses live ha overwrite and final restore without freeze."""
     s = (ROOT / "scripts/lms-ha-copy.py").read_text()
     assert "application no longer uses legacy DB" in s
     assert "if dep['spec']['replicas']!=0 or pods['items']" in s
@@ -84,6 +89,7 @@ def test_copy_tool_refuses_live_ha_overwrite_and_final_restore_without_freeze():
 
 
 def test_database_is_a_source_of_the_lms_application():
+    """Run test database is a source of the lms application."""
     app = yaml.safe_load((ROOT / "deploy/argocd/apps/lms.yaml").read_text())
     assert "sources" not in app["spec"]
     assert app["spec"]["source"]["path"] == "charts/lms"
@@ -143,6 +149,7 @@ def test_database_is_a_source_of_the_lms_application():
 
 
 def test_runtime_credentials_are_preserved_across_argo_sync():
+    """Run test runtime credentials are preserved across argo sync."""
     app = yaml.safe_load((ROOT / "deploy/argocd/apps/lms.yaml").read_text())
     assert "RespectIgnoreDifferences=true" in app["spec"]["syncPolicy"]["syncOptions"]
     assert any(
@@ -159,6 +166,7 @@ def test_runtime_credentials_are_preserved_across_argo_sync():
 
 
 def test_production_web_does_not_depend_on_legacy_nfs_and_legacy_db_is_stopped():
+    """Run test production web does not depend on legacy nfs and legacy db is stopped."""
     docs = rendered("lms", "-f", str(ROOT / "deploy/lms/values.yaml"))
     web = next(d for d in docs if d["kind"] == "Deployment" and d["metadata"]["name"] == "lms")
     assert not any(
@@ -174,6 +182,7 @@ def test_production_web_does_not_depend_on_legacy_nfs_and_legacy_db_is_stopped()
 
 
 def test_operator_canary_avoids_stale_ready_pod_on_unreachable_node():
+    """Run test operator canary avoids stale ready pod on unreachable node."""
     import importlib.util
     import pytest
 
@@ -210,6 +219,7 @@ def test_operator_canary_avoids_stale_ready_pod_on_unreachable_node():
 
 
 def test_remote_canary_programs_are_valid_python_including_finally_cleanup():
+    """Run test remote canary programs are valid python including finally cleanup."""
     import ast
 
     for filename in ["lms-cpu-profile-verify.py", "lms-observability-verify.py"]:
@@ -233,6 +243,7 @@ def test_remote_canary_programs_are_valid_python_including_finally_cleanup():
 
 
 def test_copy_refuses_live_ha_or_unknown_endpoint_before_creating_job(monkeypatch):
+    """Run test copy refuses live ha or unknown endpoint before creating job."""
     import base64
     import importlib.util
     import json

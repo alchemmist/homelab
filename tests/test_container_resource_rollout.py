@@ -20,6 +20,7 @@ SPEC.loader.exec_module(ROLLOUT)
 
 
 def pod(uid="old", kind="ReplicaSet", node="socrat-1", compliant=False):
+    """Run pod."""
     limits = (
         {"cpu": "500m", "memory": "512Mi", "ephemeral-storage": "1Gi"}
         if compliant
@@ -51,6 +52,7 @@ def pod(uid="old", kind="ReplicaSet", node="socrat-1", compliant=False):
 
 
 def profile():
+    """Run profile."""
     return {
         "namespace": "test",
         "ownerKind": "ReplicaSet",
@@ -65,6 +67,7 @@ def profile():
 
 
 def profiled_pod():
+    """Run profiled pod."""
     value = pod(compliant=True)
     value["metadata"]["ownerReferences"][0]["name"] = "app-abcd"
     value["spec"]["containers"][0]["resources"] = copy.deepcopy(profile()["containers"]["main"])

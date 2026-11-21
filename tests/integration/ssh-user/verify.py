@@ -20,6 +20,7 @@ USER = "ssh_fixture"
 
 
 def run(args, expected=0, **kw):
+    """Run run."""
     p = subprocess.run(args, capture_output=True, text=True, timeout=kw.pop("timeout", 180), **kw)
     if p.returncode != expected:
         # Fixture output contains public data only, but keep it private to avoid
@@ -37,6 +38,7 @@ def run(args, expected=0, **kw):
 
 
 def main():
+    """Run main."""
     run(["docker", "info", "--format", "{{.ServerVersion}}"])
     run(["docker", "build", "-q", "-t", IMAGE, str(Path(__file__).parent)], timeout=300)
     containers = []

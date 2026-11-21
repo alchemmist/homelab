@@ -33,10 +33,12 @@ KEY = TIM["authorized_keys"][0]
 
 
 def ledger(name="guest"):
+    """Run ledger."""
     return {"version": 1, "bindings": [{"uuid": UUID, "name": name}]}
 
 
 def policy(state="present", hosts=None, revoked=None):
+    """Run policy."""
     return {
         "version": 1,
         "public_key_attribute": "ssh_public_keys",
@@ -52,6 +54,7 @@ def policy(state="present", hosts=None, revoked=None):
 
 
 def user():
+    """Run user."""
     return {
         "uuid": UUID,
         "is_active": True,
@@ -69,6 +72,7 @@ def user():
 
 
 def plan(p=None, u=None):
+    """Run plan."""
     return ssh.build_plan(ssh.bindings_map(ledger()), p or policy(), lambda ident: u or user())
 
 

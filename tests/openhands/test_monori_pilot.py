@@ -10,6 +10,7 @@ CODE = pathlib.Path(__file__).resolve().parents[2] / 'charts/openhands/files/pil
 
 
 def load():
+    """Run load."""
     m = types.ModuleType('pilot')
     with patch.object(pathlib.Path, 'read_text', return_value=(CODE/'mutants.json').read_text()):
         exec(compile((CODE/'loop.py').read_bytes(), 'loop.py', 'exec'), m.__dict__)

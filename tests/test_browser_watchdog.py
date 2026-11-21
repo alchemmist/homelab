@@ -17,6 +17,7 @@ SPEC.loader.exec_module(MODULE)
 
 
 def process(pid=10, ppid=1, start=100, executable="chrome", args=None):
+    """Run process."""
     if args is None:
         args = (
             "chrome",

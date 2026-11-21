@@ -14,6 +14,7 @@ spec.loader.exec_module(guard)
 
 
 def renderer(source):
+    """Run renderer."""
     module = types.ModuleType("renderer_fixture")
     exec(compile(source, "<renderer fixture>", "exec"), module.__dict__)
     return module

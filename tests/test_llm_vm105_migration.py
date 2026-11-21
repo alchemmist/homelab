@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def render(name, *args):
+    """Run render."""
     return list(
         yaml.safe_load_all(
             subprocess.check_output(
@@ -28,6 +29,7 @@ def render(name, *args):
 
 
 def obj(docs, kind, name):
+    """Run obj."""
     return next(d for d in docs if d and d["kind"] == kind and d["metadata"]["name"] == name)
 
 

@@ -14,6 +14,7 @@ from service import Engine
 
 
 def event(status="firing", start="2026-11-03T13:00:00Z"):
+    """Run event."""
     return normalize(
         {
             "source": "test",
@@ -30,6 +31,7 @@ def event(status="firing", start="2026-11-03T13:00:00Z"):
 
 
 def report(number=0):
+    """Run report."""
     return {
         "title": "[SPI] Test service interruption",
         "summary": "A service symptom requires investigation.",

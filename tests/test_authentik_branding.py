@@ -14,6 +14,7 @@ THEME = ROOT / "deploy/authentik/quiet-mono"
 
 
 def load(name):
+    """Run load."""
     path = ROOT / "ansible/roles/authentik/files" / (name + ".py")
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)

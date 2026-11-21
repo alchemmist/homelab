@@ -18,6 +18,7 @@ SPEC.loader.exec_module(NEIGHBORS)
 
 
 def config():
+    """Run config."""
     return {
         "interface": "wlan0",
         "address": "192.168.0.24",
@@ -30,6 +31,7 @@ def config():
 
 
 def state(vip=False):
+    """Run state."""
     addresses = ["192.168.0.24"] + (["192.168.0.250"] if vip else [])
     return {
         "ifname": "wlan0",

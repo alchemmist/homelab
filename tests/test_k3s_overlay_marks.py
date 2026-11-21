@@ -11,6 +11,7 @@ spec.loader.exec_module(m)
 
 
 def test_scope_and_atomic_replacement():
+    """Run test scope and atomic replacement."""
     s = m.rules("flannel.1", "10.42.0.0/16", True)
     assert s.startswith("delete table inet homelab_k3s_overlay_marks\n")
     assert "flush ruleset" not in s
@@ -32,11 +33,13 @@ def test_scope_and_atomic_replacement():
     ],
 )
 def test_reject_broad_or_injected_scope(interface, cidr):
+    """Run test reject broad or injected scope."""
     with pytest.raises(ValueError):
         m.rules(interface, cidr, False)
 
 
 def test_state_normalization_ignores_only_runtime_fields():
+    """Run test state normalization ignores only runtime fields."""
     assert m.normalize(
         {
             "nftables": [
@@ -51,6 +54,7 @@ def test_state_normalization_ignores_only_runtime_fields():
 
 
 def test_persistence_has_no_network_restart():
+    """Run test persistence has no network restart."""
     role = (ROOT / "ansible/roles/k3s_overlay_marks/tasks/main.yml").read_text()
     unit = (ROOT / "ansible/roles/k3s_overlay_marks/templates/overlay-marks.service.j2").read_text()
     assert "name: homelab-k3s-overlay-marks.service" in role
@@ -63,6 +67,7 @@ def test_persistence_has_no_network_restart():
 
 
 def test_old_nft_table_comment_is_not_a_false_drift_or_ownership_bypass():
+    """Run test old nft table comment is not a false drift or ownership bypass."""
     new = {"nftables": m.desired("flannel.1", "10.42.0.0/16")}
     old = __import__("copy").deepcopy(new)
     old["nftables"][0]["table"].pop("comment")
@@ -77,6 +82,7 @@ def test_old_nft_table_comment_is_not_a_false_drift_or_ownership_bypass():
 
 
 def test_proven_collision_and_clean_boundary():
+    """Run test proven collision and clean boundary."""
     netbird_reverse_mark = 0x1BD22
     assert netbird_reverse_mark & 0x10000  # kube-router allow bit
     assert netbird_reverse_mark & 0x2000  # CNI hostport masquerade bit
@@ -84,6 +90,7 @@ def test_proven_collision_and_clean_boundary():
 
 
 def test_default_cli_is_read_only(monkeypatch, capsys):
+    """Run test default cli is read only."""
     import json
     from types import SimpleNamespace
 
@@ -105,6 +112,7 @@ def test_default_cli_is_read_only(monkeypatch, capsys):
 
 
 def test_cli_rejects_foreign_table_before_kernel_write(monkeypatch):
+    """Run test cli rejects foreign table before kernel write."""
     import json, sys
     from types import SimpleNamespace
 

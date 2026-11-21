@@ -17,6 +17,7 @@ import reconcile_app_access as access
 
 
 def fixture():
+    """Run fixture."""
     owner = {"pk": "owner", "name": "homelab-owner"}
     profile = {
         "pk": "profile",

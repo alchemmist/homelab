@@ -13,6 +13,7 @@ SPEC.loader.exec_module(MODULE)
 
 
 def secret(**values):
+    """Run secret."""
     return {
         "data": {key: base64.b64encode(value.encode()).decode() for key, value in values.items()}
     }

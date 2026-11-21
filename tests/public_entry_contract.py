@@ -18,11 +18,13 @@ CHARTS = {
 
 
 def values(owner):
+    """Run values."""
     value = yaml.safe_load((ROOT / CHARTS[owner] / "values.yaml").read_text())
     return value if CHARTS[owner].startswith("deploy/") else value["publicEntry"]
 
 
 def render(owner=None):
+    """Run render."""
     docs = []
     for name in [owner] if owner else CHARTS:
         output = subprocess.check_output(
