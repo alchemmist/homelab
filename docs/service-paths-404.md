@@ -75,3 +75,15 @@ external cluster credentials. Its temporary K3s containers need privileged mode
 **inside the disposable VM**. Never point this at a shared production daemon.
 It checks that traffic actually hit the fault rule, fails closed if it cannot
 identify the active peer and cleans up the randomly named containers/network.
+
+For the host witness, run `python3 scripts/lab/happ-host-witness.py 180` **on socrat-1**
+while the owner performs three guest-only cycles. It reads both policy/table sets,
+checks the selected relay and mesh routes, requires an original established relay
+TCP tuple to remain present and connects to the mesh etcd TCP port without sending
+data. Failure is a stop condition, not permission to rewrite routes. Also verify
+etcd quorum externally and app DNS/egress inside the guest. Sampling cannot prove
+there were no sub-second route transitions. If drift is unrelated, inspect locally.
+For the November baseline the package `happ-desktop-bin` was installed, the TUN
+was absent, only standard IPv4 rules were visible and a relay TCP session existed.
+A package is not proof of an app needing guest migration. No change to host startup
+until the owner identifies desktop consumers (the named Kubernetes services are NL).
