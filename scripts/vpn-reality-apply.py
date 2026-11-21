@@ -16,17 +16,13 @@ import sqlite3
 import ssl
 import subprocess
 import time
-import types
 import uuid
 from contextlib import closing
 from pathlib import Path
 
 
-def load(name: str, filename: str) -> types.ModuleType:
+def load(name, filename):
     spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name(filename))
-    if spec is None or spec.loader is None or not spec.has_location:
-        reason = "Cannot load helper module"
-        raise ValueError(reason)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -37,18 +33,17 @@ planner = load("reality_plan", "vpn-reality-plan.py")
 h = session_module.h
 
 
-def configuration(database: Path) -> dict[str, object]:
+def configuration(database):
     with closing(sqlite3.connect(h.check_path(database).as_uri() + "?mode=ro", uri=True)) as source:
         with closing(sqlite3.connect(":memory:")) as snapshot:
             source.backup(snapshot)
             if snapshot.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
                 raise ValueError("Integrity check failed")
-            value: dict[str, object] = h.projection(snapshot)
-            return value
+            return h.projection(snapshot)
 
 
-def semantic(config: dict[str, object]) -> dict[str, list[object]]:
-    def normalize(value: object) -> object:
+def semantic(config):
+    def normalize(value) -> object:
         if isinstance(value, str) and value.lstrip().startswith(("{", "[")):
             try:
                 return normalize(json.loads(value))
@@ -63,24 +58,16 @@ def semantic(config: dict[str, object]) -> dict[str, list[object]]:
     return {
         table: sorted([normalize(row) for row in rows], key=h.canonical)
         for table, rows in config.items()
-        if isinstance(rows, list)
     }
 
 
-def corrected(config: dict[str, object]) -> dict[str, object]:
+def corrected(config):
     after = copy.deepcopy(config)
-    inbounds = after["inbounds"]
-    if not isinstance(inbounds, list):
-        reason = "Unexpected target count"
-        raise TypeError(reason)
-    rows = [r for r in inbounds if isinstance(r, dict) and r["port"] == 32053]
+    rows = [r for r in after["inbounds"] if r["port"] == 32053]
     if len(rows) != 1:
         raise ValueError("Unexpected target count")
-    stream: dict[str, object] = json.loads(str(rows[0]["stream_settings"]))
+    stream = json.loads(rows[0]["stream_settings"])
     reality = stream["realitySettings"]
-    if not isinstance(reality, dict):
-        reason = "Unexpected REALITY settings"
-        raise TypeError(reason)
     if (
         reality.get("serverNames") != ["www.yahoo.com"]
         or reality.get("target") != "www.intel.com:443"
@@ -88,44 +75,29 @@ def corrected(config: dict[str, object]) -> dict[str, object]:
         raise ValueError("Target/SNI drift")
     reality["target"] = "www.yahoo.com:443"
     rows[0]["stream_settings"] = h.canonical(stream)
-    value: dict[str, object] = after
-    return value
+    return after
 
 
-def json_field(value: object) -> object:
+def json_field(value):
     # 3x-ui3.11 emits native objects; its decoder also accepts legacy JSON strings.
     if value is None or value == "":
         return None
-    parsed: object = json.loads(value) if isinstance(value, str) else copy.deepcopy(value)
-    return parsed
+    return json.loads(value) if isinstance(value, str) else copy.deepcopy(value)
 
 
-def _rows(value: object) -> list[dict[str, object]]:
-    """Untrusted persisted list-of-records: treat non-list as empty."""
-    return value if isinstance(value, list) else []
-
-
-def api_payload(inbound: object) -> dict[str, object]:
-    if not isinstance(inbound, dict):
-        reason = "Unexpected native inbound"
-        raise TypeError(reason)
-    after: dict[str, object] = copy.deepcopy(inbound)
+def api_payload(inbound):
+    after = copy.deepcopy(inbound)
     if after.get("port") != 32053 or after.get("protocol") != "vless" or not after.get("enable"):
         raise ValueError("Unexpected native inbound")
     stream = json_field(after["streamSettings"])
-    if (
-        not isinstance(stream, dict)
-        or stream.get("security") != "reality"
-        or stream.get("network") != "xhttp"
-    ):
+    if stream.get("security") != "reality" or stream.get("network") != "xhttp":
         raise ValueError("Transport drift")
     if (
-        not isinstance(reality := stream["realitySettings"], dict)
-        or reality.get("serverNames") != ["www.yahoo.com"]
-        or reality.get("target") != "www.intel.com:443"
+        stream["realitySettings"].get("serverNames") != ["www.yahoo.com"]
+        or stream["realitySettings"].get("target") != "www.intel.com:443"
     ):
         raise ValueError("API target drift")
-    reality["target"] = "www.yahoo.com:443"
+    stream["realitySettings"]["target"] = "www.yahoo.com:443"
     after["streamSettings"] = (
         h.canonical(stream) if isinstance(inbound["streamSettings"], str) else stream
     )
@@ -133,19 +105,13 @@ def api_payload(inbound: object) -> dict[str, object]:
     return after
 
 
-def vless_client(stream: dict[str, object], client_id: str, port: int) -> dict[str, object]:
+def vless_client(stream, client_id, port):
     reality = stream["realitySettings"]
-    if not isinstance(reality, dict):
-        reason = "Missing REALITY client parameters"
-        raise TypeError(reason)
-    settings = reality.get("settings")
-    public = settings.get("publicKey") if isinstance(settings, dict) else None
-    short_ids = reality.get("shortIds")
-    if not public or not isinstance(short_ids, list) or not short_ids:
+    public = (reality.get("settings") or {}).get("publicKey")
+    if not public or not reality.get("shortIds"):
         raise ValueError("Missing native client parameters")
-    short_id: object = short_ids[0]
     xhttp = stream.get("xhttpSettings") or stream.get("splithttpSettings")
-    if not isinstance(xhttp, dict) or not xhttp or "path" not in xhttp:
+    if not xhttp or "path" not in xhttp:
         raise ValueError("Missing XHTTP path")
     return {
         "log": {"loglevel": "warning"},
@@ -178,7 +144,7 @@ def vless_client(stream: dict[str, object], client_id: str, port: int) -> dict[s
                         "serverName": "www.yahoo.com",
                         "fingerprint": "chrome",
                         "publicKey": public,
-                        "shortId": short_id,
+                        "shortId": reality["shortIds"][0],
                     },
                     "xhttpSettings": {"path": xhttp["path"], "mode": xhttp.get("mode", "auto")},
                 },
@@ -193,7 +159,7 @@ def vless_client(stream: dict[str, object], client_id: str, port: int) -> dict[s
     }
 
 
-def server_executable() -> str:
+def server_executable():
     found = []
     for path in Path("/proc").glob("[0-9]*/exe"):
         try:
@@ -209,7 +175,7 @@ def server_executable() -> str:
     return found[0]
 
 
-def transfer(port: int, state: Path, phase: str) -> dict[str, object]:
+def transfer(port, state, phase):
     output = state / (phase + "-body.bin")
     env = dict(os.environ, NO_PROXY="", no_proxy="")
     args = [
@@ -252,11 +218,8 @@ def transfer(port: int, state: Path, phase: str) -> dict[str, object]:
     return proof
 
 
-def apply(
-    state: Path, policy: dict[str, object], session_hash: str, target_hash: str
-) -> dict[str, bool]:
-    correction = policy["realityCorrection"]
-    if not isinstance(correction, dict) or correction.get("apiApplyEnabled") is not True:
+def apply(state, policy, session_hash, target_hash):
+    if policy["realityCorrection"].get("apiApplyEnabled") is not True:
         raise ValueError("API apply is disabled by source policy")
     s = session_module.NativeSession(state)
     original = configuration(s.database)
@@ -274,9 +237,10 @@ def apply(
     email = s.state.name + "-probe"
     fixture_id = str(uuid.uuid4())
     sub_id = secrets.token_hex(12)
-    fixture, applied = False, False
+    fixture = False
     proc = None
     log = None
+    applied = False
     s.open(session_hash)
     try:
         if semantic(configuration(s.database)) != semantic(original):
@@ -289,7 +253,7 @@ def apply(
                 (email, fixture_id, sub_id),
             ).fetchone()[0]:
                 raise ValueError("Fixture collision")
-        target = next(r for r in _rows(original["inbounds"]) if r["port"] == 32053)
+        target = next(r for r in original["inbounds"] if r["port"] == 32053)
         marker = {"email": email, "uuid": fixture_id, "sub_id": sub_id, "inbound_id": target["id"]}
         h.save(s.state / "fixture-private.json", marker)
         # Mark intent before an API response can be lost; cleanup ownership-checks DB.
@@ -317,7 +281,7 @@ def apply(
         with socket.socket() as reservation:
             reservation.bind(("127.0.0.1", 0))
             port = reservation.getsockname()[1]
-        cfg = vless_client(json.loads(str(target["stream_settings"])), fixture_id, port)
+        cfg = vless_client(json.loads(target["stream_settings"]), fixture_id, port)
         h.save(s.state / "probe-client-private.json", cfg)
         log = (s.state / "probe-client-private.log").open("x")
         os.chmod(log.name, 0o600)
@@ -346,7 +310,7 @@ def apply(
         prewrite = configuration(s.database)
         if semantic(before_api) != semantic(prewrite):
             raise ValueError("Concurrent config change during API read")
-        db_target = next(r for r in _rows(prewrite["inbounds"]) if r["id"] == target["id"])
+        db_target = next(r for r in prewrite["inbounds"] if r["id"] == target["id"])
         for api_key, db_key in (
             ("settings", "settings"),
             ("streamSettings", "stream_settings"),
@@ -435,7 +399,7 @@ def apply(
     return receipt
 
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state", type=Path, required=True)
     parser.add_argument("--policy", type=Path, required=True)

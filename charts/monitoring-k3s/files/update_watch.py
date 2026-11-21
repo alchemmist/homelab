@@ -134,7 +134,7 @@ def render_metrics(samples):
 
 
 class State:
-    def __init__(self):
+    def __init__(self) -> None:
         self.lock = threading.Lock()
         self.body = render_metrics([]).encode()
 

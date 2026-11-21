@@ -13,6 +13,7 @@ import subprocess
 import tempfile
 import time
 import uuid
+from typing import cast
 
 ROOT = Path(__file__).resolve().parents[3]
 IMAGE = "homelab-ssh-user-fixture:local"
@@ -73,24 +74,27 @@ def main() -> None:
             inventory = d / "inventory.json"
             inventory.write_text(json.dumps({"all": {"children": {"Socrat": {"hosts": hosts}}}}))
 
-            def execute(container, *args):
-                return run(["docker", "exec", container, *args])
+            def execute(container, *args) -> str:
+                return cast("str", run(["docker", "exec", container, *args]))
 
-            def play(key=1, check=False, expected=0, name=USER):
-                return run(
-                    [
-                        "ansible-playbook",
-                        "-i",
-                        str(inventory),
-                        "playbooks/ssh-user.yml",
-                        "-e",
-                        "ssh_username=" + name,
-                        "-e",
-                        "ssh_public_key_file=" + str(d / ("key" + str(key) + ".pub")),
-                    ]
-                    + (["--check"] if check else []),
-                    expected=expected,
-                    cwd=ROOT / "ansible",
+            def play(key=1, check=False, expected=0, name=USER) -> str:
+                return cast(
+                    "str",
+                    run(
+                        [
+                            "ansible-playbook",
+                            "-i",
+                            str(inventory),
+                            "playbooks/ssh-user.yml",
+                            "-e",
+                            "ssh_username=" + name,
+                            "-e",
+                            "ssh_public_key_file=" + str(d / ("key" + str(key) + ".pub")),
+                        ]
+                        + (["--check"] if check else []),
+                        expected=expected,
+                        cwd=ROOT / "ansible",
+                    ),
                 )
 
             # Wait for sshd host keys; not an infrastructure-outage sleep/poll.
@@ -116,7 +120,7 @@ def main() -> None:
                 assert p.returncode != 0, "check mode created an account"
             play()
 
-            def login(container, key):
+            def login(container, key) -> None:
                 execute(container, "mkdir", "-p", "/tmp/ssh-fixture")
                 run(
                     [
