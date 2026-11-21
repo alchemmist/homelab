@@ -10,6 +10,7 @@ import subprocess
 import runpy
 import tempfile
 import unittest
+from typing import TypedDict, cast
 from urllib.request import Request
 from unittest.mock import patch
 
@@ -49,8 +50,15 @@ class LifecycleAPI:
             return json.load(response)
 
 
+class LifecyclePlan(TypedDict):
+    """Result of lifecycle.build_plan as exercised by these tests."""
+
+    operations: list[dict[str, object]]
+    sha256: str
+
+
 class AppIAMTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         root = Path(self.temp.name)
@@ -73,10 +81,13 @@ class AppIAMTests(unittest.TestCase):
         self.services = json.loads((root / "services.json").read_text())
         self.manifest = json.loads((ROOT / "deploy/identity/lifecycle.json").read_text())
 
-    def plan(self):
-        return lifecycle.build_plan(self.api, self.services, self.manifest, self.reviewed)
+    def plan(self) -> LifecyclePlan:
+        return cast(
+            "LifecyclePlan",
+            lifecycle.build_plan(self.api, self.services, self.manifest, self.reviewed),
+        )
 
-    def test_legacy_catalog_groups_are_known_without_human_grants(self):
+    def test_legacy_catalog_groups_are_known_without_human_grants(self) -> None:
         declared = set(app_iam.LEGACY_GROUPS) | set(app_iam.app_groups(self.services))
         for slug, service in self.services.items():
             self.assertLessEqual(set(app_iam.admission_groups(slug, service)), declared)
@@ -85,7 +96,7 @@ class AppIAMTests(unittest.TestCase):
         self.assertFalse(teacher.get("users", []))
         self.assertEqual(self.plan()["operations"], [])
 
-    def test_default_manifest_has_no_grants_and_no_writes(self):
+    def test_default_manifest_has_no_grants_and_no_writes(self) -> None:
         self.assertEqual(self.plan()["operations"], [])
         self.assertEqual(self.api.writes, [])
         for group in self.fake.data["core/groups/"]:
@@ -93,7 +104,7 @@ class AppIAMTests(unittest.TestCase):
                 self.assertFalse(group["is_superuser"])
                 self.assertEqual(group["users"], [])
 
-    def test_scoped_grant_remove_and_disabled_are_idempotent(self):
+    def test_scoped_grant_remove_and_disabled_are_idempotent(self) -> None:
         tim = next(u for u in self.fake.data["core/users/"] if u["username"] == "antropophag")
         before = list(tim["groups"])
         self.manifest["users"]["antropophag"]["appGroups"] = [
@@ -115,7 +126,7 @@ class AppIAMTests(unittest.TestCase):
         identity.IdentityTests().configure(Path(self.temp.name), self.fake)
         self.assertFalse(tim["is_active"])
 
-    def test_approval_hash_and_live_state_drift(self):
+    def test_approval_hash_and_live_state_drift(self) -> None:
         plan = self.plan()
         with self.assertRaisesRegex(RuntimeError, "hash mismatch"):
             lifecycle.apply_plan(self.api, plan, "stale")
@@ -124,7 +135,7 @@ class AppIAMTests(unittest.TestCase):
         self.assertNotEqual(plan["sha256"], self.plan()["sha256"])
         self.assertEqual(self.api.writes, [])
 
-    def test_uuid_collision_and_email_do_not_link(self):
+    def test_uuid_collision_and_email_do_not_link(self) -> None:
         self.fake.data["core/users/"][1]["uuid"] = "e51e6956-16b5-455a-bbda-b73f96e85232"
         with self.assertRaisesRegex(RuntimeError, "UUID required"):
             self.plan()
@@ -133,7 +144,7 @@ class AppIAMTests(unittest.TestCase):
             identity.IdentityTests().configure(Path(self.temp.name), self.fake)
         self.assertFalse(any(m != "GET" for m, _, _, _ in self.fake.requests[before:]))
 
-    def test_protected_owner_and_elevated_grants_refused(self):
+    def test_protected_owner_and_elevated_grants_refused(self) -> None:
         self.manifest["users"]["alchemmist"]["state"] = "disabled"
         with self.assertRaisesRegex(RuntimeError, "Owner"):
             self.plan()
@@ -143,7 +154,7 @@ class AppIAMTests(unittest.TestCase):
             self.plan()
         self.assertEqual(self.api.writes, [])
 
-    def test_unsupported_native_role_and_machine_account_refused(self):
+    def test_unsupported_native_role_and_machine_account_refused(self) -> None:
         self.manifest["users"]["antropophag"]["appGroups"] = ["app-rancher-user"]
         with self.assertRaisesRegex(RuntimeError, "not ready"):
             self.plan()
@@ -152,7 +163,7 @@ class AppIAMTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "service/external"):
             self.plan()
 
-    def test_app_group_inheritance_or_superuser_refused(self):
+    def test_app_group_inheritance_or_superuser_refused(self) -> None:
         group = next(g for g in self.fake.data["core/groups/"] if g["name"] == "app-grafana-viewer")
         owner = next(g for g in self.fake.data["core/groups/"] if g["name"] == "homelab-owner")
         rbac = {
@@ -180,7 +191,7 @@ class AppIAMTests(unittest.TestCase):
             group.clear()
             group.update(old)
 
-    def test_incomplete_current_group_schema_refused_before_assignment(self):
+    def test_incomplete_current_group_schema_refused_before_assignment(self) -> None:
         group = next(g for g in self.fake.data["core/groups/"] if g["name"] == "app-grafana-viewer")
         self.manifest["users"]["antropophag"]["appGroups"] = ["app-grafana-viewer"]
         for field in ["parents", "roles", "is_superuser"]:
@@ -199,7 +210,7 @@ class AppIAMTests(unittest.TestCase):
                 group.clear()
                 group.update(old)
 
-    def test_binding_drift_is_not_silently_reset(self):
+    def test_binding_drift_is_not_silently_reset(self) -> None:
         binding = self.fake.data["policies/bindings/"][0]
         for change in [
             {"enabled": False},
@@ -217,7 +228,7 @@ class AppIAMTests(unittest.TestCase):
             binding.clear()
             binding.update(old)
 
-    def test_missing_user_is_not_created_and_omission_is_not_revocation(self):
+    def test_missing_user_is_not_created_and_omission_is_not_revocation(self) -> None:
         self.fake.data["core/users/"].pop()
         with self.assertRaisesRegex(RuntimeError, "existing username"):
             self.plan()
@@ -229,7 +240,7 @@ class AppIAMTests(unittest.TestCase):
         self.assertEqual(self.plan()["operations"], [])
         self.assertEqual(self.api.writes, [])
 
-    def test_foreign_app_group_is_not_adopted(self):
+    def test_foreign_app_group_is_not_adopted(self) -> None:
         group = next(g for g in self.fake.data["core/groups/"] if g["name"] == "app-grafana-viewer")
         group["attributes"] = {}
         with self.assertRaisesRegex(RuntimeError, "unmarked app group"):
@@ -237,14 +248,14 @@ class AppIAMTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "unmarked app group"):
             identity.IdentityTests().configure(Path(self.temp.name), self.fake)
 
-    def test_policy_mode_is_not_silently_reset(self):
+    def test_policy_mode_is_not_silently_reset(self) -> None:
         self.fake.data["core/applications/"][0]["policy_engine_mode"] = "all"
         with self.assertRaisesRegex(RuntimeError, "mode drift"):
             self.plan()
         with self.assertRaisesRegex(RuntimeError, "mode drift"):
             identity.IdentityTests().configure(Path(self.temp.name), self.fake)
 
-    def test_pagination_and_binding_duplicates(self):
+    def test_pagination_and_binding_duplicates(self) -> None:
         calls = []
 
         def api(method, path):
@@ -257,7 +268,7 @@ class AppIAMTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "binding drift"):
             app_iam.validate_bindings([{"group": "a"}, {"group": "a"}], {"a"})
 
-    def test_wiki_integration_keeps_exact_links_and_overrides(self):
+    def test_wiki_integration_keeps_exact_links_and_overrides(self) -> None:
         writes = []
 
         def run(args, **kwargs):
@@ -300,7 +311,7 @@ class AppIAMTests(unittest.TestCase):
             )
         kube.assert_not_called()
 
-    def test_native_role_boundaries_and_subject_overrides_preserved(self):
+    def test_native_role_boundaries_and_subject_overrides_preserved(self) -> None:
         import yaml
 
         env = yaml.safe_load((ROOT / "deploy/identity/grafana-oidc-values.yaml").read_text())[
