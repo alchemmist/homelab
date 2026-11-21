@@ -26,7 +26,7 @@ def call(args, timeout=40) -> str:
     return r.stdout
 
 
-def get(args) -> object:
+def get(args) -> dict[str, object]:
     payload: object = json.loads(call(args + ["-o", "json"]))
     if not isinstance(payload, dict):
         reason = "Kubernetes returned a non-object payload"
@@ -62,7 +62,7 @@ def patch_service(paused) -> None:
     )
 
 
-def idle_state() -> object:
+def idle_state() -> dict[str, object]:
     code = """import sqlite3,os,time,json
 c=sqlite3.connect('file:'+os.environ.get('SPI_DATABASE','/data/spi.sqlite')+'?mode=ro',uri=True);c.execute('pragma query_only=on')
 a=c.execute(\"select count(*)from jobs where state in ('queued','retry','processing')\").fetchone()[0]
@@ -70,9 +70,13 @@ b=c.execute(\"select count(*)from workflow_wait_owner where phase in ('ready','w
 d=c.execute('select count(*)from spi_links where lease>?',(time.time(),)).fetchone()[0]
 print(json.dumps({'activeOrQueuedJobs':a,'liveOwners':b,'liveLinkLeases':d}))
 """
-    return json.loads(
+    state: object = json.loads(
         call(["exec", "deployment/spi-triage", "-n", "automation", "--", "python", "-c", code])
     )
+    if not isinstance(state, dict):
+        reason = "SPI returned a non-object idle state"
+        raise TypeError(reason)
+    return state
 
 
 def stop_signal(*_) -> None:

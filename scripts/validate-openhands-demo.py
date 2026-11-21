@@ -127,9 +127,7 @@ def main() -> None:
     cm, np, job = resources(name, candidate, original)
     # NetworkPolicies are additive: an overlapping allow policy defeats deny-all.
     policies = json.loads(kubectl("-n", "identity", "get", "networkpolicy", "-o", "json"))
-    labels = cast("dict[str, dict[str, dict[str, dict[str, object]]]]", job)["spec"]["template"][
-        "metadata"
-    ]["labels"]
+    labels = cast("dict[str, str]", job["spec"]["template"]["metadata"]["labels"])
     if any(selector_matches(p["spec"]["podSelector"], labels) for p in policies["items"]):
         raise SystemExit("STOP: overlapping NetworkPolicy; isolation not established")
     created = []

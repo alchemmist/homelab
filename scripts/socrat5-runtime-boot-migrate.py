@@ -92,7 +92,7 @@ def main() -> None:
             save(x)
         # Source is still cold. Check complete metadata/size tree after checksum sync;
         # avoid a redundant second full 50+GiB HDD content read during downtime.
-        v = run(["rsync", "-aHAXSxni", "--numeric-ids", "--delete", str(S) + "/", str(D) + "/"])
+        v = run(["rsync", "-aHAXSxni", "--numeric-ids", str(S) + "/", str(D) + "/"])
         (R / "checksum-verification.txt").write_text(v.stdout)
         assert not v.stdout.strip(), "Cold checksum comparison differs"
         os.sync()

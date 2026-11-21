@@ -63,8 +63,11 @@ def rules(direct_probe=None) -> str:
     )
 
 
-def projection() -> object:
-    value = json.loads(command(["nft", "-j", "list", "table", "inet", TABLE]))
+def projection() -> dict[str, object]:
+    value: object = json.loads(command(["nft", "-j", "list", "table", "inet", TABLE]))
+    if not isinstance(value, dict):
+        reason = "nft returned a non-object projection"
+        raise TypeError(reason)
 
     def clean(v):
         if isinstance(v, list):
