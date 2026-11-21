@@ -407,7 +407,7 @@ except (
     subprocess.SubprocessError,
 ) as error:
     print("Acceptance failed (sanitized):", type(error).__name__, flush=True)
-    raise SystemExit(1)
+    raise SystemExit(1) from error
 finally:
     try:
         if binding:

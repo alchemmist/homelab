@@ -4,6 +4,7 @@ import json
 import sqlite3
 import urllib.request
 from datetime import timedelta
+from typing import cast
 
 
 def configure():
@@ -31,14 +32,15 @@ def configure():
     )
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
-    def request(path, payload=None):
+    def request(path, payload=None) -> dict[str, object]:
         req = urllib.request.Request(
             "http://127.0.0.1:8080" + path,
             headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
             data=None if payload is None else json.dumps(payload).encode(),
         )
         with opener.open(req, timeout=60) as response:
-            return json.load(response)
+            document: dict[str, object] = json.load(response)
+            return document
 
     web_settings = {
         "ENABLE_WEB_SEARCH": True,
@@ -46,19 +48,25 @@ def configure():
         "SEARXNG_QUERY_URL": "http://searxng.llm.svc.cluster.local:8080/search?q=<query>&format=json",
     }
     retrieval = request("/api/v1/retrieval/config")
-    web_changed = any(retrieval["web"].get(key) != value for key, value in web_settings.items())
+    retrieval_web = cast("dict[str, object]", retrieval["web"])
+    web_changed = any(retrieval_web.get(key) != value for key, value in web_settings.items())
     if web_changed:
-        request("/api/v1/retrieval/config/update", {"web": {**retrieval["web"], **web_settings}})
+        request(
+            "/api/v1/retrieval/config/update", {"web": {**retrieval_web, **web_settings}}
+        )
     after_retrieval = request("/api/v1/retrieval/config")
     expected_retrieval = copy.deepcopy(retrieval)
-    expected_retrieval["web"].update(web_settings)
+    cast("dict[str, object]", expected_retrieval["web"]).update(web_settings)
     if after_retrieval != expected_retrieval:
         raise RuntimeError("Unrelated retrieval settings changed")
-    if any(after_retrieval["web"].get(key) != value for key, value in web_settings.items()):
+    if any(
+        cast("dict[str, object]", after_retrieval["web"]).get(key) != value
+        for key, value in web_settings.items()
+    ):
         raise RuntimeError("Web search configuration failed readback validation")
     permissions = request("/api/v1/users/default/permissions")
     desired_permissions = copy.deepcopy(permissions)
-    desired_permissions.setdefault("features", {})["web_search"] = True
+    cast("dict[str, object]", desired_permissions.setdefault("features", {}))["web_search"] = True
     permissions_changed = desired_permissions != permissions
     if permissions_changed:
         request("/api/v1/users/default/permissions", desired_permissions)
@@ -68,21 +76,26 @@ def configure():
     before = request(path)
     fields = ("id", "base_model_id", "name", "meta", "params", "access_grants", "is_active")
     desired = {key: copy.deepcopy(before[key]) for key in fields if key in before}
-    desired["meta"] = desired.get("meta") or {}
-    desired["meta"]["capabilities"] = {
-        **(desired["meta"].get("capabilities") or {}),
+    meta = cast("dict[str, object]", desired.get("meta") or {})
+    meta["capabilities"] = {
+        **(cast("dict[str, object]", meta.get("capabilities") or {})),
         "web_search": True,
     }
-    features = desired["meta"].get("defaultFeatureIds") or []
-    desired["meta"]["defaultFeatureIds"] = list(dict.fromkeys([*features, "web_search"]))
-    desired["params"] = {**(desired.get("params") or {}), "function_calling": "native"}
-    public_read = {"principal_type": "user", "principal_id": "*", "permission": "read"}
-    desired["access_grants"] = desired.get("access_grants") or []
+    features = cast("list[str]", meta.get("defaultFeatureIds") or [])
+    meta["defaultFeatureIds"] = list(dict.fromkeys([*features, "web_search"]))
+    desired["meta"] = meta
+    desired["params"] = {
+        **(cast("dict[str, object]", desired.get("params") or {})),
+        "function_calling": "native",
+    }
+    public_read: dict[str, object] = {"principal_type": "user", "principal_id": "*", "permission": "read"}
+    grants_list = cast("list[dict[str, object]]", desired.get("access_grants") or [])
+    desired["access_grants"] = grants_list
     if not any(
         all(grant.get(key) == value for key, value in public_read.items())
-        for grant in desired["access_grants"]
+        for grant in grants_list
     ):
-        desired["access_grants"].append(public_read)
+        grants_list.append(public_read)
     model_changed = any(
         desired.get(key) != before.get(key) for key in ("meta", "params", "access_grants")
     )
@@ -95,16 +108,16 @@ def configure():
         if after.get(key) != before.get(key):
             raise RuntimeError("Unrelated model settings changed")
 
-    def grants(model):
+    def grants(model) -> list[tuple[object, object, object]]:
         return sorted(
             (g.get("principal_type"), g.get("principal_id"), g.get("permission"))
-            for g in model.get("access_grants") or []
+            for g in cast("list[dict[str, object]]", model.get("access_grants") or [])
         )
 
     if grants(after) != grants(desired):
         raise RuntimeError("Model access grants changed")
 
-    async def verify_users():
+    async def verify_users() -> int:
         from open_webui.utils.access_control import has_permission, has_access
 
         with sqlite3.connect("file:/app/backend/data/webui.db?mode=ro", uri=True) as db:

@@ -11,10 +11,11 @@ import subprocess
 import urllib.error
 import urllib.parse
 import urllib.request
+from typing import cast
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
+    def redirect_request(self, _req, _fp, _code, _msg, _headers, _newurl):
         return None  # Never forward an authorization header to a redirected host.
 
 
@@ -23,7 +24,7 @@ def verify(args, runner=None, opener=None):
     opener = opener or urllib.request.build_opener(NoRedirect()).open
     kubectl = ["k3s", "kubectl", "--kubeconfig", args.kubeconfig, "--request-timeout=15s"]
 
-    def get(namespace, kind, name):
+    def get(namespace, kind, name) -> dict[str, object]:
         result = runner(
             kubectl + ["-n", namespace, "get", kind, name, "-o", "json"],
             capture_output=True,
@@ -33,42 +34,54 @@ def verify(args, runner=None, opener=None):
         )
         if result.returncode:
             raise RuntimeError("Required cluster read failed; no fallback is permitted")
-        return json.loads(result.stdout)
+        document: dict[str, object] = json.loads(result.stdout)
+        return document
 
     app = get("argocd", "application", args.release)
-    spec = app["spec"]
-    sources = spec.get("sources", [spec.get("source", {})])
+    spec = cast("dict[str, object]", app["spec"])
+    sources = cast(
+        "list[dict[str, object]]",
+        spec.get("sources", [spec.get("source", {})]),
+    )
     matching = [
         s
         for s in sources
         if s.get("repoURL") == "https://github.com/alchemmist/homelab.git"
         and s.get("path") == "charts/litellm"
     ]
+    dist = cast("dict[str, object]", spec["destination"])
     if (
         len(matching) != 1
-        or spec["destination"]["namespace"] != args.namespace
-        or spec["destination"].get("server") != "https://kubernetes.default.svc"
+        or cast("str", dist["namespace"]) != args.namespace
+        or cast("str", dist.get("server")) != "https://kubernetes.default.svc"
     ):
         raise RuntimeError("Expected Git-owned LiteLLM source/destination missing")
-    if matching[0].get("helm", {}).get("releaseName", args.release) != args.release:
+    helm = cast("dict[str, object]", matching[0].get("helm", {}))
+    if helm.get("releaseName", args.release) != args.release:
         raise RuntimeError("Unexpected Git-owned release name")
 
     deployment = get(args.namespace, "deployment", args.release)
-    if (
-        deployment["metadata"]["labels"].get("helm.sh/chart")
-        != "litellm-helm-" + args.chart_version
-    ):
+    deployment_meta = cast("dict[str, object]", deployment["metadata"])
+    labels = cast("dict[str, object]", deployment_meta["labels"])
+    if labels.get("helm.sh/chart") != "litellm-helm-" + args.chart_version:
         raise RuntimeError("Deployed chart label differs; review the maintenance contract")
+    deployment_spec = cast("dict[str, object]", deployment["spec"])
+    template = cast("dict[str, object]", deployment_spec["template"])
+    pod_spec = cast("dict[str, object]", template["spec"])
+    containers = cast("list[dict[str, object]]", pod_spec["containers"])
     refs = [
-        e["valueFrom"]["secretKeyRef"]
-        for c in deployment["spec"]["template"]["spec"]["containers"]
-        for e in c.get("env", [])
-        if e.get("name") == "PROXY_MASTER_KEY" and "secretKeyRef" in e.get("valueFrom", {})
+        cast("dict[str, object]", e["valueFrom"])["secretKeyRef"]
+        for c in containers
+        for e in cast("list[dict[str, object]]", c.get("env", []))
+        if e.get("name") == "PROXY_MASTER_KEY"
+        and "secretKeyRef" in cast("dict[str, object]", e.get("valueFrom", {}))
     ]
     if len(refs) != 1:
         raise RuntimeError("Expected one explicit deployed master-key reference")
     service = get(args.namespace, "service", args.release)
-    address = ipaddress.ip_address(service["spec"]["clusterIP"])
+    address = ipaddress.ip_address(
+        cast("str", cast("dict[str, object]", service["spec"])["clusterIP"])
+    )
     if (
         not address.is_private
         or address.is_loopback
@@ -81,14 +94,20 @@ def verify(args, runner=None, opener=None):
 
     # Missing key is a prerequisite failure, never authorization to generate one.
     metrics_secret = get(args.namespace, "secret", args.secret)
-    token = base64.b64decode(metrics_secret["data"]["api-key"], validate=True).decode()
-    ref = refs[0]
+    metrics_data = cast("dict[str, object]", metrics_secret["data"])
+    api_key_entry = cast("str", metrics_data["api-key"])
+    token = base64.b64decode(api_key_entry, validate=True).decode()
+    ref = cast("dict[str, object]", refs[0])
     master_secret = get(args.namespace, "secret", ref["name"])
-    master = base64.b64decode(master_secret["data"][ref["key"]], validate=True).decode()
+    master_data = cast("dict[str, object]", master_secret["data"])
+    master = base64.b64decode(
+        cast("str", master_data[cast("str", ref["key"])]),
+        validate=True,
+    ).decode()
     if not token or not master:
         raise RuntimeError("Empty existing key; refusing repair")
 
-    def request(path, credential=None, read_json=False):
+    def request(path, credential=None, read_json=False) -> tuple[int, object | None]:
         headers = {} if credential is None else {"Authorization": "Bearer " + credential}
         req = urllib.request.Request(base + path, headers=headers, method="GET")
         try:
@@ -100,12 +119,15 @@ def verify(args, runner=None, opener=None):
                 body = response.read(65537)
                 if len(body) > 65536:
                     raise RuntimeError("Oversized key metadata")
-                return 200, json.loads(body)
+                document: object = json.loads(body)
+                return 200, document
         except urllib.error.HTTPError as error:
             return error.code, None
 
     status, info = request("/key/info?" + urllib.parse.urlencode({"key": token}), master, True)
-    if status != 200 or info.get("info", {}).get("allowed_routes") != ["/metrics"]:
+    key_info = cast("dict[str, object]", info) if isinstance(info, dict) else {}
+    routes = cast("dict[str, object]", key_info.get("info", {})).get("allowed_routes")
+    if status != 200 or routes != ["/metrics"]:
         raise RuntimeError("Existing key must be restricted to metrics")
     if request("/metrics")[0] not in (401, 403):
         raise RuntimeError("Anonymous metrics must remain denied")

@@ -14,6 +14,7 @@ import ssl
 import tempfile
 import urllib.parse
 import urllib.request
+from typing import cast
 
 SOURCE_NS = 'cattle-monitoring-system'
 DESTINATIONS = {'harbor': 'harbor', 'litellm': 'llm', 'vllm': 'llm', 'open-webui': 'llm', 'lms': 'lms', 'wishlist': 'wishlist'}
@@ -39,14 +40,15 @@ def run():
     if len(entries) != len(DESTINATIONS) or {entry['application'] for entry in entries} != set(DESTINATIONS):
         raise ValueError('Exactly the registered dedicated application client leaves required')
 
-    def api(namespace, resource, name, patch=None):
+    def api(namespace, resource, name, patch=None) -> dict[str, object]:
         path = '/api/v1/namespaces/' if resource == 'secrets' else '/apis/apps/v1/namespaces/'
         path += urllib.parse.quote(namespace, safe='') + '/' + resource + '/' + urllib.parse.quote(name, safe='')
         request = urllib.request.Request(endpoint + path, data=json.dumps(patch).encode() if patch is not None else None,
                   headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/merge-patch+json'},
                   method='PATCH' if patch is not None else 'GET')
         with urllib.request.urlopen(request, context=context, timeout=15) as response:
-            return json.load(response)
+            payload: dict[str, object] = json.load(response)
+            return payload
 
     updated = []
     verified = []
@@ -55,7 +57,8 @@ def run():
         app = entry['application']
         OBSERVED_PHASE.update(stage='read-named-client-leaf', application=app)
         source = api(SOURCE_NS, 'secrets', 'otel-app-tls-' + app)
-        data = {key: source['data'][key] for key in ['tls.crt', 'tls.key', 'ca.crt']}
+        data = {key: cast("dict[str, str]", source['data'])[key]
+                for key in ['tls.crt', 'tls.key', 'ca.crt']}
         # Validate pair and actual private native ingress before distribution.
         with tempfile.TemporaryDirectory(dir='/run/otel-check') as temporary:
             root = Path(temporary)
@@ -82,14 +85,19 @@ def run():
         certificate_hash = hashlib.sha256(base64.b64decode(data['tls.crt'])).hexdigest()
         OBSERVED_PHASE['stage'] = 'mirror-named-client-leaf'
         target = api(entry['namespace'], 'secrets', entry['secret'])
-        changed = any(target.get('data', {}).get(key) != value for key, value in data.items())
+        changed = any(cast("dict[str, object]", target.get('data', {})).get(key) != value
+                      for key, value in data.items())
         if changed:
             api(entry['namespace'], 'secrets', entry['secret'],
                 {'data': data, 'metadata': {'annotations': {'homelab.alchemmist.xyz/client-certificate-sha256': certificate_hash}}})
             updated.append(app)
         for deployment in entry.get('reloadDeployments', []):
             workload = api(entry['namespace'], 'deployments', deployment)
-            annotation = workload['spec']['template'].get('metadata', {}).get('annotations', {}).get('homelab.alchemmist.xyz/client-certificate-sha256')
+            spec = cast("dict[str, object]", workload['spec'])
+            template = cast("dict[str, object]", spec['template'])
+            metadata = cast("dict[str, object]", template.get('metadata', {}))
+            annotations = cast("dict[str, object]", metadata.get('annotations', {}))
+            annotation = annotations.get('homelab.alchemmist.xyz/client-certificate-sha256')
             if annotation != certificate_hash:
                 api(entry['namespace'], 'deployments', deployment,
                     {'spec': {'template': {'metadata': {'annotations': {'homelab.alchemmist.xyz/client-certificate-sha256': certificate_hash}}}}})
@@ -103,4 +111,4 @@ if __name__ == '__main__':
         run()
     except Exception as error:
         print(json.dumps({'success': False, 'errorType': type(error).__name__, 'secretValuesLogged': False, **OBSERVED_PHASE}))
-        raise SystemExit(1)
+        raise SystemExit(1) from error

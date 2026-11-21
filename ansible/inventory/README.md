@@ -4,7 +4,7 @@
 
 - `hosts.yml`: the complete `Socrat` group (currently `socrat-0` through `socrat-5`) and SSH connection settings.
 - `host_vars/<node>.yml`: configuration specific to one node (boot services, desktop, storage, etc.). Ansible loads these automatically for that hostname.
-- `group_vars/Socrat.yml`: shared cluster settings, including the default public SSH hostname and WireGuard registry.
+- `group_vars/Socrat/cluster.yml`: shared cluster settings, including the default public SSH hostname and WireGuard registry.
 - `group_vars/all.yml`: defaults shared by all inventory hosts.
 - `netbird-controller.yml`: a separate connection alias, deliberately outside `Socrat`; cluster-wide plays must not target it.
 - `direct.yml` and `lan.yml`: optional SSH connection overrides, not complete cluster inventories. Load them **after** `hosts.yml`.
@@ -50,3 +50,12 @@ The former `socrat-3.yml` inventory was merged into `hosts.yml`; its node config
 4. Inspect inventory and each relevant playbook with `--list-hosts` before applying anything.
 
 Local regression tests: `python3 -m unittest discover -s tests -p 'test_inventory.py'` from the repository root. Resolved-inventory tests require `ansible-inventory` and never open SSH connections.
+
+Personal Linux SSH accounts for the Socrat group are declared in
+[`group_vars/Socrat/users.yml`](group_vars/Socrat/users.yml): the protected sudo
+owner and the non-privileged `homelab_users` list. Scope defaults to all Socrat
+nodes; ordinary users can be restricted with `hosts`. Bootstrap still receives
+owner credential material privately and preserves existing keys. `sudo` records
+and guards the existing policy: changing it alone is not a privilege migration.
+SSH connection settings, system users, Authentik imports and NetBird policies
+are separate. Removing a registry entry does not revoke an existing account.

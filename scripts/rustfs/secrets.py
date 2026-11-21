@@ -66,4 +66,6 @@ if __name__ == "__main__":
     try:
         main()
     except Exception:
-        raise SystemExit("Secret preparation refused; inspect private inputs; nothing printed.")
+        raise SystemExit(
+            "Secret preparation refused; inspect private inputs; nothing printed."
+        ) from None

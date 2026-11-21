@@ -6,6 +6,7 @@ import pathlib
 import signal
 import subprocess
 import time
+from typing import cast
 
 from fixtures import check_verdict, fixture_files, task_prompt, verifier_command, seal_execution
 from sandbox import Sandbox
@@ -108,7 +109,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
     query = model._query
     calls = []
 
-    def observed_query(messages, **kwargs):
+    def observed_query(messages, **kwargs) -> object:
         record = {"attempt": len(calls) + 1, "started": time.time()}
         calls.append(record)
         try:
@@ -122,7 +123,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
                     "finish_reason": response.choices[0].finish_reason,
                 }
             )
-            return response
+            return cast("object", response)
         except Exception as error:
             record["error_type"] = type(error).__name__
             raise
@@ -133,7 +134,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
     model._query = observed_query
     execute = sandbox.execute
 
-    def execute_with_submission(action, **kwargs):
+    def execute_with_submission(action, **kwargs) -> object:
         result = execute(action, **kwargs)
         if mini_submission(result):
             raise Submitted(
@@ -143,7 +144,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
                     "extra": {"exit_status": "Submitted", "submission": result["output"]},
                 }
             )
-        return result
+        return cast("object", result)
 
     sandbox.execute = execute_with_submission
     system = "You are a coding agent in an isolated offline Linux workspace. "
@@ -219,15 +220,18 @@ def run_openhands(
         pass
 
     class BashExecutor(ToolExecutor):
-        def __call__(self, action, conversation=None):
+        def __call__(self, action, _conversation=None) -> BashObservation:
             result = sandbox.execute({"command": action.command})
-            return BashObservation.from_text(json.dumps(result), is_error=result["returncode"] != 0)
+            return cast(
+                "BashObservation",
+                BashObservation.from_text(json.dumps(result), is_error=result["returncode"] != 0),
+            )
 
     class BashTool(ToolDefinition[BashAction, BashObservation]):
         name = "bash"
 
         @classmethod
-        def create(cls, conv_state=None, **kwargs):
+        def create(cls, **_kwargs):
             return [
                 cls(
                     description="Execute bash inside the isolated offline coding workspace. "
@@ -256,7 +260,7 @@ def run_openhands(
     workspace = directory / "controller-workspace"
     workspace.mkdir()
 
-    def observe(event):
+    def observe(event) -> None:
         with (directory / "openhands-events.jsonl").open("a") as stream:
             stream.write(json.dumps(event.model_dump(mode="json")) + "\n")
 

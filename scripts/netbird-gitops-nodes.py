@@ -25,7 +25,7 @@ spec.loader.exec_module(node)
 def desired(values, inventory, image):
     hosts = set()
 
-    def visit(group):
+    def visit(group) -> None:
         entry = inventory.get(group, {})
         hosts.update(entry.get("hosts", []))
         for child in entry.get("children", []):

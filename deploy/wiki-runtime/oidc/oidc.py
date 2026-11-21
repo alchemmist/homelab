@@ -9,6 +9,7 @@ import os
 import secrets
 import sqlite3
 import time
+from typing import cast
 
 from fastapi import HTTPException, Request
 from fastapi.responses import RedirectResponse
@@ -123,15 +124,15 @@ def install_oidc(app, store, origin, prefix, cookie_path, session_seconds):
     )
 
     @app.get("/api/auth/oidc/login")
-    async def start(request: Request):
+    async def start(request: Request) -> object:
         response = await client.authorize_redirect(
             request, origin + prefix + "/api/auth/oidc/callback"
         )
         response.headers["Cache-Control"] = "no-store"
-        return response
+        return cast("object", response)
 
     @app.get("/api/auth/oidc/callback")
-    async def callback(request: Request):
+    async def callback(request: Request) -> object:
         try:
             token = await client.authorize_access_token(request)
             claims = token.get("userinfo")
@@ -169,4 +170,4 @@ def install_oidc(app, store, origin, prefix, cookie_path, session_seconds):
             samesite="lax",
             path=cookie_path,
         )
-        return response
+        return cast("object", response)
