@@ -11,6 +11,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 @unittest.skipUnless(shutil.which("helm"), "helm unavailable")
 class AlertGraphsChartTests(unittest.TestCase):
     def render(self, enabled=False, extra=()):
+        """Run helm template for the chart, optionally with alert graphs enabled."""
         args = [
             "helm",
             "template",
@@ -37,11 +38,13 @@ class AlertGraphsChartTests(unittest.TestCase):
         return subprocess.run(args + list(extra), cwd=ROOT, capture_output=True, text=True)
 
     def test_disabled_has_no_resources(self):
+        """Default render produces no alert-graphs resources."""
         result = self.render()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertNotIn("name: socrat-alert-graphs", result.stdout)
 
     def test_enabled_isolated_role(self):
+        """Enabled render ships an isolated, digest-pinned gateway deployment."""
         result = self.render(True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("/app/graph_gateway.py", result.stdout)
@@ -55,6 +58,7 @@ class AlertGraphsChartTests(unittest.TestCase):
         self.assertNotIn("SPI_S3_WRITER_FILE", result.stdout)
 
     def test_release_values_render_real_valid_images(self):
+        """Release values render valid immutable images and renderer limits."""
         result = self.render(
             False,
             [
@@ -81,6 +85,7 @@ class AlertGraphsChartTests(unittest.TestCase):
                     self.assertEqual(container["resources"]["limits"]["memory"], "2Gi")
 
     def test_monitoring_helpers_use_one_portable_home_placement(self):
+        """Gateway and monitoring proxy share placement on portable home nodes."""
         import yaml
 
         result = self.render(extra=[
@@ -102,16 +107,19 @@ class AlertGraphsChartTests(unittest.TestCase):
             })
 
     def test_requires_immutable_image(self):
+        """Non-digest gateway images are rejected as non-immutable."""
         result = self.render(True, ["--set", "gateway.digest=latest"])
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("immutable", result.stderr)
 
     def test_requires_renderer(self):
+        """Enabling alert graphs without the remote imageRenderer fails renders."""
         result = self.render(True, ["--set", "grafana.imageRenderer.enabled=false"])
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("remote imageRenderer", result.stderr)
 
     def test_bot_sources_are_exact_only(self):
+        """Bot source CIDRs must be exact /32 or /128 addresses."""
         result = self.render(True, ["--set", "alertGraphs.botSourceCIDRs[0]=10.0.0.0/8"])
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("exact /32 or /128", result.stderr)

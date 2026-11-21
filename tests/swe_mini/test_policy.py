@@ -13,12 +13,15 @@ spec.loader.exec_module(p)
 
 class PublicationPolicy(unittest.TestCase):
     def item(self, path="server/app/test.py", mode="100644", content=b"hello\n"):
+        """Return a change item with sensible defaults for assertions."""
         return {"path": path, "mode": mode, "content": base64.b64encode(content).decode()}
 
     def test_safe_patch(self):
+        """Accept a single conventional source file change."""
         self.assertEqual(len(p.validate_changes([self.item()])), 1)
 
     def test_protected_paths(self):
+        """Reject paths outside the allowed server/app source tree."""
         for path in [
             ".github/workflows/run.yml",
             "deploy/x",
@@ -37,6 +40,7 @@ class PublicationPolicy(unittest.TestCase):
                 p.validate_changes([self.item(path)])
 
     def test_dependency_repair_boundary(self):
+        """Permit version bumps but reject script or package-list changes."""
         original = {"scripts": {"build": "vite build"}, "dependencies": {"@mantine/core": "^9.5.2"}}
         updated = json.loads(json.dumps(original))
         updated["dependencies"]["@mantine/core"] = "^9.6.0"
@@ -59,16 +63,19 @@ class PublicationPolicy(unittest.TestCase):
             p.validate_changes(changes() + [self.item()])
 
     def test_modes(self):
+        """Reject symlink, submodule, and executable file modes."""
         for mode in ["120000", "160000", "100755"]:
             with self.assertRaises(ValueError):
                 p.validate_changes([self.item(mode=mode)])
 
     def test_binary_and_size(self):
+        """Reject binary content and payloads above the size limit."""
         for content in [b"\x00", b"x" * (p.MAX_BYTES + 1)]:
             with self.assertRaises(ValueError):
                 p.validate_changes([self.item(content=content)])
 
     def test_empty_duplicates_many(self):
+        """Reject empty, duplicate, or oversized change sets."""
         for items in [
             [],
             [self.item(), self.item()],
@@ -78,10 +85,12 @@ class PublicationPolicy(unittest.TestCase):
                 p.validate_changes(items)
 
     def test_result_roundtrip(self):
+        """Encode and decode a result marker without loss."""
         result = {"phase": "work", "checks": {"backend": 0}}
         self.assertEqual(p.decode_result(p.encode_result(result)), result)
 
     def test_result_authentication(self):
+        """Enforce the phase key when decoding result markers."""
         marker = p.encode_result({"checks": {"backend": 0}}, "parent-only-key")
         self.assertEqual(p.decode_result(marker, "parent-only-key")["checks"]["backend"], 0)
         with self.assertRaises(ValueError):
@@ -90,12 +99,14 @@ class PublicationPolicy(unittest.TestCase):
             p.decode_result(p.encode_result({}), "parent-only-key")
 
     def test_missing_ambiguous_result(self):
+        """Reject missing markers and duplicated marker text."""
         marker = p.encode_result({})
         for text in ["", marker + "\n" + marker]:
             with self.assertRaises(ValueError):
                 p.decode_result(text)
 
     def test_result_decompression_limit(self):
+        """Reject markers whose decompressed payload exceeds the cap."""
         import gzip
 
         marker = "SWE_RESULT:" + base64.b64encode(gzip.compress(b"x" * 900_001)).decode()

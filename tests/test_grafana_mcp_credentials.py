@@ -20,6 +20,7 @@ def secret(**values):
 
 class CredentialsTests(unittest.TestCase):
     def test_existing_valid_secret_is_preserved(self):
+        """A valid existing secret is reused without a write."""
         grafana = Mock()
         grafana.request.side_effect = [
             {"serviceAccounts": [{"id": 12, "name": "socrat-mcp", "role": "Viewer"}]},
@@ -42,6 +43,7 @@ class CredentialsTests(unittest.TestCase):
         self.assertEqual(grafana.request.call_args.kwargs["token"], "existing")
 
     def test_existing_secret_does_not_require_admin(self):
+        """Reusing an existing secret needs no admin privileges."""
         grafana = Mock()
         persist = Mock()
         result = MODULE.bootstrap(
@@ -61,6 +63,7 @@ class CredentialsTests(unittest.TestCase):
         persist.assert_not_called()
 
     def test_creation_uses_viewer_and_distinct_credentials(self):
+        """Creation uses the Viewer role and distinct tokens."""
         grafana = Mock()
         grafana.request.side_effect = [
             {"serviceAccounts": []},
@@ -77,6 +80,7 @@ class CredentialsTests(unittest.TestCase):
         self.assertGreaterEqual(len(data["client-token"]), 64)
 
     def test_failed_persistence_revokes_only_new_token(self):
+        """A persistence failure revokes only the newly created token."""
         grafana = Mock()
         grafana.request.side_effect = [
             {"serviceAccounts": [{"id": 12, "name": "socrat-mcp", "role": "Viewer"}]},
@@ -89,6 +93,7 @@ class CredentialsTests(unittest.TestCase):
         grafana.request.assert_called_with("DELETE", "/api/serviceaccounts/12/tokens/7")
 
     def test_token_replacement_preserves_client_token(self):
+        """Rotating the Grafana token preserves the client token."""
         grafana = Mock()
         grafana.request.side_effect = [
             {"serviceAccounts": [{"id": 12, "name": "socrat-mcp", "role": "Viewer"}]},
@@ -107,6 +112,7 @@ class CredentialsTests(unittest.TestCase):
         self.assertEqual(persist.call_args.args[0]["stringData"]["client-token"], "stable")
 
     def test_disabled_account_is_not_reenabled(self):
+        """A disabled service account is never re-enabled."""
         grafana = Mock()
         grafana.request.return_value = {
             "serviceAccounts": [

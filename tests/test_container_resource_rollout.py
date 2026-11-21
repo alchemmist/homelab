@@ -73,6 +73,7 @@ def profiled_pod():
 
 class RolloutTests(unittest.TestCase):
     def test_profile_node_selector_requires_reconciliation_when_missing_or_different(self):
+        """Missing or mismatched node selectors require reconciliation."""
         expected = dict(profile(), nodeSelector={"kubernetes.io/hostname": "socrat-1"})
         for selector in ({}, {"kubernetes.io/hostname": "socrat-2"}):
             value = profiled_pod()
@@ -83,6 +84,7 @@ class RolloutTests(unittest.TestCase):
             self.assertTrue(ROLLOUT.needs_reconcile(value, [expected]))
 
     def test_profile_node_selector_preserves_unrelated_labels(self):
+        """Matching selectors leave unrelated node labels untouched."""
         expected = dict(profile(), nodeSelector={"kubernetes.io/hostname": "socrat-1"})
         value = profiled_pod()
         value["spec"]["nodeSelector"] = {
@@ -94,6 +96,7 @@ class RolloutTests(unittest.TestCase):
         self.assertEqual(value, before)
 
     def test_profile_node_selector_detects_bound_wrong_node(self):
+        """A pod bound to the wrong node despite its selector is flagged."""
         expected = dict(profile(), nodeSelector={"kubernetes.io/hostname": "socrat-1"})
         value = profiled_pod()
         value["spec"]["nodeSelector"] = expected["nodeSelector"]
@@ -103,6 +106,7 @@ class RolloutTests(unittest.TestCase):
         self.assertFalse(ROLLOUT.needs_reconcile(value, [expected]))
 
     def test_profile_without_placement_does_not_reconcile_node(self):
+        """Profiles without placement constraints never touch node fields."""
         value = profiled_pod()
         value["spec"]["nodeName"] = "socrat-2"
         value["spec"]["nodeSelector"] = {"custom": "unchanged"}
@@ -110,6 +114,7 @@ class RolloutTests(unittest.TestCase):
             self.assertFalse(ROLLOUT.needs_reconcile(value, [expected]))
 
     def test_node_selector_schema_accepts_literal_labels(self):
+        """Valid literal label maps round-trip through the profile loader."""
         for selector in (
             {},
             {"kubernetes.io/hostname": "socrat-1"},
@@ -122,6 +127,7 @@ class RolloutTests(unittest.TestCase):
                 self.assertEqual(ROLLOUT.load_profiles(source.name), [expected])
 
     def test_node_selector_schema_rejects_invalid_maps_and_labels(self):
+        """Malformed selector maps and label values are rejected."""
         for selector in (
             None,
             [],
@@ -141,6 +147,7 @@ class RolloutTests(unittest.TestCase):
                     ROLLOUT.validate_node_selector(selector)
 
     def test_excluded_nodes_remain_visible_but_not_actionable(self):
+        """Excluded nodes stay visible in audit but are not acted on."""
         values = [pod(), pod("excluded", node="socrat-3")]
         output = io.StringIO()
         with redirect_stdout(output):
@@ -152,11 +159,13 @@ class RolloutTests(unittest.TestCase):
         self.assertEqual(summary["excluded_deficient"], 1)
 
     def test_no_exclusions_remains_strict(self):
+        """Without exclusions audit returns every deficient pod."""
         values = [pod(), pod("other", node="socrat-3")]
         with redirect_stdout(io.StringIO()):
             self.assertEqual(ROLLOUT.audit(values), values)
 
     def test_profile_matches_namespace_owner_kind_and_regex(self):
+        """Profiles match only on namespace, owner kind and name pattern."""
         value, expected = profiled_pod(), profile()
         self.assertEqual(ROLLOUT.matching_profile(value, [expected]), expected)
         for field, different in [
@@ -168,10 +177,12 @@ class RolloutTests(unittest.TestCase):
             self.assertIsNone(ROLLOUT.matching_profile(value, [changed]))
 
     def test_ambiguous_profiles_fail_even_for_already_compliant_pod(self):
+        """Ambiguous profiles fail even when the pod is already compliant."""
         with self.assertRaisesRegex(RuntimeError, "Ambiguous"):
             ROLLOUT.audit([profiled_pod()], profiles=[profile(), profile()])
 
     def test_equivalent_units_do_not_require_reconciliation(self):
+        """Equivalent resource units are not treated as mismatches."""
         value = profiled_pod()
         resources = value["spec"]["containers"][0]["resources"]
         resources["limits"]["cpu"] = "0.5"
@@ -182,6 +193,7 @@ class RolloutTests(unittest.TestCase):
         self.assertEqual(ROLLOUT.quantity("1e3"), ROLLOUT.quantity("1k"))
 
     def test_changed_requests_and_limits_require_reconciliation(self):
+        """Changed requests or limits require reconciliation against the profile."""
         for mode in ("requests", "limits"):
             value = profiled_pod()
             value["spec"]["containers"][0]["resources"][mode]["cpu"] = "1"
@@ -191,6 +203,7 @@ class RolloutTests(unittest.TestCase):
             )
 
     def test_gpu_and_custom_resources_are_ignored(self):
+        """GPU and custom resources are ignored, leaving the pod unchanged."""
         value = profiled_pod()
         value["spec"]["containers"][0]["resources"]["limits"]["nvidia.com/gpu"] = "1"
         value["spec"]["containers"][0]["resources"]["requests"]["example.com/device"] = "1"
@@ -199,6 +212,7 @@ class RolloutTests(unittest.TestCase):
         self.assertEqual(value, before)
 
     def test_unknown_workload_is_reported_in_profile_coverage(self):
+        """Unmatched workloads surface in audit as unprofiled, not actionable."""
         value = pod(compliant=True)
         output = io.StringIO()
         with redirect_stdout(output):
@@ -208,6 +222,7 @@ class RolloutTests(unittest.TestCase):
         self.assertEqual(lines[-1]["summary"]["unprofiled_active"], 1)
 
     def test_ready_replacement_with_stale_profile_times_out(self):
+        """Ready replacements failing the profile still trigger eviction."""
         old = profiled_pod()
         old["spec"]["containers"][0]["resources"]["limits"]["cpu"] = "1"
         new = copy.deepcopy(old)
@@ -223,6 +238,7 @@ class RolloutTests(unittest.TestCase):
                 ROLLOUT.reconcile_one(client, old, 10, 0.01, [profile()])
 
     def test_unlimited_profile_accepts_absent_cpu_limit(self):
+        """'RemoveCpuLimit' profiles accept pods without a CPU limit."""
         expected, value = profile(), profiled_pod()
         expected["containers"]["main"]["removeCpuLimit"] = True
         del expected["containers"]["main"]["limits"]["cpu"]
@@ -230,6 +246,7 @@ class RolloutTests(unittest.TestCase):
         self.assertFalse(ROLLOUT.needs_reconcile(value, [expected]))
 
     def test_unlimited_profile_detects_existing_cpu_limit_including_zero(self):
+        """RemoveCpuLimit profiles flag any existing CPU limit, even zero."""
         expected = profile()
         expected["containers"]["main"]["removeCpuLimit"] = True
         del expected["containers"]["main"]["limits"]["cpu"]
@@ -241,6 +258,7 @@ class RolloutTests(unittest.TestCase):
             )
 
     def test_unknown_workload_needs_requests_but_not_cpu_limit(self):
+        """Unprofiled pods need requests but no CPU limit eviction."""
         value = pod(compliant=True)
         del value["spec"]["containers"][0]["resources"]["limits"]["cpu"]
         self.assertFalse(ROLLOUT.needs_reconcile(value))
@@ -248,6 +266,7 @@ class RolloutTests(unittest.TestCase):
         self.assertTrue(ROLLOUT.needs_reconcile(value))
 
     def test_profile_schema_validates_selective_limits(self):
+        """Selective-limit profiles round-trip through the loader schema."""
         expected = profile()
         expected["containers"]["main"]["removeCpuLimit"] = True
         del expected["containers"]["main"]["limits"]["cpu"]
@@ -257,6 +276,7 @@ class RolloutTests(unittest.TestCase):
             self.assertEqual(ROLLOUT.load_profiles(source.name), [expected])
 
     def test_profile_schema_rejects_ambiguous_limit_intent_and_unanchored_regex(self):
+        """Ambiguous limits and unanchored patterns are rejected by the schema."""
         cases = []
         conflict = profile()
         conflict["containers"]["main"]["removeCpuLimit"] = True
@@ -278,6 +298,7 @@ class RolloutTests(unittest.TestCase):
                     ROLLOUT.load_profiles(source.name)
 
     def test_profile_template_casts_mixed_resource_values_individually(self):
+        """The template casts each mixed resource value individually."""
         try:
             import jinja2
             import yaml
@@ -313,6 +334,7 @@ class RolloutTests(unittest.TestCase):
         )
 
     def test_role_rolls_back_validation_failures_before_evictions(self):
+        """The role rolls back validation failures before any eviction runs."""
         try:
             import yaml
         except ImportError:
@@ -337,17 +359,20 @@ class RolloutTests(unittest.TestCase):
         )
 
     def test_positive_quantities(self):
+        """Only strictly positive quantities are accepted by positive()."""
         for value in ("1", "500m", "1Gi", "1e3", "1E-3", "0.001", "10Ki"):
             self.assertTrue(ROLLOUT.positive(value), value)
         for value in (None, "0", "0Mi", "-1", "NaN", "bad", "0.0"):
             self.assertFalse(ROLLOUT.positive(value), value)
 
     def test_limits_check_includes_init_containers(self):
+        """Deficit checks count init containers too."""
         value = pod(compliant=True)
         value["spec"]["initContainers"] = [{"name": "init"}]
         self.assertEqual(len(ROLLOUT.deficits(value)), 5)
 
     def test_does_not_change_existing_resources(self):
+        """Auditing and eviction payloads never mutate pod specs."""
         value = pod()
         original = copy.deepcopy(value)
         ROLLOUT.deficits(value)
@@ -357,6 +382,7 @@ class RolloutTests(unittest.TestCase):
         self.assertNotIn("spec", payload)
 
     def test_unsupported_owners(self):
+        """Jobs, ownerless and finished pods are unsupported or inactive."""
         self.assertFalse(ROLLOUT.supported(pod(kind="Job")))
         value = pod()
         value["metadata"]["ownerReferences"] = []
@@ -365,6 +391,7 @@ class RolloutTests(unittest.TestCase):
         self.assertFalse(ROLLOUT.active(value))
 
     def test_daemonset_requires_same_node(self):
+        """DaemonSet replacements must land on the same node."""
         self.assertFalse(
             ROLLOUT.same_workload(
                 pod(kind="DaemonSet"), pod("new", kind="DaemonSet", node="socrat-2")
@@ -373,11 +400,13 @@ class RolloutTests(unittest.TestCase):
         self.assertTrue(ROLLOUT.same_workload(pod(kind="DaemonSet"), pod("new", kind="DaemonSet")))
 
     def test_statefulset_requires_same_name(self):
+        """StatefulSet replacements must keep the same pod name."""
         self.assertFalse(
             ROLLOUT.same_workload(pod(kind="StatefulSet"), pod("new", kind="StatefulSet"))
         )
 
     def test_waits_for_new_ready_pod_and_old_deletion(self):
+        """Reconcile waits for a ready newcomer and old pod deletion."""
         old = pod()
         new = pod("new", compliant=True)
         existing = pod("existing", compliant=True)
@@ -397,6 +426,7 @@ class RolloutTests(unittest.TestCase):
         client.evict.assert_called_once_with(old)
 
     def test_retries_disruption_budget(self):
+        """Disruption-budget rejections are retried until eviction succeeds."""
         old, new = pod(), pod("new", compliant=True)
         client = Mock()
         client.pods.side_effect = [[old], [new]]
@@ -409,6 +439,7 @@ class RolloutTests(unittest.TestCase):
         self.assertEqual(client.evict.call_count, 2)
 
     def test_stops_on_eviction_error(self):
+        """Hard eviction errors abort the reconcile loop."""
         old = pod()
         client = Mock()
         client.pods.return_value = [old]
@@ -417,6 +448,7 @@ class RolloutTests(unittest.TestCase):
             ROLLOUT.reconcile_one(client, old, 10, 0.01)
 
     def test_existing_ready_replica_does_not_count_as_replacement(self):
+        """Pre-existing ready replicas never count as the replacement."""
         old, existing = pod(), pod("existing", compliant=True)
         client = Mock()
         client.pods.side_effect = [[old, existing], [existing]]
@@ -429,6 +461,7 @@ class RolloutTests(unittest.TestCase):
                 ROLLOUT.reconcile_one(client, old, 10, 0.01)
 
     def test_ready_replacement_without_limits_times_out(self):
+        """Non-compliant newcomers never satisfy the replacement wait."""
         old, new = pod(), pod("new")
         client = Mock()
         client.pods.side_effect = [[old], [new]]
@@ -441,6 +474,7 @@ class RolloutTests(unittest.TestCase):
                 ROLLOUT.reconcile_one(client, old, 10, 0.01)
 
     def test_eviction_uses_stdin_and_uid(self):
+        """Evictions POST via stdin with the target pod's uid precondition."""
         client = ROLLOUT.Client("kubectl", "/config")
         with patch.object(ROLLOUT.subprocess, "run") as run:
             client.evict(pod())

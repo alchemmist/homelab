@@ -28,16 +28,20 @@ class FakeEtcd:
         self.ambiguous_remove = False
 
     def members(self):
+        """Return a copy of the current membership map."""
         return dict(self.membership)
 
     def health(self, name):
+        """Raise for members not in the healthy set."""
         if name not in self.healthy:
             raise RuntimeError("unhealthy")
 
     def status(self, name):
+        """Return a member status with the current leader id."""
         return {"header": {"member_id": self.membership[name]["id"]}, "leader": self.leader}
 
     def call(self, args, endpoint=None, structured=True):
+        """Record and apply moving leader or member removal calls."""
         self.calls.append((args, endpoint))
         if args[0] == "move-leader":
             self.leader = int(args[1], 16)
@@ -51,6 +55,7 @@ class FakeEtcd:
 
 class RebalanceTest(unittest.TestCase):
     def test_final_verification_never_removes_an_unexpected_member(self):
+        """Final verification removes nothing when membership is unexpected."""
         client = FakeEtcd()
         with self.assertRaises(RuntimeError):
             MODULE.verify_final(client)
@@ -58,6 +63,7 @@ class RebalanceTest(unittest.TestCase):
         self.assertIn("socrat-1", client.membership)
 
     def test_offline_socrat_2_allows_guarded_removal(self):
+        """Offline socrat-2 permits the guarded removal of socrat-1."""
         client = FakeEtcd()
         result = MODULE.remove_socrat_1(client)
         self.assertTrue(result["changed"])
@@ -71,12 +77,14 @@ class RebalanceTest(unittest.TestCase):
         )
 
     def test_target_membership_is_idempotent(self):
+        """An already-rebalanced member set is left untouched."""
         client = FakeEtcd()
         del client.membership["socrat-1"]
         self.assertFalse(MODULE.remove_socrat_1(client)["changed"])
         self.assertEqual(client.calls, [])
 
     def test_unhealthy_required_member_blocks_mutation(self):
+        """An unhealthy required member blocks any mutation."""
         for name in ("socrat-0", "socrat-1", "socrat-3"):
             client = FakeEtcd()
             client.healthy.remove(name)
@@ -85,6 +93,7 @@ class RebalanceTest(unittest.TestCase):
             self.assertEqual(client.calls, [])
 
     def test_learner_blocks_mutation(self):
+        """A learner member blocks mutation before any call is made."""
         client = FakeEtcd()
         client.membership["socrat-3"]["learner"] = True
         with self.assertRaises(RuntimeError):
@@ -92,6 +101,7 @@ class RebalanceTest(unittest.TestCase):
         self.assertEqual(client.calls, [])
 
     def test_unknown_membership_blocks_mutation(self):
+        """Unknown membership shapes block mutation entirely."""
         client = FakeEtcd()
         client.membership["unknown"] = client.membership.pop("socrat-3")
         with self.assertRaises(RuntimeError):
@@ -99,6 +109,7 @@ class RebalanceTest(unittest.TestCase):
         self.assertEqual(client.calls, [])
 
     def test_failed_removal_requires_operator_action(self):
+        """A failed removal surfaces operator instructions."""
         client = FakeEtcd()
         client.fail_remove = True
         with self.assertRaisesRegex(RuntimeError, "restore its staged configuration"):
@@ -106,6 +117,7 @@ class RebalanceTest(unittest.TestCase):
         self.assertIn("socrat-1", client.membership)
 
     def test_lost_success_response_is_verified(self):
+        """A lost success response is verified against live membership."""
         client = FakeEtcd()
         client.ambiguous_remove = True
         self.assertTrue(MODULE.remove_socrat_1(client)["changed"])

@@ -36,6 +36,7 @@ class Fake:
         self.writes = []
 
     def __call__(self, token, method, path, data=None):
+        """Serve a fake Authentik API call from the in-memory fixtures."""
         endpoint, _, query = path.partition("?")
         parts = endpoint.strip("/").split("/")
         if method != "GET":
@@ -80,6 +81,7 @@ class Fake:
 
 class AutomationTests(unittest.TestCase):
     def root(self, d):
+        """Create a 0700 root with fixture bootstrap credentials."""
         p = Path(d)
         p.chmod(0o700)
         a.save(
@@ -93,6 +95,7 @@ class AutomationTests(unittest.TestCase):
         return p
 
     def test_apply_and_repeat_do_not_delete_or_change_humans(self):
+        """Repeated applies converge without deleting humans or leaking tokens."""
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             fake = Fake()
@@ -119,6 +122,7 @@ class AutomationTests(unittest.TestCase):
             )
 
     def test_check_without_migration_does_not_write(self):
+        """A check-only migration performs no API calls or file writes."""
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             with patch.object(a, "api") as api, contextlib.redirect_stdout(io.StringIO()):
@@ -127,6 +131,7 @@ class AutomationTests(unittest.TestCase):
             self.assertFalse((p / "automation-api.json").exists())
 
     def test_foreign_account_refused(self):
+        """A foreign account with the automation name is refused."""
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             fake = Fake()
@@ -136,6 +141,7 @@ class AutomationTests(unittest.TestCase):
             self.assertEqual(fake.writes, [])
 
     def test_wrong_owner_uuid_refused(self):
+        """Owner accounts with an unreviewed UUID are refused."""
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             fake = Fake()
@@ -145,6 +151,7 @@ class AutomationTests(unittest.TestCase):
             self.assertEqual(fake.writes, [])
 
     def test_alias_drift_refused(self):
+        """Drifted bootstrap alias credentials abort on the next check."""
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             fake = Fake()
@@ -155,6 +162,7 @@ class AutomationTests(unittest.TestCase):
                 a.migrate(p, "check")
 
     def bootstrap(self, p):
+        """Run bootstrap.py against a patched kubectl and return its manifest."""
         with (
             patch("sys.argv", ["bootstrap.py", str(p)]),
             patch("subprocess.run") as run,
@@ -164,6 +172,7 @@ class AutomationTests(unittest.TestCase):
         return json.loads(run.call_args.kwargs["input"])
 
     def test_runtime_excludes_admin_secrets_after_migration(self):
+        """Post-migration manifests exclude bootstrap token and password."""
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             a.save(p / "automation-api.json", {"status": "active", "token": "unit-old-token"})
@@ -173,11 +182,13 @@ class AutomationTests(unittest.TestCase):
             self.assertEqual(manifest["AUTHENTIK_SECRET_KEY"], "unit-signing-key")
 
     def test_fresh_install_still_has_initial_bootstrap(self):
+        """Fresh installs still seed the initial bootstrap token."""
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             self.assertIn("AUTHENTIK_BOOTSTRAP_TOKEN", self.bootstrap(p)["stringData"])
 
     def test_incomplete_journal_refuses_secret_apply(self):
+        """A preparing journal blocks secret application entirely."""
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             a.save(p / "automation-api.json", {"status": "preparing"})
@@ -185,6 +196,7 @@ class AutomationTests(unittest.TestCase):
                 self.bootstrap(p)
 
     def ready_retirement(self, p, fake):
+        """Complete migration and record recovery evidence for retirement."""
         with patch.object(a, "api", fake), contextlib.redirect_stdout(io.StringIO()):
             a.migrate(p, "apply")
         j = json.loads((p / "automation-api.json").read_text())
@@ -198,11 +210,13 @@ class AutomationTests(unittest.TestCase):
         (p / "bootstrap.py").write_text((FILES / "bootstrap.py").read_text())
 
     def kube_read(self, args, **kwargs):
+        """Fake kubectl reads returning an empty secret or deployment."""
         if "secret" in args:
             return json.dumps({"data": {}, "metadata": {"annotations": {}}}).encode()
         return json.dumps({"spec": {"template": {"spec": {"containers": [{"env": []}]}}}}).encode()
 
     def test_retirement_requires_recovery_and_backup(self):
+        """Retirement without recovery evidence deletes nothing."""
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             fake = Fake()
@@ -217,6 +231,7 @@ class AutomationTests(unittest.TestCase):
             self.assertFalse(any(m == "DELETE" for m, _, _ in fake.writes))
 
     def test_retirement_refuses_different_default_admin_uuid(self):
+        """An unreviewed default-admin UUID blocks retirement."""
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             fake = Fake()
@@ -232,6 +247,7 @@ class AutomationTests(unittest.TestCase):
             self.assertFalse(any(m == "DELETE" for m, _, _ in fake.writes))
 
     def test_retirement_refuses_runtime_bootstrap_secret(self):
+        """A live runtime bootstrap secret blocks retirement."""
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             fake = Fake()
@@ -249,6 +265,7 @@ class AutomationTests(unittest.TestCase):
             self.assertFalse(any(m == "DELETE" for m, _, _ in fake.writes))
 
     def test_retirement_exact_identity_and_idempotence(self):
+        """Verified retirement removes exactly the default admin, idempotently."""
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             fake = Fake()
