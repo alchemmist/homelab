@@ -55,7 +55,7 @@ class ReconciliationTests(unittest.TestCase):
                         "status": "ok",
                         "count": count,
                     }
-                    for (name, container), count in zip(names, counts)
+                    for (name, container), count in zip(names, counts, strict=True)
                 ],
             }
             for file, data in [("pods", pods), ("meta", metadata), ("counts", sources)]:

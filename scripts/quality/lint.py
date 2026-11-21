@@ -1352,7 +1352,7 @@ def main():
     try:
         findings, count = check(args.tool)
         return report(args.tool, findings, count, output)
-    except Exception as error:
+    except (OSError, RuntimeError, TypeError, ValueError) as error:
         failure(output, error)
         print(
             f"{args.tool}: {type(error).__name__}; tool failure, NOT an accepted lint result",
