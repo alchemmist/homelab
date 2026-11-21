@@ -17,14 +17,14 @@ LOCK = Path(__file__).resolve().parents[1] / "deploy/netbird/images.lock.json"
 PIN = "sha256:a00afb5b4890de4df22bbe70379c6b316685dffee297d53cac1271dcb91fab93"
 
 
-def image():
-    item = json.loads(LOCK.read_text())["images"]["stun"]
+def image() -> str:
+    item: dict[str, str] = json.loads(LOCK.read_text())["images"]["stun"]
     if item["repository"] != "coturn/coturn" or item["tag"] != "4.7.0" or item["digest"] != PIN:
         raise ValueError("reviewed official STUN image pin drift")
     return item["repository"] + ":" + item["tag"] + "@" + item["digest"]
 
 
-def manifests():
+def manifests() -> list[dict[str, object]]:
     labels = {"app": "netbird-stun"}
     return [
         {
@@ -97,7 +97,7 @@ def manifests():
     ]
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.parse_args()
     print(yaml.safe_dump_all(manifests(), sort_keys=False), end="")
