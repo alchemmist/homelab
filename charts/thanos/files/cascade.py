@@ -418,7 +418,7 @@ def main(argv=None) -> int:
         sys.stdout.write("\n")
         return 0
 
-    def stop(signum: int, _frame: object) -> None:
+    def stop(signum: int, frame: object) -> None:
         raise SystemExit(128 + signum)
 
     signal.signal(signal.SIGTERM, stop)

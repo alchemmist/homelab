@@ -517,7 +517,7 @@ class EngineStorageTests(unittest.TestCase):
             self.engine.run("publish", self.key)
         self.store.save(self.key, 3, self.store.get(self.key)["result"], state="processing")
 
-        def post(_method, _path, data) -> None:
+        def post(method, path, data) -> None:
             self.assertEqual(
                 len(self.store.get(self.key)["result"]["storage_publication"]["verified"]), 2
             )

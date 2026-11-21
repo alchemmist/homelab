@@ -98,7 +98,8 @@ def test_default_cli_is_read_only(
 
     calls: list[tuple[str, ...]] = []
 
-    def fake(*args: str, **kwargs: object) -> SimpleNamespace:
+
+    def fake(*args: str, **_kwargs) -> SimpleNamespace:
         """Return scripted nft outputs for the read-only default run."""
         calls.append(args)
         if args == ("nft", "-j", "list", "tables"):
@@ -119,7 +120,8 @@ def test_cli_rejects_foreign_table_before_kernel_write(monkeypatch: pytest.Monke
     import json, sys
     from types import SimpleNamespace
 
-    def fake(*args: str, **kwargs: object) -> SimpleNamespace:
+
+    def fake(*args: str, **_kwargs) -> SimpleNamespace:
         """Return scripted nft outputs simulating a foreign table."""
         if args == ("nft", "-j", "list", "tables"):
             return SimpleNamespace(

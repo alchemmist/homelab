@@ -8,7 +8,7 @@ from pathlib import Path
 import sys
 import tempfile
 from collections.abc import Callable
-from typing import TypedDict, cast
+from typing import TYPE_CHECKING, TypedDict, cast
 import unittest
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
@@ -17,6 +17,9 @@ from urllib.error import HTTPError
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "ansible/roles/authentik/files"))
 import prepare_app_iam as prep
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class FakeAPI:
@@ -29,10 +32,10 @@ class FakeAPI:
 
     def __init__(self, services, reviewed) -> None:
         self.data = {p: [] for p in prep.COLLECTIONS}
-        self.requests = []
+        self.requests: list[tuple[str, str, object]] = []
         self.page_size = 2
-        self.fail_write = None
-        self.after_get = None
+        self.fail_write: int | None = None
+        self.after_get: Callable[[str], None] | None = None
         self.writes = 0
         legacy = sorted({g for s in services.values() for g in s.get("groups", [])})
         self.data["core/groups/"] = [dict(prep.group_payload(n), pk="g-" + n) for n in legacy]

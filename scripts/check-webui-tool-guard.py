@@ -146,7 +146,7 @@ async def main():
         }
 
         async def read(params) -> tuple[object, dict[str, object] | str]:
-            async def dispatch(**_kwargs) -> object:
+            async def dispatch(**kwargs) -> object:
                 return await raw("read_file", params)
 
             metadata["tools"]["read_file"]["callable"] = dispatch

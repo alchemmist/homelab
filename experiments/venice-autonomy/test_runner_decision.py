@@ -11,7 +11,7 @@ import attempt
 
 
 class FakeEnvironment:
-    def __init__(self, snapshot, directory, image, protocol) -> None:
+    def __init__(self, _snapshot, directory, _image, protocol) -> None:
         self.container_id = "fake"
         self.events: list[dict[str, object]] = []
         self.protocol = protocol
@@ -69,7 +69,7 @@ class FinalDecisionTests(unittest.TestCase):
                     raise RuntimeError("cleanup failed")
                 super().close()
 
-        def invoke(*_args, **_kwargs) -> dict[str, str]:
+        def invoke(*args, **kwargs) -> dict[str, str]:
             if not clean:
                 raise RuntimeError("provider failed")
             return {"exit_status": "ConversationExecutionStatus.FINISHED"}

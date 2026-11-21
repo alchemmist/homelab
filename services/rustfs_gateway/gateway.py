@@ -543,7 +543,7 @@ class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
     reader: "Reader"
     slots: threading.BoundedSemaphore
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         self.slots = threading.BoundedSemaphore(MAX_CONNECTIONS)
         super().__init__(*args, **kwargs)
 

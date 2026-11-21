@@ -81,7 +81,7 @@ class ReferenceContractTests(unittest.TestCase):
         m = self.model()
         captured = {}
 
-        def call(task, _data, _schema, _deadline) -> object:
+        def call(task, data, schema, deadline) -> object:
             captured["task"] = task
             return f.report()
 

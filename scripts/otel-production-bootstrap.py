@@ -62,7 +62,7 @@ def resource(kind, name, spec=None, api="cert-manager.io/v1"):
     return obj
 
 
-def resources(contract, api_server, _pod):
+def resources(contract, api_server, pod):
     out = [
         resource("Issuer", "otel-bootstrap-selfsigned", {"selfSigned": {}}),
         resource(

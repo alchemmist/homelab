@@ -60,7 +60,7 @@ class CompletionSchedulerTests(unittest.TestCase):
         http.open_signature.return_value = digest([])
         model = Mock()
 
-        def analyze(*_args) -> object:
+        def analyze(*args) -> object:
             r = self.s.reserve_llm(28931)
             self.s.finish_llm(r)
             return f.report()

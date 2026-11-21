@@ -70,7 +70,7 @@ def trace_arguments(original):
     return list(original) + ["--otlp-traces-endpoint", ENDPOINT]
 
 
-def run(output, apply, _switcher_receipt=None):
+def run(output, apply, switcher_receipt=None):
     os.umask(0o077)
     controller = Path.home() / "Library/Application Support/homelab/otel-controller"
     if not output.resolve().is_relative_to(controller.resolve()):

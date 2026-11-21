@@ -132,7 +132,8 @@ class OutboxTest(unittest.TestCase):
         self.enqueue()
         self.receipt()
 
-        def fail(*a, **kw) -> None:
+
+        def fail(*_a, **_kw) -> None:
             raise TimeoutError("X-Internal-Token: secret-value")
 
         self.outbox.request = fail

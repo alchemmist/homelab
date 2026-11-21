@@ -101,7 +101,7 @@ def _wait_budget(detail) -> None:
     time.sleep(delay)
 
 
-def llm(_role, prompt):
+def llm(role, prompt):
     body = {
         "model": MODEL,
         "temperature": 0,

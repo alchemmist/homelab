@@ -60,7 +60,8 @@ class SnapshotConsistencyTests(unittest.TestCase):
         rows = self.rows(n)
         calls: list[str] = []
 
-        def request(method, path, body=None) -> list[dict[str, object]]:
+
+        def request(_method, path, _body=None) -> list[dict[str, object]]:
             import urllib.parse
 
             q = urllib.parse.parse_qs(urllib.parse.urlsplit(path).query)

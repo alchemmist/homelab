@@ -380,7 +380,15 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
                 owned[role] = str(role_dir.resolve())
             calls = []
 
-            def fake_run(args: list[str], **_options: object) -> object:
+            def fake_run(
+                args,
+                capture_output=None,
+                text=None,
+                timeout=None,
+                check=False,
+                stdout=None,
+                stderr=None,
+            ) -> object:
                 calls.append(list(args))
 
                 class Result:
@@ -521,7 +529,15 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
                 owned[role] = str(role_dir.resolve())
             calls = []
 
-            def fake_run(args: list[str], **_options: object) -> object:
+            def fake_run(
+                args,
+                capture_output=None,
+                text=None,
+                timeout=None,
+                check=False,
+                stdout=None,
+                stderr=None,
+            ) -> object:
                 calls.append(list(args))
 
                 class Result:
@@ -615,7 +631,15 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
                 (role_dir / "volume-name").write_text("venice-lab-" + role)
             calls = []
 
-            def fake_run(args: list[str], **_options: object) -> object:
+            def fake_run(
+                args,
+                capture_output=None,
+                text=None,
+                timeout=None,
+                check=False,
+                stdout=None,
+                stderr=None,
+            ) -> object:
                 calls.append(list(args))
 
                 class Result:
@@ -665,7 +689,15 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
         box.volume_name = "venice-lab-foreign"
         calls = []
 
-        def fake_run(args: list[str], **_options: object) -> object:
+        def fake_run(
+            args,
+            capture_output=None,
+            text=None,
+            timeout=None,
+            check=False,
+            stdout=None,
+            stderr=None,
+        ) -> object:
             calls.append(list(args))
 
             class Result:
