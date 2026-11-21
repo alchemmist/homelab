@@ -247,7 +247,7 @@ class RuntimeTests(unittest.TestCase):
 
     def test_reviewed_restarting_transport_and_dormant_guard(self):
         services = ["wireguard-tcp-transport.service", "wireguard-tcp-transport-guard.service"]
-        states = dict(zip(services, ["activating", "inactive"]))
+        states = dict(zip(services, ["activating", "inactive"], strict=True))
         with patch.object(
             M, "run", side_effect=lambda a: "auto-restart" if "SubState" in a else states[a[2]]
         ):
