@@ -44,9 +44,6 @@ def api(path, data=None, method=None):
         return json.loads(raw) if raw else {}
 
 
-acall = cast("types.FunctionType", api)
-
-
 def check(condition: object) -> None:
     if not condition:
         raise ValueError("Invalid or disallowed operation")
@@ -117,7 +114,7 @@ def encode_frames(x: dict[str, object]) -> object:
 def existing_qa_issue(marker: str) -> dict[str, object] | None:
     """Return a prior QA issue carrying this marker, scanning open and closed."""
     for page in range(1, 21):
-        items = acall(f"issues?state=all&sort=created&direction=desc&per_page=100&page={page}")
+        items = api(f"issues?state=all&sort=created&direction=desc&per_page=100&page={page}")
         for item in items:
             if (
                 "pull_request" not in item
@@ -138,27 +135,27 @@ def evidence_branch(
     """Create (or find) the synthetic evidence branch; return (oid, branch)."""
     branch = "openhands/qa-evidence/" + key + "-" + digest
     try:
-        return acall("git/ref/heads/" + branch)["object"]["sha"], branch
+        return api("git/ref/heads/" + branch)["object"]["sha"], branch
     except HTTPError as exc:
         if exc.code != 404:
             raise
     entries: list[dict[str, object]] = []
     for i, image in enumerate(images, 1):
-        blob = acall(
+        blob = api(
             "git/blobs", {"content": base64.b64encode(image).decode(), "encoding": "base64"}
         )
         entries.append({"path": f"{i}.png", "mode": "100644", "type": "blob", "sha": blob["sha"]})
     if video:
-        blob = acall(
+        blob = api(
             "git/blobs", {"content": base64.b64encode(video).decode(), "encoding": "base64"}
         )
         entries.append({"path": "repro.mp4", "mode": "100644", "type": "blob", "sha": blob["sha"]})
-    tree = acall("git/trees", {"tree": entries})
-    oid = acall(
+    tree = api("git/trees", {"tree": entries})
+    oid = api(
         "git/commits",
         {"message": "QA synthetic screenshot evidence", "tree": tree["sha"], "parents": []},
     )["sha"]
-    acall("git/refs", {"ref": "refs/heads/" + branch, "sha": oid})
+    api("git/refs", {"ref": "refs/heads/" + branch, "sha": oid})
     return oid, branch
 
 
@@ -374,7 +371,7 @@ def life_dispatch(x: dict[str, object], action: str) -> object:
     if action == "life_head":
         n = x["pr"]
         check(type(n) is int and n > 0)
-        p = acall("pulls/" + str(n))
+        p = api("pulls/" + str(n))
         return {"head": p["head"]["sha"], "enrolled": enrolled(p)}
     if action == "life_ci":
         p = owned_pr(x["pr"], x["head"])
@@ -400,7 +397,7 @@ def publish_target(x: dict[str, object], action: str, *, signed_create: bool) ->
     if action == "qa_create":
         target = x["issue"]
         check(type(target) is int and target > 0)
-        issue = acall("issues/" + str(target))
+        issue = api("issues/" + str(target))
         check(
             "pull_request" not in issue
             and issue["state"] == "open"
@@ -416,14 +413,14 @@ def create_refs(
 ) -> tuple[str, list[dict[str, object]]]:
     """Push a new mutation branch for a create action."""
     files = changes(x["files"], action == "qa_create", signed_create)
-    check(acall("git/ref/heads/main")["object"]["sha"] == x["head"])
+    check(api("git/ref/heads/main")["object"]["sha"] == x["head"])
     # cap outstanding work; use a bounded list fail-closed if incomplete.
-    prs = acall("pulls?state=open&per_page=100")
+    prs = api("pulls?state=open&per_page=100")
     check(len(prs) < 100 and sum(p["head"]["ref"].startswith(MUT) for p in prs) < 5)
     check(action != "qa_create" or not any(p["head"]["ref"].startswith(prefix) for p in prs))
     check(sum(p["head"]["ref"].startswith(QA) for p in prs) < 5)
     branch = prefix + uuid.uuid4().hex
-    acall("git/refs", {"ref": "refs/heads/" + branch, "sha": x["head"]})
+    api("git/refs", {"ref": "refs/heads/" + branch, "sha": x["head"]})
     return branch, files
 
 
@@ -466,7 +463,7 @@ def create_or_update(
     mutation = (
         "mutation($i:CreateCommitOnBranchInput!){createCommitOnBranch(input:$i){commit{oid}}}"
     )
-    res = acall(
+    res = api(
         "graphql",
         {
             "query": mutation,
@@ -482,7 +479,7 @@ def create_or_update(
     )
     oid = res["data"]["createCommitOnBranch"]["commit"]["oid"]
     if action != "update":
-        p = acall(
+        p = api(
             "pulls",
             {
                 "head": branch,
@@ -496,7 +493,7 @@ def create_or_update(
             },
         )
     if signed_create:
-        acall("issues/" + str(p["number"]) + "/labels", {"labels": ["mutation-pr"]})
+        api("issues/" + str(p["number"]) + "/labels", {"labels": ["mutation-pr"]})
     return {"pr": p["number"], "head": oid, "url": p["html_url"]}
 
 
