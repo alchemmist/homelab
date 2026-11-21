@@ -20,6 +20,8 @@ def module():
 
 
 class VllmRolloutTests(unittest.TestCase):
+    """Validate the vLLM rollout tracing flag changes."""
+
     def test_only_native_trace_flag_added_model_args_unmodified(self):
         helper = module()
         original = ["model", "--max-model-len", "114688", "--gpu-memory-utilization", ".95"]

@@ -64,6 +64,8 @@ def fixtures():
 
 
 class OpenWebuiProfileTests(unittest.TestCase):
+    """Check the Open WebUI instrumentation source profile coverage."""
+
     def test_only_http_instrumentors_no_body_serializing_or_duplicate_signals(self):
         calls, native, sdk, modules = fixtures()
         with patch.dict(sys.modules, modules):

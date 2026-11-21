@@ -16,6 +16,8 @@ def module():
 
 
 class OpenWebuiRolloutTests(unittest.TestCase):
+    """Validate the Open WebUI rollout's SDK tracing environment."""
+
     def test_sdk_environment_trace_only_private_mtls_and_long_request_drain(self):
         env = module().sdk_environment()
         self.assertEqual(env["OTEL_OTLP_SPAN_EXPORTER"], "http")

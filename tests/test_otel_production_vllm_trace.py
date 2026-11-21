@@ -50,6 +50,8 @@ def document():
 
 
 class VllmProductionTraceTests(unittest.TestCase):
+    """Verify production vLLM trace summaries require real resources."""
+
     def test_real_application_resource_and_parent_are_required(self):
         self.assertTrue(module().summarize_production_vllm(document(), TRACE, PARENT)["success"])
         for kind in ["service", "parent", "name", "duplicate"]:

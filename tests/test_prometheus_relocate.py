@@ -50,6 +50,8 @@ def volume(
 
 
 class RelocateTests(unittest.TestCase):
+    """Check the Prometheus relocate decision logic."""
+
     def test_same_node_proceeds_without_the_flag(self):
         decision = RELOCATE.evaluate(
             {"desired": "socrat-0", "relocate": False, "pods": [pod("socrat-0")], "volumes": []}
@@ -90,6 +92,8 @@ class RelocateTests(unittest.TestCase):
 
 
 class ScrapeGuardTests(unittest.TestCase):
+    """Verify scrape interval and memory limits pass the guard."""
+
     def test_five_second_scrape_and_eight_gib_limit_pass(self):
         document = {
             "items": [
@@ -115,6 +119,8 @@ if __name__ == "__main__":
 
 
 class EffectiveMemoryGuardTests(unittest.TestCase):
+    """Check the effective memory guard across spec and runtime limits."""
+
     def documents(self, spec_limit="8Gi", runtime_limit="8Gi"):
         cr = {
             "items": [

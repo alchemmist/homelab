@@ -18,6 +18,8 @@ import prepare_app_iam as prep
 
 
 class FakeAPI:
+    """Fake preparation API seeded with services and reviewed state."""
+
     def __init__(self, services, reviewed):
         self.data = {p: [] for p in prep.COLLECTIONS}
         self.requests = []
@@ -94,6 +96,8 @@ class FakeAPI:
 
 
 class PreparationTests(unittest.TestCase):
+    """Run the frozen app IAM preparation tool against the fake API."""
+
     def setUp(self):
         # Frozen historical migration tool, NOT the current dynamic reconciler.
         # Its hard allowlist must continue rejecting the expanded live catalog.

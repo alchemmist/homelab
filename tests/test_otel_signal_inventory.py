@@ -13,6 +13,8 @@ SPEC.loader.exec_module(SIGNALS)
 
 
 class SignalInventoryTests(unittest.TestCase):
+    """Check the signal inventory's accounting rules."""
+
     def test_observations_are_not_a_capacity_approval(self):
         pods = {
             "windowSeconds": 600,
@@ -69,6 +71,8 @@ if __name__ == "__main__":
 
 
 class PrivilegedJournalTests(unittest.TestCase):
+    """Verify privileged journal evidence collection requirements."""
+
     def evidence(self, directory, **updates):
         from datetime import datetime, timezone
 
@@ -131,6 +135,8 @@ class PrivilegedJournalTests(unittest.TestCase):
 
 
 class ActiveLogSourceTests(unittest.TestCase):
+    """Ensure active log counts don't hide unavailable sources."""
+
     def test_historical_unavailable_sources_are_not_hidden_by_active_counts(self):
         data = {
             "windowSeconds": 600,

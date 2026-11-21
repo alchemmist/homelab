@@ -67,6 +67,8 @@ def fixtures():
 
 
 class ScrapeConfigTests(unittest.TestCase):
+    """Validate scrape config edits stay narrow and reversible."""
+
     def test_public_edge_refresh_is_narrow_and_preserves_original(self):
         job = {
             "job_name": "serviceMonitor/cattle-monitoring-system/monitoring-service-probes/26",

@@ -17,6 +17,8 @@ def module():
 
 
 class OperationalReplayTests(unittest.TestCase):
+    """Replay operational telemetry fixtures and check exact counts."""
+
     def test_exact_fixture_counts_cadence_and_unique_native_ids(self):
         helper = module()
         metrics, logs, traces, expected, ids = helper.fixtures(1793536000 * 10**9)

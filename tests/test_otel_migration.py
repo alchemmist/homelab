@@ -47,6 +47,8 @@ def fixtures():
 
 
 class MigrationPreflightTests(unittest.TestCase):
+    """Guard OpenTelemetry migration preflight invariants."""
+
     def test_retired_operational_policy_is_not_resurrected(self):
         self.assertFalse(PREFLIGHT.DEFAULT_POLICY.exists())
 

@@ -12,6 +12,8 @@ spec.loader.exec_module(registry)
 
 
 class ApplicationRegistryTests(unittest.TestCase):
+    """Validate the registered OpenTelemetry application deployments."""
+
     def deployment(self):
         return {
             "kind": "Deployment",

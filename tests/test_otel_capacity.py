@@ -35,6 +35,8 @@ def deployment():
 
 
 class CapacityPlacementTests(unittest.TestCase):
+    """Check OpenTelemetry capacity placement strategy changes."""
+
     def test_only_scheduling_and_zero_unavailable_strategy_change(self):
         doc = deployment()
         before = copy.deepcopy(doc)

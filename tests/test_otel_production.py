@@ -18,6 +18,8 @@ def module(name):
 
 
 class ProductionSafetyTests(unittest.TestCase):
+    """Check production bootstrap token roles and CA key access."""
+
     def test_host_token_roles_are_named_and_cannot_read_ca_private_key(self):
         boot = module("otel-production-bootstrap")
         resources = boot.resources({"requiredSecretKeys": []}, "10.43.1.2", {})

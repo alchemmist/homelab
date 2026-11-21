@@ -31,6 +31,8 @@ def shutdown():
 
 
 class HostMetricsCanaryTests(unittest.TestCase):
+    """Verify only exact pinned host-metrics canary errors count."""
+
     def test_only_exact_pinned_shutdown_errors_with_actual_replay_are_accounted(self):
         text = shutdown() + "\n" + log("Moved items for dispatching back to queue", numberOfItems=1)
         result = canary.classify_shutdown_replay(text)
