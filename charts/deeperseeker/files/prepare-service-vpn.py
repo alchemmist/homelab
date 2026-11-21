@@ -1,4 +1,3 @@
-"""Prepare the deeperseeker service VPN outbound from a VLESS profile."""
 import json
 import os
 import urllib.request
