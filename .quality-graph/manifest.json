@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "1a9ba6faeb48d21cb83bf2037d7972a3c20719ee0763bec36d9cc727df01b547",
+  "graphDigest": "34730dc734b533b09aadcb5db1fdf32307b9d13f15515e9b7865ab2116ffe17d",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -144,7 +144,7 @@
         "path": "reports/docker.json"
       },
       "step": {
-        "run": "uv run python scripts/quality/lint.py docker"
+        "run": "set -euo pipefail\nuv run pytest -q tests/test_quality_experiment_admission.py -k docker\nuv run python scripts/quality/lint.py docker\n"
       },
       "timeoutMinutes": 5,
       "title": "Container recipes"
