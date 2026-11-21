@@ -1,4 +1,7 @@
+"""Tests for the open-terminal browser watchdog."""
+
 import importlib.util
+from typing import Protocol, cast
 import signal
 import sys
 import tempfile
@@ -16,7 +19,14 @@ sys.modules[SPEC.name] = MODULE
 SPEC.loader.exec_module(MODULE)
 
 
-def process(pid=10, ppid=1, start=100, executable="chrome", args=None):
+class BrowserProcess(Protocol):
+    """Structural shape of browser_watchdog.Process used by tests."""
+
+    pid: int
+    args: tuple[str, ...]
+
+
+def process(pid=10, ppid=1, start=100, executable="chrome", args=None) -> BrowserProcess:
     if args is None:
         args = (
             "chrome",
@@ -24,12 +34,13 @@ def process(pid=10, ppid=1, start=100, executable="chrome", args=None):
             "--remote-debugging-pipe",
             "--user-data-dir=/tmp/playwright_chromiumdev_profile-abc",
         )
-    return MODULE.Process(pid, ppid, start, executable, args)
+    return cast("BrowserProcess", MODULE.Process(pid, ppid, start, executable, args))
 
 
 class BrowserWatchdogTests(unittest.TestCase):
-    def setUp(self):
-        self.sent = []
+    """Cover the browser watchdog's timing and guard behaviour."""
+    def setUp(self) -> None:
+        self.sent: list[tuple[tuple[int, int], signal.Signals]] = []
         self.guard = MODULE.Watchdog(
             lifetime=10,
             grace=5,
@@ -37,10 +48,10 @@ class BrowserWatchdogTests(unittest.TestCase):
             send=lambda identity, sig: self.sent.append((identity, sig)),
         )
 
-    def step(self, now, *items):
+    def step(self, now, *items) -> None:
         self.guard.step({p.pid: p for p in items}, now)
 
-    def test_only_specific_headless_playwright_roots_match(self):
+    def test_only_specific_headless_playwright_roots_match(self) -> None:
         self.assertTrue(MODULE.is_test_browser(process()))
         self.assertTrue(MODULE.is_test_browser(process(executable="chrome-headless-shell")))
         for item in (
@@ -61,31 +72,31 @@ class BrowserWatchdogTests(unittest.TestCase):
         ):
             self.assertFalse(MODULE.is_test_browser(item))
 
-    def test_deadline_uses_original_process_start(self):
+    def test_deadline_uses_original_process_start(self) -> None:
         self.step(10.9, process())
         self.assertEqual(self.sent, [])
         self.step(11, process())
         self.assertEqual(self.sent, [((10, 100), signal.SIGTERM)])
 
-    def test_existing_old_browser_is_expired_on_first_scan(self):
+    def test_existing_old_browser_is_expired_on_first_scan(self) -> None:
         self.step(1000, process())
         self.assertEqual(self.sent, [((10, 100), signal.SIGTERM)])
 
-    def test_descendants_follow_parentage_independent_of_sessions(self):
+    def test_descendants_follow_parentage_independent_of_sessions(self) -> None:
         child = process(11, 10, executable="chrome", args=("--type=renderer",))
         grandchild = process(12, 11, executable="helper", args=())
         unrelated = process(13, 1, executable="node", args=())
         self.step(11, process(), child, grandchild, unrelated)
         self.assertEqual({identity[0] for identity, sig in self.sent}, {10, 11, 12})
 
-    def test_reparented_descendant_remains_owned(self):
+    def test_reparented_descendant_remains_owned(self) -> None:
         child = process(11, 10, executable="chrome", args=("--type=renderer",))
         self.step(5, process(), child)
         orphan = process(11, 1, executable="chrome", args=("--type=renderer",))
         self.step(11, orphan)
         self.assertEqual(self.sent, [((11, 100), signal.SIGTERM)])
 
-    def test_reused_pid_and_its_children_are_not_killed(self):
+    def test_reused_pid_and_its_children_are_not_killed(self) -> None:
         self.step(5, process())
         replacement = process(start=600, executable="node", args=())
         child = process(11, 10, start=700, executable="worker", args=())
@@ -93,26 +104,26 @@ class BrowserWatchdogTests(unittest.TestCase):
         self.assertEqual(self.sent, [])
         self.assertEqual(self.guard.browsers, {})
 
-    def test_term_then_grace_then_kill(self):
+    def test_term_then_grace_then_kill(self) -> None:
         self.step(11, process())
         self.step(15.9, process())
         self.assertEqual(len(self.sent), 1)
         self.step(16, process())
         self.assertEqual(self.sent[-1], ((10, 100), signal.SIGKILL))
 
-    def test_new_descendant_during_grace_is_killed(self):
+    def test_new_descendant_during_grace_is_killed(self) -> None:
         self.step(11, process())
         child = process(11, 10, start=1200, executable="worker", args=())
         self.step(16, process(), child)
         self.assertIn(((11, 1200), signal.SIGKILL), self.sent)
 
-    def test_exited_processes_are_forgotten(self):
+    def test_exited_processes_are_forgotten(self) -> None:
         self.step(11, process())
         self.step(16)
         self.assertEqual(len(self.sent), 1)
         self.assertEqual(self.guard.browsers, {})
 
-    def test_proc_parser_handles_spaces_and_parentheses_in_process_name(self):
+    def test_proc_parser_handles_spaces_and_parentheses_in_process_name(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             entry = root / "10"
@@ -124,7 +135,7 @@ class BrowserWatchdogTests(unittest.TestCase):
             actual = MODULE.read_process(10, root)
             self.assertEqual(actual, process(10, 7, 12345, args=("chrome", "--headless")))
 
-    def test_signal_revalidates_identity_before_using_pidfd(self):
+    def test_signal_revalidates_identity_before_using_pidfd(self) -> None:
         with (
             patch.object(MODULE.os, "pidfd_open", return_value=99, create=True),
             patch.object(MODULE.os, "close") as close,
@@ -135,14 +146,14 @@ class BrowserWatchdogTests(unittest.TestCase):
             send.assert_not_called()
             close.assert_called_once_with(99)
 
-    def test_permission_denied_opening_pidfd_is_nonfatal(self):
+    def test_permission_denied_opening_pidfd_is_nonfatal(self) -> None:
         with (
             patch.object(MODULE.os, "pidfd_open", side_effect=PermissionError, create=True),
             self.assertLogs(level="WARNING"),
         ):
             self.assertFalse(MODULE.signal_process((10, 100), signal.SIGTERM))
 
-    def test_permission_denied_signaling_is_nonfatal_and_closes_fd(self):
+    def test_permission_denied_signaling_is_nonfatal_and_closes_fd(self) -> None:
         with (
             patch.object(MODULE.os, "pidfd_open", return_value=99, create=True),
             patch.object(MODULE.os, "close") as close,
@@ -155,7 +166,7 @@ class BrowserWatchdogTests(unittest.TestCase):
             self.assertFalse(MODULE.signal_process((10, 100), signal.SIGTERM))
             close.assert_called_once_with(99)
 
-    def test_pidfd_is_used_for_matching_process(self):
+    def test_pidfd_is_used_for_matching_process(self) -> None:
         with (
             patch.object(MODULE.os, "pidfd_open", return_value=99, create=True),
             patch.object(MODULE.os, "close") as close,

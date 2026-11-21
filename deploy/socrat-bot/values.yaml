@@ -3,8 +3,8 @@ databaseSecret: socrat-bot-pg-common
 replicaCount: 1
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/socrat-bot
-  tag: dbd84d391e6dc75d896e51be3c7df75be1c9c9e3
-  digest: sha256:4d8dc41ed4e31d8cbdf942c05d7bcbd337a68f0af81bb82135bacb35af90eb50
+  tag: 2c289291698a77c198eb38c159ac1754c4b197fc
+  digest: sha256:63167d3e1e7ee6605e65399c707ba587d8b5b69286703aaa878b96437abbed60
   pullPolicy: IfNotPresent
 imagePullSecrets:
   - socrat-bot-harbor-pull

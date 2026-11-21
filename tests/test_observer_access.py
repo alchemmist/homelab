@@ -4,11 +4,13 @@ import ast
 import copy
 import importlib.util
 import json
+from collections.abc import Iterable
 from pathlib import Path
 import unittest
 import contextlib
 import io
 import tempfile
+from typing import TypedDict
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -23,7 +25,61 @@ RBAC = json.loads(
 )
 
 
-def fixture():
+class HarborState(TypedDict):
+    """Harbor portion of the snapshot the observer plan converges."""
+
+    groups: list[dict[str, object]]
+    oidcGroupsClaim: str
+    oidcAdminGroup: str
+    projectCreationRestriction: str
+    projects: dict[str, list[dict[str, object]]]
+
+
+class Snapshot(TypedDict):
+    """Synthetic authentik/Rancher/Harbor snapshot shape used by every test."""
+
+    groups: list[dict[str, object]]
+    rancherLoginRole: dict[str, object]
+    rancherClusterRole: dict[str, object]
+    rancherGroupBinding: dict[str, object]
+    globalRoles: list[dict[str, object]]
+    rancherSessionSetting: dict[str, object]
+    rancherAuth: dict[str, object]
+    harbor: HarborState
+    apps: list[dict[str, object]]
+    bindings: list[dict[str, object]]
+
+
+class ChatState(TypedDict):
+    """Authentik application state exercised by the one-time chat migration."""
+
+    users: list[dict[str, object]]
+    groups: list[dict[str, object]]
+    app: dict[str, object]
+    bindings: list[dict[str, object]]
+
+
+def _metadata_name(obj: dict[str, object]) -> str:
+    metadata = obj["metadata"]
+    assert isinstance(metadata, dict)
+    name = metadata["name"]
+    assert isinstance(name, str)
+    return name
+
+
+def _strings(value: object) -> list[str]:
+    """Read a JSON array that the contracts already keep all-string."""
+    assert isinstance(value, list)
+    return [item for item in value if isinstance(item, str)]
+
+
+def _binding_pk(binding: dict[str, object]) -> str:
+    pk = binding.get("pk", "")
+    assert isinstance(pk, str)
+    return pk
+
+
+def fixture() -> Snapshot:
     login, role, binding = copy.deepcopy(RBAC)
     for obj in [login, role, binding]:
         obj["metadata"].update(uid="uid-" + obj["metadata"]["name"], resourceVersion="17")
@@ -56,7 +112,11 @@ def fixture():
             "default": "960",
         },
         "rancherAuth": {
-            "metadata": {"name": "genericoidc", "uid": "auth-uid", "resourceVersion": "9"},
+            "metadata": {
+                "name": "genericoidc",
+                "uid": "auth-uid",
+                "resourceVersion": "9",
+            },
             "enabled": True,
             "accessMode": "restricted",
             "groupsClaim": "groups",
@@ -74,41 +134,60 @@ def fixture():
             "projects": {p: [] for p in POLICY["harbor"]["projects"]},
         },
         "apps": [
-            {"slug": slug, "pk": "app-" + slug, "provider": i, "policy_engine_mode": "any"}
+            {
+                "slug": slug,
+                "pk": "app-" + slug,
+                "provider": i,
+                "policy_engine_mode": "any",
+            }
             for i, slug in enumerate(POLICY["nativeAdmission"] + ["harbor"], start=1)
         ],
         "bindings": [],
     }
 
 
-def converge(state, operations):
+def converge(state: Snapshot, operations: Iterable[dict[str, object]]) -> None:
     for op in operations:
-        if op["system"] == "kubernetes":
-            name = op["path"].split("/")[-1]
-            objects = state["globalRoles"] + [state["rancherSessionSetting"], state["rancherAuth"]]
-            obj = next(o for o in objects if o["metadata"]["name"] == name)
-            for change in op["body"]:
+        system = op["system"]
+        if system == "kubernetes":
+            path = op["path"]
+            assert isinstance(path, str)
+            name = path.split("/")[-1]
+            objects = state["globalRoles"] + [
+                state["rancherSessionSetting"],
+                state["rancherAuth"],
+            ]
+            obj = next(o for o in objects if _metadata_name(o) == name)
+            changes = op["body"]
+            assert isinstance(changes, list)
+            for change in changes:
+                assert isinstance(change, dict)
                 if change["op"] == "add":
-                    obj[change["path"][1:]] = copy.deepcopy(change["value"])
-        elif op["system"] == "harbor" and op["method"] == "PUT":
-            state["harbor"]["projectCreationRestriction"] = op["body"][
-                "project_creation_restriction"
-            ]
-        elif op["system"] == "harbor" and op["method"] == "DELETE":
-            project = op["path"].split("/")[-3]
+                    change_path = change["path"]
+                    assert isinstance(change_path, str)
+                    obj[change_path[1:]] = copy.deepcopy(change["value"])
+        elif system == "harbor" and op["method"] == "PUT":
+            body = op["body"]
+            assert isinstance(body, dict)
+            state["harbor"]["projectCreationRestriction"] = body["project_creation_restriction"]
+        elif system == "harbor" and op["method"] == "DELETE":
+            path = op["path"]
+            assert isinstance(path, str)
+            segments = path.split("/")
+            project = segments[-3]
             state["harbor"]["projects"][project] = [
-                m
-                for m in state["harbor"]["projects"][project]
-                if m["id"] != int(op["path"].split("/")[-1])
+                m for m in state["harbor"]["projects"][project] if m["id"] != int(segments[-1])
             ]
-        elif op["system"] == "authentik" and op["method"] == "DELETE":
+        elif system == "authentik" and op["method"] == "DELETE":
+            path = op["path"]
+            assert isinstance(path, str)
             state["bindings"] = [
-                b
-                for b in state["bindings"]
-                if "policies/bindings/" + b.get("pk", "") + "/" != op["path"]
+                b for b in state["bindings"] if "policies/bindings/" + _binding_pk(b) + "/" != path
             ]
-        elif op["system"] == "harbor":
-            project = op["path"].split("/")[-2]
+        elif system == "harbor":
+            path = op["path"]
+            assert isinstance(path, str)
+            project = path.split("/")[-2]
             state["harbor"]["groups"] = [
                 {"id": 101, "group_name": "homelab-observer", "group_type": 3}
             ]
@@ -121,33 +200,40 @@ def converge(state, operations):
                 }
             )
         else:
-            state["bindings"].append(copy.deepcopy(op["body"]))
+            body = op["body"]
+            assert isinstance(body, dict)
+            state["bindings"].append(copy.deepcopy(body))
 
 
-def permits(rules, group, resource, verb, name=None):
+def permits(
+    rules: Iterable[dict[str, object]],
+    group: str,
+    resource: str,
+    verb: str,
+    name: str | None = None,
+) -> bool:
     return any(
-        group in r["apiGroups"]
-        and resource in r["resources"]
-        and verb in r["verbs"]
-        and ("resourceNames" not in r or name in r["resourceNames"])
+        group in _strings(r["apiGroups"])
+        and resource in _strings(r["resources"])
+        and verb in _strings(r["verbs"])
+        and ("resourceNames" not in r or name in _strings(r.get("resourceNames", [])))
         for r in rules
     )
 
 
 class ObserverPolicyTests(unittest.TestCase):
-    def test_reviewed_activation_enables_native_rancher_roles(self):
+    """Validate the observer access policy deployment values."""
+    def test_reviewed_activation_enables_native_rancher_roles(self) -> None:
         values = (ROOT / "deploy/platform/rancher/public-entry/values.yaml").read_text()
-        self.assertIn("observerAccess:\n  enabled: true", values)
+        assert "observerAccess:\n  enabled: true" in values
 
-    def test_native_only_no_user_objects(self):
-        self.assertEqual(
-            [o["kind"] for o in RBAC], ["GlobalRole", "RoleTemplate", "ClusterRoleTemplateBinding"]
-        )
+    def test_native_only_no_user_objects(self) -> None:
+        assert [o["kind"] for o in RBAC] == ["GlobalRole", "RoleTemplate", "ClusterRoleTemplateBinding"]
         binding = RBAC[2]
-        self.assertEqual(binding["groupPrincipalName"], "genericoidc_group://homelab-observer")
-        self.assertFalse(any(k in binding for k in ["userName", "userPrincipalName"]))
+        assert binding["groupPrincipalName"] == "genericoidc_group://homelab-observer"
+        assert not any(k in binding for k in ["userName", "userPrincipalName"])
 
-    def test_positive_cluster_read_matrix(self):
+    def test_positive_cluster_read_matrix(self) -> None:
         for group, resource in [
             ("", "pods"),
             ("", "nodes"),
@@ -160,9 +246,9 @@ class ObserverPolicyTests(unittest.TestCase):
         ]:
             for verb in ["get", "list", "watch"]:
                 with self.subTest(group=group, resource=resource, verb=verb):
-                    self.assertTrue(permits(RBAC[1]["rules"], group, resource, verb))
+                    assert permits(RBAC[1]["rules"], group, resource, verb)
 
-    def test_no_sensitive_reads(self):
+    def test_no_sensitive_reads(self) -> None:
         for group, resource in [
             ("", "secrets"),
             ("", "configmaps"),
@@ -174,9 +260,9 @@ class ObserverPolicyTests(unittest.TestCase):
         ]:
             for verb in ["get", "list", "watch"]:
                 with self.subTest(group=group, resource=resource, verb=verb):
-                    self.assertFalse(permits(RBAC[1]["rules"], group, resource, verb))
+                    assert not permits(RBAC[1]["rules"], group, resource, verb)
 
-    def test_no_infrastructure_mutations_or_escalation(self):
+    def test_no_infrastructure_mutations_or_escalation(self) -> None:
         rules = RBAC[1]["rules"] + RBAC[0]["rules"]
         for group, resource in [
             ("", "pods"),
@@ -206,31 +292,31 @@ class ObserverPolicyTests(unittest.TestCase):
                 "impersonate",
             ]:
                 with self.subTest(group=group, resource=resource, verb=verb):
-                    self.assertFalse(permits(rules, group, resource, verb))
+                    assert not permits(rules, group, resource, verb)
 
-    def test_cluster_metadata_is_named_local_only(self):
+    def test_cluster_metadata_is_named_local_only(self) -> None:
         rules = RBAC[1]["rules"]
-        self.assertTrue(permits(rules, "management.cattle.io", "clusters", "get", "local"))
-        self.assertFalse(permits(rules, "management.cattle.io", "clusters", "get", "other-cluster"))
-        self.assertFalse(permits(rules, "management.cattle.io", "clusters", "list"))
+        assert permits(rules, "management.cattle.io", "clusters", "get", "local")
+        assert not permits(rules, "management.cattle.io", "clusters", "get", "other-cluster")
+        assert not permits(rules, "management.cattle.io", "clusters", "list")
 
-    def test_bounded_minimal_plan_no_secrets_no_machine_ttl(self):
+    def test_bounded_minimal_plan_no_secrets_no_machine_ttl(self) -> None:
         state = fixture()
         before = copy.deepcopy(state)
         operations = plan.build(state, POLICY)
-        self.assertEqual(state, before)
+        assert state == before
         text = json.dumps(operations)
-        self.assertNotIn("MUST-NOT-APPEAR-IN-PLAN", text)
-        self.assertNotIn("auth-token-max-ttl-minutes", text)
-        self.assertNotIn("core/users/", text)
-        self.assertNotIn("password", text)
-        self.assertTrue(all(o["path"] != "core/groups/group-id/" for o in operations))
-        self.assertEqual(
-            sum(o["system"] == "harbor" and o["method"] == "POST" for o in operations), 0
-        )
-        self.assertEqual(sum(o["system"] == "authentik" for o in operations), 4)
+        assert "MUST-NOT-APPEAR-IN-PLAN" not in text
+        assert "auth-token-max-ttl-minutes" not in text
+        assert "core/users/" not in text
+        assert "password" not in text
+        assert all(o["path"] != "core/groups/group-id/" for o in operations)
+        assert sum(o["system"] == "harbor" and o["method"] == "POST" for o in operations) == 0
+        assert sum(o["system"] == "authentik" for o in operations) == 4
 
-    def test_harbor_gate_removes_only_exact_owned_guest_and_observer_admission(self):
+    def test_harbor_gate_removes_only_exact_owned_guest_and_observer_admission(
+        self,
+    ) -> None:
         state = fixture()
         state["harbor"]["groups"] = [{"id": 101, "group_name": "homelab-observer", "group_type": 3}]
         for n, project in enumerate(POLICY["harbor"]["projects"], start=1):
@@ -257,51 +343,42 @@ class ObserverPolicyTests(unittest.TestCase):
             }
         ]
         ops = plan.build(state, POLICY)
-        self.assertEqual(sum(o["system"] == "harbor" and o["method"] == "DELETE" for o in ops), 3)
-        self.assertEqual(
-            sum(o["system"] == "authentik" and o["method"] == "DELETE" for o in ops), 1
-        )
+        assert sum(o["system"] == "harbor" and o["method"] == "DELETE" for o in ops) == 3
+        assert sum(o["system"] == "authentik" and o["method"] == "DELETE" for o in ops) == 1
         converge(state, ops)
-        self.assertEqual(plan.build(state, POLICY), [])
+        assert plan.build(state, POLICY) == []
 
-    def test_cas_and_preserved_principals(self):
+    def test_cas_and_preserved_principals(self) -> None:
         operations = plan.build(fixture(), POLICY)
         for op in operations:
             if op["system"] == "kubernetes":
-                self.assertEqual(
-                    [p["path"] for p in op["body"][:2]],
-                    ["/metadata/uid", "/metadata/resourceVersion"],
-                )
-                self.assertTrue(all(p["op"] == "test" for p in op["body"][:2]))
+                assert [p["path"] for p in op["body"][:2]] == ["/metadata/uid", "/metadata/resourceVersion"]
+                assert all(p["op"] == "test" for p in op["body"][:2])
         auth = next(o for o in operations if o["path"].endswith("/authconfigs/genericoidc"))
-        self.assertEqual(
-            auth["body"][-1]["value"],
-            fixture()["rancherAuth"]["allowedPrincipalIds"]
-            + ["genericoidc_group://homelab-observer"],
-        )
+        principals = fixture()["rancherAuth"]["allowedPrincipalIds"]
+        assert isinstance(principals, list)
+        assert auth["body"][-1]["value"] == [*principals, "genericoidc_group://homelab-observer"]
 
-    def test_safe_defaults_and_harbor_before_admission(self):
+    def test_safe_defaults_and_harbor_before_admission(self) -> None:
         operations = plan.build(fixture(), POLICY)
         first_auth = next(i for i, o in enumerate(operations) if o["system"] == "authentik")
-        self.assertTrue(all(o["system"] == "authentik" for o in operations[first_auth:]))
-        self.assertEqual(
-            operations[0]["body"][-1], {"op": "add", "path": "/newUserDefault", "value": False}
-        )
+        assert all(o["system"] == "authentik" for o in operations[first_auth:])
+        assert operations[0]["body"][-1] == {"op": "add", "path": "/newUserDefault", "value": False}
         harbor_ops = [o for o in operations if o["system"] == "harbor"]
-        self.assertEqual(harbor_ops[0]["body"], {"project_creation_restriction": "adminonly"})
+        assert harbor_ops[0]["body"] == {"project_creation_restriction": "adminonly"}
 
-    def test_idempotent_native_bootstrap(self):
+    def test_idempotent_native_bootstrap(self) -> None:
         state = fixture()
         converge(state, plan.build(state, POLICY))
-        self.assertEqual(plan.build(state, POLICY), [])
+        assert plan.build(state, POLICY) == []
 
-    def test_multiple_future_users_do_not_change_plan(self):
+    def test_multiple_future_users_do_not_change_plan(self) -> None:
         state = fixture()
         converge(state, plan.build(state, POLICY))
         state["groups"][0]["users"] = [94, 100, 101, 102]
-        self.assertEqual(plan.build(state, POLICY), [])
+        assert plan.build(state, POLICY) == []
 
-    def test_reject_dangerous_live_drift(self):
+    def test_reject_dangerous_live_drift(self) -> None:
         mutations = [
             lambda s: s["groups"][0].update(is_superuser=True),
             lambda s: s["groups"][0].update(roles=["idp-read-role"]),
@@ -334,7 +411,12 @@ class ObserverPolicyTests(unittest.TestCase):
                 {"target": "legacy-open-webui", "enabled": True, "group": "group-id"}
             ),
             lambda s: s["bindings"].append(
-                {"target": "app-grafana", "enabled": True, "group": "group-id", "negate": True}
+                {
+                    "target": "app-grafana",
+                    "enabled": True,
+                    "group": "group-id",
+                    "negate": True,
+                }
             ),
             lambda s: s["globalRoles"].append(
                 {"metadata": {"name": "unknown"}, "newUserDefault": True}
@@ -347,7 +429,7 @@ class ObserverPolicyTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     plan.build(state, POLICY)
 
-    def test_reject_policy_scope_widening(self):
+    def test_reject_policy_scope_widening(self) -> None:
         for mutation in [
             lambda p: p["nativeAdmission"].append("litellm"),
             lambda p: p["harbor"]["projects"].append("other-project"),
@@ -361,7 +443,7 @@ class ObserverPolicyTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 plan.build(fixture(), policy)
 
-    def test_native_reconciler_retains_but_never_opens_group_admission(self):
+    def test_native_reconciler_retains_but_never_opens_group_admission(self) -> None:
         spec = importlib.util.spec_from_file_location(
             "observer_admission",
             ROOT / "ansible/roles/identity_integrations/files/observer_admission.py",
@@ -374,12 +456,7 @@ class ObserverPolicyTests(unittest.TestCase):
             ({}, []),
             ({"allowedPrincipalIds": [guard.PRINCIPAL]}, [guard.PRINCIPAL]),
         ]:
-            self.assertEqual(
-                guard.retain_observer(
-                    original, [], state["globalRoles"], state["rancherSessionSetting"]
-                ),
-                expected,
-            )
+            assert guard.retain_observer(original, [], state["globalRoles"], state["rancherSessionSetting"]) == expected
         state["rancherSessionSetting"]["value"] = "960"
         with self.assertRaisesRegex(RuntimeError, "defaults drifted"):
             guard.retain_observer(
@@ -389,20 +466,20 @@ class ObserverPolicyTests(unittest.TestCase):
                 state["rancherSessionSetting"],
             )
         patch = guard.authconfig_patch(state["rancherAuth"], {"allowedPrincipalIds": ["preserved"]})
-        self.assertEqual(
-            patch[:2],
-            [
-                {"op": "test", "path": "/metadata/uid", "value": "auth-uid"},
-                {"op": "test", "path": "/metadata/resourceVersion", "value": "9"},
-            ],
-        )
+        assert patch[:2] == [{"op": "test", "path": "/metadata/uid", "value": "auth-uid"}, {"op": "test", "path": "/metadata/resourceVersion", "value": "9"}]
 
-    def test_malformed_snapshot_is_a_clear_validation_error(self):
-        for state, policy in [({}, POLICY), (None, POLICY), (fixture(), {}), (fixture(), None)]:
+    def test_malformed_snapshot_is_a_clear_validation_error(self) -> None:
+        snapshots: list[tuple[object, object]] = [
+            ({}, POLICY),
+            (None, POLICY),
+            (fixture(), {}),
+            (fixture(), None),
+        ]
+        for state, policy in snapshots:
             with self.assertRaises(ValueError):
                 plan.build(state, policy)
 
-    def test_harbor_group_type_and_native_entity_id_are_verified(self):
+    def test_harbor_group_type_and_native_entity_id_are_verified(self) -> None:
         state = fixture()
         converge(state, plan.build(state, POLICY))
         state["harbor"]["groups"] = [{"id": 101, "group_name": "homelab-observer", "group_type": 3}]
@@ -423,12 +500,19 @@ class ObserverPolicyTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "reviewed OIDC group"):
             plan.build(state, POLICY)
 
-    def test_unsupported_services_are_explicit_not_fake_viewers(self):
-        for slug in ["n8n", "syncthing", "uptime-kuma", "open-webui", "3x-ui", "litellm"]:
-            self.assertIn(slug, POLICY["unsupported"])
-            self.assertNotIn(slug, POLICY["nativeAdmission"])
+    def test_unsupported_services_are_explicit_not_fake_viewers(self) -> None:
+        for slug in [
+            "n8n",
+            "syncthing",
+            "uptime-kuma",
+            "open-webui",
+            "3x-ui",
+            "litellm",
+        ]:
+            assert slug in POLICY["unsupported"]
+            assert slug not in POLICY["nativeAdmission"]
 
-    def test_scripts_have_no_syntax_errors(self):
+    def test_scripts_have_no_syntax_errors(self) -> None:
         for name in [
             "observer-access-plan.py",
             "observer-access-bootstrap.py",
@@ -438,10 +522,14 @@ class ObserverPolicyTests(unittest.TestCase):
 
 
 class BootstrapSafetyTests(unittest.TestCase):
-    def setUp(self):
+    """Guard observer bootstrap safety against dangerous actions."""
+    def setUp(self) -> None:
         spec = importlib.util.spec_from_file_location(
             "observer_bootstrap", ROOT / "scripts/observer-access-bootstrap.py"
         )
+        if spec is None or spec.loader is None:
+            message = "missing observer bootstrap loader"
+            raise RuntimeError(message)
         self.bootstrap = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.bootstrap)
         self.temp = tempfile.TemporaryDirectory()
@@ -459,26 +547,29 @@ class BootstrapSafetyTests(unittest.TestCase):
         )
         self.credentials.chmod(0o600)
         self.state = fixture()
-        self.calls = []
+        self.calls: list[tuple[object, object, object]] = []
         outer = self
 
         class FakeClient:
-            def __init__(self, credentials):
+            def __init__(self, credentials) -> None:
                 pass
 
             def call(self, system, method, path, body=None):
                 outer.calls.append((system, method, path))
                 converge(
-                    outer.state, [{"system": system, "method": method, "path": path, "body": body}]
+                    outer.state,
+                    [{"system": system, "method": method, "path": path, "body": body}],
                 )
 
         self.fake_client = FakeClient
 
-    def run_main(self, *args):
+    def run_main(self, *args: str) -> dict[str, object]:
         with (
             patch.object(self.bootstrap, "Client", self.fake_client),
             patch.object(
-                self.bootstrap, "snapshot", side_effect=lambda *args: copy.deepcopy(self.state)
+                self.bootstrap,
+                "snapshot",
+                side_effect=lambda *args: copy.deepcopy(self.state),
             ),
             patch(
                 "sys.argv",
@@ -494,9 +585,11 @@ class BootstrapSafetyTests(unittest.TestCase):
             contextlib.redirect_stdout(io.StringIO()) as output,
         ):
             self.bootstrap.main()
-            return json.loads(output.getvalue())
+            receipts = json.loads(output.getvalue())
+            assert isinstance(receipts, dict)
+            return receipts
 
-    def test_api_paths_are_scoped_and_reject_traversal(self):
+    def test_api_paths_are_scoped_and_reject_traversal(self) -> None:
         for system, path in [
             ("authentik", "../../etc/passwd"),
             ("harbor", "/etc/passwd"),
@@ -514,21 +607,21 @@ class BootstrapSafetyTests(unittest.TestCase):
         ]:
             self.bootstrap.validate_path(system, path)
 
-    def test_explicit_harbor_machine_identity_uses_internal_config_api(self):
+    def test_explicit_harbor_machine_identity_uses_internal_config_api(self) -> None:
         header, path = self.bootstrap.harbor_authorization(
             {"harborJobserviceSecret": "test-machine-only"}
         )
-        self.assertEqual(header, "Harbor-Secret test-machine-only")
-        self.assertEqual(path, "/api/v2.0/internalconfig")
+        assert header == "Harbor-Secret test-machine-only"
+        assert path == "/api/v2.0/internalconfig"
         header, path = self.bootstrap.harbor_authorization(
             {"harborUsername": "admin", "harborPassword": "test-only"}
         )
-        self.assertTrue(header.startswith("Basic "))
-        self.assertEqual(path, "/api/v2.0/configurations")
+        assert header.startswith("Basic ")
+        assert path == "/api/v2.0/configurations"
         with self.assertRaises(ValueError):
             self.bootstrap.harbor_authorization({"harborJobserviceSecret": ""})
 
-    def test_foundation_ready_path_preserves_explicit_trusted_owner(self):
+    def test_foundation_ready_path_preserves_explicit_trusted_owner(self) -> None:
         path = Path("/home/alchemmist/.cache/homelab-authentik")
         with (
             patch.object(self.bootstrap.os, "geteuid", return_value=0),
@@ -542,50 +635,59 @@ class BootstrapSafetyTests(unittest.TestCase):
             self.bootstrap.readiness_directory(self.root)
             validate.assert_called_once_with(self.root, directory=True, owner_uid=None)
 
-    def test_default_is_no_native_writes(self):
+    def test_default_is_no_native_writes(self) -> None:
         result = self.run_main()
-        self.assertFalse(result["applied"])
-        self.assertEqual(self.calls, [])
-        self.assertFalse((self.root / "state/uncertain.json").exists())
+        assert not result["applied"]
+        assert self.calls == []
+        assert not (self.root / "state/uncertain.json").exists()
 
-    def test_wrong_approval_stops_before_mutation(self):
+    def test_wrong_approval_stops_before_mutation(self) -> None:
         with self.assertRaisesRegex(ValueError, "plan hash"):
             self.run_main("--apply", "--approve-plan-hash", "wrong")
-        self.assertEqual(self.calls, [])
+        assert self.calls == []
 
-    def test_approved_apply_private_receipts_and_native_convergence(self):
+    def test_approved_apply_private_receipts_and_native_convergence(self) -> None:
         approved = self.run_main()["plan_hash"]
+        assert isinstance(approved, str)
         result = self.run_main(
-            "--apply", "--approve-plan-hash", approved, "--authentik-directory", str(self.root)
+            "--apply",
+            "--approve-plan-hash",
+            approved,
+            "--authentik-directory",
+            str(self.root),
         )
-        self.assertTrue(result["applied"])
-        self.assertFalse(result["human_membership_changed"])
-        self.assertEqual(plan.build(self.state, POLICY), [])
-        self.assertFalse((self.root / "state/uncertain.json").exists())
+        assert result["applied"]
+        assert not result["human_membership_changed"]
+        assert plan.build(self.state, POLICY) == []
+        assert not (self.root / "state/uncertain.json").exists()
         ready = self.root / "observer-ready.json"
-        self.assertEqual(ready.stat().st_mode & 0o777, 0o600)
-        self.assertTrue(json.loads(ready.read_text())["nativeObserverReady"])
+        assert ready.stat().st_mode & 511 == 384
+        assert json.loads(ready.read_text())["nativeObserverReady"]
         for receipt in (self.root / "state").glob("*/before.json"):
-            self.assertEqual(receipt.stat().st_mode & 0o777, 0o600)
+            assert receipt.stat().st_mode & 511 == 384
 
-    def test_failed_write_leaves_uncertain_stop_and_no_blind_retry(self):
+    def test_failed_write_leaves_uncertain_stop_and_no_blind_retry(self) -> None:
         approved = self.run_main()["plan_hash"]
+        assert isinstance(approved, str)
         self.fake_client.call = lambda *args: (_ for _ in ()).throw(
             RuntimeError("simulated uncertain write")
         )
         with self.assertRaisesRegex(RuntimeError, "uncertain"):
             self.run_main("--apply", "--approve-plan-hash", approved)
-        self.assertTrue((self.root / "state/uncertain.json").exists())
+        assert (self.root / "state/uncertain.json").exists()
         with self.assertRaisesRegex(ValueError, "Uncertain run"):
             self.run_main("--apply", "--approve-plan-hash", approved)
-        self.assertFalse((self.root / "observer-ready.json").exists())
+        assert not (self.root / "observer-ready.json").exists()
 
 
 class LegacyChatMigrationTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         spec = importlib.util.spec_from_file_location(
             "chat_migration", ROOT / "scripts/observer-chat-migration.py"
         )
+        if spec is None or spec.loader is None:
+            message = "missing observer chat migration loader"
+            raise RuntimeError(message)
         self.migration = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.migration)
 
@@ -601,7 +703,7 @@ class LegacyChatMigrationTests(unittest.TestCase):
                 "failure_result": False,
             }
 
-        self.state = {
+        self.state: ChatState = {
             "users": [
                 {
                     "username": "antropophag",
@@ -625,7 +727,7 @@ class LegacyChatMigrationTests(unittest.TestCase):
                 binding("old-observer-binding", "observer"),
             ],
         }
-        self.calls = []
+        self.calls: list[tuple[object, object, str, object]] = []
         outer = self
 
         class FakeClient:
@@ -645,8 +747,12 @@ class LegacyChatMigrationTests(unittest.TestCase):
                 if method == "POST" and path == "core/groups/":
                     outer.state["groups"].append({"pk": "new-chat-group", "users": [], **body})
                 elif method == "POST" and path.endswith("/add_user/"):
-                    outer.state["users"][0]["groups"].append("new-chat-group")
-                    outer.state["groups"][-1]["users"].append(92)
+                    chat_user_groups = outer.state["users"][0]["groups"]
+                    assert isinstance(chat_user_groups, list)
+                    chat_user_groups.append("new-chat-group")
+                    group_members = outer.state["groups"][-1]["users"]
+                    assert isinstance(group_members, list)
+                    group_members.append(92)
                 elif method == "POST" and path == "policies/bindings/":
                     outer.state["bindings"].append({"pk": "new-binding", **body})
                 elif method == "DELETE":
@@ -664,34 +770,25 @@ class LegacyChatMigrationTests(unittest.TestCase):
 
         self.client = FakeClient()
 
-    def test_one_time_migration_preserves_native_subject_and_owner_then_converges(self):
+    def test_one_time_migration_preserves_native_subject_and_owner_then_converges(
+        self,
+    ) -> None:
         before = copy.deepcopy(self.state)
         operations = self.migration.build(self.state, POLICY)
-        self.assertEqual(
-            [op["action"] for op in operations],
-            [
-                "create-chat-group",
-                "preserve-chat-user",
-                "admit-chat-group",
-                "remove-observer-chat-admission",
-            ],
-        )
+        assert [op["action"] for op in operations] == ["create-chat-group", "preserve-chat-user", "admit-chat-group", "remove-observer-chat-admission"]
         for op in operations:
             self.migration.apply(self.client, op, before)
-        self.assertEqual(self.migration.build(self.state, POLICY), [])
-        self.assertEqual(self.state["users"][0]["uuid"], before["users"][0]["uuid"])
-        self.assertIn("observer", self.state["users"][0]["groups"])
-        self.assertEqual(self.state["bindings"][0], before["bindings"][0])
-        self.assertFalse(
-            any("password" in path or "set_password" in path for _, _, path, _ in self.calls)
-        )
-        self.assertFalse(any(system != "authentik" for system, _, _, _ in self.calls))
-        self.assertEqual(
-            [path for _, method, path, _ in self.calls if method == "DELETE"],
-            ["policies/bindings/old-observer-binding/"],
-        )
+        assert self.migration.build(self.state, POLICY) == []
+        assert self.state["users"][0]["uuid"] == before["users"][0]["uuid"]
+        observer_groups = self.state["users"][0]["groups"]
+        assert isinstance(observer_groups, list)
+        assert "observer" in observer_groups
+        assert self.state["bindings"][0] == before["bindings"][0]
+        assert not any("password" in path or "set_password" in path for _, _, path, _ in self.calls)
+        assert not any(system != "authentik" for system, _, _, _ in self.calls)
+        assert [path for _, method, path, _ in self.calls if method == "DELETE"] == ["policies/bindings/old-observer-binding/"]
 
-    def test_unreviewed_observer_or_subject_change_stops_before_writes(self):
+    def test_unreviewed_observer_or_subject_change_stops_before_writes(self) -> None:
         for modify in [
             lambda s: s["groups"][0]["users"].append(94),
             lambda s: s["users"][0].update(uuid="changed"),
@@ -705,19 +802,19 @@ class LegacyChatMigrationTests(unittest.TestCase):
             modify(state)
             with self.assertRaises(ValueError):
                 self.migration.build(state, POLICY)
-            self.assertEqual(self.calls, [])
+            assert self.calls == []
 
-    def test_cannot_remove_legacy_admission_before_preservation(self):
+    def test_cannot_remove_legacy_admission_before_preservation(self) -> None:
         operations = self.migration.build(self.state, POLICY)
         self.migration.apply(self.client, operations[0], copy.deepcopy(self.state))
         with self.assertRaisesRegex(ValueError, "not safely admitted"):
             self.migration.apply(self.client, operations[-1], copy.deepcopy(self.state))
-        self.assertFalse(any(method == "DELETE" for _, method, _, _ in self.calls))
+        assert not any(method == "DELETE" for _, method, _, _ in self.calls)
 
-    def test_new_observer_is_not_an_ordinary_chat_user(self):
+    def test_new_observer_is_not_an_ordinary_chat_user(self) -> None:
         services = json.loads((ROOT / "deploy/identity/services.json").read_text())
-        self.assertNotIn("homelab-observer", services["open-webui"]["groups"])
-        self.assertIn("homelab-chat-user", services["open-webui"]["groups"])
+        assert "homelab-observer" not in services["open-webui"]["groups"]
+        assert "homelab-chat-user" in services["open-webui"]["groups"]
 
 
 if __name__ == "__main__":

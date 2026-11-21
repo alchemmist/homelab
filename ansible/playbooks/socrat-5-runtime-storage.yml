@@ -68,4 +68,3 @@
     - name: Reload systemd without service restart
       ansible.builtin.systemd_service:
         daemon_reload: true
-...

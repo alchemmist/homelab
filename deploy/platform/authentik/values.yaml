@@ -23,14 +23,14 @@ global:
   securityContext:
     fsGroup: 1000
   volumeMounts:
-    - {name: pg-critical-ca, mountPath: /etc/pg-critical, readOnly: true}
-    - mountPath: /data
-      name: data
+  - {name: pg-critical-ca, mountPath: /etc/pg-critical, readOnly: true}
+  - mountPath: /data
+    name: data
   volumes:
-    - {name: pg-critical-ca, secret: {secretName: pg-critical-ca}}
-    - name: data
-      persistentVolumeClaim:
-        claimName: authentik-data
+  - {name: pg-critical-ca, secret: {secretName: pg-critical-ca}}
+  - name: data
+    persistentVolumeClaim:
+      claimName: authentik-data
 postgresql:
   enabled: false
 server:
@@ -40,12 +40,12 @@ server:
       cert-manager.io/cluster-issuer: letsencrypt-http01
     enabled: true
     hosts:
-      - auth.socrat.alchemmist.xyz
+    - auth.socrat.alchemmist.xyz
     ingressClassName: traefik
     tls:
-      - hosts:
-          - auth.socrat.alchemmist.xyz
-        secretName: authentik-tls
+    - hosts:
+      - auth.socrat.alchemmist.xyz
+      secretName: authentik-tls
   replicas: 1
   resources:
     limits:

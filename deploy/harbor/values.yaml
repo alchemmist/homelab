@@ -59,8 +59,8 @@ core:
       memory: 1Gi
       ephemeral-storage: 1Gi
   extraEnvVars:
-    - name: CONFIG_OVERWRITE_JSON
-      value: '{"auth_mode":"db_auth","self_registration":false,"project_creation_restriction":"adminonly"}'
+  - name: CONFIG_OVERWRITE_JSON
+    value: '{"auth_mode":"db_auth","self_registration":false,"project_creation_restriction":"adminonly"}'
 jobservice:
   nodeSelector: *id001
   resources:
@@ -72,7 +72,7 @@ jobservice:
       memory: 1Gi
       ephemeral-storage: 1Gi
   jobLoggers:
-    - stdout
+  - stdout
   maxJobWorkers: 2
 registry:
   nodeSelector: *id001

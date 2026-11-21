@@ -92,8 +92,8 @@ def main():
         if p.exists():
             try:
                 data = yaml.safe_load(p.read_text())
-            except yaml.YAMLError:
-                raise RuntimeError("Instance configuration is not a simple mapping")
+            except yaml.YAMLError as exc:
+                raise RuntimeError("Instance configuration is not a simple mapping") from exc
             if isinstance(data, dict):
                 others.append(data)
     before_stat = Path("/swap.img").stat()

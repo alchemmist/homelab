@@ -162,7 +162,7 @@
       "targets": [
         {
           "refId": "1",
-          "expr": "cnpg_dr_standbys{pg_cluster=\"pg-common\"}",
+          "expr": "cnpg_pg_replication_streaming_replicas{pg_cluster=\"pg-common\"}",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -220,7 +220,7 @@
       "targets": [
         {
           "refId": "1",
-          "expr": "cnpg_dr_standbys{pg_cluster=\"pg-common\"} < 1",
+          "expr": "cnpg_pg_replication_streaming_replicas{pg_cluster=\"pg-common\"} < 1",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -394,7 +394,7 @@
       "targets": [
         {
           "refId": "1",
-          "expr": "cnpg_dr_standbys{pg_cluster=\"pg-critical\"}",
+          "expr": "cnpg_pg_replication_streaming_replicas{pg_cluster=\"pg-critical\"}",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -452,7 +452,7 @@
       "targets": [
         {
           "refId": "1",
-          "expr": "cnpg_dr_standbys{pg_cluster=\"pg-critical\"} < 2",
+          "expr": "cnpg_pg_replication_streaming_replicas{pg_cluster=\"pg-critical\"} < 2",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -626,7 +626,7 @@
       "targets": [
         {
           "refId": "1",
-          "expr": "absent_over_time(cnpg_dr_standbys{pg_cluster=\"pg-common\"}[3m])",
+          "expr": "absent_over_time(cnpg_pg_replication_streaming_replicas{pg_cluster=\"pg-common\"}[3m])",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -688,7 +688,7 @@
       "targets": [
         {
           "refId": "1",
-          "expr": "absent_over_time(cnpg_dr_standbys{pg_cluster=\"pg-common\"}[3m]) or absent_over_time(cnpg_collector_sync_replicas{pg_cluster=\"pg-critical\",value=\"observed\"}[3m])",
+          "expr": "absent_over_time(cnpg_pg_replication_streaming_replicas{pg_cluster=\"pg-common\"}[3m]) or absent_over_time(cnpg_collector_sync_replicas{pg_cluster=\"pg-critical\",value=\"observed\"}[3m])",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"

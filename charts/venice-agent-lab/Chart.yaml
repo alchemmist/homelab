@@ -3,4 +3,3 @@ name: venice-agent-lab
 version: 0.1.0
 appVersion: '0.1.0'
 description: Credential-free execution worker for controlled coding-agent experiments
-...

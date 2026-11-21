@@ -1,5 +1,9 @@
 # Socrat: текущий контекст
 
+Обновление 21 ноября: [Отчёт: внезапная потеря `socrat-1`, 21 ноября 2026](socrat-1-loss-20261121.md). Не переносить выводы на потерю `socrat-0` (NFS) или двух нод.
+
+[Второе отключение `socrat-1`, 21 ноября 2026](socrat-1-loss-20261121-run2.md) — повтор с отдельным Alertmanager на `0` и без смены primary PostgreSQL.
+
 Актуальная навигация после принятых миграций16ноября2026. Git описывает intent;
 время последней runtime-приёмки смотрите в handoff. Этот файл не разрешает новые
 production-операции. Датированные результаты не являются непрерывным мониторингом.
@@ -8,7 +12,7 @@ production-операции. Датированные результаты не 
 
 - Applications: `deploy/argocd/apps/`; values — по ссылке в конкретном Application.
 - Ansible inventory: `ansible/inventory/hosts.yml`; mesh registry:
-  `ansible/inventory/group_vars/Socrat.yml` → `wg_socrat_nodes`.
+  `ansible/inventory/group_vars/Socrat/cluster.yml` → `wg_socrat_nodes`.
 - Общий issuer transport и его потребители:
   `deploy/contracts/infrastructure.json`; offline check/generation:
   `scripts/check_infrastructure_contracts.py` (default check, `--write` только Git).

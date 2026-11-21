@@ -1,3 +1,4 @@
+"""Check that Grafana dashboards have non-empty descriptions."""
 import argparse
 import json
 import subprocess

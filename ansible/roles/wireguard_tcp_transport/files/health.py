@@ -1,3 +1,4 @@
+"""WireGuard TCP transport health probe with restart bookkeeping."""
 import json
 import subprocess
 import time

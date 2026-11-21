@@ -43,4 +43,3 @@
       loop:
         - {path: /mnt/files/homelab/volumes, uuid: 3ec3263e-32e3-4b38-84e6-17cd168244b9}
         - {path: /var/lib/rancher/k3s/fast-storage, uuid: 60fd0998-0598-4672-88b5-3bec59f697c9}
-...
