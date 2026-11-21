@@ -2,7 +2,7 @@
 
 import pytest
 
-from tests.public_entry_contract import render
+from tests.public_entry_contract import assert_status_upstream, render
 
 PUBLIC_PATHS = (
     r"^/(?:$|css/|js/|img/|fonts/|assets/|endpoints/|suites/|favicon|apple-touch-icon|"
@@ -25,9 +25,7 @@ def _guard(conf: str) -> None:
         if line.strip() and not line.lstrip().startswith("#")
     ]
     assert directives.count("server {") == 1
-    assert [line for line in directives if line.startswith("server ") and line != "server {"] == [
-        "server gatus.uptime-kuma.svc.cluster.local:80 resolve;"
-    ]
+    assert_status_upstream(conf)
     assert directives[directives.index("server {") + 1 :] == [
         "listen 8080;",
         "absolute_redirect off;",
@@ -56,6 +54,7 @@ def test_public_read_only_status_and_legacy_https_redirect(rendered_policy: str)
 @pytest.mark.parametrize(
     ("old", "new"),
     [
+        ("upstream kuma {", "upstream kuma { server dummy.invalid:80; }\nupstream unused {"),
         ("^(GET|HEAD)$", "^(GET|HEAD|POST)$"),
         ("endpoints/|suites/|favicon", "socket.io|endpoints/|suites/|favicon"),
         ("return 302 /;", "return 302 http://gatus:8080/;"),

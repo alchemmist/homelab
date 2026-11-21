@@ -11,7 +11,7 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from tests.public_entry_contract import CHARTS, ROOT, render
+from tests.public_entry_contract import CHARTS, ROOT, assert_status_upstream, render
 
 PUBLIC_HANDOFF = "c6121e1975eb6218804a9be43d7c2a8e99584838"
 
@@ -92,6 +92,7 @@ def _status_handoff(resource: _HandoffResource) -> _HandoffResource:
         ("Deployment", "public-web-kuma-proxy"),
     }:
         current = (ROOT / "charts/uptime-kuma/files/kuma-policy.conf").read_bytes()
+        assert_status_upstream(current.decode())
         original = (
             ROOT / "tests/fixtures/public-entry-handoff-inputs/kuma-policy.conf.txt"
         ).read_bytes()

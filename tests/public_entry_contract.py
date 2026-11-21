@@ -1,5 +1,6 @@
 """Render app-owned public access, without an aggregate chart/Application."""
 
+import re
 import subprocess
 from pathlib import Path
 
@@ -16,6 +17,48 @@ CHARTS = {
     "syncthing": "charts/syncthing",
     "uptime-kuma": "charts/uptime-kuma",
 }
+
+
+def assert_status_upstream(conf: str) -> None:
+    """Check the named HTTP upstream, not just the presence of a Gatus server line."""
+    # Tokenize the checked-in policy subset, keeping quoted log formats opaque.
+    # Braces and semicolons delimit directives even when several share a line.
+    tokens = re.findall(
+        r""""(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\#[^\n]*|[^\s{};"'\#]+|[{};]""", conf
+    )
+    stack: list[tuple[str, ...]] = []
+    directive: list[str] = []
+    upstreams = []
+    members = []
+    for lexeme in tokens:
+        if lexeme.startswith("#"):
+            continue
+        if lexeme not in {"{", "}", ";"}:
+            directive.append(lexeme)
+            continue
+        if lexeme == "}":
+            assert not directive
+            assert stack
+            stack.pop()
+            continue
+        assert directive
+        header = tuple(directive)
+        if any(block[0] == "upstream" for block in stack):
+            members.append((lexeme, header))
+        if lexeme == "{":
+            if header[0] == "upstream":
+                upstreams.append((tuple(stack), header))
+            stack.append(header)
+        directive.clear()
+    assert not stack
+    assert not directive
+    assert upstreams == [((("http",),), ("upstream", "kuma"))], (
+        "Unexpected status upstream topology"
+    )
+    assert members == [
+        (";", ("zone", "kuma", "64k")),
+        (";", ("server", "gatus.uptime-kuma.svc.cluster.local:80", "resolve")),
+    ], "Unexpected backend in status upstream"
 
 
 def chart_values(owner: str) -> dict[str, object]:
