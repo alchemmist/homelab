@@ -83,6 +83,13 @@
       "applications": [
         "spi-rustfs-native"
       ]
+    },
+    "monori.svg": {
+      "url": "https://raw.githubusercontent.com/alchemmist/monori/4576a41a4477b804dc4631de0a93a1fd9f5774fd/web/public/favicon.svg",
+      "sha256": "d2ecda88620eb0783f6d70abe58fe4d129a582c152b1d6835098d5bf13b4c94e",
+      "applications": [
+        "monori"
+      ]
     }
   }
 }

@@ -86,6 +86,20 @@ spec:
         env:
         - { name: PYTHONDONTWRITEBYTECODE, value: "1" }
         - { name: MONORI_SYNC_URL, value: http://monori-sync:8010 }
+        {{- if .Values.oidc.enabled }}
+        - name: MONORI_OIDC_ISSUER
+          value: {{ required "OIDC issuer is required" .Values.oidc.issuer | quote }}
+        - name: MONORI_OIDC_CLIENT_ID
+          value: {{ required "OIDC client ID is required" .Values.oidc.clientId | quote }}
+        - name: MONORI_OIDC_REDIRECT_URI
+          value: {{ printf "https://%s/oidc/callback" .Values.host | quote }}
+        - name: MONORI_OIDC_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ required "OIDC secret name is required" .Values.oidc.secretName | quote }}
+              key: client-secret
+              optional: true
+        {{- end }}
         ports: [{ name: http, containerPort: 8000 }]
         volumeMounts: [{ name: data, mountPath: /app/data }]
       volumes:
