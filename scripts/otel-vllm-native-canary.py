@@ -22,7 +22,7 @@ MARKERS = [
 ]
 
 
-def run():
+def run() -> None:
     logging.disable(logging.CRITICAL)
     if os.environ.get("OTEL_EXPORTER_OTLP_TRACES_PROTOCOL") != "http/protobuf":
         raise ValueError(
@@ -32,7 +32,7 @@ def run():
     loaded = []
     original_loader = ssl.SSLContext.load_cert_chain
 
-    def observe_loader(context, certfile, keyfile=None, password=None):
+    def observe_loader(context, certfile, keyfile=None, password=None) -> None:
         public_hash = hashlib.sha256(Path(certfile).read_bytes()).hexdigest()
         result = original_loader(context, certfile, keyfile, password)
         loaded.append(public_hash)
@@ -41,12 +41,16 @@ def run():
     if renewal:
         if os.environ.get("OTEL_EXPORTER_OTLP_HEADERS", "").lower() != "connection=close":
             raise ValueError("Fresh native HTTP handshakes required")
-        ssl.SSLContext.load_cert_chain = observe_loader
 
-    def certificate_hash():
+        def wrapped_loader(*args: object, **kwargs: object) -> None:
+            observe_loader(*args, **kwargs)
+
+        ssl.SSLContext.load_cert_chain = wrapped_loader
+
+    def certificate_hash() -> str:
         return hashlib.sha256(Path("/etc/otel-client/tls.crt").read_bytes()).hexdigest()
 
-    def progress(value):
+    def progress(value) -> None:
         path = Path("/run/otel-test/renewal-progress.json")
         temporary = path.with_suffix(".new")
         temporary.write_text(json.dumps(value))
@@ -77,24 +81,24 @@ def run():
         }
 
         class Audit(SpanProcessor):
-            def on_start(self, span, parent_context=None):
+            def on_start(self, span, parent_context=None) -> None:
                 pass
 
-            def on_end(self, span):
+            def on_end(self, span) -> None:
                 audit["endedSpans"] += 1
                 audit["nativeLlmRequestSpanSeen"] |= span.name == "llm_request"
                 if any(marker in span.to_json() for marker in MARKERS):
                     audit["sensitiveSyntheticContentFoundAtSource"] = True
 
-            def shutdown(self):
+            def shutdown(self) -> None:
                 pass
 
-            def force_flush(self, timeout_millis=30000):
+            def force_flush(self, timeout_millis=30000) -> bool:
                 return True
 
         provider.add_span_processor(Audit())
 
-        def emit_request():
+        def emit_request() -> dict[str, object]:
             with tracer.start_as_current_span("homelab.synthetic.vllm-validation") as parent:
                 parent.set_attribute("homelab.synthetic", True)
                 parent.set_status(Status(StatusCode.ERROR, "synthetic mandatory sampling root"))
