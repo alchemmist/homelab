@@ -6,10 +6,10 @@ from types import ModuleType
 import pytest, yaml
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-_Ctl = tuple[ModuleType, ModuleType]
+_Ctl = tuple[ModuleType, object]
 
 
-def module(name: str):
+def module(name: str) -> ModuleType:
     s = importlib.util.spec_from_file_location(name, ROOT / "scripts" / f"{name}.py")
     m = importlib.util.module_from_spec(s)
     s.loader.exec_module(m)
@@ -17,7 +17,7 @@ def module(name: str):
 
 
 @pytest.fixture
-def ctl(tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch):
+def ctl(tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> _Ctl:
     m = module("vpn-transit-failover")
     monkeypatch.setattr(m, "ROOT", tmp_path)
     p = tmp_path / "config.json"

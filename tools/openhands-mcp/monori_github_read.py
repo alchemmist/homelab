@@ -17,7 +17,7 @@ def read(path: str):
         return json.loads(b), 'rel="next"' in r.headers.get('Link','')
 
 
-def positive(n: object):
+def positive(n: object) -> int:
     if type(n) is not int or not 1<=n<=1_000_000_000: raise ValueError('Positive ID/page required')
     return n
 

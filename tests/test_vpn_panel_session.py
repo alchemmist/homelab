@@ -16,7 +16,7 @@ m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 
 
-class _ApiBody(TypedDict):
+class _ApiBody(TypedDict, total=False):
     name: str
     scope: str
     expiresAt: int

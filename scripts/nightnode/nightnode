@@ -28,9 +28,16 @@ load_config() {
     # KEY=VALUE lines only; blank and commented lines are skipped.
     while IFS= read -r line || [[ -n "${line}" ]]; do
       [[ -z "${line}" || "${line}" == \#* ]] && continue
+      [[ "${line}" == *=* ]] || die "config line is not KEY=VALUE: ${line}"
       key="${line%%=*}"
       value="${line#*=}"
-      [[ "${key}" == "${line}" ]] && die "config line is not KEY=VALUE: ${line}"
+      key="${key#"${key%%[![:space:]]*}"}"
+      key="${key%"${key##*[![:space:]]}"}"
+      [[ "${key}" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]] || die "config key is not a shell identifier: ${key}"
+      value="${value%$'\r'}"
+      if [[ "${value}" == \"*\" && "${value}" == *\" || "${value}" == \'*\' && "${value}" == *\' ]]; then
+        value="${value:1:${#value}-2}"
+      fi
       export "${key}=${value}"
     done < "${CONFIG_FILE}"
   fi
