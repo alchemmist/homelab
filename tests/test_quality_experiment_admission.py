@@ -101,6 +101,24 @@ def test_hashed_alternate_requirements_retain_full_audit_flags(tmp_path: Path) -
     )
 
 
+def test_worker_docker_install_consumes_a_hashed_lock_matching_its_inputs() -> None:
+    """Check the real image inputs without importing or building the worker."""
+    worker = ROOT / "experiments/venice-autonomy"
+    lock = worker / "worker-requirements.txt"
+    lint.validate_requirement_hashes(lock)
+    direct = set((worker / "worker-requirements.in").read_text().splitlines())
+    pins = {line.removesuffix("\\").strip() for line in lock.read_text().splitlines()}
+    assert direct
+    assert direct <= pins
+    recipe = (worker / "worker.Dockerfile").read_text().splitlines()
+    assert "COPY worker-requirements.txt /opt/worker/requirements.txt" in recipe
+    assert (
+        "RUN python -m pip install --no-cache-dir --require-hashes "
+        "-r /opt/worker/requirements.txt \\"
+        in recipe
+    )
+
+
 def test_alternate_requirement_symlink_is_refused(tmp_path: Path) -> None:
     """Filename coverage must not weaken regular-file and repository-path guards."""
     source = tmp_path / "source.txt"
