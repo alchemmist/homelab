@@ -106,7 +106,11 @@ def policies(source_ids, destination_ids) -> list[dict[str, object]]:
             ],
         }
         for name, src, dst, port in zip(
-            ("pilot-grafana", "pilot-ssh-socrat-2"), source_ids, destination_ids, (8443, 2222)
+            ("pilot-grafana", "pilot-ssh-socrat-2"),
+            source_ids,
+            destination_ids,
+            (8443, 2222),
+            strict=True,
         )
     ]
 

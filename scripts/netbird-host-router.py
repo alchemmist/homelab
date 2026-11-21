@@ -13,6 +13,7 @@ import os
 import re
 import sys
 from pathlib import Path
+from typing import cast
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCK = ROOT / "deploy/netbird/images.lock.json"
@@ -147,7 +148,7 @@ def client_image() -> str:
     return item["repository"] + ":" + item["tag"] + "@" + item["digest"]
 
 
-def _host_map(facts):
+def _host_map(facts) -> dict[str, dict[str, object]]:
     hosts = facts["hosts"]
     require(
         isinstance(hosts, list) and [h.get("name") for h in hosts] == list(HOSTS),
@@ -279,22 +280,26 @@ def validate(facts) -> dict[str, object]:
         )
         require(
             type(host["sudo_nopass"]) is bool
-            and type(host["mem_available_kib"]) is int
-            and host["mem_available_kib"] > 0,
+            and type(cast("int", host["mem_available_kib"])) is int
+            and cast("int", host["mem_available_kib"]) > 0,
             "host privilege or memory fact invalid",
         )
-        for address in host["owned"] + host["public_addresses"] + [host["snat_address"]]:
+        owned = cast("list[str]", host["owned"])
+        public = cast("list[str]", host["public_addresses"])
+        for address in owned + public + [cast("str", host["snat_address"])]:
             ipaddress.ip_address(address)
-        for route in host["routes"]:
+        for route in cast("list[str]", host["routes"]):
             ipaddress.ip_network(route, strict=False)
     require(
         ipaddress.ip_address(SSH_ADDR)
-        in {ipaddress.ip_address(item) for item in hosts["socrat-2"]["owned"]},
+        in {ipaddress.ip_address(item) for item in cast("list[str]", hosts["socrat-2"]["owned"])},
         "socrat-2 must own 10.250.0.2; that is what makes SSH INPUT on that host",
     )
     require(
         ipaddress.ip_address(SSH_ADDR)
-        not in {ipaddress.ip_address(item) for item in hosts["socrat-0"]["owned"]},
+        not in {
+            ipaddress.ip_address(item) for item in cast("list[str]", hosts["socrat-0"]["owned"])
+        },
         "socrat-0 must not own the SSH target",
     )
     require(classify(hosts["socrat-2"], SSH_ADDR) == "input", "socrat-2 delivery must be INPUT")
@@ -324,13 +329,14 @@ def blockers_for(facts) -> tuple[list[str], list[str]]:
                 name + ": container runtime not proven (docker info failed on socrat-0)"
             )
     vps = hosts["socrat-2"]
-    avail = vps["mem_available_kib"] / 1024
+    avail = cast("int", vps["mem_available_kib"]) / 1024
     need = parse_mib(facts["client_memory"]) + parse_mib(facts["frontend_memory"])
     if vps["mem_available_kib"] == VPS_OBSERVED_KIB:
         notes.append("socrat-2 MemAvailable is 446 MiB (455948 KiB)")
     else:
         notes.append(
-            "socrat-2 MemAvailable is %.0f MiB (%d KiB)" % (avail, vps["mem_available_kib"])
+            "socrat-2 MemAvailable is %.0f MiB (%d KiB)"
+            % (avail, cast("int", vps["mem_available_kib"]))
         )
     notes.append(
         "client cap %s plus frontend cap %s; %d MiB headroom required on the VPS"
@@ -381,7 +387,7 @@ def roles(facts) -> dict[str, dict[str, object]]:
     }
 
 
-def _nft(host, facts):
+def _nft(host, facts) -> str:
     iface = facts["interface"]
     port = facts["frontend_port"]
     lines = [
@@ -452,7 +458,7 @@ def firewall_rules(script, chain) -> list[str]:
     return rules
 
 
-def _up_script(facts):
+def _up_script(facts) -> str:
     forbidden = "|".join(sorted(FORBIDDEN_IFACES | {"wg-*"}))
     return """#!/bin/sh
 set -eu
@@ -507,7 +513,7 @@ wait "$pid"
 """ % (facts["interface"], forbidden, URL_TOKEN)
 
 
-def _frontend_source(facts):
+def _frontend_source(facts) -> str:
     return """# Generated listener. Binds only to an enrolled NetBird overlay address.
 import os
 import select
@@ -663,7 +669,7 @@ if __name__ == "__main__":
     )
 
 
-def _unit(host, facts, image, runtime):
+def _unit(host, facts, image, runtime) -> str:
     disable = "true" if host["name"] == "socrat-2" else "false"
     common = [
         "[Unit]",
@@ -704,7 +710,7 @@ def _unit(host, facts, image, runtime):
     return "\n".join(common)
 
 
-def _frontend_unit(facts):
+def _frontend_unit(facts) -> str:
     return """[Unit]
 Description=Grafana-only NetBird frontend
 After=netbird-host-router.service
@@ -724,7 +730,7 @@ WantedBy=multi-user.target
 """ % facts["frontend_memory"].upper()
 
 
-def _playbook(host):
+def _playbook(host) -> str:
     tasks = """---
 - name: Install the reviewed NetBird host-router files for %s
   hosts: "%s"
@@ -759,7 +765,7 @@ def _playbook(host):
     return tasks
 
 
-def _client_env(facts):
+def _client_env(facts) -> str:
     url = facts["management_url"] or URL_TOKEN
     return "NB_MANAGEMENT_URL=%s\n" % url
 
@@ -882,7 +888,7 @@ def build(facts) -> tuple[dict[str, object], dict[str, dict[str, str]]]:
     return plan, rendered
 
 
-def _outside_worktree(path):
+def _outside_worktree(path) -> bool:
     resolved = Path(path).resolve()
     return not resolved.is_relative_to(ROOT.resolve())
 
@@ -903,7 +909,7 @@ def write_plan(out, plan, rendered) -> None:
                 path.chmod(0o755 if filename.endswith(".sh") else 0o644)
 
 
-def _safe_rel(rel):
+def _safe_rel(rel) -> Path:
     path = Path(rel)
     require(not path.is_absolute() and ".." not in path.parts, "owned path escapes")
     require(

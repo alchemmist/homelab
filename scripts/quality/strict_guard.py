@@ -299,7 +299,7 @@ def verify_configuration() -> None:
 def main() -> int:
     try:
         verify_configuration()
-    except Exception as error:
+    except (OSError, TypeError, ValueError) as error:
         print(f"configuration: {type(error).__name__}: {error}", file=sys.stderr)
         return 2
     hits = suppression_hits(owned(tracked()))

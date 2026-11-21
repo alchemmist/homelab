@@ -8,6 +8,7 @@ or re-enrollment by friendly name. Uncertain writes stop for operator inspection
 
 import argparse
 import fcntl
+import http.client
 import ipaddress
 import json
 import os
@@ -953,7 +954,15 @@ def main() -> None:
 if __name__ == "__main__":
     try:
         main()
-    except Exception as e:
+    except (
+        ValueError,
+        KeyError,
+        TypeError,
+        RuntimeError,
+        OSError,
+        subprocess.SubprocessError,
+        http.client.HTTPException,
+    ) as e:
         print(
             json.dumps(
                 {

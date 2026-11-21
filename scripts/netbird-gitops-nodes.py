@@ -27,7 +27,7 @@ spec.loader.exec_module(node)
 def desired(values, inventory, image) -> list[str]:
     hosts = set()
 
-    def visit(group):
+    def visit(group) -> None:
         entry = inventory.get(group, {})
         hosts.update(entry.get("hosts", []))
         for child in entry.get("children", []):
@@ -118,7 +118,7 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except Exception:
+    except (ValueError, KeyError, TypeError, RuntimeError, OSError, subprocess.SubprocessError):
         print(
             "Blocked: inspect inventory/bindings; no cluster writes were attempted", file=sys.stderr
         )

@@ -13,7 +13,7 @@ SPEC.loader.exec_module(BOOTSTRAP)
 
 
 class BootstrapTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.resources = {
             ("secret", "wiki-editor-git", "wiki"): {
                 "data": {"id_ed25519": BOOTSTRAP.encoded("private fixture")}
@@ -25,7 +25,7 @@ class BootstrapTests(unittest.TestCase):
         self.kube = Mock()
         self.kube.get.side_effect = lambda *key: self.resources.get(key)
 
-    def test_creates_only_isolated_resources_without_registry_credentials(self):
+    def test_creates_only_isolated_resources_without_registry_credentials(self) -> None:
         messages = BOOTSTRAP.bootstrap(self.kube)
         all_created = [call.args[0] for call in self.kube.create.call_args_list]
         self.assertEqual(
@@ -55,7 +55,7 @@ class BootstrapTests(unittest.TestCase):
         )
         self.assertNotIn("token:with:colons", str(messages))
 
-    def test_repeated_run_never_rotates_bootstrap_or_existing_resources(self):
+    def test_repeated_run_never_rotates_bootstrap_or_existing_resources(self) -> None:
         BOOTSTRAP.bootstrap(self.kube)
         for call in self.kube.create.call_args_list:
             item = call.args[0]
@@ -71,7 +71,7 @@ class BootstrapTests(unittest.TestCase):
             self.resources["secret", "wiki-runtime-bootstrap", "wiki"]["data"]["token"], original
         )
 
-    def test_clean_install_can_skip_legacy_git(self):
+    def test_clean_install_can_skip_legacy_git(self) -> None:
         del self.resources["secret", "wiki-editor-git", "wiki"]
         del self.resources["configmap", "wiki-editor-hosts", "wiki"]
         messages = BOOTSTRAP.bootstrap(self.kube, skip_legacy_git=True)
@@ -79,13 +79,13 @@ class BootstrapTests(unittest.TestCase):
         names = [call.args[0]["metadata"]["name"] for call in self.kube.create.call_args_list]
         self.assertNotIn("wiki-runtime-git", names)
 
-    def test_missing_sources_fail_before_any_creation(self):
+    def test_missing_sources_fail_before_any_creation(self) -> None:
         del self.resources["configmap", "wiki-editor-hosts", "wiki"]
         with self.assertRaises(BOOTSTRAP.BootstrapError):
             BOOTSTRAP.bootstrap(self.kube)
         self.kube.create.assert_not_called()
 
-    def test_invalid_existing_bootstrap_is_not_overwritten(self):
+    def test_invalid_existing_bootstrap_is_not_overwritten(self) -> None:
         self.resources["secret", "wiki-runtime-bootstrap", "wiki"] = {
             "data": {"token": BOOTSTRAP.encoded("short")}
         }

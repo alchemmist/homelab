@@ -24,11 +24,11 @@ def backup(source, directory, max_bytes=512 * 1024 * 1024, deadline_seconds=60) 
     src = None
     dst = None
 
-    def expired(*args):
+    def expired(*args) -> None:
         signal.setitimer(signal.ITIMER_REAL, 0)
         raise TimeoutError("backup deadline exceeded")
 
-    def check():
+    def check() -> None:
         if time.monotonic() - start >= deadline_seconds:
             expired()
 
@@ -53,7 +53,7 @@ def backup(source, directory, max_bytes=512 * 1024 * 1024, deadline_seconds=60) 
             signal.pthread_sigmask(signal.SIG_SETMASK, mask)
         page_size = src.execute("PRAGMA page_size").fetchone()[0]
 
-        def progress(status, remaining, total):
+        def progress(status, remaining, total) -> None:
             check()
             if total * page_size > max_bytes:
                 raise RuntimeError("backup size exceeded")
@@ -88,12 +88,12 @@ def backup(source, directory, max_bytes=512 * 1024 * 1024, deadline_seconds=60) 
                 try:
                     if conn is not None:
                         conn.close()
-                except BaseException as exc:
+                except (sqlite3.Error, OSError) as exc:
                     errors.append(exc)
             try:
                 if fd is not None:
                     os.close(fd)
-            except BaseException as exc:
+            except OSError as exc:
                 errors.append(exc)
             if path:
                 for suffix in ("", "-wal", "-shm", "-journal"):
@@ -101,7 +101,7 @@ def backup(source, directory, max_bytes=512 * 1024 * 1024, deadline_seconds=60) 
                         os.unlink(path + suffix)
                     except FileNotFoundError:
                         pass
-                    except BaseException as exc:
+                    except OSError as exc:
                         errors.append(exc)
         finally:
             # Drain our pending one-shot before restoring a default handler.
@@ -127,7 +127,7 @@ def main() -> None:
     a = p.parse_args()
     try:
         backup(a.source, a.private_pvc_directory, deadline_seconds=a.deadline_seconds)
-    except Exception:
+    except (ValueError, RuntimeError, OSError, sqlite3.Error):
         # Do not expose SQLite messages, paths, source data or credentials.
         print("BACKUP_FAILED: output invalid; delete private host file", file=sys.stderr)
         # Avoid interpreter shutdown re-flushing a broken/blocked stdout pipe.
