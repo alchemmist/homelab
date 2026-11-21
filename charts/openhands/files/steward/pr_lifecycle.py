@@ -99,7 +99,7 @@ def lifecycle(x:dict[str,object],api:_Api,
      and not re.search(r'[@<>\x00-\x1f]|https?://|github_pat_|Bearer',reason,re.I))
  reason=cast("str",reason)
  j={'comment':r['id'],'digest':r['digest'],'head':head,'decision':decision};body=reason
- if decision=='fixed':check(x['commit']==head);j['commit']=head;body+=' Fixed in '+url+'/commit/'+head
+ if decision=='fixed':check(isinstance(x.get('commit'),str) and x['commit']==head);j['commit']=head;body+=' Fixed in '+url+'/commit/'+head
  else:j['reason']=reason
  body+='\n\n<!-- rtr:'+json.dumps(j,separators=(',',':'))+' -->';owned(n,head)
  if not bool(r['replied']):

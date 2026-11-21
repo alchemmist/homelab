@@ -102,8 +102,8 @@ def assess(pr: _PullRequest, reviewers: set[str], handlers: set[str]):
             blockers.append("CI not green: " + str(check.get("name") or check.get("context")))
     raw_pr = cast("dict[str, object]", pr)
     sections = [
-        (raw_pr.get(k, {}), "hasNextPage") for k in ("reviews", "comments", "reviewThreads")
-    ] + [(raw_pr.get("commits", {}), "hasPreviousPage"), (checks, "hasNextPage")]
+        (raw_pr.get(k) or {}, "hasNextPage") for k in ("reviews", "comments", "reviewThreads")
+    ] + [(raw_pr.get("commits") or {}, "hasPreviousPage"), (checks, "hasNextPage")]
     threads = pr.get("reviewThreads", {}).get("nodes", [])
     sections += [(t.get("comments", {}), "hasNextPage") for t in threads]
     if not all(_complete_connection(section, direction) for section, direction in sections):
@@ -113,8 +113,9 @@ def assess(pr: _PullRequest, reviewers: set[str], handlers: set[str]):
         cast("dict[str, object]", r.get("author") or {}).get("login")
         for r in reviews
         if cast("dict[str, object]", r.get("author") or {}).get("__typename") == "Bot"
+        and cast("dict[str, object]", r.get("author") or {}).get("login") is not None
     }
-    for actor in set(reviewers) | cast("set[str]", observed_bots - {None}):
+    for actor in set(reviewers) | cast("set[str]", observed_bots):
         current = [
             r
             for r in reviews

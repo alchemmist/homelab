@@ -232,7 +232,8 @@ class _Execute(Protocol):
 
 
 def _tools(metadata: dict[str, object]) -> dict[str, object]:
-    return cast("dict[str, object]", metadata.get("tools", {}))
+    value = metadata.get("tools")
+    return cast("dict[str, object]", value) if isinstance(value, dict) else {}
 
 
 def guarded_execute(function: _Execute):
