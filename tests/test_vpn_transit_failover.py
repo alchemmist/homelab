@@ -2,6 +2,7 @@
 
 import importlib.util, json, pathlib, hashlib, tarfile, io
 import pytest, yaml
+from typing import Self
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
@@ -327,10 +328,10 @@ def test_failed_websocket_diagnostic_does_not_store_private_path(ctl, monkeypatc
     m, c = ctl
 
     class Connection:
-        def __enter__(self):
+        def __enter__(self) -> Self:
             return self
 
-        def __exit__(self, *args):
+        def __exit__(self, *args) -> None:
             pass
 
         def sendall(self, data):

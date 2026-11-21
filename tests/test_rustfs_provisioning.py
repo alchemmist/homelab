@@ -5,6 +5,7 @@ import io
 import json
 import os
 from pathlib import Path
+from typing import Self
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -224,13 +225,13 @@ class Provisioning(unittest.TestCase):
         ]
 
         class Response:
-            def __init__(self, data):
+            def __init__(self, data) -> None:
                 self.data = data
 
-            def __enter__(self):
+            def __enter__(self) -> Self:
                 return self
 
-            def __exit__(self, *a):
+            def __exit__(self, *a) -> None:
                 pass
 
             def read(self, *a):

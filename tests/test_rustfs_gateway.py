@@ -7,6 +7,7 @@ import threading
 import unittest
 from email.message import Message
 from pathlib import Path
+from typing import Self
 
 spec = importlib.util.spec_from_file_location(
     "gateway", Path(__file__).resolve().parents[1] / "services/rustfs_gateway/gateway.py"
@@ -222,10 +223,10 @@ class Integrity(unittest.TestCase):
             status = 204
             headers = {"X-authentik-groups": "homelab-owner|other"}
 
-            def __enter__(self):
+            def __enter__(self) -> Self:
                 return self
 
-            def __exit__(self, *args):
+            def __exit__(self, *args) -> None:
                 pass
 
         class HTTP:
