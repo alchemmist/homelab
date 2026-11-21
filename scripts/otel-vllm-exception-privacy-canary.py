@@ -38,7 +38,8 @@ def run() -> None:
             pass
         spans = memory.get_finished_spans()
         if len(spans) != 1:
-            raise RuntimeError("Native exception instrumentation was not exercised")
+            msg = "Native exception instrumentation was not exercised"
+            raise RuntimeError(msg)
         span = spans[0]
         status_found = marker in (span.status.description or "")
         event_found = any(marker in str(dict(event.attributes or {})) for event in span.events)

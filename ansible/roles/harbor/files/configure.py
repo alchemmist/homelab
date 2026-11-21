@@ -45,7 +45,8 @@ for name, actions in [("ci-push", ["pull", "push"]), ("cluster-pull", ["pull"])]
         continue
     existing = api("GET", "/robots?page_size=100")
     if any(r["name"] == "robot$homelab+" + name for r in existing):
-        raise RuntimeError("Robot exists but local credential is missing; rotate explicitly")
+        msg = "Robot exists but local credential is missing; rotate explicitly"
+        raise RuntimeError(msg)
     result = api(
         "POST",
         "/robots",
