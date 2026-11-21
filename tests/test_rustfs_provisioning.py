@@ -75,7 +75,7 @@ class Provisioning(unittest.TestCase):
         buckets = []
         calls = []
 
-        def fake(mc, config, args, stdin=None):
+        def fake(_mc, _config, args, stdin=None):
             calls.append(args)
             if args[:3] == ["admin", "user", "list"]:
                 return [{"accessKey": k} for k in users]

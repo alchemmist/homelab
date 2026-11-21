@@ -92,7 +92,7 @@ class SessionTests(unittest.TestCase):
                 kwargs["stdout"].write("apiToken: " + values["bootstrap"] + "\n")
                 return type("Result", (), {"returncode": 0})()
 
-            def api(base, token, method, path, body=None):
+            def api(_base, token, method, path, body=None):
                 calls.append((token, method, path, body))
                 if path.endswith("/create"):
                     kind = next(k for k in values if s.names[k] == body["name"])

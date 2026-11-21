@@ -88,7 +88,7 @@ class DNSPreflightSafetyTests(unittest.TestCase):
             current.write_text("VALUE = 1\n")
             (base / "proposed.py").write_text("VALUE = 2\n")
 
-            def acquired(fd, operation):
+            def acquired(_fd, operation):
                 self.assertEqual(operation, guard.fcntl.LOCK_EX)
                 # Simulate a prior writer leaving an uncertain marker before releasing its lock.
                 (base / "uncertain.json").write_text("{}")

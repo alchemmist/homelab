@@ -32,7 +32,7 @@ class ClientTests(unittest.TestCase):
         workers = []
         slots = threading.BoundedSemaphore(s.MAX_RESOLVERS)
 
-        def stuck(*args, **kwargs):
+        def stuck(*_args, **_kwargs):
             workers.append(threading.current_thread())
             release.wait()
             return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 9))]

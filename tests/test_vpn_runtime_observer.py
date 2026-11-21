@@ -98,7 +98,7 @@ def test_moscow_reuses_actual_watchdog_observation_without_more_tls_or_lock(tmp_
         (net / name).write_text("header\n")
     (net / "tcp").write_text("header\n0: 00000000:01BB 00000000:0000 0A\n")
 
-    def run(args, timeout=30):
+    def run(args, _timeout=30):
         assert args[:2] == ["systemctl", "show"]
         return SimpleNamespace(
             returncode=0,

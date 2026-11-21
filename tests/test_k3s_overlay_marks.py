@@ -89,7 +89,7 @@ def test_default_cli_is_read_only(monkeypatch, capsys):
 
     calls = []
 
-    def fake(*args, **kwargs):
+    def fake(*args, **_kwargs):
         calls.append(args)
         if args == ("nft", "-j", "list", "tables"):
             return SimpleNamespace(stdout=json.dumps({"nftables": []}))
@@ -108,7 +108,7 @@ def test_cli_rejects_foreign_table_before_kernel_write(monkeypatch):
     import json, sys
     from types import SimpleNamespace
 
-    def fake(*args, **kwargs):
+    def fake(*args, **_kwargs):
         if args == ("nft", "-j", "list", "tables"):
             return SimpleNamespace(
                 stdout=json.dumps({"nftables": [{"table": {"family": "inet", "name": m.TABLE}}]})

@@ -412,7 +412,7 @@ class RolloutRegressionTests(unittest.TestCase):
             (Path(d) / ".ssh").mkdir()
             (Path(d) / ".ssh/authorized_keys").write_text("key1\nkey2\n")
 
-            def run(args, **kwargs):
+            def run(args, **_kwargs):
                 if "-T" in args:
                     return subprocess.CompletedProcess(
                         args, 0, "\x1b]3008;test\x1b\\pubkeyauthentication yes\nusepam yes\n", ""

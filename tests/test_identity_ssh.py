@@ -150,7 +150,7 @@ class BindingTests(unittest.TestCase):
     def test_disabled_and_removed_hosts_need_no_live_identity(self):
         p = policy("disabled", hosts=["socrat-1"], revoked=["socrat-2"])
 
-        def unavailable(ident):
+        def unavailable(_ident):
             raise AssertionError("Must not call IdP for revocation")
 
         payload, _ = ssh.build_plan(ssh.bindings_map(ledger()), p, unavailable)
@@ -261,6 +261,7 @@ class ApiTests(unittest.TestCase):
         seen = []
 
         def opened(req, timeout):
+            assert timeout == 30  # fixed TLS client timeout
             seen.append(req)
             return io.BytesIO(
                 json.dumps({"pagination": {"next": None}, "results": [user()]}).encode()

@@ -247,7 +247,7 @@ class AppIAMTests(unittest.TestCase):
     def test_pagination_and_binding_duplicates(self):
         calls = []
 
-        def api(method, path):
+        def api(_method, path):
             calls.append(path)
             page = len(calls)
             return {"results": [page], "pagination": {"next": page == 1}}

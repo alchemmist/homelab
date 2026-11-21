@@ -49,7 +49,7 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
         self.calls = 0
         self.result = {"success": True}
 
-        async def execute(form_data, metadata, event_caller, call):
+        async def execute(_form_data, metadata, _event_caller, call):
             self.calls += 1
             return (
                 json.loads(call["function"]["arguments"]),
@@ -165,7 +165,7 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(stopped[1]["error"], GUARD.REPEAT_STOP_MESSAGE)
 
     async def test_alias_resolved_before_validation(self):
-        def resolve(call, tools):
+        def resolve(call, _tools):
             call["function"]["name"] = "replace_file_content"
             return None
 
