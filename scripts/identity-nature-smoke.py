@@ -112,7 +112,7 @@ with sync_playwright() as p:
             page.goto(journey)
             page.locator("input[name=uidField]").wait_for()
             chosen = current_scene()
-            for attempt in range(3):
+            for _attempt in range(3):
                 page.reload()
                 page.locator("input[name=uidField]").wait_for()
                 assert current_scene() == chosen
@@ -143,7 +143,7 @@ with sync_playwright() as p:
         context = browser.new_context()
         page = context.new_page()
         scenes = set()
-        for i in range(12):
+        for _i in range(12):
             r = page.goto(BASE + "/-/quiet-mono/v1/nature/scene.css")
             assert r.status == 200 and hashlib.sha256(r.body()).hexdigest() in css_hashes
             scenes.add(r.headers["x-quiet-mono-scene"])

@@ -97,7 +97,7 @@ def main(runtime_root=ROOT):
     namespace_created = False
     cleanup_errors = []
     try:
-        for name, db, cert, acme, binaries, zone in workloads:
+        for name, db, cert, acme, binaries, _zone in workloads:
             target = temporary / name
             target.mkdir()
             (target / "db").mkdir()
@@ -119,7 +119,7 @@ def main(runtime_root=ROOT):
         namespace_created = True
         run("ip", "-n", NAMESPACE, "link", "set", "lo", "up")
         run("ip", "-n", NAMESPACE, "address", "add", "172.18.0.1/16", "dev", "lo")
-        for name, db, cert, acme, binaries, zone in workloads:
+        for name, _db, _cert, _acme, _binaries, zone in workloads:
             target = temporary / name
             unit = "homelab-vpn-smoke-" + name + ".service"
             properties = [

@@ -258,7 +258,7 @@ def persist(state):
         .read_bytes(),
         Path("/etc/systemd/system/homelab-xui-backend-guard.service"): UNIT.encode(),
     }
-    for path, content in files.items():
+    for path, _content in files.items():
         h.check_path(path)
         if path.exists():
             raise ValueError("Persistence path already exists; inspect instead of overwriting")

@@ -372,7 +372,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
         with tempfile.TemporaryDirectory() as directory:
             run = pathlib.Path(directory) / "run"
             owned = {}
-            for role, bad in (("agent", True), ("verifier", False)):
+            for role, _bad in (("agent", True), ("verifier", False)):
                 role_dir = run / role
                 role_dir.mkdir(parents=True)
                 (role_dir / "container-id").write_text("cid-" + role)
