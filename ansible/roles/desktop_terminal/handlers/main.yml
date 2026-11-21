@@ -6,7 +6,8 @@
     set -o pipefail
     set -eu
     if /usr/bin/tmux has-session -t {{ homelab_terminal_session | quote }} 2>/dev/null; then
-      /usr/bin/tmux list-panes -s -t {{ homelab_terminal_session | quote }} -F '#{pane_id} #{pane_current_command}' |
+      /usr/bin/tmux list-panes -s -t {{ homelab_terminal_session | quote }} \
+        -F '#{pane_id} #{pane_current_command}' |
       while read -r pane command; do
         if [ "$command" = btm ]; then
           /usr/bin/tmux respawn-pane -k -t "$pane" /usr/local/bin/homelab-monitor-shell
