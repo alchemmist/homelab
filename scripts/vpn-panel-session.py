@@ -21,7 +21,7 @@ import urllib.request
 from collections.abc import Sequence
 from contextlib import closing
 from pathlib import Path
-from typing import cast
+from typing import TypedDict, cast
 
 spec = importlib.util.spec_from_file_location(
     "inventory", Path(__file__).with_name("vpn-hardening-inventory.py")
