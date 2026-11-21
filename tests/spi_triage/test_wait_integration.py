@@ -6,9 +6,10 @@ import time
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
+
 import test_triage as f
-from core import Store, Failure, MATCH_SCHEMA
-from integrations import Model, REQUEST_DEADLINE
+from core import MATCH_SCHEMA, Failure, Store
+from integrations import REQUEST_DEADLINE, Model
 from service import Engine
 
 
@@ -292,7 +293,8 @@ class IntegrationTests(unittest.TestCase):
 
     def test_concurrent_same_claim_and_duplicate_stage_do_not_double_pay(self) -> None:
         'Verify duplicate concurrent claims never double-pay.'
-        import concurrent.futures, threading
+        import concurrent.futures
+        import threading
 
         with concurrent.futures.ThreadPoolExecutor(2) as pool:
             results = list(

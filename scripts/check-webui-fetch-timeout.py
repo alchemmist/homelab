@@ -11,6 +11,7 @@ from open_webui.utils.middleware import execute_tool_call
 
 
 async def main():
+    """Run the command-line entry point."""
     assert await Config.get("web.loader.timeout") == "15"
     metadata = {
         "tools": {

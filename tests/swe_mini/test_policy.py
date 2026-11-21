@@ -3,8 +3,8 @@
 import base64
 import importlib.util
 import json
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 spec = importlib.util.spec_from_file_location(
     "policy", Path(__file__).resolve().parents[2] / "services/swe-mini/policy.py"

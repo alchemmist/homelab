@@ -15,6 +15,7 @@ auth = "Basic " + base64.b64encode(("admin:" + password).encode()).decode()
 
 
 def api(method, path, payload=None):
+    """Document the api operation."""
     req = urllib.request.Request(
         base + path,
         method=method,

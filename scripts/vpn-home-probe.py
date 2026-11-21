@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Owned, per-process home fixed-path VPN acceptance. No OS proxy/routes/DNS writes.
+
 Takes private prepared configs and a checksum-pinned copy of the running Xray core.
 Only temporary loopback SOCKS proxies and a single64KiB request per protocol.
 """

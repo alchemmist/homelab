@@ -667,7 +667,6 @@ class ModelEvidenceTests(unittest.TestCase):
         'Verify facts must reference valid existing evidence ids.'
         import time
 
-
         from core import REPORT_SCHEMA
         from integrations import Model
         from test_triage import report

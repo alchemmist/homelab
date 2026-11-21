@@ -43,6 +43,7 @@ LOGIN_REDIRECTS = {
 
 
 def redirect_matches(host, headers):
+    """Perform the redirect matches operation."""
     if host not in LOGIN_REDIRECTS:
         return True
     locations = [
@@ -61,6 +62,7 @@ def redirect_matches(host, headers):
 
 
 def check_endpoint(item):
+    """Check the endpoint."""
     host, address = item
     path, expected, marker = PROBES.get(host, ("/", 200, None))
     with tempfile.TemporaryDirectory(prefix="public-ingress-check-") as directory:
@@ -109,6 +111,7 @@ def check_endpoint(item):
 
 
 def check_dns(host):
+    """Check the dns."""
     valid = True
     for authority in ADDRESSES:
         result = subprocess.run(
@@ -121,12 +124,15 @@ def check_dns(host):
         good = result.returncode == 0 and addresses == set(ADDRESSES)
         valid = good and valid
         print(
-            f"DNS {host:25} authority={authority} {','.join(sorted(addresses)) or 'no answer'} {'ok' if good else 'FAILED'}"
+            f"DNS {host:25} authority={authority} "
+            f"{','.join(sorted(addresses)) or 'no answer'} "
+            f"{'ok' if good else 'FAILED'}"
         )
     return valid
 
 
 def main():
+    """Run the command-line entry point."""
     parser = argparse.ArgumentParser(
         description="Check both public HTTPS entrances without depending on DNS propagation."
     )
