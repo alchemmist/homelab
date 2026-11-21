@@ -2,6 +2,7 @@
 import ast
 import re
 
+
 def artifact_response(raw: str):
  # -p text output may include kubectl warnings. Only accept one bounded Python artifact;
  # never evaluate surrounding prose, commands, paths, or agent claims.

@@ -28,6 +28,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
     """Redirect handler that refuses to follow HTTP redirects."""
 
     def redirect_request(self, *args, **kwargs):
+        """Refuse redirects so credentials are never forwarded."""
         return None
 
 
@@ -43,12 +44,14 @@ class MembershipReader:
     """Cached reader for the observer membership token file."""
 
     def __init__(self, token_file, ttl=60):
+        """Initialize membership cache state."""
         self.token_file, self.ttl = Path(token_file), ttl
         self.lock, self.expires = threading.Lock(), 0
         self.users, self.groups = {}, {}
         self.http = opener()
 
     def rows(self, path):
+        """Fetch all paginated rows from the Authentik API path."""
         token = self.token_file.read_text().strip()
         result = []
         for page in range(1, 201):
@@ -72,6 +75,7 @@ class MembershipReader:
         raise RuntimeError("Incomplete membership pagination")
 
     def refresh(self):
+        """Reload the cached user/group inventory once it expires."""
         with self.lock:
             if time.monotonic() < self.expires:
                 return
@@ -98,6 +102,7 @@ class MembershipReader:
             self.expires = time.monotonic() + self.ttl
 
     def admitted(self, subject, groups):
+        """Check whether an active user holds one of the claim's groups."""
         self.refresh()
         user = self.users.get(subject)
         return bool(

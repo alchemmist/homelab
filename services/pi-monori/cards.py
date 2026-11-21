@@ -1,8 +1,9 @@
 """Compile #509 report into durable assignments. Backlog != passed or admitted."""
 import json
-import re
 import pathlib
+import re
 import sys
+
 
 def plan(text: str):
     rows=[];

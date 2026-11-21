@@ -1,9 +1,9 @@
 """The DNS addition may change only OpenHands' A records in all health states."""
 
 import importlib.util
-from pathlib import Path
 import types
 import unittest
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
