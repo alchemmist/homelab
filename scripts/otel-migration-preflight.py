@@ -42,8 +42,8 @@ def _section(container: object, key: str) -> dict[str, object]:
 
 
 def _sample_value(point: object) -> str:
-    value = _mapping(point)["value"]
-    if isinstance(value, list) and len(value) > 1:
+    value = _mapping(point).get("value")
+    if isinstance(value, (list, tuple)) and len(value) > 1:
         sample = value[1]
         if isinstance(sample, str):
             return sample

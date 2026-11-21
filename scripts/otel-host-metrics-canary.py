@@ -99,8 +99,8 @@ def query(root, expression, range_parameters=None) -> list[dict[str, object]]:
 
 def _sample_value(point: dict[str, object]) -> str:
     """Return the string sample value of one instant-vector point."""
-    value = point["value"]
-    if not isinstance(value, (list, tuple)):
+    value = point.get("value")
+    if not isinstance(value, (list, tuple)) or len(value) < 2:
         message = "Native instant sample has no value pair"
         raise TypeError(message)
     reading = value[1]
@@ -112,16 +112,16 @@ def _sample_value(point: dict[str, object]) -> str:
 
 def _range_values(point: dict[str, object]) -> list[tuple[float, str]]:
     """Return the timestamp-value pairs of one range-vector point."""
-    values = point["values"]
+    values = point.get("values")
     if not isinstance(values, list):
         message = "Native range sample has no values list"
         raise TypeError(message)
     pairs = []
     for item in values:
-        if not isinstance(item, (list, tuple)):
+        if not isinstance(item, (list, tuple)) or len(item) < 2:
             message = "Native range sample entries must be timestamp/value pairs"
             raise TypeError(message)
-        timestamp, reading = item
+        timestamp, reading = item[0], item[1]
         pairs.append((float(timestamp), str(reading)))
     return pairs
 
@@ -282,7 +282,7 @@ def run(root, phase) -> dict[str, object]:
     if stat.st_uid != 0 or stat.st_mode & 0o077:
         raise ValueError("Canary workspace must be root-only")
     request = json.loads((root / "request.json").read_text())
-    if not ipaddress.ip_address(request["backendIP"]) in ipaddress.ip_network("10.250.0.0/24"):
+    if ipaddress.ip_address(request["backendIP"]) not in ipaddress.ip_network("10.250.0.0/24"):
         raise ValueError("Backend must bind only the existing private WireGuard range")
     result = {"phase": phase, "hostname": socket.gethostname(), "productionIngestionChanged": False}
     if phase == "prepare":
@@ -388,7 +388,7 @@ def run(root, phase) -> dict[str, object]:
             64 * 2**20,
             {"TZ": "UTC", "DBUS_SYSTEM_BUS_ADDRESS": "unix:path=/run/dbus/system_bus_socket"},
             [
-                "User=65534",
+                'User=65534',
                 "Group=65534",
                 "NoNewPrivileges=yes",
                 "BindReadOnlyPaths=/var/lib/node_exporter/textfile_collector:/host/root/var/lib/node_exporter/textfile_collector",
@@ -452,14 +452,14 @@ def run(root, phase) -> dict[str, object]:
     elif phase == "outage-proof":
         stops = json.loads((root / "gateway-stop-result.json").read_text())["timeUnixSeconds"]
         restarts = json.loads((root / "restarts.json").read_text())
-        points = query(root, "up[10m]")
+        points = query(root, 'up[10m]')
         by_identity = {identity(point["metric"]): point for point in points}
         counts = {}
         for node, labels in request["expectedLabels"].items():
             series = by_identity[identity({**labels, "__name__": "up"})]
             restart = restarts[node]["restartStartedAt"]
             count = sum(
-                stops < timestamp < restart and value == "1"
+                stops < float(timestamp) < restart and value == "1"
                 for timestamp, value in _range_values(series)
             )
             if count < 1:
