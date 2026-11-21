@@ -101,7 +101,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception as exc:
+    except (BrokerFailure, ValueError, OSError, KeyError, jwt.PyJWTError, ssl.SSLError) as exc:
         code = str(exc) if isinstance(exc, (BrokerFailure, ValueError)) else type(exc).__name__
         print(
             json.dumps(
@@ -113,4 +113,4 @@ if __name__ == "__main__":
                 }
             )
         )
-        raise SystemExit(1)
+        raise SystemExit(1) from exc

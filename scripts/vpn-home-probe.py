@@ -206,7 +206,7 @@ if __name__ == "__main__":
     a = p.parse_args()
     try:
         print(json.dumps(run(a.state, a.approved_binary_sha256, endpoint=a.endpoint)))
-    except Exception:
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
         raise SystemExit(
             "Home probe stopped; inspect private evidence; no global network changes requested."
         ) from None

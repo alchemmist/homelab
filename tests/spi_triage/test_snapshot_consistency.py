@@ -2,66 +2,25 @@
 
 import copy
 import unittest
-from collections.abc import Callable
-from typing import Protocol, TypedDict
 from unittest.mock import Mock
-
 import test_triage as f
-from core import Failure, digest
 from integrations import GitHub, Model
-
-
-class Row(TypedDict):
-    """Fake issue row served by the transport fixture."""
-
-    number: int
-    title: str
-    updated_at: str
-    body: str
-    comments: int
-
-
-class TransportedGithub(Protocol):
-    """Duck-type of integrations.GitHub returned by the fake transport."""
-
-    issues: Mock
-    request: object
-
-    def pages(self, path: str) -> list[Row]:
-        """Return one offset page of fake rows."""
-        ...
-
-    def snapshot(self) -> list[Row]:
-        """Return a stable, fully-read snapshot."""
-        ...
-
-    def open_signature(self) -> str:
-        """Return the signature digest of the open snapshot."""
-        ...
+from core import Failure, digest
 
 
 class SnapshotConsistencyTests(unittest.TestCase):
-    def rows(self, n: int = 61) -> list[Row]:
+    def rows(self, n=61):
         return [
-            {
-                "number": i,
-                "title": "[SPI] fake",
-                "updated_at": "first",
-                "body": "",
-                "comments": 0,
-            }
+            {"number": i, "title": "[SPI] fake", "updated_at": "first", "body": "", "comments": 0}
             for i in range(1, n + 1)
         ]
 
-    def transport(
-        self, mutation: Callable[[list[Row]], object], *, descending: bool = False, n: int = 61
-    ) -> tuple[TransportedGithub, list[str]]:
-        g: TransportedGithub = GitHub(Mock(), "unused")
+    def transport(self, mutation, descending=False, n=61):
+        g = GitHub(Mock(), "unused")
         rows = self.rows(n)
-        calls: list[str] = []
+        calls = []
 
-
-        def request(_method, path, _body=None) -> list[dict[str, object]]:
+        def request(method, path, body=None):
             import urllib.parse
 
             q = urllib.parse.parse_qs(urllib.parse.urlsplit(path).query)
@@ -76,15 +35,15 @@ class SnapshotConsistencyTests(unittest.TestCase):
         g.request = request
         return g, calls
 
-    def test_old_desc_insert_reproduces_actual_current_duplicate_with_valid_proof(self) -> None:
+    def test_old_desc_insert_reproduces_actual_current_duplicate_with_valid_proof(self):
         original = self.rows()
         m = Model(Mock(), "fake")
         saved = []
-        m.call = Mock(return_value=dict(issue_number=0, reason="different", confidence="low"))
+        m.call = Mock(return_value={"issue_number": 0, "reason": "different", "confidence": "low"})
         m.match(f.event(), original, on_progress=lambda p: saved.append(copy.deepcopy(p)))
         proof = copy.deepcopy(saved[-1])
         m.call.reset_mock()
-        g, calls = self.transport(lambda r: r.append({**r[-1], "number": 62}), descending=True)
+        g, calls = self.transport(lambda r: r.append(dict(r[-1], number=62)), descending=True)
         current = list(g.pages("/issues?state=open&sort=created&direction=desc"))
         self.assertEqual(len(current), 62)
         self.assertEqual(len({x["number"] for x in current}), 61)
@@ -117,7 +76,7 @@ class SnapshotConsistencyTests(unittest.TestCase):
         m.call.assert_not_called()
         self.assertEqual(proof, saved[-1])
 
-    def test_insert_close_reopen_reorder_coherent_or_visible_instability(self) -> None:
+    def test_insert_close_reopen_reorder_coherent_or_visible_instability(self):
         for n in (61, 62):
             mutations = [
                 lambda r: r.append(dict(r[-1], number=100)),
@@ -143,7 +102,7 @@ class SnapshotConsistencyTests(unittest.TestCase):
                         )
                     self.assertLessEqual(len(calls), 20)
 
-    def test_comment_window_update_defers_no_model(self) -> None:
+    def test_comment_window_update_defers_no_model(self):
         g = GitHub(Mock(), "unused")
         first = self.rows()
         second = copy.deepcopy(first)
@@ -155,7 +114,7 @@ class SnapshotConsistencyTests(unittest.TestCase):
         self.assertEqual(e.exception.code, "GITHUB_SNAPSHOT_UNSTABLE")
         self.assertEqual(g.issues.call_count, 2)
 
-    def test_bad_schema_finite(self) -> None:
+    def test_bad_schema_finite(self):
         g = GitHub(Mock(), "unused")
         g.request = Mock(return_value=[{"title": "[SPI] bad", "number": "secret"}])
         with self.assertRaises(Failure) as e:
@@ -168,7 +127,7 @@ class PatientBudgetTests(unittest.TestCase):
     setUp = f.EngineTests.setUp
     tearDown = f.EngineTests.tearDown
 
-    def test_engine_unstable_snapshot_zero_model(self) -> None:
+    def test_engine_unstable_snapshot_zero_model(self):
         key = self.store.enqueue(f.event())["job_id"]
         self.store.claim()
         self.github.snapshot.side_effect = Failure("GITHUB_SNAPSHOT_UNSTABLE", retry_after=15)
@@ -183,7 +142,7 @@ class PatientBudgetTests(unittest.TestCase):
                 0,
             )
 
-    def test_snapshot_deferral_preserves_proof_and_failure_budget(self) -> None:
+    def test_snapshot_deferral_preserves_proof_and_failure_budget(self):
         key = self.store.enqueue(f.event())["job_id"]
         self.store.claim()
         self.store.save(key, 0, {"match_progress_v3": {"proof": "retained"}})

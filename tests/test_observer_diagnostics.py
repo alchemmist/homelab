@@ -71,9 +71,9 @@ def test_body_read_failure_and_context_survives_safe_controller_wrap() -> None:
         try:
             with m.ObservedHTTP(inner).open(req) as result:
                 result.read()
-        except Exception:
+        except m.DiagnosticFailure:
             raise RuntimeError("SECRET") from None
-    except Exception as error:
+    except RuntimeError as error:
         event = m.failure_event(error)
     assert event["stage"] == "idp_groups" and event["phase"] == "response_read"
     assert event["kind"] == "timeout" and "SECRET" not in json.dumps(event)

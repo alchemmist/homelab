@@ -19,7 +19,7 @@ class ReferenceContractTests(unittest.TestCase):
         return Model(Mock(), "test-only", store=Mock())
 
     @staticmethod
-    def data(ids=("E002", "E007")):
+    def data(ids=("E002", "E007")) -> dict[str, dict[str, dict[str, list[dict[str, str]]]]]:
         return {"evidence": {"artifact_context": {"index": [{"id": x} for x in ids]}}}
 
     def test_guided_schema_requires_an_actual_id_without_mutating_global(self) -> None:

@@ -93,7 +93,7 @@ class HostPeerTest(unittest.TestCase):
 
     def test_only_directed_tcp_ports_dedicated_groups(self) -> None:
         bodies = peer.policies(["jwt-grafana", "jwt-ssh"], ["machine-grafana", "machine-ssh"])
-        for body, port in zip(bodies, ["8443", "2222"]):
+        for body, port in zip(bodies, ["8443", "2222"], strict=True):
             rule = body["rules"][0]
             self.assertEqual(rule["protocol"], "tcp")
             self.assertEqual(rule["ports"], [port])
@@ -162,7 +162,10 @@ class StunTest(unittest.TestCase):
         packet: bytes = probe.request(1)
         port = 12345 ^ 0x2112
         addr = bytes(
-            a ^ b for a, b in zip(bytes([109, 173, 40, 247]), struct.pack("!I", probe.COOKIE))
+            a ^ b
+            for a, b in zip(
+                bytes([109, 173, 40, 247]), struct.pack("!I", probe.COOKIE), strict=True
+            )
         )
         val = b"\x00\x01" + struct.pack("!H", port) + addr
         response = b"\x01\x01\x00\x0c" + packet[4:20] + b"\x00\x20\x00\x08" + val

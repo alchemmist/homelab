@@ -14,6 +14,7 @@ import threading
 import time
 from typing import cast
 import uuid
+import zlib
 
 import jwt
 import requests
@@ -243,7 +244,7 @@ def publish(run, result, review):
         if current["tree"]["sha"] != tree["sha"] or [p["sha"] for p in current["parents"]] != [
             run["revision"]
         ]:
-            raise ValueError("Existing candidate branch differs; refusing publication")
+            raise ValueError("Existing candidate branch differs; refusing publication") from exc
     body = (
         "Automated by mini-swe-agent v2.4.6; owner approval required. No production access or merge.\n\n"
         + result["report"][:16000]
@@ -277,7 +278,7 @@ def tick() -> bool | None:
     ).fetchone()
     if active:
         columns = [r[1] for r in DB.execute("PRAGMA table_info(runs)")]
-        run = dict(zip(columns, active))
+        run = dict(zip(columns, active, strict=True))
         if run["state"] == "queued":
             start_job(run, "work")
             return None
@@ -316,7 +317,7 @@ def tick() -> bool | None:
         log = CORE.read_namespaced_pod_log(pods[0].metadata.name, NS, limit_bytes=2_000_000)
         try:
             result = decode_result(log, signing_key(run["id"], run["state"]))
-        except Exception:
+        except (KeyError, TypeError, ValueError, OSError, zlib.error):
             if run["state"] == "review":
                 try:
                     CORE.delete_namespaced_config_map(run["job"] + "-proposal", NS)
@@ -471,7 +472,15 @@ def run_once() -> None:
     try:
         if tick() is not False:
             STATUS["error"] = ""
-    except Exception as exc:
+    except (
+        client.ApiException,
+        requests.RequestException,
+        sqlite3.OperationalError,
+        ValueError,
+        KeyError,
+        TypeError,
+        OSError,
+    ) as exc:
         # Never log bodies, tokens or raw third-party error responses.
         STATUS["error"] = type(exc).__name__
         response = getattr(exc, "response", None)

@@ -124,7 +124,7 @@ def check(root=ROOT, write=False):
             value, tree = value[key], scalar_node(tree, key)
         matches = [
             (entry, node)
-            for entry, node in zip(value, tree.value)
+            for entry, node in zip(value, tree.value, strict=True)
             if route["hostname"] in entry.get("hostnames", [])
         ]
         if len(matches) != 1:

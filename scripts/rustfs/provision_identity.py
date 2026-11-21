@@ -37,7 +37,7 @@ COLLECTIONS = (
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, request, response, code, message, headers, newurl):
+    def redirect_request(self, _request, response, _code, _message, _headers, _newurl):
         if response is not None:
             response.close()
         raise ValueError("redirect refused")
@@ -266,7 +266,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
+    except (ImportError, OSError, RuntimeError, ValueError):
         raise SystemExit(
             "Identity provisioning stopped; private state may be partial. No automatic rollback or existing identity edits."
-        )
+        ) from None

@@ -8,7 +8,6 @@ from pathlib import Path
 import subprocess
 import sys
 import time
-from typing import cast
 
 from policy import (
     LANES,
@@ -41,7 +40,7 @@ def command(args, *, cwd=ROOT, timeout=900):
     return rc
 
 
-def checks() -> dict[str, int]:
+def checks():
     return {
         "backend": command(
             [
@@ -64,7 +63,7 @@ def checks() -> dict[str, int]:
     }
 
 
-def agent_main() -> None:
+def agent_main():
     import yaml
     from minisweagent import package_dir
     from minisweagent.agents.default import DefaultAgent
@@ -82,12 +81,12 @@ def agent_main() -> None:
         max_tokens=4096,
     )
     smoke = os.getenv("LANE") == "smoke"
-    cfg = config["agent"] | dict(
-        step_limit=8 if smoke else 100,
-        cost_limit=0,
-        wall_time_limit_seconds=600 if smoke else 4500,
-        output_path=ART / "trajectory.json",
-    )
+    cfg = config["agent"] | {
+        "step_limit": 8 if smoke else 100,
+        "cost_limit": 0,
+        "wall_time_limit_seconds": 600 if smoke else 4500,
+        "output_path": ART / "trajectory.json",
+    }
     agent = DefaultAgent(
         LitellmTextbasedModel(**model_config), LocalEnvironment(cwd=str(ROOT), timeout=180), **cfg
     )
@@ -96,7 +95,7 @@ def agent_main() -> None:
     (ART / "agent-exit.json").write_text(json.dumps(result))
 
 
-def harden_parent() -> None:
+def harden_parent():
     import ctypes
 
     # Deny same-UID children /proc/<parent>/{environ,mem,fd}, including Pod stdout.
@@ -106,7 +105,7 @@ def harden_parent() -> None:
         raise RuntimeError("Authenticated non-dumpable worker wrapper required")
 
 
-def main() -> None:
+def main():
     harden_parent()
     ART.mkdir(parents=True, exist_ok=True)
     Path("/workspace/tmp").mkdir(exist_ok=True)
@@ -128,20 +127,20 @@ def main() -> None:
         valid = marker.exists() and marker.read_text().strip() == "swe-mini-autonomy-ok"
         print(
             signed_result(
-                dict(
-                    lane=lane,
-                    phase=phase,
-                    revision=revision,
-                    agent_rc=rc,
-                    agent_status=status,
-                    baseline={"isolated_shell": 0},
-                    checks={
+                {
+                    "lane": lane,
+                    "phase": phase,
+                    "revision": revision,
+                    "agent_rc": rc,
+                    "agent_status": status,
+                    "baseline": {"isolated_shell": 0},
+                    "checks": {
                         "marker": 0 if valid else 1,
                         "multiple_calls": 0 if exit_result.get("n_calls", 0) >= 2 else 1,
                     },
-                    changes=[],
-                    report="Native mini-swe-agent + configured DeepSeek: isolated shell execution and explicit submission acceptance. Next real task must start automatically.",
-                )
+                    "changes": [],
+                    "report": "Native mini-swe-agent + configured DeepSeek: isolated shell execution and explicit submission acceptance. Next real task must start automatically.",
+                }
             ),
             flush=True,
         )
@@ -189,12 +188,9 @@ def main() -> None:
         }
     )
     bootstrap = bool(setup["node"])
-    candidate_checks: dict[str, int] | None = None
-    proposal: dict[str, object] | None = None
-    proposal_data: dict[str, object] = {}
+    candidate_checks = None
     if phase == "review":
         proposal = json.loads(Path("/proposal/proposal.json").read_text())
-        proposal_data = cast("dict[str, object]", proposal)
         for item in validate_changes(proposal["changes"]):
             p = ROOT / item["path"]
             p.parent.mkdir(parents=True, exist_ok=True)
@@ -213,9 +209,9 @@ Read AGENTS.md. Reproduce claims, inspect regression tests and look for security
 You have NO authority over production. Use local synthetic fixtures only.
 Write /workspace/artifacts/review.json as {"approved": true/false, "reason": "specific evidence and commands"}.
 Approve only a concrete narrow improvement with convincing executable evidence. Otherwise reject.
-Then submit using the standard completion command. Original report follows:\n""" + cast(
-            "str", proposal_data["report"]
-        )
+Then submit using the standard completion command. Original report follows:\n""" + proposal[
+            "report"
+        ]
     else:
         task = f"""Work on Monori in {ROOT}. Direction: {LANES[lane]}
 Read AGENTS.md, README.md, Makefile and relevant docs first. Pick ONE narrow concrete finding.
@@ -247,19 +243,18 @@ This narrow bootstrap exception overrides the general ban on dependency manifest
     if bootstrap:
         command(["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], cwd=ROOT / "web")
     after = checks()
-    changes: list[dict[str, str]] = []
-    result = dict(
-        lane=lane,
-        phase=phase,
-        revision=revision,
-        baseline=baseline,
-        checks=after,
-        setup=setup,
-        agent_rc=rc,
-        started=int(time.time()),
-        changes=changes,
-        report="",
-    )
+    result = {
+        "lane": lane,
+        "phase": phase,
+        "revision": revision,
+        "baseline": baseline,
+        "checks": after,
+        "setup": setup,
+        "agent_rc": rc,
+        "started": int(time.time()),
+        "changes": [],
+        "report": "",
+    }
     exit_file = ART / "agent-exit.json"
     result["agent_status"] = (
         json.loads(exit_file.read_text()).get("exit_status")
@@ -283,8 +278,7 @@ This narrow bootstrap exception overrides the general ban on dependency manifest
                 .split("\0"),
             )
         )
-        changes = cast("list[dict[str, str]]", proposal_data["changes"])
-        expected = {item["path"]: base64.b64decode(item["content"]) for item in changes}
+        expected = {item["path"]: base64.b64decode(item["content"]) for item in proposal["changes"]}
         if actual_paths != set(expected) or any(
             (ROOT / path).is_symlink() or (ROOT / path).read_bytes() != data
             for path, data in expected.items()
@@ -306,20 +300,20 @@ This narrow bootstrap exception overrides the general ban on dependency manifest
             p = ROOT / path
             if not p.is_file() or p.is_symlink():
                 raise ValueError("Deletion/symlink not permitted")
-            changes.append(
+            result["changes"].append(
                 {
                     "path": path,
                     "mode": "100644",
                     "content": base64.b64encode(p.read_bytes()).decode(),
                 }
             )
-        if changes:
-            validate_changes(changes)
-            if any(i["path"] in {"web/package.json", "web/package-lock.json"} for i in changes):
-                validate_dependency_update(changes, original_package)
-    # Keep the result's list synchronized even when proposal data replaces the
-    # local list object during review validation.
-    result["changes"] = changes
+        if result["changes"]:
+            validate_changes(result["changes"])
+            if any(
+                i["path"] in {"web/package.json", "web/package-lock.json"}
+                for i in result["changes"]
+            ):
+                validate_dependency_update(result["changes"], original_package)
     result["command_tail"] = (ART / "commands.log").read_text(errors="replace")[-16000:]
     # No model transcript or shell stdout is streamed into cluster logs.
     print(signed_result(result), flush=True)

@@ -4,7 +4,9 @@ import functools
 import hashlib
 import json
 import sys
+import types
 from itertools import islice
+from typing import cast
 
 from jsonschema import Draft202012Validator
 
@@ -210,80 +212,121 @@ def backend_validation_problem(result):
     return "terminal rejected the arguments with HTTP 422; recheck required fields and types in its schema"
 
 
+def parse_terminal_arguments(
+    arguments: str, spec_parameters: object
+) -> tuple[object, str, str | None]:
+    """Return (params, canonical, problem) for a raw tool-call argument string."""
+    try:
+        try:
+            params = json.loads(arguments)
+        except (ValueError, TypeError):
+            params = ast.literal_eval(arguments)
+        canonical = json.dumps(params, sort_keys=True, separators=(",", ":"))
+    except (ValueError, TypeError, SyntaxError):
+        return None, str(arguments), "arguments must be a complete JSON object"
+    if not isinstance(params, dict):
+        return params, canonical, "arguments must be a JSON object"
+    return params, canonical, validation_problem(params, spec_parameters)
+
+
+def clear_failure_on_success(
+    metadata: object, response: tuple[object, ...], fingerprint: str
+) -> None:
+    """Forget the validation failure once the tool call succeeds."""
+    value = response[1]
+    if isinstance(value, tuple) and value:
+        value = value[0]
+    if value is not None and not (isinstance(value, dict) and value.get("error")):
+        guard_state(metadata)["failures"].pop(fingerprint, None)
+
+
+def repeat_guard_response(
+    state: dict[str, object], fingerprint: str, params: object, tool: object, direct: object
+) -> tuple[object, dict[str, str], object, str, object] | None:
+    """Return the blocked response tuple, or None when the call is not a repeat."""
+    recent = cast("list[str]", state.setdefault("recent", []))
+    projected = recent[-(REPEAT_HISTORY - 1) :] + [fingerprint]
+    period = repeated_period(projected)
+    if period:
+        block = hashlib.sha256("\n".join(projected[-period:]).encode()).hexdigest()
+        if state.get("warned") == block:
+            state["stopped"] = True
+            state["stop_message"] = REPEAT_STOP_MESSAGE
+            return params, {"error": REPEAT_STOP_MESSAGE}, tool, "terminal", direct
+        state["warned"] = block
+        return (
+            params,
+            {"error": REPEAT_WARN_MESSAGE.format(cycles=REPEAT_CYCLES)},
+            tool,
+            "terminal",
+            direct,
+        )
+    return None
+
+
+async def execute_guarded(
+    function: types.FunctionType,
+    form_data: object,
+    metadata: dict[str, object],
+    event_caller: object,
+    tool_call: dict[str, object],
+) -> object:
+    """Run one tool call under the terminal/fetch guard rules."""
+    resolver = function.__globals__.get("resolve_tool_call")
+    bypass = bool(resolver is not None and resolver(tool_call, metadata.get("tools", {})))
+    call = cast("dict[str, object]", tool_call.get("function", {}))
+    name = cast("str", call.get("name", ""))
+    tools_all = cast("dict[str, object]", metadata.get("tools", {}))
+    tool = cast("dict[str, object]", tools_all.get(name, {}))
+    metadata_out: dict[str, object] = {}
+    if (
+        not bypass
+        and name == "fetch_url"
+        and tool.get("type") == "builtin"
+        and not tool.get("direct")
+    ):
+
+        async def fetch(url: str) -> object:
+            return await bounded_fetch({"url": url})
+
+        metadata_out = {"tools": {**tools_all, name: {**tool, "callable": fetch}}}
+    if bypass or metadata_out or tool.get("type") != "terminal":
+        return await function(
+            form_data,
+            {**metadata, **metadata_out} if metadata_out else metadata,
+            event_caller,
+            tool_call,
+        )
+    direct = tool.get("direct", False)
+    if guard_stopped(metadata):
+        return {}, {"error": guard_stop_message(metadata)}, tool, "terminal", direct
+    params, canonical, problem = parse_terminal_arguments(
+        cast("str", call.get("arguments", "{}")),
+        cast("dict[str, object]", tool.get("spec", {})).get("parameters", {}),
+    )
+    if problem:
+        result = record_failure(metadata, name, canonical, problem)
+        return params if isinstance(params, dict) else {}, result, tool, "terminal", direct
+    fingerprint = hashlib.sha256((name + "\n" + canonical).encode()).hexdigest()
+    state = cast("dict[str, object]", guard_state(metadata))
+    blocked = repeat_guard_response(state, fingerprint, params, tool, direct)
+    if blocked is not None:
+        return blocked
+    response = await function(form_data, metadata, event_caller, tool_call)
+    problem = backend_validation_problem(response[1])
+    if problem:
+        return response[0], record_failure(metadata, name, canonical, problem), *response[2:]
+    recent = cast("list[object]", state.setdefault("recent", []))
+    state["warned"] = None if fingerprint not in recent else state.get("warned")
+    recent.append(fingerprint)
+    del recent[:-REPEAT_HISTORY]
+    clear_failure_on_success(metadata, response, fingerprint)
+    return response
+
+
 def guarded_execute(function):
     @functools.wraps(function)
-    async def wrapped(form_data, metadata, event_caller, tool_call) -> object:
-        resolver = function.__globals__.get("resolve_tool_call")
-        if resolver is not None:
-            error = resolver(tool_call, metadata.get("tools", {}))
-            if error:
-                return await function(form_data, metadata, event_caller, tool_call)
-        call = tool_call.get("function", {})
-        name = call.get("name", "")
-        tool = metadata.get("tools", {}).get(name, {})
-        if name == "fetch_url" and tool.get("type") == "builtin" and not tool.get("direct"):
-
-            async def fetch(url) -> object:
-                return await bounded_fetch({"url": url})
-
-            tools = {**metadata["tools"], name: {**tool, "callable": fetch}}
-            return await function(form_data, {**metadata, "tools": tools}, event_caller, tool_call)
-        if tool.get("type") != "terminal":
-            return await function(form_data, metadata, event_caller, tool_call)
-        direct = tool.get("direct", False)
-        if guard_stopped(metadata):
-            return {}, {"error": guard_stop_message(metadata)}, tool, "terminal", direct
-        arguments = call.get("arguments", "{}")
-        try:
-            try:
-                params = json.loads(arguments)
-            except (ValueError, TypeError):
-                params = ast.literal_eval(arguments)
-            canonical = json.dumps(params, sort_keys=True, separators=(",", ":"))
-        except (ValueError, TypeError, SyntaxError):
-            params = {}
-            canonical = str(arguments)
-            problem = "arguments must be a complete JSON object"
-        else:
-            problem = (
-                "arguments must be a JSON object"
-                if not isinstance(params, dict)
-                else validation_problem(params, tool.get("spec", {}).get("parameters", {}))
-            )
-        if problem:
-            result = record_failure(metadata, name, canonical, problem)
-            return params if isinstance(params, dict) else {}, result, tool, "terminal", direct
-        fingerprint = hashlib.sha256((name + "\n" + canonical).encode()).hexdigest()
-        state = guard_state(metadata)
-        recent = state.setdefault("recent", [])
-        projected = recent[-(REPEAT_HISTORY - 1) :] + [fingerprint]
-        period = repeated_period(projected)
-        if period:
-            block = hashlib.sha256("\n".join(projected[-period:]).encode()).hexdigest()
-            if state.get("warned") == block:
-                state["stopped"] = True
-                state["stop_message"] = REPEAT_STOP_MESSAGE
-                return params, {"error": REPEAT_STOP_MESSAGE}, tool, "terminal", direct
-            state["warned"] = block
-            return (
-                params,
-                {"error": REPEAT_WARN_MESSAGE.format(cycles=REPEAT_CYCLES)},
-                tool,
-                "terminal",
-                direct,
-            )
-        response = await function(form_data, metadata, event_caller, tool_call)
-        problem = backend_validation_problem(response[1])
-        if problem:
-            return response[0], record_failure(metadata, name, canonical, problem), *response[2:]
-        state["warned"] = None if fingerprint not in recent else state.get("warned")
-        recent.append(fingerprint)
-        del recent[:-REPEAT_HISTORY]
-        value = response[1]
-        if isinstance(value, tuple) and value:
-            value = value[0]
-        if value is not None and not (isinstance(value, dict) and value.get("error")):
-            guard_state(metadata)["failures"].pop(fingerprint, None)
-        return response
+    async def wrapped(form_data, metadata, event_caller, tool_call):
+        return await execute_guarded(function, form_data, metadata, event_caller, tool_call)
 
     return wrapped

@@ -228,7 +228,8 @@ def publish(t: Task,sha: str):
   (folder/'proof.json').write_text(json.dumps(receipt,indent=2))
  title='test: cover '+t['fam'].split('.')[-1].replace('ǁ','.')[:60]+f' [{ISSUE}:'+key(t)+']';payload={'action':'create','issue':ISSUE,'head':sha,'title':title,'files':{dest:text}};mark(t,'publishing','Reconcile this unique title on any ambiguous acknowledgement: '+title,sha)
  try:r=pilot.cmd(['kubectl','-n','openhands','exec','-i','openhands-0','-c','mutation-pilot','--','python','-c',pilot.PUBLISH],json.dumps(payload),timeout=95);obj=json.loads(r.stdout);assert obj['pr'] and obj['head']
- except Exception:mark(t,'publication_uncertain',title,sha);return
+ except (OSError,ValueError,KeyError,subprocess.SubprocessError,AssertionError):
+  mark(t,'publication_uncertain',title,sha);return
  (folder/'publication.json').write_text(json.dumps(obj));mark(t,'published',obj['head'],sha,obj['pr'])
 
 def reconcile(prs: Sequence[Pull],sha: str):
@@ -296,7 +297,8 @@ def loop():
    if time.time()-lastfetch>180 or not sha:
     git('fetch','--depth=1','origin','main');head=git('rev-parse','FETCH_HEAD').strip();install_base(head);sha=head;prs=remote_json('pulls?state=open&per_page=100');slots=0 if len(prs)>=100 else max(0,5-sum(p['head']['ref'].startswith(f'openhands/issue-{ISSUE}/') for p in prs));reconcile(prs,sha);lastfetch=time.time()
     try:repair_one(prs,sha)
-    except Exception as ex:print('CI repair deferred',type(ex).__name__,str(ex)[:180],flush=True)
+    except (OSError,ValueError,RuntimeError,sqlite3.Error,subprocess.SubprocessError) as ex:
+     print('CI repair deferred',type(ex).__name__,str(ex)[:180],flush=True)
    if query("select id from tasks where state='transport_wait' and updated<? limit 1",(time.time()-180,)):
     if K('author',['true'],ok=False).returncode==0:
      query("update tasks set state='queued' where state='transport_wait' and pr is null and updated<?",(time.time()-180,))
@@ -309,5 +311,6 @@ def loop():
    c=ts[0]
    try:mark(c,'screening','Independent old-suite check on current main',sha);screen(c,sha)
    except (subprocess.TimeoutExpired,RuntimeError,ValueError) as ex:mark(c,'infra_triage',str(ex)[:400],sha)
-  except Exception as ex:print('controller backoff',type(ex).__name__,str(ex)[:250],flush=True);time.sleep(60)
+  except (OSError,ValueError,RuntimeError,sqlite3.Error,subprocess.SubprocessError) as ex:
+   print('controller backoff',type(ex).__name__,str(ex)[:250],flush=True);time.sleep(60)
 if __name__=='__main__':loop()

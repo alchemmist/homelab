@@ -153,7 +153,7 @@ class SessionTests(unittest.TestCase):
             with (
                 patch.object(m.socket, "gethostname", return_value="socrat-2"),
                 patch.object(m.os, "geteuid", return_value=0),
-                patch.object(m, "token_rows", side_effect=lambda *args: [x.copy() for x in rows]),
+                patch.object(m, "token_rows", side_effect=lambda *_args: [x.copy() for x in rows]),
                 patch.object(
                     m,
                     "pod_identity",
