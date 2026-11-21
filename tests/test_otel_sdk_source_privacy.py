@@ -3,12 +3,13 @@
 import importlib.util
 import math
 from pathlib import Path
+from types import ModuleType
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load():
+def load() -> ModuleType:
     spec = importlib.util.spec_from_file_location(
         "source_privacy", ROOT / "scripts/otel-sdk-source-privacy.py"
     )
@@ -34,11 +35,11 @@ class SourcePrivacyTests(unittest.TestCase):
             "normal": "unchanged",
         }
         after = module.attributes(before)
-        self.assertEqual(set(after), {"latency", "negative_zero", "valid", "normal"})
-        self.assertEqual(after["normal"], "unchanged")
-        self.assertFalse(after["valid"])
-        self.assertEqual(math.copysign(1, after["negative_zero"]), -1)
-        self.assertIn("authorization", before)
+        assert set(after) == {"latency", "negative_zero", "valid", "normal"}
+        assert after["normal"] == "unchanged"
+        assert not after["valid"]
+        assert math.copysign(1, after["negative_zero"]) == -1
+        assert "authorization" in before
 
     def test_url_credentials_query_and_fragment_do_not_survive(self) -> None:
         """Remove URL userinfo, query, and fragment from redacted copies."""
@@ -46,13 +47,11 @@ class SourcePrivacyTests(unittest.TestCase):
         value = "https://synthetic-user:synthetic-password@example.test:443/path?api_key=synthetic-token#fragment"
         cleaned = module.safe_url(value)
         for private in ["synthetic-user", "synthetic-password", "synthetic-token", "fragment"]:
-            self.assertNotIn(private, cleaned)
-        self.assertIn("example.test:443/path", cleaned)
-        self.assertEqual(
-            module.attributes({"url.query": "secret-data"}), {"url.query": "<redacted>"}
-        )
-        self.assertEqual(module.safe_name("GET " + value), "GET " + cleaned)
+            assert private not in cleaned
+        assert "example.test:443/path" in cleaned
+        assert module.attributes({"url.query": "secret-data"}) == {"url.query": "<redacted>"}
+        assert module.safe_name("GET " + value) == "GET " + cleaned
 
     def test_invalid_url_fails_closed_without_forwarding_original(self) -> None:
         """Replace an unparsable URL with the closed redaction marker."""
-        self.assertEqual(load().safe_url("https://[invalid?secret=value"), "<redacted-invalid-url>")
+        assert load().safe_url("https://[invalid?secret=value") == "<redacted-invalid-url>"

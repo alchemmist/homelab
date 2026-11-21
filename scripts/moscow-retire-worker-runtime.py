@@ -13,9 +13,20 @@ import signal
 import socket
 import time
 from pathlib import Path
+from typing import TypedDict
 
 
-def allowed(plan):
+class Proc(TypedDict):
+    """Stable identity of a /proc entry used by inventory and terminate."""
+
+    pid: int
+    start: str
+    name: str
+    cgroup: str
+    argv: list[bytes]
+
+
+def allowed(plan) -> tuple[dict[str, str], set[str]]:
     pods = plan["items"]
     assert len(pods) == 2
     result = {}
@@ -40,7 +51,7 @@ def allowed(plan):
     return result, ids
 
 
-def identity(pid):
+def identity(pid) -> Proc | None:
     p = Path("/proc") / str(pid)
     try:
         st = (p / "stat").read_text()
@@ -58,7 +69,7 @@ def identity(pid):
         return None
 
 
-def inventory(uids, ids):
+def inventory(uids, ids) -> tuple[list[Proc], list[Proc]]:
     owned = []
     shims = []
     for p in Path("/proc").glob("[0-9]*"):
@@ -87,7 +98,7 @@ def inventory(uids, ids):
     return owned, shims
 
 
-def terminate(i):
+def terminate(i) -> None:
     now = identity(i["pid"])
     if now is None:
         return
@@ -106,7 +117,7 @@ def terminate(i):
     raise RuntimeError("Owned process did not exit")
 
 
-def main():
+def main() -> None:
     a = argparse.ArgumentParser()
     a.add_argument("pod_plan", type=Path)
     a.add_argument("--apply", action="store_true")

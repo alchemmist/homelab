@@ -1,3 +1,5 @@
+"""Inventory telemetry signals across cluster monitors and container journals."""
+
 import argparse
 import importlib.util
 import json

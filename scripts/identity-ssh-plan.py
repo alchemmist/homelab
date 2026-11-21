@@ -59,7 +59,7 @@ def canonical_uuid(value):
 
 def read_json(path):
     # Do not include decoder errors: they can contain supplied private material.
-    def unique_pairs(pairs):
+    def unique_pairs(pairs) -> dict[str, object]:
         result = {}
         for key, value in pairs:
             require(key not in result, "Duplicate JSON field")
@@ -107,7 +107,7 @@ def validate_history(current, histories):
 def binding_history():
     """Fail closed without full Git history. A binding is never reused, even after revoke."""
 
-    def git(*args):
+    def git(*args) -> str:
         try:
             return subprocess.run(
                 ["git", "-C", str(ROOT), *args], check=True, capture_output=True, text=True
@@ -246,12 +246,19 @@ def public_keys(value):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
+    def redirect_request(self, _req, _fp, _code, _msg, _headers, _newurl):
+
+        'Refuse Authentik redirects instead of following them.'
         raise Refused("Authentik redirect refused")
 
 
 class Authentik:
-    def __init__(self, url, token, ca_file=None):
+    """Authentik HTTP API client used for SSH identity planning."""
+
+    def __init__(self, url, token, ca_file=None) -> None:
+
         parsed = urllib.parse.urlsplit(url)
         require(
             parsed.scheme == "https"
@@ -276,6 +283,7 @@ class Authentik:
         )
 
     def user(self, ident):
+        'Fetch the unique user record for a canonical UUID.'
         canonical_uuid(ident)
         query = urllib.parse.urlencode({"uuid": ident, "page_size": 100})
         request = urllib.request.Request(
@@ -413,7 +421,7 @@ def main(argv=None):
             users = read_json(args.snapshot)
             require(isinstance(users, list), "Snapshot must be a public-only API user list")
 
-            def get_user(ident):
+            def get_user(ident) -> dict[str, object] | None:
                 rows = [u for u in users if isinstance(u, dict) and u.get("uuid") == ident]
                 require(len(rows) == 1, "Snapshot UUID missing or duplicated")
                 return rows[0]
