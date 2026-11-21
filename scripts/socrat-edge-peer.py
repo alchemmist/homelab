@@ -46,11 +46,15 @@ def main() -> None:
             )
     assert len(matches) <= 1
 
-    def active():
+    def active() -> dict[str, str]:
         lines = subprocess.check_output(
             ["wg", "show", "wg-socrat", "allowed-ips"], text=True
         ).splitlines()
-        return dict(line.split(None, 1) for line in lines)
+        current: dict[str, str] = {}
+        for line in lines:
+            key, value = line.split(None, 1)
+            current[key] = value
+        return current
 
     # A historical restricted admin-client ACL used .8 even though its WG peer
     # was retired. Do not remove that ACL or grant a server identity to a client.
