@@ -5,10 +5,10 @@ import json
 import os
 import re
 import subprocess
-from typing import cast
 import sys
 import time
 from decimal import Decimal, InvalidOperation
+from typing import cast
 
 RESOURCE_NAMES = ("cpu", "memory", "ephemeral-storage")
 LIMIT_RESOURCE_NAMES = ("memory", "ephemeral-storage")

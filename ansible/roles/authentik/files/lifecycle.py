@@ -14,7 +14,13 @@ import urllib.request
 from pathlib import Path
 from uuid import UUID
 
-from app_iam import admission_groups, app_groups, rows, validate_bindings, validate_group
+from app_iam import (
+    admission_groups,
+    app_groups,
+    rows,
+    validate_bindings,
+    validate_group,
+)
 
 BASE = "https://auth.socrat.alchemmist.xyz/api/v3/"
 OWNER = "alchemmist"

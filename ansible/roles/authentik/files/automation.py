@@ -13,8 +13,8 @@ import sys
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import quote
 from typing import cast
+from urllib.parse import quote
 
 NAME = "homelab-identity-automation"
 GROUP = "homelab-identity-automation-admin"

@@ -9,8 +9,8 @@ import subprocess
 import tempfile
 import urllib.request
 from pathlib import Path
-from urllib.parse import quote
 from typing import cast
+from urllib.parse import quote
 
 SLUG = "socrat-change-password"
 HOST = "auth.socrat.alchemmist.xyz"

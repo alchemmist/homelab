@@ -9,10 +9,10 @@ import hashlib
 import json
 import os
 import socket
-from typing import cast
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from typing import cast
 
 HOST = "auth.socrat.alchemmist.xyz"
 BASE = "https://" + HOST
