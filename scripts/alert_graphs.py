@@ -235,7 +235,7 @@ def build(rules, panel_ids=None):
             },
         )
         targets, reasons, thresholds = [], [], []
-        for index, item in enumerate(variants):
+        for _index, item in enumerate(variants):
             for expr, threshold, reason in operands(str(item["rule"]["expr"])):
                 if expr in ("vector(0)", "vector(1)") and len(variants) > 1:
                     continue

@@ -32,7 +32,9 @@
         that:
           - host_swap_type.stdout | trim == 'swap'
           - (host_swap_kubelet.stdout | from_json).kubeletconfig.failSwapOn == false
-          - ((host_swap_kubelet.stdout | from_json).kubeletconfig.memorySwap | default({})).get('swapBehavior', 'NoSwap') == 'NoSwap'
+          - >-
+            ((host_swap_kubelet.stdout | from_json).kubeletconfig.memorySwap
+            | default({})).get('swapBehavior', 'NoSwap') == 'NoSwap'
 
     - name: Persist conservative host swappiness
       ansible.builtin.copy:

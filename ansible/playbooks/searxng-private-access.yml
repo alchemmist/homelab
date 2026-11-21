@@ -16,11 +16,11 @@
       ansible.builtin.file:
         path: "{{ searxng_private_directory }}"
         state: directory
-        mode: '0700'
+        mode: "0700"
 
     - name: Request private gateway certificate
       ansible.builtin.command:
-        argv: [kubectl, --kubeconfig, "{{ searxng_private_kubeconfig }}", apply, -f, '-']
+        argv: [kubectl, --kubeconfig, "{{ searxng_private_kubeconfig }}", apply, -f, "-"]
         stdin: "{{ {'apiVersion': 'cert-manager.io/v1', 'kind': 'Certificate', 'metadata': {'name': searxng_private_tls_secret, 'namespace': 'syncthing'}, 'spec': {'secretName': searxng_private_tls_secret, 'dnsNames': [searxng_private_host], 'issuerRef': {'name': 'letsencrypt-http01', 'kind': 'ClusterIssuer'}}} | to_nice_yaml }}"
       register: searxng_private_certificate
       changed_when: "'created' in searxng_private_certificate.stdout or 'configured' in searxng_private_certificate.stdout"
@@ -33,8 +33,8 @@
                -n,
                syncthing,
                wait,
-               '--for=condition=Ready',
-               'certificate/{{ searxng_private_tls_secret }}',
+               --for=condition=Ready,
+               "certificate/{{ searxng_private_tls_secret }}",
                --timeout=300s]
       changed_when: false
 
@@ -69,14 +69,14 @@
       ansible.builtin.copy:
         content: "{{ searxng_private_gateway_values | to_nice_yaml }}"
         dest: "{{ searxng_private_directory }}/gateway-values.yaml"
-        mode: '0600'
+        mode: "0600"
       no_log: true
 
     - name: Install manifest comparison helper
       ansible.builtin.copy:
         src: "{{ playbook_dir }}/../files/helm_manifest_changed.py"
         dest: "{{ searxng_private_directory }}/helm_manifest_changed.py"
-        mode: '0600'
+        mode: "0600"
 
     - name: Compare private gateway manifests
       ansible.builtin.command:
@@ -129,7 +129,7 @@
         state: directory
         owner: root
         group: root
-        mode: '0755'
+        mode: "0755"
 
     - name: Add only the SearXNG private DNS record
       ansible.builtin.copy:
@@ -137,7 +137,7 @@
         dest: /etc/homelab-private-dns.d/searxng.conf
         owner: root
         group: root
-        mode: '0644'
+        mode: "0644"
       register: searxng_dns_record
 
     - name: Validate private DNS configuration before restart
