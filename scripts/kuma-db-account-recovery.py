@@ -14,7 +14,7 @@ def need(ok, message):
         raise RuntimeError(message)
 
 
-def k(*args, input=None):
+def k(*args: str, input: str | None = None) -> str:
     return subprocess.check_output(
         ["kubectl", "-n", "uptime-kuma", *args], input=input, text=True, stderr=subprocess.DEVNULL
     )

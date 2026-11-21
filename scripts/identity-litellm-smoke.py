@@ -5,6 +5,7 @@ Requires Playwright + Chromium. Run from the owner Mac with --run.
 """
 
 import argparse
+from typing import Literal
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
@@ -29,10 +30,25 @@ import socket
 _original_getaddrinfo = socket.getaddrinfo
 
 
-def public_auth(host, *params, **kwargs):
+def public_auth(
+    host: bytes | str | None,
+    port: bytes | str | int | None = None,
+    *rest: int,
+    **kwargs: int,
+) -> list[
+    tuple[Literal[socket.AddressFamily.AF_INET], socket.SocketKind, int, str, tuple[str, int]]
+    | tuple[
+        Literal[socket.AddressFamily.AF_INET6],
+        socket.SocketKind,
+        int,
+        str,
+        tuple[str, int, int, int] | tuple[int, bytes],
+    ]
+]:
     return _original_getaddrinfo(
         args.public_edge if host in ["auth.socrat.alchemmist.xyz", "llm.alchemmist.xyz"] else host,
-        *params,
+        port,
+        *rest,
         **kwargs,
     )
 

@@ -24,7 +24,7 @@ def backup(source, directory, max_bytes=512 * 1024 * 1024, deadline_seconds=60):
     src = None
     dst = None
 
-    def expired(*args):
+    def expired(*args: object) -> None:
         signal.setitimer(signal.ITIMER_REAL, 0)
         raise TimeoutError("backup deadline exceeded")
 

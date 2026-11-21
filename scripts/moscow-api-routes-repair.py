@@ -11,7 +11,7 @@ PEERS = {
 }
 
 
-def run(*args):
+def run(*args: str) -> str:
     return subprocess.run(args, check=True, text=True, capture_output=True, timeout=10).stdout
 
 

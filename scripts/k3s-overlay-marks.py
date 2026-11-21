@@ -14,7 +14,9 @@ TABLE = "homelab_k3s_overlay_marks"
 OWNER = "homelab:k3s-overlay-marks:v1"
 
 
-def run(*args, input=None, ok=(0,)):
+def run(
+    *args: str, input: str | None = None, ok: tuple[int, ...] = (0,)
+) -> subprocess.CompletedProcess[str]:
     p = subprocess.run(args, input=input, text=True, capture_output=True, check=False)
     if p.returncode not in ok:
         raise RuntimeError(p.stderr.strip())

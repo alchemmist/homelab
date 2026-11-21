@@ -2,6 +2,7 @@
 """Run a guarded private pg_dump/restore Job; never print credentials or dump data."""
 
 import argparse
+from collections.abc import Mapping
 import base64
 from urllib.parse import urlsplit
 import json
@@ -13,7 +14,7 @@ from datetime import datetime, timezone
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def kube(*args, document=None):
+def kube(*args: str, document: Mapping[str, object] | None = None) -> str:
     r = subprocess.run(
         ["ssh", "-o", "BatchMode=yes", "socrat-0", shlex.join(["kubectl", *args])],
         input=json.dumps(document) if document else None,

@@ -37,8 +37,13 @@ async def main():
     processes = []
     spawn = asyncio.create_subprocess_exec
 
-    async def record_process(*args, **kwargs):
-        process = await spawn(*args, **kwargs)
+    async def record_process(
+        *args: str | bytes,
+        stdin: int | None = None,
+        stdout: int | None = None,
+        stderr: int | None = None,
+    ) -> asyncio.subprocess.Process:
+        process = await spawn(*args, stdin=stdin, stdout=stdout, stderr=stderr)
         processes.append(process)
         return process
 

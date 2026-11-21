@@ -107,7 +107,7 @@ def validate_history(current, histories):
 def binding_history():
     """Fail closed without full Git history. A binding is never reused, even after revoke."""
 
-    def git(*args):
+    def git(*args: str) -> str:
         try:
             return subprocess.run(
                 ["git", "-C", str(ROOT), *args], check=True, capture_output=True, text=True

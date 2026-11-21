@@ -6,6 +6,16 @@ import json
 import shlex
 import subprocess
 import time
+from collections.abc import Iterator
+from typing import Protocol, cast
+
+
+class _Json(Protocol):
+    def get(self, key: str, default: object = None) -> "_Json | None": ...
+    def items(self) -> Iterator[tuple["_Json", "_Json"]]: ...
+    def __iter__(self) -> Iterator["_Json"]: ...
+    def __getitem__(self, key: str) -> "_Json": ...
+    def __contains__(self, key: object) -> bool: ...
 
 
 def converged(deployment, pods, node, replicas=1):
@@ -81,7 +91,7 @@ def main():
         p.error("timeout must be 1..1800 seconds")
     deadline = time.monotonic() + args.timeout
 
-    def get(kind, *extra):
+    def get(kind: str, *extra: str) -> _Json:
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise TimeoutError("Placement did not converge before deadline")
@@ -117,14 +127,15 @@ def main():
             raise RuntimeError(
                 "Read-only Kubernetes inspection failed; inspect transport privately"
             )
-        return json.loads(result.stdout)
+        data = json.loads(result.stdout)
+        return cast("_Json", data)
 
     while time.monotonic() < deadline:
         d = get("deployment", args.deployment)
         selector = d["spec"]["selector"]
         if selector.get("matchExpressions"):
             raise ValueError("Complex selector unsupported; refusing partial ownership check")
-        labels = ",".join(k + "=" + v for k, v in sorted(selector["matchLabels"].items()))
+        labels = ",".join(str(k) + "=" + str(v) for k, v in sorted(selector["matchLabels"].items()))
         pods = get("pods", "-l", labels)["items"]
         if converged(d, pods, args.node):
             # Validate ownership as well as labels. A manually labelled Pod is not proof.

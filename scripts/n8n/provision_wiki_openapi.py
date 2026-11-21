@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from sync import CONFIG, api
 
 
-def kubectl(*args, input_text=None):
+def kubectl(*args: str, input_text: str | None = None) -> str:
     result = subprocess.run(["kubectl", *args], input=input_text, text=True, capture_output=True)
     if result.returncode:
         raise RuntimeError("kubectl failed: " + " ".join(args[:3]))

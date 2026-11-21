@@ -24,7 +24,7 @@ def require(ok, message):
         raise RuntimeError(message)
 
 
-def kube(*args):
+def kube(*args: str) -> str:
     return subprocess.check_output(["kubectl", "-n", NS, *args], text=True)
 
 
