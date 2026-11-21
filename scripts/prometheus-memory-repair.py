@@ -23,12 +23,26 @@ PATTERN = "^prometheus\\-kube\\-prometheus\\-stack\\-prometheus$"
 RECEIPT = Path.home() / ".cache/homelab-recovery/20261114-prometheus-memory"
 
 
-def require(ok, message):
+def _mapping(value: object) -> dict[str, object]:
+    if isinstance(value, dict):
+        return dict(value)
+    message = "response must be a JSON object"
+    raise TypeError(message)
+
+
+def _list(value: object) -> list[object]:
+    if isinstance(value, list):
+        return list(value)
+    message = "response must be a JSON array"
+    raise TypeError(message)
+
+
+def require(ok, message) -> None:
     if not ok:
         raise RuntimeError(message)
 
 
-def expression_change(expr):
+def expression_change(expr) -> str:
     needle = '"ownerPattern": dyn(' + json.dumps(PATTERN) + ")"
     require(expr.count(needle) == 1, "Prometheus profile not unique")
     start = expr.index(needle)
@@ -65,10 +79,10 @@ def expression_change(expr):
         match = re.search(pattern, block)
         require(match is not None and match.group(2) == old, "Unexpected current " + group + " RAM")
         block = block[: match.start(2)] + new + block[match.end(2) :]
-    return expr[:begin] + block + expr[end:]
+    return str(expr[:begin] + block + expr[end:])
 
 
-def policy_patch(policy):
+def policy_patch(policy) -> list[dict[str, object]]:
     variables = policy["spec"]["variables"]
     indexes = [i for i, v in enumerate(variables) if v["name"] == "profiles"]
     require(len(indexes) == 1, "Profiles variable not unique")
@@ -88,7 +102,7 @@ def policy_patch(policy):
     ]
 
 
-def resize_patch(pod):
+def resize_patch(pod) -> list[dict[str, object]]:
     require(pod["metadata"]["name"] == NAME and pod["metadata"]["namespace"] == NS, "Wrong Pod")
     require(pod["spec"]["nodeName"] == "socrat-0", "Wrong node")
     require(
@@ -129,7 +143,7 @@ def resize_patch(pod):
     ]
 
 
-def kubectl(args, data=None):
+def kubectl(args, data=None) -> dict[str, object]:
     env = dict(os.environ, K3S_CONFIG_FILE="/dev/null")
     p = subprocess.run(
         ["kubectl", "--request-timeout=10s", *args],
@@ -140,10 +154,10 @@ def kubectl(args, data=None):
         timeout=20,
     )
     require(p.returncode == 0, "kubectl failed: " + p.stderr[:500])
-    return json.loads(p.stdout)
+    return dict(json.loads(p.stdout))
 
 
-def save(name, data):
+def save(name, data) -> None:
     fd = os.open(RECEIPT / name, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     with os.fdopen(fd, "w") as out:
         json.dump(data, out, indent=2)
@@ -156,7 +170,7 @@ def save(name, data):
         os.close(directory)
 
 
-def probe(sts):
+def probe(sts) -> dict[str, object]:
     return {
         "apiVersion": "v1",
         "kind": "Pod",
@@ -187,7 +201,7 @@ def probe(sts):
     }
 
 
-def memory_capacity(node, pods):
+def memory_capacity(node, pods) -> dict[str, object]:
     budget_path = Path(__file__).with_name("check-resource-budget.py")
     spec = importlib.util.spec_from_file_location("resource_budget", budget_path)
     budget = importlib.util.module_from_spec(spec)
@@ -205,24 +219,28 @@ def memory_capacity(node, pods):
     }
 
 
-def wait_future_admission(sts, timeout=20):
+def wait_future_admission(sts, timeout=20) -> tuple[object, list[dict[str, object]]]:
     deadline = time.monotonic() + timeout
     samples = []
     while True:
         future = kubectl(["create", "--dry-run=server", "-f", "-", "-o", "json"], probe(sts))
-        ram = future["spec"]["containers"][0]["resources"]
-        samples.append({"request": ram["requests"]["memory"], "limit": ram["limits"]["memory"]})
-        if ram["requests"]["memory"] in ("3Gi", "3072Mi") and ram["limits"]["memory"] in (
-            "8Gi",
-            "8192Mi",
-        ):
+        ram = _mapping(_mapping(_list(_mapping(future["spec"])["containers"])[0])["resources"])
+        samples.append(
+            {
+                "request": _mapping(ram["requests"])["memory"],
+                "limit": _mapping(ram["limits"])["memory"],
+            }
+        )
+        if _mapping(ram["requests"])["memory"] in ("3Gi", "3072Mi") and _mapping(ram["limits"])[
+            "memory"
+        ] in ("8Gi", "8192Mi"):
             return future, samples
         if time.monotonic() >= deadline:
             raise RuntimeError("Future-Pod admission did not converge: " + json.dumps(samples))
         time.sleep(1)
 
 
-def main():
+def main() -> None:
     global RECEIPT
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true")
@@ -245,9 +263,10 @@ def main():
     pod = kubectl(["-n", NS, "get", "pod", NAME, "-o", "json"])
     sts = kubectl(["-n", NS, "get", "statefulset", STS, "-o", "json"])
     cr = kubectl(["-n", NS, "get", "prometheus", "kube-prometheus-stack-prometheus", "-o", "json"])
+    cr_resources = _mapping(_mapping(cr["spec"])["resources"])
     require(
-        cr["spec"]["resources"]["requests"]["memory"] == "4Gi"
-        and cr["spec"]["resources"]["limits"]["memory"] == "8Gi",
+        _mapping(cr_resources["requests"])["memory"] == "4Gi"
+        and _mapping(cr_resources["limits"])["memory"] == "8Gi",
         "Desired Prometheus CR RAM differs",
     )
     node = kubectl(["get", "node", "socrat-0", "-o", "json"])
@@ -259,19 +278,25 @@ def main():
         old_policy = json.loads((previous / "before-policy.private.json").read_text())
         old_pod = json.loads((previous / "before-pod.private.json").read_text())
         require(
-            old_policy["metadata"]["uid"] == policy["metadata"]["uid"]
+            old_policy["metadata"]["uid"] == _mapping(policy["metadata"])["uid"]
             and old_policy["spec"] == policy["spec"],
             "Prior policy was not exactly restored",
         )
         require(
-            old_pod["metadata"]["uid"] == pod["metadata"]["uid"]
-            and old_pod["spec"]["containers"] == pod["spec"]["containers"],
+            old_pod["metadata"]["uid"] == _mapping(pod["metadata"])["uid"]
+            and old_pod["spec"]["containers"] == _mapping(pod["spec"])["containers"],
             "Pod changed since rollback",
         )
     pp = policy_patch(policy)
     rp = resize_patch(pod)
-    statuses = {c["name"]: c["containerID"] for c in pod["status"]["containerStatuses"]}
-    require(all(c["ready"] for c in pod["status"]["containerStatuses"]), "Existing Pod not ready")
+    statuses = {
+        _mapping(c)["name"]: _mapping(c)["containerID"]
+        for c in _list(_mapping(pod["status"])["containerStatuses"])
+    }
+    require(
+        all(_mapping(c)["ready"] for c in _list(_mapping(pod["status"])["containerStatuses"])),
+        "Existing Pod not ready",
+    )
     # Validate both API paths before any mutation. The same-Pod scheduler admits request growth.
     kubectl(
         [
@@ -304,7 +329,7 @@ def main():
     )
     result = {
         "preflight": "accepted",
-        "pod_uid": pod["metadata"]["uid"],
+        "pod_uid": _mapping(pod["metadata"])["uid"],
         "old_limit": "3Gi",
         "new_limit": "8Gi",
         "request": "3Gi",
@@ -339,7 +364,7 @@ def main():
         save("admission-failed.private.json", {"error": str(error)})
         current = kubectl(["get", "mutatingadmissionpolicy", POLICY, "-o", "json"])
         reverse = copy.deepcopy(pp)
-        reverse[1]["value"] = current["metadata"]["resourceVersion"]
+        reverse[1]["value"] = _mapping(current["metadata"])["resourceVersion"]
         reverse[2]["value"], reverse[3]["value"] = pp[3]["value"], pp[2]["value"]
         kubectl(
             [
@@ -358,7 +383,10 @@ def main():
     save("future-admission.private.json", future)
     # Fresh RV; refuse if Pod or current resources changed after preflight.
     fresh = kubectl(["-n", NS, "get", "pod", NAME, "-o", "json"])
-    require(fresh["metadata"]["uid"] == pod["metadata"]["uid"], "Pod replaced during preflight")
+    require(
+        _mapping(fresh["metadata"])["uid"] == _mapping(pod["metadata"])["uid"],
+        "Pod replaced during preflight",
+    )
     rp = resize_patch(fresh)
     resized = kubectl(
         [
@@ -375,9 +403,16 @@ def main():
             "json",
         ]
     )
-    require(resized["metadata"]["uid"] == pod["metadata"]["uid"], "Pod UID changed")
     require(
-        {c["name"]: c["containerID"] for c in resized["status"]["containerStatuses"]} == statuses,
+        _mapping(resized["metadata"])["uid"] == _mapping(pod["metadata"])["uid"],
+        "Pod UID changed",
+    )
+    require(
+        {
+            _mapping(c)["name"]: _mapping(c)["containerID"]
+            for c in _list(_mapping(resized["status"])["containerStatuses"])
+        }
+        == statuses,
         "Container identity changed; inspect immediately",
     )
     save("resize-accepted.private.json", resized)

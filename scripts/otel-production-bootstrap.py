@@ -22,7 +22,15 @@ NODES = {
 }
 
 
-def kube(*args, document=None):
+def _mapping(value: object) -> dict[str, object]:
+    """Narrow one Kubernetes JSON response to a JSON object."""
+    if isinstance(value, dict):
+        return value
+    message = "Kubernetes bootstrap did not return a JSON object"
+    raise RuntimeError(message)
+
+
+def kube(*args, document=None) -> object:
     result = subprocess.run(
         [
             "ssh",
@@ -51,7 +59,7 @@ def kube(*args, document=None):
     return json.loads(result.stdout) if result.stdout.strip() else None
 
 
-def resource(kind, name, spec=None, api="cert-manager.io/v1"):
+def resource(kind, name, spec=None, api="cert-manager.io/v1") -> dict[str, object]:
     obj = {
         "apiVersion": api,
         "kind": kind,
@@ -62,7 +70,7 @@ def resource(kind, name, spec=None, api="cert-manager.io/v1"):
     return obj
 
 
-def resources(contract, api_server, pod):
+def resources(contract, api_server, pod) -> list[dict[str, object]]:
     out = [
         resource("Issuer", "otel-bootstrap-selfsigned", {"selfSigned": {}}),
         resource(
@@ -143,7 +151,7 @@ def resources(contract, api_server, pod):
         )
     for namespace in sorted({ref["namespace"] for ref in contract["requiredSecretKeys"]}):
         name = "otel-source-secret-reader"
-        obj = {
+        obj: dict[str, object] = {
             "apiVersion": "rbac.authorization.k8s.io/v1",
             "kind": "Role",
             "metadata": {"name": name, "namespace": namespace, "labels": LABELS},
@@ -177,17 +185,19 @@ def resources(contract, api_server, pod):
     return out
 
 
-def run(bundle, output):
+def run(bundle, output) -> None:
     os.umask(0o077)
     output.mkdir(mode=0o700, exist_ok=True)
     if (output / "bootstrap.json").exists():
         raise ValueError("Completed bootstrap exists; inspect before reissuing credentials")
     contract = json.loads((bundle / "contract.json").read_text())
-    service = kube("-n", NS, "get", "service", "kube-prometheus-stack-prometheus", "-o", "json")
+    service = _mapping(
+        kube("-n", NS, "get", "service", "kube-prometheus-stack-prometheus", "-o", "json")
+    )
     pod = kube(
         "-n", NS, "get", "pod", "prometheus-kube-prometheus-stack-prometheus-0", "-o", "json"
     )
-    objects = resources(contract, service["spec"]["clusterIP"], pod)
+    objects = resources(contract, _mapping(service["spec"])["clusterIP"], pod)
     kube(
         "apply",
         "-f",
@@ -211,21 +221,30 @@ def run(bundle, output):
     refs = []
     mirrored = {}
     for index, reference in enumerate(contract["requiredSecretKeys"]):
-        value = kube(
-            "-n", reference["namespace"], "get", "secret", reference["secret"], "-o", "json"
-        )["data"][reference["key"]]
+        value = _mapping(
+            _mapping(
+                kube(
+                    "-n", reference["namespace"], "get", "secret", reference["secret"], "-o", "json"
+                )
+            )["data"]
+        )[reference["key"]]
         key = "source-" + str(index)
         mirrored[key] = value
         refs.append({**reference, "targetKey": key})
     mirror = resource("Secret", "otel-source-auth", api="v1")
     mirror.update(type="Opaque", data=mirrored)
     kube("apply", "-f", "-", "-o", "json", document=mirror)
-    ca = kube("-n", NS, "get", "configmap", "kube-root-ca.crt", "-o", "json")["data"]["ca.crt"]
+    ca = _mapping(
+        _mapping(kube("-n", NS, "get", "configmap", "kube-root-ca.crt", "-o", "json"))["data"]
+    )["ca.crt"]
+    if not isinstance(ca, str):
+        message = "Kubernetes root CA certificate was not returned as a JSON string"
+        raise TypeError(message)
     for node in NODES:
         directory = output / node
         directory.mkdir(mode=0o700)
-        token = kube(
-            "-n", NS, "create", "token", "otel-host-" + node, "--duration=24h", "-o", "json"
+        token = _mapping(
+            kube("-n", NS, "create", "token", "otel-host-" + node, "--duration=24h", "-o", "json")
         )
         # kubectl -o json returns a TokenRequest with the expiration; only private files retain it.
         (directory / "token.json").write_text(json.dumps(token["status"]))
@@ -250,7 +269,7 @@ def run(bundle, output):
                 "productionScrapeOwnershipChanged": False,
                 "privateCAKeyDistributedToAgents": False,
                 "hostCount": len(NODES),
-                "prometheusServiceIP": service["spec"]["clusterIP"],
+                "prometheusServiceIP": _mapping(service["spec"])["clusterIP"],
             },
             indent=2,
         )

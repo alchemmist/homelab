@@ -3,6 +3,7 @@ import hashlib
 import json
 import math
 import re
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -12,7 +13,7 @@ import yaml
 SELECTOR = re.compile(r'(?<![A-Za-z0-9_])(le|quantile)\s*(=~|!~|!=|=)\s*("(?:\\.|[^"\\])*")')
 
 
-def otlp_number(value):
+def otlp_number(value) -> str:
     number = float(value)
     if math.isnan(number):
         raise ValueError("NaN is not a valid numeric dimension")
@@ -22,7 +23,7 @@ def otlp_number(value):
     return text.rstrip("0").rstrip(".") if "." in text else text
 
 
-def compatible_numeric_regex(value):
+def compatible_numeric_regex(value) -> bool:
     match = re.fullmatch(r"([+-]?[0-9]+)\(\\\.0\)\?", value)
     if match is None:
         return False
@@ -36,7 +37,7 @@ def compatible_numeric_regex(value):
         return False
 
 
-def audit_expression(expression):
+def audit_expression(expression) -> dict[str, object]:
     findings = []
     selectors = dynamic = 0
     for match in SELECTOR.finditer(expression):
@@ -77,7 +78,7 @@ def audit_expression(expression):
     return {"selectorCount": selectors, "dynamicSelectorCount": dynamic, "findings": findings}
 
 
-def expressions(value, path=()):
+def expressions(value, path=()) -> Iterator[tuple[tuple[str, ...], str]]:
     if isinstance(value, dict):
         for key, item in value.items():
             if key in ("expr", "query", "definition") and isinstance(item, str):
@@ -95,7 +96,7 @@ def expressions(value, path=()):
             yield from expressions(item, path + (str(index),))
 
 
-def audit_files(paths):
+def audit_files(paths) -> dict[str, object]:
     records = []
     expression_count = selector_count = dynamic_count = 0
     for path in paths:
@@ -107,15 +108,23 @@ def audit_files(paths):
             for location, expression in expressions(document, ("documents", str(index))):
                 expression_count += 1
                 result = audit_expression(expression)
-                selector_count += result["selectorCount"]
-                dynamic_count += result["dynamicSelectorCount"]
-                if result["findings"]:
+                per_selector_count = result["selectorCount"]
+                per_dynamic_count = result["dynamicSelectorCount"]
+                if not isinstance(per_selector_count, int) or not isinstance(
+                    per_dynamic_count, int
+                ):
+                    message = "Expression audit result counts were not integers"
+                    raise TypeError(message)
+                selector_count += per_selector_count
+                dynamic_count += per_dynamic_count
+                findings = result["findings"]
+                if isinstance(findings, list) and findings:
                     records.append(
                         {
                             "source": str(path),
                             "expressionPath": ".".join(location),
                             "expressionSHA256": hashlib.sha256(expression.encode()).hexdigest(),
-                            "findings": result["findings"],
+                            "findings": findings,
                         }
                     )
     return {
@@ -134,7 +143,7 @@ def audit_files(paths):
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("paths", type=Path, nargs="+")
     parser.add_argument("--output", type=Path, required=True)

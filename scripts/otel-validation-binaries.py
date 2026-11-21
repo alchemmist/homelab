@@ -25,7 +25,7 @@ MAX_LAYER_BYTES = 512 * 1024**2
 MAX_BINARY_BYTES = 1024**3
 
 
-def token_for(repository):
+def token_for(repository) -> object:
     query = urllib.parse.urlencode(
         {"service": "registry.docker.io", "scope": "repository:" + repository + ":pull"}
     )
@@ -33,7 +33,7 @@ def token_for(repository):
         return json.load(response)["token"]
 
 
-def request(repository, reference, token, kind):
+def request(repository, reference, token, kind) -> urllib.request.Request:
     return urllib.request.Request(
         "https://registry-1.docker.io/v2/" + repository + "/" + kind + "/" + reference,
         headers={
@@ -43,7 +43,7 @@ def request(repository, reference, token, kind):
     )
 
 
-def extract(image, name, output):
+def extract(image, name, output) -> dict[str, object]:
     repository = image["repository"].removeprefix("docker.io/")
     token = token_for(repository)
     with urllib.request.urlopen(
@@ -100,7 +100,7 @@ def extract(image, name, output):
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--lock", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)

@@ -22,21 +22,21 @@ SPEC.loader.exec_module(BOOTSTRAP)
 ENDPOINT = "https://10.250.0.3:44318/v1/traces"
 
 
-def source_data():
+def source_data() -> dict[str, str]:
     return {
         "source_privacy.py": (ROOT / "scripts/otel-sdk-source-privacy.py").read_text(),
         "sitecustomize.py": (ROOT / "deploy/monitoring/otel/vllm-sitecustomize.py").read_text(),
     }
 
 
-def source_configmap_name():
+def source_configmap_name() -> str:
     return (
         "vllm-otel-source-"
         + hashlib.sha256(json.dumps(source_data(), sort_keys=True).encode()).hexdigest()[:16]
     )
 
 
-def sdk_environment():
+def sdk_environment() -> dict[str, str]:
     return {
         "PYTHONPATH": "/etc/otel-source",
         "PYTHONDONTWRITEBYTECODE": "1",
@@ -58,7 +58,7 @@ def sdk_environment():
     }
 
 
-def trace_arguments(original):
+def trace_arguments(original) -> list[str]:
     flags = [i for i, arg in enumerate(original) if arg.startswith("--otlp-traces-endpoint")]
     if flags:
         if len(flags) != 1 or original[flags[0] : flags[0] + 2] != [
@@ -70,7 +70,7 @@ def trace_arguments(original):
     return list(original) + ["--otlp-traces-endpoint", ENDPOINT]
 
 
-def run(output, apply, switcher_receipt=None):
+def run(output, apply, switcher_receipt=None) -> None:
     os.umask(0o077)
     controller = Path.home() / "Library/Application Support/homelab/otel-controller"
     if not output.resolve().is_relative_to(controller.resolve()):
@@ -229,10 +229,11 @@ for kind in ['running','waiting']:
  if not values:raise ValueError('Required idle gauge absent')
  result[kind]=sum(float(value)for value in values)
 print(json.dumps(result))"""
-    receipt["idleObservations"] = []
+    observations: list[object] = []
+    receipt["idleObservations"] = observations
     for _ in range(3):
         observed = kube("-n", "llm", "exec", "deploy/vllm", "--", "python3", "-c", code)
-        receipt["idleObservations"].append(observed)
+        observations.append(observed)
         record()
         if observed != {"running": 0.0, "waiting": 0.0}:
             raise ValueError("Active or queued inference; do not restart or force drain")

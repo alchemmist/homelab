@@ -17,7 +17,31 @@ import urllib.parse
 import urllib.request
 
 
-def kube_secret(ns, name):
+def _mapping(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        message = "Kubernetes Secret responses must be JSON objects"
+        raise TypeError(message)
+    return dict(value)
+
+
+def _secret_value(secret: object, key: str) -> bytes:
+    data = _mapping(_mapping(secret)["data"])
+    value = data[key]
+    if not isinstance(value, (str, bytes)):
+        message = "Kubernetes Secret data values must be base64 text"
+        raise TypeError(message)
+    return value if isinstance(value, bytes) else value.encode()
+
+
+def _key_alias(secret: object) -> object:
+    if secret is None:
+        return None
+    metadata = _mapping(_mapping(secret)["metadata"])
+    annotations = _mapping(metadata.get("annotations", {}))
+    return annotations.get("homelab/key-alias")
+
+
+def kube_secret(ns, name) -> object:
     raw = subprocess.check_output(
         ["kubectl", "-n", ns, "get", "secret", name, "-o", "json", "--ignore-not-found"],
         stderr=subprocess.DEVNULL,
@@ -25,21 +49,23 @@ def kube_secret(ns, name):
     return json.loads(raw) if raw.strip() else None
 
 
-def main():
+def main() -> None:
     dry = os.environ.get("PROVISION_OPENHANDS_DRY_RUN") == "1"
     current = kube_secret("openhands", "openhands-model")
     if dry and (
         not current
-        or current["metadata"].get("annotations", {}).get("homelab/key-alias") != "openhands-monori"
+        or _key_alias(current) != "openhands-monori"
     ):
         print("dry-run: would create openhands-monori without o-deepseek, max_parallel_requests 3")
         return
     if (
         not current
-        or current["metadata"].get("annotations", {}).get("homelab/key-alias") != "openhands-monori"
+        or _key_alias(current) != "openhands-monori"
     ):
         master = (
-            base64.b64decode(kube_secret("llm", "litellm-env")["data"]["LITELLM_MASTER_KEY"])
+            base64.b64decode(
+                _secret_value(kube_secret("llm", "litellm-env"), "LITELLM_MASTER_KEY")
+            )
             .decode()
             .strip()
         )
@@ -103,11 +129,13 @@ def main():
         finally:
             forward.terminate()
             forward.wait(timeout=10)
-    key = base64.b64decode(kube_secret("openhands", "openhands-model")["data"]["api-key"]).decode()
+    key = base64.b64decode(
+        _secret_value(kube_secret("openhands", "openhands-model"), "api-key")
+    ).decode()
     # o-deepseek rpm is shared. This key must not hold that model. Parallelism
     # stays at least 3 and is never lowered below the live key.
     master = (
-        base64.b64decode(kube_secret("llm", "litellm-env")["data"]["LITELLM_MASTER_KEY"])
+        base64.b64decode(_secret_value(kube_secret("llm", "litellm-env"), "LITELLM_MASTER_KEY"))
         .decode()
         .strip()
     )

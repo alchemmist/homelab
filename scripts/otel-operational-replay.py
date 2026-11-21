@@ -20,11 +20,13 @@ from pathlib import Path
 SERVICE = "homelab-isolated-operational-replay"
 
 
-def fixtures(now):
+def fixtures(
+    now,
+) -> tuple[dict[str, object], dict[str, object], dict[str, object], object, set[str]]:
     base_ms = (now // 10**9 - 45) * 1000
     expected = [[(base_ms + i * 5000) / 1000, str(i)] for i in range(9)]
     resource = {"attributes": [{"key": "service.name", "value": {"stringValue": SERVICE}}]}
-    metrics = {
+    metrics: dict[str, object] = {
         "resourceMetrics": [
             {
                 "resource": resource,
@@ -55,7 +57,7 @@ def fixtures(now):
             }
         ]
     }
-    logs = {
+    logs: dict[str, object] = {
         "resourceLogs": [
             {
                 "resource": resource,
@@ -74,7 +76,7 @@ def fixtures(now):
         ]
     }
     ids = [hashlib.sha256(("operational-replay-%d" % i).encode()).hexdigest() for i in range(9)]
-    traces = {
+    traces: dict[str, object] = {
         "resourceSpans": [
             {
                 "resource": resource,
@@ -100,7 +102,7 @@ def fixtures(now):
     return metrics, logs, traces, expected, {x[:32] for x in ids}
 
 
-def check_metrics(document, expected):
+def check_metrics(document, expected) -> bool:
     if (
         document.get("status") != "success"
         or document.get("warnings")
@@ -111,14 +113,14 @@ def check_metrics(document, expected):
     return len(result) == 1 and result[0]["values"] == expected
 
 
-def rollback_candidate(original):
+def rollback_candidate(original) -> bytes:
     candidate = json.loads(original)
     processor = candidate["processors"]["batch/metrics"]
     processor["timeout"] = "2s" if processor["timeout"] != "2s" else "3s"
     return json.dumps(candidate).encode()
 
 
-def trace_records(document):
+def trace_records(document) -> list[tuple[str, str]]:
     found = []
 
     def walk(value):
@@ -138,7 +140,7 @@ def trace_records(document):
     return found
 
 
-def run(args):
+def run(args) -> dict[str, object]:
     if os.geteuid() != 0 or os.readlink("/proc/self/ns/net") == os.readlink("/proc/1/ns/net"):
         raise ValueError("Root-owned isolated network namespace required")
     args.workspace.mkdir(mode=0o700)

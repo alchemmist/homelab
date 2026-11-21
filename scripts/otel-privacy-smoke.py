@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 
-def isolated_config(source, output):
+def isolated_config(source, output) -> dict[str, object]:
     document = json.loads(json.dumps(source))
     receiver = document["receivers"]["otlp"]["protocols"]["http"]
     receiver["endpoint"] = "127.0.0.1:14318"
@@ -30,10 +30,10 @@ def isolated_config(source, output):
             "exporters": ["file"],
         }
     }
-    return document
+    return dict(document)
 
 
-def send(context, payload):
+def send(context, payload) -> None:
     request = urllib.request.Request(
         "https://127.0.0.1:14318/v1/logs",
         data=json.dumps(payload).encode(),
@@ -45,7 +45,7 @@ def send(context, payload):
         raise ValueError("Synthetic logs were rejected")
 
 
-def run(binary, config, tls, workspace):
+def run(binary, config, tls, workspace) -> dict[str, object]:
     if os.readlink("/proc/self/ns/net") == os.readlink("/proc/1/ns/net"):
         raise ValueError("A separate network namespace is mandatory")
     workspace.mkdir(mode=0o700, exist_ok=False)
@@ -189,7 +189,7 @@ def run(binary, config, tls, workspace):
     return result
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     for name in ["binary", "config", "tls", "workspace"]:
         parser.add_argument("--" + name, type=Path, required=True)

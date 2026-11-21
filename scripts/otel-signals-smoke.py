@@ -15,7 +15,29 @@ SERVICE = "otel-isolated-signal-smoke"
 SECRET = "synthetic-sensitive-value"
 
 
-def request(context, port, path, document=None):
+def _mapping(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        message = "Collector responses must be JSON objects"
+        raise TypeError(message)
+    return dict(value)
+
+
+def _list(value: object) -> list[object]:
+    if not isinstance(value, list):
+        return []
+    return list(value)
+
+
+def _identity(trace: object) -> str:
+    record = _mapping(trace)
+    identifier = record["traceID"]
+    if isinstance(identifier, str):
+        return identifier.lower().zfill(32)
+    message = "Trace search results must include a traceID"
+    raise ValueError(message)
+
+
+def request(context, port, path, document=None) -> object:
     data = json.dumps(document).encode() if document is not None else None
     req = urllib.request.Request(
         "https://127.0.0.1:" + str(port) + path,
@@ -27,11 +49,11 @@ def request(context, port, path, document=None):
     return json.loads(body) if body else {}
 
 
-def attribute(key, value):
+def attribute(key, value) -> dict[str, object]:
     return {"key": key, "value": {"stringValue": value}}
 
 
-def trace_fixtures(now):
+def trace_fixtures(now) -> tuple[object, dict[str, set[str]]]:
     spans = []
     groups = {}
     for category, count in [
@@ -87,7 +109,7 @@ def trace_fixtures(now):
     return body, groups
 
 
-def logs_fixture(now):
+def logs_fixture(now) -> object:
     return {
         "resourceLogs": [
             {
@@ -119,7 +141,7 @@ def logs_fixture(now):
     }
 
 
-def run(args):
+def run(args) -> dict[str, object]:
     if os.readlink("/proc/self/ns/net") == os.readlink("/proc/1/ns/net"):
         raise ValueError("Signal smoke requires an isolated loopback-only network namespace")
     args.workspace.mkdir(mode=0o700, exist_ok=False)
@@ -224,13 +246,13 @@ def run(args):
         while True:
             if any(child.poll() is not None for child in children):
                 raise RuntimeError("Native signal component stopped during delivery")
-            loki = request(context, 3100, "/loki/api/v1/query_range?" + selector)
-            data = request(context, 3200, "/api/search?" + search)
-            ids = {trace["traceID"].lower().zfill(32) for trace in data.get("traces", [])}
+            loki = _mapping(request(context, 3100, "/loki/api/v1/query_range?" + selector))
+            data = _mapping(request(context, 3200, "/api/search?" + search))
+            ids = {_identity(trace) for trace in _list(data.get("traces", []))}
             mandatory = set.union(
                 *(groups[key] for key in ["error", "http5xx", "legacy5xx", "slow"])
             )
-            if loki.get("data", {}).get("result") and mandatory <= ids:
+            if _mapping(loki.get("data", {})).get("result") and mandatory <= ids:
                 break
             if time.monotonic() >= deadline:
                 raise RuntimeError("Native log delivery or mandatory tail sampling timed out")
@@ -300,7 +322,7 @@ def run(args):
             log.close()
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     for name in ["binaries", "config", "tls", "workspace"]:
         parser.add_argument("--" + name, type=Path, required=True)

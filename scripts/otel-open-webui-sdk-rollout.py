@@ -21,7 +21,7 @@ SPEC.loader.exec_module(BOOTSTRAP)
 ENDPOINT = "https://10.250.0.3:44318/v1/traces"
 
 
-def source_data():
+def source_data() -> dict[str, str]:
     return {
         "source_privacy.py": (ROOT / "scripts/otel-sdk-source-privacy.py").read_text(),
         "open_webui_source_profile.py": (
@@ -33,14 +33,14 @@ def source_data():
     }
 
 
-def source_configmap_name():
+def source_configmap_name() -> str:
     return (
         "open-webui-otel-source-"
         + hashlib.sha256(json.dumps(source_data(), sort_keys=True).encode()).hexdigest()[:16]
     )
 
 
-def sdk_environment():
+def sdk_environment() -> dict[str, str]:
     return {
         "PYTHONPATH": "/etc/otel-source:/app/backend",
         "PYTHONDONTWRITEBYTECODE": "1",
@@ -71,13 +71,15 @@ def sdk_environment():
     }
 
 
-def environment_matches(entry, name, value):
+def environment_matches(entry, name, value) -> bool:
     # Kubernetes omits explicit empty EnvVar.value in its API representation.
     # Accept only that exact canonical default, never valueFrom or other fields.
-    return entry == {"name": name, "value": value} or (value == "" and entry == {"name": name})
+    return bool(
+        entry == {"name": name, "value": value} or (value == "" and entry == {"name": name})
+    )
 
 
-def run(output, apply):
+def run(output, apply) -> None:
     os.umask(0o077)
     controller = Path.home() / "Library/Application Support/homelab/otel-controller"
     if not output.resolve().is_relative_to(controller.resolve()):

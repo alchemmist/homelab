@@ -18,13 +18,20 @@ PROMETHEUS = "kube-prometheus-stack-prometheus"
 CERT_ROOT = "/etc/prometheus/certs/"
 
 
-def fingerprint(value):
+def _mapping(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        message = "Kubernetes responses must be JSON objects"
+        raise TypeError(message)
+    return dict(value)
+
+
+def fingerprint(value) -> str:
     return hashlib.sha256(
         json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
 
 
-def kube(*arguments, document=None):
+def kube(*arguments, document=None) -> str:
     result = subprocess.run(
         ["kubectl", "-n", NAMESPACE, *arguments],
         input=json.dumps(document) if document is not None else None,
@@ -37,7 +44,14 @@ def kube(*arguments, document=None):
     return result.stdout
 
 
-def prometheus(endpoint):
+def _list(value: object) -> list[object]:
+    if not isinstance(value, list):
+        message = "Expected a JSON array"
+        raise TypeError(message)
+    return list(value)
+
+
+def prometheus(endpoint) -> object:
     path = (
         "/api/v1/namespaces/"
         + NAMESPACE
@@ -52,30 +66,36 @@ def prometheus(endpoint):
     return data["data"]
 
 
-def free_port():
+def free_port() -> int:
     with socket.socket() as handle:
         handle.bind(("127.0.0.1", 0))
-        return handle.getsockname()[1]
+        return int(handle.getsockname()[1])
 
 
-def rewrite_assets(value, paths, kubeconfig):
+def rewrite_assets(value, paths, kubeconfig) -> object:
     if isinstance(value, dict):
-        result = {key: rewrite_assets(item, paths, kubeconfig) for key, item in value.items()}
-        for discovery in result.get("kubernetes_sd_configs", []):
+        result: dict[str, object] = {
+            key: rewrite_assets(item, paths, kubeconfig) for key, item in value.items()
+        }
+        rewritten: list[object] = []
+        for discovery in _list(result.get("kubernetes_sd_configs", [])):
+            record = _mapping(discovery)
             if (
-                discovery.get("api_server")
-                or discovery.get("kubeconfig_file")
-                or discovery.get("authorization")
+                record.get("api_server")
+                or record.get("kubeconfig_file")
+                or record.get("authorization")
             ):
                 raise ValueError("Unexpected discovery authentication requires explicit review")
-            discovery["kubeconfig_file"] = str(kubeconfig)
+            record["kubeconfig_file"] = str(kubeconfig)
+            rewritten.append(record)
+        result["kubernetes_sd_configs"] = rewritten
         return result
     if isinstance(value, list):
         return [rewrite_assets(item, paths, kubeconfig) for item in value]
     return paths.get(value, value) if isinstance(value, str) else value
 
 
-def expected_targets(targets, pools):
+def expected_targets(targets, pools) -> set[str]:
     selected = [target for target in targets["activeTargets"] if target["scrapePool"] in pools]
     if not selected or any(target["health"] != "up" for target in selected):
         raise ValueError("Selected sources must be healthy before canary collection")
@@ -85,7 +105,7 @@ def expected_targets(targets, pools):
     return set(identities)
 
 
-def cleanup_workspace(workspace):
+def cleanup_workspace(workspace) -> None:
     if (
         os.geteuid() != 0
         or workspace.is_symlink()
@@ -132,7 +152,7 @@ def cleanup_workspace(workspace):
         raise RuntimeError("Temporary discovery RBAC cleanup incomplete")
 
 
-def run(args):
+def run(args) -> dict[str, object]:
     if os.geteuid() != 0:
         raise ValueError("Private host canary staging requires the authorized root controller")
     contract = json.loads((args.bundle / "contract.json").read_text())
@@ -143,7 +163,10 @@ def run(args):
     scrape = json.loads((args.bundle / "cluster.json").read_text())
     if fingerprint(scrape) != contract["outputSHA256"]["cluster"]:
         raise ValueError("Scrape bundle fingerprint differs")
-    current = prometheus("status/config")["yaml"]
+    current = _mapping(prometheus("status/config"))["yaml"]
+    if not isinstance(current, str):
+        message = "Prometheus effective configuration must be YAML text"
+        raise TypeError(message)
     if hashlib.sha256(current.encode()).hexdigest() != contract["sourceYAMLTextSHA256"]:
         raise ValueError("Production source configuration changed after translation")
     fs = os.statvfs("/var/lib/rancher/k3s/storage")
@@ -194,7 +217,7 @@ def run(args):
     children = []
     logs = []
     cleanup_succeeded = True
-    result = None
+    result: dict[str, object] | None = None
     try:
         for resource in [sa, role, binding]:
             kube("create", "-f", "-", document=resource)
@@ -407,7 +430,8 @@ def run(args):
                 )
             )
             raise RuntimeError(
-                "Real-source target labels, authorization or availability differ; raw responses are not logged"
+                "Real-source target labels, authorization or availability differ; "
+                "raw responses are not logged"
             )
         collector_log = (args.workspace / "collector.log").read_text()
         rejected = {
@@ -450,7 +474,10 @@ def run(args):
             "maximumUpAgeSeconds": round(max(ages), 3),
             "aggregateCgroupMemoryPeakBytes": memory_peak,
             "aggregateCgroupMemoryLimitBytes": memory_max,
-            "pipeline": "native prometheusreceiver -> native OTLP exporter -> native Prometheus OTLP receiver",
+            "pipeline": (
+                "native prometheusreceiver -> native OTLP exporter -> "
+                "native Prometheus OTLP receiver"
+            ),
             "credentialValuesIncludedInReport": False,
             "allMetricFamiliesAndRulesVerified": False,
             "readyForCutover": False,
@@ -481,7 +508,7 @@ def run(args):
     return result
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     names = ["binary", "prometheus", "config", "bundle", "tls", "workspace"]
     for name in names:
@@ -498,7 +525,8 @@ def main():
         print(json.dumps(run(args), indent=2))
     except Exception:
         raise SystemExit(
-            "Real-source canary failed; sensitive responses are not printed. Inspect the private root-owned run artifacts."
+            "Real-source canary failed; sensitive responses are not printed. "
+            "Inspect the private root-owned run artifacts."
         )
 
 

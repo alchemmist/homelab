@@ -27,9 +27,11 @@ NS = bootstrap.NS
 PROM = "kube-prometheus-stack-prometheus"
 
 
-def state():
+def state() -> dict[str, object]:
     try:
-        return kube("-n", NS, "get", "configmap", "otel-production-state", "-o", "json")["data"]
+        return dict(
+            kube("-n", NS, "get", "configmap", "otel-production-state", "-o", "json")["data"]
+        )
     except RuntimeError:
         obj = bootstrap.resource("ConfigMap", "otel-production-state", api="v1")
         obj.update(
@@ -40,10 +42,10 @@ def state():
             },
         )
         kube("create", "-f", "-", "-o", "json", document=obj)
-        return obj["data"]
+        return dict(obj["data"])
 
 
-def configure(bundle, cutover):
+def configure(bundle, cutover) -> dict[str, object]:
     config = yaml.safe_load((ROOT / "deploy/monitoring/otel/cluster.yaml").read_text())
     config["exporters"]["otlp_http/metrics"]["endpoint"] = "http://127.0.0.1:9090/api/v1/otlp"
     config["exporters"]["otlp_http/metrics"]["tls"] = {"insecure": True}
@@ -107,10 +109,10 @@ def configure(bundle, cutover):
         "scrape.yaml": yaml.safe_dump(scrape, sort_keys=False),
     }
     kube("apply", "-f", "-", "-o", "json", document=cm)
-    return contract
+    return dict(contract)
 
 
-def run(bundle, output, cutover):
+def run(bundle, output, cutover) -> None:
     os.umask(0o077)
     output.mkdir(mode=0o700, exist_ok=True)
     current = kube("-n", NS, "get", "prometheus", PROM, "-o", "json")

@@ -13,7 +13,7 @@ PRIVATE_KEY = re.compile(r'authorization|password|secret|token|cookie|prompt|com
 URL_KEYS = {'url.full', 'http.url', 'http.target', 'url.query'}
 
 
-def safe_url(value):
+def safe_url(value) -> object:
     if not isinstance(value, str):
         return value
     if value.startswith(('http://', 'https://')):
@@ -30,16 +30,22 @@ def safe_url(value):
     return value.split('?', 1)[0] + ('?<redacted>' if '?' in value else '')
 
 
-def attributes(values):
+def attributes(values) -> dict[str, object]:
     return {key: ('<redacted>' if key == 'url.query' else safe_url(value)) if key in URL_KEYS else value
             for key, value in (values or {}).items() if not PRIVATE_KEY.search(key)}
 
 
-def safe_name(value):
-    return re.sub(r'https?://[^\s]+', lambda match: safe_url(match.group()), value)
+def safe_name(value) -> str:
+    def _replacement(match: re.Match[str]) -> str:
+        sanitized = safe_url(match.group())
+        if not isinstance(sanitized, str):
+            message = "URL sanitization did not produce a string"
+            raise TypeError(message)
+        return sanitized
+    return re.sub(r'https?://[^\s]+', _replacement, value)
 
 
-def redact_span(span):
+def redact_span(span) -> object:
     from opentelemetry.sdk.resources import Resource
     from opentelemetry.sdk.trace import Event, ReadableSpan
     from opentelemetry.trace import Link, Status
@@ -52,7 +58,7 @@ def redact_span(span):
         instrumentation_scope=span.instrumentation_scope)
 
 
-def activate():
+def activate() -> None:
     from opentelemetry import trace
     from opentelemetry.sdk import trace as sdk
     if getattr(sdk.TracerProvider, '_homelab_source_privacy', False):

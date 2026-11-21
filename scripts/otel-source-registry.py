@@ -7,6 +7,7 @@ import subprocess
 import sys
 import urllib.parse
 from collections import Counter
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -42,13 +43,13 @@ SENSITIVE = re.compile(
 )
 
 
-def digest(value):
+def digest(value) -> str:
     return hashlib.sha256(
         json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
 
 
-def scrub(value, key=""):
+def scrub(value, key="") -> object:
     if SENSITIVE.search(key):
         return "<redacted>"
     if isinstance(value, dict):
@@ -69,7 +70,7 @@ def scrub(value, key=""):
     return value
 
 
-def monitor_key(kind, namespace, name):
+def monitor_key(kind, namespace, name) -> str:
     kinds = {
         "ServiceMonitor": "serviceMonitor",
         "PodMonitor": "podMonitor",
@@ -79,7 +80,7 @@ def monitor_key(kind, namespace, name):
     return f"{kinds[kind]}/{namespace}/{name}"
 
 
-def selected(selector, attributes):
+def selected(selector, attributes) -> bool:
     if any(attributes.get(key) != value for key, value in selector.get("matchLabels", {}).items()):
         return False
     for expression in selector.get("matchExpressions", []):
@@ -98,7 +99,7 @@ def selected(selector, attributes):
     return True
 
 
-def monitor_selected(item, prometheus, namespaces):
+def monitor_selected(item, prometheus, namespaces) -> bool:
     kind = item["kind"]
     prefix = {
         "ServiceMonitor": "serviceMonitor",
@@ -114,18 +115,18 @@ def monitor_selected(item, prometheus, namespaces):
         return False
     namespace_selector = prometheus["spec"].get(prefix + "NamespaceSelector")
     if namespace_selector is None:
-        return metadata["namespace"] == prometheus["metadata"]["namespace"]
+        return bool(metadata["namespace"] == prometheus["metadata"]["namespace"])
     return selected(namespace_selector, namespaces.get(metadata["namespace"], {}))
 
 
-def identity(value):
+def identity(value) -> str:
     if "://" not in value:
-        return value
+        return str(value)
     url = urllib.parse.urlsplit(value)
     host = url.hostname or "<unknown>"
     if url.port:
         host += ":" + str(url.port)
-    return (
+    return str(
         url.scheme
         + "://"
         + host
@@ -134,7 +135,7 @@ def identity(value):
     )
 
 
-def target_summary(target):
+def target_summary(target) -> dict[str, object]:
     labels = target.get("labels", {})
     url = urllib.parse.urlsplit(target["scrapeUrl"])
     path = (
@@ -170,7 +171,7 @@ def target_summary(target):
     }
 
 
-def expressions(document):
+def expressions(document) -> Iterator[tuple[object, object, str]]:
     for panel in document.get("panels", []):
         for index, target in enumerate(panel.get("targets", [])):
             expression = target.get("expr")
@@ -180,7 +181,7 @@ def expressions(document):
             yield from expressions({"panels": panel["panels"]})
 
 
-def consumers(rule_document, configmaps):
+def consumers(rule_document, configmaps) -> dict[str, object]:
     rules = []
     for group in rule_document.get("groups", []):
         for rule in group.get("rules", []):
@@ -228,10 +229,10 @@ def consumers(rule_document, configmaps):
                     + item["metadata"]["name"],
                 }
             )
-    return {"rules": rules, "dashboards": sorted(dashboards, key=lambda item: item["uid"])}
+    return {"rules": rules, "dashboards": sorted(dashboards, key=lambda item: str(item["uid"]))}
 
 
-def build(monitors, targets, prometheus, namespaces, rules, configmaps):
+def build(monitors, targets, prometheus, namespaces, rules, configmaps) -> dict[str, object]:
     namespace_labels = {
         item["metadata"]["name"]: item["metadata"].get("labels", {}) for item in namespaces["items"]
     }
@@ -255,21 +256,26 @@ def build(monitors, targets, prometheus, namespaces, rules, configmaps):
     errors = []
     intervals = Counter()
     for target in active:
-        key = target["monitor"]
+        key = str(target["monitor"])
         if key not in catalog:
-            errors.append("Active target has no monitor: " + target["scrapePool"])
+            errors.append("Active target has no monitor: " + str(target["scrapePool"]))
             continue
         entry = catalog[key]
-        entry["activeTargetCount"] += 1
+        count = entry["activeTargetCount"]
+        entry["activeTargetCount"] = count + 1 if isinstance(count, int) else 1
         if not entry["selectedByPrometheus"]:
-            errors.append("Active target monitor is outside the inventoried selectors: " + key)
-        if target["endpointIndex"] >= entry["endpointCount"]:
-            errors.append("Active target endpoint is absent: " + target["scrapePool"])
+            errors.append("Active target monitor is outside the inventoried selectors: " + str(key))
+        if not (
+            isinstance(target["endpointIndex"], int)
+            and isinstance(entry["endpointCount"], int)
+            and target["endpointIndex"] < entry["endpointCount"]
+        ):
+            errors.append("Active target endpoint is absent: " + str(target["scrapePool"]))
         if target["futureOwner"] is None:
-            errors.append("Unknown scrape owner for job: " + target["job"])
+            errors.append("Unknown scrape owner for job: " + str(target["job"]))
         if target["health"] != "up":
-            errors.append("Unhealthy target: " + target["scrapePool"])
-        intervals[target["scrapeInterval"]] += 1
+            errors.append("Unhealthy target: " + str(target["scrapePool"]))
+        intervals[str(target["scrapeInterval"])] += 1
     if not active:
         errors.append("No active targets")
     consumption = consumers(rules, configmaps)
@@ -283,7 +289,7 @@ def build(monitors, targets, prometheus, namespaces, rules, configmaps):
         "errors": errors,
         "activeTargetCount": len(active),
         "activeIntervals": dict(intervals),
-        "jobTargetCounts": dict(sorted(Counter(target["job"] for target in active).items())),
+        "jobTargetCounts": dict(sorted(Counter(str(target["job"]) for target in active).items())),
         "droppedTargetCount": len(targets.get("droppedTargets", [])),
         "sources": catalog,
         "targets": active,
@@ -333,7 +339,7 @@ print(json.dumps({'files':files,'timers':result.stdout}))
 """
 
 
-def host_producers(hosts):
+def host_producers(hosts) -> dict[str, object]:
     result = {}
     for node in hosts:
         observed = PREFLIGHT.remote(node, ["python3", "-c", HOST_PRODUCER_PROBE])
@@ -367,7 +373,7 @@ def host_producers(hosts):
     return result
 
 
-def attach_producers(registry, producers, daemonsets):
+def attach_producers(registry, producers, daemonsets) -> object:
     errors = registry["errors"]
     for node, observed in producers.items():
         for item in observed["files"]:
@@ -408,7 +414,7 @@ def attach_producers(registry, producers, daemonsets):
     return registry
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--ssh-host", default="socrat-0")
     parser.add_argument("--output", type=Path, required=True)

@@ -27,13 +27,27 @@ ASSET_ROOTS = (
 )
 
 
-def fingerprint(value):
+def _mapping(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        message = "Effective scrape configuration entries must be JSON objects"
+        raise TypeError(message)
+    return dict(value)
+
+
+def _list(value: object) -> list[object]:
+    if not isinstance(value, list):
+        message = "Effective scrape configuration collections must be JSON arrays"
+        raise TypeError(message)
+    return list(value)
+
+
+def fingerprint(value) -> str:
     return hashlib.sha256(
         json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
 
 
-def assets(value):
+def assets(value) -> set[str]:
     result = set()
     if isinstance(value, dict):
         for key, item in value.items():
@@ -56,10 +70,10 @@ def assets(value):
     return result
 
 
-def translate_authorization(job, monitors):
-    translated = copy.deepcopy(job)
-    references = []
-    authorization = translated.get("authorization", {})
+def translate_authorization(job, monitors) -> tuple[dict[str, object], list[dict[str, object]]]:
+    translated = _mapping(copy.deepcopy(job))
+    references: list[dict[str, object]] = []
+    authorization = _mapping(translated.get("authorization", {}))
     if not authorization.get("credentials"):
         return translated, references
     parts = job["job_name"].split("/")
@@ -105,7 +119,7 @@ def translate_authorization(job, monitors):
     return translated, references
 
 
-def escape_literals(value):
+def escape_literals(value) -> object:
     if isinstance(value, dict):
         return {key: escape_literals(item) for key, item in value.items()}
     if isinstance(value, list):
@@ -115,7 +129,7 @@ def escape_literals(value):
     return value
 
 
-def refresh_public_edge_probe(scrape):
+def refresh_public_edge_probe(scrape) -> object:
     """Keep captured native scrape bundles aligned with the owned VPS probe."""
     targets = yaml.safe_load((ROOT / "charts/monitoring-k3s/values.yaml").read_text())[
         "serviceProbes"
@@ -139,7 +153,7 @@ def refresh_public_edge_probe(scrape):
     return add_moscow_edge_probe(result)
 
 
-def add_moscow_edge_probe(scrape):
+def add_moscow_edge_probe(scrape) -> object:
     """Persist new public Moscow probe in otherwise frozen native scrape bundles."""
     result = copy.deepcopy(scrape)
     targets = yaml.safe_load((ROOT / "charts/monitoring-k3s/values.yaml").read_text())[
@@ -178,7 +192,7 @@ def add_moscow_edge_probe(scrape):
     return result
 
 
-def add_logging_self_monitoring(scrape):
+def add_logging_self_monitoring(scrape) -> object:
     """Add only the native owner's authenticated Loki target, idempotently."""
     result = copy.deepcopy(scrape)
     job = {
@@ -209,7 +223,7 @@ def add_logging_self_monitoring(scrape):
     return result
 
 
-def add_pg_platform_scrape(scrape):
+def add_pg_platform_scrape(scrape) -> object:
     result = copy.deepcopy(scrape)
     job = {
         "job_name": "postgres-platform", "scrape_interval": "15s", "scrape_timeout": "5s",
@@ -226,7 +240,7 @@ def add_pg_platform_scrape(scrape):
     return result
 
 
-def compile_config(source, targets, monitors=None):
+def compile_config(source, targets, monitors=None) -> tuple[dict[str, object], dict[str, object]]:
     monitors = {} if monitors is None else monitors
     active = targets["activeTargets"]
     if not active or any(target.get("health") != "up" for target in active):
@@ -238,10 +252,21 @@ def compile_config(source, targets, monitors=None):
     global_config.pop("external_labels", None)
     global_config.pop("evaluation_interval", None)
     global_config.update(scrape_interval="5s", scrape_timeout="4s")
-    outputs = {
-        name: {"global": copy.deepcopy(global_config), "scrape_configs": []}
-        for name in ("cluster", *NODES)
-    }
+    cluster_scrapes: list[object] = []
+    node_scrapes: dict[str, list[object]] = {}
+    outputs: dict[str, dict[str, object]] = {}
+    for name in ("cluster", *NODES):
+        scrapes: list[object] = []
+        if name == "cluster":
+            cluster_scrapes = scrapes
+        else:
+            node_scrapes[name] = scrapes
+        outputs[name] = _mapping(
+            {"global": copy.deepcopy(global_config), "scrape_configs": scrapes}
+        )
+    pool_records: list[object] = []
+    excluded_empty_pools: list[object] = []
+    required_secret_keys: list[object] = []
     contract = {
         "schemaVersion": 1,
         "collectedAt": datetime.now(UTC).isoformat(),
@@ -251,14 +276,14 @@ def compile_config(source, targets, monitors=None):
         "sourceExternalLabelsSHA256": fingerprint(
             source.get("global", {}).get("external_labels", {})
         ),
-        "pools": [],
-        "excludedEmptyPools": [],
+        "pools": pool_records,
+        "excludedEmptyPools": excluded_empty_pools,
         "requiredFileMounts": [],
         "legacyTargetIdentityAliasesRequireAcceptance": True,
         "authFilesAndRBACRuntimeVerified": False,
         "receiverCompatibilityVerified": False,
         "secretAssetSynchronizationRuntimeVerified": False,
-        "requiredSecretKeys": [],
+        "requiredSecretKeys": required_secret_keys,
     }
     seen = set()
     mounts = set(assets(global_config))
@@ -269,7 +294,7 @@ def compile_config(source, targets, monitors=None):
             raise ValueError("Duplicate scrape pool")
         seen.add(pool)
         if pool not in pools:
-            contract["excludedEmptyPools"].append(pool)
+            excluded_empty_pools.append(pool)
             continue
         group = pools[pool]
         jobs = {target["labels"].get("job") for target in group}
@@ -281,8 +306,8 @@ def compile_config(source, targets, monitors=None):
             raise ValueError("Unknown or mixed source ownership")
         translated, secret_keys = translate_authorization(original, monitors)
         for reference in secret_keys:
-            if reference not in contract["requiredSecretKeys"]:
-                contract["requiredSecretKeys"].append(reference)
+            if reference not in required_secret_keys:
+                required_secret_keys.append(reference)
         translated.update(scrape_interval="5s", scrape_timeout="4s")
         references = assets(translated)
         mounts.update(references)
@@ -295,7 +320,7 @@ def compile_config(source, targets, monitors=None):
             "targetLabelSHA256": sorted(fingerprint(target["labels"]) for target in group),
         }
         if owner == "cluster":
-            outputs["cluster"]["scrape_configs"].append(translated)
+            cluster_scrapes.append(translated)
         else:
             if (
                 translated.get("scheme", "http") != "http"
@@ -325,16 +350,16 @@ def compile_config(source, targets, monitors=None):
                 local["static_configs"] = [
                     {"targets": ["127.0.0.1:19100"], "labels": copy.deepcopy(target["labels"])}
                 ]
-                outputs[node]["scrape_configs"].append(local)
+                node_scrapes[node].append(local)
             record["labelMode"] = (
                 "legacy target labels retained as explicit compatibility aliases, not host-process runtime metadata"
             )
-        contract["pools"].append(record)
+        pool_records.append(record)
     if set(pools) - seen:
         raise ValueError("Active targets are absent from the effective scrape configuration")
     if nodes != set(NODES):
         raise ValueError("Exactly one independent node source is required for every node")
-    if not outputs["cluster"]["scrape_configs"]:
+    if not cluster_scrapes:
         raise ValueError("Cluster source inventory is empty")
     contract["requiredFileMounts"] = sorted(mounts)
     contract["activeTargetCount"] = len(active)
@@ -346,18 +371,22 @@ def compile_config(source, targets, monitors=None):
         "intervalSeconds": 5,
         "timeoutSeconds": 4,
     }
-    outputs["cluster"] = add_pg_platform_scrape(refresh_public_edge_probe(add_logging_self_monitoring(outputs["cluster"])))
-    outputs = escape_literals(outputs)
+    outputs["cluster"] = _mapping(
+        add_pg_platform_scrape(
+            refresh_public_edge_probe(add_logging_self_monitoring(outputs["cluster"]))
+        )
+    )
+    finalized = _mapping(escape_literals(outputs))
     contract["dollarEscaping"] = (
         "literal Prometheus dollars escaped before Collector confmap resolution"
     )
-    contract["outputSHA256"] = {name: fingerprint(document) for name, document in outputs.items()}
-    return outputs, contract
+    contract["outputSHA256"] = {name: fingerprint(document) for name, document in finalized.items()}
+    return finalized, contract
 
 
-def validation_config(value):
+def validation_config(value) -> object:
     if isinstance(value, dict):
-        result = {}
+        result: dict[str, object] = {}
         for key, item in value.items():
             if key.endswith("_file") and isinstance(item, str) and item:
                 name = {
@@ -378,7 +407,7 @@ def validation_config(value):
     return value
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--ssh-host", default="socrat-0")
     parser.add_argument("--output", type=Path, required=True)
@@ -422,8 +451,8 @@ def main():
                 {
                     "output": str(args.output),
                     "activeTargetCount": contract["activeTargetCount"],
-                    "poolCount": len(contract["pools"]),
-                    "fileMountCount": len(contract["requiredFileMounts"]),
+                    "poolCount": len(_list(contract["pools"])),
+                    "fileMountCount": len(_list(contract["requiredFileMounts"])),
                     "readyForCutover": False,
                 },
                 indent=2,

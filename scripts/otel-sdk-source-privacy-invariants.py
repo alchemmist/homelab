@@ -3,7 +3,7 @@
 import math
 
 
-def check(guard):
+def check(guard) -> dict[str, bool]:
     from opentelemetry.sdk.resources import Resource
     from opentelemetry.sdk.trace import Event, ReadableSpan
     from opentelemetry.sdk.util.instrumentation import InstrumentationScope

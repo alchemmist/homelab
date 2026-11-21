@@ -78,7 +78,7 @@ print(json.dumps(report))
 )
 
 
-def privileged_journals(directory, now=None):
+def privileged_journals(directory, now=None) -> dict[str, dict[str, object]]:
     now = datetime.now(UTC) if now is None else now
     if (
         directory.is_symlink()
@@ -136,7 +136,7 @@ def privileged_journals(directory, now=None):
     return reports
 
 
-def summarize(pods, journals):
+def summarize(pods, journals) -> dict[str, object]:
     sources = pods["sources"]
     measured = [source for source in sources if source.get("measurementAvailable")]
     truncated = [source for source in measured if source["truncated"]]
@@ -193,7 +193,7 @@ def summarize(pods, journals):
     }
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--ssh-host", default="socrat-0")
     parser.add_argument("--output", type=Path, required=True)

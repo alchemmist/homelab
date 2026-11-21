@@ -20,16 +20,44 @@ SPEC = importlib.util.spec_from_file_location(
 BOOTSTRAP = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(BOOTSTRAP)
 NS = "cattle-monitoring-system"
+_SAMPLE_PAIR_LENGTH = 2
 
 
-def unclamped(arguments):
+def _mapping(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        message = "Native query responses must be JSON objects"
+        raise TypeError(message)
+    return dict(value)
+
+
+def _list(value: object) -> list[object]:
+    if not isinstance(value, list):
+        message = "Native query results must be JSON arrays"
+        raise TypeError(message)
+    return list(value)
+
+
+def _sample_value(record: object) -> float:
+    series = _mapping(record)
+    sample = _list(series["value"])
+    if len(sample) != _SAMPLE_PAIR_LENGTH:
+        message = "Native query samples must pair a timestamp with a value"
+        raise TypeError(message)
+    value = sample[1]
+    if not isinstance(value, (int, float, str)):
+        message = "Native query sample value must be numeric"
+        raise TypeError(message)
+    return float(value)
+
+
+def unclamped(arguments) -> object:
     limits = [value for value in arguments if value.startswith("--max-time")]
     if limits not in [[], ["--max-time=-12h"]]:
         raise ValueError("Unexpected raw Store limit; manual review required")
     return [value for value in arguments if value != "--max-time=-12h"]
 
 
-def query(stamp, dedup):
+def query(stamp, dedup) -> list[object]:
     params = urllib.parse.urlencode(
         {
             "query": "count(up)",
@@ -49,10 +77,10 @@ def query(stamp, dedup):
     )
     if result.get("status") != "success" or result.get("warnings"):
         raise ValueError("Native query failed or was partial")
-    return result["data"]["result"]
+    return list(result["data"]["result"])
 
 
-def run(output):
+def run(output) -> None:
     os.umask(0o077)
     output.mkdir(mode=0o700)
     status = {
@@ -112,7 +140,7 @@ def run(output):
             time.sleep(3)
         while True:
             restored = query(stamps[1], True)
-            if restored and float(restored[0]["value"][1]) == 78:
+            if restored and _sample_value(restored[0]) == 78:
                 break
             if time.monotonic() >= deadline:
                 raise TimeoutError("Native raw query did not recover captured historical interval")
@@ -121,9 +149,9 @@ def run(output):
             stamp: {"dedupTrue": query(stamp, True), "dedupFalse": query(stamp, False)}
             for stamp in stamps
         }
-        for stamp, result in after.items():
-            for rows in result.values():
-                if len(rows) != 1 or float(rows[0]["value"][1]) != 78:
+        for stamp, grouped in after.items():
+            for rows in grouped.values():
+                if len(rows) != 1 or _sample_value(rows[0]) != 78:
                     raise ValueError("Native historical series count changed or was doubled")
         status.update(
             success=True,
