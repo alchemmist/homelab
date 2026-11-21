@@ -11,6 +11,7 @@ import io
 import json
 import subprocess
 from pathlib import Path
+from typing import cast
 
 from PIL import Image, ImageOps, features
 from PIL import __version__ as pillow_version
@@ -111,11 +112,14 @@ def build(source, output):
             preview.save(buf, format="WEBP", quality=25, method=6)
             tiny = base64.b64encode(buf.getvalue()).decode()
 
-            def url(key):
+            def url(key) -> str:
                 item = manifest[key]
-                return "/-/quiet-mono/v1/" + item["sha256"][:12] + "-" + Path(item["path"]).name
+                return cast(
+                    "str",
+                    "/-/quiet-mono/v1/" + item["sha256"][:12] + "-" + Path(item["path"]).name,
+                )
 
-            def layer(label):
+            def layer(label) -> str:
                 return (
                     "background-image:url('"
                     + url(record[label])

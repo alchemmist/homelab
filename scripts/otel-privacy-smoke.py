@@ -127,9 +127,9 @@ def run(binary, config, tls, workspace):
             try:
                 with socket.create_connection(("127.0.0.1", 14318), timeout=1):
                     break
-            except OSError:
+            except OSError as exc:
                 if time.monotonic() >= deadline:
-                    raise RuntimeError("Synthetic receiver startup timed out")
+                    raise RuntimeError("Synthetic receiver startup timed out") from exc
                 time.sleep(0.1)
         send(context, payload)
         anonymous = ssl.create_default_context(cafile=str(tls / "ca.crt"))
