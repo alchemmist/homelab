@@ -18,6 +18,7 @@ SPEC.loader.exec_module(GATEWAY)
 
 class GatewayTests(unittest.TestCase):
     """Exercise the SSH gateway handler with temporary state."""
+
     def setUp(self) -> None:
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)

@@ -59,9 +59,8 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
     """Redirect handler that refuses to follow HTTP redirects."""
 
     def redirect_request(self, *args, **kwargs) -> None:
-
-        'Refuse redirects so credentials are never forwarded.'
-        return None
+        """Refuse redirects so credentials are never forwarded."""
+        return
 
 
 class API:
@@ -69,7 +68,6 @@ class API:
 
     def __init__(self, credentials: Path, *, write: bool = False) -> None:
         """Initialize the SPI queue API client."""
-
         private(credentials)
         value = json.loads(credentials.read_text())
         self.token = value.get("AUTHENTIK_API_TOKEN") or value.get("AUTHENTIK_BOOTSTRAP_TOKEN")
@@ -81,7 +79,7 @@ class API:
         self.http = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
     def call(self, method, path, value=None) -> "object | None":
-        'Call the pinned API with strict path validation.'
+        """Call the pinned API with strict path validation."""
         require(
             not path.startswith("/") and "://" not in path,
             "Fixed native API path required",
@@ -120,7 +118,7 @@ class API:
             ) from None
 
     def rows(self, path) -> "list[dict[str, object]]":
-        'Collect all pages of rows for an API path.'
+        """Collect all pages of rows for an API path."""
         result: list[dict[str, object]] = []
         for page in range(1, 21):
             data = self.call(

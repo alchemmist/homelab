@@ -35,6 +35,7 @@ def values(chart):
 
 class PlacementTests(unittest.TestCase):
     """Tests for PlacementTests."""
+
     def test_monori_only_frontend_changes(self):
         new = values("monori")
         old = copy.deepcopy(new)

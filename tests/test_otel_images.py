@@ -42,7 +42,6 @@ class ImageLockTests(unittest.TestCase):
         self, entries: list[dict[str, object]], *, bad_digest: bool = False
     ) -> dict[str, object]:
         """Resolve a fixture index through the registry token flow."""
-
         body = json.dumps({"manifests": entries}).encode()
         responses = [
             response(b'{"token":"private-fixture"}'),
@@ -100,7 +99,6 @@ class ValidationBinaryTests(unittest.TestCase):
         absent: bool = False,
     ) -> dict[str, object]:
         """Extract the fixture image layer with optional tampering."""
-
         layer = io.BytesIO()
         with tarfile.open(fileobj=layer, mode="w:gz") as archive:
             directory = tarfile.TarInfo("etc/loki")

@@ -20,6 +20,7 @@ TIMER_INTERVAL_SECONDS = 7
 
 class BackupTests(unittest.TestCase):
     """Verify SPI private backup streaming and cleanup."""
+
     def test_private_stream_and_cleanup(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             src = Path(d) / "source"
@@ -66,6 +67,7 @@ class BackupTests(unittest.TestCase):
 
 class BackupDeadlineTests(unittest.TestCase):
     """Confirm backup failures correctly trigger their deadline kind."""
+
     def run_failure(self, kind) -> None:
         import time
 
@@ -188,6 +190,7 @@ except Exception:sys.exit(1)
 
 class CleanupBoundaryTests(unittest.TestCase):
     """Check real ownership and close-failure cleanup boundaries."""
+
     def test_real_ownership_and_close_failures(self) -> None:
         import signal
         from unittest.mock import patch
@@ -229,10 +232,9 @@ class CleanupBoundaryTests(unittest.TestCase):
 
                 with (
                     patch.object(m.tempfile, "mkstemp", owned),
-                    patch.object(m.sqlite3, "connect", connected),
+                    patch.object(m.sqlite3, "connect", connected),self.assertRaises(TimeoutError)
                 ):
-                    with self.assertRaises(TimeoutError):
-                        m.backup(str(src), d)
+                    m.backup(str(src), d)
                 assert list(Path(d).glob(".spi-prechange-*")) == []
                 assert signal.getsignal(signal.SIGALRM) == old
                 assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)

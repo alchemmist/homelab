@@ -23,7 +23,7 @@ def check(namespace, kubectl, kubeconfig, profile, owner_name):
     """Document the check operation."""
     command = [kubectl, "--kubeconfig", kubeconfig, "--request-timeout=30s"]
     selector = {"resource-policy.socrat.io/probe": "preserved"}
-    selector.update({key: "previous" for key in profile.get("nodeSelector", {})})
+    selector.update(dict.fromkeys(profile.get("nodeSelector", {}), "previous"))
     containers = []
     for name in profile["containers"]:
         containers.append(

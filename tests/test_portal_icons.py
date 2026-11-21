@@ -49,6 +49,7 @@ def test_current_application_coverage_and_asset_checksums() -> None:
 
 class Response:
     """Minimal fake HTTP response carrying a JSON or byte body."""
+
     def __init__(self, body) -> None:
         self.body = body if isinstance(body, bytes) else json.dumps(body).encode()
 
@@ -62,12 +63,12 @@ class Response:
 
     def read(self) -> bytes:
         """Return the fixture body."""
-
         return self.body
 
 
 class FakeAPI:
     """Fake application API serving canned service catalogue data."""
+
     apps: dict[str, dict[str, object]]
     patches: list[str]
     files: list[dict[str, str]]
@@ -104,7 +105,6 @@ class FakeAPI:
 
     def __call__(self, request, timeout=None) -> Response:
         """Serve fixture media without API credentials."""
-
         if isinstance(request, str):
             # No API bearer token is sent when reading media.
             return Response(self.content[request])

@@ -9,12 +9,13 @@ SCRIPT = Path(__file__).resolve().parents[1] / "scripts/socrat5-runtime-boot-mig
 
 class RuntimeBootMigrationTest(unittest.TestCase):
     """Validate the runtime boot migration script stays valid."""
+
     def test_python_parses(self) -> None:
         ast.parse(SCRIPT.read_text())
 
     def test_cold_mode_requires_a_different_boot(self) -> None:
         text = SCRIPT.read_text()
-        assert "assert boot_id() != x[\"original_boot_id\"]" in text
+        assert 'assert boot_id() != x["original_boot_id"]' in text
         assert '["pgrep", "-x", "containerd"]' in text
         assert '["pgrep", "-x", "k3s-server"]' in text
 

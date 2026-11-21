@@ -63,9 +63,9 @@ class Deployment(TypedDict):
 
 class ApplicationRegistryTests(unittest.TestCase):
     """Validate the registered OpenTelemetry application deployments."""
+
     def deployment(self) -> Deployment:
         """Build a deployment fixture with sensitive values."""
-
         return {
             "kind": "Deployment",
             "metadata": {"name": "app", "namespace": "apps"},
@@ -97,7 +97,6 @@ class ApplicationRegistryTests(unittest.TestCase):
 
     def test_no_environment_or_argument_values_saved(self) -> None:
         """No environment or argument values are saved."""
-
         report = registry.summarize([self.deployment()])
         text = json.dumps(report)
         assert "never-save-" not in text
@@ -108,7 +107,6 @@ class ApplicationRegistryTests(unittest.TestCase):
 
     def test_enable_otel_switch_is_only_a_hint_even_when_value_false(self) -> None:
         """The enable switch stays a hint even when explicitly false."""
-
         obj = self.deployment()
         obj["spec"]["template"]["spec"]["containers"][0]["env"] = [
             {"name": "ENABLE_OTEL_TRACES", "value": "False"}
@@ -119,7 +117,6 @@ class ApplicationRegistryTests(unittest.TestCase):
 
     def test_owned_job_not_double_counted_but_standalone_job_included(self) -> None:
         """Owned jobs are not double-counted, standalone jobs are included."""
-
         obj = self.deployment()
         job: Job = {
             "kind": "Job",
@@ -134,7 +131,6 @@ class ApplicationRegistryTests(unittest.TestCase):
         self,
     ) -> None:
         """Managed pod digests are retained without template double-counting."""
-
         pod = {
             "kind": "Pod",
             "metadata": {

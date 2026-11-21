@@ -16,11 +16,11 @@ FIELDS = ("ip", "local_port", "protocol", "remote_ip", "external_port", "wan", "
 def parse_forwards(page):
     """Document the parse forwards operation."""
     rows = []
-    for row in re.findall(r"<tr\b[^>]*>(.*?)</tr>", page, re.S | re.I):
+    for row in re.findall(r"<tr\b[^>]*>(.*?)</tr>", page, re.DOTALL | re.IGNORECASE):
         selected = re.search(r'name="(select\d+)"', row)
         if not selected:
             continue
-        cells = re.findall(r"<td\b[^>]*>(.*?)</td>", row, re.S | re.I)
+        cells = re.findall(r"<td\b[^>]*>(.*?)</td>", row, re.DOTALL | re.IGNORECASE)
         values = [html.unescape(re.sub(r"<[^>]*>", "", cell)).strip() for cell in cells]
         if len(values) != 9:
             msg = "Unexpected router forwarding table format"
@@ -44,7 +44,6 @@ class Router:
 
     def __init__(self, credentials, address) -> None:
         """Initialize the router client."""
-
         self.base = "http://" + str(ipaddress.IPv4Address(address))
         self.cookie = None
         page = self.request("/login.htm")

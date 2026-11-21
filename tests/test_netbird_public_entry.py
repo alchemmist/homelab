@@ -27,9 +27,9 @@ owner = load("nb_owner", "netbird-owner-handover.py")
 
 class PublicEntryTests(unittest.TestCase):
     """Validate the scoped identity public entry manifests."""
+
     def test_scoped_identity_entry(self) -> None:
         """The public entry is scoped to the identity namespace."""
-
         docs = entry.manifests()
         assert all(d["metadata"]["namespace"] in ["identity", "netbird-pilot"] for d in docs)
         assert not any(
@@ -67,7 +67,6 @@ class PublicEntryTests(unittest.TestCase):
 
     def test_invite_list_read_does_not_enable_local_signup(self) -> None:
         """Invite-list reads never enable local signup."""
-
         cm = next(d for d in entry.manifests() if d["kind"] == "ConfigMap")
         dynamic = yaml.safe_load(cm["data"]["dynamic.yaml"])
         deny = dynamic["http"]["routers"]["deny-setup"]
@@ -86,7 +85,6 @@ class PublicEntryTests(unittest.TestCase):
 
     def test_grpc_scheme_is_on_dedicated_service_not_ingress(self) -> None:
         """The gRPC scheme lives on a dedicated Service, not the Ingress."""
-
         docs = entry.manifests()
         by_name = {(d["kind"], d["metadata"]["name"]): d for d in docs}
         key = "traefik.ingress.kubernetes.io/service.serversscheme"
@@ -109,7 +107,6 @@ class PublicEntryTests(unittest.TestCase):
 
     def fixture(self) -> dict[str, object]:
         """Build the owner user fixture."""
-
         return {
             "id": owner.subject(),
             "email": owner.EMAIL,
@@ -118,13 +115,12 @@ class PublicEntryTests(unittest.TestCase):
             "is_blocked": False,
             "pending_approval": False,
             "status": "active",
-            "last_login": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "last_login": datetime.datetime.now(datetime.UTC).isoformat(),
             "role": "user",
         }
 
     def test_exact_subject_matches_upstream_protobuf(self) -> None:
         """The exact subject matches the upstream protobuf encoding."""
-
         data = base64.b64decode(owner.subject() + "==")
         assert (
             data
@@ -138,7 +134,6 @@ class PublicEntryTests(unittest.TestCase):
 
     def test_no_uuid_connector_email_fallback(self) -> None:
         """No UUID, connector or email fallbacks are allowed."""
-
         for candidate in [
             owner.EMAIL,
             owner.UUID,

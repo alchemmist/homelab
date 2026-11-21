@@ -317,7 +317,7 @@ def _apply_brand(
     ):
         print("Quiet Mono Brand already reconciled; no changes")
         return
-    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
+    stamp = datetime.datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%S.%fZ")
     backup_path = root / "theme-backups" / ("before-quiet-mono-" + stamp + ".json")
     protected_json(
         backup_path,
@@ -373,7 +373,7 @@ def _apply_brand(
 
 
 def main():
-    'Main.'
+    """Main."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
     parser.add_argument("theme", type=Path)

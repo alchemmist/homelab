@@ -94,9 +94,9 @@ def fixtures() -> tuple[_Source, _Targets]:
 
 class ScrapeConfigTests(unittest.TestCase):
     """Validate scrape config edits stay narrow and reversible."""
+
     def test_public_edge_refresh_is_narrow_and_preserves_original(self) -> None:
         """Public edge refresh is narrow and preserves original."""
-
         job = {
             "job_name": "serviceMonitor/cattle-monitoring-system/monitoring-service-probes/26",
             "params": {"module": ["tcp_connect"], "target": ["192.0.2.1:443"]},
@@ -119,7 +119,6 @@ class ScrapeConfigTests(unittest.TestCase):
 
     def test_moscow_job_does_not_reuse_frozen_numeric_endpoint_indices(self) -> None:
         """Moscow job does not reuse frozen numeric endpoint indices."""
-
         targets = yaml.safe_load((SCRAPE.ROOT / "charts/monitoring-k3s/values.yaml").read_text())[
             "serviceProbes"
         ]["targets"]
@@ -139,7 +138,6 @@ class ScrapeConfigTests(unittest.TestCase):
 
     def test_ownership_discovery_labels_and_relabeling_are_preserved(self) -> None:
         """Ownership discovery labels and relabeling are preserved."""
-
         source, targets = fixtures()
         before = copy.deepcopy(source)
         outputs, contract = SCRAPE.compile_config(source, targets)
@@ -171,7 +169,6 @@ class ScrapeConfigTests(unittest.TestCase):
 
     def test_secret_selector_becomes_a_file_not_a_masked_credential(self) -> None:
         """Secret selector becomes a file not a masked credential."""
-
         source, targets = fixtures()
         source["scrape_configs"][0]["authorization"] = {"type": "Bearer", "credentials": "<secret>"}
         monitors = {
@@ -202,7 +199,6 @@ class ScrapeConfigTests(unittest.TestCase):
 
     def test_unattributed_inline_secret_is_rejected(self) -> None:
         """Unattributed inline secret is rejected."""
-
         source, targets = fixtures()
         source["scrape_configs"][0]["authorization"] = {"credentials": "<secret>"}
         with self.assertRaisesRegex(ValueError, "monitor"):
@@ -210,7 +206,6 @@ class ScrapeConfigTests(unittest.TestCase):
 
     def test_unknown_owner_and_missing_node_fail_closed(self) -> None:
         """Unknown owner and missing node fail closed."""
-
         for mutate in ["owner", "node"]:
             source, targets = fixtures()
             if mutate == "owner":
@@ -222,7 +217,6 @@ class ScrapeConfigTests(unittest.TestCase):
 
     def test_validation_assets_are_inert_and_do_not_mutate_the_real_config(self) -> None:
         """Validation assets are inert and do not mutate the real config."""
-
         document = {
             "authorization": {"credentials_file": "/etc/otel/source-auth/ns/name/token"},
             "tls_config": {"ca_file": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"},
@@ -239,7 +233,6 @@ class ScrapeConfigTests(unittest.TestCase):
 
     def test_unsafe_file_dependency_is_rejected(self) -> None:
         """Unsafe file dependency is rejected."""
-
         with self.assertRaises(ValueError):
             SCRAPE.assets({"credentials_file": "/etc/otel/source-auth/../outside"})
         with self.assertRaises(ValueError):

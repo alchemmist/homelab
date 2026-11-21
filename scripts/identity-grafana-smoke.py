@@ -55,9 +55,8 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
     """Redirect handler that refuses to follow HTTP redirects."""
 
     def redirect_request(self, *_args):
-
-        'Refuse redirects so credentials are never forwarded.'
-        return None
+        """Refuse redirects so credentials are never forwarded."""
+        return
 
 
 jar = http.cookiejar.CookieJar()

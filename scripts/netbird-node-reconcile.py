@@ -280,9 +280,8 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
     """Redirect handler that refuses to follow HTTP redirects."""
 
     def redirect_request(self, *_a, **_kw):
-
-        'Refuse redirects so credentials are never forwarded.'
-        return None
+        """Refuse redirects so credentials are never forwarded."""
+        return
 
 
 class Runtime:
@@ -290,7 +289,6 @@ class Runtime:
 
     def __init__(self, folder, config, apply=False) -> None:
         """Initialize the reconciliation runtime."""
-
         self.folder, self.config, self.apply = folder, validate_config(config), apply
         self.k = [
             "env",
@@ -316,7 +314,7 @@ class Runtime:
         self.changed = False
 
     def api(self, method, path, body=None):
-        'Call the NetBird management API with the pinned token.'
+        """Call the NetBird management API with the pinned token."""
         req = urllib.request.Request(
             BASE + path,
             method=method,
@@ -331,7 +329,7 @@ class Runtime:
             return json.loads(b) if b else None
 
     def kub(self, args, obj=None, optional=False, stdin=None):
-        'Run a kubectl command with a strict allowlist per operation.'
+        """Run a kubectl command with a strict allowlist per operation."""
         args = list(args)
         operation = args[2] if args[:1] == ["-n"] else args[0]
         require(
@@ -371,16 +369,16 @@ class Runtime:
         return p.stdout
 
     def get(self, kind, name, ns=NS, optional=False):
-        'Fetch one object if present, or None when missing.'
+        """Fetch one object if present, or None when missing."""
         out = self.kub(["-n", ns, "get", kind, name, "-o", "json"], optional=optional)
         return json.loads(out) if out.strip() else None
 
     def save(self):
-        'Persist the reconciler state atomically.'
+        """Persist the reconciler state atomically."""
         atomic(self.state_path, self.state)
 
     def write(self, method, path, body):
-        'Apply an already-verified mutation if planning permits it.'
+        """Apply an already-verified mutation if planning permits it."""
         require(self.apply, "plan attempted mutation")
         require(not self.state.get("pending"), "uncertain previous write")
         self.state["pending"] = {"method": method, "path": path}
@@ -393,7 +391,7 @@ class Runtime:
 
     @staticmethod
     def require_argocd(obj) -> None:
-        'Assert the manifest is owned by the Argo CD application.'
+        """Assert the manifest is owned by the Argo CD application."""
         meta = obj["metadata"]
         require(
             meta.get("annotations", {})
@@ -405,7 +403,7 @@ class Runtime:
 
     def restart_without_key(self, host, deployment):
         # Operational acceptance restart only: never edit/create a workload spec.
-        'Restart the deployment pod so the node key is never persisted.'
+        """Restart the deployment pod so the node key is never persisted."""
         pods = json.loads(
             self.kub(["-n", NS, "get", "pods", "-l", "app=machine-" + host, "-o", "json"])
         )["items"]
@@ -462,7 +460,7 @@ class Runtime:
         )
 
     def enroll_argocd_agent(self, host, node, deployment, pvc):
-        'Enroll the node and record ownership before any restart.'
+        """Enroll the node and record ownership before any restart."""
         self.require_argocd(deployment)
         self.require_argocd(pvc)
         peers = self.api("GET", "peers")
@@ -567,7 +565,7 @@ class Runtime:
         return peer, status
 
     def guard(self):
-        'Validate the Argo CD application and inventory configuration.'
+        """Validate the Argo CD application and inventory configuration."""
         app = self.get("application", "netbird", ns="argocd")
         source = app["spec"].get("source", {})
         require(
@@ -638,7 +636,7 @@ class Runtime:
         return policies
 
     def status(self, host):
-        "Read the current enrollment status of the host's node."
+        """Read the current enrollment status of the host's node."""
         value = json.loads(
             self.kub(
                 [
@@ -657,7 +655,7 @@ class Runtime:
         return {"ip": str(ipaddress.ip_interface(value["netbirdIp"]).ip), "key": value["publicKey"]}
 
     def peer_for_status(self, host):
-        "Return the peer record matching the host's enrolled IP."
+        """Return the peer record matching the host's enrolled IP."""
         status = self.status(host)
         p = unique(self.api("GET", "peers"), "ip", status["ip"])
         require(
@@ -672,7 +670,7 @@ class Runtime:
         return p, status
 
     def verify_deployment(self, host, d):
-        'Verify the deployment manifest matches the expected rendering.'
+        """Verify the deployment manifest matches the expected rendering."""
         expected = manifests(
             host, self.config["image"], kernel_only=host in self.config.get("kernel_only_nodes", [])
         )[1]
@@ -1036,7 +1034,7 @@ class Runtime:
         self.save()
 
     def reconcile(self, host, seed=None):
-        'Reconcile one host end-to-end through verification and reporting.'
+        """Reconcile one host end-to-end through verification and reporting."""
         inputs = self._plan_inputs(host, seed)
         if inputs.node is None:
             return {"changed": False, "status": "deferred-node-not-ready", "node": host}

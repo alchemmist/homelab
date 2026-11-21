@@ -20,6 +20,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 sys.path.insert(0, "/app")
+from datetime import UTC
+
 from certify_loop import certify
 
 ROOT = Path(os.environ.get("STATE_DIR", "/state"))
@@ -93,10 +95,10 @@ def _wait_budget(detail) -> None:
     match = re.search(r"resets at: ([0-9-]{10} [0-9:]{8}) UTC", detail)
     delay = 20
     if match:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        reset = datetime.strptime(match.group(1), "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
-        delay = min(90, max(1, int((reset - datetime.now(timezone.utc)).total_seconds()) + 1))
+        reset = datetime.strptime(match.group(1), "%Y-%m-%d %H:%M:%S").replace(tzinfo=UTC)
+        delay = min(90, max(1, int((reset - datetime.now(UTC)).total_seconds()) + 1))
     log("wait_budget", seconds=delay)
     time.sleep(delay)
 
@@ -229,14 +231,14 @@ class Handler(BaseHTTPRequestHandler):
     """HTTP handler exposing the lms-certify service."""
 
     def do_GET(self):
-        'Answer liveness probes on /healthz only.'
+        """Answer liveness probes on /healthz only."""
         if self.path != "/healthz":
             self.send_error(404)
             return
         self._send({"ok": True, "running": LOCK.exists()})
 
     def do_POST(self):
-        'Process one /step certificate request if the worker token matches.'
+        """Process one /step certificate request if the worker token matches."""
         if self.path != "/step" or self.headers.get("X-Worker-Token") != TOKEN:
             self.send_error(404)
             return
@@ -258,7 +260,7 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(raw)
 
     def log_message(self, _fmt, *_args):
-        'Suppress default request logging entirely.'
+        """Suppress default request logging entirely."""
         return
 
 

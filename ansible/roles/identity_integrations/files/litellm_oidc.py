@@ -531,7 +531,6 @@ class One(Protocol):
 
     def __call__(self, path: str, field: str, value: str) -> dict[str, object] | None:
         """Return the unique reviewed Authentik record, if present."""
-        ...
 
 
 class ApiCall(Protocol):
@@ -539,7 +538,6 @@ class ApiCall(Protocol):
 
     def __call__(self, method: str, path: str, payload: object | None = ...) -> object:
         """Perform one reviewed Authentik API call."""
-        ...
 
 
 class Kube(Protocol):
@@ -547,7 +545,6 @@ class Kube(Protocol):
 
     def __call__(self, arguments: list[str], data: object | None = ...) -> bytes:
         """Run one reviewed kubectl invocation, returning its stdout."""
-        ...
 
 
 class Private(Protocol):
@@ -555,7 +552,6 @@ class Private(Protocol):
 
     def __call__(self, path: Path, data: object, *, overwrite: bool = ...) -> None:
         """Persist one 0600-reviewed JSON artifact."""
-        ...
 
 
 if __name__ == "__main__":

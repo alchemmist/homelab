@@ -1,9 +1,9 @@
 """Tests for the socrat0 wiki placement rules."""
 
-from pathlib import Path
 import shutil
 import subprocess
 import unittest
+from pathlib import Path
 
 import yaml
 
@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class WikiCurrentPlacementTest(unittest.TestCase):
     """Tests for WikiCurrentPlacementTest."""
+
     def test_retained_volume_matches_values_and_existing_directory(self) -> None:
         values = yaml.safe_load((ROOT / "deploy/wiki-runtime/values.yaml").read_text())
         pv, pvc = list(

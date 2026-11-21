@@ -1,7 +1,6 @@
 """Tests for the wiki runtime bootstrap module."""
 
 import importlib.util
-import json
 import unittest
 from pathlib import Path
 from unittest.mock import Mock
@@ -15,6 +14,7 @@ SPEC.loader.exec_module(BOOTSTRAP)
 
 class BootstrapTests(unittest.TestCase):
     """Tests for BootstrapTests."""
+
     def setUp(self) -> None:
         self.resources = {
             ("secret", "wiki-editor-git", "wiki"): {

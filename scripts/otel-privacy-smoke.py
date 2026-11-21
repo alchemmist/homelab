@@ -155,7 +155,7 @@ def run(binary, config, tls, workspace):
             try:
                 with socket.create_connection(("127.0.0.1", 14318), timeout=1):
                     break
-            except OSError as exc:
+            except OSError:
                 if time.monotonic() >= deadline:
                     fail("Synthetic receiver startup timed out")
                 time.sleep(0.1)

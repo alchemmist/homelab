@@ -87,8 +87,7 @@ def callback_from_issuer(issuer):
     if not isinstance(issuer, str) or issuer == "" or any(c in issuer for c in " \t\r\n"):
         msg = "NetBird issuer is missing or contains whitespace"
         raise RuntimeError(msg)
-    if issuer.endswith("/"):
-        issuer = issuer[:-1]
+    issuer = issuer.removesuffix("/")
     if not issuer.endswith("/oauth2"):
         issuer += "/oauth2"
     return issuer + "/callback"

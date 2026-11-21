@@ -25,13 +25,13 @@ from tests import test_identity as identity
 
 class LifecycleAPI:
     """Minimal fake lifecycle API that records every write it receives."""
+
     def __init__(self, fake) -> None:
         self.fake = fake
         self.writes: list[tuple[str, str, object]] = []
 
     def __call__(self, method, path, data=None) -> object:
         """Serve a fake lifecycle API request through the fake Authentik."""
-
         if method != "GET":
             self.writes.append((method, path, data))
         if path.endswith(("/add_user/", "/remove_user/")):
@@ -63,9 +63,9 @@ class LifecyclePlan(TypedDict):
 
 class AppIAMTests(unittest.TestCase):
     """Cover the application IAM provisioning lifecycle end to end."""
+
     def setUp(self) -> None:
         """Spin up a configured fake Authentik with the reviewed identity map."""
-
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         root = Path(self.temp.name)
@@ -90,7 +90,6 @@ class AppIAMTests(unittest.TestCase):
 
     def plan(self) -> LifecyclePlan:
         """Build the lifecycle plan against the configured fake API."""
-
         return cast(
             "LifecyclePlan",
             lifecycle.build_plan(self.api, self.services, self.manifest, self.reviewed),
@@ -98,7 +97,6 @@ class AppIAMTests(unittest.TestCase):
 
     def test_legacy_catalog_groups_are_known_without_human_grants(self) -> None:
         """Catalog groups exist without direct human grants or unneeded ops."""
-
         declared = set(app_iam.LEGACY_GROUPS) | set(app_iam.app_groups(self.services))
         for slug, service in self.services.items():
             assert set(app_iam.admission_groups(slug, service)) <= declared
@@ -109,7 +107,6 @@ class AppIAMTests(unittest.TestCase):
 
     def test_default_manifest_has_no_grants_and_no_writes(self) -> None:
         """The default manifest yields no operations or writes."""
-
         assert self.plan()["operations"] == []
         assert self.api.writes == []
         for group in self.fake.data["core/groups/"]:
@@ -119,7 +116,6 @@ class AppIAMTests(unittest.TestCase):
 
     def test_scoped_grant_remove_and_disabled_are_idempotent(self) -> None:
         """Grants, removals and disabling all converge idempotently."""
-
         tim = next(u for u in self.fake.data["core/users/"] if u["username"] == "antropophag")
         before = list(tim["groups"])
         self.manifest["users"]["antropophag"]["appGroups"] = [
@@ -143,7 +139,6 @@ class AppIAMTests(unittest.TestCase):
 
     def test_approval_hash_and_live_state_drift(self) -> None:
         """Stale approval hashes and drifted live state block writes."""
-
         plan = self.plan()
         with self.assertRaisesRegex(RuntimeError, "hash mismatch"):
             lifecycle.apply_plan(self.api, plan, "stale")
@@ -154,7 +149,6 @@ class AppIAMTests(unittest.TestCase):
 
     def test_uuid_collision_and_email_do_not_link(self) -> None:
         """UUID collisions or email matches never link accounts."""
-
         self.fake.data["core/users/"][1]["uuid"] = "e51e6956-16b5-455a-bbda-b73f96e85232"
         with self.assertRaisesRegex(RuntimeError, "UUID required"):
             self.plan()
@@ -165,7 +159,6 @@ class AppIAMTests(unittest.TestCase):
 
     def test_protected_owner_and_elevated_grants_refused(self) -> None:
         """Owner disablement and elevated grants are refused before writes."""
-
         self.manifest["users"]["alchemmist"]["state"] = "disabled"
         with self.assertRaisesRegex(RuntimeError, "Owner"):
             self.plan()
@@ -177,7 +170,6 @@ class AppIAMTests(unittest.TestCase):
 
     def test_unsupported_native_role_and_machine_account_refused(self) -> None:
         """Unready native roles and machine accounts are refused."""
-
         self.manifest["users"]["antropophag"]["appGroups"] = ["app-rancher-user"]
         with self.assertRaisesRegex(RuntimeError, "not ready"):
             self.plan()
@@ -188,7 +180,6 @@ class AppIAMTests(unittest.TestCase):
 
     def test_app_group_inheritance_or_superuser_refused(self) -> None:
         """Tainted app groups with inheritance or superuser are refused."""
-
         group = next(g for g in self.fake.data["core/groups/"] if g["name"] == "app-grafana-viewer")
         owner = next(g for g in self.fake.data["core/groups/"] if g["name"] == "homelab-owner")
         rbac = {
@@ -218,7 +209,6 @@ class AppIAMTests(unittest.TestCase):
 
     def test_incomplete_current_group_schema_refused_before_assignment(self) -> None:
         """Incomplete group schemas are refused before any assignment."""
-
         group = next(g for g in self.fake.data["core/groups/"] if g["name"] == "app-grafana-viewer")
         self.manifest["users"]["antropophag"]["appGroups"] = ["app-grafana-viewer"]
         for field in ["parents", "roles", "is_superuser"]:
@@ -239,7 +229,6 @@ class AppIAMTests(unittest.TestCase):
 
     def test_binding_drift_is_not_silently_reset(self) -> None:
         """Policy binding drift aborts instead of being silently reset."""
-
         binding = self.fake.data["policies/bindings/"][0]
         for change in [
             {"enabled": False},
@@ -259,7 +248,6 @@ class AppIAMTests(unittest.TestCase):
 
     def test_missing_user_is_not_created_and_omission_is_not_revocation(self) -> None:
         """Missing users abort; manifest omission does not revoke access."""
-
         self.fake.data["core/users/"].pop()
         with self.assertRaisesRegex(RuntimeError, "existing username"):
             self.plan()
@@ -273,7 +261,6 @@ class AppIAMTests(unittest.TestCase):
 
     def test_foreign_app_group_is_not_adopted(self) -> None:
         """Unmarked app groups are never adopted by the reconciler."""
-
         group = next(g for g in self.fake.data["core/groups/"] if g["name"] == "app-grafana-viewer")
         group["attributes"] = {}
         with self.assertRaisesRegex(RuntimeError, "unmarked app group"):
@@ -283,7 +270,6 @@ class AppIAMTests(unittest.TestCase):
 
     def test_policy_mode_is_not_silently_reset(self) -> None:
         """Application policy engine mode drift aborts both planners."""
-
         self.fake.data["core/applications/"][0]["policy_engine_mode"] = "all"
         with self.assertRaisesRegex(RuntimeError, "mode drift"):
             self.plan()
@@ -292,7 +278,6 @@ class AppIAMTests(unittest.TestCase):
 
     def test_pagination_and_binding_duplicates(self) -> None:
         """Pagination follows cursors; duplicate bindings raise drift errors."""
-
         calls = []
 
 
@@ -308,7 +293,6 @@ class AppIAMTests(unittest.TestCase):
 
     def test_wiki_integration_keeps_exact_links_and_overrides(self) -> None:
         """Wiki integration emits exact reviewed links and refuses mismatches."""
-
         writes = []
 
         def run(args, **kwargs) -> subprocess.CompletedProcess[str]:
@@ -347,7 +331,6 @@ class AppIAMTests(unittest.TestCase):
 
     def test_native_role_boundaries_and_subject_overrides_preserved(self) -> None:
         """Native role boundaries and reviewed subject overrides are preserved."""
-
         import yaml
 
         env = yaml.safe_load((ROOT / "deploy/identity/grafana-oidc-values.yaml").read_text())[

@@ -16,6 +16,7 @@ OLD, NEW = "1.1.1.1", "8.8.8.8"
 
 class HostMigrationTests(unittest.TestCase):
     """Tests for HostMigrationTests."""
+
     def test_only_exact_address_and_its_port_change(self):
         group = {
             "groupId": "group-1",

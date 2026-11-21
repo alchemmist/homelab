@@ -12,7 +12,7 @@ from sync import api
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--wait-seconds", type=int, default=0, choices=range(0, 86401), metavar="0..86400")
+    parser.add_argument("--wait-seconds", type=int, default=0, choices=range(86401), metavar="0..86400")
     args = parser.parse_args()
     idle = runpy.run_path(str(Path(__file__).resolve().parents[1] / "vm105-spi-idle-handoff.py"))["idle_state"]
     end = time.monotonic() + args.wait_seconds

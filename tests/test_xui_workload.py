@@ -19,6 +19,7 @@ HELM = os.environ.get("HELM_BIN") or shutil.which("helm")
 @unittest.skipUnless(HELM and yaml, "Helm and PyYAML are required for chart rendering")
 class XuiWorkloadTests(unittest.TestCase):
     """Tests or helper for XuiWorkloadTests."""
+
     @classmethod
     def setUpClass(cls):
         result = subprocess.run(

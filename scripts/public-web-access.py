@@ -30,7 +30,6 @@ class API:
 
     def __init__(self, path) -> None:
         """Initialize the public API client."""
-
         self.token = json.loads(Path(path).read_text())["AUTHENTIK_BOOTSTRAP_TOKEN"]
 
         class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -40,7 +39,7 @@ class API:
         self.http = urllib.request.build_opener(NoRedirect)
 
     def call(self, method, path, body=None):
-        'Call a pinned public web API endpoint after path validation.'
+        """Call a pinned public web API endpoint after path validation."""
         require(not path.startswith("/") and "://" not in path, "Invalid API path")
         req = urllib.request.Request(
             "https://auth.socrat.alchemmist.xyz/api/v3/" + path,
@@ -53,7 +52,7 @@ class API:
             return json.loads(b) if b else None
 
     def rows(self, _path):
-        'Collect all pages of rows for an API path.'
+        """Collect all pages of rows for an API path."""
         rows = []
         for page in range(1, 1001):
             d = self.call(

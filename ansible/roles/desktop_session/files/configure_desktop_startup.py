@@ -9,7 +9,7 @@ import shutil
 import stat
 import subprocess
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 LOGIN_BLOCK = """if [[ -o interactive && -z "${SSH_CONNECTION:-}" && -z "${SSH_TTY:-}" && "${TTY:-}" == /dev/tty1 && -z "${WAYLAND_DISPLAY:-}" && -z "${DISPLAY:-}" ]]; then
@@ -160,7 +160,7 @@ def _apply_changes(
     backup = (
         home
         / ".local/state/homelab/desktop-backups"
-        / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
+        / datetime.now(UTC).strftime("%Y%m%dT%H%M%S.%fZ")
     )
     backup.mkdir(mode=0o700)
     os.chown(backup, user.pw_uid, user.pw_gid)

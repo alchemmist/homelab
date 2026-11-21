@@ -143,7 +143,7 @@ def _apply_model_settings(request: Request) -> tuple[bool, dict[str, object], di
     return model_changed, before, after
 
     async def verify_users():
-        from open_webui.utils.access_control import has_access, has_permission
+        pass
 
 async def _verify_users(desired_permissions: dict[str, object], after_access_grants: object) -> int:
     from open_webui.utils.access_control import has_access, has_permission
@@ -161,7 +161,7 @@ async def _verify_users(desired_permissions: dict[str, object], after_access_gra
 
 
 def configure():
-    'Configure.'
+    """Configure."""
     token = _create_admin_token()
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 

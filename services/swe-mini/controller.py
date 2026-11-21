@@ -1,20 +1,20 @@
 """Durable single-writer queue. GitHub credentials never reach agent pods."""
 
 import base64
-from http.server import BaseHTTPRequestHandler, HTTPServer
-import json
 import hashlib
 import hmac
-import secrets
+import json
 import logging
 import os
-from pathlib import Path
+import secrets
 import sqlite3
 import threading
 import time
-from typing import cast
 import uuid
 import zlib
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
+from typing import cast
 
 import jwt
 import requests
@@ -22,8 +22,8 @@ from kubernetes import client, config
 from policy import (
     LANES,
     decode_result,
-    validate_changes,
     dependency_repair,
+    validate_changes,
     validate_dependency_update,
 )
 
@@ -345,7 +345,7 @@ def tick() -> bool | None:
             or result.get("agent_rc") != 0
         ):
             save(run["id"], state="failed")
-            return
+            return None
         candidate = (
             result.get("changes", [])
             if run["state"] == "work"
@@ -386,19 +386,18 @@ def tick() -> bool | None:
         if run["state"] == "work":
             if not result.get("changes"):
                 save(run["id"], state="done")
-                return
+                return None
             validate_changes(result["changes"])
             run["result"] = json.dumps(result)
             start_job(run, "review")
+        elif (
+            not result.get("candidate_checks")
+            or any(result["candidate_checks"].values())
+            or result.get("review", {}).get("approved") is not True
+        ):
+            save(run["id"], state="rejected")
         else:
-            if (
-                not result.get("candidate_checks")
-                or any(result["candidate_checks"].values())
-                or result.get("review", {}).get("approved") is not True
-            ):
-                save(run["id"], state="rejected")
-            else:
-                save(run["id"], state="publishing")
+            save(run["id"], state="publishing")
         return None
     if os.getenv("PAUSED", "false") == "true":
         STATUS["state"] = "paused"
@@ -419,7 +418,7 @@ def tick() -> bool | None:
     prs = github(f"repos/{REPO}/pulls?state=open&per_page=100")
     if sum(p["head"]["ref"].startswith("swe-mini/") for p in prs) >= 5:
         STATUS["state"] = "waiting_for_pr_review"
-        return
+        return None
     revision = github(f"repos/{REPO}/commits/main", auth=True)["sha"]
     open_urls = {p["html_url"] for p in prs}
     for pr, payload in DB.execute(
@@ -446,8 +445,7 @@ class Health(BaseHTTPRequestHandler):
     """HTTP handler exposing swe-mini health endpoints."""
 
     def do_GET(self) -> None:
-
-        'Serve health/dependency/readiness endpoints.'
+        """Serve health/dependency/readiness endpoints."""
         if self.path in ("/healthz", "/livez", "/dependencies"):
             # External API failures cannot be repaired by restarting this process.
             alive = time.time() - cast("float", STATUS["last_tick"]) < 180
@@ -469,8 +467,7 @@ class Health(BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
     def log_message(self, *args):
-        'Suppress default request-line logging.'
-        pass
+        """Suppress default request-line logging."""
 
 
 def run_once() -> None:
@@ -489,7 +486,7 @@ def run_once() -> None:
         # Never log bodies, tokens or raw third-party error responses.
         STATUS["error"] = type(exc).__name__
         response = getattr(exc, "response", None)
-        logging.error(
+        logging.exception(
             "Queue tick failed: %s status=%s; bounded retry, no process restart required",
             type(exc).__name__,
             getattr(response, "status_code", None),

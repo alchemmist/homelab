@@ -27,9 +27,9 @@ def load(name) -> ModuleType:
 
 class AuthentikBrandingTests(unittest.TestCase):
     """Check the frozen reference theme matches its manifest exactly."""
+
     def test_approved_reference_is_frozen(self) -> None:
         """Frozen theme reference files match the manifest digests."""
-
         root = THEME / "reference"
         manifest = json.loads((root / "manifest.json").read_text())
         # The frozen reference snapshot contains fifteen or more assets.
@@ -42,7 +42,6 @@ class AuthentikBrandingTests(unittest.TestCase):
 
     def test_cli_emits_individual_documents_for_strict_v3_validation(self) -> None:
         """The CLI emits individual CRD documents, never List wrappers."""
-
         output = subprocess.check_output(
             [
                 sys.executable,
@@ -59,13 +58,11 @@ class AuthentikBrandingTests(unittest.TestCase):
 
     def test_static_asset_checksums(self) -> None:
         """All manifest asset checksums match the files on disk."""
-
         for item in json.loads((THEME / "assets.json").read_text()).values():
             assert hashlib.sha256((THEME / item["path"]).read_bytes()).hexdigest() == item["sha256"]
 
     def test_static_bundle_has_no_scripts_or_secrets(self) -> None:
         """The static bundle ships only static assets, without scripts or secrets."""
-
         items = load("branding_static").render(THEME)["items"]
         assert [item["kind"] for item in items if item["kind"] != "ConfigMap"] == [
             "Deployment",
@@ -85,7 +82,6 @@ class AuthentikBrandingTests(unittest.TestCase):
 
     def test_static_pod_is_sandboxed_and_small(self) -> None:
         """The static pod is sandboxed, digest-pinned, and memory-capped."""
-
         deployment = next(
             i for i in load("branding_static").render(THEME)["items"] if i["kind"] == "Deployment"
         )
@@ -101,7 +97,6 @@ class AuthentikBrandingTests(unittest.TestCase):
 
     def test_ingress_is_only_public_static_prefix(self) -> None:
         """Only the public static prefix is exposed via ingress and TLS."""
-
         ingress = next(
             i for i in load("branding_static").render(THEME)["items"] if i["kind"] == "Ingress"
         )
@@ -113,7 +108,6 @@ class AuthentikBrandingTests(unittest.TestCase):
 
     def test_fonts_and_mobile_photos_are_referenced(self) -> None:
         """Fonts, scene photos, and accessibility rules are wired into the CSS."""
-
         css = (THEME / "theme.css").read_text()
         assert "__ASSET_COURIER__" in css
         assert "__ASSET_SERIF__" in css
@@ -125,7 +119,6 @@ class AuthentikBrandingTests(unittest.TestCase):
 
     def test_primary_action_style_also_covers_native_redirect_anchor(self) -> None:
         """Primary action styling also styles native redirect anchors."""
-
         css = (THEME / "theme.css").read_text()
         assert not re.search(r"(?<![\w-])button\.pf-m-primary", css)
         assert ":is(button,a.pf-c-button).pf-m-primary" in css
@@ -134,7 +127,6 @@ class AuthentikBrandingTests(unittest.TestCase):
 
     def test_nested_mfa_child_without_challenge_part_is_covered(self) -> None:
         """Nested MFA children lacking a challenge part stay visible and styled."""
-
         css = (THEME / "theme.css").read_text()
         assert ":host(:is([part='challenge'],ak-stage-authenticator-validate-code))" in css
         assert ":host(ak-stage-authenticator-validate-code) .pf-c-button:focus-visible" in css
@@ -142,7 +134,6 @@ class AuthentikBrandingTests(unittest.TestCase):
 
     def test_server_denial_template_is_scoped_and_centered(self) -> None:
         """Server denial template stays scoped and centered in the drawer."""
-
         css = (THEME / "theme.css").read_text()
         assert "body:has(.pf-c-page__drawer .pf-c-login)" in css
         assert (
@@ -156,7 +147,6 @@ class AuthentikBrandingTests(unittest.TestCase):
 
     def test_inspector_toggle_and_history_are_presentation_only(self) -> None:
         """Inspector toggle and history stepper are presentation-only tweaks."""
-
         css = (THEME / "theme.css").read_text()
         assert "ak-flow-inspector-button{position:fixed!important" in css
         assert "width:39px!important;height:39px!important" in css
@@ -172,7 +162,6 @@ class AuthentikBrandingTests(unittest.TestCase):
 
     def test_reconciler_does_not_ship_a_replacement_frontend(self) -> None:
         """The reconciler touches only branding APIs, nothing more."""
-
         source = (ROOT / "ansible/roles/authentik/files/branding.py").read_text()
         assert "core/users/" not in source
         assert "set_password" not in source
@@ -186,7 +175,6 @@ class AuthentikBrandingTests(unittest.TestCase):
 
     def test_backups_have_private_permissions(self) -> None:
         """Backup JSON files are written with 0600 permissions."""
-
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory) / "backup.json"
             load("branding").protected_json(target, {"test": True})
@@ -194,7 +182,6 @@ class AuthentikBrandingTests(unittest.TestCase):
 
     def test_reference_stays_nonmodal(self) -> None:
         """The reference dialog stays non-modal."""
-
         source = (THEME / "reference/quiet-mono.js").read_text()
         assert "showModal(" not in source
         assert "dialog.show()" in source
@@ -202,7 +189,6 @@ class AuthentikBrandingTests(unittest.TestCase):
 
     def test_playbook_uses_explicit_apply_and_server_side_configmaps(self) -> None:
         """The playbook uses explicit apply and helm-free server-side configmaps."""
-
         source = (ROOT / "ansible/playbooks/authentik-branding.yml").read_text()
         assert "authentik_branding_action: prepare" in source
         assert "--server-side" in source
@@ -212,9 +198,9 @@ class AuthentikBrandingTests(unittest.TestCase):
 
 class NatureBackgroundTests(unittest.TestCase):
     """Validate the nature background collection and random endpoint."""
+
     def test_full_collection_and_css_only_random_endpoint(self) -> None:
         """All 30 photos ship with cookie-seeded, CSS-only random selection."""
-
         photos = json.loads((THEME / "nature.json").read_text())["photos"]
         # The nature collection ships thirty unique photos, served via CSS only.
         photo_count = 30
@@ -247,7 +233,6 @@ class NatureBackgroundTests(unittest.TestCase):
 
     def test_scene_journey_uses_opaque_same_origin_next_not_new_request_id(self) -> None:
         """The scene chain carries a same-origin next hop, not new identifiers."""
-
         conf = load("branding_static").render(THEME)["items"][0]["data"]["nginx.conf"]
         assert "map $http_referer $nature_next" in conf
         assert "https://auth[.]socrat[.]alchemmist[.]xyz/if/flow/" in conf
@@ -266,7 +251,6 @@ class NatureBackgroundTests(unittest.TestCase):
 
     def test_early_single_layer_and_avif_transfer_budget(self) -> None:
         """Early single-layer scenes stay within the AVIF transfer budget."""
-
         css = (THEME / "theme.css").read_text()
         assert "@import url('__ASSET_NATURE_SCENE__')" in css
         assert "ak-drawer#flow-drawer{min-height:100svh;background:transparent!important}" in css
@@ -286,7 +270,6 @@ class NatureBackgroundTests(unittest.TestCase):
 
     def test_configmap_shards_and_projected_assets_are_bounded(self) -> None:
         """ConfigMap shards and projected assets stay size-bounded and complete."""
-
         import base64
 
         items = load("branding_static").render(THEME)["items"]

@@ -21,9 +21,9 @@ def module() -> ModuleType:
 
 class OperationalReplayTests(unittest.TestCase):
     """Replay operational telemetry fixtures and check exact counts."""
+
     def test_exact_fixture_counts_cadence_and_unique_native_ids(self) -> None:
         """Exact fixture counts cadence and unique native ids."""
-
         helper = module()
         metrics, logs, traces, expected, ids = helper.fixtures(1793536000 * 10**9)
         assert len(expected) == 9
@@ -38,7 +38,6 @@ class OperationalReplayTests(unittest.TestCase):
 
     def test_matrix_requires_exact_values_timestamps_multiplicity_and_no_partial(self) -> None:
         """Matrix requires exact values timestamps multiplicity and no partial."""
-
         helper = module()
         expected = [[1, "0"], [6, "1"]]
         data = {
@@ -60,7 +59,6 @@ class OperationalReplayTests(unittest.TestCase):
 
     def test_rollback_candidate_changes_only_batch_timeout_preserving_queues_and_tls(self) -> None:
         """Rollback candidate changes only batch timeout preserving queues and tls."""
-
         import json
 
         original = {
@@ -81,7 +79,6 @@ class OperationalReplayTests(unittest.TestCase):
 
     def test_native_trace_json_hex_and_base64(self) -> None:
         """Native trace json hex and base64."""
-
         helper = module()
         trace = "12" * 16
         for identity in [trace, base64.b64encode(bytes.fromhex(trace)).decode()]:
