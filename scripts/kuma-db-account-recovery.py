@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 """Create one schema-only Kuma service account; leave all existing DB passwords untouched."""
 
-import argparse, base64, fcntl, hashlib, json, os, secrets, subprocess
+import argparse
+import base64
+import fcntl
+import hashlib
+import json
+import os
+import secrets
+import subprocess
 from pathlib import Path
 
 USER = "homelab_kuma_app"
@@ -9,18 +16,18 @@ SCHEMA = "uptime_kuma"
 STATE = Path("/var/lib/homelab-kuma-account-recovery")
 
 
-def need(ok, message):
+def need(ok, message: object) -> None:
     if not ok:
         raise RuntimeError(message)
 
 
-def k(*args, input=None):
+def k(*args, input=None) -> str:
     return subprocess.check_output(
         ["kubectl", "-n", "uptime-kuma", *args], input=input, text=True, stderr=subprocess.DEVNULL
     )
 
 
-def sql(statement):
+def sql(statement: str) -> str:
     return k(
         "exec",
         "-i",
@@ -33,7 +40,7 @@ def sql(statement):
     ).strip()
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")

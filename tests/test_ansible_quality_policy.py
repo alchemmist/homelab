@@ -1,9 +1,9 @@
 """Exercise the actual Ansible parser/safety rules without executing a play."""
 
 import json
-from pathlib import Path
-import subprocess
 import shutil
+import subprocess
+from pathlib import Path
 
 import pytest
 

@@ -32,7 +32,7 @@ import urllib.parse
 import urllib.request
 import uuid
 
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import Error as PlaywrightError, sync_playwright
 
 BASE = "https://auth.socrat.alchemmist.xyz"
 original = socket.getaddrinfo
@@ -149,7 +149,7 @@ try:
                 if component == "ak-stage-authenticator-totp":
                     challenge.clear()
                     challenge.update(data)
-            except Exception:
+            except (ValueError, TypeError, IndexError, KeyError, AttributeError):
                 pass
 
         page.on("response", observe)
@@ -394,9 +394,21 @@ try:
         print("PASS: forged identity headers do not bypass gateway authentication")
         assert not errors, "Authentik JS error observed"
         browser.close()
-except Exception as error:
+except (
+    AssertionError,
+    AttributeError,
+    ImportError,
+    IndexError,
+    KeyError,
+    OSError,
+    PlaywrightError,
+    RuntimeError,
+    TypeError,
+    ValueError,
+    subprocess.SubprocessError,
+) as error:
     print("Acceptance failed (sanitized):", type(error).__name__, flush=True)
-    raise SystemExit(1)
+    raise SystemExit(1) from error
 finally:
     try:
         if binding:

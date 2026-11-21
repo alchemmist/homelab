@@ -3,10 +3,11 @@
 import ast
 import importlib.util
 import json
-from pathlib import Path
 import shutil
 import tempfile
 import unittest
+from pathlib import Path
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -52,7 +53,8 @@ class InfrastructureContracts(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     contract.check(root)
 
-    def fixture(self, directory):
+    def fixture(self, directory: str) -> Path:
+        """Copy every registered contract fixture into a temporary root."""
         root = Path(directory)
         c = json.loads((ROOT / "deploy/contracts/infrastructure.json").read_text())
         names = ["deploy/contracts/infrastructure.json", c["meshRegistry"], c["ansibleInventory"]]
