@@ -181,12 +181,9 @@ def main():
     try:
         result = configure(args)
     except ConfigurationError as error:
-        print(str(error), file=sys.stderr)
         return 1
     except Exception:
-        print("Unable to configure Open WebUI model defaults", file=sys.stderr)
         return 1
-    print(json.dumps(result))
     return 0
 
 

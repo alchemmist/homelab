@@ -41,10 +41,6 @@ current = request("/get/ui_theme_settings")["values"]
 if any(current.get(name) != url for name, url in urls.items()):
     request("/config/update", {"general_settings": {"store_model_in_db": True}}, method="POST")
     request("/update/ui_theme_settings", {**current, **urls})
-    print("updated branding")
-else:
-    print("branding unchanged")
 actual = request("/get/ui_theme_settings")["values"]
 if any(actual.get(name) != url for name, url in urls.items()):
     raise RuntimeError("Branding readback failed")
-print("branding verified")

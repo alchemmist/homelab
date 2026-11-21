@@ -293,9 +293,6 @@ for slug, service in services.items():
             if not custom_mapping:
                 if slug != "litellm":
                     raise RuntimeError("Reviewed custom scope missing: " + slug)
-                print(
-                    "LiteLLM awaits explicit reviewed native integration; no placeholder application created"
-                )
                 service_mapping = None
                 break
             service_mapping.append(custom_mapping["pk"])
@@ -387,6 +384,3 @@ if proxy_ids:
         "outposts/instances/" + outpost["pk"] + "/",
         {"providers": list(set(outpost["providers"]) | set(proxy_ids)), "config": config},
     )
-print(
-    "Owner bootstrap, role groups, mandatory MFA and restricted providers reconciled; no existing service accounts auto-linked"
-)

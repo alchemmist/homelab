@@ -72,4 +72,3 @@ subprocess.run(
     stdout=subprocess.DEVNULL,
     check=True,
 )
-print("Stable runtime credentials installed without displaying secrets")

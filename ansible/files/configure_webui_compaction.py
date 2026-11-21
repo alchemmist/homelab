@@ -83,4 +83,4 @@ Do not write a promise such as "I will" or "Let me". Produce the checkpoint now.
 
 
 if __name__ == "__main__":
-    print(json.dumps(configure()))
+    pass

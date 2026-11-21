@@ -191,10 +191,8 @@ def migrate(root, action):
         verify(journal["token"], journal)
         if old != journal["token"]:
             raise RuntimeError("Consumer credential alias drift")
-        print("PASS: dedicated machine API identity and consumer alias verified; read-only check")
         return
     if action == "check":
-        print("NOT MIGRATED: no active machine API journal")
         return
     owner = exact(old, "core/users/", "username", "alchemmist")
     if (
@@ -287,9 +285,6 @@ def migrate(root, action):
     save(credentials, values)
     journal["status"] = "active"
     save(path, journal)
-    print(
-        "PASS: dedicated machine API access activated; old akadmin/token retained for guarded rollback"
-    )
 
 
 def retire_default_admin(root):
@@ -339,7 +334,6 @@ def retire_default_admin(root):
     target = exact(token, "core/users/", "username", "akadmin")
     if target is None:
         if journal.get("akadmin_retired_at"):
-            print("PASS: akadmin already retired")
             return
         raise RuntimeError("Default admin missing without retirement journal")
     if target["uuid"] != "fc86d87d-3a72-4cfb-8ba1-aa6bf6b017e7" or target["pk"] != 4:
@@ -366,9 +360,6 @@ def retire_default_admin(root):
     save(root / "credentials.json", values)
     journal["akadmin_retired_at"] = datetime.now(timezone.utc).isoformat()
     save(path, journal)
-    print(
-        "PASS: exact reviewed akadmin and its bootstrap token retired; machine access and personal owner verified"
-    )
 
 
 if __name__ == "__main__":
@@ -389,10 +380,4 @@ if __name__ == "__main__":
             else:
                 migrate(a.root, a.action)
     except Exception as e:
-        print(
-            "Migration stopped safely ("
-            + type(e).__name__
-            + "); inspect protected journal, never print keys",
-            file=sys.stderr,
-        )
         sys.exit(1)

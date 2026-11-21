@@ -26,4 +26,3 @@ if not result.stdout.strip():
         "stringData": {"api-key": secrets.token_urlsafe(48)},
     }
     subprocess.run(["kubectl", "create", "-f", "-"], input=json.dumps(obj), text=True, check=True)
-    print("created")

@@ -55,7 +55,6 @@ def main():
     parser.add_argument("--check", action="store_true")
     arguments = parser.parse_args()
     plan = json.loads(arguments.plan.read_text())
-    print(json.dumps(migrate(arguments.database, plan, arguments.check)))
 
 
 if __name__ == "__main__":

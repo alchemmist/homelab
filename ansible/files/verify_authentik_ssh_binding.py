@@ -203,7 +203,6 @@ if __name__ == "__main__":
             )
         else:
             result = verify(args.name, args.uuid)
-        print(json.dumps(result))
     except (ValueError, OSError, TypeError, subprocess.SubprocessError):
         # Never print raw files/exception text from a host.
         raise SystemExit(

@@ -61,7 +61,6 @@ def verify():
             with urllib.request.urlopen(request, timeout=30) as response:
                 result = json.load(response)
         actual = sorted(node["metadata"]["name"] for node in result["data"])
-        print(name, "nodes=" + ",".join(actual), "revision=" + str(result.get("revision")))
         if actual != expected:
             raise RuntimeError("Rancher node list does not match Kubernetes on " + name)
 

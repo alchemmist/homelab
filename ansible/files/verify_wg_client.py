@@ -81,7 +81,6 @@ def main():
             ]
             if keys != [expected_keys[address]]:
                 raise RuntimeError("Wrong SSH server identity at " + address)
-            print(address, "correct SSH host accessible over client tunnel", flush=True)
         for resolver in ADDRESSES[:3]:
             for name, expected in [
                 ("0.socrat.alchemmist.xyz", "10.250.0.1"),
@@ -107,7 +106,6 @@ def main():
                 ).strip()
                 if not answer or answer.startswith(";"):
                     raise RuntimeError("Public DNS failed on " + resolver)
-            print(resolver, "private DNS and public UDP/TCP DNS passed", flush=True)
         code = 'import socket; s=socket.socket(); s.settimeout(3); result=s.connect_ex(("10.250.0.5",22)); s.close(); print(result); raise SystemExit(result == 0)'
         run(
             "python3",
@@ -115,7 +113,6 @@ def main():
             'import socket; s=socket.create_connection(("10.250.0.5",22),5); s.close()',
         )
         net("python3", "-c", code)
-        print("Unrequested forwarded recovery SSH port remains blocked", flush=True)
     finally:
         if moved:
             run("ip", "-n", NAMESPACE, "link", "delete", INTERFACE)

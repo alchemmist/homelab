@@ -347,5 +347,4 @@ if __name__ == "__main__":
     # JSON documents are valid YAML. Separate resources avoid kubectl's List-kind
     # OpenAPI-v2 fallback; each built-in resource keeps Strict v3 validation.
     for item in render(Path(sys.argv[1]))["items"]:
-        print("---")
-        print(json.dumps(item))
+        pass

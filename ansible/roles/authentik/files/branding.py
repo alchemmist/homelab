@@ -126,7 +126,6 @@ def main():
                 "stages/password/" + stage["pk"] + "/",
                 {"allow_show_password": stage["allow_show_password"]},
             )
-        print("Brand and native display settings restored; no user/provider/session changes")
         return
 
     assets = json.loads((args.theme / "assets.json").read_text())
@@ -182,11 +181,6 @@ def main():
     rendered.write_text(css)
     rendered.chmod(0o600)
     if args.action == "prepare":
-        print(
-            "Prepared/verified",
-            len(urls),
-            "same-origin immutable static assets; no brand/flow changes",
-        )
         return
 
     rows, current = exact_brand()
@@ -233,7 +227,6 @@ def main():
         and ident.get("password_stage") == password["pk"]
         and password.get("allow_show_password")
     ):
-        print("Quiet Mono Brand already reconciled; no changes")
         return
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
     backup_path = args.root / "theme-backups" / ("before-quiet-mono-" + stamp + ".json")
@@ -291,9 +284,6 @@ def main():
             {"allow_show_password": password.get("allow_show_password", False)},
         )
         raise
-    print(
-        "Applied domain Brand, title and native combined identification/password form; protected rollback saved"
-    )
 
 
 if __name__ == "__main__":

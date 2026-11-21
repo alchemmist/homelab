@@ -19,4 +19,3 @@ snapshot = {
         for folder in config.findall("folder")
     ),
 }
-print(json.dumps(snapshot, sort_keys=True))

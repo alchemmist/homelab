@@ -32,7 +32,6 @@ def apply(kind, namespace, name, data):
         capture_output=True,
         check=True,
     )
-    print(result.stdout.strip())
 
 
 existing = get_secret("wiki-editor-git")
@@ -59,7 +58,6 @@ with tempfile.TemporaryDirectory(prefix="wiki-editor-key-") as folder:
         )
         apply("Secret", "wiki", "wiki-editor-git", {"id_ed25519": key.read_text()})
     public = subprocess.check_output(["ssh-keygen", "-y", "-f", str(key)], text=True).strip()
-    print("Repository deploy public key:", public)
 existing = get_secret("wiki-editor-auth")
 token = (
     base64.b64decode(existing["gateway-token"]).decode()

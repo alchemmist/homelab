@@ -70,4 +70,3 @@ def configure(terminal_id):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--terminal-id", default="socrat-terminal")
-    print(json.dumps(configure(parser.parse_args().terminal_id)))

@@ -34,8 +34,3 @@ installed = subprocess.run(
 )
 if installed.returncode != 0 and installed.stderr.strip() != "Error: release: not found":
     installed.check_returncode()
-print(
-    json.dumps(
-        {"changed": installed.returncode != 0 or desired.stdout.strip() != installed.stdout.strip()}
-    )
-)

@@ -75,11 +75,6 @@ def main():
     if not args.rollback and api("GET", "admin/version/")["version_current"] != "2026.8.5":
         raise RuntimeError("Unreviewed Authentik version")
     changed = reconcile(api, args.root, args.rollback)
-    print(
-        "Authorization flow titles updated"
-        if changed
-        else "Authorization flow titles already reconciled"
-    )
 
 
 if __name__ == "__main__":

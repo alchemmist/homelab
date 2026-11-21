@@ -235,7 +235,6 @@ def main() -> None:
             ]
         )
         result["changed"] = True
-    print("changed=" + str(bool(result.get("changed"))).lower())
 
 
 if __name__ == "__main__":
@@ -245,23 +244,9 @@ if __name__ == "__main__":
             if not (ROOT / "credentials.json").is_file():
                 raise RuntimeError("Authentik runtime credential file is missing")
             state = exec_authentik(PROBE_CODE)
-            print(
-                "preflight=ok provider_exists="
-                + str(state["provider_exists"]).lower()
-                + " application_exists="
-                + str(state["application_exists"]).lower()
-            )
         elif not sys.argv[1:]:
             main()
         else:
             raise RuntimeError("unsupported option")
     except Exception as exc:
-        print(
-            "Argo CD Authentik OIDC setup failed at "
-            + STAGE
-            + " ("
-            + type(exc).__name__
-            + "); sensitive output suppressed",
-            file=sys.stderr,
-        )
         raise SystemExit(1)

@@ -56,4 +56,3 @@ if available < (1792 + 2304 + 2048) * 1024**2 or free < (1792 + 2304) * 1024**2:
 disk = os.statvfs("/var/lib/rancher/k3s/storage")
 if disk.f_bavail * disk.f_frsize < 30 * 1024**3:
     raise SystemExit("Insufficient storage staging reserve")
-print("Capacity gate passed: single-node identity staging only, not HA certification")

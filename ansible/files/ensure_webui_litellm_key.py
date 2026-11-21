@@ -45,7 +45,6 @@ if existing:
         request(
             "/key/update", {"key": key, "models": list(dict.fromkeys([*models, *desired_models]))}
         )
-        print("updated")
 else:
     key = request("/key/generate", {"key_alias": "open-webui", "models": desired_models})["key"]
     obj = {
@@ -55,4 +54,3 @@ else:
         "stringData": {"api-key": key},
     }
     kubectl("create", "-f", "-", data=json.dumps(obj))
-    print("created")

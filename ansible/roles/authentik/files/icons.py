@@ -167,7 +167,6 @@ for filename, content, digest, name, targets in plan:
         raise RuntimeError("Served media checksum mismatch: " + filename)
     for slug in targets:
         if slug not in applications:
-            print("Skipped nonexistent application:", slug)
             continue
         before = applications[slug]
         current = api("GET", "core/applications/" + slug + "/")
@@ -181,16 +180,8 @@ for filename, content, digest, name, targets in plan:
         if stable(after) != stable(before) or after["meta_icon"] != name:
             raise RuntimeError("Icon-only postcondition failed: " + slug)
         verified.append(slug)
-        print("Local portal icon verified:", slug)
 private_json(
     root / ("portal-icons-receipt-" + run_id + ".json"),
     {"run": run_id, "changed": changed, "verified": verified},
 )
 uncertain.unlink()
-print(
-    "Completed:",
-    len(changed),
-    "changed;",
-    len(verified),
-    "verified; no other application fields changed",
-)
