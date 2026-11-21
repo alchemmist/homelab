@@ -17,7 +17,7 @@ import socketserver
 import os
 import re
 import typing
-from typing import override
+from typing import cast, override
 import urllib.error
 import urllib.parse
 import urllib.request
