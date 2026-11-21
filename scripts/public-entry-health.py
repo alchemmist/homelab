@@ -20,6 +20,7 @@ ENTRIES = {"home": "109.173.40.247", "vps": "109.120.141.60", "internal": "192.1
 
 
 def valid_discovery(data):
+    """Execute valid_discovery."""
     if not isinstance(data, dict) or data.get("issuer") != ISSUER:
         return False
     for key in ["authorization_endpoint", "token_endpoint", "jwks_uri"]:
@@ -113,6 +114,7 @@ def require_known_pair(entry, vantage) -> None:
 
 
 def probe(entry, vantage, timeout=3):
+    """Execute probe."""
     require_known_pair(entry, vantage)
     started = time.monotonic()
     result = {
@@ -141,6 +143,7 @@ def probe(entry, vantage, timeout=3):
 
 
 def main():
+    """Execute main."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--vantage", required=True, choices=["home", "vps", "workstation", "external"])
     p.add_argument("--entry", action="append", choices=ENTRIES)

@@ -2,11 +2,11 @@
 
 import configparser
 import json
-from pathlib import Path
 import shutil
 import subprocess
-from typing import TypedDict, cast
 import unittest
+from pathlib import Path
+from typing import TypedDict, cast
 
 import yaml
 

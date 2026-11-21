@@ -2,12 +2,13 @@
 
 import importlib.util
 import os
-from pathlib import Path
-from types import ModuleType
 import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
+from types import ModuleType
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]

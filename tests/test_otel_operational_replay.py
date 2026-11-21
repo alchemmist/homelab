@@ -3,9 +3,9 @@
 import base64
 import copy
 import importlib.util
+import unittest
 from pathlib import Path
 from types import ModuleType
-import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 

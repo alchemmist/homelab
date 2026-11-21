@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Offline-reviewed, private operator CLI. Default dry-run; never a public API.
+
 No allowance reset: one subsequent unsafe failure can kill a selected job again.
 """
 

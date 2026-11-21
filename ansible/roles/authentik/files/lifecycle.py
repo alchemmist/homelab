@@ -1,4 +1,5 @@
 """Existing-user app membership lifecycle. Default plan/check are GET-only.
+
 Never creates/deletes/merges humans, resets passwords/MFA or manages legacy groups.
 """
 

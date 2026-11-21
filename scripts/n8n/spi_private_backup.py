@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Private CLI-only online backup. Failed/truncated stdout MUST be deleted.
+
 POSIX main-thread deadline assumes normally interruptible OS I/O; no guarantee
 is possible for uninterruptible kernel I/O. Never invoke in HTTP worker threads.
 """

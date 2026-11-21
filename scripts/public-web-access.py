@@ -13,11 +13,13 @@ OWNER = "homelab-public-web-v1"
 
 
 def require(ok, message):
+    """Execute require."""
     if not ok:
         raise ValueError(message)
 
 
 def unique(rows, key, value):
+    """Execute unique."""
     matches = [r for r in rows if r.get(key) == value]
     require(len(matches) == 1, "Missing/ambiguous reviewed " + key)
     return matches[0]
@@ -63,6 +65,7 @@ class API:
 
 
 def snapshot(api):
+    """Execute snapshot."""
     s = {
         k: api.rows(p)
         for k, p in {
@@ -80,6 +83,7 @@ def snapshot(api):
 
 
 def plan(s, services):
+    """Execute plan."""
     require(
         not services,
         "External Authentik proxy gates are retired; use native service authentication",
@@ -88,6 +92,7 @@ def plan(s, services):
 
 
 def main():
+    """Execute main."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--catalog", required=True)
     p.add_argument(

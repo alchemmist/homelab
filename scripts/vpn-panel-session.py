@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Explicit temporary native 3x-ui machine access. Never edits SQLite or human auth.
+
 CLI bootstrap uses a collision-checked NEW name; normal operations use node-sync.
 A TTL admin token exists only to issue/revoke our tokens. All secrets stay private.
 The CLI bootstrap cannot have a native TTL: an interrupted issuance must be treated
@@ -360,8 +361,10 @@ class NativeSession:
             self.lock = None
 
     def __enter__(self) -> typing.Self:
+        """Return this session as the active context manager resource."""
         enter: typing.Self = self
         return enter
 
     def __exit__(self, *args) -> None:
+        """Clean up the session when leaving its context manager block."""
         self.cleanup()

@@ -47,7 +47,7 @@ def main():
     rows = inventory(kub("pv"), kub("pods"))
     paths = sorted({r["backend"]["path"] for r in rows if args.node in r["nodes"] and "path" in r["backend"]})
     # Fixed remote program; paths travel as JSON on stdin, never interpolated into shell.
-    remote = '''import json,sys,subprocess,os
+    remote = """import json,sys,subprocess,os
 paths=json.load(sys.stdin)
 mounts=subprocess.run(['findmnt','-rn','-o','TARGET,SOURCE,FSTYPE'],text=True,capture_output=True,check=True).stdout.splitlines()
 mounts=[dict(zip(['target','source','fstype'],line.split())) for line in mounts if len(line.split())==3]
@@ -62,7 +62,7 @@ for path in paths:
   s=os.statvfs(path);item['filesystem']={'capacity_bytes':s.f_blocks*s.f_frsize,'available_bytes':s.f_bavail*s.f_frsize,'inodes':s.f_files,'inodes_free':s.f_favail}
  except OSError as e:item['stat_error']=str(e)
  out.append(item)
-print(json.dumps(out))'''
+print(json.dumps(out))"""
     result = run(["ssh", "-o", "BatchMode=yes", args.node, "python3 -c " + __import__("shlex").quote(remote)],
                  input=json.dumps(sorted(set(paths + ["/", "/mnt/files", "/var/lib/rancher/k3s", "/var/lib/containerd", "/var/log", "/home"]))))
     result.check_returncode()

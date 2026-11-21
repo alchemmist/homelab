@@ -1,10 +1,9 @@
 """Offline checks for detaching symlinked account configuration inside a temp home."""
 
 import importlib.util
-from pathlib import Path
 import tempfile
 import unittest
-
+from pathlib import Path
 
 SOURCE = (
     Path(__file__).resolve().parents[1]

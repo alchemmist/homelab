@@ -130,6 +130,7 @@ def reconcile_app_bindings(
 
 
 def builtin_scope(rows, name):
+    """Execute builtin_scope."""
     matches = [
         r for r in rows if r.get("managed") == "goauthentik.io/providers/oauth2/scope-" + name
     ]
@@ -279,6 +280,7 @@ def load_or_init_client(
 
 
 def main():
+    """Execute main."""
     p = argparse.ArgumentParser()
     p.add_argument("--private-dir", type=Path, required=True)
     p.add_argument("--apply", action="store_true")
