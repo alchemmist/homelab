@@ -213,7 +213,7 @@ class PreparationTests(unittest.TestCase):
             self.api.data["policies/bindings/"][: len(before["policies/bindings/"])],
             before["policies/bindings/"],
         )
-        for method, path, _payload in self.api.requests:
+        for method, path, payload in self.api.requests:
             if method != "GET":
                 self.assertEqual(method, "POST")
                 self.assertIn(path, ("core/groups/", "policies/bindings/"))

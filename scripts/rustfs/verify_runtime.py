@@ -123,4 +123,4 @@ if __name__ == "__main__":
     except Exception:
         raise SystemExit(
             "Runtime gate failed; no secret/response body printed. Inspect private state; do not activate SPI."
-        )
+        ) from None
