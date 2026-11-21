@@ -21,8 +21,9 @@ CHARTS = {
 
 def values(owner) -> dict[str, object]:
     value: dict[str, object] = yaml.safe_load((ROOT / CHARTS[owner] / "values.yaml").read_text())
-    entry = cast("dict[str, object]", value["publicEntry"])
-    return value if CHARTS[owner].startswith("deploy/") else entry
+    if CHARTS[owner].startswith("deploy/"):
+        return value
+    return cast("dict[str, object]", value["publicEntry"])
 
 
 def render(owner=None) -> list[dict[str, object]]:

@@ -38,11 +38,19 @@ class _DeploymentSpec(TypedDict):
     template: _PodTemplate
 
 
+class _ResourceMetadata(TypedDict):
+    """Identity and annotations on the transferred resource itself."""
+
+    name: str
+    namespace: str
+    annotations: NotRequired[dict[str, str]]
+
+
 class _HandoffResource(TypedDict):
     """Migrated resource shape surfaced by the application render."""
 
     kind: str
-    metadata: dict[str, str]
+    metadata: _ResourceMetadata
     data: NotRequired[dict[str, str]]
     spec: NotRequired[_DeploymentSpec]
 
@@ -50,11 +58,24 @@ class _HandoffResource(TypedDict):
 def migration_payload(resource: _HandoffResource) -> _HandoffResource:
     """Keep immutable handoff hashes; supply later source payloads independently.
 
-    Only the two source-owned Grafana text inputs/checksum may differ. Validate
-    their entire live rendering before projecting the original reviewed inputs.
-    No fixture hashes or resource/ownership/security fields are refreshed.
+    Validate the Rancher recovery wave and current Grafana inputs before
+    projecting those fields back to the original reviewed handoff. All other
+    fields still participate unchanged in the immutable fixture comparison.
     """
     name = resource["metadata"]["name"]
+    if (resource["kind"], resource["metadata"]["namespace"], name) == (
+        "Deployment",
+        "cattle-system",
+        "public-web-rancher-proxy",
+    ):
+        # d43c0634: readiness depends on the backend, so both deploy in wave 0.
+        wave = "argocd.argoproj.io/sync-wave"
+        assert resource["metadata"].get("annotations", {}).get(wave) == "0", (
+            "Rancher proxy must reconcile with its backend"
+        )
+        result = copy.deepcopy(resource)
+        result["metadata"]["annotations"][wave] = "-1"
+        return result
     if name not in {"public-web-grafana-policy", "public-web-grafana-proxy"}:
         return resource
     base = "deploy/platform/grafana/public-entry/files/"
@@ -149,6 +170,15 @@ class OwnershipTests(unittest.TestCase):
             assert not any(s.get("path") == "charts/public-web-entry" for s in sources)
         litellm = yaml.safe_load((ROOT / "deploy/argocd/apps/litellm.yaml").read_text())
         assert litellm["spec"]["syncPolicy"]["automated"].get("enabled") is not False
+
+
+@pytest.mark.parametrize("wave", ["-1", "1"])
+def test_rancher_projection_rejects_incorrect_wave(wave: str) -> None:
+    """Earlier and later proxy scheduling must not be normalized away."""
+    deployment = next(d for d in render("rancher") if d["kind"] == "Deployment")
+    deployment["metadata"]["annotations"]["argocd.argoproj.io/sync-wave"] = wave
+    with pytest.raises(AssertionError, match="Rancher proxy must reconcile with its backend"):
+        migration_payload(deployment)
 
 
 @pytest.mark.parametrize("violation", ["payload", "checksum", "token", "image"])

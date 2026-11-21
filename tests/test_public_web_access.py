@@ -162,6 +162,12 @@ def test_chart_rejects_mislabeled_authorization(owner, key, value, tmp_path) -> 
         capture_output=True,
     )
     assert result.returncode != 0
+    expected = {
+        "rancher": "Native Rancher admission is valid only for its exact reviewed backend",
+        "grafana-mcp": "Only the token-protected MCP endpoint may bypass interactive SSO",
+        "grafana": "Native Grafana SSO requires the exact password-safe policy proxy",
+    }
+    assert expected[owner] in result.stderr
 
 
 def test_rancher_public_proxy_denies_local_password_without_changing_private_backend() -> None:
