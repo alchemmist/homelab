@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 
-def load(name, path):
+def load(name: str, path: Path):
     loader = importlib.machinery.SourceFileLoader(name, str(path))
     spec = importlib.util.spec_from_loader(name, loader)
     module = importlib.util.module_from_spec(spec)
@@ -28,7 +28,7 @@ class LaunchGuard(unittest.TestCase):
         app.pids_named = lambda executable: []
         self.spawned = []
 
-    def spawn(self, command):
+    def spawn(self, command: list[str]):
         self.spawned.append(command)
         return type("Process", (), {"pid": 4000 + len(self.spawned)})()
 
@@ -99,7 +99,7 @@ class GraphicsWake(unittest.TestCase):
         payload = struct.pack("llHHi", 1, 0, graphics.EV_KEY, graphics.KEY_SPACE, 1)
 
         class Device:
-            def read(self, _size):
+            def read(self, _size: int):
                 return payload
 
             def close(self):
@@ -112,7 +112,7 @@ class GraphicsWake(unittest.TestCase):
         def stop_after_one_read():
             watch_once(Device())
 
-        def watch_once(device):
+        def watch_once(device: object):
             original = graphics.watch
 
             def open_devices():
@@ -120,7 +120,12 @@ class GraphicsWake(unittest.TestCase):
 
             readable = []
 
-            def fake_select(devices, _write, _error, _timeout):
+            def fake_select(
+                devices: list[object],
+                _write: list[object],
+                _error: list[object],
+                _timeout: float,
+            ):
                 if readable:
                     raise SystemExit
                 readable.append(devices[0])

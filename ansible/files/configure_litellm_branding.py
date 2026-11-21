@@ -2,10 +2,9 @@ import base64
 import json
 import subprocess
 import urllib.request
-from typing import cast
 
 
-def kubectl(*args) -> str:
+def kubectl(*args: str) -> str:
     return subprocess.check_output(["kubectl", "-n", "llm", *args], text=True)
 
 
@@ -21,7 +20,7 @@ urls = {
 }
 
 
-def request(path, payload=None, method=None) -> dict[str, object]:
+def request(path, payload=None, method=None):
     req = urllib.request.Request(
         base + path,
         headers=headers,
@@ -29,8 +28,7 @@ def request(path, payload=None, method=None) -> dict[str, object]:
         data=None if payload is None else json.dumps(payload).encode(),
     )
     with urllib.request.urlopen(req, timeout=30) as response:
-        document: dict[str, object] = json.load(response)
-        return document
+        return json.load(response)
 
 
 for url in set(urls.values()):
@@ -39,14 +37,14 @@ for url in set(urls.values()):
             "image/svg+xml" if url.endswith(".svg") else "image/png"
         ):
             raise RuntimeError("Brand asset returned an unexpected content type")
-current = cast("dict[str, object]", request("/get/ui_theme_settings")["values"])
+current = request("/get/ui_theme_settings")["values"]
 if any(current.get(name) != url for name, url in urls.items()):
     request("/config/update", {"general_settings": {"store_model_in_db": True}}, method="POST")
     request("/update/ui_theme_settings", {**current, **urls})
     print("updated branding")
 else:
     print("branding unchanged")
-actual = cast("dict[str, object]", request("/get/ui_theme_settings")["values"])
+actual = request("/get/ui_theme_settings")["values"]
 if any(actual.get(name) != url for name, url in urls.items()):
     raise RuntimeError("Branding readback failed")
 print("branding verified")

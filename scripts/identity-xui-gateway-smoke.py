@@ -5,6 +5,8 @@ native panel passwords. No screenshots, traces, HTML, cookies or OTPs are saved.
 """
 
 import argparse
+from collections.abc import Mapping
+from typing import Protocol
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--run", action="store_true")
@@ -34,6 +36,23 @@ import uuid
 
 from playwright.sync_api import sync_playwright
 
+
+class FlowResponse(Protocol):
+    """Browser response fields the gateway flow observer reads."""
+
+    @property
+    def url(self) -> str:
+        """Return the response URL."""
+
+    @property
+    def status(self) -> int:
+        """Return the HTTP status code."""
+
+    def json(self) -> Mapping[str, object]:
+        """Return the decoded JSON object."""
+        ...
+
+
 BASE = "https://auth.socrat.alchemmist.xyz"
 original = socket.getaddrinfo
 socket.getaddrinfo = lambda h, *a, **kw: original(
@@ -58,7 +77,7 @@ credential = json.loads(
 )
 
 
-def api(method, path, data=None):
+def api(method: str, path: str, data: Mapping[str, object] | None = None):
     req = urllib.request.Request(
         BASE + "/api/v3/" + path,
         method=method,
@@ -123,7 +142,7 @@ try:
         denials = []
         authorization_scopes = []
 
-        def observe(response):
+        def observe(response: FlowResponse):
             parsed = urllib.parse.urlparse(response.url)
             if (
                 parsed.hostname == "auth.socrat.alchemmist.xyz"

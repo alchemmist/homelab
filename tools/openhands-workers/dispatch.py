@@ -3,7 +3,8 @@ import fcntl,hashlib,json,pathlib,re,subprocess,sys,urllib.request,uuid
 H=pathlib.Path.home(); M='1ab3985a-2193-4177-8dd2-8ec7d54dbfeb';Q='51a35822-a870-43cc-a775-fd5e662f0039';key=(H/'.openhands/agent-canvas/api-key.txt').read_text().strip()
 def api(p,b=None,method=None):
  r=urllib.request.Request('http://127.0.0.1:8000/api/'+p,headers={'X-Session-API-Key':key,'Content-Type':'application/json'},method=method,data=None if b is None else json.dumps(b).encode());return json.load(urllib.request.urlopen(r,timeout=30))
-def git(path,*args):return subprocess.check_output(['git','-C',str(path),*args],text=True).strip()
+def git(path: pathlib.Path, *args: str) -> str:
+    return subprocess.check_output(['git','-C',str(path),*args],text=True).strip()
 def main():
  mode=sys.argv[1];assert mode in ('mutation','qa');parent=M if mode=='mutation' else Q;j=api('conversations/'+parent);root=pathlib.Path(j['workspace']['working_dir']);repo=root/'repo';reg=root/'.worker-registry';reg.mkdir(exist_ok=True);assert not reg.is_symlink();lock=(reg/'lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX);items=[json.loads(f.read_text()) for f in sorted(reg.glob('*.json'))];statuses={x['id']:api('conversations/'+x['id'])['execution_status'] for x in items};print([(x['lane'],x['id'],statuses[x['id']]) for x in items],flush=True)
  if len(sys.argv)==2:return

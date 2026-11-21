@@ -13,7 +13,7 @@ spec.loader.exec_module(n)
 IMAGE = "netbirdio/netbird:0.82.0@sha256:" + "a" * 64
 
 
-def node(host):
+def node(host: str):
     return {
         "metadata": {"uid": "node-" + host, "name": host},
         "status": {"conditions": [{"type": "Ready", "status": "True"}]},
@@ -21,7 +21,7 @@ def node(host):
 
 
 class Fake(n.Runtime):
-    def __init__(self, apply=True, existing=True):
+    def __init__(self, *, apply: bool = True, existing: bool = True):
         self.apply = apply
         self.config = n.validate_config(
             {
@@ -32,7 +32,7 @@ class Fake(n.Runtime):
         )
         self.state = {"nodes": {}}
         self.changed = False
-        self.writes = []
+        self.writes: list[tuple[str, str, dict[str, object] | None]] = []
         self.cluster_node = node("socrat-4")
         self.peer = {
             "id": "peer4",
@@ -46,7 +46,7 @@ class Fake(n.Runtime):
         }
         self.group = {"id": "nodes", "issued": "api", "name": n.DEST, "peers": []}
         self.admin = {"id": "jwt", "issued": "jwt", "name": n.ADMIN}
-        self.resources = []
+        self.resources: list[dict[str, object]] = []
         self.policies = [
             {
                 "enabled": True,
@@ -75,7 +75,7 @@ class Fake(n.Runtime):
     def save(self):
         pass
 
-    def api(self, method, path, body=None):
+    def api(self, method: str, path: str, body: dict[str, object] | None = None):
         if method == "GET":
             if path == "groups":
                 return [self.admin, self.group, {"name": "All", "id": "all", "issued": "api"}]
@@ -104,21 +104,31 @@ class Fake(n.Runtime):
             return {"id": "one-use", "key": "fixture-not-a-real-secret"}
         if path == "setup-keys/one-use":
             return {"revoked": True}
-        if path == "groups/nodes":
-            self.group["peers"] = [{"id": p} for p in body["peers"]]
+        if path == "groups/nodes" and isinstance(body, dict):
+            peers = body["peers"]
+            assert isinstance(peers, list)
+            self.group["peers"] = [{"id": p} for p in peers]
             return self.group
-        if path.endswith("/resources"):
+        if path.endswith("/resources") and isinstance(body, dict):
             result = dict(body, id="res", type="host")
             self.resources.append(result)
             return result
-        if path == "policies":
-            result = dict(copy.deepcopy(body), id="policy4")
-            result["rules"][0]["sources"] = [{"id": p} for p in body["rules"][0]["sources"]]
+        if path == "policies" and isinstance(body, dict):
+            result = copy.deepcopy(body)
+            result["id"] = "policy4"
+            rules = result["rules"]
+            assert isinstance(rules, list)
+            assert rules
+            first = rules[0]
+            assert isinstance(first, dict)
+            sources = first["sources"]
+            assert isinstance(sources, list)
+            first["sources"] = [{"id": p} for p in sources]
             self.policies.append(result)
             return result
         raise AssertionError(path)
 
-    def get(self, kind, name, ns=n.NS, optional=False):
+    def get(self, kind: str, name: str, *, ns: str = n.NS, optional: bool = False):
         if kind == "application":
             return {
                 "metadata": {"labels": {"app.kubernetes.io/instance": "root"}},
@@ -143,14 +153,21 @@ class Fake(n.Runtime):
             return {"metadata": {"name": name, "uid": "secret4", "resourceVersion": "1"}}
         raise AssertionError(kind)
 
-    def status(self, host):
+    def status(self, host: str):
         return {"ip": self.peer["ip"], "key": "fixture-public-key"}
 
-    def restart_without_key(self, host, deployment):
+    def restart_without_key(self, host: str, deployment: dict[str, object]):
         if self.fail_restart:
             raise ValueError("simulated restart failure")
 
-    def kub(self, args, obj=None, optional=False, stdin=None):
+    def kub(
+        self,
+        args: list[str],
+        obj: dict[str, object] | None = None,
+        *,
+        optional: bool = False,
+        stdin: bytes | None = None,
+    ):
         if stdin is not None:
             assert args[-4:] == ["netbird", "up", "--setup-key-file", "/dev/stdin"]
             self.enrolled = True

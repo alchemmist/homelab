@@ -33,7 +33,7 @@ KUBE = ["/usr/local/bin/kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml"]
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *args, **kwargs):
+    def redirect_request(self, *args: object, **kwargs: object):
         raise ValueError("API redirect refused")
 
 
@@ -333,5 +333,5 @@ class NativeSession:
     def __enter__(self):
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, *args: object):
         self.cleanup()

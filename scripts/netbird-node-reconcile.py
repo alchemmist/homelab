@@ -15,7 +15,9 @@ import re
 import subprocess
 import sys
 import urllib.request
+from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
+from typing import override
 
 NS = "netbird-host-peers"
 ADMIN = "netbird-internal-admins"
@@ -25,12 +27,20 @@ SERVICE = "homelab-netbird-node-automation"
 BASE = "https://netbird.socrat.alchemmist.xyz/api/"
 
 
-def require(ok, message):
+def as_str(value: object) -> str:
+    """Return a string JSON value, failing loudly on malformed structure."""
+    if not isinstance(value, str):
+        error = "string JSON value required"
+        raise TypeError(error)
+    return value
+
+
+def require(ok: object, message: str) -> None:
     if not ok:
         raise ValueError(message)
 
 
-def atomic(path, value):
+def atomic(path: Path, value: object) -> None:
     tmp = path.with_suffix(".tmp")
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
     with os.fdopen(fd, "w") as f:
@@ -40,16 +50,24 @@ def atomic(path, value):
     os.replace(tmp, path)
 
 
-def validate_config(c):
+def validate_config(c: Mapping[str, object]) -> Mapping[str, object]:
+    image = as_str(c.get("image"))
     require(
-        re.fullmatch(r"netbirdio/netbird:0\.82\.0@sha256:[a-f0-9]{64}", c["image"]),
+        re.fullmatch(r"netbirdio/netbird:0\.82\.0@sha256:[a-f0-9]{64}", image) is not None,
         "pinned client required",
     )
-    require(isinstance(c["nodes"], dict) and c["nodes"], "inventory nodes required")
-    ips = []
-    for name, value in c["nodes"].items():
-        require(re.fullmatch(r"socrat-[0-9]+", name), "invalid inventory node name")
-        ip = ipaddress.ip_address(value)
+    nodes = as_record(c.get("nodes"))
+    require(bool(nodes), "inventory nodes required")
+    ips: list[str] = []
+    for name, value in nodes.items():
+        require(
+            re.fullmatch(r"socrat-[0-9]+", as_str(name)) is not None, "invalid inventory node name"
+        )
+        if isinstance(value, (str, int)):
+            ip = ipaddress.ip_address(value)
+        else:
+            error = "WG host address must be a string"
+            raise TypeError(error)
         require(
             ip.version == 4
             and ip in ipaddress.ip_network("10.250.0.0/24")
@@ -58,20 +76,26 @@ def validate_config(c):
         )
         ips.append(str(ip))
     require(len(ips) == len(set(ips)), "duplicate WG addresses")
-    require(
-        isinstance(c.get("reserved_addresses"), list), "reserved client address inventory required"
-    )
-    reserved = {str(ipaddress.ip_address(v)) for v in c["reserved_addresses"]}
+    reserved_list = as_list(c.get("reserved_addresses") or [])
+    reserved: set[str] = set()
+    for v in reserved_list:
+        if not isinstance(v, (str, int)):
+            error = "reserved WG address must be a string or int"
+            raise TypeError(error)
+        reserved.add(str(ipaddress.ip_address(v)))
     require(not set(ips) & reserved, "node address collides with a human/device WG client")
+    kernel_only_nodes = as_list(c.get("kernel_only_nodes") or [])
     require(
-        set(c.get("kernel_only_nodes", [])) <= set(c["nodes"]),
+        {str(v) for v in kernel_only_nodes} <= {str(k) for k in nodes},
         "kernel-only nodes must be admitted inventory nodes",
     )
     return c
 
 
-def manifests(host, image, enrollment=False, kernel_only=False):
-    require(re.fullmatch(r"socrat-[0-9]+", host), "invalid node")
+def manifests(
+    host: str, image: str, *, enrollment: bool = False, kernel_only: bool = False
+) -> list[dict[str, object]]:
+    require(re.fullmatch(r"socrat-[0-9]+", host) is not None, "invalid node")
     name = "machine-" + host
     labels = {"app": name}
     env = {
@@ -90,10 +114,15 @@ def manifests(host, image, enrollment=False, kernel_only=False):
         "NB_LOG_FILE": "/dev/null",
         "NB_ENABLE_CAPTURE": "false",
     }
+    container_env: list[dict[str, object]] = [{"name": k, "value": v} for k, v in env.items()]
+    volume_mounts: list[dict[str, object]] = [
+        {"name": "state", "mountPath": "/etc/netbird"},
+        {"name": "tun", "mountPath": "/dev/net/tun"},
+    ]
     container = {
         "name": "peer",
         "image": image,
-        "env": [{"name": k, "value": v} for k, v in env.items()],
+        "env": container_env,
         "resources": {
             "requests": {"memory": "32Mi", "cpu": "10m"},
             "limits": {"memory": "96Mi", "cpu": "500m"},
@@ -104,25 +133,46 @@ def manifests(host, image, enrollment=False, kernel_only=False):
             "capabilities": {"drop": ["ALL"], "add": ["NET_ADMIN", "NET_RAW", "BPF"]},
             "seccompProfile": {"type": "RuntimeDefault"},
         },
-        "volumeMounts": [
-            {"name": "state", "mountPath": "/etc/netbird"},
-            {"name": "tun", "mountPath": "/dev/net/tun"},
-        ],
+        "volumeMounts": volume_mounts,
     }
     if kernel_only:
         # A fresh Docker entrypoint starts an interactive SSO `up` and races
         # the one-off controller enrollment. Run only the service daemon.
         container["command"] = ["netbird"]
         container["args"] = ["service", "run"]
-        container["volumeMounts"] = [v for v in container["volumeMounts"] if v["name"] != "tun"]
+        volume_mounts[:] = [v for v in volume_mounts if v["name"] != "tun"]
     if enrollment:
-        container["env"].append(
+        container_env.append(
             {
                 "name": "NB_SETUP_KEY",
                 "valueFrom": {"secretKeyRef": {"name": name + "-enrollment", "key": "setup-key"}},
             }
         )
-    documents = [
+    tolerations: list[dict[str, object]] = [
+        {
+            "key": "homelab.io/bootstrap",
+            "operator": "Equal",
+            "value": "true",
+            "effect": "NoSchedule",
+        }
+    ]
+    volumes: list[dict[str, object]] = [
+        {"name": "state", "persistentVolumeClaim": {"claimName": name}},
+        {
+            "name": "tun",
+            "hostPath": {"path": "/dev/net/tun", "type": "CharDevice"},
+        },
+    ]
+    pod_spec: dict[str, object] = {
+        "hostNetwork": True,
+        "dnsPolicy": "ClusterFirstWithHostNet",
+        "automountServiceAccountToken": False,
+        "nodeSelector": {"kubernetes.io/hostname": host},
+        "tolerations": tolerations,
+        "containers": [container],
+        "volumes": volumes,
+    }
+    documents: list[dict[str, object]] = [
         {
             "apiVersion": "v1",
             "kind": "PersistentVolumeClaim",
@@ -143,37 +193,15 @@ def manifests(host, image, enrollment=False, kernel_only=False):
                 "selector": {"matchLabels": labels},
                 "template": {
                     "metadata": {"labels": labels},
-                    "spec": {
-                        "hostNetwork": True,
-                        "dnsPolicy": "ClusterFirstWithHostNet",
-                        "automountServiceAccountToken": False,
-                        "nodeSelector": {"kubernetes.io/hostname": host},
-                        "tolerations": [
-                            {
-                                "key": "homelab.io/bootstrap",
-                                "operator": "Equal",
-                                "value": "true",
-                                "effect": "NoSchedule",
-                            }
-                        ],
-                        "containers": [container],
-                        "volumes": [
-                            {"name": "state", "persistentVolumeClaim": {"claimName": name}},
-                            {
-                                "name": "tun",
-                                "hostPath": {"path": "/dev/net/tun", "type": "CharDevice"},
-                            },
-                        ],
-                    },
+                    "spec": pod_spec,
                 },
             },
         },
     ]
 
     if kernel_only:
-        spec = documents[1]["spec"]["template"]["spec"]
-        spec["volumes"] = [v for v in spec["volumes"] if v["name"] != "tun"]
-        spec["tolerations"].append(
+        volumes[:] = [v for v in volumes if v["name"] != "tun"]
+        tolerations.append(
             {
                 "key": "homelab.io/no-nfs",
                 "operator": "Equal",
@@ -184,9 +212,10 @@ def manifests(host, image, enrollment=False, kernel_only=False):
     return documents
 
 
-def policy_body(source, resource):
+def policy_body(source: object, resource: object) -> dict[str, object]:
+    name = "admin-wg-" + str(resource)
     return {
-        "name": "admin-wg-" + resource,
+        "name": name,
         "enabled": True,
         "description": "Inventory node /32; native SSH authentication still required",
         "rules": [
@@ -203,43 +232,69 @@ def policy_body(source, resource):
     }
 
 
-def member_ids(group):
-    return {p["id"] if isinstance(p, dict) else p for p in (group.get("peers") or [])}
+def as_record(value: object) -> dict[str, object]:
+    """Return a JSON object record, failing loudly on malformed structure."""
+    if not isinstance(value, dict):
+        error = "structured JSON record required"
+        raise TypeError(error)
+    return value
 
 
-def unique(items, key, value):
+def as_list(value: object) -> list[object]:
+    """Return a JSON array, failing loudly on malformed structure."""
+    if not isinstance(value, list):
+        error = "structured JSON array required"
+        raise TypeError(error)
+    return value
+
+
+def member_ids(group: Mapping[str, object]) -> set[object]:
+    peer_list = group.get("peers")
+    return {
+        p["id"] if isinstance(p, dict) else p
+        for p in (as_list(peer_list) if peer_list is not None else [])
+    }
+
+
+def unique(items: Iterable[Mapping[str, object]], key: str, value: object) -> Mapping[str, object]:
     found = [v for v in items if v.get(key) == value]
     require(len(found) == 1, "missing or ambiguous " + key)
     return found[0]
 
 
-def policy_ok(p, admin, resource=None, group=None):
-    rules = p.get("rules") or []
-    if not p.get("enabled") or len(rules) != 1:
+def policy_ok(
+    p: Mapping[str, object],
+    admin: object,
+    resource: object | None = None,
+    group: object | None = None,
+) -> bool:
+    rules = p.get("rules")
+    if not p.get("enabled") or not isinstance(rules, list) or len(rules) != 1:
         return False
     r = rules[0]
     src = {v["id"] if isinstance(v, dict) else v for v in (r.get("sources") or [])}
     dst = {v["id"] if isinstance(v, dict) else v for v in (r.get("destinations") or [])}
-    return (
+    return bool(
         r.get("enabled")
         and r.get("action") == "accept"
         and r.get("protocol") == "all"
         and r.get("bidirectional") is False
         and not r.get("ports")
         and src == {admin}
-        and (r.get("destinationResource") or {}).get("id") == resource
-        and (resource is None or r["destinationResource"].get("type") == "host")
-        and dst == ({group} if group else set())
+        and as_record(r.get("destinationResource") or {}).get("id") == resource
+        and (resource is None or as_record(r.get("destinationResource") or {}).get("type") == "host")
+        and dst == ({group} if group is not None else set())
     )
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *a, **kw):
+    @override
+    def redirect_request(self, *a: object, **kw: object) -> urllib.request.Request | None:
         return None
 
 
 class Runtime:
-    def __init__(self, folder, config, apply=False):
+    def __init__(self, folder: Path, config: Mapping[str, object], *, apply: bool = False) -> None:
         self.folder, self.config, self.apply = folder, validate_config(config), apply
         self.k = [
             "env",
@@ -264,7 +319,7 @@ class Runtime:
         )
         self.changed = False
 
-    def api(self, method, path, body=None):
+    def api(self, method: str, path: str, body: object | None = None) -> object | None:
         req = urllib.request.Request(
             BASE + path,
             method=method,
@@ -278,7 +333,14 @@ class Runtime:
             b = response.read()
             return json.loads(b) if b else None
 
-    def kub(self, args, obj=None, optional=False, stdin=None):
+    def kub(
+        self,
+        args: Sequence[str],
+        obj: Mapping[str, object] | None = None,
+        *,
+        optional: bool = False,
+        stdin: bytes | None = None,
+    ) -> bytes:
         args = list(args)
         operation = args[2] if args[:1] == ["-n"] else args[0]
         require(
@@ -291,15 +353,18 @@ class Runtime:
                 "only read-only rollout status is permitted",
             )
         if operation == "delete":
-            require(
+            preconditions = obj.get("preconditions", {}) if obj is not None else {}
+            if not (
                 args[:2] == ["delete", "--raw"]
                 and args[2].startswith("/api/v1/namespaces/" + NS + "/pods/")
-                and obj
+                and obj is not None
                 and obj.get("kind") == "DeleteOptions"
-                and obj.get("preconditions", {}).get("uid")
-                and obj["preconditions"].get("resourceVersion"),
-                "only UID-bound operational pod restart is permitted",
-            )
+                and isinstance(preconditions, dict)
+                and bool(preconditions.get("uid"))
+                and bool(preconditions.get("resourceVersion"))
+            ):
+                error = "only UID-bound operational pod restart is permitted"
+                raise ValueError(error)
         if optional:
             args += ["--ignore-not-found"]
         p = subprocess.run(
@@ -317,14 +382,14 @@ class Runtime:
         )
         return p.stdout
 
-    def get(self, kind, name, ns=NS, optional=False):
+    def get(self, kind: str, name: str, ns: str = NS, *, optional: bool = False) -> object | None:
         out = self.kub(["-n", ns, "get", kind, name, "-o", "json"], optional=optional)
         return json.loads(out) if out.strip() else None
 
-    def save(self):
+    def save(self) -> None:
         atomic(self.state_path, self.state)
 
-    def write(self, method, path, body):
+    def write(self, method: str, path: str, body: object | None = None) -> object | None:
         require(self.apply, "plan attempted mutation")
         require(not self.state.get("pending"), "uncertain previous write")
         self.state["pending"] = {"method": method, "path": path}
@@ -336,17 +401,17 @@ class Runtime:
         return response
 
     @staticmethod
-    def require_argocd(obj):
-        meta = obj["metadata"]
+    def require_argocd(obj: object) -> None:
+        meta = as_record(as_record(obj)["metadata"])
+        annotations = as_record(meta.get("annotations", {}))
+        labels = as_record(meta.get("labels", {}))
         require(
-            meta.get("annotations", {})
-            .get("argocd.argoproj.io/tracking-id", "")
-            .startswith("netbird:")
-            or meta.get("labels", {}).get("app.kubernetes.io/instance") == "netbird",
+            str(annotations.get("argocd.argoproj.io/tracking-id", "")).startswith("netbird:")
+            or labels.get("app.kubernetes.io/instance") == "netbird",
             "workload/PVC must already be owned by the root-managed netbird Argo CD Application",
         )
 
-    def restart_without_key(self, host, deployment):
+    def restart_without_key(self, host: str, deployment: Mapping[str, object]) -> None:
         # Operational acceptance restart only: never edit/create a workload spec.
         pods = json.loads(
             self.kub(["-n", NS, "get", "pods", "-l", "app=machine-" + host, "-o", "json"])
@@ -359,13 +424,16 @@ class Runtime:
             "unexpected agent pod owner",
         )
         rs = self.get("replicaset", owners[0]["name"])
+        rs_meta = as_record(as_record(rs)["metadata"])
+        deployment_uid = as_record(deployment["metadata"])["uid"]
         require(
-            rs["metadata"]["uid"] == owners[0]["uid"]
+            rs_meta["uid"] == owners[0]["uid"]
             and any(
-                v["kind"] == "Deployment"
-                and v["uid"] == deployment["metadata"]["uid"]
+                isinstance(v, dict)
+                and v.get("kind") == "Deployment"
+                and v.get("uid") == deployment_uid
                 and v.get("controller")
-                for v in rs["metadata"].get("ownerReferences", [])
+                for v in as_list(rs_meta.get("ownerReferences", []))
             ),
             "pod/deployment UID binding changed",
         )
@@ -403,12 +471,22 @@ class Runtime:
             ]
         )
 
-    def enroll_argocd_agent(self, host, node, deployment, pvc):
+    def enroll_argocd_agent(
+        self,
+        host: str,
+        node: Mapping[str, object],
+        deployment: Mapping[str, object],
+        pvc: Mapping[str, object],
+    ) -> tuple[Mapping[str, object], Mapping[str, object]] | None:
         self.require_argocd(deployment)
         self.require_argocd(pvc)
         peers = self.api("GET", "peers")
         require(
-            not any(p.get("hostname") == host or p.get("name") == "machine-" + host for p in peers),
+            not any(
+                isinstance(p, dict)
+                and (p.get("hostname") == host or p.get("name") == "machine-" + host)
+                for p in as_list(peers if peers is not None else [])
+            ),
             "orphan existing peer: no name adoption",
         )
         raw = json.loads(
@@ -433,24 +511,26 @@ class Runtime:
             return None
         self.state["nodes"][host] = {
             "phase": "enrolling",
-            "node_uid": node["metadata"]["uid"],
-            "address": self.config["nodes"][host],
-            "deployment_uid": deployment["metadata"]["uid"],
-            "pvc_uid": pvc["metadata"]["uid"],
+            "node_uid": as_record(node["metadata"])["uid"],
+            "address": as_record(self.config["nodes"])[host],
+            "deployment_uid": as_record(deployment["metadata"])["uid"],
+            "pvc_uid": as_record(pvc["metadata"])["uid"],
         }
         self.save()
-        key = self.write(
-            "POST",
-            "setup-keys",
-            {
-                "name": "inventory-" + host,
-                "type": "one-off",
-                "expires_in": 600,
-                "usage_limit": 1,
-                "auto_groups": [],
-                "ephemeral": False,
-                "allow_extra_dns_labels": False,
-            },
+        key = as_record(
+            self.write(
+                "POST",
+                "setup-keys",
+                {
+                    "name": "inventory-" + host,
+                    "type": "one-off",
+                    "expires_in": 600,
+                    "usage_limit": 1,
+                    "auto_groups": [],
+                    "ephemeral": False,
+                    "allow_extra_dns_labels": False,
+                },
+            )
         )
         self.state["nodes"][host]["setup_key_id"] = key["id"]
         self.save()
@@ -470,7 +550,7 @@ class Runtime:
                     "--setup-key-file",
                     "/dev/stdin",
                 ],
-                stdin=key["key"].encode(),
+                stdin=str(key["key"]).encode(),
             )
             self.kub(
                 [
@@ -488,72 +568,86 @@ class Runtime:
         finally:
             self.state["cleanup"] = {"setup_key_id": key["id"], "node": host, "revoked": False}
             self.save()
-            retired = self.api(
-                "PUT", "setup-keys/" + key["id"], {"revoked": True, "auto_groups": []}
+            retired = as_record(
+                self.api(
+                    "PUT", "setup-keys/" + str(key["id"]), {"revoked": True, "auto_groups": []}
+                )
             )
-            require(retired["revoked"], "setup-key retirement failed")
+            require(bool(retired["revoked"]), "setup-key retirement failed")
             self.state["cleanup"]["revoked"] = True
             self.save()
         self.restart_without_key(host, deployment)
         again, second = self.peer_for_status(host)
         require(
-            peer["id"] == again["id"] and status == second, "identity changed on key-free restart"
+            bool(peer["id"] == again["id"] and status == second),
+            "identity changed on key-free restart",
         )
         require(
-            self.get("deployment", "machine-" + host)["metadata"]["uid"]
-            == deployment["metadata"]["uid"]
-            and self.get("pvc", "machine-" + host)["metadata"]["uid"] == pvc["metadata"]["uid"],
+            as_record(as_record(self.get("deployment", "machine-" + host))["metadata"])["uid"]
+            == as_record(deployment["metadata"])["uid"]
+            and as_record(as_record(self.get("pvc", "machine-" + host))["metadata"])["uid"]
+            == as_record(pvc["metadata"])["uid"],
             "Argo CD workload or storage replaced during enrollment",
         )
         return peer, status
 
-    def guard(self):
-        app = self.get("application", "netbird", ns="argocd")
-        source = app["spec"].get("source", {})
+    def guard(self) -> list[dict[str, object]]:
+        app = as_record(self.get("application", "netbird", ns="argocd"))
+        spec = as_record(app["spec"])
+        source = as_record(spec.get("source", {}))
+        meta = as_record(app["metadata"])
+        annotations = as_record(meta.get("annotations", {}))
+        labels = as_record(meta.get("labels", {}))
         require(
-            app["spec"]["project"] == "default"
+            spec.get("project") == "default"
             and source.get("path") == "charts/netbird"
             and source.get("targetRevision") == "main"
             and source.get("repoURL") == "https://github.com/alchemmist/homelab.git"
             and (
-                app["metadata"]
-                .get("annotations", {})
-                .get("argocd.argoproj.io/tracking-id", "")
-                .startswith("root:")
-                or app["metadata"].get("labels", {}).get("app.kubernetes.io/instance") == "root"
+                str(annotations.get("argocd.argoproj.io/tracking-id", "")).startswith("root:")
+                or labels.get("app.kubernetes.io/instance") == "root"
             ),
             "root-managed GitOps Application required; do not create one manually",
         )
         groups = self.api("GET", "groups")
-        self.admin = unique(groups, "name", ADMIN)
-        self.group = unique(groups, "name", DEST)
+        group_records = [as_record(g) for g in as_list(groups if groups is not None else [])]
+        self.admin = unique(group_records, "name", ADMIN)
+        self.group = unique(group_records, "name", DEST)
         require(
-            self.admin["issued"] == "jwt" and not self.admin.get("resources"),
+            self.admin["issued"] == "jwt" and not bool(self.admin.get("resources")),
             "real JWT admin source required",
         )
         require(
-            self.group["issued"] == "api" and not self.group.get("resources"),
+            self.group["issued"] == "api" and not bool(self.group.get("resources")),
             "dedicated machine destinations required",
         )
-        net = unique(self.api("GET", "networks"), "name", NETWORK)
-        self.network = net["id"]
-        routers = self.api("GET", "networks/" + self.network + "/routers")
+        network_list = self.api("GET", "networks")
+        net = unique(
+            [as_record(x) for x in as_list(network_list if network_list is not None else [])],
+            "name",
+            NETWORK,
+        )
+        self.network = str(net["id"])
+        router_list = as_list(self.api("GET", "networks/" + self.network + "/routers"))
+        require(len(router_list) == 1, "single native router required")
+        router = as_record(router_list[0])
         require(
-            len(routers) == 1
-            and not routers[0].get("peer")
-            and routers[0]["peer_groups"] == [self.group["id"]]
-            and routers[0]["enabled"]
-            and routers[0]["masquerade"]
-            and routers[0]["metric"] == 80,
+            not bool(router.get("peer"))
+            and router.get("peer_groups") == [self.group["id"]]
+            and bool(router.get("enabled"))
+            and bool(router.get("masquerade"))
+            and router.get("metric") == 80,
             "native group-router drift",
         )
-        cluster = self.get("namespace", "kube-system", ns="default")["metadata"]["uid"]
-        namespace = self.get("namespace", NS, ns="default")["metadata"]["uid"]
+        cluster = as_record(
+            as_record(self.get("namespace", "kube-system", ns="default"))["metadata"]
+        )["uid"]
+        namespace = as_record(as_record(self.get("namespace", NS, ns="default"))["metadata"])["uid"]
         binding = {
             "cluster_uid": cluster,
             "namespace_uid": namespace,
             "network_id": self.network,
-            "router_id": routers[0]["id"],
+            "router_id": router["id"],
             "admin_id": self.admin["id"],
             "group_id": self.group["id"],
         }
@@ -562,22 +656,31 @@ class Runtime:
         )
         self.state["scope"] = binding
         policies = self.api("GET", "policies")
-        all_id = unique(groups, "name", "All")["id"]
-        for policy in policies:
-            for rule in policy.get("rules", []):
-                if policy.get("enabled") and rule.get("enabled") and rule.get("action") == "accept":
-                    endpoints = (rule.get("sources") or []) + (rule.get("destinations") or [])
+        policy_list = [as_record(p) for p in as_list(policies if policies is not None else [])]
+        all_id = unique(group_records, "name", "All")["id"]
+        for policy in policy_list:
+            for rule in [as_record(r) for r in as_list(policy.get("rules", []))]:
+                sources = rule.get("sources")
+                destinations = rule.get("destinations")
+                if (
+                    bool(policy.get("enabled"))
+                    and bool(rule.get("enabled"))
+                    and rule.get("action") == "accept"
+                ):
+                    endpoints = as_list(sources if sources is not None else []) + as_list(
+                        destinations if destinations is not None else []
+                    )
                     require(
                         all_id not in {g["id"] if isinstance(g, dict) else g for g in endpoints},
                         "All-device grant violates enrollment default deny",
                     )
         require(
-            any(policy_ok(p, self.admin["id"], group=self.group["id"]) for p in policies),
+            any(policy_ok(p, self.admin["id"], group=self.group["id"]) for p in policy_list),
             "admin own-node INPUT policy missing or broadened",
         )
-        return policies
+        return policy_list
 
-    def status(self, host):
+    def status(self, host: str) -> dict[str, object]:
         value = json.loads(
             self.kub(
                 [
@@ -595,60 +698,78 @@ class Runtime:
         require(value["daemonStatus"] == "Connected", "agent not connected")
         return {"ip": str(ipaddress.ip_interface(value["netbirdIp"]).ip), "key": value["publicKey"]}
 
-    def peer_for_status(self, host):
+    def peer_for_status(self, host: str) -> tuple[Mapping[str, object], Mapping[str, object]]:
         status = self.status(host)
-        p = unique(self.api("GET", "peers"), "ip", status["ip"])
+        peers = self.api("GET", "peers")
+        p = unique(
+            [as_record(x) for x in as_list(peers if peers is not None else [])],
+            "ip",
+            status["ip"],
+        )
         require(
-            p["connected"]
-            and not p["user_id"]
-            and not p["approval_required"]
-            and not p["login_expired"]
+            bool(p["connected"])
+            and not bool(p["user_id"])
+            and not bool(p["approval_required"])
+            and not bool(p["login_expired"])
             and bool(p["hostname"])
             and p["name"] == "machine-" + host,
             "machine peer identity/admission mismatch",
         )
         return p, status
 
-    def verify_deployment(self, host, d):
+    def verify_deployment(self, host: str, d: Mapping[str, object]) -> None:
+        kernel_only_nodes = self.config.get("kernel_only_nodes", [])
         expected = manifests(
-            host, self.config["image"], kernel_only=host in self.config.get("kernel_only_nodes", [])
+            host,
+            str(self.config["image"]),
+            kernel_only=host in as_list(kernel_only_nodes if kernel_only_nodes is not None else []),
         )[1]
-        spec = d["spec"]["template"]["spec"]
-        want = expected["spec"]["template"]["spec"]
+        spec = as_record(as_record(as_record(d["spec"])["template"])["spec"])
+        want = as_record(as_record(as_record(expected["spec"])["template"])["spec"])
+        containers = as_list(spec.get("containers"))
+        want_containers = as_list(want.get("containers"))
         require(
-            d["spec"]["replicas"] == 1
-            and spec["nodeSelector"] == want["nodeSelector"]
-            and spec["hostNetwork"]
-            and spec["automountServiceAccountToken"] is False
-            and len(spec["containers"]) == 1,
+            as_record(d["spec"]).get("replicas") == 1
+            and spec.get("nodeSelector") == want.get("nodeSelector")
+            and bool(spec.get("hostNetwork"))
+            and spec.get("automountServiceAccountToken") is False
+            and len(containers) == 1,
             "agent placement/config drift",
         )
-        c, wc = spec["containers"][0], want["containers"][0]
+        c, wc = as_record(containers[0]), as_record(want_containers[0])
         require(
-            c["image"] == wc["image"]
-            and c["env"] == wc["env"]
-            and c["volumeMounts"] == wc["volumeMounts"]
-            and c["securityContext"] == wc["securityContext"],
+            c.get("image") == wc.get("image")
+            and c.get("env") == wc.get("env")
+            and c.get("volumeMounts") == wc.get("volumeMounts")
+            and c.get("securityContext") == wc.get("securityContext"),
             "agent image/env/security drift",
         )
-        require(spec["volumes"] == want["volumes"], "persistent identity volumes drift")
+        require(spec.get("volumes") == want.get("volumes"), "persistent identity volumes drift")
 
-    def reconcile(self, host, seed=None):
-        require(host in self.config["nodes"], "host not enabled in inventory")
+    def reconcile(self, host: str, seed: Mapping[str, object] | None = None) -> dict[str, object]:
+        inventory_nodes = as_record(self.config["nodes"])
+        require(host in inventory_nodes, "host not enabled in inventory")
         policies = self.guard()
         known = {v["peer_id"] for v in self.state["nodes"].values() if v.get("peer_id")}
-        known |= {v["id"] for v in (seed or {}).get("nodes", {}).values() if v.get("id")}
+        seed_nodes = as_record(seed.get("nodes", {})) if seed is not None else {}
+        known |= {v["id"] for v in (as_record(x) for x in seed_nodes.values()) if v.get("id")}
         require(
             member_ids(self.group) <= known,
             "unbound machine-group member: explicit initial adoption required",
         )
         node = self.get("node", host, ns="default", optional=True)
-        if node is None or not any(
-            c["type"] == "Ready" and c["status"] == "True"
-            for c in node.get("status", {}).get("conditions", [])
+        deferred = {"changed": False, "status": "deferred-node-not-ready", "node": host}
+        if node is None:
+            return deferred
+        node_record = as_record(node)
+        node_status = node_record.get("status", {})
+        conditions = as_record(node_status if node_status is not None else {}).get("conditions", [])
+        if not any(
+            isinstance(c, dict) and c.get("type") == "Ready" and c.get("status") == "True"
+            for c in as_list(conditions if conditions is not None else [])
         ):
-            return {"changed": False, "status": "deferred-node-not-ready", "node": host}
-        address = self.config["nodes"][host]
+            return deferred
+        address = inventory_nodes[host]
         entry = self.state["nodes"].get(host)
         if entry:
             require(
@@ -656,50 +777,56 @@ class Runtime:
                 "incomplete enrollment: inspect private state, never reissue automatically",
             )
             require(
-                entry["node_uid"] == node["metadata"]["uid"] and entry["address"] == address,
+                entry["node_uid"] == as_record(node_record["metadata"])["uid"]
+                and entry["address"] == address,
                 "node reinstallation/address change requires explicit retirement",
             )
         d = self.get("deployment", "machine-" + host, optional=True)
         pvc = self.get("pvc", "machine-" + host, optional=True)
-        if d or pvc:
-            require(
-                d is not None and pvc is not None,
-                "partial/missing identity storage: refuse replacement",
-            )
+        if d is not None or pvc is not None:
+            if not isinstance(d, dict) or not isinstance(pvc, dict):
+                error = "partial/missing identity storage: refuse replacement"
+                raise ValueError(error)
             self.require_argocd(d)
             self.require_argocd(pvc)
             self.verify_deployment(host, d)
-            if entry or (seed or {}).get("nodes", {}).get(host):
+            if entry or seed_nodes.get(host):
                 p, status = self.peer_for_status(host)
                 if not entry:
                     require(
-                        seed["nodes"][host].get("id") == p["id"],
+                        as_record(seed_nodes[host]).get("id") == p["id"],
                         "trusted migration binding mismatch",
                     )
             else:
-                enrolled = self.enroll_argocd_agent(host, node, d, pvc)
+                enrolled = self.enroll_argocd_agent(host, node_record, d, pvc)
                 if enrolled is None:
-                    return {"changed": False, "status": "would-enroll-and-authorize", "node": host}
+                    return {
+                        "changed": False,
+                        "status": "would-enroll-and-authorize",
+                        "node": host,
+                    }
                 p, status = enrolled
         else:
             require(
-                entry is None and not (seed or {}).get("nodes", {}).get(host),
+                entry is None and not seed_nodes.get(host),
                 "lost identity storage: no re-enrollment",
             )
+            peers = self.api("GET", "peers")
             require(
                 not any(
-                    p.get("hostname") == host or p.get("name") == "machine-" + host
-                    for p in self.api("GET", "peers")
+                    isinstance(q, dict)
+                    and (q.get("hostname") == host or q.get("name") == "machine-" + host)
+                    for q in as_list(peers if peers is not None else [])
                 ),
                 "orphan existing peer: no name adoption",
             )
             return {"changed": False, "status": "awaiting-argocd-workloads", "node": host}
         binding = {
             "phase": "ready",
-            "node_uid": node["metadata"]["uid"],
+            "node_uid": as_record(node_record["metadata"])["uid"],
             "address": address,
-            "deployment_uid": d["metadata"]["uid"],
-            "pvc_uid": pvc["metadata"]["uid"],
+            "deployment_uid": as_record(as_record(d)["metadata"])["uid"],
+            "pvc_uid": as_record(as_record(pvc)["metadata"])["uid"],
             "peer_id": p["id"],
             "ip": status["ip"],
             "public_key": status["key"],
@@ -740,7 +867,7 @@ class Runtime:
             )
         }
         if p["id"] not in member_ids(self.group):
-            for h in sorted(ready & self.config["nodes"].keys()):
+            for h in sorted(ready & inventory_nodes.keys()):
                 self.kub(
                     [
                         "-n",
@@ -754,32 +881,41 @@ class Runtime:
                         "1",
                         "-W",
                         "3",
-                        self.config["nodes"][h],
+                        str(inventory_nodes[h]),
                     ]
                 )
         resources_path = "networks/" + self.network + "/resources"
         resources = self.api("GET", resources_path)
-        found = [r for r in resources if r["address"] == address + "/32"]
+        found = [
+            as_record(r)
+            for r in as_list(resources if resources is not None else [])
+            if as_record(r).get("address") == str(address) + "/32"
+        ]
         require(len(found) <= 1, "duplicate WG host resources")
         resource = found[0] if found else None
         if resource:
             require(
-                resource["name"] == "wg-" + host
-                and resource["enabled"]
-                and resource["type"] == "host"
-                and not resource.get("groups"),
+                resource.get("name") == "wg-" + host
+                and bool(resource.get("enabled"))
+                and resource.get("type") == "host"
+                and not bool(resource.get("groups")),
                 "existing resource scope drift",
             )
-        matching = []
+        matching: list[Mapping[str, object]] = []
         if resource:
             matching = [
                 v
                 for v in policies
                 if any(
-                    (r.get("destinationResource") or {}).get("id") == resource["id"]
-                    for r in v["rules"]
+                    as_record(
+                        r.get("destinationResource")
+                        if r.get("destinationResource") is not None
+                        else {}
+                    ).get("id")
+                    == resource["id"]
+                    for r in [as_record(x) for x in as_list(v.get("rules", []))]
                 )
-                and v["name"].startswith("admin-wg-")
+                and str(v["name"]).startswith("admin-wg-")
             ]
             require(len(matching) <= 1, "duplicate managed resource policies")
             if matching:
@@ -791,17 +927,18 @@ class Runtime:
         if grant:
             require(
                 resource is not None
-                and resource["id"] == grant["resource_id"]
-                and matching
-                and matching[0]["id"] == grant["policy_id"],
+                and resource.get("id") == grant["resource_id"]
+                and bool(matching)
+                and matching[0].get("id") == grant["policy_id"],
                 "managed grant removed/replaced: explicit review required, no resurrection",
             )
         elif entry:
+            seed_entry = seed_nodes.get(host, {}) if seed is not None else {}
             require(
                 seed is not None
-                and seed["nodes"].get(host, {}).get("id") == p["id"]
-                and resource
-                and matching,
+                and as_record(seed_entry).get("id") == p["id"]
+                and bool(resource)
+                and bool(matching),
                 "legacy binding needs explicit grant-ID migration",
             )
         if self.apply:
@@ -810,42 +947,51 @@ class Runtime:
             if entry is None or grant is None:
                 self.changed = True
             if p["id"] not in member_ids(self.group):
-                fresh = self.api("GET", "groups/" + self.group["id"])
+                fresh = as_record(self.api("GET", "groups/" + str(self.group["id"])))
                 require(
                     member_ids(fresh) == member_ids(self.group)
-                    and not fresh.get("resources")
+                    and not bool(fresh.get("resources"))
                     and fresh["issued"] == "api"
                     and fresh["name"] == DEST,
                     "concurrent machine-group change",
                 )
                 self.write(
                     "PUT",
-                    "groups/" + self.group["id"],
+                    "groups/" + str(self.group["id"]),
                     {
                         "name": DEST,
                         "resources": [],
-                        "peers": sorted(member_ids(self.group) | {p["id"]}),
+                        "peers": sorted(str(x) for x in member_ids(self.group) | {p["id"]}),
                     },
                 )
             if resource is None:
-                resource = self.write(
-                    "POST",
-                    resources_path,
-                    {
-                        "name": "wg-" + host,
-                        "description": "Inventory WG node; no broader prefix",
-                        "address": address + "/32",
-                        "enabled": True,
-                    },
+                resource = as_record(
+                    self.write(
+                        "POST",
+                        resources_path,
+                        {
+                            "name": "wg-" + host,
+                            "description": "Inventory WG node; no broader prefix",
+                            "address": str(address) + "/32",
+                            "enabled": True,
+                        },
+                    )
                 )
         if self.apply:
+            if resource is None:
+                error = "WG resource missing after plan/apply critical section"
+                raise ValueError(error)
             if not matching:
                 matching = [
-                    self.write("POST", "policies", policy_body(self.admin["id"], resource["id"]))
+                    as_record(
+                        self.write(
+                            "POST", "policies", policy_body(self.admin["id"], resource["id"])
+                        )
+                    )
                 ]
             self.state.setdefault("grants", {})[host] = {
                 "resource_id": resource["id"],
-                "policy_id": matching[0]["id"],
+                "policy_id": as_str(matching[0].get("id")),
             }
             self.state["nodes"][host] = binding
             self.save()
@@ -856,7 +1002,7 @@ class Runtime:
         }
 
 
-def main():
+def main() -> None:
     os.umask(0o077)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state-dir", required=True, type=Path)
@@ -873,7 +1019,7 @@ def main():
     with (folder / "lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         c = json.loads(args.config.read_text())
-        runtime = Runtime(folder, c, args.apply)
+        runtime = Runtime(folder, c, apply=args.apply)
         seed = json.loads(args.adopt_state.read_text()) if args.adopt_state else None
         require(args.node is not None, "explicit selected inventory node required")
         print(json.dumps(runtime.reconcile(args.node, seed)))
