@@ -398,17 +398,15 @@ nodeSelector:
 # +docs:ignore
 ingressShim: {}
 
-# Optional default issuer to use for ingress resources.
-# +docs:property=ingressShim.defaultIssuerName
-# defaultIssuerName: ""
-
-# Optional default issuer kind to use for ingress resources.
-# +docs:property=ingressShim.defaultIssuerKind
-# defaultIssuerKind: ""
-
-# Optional default issuer group to use for ingress resources.
-# +docs:property=ingressShim.defaultIssuerGroup
-# defaultIssuerGroup: ""
+  # Optional default issuer to use for ingress resources.
+  # +docs:property=ingressShim.defaultIssuerName
+  # defaultIssuerName: ""
+  # Optional default issuer kind to use for ingress resources.
+  # +docs:property=ingressShim.defaultIssuerKind
+  # defaultIssuerKind: ""
+  # Optional default issuer group to use for ingress resources.
+  # +docs:property=ingressShim.defaultIssuerGroup
+  # defaultIssuerGroup: ""
 
 # Use these variables to configure the HTTP_PROXY environment variables.
 
