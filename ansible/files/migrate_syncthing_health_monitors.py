@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-def migrate(database, plan, check=False):
+def migrate(database, plan, check=False) -> dict[str, object]:
     if not database.is_file():
         raise FileNotFoundError(database)
     connection = sqlite3.connect(f"file:{database}?mode=ro", uri=True)
@@ -48,7 +48,7 @@ def migrate(database, plan, check=False):
     return {"changed": True, "updated": len(updates), "backup": str(backup_path)}
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--database", type=Path, required=True)
     parser.add_argument("--plan", type=Path, required=True)

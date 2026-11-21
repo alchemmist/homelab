@@ -18,7 +18,14 @@ class CompletionSchedulerTests(unittest.TestCase):
         self.clock.start()
         self.addCleanup(self.clock.stop)
 
-    def add(self, key, stage=0, state="queued", available=None, error=None) -> None:
+    def add(
+        self,
+        key: str,
+        stage: int = 0,
+        state: str = "queued",
+        available: int | None = None,
+        error: str | None = None,
+    ) -> None:
         self.s.enqueue({"event_key": key, "episode": key})
         with self.s.db() as c:
             c.execute(
@@ -31,7 +38,7 @@ class CompletionSchedulerTests(unittest.TestCase):
             with self.subTest(jitter=jitter):
                 self.set_competition(jitter)
 
-    def set_competition(self, jitter) -> None:
+    def set_competition(self, jitter: int) -> None:
         with self.s.db() as c:
             c.execute("DELETE FROM jobs")
             c.execute("DELETE FROM llm_admission")
@@ -60,7 +67,7 @@ class CompletionSchedulerTests(unittest.TestCase):
         http.open_signature.return_value = digest([])
         model = Mock()
 
-        def analyze(*args):
+        def analyze(*args: object) -> object:
             r = self.s.reserve_llm(28931)
             self.s.finish_llm(r)
             return f.report()

@@ -4,6 +4,7 @@ import base64
 import json
 import logging
 import os
+from collections.abc import Sequence
 from pathlib import Path
 import subprocess
 import sys
@@ -24,11 +25,11 @@ ART = Path("/workspace/artifacts")
 RESULT_KEY = os.environ.pop("RESULT_KEY", "")
 
 
-def signed_result(result) -> str:
+def signed_result(result: dict[str, object]) -> str:
     return encode_result(result, RESULT_KEY)
 
 
-def command(args, *, cwd=ROOT, timeout=900) -> int:
+def command(args: Sequence[str], *, cwd: Path = ROOT, timeout: int = 900) -> int:
     with open(ART / "commands.log", "a") as log:
         log.write("\nCOMMAND " + repr(args) + "\n")
         log.flush()

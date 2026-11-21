@@ -5,6 +5,7 @@ Redis/SQL tracing, network inference, application credentials or user bodies.
 An in-process mock HTTP backend exercises actual stock client instrumentation.
 """
 
+import _ssl
 import contextlib
 import hashlib
 import io
@@ -13,7 +14,20 @@ import logging
 import os
 import ssl
 import time
+from collections.abc import Callable
 from pathlib import Path
+from typing import Protocol, cast
+
+
+class _SpanKind(Protocol):
+    name: str
+
+
+class _RecordedSpan(Protocol):
+    kind: _SpanKind
+
+    def to_json(self) -> str: ...
+
 
 MARKERS = [
     "OTEL_CANARY_PRIVATE_CONTENT_MUST_NOT_BE_CAPTURED",
@@ -22,7 +36,7 @@ MARKERS = [
 ]
 
 
-def run():
+def run() -> None:
     logging.disable(logging.CRITICAL)
     renewal = os.environ.get("HOMELAB_AWAIT_LEAF_RENEWAL") == "1"
     loaded = []
@@ -31,13 +45,20 @@ def run():
     def certificate_hash():
         return hashlib.sha256(Path("/etc/otel-client/tls.crt").read_bytes()).hexdigest()
 
-    def observe_loader(context, certfile, keyfile=None, password=None):
-        public_hash = hashlib.sha256(Path(certfile).read_bytes()).hexdigest()
-        result = original_loader(context, certfile, keyfile, password)
+    def observe_loader(
+        self: _ssl._SSLContext,
+        certfile: str | bytes | os.PathLike[str] | os.PathLike[bytes],
+        keyfile: str | bytes | os.PathLike[str] | os.PathLike[bytes] | None = None,
+        password: Callable[[], str | bytes | bytearray] | str | bytes | bytearray | None = None,
+    ) -> None:
+        public_hash = hashlib.sha256(
+            Path(cast("str | os.PathLike[str]", certfile)).read_bytes()
+        ).hexdigest()
+        result = original_loader(self, certfile, keyfile, password)
         loaded.append(public_hash)
         return result
 
-    def progress(value):
+    def progress(value: object):
         path = Path("/run/otel-test/renewal-progress.json")
         temporary = path.with_suffix(".new")
         temporary.write_text(json.dumps(value))
@@ -74,7 +95,7 @@ def run():
         original_exporter = native.HttpOTLPSpanExporter
 
         class ObservedExporter(original_exporter):
-            def __init__(self, *args, **kwargs):
+            def __init__(self, *args: object, **kwargs: object):
                 super().__init__(*args, **kwargs)
                 constructed.append(self._session.headers.get("Connection", "").lower() == "close")
 
@@ -83,7 +104,7 @@ def run():
         import threading
 
         class Backend(http.server.BaseHTTPRequestHandler):
-            def log_message(self, *args):
+            def log_message(self, *args: object):
                 pass
 
             def do_POST(self):
@@ -139,10 +160,10 @@ def run():
         }
 
         class Audit(SpanProcessor):
-            def on_start(self, span, parent_context=None):
+            def on_start(self, span: object, parent_context: object | None = None):
                 pass
 
-            def on_end(self, span):
+            def on_end(self, span: _RecordedSpan):
                 audit["endedSpans"] += 1
                 audit["sensitiveSyntheticContentFoundBeforeDownstreamProcessor"] |= any(
                     marker in span.to_json() for marker in MARKERS
@@ -153,7 +174,7 @@ def run():
             def shutdown(self):
                 pass
 
-            def force_flush(self, timeout_millis=30000):
+            def force_flush(self, timeout_millis: int = 30000):
                 return True
 
         provider.add_span_processor(Audit())

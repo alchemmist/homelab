@@ -8,24 +8,26 @@ import json
 import os
 import subprocess
 from pathlib import Path
+from typing import cast
 
 NS = "uptime-kuma"
 NAME = "uptime-kuma-db"
 TRACK = "uptime-kuma:/Secret:uptime-kuma/uptime-kuma-db"
 
 
-def require(ok, message):
+def require(ok: object, message: str) -> None:
     if not ok:
         raise RuntimeError(message)
 
 
-def get(kind, name, ns=NS):
-    return json.loads(
-        subprocess.check_output(["kubectl", "-n", ns, "get", kind, name, "-o", "json"])
+def get(kind: str, name: str, ns: str = NS) -> dict[str, object]:
+    return cast(
+        "dict[str, object]",
+        json.loads(subprocess.check_output(["kubectl", "-n", ns, "get", kind, name, "-o", "json"])),
     )
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")
@@ -39,15 +41,16 @@ def main():
         fcntl.flock(lock, fcntl.LOCK_EX)
         require(not (root / "uncertain.json").exists(), "Uncertain prior write")
         before = get("secret", NAME)
-        meta = before["metadata"]
-        ann = meta.get("annotations", {})
+        meta = cast("dict[str, object]", before["metadata"])
+        ann = cast("dict[str, object]", meta.get("annotations", {}))
         require(
             ann.get("meta.helm.sh/release-name") == "uptime-kuma"
             and ann.get("meta.helm.sh/release-namespace") == NS,
             "Foreign secret",
         )
+        data = cast("dict[str, object]", before["data"])
         require(
-            set(before["data"]) == {"password", "root-password"} and all(before["data"].values()),
+            set(data) == {"password", "root-password"} and all(data.values()),
             "Incomplete existing credentials",
         )
         if (
@@ -58,10 +61,13 @@ def main():
             return
         require(ann.get("argocd.argoproj.io/tracking-id") == TRACK, "Foreign tracking owner")
         app = get("applications.argoproj.io", "uptime-kuma", "argocd")
-        require(app["spec"]["syncPolicy"]["automated"]["prune"] is False, "Never prune credentials")
-        resource = next(
-            r for r in app["status"]["resources"] if r["kind"] == "Secret" and r["name"] == NAME
-        )
+        app_spec = cast("dict[str, object]", app["spec"])
+        sync_policy = cast("dict[str, object]", app_spec["syncPolicy"])
+        automated = cast("dict[str, object]", sync_policy["automated"])
+        require(automated["prune"] is False, "Never prune credentials")
+        app_status = cast("dict[str, object]", app["status"])
+        resources = cast("list[dict[str, object]]", app_status["resources"])
+        resource = next(r for r in resources if r["kind"] == "Secret" and r["name"] == NAME)
         require(
             resource.get("requiresPruning") is True,
             "Desired manifests still manage the credential: stop",
@@ -69,9 +75,9 @@ def main():
         context = {
             "uid": meta["uid"],
             "resourceVersion": meta["resourceVersion"],
-            "source_revision": app["status"]["sync"]["revision"],
+            "source_revision": cast("dict[str, object]", app_status["sync"])["revision"],
             "credential_hash": hashlib.sha256(
-                json.dumps(before["data"], sort_keys=True).encode()
+                json.dumps(data, sort_keys=True).encode()
             ).hexdigest(),
         }
         digest = hashlib.sha256(json.dumps(context, sort_keys=True).encode()).hexdigest()
@@ -110,13 +116,16 @@ def main():
                 capture_output=True,
             )
             after = get("secret", NAME)
+            after_meta = cast("dict[str, object]", after["metadata"])
             require(
-                after["metadata"]["uid"] == meta["uid"] and after["data"] == before["data"],
+                after_meta["uid"] == meta["uid"]
+                and cast("dict[str, object]", after["data"]) == data,
                 "Credential data changed; stop",
             )
+            after_ann = cast("dict[str, object]", after_meta["annotations"])
             require(
-                after["metadata"]["annotations"].get("argocd.argoproj.io/tracking-id") is None
-                and after["metadata"]["annotations"].get("helm.sh/resource-policy") == "keep",
+                after_ann.get("argocd.argoproj.io/tracking-id") is None
+                and after_ann.get("helm.sh/resource-policy") == "keep",
                 "Ownership update not confirmed",
             )
             (root / "after.json").write_text(json.dumps(after))

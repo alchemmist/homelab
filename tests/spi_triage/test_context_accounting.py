@@ -1,6 +1,7 @@
 """Validated byte-bound contract; fixtures contain no production evidence."""
 
 import copy, json, time, unittest
+from typing import cast
 from unittest.mock import Mock
 import test_triage as f
 from core import Failure, MATCH_SCHEMA, REPORT_SCHEMA
@@ -52,10 +53,15 @@ class ContextAccountingTests(unittest.TestCase):
         event["description"] = "x" * 1000000
         seen = []
 
-        def call(task, data, schema, deadline):
+        def call(
+            task: str, data: dict[str, object], schema: object, deadline: float
+        ) -> dict[str, object]:
             self.assertLessEqual(m.reservation(m.payload(task, data, schema)), 30000)
-            self.assertTrue(data["alert"]["description"]["truncated"])
-            seen.extend(x["number"] for x in data["open_issues"])
+            alert = cast("dict[str, object]", data["alert"])
+            description = cast("dict[str, object]", alert["description"])
+            self.assertTrue(description["truncated"])
+            issues = cast("list[dict[str, object]]", data["open_issues"])
+            seen.extend(cast("int", x["number"]) for x in issues)
             return {"issue_number": 0, "reason": "No same problem.", "confidence": "low"}
 
         m.call = call
@@ -85,7 +91,7 @@ class ContextAccountingTests(unittest.TestCase):
         class Stop(Exception):
             pass
 
-        def call(task, data, schema, deadline):
+        def call(task: str, data: dict[str, object], schema: object, deadline: float) -> None:
             captured.update(data)
             self.assertLessEqual(m.budget_reservation(m.payload(task, data, schema)), 30000)
             raise Stop()
@@ -94,12 +100,23 @@ class ContextAccountingTests(unittest.TestCase):
         with self.assertRaises(Stop):
             m.analyze(event, match, evidence)
         self.assertEqual((event, match, evidence), original)
+        preliminary = cast("dict[str, object]", captured["preliminary_match"])
         self.assertEqual(
-            [x["number"] for x in captured["preliminary_match"]["candidates"]], [0, 1, 2]
+            [x["number"] for x in cast("list[dict[str, object]]", preliminary["candidates"])],
+            [0, 1, 2],
         )
-        self.assertEqual(captured["preliminary_match"]["reviewed_numbers"], list(range(120)))
-        self.assertEqual(captured["evidence"]["artifact_context"]["index"][0]["id"], "E001")
-        self.assertTrue(captured["alert"]["description"]["truncated"])
+        self.assertEqual(preliminary["reviewed_numbers"], list(range(120)))
+        evidence_captured = cast("dict[str, object]", captured["evidence"])
+        context = cast("dict[str, object]", evidence_captured["artifact_context"])
+        index = cast("list[dict[str, object]]", context["index"])
+        self.assertEqual(index[0]["id"], "E001")
+        alert_captured = cast("dict[str, object]", captured["alert"])
+        self.assertTrue(
+            cast(
+                "dict[str, object]",
+                cast("dict[str, object]", alert_captured["description"])["truncated"],
+            )
+        )
 
     def test_irreducible_metadata_visible_without_transport(self):
         m = Model(Mock(), "unused")
@@ -132,7 +149,7 @@ class ContextAccountingTests(unittest.TestCase):
         class Stop(Exception):
             pass
 
-        def call(task, data, schema, deadline):
+        def call(task: str, data: dict[str, object], schema: object, deadline: float) -> None:
             captured.update(data)
             self.assertLessEqual(m.counter.reservation(m.payload(task, data, schema)), 30000)
             raise Stop()
@@ -141,7 +158,11 @@ class ContextAccountingTests(unittest.TestCase):
         with self.assertRaises(Stop):
             m.analyze(f.event(), match, evidence)
         self.assertEqual((match, evidence), original)
+        preliminary = cast("dict[str, object]", captured["preliminary_match"])
         self.assertEqual(
-            [c["number"] for c in captured["preliminary_match"]["candidates"]], list(range(120))
+            [c["number"] for c in cast("list[dict[str, object]]", preliminary["candidates"])],
+            list(range(120)),
         )
-        self.assertEqual(captured["evidence"]["artifact_context"]["index"][0]["id"], "E001")
+        evidence_captured = cast("dict[str, object]", captured["evidence"])
+        context = cast("dict[str, object]", evidence_captured["artifact_context"])
+        self.assertEqual(cast("list[dict[str, object]]", context["index"])[0]["id"], "E001")

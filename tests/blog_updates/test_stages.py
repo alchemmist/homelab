@@ -16,17 +16,17 @@ class ModelBoundaryTests(unittest.TestCase):
             "entries": [{"text": "New poem.", "source_paths": ["a"]}],
         }
 
-        def model(prompt, data):
+        def model(prompt: str, data: dict[str, object]) -> dict[str, object]:
             calls.append(prompt)
             return {"extra": True} if len(calls) == 1 else valid
 
         self.assertEqual(checked_model(model, "prompt", {}, {"files": [{"filename": "a"}]}), valid)
         self.assertEqual(len(calls), 2)
 
-    def test_bad_output_stays_rejected(self) -> None:
-        calls = []
+    def test_bad_output_stays_rejected(self):
+        calls: list[int] = []
 
-        def model(prompt, data):
+        def model(prompt: str, data: dict[str, object]) -> list[dict[str, object]]:
             calls.append(1)
             return []
 

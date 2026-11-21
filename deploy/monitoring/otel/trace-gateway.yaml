@@ -24,16 +24,26 @@ processors:
     trace_statements:
       - context: resource
         statements:
-          - delete_matching_keys(attributes, "(?i).*(authorization|password|secret|token|cookie|prompt|completion|request.body|response.body|gen_ai[.](input|output|system_instructions)|db[.](statement|query[.]text)|exception[.](message|stacktrace)).*")
+          - >-
+            delete_matching_keys(attributes,
+            "(?i).*(authorization|password|secret|token|cookie|prompt|completion|request.body|response.body|gen_ai[.](input|output|system_instructions)|db[.](statement|query[.]text)|exception[.](message|stacktrace)).*")
       - context: span
         statements:
           - set(status.message, "")
-          - delete_matching_keys(attributes, "(?i).*(authorization|password|secret|token|cookie|prompt|completion|request.body|response.body|gen_ai[.](input|output|system_instructions)|db[.](statement|query[.]text)|exception[.](message|stacktrace)).*")
-          - replace_pattern(attributes["url.full"], "\\?.*", "?<redacted>") where attributes["url.full"] != nil
-          - replace_pattern(attributes["http.url"], "\\?.*", "?<redacted>") where attributes["http.url"] != nil
+          - >-
+            delete_matching_keys(attributes,
+            "(?i).*(authorization|password|secret|token|cookie|prompt|completion|request.body|response.body|gen_ai[.](input|output|system_instructions)|db[.](statement|query[.]text)|exception[.](message|stacktrace)).*")
+          - >-
+            replace_pattern(attributes["url.full"], "\\?.*", "?<redacted>") where
+            attributes["url.full"] != nil
+          - >-
+            replace_pattern(attributes["http.url"], "\\?.*", "?<redacted>") where
+            attributes["http.url"] != nil
       - context: spanevent
         statements:
-          - delete_matching_keys(attributes, "(?i).*(authorization|password|secret|token|cookie|prompt|completion|request.body|response.body|gen_ai[.](input|output|system_instructions)|db[.](statement|query[.]text)|exception[.](message|stacktrace)).*")
+          - >-
+            delete_matching_keys(attributes,
+            "(?i).*(authorization|password|secret|token|cookie|prompt|completion|request.body|response.body|gen_ai[.](input|output|system_instructions)|db[.](statement|query[.]text)|exception[.](message|stacktrace)).*")
   tail_sampling:
     decision_wait: 30s
     num_traces: 20000

@@ -14,7 +14,7 @@ LEGACY_GROUPS = [
 ]
 
 
-def app_groups(services):
+def app_groups(services) -> dict[str, object]:
     return {
         f"app-{slug}-{role}": {
             **settings,
@@ -26,17 +26,18 @@ def app_groups(services):
     }
 
 
-def admission_groups(slug, service):
+def admission_groups(slug, service) -> list[str]:
     # Legacy membership remains valid; this is admission, NOT native RBAC.
-    return service.get("groups", ["homelab-owner"]) + [
+    groups: list[str] = service.get("groups", ["homelab-owner"]) + [
         f"app-{slug}-{role}"
         for role, settings in service.get("appRoles", {}).items()
         if settings.get("assignable") is True
         and service.get("accessManagement", {}).get("state", "ready") == "ready"
     ]
+    return groups
 
 
-def rows(api, path):
+def rows(api, path) -> list[object]:
     """Follow Authentik page numbers, never arbitrary next URLs with credentials."""
     result = []
     page = 1
@@ -56,7 +57,7 @@ def rows(api, path):
 GROUP_MARKER = {"homelab_app_iam": 1}
 
 
-def validate_group(group):
+def validate_group(group) -> None:
     # Authentik 2026.8.5 uses plural parents (M2M), not legacy parent.
     # Missing/null/reduced responses are not evidence of absence of privilege.
     if (
@@ -74,7 +75,7 @@ def validate_group(group):
         raise RuntimeError("Refusing adoption of unmarked app group: " + group["name"])
 
 
-def validate_bindings(bindings, allowed):
+def validate_bindings(bindings, allowed) -> set[str]:
     """Do not silently reset UI policy, or accept bypasses in ANY mode."""
     seen = set()
     for binding in bindings:
@@ -93,7 +94,7 @@ def validate_bindings(bindings, allowed):
     return seen
 
 
-def standard_scope_ids(scopes, required=("openid", "profile", "email")):
+def standard_scope_ids(scopes, required=("openid", "profile", "email")) -> list[object]:
     """Select exact upstream defaults, never arbitrary same-scope app mappings."""
     result = []
     for scope in required:

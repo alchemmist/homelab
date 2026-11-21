@@ -1,5 +1,6 @@
 """Busy LLM is durable pending work, not an exhausted job or repeated publication."""
 
+from collections.abc import Callable
 import json, time, unittest, urllib.error
 from unittest.mock import Mock, patch
 import test_triage as f
@@ -122,7 +123,13 @@ class EngineCheckpointTests(unittest.TestCase):
     tearDown = f.EngineTests.tearDown
 
     def test_partial_matching_checkpoint_saved_before_busy_failure(self):
-        def matching(event, issues, progress=None, on_progress=None):
+        def matching(
+            event: object,
+            issues: object,
+            progress: object | None = None,
+            on_progress: Callable[[dict[str, object]], None] | None = None,
+        ) -> None:
+            assert on_progress is not None
             on_progress({"signature": "test", "decisions": []})
             raise Failure("LLM_HTTP_429")
 

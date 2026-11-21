@@ -58,8 +58,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(payload).encode())
 
-    @override
-    def log_message(self, *args) -> None:
+    def log_message(self, *args: object) -> None:
         pass
 
 

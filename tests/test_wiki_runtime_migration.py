@@ -43,7 +43,7 @@ class MigrationTests(unittest.TestCase):
         (self.source / "uploads/image.png").write_bytes(b"opaque upload fixture")
         self.bundle = self.root / "backup"
 
-    def git(self, *args):
+    def git(self, *args: str) -> str:
         return subprocess.run(
             ["git", "-C", str(self.source / "repository"), *args],
             check=True,
