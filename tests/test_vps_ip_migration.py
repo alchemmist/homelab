@@ -22,7 +22,7 @@ OLD, NEW = "1.1.1.1", "8.8.8.8"
 
 
 class AddressTests(unittest.TestCase):
-    def test_distinct_canonical_public_ipv4(self):
+    def test_distinct_canonical_public_ipv4(self) -> None:
         M.addresses(OLD, NEW)
         for old, new in [
             (OLD, OLD),
@@ -35,11 +35,11 @@ class AddressTests(unittest.TestCase):
             with self.subTest(old=old, new=new), self.assertRaises(M.MigrationError):
                 M.addresses(old, new)
 
-    def test_home_entrance_cannot_be_mistaken_for_old_vps(self):
+    def test_home_entrance_cannot_be_mistaken_for_old_vps(self) -> None:
         with self.assertRaises(M.MigrationError):
             M.validate_dns_anchor('HOME = "1.1.1.1"\nVPS = "8.8.8.8"\n', OLD, NEW)
 
-    def test_replace_exact_ip_not_prefix(self):
+    def test_replace_exact_ip_not_prefix(self) -> None:
         value = OLD + ":443 " + OLD + "/32 11.1.1.1 1.1.1.10"
         self.assertEqual(
             M.replace_address(value, OLD, NEW), NEW + ":443 " + NEW + "/32 11.1.1.1 1.1.1.10"
@@ -47,7 +47,7 @@ class AddressTests(unittest.TestCase):
 
 
 class RepositoryTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.base = Path(self.temp.name)
@@ -82,7 +82,7 @@ class RepositoryTests(unittest.TestCase):
             check=True,
         )
 
-    def test_audit_is_read_only(self):
+    def test_audit_is_read_only(self) -> None:
         before = {p: p.read_bytes() for p in self.repo.rglob("*") if p.is_file()}
         report = M.repository(self.repo, OLD, NEW, backup_root=self.backup)
         self.assertFalse(report["changed"])
@@ -90,7 +90,7 @@ class RepositoryTests(unittest.TestCase):
         self.assertFalse(self.backup.exists())
         self.assertEqual(before, {p: p.read_bytes() for p in self.repo.rglob("*") if p.is_file()})
 
-    def test_apply_private_preimages_idempotence_and_history_not_touched(self):
+    def test_apply_private_preimages_idempotence_and_history_not_touched(self) -> None:
         historical = self.repo / "docs/old-incident.md"
         historical.parent.mkdir()
         historical.write_text(OLD)
@@ -111,16 +111,16 @@ class RepositoryTests(unittest.TestCase):
         self.assertFalse(again["changed"])
         self.assertEqual(len(list(self.backup.iterdir())), 1)
 
-    def test_backup_must_be_outside_worktree(self):
+    def test_backup_must_be_outside_worktree(self) -> None:
         with self.assertRaises(M.MigrationError):
             M.repository(self.repo, OLD, NEW, True, self.repo / "private")
 
-    def test_third_address_anchor_fails_closed(self):
+    def test_third_address_anchor_fails_closed(self) -> None:
         (self.repo / "scripts/public_dns_zone.py").write_text('VPS = "9.9.9.9"\n')
         with self.assertRaises(M.MigrationError):
             M.repository(self.repo, OLD, NEW)
 
-    def test_missing_or_symlink_source_fails_closed(self):
+    def test_missing_or_symlink_source_fails_closed(self) -> None:
         p = self.repo / M.SOURCE_FILES[0]
         p.unlink()
         with self.assertRaises(M.MigrationError):
@@ -129,13 +129,13 @@ class RepositoryTests(unittest.TestCase):
         with self.assertRaises(M.MigrationError):
             M.repository(self.repo, OLD, NEW)
 
-    def test_partial_receipt_blocks_blind_rerun(self):
+    def test_partial_receipt_blocks_blind_rerun(self) -> None:
         store = M.Preimages(self.backup, OLD + "-to-" + NEW)
         store.receipt({"state": "partial-failure-stop-and-investigate"})
         with self.assertRaises(M.MigrationError):
             M.repository(self.repo, OLD, NEW, backup_root=self.backup)
 
-    def test_dirty_owned_source_is_preserved(self):
+    def test_dirty_owned_source_is_preserved(self) -> None:
         path = self.repo / M.SOURCE_FILES[0]
         path.write_text(path.read_text() + "concurrent change")
         with self.assertRaises(M.MigrationError):
@@ -143,7 +143,7 @@ class RepositoryTests(unittest.TestCase):
         self.assertIn("concurrent change", path.read_text())
         self.assertFalse(self.backup.exists())
 
-    def test_parent_symlink_escape_is_rejected(self):
+    def test_parent_symlink_escape_is_rejected(self) -> None:
         outside = self.base / "external"
         outside.mkdir()
         parent = self.repo / "deploy/socrat-bot"
@@ -155,7 +155,7 @@ class RepositoryTests(unittest.TestCase):
             M.repository(self.repo, OLD, NEW)
         self.assertEqual((outside / "values.yaml").read_text(), OLD)
 
-    def test_source_failure_leaves_stop_receipt(self):
+    def test_source_failure_leaves_stop_receipt(self) -> None:
         with patch.object(M, "write_changes", side_effect=M.MigrationError("injected failure")):
             with self.assertRaises(M.MigrationError):
                 M.repository(self.repo, OLD, NEW, True, self.backup)
@@ -165,7 +165,7 @@ class RepositoryTests(unittest.TestCase):
             json.loads(receipts[0].read_text())["state"], "partial-failure-stop-and-investigate"
         )
 
-    def test_file_drift_is_not_overwritten(self):
+    def test_file_drift_is_not_overwritten(self) -> None:
         changes = M.file_plan([self.repo / M.SOURCE_FILES[0]], OLD, NEW)
         changes[0][0].write_text("concurrent edit")
         store = M.Preimages(self.backup, "test")
@@ -175,7 +175,7 @@ class RepositoryTests(unittest.TestCase):
 
 
 class DatabaseTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.base = Path(self.temp.name)
@@ -189,7 +189,7 @@ class DatabaseTests(unittest.TestCase):
             c.execute("CREATE TABLE clients(id INTEGER PRIMARY KEY, secret BLOB, up INTEGER)")
             c.execute("INSERT INTO clients VALUES(1,?,123)", (b"credential",))
 
-    def test_production_sql_write_prohibited_and_backup_read_only(self):
+    def test_production_sql_write_prohibited_and_backup_read_only(self) -> None:
         before = self.db.read_bytes()
         store = M.Preimages(self.base / "backups", "test")
         with self.assertRaisesRegex(M.MigrationError, "native API"):
@@ -201,13 +201,13 @@ class DatabaseTests(unittest.TestCase):
             self.assertEqual(c.execute("PRAGMA quick_check").fetchall(), [("ok",)])
         self.assertEqual(stat.S_IMODE(backup.stat().st_mode), 0o600)
 
-    def test_nonliteral_address_needs_review(self):
+    def test_nonliteral_address_needs_review(self) -> None:
         with sqlite3.connect(self.db) as c:
             c.execute("UPDATE hosts SET address=? WHERE id=1", (OLD + ":443",))
         with self.assertRaises(M.MigrationError):
             M.db_plan(self.db, OLD)
 
-    def test_wrong_schema_and_corrupt_database_fail_before_mutation(self):
+    def test_wrong_schema_and_corrupt_database_fail_before_mutation(self) -> None:
         with sqlite3.connect(self.db) as c:
             c.execute("DROP TABLE hosts")
         with self.assertRaises(M.MigrationError):
@@ -218,14 +218,14 @@ class DatabaseTests(unittest.TestCase):
 
 
 class RuntimeTests(unittest.TestCase):
-    def test_only_old_peer_endpoint_is_selected(self):
+    def test_only_old_peer_endpoint_is_selected(self) -> None:
         a, b = "A" * 43 + "=", "B" * 43 + "="
         text = f"[Peer]\nPublicKey = {a}\nEndpoint = {OLD}:51830\nAllowedIPs = 10.250.0.2/32\n[Peer]\nPublicKey = {b}\nEndpoint = 127.0.0.1:51840\n"
         self.assertEqual(M.wg_endpoint_changes(text, OLD, NEW), [(a, NEW + ":51830")])
         with self.assertRaises(M.MigrationError):
             M.wg_endpoint_changes("[Peer]\nEndpoint = " + OLD + ":123", OLD, NEW)
 
-    def test_do_not_retarget_home_peer(self):
+    def test_do_not_retarget_home_peer(self) -> None:
         text = (
             "[Peer]\nPublicKey = "
             + "A" * 43
@@ -236,7 +236,7 @@ class RuntimeTests(unittest.TestCase):
         with self.assertRaises(M.MigrationError):
             M.wg_endpoint_changes(text, OLD, NEW)
 
-    def test_only_owned_native_services(self):
+    def test_only_owned_native_services(self) -> None:
         changes = [
             (Path("/etc/hosts"), "", ""),
             (Path("/etc/wireguard/wg-socrat.conf"), "", ""),
@@ -245,7 +245,7 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(M.required_services(changes), ["knot.service"])
         self.assertNotIn("k3s.service", M.required_services(changes))
 
-    def test_reviewed_restarting_transport_and_dormant_guard(self):
+    def test_reviewed_restarting_transport_and_dormant_guard(self) -> None:
         services = ["wireguard-tcp-transport.service", "wireguard-tcp-transport-guard.service"]
         states = dict(zip(services, ["activating", "inactive"]))
         with patch.object(
@@ -257,12 +257,12 @@ class RuntimeTests(unittest.TestCase):
             with self.assertRaises(M.MigrationError):
                 M.service_plan(services, {services[0]: "inactive"})
 
-    def test_reviewed_dormant_service_becoming_active_stops(self):
+    def test_reviewed_dormant_service_becoming_active_stops(self) -> None:
         with patch.object(M, "run", return_value="active"):
             with self.assertRaisesRegex(M.MigrationError, "drifted"):
                 M.service_plan(["knot.service"], {"knot.service": "inactive"})
 
-    def test_wrong_host_and_unassigned_address_fail_before_files(self):
+    def test_wrong_host_and_unassigned_address_fail_before_files(self) -> None:
         with patch.object(socket, "gethostname", return_value="socrat-2"):
             with self.assertRaises(M.MigrationError):
                 M.host("socrat-0", OLD, NEW)
@@ -270,15 +270,15 @@ class RuntimeTests(unittest.TestCase):
                 with self.assertRaises(M.MigrationError):
                     M.host("socrat-2", OLD, NEW, require_assigned=True)
 
-    def test_command_failure_never_echoes_secret_stderr(self):
+    def test_command_failure_never_echoes_secret_stderr(self) -> None:
         fake = type("Result", (), {"returncode": 1, "stderr": "private-sentinel", "stdout": ""})()
         with patch.object(M.subprocess, "run", return_value=fake):
             with self.assertRaises(M.MigrationError) as caught:
                 M.run(["example", "private-argument"])
         self.assertNotIn("private", str(caught.exception))
 
-    def test_guard_adds_new_before_removing_exact_old_rule(self):
-        calls = []
+    def test_guard_adds_new_before_removing_exact_old_rule(self) -> None:
+        calls: list[list[str]] = []
         with (
             patch.object(M, "run", side_effect=lambda a: calls.append(a) or ""),
             patch.object(M.subprocess, "run", return_value=type("R", (), {"returncode": 0})()),
@@ -295,7 +295,7 @@ class RuntimeTests(unittest.TestCase):
 
 
 class OrchestrationTests(unittest.TestCase):
-    def test_audit_default_and_explicit_restart_gate(self):
+    def test_audit_default_and_explicit_restart_gate(self) -> None:
         defaults = yaml.safe_load(
             (ROOT / "ansible/roles/vps_ip_migration/defaults/main.yml").read_text()
         )
@@ -313,7 +313,7 @@ class OrchestrationTests(unittest.TestCase):
         self.assertNotIn("rollout restart", content)
         self.assertNotIn("wg-quick down", content)
 
-    def test_skill_has_manual_acceptance_and_real_external_test(self):
+    def test_skill_has_manual_acceptance_and_real_external_test(self) -> None:
         skill = (ROOT / ".agents/skills/vps-ip-migration/SKILL.md").read_text()
         for term in [
             "vps-ip-migration.yml",

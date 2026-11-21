@@ -11,7 +11,7 @@ from integrations import GitHub
 
 
 class GitHubReadTimeoutTests(unittest.TestCase):
-    def test_only_known_semantic_get_timeout(self):
+    def test_only_known_semantic_get_timeout(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             token = Path(tmp) / "token"
             token.write_text("test-only")
@@ -44,7 +44,7 @@ class GitHubReadTimeoutTests(unittest.TestCase):
             with self.assertRaises(TimeoutError):
                 github.request("GET", "/issues")
 
-    def test_durable_patient_restart_and_later_snapshot(self):
+    def test_durable_patient_restart_and_later_snapshot(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             store = Store(Path(tmp) / "jobs.sqlite")
             key = store.enqueue(f.event())["job_id"]
@@ -99,7 +99,7 @@ class GitHubReadTimeoutTests(unittest.TestCase):
             model.analyze.assert_called_once()
             self.assertEqual(preserved(), before)
 
-    def test_write_timeout_is_finite_and_intent_preserved(self):
+    def test_write_timeout_is_finite_and_intent_preserved(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             store = Store(Path(tmp) / "jobs.sqlite")
             key = store.enqueue(f.event())["job_id"]
@@ -117,7 +117,7 @@ class EngineReadRecoveryTests(unittest.TestCase):
     setUp = f.EngineTests.setUp
     tearDown = f.EngineTests.tearDown
 
-    def test_actual_analyze_resumes_after_read_deadline(self):
+    def test_actual_analyze_resumes_after_read_deadline(self) -> None:
         from integrations import REQUEST_DEADLINE
         import time
 

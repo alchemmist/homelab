@@ -25,7 +25,7 @@ class LargeCatalogTests(unittest.TestCase):
             for i in range(n)
         ]
 
-    def test_121_open_issues_can_be_fingerprinted_without_model_review(self):
+    def test_121_open_issues_can_be_fingerprinted_without_model_review(self) -> None:
         g = GitHub(Mock(), "unused")
         rows = self.issues(121)
         g.pages = Mock(side_effect=lambda path: iter(copy.deepcopy(rows)))
@@ -36,7 +36,7 @@ class LargeCatalogTests(unittest.TestCase):
         )
         g.http.request.assert_not_called()
 
-    def test_all_241_issues_reviewed_with_unchanged_per_request_bounds(self):
+    def test_all_241_issues_reviewed_with_unchanged_per_request_bounds(self) -> None:
         m = Model(Mock(), "test-only", store=Mock())
         seen = []
 
@@ -55,7 +55,7 @@ class LargeCatalogTests(unittest.TestCase):
         self.assertEqual(result["candidates"], [])
         m.http.request.assert_not_called()
 
-    def test_admission_resume_reuses_existing_v3_paid_batch_receipts(self):
+    def test_admission_resume_reuses_existing_v3_paid_batch_receipts(self) -> None:
         m = Model(Mock(), "test-only", store=Mock())
         rows = self.issues(121)
         saved = []

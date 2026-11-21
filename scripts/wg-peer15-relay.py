@@ -16,7 +16,7 @@ BACK = ("192.168.0.23", 51836)
 TARGET = ("192.168.0.24", 51830)
 
 
-def main():
+def main() -> None:
     alive = True
 
     def stop(_signum, _frame) -> None:
