@@ -223,12 +223,13 @@ def main() -> None:
         cast("dict[str, dict[str, object]]", cfg)["service"]["extensions"] = ["file_storage"]
         url = launch(sender, cfg, network, publish=True)
 
-        def retry(i: int):
+        def retry(i: int) -> int:
             deadline = time.monotonic() + 60
             while time.monotonic() < deadline:
                 try:
                     send(url, str(i), "INFO recovery-id-" + str(i))
-                    return i
+                    completed: int = i
+                    return completed
                 except Exception:
                     time.sleep(0.2)
             raise AssertionError("request retry deadline")

@@ -30,12 +30,13 @@ def command(args) -> str:
 def projection() -> object:
     value = json.loads(command(["nft", "-j", "list", "table", "inet", TABLE]))
 
-    def clean(v):
+    def clean(v) -> object:
         if isinstance(v, list):
             return [clean(x) for x in v if not isinstance(x, dict) or "metainfo" not in x]
         if isinstance(v, dict):
             return {k: clean(x) for k, x in v.items() if k not in ("handle", "packets", "bytes")}
-        return v
+        result: object = v
+        return result
 
     return clean(value)
 
