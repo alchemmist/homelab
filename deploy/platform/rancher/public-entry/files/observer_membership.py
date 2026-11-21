@@ -22,7 +22,7 @@ OWNER = '9e33877a-3eaa-4541-98eb-8cdc10088ef6'
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *args, **kwargs):
+    def redirect_request(self, *args: object, **kwargs: object) -> None:
         return None
 
 
