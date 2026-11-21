@@ -22,7 +22,7 @@ ROOT = Path.home() / ".local/state/netbird-internal-stage/journal"
 BASE = "https://netbird.socrat.alchemmist.xyz/api/"
 
 
-def main():
+def main() -> None:
     os.umask(0o077)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true")

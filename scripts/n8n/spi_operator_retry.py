@@ -19,19 +19,20 @@ NONCE = "spi-two-target-retry-08ba-998b-20261107-v1"
 AUDIT = "operator_retry_audit"
 
 
-def packed(x):
+def packed(x) -> str:
     return json.dumps(x, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
 
 
-def digest(x):
+def digest(x) -> str:
     return hashlib.sha256(packed(x).encode()).hexdigest()
 
 
-def quoted(name):
-    return '"' + name.replace('"', '""') + '"'
+def quoted(name) -> str:
+    escaped: str = name.replace('"', '""')
+    return '"' + escaped + '"'
 
 
-def ordered_table_scan(c, name):
+def ordered_table_scan(c, name) -> sqlite3.Cursor:
     """Transaction-local physical order, not a VACUUM-independent logical hash.
 
     Never sort complete rows: require the native rowid/primary btree order and
@@ -61,10 +62,11 @@ def ordered_table_scan(c, name):
     plan = list(c.execute("EXPLAIN QUERY PLAN " + sql))
     if not plan or any("TEMP B-TREE" in r[3].upper() for r in plan):
         raise ValueError("table scan requires temporary sort")
-    return c.execute(sql)
+    scan: sqlite3.Cursor = c.execute(sql)
+    return scan
 
 
-def table_hashes(c, original_jobs=None):
+def table_hashes(c, original_jobs=None) -> dict[str, str]:
     result = {}
     for (name,) in c.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"):
         if name == AUDIT:
@@ -83,7 +85,7 @@ def table_hashes(c, original_jobs=None):
     return result
 
 
-def manifest_digest(manifest):
+def manifest_digest(manifest) -> str:
     if (
         not isinstance(manifest, dict)
         or manifest.get("version") != 1
@@ -102,7 +104,7 @@ def manifest_digest(manifest):
     return digest(manifest)
 
 
-def authorize(a):
+def authorize(a) -> None:
     if (
         a.get("authorization_text") != "Да, все рзрешаю"
         or a.get("nonce") != NONCE
@@ -116,7 +118,7 @@ def authorize(a):
     datetime.datetime.fromisoformat(a["recorded_at"].replace("Z", "+00:00"))
 
 
-def retry(path, authorization, execute=False, manifest=None):
+def retry(path, authorization, execute=False, manifest=None) -> dict[str, object]:
     authorize(authorization)
     bound = manifest_digest(manifest)
     if authorization.get("target_manifest_digest") != bound:
@@ -234,7 +236,7 @@ def retry(path, authorization, execute=False, manifest=None):
         c.close()
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--database", required=True)
     p.add_argument("--authorization", required=True)
