@@ -15,6 +15,8 @@ spec.loader.exec_module(c)
 
 
 class CredentialTest(unittest.TestCase):
+    """Exercise NetBird node credential renewal against a fake runtime."""
+
     def setup_runtime(self, folder, days):
         old = {
             "user_id": "service-id",

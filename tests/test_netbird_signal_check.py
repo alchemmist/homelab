@@ -12,6 +12,8 @@ spec.loader.exec_module(check)
 
 
 class ProbeTests(unittest.TestCase):
+    """Exercise the NetBird signal probe with fake responders."""
+
     def fake(self, registered=True, fail=False):
         class RPCError(Exception):
             def code(self):

@@ -35,6 +35,8 @@ def write_json(path, value):
 
 
 class FakeAuthentik(threading.Thread):
+    """Threaded fake Authentik server recording OIDC requests."""
+
     def __init__(self):
         super().__init__(daemon=True)
         self.calls = []
@@ -322,6 +324,8 @@ class FakeAuthentik(threading.Thread):
 
 
 class NetBirdOIDCTests(unittest.TestCase):
+    """Verify NetBird OIDC flows against a fake Authentik server."""
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)

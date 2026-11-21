@@ -114,6 +114,8 @@ def fixtures():
 
 
 class NodeThrottlingTileTest(unittest.TestCase):
+    """Check the node throttling dashboard tile's mappings."""
+
     def test_not_applicable_and_no_telemetry_are_distinct(self):
         defaults = panel()["fieldConfig"]["defaults"]
         mapping = next(item for item in defaults["mappings"] if item["type"] == "value")

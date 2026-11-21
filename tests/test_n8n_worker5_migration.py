@@ -14,6 +14,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class Worker5MigrationTest(unittest.TestCase):
+    """Check the n8n migration to worker node 5 renders safely."""
+
     @classmethod
     def setUpClass(cls):
         cls.values = yaml.safe_load((ROOT / "charts/n8n/values.yaml").read_text())

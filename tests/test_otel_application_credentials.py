@@ -19,6 +19,8 @@ def load(name):
 
 
 class ApplicationCredentialTests(unittest.TestCase):
+    """Verify mirrored application TLS credential selection rules."""
+
     def test_cross_namespace_or_ca_key_mirror_is_rejected(self):
         module = load("otel-application-credentials")
         good = {"application": "litellm", "namespace": "llm", "secret": "otel-app-tls-litellm"}

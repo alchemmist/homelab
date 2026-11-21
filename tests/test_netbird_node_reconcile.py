@@ -21,6 +21,8 @@ def node(host):
 
 
 class Fake(n.Runtime):
+    """Fake NetBird runtime capturing applied reconciliation actions."""
+
     def __init__(self, apply=True, existing=True):
         self.apply = apply
         self.config = n.validate_config(
@@ -172,6 +174,8 @@ class Fake(n.Runtime):
 
 
 class ReconcileTest(unittest.TestCase):
+    """Run NetBird node reconciliation against the fake runtime."""
+
     def seed(self):
         return {"nodes": {"socrat-4": {"id": "peer4"}}}
 

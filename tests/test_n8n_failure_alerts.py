@@ -14,6 +14,8 @@ TEMPLATE = json.loads((ROOT / "docs/n8n/workflow-failure-alerts.json").read_text
 
 
 class FailureAlertsTests(unittest.TestCase):
+    """Run the n8n failure alert node against fake notifications."""
+
     def notification(self, payload, handler="4321"):
         code = TEMPLATE["nodes"][1]["parameters"]["jsCode"]
         js = 'const vm=require("node:vm");const x=JSON.parse(process.argv[1]);const fn=vm.runInNewContext("(function(){"+x.code+"})",{items:[{json:x.payload}],$execution:{id:x.handler}});console.log(JSON.stringify(fn()));'

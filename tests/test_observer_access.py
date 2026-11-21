@@ -135,6 +135,8 @@ def permits(rules, group, resource, verb, name=None):
 
 
 class ObserverPolicyTests(unittest.TestCase):
+    """Validate the observer access policy deployment values."""
+
     def test_reviewed_activation_enables_native_rancher_roles(self):
         values = (ROOT / "deploy/platform/rancher/public-entry/values.yaml").read_text()
         self.assertIn("observerAccess:\n  enabled: true", values)
@@ -438,6 +440,8 @@ class ObserverPolicyTests(unittest.TestCase):
 
 
 class BootstrapSafetyTests(unittest.TestCase):
+    """Guard observer bootstrap safety against dangerous actions."""
+
     def setUp(self):
         spec = importlib.util.spec_from_file_location(
             "observer_bootstrap", ROOT / "scripts/observer-access-bootstrap.py"
@@ -582,6 +586,8 @@ class BootstrapSafetyTests(unittest.TestCase):
 
 
 class LegacyChatMigrationTests(unittest.TestCase):
+    """Check the legacy observer chat migration script."""
+
     def setUp(self):
         spec = importlib.util.spec_from_file_location(
             "chat_migration", ROOT / "scripts/observer-chat-migration.py"

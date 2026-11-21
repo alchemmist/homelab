@@ -31,6 +31,8 @@ def counters_payload(users):
 
 
 class PeerParsingTests(unittest.TestCase):
+    """Verify VPN monitoring parses wg peer endpoint lines."""
+
     def test_ipv6_mapped_ipv4_peer_is_dotted(self):
         line = "0 0 [::ffff:109.120.141.60]:32063 [::ffff:91.78.10.210]:51414"
         self.assertEqual(MODULE.peer_host(line), "91.78.10.210")
@@ -51,6 +53,8 @@ class PeerParsingTests(unittest.TestCase):
 
 
 class StreamCountTests(unittest.TestCase):
+    """Count active streams from mixed monitoring output."""
+
     def test_streams_from_mixed_output(self):
         stdout = (
             "0 0 [::ffff:109.120.141.60]:32063 [::ffff:91.78.10.210]:51414\n"
@@ -81,6 +85,8 @@ class StreamCountTests(unittest.TestCase):
 
 
 class XrayCountersTests(unittest.TestCase):
+    """Sum Xray uplink and downlink counters per user."""
+
     def test_counters_sums_uplink_and_downlink_per_email(self):
         payload = counters_payload(
             {"mom": {"downlink": 100, "uplink": 5}, "tim": {"downlink": 7, "uplink": 50}}
@@ -98,6 +104,8 @@ class XrayCountersTests(unittest.TestCase):
 
 
 class ActiveUsersTests(unittest.TestCase):
+    """Track which users are active within the collection window."""
+
     def test_growth_marks_user_active_within_window(self):
         state = {"counters": {"mom": 100, "tim": 50}, "last_active": {"mom": 10.0, "tim": 900.0}}
         counters = {"mom": 100, "tim": 75}
@@ -125,6 +133,8 @@ class ActiveUsersTests(unittest.TestCase):
 
 
 class CollectorTests(unittest.TestCase):
+    """Exercise the monitoring collector across configured ports."""
+
     def collect_run(self):
         return MODULE.collect(
             ports=[32087, 32053, 32083, 32063],
@@ -290,6 +300,8 @@ if __name__ == "__main__":
 
 
 class FallbackMetricTests(unittest.TestCase):
+    """Verify the fallback latch exports even when collection fails."""
+
     def test_fallback_latch_is_exported_even_when_collection_fails(self):
         with tempfile.TemporaryDirectory() as directory:
             marker = Path(directory) / "active"

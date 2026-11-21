@@ -18,6 +18,8 @@ oidc = load("net_oidc", "ansible/roles/identity_integrations/files/netbird_oidc.
 
 
 class InternalNetworkTests(unittest.TestCase):
+    """Validate the internal network's exact resources and gateways."""
+
     def test_single_gateway_exact_resources_and_separate_local_input_gate(self):
         expected = {"10.250.0.1/32", "10.250.0.2/32", "10.250.0.3/32", "10.250.0.5/32"}
         actual = {a for _, addresses in net.NETWORKS.values() for a in addresses}

@@ -22,6 +22,8 @@ probe = load("netbird-stun-check")
 
 
 class HostPeerTest(unittest.TestCase):
+    """Check NetBird host peer group rendering and peers."""
+
     def groups(self):
         return [
             {"id": str(i), "name": n, "issued": "jwt", "peers": [], "resources": []}
@@ -131,6 +133,8 @@ class HostPeerTest(unittest.TestCase):
 
 
 class StunTest(unittest.TestCase):
+    """Validate the bounded STUN-only manifest without service SNAT."""
+
     def test_bounded_stun_only_no_service_snat(self):
         docs = stun.manifests()
         self.assertEqual(len(docs), 1)

@@ -33,6 +33,8 @@ def load_frontend(source):
 
 
 class HostRouterTests(unittest.TestCase):
+    """Confirm the NetBird host router defaults to a blocked render check."""
+
     def test_default_check_is_render_only_and_blocked(self):
         result = subprocess.run(
             [os.sys.executable, str(ROOT / "scripts/netbird-host-router.py"), "check"],

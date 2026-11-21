@@ -85,6 +85,8 @@ def snapshot():
 
 
 class AdmissionTests(unittest.TestCase):
+    """Verify NetBird admission stays additive and session-safe."""
+
     def test_reconcile_is_additive_and_preserves_session_policy(self):
         s = snapshot()
         before = copy.deepcopy(s)

@@ -16,6 +16,8 @@ spec.loader.exec_module(gitops)
 
 
 class GitOpsTests(unittest.TestCase):
+    """Validate the NetBird GitOps values and rendered manifests."""
+
     def values(self):
         return yaml.safe_load((ROOT / "deploy/netbird/values.yaml").read_text())
 

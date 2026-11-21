@@ -8,6 +8,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class AgentLoggingTests(unittest.TestCase):
+    """Validate the OpenTelemetry agent's logging configuration."""
+
     def setUp(self):
         self.agent = yaml.safe_load((ROOT / "deploy/monitoring/otel/agent.yaml").read_text())
 

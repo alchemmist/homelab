@@ -18,6 +18,8 @@ spec.loader.exec_module(policy)
 
 
 class WorkflowPolicyTests(unittest.TestCase):
+    """Validate n8n workflow policy gating alert deployments."""
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)

@@ -56,6 +56,8 @@ def cleared_audit():
 
 
 class ControlPlaneTests(unittest.TestCase):
+    """Check the NetBird control-plane deploy tooling in check mode."""
+
     def test_repo_check_reports_concrete_blockers_without_applying(self):
         result = subprocess.run(
             [os.sys.executable, str(ROOT / "scripts/netbird-deploy.py"), "check"],
@@ -282,6 +284,8 @@ class ControlPlaneTests(unittest.TestCase):
 
 
 class BootstrapTests(unittest.TestCase):
+    """Verify NetBird bootstrap refuses public origins and PAT auth."""
+
     def test_public_origin_and_pat_are_refused(self):
         for origin in [
             "https://netbird.socrat.alchemmist.xyz",
@@ -393,6 +397,8 @@ class BootstrapTests(unittest.TestCase):
 
 
 class BackupTests(unittest.TestCase):
+    """Ensure the NetBird backup plan is quiesced and read-only."""
+
     def test_plan_is_quiesced_readonly_and_does_not_call_kubectl(self):
         image = nb.image("server")
         body = backup.plan("test-node", image)
@@ -449,6 +455,8 @@ class BackupTests(unittest.TestCase):
 
 
 class AnsibleGuardTests(unittest.TestCase):
+    """Guard the NetBird Ansible role's local check defaults."""
+
     def test_role_defaults_to_local_check_without_transport_changes(self):
         text = "\n".join(
             path.read_text()
