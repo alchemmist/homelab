@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """One bounded unauthenticated HTTPS check. No retries, proxy changes or tunnel claims.
+
 Run manually from approved Russian fixed/mobile and external vantage points.
 Use public URLs only: NEVER supply subscription, share, API or credential URLs.
 """

@@ -82,7 +82,7 @@ def identifier(value):
 
 
 def existing_node_host(value):
-    """True for an existing socrat node name. This is not a placement approval."""
+    """Return whether value names an existing socrat node, not placement approval."""
     if not text(value):
         return False
     if re.fullmatch(r"socrat-[0-3]", value):
@@ -338,7 +338,7 @@ def port_forward_sources(cidrs):
 
 
 def ingress_allowed(policy, source, port, protocol="TCP"):
-    """True when one ingress rule matches. An empty ingress list denies every source."""
+    """Return whether one ingress rule matches the source."""
     source_ip = ipaddress.ip_address(source)
     for rule in policy["spec"].get("ingress") or []:
         ports = rule.get("ports")

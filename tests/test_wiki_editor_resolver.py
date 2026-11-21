@@ -1,13 +1,12 @@
 """Tests for the wiki editor resolver script."""
 
 import os
-from pathlib import Path
 import shlex
 import shutil
 import subprocess
 import tempfile
 import unittest
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 

@@ -1,17 +1,16 @@
 """Configure per-user desktop startup login files and idle shutdown."""
 
 import argparse
-from datetime import datetime, timezone
 import json
 import os
-from pathlib import Path
 import pwd
 import re
 import shutil
 import stat
 import subprocess
 import tempfile
-
+from datetime import datetime, timezone
+from pathlib import Path
 
 LOGIN_BLOCK = """if [[ -o interactive && -z "${SSH_CONNECTION:-}" && -z "${SSH_TTY:-}" && "${TTY:-}" == /dev/tty1 && -z "${WAYLAND_DISPLAY:-}" && -z "${DISPLAY:-}" ]]; then
     exec /usr/local/bin/start-socrat-hyprland
@@ -35,6 +34,7 @@ LEGACY_PATHS = {
 
 
 def rewrite_login(text, selected):
+    """Document the rewrite login operation."""
     matches = list(STARTUP_BLOCK.finditer(text))
     if len(matches) > 1:
         raise ValueError("Multiple startup blocks require manual review")
@@ -56,12 +56,14 @@ def rewrite_login(text, selected):
 
 
 def remove_idle_shutdown(text: str) -> str:
+    """Document the remove idle shutdown operation."""
     return IDLE_LISTENER.sub(
         lambda match: "" if IDLE_SHUTDOWN.search(match.group()) else match.group(), text
     )
 
 
 def replace_file(path: Path, content: str, uid: int, gid: int) -> None:
+    """Document the replace file operation."""
     previous = path.stat() if path.exists() else None
     descriptor, name = tempfile.mkstemp(prefix="." + path.name + ".homelab-", dir=path.parent)
     temporary = Path(name)
@@ -190,6 +192,7 @@ def configure(home, username, login_file, cleanup, disable_shutdown, *, check=Fa
 
 
 def main():
+    """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--home", type=Path, required=True)
     parser.add_argument("--user", required=True)

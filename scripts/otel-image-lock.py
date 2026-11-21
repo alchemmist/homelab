@@ -62,7 +62,9 @@ def main():
     result = {
         "schemaVersion": 1,
         "images": {name: resolve(*image) for name, image in IMAGES.items()},
-        "tempoVersionRationale": "Pinned patched 2.10 monolithic release; do not silently adopt Tempo 3 architecture.",
+        "tempoVersionRationale": (
+            "Pinned patched 2.10 monolithic release; do not silently adopt Tempo 3 architecture."
+        ),
     }
     with args.output.open("x") as stream:
         json.dump(result, stream, indent=2)

@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """Explicit private prerequisites for the GitOps SWE Mini app; never prints values.
+
 Run only after Argo creates swe-mini. Does not modify existing keys or accounts.
 """
 
 import base64
 import json
-from pathlib import Path
 import socket
 import subprocess
 import time
 import urllib.request
+from pathlib import Path
 
 NS = "swe-mini"
 

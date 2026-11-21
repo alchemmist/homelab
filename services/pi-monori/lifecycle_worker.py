@@ -1,7 +1,14 @@
 """Mutation PR lifecycle consumer. No GitHub credential on this node's agents.
+
 Only proof-producing edits use the shared exclusive judge at a card boundary.
 """
-import contextlib, hashlib, json, re, sqlite3, subprocess, time
+import contextlib
+import hashlib
+import json
+import re
+import sqlite3
+import subprocess
+import time
 from collections.abc import Sequence
 from typing import TypedDict
 import campaign as c

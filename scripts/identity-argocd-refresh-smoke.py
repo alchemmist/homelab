@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Explicit Argo CD native OIDC refresh acceptance with a temporary read-only observer.
+
 Requires a reviewed refresh + end-to-end TLS deployment; fails closed before
 creating fixtures when offline_access is absent. Expects renewed cookies to retain
 Secure; Argo CD 3.5.6 server.insecure=true fails this check.
@@ -33,6 +34,7 @@ _original_getaddrinfo = socket.getaddrinfo
 
 
 def public_auth(host, *params, **kwargs):
+    """Perform the public auth operation."""
     return _original_getaddrinfo(
         args.public_edge
         if host in ["auth.socrat.alchemmist.xyz", "argocd.socrat.alchemmist.xyz"]
@@ -59,6 +61,7 @@ credential = json.loads(
 
 
 def api(method, path, data=None):
+    """Perform the HTTP request and return its response."""
     req = urllib.request.Request(
         BASE + "/api/v3/" + path,
         method=method,
@@ -158,6 +161,7 @@ try:
         errors = []
 
         def observe(response):
+            """Perform the observe operation."""
             if (
                 urllib.parse.urlparse(response.url).hostname == "argocd.socrat.alchemmist.xyz"
                 and urllib.parse.urlparse(response.url).path == "/auth/login"
@@ -282,6 +286,7 @@ try:
             ):
 
                 def claims() -> Claims:
+                    """Perform the claims operation."""
                     c = next(
                         c
                         for c in page.context.cookies("https://argocd.socrat.alchemmist.xyz")
@@ -301,6 +306,7 @@ try:
                 }
 
                 def api_page(path):
+                    """Perform the api page operation."""
                     response = page.goto("https://argocd.socrat.alchemmist.xyz" + path)
                     assert response.status == 200
                     return response.json()

@@ -1,13 +1,15 @@
 """Fail-closed integrity and coverage checks for the quality system itself."""
 
 from __future__ import annotations
+
 import hashlib
 import importlib.util
 import json
-from pathlib import Path
 import re
-from common import ROOT, frozen_source_files, tracked
+from pathlib import Path
+
 import boundaries
+from common import ROOT, frozen_source_files, tracked
 
 
 def require(condition: object, message: str) -> None:

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Reconcile Quiet Mono Brand assets/CSS only; never replace authentication code.
+
 Run as the owner with credentials in the protected Authentik deployment directory.
 """
 
@@ -8,11 +9,11 @@ import datetime
 import hashlib
 import json
 import os
-from pathlib import Path
 import socket
-from typing import cast
 import urllib.parse
 import urllib.request
+from pathlib import Path
+from typing import cast
 
 HOST = "auth.socrat.alchemmist.xyz"
 BASE = "https://" + HOST
