@@ -57,32 +57,42 @@ class StoragePlatformTest(unittest.TestCase):
     def run_setup(self, device, marker):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            parent = root / 'volumes'
+            parent = root / "volumes"
             parent.mkdir()
-            (parent / '.homelab-filesystem-id').write_text(marker)
-            tools = root / 'bin'
+            (parent / ".homelab-filesystem-id").write_text(marker)
+            tools = root / "bin"
             tools.mkdir()
-            stat = tools / 'stat'
+            stat = tools / "stat"
             stat.write_text('#!/bin/sh\nprintf "%s\\n" "$TEST_DEVICE_ID"\n')
             stat.chmod(0o755)
-            script = CM['data']['setup'].replace('/mnt/files/homelab/volumes', str(parent))
-            p = subprocess.run(['sh', '-c', script], env={**os.environ, 'VOL_DIR': str(parent / 'pvc-test'), 'TEST_DEVICE_ID': str(device), 'PATH': str(tools) + ':' + os.environ['PATH']}, capture_output=True, text=True)
-            return p.returncode, (parent / 'pvc-test').exists()
+            script = CM["data"]["setup"].replace("/mnt/files/homelab/volumes", str(parent))
+            p = subprocess.run(
+                ["sh", "-c", script],
+                env={
+                    **os.environ,
+                    "VOL_DIR": str(parent / "pvc-test"),
+                    "TEST_DEVICE_ID": str(device),
+                    "PATH": str(tools) + ":" + os.environ["PATH"],
+                },
+                capture_output=True,
+                text=True,
+            )
+            return p.returncode, (parent / "pvc-test").exists()
 
     def test_missing_hdd_rejects_even_copied_identity_marker(self):
-        code, created = self.run_setup(2049, '3ec3263e-32e3-4b38-84e6-17cd168244b9')
-        self.assertNotEqual(code, 0)
-        self.assertFalse(created)
+        code, created = self.run_setup(2049, "3ec3263e-32e3-4b38-84e6-17cd168244b9")
+        assert code != 0
+        assert not created
 
     def test_wrong_marker_rejects_even_correct_device(self):
-        code, created = self.run_setup(2065, 'wrong-filesystem')
-        self.assertNotEqual(code, 0)
-        self.assertFalse(created)
+        code, created = self.run_setup(2065, "wrong-filesystem")
+        assert code != 0
+        assert not created
 
     def test_matching_identity_allows_directory_creation(self):
-        code, created = self.run_setup(2065, '3ec3263e-32e3-4b38-84e6-17cd168244b9')
-        self.assertEqual(code, 0)
-        self.assertTrue(created)
+        code, created = self.run_setup(2065, "3ec3263e-32e3-4b38-84e6-17cd168244b9")
+        assert code == 0
+        assert created
 
     def test_teardown_guard_precedes_removal(self):
         text = CM["data"]["teardown"]
@@ -105,12 +115,30 @@ class StoragePlatformTest(unittest.TestCase):
         assert "/dev/sdb1[/homelab/openhands-archives/upgrade-backups]" in guard
 
     def test_inventory_matches_claim_namespace_not_only_name(self):
-        spec = importlib.util.spec_from_file_location('audit_storage', ROOT / 'scripts/audit_storage.py')
+        spec = importlib.util.spec_from_file_location(
+            "audit_storage", ROOT / "scripts/audit_storage.py"
+        )
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        pv = {'metadata': {'name': 'fixture'}, 'spec': {'claimRef': {'namespace': 'a', 'name': 'data'}, 'capacity': {'storage': '1Gi'}, 'persistentVolumeReclaimPolicy': 'Retain'}}
-        pods = [{'metadata': {'namespace': ns, 'name': ns}, 'spec': {'nodeName': 'socrat-5', 'volumes': [{'persistentVolumeClaim': {'claimName': 'data'}}]}} for ns in ['a', 'b']]
-        self.assertEqual(module.inventory([pv], pods)[0]['consumers'], [{'pod': 'a', 'node': 'socrat-5'}])
+        pv = {
+            "metadata": {"name": "fixture"},
+            "spec": {
+                "claimRef": {"namespace": "a", "name": "data"},
+                "capacity": {"storage": "1Gi"},
+                "persistentVolumeReclaimPolicy": "Retain",
+            },
+        }
+        pods = [
+            {
+                "metadata": {"namespace": ns, "name": ns},
+                "spec": {
+                    "nodeName": "socrat-5",
+                    "volumes": [{"persistentVolumeClaim": {"claimName": "data"}}],
+                },
+            }
+            for ns in ["a", "b"]
+        ]
+        assert module.inventory([pv], pods)[0]["consumers"] == [{"pod": "a", "node": "socrat-5"}]
 
     def test_storage_dashboard_keeps_missing_as_unknown(self):
         d = json.loads((ROOT / "charts/monitoring-k3s/dashboards/storage.json").read_text())

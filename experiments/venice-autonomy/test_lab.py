@@ -26,40 +26,49 @@ class ArchiveTests(unittest.TestCase):
     """Tests for inspect_archive archive scanning."""
 
     def test_regular_files(self):
+        """Verify regular code and test files pass archive inspection."""
         result = inspect_archive(
             archive([("lib.cjs", b"code", tarfile.REGTYPE), ("test.cjs", b"test", tarfile.REGTYPE)])
         )
         self.assertEqual(result, {"lib.cjs": "code", "test.cjs": "test"})
 
     def test_symlink_is_rejected(self):
+        """Verify symlink members are rejected."""
         with self.assertRaises(ValueError):
             inspect_archive(archive([("lib.cjs", b"", tarfile.SYMTYPE)]))
 
     def test_hardlink_is_rejected(self):
+        """Verify hardlink members are rejected."""
         with self.assertRaises(ValueError):
             inspect_archive(archive([("lib.cjs", b"", tarfile.LNKTYPE)]))
 
     def test_traversal_is_rejected(self):
+        """Verify path-traversal member names are rejected."""
         with self.assertRaises(ValueError):
             inspect_archive(archive([("../lib.cjs", b"x", tarfile.REGTYPE)]))
 
     def test_absolute_is_rejected(self):
+        """Verify absolute member paths are rejected."""
         with self.assertRaises(ValueError):
             inspect_archive(archive([("/lib.cjs", b"x", tarfile.REGTYPE)]))
 
     def test_oversized_is_rejected(self):
+        """Verify members above the size limit are rejected."""
         with self.assertRaises(ValueError):
             inspect_archive(archive([("lib.cjs", b"x" * 65537, tarfile.REGTYPE)]))
 
     def test_duplicate_is_rejected(self):
+        """Verify duplicate member names are rejected."""
         with self.assertRaises(ValueError):
             inspect_archive(archive([("lib.cjs", b"x", tarfile.REGTYPE)] * 2))
 
     def test_missing_test_is_rejected(self):
+        """Verify an archive without the test file is rejected."""
         with self.assertRaises(ValueError):
             inspect_archive(archive([("lib.cjs", b"x", tarfile.REGTYPE)]))
 
     def test_extra_file_is_rejected(self):
+        """Verify unexpected extra members are rejected."""
         with self.assertRaises(ValueError):
             inspect_archive(
                 archive(
@@ -72,6 +81,7 @@ class ArchiveTests(unittest.TestCase):
             )
 
     def test_dot_suffix_name_is_rejected(self):
+        """Verify dot-suffixed member names are rejected."""
         with self.assertRaises(ValueError):
             inspect_archive(
                 archive(
@@ -83,6 +93,7 @@ class ArchiveTests(unittest.TestCase):
             )
 
     def test_nul_smuggled_name_is_rejected(self):
+        """Verify NUL-smuggled tar header names are rejected."""
         blob = bytearray(
             archive([("lib.cjs", b"code", tarfile.REGTYPE), ("test.cjs", b"test", tarfile.REGTYPE)])
         )
@@ -97,6 +108,7 @@ class ArchiveTests(unittest.TestCase):
             inspect_archive(bytes(blob))
 
     def test_decode_and_format_errors_are_value_errors(self):
+        """Verify decode or tar format errors surface as ValueError."""
         with self.assertRaises(ValueError):
             inspect_archive(b"not a tar")
         with self.assertRaises(ValueError):
@@ -119,6 +131,7 @@ class VerifierTests(unittest.TestCase):
     """Tests for the regression verifier helpers."""
 
     def test_expected(self):
+        """Verify expected-value computation across cases."""
         self.assertEqual(expected("median", [[10, 2, 1]]), {"value": 2})
         self.assertEqual(expected("median", [[1, 2]]), {"value": 1.5})
         self.assertEqual(expected("median", [[]]), {"error": "RangeError"})
@@ -127,19 +140,23 @@ class VerifierTests(unittest.TestCase):
         self.assertEqual(expected("escape_html", ["<&'\""]), {"value": "&lt;&amp;&#39;&quot;"})
 
     def test_zero_exit_without_output_is_not_success(self):
+        """Verify a zero exit with no output is not accepted."""
         self.assertFalse(
             check_verdict("median", "nonce", [[[]]], {"returncode": 0, "output": ""})["accepted"]
         )
 
     def test_wrong_nonce_is_not_success(self):
+        """Verify a mismatched nonce is not accepted."""
         result = {"returncode": 0, "output": json.dumps({"nonce": "other", "results": []})}
         self.assertFalse(check_verdict("median", "nonce", [], result)["accepted"])
 
     def test_process_failure_is_not_success(self):
+        """Verify a non-zero process exit is not accepted."""
         result = {"returncode": 1, "output": json.dumps({"nonce": "nonce", "results": []})}
         self.assertFalse(check_verdict("median", "nonce", [], result)["accepted"])
 
     def test_each_contract_and_mutation(self):
+        """Verify every task contract and mutation is enforced."""
         for task in ("median", "clamp", "escape_html"):
             cases = cases_for(task, 1234)
             results = [expected(task, args) | {"mutated": False} for args in cases]
@@ -150,10 +167,12 @@ class VerifierTests(unittest.TestCase):
             self.assertFalse(check_verdict(task, "nonce", cases, result)["accepted"])
 
     def test_deterministic_cases(self):
+        """Verify case generation is deterministic per seed."""
         self.assertEqual(cases_for("median", 123), cases_for("median", 123))
         self.assertNotEqual(cases_for("median", 123), cases_for("median", 124))
 
     def test_loose_types_and_missing_output_fail_closed(self):
+        """Verify loose types or missing output fail closed."""
         cases = [[[10, 2, 1]]]
         good = expected("median", cases[0]) | {"mutated": False}
         body = {"nonce": "n", "results": [dict(good)]}
@@ -227,6 +246,7 @@ class NodeVerifierTests(unittest.TestCase):
     """Tests for the node-based source verifier."""
 
     def run_source(self, task, source, seed=7):
+        """Run the node verifier on the given source and return its verdict."""
         import pathlib
         import subprocess
         import tempfile
@@ -252,18 +272,21 @@ class NodeVerifierTests(unittest.TestCase):
         ), proc
 
     def test_good_solutions_pass(self):
+        """Verify known-good solutions are accepted."""
         for task, source in GOOD.items():
             verdict, proc = self.run_source(task, source)
             self.assertEqual(proc.returncode, 0, proc.stderr)
             self.assertTrue(verdict["accepted"], verdict)
 
     def test_tojson_mutation_spoof_is_rejected(self):
+        """Verify a toJSON-based spoof of the results is rejected."""
         verdict, proc = self.run_source("median", SPOOF)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertFalse(verdict["accepted"])
         self.assertEqual(verdict["reason"], "contract mismatch")
 
     def test_process_eval_stdout_forgery_is_rejected(self):
+        """Verify stdout forgery via process._eval is rejected."""
         source = r"""exports.solve = () => 42;
 const match = process._eval.match(/const cases=(.*?);const nonce=([^;]+);/s);
 const cases = JSON.parse(match[1]);
@@ -281,6 +304,7 @@ process.exit(0);
         self.assertFalse(verdict["accepted"])
 
     def test_host_constructor_access_is_blocked(self):
+        """Verify host constructor access from the candidate realm is blocked."""
         for root in ("module", "globalThis"):
             source = (
                 "try {const p="
@@ -292,16 +316,19 @@ process.exit(0);
             self.assertNotIn("HOST_ESCAPE_SUCCEEDED", proc.stdout)
 
     def test_prototype_json_poisoning_cannot_forge_results(self):
+        """Verify prototype JSON poisoning cannot forge accepted results."""
         source = "Object.prototype.toJSON=()=>({value:42,mutated:false}); exports.solve=()=>42;"
         verdict, proc = self.run_source("median", source)
         self.assertFalse(verdict["accepted"])
 
     def test_exception_getter_is_bounded_in_candidate_realm(self):
+        """Verify exception getter traps stay bounded inside the candidate realm."""
         source = "exports.solve=()=>{throw new Proxy({}, {get(){while(true){}}});};"
         verdict, proc = self.run_source("median", source)
         self.assertFalse(verdict["accepted"])
 
     def test_restored_input_mutation_is_still_rejected(self):
+        """Verify mutation that restores the input afterwards is still rejected."""
         source = "exports.solve=a=>{if(!a.length)throw new RangeError();const v=a[0];a[0]=999;a[0]=v;const b=a.slice().sort((x,y)=>x-y);const n=b.length;return n%2?b[n>>1]:(b[n/2-1]+b[n/2])/2;};"
         verdict, proc = self.run_source("median", source)
         self.assertFalse(verdict["accepted"])
@@ -311,6 +338,7 @@ class ControllerTests(unittest.TestCase):
     """Tests for controller settling and blocking semantics."""
 
     def test_rejection_retries_then_blocks(self):
+        """Verify rejection retries a bounded number of times then blocks."""
         from controller import settle_task
 
         task = {"attempts": [], "status": "pending"}
@@ -318,6 +346,7 @@ class ControllerTests(unittest.TestCase):
         self.assertEqual(settle_task(task, {"accepted": False}), "blocked")
 
     def test_only_typed_acceptance_counts(self):
+        """Verify only a typed acceptance counts as success."""
         from controller import settle_task
 
         for result in (
@@ -331,6 +360,7 @@ class ControllerTests(unittest.TestCase):
         self.assertEqual(settle_task(task, {"accepted": True}), "accepted")
 
     def test_restart_preserves_deadline_and_rejects_unfinished_attempt(self):
+        """Verify restart recovery keeps the deadline and rejects unfinished attempts."""
         from controller import initial_state, recover_interrupted
 
         state = initial_state(120, 1)
@@ -345,6 +375,7 @@ class ControllerTests(unittest.TestCase):
         self.assertIsNone(state["running"])
 
     def test_atomic_checkpoint(self):
+        """Verify checkpoint writes are atomic and crash-safe."""
         import pathlib
         import tempfile
         from controller import save_state
@@ -360,6 +391,7 @@ class MiniAdapterTests(unittest.TestCase):
     """Tests for the mini submission adapter."""
 
     def test_completion_uses_executed_output_not_command_spelling(self):
+        """Verify completion is judged on executed output, not command text."""
         from attempt import mini_submission
 
         marker = "COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT"
@@ -370,6 +402,7 @@ class MiniAdapterTests(unittest.TestCase):
         self.assertFalse(mini_submission({"returncode": 0, "output": ""}))
 
     def test_completed_receipt_formats_for_both_action_protocols(self):
+        """Verify the completed receipt formats under both action protocols."""
         try:
             from minisweagent.models.litellm_model import LitellmModel
         except ModuleNotFoundError as error:

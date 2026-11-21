@@ -76,6 +76,7 @@ def _verify_readback(
 
 
 def configure():
+    'Configure.'
     token = _create_admin_token()
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 

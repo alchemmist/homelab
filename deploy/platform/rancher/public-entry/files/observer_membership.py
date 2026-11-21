@@ -28,6 +28,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
     """Redirect handler that refuses to follow HTTP redirects."""
 
     def redirect_request(self, *args, **kwargs):
+        """Refuse redirects so credentials are never forwarded."""
         return None
 
 
@@ -49,6 +50,7 @@ class MembershipReader:
         self.http = opener()
 
     def rows(self, path):
+        """Fetch all paginated rows from the Authentik API path."""
         token = self.token_file.read_text().strip()
         result = []
         for page in range(1, 201):
@@ -72,6 +74,7 @@ class MembershipReader:
         raise RuntimeError("Incomplete membership pagination")
 
     def refresh(self):
+        """Reload the cached user/group inventory once it expires."""
         with self.lock:
             if time.monotonic() < self.expires:
                 return
@@ -98,6 +101,7 @@ class MembershipReader:
             self.expires = time.monotonic() + self.ttl
 
     def admitted(self, subject, groups):
+        """Check whether an active user holds one of the claim's groups."""
         self.refresh()
         user = self.users.get(subject)
         return bool(
@@ -274,9 +278,16 @@ def reconcile_rancher():
     def items(path):
         result, cursor = [], ""
         for _ in range(201):
-            data = call('GET', path + '?limit=100' + ('&continue=' + urllib.parse.quote(cursor, safe='') if cursor else ''))
-            result.extend(data['items'])
-            cursor=data['metadata'].get('continue', '')
+            data = call(
+                "GET",
+                path
+                + "?limit=100"
+                + (
+                    "&continue=" + urllib.parse.quote(cursor, safe="") if cursor else ""
+                ),
+            )
+            result.extend(data["items"])
+            cursor = data["metadata"].get("continue", "")
             if not cursor:
                 return result
         raise RuntimeError("Incomplete native cache pagination")

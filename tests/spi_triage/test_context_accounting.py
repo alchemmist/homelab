@@ -12,6 +12,7 @@ class ContextAccountingTests(unittest.TestCase):
 
     def test_contract_and_schema_completion(self) -> None:
 
+        'Verify the base contract schema is complete as shipped.'
         m = Model(Mock(), "unused")
         b = m.payload("x", {"text": 'é😀"\\\n' * 100}, MATCH_SCHEMA)
         n = m.reservation(b)
@@ -31,6 +32,7 @@ class ContextAccountingTests(unittest.TestCase):
         m.http.request.assert_not_called()
 
     def test_excerpts_identity_reference_metadata_and_no_mutation(self) -> None:
+        'Verify excerpt identity, references and metadata without mutation.'
         x = {
             "candidates": [{"number": n, "body": "😀" * 8000} for n in range(120)],
             "index": [{"id": "E001", "path": "original/reference", "excerpt": "x" * 40000}],
@@ -50,6 +52,7 @@ class ContextAccountingTests(unittest.TestCase):
             assert c["body"]["unreviewed_bytes"] > 0
 
     def test_matching_event_bounded_and_all_identities(self) -> None:
+        'Verify event matching stays bounded across all identities.'
         m = Model(Mock(), "unused")
         event = f.event()
         event["description"] = "x" * 1000000
@@ -66,6 +69,7 @@ class ContextAccountingTests(unittest.TestCase):
         assert seen == list(range(120))
 
     def test_large_analysis_preserves_candidates_and_artifact_index(self) -> None:
+        'Verify large analyses preserve candidates and indexes.'
         m = Model(Mock(), "unused")
         event = f.event()
         event["description"] = "x" * 80000
@@ -103,6 +107,7 @@ class ContextAccountingTests(unittest.TestCase):
         assert captured["alert"]["description"]["truncated"]
 
     def test_irreducible_metadata_visible_without_transport(self) -> None:
+        'Verify irreducible metadata is visible without any transport.'
         m = Model(Mock(), "unused")
         event = f.event()
         event["path"] = ["x" * 120000] * 5
@@ -112,6 +117,7 @@ class ContextAccountingTests(unittest.TestCase):
         m.http.request.assert_not_called()
 
     def test_local_120_long_report_analysis(self) -> None:
+        'Verify a local 120-long report analysis completes cleanly.'
         if __import__("os").environ.get("SPI_TOKEN_ACCOUNTING_MODE") != "local-qwen-v1":
             return
         m = Model(Mock(), "unused")

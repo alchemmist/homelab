@@ -27,15 +27,21 @@ def kubectl(*args, data=None) -> bytes:
 def selector_matches(selector, labels) -> bool:
     if any(labels.get(k) != v for k, v in selector.get("matchLabels", {}).items()):
         return False
-    for rule in selector.get('matchExpressions',[]):
-        key,op=rule['key'],rule['operator']
-        values=rule.get('values',[])
-        if op=='In': matches=key in labels and labels[key] in values
-        elif op=='NotIn': matches=key not in labels or labels[key] not in values
-        elif op=='Exists': matches=key in labels
-        elif op=='DoesNotExist': matches=key not in labels
-        else: raise ValueError('Unknown label selector operator')
-        if not matches:return False
+    for rule in selector.get("matchExpressions", []):
+        key, op = rule["key"], rule["operator"]
+        values = rule.get("values", [])
+        if op == "In":
+            matches = key in labels and labels[key] in values
+        elif op == "NotIn":
+            matches = key not in labels or labels[key] not in values
+        elif op == "Exists":
+            matches = key in labels
+        elif op == "DoesNotExist":
+            matches = key not in labels
+        else:
+            raise ValueError("Unknown label selector operator")
+        if not matches:
+            return False
     return True
 
 
@@ -126,11 +132,22 @@ def main() -> None:
         raise SystemExit("STOP: overlapping NetworkPolicy; isolation not established")
     created = []
     try:
-        for kind,obj in [('configmap',cm),('networkpolicy',np),('job',job)]:
-            kubectl('create','-f','-',data=json.dumps(obj).encode())
+        for kind, obj in [("configmap", cm), ("networkpolicy", np), ("job", job)]:
+            kubectl("create", "-f", "-", data=json.dumps(obj).encode())
             created.append(kind)
-        wait = subprocess.run(['kubectl','-n','identity','wait','--for=condition=complete','job/'+name,'--timeout=65s'],capture_output=True)
-        logs = kubectl('-n','identity','logs','job/'+name).decode()
+        wait = subprocess.run(
+            [
+                "kubectl",
+                "-n",
+                "identity",
+                "wait",
+                "--for=condition=complete",
+                "job/" + name,
+                "--timeout=65s",
+            ],
+            capture_output=True,
+        )
+        logs = kubectl("-n", "identity", "logs", "job/" + name).decode()
         print(logs)
         status = json.loads(kubectl("-n", "identity", "get", "job", name, "-o", "json"))["status"]
         ok = wait.returncode == 0 and status.get("succeeded") == 1

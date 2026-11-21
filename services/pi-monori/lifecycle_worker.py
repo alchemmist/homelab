@@ -131,7 +131,7 @@ def run_fix(sha: str):
  for f in sql("select * from fixes where state='pending' order by rowid limit 1"):
   p=c.remote_json('pulls/'+str(f['pr']));
   h=p['head']['sha'];
-  own=c.query("select * from tasks where pr=? and state='published' limit 1",(f['pr'],));
+  own=c.query("select * from tasks where pr=? and state in ('published','needs_triage') limit 1",(f['pr'],));
   ok=own and p['state']=='open' and h==f['head'] and any(l['name']=='mutation-pr' for l in p['labels']) and p['head']['ref'].startswith(f'openhands/issue-{c.ISSUE}/');
   files=c.remote_json(f"pulls/{f['pr']}/files?per_page=20");
   ok=ok and len(files)==1 and files[0]['status']=='added' and re.fullmatch(r'(ci/tests|server/tests/unit)/test_(mutation_[0-9a-f]{12}|pi509_[a-z_]+)\.py',files[0]['filename']);

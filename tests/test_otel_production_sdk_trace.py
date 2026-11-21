@@ -41,6 +41,8 @@ def module() -> ModuleType:
 class ProductionSdkTraceTests(unittest.TestCase):
     """Check the production SDK trace summarizer against fixtures."""
     def fixture(self) -> tuple[_Document, str, str]:
+        """Return the trace fixture and span batches."""
+
         trace_id, parent_id = "ab" * 16, "cd" * 8
 
         def batch(service, spans) -> _ResourceSpan:
@@ -71,6 +73,8 @@ class ProductionSdkTraceTests(unittest.TestCase):
         return doc, trace_id, parent_id
 
     def test_real_service_child_correlates_but_does_not_certify_inference_or_all_apps(self) -> None:
+        """Real service child correlates but does not certify inference or all apps."""
+
         doc, trace_id, parent_id = self.fixture()
         result = module().summarize_production_litellm(doc, trace_id, parent_id)
         assert result["success"]
@@ -79,12 +83,16 @@ class ProductionSdkTraceTests(unittest.TestCase):
         assert not result["allApplicationSdkCoverageComplete"]
 
     def test_ingress_shared_probe_or_library_service_cannot_impersonate_production(self) -> None:
+        """Ingress shared probe or library service cannot impersonate production."""
+
         for service in ["traefik", "homelab-live-sdk-probe", "homelab-litellm-sdk-canary"]:
             doc, trace_id, parent_id = self.fixture()
             doc["resourceSpans"][1]["resource"]["attributes"][0]["value"]["stringValue"] = service
             assert not module().summarize_production_litellm(doc, trace_id, parent_id)["success"]
 
     def test_wrong_trace_or_missing_parent_does_not_prove_w3c(self) -> None:
+        """Wrong trace or missing parent does not prove w3c."""
+
         for change in [{"traceId": "11" * 16}, {"parentSpanId": "22" * 8}]:
             doc, trace_id, parent_id = self.fixture()
             doc["resourceSpans"][1]["scopeSpans"][0]["spans"][0].update(change)
@@ -93,6 +101,8 @@ class ProductionSdkTraceTests(unittest.TestCase):
     def test_inference_requires_native_llm_span_and_does_not_invent_cross_app_parenting(
         self,
     ) -> None:
+        """Inference requires native llm span and does not invent cross app parenting."""
+
         doc, trace_id, parent_id = self.fixture()
         helper = module()
         assert not helper.summarize_production_litellm(doc, trace_id, parent_id, inference=True)["success"]
@@ -126,6 +136,8 @@ class ProductionSdkTraceTests(unittest.TestCase):
         assert helper.summarize_production_litellm(doc, trace_id, parent_id, inference=True)["nativeVllmDescendantInSameTraceVerified"]
 
     def test_sensitive_marker_rejected_even_on_native_inference_path(self) -> None:
+        """Sensitive marker rejected even on native inference path."""
+
         doc, trace_id, parent_id = self.fixture()
         doc["resourceSpans"][1]["scopeSpans"][0]["spans"].append(
             {
@@ -141,6 +153,8 @@ class ProductionSdkTraceTests(unittest.TestCase):
         assert report["sensitiveSyntheticContentFound"]
 
     def test_duplicate_ids_or_self_parenting_are_rejected(self) -> None:
+        """Duplicate ids or self parenting are rejected."""
+
         doc, trace_id, parent_id = self.fixture()
         child = doc["resourceSpans"][1]["scopeSpans"][0]["spans"][0]
         for change in [{"spanId": parent_id}, {"parentSpanId": child["spanId"]}]:

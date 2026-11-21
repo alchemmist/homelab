@@ -23,6 +23,8 @@ class PauseFolderTests(unittest.TestCase):
     """Check that only the backup folder is paused in a local config."""
 
     def setUp(self) -> None:
+        """Create a local Syncthing config fixture."""
+
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.config = Path(self.directory.name) / "config.xml"

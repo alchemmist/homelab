@@ -142,6 +142,7 @@ class State:
         self.body = render_metrics([]).encode()
 
     def update(self, samples):
+        """Regenerate the metrics body from fresh samples under the lock."""
         body = render_metrics(samples).encode()
         with self.lock:
             self.body = body
