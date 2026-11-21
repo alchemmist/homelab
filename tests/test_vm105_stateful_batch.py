@@ -1,17 +1,39 @@
 """Offline source boundaries. No kube/credentials/workflow/model calls."""
 
 import copy, pathlib, subprocess, tempfile, unittest, yaml
+from typing import NotRequired, TypedDict
 
 R = pathlib.Path(__file__).resolve().parents[1]
 BASE = "ba7a1f34"
 
 
+class _Container(TypedDict):
+    image: str
+
+
+class _PodSpec(TypedDict):
+    containers: list[_Container]
+    initContainers: NotRequired[list[_Container]]
+
+
+class _PodTemplate(TypedDict):
+    spec: _PodSpec
+
+
+class _WorkloadSpec(TypedDict):
+    template: _PodTemplate
+
+
+class _Workload(TypedDict):
+    spec: _WorkloadSpec
+
+
 def render(
-    root,
-    chart,
-    values,
-    ns,
-    release,
+    root: pathlib.Path,
+    chart: str,
+    values: str | None,
+    ns: str,
+    release: str,
     *,
     release_image: dict[str, str] | None = None,
     monori_images: dict[str, dict[str, str]] | None = None,
@@ -35,7 +57,10 @@ def render(
     }
 
 
-def assert_monori_release_images(documents, images):
+def assert_monori_release_images(
+    documents: dict[tuple[str, str], _Workload],
+    images: dict[str, dict[str, str]],
+):
     """Check actual current images independently from before-render CLI overrides."""
     for component in ("front", "back", "sync"):
         matches = [

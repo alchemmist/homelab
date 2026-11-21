@@ -12,11 +12,11 @@ def load():
     return json.loads(DASHBOARD.read_text())
 
 
-def panel_by_id(dashboard, panel_id):
+def panel_by_id(dashboard: dict[str, list[dict[str, object]]], panel_id: int):
     return next(item for item in dashboard["panels"] if item.get("id") == panel_id)
 
 
-def cells(grid):
+def cells(grid: dict[str, int]):
     """Grid cells covered by a panel."""
     x = int(grid["x"])
     y = int(grid["y"])
@@ -132,7 +132,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
     def setUp(self):
         self.dashboard = load()
 
-    def node_panel(self, node):
+    def node_panel(self, node: str):
         digit = node.rsplit("-", 1)[1]
         return panel_by_id(
             self.dashboard, 927 if int(digit) == 5 else 926 if int(digit) == 4 else 901 + int(digit)

@@ -12,7 +12,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(name, filename):
+def load(name: str, filename: str):
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / filename)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -24,7 +24,7 @@ audit = load("counter_test", "vpn-backend-audit.py")
 
 
 class HardeningTests(unittest.TestCase):
-    def fixture(self, path):
+    def fixture(self, path: Path):
         con = sqlite3.connect(path)
         con.executescript("""
         CREATE TABLE inbounds(id INTEGER, port INTEGER, protocol TEXT, enable INTEGER,

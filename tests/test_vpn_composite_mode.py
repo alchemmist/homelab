@@ -15,7 +15,15 @@ P = next(
 )
 
 
-def component(c, runtime=0, check=1, off=0, success=1, observed="0+15x20", extra=""):
+def component(
+    c: str,
+    runtime: int = 0,
+    check: int = 1,
+    off: int = 0,
+    success: int = 1,
+    observed: str = "0+15x20",
+    extra: str = "",
+):
     ip = "10.250.0.40" if c == "relay" else "10.250.0.2"
     labels = f'job="node-exporter",instance="{ip}:9100",component="{c}"' + extra
     data = {
@@ -46,7 +54,7 @@ class CompositeModeTest(unittest.TestCase):
     def test_actual_mode_expression_two_components_partial_total_stale_and_errors(self):
         cases = []
 
-        def add(name, data, value):
+        def add(name: str, data: object, value: int):
             cases.append(
                 {
                     "name": name,

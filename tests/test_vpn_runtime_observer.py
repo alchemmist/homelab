@@ -14,7 +14,7 @@ spec.loader.exec_module(m)
 def test_relay_latch_is_not_sufficient_and_split_brain_unknown():
     p = m.PROFILES["socrat-4"]
 
-    def state(mode, agent, native, marker):
+    def state(mode: str, agent: bool, native: bool, marker: bool):
         return {
             "mode": mode,
             "agent_active": agent,
@@ -40,7 +40,7 @@ def test_backend_requires_native_both_units_and_server_ownership():
     assert m.classify(p, {"mode": "fallback"}, True, [True, True], True) == -1
 
 
-def test_socket_observation_does_not_call_established_sessions_off(tmp_path):
+def test_socket_observation_does_not_call_established_sessions_off(tmp_path: Path):
     net = tmp_path / "net"
     net.mkdir()
     for name in ["tcp", "tcp6", "udp", "udp6"]:
@@ -51,7 +51,7 @@ def test_socket_observation_does_not_call_established_sessions_off(tmp_path):
     assert m.listening(tmp_path, "udp") == {32085}
 
 
-def test_export_is_atomic_numeric_no_accounts_or_paths(tmp_path):
+def test_export_is_atomic_numeric_no_accounts_or_paths(tmp_path: Path):
     p = tmp_path / "vpn-runtime.prom"
     m.write_metrics(
         p,
@@ -87,7 +87,7 @@ def test_observer_has_no_recovery_or_mutating_command():
         assert forbidden not in s
 
 
-def test_moscow_reuses_actual_watchdog_observation_without_more_tls_or_lock(tmp_path):
+def test_moscow_reuses_actual_watchdog_observation_without_more_tls_or_lock(tmp_path: Path):
     from types import SimpleNamespace
 
     profile = dict(m.PROFILES["socrat-4"], marker=str(tmp_path / "fallback.active"))
@@ -98,7 +98,7 @@ def test_moscow_reuses_actual_watchdog_observation_without_more_tls_or_lock(tmp_
         (net / name).write_text("header\n")
     (net / "tcp").write_text("header\n0: 00000000:01BB 00000000:0000 0A\n")
 
-    def run(args, timeout=30):
+    def run(args: list[str], timeout: int = 30):
         assert args[:2] == ["systemctl", "show"]
         return SimpleNamespace(
             returncode=0,

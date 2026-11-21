@@ -7,11 +7,11 @@ import hashlib, json, subprocess, tempfile, unittest, yaml
 R = Path(__file__).resolve().parents[1]
 
 
-def load(p):
+def load(p: str):
     return yaml.safe_load((R / p).read_text())
 
 
-def render(chart, values, release, ns):
+def render(chart: str, values: dict[str, object], release: str, ns: str):
     with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as f:
         yaml.safe_dump(values, f)
         f.flush()

@@ -12,7 +12,7 @@ SPEC.loader.exec_module(MODULE)
 
 
 class FakeWatchdog(MODULE.Watchdog):
-    def __init__(self, directory):
+    def __init__(self, directory: str):
         super().__init__(
             {
                 "state_dir": directory,
@@ -24,13 +24,13 @@ class FakeWatchdog(MODULE.Watchdog):
         )
         self.good = False
         self.uptime = 300
-        self.events = []
-        self.running = set()
+        self.events: list[object] = []
+        self.running: set[object] = set()
         self.stuck = False
-        self.ports = []
+        self.ports: list[object] = []
         self.invalid = False
 
-    def service_installed(self, unit):
+    def service_installed(self, unit: str):
         return unit == self.agent
 
     def clock(self):
@@ -55,7 +55,7 @@ class FakeWatchdog(MODULE.Watchdog):
     def occupied(self):
         return self.ports
 
-    def service_active(self, unit):
+    def service_active(self, unit: str):
         return unit in self.running
 
     def command(self, *args):

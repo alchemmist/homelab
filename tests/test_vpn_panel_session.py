@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import tempfile
+from typing import TypedDict
 import unittest
 from unittest.mock import patch
 
@@ -13,6 +14,13 @@ spec = importlib.util.spec_from_file_location(
 )
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
+
+
+class _ApiBody(TypedDict):
+    name: str
+    scope: str
+    expiresAt: int
+    expectedScope: str
 
 
 class SessionTests(unittest.TestCase):
@@ -65,7 +73,7 @@ class SessionTests(unittest.TestCase):
             calls = []
             values = {"bootstrap": "B" * 48, "cleanup": "C" * 48, "worker": "W" * 48}
 
-            def insert(kind, scope, expires=0):
+            def insert(kind: str, scope: str, expires: int = 0):
                 row = {
                     "id": max([x["id"] for x in rows] + [0]) + 1,
                     "name": s.names[kind],
@@ -84,7 +92,7 @@ class SessionTests(unittest.TestCase):
                     "token": values[kind],
                 }
 
-            def cli(args, **kwargs):
+            def cli(args: list[str], **kwargs):
                 self.assertIn("-tokenName", args)
                 self.assertIn(s.names["bootstrap"], args)
                 self.assertNotIn("existing", args)
@@ -92,22 +100,30 @@ class SessionTests(unittest.TestCase):
                 kwargs["stdout"].write("apiToken: " + values["bootstrap"] + "\n")
                 return type("Result", (), {"returncode": 0})()
 
-            def api(base, token, method, path, body=None):
+            def api(
+                base: str,
+                token: str,
+                method: str,
+                path: str,
+                body: _ApiBody | None = None,
+            ):
                 calls.append((token, method, path, body))
                 if path.endswith("/create"):
+                    assert body is not None
                     kind = next(k for k in values if s.names[k] == body["name"])
                     self.assertGreater(body["expiresAt"], 0)
                     return insert(kind, body["scope"], body["expiresAt"])
                 if "/delete/" in path:
                     target = int(path.rsplit("/", 1)[1])
                     row = next(r for r in rows if r["id"] == target)
+                    assert body is not None
                     self.assertEqual(row["scope"], body["expectedScope"])
                     rows.remove(row)
                     return None
                 self.assertEqual(token, values["worker"])
                 return []
 
-            def directory(path):
+            def directory(path: Path):
                 path.mkdir(mode=0o700)
                 return path
 
@@ -160,7 +176,7 @@ class SessionTests(unittest.TestCase):
             state = Path(tmp).resolve() / "vpn83-20261108-approval"
             s = m.NativeSession(state)
 
-            def directory(path):
+            def directory(path: Path):
                 path.mkdir(mode=0o700)
                 return path
 
@@ -357,7 +373,7 @@ class SubscriptionMigrationTests(unittest.TestCase):
 
 
 class BackendGuardTests(unittest.TestCase):
-    def module(self, filename):
+    def module(self, filename: str):
         spec = importlib.util.spec_from_file_location("backend_test", ROOT / "scripts" / filename)
         m = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(m)

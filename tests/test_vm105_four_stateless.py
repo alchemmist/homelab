@@ -10,7 +10,7 @@ import yaml
 R = Path(__file__).resolve().parents[1]
 
 
-def render(chart, values, namespace):
+def render(chart: str, values: dict[str, object], namespace: str):
     with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as f:
         yaml.safe_dump(values, f)
         f.flush()
@@ -21,7 +21,7 @@ def render(chart, values, namespace):
     return {(x["kind"], x["metadata"]["name"]): x for x in yaml.safe_load_all(raw) if x}
 
 
-def values(chart):
+def values(chart: str):
     v = yaml.safe_load((R / "charts" / chart / "values.yaml").read_text())
     # Production overrides here are top-level keys; maintain explicit queue map.
     for k, x in yaml.safe_load((R / "deploy" / chart / "values.yaml").read_text()).items():

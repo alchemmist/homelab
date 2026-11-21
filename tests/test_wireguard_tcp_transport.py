@@ -6,7 +6,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1] / "ansible/roles/wireguard_tcp_transport/files"
 
 
-def load(name):
+def load(name: str):
     spec = importlib.util.spec_from_file_location(name, ROOT / (name + ".py"))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
