@@ -13,7 +13,7 @@ from service import Engine
 
 
 class IntegrationTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.now = 1000
         self.clock = patch("time.time", lambda: self.now)
         self.clock.start()
@@ -33,11 +33,11 @@ class IntegrationTests(unittest.TestCase):
         self.identity = {"execution_id": "1234", "workflow_revision": "durable-v1"}
         self.data = self.engine.claim(self.identity)
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         self.clock.stop()
         self.tmp.cleanup()
 
-    def test_consecutive_deferrals_same_execution_then_published(self):
+    def test_consecutive_deferrals_same_execution_then_published(self) -> None:
         self.model.match.side_effect = [
             Failure("LLM_ADMISSION_DEFERRED", 61),
             Failure("LLM_ADMISSION_DEFERRED", 180),
@@ -75,7 +75,7 @@ class IntegrationTests(unittest.TestCase):
         with self.assertRaises(Failure):
             self.engine.run_v1("match", original)
 
-    def test_finite_reference_error_retained_no_rewait(self):
+    def test_finite_reference_error_retained_no_rewait(self) -> None:
         self.data = self.engine.run_v1("match", self.data)
         self.data = self.engine.run_v1("collect", self.data)
         self.model.analyze.side_effect = Failure("LLM_INVALID_EVIDENCE_REFERENCE")
@@ -90,7 +90,7 @@ class IntegrationTests(unittest.TestCase):
             self.engine.claim(self.identity)
         self.github.request.assert_not_called()
 
-    def test_early_wrong_stale_resume_and_legacy_cannot_bypass(self):
+    def test_early_wrong_stale_resume_and_legacy_cannot_bypass(self) -> None:
         self.model.match.side_effect = Failure("LLM_ADMISSION_DEFERRED", 61)
         waiting = self.engine.run_v1("match", self.data)
         for bad in (
@@ -108,7 +108,7 @@ class IntegrationTests(unittest.TestCase):
             with self.assertRaises(Failure):
                 self.engine.claim({**self.identity, "execution_id": bad})
 
-    def test_cancelled_wait_expiry_reclaims_progress_fences_old_execution(self):
+    def test_cancelled_wait_expiry_reclaims_progress_fences_old_execution(self) -> None:
         self.data = self.engine.run_v1("match", self.data)
         self.data = self.engine.run_v1("collect", self.data)
         self.model.analyze.side_effect = Failure("LLM_ADMISSION_DEFERRED", 61)
@@ -123,7 +123,7 @@ class IntegrationTests(unittest.TestCase):
             self.engine.claim(self.identity)
         self.assertIn("evidence", self.store.get(self.key)["result"])
 
-    def test_owned_completion_priority_analysis_due_and_publish_ready(self):
+    def test_owned_completion_priority_analysis_due_and_publish_ready(self) -> None:
         a = self.engine.run_v1("match", self.data)
         a = self.engine.run_v1("collect", a)
         # A pre-upgrade cohort can contain multiple owners. Seed B explicitly;
@@ -175,7 +175,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(b["stage"], "collect")
         self.assertEqual(self.model.match.call_count, 2)
 
-    def test_priority_hold_is_bounded_and_rejects_invalid_higher_owner(self):
+    def test_priority_hold_is_bounded_and_rejects_invalid_higher_owner(self) -> None:
         a = self.engine.run_v1("match", self.data)
         a = self.engine.run_v1("collect", a)
         self.model.analyze.side_effect = Failure("LLM_ADMISSION_DEFERRED", 180)
@@ -200,7 +200,7 @@ class IntegrationTests(unittest.TestCase):
             self.assertEqual(self.store._owned_priority_until(c, 0, expiry), 0)
         self.assertEqual(self.store.get(self.key)["state"], "retry")
 
-    def test_fresh_queued_match_waits_for_short_owned_analysis_slot(self):
+    def test_fresh_queued_match_waits_for_short_owned_analysis_slot(self) -> None:
         a = self.engine.run_v1("match", self.data)
         a = self.engine.run_v1("collect", a)
         self.model.analyze.side_effect = Failure("LLM_ADMISSION_DEFERRED", 61)
@@ -217,7 +217,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(next_job["job_id"], self.key)
         self.assertEqual(next_job["stage"], "analyze")
 
-    def test_fresh_v1_claim_acks_dispatch_replay_does_not_erase_new_wake(self):
+    def test_fresh_v1_claim_acks_dispatch_replay_does_not_erase_new_wake(self) -> None:
         data = self.data
         for stage in ("match", "collect", "analyze", "publish"):
             data = self.engine.run_v1(stage, data)
@@ -253,7 +253,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(self.engine.claim(empty_id)["status"], "empty")
         self.assertEqual(self.store.dispatch_status()["attempts"], 1)
 
-    def test_busy_worker_30min_renews_wait_without_http_queue(self):
+    def test_busy_worker_30min_renews_wait_without_http_queue(self) -> None:
         reservation = self.store.reserve_llm(1, timeout=1800, now=self.now)
         self.engine.lock.acquire()
         try:
@@ -280,7 +280,7 @@ class IntegrationTests(unittest.TestCase):
         result = self.engine.run_v1("match", self.data)
         self.assertEqual(result["stage"], "collect")
 
-    def test_concurrent_same_claim_and_duplicate_stage_do_not_double_pay(self):
+    def test_concurrent_same_claim_and_duplicate_stage_do_not_double_pay(self) -> None:
         import concurrent.futures, threading
 
         with concurrent.futures.ThreadPoolExecutor(2) as pool:
@@ -293,7 +293,8 @@ class IntegrationTests(unittest.TestCase):
         entered = threading.Event()
         release = threading.Event()
 
-        def model(*args, **kwargs):
+
+        def model(*_args, **_kwargs) -> dict[str, object]:
             entered.set()
             self.assertTrue(release.wait(3))
             return {"candidates": []}
@@ -312,7 +313,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(self.model.match.call_count, 1)
         self.assertEqual(self.engine.run_v1("match", self.data), result)
 
-    def test_running_crash_no_blind_model_replay(self):
+    def test_running_crash_no_blind_model_replay(self) -> None:
         _, owner = self.store.owners.begin("match", self.data, self.now)
         restored = Store(self.store.path)
         self.assertEqual(restored.recover_on_start(), 0)
@@ -321,7 +322,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(restored.get(self.key)["state"], "dead")
         self.assertEqual(restored.get(self.key)["error"], "WRITE_NEEDS_REVIEW")
 
-    def test_wait_releases_http_lock_but_retains_logical_owner(self):
+    def test_wait_releases_http_lock_but_retains_logical_owner(self) -> None:
         self.model.match.side_effect = Failure("LLM_ADMISSION_DEFERRED", 61)
         self.engine.run_v1("match", self.data)
         other = self.store.enqueue(f.event(start="2026-11-03T14:00:00Z"))["job_id"]
@@ -334,14 +335,15 @@ class IntegrationTests(unittest.TestCase):
 
 class ModelTimerTests(unittest.TestCase):
     @patch.dict("os.environ", {"SPI_TOKEN_ACCOUNTING_MODE": "byte-bound-v1"})
-    def test_active_reservation_survives_old_661_second_expiry(self):
+    def test_active_reservation_survives_old_661_second_expiry(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             store = Store(tmp + "/db", minute_token_limit=60000)
             http = Mock()
             model = Model(http, "fake", store=store)
             now = time.time()
 
-            def request(*args, **kwargs):
+
+            def request(*_args, **kwargs) -> dict[str, object]:
                 self.assertGreater(kwargs["timeout"], 1700)
                 with store.db() as c:
                     row = c.execute("select * from llm_admission").fetchone()

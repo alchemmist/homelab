@@ -29,7 +29,7 @@ def load_token(ssh_host):
 
 
 class Client:
-    def __init__(self, url, token):
+    def __init__(self, url, token) -> None:
         self.url = url
         self.headers = {
             "Authorization": "Bearer " + token,
@@ -149,4 +149,4 @@ if __name__ == "__main__":
             if isinstance(error, RuntimeError)
             else "Connection or protocol check failed",
         )
-        raise SystemExit(1)
+        raise SystemExit(1) from error

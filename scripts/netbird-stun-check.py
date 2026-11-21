@@ -42,7 +42,9 @@ def parse_binding(packet, response):
     mapped = attrs.get(0x20, b"")
     if len(mapped) != 8 or mapped[:2] != b"\x00\x01":
         raise ValueError("missing IPv4 XOR-MAPPED-ADDRESS")
-    address = socket.inet_ntoa(bytes(v ^ c for v, c in zip(mapped[4:], struct.pack("!I", COOKIE))))
+    address = socket.inet_ntoa(
+        bytes(v ^ c for v, c in zip(mapped[4:], struct.pack("!I", COOKIE), strict=True))
+    )
     port = struct.unpack("!H", mapped[2:4])[0] ^ (COOKIE >> 16)
     return {"address": address, "port": port}
 

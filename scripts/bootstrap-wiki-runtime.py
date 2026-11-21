@@ -12,7 +12,7 @@ class BootstrapError(Exception):
 
 
 class Kubernetes:
-    def __init__(self, command):
+    def __init__(self, command) -> None:
         self.command = command
 
     def run(self, *args, payload=None):
@@ -135,7 +135,9 @@ def bootstrap(kube, skip_legacy_git=False):
             results.append(
                 metadata.get("namespace", "cluster") + "/" + metadata["name"] + ": created"
             )
-    for target, old, item in zip(targets, existing, [pvc, bootstrap_secret, git_secret]):
+    for target, old, item in zip(
+        targets, existing, [pvc, bootstrap_secret, git_secret], strict=True
+    ):
         if not old and item is not None:
             kube.create(item)
         results.append(

@@ -7,13 +7,14 @@ from pathlib import Path
 import tempfile
 import subprocess
 import sys
+from types import ModuleType
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 THEME = ROOT / "deploy/authentik/quiet-mono"
 
 
-def load(name):
+def load(name) -> ModuleType:
     path = ROOT / "ansible/roles/authentik/files" / (name + ".py")
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
@@ -22,7 +23,7 @@ def load(name):
 
 
 class AuthentikBrandingTests(unittest.TestCase):
-    def test_approved_reference_is_frozen(self):
+    def test_approved_reference_is_frozen(self) -> None:
         root = THEME / "reference"
         manifest = json.loads((root / "manifest.json").read_text())
         self.assertGreaterEqual(len(manifest["files"]), 15)
@@ -31,7 +32,7 @@ class AuthentikBrandingTests(unittest.TestCase):
             self.assertEqual(hashlib.sha256(content).hexdigest(), expected["sha256"], name)
             self.assertEqual(len(content), expected["bytes"], name)
 
-    def test_cli_emits_individual_documents_for_strict_v3_validation(self):
+    def test_cli_emits_individual_documents_for_strict_v3_validation(self) -> None:
         output = subprocess.check_output(
             [
                 sys.executable,
@@ -44,13 +45,13 @@ class AuthentikBrandingTests(unittest.TestCase):
         self.assertGreaterEqual(len(documents), 4)
         self.assertNotIn("List", [item["kind"] for item in documents])
 
-    def test_static_asset_checksums(self):
+    def test_static_asset_checksums(self) -> None:
         for item in json.loads((THEME / "assets.json").read_text()).values():
             self.assertEqual(
                 hashlib.sha256((THEME / item["path"]).read_bytes()).hexdigest(), item["sha256"]
             )
 
-    def test_static_bundle_has_no_scripts_or_secrets(self):
+    def test_static_bundle_has_no_scripts_or_secrets(self) -> None:
         items = load("branding_static").render(THEME)["items"]
         self.assertEqual(
             [item["kind"] for item in items if item["kind"] != "ConfigMap"],
@@ -69,7 +70,7 @@ class AuthentikBrandingTests(unittest.TestCase):
         )
         self.assertNotIn("Secret", [item["kind"] for item in items])
 
-    def test_static_pod_is_sandboxed_and_small(self):
+    def test_static_pod_is_sandboxed_and_small(self) -> None:
         deployment = next(
             i for i in load("branding_static").render(THEME)["items"] if i["kind"] == "Deployment"
         )
@@ -83,7 +84,7 @@ class AuthentikBrandingTests(unittest.TestCase):
         self.assertEqual(container["securityContext"]["capabilities"]["drop"], ["ALL"])
         self.assertEqual(container["resources"]["limits"]["memory"], "64Mi")
 
-    def test_ingress_is_only_public_static_prefix(self):
+    def test_ingress_is_only_public_static_prefix(self) -> None:
         ingress = next(
             i for i in load("branding_static").render(THEME)["items"] if i["kind"] == "Ingress"
         )
@@ -93,7 +94,7 @@ class AuthentikBrandingTests(unittest.TestCase):
         self.assertEqual(paths[0]["path"], "/-/quiet-mono/v1/")
         self.assertEqual(ingress["spec"]["tls"][0]["secretName"], "authentik-tls")
 
-    def test_fonts_and_mobile_photos_are_referenced(self):
+    def test_fonts_and_mobile_photos_are_referenced(self) -> None:
         css = (THEME / "theme.css").read_text()
         self.assertIn("__ASSET_COURIER__", css)
         self.assertIn("__ASSET_SERIF__", css)
@@ -103,20 +104,20 @@ class AuthentikBrandingTests(unittest.TestCase):
         self.assertIn("::part(drawer-content)", css)
         self.assertNotIn("https://", css)
 
-    def test_primary_action_style_also_covers_native_redirect_anchor(self):
+    def test_primary_action_style_also_covers_native_redirect_anchor(self) -> None:
         css = (THEME / "theme.css").read_text()
         self.assertNotRegex(css, r"(?<![\w-])button\.pf-m-primary")
         self.assertIn(":is(button,a.pf-c-button).pf-m-primary", css)
         self.assertIn(":is(button,a.pf-c-button).pf-m-primary:hover::after", css)
         self.assertIn("box-sizing:border-box;text-decoration:none!important", css)
 
-    def test_nested_mfa_child_without_challenge_part_is_covered(self):
+    def test_nested_mfa_child_without_challenge_part_is_covered(self) -> None:
         css = (THEME / "theme.css").read_text()
         self.assertIn(":host(:is([part='challenge'],ak-stage-authenticator-validate-code))", css)
         self.assertIn(":host(ak-stage-authenticator-validate-code) .pf-c-button:focus-visible", css)
         self.assertNotIn("ak-stage-authenticator-validate-code{display:none", css)
 
-    def test_server_denial_template_is_scoped_and_centered(self):
+    def test_server_denial_template_is_scoped_and_centered(self) -> None:
         css = (THEME / "theme.css").read_text()
         self.assertIn("body:has(.pf-c-page__drawer .pf-c-login)", css)
         self.assertIn(
@@ -128,7 +129,7 @@ class AuthentikBrandingTests(unittest.TestCase):
         self.assertNotIn("ak-back-home{display:none", css)
         self.assertNotIn("pf-icon-error-circle-o{display:none", css)
 
-    def test_inspector_toggle_and_history_are_presentation_only(self):
+    def test_inspector_toggle_and_history_are_presentation_only(self) -> None:
         css = (THEME / "theme.css").read_text()
         self.assertIn("ak-flow-inspector-button{position:fixed!important", css)
         self.assertIn("width:39px!important;height:39px!important", css)
@@ -142,7 +143,7 @@ class AuthentikBrandingTests(unittest.TestCase):
         self.assertNotIn("nth-child", css)
         self.assertNotIn("column-reverse", css)
 
-    def test_reconciler_does_not_ship_a_replacement_frontend(self):
+    def test_reconciler_does_not_ship_a_replacement_frontend(self) -> None:
         source = (ROOT / "ansible/roles/authentik/files/branding.py").read_text()
         self.assertNotIn("core/users/", source)
         self.assertNotIn("set_password", source)
@@ -154,19 +155,19 @@ class AuthentikBrandingTests(unittest.TestCase):
         self.assertNotIn("api('POST', 'admin/file/", source)
         self.assertIn("/-/quiet-mono/v1/", source)
 
-    def test_backups_have_private_permissions(self):
+    def test_backups_have_private_permissions(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory) / "backup.json"
             load("branding").protected_json(target, {"test": True})
             self.assertEqual(target.stat().st_mode & 0o777, 0o600)
 
-    def test_reference_stays_nonmodal(self):
+    def test_reference_stays_nonmodal(self) -> None:
         source = (THEME / "reference/quiet-mono.js").read_text()
         self.assertNotIn("showModal(", source)
         self.assertIn("dialog.show()", source)
         self.assertIn("!dialog.open || inspectorClosing", source)
 
-    def test_playbook_uses_explicit_apply_and_server_side_configmaps(self):
+    def test_playbook_uses_explicit_apply_and_server_side_configmaps(self) -> None:
         source = (ROOT / "ansible/playbooks/authentik-branding.yml").read_text()
         self.assertIn("authentik_branding_action: prepare", source)
         self.assertIn("--server-side", source)
@@ -175,7 +176,7 @@ class AuthentikBrandingTests(unittest.TestCase):
 
 
 class NatureBackgroundTests(unittest.TestCase):
-    def test_full_collection_and_css_only_random_endpoint(self):
+    def test_full_collection_and_css_only_random_endpoint(self) -> None:
         photos = json.loads((THEME / "nature.json").read_text())["photos"]
         self.assertEqual(len(photos), 30)
         self.assertEqual(len({p["id"] for p in photos}), 30)
@@ -201,7 +202,7 @@ class NatureBackgroundTests(unittest.TestCase):
             self.assertIn("location = /-/quiet-mono/v1/nature/" + variant, conf)
             self.assertIn("return 302 /-/quiet-mono/v1/$nature_" + variant, conf)
 
-    def test_scene_journey_uses_opaque_same_origin_next_not_new_request_id(self):
+    def test_scene_journey_uses_opaque_same_origin_next_not_new_request_id(self) -> None:
         conf = load("branding_static").render(THEME)["items"][0]["data"]["nginx.conf"]
         self.assertIn("map $http_referer $nature_next", conf)
         self.assertIn("https://auth[.]socrat[.]alchemmist[.]xyz/if/flow/", conf)
@@ -218,7 +219,7 @@ class NatureBackgroundTests(unittest.TestCase):
         self.assertNotIn('Set-Cookie "$nature_flow_seed', conf)
         self.assertIn("access_log off;", conf)
 
-    def test_early_single_layer_and_avif_transfer_budget(self):
+    def test_early_single_layer_and_avif_transfer_budget(self) -> None:
         css = (THEME / "theme.css").read_text()
         self.assertIn("@import url('__ASSET_NATURE_SCENE__')", css)
         self.assertIn(
@@ -236,7 +237,7 @@ class NatureBackgroundTests(unittest.TestCase):
             self.assertIn("data:image/webp;base64,", scene.read_text())
             self.assertNotIn("javascript", scene.read_text())
 
-    def test_configmap_shards_and_projected_assets_are_bounded(self):
+    def test_configmap_shards_and_projected_assets_are_bounded(self) -> None:
         import base64
 
         items = load("branding_static").render(THEME)["items"]
