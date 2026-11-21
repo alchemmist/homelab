@@ -13,8 +13,16 @@ import logging
 import os
 import ssl
 import time
+from collections.abc import Callable
 from pathlib import Path
+from typing import Protocol, cast
 
+
+class _Span(Protocol):
+    def to_json(self) -> str: ...
+
+
+_LOAD_CERT_CHAIN = "load_cert_chain"
 PROGRESS = Path("/run/otel-test/renewal-progress.json")
 MARKERS = [
     "OTEL_CANARY_PRIVATE_CONTENT_MUST_NOT_BE_CAPTURED",
@@ -27,7 +35,7 @@ def certificate_hash():
     return hashlib.sha256(Path("/etc/otel-client/tls.crt").read_bytes()).hexdigest()
 
 
-def record(value):
+def record(value: object) -> None:
     temporary = PROGRESS.with_suffix(".new")
     temporary.write_text(json.dumps(value))
     temporary.replace(PROGRESS)
@@ -40,13 +48,21 @@ def run():
     loaded = []
     original_loader = ssl.SSLContext.load_cert_chain
 
-    def observe_loader(context, certfile, keyfile=None, password=None):
-        public_hash = hashlib.sha256(Path(certfile).read_bytes()).hexdigest()
-        result = original_loader(context, certfile, keyfile, password)
+    def observe_loader(
+        context: object,
+        certfile: str | bytes | os.PathLike[str] | os.PathLike[bytes],
+        keyfile: str | bytes | os.PathLike[str] | os.PathLike[bytes] | None = None,
+        password: str | bytes | bytearray | Callable[[], str | bytes | bytearray] | None = None,
+    ) -> None:
+        public_hash = hashlib.sha256(
+            Path(os.fsdecode(os.fspath(certfile))).read_bytes()
+        ).hexdigest()
         loaded.append(public_hash)
-        return result
+        cast("Callable[[object, object, object, object], None]", original_loader)(
+            context, certfile, keyfile, password
+        )
 
-    ssl.SSLContext.load_cert_chain = observe_loader
+    setattr(ssl.SSLContext, _LOAD_CERT_CHAIN, observe_loader)
     with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
         import litellm
         from litellm.integrations.opentelemetry import OpenTelemetry
@@ -62,18 +78,18 @@ def run():
         audit = {"endedSpans": 0, "sensitiveSyntheticContentFoundAtSource": False}
 
         class PrivacyAudit(SpanProcessor):
-            def on_start(self, span, parent_context=None):
+            def on_start(self, span: _Span, parent_context: object | None = None) -> None:
                 pass
 
-            def on_end(self, span):
+            def on_end(self, span: _Span) -> None:
                 audit["endedSpans"] += 1
                 if any(marker in span.to_json() for marker in MARKERS):
                     audit["sensitiveSyntheticContentFoundAtSource"] = True
 
-            def shutdown(self):
+            def shutdown(self) -> None:
                 pass
 
-            def force_flush(self, timeout_millis=30000):
+            def force_flush(self, timeout_millis: int = 30000) -> bool:
                 return True
 
         provider = handler._tracer_provider
