@@ -3,6 +3,8 @@ import importlib.util
 import json
 import pathlib
 import unittest
+from collections.abc import Awaitable
+from typing import Protocol, TypedDict
 from unittest.mock import AsyncMock, patch
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -11,6 +13,26 @@ SPEC = importlib.util.spec_from_file_location(
 )
 GUARD = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(GUARD)
+
+
+class _FetchFunction(TypedDict):
+    arguments: str
+
+
+class _FetchCall(TypedDict):
+    function: _FetchFunction
+
+
+class _FetchCallable(Protocol):
+    def __call__(self, **kwargs: object) -> Awaitable[object]: ...
+
+
+class _FetchTool(TypedDict):
+    callable: _FetchCallable
+
+
+class _FetchMetadata(TypedDict):
+    tools: dict[str, _FetchTool]
 
 
 class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
@@ -35,7 +57,9 @@ class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn("error", await GUARD.bounded_fetch({"url": "https://example.com"}))
 
     async def test_upstream_refusal_does_not_start_fetch(self):
-        async def original(form_data, metadata, event_caller, call):
+        async def original(
+            form_data: object, metadata: object, event_caller: object, call: object
+        ):
             return {"error": "Tool call was not approved"}
 
         execute = GUARD.guarded_execute(original)
@@ -49,7 +73,7 @@ class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn("not approved", result["error"])
             fetch.assert_not_awaited()
 
-    async def check_termination(self, cancel):
+    async def check_termination(self, cancel: bool):
         original = asyncio.create_subprocess_exec
         processes = []
         started = asyncio.Event()
@@ -85,7 +109,12 @@ class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
         await self.check_termination(True)
 
     async def test_only_builtin_fetch_is_intercepted(self):
-        async def original(form_data, metadata, event_caller, call):
+        async def original(
+            form_data: object,
+            metadata: _FetchMetadata,
+            event_caller: object,
+            call: _FetchCall,
+        ):
             tool = metadata["tools"]["fetch_url"]
             result = await tool["callable"](**json.loads(call["function"]["arguments"]))
             return result

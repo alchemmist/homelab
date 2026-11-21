@@ -28,7 +28,13 @@ class WireGuardTemplateTests(unittest.TestCase):
             },
         }
 
-    def render(self, host, clients=None, nodes=None, peer_endpoints=None):
+    def render(
+        self,
+        host: str,
+        clients: dict[str, dict[str, str]] | None = None,
+        nodes: dict[str, dict[str, str]] | None = None,
+        peer_endpoints: dict[str, dict[str, str]] | None = None,
+    ):
         variables = {
             "inventory_hostname": host,
             "wg_socrat_nodes": nodes or self.nodes,

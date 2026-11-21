@@ -12,11 +12,16 @@ ROOT = Path(__file__).resolve().parents[1]
 DASH = json.loads((ROOT / "charts/monitoring-k3s/dashboards/traffic-light.json").read_text())
 
 
-def panel(n):
+def panel(n: int):
     return next(p for p in DASH["panels"] if p["id"] == n)
 
 
-def series(name, value, labels='job="node-exporter",node="socrat-4"', samples=20):
+def series(
+    name: str,
+    value: int,
+    labels: str = 'job="node-exporter",node="socrat-4"',
+    samples: int = 20,
+):
     return {
         "series": name + "{" + labels + "}",
         "values": str(value) + ("x" + str(samples) if samples else ""),
@@ -38,7 +43,7 @@ class DirectIpTest(unittest.TestCase):
         )
         docs = [d for d in yaml.safe_load_all(rendered) if d]
 
-        def obj(kind, name):
+        def obj(kind: str, name: str):
             return next(d for d in docs if d["kind"] == kind and d["metadata"]["name"] == name)
 
         pod = obj("Deployment", "socrat-public-ip-probes")["spec"]["template"]["spec"]
@@ -87,7 +92,7 @@ class DirectIpTest(unittest.TestCase):
     def test_actual_panel_expressions_down_pressure_stale_and_no_vpn_coupling(self):
         cases = []
 
-        def add(expr, data, value, when="3m"):
+        def add(expr: str, data: object, value: int, when: str = "3m"):
             cases.append(
                 {
                     "interval": "15s",
@@ -164,7 +169,7 @@ class DirectIpTest(unittest.TestCase):
     def test_mode_missing_is_not_off(self):
         e = panel(9)["targets"][0]["expr"]
 
-        def case(data, value):
+        def case(data: object, value: int):
             return {
                 "interval": "15s",
                 "input_series": data,

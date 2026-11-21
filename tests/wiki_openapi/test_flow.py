@@ -1,5 +1,6 @@
 import sys
 import unittest
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts/wiki_openapi"))
@@ -11,15 +12,15 @@ BEFORE = "b" * 40
 
 
 class Bot:
-    def __init__(self, files):
+    def __init__(self, files: list[dict[str, str]]):
         self._files = files
         self.calls = 0
 
-    def files(self, before, after):
+    def files(self, before: str, after: str):
         self.calls += 1
         return self._files
 
-    def text(self, sha, path):
+    def text(self, sha: str, path: str):
         if path.endswith("openapi.yaml"):
             return 'openapi: 3.0.3\ninfo:\n  title: x\npaths:\n  /v1/messages:\n    post:\n      summary: Send\n      responses:\n        "200":\n          description: ok\ncomponents:\n  schemas: {}\n'
         return Path("/Users/antonmoss/code/socrat-bot/scripts/render_wiki.py").read_text()
@@ -30,10 +31,10 @@ class Lab:
         self.closed = []
         self.page = "old"
 
-    def read_page(self, ref="main"):
+    def read_page(self, ref: str = "main"):
         return self.page, "blob"
 
-    def propose(self, after, markdown):
+    def propose(self, after: str, markdown: str):
         self.written = markdown
         return {
             "status": "created",
@@ -41,7 +42,7 @@ class Lab:
             "url": "https://github.com/alchemmist/homelab/pull/9",
         }
 
-    def automation_prs(self, keep):
+    def automation_prs(self, keep: object):
         return [
             {
                 "number": 4,
@@ -51,7 +52,7 @@ class Lab:
             }
         ]
 
-    def close(self, number, survivor):
+    def close(self, number: int, survivor: int):
         self.closed.append((number, survivor))
 
 
@@ -78,7 +79,7 @@ class Flow(unittest.TestCase):
         created = stage("create-pr", rendered[0], homelab=lab, write=True)
         self.assertEqual(created[0]["number"], 9)
 
-        def decide(prompt, data):
+        def decide(prompt: str, data: Mapping[str, Sequence[Mapping[str, object]]]):
             self.assertEqual(data["candidates"][0]["number"], 4)
             return {"close": [4, 9, 99]}
 

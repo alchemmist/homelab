@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 import importlib.util
 import json
 import unittest
@@ -15,7 +16,14 @@ HOUR = CASCADE.HOUR_RESOLUTION
 FLOOR = CASCADE.DISK_FLOOR_BYTES
 
 
-def block(ulid, start, end, resolution=0, deletion=False, size=None):
+def block(
+    ulid: str,
+    start: int,
+    end: int,
+    resolution: int = 0,
+    deletion: bool = False,
+    size: int | None = None,
+):
     item = {
         "ulid": ulid,
         "minTime": start,
@@ -28,7 +36,15 @@ def block(ulid, start, end, resolution=0, deletion=False, size=None):
     return item
 
 
-def call(raw, five=None, hour=None, now=100 * DAY, disk=None, five_up=True, hour_up=True):
+def call(
+    raw: Sequence[object],
+    five: Sequence[object] | None = None,
+    hour: Sequence[object] | None = None,
+    now: int = 100 * DAY,
+    disk: int | None = None,
+    five_up: bool = True,
+    hour_up: bool = True,
+):
     return CASCADE.plan(raw, five or [], hour or [], now, disk, five_up, hour_up)
 
 

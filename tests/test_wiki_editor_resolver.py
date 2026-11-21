@@ -77,13 +77,13 @@ printf '%s\\n' "$FIXTURE_ANSWER"
         self.script = self.root / "resolver.sh"
         self.script.write_text(source)
 
-    def fixture(self, name, body):
+    def fixture(self, name: str, body: str):
         path = self.root / name
         path.write_text("#!/bin/sh\nset -eu\n" + body)
         path.chmod(0o700)
         return path
 
-    def run_resolver(self, expected=0, **changes):
+    def run_resolver(self, expected: int = 0, **changes):
         result = subprocess.run(
             ["/bin/sh", str(self.script)],
             env={**self.environment, **changes},

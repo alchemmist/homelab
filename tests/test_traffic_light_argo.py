@@ -135,16 +135,21 @@ class TrafficLightArgoTest(unittest.TestCase):
 
     @unittest.skipUnless(shutil.which("promtool"), "promtool needed for PromQL semantics")
     def test_promql_partition_latest_labels_and_telemetry_gaps(self):
-        def series(name, values="1+0x120"):
+        def series(name: str, values: str = "1+0x120"):
             return {"series": name, "values": values}
 
-        def app(name, health="Healthy", sync="Synced", values="1+0x120"):
+        def app(
+            name: str,
+            health: str = "Healthy",
+            sync: str = "Synced",
+            values: str = "1+0x120",
+        ):
             return series(
                 f'argocd_app_info{{job="socrat-argocd",name="{name}",health_status="{health}",sync_status="{sync}"}}',
                 values,
             )
 
-        def checks(counts, when="30m"):
+        def checks(counts: list[int | None], when: str = "30m"):
             if len(counts) == 5:
                 counts = counts + [None if counts[0] is None else 0]
             return [
@@ -214,7 +219,7 @@ class TrafficLightArgoTest(unittest.TestCase):
             },
         ]
 
-        def app_check(values, when="30m"):
+        def app_check(values: list[tuple[str, int]], when: str = "30m"):
             return {
                 "expr": lab.application_query(),
                 "eval_time": when,

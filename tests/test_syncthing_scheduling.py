@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+from typing import TypedDict
 import shutil
 import subprocess
 import tempfile
@@ -18,11 +19,22 @@ ROOT = Path(__file__).resolve().parents[1]
 HELM = os.environ.get("HELM_BIN") or shutil.which("helm")
 
 
+class _PrivateGui(TypedDict, total=False):
+    enabled: bool
+    gatewayOnlyNodes: list[str]
+    nodes: list[dict[str, str]]
+
+
+class _SchedulingOverrides(TypedDict, total=False):
+    nodeSelector: dict[str, str]
+    privateGui: _PrivateGui
+
+
 @unittest.skipUnless(HELM and yaml, "Helm and PyYAML are required")
 class SyncthingSchedulingTests(unittest.TestCase):
     """Render the local chart and keep node eligibility tied to sidecar config."""
 
-    def render(self, overrides):
+    def render(self, overrides: _SchedulingOverrides):
         with tempfile.TemporaryDirectory() as directory:
             values = Path(directory) / "values.json"
             values.write_text(
@@ -45,14 +57,14 @@ class SyncthingSchedulingTests(unittest.TestCase):
                 timeout=30,
             )
 
-    def resources(self, overrides):
+    def resources(self, overrides: _SchedulingOverrides):
         result = self.render(overrides)
         self.assertEqual(result.returncode, 0, result.stderr)
         return [item for item in yaml.safe_load_all(result.stdout) if item]
 
     def test_only_nodes_with_sidecar_configuration_are_eligible(self) -> None:
         """Admit only nodes that have a rendered sidecar configuration."""
-        for overrides in [
+        cases: list[_SchedulingOverrides] = [
             {},
             {
                 "privateGui": {
@@ -65,7 +77,8 @@ class SyncthingSchedulingTests(unittest.TestCase):
                     ]
                 }
             },
-        ]:
+        ]
+        for overrides in cases:
             with self.subTest(overrides=overrides):
                 resources = self.resources(overrides)
                 pod = next(

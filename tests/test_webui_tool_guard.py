@@ -7,7 +7,7 @@ from unittest.mock import patch
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
-def load(name):
+def load(name: str):
     spec = importlib.util.spec_from_file_location(
         name, ROOT / "charts/open-webui/files" / f"{name}.py"
     )
@@ -49,7 +49,12 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
         self.calls = 0
         self.result = {"success": True}
 
-        async def execute(form_data, metadata, event_caller, call):
+        async def execute(
+            form_data: object,
+            metadata: dict[str, dict[str, object]],
+            event_caller: object,
+            call: dict[str, dict[str, str]],
+        ):
             self.calls += 1
             return (
                 json.loads(call["function"]["arguments"]),
@@ -61,7 +66,7 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
 
         self.execute = GUARD.guarded_execute(execute)
 
-    async def call(self, params=BAD, raw=None):
+    async def call(self, params: object = BAD, raw: str | None = None):
         return await self.execute(
             {},
             self.metadata,
@@ -165,7 +170,7 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(stopped[1]["error"], GUARD.REPEAT_STOP_MESSAGE)
 
     async def test_alias_resolved_before_validation(self):
-        def resolve(call, tools):
+        def resolve(call: dict[str, dict[str, str]], tools: object):
             call["function"]["name"] = "replace_file_content"
             return None
 
@@ -267,7 +272,7 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
 
 
 class NoProgressRoundTests(unittest.TestCase):
-    def call(self, name, error):
+    def call(self, name: str, error: str):
         return [
             {"type": "message", "status": "in_progress"},
             {
