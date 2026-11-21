@@ -17,7 +17,7 @@ class _Span(Protocol):
     def to_json(self) -> str: ...
 
 
-def run():
+def run() -> None:
     logging.disable(logging.CRITICAL)
     with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
         import litellm
