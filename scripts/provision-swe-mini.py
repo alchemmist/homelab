@@ -10,7 +10,6 @@ import socket
 import subprocess
 import time
 import urllib.request
-from pathlib import Path
 
 NS = "swe-mini"
 

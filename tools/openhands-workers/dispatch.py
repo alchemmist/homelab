@@ -1,5 +1,14 @@
 """Native Agent Server child launcher. Install in private operator tools; no tokens in args/logs."""
-import fcntl,hashlib,json,pathlib,re,subprocess,sys,typing,urllib.request,uuid
+import fcntl
+import json
+import pathlib
+import re
+import subprocess
+import sys
+import typing
+import urllib.request
+import uuid
+
 H=pathlib.Path.home(); M="1ab3985a-2193-4177-8dd2-8ec7d54dbfeb";Q="51a35822-a870-43cc-a775-fd5e662f0039";key=(H/".openhands/agent-canvas/api-key.txt").read_text().strip()
 def api(p,b=None,method=None) -> dict[str, object]:
  """Test behavior for api."""

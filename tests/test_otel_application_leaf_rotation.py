@@ -51,7 +51,6 @@ class LeafRotationTests(unittest.TestCase):
 
     def certificate(self) -> Certificate:
         """Build the reviewed LiteLLM leaf certificate fixture."""
-
         return {
             "metadata": {
                 "name": "otel-app-tls-litellm",

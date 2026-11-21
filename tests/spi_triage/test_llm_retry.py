@@ -4,7 +4,7 @@ import json
 import time
 import unittest
 import urllib.error
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import test_triage as f
 from core import LLM_TRANSIENT, MATCH_SCHEMA, Failure, Store
@@ -18,7 +18,7 @@ class DurableRetryTests(unittest.TestCase):
     tearDown = f.CoreTests.tearDown
 
     def test_many_transient_failures_survive_restart_then_complete(self) -> None:
-        'Verify many transient failures survive restart and complete.'
+        """Verify many transient failures survive restart and complete."""
         e = f.event()
         key = self.store.enqueue(e)["job_id"]
         # The Retry-After hint is preserved verbatim across restarts.
@@ -41,7 +41,7 @@ class DurableRetryTests(unittest.TestCase):
         assert self.store.get(key)["attempts"] == expected_attempts
 
     def test_permanent_and_ambiguous_errors_still_stop(self) -> None:
-        'Verify permanent and ambiguous errors still stop retrying.'
+        """Verify permanent and ambiguous errors still stop retrying."""
         for index, code in enumerate(
             ["HTTP_429", "LLM_HTTP_400", "LLM_HTTP_401", "LLM_HTTP_403", "WRITE_NEEDS_REVIEW"]
         ):
@@ -65,7 +65,7 @@ class DurableRetryTests(unittest.TestCase):
                 )
 
     def test_jitter_cap_and_retry_hint_validation(self) -> None:
-        'Verify jitter caps and retry-hint validation.'
+        """Verify jitter caps and retry-hint validation."""
         key = self.store.enqueue(f.event())["job_id"]
         with self.store.db() as c:
             c.execute("update jobs set attempts=10000 where id=?", (key,))
@@ -86,8 +86,7 @@ class ModelRetryTests(unittest.TestCase):
     """Tests for model retry classification hints."""
 
     def test_transport_classification_and_hint_preserved(self) -> None:
-
-        'Verify transport classification preserves retry hints.'
+        """Verify transport classification preserves retry hints."""
         for code in [
             "HTTP_429",
             "HTTP_503",
@@ -107,7 +106,7 @@ class ModelRetryTests(unittest.TestCase):
             assert http.request.call_count == 1  # durable queue retry, no busy loop
 
     def test_retry_after_seconds_and_date(self) -> None:
-        'Verify retry hints in seconds and HTTP-date forms.'
+        """Verify retry hints in seconds and HTTP-date forms."""
         from email.utils import formatdate
 
         for value in ["120", formatdate(time.time() + 180, usegmt=True), "invalid", "NaN"]:
@@ -126,7 +125,7 @@ class ModelRetryTests(unittest.TestCase):
                 assert caught.exception.retry_after > minimum_hint_seconds
 
     def test_batch_checkpoint_resumes_and_changed_snapshot_invalidates(self) -> None:
-        'Verify batch checkpoints resume and invalidate on change.'
+        """Verify batch checkpoints resume and invalidate on change."""
         good = {"issue_number": 0, "reason": "Different", "confidence": "low"}
         issues = [{"number": i} for i in range(25)]
         m = Model(Mock(), "fake")
@@ -154,7 +153,7 @@ class EngineCheckpointTests(unittest.TestCase):
     tearDown = f.EngineTests.tearDown
 
     def test_partial_matching_checkpoint_saved_before_busy_failure(self) -> None:
-        'Verify partial match checkpoints save before busy failures.'
+        """Verify partial match checkpoints save before busy failures."""
         def matching(event, issues, progress=None, on_progress=None) -> None:
             on_progress({"signature": "test", "decisions": []})
             raise Failure("LLM_HTTP_429")
@@ -170,7 +169,7 @@ class EngineCheckpointTests(unittest.TestCase):
         self.github.request.assert_not_called()
 
     def test_many_llm_deferrals_do_not_exhaust_github_reconciliation(self) -> None:
-        'Verify many LLM deferrals cannot exhaust reconciliation.'
+        """Verify many LLM deferrals cannot exhaust reconciliation."""
         key = self.store.enqueue(f.event())["job_id"]
         self.model.match.side_effect = Failure("LLM_HTTP_429")
         for _ in range(20):

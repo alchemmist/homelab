@@ -36,6 +36,7 @@ class ResolvedInventory(TypedDict):
 
 class InventoryStructureTests(unittest.TestCase):
     """Check the main inventory's structure and connection settings."""
+
     def test_main_inventory_contains_every_node_and_only_connection_settings(self) -> None:
         """Map every node with connection-only settings once."""
         inventory = yaml.safe_load((ANSIBLE / "inventory/hosts.yml").read_text())

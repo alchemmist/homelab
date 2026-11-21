@@ -5,15 +5,14 @@ import hashlib
 import importlib.util
 import io
 import json
-import os
+import tempfile
+import unittest
+import urllib.error
+import urllib.parse
 from pathlib import Path
 from types import ModuleType
 from typing import Self
-import tempfile
-import unittest
 from unittest.mock import patch
-import urllib.parse
-import urllib.error
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -38,6 +37,7 @@ def put(path, data) -> None:
 
 class Provisioning(unittest.TestCase):
     """Check RustFS provisioning policies match exactly."""
+
     def test_policies_exact(self) -> None:
         b = module("bootstrap")
         assert b.POLICIES["spi-reader"]["Statement"][0]["Action"] == ["s3:GetObject"]

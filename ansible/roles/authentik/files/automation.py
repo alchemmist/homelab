@@ -12,7 +12,7 @@ import os
 import secrets
 import sys
 import urllib.request
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 from urllib.parse import quote
@@ -120,7 +120,7 @@ def bootstrap_is_migration_aware(source: str) -> bool:
 
 
 def save(path: Path, data: object) -> None:
-    'Save.'
+    """Save."""
     tmp = path.with_name(path.name + ".tmp-" + secrets.token_hex(8))
     fd = os.open(tmp, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     try:
@@ -134,7 +134,7 @@ def save(path: Path, data: object) -> None:
 
 
 def api(token: str, method: str, path: str, data: object | None = None) -> dict[str, object]:
-    'Api.'
+    """Api."""
     req = urllib.request.Request(
         BASE + path,
         method=method,
@@ -149,7 +149,7 @@ def api(token: str, method: str, path: str, data: object | None = None) -> dict[
 
 
 def exact(token: str, endpoint: str, field: str, value: str) -> dict[str, object] | None:
-    'Exact.'
+    """Exact."""
     payload = api(
         token, "GET", endpoint + "?" + field + "=" + quote(value, safe="") + "&page_size=1000"
     )
@@ -163,7 +163,7 @@ def exact(token: str, endpoint: str, field: str, value: str) -> dict[str, object
 
 
 def verify(token: str, journal: dict[str, object]) -> dict[str, object]:
-    'Verify.'
+    """Verify."""
     user = api(token, "GET", "core/users/" + str(journal["user_pk"]) + "/")
     group = api(token, "GET", "core/groups/" + str(journal["group_pk"]) + "/")
     marker = {"homelab_automation_journal": journal["nonce"]}
@@ -247,7 +247,7 @@ def _create_journal(
     if matches:
         msg = "Foreign token identifier"
         raise RuntimeError(msg)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     backup = root / ("credentials-before-automation-" + stamp + ".json")
     if backup.exists():
         msg = "Backup already exists"
@@ -352,7 +352,7 @@ def _ensure_token(old: str, user: dict[str, object], journal: dict[str, object])
 
 
 def migrate(root, action):
-    'Migrate.'
+    """Migrate."""
     if root.stat().st_mode & 0o077:
         msg = "Deployment directory is not private"
         raise RuntimeError(msg)
@@ -500,7 +500,7 @@ def retire_default_admin(root):
         raise RuntimeError(msg)
     values.pop("AUTHENTIK_BOOTSTRAP_PASSWORD", None)
     save(root / "credentials.json", values)
-    journal["akadmin_retired_at"] = datetime.now(timezone.utc).isoformat()
+    journal["akadmin_retired_at"] = datetime.now(UTC).isoformat()
     save(path, journal)
     print(
         "PASS: exact reviewed akadmin and its bootstrap token retired; machine access and personal owner verified"

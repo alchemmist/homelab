@@ -18,6 +18,7 @@ spec.loader.exec_module(c)
 
 class CredentialTest(unittest.TestCase):
     """Exercise NetBird node credential renewal against a fake runtime."""
+
     def setup_runtime(
         self, folder, days
     ) -> tuple[type, list[tuple[str, str]], list[dict[str, object]]]:
@@ -27,7 +28,7 @@ class CredentialTest(unittest.TestCase):
             "token_id": "old-id",
             "token": "fixture-old",
             "expiration_date": (
-                dt.datetime.now(dt.timezone.utc) + dt.timedelta(days=days)
+                dt.datetime.now(dt.UTC) + dt.timedelta(days=days)
             ).isoformat(),
         }
         c.mod.atomic(folder / "credential.json", old)
@@ -56,7 +57,7 @@ class CredentialTest(unittest.TestCase):
                         "personal_access_token": {
                             "id": "new-id",
                             "expiration_date": (
-                                dt.datetime.now(dt.timezone.utc) + dt.timedelta(days=365)
+                                dt.datetime.now(dt.UTC) + dt.timedelta(days=365)
                             ).isoformat(),
                         },
                     }
@@ -70,7 +71,6 @@ class CredentialTest(unittest.TestCase):
 
     def test_valid_long_lived_token_does_not_rotate_each_run(self) -> None:
         """A valid long-lived token is not rotated on every run."""
-
         with tempfile.TemporaryDirectory() as t:
             folder = Path(t)
             runtime, calls, users = self.setup_runtime(folder, 300)
@@ -80,7 +80,6 @@ class CredentialTest(unittest.TestCase):
 
     def test_renew_verify_atomic_switch_then_revoke_old(self) -> None:
         """Renewal verifies, switches atomically, then revokes the old token."""
-
         with tempfile.TemporaryDirectory() as t:
             folder = Path(t)
             runtime, calls, users = self.setup_runtime(folder, 10)
@@ -93,7 +92,6 @@ class CredentialTest(unittest.TestCase):
 
     def test_human_blocked_or_lowered_account_not_repaired(self) -> None:
         """Human, blocked or lowered accounts are never repaired."""
-
         for field, value in [("is_service_user", False), ("is_blocked", True), ("role", "user")]:
             with tempfile.TemporaryDirectory() as t:
                 folder = Path(t)
@@ -105,7 +103,6 @@ class CredentialTest(unittest.TestCase):
 
     def test_uncertain_issuance_never_retries(self) -> None:
         """An uncertain issuance never retries."""
-
         with tempfile.TemporaryDirectory() as t:
             folder = Path(t)
             (folder / "credential-intent.json").write_text("{}")
@@ -114,7 +111,5 @@ class CredentialTest(unittest.TestCase):
 
     def test_missing_credential_needs_explicit_bootstrap(self) -> None:
         """A missing credential requires explicit bootstrap."""
-
-        with tempfile.TemporaryDirectory() as t:
-            with self.assertRaises(ValueError):
-                c.renew(Path(t), {})
+        with tempfile.TemporaryDirectory() as t, self.assertRaises(ValueError):
+            c.renew(Path(t), {})

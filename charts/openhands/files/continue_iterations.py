@@ -7,7 +7,7 @@ import sqlite3
 import time
 import uuid
 from contextlib import closing
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
@@ -16,8 +16,8 @@ class NoRedirect(HTTPRedirectHandler):
     """Redirect handler that refuses to follow HTTP redirects."""
 
     def redirect_request(self,*args):
-                                     'Refuse redirects so credentials are never forwarded.'
-                                     return None
+                                     """Refuse redirects so credentials are never forwarded."""
+                                     return
 
 def eligible(status,event):
     return (status=="error" and event.get("kind")=="ConversationErrorEvent" and
@@ -30,13 +30,13 @@ def retry_parallel(event):
     if re.search(r"\bmax_parallel_requests=[1-9]\d* requests in flight\b",text):return 0
     if "Limit type: max_parallel_requests." not in text:return None
     m=re.search(r"Limit resets at: (\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) UTC",text)
-    return datetime.strptime(m[1],"%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc).timestamp()+15 if m else None
+    return datetime.strptime(m[1],"%Y-%m-%d %H:%M:%S").replace(tzinfo=UTC).timestamp()+15 if m else None
 
 
 def busy_resume(cid,api,events,now,allowed=lambda: True,path="/wait-state/waits.db"):
     """Persist only scheduling metadata. Never replay a tool call or user message."""
     ev=next((e for e in events if e["kind"]!="ConversationStateUpdateEvent"),{})
-    reset=retry_parallel(ev);
+    reset=retry_parallel(ev)
     eid=ev.get("id")
     if reset is None or not eid:return False
     c=api()
@@ -51,19 +51,19 @@ def busy_resume(cid,api,events,now,allowed=lambda: True,path="/wait-state/waits.
         row=db.execute("select eid,due,n from waits where cid=?",(cid,)).fetchone()
         if not row or row[0]!=eid:
             n=min(5,row[2]+1) if row and now-row[1]<1800 else 0
-            due=max(reset,now+min(900,60*2**n));
-            db.execute("insert or replace into waits values(?,?,?,?,?)",(cid,model,eid,due,n));
+            due=max(reset,now+min(900,60*2**n))
+            db.execute("insert or replace into waits values(?,?,?,?,?)",(cid,model,eid,due,n))
             return False
         gate=db.execute("select until_ts from gates where model=?",(model,)).fetchone()
         if now<row[1] or (gate and now<gate[0]):return False
         if not allowed() or api()["execution_status"]!="error":return False
         latest=api("/events/search?sort_order=TIMESTAMP_DESC&limit=12")["items"]
         if next((e.get("id") for e in latest if e["kind"]!="ConversationStateUpdateEvent"),None)!=eid:return False
-        db.execute("update waits set due=? where cid=?",(now+900,cid));
-        db.execute("insert or replace into gates values(?,?)",(model,now+60));
+        db.execute("update waits set due=? where cid=?",(now+900,cid))
+        db.execute("insert or replace into gates values(?,?)",(model,now+60))
         db.commit()
-        ok=api("/run","POST").get("success");
-        print("capacity resume",cid,model,bool(ok),flush=True);
+        ok=api("/run","POST").get("success")
+        print("capacity resume",cid,model,bool(ok),flush=True)
         return bool(ok)
 
 def final_message(events,qa=False):
@@ -121,7 +121,7 @@ def bridge_ready():
 def client(cid):
     url="http://127.0.0.1:8000/api/conversations/"+str(uuid.UUID(cid))
     def api(suffix="",method="GET",data=None):
-        key=Path("/session-key").read_text().strip();
+        key=Path("/session-key").read_text().strip()
         req=Request(url+suffix,method=method,headers={"X-Session-API-Key":key,"Content-Type":"application/json"},data=json.dumps(data).encode() if data else None)
         with build_opener(ProxyHandler({}),NoRedirect()).open(req,timeout=15) as r:return json.load(r)
     return api
@@ -136,23 +136,23 @@ def pending_worker(status,events,now):
             if reset and now>=reset:return ("parallel",e["id"])
         if status=="finished" and e["kind"]=="MessageEvent" and e.get("source")=="agent":
             text=" ".join(x.get("text","") for x in e["llm_message"]["content"] if isinstance(x,dict)).strip()
-            if len(text)<800 and re.match(r"^(I (need to|will|should) |Next I will |Мне (нужно|надо) |Сначала я )",text,re.I) and not re.search(r"blocked|блокер|denied|permission|approval|разрешени|https?://",text,re.I):return ("plan",e["id"])
+            if len(text)<800 and re.match(r"^(I (need to|will|should) |Next I will |Мне (нужно|надо) |Сначала я )",text,re.IGNORECASE) and not re.search(r"blocked|блокер|denied|permission|approval|разрешени|https?://",text,re.IGNORECASE):return ("plan",e["id"])
         break
     return None
 
 def monitor_workers(parent,directory):
-    attempted=set();
-    delay={};
-    failures={};
+    attempted=set()
+    delay={}
+    failures={}
     parent_api=client(parent)
     while True:
         try:
             if parent_api()["execution_status"] not in ("running","finished"):continue
             rows=[]
             for f in sorted(Path(directory).glob("*.json")):
-                r=json.loads(f.read_text());
-                cid=str(uuid.UUID(r["id"]));
-                api=client(cid);
+                r=json.loads(f.read_text())
+                cid=str(uuid.UUID(r["id"]))
+                api=client(cid)
                 child=api()
                 if child.get("parent_conversation_id")!=parent:raise ValueError("wrong parent")
                 rows.append((cid,api,child["execution_status"]))
@@ -167,39 +167,39 @@ def monitor_workers(parent,directory):
                 action=pending_worker(st,ev,now)
                 if not action or action in attempted:continue
                 if api()["execution_status"]!=st or parent_api()["execution_status"] not in ("running","finished"):break
-                attempted.add(action);
-                failures[cid]=failures.get(cid,0)+1;
+                attempted.add(action)
+                failures[cid]=failures.get(cid,0)+1
                 delay[cid]=now+min(3600,120*2**min(5,failures[cid]-1))
                 result=api("/run","POST") if action[0]=="parallel" else api("/events","POST",{"role":"user","content":[{"type":"text","text":WORKER_NUDGE}],"run":True})
-                print("worker continuation",cid,action[0],bool(result.get("success")),flush=True);
+                print("worker continuation",cid,action[0],bool(result.get("success")),flush=True)
                 break
         except Exception as exc:print("worker check:",type(exc).__name__,flush=True)
         finally:time.sleep(45)
 
 def monitor(cid,qa=False):
     api=client(cid)
-    bridge_was_down=False; 
-    probed=False; 
-    attempted=None; 
-    after=0; 
-    parallel_failures=0; 
+    bridge_was_down=False
+    probed=False
+    attempted=None
+    after=0
+    parallel_failures=0
     last_parallel=None
     while True:
         try:
-            conv=api();
-            status=conv["execution_status"];
+            conv=api()
+            status=conv["execution_status"]
             now=time.time()
             if status in ("finished","error") and now>=after:
-                events=api("/events/search?sort_order=TIMESTAMP_DESC&limit=8")["items"];
-                ev=events[0] if events else {};
-                eid=ev.get("id");
+                events=api("/events/search?sort_order=TIMESTAMP_DESC&limit=8")["items"]
+                ev=events[0] if events else {}
+                eid=ev.get("id")
                 action=None
                 if eligible(status,ev):action="iteration"
                 elif not qa and status=="error" and bridge_disconnected(ev) and conv["agent"]["llm"]["model"]=="openai/o-deepseek":
                     # One run on a down -> ready transition; no credential probes, no blind retries.
                     if not bridge_ready():bridge_was_down=True
                     elif bridge_was_down and eid!=attempted:
-                        bridge_was_down=False;
+                        bridge_was_down=False
                         action="bridge_restored"
                 elif status=="error":busy_resume(cid,api,events,now)
                 elif qa and not probed and status=="finished" and (eid:=ledger_probe(events)) and eid!=attempted:

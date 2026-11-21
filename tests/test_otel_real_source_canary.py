@@ -14,9 +14,9 @@ SPEC.loader.exec_module(CANARY)
 
 class RealSourceCanaryTests(unittest.TestCase):
     """Verify real-source canary discovery uses private files only."""
+
     def test_source_assets_and_discovery_use_private_files(self) -> None:
         """Source assets and discovery use private files."""
-
         original = {
             "authorization": {"credentials_file": "/etc/otel/source-auth/ns/name/key"},
             "kubernetes_sd_configs": [{"role": "endpoints"}],
@@ -34,7 +34,6 @@ class RealSourceCanaryTests(unittest.TestCase):
 
     def test_existing_discovery_auth_is_never_silently_replaced(self) -> None:
         """Existing discovery auth is never silently replaced."""
-
         with self.assertRaises(ValueError):
             CANARY.rewrite_assets(
                 {"kubernetes_sd_configs": [{"api_server": "https://other"}]},
@@ -44,7 +43,6 @@ class RealSourceCanaryTests(unittest.TestCase):
 
     def test_expected_target_identity_covers_every_label(self) -> None:
         """Expected target identity covers every label."""
-
         item = {
             "scrapePool": "owned",
             "health": "up",
@@ -59,6 +57,5 @@ class RealSourceCanaryTests(unittest.TestCase):
 
     def test_cleanup_refuses_non_canary_workspaces(self) -> None:
         """Cleanup refuses non canary workspaces."""
-
         with self.assertRaises(ValueError):
             CANARY.cleanup_workspace(Path("/tmp/production-history"))

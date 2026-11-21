@@ -136,7 +136,7 @@ class Preimages:
         self.path.mkdir(mode=0o700)
 
     def target(self, relative: str | Path):
-        'Resolve a relative path inside the artifact directory, or fail.'
+        """Resolve a relative path inside the artifact directory, or fail."""
         relative = Path(relative)
         if relative.is_absolute() or ".." in relative.parts:
             raise MigrationError("Invalid preimage path")
@@ -145,7 +145,7 @@ class Preimages:
         return dest
 
     def save(self, path: Path, relative: str | Path):
-        'Copy the produced file to a fresh name inside the directory.'
+        """Copy the produced file to a fresh name inside the directory."""
         dest = self.target(relative)
         with dest.open("xb") as stream:
             stream.write(path.read_bytes())
@@ -153,7 +153,7 @@ class Preimages:
         return dest
 
     def receipt(self, report: Mapping[str, object]):
-        'Write the migration receipt alongside the artifacts.'
+        """Write the migration receipt alongside the artifacts."""
         p = self.path / "receipt.json"
         p.write_text(json.dumps(report, indent=2) + "\n")
         p.chmod(0o600)

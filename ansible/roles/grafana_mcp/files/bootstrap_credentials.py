@@ -5,10 +5,10 @@ import json
 import os
 import secrets
 import subprocess
-from typing import cast
 import sys
 import urllib.error
 import urllib.request
+from typing import cast
 
 NAMESPACE = "cattle-monitoring-system"
 SECRET_NAME = "grafana-mcp-credentials"
@@ -41,7 +41,6 @@ class Grafana:
 
     def __init__(self, url: str, username: str, password: str) -> None:
         """Initialize the Grafana client."""
-
         self.url = url
         encoded = base64.b64encode((username + ":" + password).encode()).decode()
         self.authorization = "Basic " + encoded
@@ -53,7 +52,7 @@ class Grafana:
         payload: object | None = None,
         token: str | None = None,
     ) -> dict[str, object]:
-        'Issue a Grafana HTTP request and return the decoded JSON response.'
+        """Issue a Grafana HTTP request and return the decoded JSON response."""
         request = urllib.request.Request(
             self.url + path,
             data=json.dumps(payload).encode() if payload is not None else None,

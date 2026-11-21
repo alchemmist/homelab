@@ -17,8 +17,7 @@ class ReadyContract(unittest.TestCase):
     """Tests for the OpenHands ready-state contract."""
 
     def setUp(self) -> None:
-
-        'Build the canonical PR snapshot fixture.'
+        """Build the canonical PR snapshot fixture."""
         self.sha = "a" * 40
         self.p = {
             "state": "OPEN",
@@ -60,11 +59,11 @@ class ReadyContract(unittest.TestCase):
         }
 
     def result(self) -> dict[str, object]:
-        'Assess the fixture PR with the canonical reviewer sets.'
+        """Assess the fixture PR with the canonical reviewer sets."""
         return cast("dict[str, object]", m.assess(self.p, {"review-bot"}, {"publisher"}))
 
     def remark(self) -> None:
-        'Install a resolved-bot-remark thread into the fixture.'
+        """Install a resolved-bot-remark thread into the fixture."""
         self.p["reviewThreads"]["nodes"] = [
             {
                 "id": "thread",
@@ -83,37 +82,37 @@ class ReadyContract(unittest.TestCase):
         ]
 
     def test_closed_merged_unknown_state_are_not_ready(self) -> None:
-        'Verify closed, merged and unknown PR states are not ready.'
+        """Verify closed, merged and unknown PR states are not ready."""
         for state in ("CLOSED", "MERGED", None):
             self.p["state"] = state
             assert not self.result()["ready_to_review"]
 
     def test_green_complete(self) -> None:
-        'Verify a fully green PR is marked ready to review.'
+        """Verify a fully green PR is marked ready to review."""
         assert self.result()["ready_to_review"]
 
     def test_skipped_failed_and_pending_are_not_green(self) -> None:
-        'Verify skipped, failed and pending checks are not green.'
+        """Verify skipped, failed and pending checks are not green."""
         for conclusion in ("SKIPPED", "NEUTRAL", "FAILURE", None):
             self.p["statusCheckRollup"]["contexts"]["nodes"][0]["conclusion"] = conclusion
             assert not self.result()["ready_to_review"]
 
     def test_no_reviewers_is_not_ready(self) -> None:
-        'Verify a PR without reviewers is never ready.'
+        """Verify a PR without reviewers is never ready."""
         assert not m.assess(self.p, set(), {"publisher"})["ready_to_review"]
 
     def test_old_review_is_not_current(self) -> None:
-        'Verify reviews must match the head commit to count.'
+        """Verify reviews must match the head commit to count."""
         self.p["reviews"]["nodes"][0]["commit"]["oid"] = "b" * 40
         assert not self.result()["ready_to_review"]
 
     def test_resolved_without_reply_is_not_enough(self) -> None:
-        'Verify a resolved thread without a reply is not enough.'
+        """Verify a resolved thread without a reply is not enough."""
         self.remark()
         assert not self.result()["ready_to_review"]
 
     def test_fix_requires_link_and_commit_membership(self) -> None:
-        'Verify a fix remark must link a commit in the PR.'
+        """Verify a fix remark must link a commit in the PR."""
         self.remark()
         reply = {
             "id": "reply",
@@ -130,7 +129,7 @@ class ReadyContract(unittest.TestCase):
         assert not self.result()["ready_to_review"]
 
     def test_rejection_requires_reason_then_resolve(self) -> None:
-        'Verify rejections state a reason before being resolved.'
+        """Verify rejections state a reason before being resolved."""
         self.remark()
         self.p["comments"]["nodes"] = [
             {
@@ -144,14 +143,14 @@ class ReadyContract(unittest.TestCase):
         assert not self.result()["ready_to_review"]
 
     def test_untrusted_actor_cannot_supply_disposition(self) -> None:
-        'Verify untrusted actors cannot resolve a remark.'
+        """Verify untrusted actors cannot resolve a remark."""
         self.test_rejection_requires_reason_then_resolve()
         self.p["reviewThreads"]["nodes"][0]["isResolved"] = True
         self.p["comments"]["nodes"][0]["author"]["login"] = "someone-else"
         assert not self.result()["ready_to_review"]
 
     def test_conflict_draft_missing_checks_pagination(self) -> None:
-        'Verify conflicting remarks, drafts and pagination fail safely.'
+        """Verify conflicting remarks, drafts and pagination fail safely."""
         original = copy.deepcopy(self.p)
         for field, value in [
             ("mergeable", "CONFLICTING"),

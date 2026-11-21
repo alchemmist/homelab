@@ -22,9 +22,9 @@ def module() -> ModuleType:
 
 class OpenWebuiRolloutTests(unittest.TestCase):
     """Validate the Open WebUI rollout's SDK tracing environment."""
+
     def test_sdk_environment_trace_only_private_mtls_and_long_request_drain(self) -> None:
         """Sdk environment trace only private mtls and long request drain."""
-
         env = module().sdk_environment()
         assert env["OTEL_OTLP_SPAN_EXPORTER"] == "http"
         assert env["OTEL_EXPORTER_OTLP_ENDPOINT"] == "https://10.250.0.3:44318/v1/traces"
@@ -38,7 +38,6 @@ class OpenWebuiRolloutTests(unittest.TestCase):
 
     def test_only_kubernetes_empty_env_default_is_normalized(self) -> None:
         """Only kubernetes empty env default is normalized."""
-
         helper = module()
         assert helper.environment_matches({"name": "EMPTY"}, "EMPTY", "")
         assert helper.environment_matches({"name": "EMPTY", "value": ""}, "EMPTY", "")
@@ -50,7 +49,6 @@ class OpenWebuiRolloutTests(unittest.TestCase):
 
     def test_maintained_overlay_matches_exact_three_source_files_and_env(self) -> None:
         """Maintained overlay matches exact three source files and env."""
-
         helper = module()
         overlay = yaml.safe_load(
             (ROOT / "deploy/monitoring/otel-open-webui-sdk-values.yaml").read_text()

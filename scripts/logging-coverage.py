@@ -2,8 +2,8 @@
 """Read-only, metadata-only logging acceptance. No range/log-stream API calls."""
 
 import argparse
-import http.client
 import concurrent.futures
+import http.client
 import json
 import math
 import re

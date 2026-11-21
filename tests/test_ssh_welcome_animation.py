@@ -22,6 +22,7 @@ ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
 
 class AnimationTests(unittest.TestCase):
     """Check the SSH welcome animation rendering expectations."""
+
     def setUp(self) -> None:
         self.sample = next(
             v

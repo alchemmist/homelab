@@ -36,11 +36,11 @@ def shutdown() -> str:
 
 class HostMetricsCanaryTests(unittest.TestCase):
     """Verify only exact pinned host-metrics canary errors count."""
+
     def test_only_exact_pinned_shutdown_errors_with_actual_replay_are_accounted(
         self,
     ) -> None:
         """Only exact pinned shutdown errors with replay are accounted."""
-
         text = shutdown() + "\n" + log("Moved items for dispatching back to queue", numberOfItems=1)
         result = canary.classify_shutdown_replay(text)
         assert result["shutdownReplayAccounted"]
@@ -50,7 +50,6 @@ class HostMetricsCanaryTests(unittest.TestCase):
 
     def test_generic_or_different_version_drop_is_never_exempted(self) -> None:
         """Generic or different-version drops are never exempted."""
-
         for text in [
             shutdown().replace("interrupted due to shutdown:", "permanent error:"),
             shutdown().replace("0.164.0", "0.163.0"),
@@ -61,7 +60,6 @@ class HostMetricsCanaryTests(unittest.TestCase):
 
     def test_persistent_metadata_error_or_replay_mismatch_fails(self) -> None:
         """Persistent metadata errors or replay mismatch fail the canary."""
-
         for suffix in [
             "\nFailed getting metadata",
             "\nError deleting item from queue",
@@ -79,7 +77,6 @@ class HostMetricsCanaryTests(unittest.TestCase):
 
     def test_metrics_only_configs_preserve_native_limits_and_queue_fsync(self) -> None:
         """Metrics-only configs preserve native limits and queue fsync."""
-
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)
             for role in ("agent", "cluster"):
@@ -106,7 +103,6 @@ class HostMetricsCanaryTests(unittest.TestCase):
         self,
     ) -> None:
         """Backend cleanup follows the agent barrier and is never delegated."""
-
         plays = yaml.safe_load(
             (ROOT / "ansible/playbooks/otel-host-metrics-canary.yml").read_text()
         )
@@ -120,7 +116,6 @@ class HostMetricsCanaryTests(unittest.TestCase):
 
     def test_outage_proof_uses_raw_range_vector_not_query_range_lookback(self) -> None:
         """The outage proof uses a raw range vector, not query-range lookback."""
-
         text = (ROOT / "scripts/otel-host-metrics-canary.py").read_text()
         assert "query(root, 'up[10m]')" in text
         assert "stops < float(timestamp) < restart" in text
@@ -130,12 +125,11 @@ class HostMetricsCanaryTests(unittest.TestCase):
 
     def test_native_contract_is_fresh_and_content_bound(self) -> None:
         """The native contract is fresh and content-bound."""
-
         import datetime
         import hashlib
         import socket
 
-        now = datetime.datetime.now(datetime.timezone.utc)
+        now = datetime.datetime.now(datetime.UTC)
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)
             document = {"scrape_configs": []}
@@ -159,7 +153,6 @@ class HostMetricsCanaryTests(unittest.TestCase):
 
     def test_request_binary_receipt_requires_image_and_executable_digest(self) -> None:
         """Binary receipts require matching image and executable digests."""
-
         import hashlib
 
         spec = importlib.util.spec_from_file_location(
@@ -184,7 +177,6 @@ class HostMetricsCanaryTests(unittest.TestCase):
 
     def test_request_refuses_public_backend_before_source_access(self) -> None:
         """Requests refuse a public backend before any source access."""
-
         spec = importlib.util.spec_from_file_location(
             "host_request", ROOT / "scripts/otel-host-metrics-request.py"
         )

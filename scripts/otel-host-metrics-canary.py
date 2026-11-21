@@ -6,7 +6,7 @@ import hashlib
 import ipaddress
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
@@ -236,7 +236,7 @@ def classify_shutdown_replay(text):
 
 def validate_contract(root, request, now=None):
     collected = datetime.fromisoformat(request["scrapeContractCollectedAt"])
-    age = ((now or datetime.now(timezone.utc)) - collected).total_seconds()
+    age = ((now or datetime.now(UTC)) - collected).total_seconds()
     if not 0 <= age <= 900:
         message = "Native host scrape contract is stale or future-dated"
         raise ValueError(message)

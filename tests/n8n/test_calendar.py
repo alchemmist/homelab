@@ -32,8 +32,7 @@ class CalendarTests(unittest.TestCase):
     """Tests for the n8n calendar workflow template."""
 
     def setUp(self) -> None:
-
-        'Load the rendered calendar workflow fixture.'
+        """Load the rendered calendar workflow fixture."""
         self.template = json.loads((BASE / "docs/n8n/calendar-voice-reminder.json").read_text())
         self.creds = {
             k: {"id": "test-id", "name": "Test"}
@@ -41,7 +40,7 @@ class CalendarTests(unittest.TestCase):
         }
 
     def render(self) -> Workflow:
-        'Render the workflow under the validated test inputs.'
+        """Render the workflow under the validated test inputs."""
         return cast(
             "Workflow",
             sync.render_workflow(
@@ -50,7 +49,7 @@ class CalendarTests(unittest.TestCase):
         )
 
     def test_render_scoped_native_node(self) -> None:
-        'Verify the workflow renders the scoped native node.'
+        """Verify the workflow renders the scoped native node."""
         w = self.render()
         raw = json.dumps(w)
         assert "REPLACE_WITH_" not in raw
@@ -64,7 +63,7 @@ class CalendarTests(unittest.TestCase):
         assert "xToken" not in raw
 
     def test_raw_internal_http_forbidden(self) -> None:
-        'Verify raw internal HTTP request nodes are forbidden.'
+        """Verify raw internal HTTP request nodes are forbidden."""
         for url in [
             "https://iot.quasar.yandex.ru/m/user/scenarios/x/actions",
             "http://api.iot.yandex.net/v1.0/scenarios/x/actions",
@@ -76,12 +75,12 @@ class CalendarTests(unittest.TestCase):
                 sync.require_yandex_policy(w)
 
     def test_missing_auth_rejected(self) -> None:
-        'Verify a node without the prepared auth is rejected.'
+        """Verify a node without the prepared auth is rejected."""
         with self.assertRaises(RuntimeError):
             sync.render_workflow(self.template, {}, {})
 
     def test_maintenance_renews_without_speech(self) -> None:
-        'Verify session maintenance renews silently, not over speech.'
+        """Verify session maintenance renews silently, not over speech."""
         t = json.loads((BASE / "docs/n8n/yandex-session-maintenance.json").read_text())
         w = sync.render_workflow(t, self.creds, {})
         n = next(n for n in w["nodes"] if n["type"] == "CUSTOM.yandexStation")
@@ -89,7 +88,7 @@ class CalendarTests(unittest.TestCase):
         assert not cast("bool", n["parameters"]["forceRefresh"])
 
     def test_failed_call_does_not_mark(self) -> None:
-        'Verify a failed voice call does not mark attendance.'
+        """Verify a failed voice call does not mark attendance."""
         code = next(n for n in self.render()["nodes"] if n["name"] == "Mark Announced")[
             "parameters"
         ]["jsCode"]
@@ -101,7 +100,7 @@ class CalendarTests(unittest.TestCase):
         subprocess.check_call(["node", "-e", script])
 
     def test_due_matching_and_dedup(self) -> None:
-        'Verify due-event matching and per-episode deduplication.'
+        """Verify due-event matching and per-episode deduplication."""
         code = next(n for n in self.render()["nodes"] if n["name"] == "Match Due Reminders")[
             "parameters"
         ]["jsCode"]

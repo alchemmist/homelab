@@ -9,7 +9,7 @@ Prototype only until pinned-runtime canaries and maintained bootstrap pass.
 import re
 from urllib.parse import urlsplit, urlunsplit
 
-PRIVATE_KEY = re.compile(r"authorization|password|secret|token|cookie|prompt|completion|request[.]body|response[.]body|gen_ai[.](input|output|system_instructions)|db[.](statement|query[.]text)|(?:exception|error)[.](message|stacktrace)", re.I)
+PRIVATE_KEY = re.compile(r"authorization|password|secret|token|cookie|prompt|completion|request[.]body|response[.]body|gen_ai[.](input|output|system_instructions)|db[.](statement|query[.]text)|(?:exception|error)[.](message|stacktrace)", re.IGNORECASE)
 URL_KEYS = {"url.full", "http.url", "http.target", "url.query"}
 
 

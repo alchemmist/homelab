@@ -136,7 +136,6 @@ class Handler(BaseHTTPRequestHandler):
 
     def log_message(self, *_):
         """Suppress default request-line logging."""
-        pass
 
 
 class MetricsServer(ThreadingHTTPServer):

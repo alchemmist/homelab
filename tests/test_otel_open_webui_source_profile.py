@@ -74,9 +74,9 @@ def fixtures() -> tuple[
 
 class OpenWebuiProfileTests(unittest.TestCase):
     """Check the Open WebUI instrumentation source profile coverage."""
+
     def test_only_http_instrumentors_no_body_serializing_or_duplicate_signals(self) -> None:
         """Only http instrumentors no body serializing or duplicate signals."""
-
         calls, native, sdk, modules = fixtures()
         with patch.dict(sys.modules, modules):
             module().activate()
@@ -93,7 +93,6 @@ class OpenWebuiProfileTests(unittest.TestCase):
 
     def test_guard_and_before_setup_order_required_no_late_fallback(self) -> None:
         """Guard and before setup order required no late fallback."""
-
         calls, native, sdk, modules = fixtures()
         with patch.dict(sys.modules, modules):
             sdk.TracerProvider._homelab_source_privacy = False

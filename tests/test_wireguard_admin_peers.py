@@ -13,6 +13,7 @@ TASKS = TEMPLATE_DIR.parent / "tasks/main.yml"
 
 class WireGuardTemplateTests(unittest.TestCase):
     """Tests for WireGuardTemplateTests."""
+
     def setUp(self) -> None:
         if shutil.which("ansible-playbook") is None:
             self.skipTest("ansible-playbook is unavailable")

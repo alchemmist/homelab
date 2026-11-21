@@ -9,7 +9,7 @@ import stat
 import subprocess
 import urllib.request
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 SYNCTHING_CONFIG = Path("/srv/syncthing/config/config.xml")
@@ -95,7 +95,7 @@ def apply(policy):
     if not KUBELET_CONFIG.parent.is_dir():
         msg = "K3s kubelet configuration directory does not exist"
         raise RuntimeError(msg)
-    backup = Path("/var/backups/homelab-node-disk-reserve") / datetime.now(timezone.utc).strftime(
+    backup = Path("/var/backups/homelab-node-disk-reserve") / datetime.now(UTC).strftime(
         "%Y%m%dT%H%M%S.%fZ"
     )
     backup.mkdir(parents=True, mode=0o700)

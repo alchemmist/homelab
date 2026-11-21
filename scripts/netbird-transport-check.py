@@ -30,7 +30,6 @@ class WS:
 
     def __init__(self, address) -> None:
         """Initialize the secure WebSocket connection."""
-
         self.s = ssl.create_default_context().wrap_socket(
             socket.create_connection((address, 443), timeout=10), server_hostname=HOST
         )

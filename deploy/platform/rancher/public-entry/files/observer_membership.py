@@ -14,9 +14,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, TypedDict, cast
 
 ORIGIN = "https://auth.socrat.alchemmist.xyz/api/v3/"
 PRINCIPAL = "genericoidc_group://homelab-observer"
@@ -29,7 +27,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
     def redirect_request(self, *args, **kwargs):
         """Refuse redirects so credentials are never forwarded."""
-        return None
+        return
 
 
 def opener(context=None):

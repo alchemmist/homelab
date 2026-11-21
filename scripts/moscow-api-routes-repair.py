@@ -10,7 +10,6 @@ import os
 import pathlib
 import socket
 import subprocess
-import time
 
 CONFIG = pathlib.Path("/etc/wireguard/wg-socrat.conf")
 ROOT = pathlib.Path("/var/lib/homelab-recovery/20261113-moscow-api-routes")

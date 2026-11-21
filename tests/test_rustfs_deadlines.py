@@ -13,6 +13,7 @@ ELAPSED_UPPER_BOUND = 0.9
 
 class Deadlines(unittest.TestCase):
     """Verify RustFS header deadlines and recovery handling."""
+
     def test_trickled_header_and_recovery(self) -> None:
         with patch.object(g, "HEADER_SECONDS", 0.3):
             server = g.Server(("127.0.0.1", 0), g.Handler)

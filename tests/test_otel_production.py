@@ -1,12 +1,9 @@
 """Safety checks for the production OpenTelemetry deployment."""
 
 import importlib.util
-import json
-import tempfile
 import unittest
 from pathlib import Path
 from types import ModuleType
-from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -23,9 +20,9 @@ def module(name) -> ModuleType:
 
 class ProductionSafetyTests(unittest.TestCase):
     """Check production bootstrap token roles and CA key access."""
+
     def test_host_token_roles_are_named_and_cannot_read_ca_private_key(self) -> None:
         """Host token roles are named and cannot read ca private key."""
-
         boot = module("otel-production-bootstrap")
         resources = boot.resources({"requiredSecretKeys": []}, "10.43.1.2", {})
         roles = [
@@ -45,14 +42,12 @@ class ProductionSafetyTests(unittest.TestCase):
 
     def test_verified_private_wireguard_addresses_are_not_interchanged(self) -> None:
         """Verified private wireguard addresses are not interchanged."""
-
         boot = module("otel-production-bootstrap")
         assert boot.NODES["socrat-0"] == "10.250.0.1"
         assert boot.NODES["socrat-2"] == "10.250.0.2"
 
     def test_native_overlay_does_not_turn_on_legacy_scraping(self) -> None:
         """Native overlay does not turn on legacy scraping."""
-
         import yaml
 
         values = yaml.safe_load(

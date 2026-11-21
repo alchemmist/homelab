@@ -6,7 +6,7 @@ import base64
 import json
 import shlex
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -177,7 +177,7 @@ def run(args) -> None:
         )
         if dep["spec"]["replicas"] != 0 or pods["items"]:
             raise ValueError("Refusing final restore: LMS is not fully stopped")
-    name = "lms-ha-copy-" + datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    name = "lms-ha-copy-" + datetime.now(UTC).strftime("%Y%m%d%H%M%S")
     job = _copy_job_document(name, rehearsal=args.rehearsal)
     kube("create", "-f", "-", document=job)
     _await_job_completion(name)

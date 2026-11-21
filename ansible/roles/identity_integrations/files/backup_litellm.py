@@ -4,7 +4,6 @@ import os
 
 os.environ.setdefault("K3S_CONFIG_FILE", "/dev/null")
 import io
-import json
 import subprocess
 import tarfile
 

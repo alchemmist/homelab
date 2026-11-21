@@ -1,10 +1,15 @@
 """Check VPN transit failover decisions, image bytes, and source contracts."""
 
-import importlib.util, json, pathlib, hashlib, tarfile, io
+import hashlib
+import importlib.util
+import json
+import pathlib
+import tarfile
 from types import ModuleType
-from typing import Protocol
-import pytest, yaml
-from typing import Self
+from typing import Protocol, Self
+
+import pytest
+import yaml
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
@@ -109,7 +114,7 @@ def test_unknown_port_owner_blocks_native_start(ctl, monkeypatch) -> None:
     m, c = ctl
     calls = []
     monkeypatch.setattr(c, "prerequisites", lambda: None)
-    monkeypatch.setattr(m, "pod_processes", lambda: [])
+    monkeypatch.setattr(m, "pod_processes", list)
     monkeypatch.setattr(m, "active", lambda _: False)
     monkeypatch.setattr(m, "run", lambda a, **_kw: calls.append(a))
     monkeypatch.setattr(m.time, "sleep", lambda _: None)
@@ -312,7 +317,7 @@ def test_failure_scope_uses_direct_upstream_not_api(
         assert host == "10.250.0.2" and source == ("10.250.0.40", 0)
         assert isinstance(detail, dict)  # probe records its observation in-place
         if not upstream:
-            raise TimeoutError()
+            raise TimeoutError
         return True
 
     monkeypatch.setattr(m, "probe", check)
@@ -357,7 +362,7 @@ def test_probe_failure_records_stage_not_private_path(ctl, monkeypatch) -> None:
 
 
     def fail(*_a, **_kw) -> None:
-        raise TimeoutError()
+        raise TimeoutError
 
     monkeypatch.setattr(m.socket, "create_connection", fail)
     assert not c.healthy()

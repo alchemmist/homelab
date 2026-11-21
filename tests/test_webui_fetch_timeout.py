@@ -17,6 +17,7 @@ SPEC.loader.exec_module(GUARD)
 
 class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
     """Tests for FetchTimeoutTests."""
+
     async def test_success_preserves_page_text(self) -> None:
         with patch.object(GUARD, "FETCH_WORKER", 'import json; print(json.dumps("page text"))'):
             assert await GUARD.bounded_fetch({"url": "https://example.com"}) == "page text"

@@ -1,16 +1,15 @@
 """Configure the private-monitor entry in the Uptime Kuma database."""
 
 import argparse
-from contextlib import closing
-from datetime import datetime, timezone
 import json
 import os
-from pathlib import Path
 import sqlite3
 import sys
 import tempfile
+from contextlib import closing
+from datetime import UTC, datetime
+from pathlib import Path
 from urllib.parse import urlsplit
-
 
 HOSTNAME = "rancher.socrat.alchemmist.xyz"
 DESIRED = {
@@ -58,7 +57,7 @@ def configure(db_path, check=False):
         backup_dir = db_path.parent / "backups"
         backup_dir.mkdir(mode=0o700, exist_ok=True)
         backup_dir.chmod(0o700)
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
         fd, backup_path = tempfile.mkstemp(
             prefix=f"rancher-monitor-{timestamp}-", suffix=".db", dir=backup_dir
         )

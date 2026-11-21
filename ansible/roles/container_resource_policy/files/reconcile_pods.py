@@ -5,11 +5,10 @@ import json
 import os
 import re
 import subprocess
-from typing import cast
 import sys
 import time
 from decimal import Decimal, InvalidOperation
-
+from typing import cast
 
 RESOURCE_NAMES = ("cpu", "memory", "ephemeral-storage")
 LIMIT_RESOURCE_NAMES = ("memory", "ephemeral-storage")
@@ -298,7 +297,6 @@ class Client:
 
     def __init__(self, kubectl, kubeconfig) -> None:
         """Initialize the kubectl client."""
-
         self.command = [kubectl, "--kubeconfig", kubeconfig, "--request-timeout=30s"]
 
     def pods(self):

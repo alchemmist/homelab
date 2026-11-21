@@ -22,6 +22,7 @@ CONFIG = "[Interface]\nPrivateKey = secret\n\n[Peer]\nPublicKey = first\nAllowed
 
 class TransportTests(unittest.TestCase):
     """Tests or helper for TransportTests."""
+
     def test_preserves_secrets_other_peer_and_routes(self):
         expected = CONFIG.replace("Endpoint = old:123", "Endpoint = 127.0.0.1:51840")
         assert ENDPOINT.update_config(CONFIG, "first", "127.0.0.1:51840") == expected

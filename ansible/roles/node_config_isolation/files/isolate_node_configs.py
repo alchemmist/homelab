@@ -9,7 +9,7 @@ import pwd
 import shutil
 import stat
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 CONFIG_DIRECTORIES = (".config/hypr", ".config/waybar", ".config/alacritty")
@@ -88,7 +88,7 @@ def isolate(home, check=False):
     if not planned or check:
         return result
     backup_parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ-")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S.%fZ-")
     backup = Path(tempfile.mkdtemp(prefix=stamp, dir=backup_parent))
     result["backup"] = str(backup)
     metadata = []

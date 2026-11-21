@@ -38,7 +38,7 @@ def main():
                 available = fs.f_bavail * fs.f_frsize
             except OSError:
                 self.send_error(503)
-                return
+                return None
             body = f'socrat_five_bucket_available_bytes{{backing_node="socrat-0"}} {available}\n'
             sample = measured[:]
             if sample and time.monotonic() - sample[0][0] < 180:

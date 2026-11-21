@@ -1,15 +1,14 @@
 """Tests for the wireguard private web service files."""
 
-from pathlib import Path
 import json
 import os
 import shlex
 import subprocess
 import tempfile
 import unittest
+from pathlib import Path
 
 from jinja2 import Environment, StrictUndefined
-
 
 ROLE = Path(__file__).resolve().parents[1] / "ansible/roles/wireguard_private_web"
 TASKS = (ROLE / "tasks/main.yml").read_text()
@@ -20,6 +19,7 @@ UNIT = (ROLE / "templates/wireguard-private-web.service.j2").read_text()
 
 class WireGuardPrivateWebTests(unittest.TestCase):
     """Tests for WireGuardPrivateWebTests."""
+
     def test_defaults_are_disabled_and_use_nftables(self):
         assert "wireguard_private_web_enabled: false" in DEFAULTS
         assert "Debian: nftables" in DEFAULTS

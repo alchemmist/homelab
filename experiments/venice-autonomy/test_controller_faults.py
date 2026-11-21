@@ -48,7 +48,7 @@ class ControllerFaultTests(unittest.TestCase):
     """Tests for controller behaviour under injected faults."""
 
     def setup_case(self, directory, behavior):
-        'Create a scratch case directory with the scripted controller behavior.'
+        """Create a scratch case directory with the scripted controller behavior."""
         root = pathlib.Path(directory)
         code = root / "code"
         code.mkdir()
@@ -74,7 +74,7 @@ class ControllerFaultTests(unittest.TestCase):
         ]
 
     def test_model_final_is_not_verified_success(self):
-        'Verify a premature model final is not counted as verified success.'
+        """Verify a premature model final is not counted as verified success."""
         with tempfile.TemporaryDirectory() as directory:
             root, command = self.setup_case(directory, "premature_final")
             subprocess.run(command, stdout=subprocess.DEVNULL, check=True, timeout=15)
@@ -84,7 +84,7 @@ class ControllerFaultTests(unittest.TestCase):
             self.assertTrue(all(len(task["attempts"]) == 2 for task in state["tasks"]))
 
     def test_malformed_summaries_are_failures(self):
-        'Verify malformed step summaries are treated as failures.'
+        """Verify malformed step summaries are treated as failures."""
         with tempfile.TemporaryDirectory() as directory:
             root, command = self.setup_case(directory, "malformed_summary")
             subprocess.run(command, stdout=subprocess.DEVNULL, check=True, timeout=15)
@@ -96,7 +96,7 @@ class ControllerFaultTests(unittest.TestCase):
             self.assertFalse(any(task["status"] == "accepted" for task in state["tasks"]))
 
     def test_kill_resume_preserves_deadline_and_stops_after_repeated_provider_errors(self):
-        'Verify kill/resume keeps the deadline and stops on repeated provider errors.'
+        """Verify kill/resume keeps the deadline and stops on repeated provider errors."""
         with tempfile.TemporaryDirectory() as directory:
             root, command = self.setup_case(directory, "restart")
             original = subprocess.Popen(command, stdout=subprocess.DEVNULL)
@@ -145,7 +145,7 @@ class ControllerFaultTests(unittest.TestCase):
                         process.wait()
 
     def test_bad_gateway_stops_without_resetting_for_an_accepted_artifact(self):
-        'Verify a bad gateway stops without resetting an accepted artifact.'
+        """Verify a bad gateway stops without resetting an accepted artifact."""
         with tempfile.TemporaryDirectory() as directory:
             root, command = self.setup_case(directory, "bad_gateway")
             subprocess.run(command, stdout=subprocess.DEVNULL, check=True, timeout=20)
@@ -166,7 +166,7 @@ class ControllerFaultTests(unittest.TestCase):
             self.assertEqual(render_report(state), again)
 
     def test_structured_cause_is_provider_and_message_text_is_not(self):
-        'Verify structured causes classify as provider faults but text does not.'
+        """Verify structured causes classify as provider faults but text does not."""
         with tempfile.TemporaryDirectory() as directory:
             root, command = self.setup_case(directory, "wrapped_cause")
             subprocess.run(command, stdout=subprocess.DEVNULL, check=True, timeout=20)
@@ -186,7 +186,7 @@ class ControllerFaultTests(unittest.TestCase):
             )
 
     def test_context_length_and_client_input_are_not_provider_outages(self):
-        'Verify context-length and client-input errors are not provider outages.'
+        """Verify context-length and client-input errors are not provider outages."""
         from controller import classify_result
 
         self.assertEqual(
@@ -226,7 +226,7 @@ class ControllerFaultTests(unittest.TestCase):
             self.assertEqual(state["phase"], "unknown_error_type")
 
     def test_null_exit_is_clean_only_from_top_level_submitted_event(self):
-        'Verify a null exit only reads clean from a top-level submitted event.'
+        """Verify a null exit only reads clean from a top-level submitted event."""
         from controller import attempt_facts, render_report
 
         bare = {"accepted": True, "exit_status": None, "actual_commands": 4}
@@ -282,7 +282,7 @@ class ControllerFaultTests(unittest.TestCase):
             self.assertIn("not counterfactual scores", report)
 
     def test_historical_receipt_report_matches_audited_counts(self):
-        'Verify the historical receipt report reproduces audited counts.'
+        """Verify the historical receipt report reproduces audited counts."""
         receipt = pathlib.Path(
             "/Users/antonmoss/venice-auth/autonomy-comparison-20261117-123339/state.json"
         )
@@ -304,7 +304,7 @@ class ControllerFaultTests(unittest.TestCase):
         self.assertIn("| mini_native | 9 | 0 | 0 | 61 |", report)
 
     def test_exception_chain_records_cause_not_message_text(self):
-        'Verify exception chains record causes, not free-form message text.'
+        """Verify exception chains record causes, not free-form message text."""
         from attempt import record_exception
 
         class SDKError(Exception):
@@ -330,7 +330,7 @@ class ControllerFaultTests(unittest.TestCase):
         self.assertNotIn("cause_type", {"run_error_type": "SDKError"})
 
     def test_default_matrix_is_native_and_openhands_until_text_opt_in(self):
-        'Verify the default engine matrix stays native plus OpenHands until opt-in.'
+        """Verify the default engine matrix stays native plus OpenHands until opt-in."""
         from controller import DEFAULT_ENGINES, initial_state
 
         state = initial_state(30, 1)
@@ -346,7 +346,7 @@ class ControllerFaultTests(unittest.TestCase):
         )
 
     def test_sigkill_rechecks_exact_child_identity(self):
-        'Verify SIGKILL handling re-checks the exact child identity.'
+        """Verify SIGKILL handling re-checks the exact child identity."""
         import controller
 
         calls = []
@@ -391,7 +391,7 @@ class ControllerFaultTests(unittest.TestCase):
         self.assertEqual(calls, [signal.SIGTERM])
 
     def test_cleanup_requires_per_run_ownership_and_collects_both_roles(self):
-        'Verify cleanup enforces per-run ownership and collects both roles.'
+        """Verify cleanup enforces per-run ownership and collects both roles."""
         import controller
 
         with tempfile.TemporaryDirectory() as directory:
@@ -487,7 +487,7 @@ class ControllerFaultTests(unittest.TestCase):
             )
 
     def test_same_child_rejects_directory_prefix(self):
-        'Verify the same child rejects directory-prefix signature matches.'
+        """Verify the same child rejects directory-prefix signature matches."""
         import controller
 
         directory = "/tmp/run"
@@ -511,7 +511,7 @@ class ControllerFaultTests(unittest.TestCase):
             controller.os.getpgid = original_getpgid
 
     def test_pid_kill_requires_recorded_start_signature(self):
-        'Verify a PID kill requires the recorded start signature.'
+        """Verify a PID kill requires the recorded start signature."""
         import controller
 
         calls = []
@@ -543,7 +543,7 @@ class ControllerFaultTests(unittest.TestCase):
         self.assertEqual(calls, [])
 
     def test_cleanup_is_idempotent_for_already_removed_resources(self):
-        'Verify cleanup is idempotent when resources are already removed.'
+        """Verify cleanup is idempotent when resources are already removed."""
         import controller
 
         with tempfile.TemporaryDirectory() as directory:
@@ -648,7 +648,7 @@ class ControllerFaultTests(unittest.TestCase):
             )
 
     def test_cleanup_does_not_swallow_daemon_errors(self):
-        'Verify cleanup propagates daemon errors instead of swallowing them.'
+        """Verify cleanup propagates daemon errors instead of swallowing them."""
         import controller
 
         with tempfile.TemporaryDirectory() as directory:
@@ -703,7 +703,7 @@ class ControllerFaultTests(unittest.TestCase):
             )
 
     def test_sandbox_close_uses_ownership_validation(self):
-        'Verify sandbox close validates resource ownership.'
+        """Verify sandbox close validates resource ownership."""
         import sandbox
 
         modules = [sandbox]
@@ -781,7 +781,7 @@ class ControllerFaultTests(unittest.TestCase):
         self.assertEqual(box.volume_name, "venice-lab-foreign")
 
     def test_cleanup_exception_final_report_is_not_running(self):
-        'Verify a cleanup exception yields a final report that is not running.'
+        """Verify a cleanup exception yields a final report that is not running."""
         import controller
 
         with tempfile.TemporaryDirectory() as directory:
@@ -819,7 +819,7 @@ class ReportErrorStateTests(unittest.TestCase):
     """Tests for report error-state classification."""
 
     def test_accepted_artifact_with_any_error_is_not_a_clean_finish(self):
-        'Verify an accepted artifact with any error is not a clean finish.'
+        """Verify an accepted artifact with any error is not a clean finish."""
         import controller
 
         for field, value in (

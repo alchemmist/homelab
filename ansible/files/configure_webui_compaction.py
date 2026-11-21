@@ -5,7 +5,6 @@ import json
 import sqlite3
 import urllib.request
 from datetime import timedelta
-from typing import cast
 
 
 def configure():

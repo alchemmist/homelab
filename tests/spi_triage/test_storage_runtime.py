@@ -6,7 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "charts/spi-triage/files"))
 import service
@@ -17,13 +17,12 @@ class Runtime(unittest.TestCase):
     """Tests for the storage runtime configuration."""
 
     def test_off(self) -> None:
-
-        'Verify the default runtime is off.'
+        """Verify the default runtime is off."""
         with patch.dict(os.environ, {}, clear=True):
             assert runtime.load_storage() == (None, "legacy")
 
     def test_projected_file_and_invalid_inputs(self) -> None:
-        'Verify projected files and invalid input handling.'
+        """Verify projected files and invalid input handling."""
         with tempfile.TemporaryDirectory() as d:
             target = Path(d) / "real"
             link = Path(d) / "credentials.json"
@@ -69,7 +68,7 @@ class Runtime(unittest.TestCase):
                             runtime.load_storage()
 
     def test_serve_wires_engine_before_dispatch(self) -> None:
-        'Verify serve wires the engine before dispatching.'
+        """Verify serve wires the engine before dispatching."""
         class Stop(Exception):
             pass
 

@@ -1,12 +1,11 @@
 """Tests for the wireguard admin firewall templates."""
 
-from pathlib import Path
-import unittest
 import shlex
 import subprocess
+import unittest
+from pathlib import Path
 
 from jinja2 import Environment
-
 
 ROLE = Path(__file__).resolve().parents[1] / "ansible/roles/wireguard_admin_firewall"
 TASKS = (ROLE / "tasks/main.yml").read_text()
@@ -18,6 +17,7 @@ ROLLBACK = (ROLE / "ROLLBACK.md").read_text()
 
 class WireGuardAdminFirewallTests(unittest.TestCase):
     """Tests for WireGuardAdminFirewallTests."""
+
     def test_uses_client_registry_and_exact_interface(self):
         assert "wg_socrat_admin_clients" in DEFAULTS
         assert "interface={{ wg_socrat_admin_firewall_interface | quote }}" in SCRIPT

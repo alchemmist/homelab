@@ -16,6 +16,7 @@ SOURCE = ROOT / "ansible/roles/wiki_editor_client/files/wiki-editor-resolver.sh"
 
 class WikiEditorResolverTests(unittest.TestCase):
     """Tests for WikiEditorResolverTests."""
+
     def setUp(self) -> None:
         self.directory = tempfile.TemporaryDirectory(prefix="wiki-resolver-test-")
         self.addCleanup(self.directory.cleanup)

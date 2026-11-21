@@ -3,7 +3,7 @@
 import hashlib
 import json
 import subprocess
-from functools import lru_cache
+from functools import cache
 from pathlib import Path
 
 import yaml
@@ -38,7 +38,7 @@ OWNERS = {
 OWNERS.update({name: ("charts/" + name, "kube-prometheus-stack") for name in COMPONENTS})
 
 
-@lru_cache(maxsize=None)
+@cache
 def render(path, release) -> list[dict[str, object]]:
     """Render a monitoring chart with helm and return its claimable documents."""
     text = subprocess.check_output(

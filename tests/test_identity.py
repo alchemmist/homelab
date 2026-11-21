@@ -130,6 +130,7 @@ class FakeAuthentik:
 
 class IdentityTests(unittest.TestCase):
     """Run the identity configure script against a fake Authentik."""
+
     def configure(self, root: Path, api: FakeAuthentik) -> None:
         """Run the authentik configure script against the fake API."""
         with (

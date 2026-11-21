@@ -109,8 +109,6 @@ def test_live_update_is_url_only_and_does_not_reprovision_tv() -> None:
 
 def test_no_dedicated_tv_alias_or_internal_vpn_in_helpers() -> None:
     """Keep the TV on public URLs with no dedicated alias or internal VPN."""
-    import yaml
-
     from tests.public_entry_contract import CHARTS, values
 
     assert not any(

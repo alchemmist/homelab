@@ -218,7 +218,7 @@ def test_nightnode_parses_config_without_dynamic_source() -> None:
     assert result.returncode == SUCCESS_EXIT
     assert _items(result.stdout) == []
     source = _text(NIGHTNODE)
-    assert 'while IFS= read -r line' in source
+    assert "while IFS= read -r line" in source
     assert 'export "${key}=${value}"' in source
     assert 'source "${CONFIG_FILE}"' not in source
     assert "shellcheck" not in source

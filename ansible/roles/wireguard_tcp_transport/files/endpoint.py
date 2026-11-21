@@ -11,17 +11,17 @@ from pathlib import Path
 
 
 def update_config(original, public_key, endpoint):
-    if re.search(r"^\s*SaveConfig\s*=\s*true\s*$", original, re.M | re.I):
+    if re.search(r"^\s*SaveConfig\s*=\s*true\s*$", original, re.MULTILINE | re.IGNORECASE):
         message = "SaveConfig must be disabled"
         raise ValueError(message)
-    blocks = re.split(r"(?=^\s*\[Peer\]\s*$)", original, flags=re.M)
+    blocks = re.split(r"(?=^\s*\[Peer\]\s*$)", original, flags=re.MULTILINE)
     found = 0
     for index, block in enumerate(blocks):
-        key = re.search(r"^\s*PublicKey\s*=\s*(\S+)\s*$", block, re.M)
+        key = re.search(r"^\s*PublicKey\s*=\s*(\S+)\s*$", block, re.MULTILINE)
         if not key or key[1] != public_key:
             continue
         found += 1
-        entries = list(re.finditer(r"^[ \t]*Endpoint[ \t]*=[^\n]*(?:\n|$)", block, re.M))
+        entries = list(re.finditer(r"^[ \t]*Endpoint[ \t]*=[^\n]*(?:\n|$)", block, re.MULTILINE))
         if len(entries) > 1:
             message = "Duplicate peer endpoint"
             raise ValueError(message)

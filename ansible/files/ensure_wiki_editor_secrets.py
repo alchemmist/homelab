@@ -2,7 +2,6 @@
 
 import base64
 import json
-import os
 import secrets
 import subprocess
 import tempfile
