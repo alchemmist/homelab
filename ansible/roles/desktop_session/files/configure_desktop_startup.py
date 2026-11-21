@@ -1,3 +1,5 @@
+"""Configure per-user desktop startup login files and idle shutdown."""
+
 import argparse
 from datetime import datetime, timezone
 import json

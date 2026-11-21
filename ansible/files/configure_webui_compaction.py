@@ -1,3 +1,5 @@
+"""Configure chat compaction defaults for WebUI users via its API."""
+
 import asyncio
 import json
 import sqlite3

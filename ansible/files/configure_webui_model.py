@@ -1,3 +1,5 @@
+"""Set the default chat model and its limits across WebUI users."""
+
 import argparse
 import getpass
 import json

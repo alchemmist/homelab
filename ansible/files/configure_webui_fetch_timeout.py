@@ -1,3 +1,5 @@
+"""Configure the web fetch timeout default for WebUI users via its API."""
+
 import asyncio
 import copy
 import json

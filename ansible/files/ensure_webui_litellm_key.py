@@ -1,3 +1,5 @@
+"""Ensure the WebUI virtual API key for a model exists in Kubernetes."""
+
 import argparse
 import base64
 import hashlib

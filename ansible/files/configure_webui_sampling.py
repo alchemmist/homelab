@@ -1,3 +1,5 @@
+"""Configure sampling parameters for Open WebUI users via its API."""
+
 import asyncio
 import copy
 import json

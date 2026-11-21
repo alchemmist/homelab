@@ -1,3 +1,5 @@
+"""Configure web search/SearXNG settings for Open WebUI users."""
+
 import asyncio
 import copy
 import json
