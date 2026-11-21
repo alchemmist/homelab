@@ -49,7 +49,8 @@ def query(port, context, expression='{__name__=~"smoke_.+|up"}'):
     ) as response:
         document = json.load(response)
     if document.get("status") != "success":
-        raise ValueError("Synthetic PromQL query failed")
+        msg = "Synthetic PromQL query failed"
+        raise ValueError(msg)
     return {
         tuple(sorted(item["metric"].items())): item["value"][1]
         for item in document["data"]["result"]
@@ -66,11 +67,13 @@ def semantic_series_view(series):
         if numeric_label in attributes:
             value_float = float(attributes[numeric_label])
             if math.isnan(value_float):
-                raise ValueError("Numeric histogram/summary labels cannot be NaN")
+                msg = "Numeric histogram/summary labels cannot be NaN"
+                raise ValueError(msg)
             attributes[numeric_label] = value_float.hex()
         normalized = tuple(sorted(attributes.items()))
         if normalized in result:
-            raise ValueError("OTLP semantic comparison would merge distinct series")
+            msg = "OTLP semantic comparison would merge distinct series"
+            raise ValueError(msg)
         result[normalized] = value
     return result
 
@@ -111,7 +114,8 @@ def promql_checks(context, reset):
 
 def run(args):
     if os.readlink("/proc/self/ns/net") == os.readlink("/proc/1/ns/net"):
-        raise ValueError("A separate network namespace is mandatory")
+        msg = "A separate network namespace is mandatory"
+        raise ValueError(msg)
     args.workspace.mkdir(mode=0o700, exist_ok=False)
     state = {"counter": 17, "gauge": True}
 
@@ -260,7 +264,8 @@ def run(args):
             legacy = shadow = {}
             while True:
                 if any(process.poll() is not None for process in children):
-                    raise RuntimeError("Synthetic service stopped; inspect private smoke logs")
+                    msg = "Synthetic service stopped; inspect private smoke logs"
+                    raise RuntimeError(msg)
                 try:
                     legacy, shadow = query(19090, context), query(29090, context)
                     names = {dict(key)["__name__"] for key in shadow}
@@ -316,9 +321,8 @@ def run(args):
                             indent=2,
                         )
                     )
-                    raise RuntimeError(
-                        "Synthetic metric equivalence or freshness check failed; inspect private workspace"
-                    )
+                    msg = "Synthetic metric equivalence or freshness check failed; inspect private workspace"
+                    raise RuntimeError(msg)
                 time.sleep(0.2)
     finally:
         for process in reversed(children):

@@ -28,7 +28,8 @@ APPLICATIONS = ("litellm", "vllm", "open-webui")
 
 def leaf_name(application):
     if application not in APPLICATIONS:
-        raise ValueError("Only explicitly allowed application client leaves may be renewed")
+        msg = "Only explicitly allowed application client leaves may be renewed"
+        raise ValueError(msg)
     return "otel-app-tls-" + application
 
 
@@ -37,12 +38,15 @@ def renewal_conditions(certificate, application="litellm"):
         certificate["metadata"]["name"] != leaf_name(application)
         or certificate["metadata"]["namespace"] != NS
     ):
-        raise ValueError("Only the selected dedicated application client leaf is in this exercise")
+        msg = "Only the selected dedicated application client leaf is in this exercise"
+        raise ValueError(msg)
     conditions = certificate.get("status", {}).get("conditions", [])
     if not any(c["type"] == "Ready" and c["status"] == "True" for c in conditions):
-        raise ValueError("Certificate is not ready before exercise")
+        msg = "Certificate is not ready before exercise"
+        raise ValueError(msg)
     if any(c["type"] == "Issuing" and c["status"] == "True" for c in conditions):
-        raise ValueError("Existing issuance must complete; never overlap requests")
+        msg = "Existing issuance must complete; never overlap requests"
+        raise ValueError(msg)
     result = [c for c in conditions if c["type"] != "Issuing"]
     result.append(
         {
@@ -65,7 +69,8 @@ def public_certificate_identity(kube, namespace, application="litellm"):
     )
     data = base64.b64decode(selected["certificatePemBase64"], validate=True)
     if b"-----BEGIN CERTIFICATE-----" not in data or b"PRIVATE KEY" in data:
-        raise ValueError("Expected only public certificate PEM")
+        msg = "Expected only public certificate PEM"
+        raise ValueError(msg)
     public_key = subprocess.run(
         ["openssl", "x509", "-pubkey", "-noout"],
         input=data,
@@ -74,7 +79,8 @@ def public_certificate_identity(kube, namespace, application="litellm"):
         timeout=10,
     ).stdout
     if b"PUBLIC KEY" not in public_key or b"PRIVATE KEY" in public_key:
-        raise ValueError("Expected public certificate key only")
+        msg = "Expected public certificate key only"
+        raise ValueError(msg)
     return {
         "certificateSHA256": hashlib.sha256(data).hexdigest(),
         "publicKeySHA256": hashlib.sha256(public_key).hexdigest(),
@@ -90,7 +96,8 @@ def run(output, application="litellm"):
     os.umask(0o077)
     controller = Path.home() / "Library/Application Support/homelab/otel-controller"
     if not output.resolve().is_relative_to(controller.resolve()):
-        raise ValueError("Use protected durable controller evidence")
+        msg = "Use protected durable controller evidence"
+        raise ValueError(msg)
     output.mkdir(mode=0o700)
     kube = BOOTSTRAP.kube
     before = kube("-n", NS, "get", "certificate", leaf_name(application), "-o", "json")
@@ -99,7 +106,8 @@ def run(output, application="litellm"):
     source_before = identity_before["certificateSHA256"]
     target_before = public_certificate_hash(kube, "llm", application)
     if source_before != target_before:
-        raise ValueError("Existing client-leaf mirror has not converged")
+        msg = "Existing client-leaf mirror has not converged"
+        raise ValueError(msg)
     (output / "certificate-before.json").write_text(json.dumps(before, indent=2) + "\n")
     progress = {
         "success": False,
@@ -160,16 +168,19 @@ def run(output, application="litellm"):
             break
         time.sleep(2)
     else:
-        raise ValueError("Native renewal deadline exceeded; preserve progress")
+        msg = "Native renewal deadline exceeded; preserve progress"
+        raise ValueError(msg)
     if after["spec"] != before["spec"]:
-        raise ValueError("Certificate spec changed during exercise")
+        msg = "Certificate spec changed during exercise"
+        raise ValueError(msg)
     identity_after = public_certificate_identity(kube, NS, application)
     source_after = identity_after["certificateSHA256"]
     if (
         source_after == source_before
         or identity_after["publicKeySHA256"] == identity_before["publicKeySHA256"]
     ):
-        raise ValueError("New native revision must rotate both certificate and keypair")
+        msg = "New native revision must rotate both certificate and keypair"
+        raise ValueError(msg)
     progress.update(
         renewedPublicKeySHA256=identity_after["publicKeySHA256"], clientKeypairRotationVerified=True
     )
@@ -197,19 +208,22 @@ def run(output, application="litellm"):
         job = kube("-n", NS, "get", "job", job_name, "-o", "json")
         if job.get("status", {}).get("failed"):
             (output / "failed-job-status.json").write_text(json.dumps(job["status"]))
-            raise ValueError("Bounded mirror job failed; do not retry silently")
+            msg = "Bounded mirror job failed; do not retry silently"
+            raise ValueError(msg)
         if job.get("status", {}).get("succeeded"):
             break
         time.sleep(2)
     else:
-        raise ValueError("Mirror deadline exceeded; preserve native issuance")
+        msg = "Mirror deadline exceeded; preserve native issuance"
+        raise ValueError(msg)
     log = kube("-n", NS, "logs", "job/" + job_name)
     (output / "mirror-result.json").write_text(json.dumps(log, indent=2) + "\n")
     if (
         application not in log["nativeClientMtlsVerified"]
         or public_certificate_hash(kube, "llm", application) != source_after
     ):
-        raise ValueError("New client mTLS or mirror equality was not proven")
+        msg = "New client mTLS or mirror equality was not proven"
+        raise ValueError(msg)
     progress.update(
         success=True,
         phase="native-leaf-renewal-and-mirror-verified",

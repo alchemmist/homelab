@@ -48,7 +48,8 @@ def configuration(original):
     settings = result.setdefault("litellm_settings", {})
     callbacks = settings.get("callbacks", [])
     if not isinstance(callbacks, list) or "prometheus" not in callbacks:
-        raise ValueError("Existing authenticated Prometheus callback must be preserved")
+        msg = "Existing authenticated Prometheus callback must be preserved"
+        raise ValueError(msg)
     if "otel" not in callbacks:
         callbacks.append("otel")
     settings["turn_off_message_logging"] = True
@@ -59,14 +60,14 @@ def run(output, apply):
     os.umask(0o077)
     parent = Path.home() / "Library/Application Support/homelab/otel-controller"
     if not output.resolve().is_relative_to(parent.resolve()):
-        raise ValueError("Private rollout evidence must remain in the durable controller root")
+        msg = "Private rollout evidence must remain in the durable controller root"
+        raise ValueError(msg)
     scope = json.loads((ROOT / "deploy/monitoring/otel-application-scope.json").read_text())
     if apply and "litellm" not in scope.get("dedicatedClientCertificates", {}).get(
         "sdkReloadVerifiedForApplications", []
     ):
-        raise ValueError(
-            "Production apply blocked until least-privilege renewable SDK credential reload is independently verified"
-        )
+        msg = "Production apply blocked until least-privilege renewable SDK credential reload is independently verified"
+        raise ValueError(msg)
     proxy = json.loads(
         (
             ROOT / "deploy/monitoring/migration-evidence/litellm-proxy-sdk-canary-20261101.json"
@@ -79,7 +80,8 @@ def run(output, apply):
         and not proxy["source"]["sourcePrivacyAudit"]["sensitiveSyntheticContentFoundAtSource"]
         and proxy["backend"]["success"]
     ):
-        raise ValueError("Native proxy route, internal child and source privacy gates must pass")
+        msg = "Native proxy route, internal child and source privacy gates must pass"
+        raise ValueError(msg)
     if apply:
         renewal = json.loads(
             (
@@ -95,9 +97,8 @@ def run(output, apply):
             and len(renewal["backend"]) == 2
             and all(proof["success"] for proof in renewal["backend"])
         ):
-            raise ValueError(
-                "Native same-instance SDK renewal and both backend traces must be independently verified"
-            )
+            msg = "Native same-instance SDK renewal and both backend traces must be independently verified"
+            raise ValueError(msg)
     output.mkdir(mode=0o700)
     kube = BOOTSTRAP.kube
     deployment = kube("-n", "llm", "get", "deployment", "litellm", "-o", "json")
@@ -112,7 +113,8 @@ def run(output, apply):
     current = {entry["name"]: entry for entry in container.get("env", [])}
     for name, value in sdk_environment().items():
         if name in current and current[name] != {"name": name, "value": value}:
-            raise ValueError("Unreviewed conflicting SDK environment; refuse overwrite")
+            msg = "Unreviewed conflicting SDK environment; refuse overwrite"
+            raise ValueError(msg)
     volume = {
         "name": "otel-client",
         "secret": {"secretName": "otel-app-tls-litellm", "defaultMode": 256},
@@ -120,10 +122,12 @@ def run(output, apply):
     mount = {"name": "otel-client", "mountPath": "/etc/otel-client", "readOnly": True}
     for existing in pod.get("volumes", []):
         if existing["name"] == "otel-client" and existing != volume:
-            raise ValueError("Unexpected existing credential volume")
+            msg = "Unexpected existing credential volume"
+            raise ValueError(msg)
     for existing in container.get("volumeMounts", []):
         if existing["name"] == "otel-client" and existing != mount:
-            raise ValueError("Unexpected existing credential mount")
+            msg = "Unexpected existing credential mount"
+            raise ValueError(msg)
     fingerprint = hashlib.sha256(
         json.dumps({"sdk": sdk_environment(), "config": changed}, sort_keys=True).encode()
     ).hexdigest()
@@ -268,9 +272,8 @@ def run(output, apply):
             receipt["newSdkPodReady"] = False
         (output / "result.json").write_text(json.dumps(receipt, indent=2) + "\n")
         if not receipt.get("newSdkPodReady"):
-            raise ValueError(
-                "SDK candidate did not become ready; private preimages retained; never force kill"
-            )
+            msg = "SDK candidate did not become ready; private preimages retained; never force kill"
+            raise ValueError(msg)
     else:
         (output / "result.json").write_text(json.dumps(receipt, indent=2) + "\n")
     print(json.dumps(receipt))

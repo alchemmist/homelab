@@ -59,7 +59,8 @@ def audit(args):
                         timeout=300,
                     )
                 if result.returncode not in ((0,) if command == "collect" else (0, 1)):
-                    raise RuntimeError("Read-only nightly inventory/preflight command failed")
+                    msg = "Read-only nightly inventory/preflight command failed"
+                    raise RuntimeError(msg)
             state = json.loads(args.state.read_text())
             record = {
                 "observedAt": datetime.now(UTC).isoformat(),
@@ -73,14 +74,16 @@ def audit(args):
             if args.job_result.exists():
                 record["historyJob"] = json.loads(args.job_result.read_text())
                 if record["historyJob"].get("success") is not True:
-                    raise RuntimeError("Historical job failed; do not start replacement work")
+                    msg = "Historical job failed; do not start replacement work"
+                    raise RuntimeError(msg)
             report["cycles"].append(record)
             save(args.output / "progress.json", report)
             if args.normalization_result.exists():
                 normalized = json.loads(args.normalization_result.read_text())
                 report["normalizationCompletedSuccessfully"] = normalized.get("success") is True
                 if normalized.get("success") is not True:
-                    raise RuntimeError("Native metadata normalization failed")
+                    msg = "Native metadata normalization failed"
+                    raise RuntimeError(msg)
                 if state.get("complete") is True:
                     report["success"] = True
                     report["stopReason"] = (

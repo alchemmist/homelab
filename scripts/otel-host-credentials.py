@@ -29,7 +29,8 @@ def atomic(path, value):
 def run(verify_scope=False):
     os.umask(0o077)
     if os.geteuid() != 0 or ROOT.is_symlink():
-        raise ValueError("Root-owned native host workspace required")
+        msg = "Root-owned native host workspace required"
+        raise ValueError(msg)
     cfg = json.loads((ROOT / "credentials.json").read_text())
     token = json.loads((ROOT / "token.json").read_text())
     context = ssl.create_default_context(cafile=str(ROOT / "kubernetes-ca.crt"))
@@ -57,9 +58,8 @@ def run(verify_scope=False):
             if error.code != 403:
                 raise
         else:
-            raise ValueError(
-                "Host credentials may read CA private key; refusing overprivileged bootstrap"
-            )
+            msg = "Host credentials may read CA private key; refusing overprivileged bootstrap"
+            raise ValueError(msg)
     if (
         verify_scope
         or (

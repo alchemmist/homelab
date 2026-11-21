@@ -17,21 +17,25 @@ LEVELS = {"trace", "debug", "info", "warn", "error", "fatal", "unknown"}
 
 def rules(policy):
     if policy.get("schemaVersion") != 1:
-        raise ValueError("Unsupported policy schema")
+        msg = "Unsupported policy schema"
+        raise ValueError(msg)
     fallback = policy["fallbackHours"]
 
     def hours(value, level):
         if type(value) is not int or not 24 <= value <= 8760:
-            raise ValueError("Retention must be integer hours between 24h and 365d")
+            msg = "Retention must be integer hours between 24h and 365d"
+            raise ValueError(msg)
         if level == "unknown" and value != 336:
-            raise ValueError("Unknown and fallback must preserve legacy 14d")
+            msg = "Unknown and fallback must preserve legacy 14d"
+            raise ValueError(msg)
         if value > 336:
             approval = policy.get("capacityApproval") or {}
             if not all(
                 isinstance(approval.get(k), str) and approval[k].strip()
                 for k in ("measuredAt", "evidence", "approvedBy")
             ):
-                raise ValueError("Any extension beyond 14d requires measured capacity approval")
+                msg = "Any extension beyond 14d requires measured capacity approval"
+                raise ValueError(msg)
             fields = (
                 "budgetBytes",
                 "projectedBytes",
@@ -44,7 +48,8 @@ def rules(policy):
                 "sampleSeconds",
             )
             if any(type(approval.get(k)) is not int or approval[k] <= 0 for k in fields):
-                raise ValueError("Capacity measurements and reserves must be positive integers")
+                msg = "Capacity measurements and reserves must be positive integers"
+                raise ValueError(msg)
             # No severity discount without representative per-level measurements:
             # charge all observed growth at the longest requested retention.
             longest = max(
@@ -74,29 +79,32 @@ def rules(policy):
                 or approval["filesystemAvailableBytes"] > approval["filesystemCapacityBytes"]
                 or not minimum <= approval["projectedBytes"] <= approval["budgetBytes"] <= headroom
             ):
-                raise ValueError(
-                    "Need representative 7d evidence, conservative projection and 20% filesystem reserve"
-                )
+                msg = "Need representative 7d evidence, conservative projection and 20% filesystem reserve"
+                raise ValueError(msg)
         return value
 
     if set(policy["severityHours"]) != LEVELS:
-        raise ValueError("All seven normalized severity policies are required")
+        msg = "All seven normalized severity policies are required"
+        raise ValueError(msg)
     candidates = [
         fallback,
         *policy["severityHours"].values(),
         *(h for overrides in policy.get("services", {}).values() for h in overrides.values()),
     ]
     if any(type(h) is not int or not 24 <= h <= 8760 for h in candidates):
-        raise ValueError("Retention must be integer hours between 24h and 365d")
+        msg = "Retention must be integer hours between 24h and 365d"
+        raise ValueError(msg)
     hours(fallback, "unknown")
     result = []
     for level, value in sorted(policy["severityHours"].items()):
         result.append((10, "{severity=" + json.dumps(level) + "}", hours(value, level)))
     for service, overrides in sorted(policy.get("services", {}).items()):
         if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_.:/-]{0,199}", service):
-            raise ValueError("Unsafe or empty service name")
+            msg = "Unsafe or empty service name"
+            raise ValueError(msg)
         if not overrides or not set(overrides) <= LEVELS:
-            raise ValueError("Service overrides must map normalized severity to hours")
+            msg = "Service overrides must map normalized severity to hours"
+            raise ValueError(msg)
         for level, value in sorted(overrides.items()):
             selector = (
                 "{service_name=" + json.dumps(service) + ",severity=" + json.dumps(level) + "}"
@@ -117,7 +125,8 @@ def render(text, policy):
         r"  retention_period:.*?\n(?=  allow_structured_metadata:)", block, text, flags=re.DOTALL
     )
     if count != 1:
-        raise ValueError("Expected one bounded limits retention stanza")
+        msg = "Expected one bounded limits retention stanza"
+        raise ValueError(msg)
     return text
 
 

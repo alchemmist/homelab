@@ -23,10 +23,12 @@ def command(arguments):
 def verify(path, expected):
     stat = path.lstat()
     if path.is_symlink() or not path.is_file() or stat.st_uid != 0 or stat.st_mode & 0o022:
-        raise ValueError("Native canary executable must be root owned and not writable by others")
+        msg = "Native canary executable must be root owned and not writable by others"
+        raise ValueError(msg)
     with path.open("rb") as stream:
         if hashlib.file_digest(stream, "sha256").hexdigest() != expected:
-            raise ValueError("Native executable differs from pinned controller digest")
+            msg = "Native executable differs from pinned controller digest"
+            raise ValueError(msg)
 
 
 def configs(root, request):
@@ -89,7 +91,8 @@ def query(root, expression, range_parameters=None):
     with urllib.request.urlopen(url, context=context(root), timeout=5) as response:
         payload = json.load(response)
     if payload.get("status") != "success":
-        raise ValueError("Native shadow Prometheus query failed")
+        msg = "Native shadow Prometheus query failed"
+        raise ValueError(msg)
     return payload["data"]["result"]
 
 
@@ -134,7 +137,8 @@ def wait_port(ip, port):
                 return
         except OSError:
             time.sleep(0.25)
-    raise RuntimeError("Owned native listener did not become ready")
+    msg = "Owned native listener did not become ready"
+    raise RuntimeError(msg)
 
 
 def environment(root, request):
@@ -170,7 +174,8 @@ def telemetry(root):
             ):
                 selected[name] = selected.get(name, 0) + float(value)
     if not selected:
-        raise ValueError("Native exporter telemetry is absent")
+        msg = "Native exporter telemetry is absent"
+        raise ValueError(msg)
     return selected
 
 
@@ -229,12 +234,14 @@ def validate_contract(root, request, now=None):
     collected = datetime.fromisoformat(request["scrapeContractCollectedAt"])
     age = ((now or datetime.now(timezone.utc)) - collected).total_seconds()
     if not 0 <= age <= 900:
-        raise ValueError("Native host scrape contract is stale or future-dated")
+        msg = "Native host scrape contract is stale or future-dated"
+        raise ValueError(msg)
     node = socket.gethostname()
     document = json.loads((root / "scrape.json").read_text())
     encoded = json.dumps(document, sort_keys=True, separators=(",", ":")).encode()
     if hashlib.sha256(encoded).hexdigest() != request["hostScrapeSHA256"][node]:
-        raise ValueError("Frozen native host source config changed after compilation")
+        msg = "Frozen native host source config changed after compilation"
+        raise ValueError(msg)
 
 
 def run(root, phase):
@@ -244,13 +251,16 @@ def run(root, phase):
         or root.parent != Path("/var/tmp")
         or not root.name.startswith("otel-host-metrics-canary-")
     ):
-        raise ValueError("Explicit private native canary workspace required")
+        msg = "Explicit private native canary workspace required"
+        raise ValueError(msg)
     stat = root.lstat()
     if stat.st_uid != 0 or stat.st_mode & 0o077:
-        raise ValueError("Canary workspace must be root-only")
+        msg = "Canary workspace must be root-only"
+        raise ValueError(msg)
     request = json.loads((root / "request.json").read_text())
     if not ipaddress.ip_address(request["backendIP"]) in ipaddress.ip_network("10.250.0.0/24"):
-        raise ValueError("Backend must bind only the existing private WireGuard range")
+        msg = "Backend must bind only the existing private WireGuard range"
+        raise ValueError(msg)
     result = {"phase": phase, "hostname": socket.gethostname(), "productionIngestionChanged": False}
     if phase == "prepare":
         validate_contract(root, request)
@@ -264,7 +274,8 @@ def run(root, phase):
         )
         minimum = request["minimumAvailableMemoryBytes"][socket.gethostname()]
         if available < minimum:
-            raise ValueError("Native canary would breach preserved memory reserve")
+            msg = "Native canary would breach preserved memory reserve"
+            raise ValueError(msg)
         verify(root / "otelcol-contrib", request["collectorSHA256"])
         verify(Path(request["exporterPath"]), request["exporterSHA256"])
         agent, gateway = configs(root, request)
@@ -277,9 +288,10 @@ def run(root, phase):
                 timeout=60,
             )
             if completed.returncode:
-                raise ValueError(
+                msg = (
                     "Pinned Collector rejected native canary configuration; inspect private config"
                 )
+                raise ValueError(msg)
         result["availableMemoryBytes"] = available
     elif phase == "backend-start":
         verify(root / "prometheus", request["prometheusSHA256"])
@@ -393,9 +405,8 @@ def run(root, phase):
                 consecutive = 0
             time.sleep(5)
         if consecutive < 3:
-            raise ValueError(
-                "Four native agents did not preserve all target labels and fresh up values"
-            )
+            msg = "Four native agents did not preserve all target labels and fresh up values"
+            raise ValueError(msg)
         result.update(
             {
                 "healthyTargetCount": 4,
@@ -415,7 +426,8 @@ def run(root, phase):
                 break
             time.sleep(1)
         else:
-            raise ValueError("Persistent exporter queue did not reach expected bounded state")
+            msg = "Persistent exporter queue did not reach expected bounded state"
+            raise ValueError(msg)
     elif phase == "outage-proof":
         stops = json.loads((root / "gateway-stop-result.json").read_text())["timeUnixSeconds"]
         restarts = json.loads((root / "restarts.json").read_text())
@@ -430,7 +442,8 @@ def run(root, phase):
                 for timestamp, value in series["values"]
             )
             if count < 1:
-                raise ValueError("No pre-restart outage samples survived durable queue on one host")
+                msg = "No pre-restart outage samples survived durable queue on one host"
+                raise ValueError(msg)
             counts[node] = count
         result["preRestartOutageSamplesRecovered"] = counts
         result["allFourPersistentQueuesSurvivedAgentRestart"] = True
@@ -480,7 +493,8 @@ def run(root, phase):
             != "0"
             for name in labels
         ):
-            raise ValueError("Owned native service did not stop")
+            msg = "Owned native service did not stop"
+            raise ValueError(msg)
         result["allSelectedProcessesStopped"] = True
     elif phase == "journal-evidence":
         text = command(["journalctl", "--no-pager", "-o", "cat", "-u", unit(root, "agent")])
@@ -506,15 +520,18 @@ def run(root, phase):
             for name in labels
         ]
         if any(state != "0" for state in states):
-            raise ValueError("Owned native canary process did not stop")
+            msg = "Owned native canary process did not stop"
+            raise ValueError(msg)
         for path in (root / "tls").iterdir():
             if path.is_symlink() or not path.is_file():
-                raise ValueError("Unexpected canary credential file")
+                msg = "Unexpected canary credential file"
+                raise ValueError(msg)
             path.unlink()
         result["allOwnedProcessesStopped"] = True
         result["temporaryTLSRemoved"] = True
     else:
-        raise ValueError("Unknown explicit canary phase")
+        msg = "Unknown explicit canary phase"
+        raise ValueError(msg)
     result["timeUnixSeconds"] = time.time()
     (root / (phase + "-result.json")).write_text(json.dumps(result, indent=2) + "\n")
     return result

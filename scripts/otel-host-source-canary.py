@@ -20,10 +20,12 @@ def run(directory):
         or directory.is_symlink()
         or not str(directory).startswith("/var/tmp/otel-host-source-canary-")
     ):
-        raise ValueError("Private root-owned native canary workspace required")
+        msg = "Private root-owned native canary workspace required"
+        raise ValueError(msg)
     stat = directory.lstat()
     if stat.st_uid != 0 or stat.st_mode & 0o022:
-        raise ValueError("Canary workspace is not owned exclusively by root")
+        msg = "Canary workspace is not owned exclusively by root"
+        raise ValueError(msg)
     request = json.loads((directory / "request.json").read_text())
     hostname = socket.gethostname()
     legacy_ip = request["legacyIPs"][hostname]
@@ -36,14 +38,16 @@ def run(directory):
             or stat.st_mode & 0o022
             or digest(path) != expected
         ):
-            raise ValueError("Untrusted native canary executable")
+            msg = "Untrusted native canary executable"
+            raise ValueError(msg)
     with socket.socket() as sock:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(("127.0.0.1", 19100))
     unit = directory.name + ".service"
     result_path = directory / "source-comparison.json"
     if result_path.exists():
-        raise ValueError("Existing comparison output must not be reused")
+        msg = "Existing comparison output must not be reused"
+        raise ValueError(msg)
     properties = [
         "MemoryMax=67108864",
         "CPUQuota=50%",
@@ -78,7 +82,8 @@ def run(directory):
             try:
                 with urllib.request.urlopen("http://127.0.0.1:19100/", timeout=2) as response:
                     if response.status != 200:
-                        raise ValueError("Native exporter is not healthy")
+                        msg = "Native exporter is not healthy"
+                        raise ValueError(msg)
                 break
             except Exception:
                 if time.monotonic() >= deadline:
@@ -93,7 +98,8 @@ def run(directory):
         if int(values.get("MainPID", "0")) <= 0 or not values.get("ControlGroup", "").startswith(
             "/system.slice/otel-host-source-canary-"
         ):
-            raise ValueError("Source process is not independent of Kubernetes/containerd")
+            msg = "Source process is not independent of Kubernetes/containerd"
+            raise ValueError(msg)
         completed = subprocess.run(
             [
                 str(probe),
@@ -133,9 +139,8 @@ def run(directory):
         or not result.get("sourceCompatibilityPassed")
         or not result.get("candidateStopped")
     ):
-        raise RuntimeError(
-            "Native host source canary did not pass; retain private hash-only result"
-        )
+        msg = "Native host source canary did not pass; retain private hash-only result"
+        raise RuntimeError(msg)
     return result
 
 

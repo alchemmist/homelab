@@ -36,7 +36,8 @@ def record(value):
 def run():
     logging.disable(logging.CRITICAL)
     if os.environ.get("OTEL_EXPORTER_OTLP_HEADERS", "").lower() != "connection=close":
-        raise ValueError("Fresh native HTTP client handshakes required for leaf reload proof")
+        msg = "Fresh native HTTP client handshakes required for leaf reload proof"
+        raise ValueError(msg)
     loaded = []
     original_loader = ssl.SSLContext.load_cert_chain
 
@@ -58,7 +59,8 @@ def run():
         litellm.set_verbose = False
         handler = OpenTelemetry()
         if handler.config.enable_metrics or handler.config.enable_events:
-            raise ValueError("SDK metrics/events must remain disabled")
+            msg = "SDK metrics/events must remain disabled"
+            raise ValueError(msg)
         audit = {"endedSpans": 0, "sensitiveSyntheticContentFoundAtSource": False}
 
         class PrivacyAudit(SpanProcessor):
@@ -99,13 +101,15 @@ def run():
                 )
                 time.sleep(3)
             if not provider.force_flush(timeout_millis=10000):
-                raise ValueError("Native SDK flush did not complete")
+                msg = "Native SDK flush did not complete"
+                raise ValueError(msg)
             traces.append(entry)
 
         old = certificate_hash()
         completion()
         if old not in loaded:
-            raise ValueError("Initial native SDK handshake did not load the mounted leaf")
+            msg = "Initial native SDK handshake did not load the mounted leaf"
+            raise ValueError(msg)
         record({"phase": "await-new-projected-leaf", "oldCertificateSHA256": old, "traces": traces})
         deadline = time.monotonic() + 300
         while time.monotonic() < deadline:
@@ -114,7 +118,8 @@ def run():
                 break
             time.sleep(2)
         else:
-            raise ValueError("Projected mirror leaf did not change before deadline")
+            msg = "Projected mirror leaf did not change before deadline"
+            raise ValueError(msg)
         # The provider/exporter/session was not recreated between batches.
         completion()
         if (
@@ -123,7 +128,8 @@ def run():
             or audit["sensitiveSyntheticContentFoundAtSource"]
             or audit["endedSpans"] < 4
         ):
-            raise ValueError("Same-instance native SDK credential reload/source privacy failed")
+            msg = "Same-instance native SDK credential reload/source privacy failed"
+            raise ValueError(msg)
     ssl.SSLContext.load_cert_chain = original_loader
     result = {
         "success": True,

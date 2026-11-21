@@ -13,7 +13,8 @@ def run(pod, application="litellm"):
     if application not in ("litellm", "vllm") or not re.fullmatch(
         application + r"-[a-z0-9-]+", pod
     ):
-        raise ValueError("Expected one exact allowlisted application SDK pod identity")
+        msg = "Expected one exact allowlisted application SDK pod identity"
+        raise ValueError(msg)
     root = Path("/var/lib/homelab-otel/tls")
     context = ssl.create_default_context(cafile=str(root / "ca.crt"))
     context.load_cert_chain(str(root / "client.crt"), str(root / "client.key"))
@@ -22,7 +23,8 @@ def run(pod, application="litellm"):
         with urllib.request.urlopen(url, context=tls, timeout=4) as response:
             result = json.load(response)
         if result.get("status") != "success" or result.get("warnings"):
-            raise ValueError("Native query failed or returned partial/warning evidence")
+            msg = "Native query failed or returned partial/warning evidence"
+            raise ValueError(msg)
         return result["data"]["result"]
 
     metrics = get(

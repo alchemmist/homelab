@@ -44,7 +44,8 @@ def prometheus(host, namespace, endpoint):
     path = f"/api/v1/namespaces/{namespace}/services/http:kube-prometheus-stack-prometheus:9090/proxy/api/v1/{endpoint}"
     payload = kube(host, namespace, "get", "--raw", path)
     if payload.get("status") != "success":
-        raise RuntimeError("Prometheus read-only API failed")
+        msg = "Prometheus read-only API failed"
+        raise RuntimeError(msg)
     return payload["data"]
 
 
@@ -123,9 +124,8 @@ def collect(policy, host):
             for point in points
         ]
         if len(targets) < 78:
-            raise RuntimeError(
-                "Native production has fewer than the contracted 78 fresh source targets"
-            )
+            msg = "Native production has fewer than the contracted 78 fresh source targets"
+            raise RuntimeError(msg)
     else:
         targets = prometheus(host, namespace, "targets")["activeTargets"]
     target_summaries = [
@@ -198,13 +198,16 @@ def evaluate(policy, inventory, now=None):
     errors = []
     capacity = {}
     if policy.get("schemaVersion") != 1 or inventory.get("schemaVersion") != 1:
-        raise ValueError("Unsupported migration policy or inventory version")
+        msg = "Unsupported migration policy or inventory version"
+        raise ValueError(msg)
     fraction = policy["minimumFreeFraction"]
     if not nonnegative(fraction) or fraction < 0.2 or fraction >= 1:
-        raise ValueError("Free-space fraction must be at least 0.2 and less than 1")
+        msg = "Free-space fraction must be at least 0.2 and less than 1"
+        raise ValueError(msg)
     maximum_age = policy["maximumObservationAgeSeconds"]
     if not nonnegative(maximum_age) or not 0 < maximum_age <= 900:
-        raise ValueError("Observation lifetime must be at most 900 seconds")
+        msg = "Observation lifetime must be at most 900 seconds"
+        raise ValueError(msg)
     for node, reservation in policy["nodes"].items():
         observed = inventory.get("nodes", {}).get(node)
         if observed is None:

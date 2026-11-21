@@ -13,7 +13,8 @@ from pathlib import Path
 def run(output):
     os.umask(0o077)
     if os.geteuid() != 0:
-        raise ValueError("Protected native TLS files require root")
+        msg = "Protected native TLS files require root"
+        raise ValueError(msg)
     output.mkdir(mode=0o700)
     root = Path("/var/lib/homelab-otel/tls")
     positive = ssl.create_default_context(cafile=str(root / "ca.crt"))
@@ -31,7 +32,8 @@ def run(output):
             return response.status
 
     if send("/v1/traces", positive) != 200:
-        raise ValueError("Authenticated native trace route is not ready")
+        msg = "Authenticated native trace route is not ready"
+        raise ValueError(msg)
     rejected = False
     try:
         send("/v1/traces", negative)
@@ -42,7 +44,8 @@ def run(output):
             for code in ["CERTIFICATE_REQUIRED", "HANDSHAKE_FAILURE", "BAD_CERTIFICATE"]
         )
     if not rejected:
-        raise ValueError("Anonymous TLS was not explicitly rejected by certificate authentication")
+        msg = "Anonymous TLS was not explicitly rejected by certificate authentication"
+        raise ValueError(msg)
     other_signals = {}
     for path in ["/v1/metrics", "/v1/logs"]:
         try:
@@ -50,7 +53,8 @@ def run(output):
         except urllib.error.HTTPError as error:
             other_signals[path] = error.code
     if set(other_signals.values()) != {404}:
-        raise ValueError("New receiver unexpectedly serves a second metrics or logs owner")
+        msg = "New receiver unexpectedly serves a second metrics or logs owner"
+        raise ValueError(msg)
     unit = subprocess.run(
         [
             "systemctl",
