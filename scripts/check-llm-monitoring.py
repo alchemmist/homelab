@@ -28,7 +28,8 @@ def main():
         ):
             break
         if time.monotonic() >= deadline:
-            raise RuntimeError("LLM scrape targets are missing or unhealthy")
+            message = "LLM scrape targets are missing or unhealthy"
+            raise RuntimeError(message)
         time.sleep(5)
     print("PASS: authenticated LiteLLM and vLLM scrape targets are UP")
     for expression in [
