@@ -7,7 +7,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import _Call, patch
 
 ROOT = Path(__file__).resolve().parents[2]
 RELATIVE = "docs/n8n/spi/triage-workflow.json"
@@ -58,7 +58,7 @@ class EventWorkflowTests(unittest.TestCase):
         ]
         self.assertEqual([nodes[n]["id"] for n in chain], original_ids)
 
-        def targets(name):
+        def targets(name: str) -> list[list[list[str]]]:
             return [[x["node"] for x in output] for output in w["connections"][name]["main"]]
 
         self.assertEqual(targets("Dispatch Triage Job"), [["Claim Triage Job"]])
@@ -169,7 +169,7 @@ class EventWorkflowTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Missing private SPI credential mapping: worker"):
             sync.render(self.workflow, {})
 
-    def run_sync(self, pages):
+    def run_sync(self, pages: object) -> tuple[dict[str, object], list[_Call]]:
         with tempfile.TemporaryDirectory() as config:
             Path(config, "spi-credentials.json").write_text(json.dumps(self.mapping))
             with (

@@ -311,7 +311,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
     def test_historical_resolved_failure_then_firing_then_resolved_converges(self):
         d, e = self.historical_pair()
 
-        def reference(marker, issue):
+        def reference(marker: str, issue: int) -> dict[str, object]:
             if fixture.event("resolved")["event_key"] in marker:
                 raise Failure("UPSTREAM_NETWORK_ERROR")
             return {
@@ -384,7 +384,7 @@ class DeliveryIntegrationTests(unittest.TestCase):
                 (fixture.event("resolved")["event_key"],),
             )
 
-        def reference(marker, issue):
+        def reference(marker: str, issue: int) -> dict[str, object]:
             if fixture.event("resolved")["event_key"] in marker:
                 raise Failure("PRIMARY_PUBLICATION_MISSING")
             return {
