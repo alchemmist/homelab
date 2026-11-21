@@ -8,7 +8,7 @@ production-операции. Датированные результаты не 
 
 - Applications: `deploy/argocd/apps/`; values — по ссылке в конкретном Application.
 - Ansible inventory: `ansible/inventory/hosts.yml`; mesh registry:
-  `ansible/inventory/group_vars/Socrat.yml` → `wg_socrat_nodes`.
+  `ansible/inventory/group_vars/Socrat/cluster.yml` → `wg_socrat_nodes`.
 - Общий issuer transport и его потребители:
   `deploy/contracts/infrastructure.json`; offline check/generation:
   `scripts/check_infrastructure_contracts.py` (default check, `--write` только Git).

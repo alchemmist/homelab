@@ -15,11 +15,11 @@ spec.loader.exec_module(lab)
 
 
 class TrafficLightArgoTest(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.dashboard = lab.build()
         self.panels = {p["id"]: p for p in self.dashboard["panels"]}
 
-    def test_generated_copy_and_unchanged_original_panels(self):
+    def test_generated_copy_and_unchanged_original_panels(self) -> None:
         self.assertEqual(json.loads(lab.OUTPUT.read_text()), self.dashboard)
         self.assertEqual(self.dashboard["uid"], "socrat-traffic-light")
         original = json.loads(lab.SOURCE.read_text())
@@ -32,7 +32,7 @@ class TrafficLightArgoTest(unittest.TestCase):
         )
         self.assertFalse(set(self.panels) & set(range(950, 976)))
 
-    def test_current_strip_is_per_application_native_bar_gauge_without_chrome(self):
+    def test_current_strip_is_per_application_native_bar_gauge_without_chrome(self) -> None:
         p = self.panels[909]
         self.assertEqual(p["type"], "bargauge")
         self.assertEqual(p["gridPos"], {"x": 0, "y": 18, "w": 12, "h": 1})
@@ -84,7 +84,7 @@ class TrafficLightArgoTest(unittest.TestCase):
             {str(code + 1): {"text": name, "color": color} for name, code, color in lab.STATES},
         )
 
-    def test_generator_preserves_manual_argo_geometry_and_thresholds(self):
+    def test_generator_preserves_manual_argo_geometry_and_thresholds(self) -> None:
         original = json.loads(lab.SOURCE.read_text())
         owner = next(p for p in original["panels"] if p["id"] == 909)
         panel = self.panels[909]
@@ -96,7 +96,7 @@ class TrafficLightArgoTest(unittest.TestCase):
         )
 
     @unittest.skipUnless(shutil.which("helm"), "helm needed for apply-size regression")
-    def test_rendered_apply_annotation_stays_below_kubernetes_limit(self):
+    def test_rendered_apply_annotation_stays_below_kubernetes_limit(self) -> None:
         import yaml
 
         chart = ROOT / "charts/monitoring-k3s"
@@ -121,7 +121,7 @@ class TrafficLightArgoTest(unittest.TestCase):
         self.assertLess(len(json.dumps(cm, separators=(",", ":")).encode()), 240000)
         self.assertEqual(json.loads(next(iter(cm["data"].values()))), self.dashboard)
 
-    def test_nonoverlapping_tv_grid(self):
+    def test_nonoverlapping_tv_grid(self) -> None:
         occupied = {}
         for p in self.dashboard["panels"]:
             g = p["gridPos"]
@@ -134,22 +134,17 @@ class TrafficLightArgoTest(unittest.TestCase):
         self.assertEqual(len(self.panels), len(self.dashboard["panels"]))
 
     @unittest.skipUnless(shutil.which("promtool"), "promtool needed for PromQL semantics")
-    def test_promql_partition_latest_labels_and_telemetry_gaps(self):
-        def series(name: str, values: str = "1+0x120"):
+    def test_promql_partition_latest_labels_and_telemetry_gaps(self) -> None:
+        def series(name, values="1+0x120"):
             return {"series": name, "values": values}
 
-        def app(
-            name: str,
-            health: str = "Healthy",
-            sync: str = "Synced",
-            values: str = "1+0x120",
-        ):
+        def app(name, health="Healthy", sync="Synced", values="1+0x120"):
             return series(
                 f'argocd_app_info{{job="socrat-argocd",name="{name}",health_status="{health}",sync_status="{sync}"}}',
                 values,
             )
 
-        def checks(counts: list[int | None], when: str = "30m"):
+        def checks(counts, when="30m"):
             if len(counts) == 5:
                 counts = counts + [None if counts[0] is None else 0]
             return [
@@ -158,7 +153,7 @@ class TrafficLightArgoTest(unittest.TestCase):
                     "eval_time": when,
                     "exp_samples": [] if n is None else [{"labels": "{}", "value": n}],
                 }
-                for (_, expr, _), n in zip(lab.queries()[1], counts)
+                for (_, expr, _), n in zip(lab.queries()[1], counts, strict=False)
             ]
 
         up = series('up{job="socrat-argocd"}')
@@ -219,7 +214,7 @@ class TrafficLightArgoTest(unittest.TestCase):
             },
         ]
 
-        def app_check(values: list[tuple[str, int]], when: str = "30m"):
+        def app_check(values, when="30m"):
             return {
                 "expr": lab.application_query(),
                 "eval_time": when,

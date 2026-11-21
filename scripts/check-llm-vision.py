@@ -189,6 +189,6 @@ if __name__ == "__main__":
     except urllib.error.HTTPError as error:
         print(f"FAIL HTTP {error.code}", file=sys.stderr)
         sys.exit(1)
-    except Exception as error:
+    except (ValueError, KeyError, TypeError, OSError) as error:
         print(f"FAIL {type(error).__name__}: {error}", file=sys.stderr)
         sys.exit(1)

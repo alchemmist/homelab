@@ -27,21 +27,18 @@ load_config() {
   if [[ -f "${CONFIG_FILE}" ]]; then
     # KEY=VALUE lines only; blank and commented lines are skipped.
     while IFS= read -r line || [[ -n "${line}" ]]; do
+      line="${line#"${line%%[![:space:]]*}"}"
       [[ -z "${line}" || "${line}" == \#* ]] && continue
-      [[ "${line}" == *=* ]] || die "config line is not KEY=VALUE: ${line}"
       key="${line%%=*}"
       value="${line#*=}"
-      key="${key#"${key%%[![:space:]]*}"}"
-      key="${key%"${key##*[![:space:]]}"}"
-      [[ "${key}" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]] || die "config key is not a shell identifier: ${key}"
+      [[ "${key}" == "${line}" || ! "${key}" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]] \
+        && die "config line is not a valid KEY=VALUE: ${line}"
       value="${value%$'\r'}"
-      if (( ${#value} >= 2 )) && [[ "${value:0:1}" == '"' && "${value: -1}" == '"' ]]; then
-        value="${value:1:${#value}-2}"
-      elif (( ${#value} >= 2 )) && [[ "${value:0:1}" == "'" && "${value: -1}" == "'" ]]; then
+      value="${value%"${value##*[![:space:]]}"}"
+      if [[ "${value}" == \"*\" && "${value}" == *\" || "${value}" == \'*\' && "${value}" == *\' ]]; then
         value="${value:1:${#value}-2}"
       else
-        value="${value#"${value%%[![:space:]]*}"}"
-        value="${value%"${value##*[![:space:]]}"}"
+        value="${value%%[[:space:]]#*}"
       fi
       export "${key}=${value}"
     done < "${CONFIG_FILE}"

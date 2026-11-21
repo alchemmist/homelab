@@ -7,11 +7,32 @@ import hashlib, json, subprocess, tempfile, unittest, yaml
 R = Path(__file__).resolve().parents[1]
 
 
-def load(p: str):
-    return yaml.safe_load((R / p).read_text())
+def _mapping(value: object) -> dict[str, object]:
+    """Narrow decoded document fields to mappings for typed test callers."""
+    assert isinstance(value, dict)
+    return value
 
 
-def render(chart: str, values: dict[str, object], release: str, ns: str):
+def _sequence(value: object) -> list[object]:
+    """Narrow decoded document fields to sequences for typed test callers."""
+    assert isinstance(value, list)
+    return list(value)
+
+
+def _text(value: object) -> str:
+    """Narrow decoded document fields to text for typed test callers."""
+    assert isinstance(value, str)
+    return value
+
+
+def load(p: str) -> dict[str, object]:
+    loaded = yaml.safe_load((R / p).read_text())
+    return _mapping(loaded)
+
+
+def render(
+    chart: str, values: dict[str, object], release: str, ns: str
+) -> dict[tuple[str, str], dict[str, object]]:
     with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as f:
         yaml.safe_dump(values, f)
         f.flush()
@@ -35,15 +56,23 @@ def render(chart: str, values: dict[str, object], release: str, ns: str):
 
 
 class MigrationTests(unittest.TestCase):
-    def test_renderer_retry_after_transport_repair_preserves_grafana_and_adapter_placement(self):
+    def test_renderer_retry_after_transport_repair_preserves_grafana_and_adapter_placement(
+        self,
+    ) -> None:
         v = load("charts/grafana/alert-graphs.runtime.values.yaml")
         self.assertEqual(
-            v["grafana"]["imageRenderer"]["nodeSelector"], {"kubernetes.io/hostname": "socrat-5"}
+            _mapping(_mapping(v["grafana"])["imageRenderer"])["nodeSelector"],
+            {"kubernetes.io/hostname": "socrat-5"},
         )
-        self.assertEqual(v["alertGraphs"]["nodeSelector"], {"kubernetes.io/hostname": "socrat-1"})
-        self.assertEqual(v["grafana"]["imageRenderer"]["existingSecret"], "socrat-grafana-renderer")
+        self.assertEqual(
+            _mapping(v["alertGraphs"])["nodeSelector"], {"kubernetes.io/hostname": "socrat-1"}
+        )
+        self.assertEqual(
+            _mapping(_mapping(v["grafana"])["imageRenderer"])["existingSecret"],
+            "socrat-grafana-renderer",
+        )
 
-    def test_lms_single_worker_and_original_database_and_identity(self):
+    def test_lms_single_worker_and_original_database_and_identity(self) -> None:
         v = load("charts/lms/values.yaml")
         v.update(load("deploy/lms/values.yaml"))
         docs = render("charts/lms", v, "lms", "lms")
@@ -53,27 +82,39 @@ class MigrationTests(unittest.TestCase):
         old["hostAliases"] = []
         baseline = render("charts/lms", old, "lms", "lms")
         self.assertEqual([k for k in docs if docs[k] != baseline[k]], [("Deployment", "lms")])
-        self.assertEqual(d["spec"]["strategy"], {"type": "Recreate"})
-        self.assertEqual(d["spec"]["replicas"], 1)
-        s = d["spec"]["template"]["spec"]
-        self.assertEqual(
-            s["affinity"]["nodeAffinity"]["requiredDuringSchedulingIgnoredDuringExecution"][
-                "nodeSelectorTerms"
-            ][0]["matchExpressions"][0]["values"],
-            ["socrat-5"],
-        )
+        spec = _mapping(d["spec"])
+        self.assertEqual(spec["strategy"], {"type": "Recreate"})
+        self.assertEqual(spec["replicas"], 1)
+        s = _mapping(_mapping(spec["template"])["spec"])
+        affinity = _mapping(s["affinity"])
+        node_affinity = _mapping(affinity["nodeAffinity"])
+        required = _mapping(node_affinity["requiredDuringSchedulingIgnoredDuringExecution"])
+        terms = _sequence(required["nodeSelectorTerms"])
+        expression = _mapping(_mapping(_sequence(_mapping(terms[0])["matchExpressions"])[0]))
+        self.assertEqual(expression["values"], ["socrat-5"])
         self.assertEqual(
             s["hostAliases"], [{"ip": "10.43.218.222", "hostnames": ["auth.socrat.alchemmist.xyz"]}]
         )
-        self.assertFalse(any("persistentVolumeClaim" in x for x in s["volumes"]))
-        env = {e["name"]: e for e in s["containers"][0]["env"]}
-        self.assertEqual(env["LMS_DATABASE_URL"]["valueFrom"]["secretKeyRef"]["name"], "lms-db")
+        self.assertFalse(
+            any("persistentVolumeClaim" in _mapping(x) for x in _sequence(s["volumes"]))
+        )
+        env: dict[str, object] = {}
+        for entry in _sequence(_mapping(_sequence(s["containers"])[0])["env"]):
+            env[_text(_mapping(entry)["name"])] = entry
         self.assertEqual(
-            env["LMS_OIDC_CLIENT_SECRET"]["valueFrom"]["secretKeyRef"]["name"],
+            _mapping(_mapping(_mapping(env["LMS_DATABASE_URL"])["valueFrom"])["secretKeyRef"])[
+                "name"
+            ],
+            "lms-db",
+        )
+        self.assertEqual(
+            _mapping(
+                _mapping(_mapping(env["LMS_OIDC_CLIENT_SECRET"])["valueFrom"])["secretKeyRef"]
+            )["name"],
             "socrat-authentik-lms",
         )
 
-    def test_vendor_preserves_every_upstream_file_except_two_minimal_extensions(self):
+    def test_vendor_preserves_every_upstream_file_except_two_minimal_extensions(self) -> None:
         root = R / "charts/litellm"
         manifest = json.loads((root / "upstream-file-sha256.json").read_text())
         for name, digest in manifest.items():
@@ -87,24 +128,29 @@ class MigrationTests(unittest.TestCase):
                 s = s[s.index(b"{{- if .Values.migrationJob.enabled }}") :]
             self.assertEqual(hashlib.sha256(s).hexdigest(), digest, name)
 
-    def test_litellm_only_deployment_changes_no_migration_job_or_config_or_secrets(self):
+    def test_litellm_only_deployment_changes_no_migration_job_or_config_or_secrets(self) -> None:
         v = load("deploy/platform/litellm/values.yaml")
         after = render("charts/litellm", v, "litellm", "llm")
         old = dict(v)
         old["nodeSelector"] = {"kubernetes.io/hostname": "socrat-0"}
         old["hostAliases"] = []
-        old["migrationJob"] = dict(old["migrationJob"])
-        old["migrationJob"].pop("placementOnlyImage", None)
-        old["migrationJob"]["enabled"] = True
-        old["envVars"] = dict(old["envVars"])
-        old["envVars"].pop("DISABLE_SCHEMA_UPDATE", None)
+        migrationJob = dict(_mapping(old["migrationJob"]))
+        migrationJob.pop("placementOnlyImage", None)
+        migrationJob["enabled"] = True
+        old["migrationJob"] = migrationJob
+        envVars = dict(_mapping(old["envVars"]))
+        envVars.pop("DISABLE_SCHEMA_UPDATE", None)
+        old["envVars"] = envVars
         before = render("charts/litellm", old, "litellm", "llm")
         changed = [k for k in before if k in after and before[k] != after[k]]
         self.assertEqual(changed, [("Deployment", "litellm")])
         d = after[("Deployment", "litellm")]
-        self.assertEqual(d["spec"]["replicas"], 1)
-        self.assertEqual(d["spec"]["template"]["spec"]["terminationGracePeriodSeconds"], 7260)
-        s = d["spec"]["template"]["spec"]
+        spec = _mapping(d["spec"])
+        self.assertEqual(spec["replicas"], 1)
+        self.assertEqual(
+            _mapping(_mapping(spec["template"])["spec"])["terminationGracePeriodSeconds"], 7260
+        )
+        s = _mapping(_mapping(spec["template"])["spec"])
         self.assertEqual(s["nodeSelector"], {"kubernetes.io/hostname": "socrat-5"})
         self.assertEqual(
             s["hostAliases"], [{"ip": "10.43.218.222", "hostnames": ["auth.socrat.alchemmist.xyz"]}]
@@ -112,22 +158,27 @@ class MigrationTests(unittest.TestCase):
         self.assertTrue(any(k[0] == "Job" for k in before))
         self.assertFalse(any(k[0] == "Job" for k in after))
         broken = dict(v)
-        broken["image"] = dict(v["image"])
-        broken["image"]["tag"] = "not-reviewed-next-version"
+        broken["image"] = dict(_mapping(v["image"]))
+        image = _mapping(broken["image"])
+        image["tag"] = "not-reviewed-next-version"
         with self.assertRaises(subprocess.CalledProcessError):
             render("charts/litellm", broken, "litellm", "llm")
-        self.assertEqual(v["envVars"]["DISABLE_SCHEMA_UPDATE"].lower(), "true")
-        self.assertRegex(v["image"]["tag"], r"^a691e23abfac6dd0f2b69f9f5b4f714241f39ac4@sha256:[a-f0-9]{64}$")
+        self.assertEqual(_text(_mapping(v["envVars"])["DISABLE_SCHEMA_UPDATE"]).lower(), "true")
+        self.assertRegex(
+            _text(_mapping(v["image"])["tag"]),
+            r"^a691e23abfac6dd0f2b69f9f5b4f714241f39ac4@sha256:[a-f0-9]{64}$",
+        )
         self.assertEqual(v["masterkeySecretName"], "litellm-env")
 
-    def test_app_source_keeps_version_and_selective_sync_safety(self):
-        a = load("deploy/argocd/apps/litellm.yaml")["spec"]
-        self.assertEqual(a["sources"][0]["path"], "charts/litellm")
-        self.assertFalse(a["syncPolicy"]["automated"]["prune"])
-        self.assertIn("ApplyOutOfSyncOnly=true", a["syncPolicy"]["syncOptions"])
-        self.assertEqual(load("charts/litellm/Chart.yaml")["version"], "1.105.1")
+    def test_app_source_keeps_version_and_selective_sync_safety(self) -> None:
+        a = _mapping(load("deploy/argocd/apps/litellm.yaml")["spec"])
+        self.assertEqual(_mapping(_sequence(a["sources"])[0])["path"], "charts/litellm")
+        sync_policy = _mapping(a["syncPolicy"])
+        self.assertFalse(_mapping(sync_policy["automated"])["prune"])
+        self.assertIn("ApplyOutOfSyncOnly=true", _sequence(sync_policy["syncOptions"]))
+        self.assertEqual(_mapping(load("charts/litellm/Chart.yaml"))["version"], "1.105.1")
 
-    def test_ansible_cannot_silently_revert_to_old_node_or_oci_chart(self):
+    def test_ansible_cannot_silently_revert_to_old_node_or_oci_chart(self) -> None:
         s = (R / "ansible/playbooks/litellm.yml").read_text()
         p = yaml.safe_load(s)
         self.assertEqual(len(p), 1)

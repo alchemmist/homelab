@@ -43,7 +43,7 @@ class VPSWorkloadOffloadTests(unittest.TestCase):
         self.assertIn("rollout", yaml.safe_load(deployment)[2]["ansible.builtin.command"]["argv"])
         template = yaml.safe_load(deployment)[1]["vars"]["offload_patch_spec"]["spec"]["template"]["spec"]
         self.assertIsNone(template["nodeSelector"]["kubernetes.io/hostname"])
-        def term(nodes: list[str]):
+        def term(nodes) -> dict[str, object]:
             return {"matchExpressions": [{"key": "kubernetes.io/hostname", "operator": "In", "values": nodes}]}
 
         self.assertEqual(template["affinity"]["nodeAffinity"], {

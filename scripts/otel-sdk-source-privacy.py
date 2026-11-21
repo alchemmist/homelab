@@ -60,21 +60,22 @@ def activate():
     if not isinstance(trace.get_tracer_provider(), trace.ProxyTracerProvider):
         raise ValueError('Source privacy guard must activate before any real tracer provider')
     class BeforeQueuePrivacy(sdk.SpanProcessor):
-        def __init__(self, downstream):
+        def __init__(self, downstream) -> None:
             self.downstream = downstream
-        def on_start(self, span, parent_context=None):
+        def on_start(self, span, parent_context=None) -> None:
             self.downstream.on_start(span, parent_context=parent_context)
-        def on_end(self, span):
+        def on_end(self, span) -> None:
             # No exception fallback: never forward the original unredacted span.
             self.downstream.on_end(redact_span(span))
-        def shutdown(self):
+        def shutdown(self) -> None:
             self.downstream.shutdown()
-        def force_flush(self, timeout_millis=30000):
-            return self.downstream.force_flush(timeout_millis=timeout_millis)
+        def force_flush(self, timeout_millis=30000) -> bool:
+            result: bool = self.downstream.force_flush(timeout_millis=timeout_millis)
+            return result
     original = sdk.TracerProvider
     class SourcePrivateTracerProvider(original):
         _homelab_source_privacy = True
-        def add_span_processor(self, processor):
+        def add_span_processor(self, processor) -> None:
             super().add_span_processor(BeforeQueuePrivacy(processor))
     # Factory substitution is deliberately explicit and must happen before app
     # imports. This changes application bootstrap, not any installed SDK files.

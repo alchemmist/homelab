@@ -8,15 +8,16 @@ DASHBOARD = ROOT / "charts/monitoring-k3s/dashboards/traffic-light.json"
 VALUES = ROOT / "charts/monitoring-k3s/values.yaml"
 
 
-def load():
-    return json.loads(DASHBOARD.read_text())
+def load() -> dict[str, object]:
+    data: dict[str, object] = json.loads(DASHBOARD.read_text())
+    return data
 
 
-def panel_by_id(dashboard: dict[str, list[dict[str, object]]], panel_id: int):
+def panel_by_id(dashboard, panel_id) -> dict[str, object]:
     return next(item for item in dashboard["panels"] if item.get("id") == panel_id)
 
 
-def cells(grid: dict[str, int]):
+def cells(grid) -> list[tuple[int, int]]:
     """Grid cells covered by a panel."""
     x = int(grid["x"])
     y = int(grid["y"])
@@ -26,10 +27,10 @@ def cells(grid: dict[str, int]):
 
 
 class TrafficLightLayoutTest(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.dashboard = load()
 
-    def test_vpn_mode_replaces_top_nodes_without_resizing(self):
+    def test_vpn_mode_replaces_top_nodes_without_resizing(self) -> None:
         panel = panel_by_id(self.dashboard, 9)
         self.assertEqual(panel["gridPos"], {"x": 4, "y": 0, "w": 2, "h": 2})
         self.assertEqual(panel["title"], "")
@@ -54,7 +55,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
         self.assertEqual(panel_by_id(self.dashboard, 327)["gridPos"]["x"], 2)
         self.assertEqual(panel_by_id(self.dashboard, 328)["gridPos"]["x"], 0)
 
-    def test_panels_use_the_integer_tv_grid(self):
+    def test_panels_use_the_integer_tv_grid(self) -> None:
         for panel in self.dashboard["panels"]:
             grid = panel["gridPos"]
             self.assertIsInstance(grid["x"], int, f"panel {panel['id']} fractional x")
@@ -62,7 +63,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
             self.assertIsInstance(grid["w"], int, f"panel {panel['id']} fractional w")
             self.assertIsInstance(grid["h"], int, f"panel {panel['id']} fractional h")
 
-    def test_panels_fill_the_tv_grid_without_holes_or_overlaps(self):
+    def test_panels_fill_the_tv_grid_without_holes_or_overlaps(self) -> None:
         occupied = {}
         for panel in self.dashboard["panels"]:
             grid = panel["gridPos"]
@@ -78,11 +79,11 @@ class TrafficLightLayoutTest(unittest.TestCase):
         self.assertEqual({str(p["id"]): p["gridPos"] for p in self.dashboard["panels"]}, approved)
         self.assertEqual(len(holes), 33)  # intentional whitespace in owner layout
 
-    def test_cpu_temperature_bar_removed(self):
+    def test_cpu_temperature_bar_removed(self) -> None:
         ids = {panel["id"] for panel in self.dashboard["panels"]}
         self.assertNotIn(24, ids)
 
-    def test_cluster_health_column_layout(self):
+    def test_cluster_health_column_layout(self) -> None:
         digits = ["0", "1", "2", "3", "4", "5"]
         for i, panel_id in enumerate((901, 902, 903, 904, 926, 927)):
             panel = panel_by_id(self.dashboard, panel_id)
@@ -102,7 +103,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
         self.assertEqual(history["gridPos"], {"x": 0, "y": 18, "w": 12, "h": 1})
         self.assertEqual(history["type"], "bargauge")
 
-    def test_unmodified_resource_columns(self):
+    def test_unmodified_resource_columns(self) -> None:
         cpu = panel_by_id(self.dashboard, 21)
         memory = panel_by_id(self.dashboard, 22)
         disk = panel_by_id(self.dashboard, 23)
@@ -112,7 +113,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
         self.assertEqual(memory["gridPos"], {"x": 18, "y": 0, "w": 5, "h": 10})
         self.assertEqual(disk["gridPos"], {"x": 8, "y": 0, "w": 5, "h": 10})
 
-    def test_ingress_chart_preserves_live_rps_queries(self):
+    def test_ingress_chart_preserves_live_rps_queries(self) -> None:
         panel = panel_by_id(self.dashboard, 334)
         self.assertEqual(len(panel["targets"]), 5)
         for target in panel["targets"]:
@@ -120,7 +121,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
             self.assertIn('entrypoint=~"web|websecure"', target["expr"])
             self.assertIn("[5m]", target["expr"])
 
-    def test_rps_and_n8n_share_a_shorter_graph_row(self):
+    def test_rps_and_n8n_share_a_shorter_graph_row(self) -> None:
         panel = panel_by_id(self.dashboard, 334)
         self.assertEqual(panel["gridPos"], {"x": 0, "y": 14, "w": 6, "h": 4})
         self.assertEqual(
@@ -129,16 +130,16 @@ class TrafficLightLayoutTest(unittest.TestCase):
 
 
 class TrafficLightQueriesTest(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.dashboard = load()
 
-    def node_panel(self, node: str):
+    def node_panel(self, node) -> dict[str, object]:
         digit = node.rsplit("-", 1)[1]
         return panel_by_id(
             self.dashboard, 927 if int(digit) == 5 else 926 if int(digit) == 4 else 901 + int(digit)
         )
 
-    def test_node_tiles_reference_each_node_with_health_priorities(self):
+    def test_node_tiles_reference_each_node_with_health_priorities(self) -> None:
         for node in ("socrat-0", "socrat-1", "socrat-2", "socrat-3", "socrat-4", "socrat-5"):
             expr = self.node_panel(node)["targets"][0]["expr"]
             self.assertIn(f'node="{node}"', expr)
@@ -147,7 +148,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
             self.assertIn("or vector(-2)", expr)
             self.assertIn("2 * (1 -", expr)
 
-    def test_node_tiles_map_every_state_to_color_semantics(self):
+    def test_node_tiles_map_every_state_to_color_semantics(self) -> None:
         colors = {"0": "#26783D", "1": "#A85D08", "2": "#B42332", "3": "#B42332", "-2": "#555555"}
         for node in ("socrat-0", "socrat-1", "socrat-2", "socrat-3", "socrat-4", "socrat-5"):
             mappings = self.node_panel(node)["fieldConfig"]["defaults"]["mappings"][0]["options"]
@@ -155,7 +156,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
                 self.assertIn(value, mappings)
                 self.assertEqual(mappings[value]["color"], color)
 
-    def test_vpn_chart_uses_freshness_guarded_textfile_metrics(self):
+    def test_vpn_chart_uses_freshness_guarded_textfile_metrics(self) -> None:
         expr = panel_by_id(self.dashboard, 907)["targets"][0]["expr"]
         self.assertIn("socrat_vpn_active_clients", expr)
         self.assertIn("socrat_vpn_collection_success == 1", expr)
@@ -163,7 +164,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
         panel = panel_by_id(self.dashboard, 907)
         self.assertEqual(panel["fieldConfig"]["defaults"]["min"], 0)
 
-    def test_edge_tiles_match_probe_catalog(self):
+    def test_edge_tiles_match_probe_catalog(self) -> None:
         text = VALUES.read_text()
         for panel_id, service_id, alert in (
             (905, "edge-home", "SocratServiceEdgeHomeUnavailable"),
@@ -179,7 +180,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
             self.assertIn(f"id: {service_id}\n", text)
             self.assertIn(alert, text)
 
-    def test_n8n_history_is_a_gauge_not_counter_rate(self):
+    def test_n8n_history_is_a_gauge_not_counter_rate(self) -> None:
         panel = panel_by_id(self.dashboard, 920)
         self.assertEqual(panel["fieldConfig"]["defaults"]["custom"]["drawStyle"], "bars")
         expr = panel["targets"][0]["expr"]
@@ -188,17 +189,17 @@ class TrafficLightQueriesTest(unittest.TestCase):
         self.assertNotIn("increase(", expr)
         self.assertNotIn("rate(", expr)
 
-    def test_dashboard_time_window_is_twelve_hours(self):
+    def test_dashboard_time_window_is_twelve_hours(self) -> None:
         self.assertEqual(self.dashboard["time"], {"from": "now-12h", "to": "now"})
 
-    def test_vpn_preserves_latest_manual_stat_visualization(self):
+    def test_vpn_preserves_latest_manual_stat_visualization(self) -> None:
         panel = panel_by_id(self.dashboard, 907)
         self.assertEqual(panel["type"], "stat")
         self.assertEqual(panel["gridPos"]["y"] + panel["gridPos"]["h"], 14)
         self.assertEqual(panel["fieldConfig"]["defaults"]["min"], 0)
         self.assertNotIn("max", panel["fieldConfig"]["defaults"])
 
-    def test_argocd_has_current_state_strip(self):
+    def test_argocd_has_current_state_strip(self) -> None:
         panel = panel_by_id(self.dashboard, 909)
         self.assertEqual(panel["type"], "bargauge")
         self.assertEqual(len(panel["targets"]), 1)
@@ -209,7 +210,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
         self.assertFalse(panel["targets"][0]["range"])
         self.assertNotIn('name!="root"', panel["targets"][0]["expr"])
 
-    def test_new_activity_visuals_have_no_headers_legends_or_period_badges(self):
+    def test_new_activity_visuals_have_no_headers_legends_or_period_badges(self) -> None:
         for panel_id in (920,):
             panel = panel_by_id(self.dashboard, panel_id)
             self.assertEqual(panel.get("title", ""), "")
@@ -224,7 +225,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
             self.assertFalse(panel["options"]["wideLayout"])
             self.assertEqual(panel["gridPos"]["h"], 2)
 
-    def test_user_approved_resource_panels_remain_unchanged(self):
+    def test_user_approved_resource_panels_remain_unchanged(self) -> None:
         approved = json.loads(
             (ROOT / "tests/fixtures/traffic-light-approved-resources.json").read_text()
         )
@@ -238,7 +239,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
         heights = [panel_by_id(self.dashboard, i)["gridPos"]["h"] for i in (21, 22, 23)]
         self.assertEqual(heights, [10, 10, 10])
 
-    def test_absolute_resource_values_and_dynamic_capacity(self):
+    def test_absolute_resource_values_and_dynamic_capacity(self) -> None:
         for panel_id, unit in [(21, "suffix: cores"), (22, "bytes"), (23, "bytes")]:
             panel = panel_by_id(self.dashboard, panel_id)
             defaults = panel["fieldConfig"]["defaults"]
@@ -256,17 +257,17 @@ class TrafficLightQueriesTest(unittest.TestCase):
             "node_filesystem_free_bytes", panel_by_id(self.dashboard, 23)["targets"][0]["expr"]
         )
 
-    def test_activity_replaces_incident_list_and_latency(self):
+    def test_activity_replaces_incident_list_and_latency(self) -> None:
         for panel in self.dashboard["panels"]:
             if panel["id"] != 930:  # Owner-approved compact local AI block.
                 self.assertNotIn("histogram_quantile", str(panel.get("targets")))
             self.assertNotEqual(panel["type"], "table")
         self.assertFalse({923, 924, 925, 930} & {p["id"] for p in self.dashboard["panels"]})
 
-    def test_owner_removed_up_tile(self):
+    def test_owner_removed_up_tile(self) -> None:
         self.assertNotIn(908, {p["id"] for p in self.dashboard["panels"]})
 
-    def test_platform_tiles_fill_the_gap_under_grafana(self):
+    def test_platform_tiles_fill_the_gap_under_grafana(self) -> None:
         expected = {
             335: ("n8n", "SocratServiceN8nUnavailable", {"h": 1, "w": 2, "x": 6, "y": 9}),
             336: (
@@ -289,19 +290,19 @@ class TrafficLightQueriesTest(unittest.TestCase):
             self.assertIn(alert, expr)
             self.assertEqual(panel["gridPos"], grid)
 
-    def test_vpn_fraction_tiles_are_removed(self):
+    def test_vpn_fraction_tiles_are_removed(self) -> None:
         ids = {panel["id"] for panel in self.dashboard["panels"]}
         self.assertNotIn(910, ids)
         self.assertNotIn(911, ids)
         names = {item.get("name") for item in self.dashboard.get("templating", {}).get("list", [])}
         self.assertNotIn("vpn_now", names)
 
-    def test_new_panels_have_an_english_description(self):
+    def test_new_panels_have_an_english_description(self) -> None:
         for panel in self.dashboard["panels"]:
             if panel["id"] >= 901 and panel["id"] not in (909, 920, 923, 924, 925, 938):
                 self.assertTrue(panel.get("description", "").strip(), f"panel {panel['id']}")
 
-    def test_row_panels_have_unique_target_ids_and_series_names(self):
+    def test_row_panels_have_unique_target_ids_and_series_names(self) -> None:
         for panel_id in (901, 902, 903, 904, 926, 927, 905, 906):
             panel = panel_by_id(self.dashboard, panel_id)
             ref_ids = [t["refId"] for t in panel["targets"]]

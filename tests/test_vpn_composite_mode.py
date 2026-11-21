@@ -23,7 +23,7 @@ def component(
     success: int = 1,
     observed: str = "0+15x20",
     extra: str = "",
-):
+) -> list[dict[str, str]]:
     ip = "10.250.0.40" if c == "relay" else "10.250.0.2"
     labels = f'job="node-exporter",instance="{ip}:9100",component="{c}"' + extra
     data = {
@@ -40,7 +40,7 @@ def component(
 
 
 class CompositeModeTest(unittest.TestCase):
-    def test_contract_and_geometry(self):
+    def test_contract_and_geometry(self) -> None:
         self.assertEqual(P["gridPos"], {"x": 4, "y": 0, "w": 2, "h": 2})
         mapping = P["fieldConfig"]["defaults"]["mappings"][0]["options"]
         self.assertEqual(mapping["-2"]["text"], "NO DATA")
@@ -51,10 +51,10 @@ class CompositeModeTest(unittest.TestCase):
         self.assertIn("/explore?", P["fieldConfig"]["defaults"]["links"][0]["url"])
 
     @unittest.skipUnless(shutil.which("promtool"), "promtool required")
-    def test_actual_mode_expression_two_components_partial_total_stale_and_errors(self):
+    def test_actual_mode_expression_two_components_partial_total_stale_and_errors(self) -> None:
         cases = []
 
-        def add(name: str, data: object, value: int):
+        def add(name, data, value) -> None:
             cases.append(
                 {
                     "name": name,
