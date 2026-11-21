@@ -9,6 +9,7 @@ import socket
 import subprocess
 import tempfile
 import urllib.request
+from typing import cast
 from urllib.parse import quote
 
 SLUG = "socrat-change-password"
@@ -94,7 +95,7 @@ def main():
     os.umask(0o077)
     journal = Path(tempfile.mkdtemp(prefix="password-self-service-", dir=root))
 
-    def api(method, path, data=None):
+    def api(method, path, data=None) -> dict[str, object]:
         if method != "GET":
             assert args.apply and method == "POST", "Additive creation only"
         request = urllib.request.Request(
@@ -104,17 +105,17 @@ def main():
             headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
         )
         with urllib.request.urlopen(request, timeout=30) as response:
-            result = json.load(response)
+            result: dict[str, object] = json.load(response)
         if method != "GET":
             (
                 journal / ("created-" + str(len(list(journal.glob("created-*")))) + ".json")
             ).write_text(json.dumps({"path": path, "result": result}, indent=2))
         return result
 
-    def all_rows(path):
+    def all_rows(path) -> list[dict[str, object]]:
         data = api("GET", path + "?page_size=100")
         assert not data.get("next"), "Pagination requires review"
-        return data["results"]
+        return cast("list[dict[str, object]]", data["results"])
 
     snapshot = {
         p: all_rows(p)
@@ -129,7 +130,7 @@ def main():
     }
     (journal / "preimage.json").write_text(json.dumps(snapshot, indent=2))
 
-    def exact(path, name):
+    def exact(path, name) -> dict[str, object]:
         matches = [r for r in snapshot[path] if r.get("name") == name]
         assert len(matches) == 1, "Missing/ambiguous native object: " + name
         return matches[0]
@@ -142,7 +143,9 @@ def main():
     prompt = exact("stages/prompt/stages/", "default-password-change-prompt")
     write = exact("stages/user_write/", "default-password-change-write")
     assert write["user_creation_mode"] == "never_create" and write["create_users_group"] is None
-    fields = [p for p in snapshot["stages/prompt/prompts/"] if p["pk"] in prompt["fields"]]
+    fields = [
+        p for p in snapshot["stages/prompt/prompts/"] if p["pk"] in cast("list[object]", prompt["fields"])
+    ]
     assert {p["field_key"] for p in fields} == {"password", "password_repeat"}
     assert all(p["type"] == "password" and p["required"] for p in fields)
     assert prompt["validation_policies"], "Password policy must be preserved"
@@ -153,7 +156,7 @@ def main():
         print("GET-only preflight; receipt:", journal)
         return
 
-    def ensure(path, key, value, spec):
+    def ensure(path, key, value, spec) -> dict[str, object]:
         matches = [r for r in all_rows(path) if r.get(key) == value]
         assert len(matches) <= 1, "Ambiguous owned object"
         if matches:

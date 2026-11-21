@@ -3,6 +3,7 @@ import os
 import re
 import shutil
 import time
+from collections.abc import Iterator
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 
@@ -124,10 +125,10 @@ def mark_deleted(directory, ulid, details="cascade"):
 
 def handler(directory, token):
     class ShelfHandler(BaseHTTPRequestHandler):
-        def log_message(self, _fmt, *_args):
+        def log_message(self, _fmt: str, *_args: object) -> None:
             return
 
-        def authorized(self):
+        def authorized(self) -> bool:
             header = self.headers.get("Authorization", "")
             supplied = header[7:] if header.startswith("Bearer ") else ""
             if len(supplied) != len(token) or supplied != token:
@@ -135,7 +136,7 @@ def handler(directory, token):
                 return False
             return True
 
-        def read_chunks(self):
+        def read_chunks(self) -> Iterator[bytes]:
             remaining = int(self.headers.get("Content-Length", "0"))
             while remaining:
                 chunk = self.rfile.read(min(1024 * 1024, remaining))
@@ -144,7 +145,7 @@ def handler(directory, token):
                 remaining -= len(chunk)
                 yield chunk
 
-        def send_json(self, status, payload):
+        def send_json(self, status: int, payload: object) -> None:
             body = json.dumps(payload).encode()
             self.send_response(status)
             self.send_header("Content-Type", "application/json")
@@ -152,7 +153,7 @@ def handler(directory, token):
             self.end_headers()
             self.wfile.write(body)
 
-        def do_GET(self):
+        def do_GET(self) -> None:
             if self.path == "/healthz":
                 self.send_json(200, {"ok": True})
                 return
@@ -163,13 +164,13 @@ def handler(directory, token):
                 return
             self.send_error(404)
 
-        def route(self):
+        def route(self) -> tuple[str, list[str]] | None:
             parts = [part for part in self.path.split("?", 1)[0].split("/") if part]
             if len(parts) < 3 or parts[0] != "v1" or parts[1] != "blocks":
                 return None
             return parts[2], parts[3:]
 
-        def do_POST(self):
+        def do_POST(self) -> None:
             if not self.authorized():
                 return
             route = self.route()
@@ -195,7 +196,7 @@ def handler(directory, token):
                 return
             self.send_json(200, {"ok": True})
 
-        def do_PUT(self):
+        def do_PUT(self) -> None:
             if not self.authorized():
                 return
             route = self.route()

@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+import types
 import unittest
 from unittest.mock import patch
 
@@ -14,7 +15,14 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(name, filename):
+def _text(value: str | None) -> str:
+    """Return the assert-verified non-null captured output stream."""
+    assert isinstance(value, str)
+    return value
+
+
+def load(name, filename) -> types.ModuleType:
+    """Load an offline netbird runtime module from the scripts directory."""
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / filename)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -27,11 +35,12 @@ bootstrap = load("netbird_bootstrap", "netbird-bootstrap.py")
 backup = load("netbird_backup", "netbird-backup.py")
 
 
-def control_inputs():
+def control_inputs() -> dict[str, object]:
+    """Build the reviewed control-plane input document."""
     review = {key: False for key in nb.REVIEWS}
     for key in nb.CONTROL_REVIEWS:
         review[key] = True
-    return {
+    result: dict[str, object] = {
         "schema_version": 1,
         "management_fqdn": "netbird.socrat.alchemmist.xyz",
         "management_node": "test-node",
@@ -41,10 +50,14 @@ def control_inputs():
         "storage_class": "local-path",
         "review": review,
     }
+    return result
 
 
-def cleared_audit():
-    audit = json.loads((ROOT / "deploy/netbird/runtime-audit.json").read_text())
+def cleared_audit() -> dict[str, object]:
+    """Build the cleared runtime-audit document used by status tests."""
+    audit: dict[str, object] = json.loads(
+        (ROOT / "deploy/netbird/runtime-audit.json").read_text()
+    )
     audit.update(
         kubectl_api_read=True,
         udp_3478_listening=False,
@@ -56,14 +69,14 @@ def cleared_audit():
 
 
 class ControlPlaneTests(unittest.TestCase):
-    def test_repo_check_reports_concrete_blockers_without_applying(self):
+    def test_repo_check_reports_concrete_blockers_without_applying(self) -> None:
         result = subprocess.run(
             [os.sys.executable, str(ROOT / "scripts/netbird-deploy.py"), "check"],
             capture_output=True,
             text=True,
         )
         self.assertEqual(result.returncode, 2)
-        self.assertIn("BLOCKED", result.stderr)
+        self.assertIn("BLOCKED", _text(result.stderr))
         report = json.loads(result.stdout)
         self.assertFalse(report["apply_allowed"])
         self.assertFalse(report["network_grant_allowed"])
@@ -88,7 +101,7 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertIn("groups claim", blockers)
         self.assertIn("/api/setup", blockers)
 
-    def test_chart_candidate_is_not_marked_verified(self):
+    def test_chart_candidate_is_not_marked_verified(self) -> None:
         chart = yaml.safe_load((ROOT / "charts/traefik-edge/values.yaml").read_text())
         candidates = json.loads((ROOT / "deploy/netbird/candidates.json").read_text())
         self.assertNotIn("netbird-edge", chart["watchNamespaces"])
@@ -108,7 +121,7 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertEqual(nb.image("edge_forwarder"), chart["image"])
         self.assertTrue((ROOT / "deploy/argocd/apps").joinpath("netbird.yaml").exists())
 
-    def test_control_plane_does_not_require_routers_or_grant_resources(self):
+    def test_control_plane_does_not_require_routers_or_grant_resources(self) -> None:
         inputs = control_inputs()
         nb.validate_control_plane(inputs)
         with self.assertRaises(ValueError):
@@ -127,7 +140,7 @@ class ControlPlaneTests(unittest.TestCase):
             self.assertNotIn("kind: Ingress", text)
             self.assertIn("/oauth2/.well-known/openid-configuration", text)
 
-    def test_cleared_audit_cannot_hide_the_unpatched_chart(self):
+    def test_cleared_audit_cannot_hide_the_unpatched_chart(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             inputs = root / "inputs.json"
@@ -151,10 +164,10 @@ class ControlPlaneTests(unittest.TestCase):
                 text=True,
             )
             self.assertEqual(result.returncode, 2)
-            self.assertIn("BLOCKED", result.stderr)
+            self.assertIn("BLOCKED", _text(result.stderr))
             self.assertFalse(out.exists())
 
-    def test_internal_stage_does_not_wait_for_edge_or_a_listening_udp_port(self):
+    def test_internal_stage_does_not_wait_for_edge_or_a_listening_udp_port(self) -> None:
         audit = cleared_audit()
         audit.update(
             traefik_watches_netbird_edge=False,
@@ -175,7 +188,7 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertFalse(blocked["edge_apply_allowed"])
         self.assertTrue(any("preexisting listener" in item for item in blocked["edge_blockers"]))
 
-    def test_in_memory_scope_can_clear_only_after_the_watch_exists(self):
+    def test_in_memory_scope_can_clear_only_after_the_watch_exists(self) -> None:
         chart = yaml.safe_load((ROOT / "charts/traefik-edge/values.yaml").read_text())
         candidates = json.loads((ROOT / "deploy/netbird/candidates.json").read_text())
         delta = json.loads((ROOT / "deploy/netbird/traefik-scope-delta.json").read_text())
@@ -189,7 +202,7 @@ class ControlPlaneTests(unittest.TestCase):
             (ROOT / "charts/traefik-edge/values.yaml").read_text().count("netbird-edge")
         )
 
-    def test_apply_argv_is_explicit_and_rejects_default_context(self):
+    def test_apply_argv_is_explicit_and_rejects_default_context(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             out = Path(directory) / "rendered"
             nb.render_control_plane(control_inputs(), out, ["203.0.113.10/32"])
@@ -200,7 +213,7 @@ class ControlPlaneTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 deploy.apply_argv(manifest, "default")
 
-    def test_auth_modes_match_upstream_startup_rules(self):
+    def test_auth_modes_match_upstream_startup_rules(self) -> None:
         secrets = {
             "NB_RELAY_SECRET": "relay-secret-" * 3,
             "NB_COOKIE_KEY": "cookie",
@@ -227,7 +240,7 @@ class ControlPlaneTests(unittest.TestCase):
             self.assertTrue(disabled["server"]["auth"]["localAuthDisabled"])
             self.assertNotIn("owner", disabled["server"]["auth"])
 
-    def test_idp_only_cli_refuses_missing_witness_without_writing(self):
+    def test_idp_only_cli_refuses_missing_witness_without_writing(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / "inputs.json"
             target = Path(directory) / "config.yaml"
@@ -278,11 +291,11 @@ class ControlPlaneTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 2)
             self.assertFalse(target.exists())
-            self.assertNotIn(env["NB_STORE_KEY"], result.stdout + result.stderr)
+            self.assertNotIn(env["NB_STORE_KEY"], _text(result.stdout) + _text(result.stderr))
 
 
 class BootstrapTests(unittest.TestCase):
-    def test_public_origin_and_pat_are_refused(self):
+    def test_public_origin_and_pat_are_refused(self) -> None:
         for origin in [
             "https://netbird.socrat.alchemmist.xyz",
             "http://netbird.socrat.alchemmist.xyz",
@@ -295,10 +308,10 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(set(body), {"email", "password", "name"})
         self.assertNotIn("create_pat", body)
 
-    def test_claim_redacts_token_and_requires_setup(self):
+    def test_claim_redacts_token_and_requires_setup(self) -> None:
         calls = []
 
-        def opener(url, body):
+        def opener(url, body) -> dict[str, object]:
             calls.append((url, body))
             if url.endswith("/api/instance"):
                 return {"setup_required": True}
@@ -320,7 +333,7 @@ class BootstrapTests(unittest.TestCase):
         )
         self.assertNotIn("create_pat", calls[1][1])
 
-        def claimed(url, body):
+        def claimed(url, body) -> dict[str, object]:
             return {"setup_required": False}
 
         with self.assertRaises(ValueError):
@@ -332,7 +345,7 @@ class BootstrapTests(unittest.TestCase):
         (Path("/tmp/netbird-v082-repo/shared/management/http/api/openapi.yml")).is_file(),
         "pinned schema not present",
     )
-    def test_setup_body_matches_pinned_openapi(self):
+    def test_setup_body_matches_pinned_openapi(self) -> None:
         import hashlib
 
         path = Path("/tmp/netbird-v082-repo/shared/management/http/api/openapi.yml")
@@ -351,7 +364,7 @@ class BootstrapTests(unittest.TestCase):
         and Path("/tmp/netbird-v082-repo/management/server/user.go").is_file(),
         "pinned source not present",
     )
-    def test_native_owner_transfer_updates_an_existing_subject(self):
+    def test_native_owner_transfer_updates_an_existing_subject(self) -> None:
         """PUT /api/users/{userId} can move owner to an existing subject. It does not rewrite user IDs."""
         import hashlib
 
@@ -393,7 +406,7 @@ class BootstrapTests(unittest.TestCase):
 
 
 class BackupTests(unittest.TestCase):
-    def test_plan_is_quiesced_readonly_and_does_not_call_kubectl(self):
+    def test_plan_is_quiesced_readonly_and_does_not_call_kubectl(self) -> None:
         image = nb.image("server")
         body = backup.plan("test-node", image)
         self.assertTrue(body["quiesce_required"])
@@ -449,7 +462,7 @@ class BackupTests(unittest.TestCase):
 
 
 class AnsibleGuardTests(unittest.TestCase):
-    def test_role_defaults_to_local_check_without_transport_changes(self):
+    def test_role_defaults_to_local_check_without_transport_changes(self) -> None:
         text = "\n".join(
             path.read_text()
             for path in [

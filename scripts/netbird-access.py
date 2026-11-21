@@ -335,12 +335,12 @@ def offboard_plan(s, username, expected_uuid):
 
 
 class API:
-    def __init__(self, nb_credentials, ak_credentials):
+    def __init__(self, nb_credentials, ak_credentials) -> None:
         self.nb = json.loads(Path(nb_credentials).read_text())["token"]
         self.ak = json.loads(Path(ak_credentials).read_text())["AUTHENTIK_BOOTSTRAP_TOKEN"]
 
         class NoRedirect(urllib.request.HTTPRedirectHandler):
-            def redirect_request(self, *_args, **_kwargs):
+            def redirect_request(self, *_args, **_kwargs) -> None:
                 return None
 
         self.opener = urllib.request.build_opener(NoRedirect)

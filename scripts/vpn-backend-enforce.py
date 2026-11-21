@@ -16,9 +16,13 @@ import time
 import uuid
 from contextlib import closing
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import types
 
 
-def load(name, filename):
+def load(name, filename) -> "types.ModuleType":
     spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name(filename))
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
@@ -32,7 +36,7 @@ guard = load("guard", "vpn-backend-guard.py")
 h = native.h
 
 
-def client(stream, password, port):
+def client(stream, password, port) -> "dict[str, object]":
     path = stream.get("wsSettings", {}).get("path")
     if (
         stream.get("network") != "ws"
@@ -82,7 +86,9 @@ def client(stream, password, port):
     }
 
 
-def apply(state, session_hash, config_hash, guard_hash, accept_existing=False):
+def apply(
+    state, session_hash, config_hash, guard_hash, accept_existing=False
+) -> "dict[str, object]":
     s = native.NativeSession(state)
     original = target.configuration(s.database)
     if h.digest(original) != config_hash or h.digest(guard.plan()) != guard_hash:
@@ -256,7 +262,7 @@ def apply(state, session_hash, config_hash, guard_hash, accept_existing=False):
     return result
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--state", type=Path, required=True)
     p.add_argument("--apply", action="store_true")

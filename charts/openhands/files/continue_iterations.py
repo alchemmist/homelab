@@ -109,9 +109,11 @@ def bridge_ready():
 
 def client(cid):
     url='http://127.0.0.1:8000/api/conversations/'+str(uuid.UUID(cid))
-    def api(suffix='',method='GET',data=None):
+    def api(suffix='',method='GET',data=None) -> dict[str, object]:
         key=Path('/session-key').read_text().strip();req=Request(url+suffix,method=method,headers={'X-Session-API-Key':key,'Content-Type':'application/json'},data=json.dumps(data).encode() if data else None)
-        with build_opener(ProxyHandler({}),NoRedirect()).open(req,timeout=15) as r:return json.load(r)
+        with build_opener(ProxyHandler({}),NoRedirect()).open(req,timeout=15) as r:
+            document: dict[str, object] = json.load(r)
+            return document
     return api
 
 WORKER_NUDGE='Предыдущий ответ содержит только план. Выполни следующий шаг в своём worktree инструментом. Если закончил, укажи проверяемый результат и запиши его в PROGRESS.md; при реальном препятствии укажи причину. Не мержи.'

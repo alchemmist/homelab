@@ -115,7 +115,7 @@ def run(output, application="litellm"):
         "nativeReference": "https://github.com/cert-manager/cmctl/blob/v2.3.0/pkg/renew/renew.go",
     }
 
-    def record():
+    def record() -> None:
         (output / "progress.json").write_text(json.dumps(progress, indent=2) + "\n")
 
     record()

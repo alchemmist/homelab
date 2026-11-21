@@ -1,5 +1,6 @@
 """Closed set of GitHub actions. Never execute candidate code or accept URLs/refs."""
 import hmac
+from typing import cast
 import base64, json, re, uuid
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -91,13 +92,13 @@ def review(x):
     if a=='report':
         check(set(x)=={'action','pr','head'});ref=p['head']['ref'];target=int(ref.split('/')[1].rsplit('-',1)[1]);res=api(f'issues/{target}/comments',{'body':f"OpenHands: mutation coverage PR #{p['number']}, head `{sha}`. Review/CI status is tracked on the PR."});return {'url':res['html_url']}
     check(set(x)=={'action','pr','head','thread','reason','decision'});t=x['thread'];reason=x['reason'];check(isinstance(t,str) and re.fullmatch('PRRT_[A-Za-z0-9_-]{4,150}',t));check(x['decision'] in ('fixed','declined') and isinstance(reason,str) and 30<=len(reason)<=2000 and all(c.isprintable() for c in reason) and '@' not in reason and not any(c in reason for c in '<>'))
-    def gql(q,v):
-        r=api('graphql',{'query':q,'variables':v});check(not r.get('errors') and r.get('data'));return r['data']
-    thread=gql('query($t:ID!){node(id:$t){... on PullRequestReviewThread{isResolved pullRequest{id}}}}',{'t':t})['node'];check(thread and not thread['isResolved'] and thread['pullRequest']['id']==p['node_id'])
+    def gql(q,v) -> dict[str, object]:
+        r=api('graphql',{'query':q,'variables':v});check(not r.get('errors') and r.get('data'));payload: dict[str, object] = r['data'];return payload
+    thread=cast("dict[str, object]", gql('query($t:ID!){node(id:$t){... on PullRequestReviewThread{isResolved pullRequest{id}}}}',{'t':t})['node']);thread_pr=cast("dict[str, object]", thread['pullRequest']);check(thread and not thread['isResolved'] and thread_pr['id']==p['node_id'])
     body=f"{x['decision']} at {sha}: {reason}"
-    reply=gql('mutation($t:ID!,$b:String!){addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:$t,body:$b}){comment{id}}}',{'t':t,'b':body});check(reply['addPullRequestReviewThreadReply']['comment']['id'])
+    reply=gql('mutation($t:ID!,$b:String!){addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:$t,body:$b}){comment{id}}}',{'t':t,'b':body});reply_data=cast("dict[str, object]", reply['addPullRequestReviewThreadReply']);reply_comment=cast("dict[str, object]", reply_data['comment']);check(reply_comment['id'])
     owned_pr(x['pr'],sha)
-    resolved=gql('mutation($t:ID!){resolveReviewThread(input:{threadId:$t}){thread{isResolved}}}',{'t':t});check(resolved['resolveReviewThread']['thread']['isResolved']);return {'resolved':True,'head':sha}
+    resolved=gql('mutation($t:ID!){resolveReviewThread(input:{threadId:$t}){thread{isResolved}}}',{'t':t});resolved_data=cast("dict[str, object]", resolved['resolveReviewThread']);resolved_thread=cast("dict[str, object]", resolved_data['thread']);check(resolved_thread['isResolved']);return {'resolved':True,'head':sha}
 
 def dispatch(x):
     check(isinstance(x,dict));action=x.get('action')

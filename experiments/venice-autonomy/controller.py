@@ -46,7 +46,7 @@ WRAPPER_ERROR_TYPES = ("ConversationRunError", "SDKError")
 def exception_types(result):
     names = []
 
-    def add(value):
+    def add(value) -> None:
         if isinstance(value, str) and value and value not in names:
             names.append(value)
 

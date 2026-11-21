@@ -247,7 +247,7 @@ class AppIAMTests(unittest.TestCase):
     def test_pagination_and_binding_duplicates(self):
         calls = []
 
-        def api(method, path):
+        def api(method, path) -> dict[str, object]:
             calls.append(path)
             page = len(calls)
             return {"results": [page], "pagination": {"next": page == 1}}
@@ -260,7 +260,7 @@ class AppIAMTests(unittest.TestCase):
     def test_wiki_integration_keeps_exact_links_and_overrides(self):
         writes = []
 
-        def run(args, **kwargs):
+        def run(args, **kwargs) -> subprocess.CompletedProcess[str]:
             if "apply" in args:
                 writes.append(json.loads(kwargs["input"]))
             return subprocess.CompletedProcess(args, 0, "", "")
