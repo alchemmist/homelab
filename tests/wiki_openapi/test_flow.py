@@ -7,6 +7,10 @@ from engine import spec_changed, select_closable, page_ok, UnsafeInput
 from stages import stage
 
 SHA = "a" * 40
+
+# Fixture pull-request numbers used by the create-pr / close-older stage flow.
+CREATED_PR_NUMBER = 9
+OLDER_PR_NUMBER = 4
 BEFORE = "b" * 40
 
 
@@ -58,43 +62,44 @@ class Lab:
 class Flow(unittest.TestCase):
     def test_ignores_other_branches_without_github(self):
         bot = Bot([{"filename": "openapi.yaml"}])
-        self.assertEqual(
-            stage("check", {"ref": "refs/heads/dev", "before": BEFORE, "after": SHA}, bot=bot), []
+        assert (
+            stage("check", {"ref": "refs/heads/dev", "before": BEFORE, "after": SHA}, bot=bot) == []
         )
-        self.assertEqual(bot.calls, 0)
+        assert bot.calls == 0
 
     def test_ignores_push_that_does_not_touch_the_spec(self):
         event = {"ref": "refs/heads/main", "before": BEFORE, "after": SHA}
-        self.assertFalse(spec_changed(event, [{"filename": "README.md"}]))
-        self.assertEqual(stage("check", event, bot=Bot([{"filename": "README.md"}])), [])
+        assert not spec_changed(event, [{"filename": "README.md"}])
+        assert stage("check", event, bot=Bot([{"filename": "README.md"}])) == []
 
     def test_render_and_pr_and_close(self):
         event = {"ref": "refs/heads/main", "before": BEFORE, "after": SHA}
         checked = stage("check", event, bot=Bot([{"filename": "openapi.yaml"}]))
         rendered = stage("render", checked[0], bot=Bot([]))
-        self.assertIn("POST /v1/messages", rendered[0]["markdown"])
+        assert "POST /v1/messages" in rendered[0]["markdown"]
         page_ok(rendered[0]["markdown"])
         lab = Lab()
         created = stage("create-pr", rendered[0], homelab=lab, write=True)
-        self.assertEqual(created[0]["number"], 9)
+        assert created[0]["number"] == CREATED_PR_NUMBER
 
         def decide(prompt, data):
-            self.assertEqual(data["candidates"][0]["number"], 4)
-            return {"close": [4, 9, 99]}
+            assert data["candidates"][0]["number"] == OLDER_PR_NUMBER
+            return {"close": [OLDER_PR_NUMBER, CREATED_PR_NUMBER, 99]}
 
         done = stage("close-older", created[0], homelab=lab, call_model=decide, write=True)
-        self.assertEqual(lab.closed, [(4, 9)])
-        self.assertEqual(done[0]["closed"], [4])
+        assert lab.closed == [(OLDER_PR_NUMBER, CREATED_PR_NUMBER)]
+        assert done[0]["closed"] == [4]
 
     def test_model_cannot_close_unlisted_prs(self):
-        self.assertEqual(select_closable({"close": [3, "4"]}, [{"number": 3}], None), [3])
+        assert select_closable({"close": [3, "4"]}, [{"number": 3}], None) == [3]
 
     def test_dry_run_does_not_close(self):
         lab = Lab()
-        self.assertEqual(
-            stage("close-older", {"status": "dry_run", "after": SHA}, homelab=lab, write=False), []
+        assert (
+            stage("close-older", {"status": "dry_run", "after": SHA}, homelab=lab, write=False)
+            == []
         )
-        self.assertEqual(lab.closed, [])
+        assert lab.closed == []
 
     def test_bad_page_rejected(self):
         with self.assertRaises(UnsafeInput):
