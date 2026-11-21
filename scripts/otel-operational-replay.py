@@ -16,6 +16,7 @@ import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from typing import cast
 
 SERVICE = "homelab-isolated-operational-replay"
 
@@ -121,7 +122,7 @@ def rollback_candidate(original):
 def trace_records(document):
     found = []
 
-    def walk(value):
+    def walk(value) -> None:
         if isinstance(value, dict):
             if all(key in value for key in ["traceId", "spanId", "name"]):
                 identity = value["traceId"]
@@ -223,10 +224,10 @@ def run(args):
         "queryClientTlsPolicy": "strict verified mTLS, TLS1.3 minimum, default curves",
     }
 
-    def save():
+    def save() -> None:
         (root / "result.json").write_text(json.dumps(report, indent=2) + "\n")
 
-    def request(port, path, body=None):
+    def request(port, path, body=None) -> dict[str, object]:
         payload = json.dumps(body).encode() if body is not None else None
         req = urllib.request.Request(
             "https://127.0.0.1:%d%s" % (port, path),
@@ -237,9 +238,12 @@ def run(args):
             data = response.read(4 * 1024**2 + 1)
         if len(data) > 4 * 1024**2:
             raise ValueError("Bounded synthetic response exceeded")
-        return json.loads(data) if data and path not in ["/ready", "/-/ready"] else {}
+        document: dict[str, object] = (
+            json.loads(data) if data and path not in ["/ready", "/-/ready"] else {}
+        )
+        return document
 
-    def start(name):
+    def start(name) -> None:
         if name in children and children[name].poll() is None:
             raise ValueError("Duplicate synthetic process")
         generations[name] = generations.get(name, 0) + 1
@@ -272,7 +276,7 @@ def run(args):
                 stderr=subprocess.STDOUT,
             )
 
-    def stop(name):
+    def stop(name) -> None:
         process = children[name]
         if process.poll() is not None:
             raise ValueError("Synthetic process exited before controlled stop")
@@ -281,7 +285,7 @@ def run(args):
         if process.returncode != 0:
             raise ValueError("Synthetic process graceful stop failed")
 
-    def wait(check, seconds=100):
+    def wait(check, seconds=100) -> None:
         end = time.monotonic() + seconds
         while True:
             try:
@@ -296,7 +300,7 @@ def run(args):
                 raise TimeoutError("Bounded synthetic phase failed")
             time.sleep(1)
 
-    def ready():
+    def ready() -> bool:
         for port, path in [(29090, "/-/ready"), (3100, "/ready"), (3200, "/ready")]:
             try:
                 request(port, path)
@@ -308,8 +312,8 @@ def run(args):
                 raise
         return True
 
-    def queues():
-        result = {}
+    def queues() -> dict[str, list[str]]:
+        result: dict[str, list[str]] = {}
         for port in [18888, 18889]:
             with urllib.request.urlopen(
                 "http://127.0.0.1:%d/metrics" % port, timeout=4
@@ -352,7 +356,7 @@ def run(args):
         outage_start = time.monotonic()
         metrics, logs, traces, expected, ids = fixtures(time.time_ns())
 
-        def ingress_ready():
+        def ingress_ready() -> bool:
             with socket.create_connection(("127.0.0.1", 4318), timeout=4) as connection:
                 with context.wrap_socket(connection, server_hostname="127.0.0.1"):
                     return True
@@ -409,20 +413,27 @@ def run(args):
             {"query": '{service_name="' + SERVICE + '"}', "start": str(boundary), "limit": 100}
         )
 
-        def recovered():
+        def recovered() -> bool:
             metric_document = request(29090, metrics_query)
             log_document = request(3100, logs_query)
+            metric_result = cast(
+                "list[dict[str, object]]",
+                cast("dict[str, object]", metric_document.get("data", {})).get("result", []),
+            )
+            log_result = cast(
+                "list[dict[str, object]]",
+                cast("dict[str, object]", log_document.get("data", {})).get("result", []),
+            )
             values = [
                 entry[1]
-                for stream in log_document.get("data", {}).get("result", [])
-                for entry in stream["values"]
+                for stream in log_result
+                for entry in cast("list[list[str]]", stream["values"])
             ]
             expected_logs = {"ops-replay-log-%02d" % i for i in range(24)}
             report["lastRecoveryCounts"] = {
-                "metricSeries": len(metric_document.get("data", {}).get("result", [])),
+                "metricSeries": len(metric_result),
                 "metricPoints": sum(
-                    len(item.get("values", []))
-                    for item in metric_document.get("data", {}).get("result", [])
+                    len(cast("list[object]", item.get("values", []))) for item in metric_result
                 ),
                 "metricTimestampsValuesAndMultiplicityExact": check_metrics(
                     metric_document, expected

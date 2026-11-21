@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import sqlite3
 import unittest
+from typing import TypedDict
 from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,10 +16,26 @@ m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 
 
-def fixture(subject="fixture-uuid"):
+class Attribute(TypedDict):
+    """Rancher userattributes shape the membership plan reads and patches."""
+
+    metadata: dict[str, str]
+    ExtraByProvider: dict[str, dict[str, list[str]]]
+    GroupPrincipals: dict[str, dict[str, list[dict[str, object]]]]
+
+
+class AuthPatch(TypedDict):
+    """Rancher auth slice exposing the observer allowance to the plan."""
+
+    allowedPrincipalIds: list[str]
+
+
+def fixture(
+    subject: str = "fixture-uuid",
+) -> tuple[list[dict[str, object]], list[Attribute], AuthPatch]:
     principal = m.PREFIX + subject
-    user = {"metadata": {"name": "u-fixture"}, "principalIds": [principal]}
-    attr = {
+    user: dict[str, object] = {"metadata": {"name": "u-fixture"}, "principalIds": [principal]}
+    attr: Attribute = {
         "metadata": {"name": "u-fixture", "uid": "owned", "resourceVersion": "17"},
         "ExtraByProvider": {"genericoidc": {"principalid": [principal]}},
         "GroupPrincipals": {"genericoidc": {"Items": [{"metadata": {"name": m.PRINCIPAL}}]}},
@@ -46,13 +63,16 @@ class MembershipTests(unittest.TestCase):
         """Leave owner and reviewed direct principals out of the cache plan."""
         for subject in [m.OWNER, "legacy-owner"]:
             users, attrs, auth = fixture(subject)
-            auth["allowedPrincipalIds"].append(m.PREFIX + subject)
+            allowed: list[str] = auth["allowedPrincipalIds"]
+            allowed.append(m.PREFIX + subject)
             self.assertEqual(m.rancher_plan(users, attrs, auth, lambda *a: False), [])
 
     def test_only_observer_group_changes_and_other_groups_survive(self) -> None:
         """Drop or add only the observer group and retain an unrelated group."""
         users, attrs, auth = fixture()
-        other = {"metadata": {"name": "genericoidc_group://other-reviewed-group"}}
+        other: dict[str, object] = {
+            "metadata": {"name": "genericoidc_group://other-reviewed-group"}
+        }
         attrs[0]["GroupPrincipals"]["genericoidc"]["Items"].append(other)
         ops = m.rancher_plan(users, attrs, auth, lambda *a: False)[0][1]
         self.assertEqual(ops[-1]["value"], [other])

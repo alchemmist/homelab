@@ -293,7 +293,8 @@ class IntegrationTests(unittest.TestCase):
         entered = threading.Event()
         release = threading.Event()
 
-        def model(*_args, **_kwargs):
+
+        def model(*_args, **_kwargs) -> dict[str, object]:
             entered.set()
             self.assertTrue(release.wait(3))
             return {"candidates": []}
@@ -341,7 +342,8 @@ class ModelTimerTests(unittest.TestCase):
             model = Model(http, "fake", store=store)
             now = time.time()
 
-            def request(*_args, **kwargs):
+
+            def request(*_args, **kwargs) -> dict[str, object]:
                 self.assertGreater(kwargs["timeout"], 1700)
                 with store.db() as c:
                     row = c.execute("select * from llm_admission").fetchone()

@@ -8,7 +8,7 @@ from integrations import Model
 
 
 class ContextAccountingTests(unittest.TestCase):
-    def test_contract_and_schema_completion(self):
+    def test_contract_and_schema_completion(self) -> None:
         m = Model(Mock(), "unused")
         b = m.payload("x", {"text": 'é😀"\\\n' * 100}, MATCH_SCHEMA)
         n = m.reservation(b)
@@ -27,7 +27,7 @@ class ContextAccountingTests(unittest.TestCase):
             self.assertEqual(e.exception.code, "LLM_ACCOUNTING_CONTRACT_MISMATCH")
         m.http.request.assert_not_called()
 
-    def test_excerpts_identity_reference_metadata_and_no_mutation(self):
+    def test_excerpts_identity_reference_metadata_and_no_mutation(self) -> None:
         x = {
             "candidates": [{"number": n, "body": "😀" * 8000} for n in range(120)],
             "index": [{"id": "E001", "path": "original/reference", "excerpt": "x" * 40000}],
@@ -46,13 +46,13 @@ class ContextAccountingTests(unittest.TestCase):
             self.assertTrue(c["body"]["truncated"])
             self.assertGreater(c["body"]["unreviewed_bytes"], 0)
 
-    def test_matching_event_bounded_and_all_identities(self):
+    def test_matching_event_bounded_and_all_identities(self) -> None:
         m = Model(Mock(), "unused")
         event = f.event()
         event["description"] = "x" * 1000000
         seen = []
 
-        def call(task, data, schema, deadline):
+        def call(task, data, schema, deadline) -> "dict[str, object]":
             self.assertLessEqual(m.reservation(m.payload(task, data, schema)), 30000)
             self.assertTrue(data["alert"]["description"]["truncated"])
             seen.extend(x["number"] for x in data["open_issues"])
@@ -62,7 +62,7 @@ class ContextAccountingTests(unittest.TestCase):
         m.match(event, [{"number": i, "body": "x" * 6000} for i in range(120)])
         self.assertEqual(seen, list(range(120)))
 
-    def test_large_analysis_preserves_candidates_and_artifact_index(self):
+    def test_large_analysis_preserves_candidates_and_artifact_index(self) -> None:
         m = Model(Mock(), "unused")
         event = f.event()
         event["description"] = "x" * 80000
@@ -85,7 +85,7 @@ class ContextAccountingTests(unittest.TestCase):
         class Stop(Exception):
             pass
 
-        def call(task, data, schema, deadline):
+        def call(task, data, schema, deadline) -> "dict[str, object]":
             captured.update(data)
             self.assertLessEqual(m.budget_reservation(m.payload(task, data, schema)), 30000)
             raise Stop()
@@ -101,7 +101,7 @@ class ContextAccountingTests(unittest.TestCase):
         self.assertEqual(captured["evidence"]["artifact_context"]["index"][0]["id"], "E001")
         self.assertTrue(captured["alert"]["description"]["truncated"])
 
-    def test_irreducible_metadata_visible_without_transport(self):
+    def test_irreducible_metadata_visible_without_transport(self) -> None:
         m = Model(Mock(), "unused")
         event = f.event()
         event["path"] = ["x" * 120000] * 5
@@ -110,7 +110,7 @@ class ContextAccountingTests(unittest.TestCase):
         self.assertEqual(e.exception.code, "LLM_CONTEXT_METADATA_TOO_LARGE")
         m.http.request.assert_not_called()
 
-    def test_local_120_long_report_analysis(self):
+    def test_local_120_long_report_analysis(self) -> None:
         if __import__("os").environ.get("SPI_TOKEN_ACCOUNTING_MODE") != "local-qwen-v1":
             return
         m = Model(Mock(), "unused")
@@ -132,7 +132,7 @@ class ContextAccountingTests(unittest.TestCase):
         class Stop(Exception):
             pass
 
-        def call(task, data, schema, deadline):
+        def call(task, data, schema, deadline) -> "dict[str, object]":
             captured.update(data)
             self.assertLessEqual(m.counter.reservation(m.payload(task, data, schema)), 30000)
             raise Stop()

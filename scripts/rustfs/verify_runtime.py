@@ -40,7 +40,7 @@ def main():
         return
     origin = "http://127.0.0.1:19000"
 
-    def request(role, method, path, payload=b""):
+    def request(role, method, path, payload=b"") -> tuple[int, bytes]:
         url = origin + path
         headers = g.sign(method, url, c[role]["access"], c[role]["secret"], payload=payload)
         req = urllib.request.Request(

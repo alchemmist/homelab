@@ -15,9 +15,13 @@ import subprocess
 import tempfile
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import types
 
 
-def load(name, filename):
+def load(name, filename) -> "types.ModuleType":
     spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name(filename))
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
@@ -34,14 +38,14 @@ UNIT = Path("/etc/systemd/system/monitoring-vpn.service")
 TIMER = "homelab-vpn-watchdog.timer"
 
 
-def run(args):
+def run(args) -> str:
     r = subprocess.run(args, capture_output=True, text=True, timeout=30)
     if r.returncode:
         raise RuntimeError("Retirement dependency operation failed; inspect private receipt")
     return r.stdout
 
 
-def watchdog_after(before):
+def watchdog_after(before) -> object:
     after = copy.deepcopy(before)
     if before.get("state_dir") != "/var/lib/homelab-vpn-failover":
         raise ValueError("Unexpected watchdog state")
@@ -61,14 +65,15 @@ def watchdog_after(before):
     return after
 
 
-def monitoring_after(before):
+def monitoring_after(before) -> str:
     old = "--ports 32087,32053,32083,32063 "
     if before.count(old) != 1:
         raise ValueError("Monitoring preimage drift")
-    return before.replace(old, "--ports 32087,32053,32083 ")
+    replaced: str = before.replace(old, "--ports 32087,32053,32083 ")
+    return replaced
 
 
-def select(config):
+def select(config) -> "dict[str, object]":
     rows = [r for r in config["inbounds"] if r["port"] == 32063]
     if len(rows) != 1:
         raise ValueError("Legacy count drift")
@@ -82,16 +87,18 @@ def select(config):
         or stream.get("security") not in (None, "", "none")
     ):
         raise ValueError("Not the excluded legacy plaintext inbound")
-    return row
+    selected: dict[str, object] = row
+    return selected
 
 
-def desired(config):
+def desired(config) -> "dict[str, object]":
     result = copy.deepcopy(config)
     select(result)["enable"] = 0
-    return result
+    projection: dict[str, object] = result
+    return projection
 
 
-def plan(state):
+def plan(state) -> "dict[str, object]":
     s = native.NativeSession(state)
     session = s.preview()
     config = target.configuration(s.database)
@@ -111,7 +118,7 @@ def plan(state):
     }
 
 
-def atomic(path, content, mode):
+def atomic(path, content, mode) -> None:
     h.check_path(path)
     if path.stat().st_uid != 0:
         raise ValueError("Non-root-owned dependency")
@@ -133,14 +140,14 @@ def atomic(path, content, mode):
             os.unlink(name)
 
 
-def healthy():
+def healthy() -> "dict[str, object]":
     data = json.loads(run(["python3", "/usr/local/sbin/homelab-vpn-failover", "status"]))
     if data.get("mode") != "kubernetes" or not data.get("healthy") or data.get("inhibited"):
         raise ValueError("Watchdog not healthy Kubernetes mode")
     return {"mode": "kubernetes", "healthy": True, "inhibited": False}
 
 
-def apply(state, approval):
+def apply(state, approval) -> "dict[str, object]":
     if socket.gethostname() != "socrat-2" or os.geteuid() != 0:
         raise ValueError("Requires VPS root")
     wanted = plan(state)
@@ -275,7 +282,7 @@ def apply(state, approval):
             if timer_paused:
                 run(["systemctl", "start", TIMER])
                 run(["systemctl", "is-active", TIMER])
-    receipt = {
+    receipt: dict[str, object] = {
         "legacy_32063_retired": True,
         "watchdog_and_monitoring_updated": True,
         "watchdog_timer_resumed": True,
