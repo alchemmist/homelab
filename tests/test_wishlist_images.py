@@ -1,10 +1,11 @@
 """Offline contracts for the private wishlist image optimizer."""
 
-import subprocess
 import unittest
 from pathlib import Path
 
 import yaml
+
+from scripts.quality.common import command
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -47,7 +48,7 @@ class WishlistImages(unittest.TestCase):
         assert "app.kubernetes.io/name: {{ .Chart.Name }}" in source
         assert "app.kubernetes.io/instance: {{ .Release.Name }}" in source
         assert "namespaceSelector:" not in source
-        output = subprocess.check_output(
+        output = command(
             [
                 "helm",
                 "template",
@@ -60,9 +61,8 @@ class WishlistImages(unittest.TestCase):
                 "--kubeconfig",
                 "/dev/null",
             ],
-            text=True,
         )
-        pod = yaml.safe_load(output)["spec"]["template"]["spec"]
+        pod = yaml.safe_load(output.stdout)["spec"]["template"]["spec"]
         [app] = [c for c in pod["containers"] if c["name"] == "wishlist"]
         assert [e for e in app["env"] if e["name"] == "IMAGE_OPTIMIZER_URL"] == [
             {"name": "IMAGE_OPTIMIZER_URL", "value": "http://wishlist-image-optimizer:8081"}
