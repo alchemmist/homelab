@@ -65,7 +65,8 @@ class Grafana:
             with urllib.request.urlopen(request, timeout=20) as response:
                 return cast("dict[str, object]", json.load(response))
         except urllib.error.HTTPError as error:
-            raise BootstrapError("Grafana returned HTTP " + str(error.code)) from None
+            message = "Grafana returned HTTP " + str(error.code)
+            raise BootstrapError(message) from None
         except (urllib.error.URLError, TimeoutError, ValueError):
             message = "Grafana request failed"
             raise BootstrapError(message) from None

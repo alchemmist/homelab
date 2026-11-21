@@ -179,7 +179,8 @@ def main():
             )
         )
         if len(matches) != 1 or canonical(matches) != canonical([expected]):
-            raise RuntimeError("Forward does not match explicit expected old state: " + port)
+            message = "Forward does not match explicit expected old state: " + port
+            raise RuntimeError(message)
         targets.append(matches[0])
     completed = []
     try:

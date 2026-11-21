@@ -204,9 +204,8 @@ class Authentik:
                 body = response.read()
                 return json.loads(body) if body else None
         except urllib.error.HTTPError as error:
-            raise RuntimeError(
-                "Authentik " + method + " failed with status " + str(error.code)
-            ) from None
+            message = "Authentik " + method + " failed with status " + str(error.code)
+            raise RuntimeError(message) from None
 
     def pages(self, path):
         """Follow pagination for an API path and collect all rows."""

@@ -116,7 +116,8 @@ def _planned_login_edits(home: Path, login_file: str) -> list[tuple[str, Path, s
                 candidate.flush()
                 result = subprocess.run(["/usr/bin/zsh", "-n", candidate.name], capture_output=True)
                 if result.returncode:
-                    raise ValueError("Invalid zsh syntax in " + filename)
+                    message = "Invalid zsh syntax in " + filename
+                    raise ValueError(message)
             edits.append((filename, path, new))
     return edits
 

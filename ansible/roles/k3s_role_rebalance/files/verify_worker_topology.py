@@ -15,7 +15,8 @@ def verify(client):
         client.health(name)
         status = client.status(name)
         if int(status["header"]["member_id"]) != members[name]["id"]:
-            raise RuntimeError("Endpoint member identity mismatch for " + name)
+            message = "Endpoint member identity mismatch for " + name
+            raise RuntimeError(message)
     if client.members() != members:
         message = "Membership changed during verification"
         raise RuntimeError(message)

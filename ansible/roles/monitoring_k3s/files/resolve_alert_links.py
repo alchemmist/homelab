@@ -91,7 +91,8 @@ def panel_rules(panel, name_prefix=""):
                 if not all(re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) for name in names):
                     if match.group(1) == "=~":
                         continue
-                    raise ValueError("Unsupported alert name selector: " + match.group(2))
+                    message = "Unsupported alert name selector: " + match.group(2)
+                    raise ValueError(message)
                 result.update(name for name in names if name.startswith(name_prefix))
     return result
 
@@ -111,7 +112,8 @@ def resolve(dashboard, response, settings, values_key="nodeAlertLinks", name_pre
             continue
         missing = names - available.keys()
         if missing:
-            raise ValueError("Rules not loaded: " + ", ".join(sorted(missing)))
+            message = "Rules not loaded: " + ", ".join(sorted(missing))
+            raise ValueError(message)
         links = []
         for name in sorted(names):
             for group, rule in available[name]:
@@ -158,9 +160,8 @@ def expected_rules(dashboard, resources, formatter, name_prefix=""):
                 )
     missing = names - {rule["name"] for _, _, rule in expected}
     if missing:
-        raise ValueError(
-            "Referenced rules have no Kubernetes definition: " + ", ".join(sorted(missing))
-        )
+        message = "Referenced rules have no Kubernetes definition: " + ", ".join(sorted(missing))
+        raise ValueError(message)
     return expected
 
 
@@ -178,9 +179,8 @@ def require_convergence(response, expected):
         if identity not in actual:
             missing.append(rule["name"])
     if missing:
-        raise ValueError(
-            "Prometheus has not loaded current rule definitions: " + ", ".join(sorted(set(missing)))
-        )
+        message = "Prometheus has not loaded current rule definitions: " + ", ".join(sorted(set(missing)))
+        raise ValueError(message)
 
 
 def fetch(path):

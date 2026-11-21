@@ -227,9 +227,13 @@ from open_webui.models.users import Users
 async def main():
  for link in json.load(sys.stdin):
   user=await Users.get_user_by_id(link['id'])
-  if not user or user.email!=link['email']:raise RuntimeError('Reviewed WebUI identity mismatch')
+  if not user or user.email!=link['email']:
+   message='Reviewed WebUI identity mismatch'
+   raise RuntimeError(message)
   old=(user.oauth or {}).get('oidc',{})
-  if old.get('sub') not in [None,link['sub']]:raise RuntimeError('Existing OAuth subject differs')
+  if old.get('sub') not in [None,link['sub']]:
+   message='Existing OAuth subject differs'
+   raise RuntimeError(message)
   await Users.update_user_oauth_by_id(user.id,'oidc',link['sub'])
 asyncio.run(main())"""
     kubectl(

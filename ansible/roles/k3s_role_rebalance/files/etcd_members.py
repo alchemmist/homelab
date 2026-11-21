@@ -35,7 +35,8 @@ class Etcd:
             command.append("--write-out=json")
         result = subprocess.run(command + args, capture_output=True, text=True, timeout=15)
         if result.returncode:
-            raise RuntimeError("etcdctl operation failed: " + " ".join(args))
+            message = "etcdctl operation failed: " + " ".join(args)
+            raise RuntimeError(message)
         return json.loads(result.stdout) if structured else result.stdout
 
     def members(self):
@@ -63,13 +64,15 @@ class Etcd:
         """Assert linearizable health of the named member endpoint."""
         result = self.call(["endpoint", "health"], ENDPOINTS[name])
         if len(result) != 1 or result[0].get("health") is not True:
-            raise RuntimeError("Linearizable health check failed for " + name)
+            message = "Linearizable health check failed for " + name
+            raise RuntimeError(message)
 
     def status(self, name):
         """Return the status header of the named member endpoint."""
         result = self.call(["endpoint", "status"], ENDPOINTS[name])
         if len(result) != 1 or result[0].get("Error"):
-            raise RuntimeError("Endpoint status failed for " + name)
+            message = "Endpoint status failed for " + name
+            raise RuntimeError(message)
         return result[0]["Status"]
 
 
@@ -96,7 +99,8 @@ def remove_socrat_1(client):
         client.health(name)
         status = client.status(name)
         if int(status["header"]["member_id"]) != members[name]["id"]:
-            raise RuntimeError("Endpoint member identity mismatch for " + name)
+            message = "Endpoint member identity mismatch for " + name
+            raise RuntimeError(message)
     status = client.status("socrat-1")
     if int(status["leader"]) == members["socrat-1"]["id"]:
         client.call(
