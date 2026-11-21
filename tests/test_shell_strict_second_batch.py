@@ -232,10 +232,10 @@ def test_nightnode_config_loads_values_without_executing_them() -> None:
         (config_dir / "config.env").write_text(
             "\n".join(
                 (
-                    "  # comments may be indented",
-                    " NIGHTNODE_ALLOW_JOIN =1",
+                    "  # ignored=not-a-setting",
+                    " NIGHTNODE_ALLOW_JOIN = 1 ",
                     "K3S_URL=https://k3s.example.invalid:6443",
-                    f"NIGHTNODE_NAME=$(touch {marker})",
+                    f"NIGHTNODE_NAME = $(touch {marker}) ",
                     "",
                 )
             ),
