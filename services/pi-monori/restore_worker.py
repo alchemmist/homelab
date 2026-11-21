@@ -13,8 +13,8 @@ class _Runner(Protocol):
   self,
   role: str,
   args: Sequence[str],
-  data: str | None = ...,
-  timeout: int = ...,
+  data: str | bytes | None = None,
+  timeout: int = 60,
   *,
   ok: bool = ...,
  ) -> _Completed: ...

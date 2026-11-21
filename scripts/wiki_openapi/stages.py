@@ -7,7 +7,7 @@ import tempfile
 import urllib.request
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
-from typing import Protocol, cast
+from typing import Protocol
 
 from engine import UnsafeInput, page_ok, select_closable, spec_changed
 from github import BotRepo, Homelab
@@ -138,7 +138,9 @@ def stage(
         markdown = page_ok(payload.get("markdown"))
         if not write:
             return [{"after": after, "status": "dry_run"}]
-        result = cast("dict[str, object]", homelab.propose(after, markdown))
+        result = homelab.propose(after, markdown)
+        if not isinstance(result, dict):
+            raise UnsafeInput("GitHub proposal returned invalid data")
         result["after"] = after
         return [result]
     if name != "close-older":

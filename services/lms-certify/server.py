@@ -72,6 +72,13 @@ def load_json(path: Path, default: object):
     return json.loads(path.read_text())
 
 
+def load_state() -> CertState:
+    value = load_json(ROOT / "state.json", {"tasks": {}})
+    if not isinstance(value, dict) or not isinstance(value.get("tasks"), dict):
+        raise ValueError("invalid certification state")
+    return {"tasks": value["tasks"]}
+
+
 def save_json(path: Path, value: object):
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
@@ -190,10 +197,10 @@ def open_task(queue: Sequence[QueueItem], state: CertState):
 
 def run_loop(task_id: str, statement: str):
     try:
-        state = load_json(ROOT / "state.json", {"tasks": {}})
+        state = load_state()
 
         def hook(record: LoopRecord):
-            current = load_json(ROOT / "state.json", {"tasks": {}})
+            current = load_state()
             current["tasks"][task_id] = record
             save_json(ROOT / "state.json", current)
             log(
@@ -213,7 +220,7 @@ def run_loop(task_id: str, statement: str):
             pause=others_waiting,
             hook=hook,
         )
-        state = load_json(ROOT / "state.json", {"tasks": {}})
+        state = load_state()
         state["tasks"][task_id] = record
         save_json(ROOT / "state.json", state)
         log(

@@ -15,7 +15,9 @@ class GitHubError(Exception):
     pass
 
 
-def _request(url: str, token: str | None = None, method: str = "GET", body: object = None):
+def _request(
+    url: str, token: str | None = None, method: str = "GET", body: object = None
+) -> object:
     headers = {
         "Accept": "application/vnd.github+json",
         "User-Agent": "socrat-wiki-openapi",
