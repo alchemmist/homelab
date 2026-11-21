@@ -4,6 +4,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Mapping, Sequence
 
 BASE_URL = os.environ.get("LLM_BASE_URL", "http://127.0.0.1:8000/v1").rstrip("/")
 API_KEY = os.environ.get("LLM_API_KEY", "")
@@ -11,12 +12,12 @@ MODEL = os.environ.get("LLM_MODEL", "qwen3.8-27b")
 TIMEOUT = 180
 
 
-def require(condition, message):
+def require(condition: object, message: str):
     if not condition:
         raise ValueError(message)
 
 
-def request(path, payload=None):
+def request(path: str, payload: object = None):
     data = None if payload is None else json.dumps(payload).encode()
     headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
     return urllib.request.urlopen(
@@ -25,7 +26,7 @@ def request(path, payload=None):
     )
 
 
-def report(name, started, usage=None):
+def report(name: str, started: float, usage: Mapping[str, object] | None = None):
     tokens = ""
     if usage:
         tokens = (
@@ -35,7 +36,7 @@ def report(name, started, usage=None):
     print(f"PASS {name}: {time.monotonic() - started:.2f}s{tokens}", flush=True)
 
 
-def complete(messages, **options):
+def complete(messages: Sequence[Mapping[str, object]], **options: object):
     payload = {
         "model": MODEL,
         "messages": messages,

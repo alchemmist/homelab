@@ -4,25 +4,32 @@ import argparse
 import datetime
 import json
 import subprocess
+from typing import TypedDict, Unpack
 
 
-def run(args, **kwargs):
+class _RunOptions(TypedDict, total=False):
+    input: str
+
+
+def run(args: list[str], **kwargs: Unpack[_RunOptions]):
     return subprocess.run(args, text=True, capture_output=True, timeout=120, **kwargs)
 
 
-def kub(resource):
+def kub(resource: str):
     result = run(['kubectl', 'get', resource, '-A', '-o', 'json'])
     result.check_returncode()
     return json.loads(result.stdout)['items']
 
 
-def inventory(pvs, pods):
+def inventory(pvs: list[dict[str, object]], pods: list[dict[str, object]]):
+    pv_items = json.loads(json.dumps(pvs))
+    pod_items = json.loads(json.dumps(pods))
     rows = []
-    for pv in pvs:
+    for pv in pv_items:
         spec = pv['spec']
         claim = spec.get('claimRef', {})
         consumers = []
-        for pod in pods:
+        for pod in pod_items:
             if pod['metadata']['namespace'] != claim.get('namespace'):
                 continue
             if any(v.get('persistentVolumeClaim', {}).get('claimName') == claim.get('name')
