@@ -31,7 +31,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 AUTH = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
 
-def expire(sock):
+def expire(sock: socket.socket) -> None:
     try:
         sock.shutdown(socket.SHUT_RDWR)
     except OSError:
@@ -52,10 +52,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
         finally:
             timer.cancel()
 
-    def send_error(self, code, message=None, explain=None):
+    def send_error(self, code: int, message: str | None = None, explain: str | None = None) -> None:
         self.send(400, b"", "text/plain")
 
-    def send(self, status, body, mime="application/json; charset=utf-8", location=None):
+    def send(
+        self,
+        status: int,
+        body: bytes,
+        mime: str = "application/json; charset=utf-8",
+        location: str | None = None,
+    ) -> None:
         self.close_connection = True
         self.send_response(status)
         for k, v in {
@@ -205,7 +211,11 @@ class Server(http.server.ThreadingHTTPServer):
         self.slots = threading.BoundedSemaphore(8)
         super().__init__(*args)
 
-    def process_request(self, request, client_address):
+    def process_request(
+        self,
+        request: socket.socket | tuple[bytes, socket.socket],
+        client_address: tuple[str, int] | tuple[bytes, str],
+    ) -> None:
         if not self.slots.acquire(False):
             return self.shutdown_request(request)
         try:
@@ -214,13 +224,21 @@ class Server(http.server.ThreadingHTTPServer):
             self.slots.release()
             raise
 
-    def process_request_thread(self, request, client_address):
+    def process_request_thread(
+        self,
+        request: socket.socket | tuple[bytes, socket.socket],
+        client_address: tuple[str, int] | tuple[bytes, str],
+    ) -> None:
         try:
             super().process_request_thread(request, client_address)
         finally:
             self.slots.release()
 
-    def handle_error(self, request, client_address):
+    def handle_error(
+        self,
+        request: socket.socket | tuple[bytes, socket.socket],
+        client_address: tuple[str, int] | tuple[bytes, str],
+    ) -> None:
         pass
 
 

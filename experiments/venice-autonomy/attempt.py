@@ -5,15 +5,48 @@ import os
 import pathlib
 import signal
 import time
+from collections.abc import Callable
+from typing import Protocol, cast
 
-from fixtures import check_verdict, fixture_files, task_prompt, verifier_command, seal_execution
+from fixtures import (
+    check_verdict,
+    fixture_files,
+    task_prompt,
+    verifier_command,
+    seal_execution,
+)
 from sandbox import Sandbox
 
+_Acceptance = Callable[["_Sandbox", pathlib.Path, int], dict[str, object]]
 
-def exception_chain(error):
-    chain = []
-    seen = set()
-    current = error
+
+class _ExecuteFn(Protocol):
+    def __call__(
+        self, action: object, input_bytes: bytes | None = ..., **kwargs: object
+    ) -> object: ...
+
+
+class _Sandbox(Protocol):
+    events: list[object]
+    execute: _ExecuteFn
+
+    def snapshot(self) -> dict[str, str]: ...
+
+
+class _Conversation(Protocol):
+    def run(self) -> object: ...
+
+    def send_message(self, message: str) -> object: ...
+
+
+class _OHEvent(Protocol):
+    def model_dump(self, mode: str) -> dict[str, object]: ...
+
+
+def exception_chain(error: BaseException) -> list[dict[str, str]]:
+    chain: list[dict[str, str]] = []
+    seen: set[int] = set()
+    current: BaseException | None = error
     while isinstance(current, BaseException) and id(current) not in seen:
         seen.add(id(current))
         chain.append({"type": type(current).__name__, "message": str(current)[:500]})
@@ -24,18 +57,26 @@ def exception_chain(error):
                 if isinstance(candidate, BaseException):
                     nxt = candidate
                     break
-        if nxt is None and current.__context__ is not None and not current.__suppress_context__:
+        if (
+            nxt is None
+            and current.__context__ is not None
+            and not current.__suppress_context__
+        ):
             nxt = current.__context__
         current = nxt
     return chain
 
 
-def record_exception(summary, error, key, prefix):
+def record_exception(
+    summary: dict[str, object], error: BaseException, key: str, prefix: str
+) -> list[dict[str, str]]:
     chain = exception_chain(error)
     redacted = []
     for item in chain:
         message = (
-            item["message"].replace(key, "[redacted]")[:2000] if key else item["message"][:2000]
+            item["message"].replace(key, "[redacted]")[:2000]
+            if key
+            else item["message"][:2000]
         )
         redacted.append({"type": item["type"], "message": message})
     summary[prefix + "_type"] = redacted[0]["type"]
@@ -48,7 +89,9 @@ def record_exception(summary, error, key, prefix):
     return redacted
 
 
-def resolved_mini_exit(result, directory):
+def resolved_mini_exit(
+    result: object, directory: pathlib.Path
+) -> tuple[str | None, str]:
     status = result.get("exit_status") if isinstance(result, dict) else None
     if isinstance(status, str) and status:
         return status, "agent_result.exit_status"
@@ -62,7 +105,9 @@ def resolved_mini_exit(result, directory):
 
 def provider_settings():
     source = pathlib.Path(
-        os.environ.get("LAB_PI_MODELS", str(pathlib.Path.home() / ".pi/agent/models.json"))
+        os.environ.get(
+            "LAB_PI_MODELS", str(pathlib.Path.home() / ".pi/agent/models.json")
+        )
     )
     provider = json.loads(source.read_text())["providers"]["litellm"]
     reference = provider["apiKey"]
@@ -74,16 +119,24 @@ def provider_settings():
     return provider["baseUrl"], key
 
 
-def mini_submission(result):
-    lines = result.get("output", "").lstrip().splitlines()
+def mini_submission(result: object) -> bool:
+    data = cast("dict[str, object]", result)
+    lines = cast("str", data.get("output", "")).lstrip().splitlines()
     return (
-        result.get("returncode") == 0
+        data.get("returncode") == 0
         and bool(lines)
         and lines[0].strip() == "COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT"
     )
 
 
-def run_mini(engine, sandbox, directory, prompt, base_url, key):
+def run_mini(
+    engine: str,
+    sandbox: _Sandbox,
+    directory: pathlib.Path,
+    prompt: str,
+    base_url: str,
+    key: str,
+) -> dict[str, object]:
     os.environ["MSWEA_GLOBAL_CONFIG_DIR"] = str(directory / "mini-config")
     os.environ["MSWEA_SILENT_STARTUP"] = "1"
     os.environ["MSWEA_MODEL_RETRY_STOP_AFTER_ATTEMPT"] = "1"
@@ -105,10 +158,10 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
         },
     )
     query = model._query
-    calls = []
+    calls: list[dict[str, object]] = []
 
-    def observed_query(messages, **kwargs):
-        record = {"attempt": len(calls) + 1, "started": time.time()}
+    def observed_query(messages: object, **kwargs: object) -> object:
+        record: dict[str, object] = {"attempt": len(calls) + 1, "started": time.time()}
         calls.append(record)
         try:
             response = query(messages, **kwargs)
@@ -116,30 +169,36 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
                 {
                     "content": response.choices[0].message.content,
                     "tool_calls": [
-                        tool.model_dump() for tool in (response.choices[0].message.tool_calls or [])
+                        tool.model_dump()
+                        for tool in (response.choices[0].message.tool_calls or [])
                     ],
                     "finish_reason": response.choices[0].finish_reason,
                 }
             )
-            return response
+            return cast("object", response)
         except Exception as error:
             record["error_type"] = type(error).__name__
             raise
         finally:
-            record["elapsed"] = time.time() - record["started"]
+            record["elapsed"] = time.time() - cast("float", record["started"])
             (directory / "model-responses.json").write_text(json.dumps(calls, indent=2))
 
     model._query = observed_query
     execute = sandbox.execute
 
-    def execute_with_submission(action, **kwargs):
-        result = execute(action, **kwargs)
+    def execute_with_submission(
+        action: object, input_bytes: bytes | None = None, **kwargs: object
+    ) -> object:
+        result = execute(action, input_bytes=input_bytes, **kwargs)
         if mini_submission(result):
             raise Submitted(
                 {
                     "role": "exit",
                     "content": "Submitted",
-                    "extra": {"exit_status": "Submitted", "submission": result["output"]},
+                    "extra": {
+                        "exit_status": "Submitted",
+                        "submission": cast("dict[str, object]", result)["output"],
+                    },
                 }
             )
         return result
@@ -153,9 +212,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
             "Never output more than one command block."
         )
     else:
-        system += (
-            "Use the declared bash tool for actual actions. Do not merely describe future work."
-        )
+        system += "Use the declared bash tool for actual actions. Do not merely describe future work."
     agent = DefaultAgent(
         model,
         sandbox,
@@ -178,7 +235,12 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
     }
 
 
-def continue_openhands(conversation, sandbox, directory, acceptance=None):
+def continue_openhands(
+    conversation: _Conversation,
+    sandbox: _Sandbox,
+    directory: pathlib.Path,
+    acceptance: _Acceptance | None = None,
+) -> str:
     limit = 3 if acceptance is not None else 1
     for round_number in range(limit):
         conversation.run()
@@ -198,8 +260,15 @@ def continue_openhands(conversation, sandbox, directory, acceptance=None):
 
 
 def run_openhands(
-    sandbox, directory, prompt, base_url, key, acceptance=None, max_iterations=18, language="Node"
-):
+    sandbox: _Sandbox,
+    directory: pathlib.Path,
+    prompt: str,
+    base_url: str,
+    key: str,
+    acceptance: _Acceptance | None = None,
+    max_iterations: int = 18,
+    language: str = "Node",
+) -> dict[str, object]:
     for name in list(os.environ):
         if name.startswith(("LMNR_", "OTEL_", "OPENHANDS_")):
             os.environ.pop(name)
@@ -207,7 +276,13 @@ def run_openhands(
     os.environ["OTEL_SDK_DISABLED"] = "true"
     from pydantic import Field, SecretStr
     from openhands.sdk import Agent, Conversation, LLM, Tool
-    from openhands.sdk.tool import Action, Observation, ToolDefinition, ToolExecutor, register_tool
+    from openhands.sdk.tool import (
+        Action,
+        Observation,
+        ToolDefinition,
+        ToolExecutor,
+        register_tool,
+    )
 
     class BashAction(Action):
         command: str = Field(
@@ -218,15 +293,25 @@ def run_openhands(
         pass
 
     class BashExecutor(ToolExecutor):
-        def __call__(self, action, conversation=None):
+        def __call__(
+            self, action: BashAction, conversation: object | None = None
+        ) -> object:
             result = sandbox.execute({"command": action.command})
-            return BashObservation.from_text(json.dumps(result), is_error=result["returncode"] != 0)
+            data = cast("dict[str, object]", result)
+            return cast(
+                "object",
+                BashObservation.from_text(
+                    json.dumps(result), is_error=data["returncode"] != 0
+                ),
+            )
 
     class BashTool(ToolDefinition[BashAction, BashObservation]):
         name = "bash"
 
         @classmethod
-        def create(cls, conv_state=None, **kwargs):
+        def create(
+            cls, conv_state: object | None = None, **kwargs: object
+        ) -> list[object]:
             return [
                 cls(
                     description="Execute bash inside the isolated offline coding workspace. "
@@ -255,7 +340,7 @@ def run_openhands(
     workspace = directory / "controller-workspace"
     workspace.mkdir()
 
-    def observe(event):
+    def observe(event: _OHEvent) -> None:
         with (directory / "openhands-events.jsonl").open("a") as stream:
             stream.write(json.dumps(event.model_dump(mode="json")) + "\n")
 
@@ -283,46 +368,57 @@ def run_openhands(
     }
 
 
-def attempt(engine, task, directory, seed, feedback=""):
+def attempt(
+    engine: str, task: str, directory: str, seed: int, feedback: str = ""
+) -> dict[str, object]:
     os.umask(0o077)
-    directory = pathlib.Path(directory)
-    directory.mkdir(parents=True, exist_ok=False)
+    directory_path = pathlib.Path(directory)
+    directory_path.mkdir(parents=True, exist_ok=False)
     base_url, key = provider_settings()
     signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
     started = time.time()
     summary = {"engine": engine, "task": task, "seed": seed, "accepted": False}
     files = fixture_files(task)
     try:
-        with Sandbox(files, directory / "agent") as sandbox:
+        with Sandbox(files, directory_path / "agent") as sandbox:
             try:
                 prompt = task_prompt(task)
                 if feedback:
                     prompt += (
-                        "\nA previous attempt did not pass independent acceptance: " + feedback
+                        "\nA previous attempt did not pass independent acceptance: "
+                        + feedback
                     )
                 if engine.startswith("mini_"):
-                    result = run_mini(engine, sandbox, directory, prompt, base_url, key)
+                    result = run_mini(
+                        engine, sandbox, directory_path, prompt, base_url, key
+                    )
                 else:
-                    result = run_openhands(sandbox, directory, prompt, base_url, key)
+                    result = run_openhands(
+                        sandbox, directory_path, prompt, base_url, key
+                    )
                 summary.update(result)
             except (Exception, KeyboardInterrupt) as error:
                 record_exception(summary, error, key, "run_error")
             summary["actual_commands"] = len(sandbox.events)
             snapshot = sandbox.snapshot()
             summary["test_unchanged"] = snapshot["test.cjs"] == files["test.cjs"]
-            (directory / "candidate.json").write_text(json.dumps(snapshot, indent=2))
-        with Sandbox(snapshot, directory / "verifier", verifier=True) as verifier:
+            (directory_path / "candidate.json").write_text(
+                json.dumps(snapshot, indent=2)
+            )
+        with Sandbox(snapshot, directory_path / "verifier", verifier=True) as verifier:
             command, nonce, cases = verifier_command(task, seed)
             execution = verifier.execute(
                 {"command": command}, input_bytes=json.dumps(cases).encode()
             )
-            verdict = check_verdict(task, nonce, cases, seal_execution(nonce, execution))
+            verdict = check_verdict(
+                task, nonce, cases, seal_execution(nonce, execution)
+            )
             summary["verdict"] = verdict
             summary["accepted"] = verdict["accepted"] and summary["test_unchanged"]
     except (Exception, KeyboardInterrupt) as error:
         record_exception(summary, error, key, "infrastructure_error")
     summary["elapsed_seconds"] = round(time.time() - started, 3)
-    (directory / "summary.json").write_text(json.dumps(summary, indent=2))
+    (directory_path / "summary.json").write_text(json.dumps(summary, indent=2))
     print(json.dumps(summary), flush=True)
     return summary
 
@@ -332,7 +428,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--engine", choices=["mini_native", "mini_text", "openhands"], required=True
     )
-    parser.add_argument("--task", choices=["median", "clamp", "escape_html"], required=True)
+    parser.add_argument(
+        "--task", choices=["median", "clamp", "escape_html"], required=True
+    )
     parser.add_argument("--directory", required=True)
     parser.add_argument("--seed", type=int, required=True)
     parser.add_argument("--feedback", default="")
