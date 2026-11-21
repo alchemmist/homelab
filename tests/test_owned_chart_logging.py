@@ -1,3 +1,5 @@
+"""Tests for logging in the owned Helm charts."""
+
 import contextlib
 import importlib.util
 import io

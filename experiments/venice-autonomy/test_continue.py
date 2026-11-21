@@ -1,3 +1,4 @@
+"""Tests for the continuation policy of the repository runner."""
 import unittest
 
 from attempt import continue_openhands

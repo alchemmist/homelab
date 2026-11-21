@@ -236,11 +236,12 @@ class Provisioning(unittest.TestCase):
             def __exit__(self, *a) -> None:
                 pass
 
-            def read(self, *a):
+            def read(self, *_):
                 return json.dumps(self.data).encode()
 
         class HTTP:
             def open(self, request, timeout):
+                del timeout  # fake keeps the urlopen-style signature
                 path = urllib.parse.urlsplit(request.full_url).path.removeprefix("/api/v3/")
                 method = request.get_method()
                 if method == "GET":
