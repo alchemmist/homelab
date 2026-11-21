@@ -14,17 +14,23 @@ LABEL_NAME = re.compile(r"^[A-Za-z0-9](?:[-_.A-Za-z0-9]*[A-Za-z0-9])?$")
 DNS_LABEL = re.compile(r"^[a-z0-9](?:[-a-z0-9]*[a-z0-9])?$")
 SUPPORTED_OWNERS = {"ReplicaSet", "DaemonSet", "StatefulSet"}
 QUANTITY = re.compile(
-    r"^([+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+))([eE][+-]?[0-9]+|[numkKMGTP E]i?)?$".replace(" ", "")
+    r"^([+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+))([eE][+-]?[0-9]+|[numkKMGTP E]i?)?$".replace(
+        " ", ""
+    )
 )
 
 
-def quantity(value):
+def quantity(value) -> Decimal:
     match = QUANTITY.fullmatch(str(value)) if value is not None else None
     if not match:
         raise ValueError("Invalid resource quantity: " + str(value))
     number = Decimal(match.group(1))
     suffix = match.group(2) or ""
-    if suffix.startswith(("e", "E")) and len(suffix) > 1 and suffix[1] in "+-0123456789":
+    if (
+        suffix.startswith(("e", "E"))
+        and len(suffix) > 1
+        and suffix[1] in "+-0123456789"
+    ):
         return number * Decimal(10) ** int(suffix[1:])
     if suffix.endswith("i"):
         return number * Decimal(1024) ** ("KMGTPE".index(suffix[0]) + 1)
@@ -46,14 +52,14 @@ def quantity(value):
     return number * Decimal(10) ** powers[suffix]
 
 
-def positive(value):
+def positive(value) -> bool:
     try:
         return quantity(value) > 0
     except (ValueError, InvalidOperation):
         return False
 
 
-def validate_node_selector(selector):
+def validate_node_selector(selector) -> None:
     if not isinstance(selector, dict):
         raise ValueError("nodeSelector must be a string map")
     for key, value in selector.items():
@@ -78,9 +84,9 @@ def validate_node_selector(selector):
             raise ValueError("Invalid nodeSelector label value: " + value)
 
 
-def load_profiles(path):
+def load_profiles(path) -> list[dict[str, object]]:
     with open(path) as source:
-        profiles = json.load(source)
+        profiles: list[dict[str, object]] = json.load(source)
     if not isinstance(profiles, list):
         raise ValueError("Profiles must be a JSON list")
     for profile in profiles:
@@ -90,23 +96,29 @@ def load_profiles(path):
         ):
             raise ValueError("Profile requires namespace, ownerKind, and ownerPattern")
         validate_node_selector(profile.get("nodeSelector", {}))
-        pattern = profile["ownerPattern"]
+        pattern = str(profile["ownerPattern"])
         if not pattern.startswith("^") or not pattern.endswith("$"):
             raise ValueError("Profile ownerPattern must be anchored with ^ and $")
         re.compile(pattern)
-        if not isinstance(profile.get("containers"), dict) or not profile["containers"]:
+        containers = profile.get("containers")
+        if not isinstance(containers, dict) or not containers:
             raise ValueError("Profile requires a nonempty containers map")
-        for resources in profile["containers"].values():
+        for resources in containers.values():
             if not isinstance(resources.get("removeCpuLimit", False), bool):
                 raise ValueError("removeCpuLimit must be boolean")
-            requests, limits = resources.get("requests", {}), resources.get("limits", {})
+            requests, limits = (
+                resources.get("requests", {}),
+                resources.get("limits", {}),
+            )
             if resources.get("removeCpuLimit") and "cpu" in limits:
                 raise ValueError("Cannot remove and set CPU limit together")
             if not resources.get("removeCpuLimit") and "cpu" not in limits:
                 raise ValueError("Profile must set CPU limit or explicitly remove it")
             for resource in RESOURCE_NAMES:
                 if not positive(requests.get(resource)):
-                    raise ValueError("Profile must specify positive requests/" + resource)
+                    raise ValueError(
+                        "Profile must specify positive requests/" + resource
+                    )
             for resource in LIMIT_RESOURCE_NAMES:
                 if not positive(limits.get(resource)):
                     raise ValueError("Profile must specify positive limits/" + resource)
@@ -118,22 +130,22 @@ def load_profiles(path):
     return profiles
 
 
-def matching_profile(pod, profiles):
+def matching_profile(pod, profiles) -> dict[str, object] | None:
     reference = owner(pod)
-    matches = [
+    matches: list[dict[str, object]] = [
         profile
         for profile in profiles
         if reference
         and profile["namespace"] == pod["metadata"]["namespace"]
         and profile["ownerKind"] == reference["kind"]
-        and re.fullmatch(profile["ownerPattern"], reference.get("name", ""))
+        and re.fullmatch(profile["ownerPattern"], str(reference.get("name", "")))
     ]
     if len(matches) > 1:
         raise RuntimeError("Ambiguous resource profiles for " + label(pod))
     return matches[0] if matches else None
 
 
-def profile_mismatches(pod, profile):
+def profile_mismatches(pod, profile) -> list[str]:
     if profile is None:
         return []
     mismatches = []
@@ -157,53 +169,68 @@ def profile_mismatches(pod, profile):
                 for resource, desired in expected[mode].items():
                     actual = container.get("resources", {}).get(mode, {}).get(resource)
                     if not positive(actual) or quantity(actual) != quantity(desired):
-                        mismatches.append(kind + "/" + name + "/" + mode + "/" + resource)
-            if expected.get("removeCpuLimit") and "cpu" in container.get("resources", {}).get(
-                "limits", {}
-            ):
+                        mismatches.append(
+                            kind + "/" + name + "/" + mode + "/" + resource
+                        )
+            if expected.get("removeCpuLimit") and "cpu" in container.get(
+                "resources", {}
+            ).get("limits", {}):
                 mismatches.append(kind + "/" + name + "/limits/cpu-present")
     for name in profile["containers"].keys() - present:
         mismatches.append(name + "/missing-container")
     return mismatches
 
 
-def needs_reconcile(pod, profiles=()):
-    return bool(deficits(pod) or profile_mismatches(pod, matching_profile(pod, profiles)))
+def needs_reconcile(pod, profiles=()) -> bool:
+    return bool(
+        deficits(pod) or profile_mismatches(pod, matching_profile(pod, profiles))
+    )
 
 
-def deficits(pod):
+def deficits(pod) -> list[str]:
     missing = []
     for kind in ("containers", "initContainers"):
         for container in pod.get("spec", {}).get(kind, []):
             resources = container.get("resources", {})
-            for mode, required in (("requests", RESOURCE_NAMES), ("limits", LIMIT_RESOURCE_NAMES)):
+            for mode, required in (
+                ("requests", RESOURCE_NAMES),
+                ("limits", LIMIT_RESOURCE_NAMES),
+            ):
                 for resource in required:
                     if not positive(resources.get(mode, {}).get(resource)):
-                        missing.append(kind + "/" + container["name"] + "/" + mode + "/" + resource)
+                        missing.append(
+                            kind + "/" + container["name"] + "/" + mode + "/" + resource
+                        )
     return missing
 
 
-def active(pod):
+def active(pod) -> bool:
     return pod.get("status", {}).get("phase") not in ("Succeeded", "Failed")
 
 
-def owner(pod):
+def owner(pod) -> dict[str, object] | None:
     return next(
-        (item for item in pod["metadata"].get("ownerReferences", []) if item.get("controller")),
+        (
+            item
+            for item in pod["metadata"].get("ownerReferences", [])
+            if item.get("controller")
+        ),
         None,
     )
 
 
-def supported(pod):
+def supported(pod) -> bool:
     reference = owner(pod)
     return bool(
         reference
         and reference["kind"] in SUPPORTED_OWNERS
-        and not pod["metadata"].get("annotations", {}).get("kubernetes.io/config.mirror")
+        and not pod["metadata"]
+        .get("annotations", {})
+        .get("kubernetes.io/config.mirror")
     )
 
 
-def ready(pod):
+def ready(pod) -> bool:
     return (
         active(pod)
         and not pod["metadata"].get("deletionTimestamp")
@@ -214,7 +241,7 @@ def ready(pod):
     )
 
 
-def same_workload(original, candidate):
+def same_workload(original, candidate) -> bool:
     original_owner, candidate_owner = owner(original), owner(candidate)
     if not original_owner or not candidate_owner:
         return False
@@ -224,13 +251,16 @@ def same_workload(original, candidate):
     ):
         return False
     if original_owner["kind"] == "DaemonSet":
-        return original.get("spec", {}).get("nodeName") == candidate.get("spec", {}).get("nodeName")
+        return bool(
+            original.get("spec", {}).get("nodeName")
+            == candidate.get("spec", {}).get("nodeName")
+        )
     if original_owner["kind"] == "StatefulSet":
-        return original["metadata"]["name"] == candidate["metadata"]["name"]
+        return bool(original["metadata"]["name"] == candidate["metadata"]["name"])
     return True
 
 
-def eviction_payload(pod):
+def eviction_payload(pod) -> dict[str, object]:
     metadata = pod["metadata"]
     return {
         "apiVersion": "policy/v1",
@@ -244,7 +274,7 @@ class Client:
     def __init__(self, kubectl, kubeconfig):
         self.command = [kubectl, "--kubeconfig", kubeconfig, "--request-timeout=30s"]
 
-    def pods(self):
+    def pods(self) -> list[dict[str, object]]:
         result = subprocess.run(
             self.command + ["get", "pods", "--all-namespaces", "-o", "json"],
             capture_output=True,
@@ -252,9 +282,10 @@ class Client:
             check=True,
             timeout=40,
         )
-        return json.loads(result.stdout)["items"]
+        items: list[dict[str, object]] = json.loads(result.stdout)["items"]
+        return items
 
-    def evict(self, pod):
+    def evict(self, pod) -> subprocess.CompletedProcess[str]:
         metadata = pod["metadata"]
         endpoint = (
             "/api/v1/namespaces/"
@@ -272,11 +303,11 @@ class Client:
         )
 
 
-def label(pod):
-    return pod["metadata"]["namespace"] + "/" + pod["metadata"]["name"]
+def label(pod) -> str:
+    return f"{pod['metadata']['namespace']}/{pod['metadata']['name']}"
 
 
-def excluded(pod, nodes):
+def excluded(pod, nodes) -> bool:
     spec = pod.get("spec", {})
     return (
         spec.get("nodeName") in nodes
@@ -284,7 +315,7 @@ def excluded(pod, nodes):
     )
 
 
-def audit(pods, excluded_nodes=(), profiles=()):
+def audit(pods, excluded_nodes=(), profiles=()) -> list[dict[str, object]]:
     active_pods = [pod for pod in pods if active(pod)]
     coverage = [(pod, matching_profile(pod, profiles)) for pod in active_pods]
     deficient = [pod for pod in active_pods if needs_reconcile(pod, profiles)]
@@ -292,7 +323,9 @@ def audit(pods, excluded_nodes=(), profiles=()):
         for pod, profile in coverage:
             if profile is None:
                 print(
-                    json.dumps({"pod": label(pod), "profile": "unmatched", "owner": owner(pod)}),
+                    json.dumps(
+                        {"pod": label(pod), "profile": "unmatched", "owner": owner(pod)}
+                    ),
                     flush=True,
                 )
     for pod in deficient:
@@ -306,13 +339,17 @@ def audit(pods, excluded_nodes=(), profiles=()):
                     "excluded": excluded(pod, excluded_nodes),
                     "node": pod.get("spec", {}).get("nodeName"),
                     "missing_resources": deficits(pod),
-                    "profile_mismatches": profile_mismatches(pod, matching_profile(pod, profiles)),
+                    "profile_mismatches": profile_mismatches(
+                        pod, matching_profile(pod, profiles)
+                    ),
                 }
             ),
             flush=True,
         )
-    actionable = [pod for pod in deficient if not excluded(pod, excluded_nodes)]
-    summary = {
+    actionable: list[dict[str, object]] = [
+        pod for pod in deficient if not excluded(pod, excluded_nodes)
+    ]
+    summary: dict[str, int | list[str]] = {
         "active": sum(active(pod) for pod in pods),
         "deficient": len(deficient),
         "actionable_deficient": len(actionable),
@@ -326,16 +363,23 @@ def audit(pods, excluded_nodes=(), profiles=()):
     return actionable
 
 
-def reconcile_one(client, original, timeout, interval, profiles=()):
+def reconcile_one(client, original, timeout, interval, profiles=()) -> None:
     deadline = time.monotonic() + timeout
     before = client.pods()
     current = next(
-        (pod for pod in before if pod["metadata"]["uid"] == original["metadata"]["uid"]), None
+        (
+            pod
+            for pod in before
+            if pod["metadata"]["uid"] == original["metadata"]["uid"]
+        ),
+        None,
     )
     if current is None or not active(current) or not needs_reconcile(current, profiles):
         print("Already replaced or compliant: " + label(original), flush=True)
         return
-    previous_uids = {pod["metadata"]["uid"] for pod in before if same_workload(original, pod)}
+    previous_uids = {
+        pod["metadata"]["uid"] for pod in before if same_workload(original, pod)
+    }
     print("Evicting: " + label(original), flush=True)
     while time.monotonic() < deadline:
         result = client.evict(original)
@@ -347,20 +391,29 @@ def reconcile_one(client, original, timeout, interval, profiles=()):
             and "429" not in error
             and "disruption budget" not in error.lower()
         ):
-            raise RuntimeError("Eviction failed for " + label(original) + ": " + error.strip())
+            raise RuntimeError(
+                "Eviction failed for " + label(original) + ": " + error.strip()
+            )
         print("Waiting for disruption budget: " + label(original), flush=True)
         time.sleep(interval)
     else:
         raise TimeoutError("Disruption budget timeout: " + label(original))
     while time.monotonic() < deadline:
         pods = client.pods()
-        old_present = any(pod["metadata"]["uid"] == original["metadata"]["uid"] for pod in pods)
+        old_present = any(
+            pod["metadata"]["uid"] == original["metadata"]["uid"] for pod in pods
+        )
         replacements = [
             pod
             for pod in pods
-            if same_workload(original, pod) and pod["metadata"]["uid"] not in previous_uids
+            if same_workload(original, pod)
+            and pod["metadata"]["uid"] not in previous_uids
         ]
-        valid = [pod for pod in replacements if ready(pod) and not needs_reconcile(pod, profiles)]
+        valid = [
+            pod
+            for pod in replacements
+            if ready(pod) and not needs_reconcile(pod, profiles)
+        ]
         if not old_present and valid:
             print("Ready with desired resources: " + label(valid[0]), flush=True)
             return
@@ -370,7 +423,7 @@ def reconcile_one(client, original, timeout, interval, profiles=()):
     )
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--profiles")
@@ -406,6 +459,11 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except (RuntimeError, ValueError, TimeoutError, subprocess.SubprocessError) as error:
+    except (
+        RuntimeError,
+        ValueError,
+        TimeoutError,
+        subprocess.SubprocessError,
+    ) as error:
         print(str(error), file=sys.stderr, flush=True)
         sys.exit(1)
