@@ -61,6 +61,8 @@ class _HomeDocument(TypedDict):
 class RancherDashboardFilteringTest(unittest.TestCase):
     """Verify Rancher dashboard rendering filters disallowed resources."""
     def render(self, resources, allowed=()) -> tuple[list[_Document], MagicMock]:
+        """Render resources through the fixture runner."""
+
         output = io.StringIO()
         with (
             patch.object(RENDERER, "RANCHER_DASHBOARD_UIDS", set(allowed)),
@@ -72,6 +74,8 @@ class RancherDashboardFilteringTest(unittest.TestCase):
         return list(yaml.safe_load_all(output.getvalue())), describe
 
     def home(self) -> _HomeDocument:
+        """Return a home ConfigMap fixture."""
+
         return {
             "kind": "ConfigMap",
             "metadata": {"name": "home"},
@@ -81,6 +85,8 @@ class RancherDashboardFilteringTest(unittest.TestCase):
         }
 
     def test_drops_home_only_configmap_without_loading_its_descriptions(self) -> None:
+        """Drops home only configmap without loading its descriptions."""
+
         resource = {"kind": "Service", "metadata": {"name": "preserved"}}
         rendered, describe = self.render([self.home(), resource])
         assert rendered == [resource]
@@ -88,6 +94,8 @@ class RancherDashboardFilteringTest(unittest.TestCase):
         assert "rancher-home-1" not in RENDERER.RANCHER_DASHBOARD_UIDS
 
     def test_drops_all_unselected_dashboards_without_loading_descriptions(self) -> None:
+        """Drops all unselected dashboards without loading descriptions."""
+
         resource = self.home()
         resource["data"]["diagnostic.json"] = json.dumps(
             {
@@ -101,6 +109,8 @@ class RancherDashboardFilteringTest(unittest.TestCase):
         describe.assert_not_called()
 
     def test_preserves_embedded_dashboard_in_shared_configmap(self) -> None:
+        """Preserves embedded dashboard in shared configmap."""
+
         resource = self.home()
         dashboard = {"uid": "rancher-pod-1", "title": "Rancher / Pod", "panels": []}
         resource["data"]["pod.json"] = json.dumps(dashboard)
@@ -113,6 +123,8 @@ class RancherDashboardFilteringTest(unittest.TestCase):
         describe.assert_called_once_with(dashboard)
 
     def test_preserves_non_dashboard_json(self) -> None:
+        """Preserves non dashboard json."""
+
         data = {
             "settings.json": json.dumps({"uid": "settings", "enabled": True}),
             "list.json": "[1, 2]",
@@ -125,6 +137,8 @@ class RancherDashboardFilteringTest(unittest.TestCase):
         describe.assert_not_called()
 
     def test_preserves_unrelated_data_and_binary_data(self) -> None:
+        """Preserves unrelated data and binary data."""
+
         for field, data in [
             ("data", {"settings.txt": "keep"}),
             ("binaryData", {"payload": "a2VlcA=="}),
@@ -141,6 +155,8 @@ class RancherDashboardFilteringTest(unittest.TestCase):
                 describe.assert_not_called()
 
     def test_missing_required_dashboard_still_blocks_rendering(self) -> None:
+        """Missing required dashboard still blocks rendering."""
+
         with (
             patch.object(RENDERER, "RANCHER_DASHBOARD_UIDS", {"required"}),
             patch.object(sys, "stdin", io.StringIO(yaml.safe_dump(self.home()))),

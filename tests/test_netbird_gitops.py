@@ -55,6 +55,8 @@ class GitOpsTests(unittest.TestCase):
         return result
 
     def test_root_discovers_default_project_application_without_new_bootstrap(self) -> None:
+        """The Argo CD root discovers the default-project app without new bootstrap."""
+
         root = yaml.safe_load((ROOT / "deploy/argocd/root.yaml").read_text())
         app = yaml.safe_load((ROOT / "deploy/argocd/apps/netbird.yaml").read_text())
         assert root["spec"]["source"]["path"] == "deploy/argocd/apps"
@@ -66,6 +68,8 @@ class GitOpsTests(unittest.TestCase):
         assert app["spec"]["syncPolicy"]["automated"] == {"prune": False, "selfHeal": True}
 
     def test_real_helm_render_includes_complete_stack_without_secret_values(self) -> None:
+        """A real Helm render includes the full stack without secret values."""
+
         docs = list(
             yaml.safe_load_all(
                 subprocess.check_output(
@@ -103,6 +107,8 @@ class GitOpsTests(unittest.TestCase):
         assert dashboard["spec"]["template"]["spec"]["containers"][0]["image"] == _text(image["repository"]) + "@" + _text(image["digest"])
 
     def test_home_relay_admits_exact_vps_flannel_source_without_weakening_health(self) -> None:
+        """The home relay admits exactly the VPS flannel source with health intact."""
+
         resources = _documents(self.values()["resources"])
         policy = next(
             r
@@ -151,6 +157,8 @@ class GitOpsTests(unittest.TestCase):
         }
 
     def test_inventory_addition_only_generates_offline_git_resources(self) -> None:
+        """Inventory additions generate only offline git resources."""
+
         values = self.values()
         original = copy.deepcopy(_documents(values["resources"]))
         image = "netbirdio/netbird:0.82.0@sha256:" + "a" * 64
@@ -167,6 +175,8 @@ class GitOpsTests(unittest.TestCase):
             gitops.desired(values, self.inventory(), image)
 
     def test_controller_has_no_imperative_deployment_escape(self) -> None:
+        """The controller has no imperative deployment escape hatch."""
+
         runtime = object.__new__(gitops.node.Runtime)
         runtime.k = []
         with patch.object(gitops.node.subprocess, "run") as run:
@@ -180,6 +190,8 @@ class GitOpsTests(unittest.TestCase):
             run.assert_not_called()
 
     def test_old_control_plane_cli_cannot_apply(self) -> None:
+        """The old control-plane CLI cannot apply."""
+
         p = subprocess.run(
             ["python3", str(ROOT / "scripts/netbird-deploy.py"), "apply"],
             capture_output=True,
