@@ -1,9 +1,10 @@
 import copy
 import importlib.util
-from pathlib import Path
-from unittest.mock import Mock, patch
 import json
 import ssl
+from pathlib import Path
+from unittest.mock import Mock, patch
+
 import pytest
 
 ROOT = Path(__file__).parents[1]

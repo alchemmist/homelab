@@ -3,10 +3,10 @@
 import copy
 import hashlib
 import json
-from pathlib import Path
 import runpy
 import shutil
 import sys
+from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import urlsplit
 

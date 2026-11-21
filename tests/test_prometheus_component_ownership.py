@@ -1,15 +1,14 @@
 """Exactly the same 77 resources, split between five single-service Applications."""
 
-from functools import lru_cache
 import copy
+import hashlib
+import json
+import subprocess
+from functools import lru_cache
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
-import hashlib
-import json
-from pathlib import Path
-import subprocess
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]

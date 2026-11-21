@@ -2,9 +2,8 @@
 
 import copy
 import importlib.util
-from pathlib import Path
 import unittest
-
+from pathlib import Path
 
 PATH = Path(__file__).resolve().parents[1] / "scripts/check-resource-budget.py"
 SPEC = importlib.util.spec_from_file_location("resource_budget", PATH)

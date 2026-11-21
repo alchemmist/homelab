@@ -8,7 +8,6 @@ from unittest.mock import patch
 
 import yaml
 
-
 ROOT = Path(__file__).resolve().parents[1]
 DESCRIPTION_SPEC = importlib.util.spec_from_file_location(
     "dashboard_descriptions", ROOT / "ansible/files/dashboard_descriptions.py"

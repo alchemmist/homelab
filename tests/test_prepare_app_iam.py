@@ -1,16 +1,16 @@
 """Create-only preparation against current explicit Group/Binding schema; no live API."""
 
-import copy
 import contextlib
+import copy
 import io
 import json
-from pathlib import Path
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
-from urllib.parse import parse_qs, urlsplit
 from urllib.error import HTTPError
+from urllib.parse import parse_qs, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "ansible/roles/authentik/files"))

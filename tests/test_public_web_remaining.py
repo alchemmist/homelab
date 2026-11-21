@@ -1,7 +1,12 @@
 import ast
-import importlib.util, json, subprocess, copy
+import copy
+import importlib.util
+import json
+import subprocess
 from pathlib import Path
-import pytest, yaml
+
+import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 

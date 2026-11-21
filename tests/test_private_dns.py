@@ -1,11 +1,10 @@
-from pathlib import Path
 import json
 import os
 import shutil
 import subprocess
 import tempfile
 import unittest
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ROLE = ROOT / "ansible/roles/homelab_private_dns"
@@ -37,8 +36,8 @@ class PrivateDnsRoleTests(unittest.TestCase):
         self.assertIn("server={{ server }}", self.config)
 
     def test_only_configured_upstreams_are_rendered(self):
-        from jinja2 import Template
         import yaml
+        from jinja2 import Template
 
         values = yaml.safe_load(self.defaults)
         values["homelab_private_dns_records"] = [
