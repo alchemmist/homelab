@@ -1,0 +1,272 @@
+storage:
+  type: postgres
+  path: ${GATUS_DATABASE_URL}
+ui:
+  title: Socrat Status
+  header: Socrat · System status
+  description: Live availability of Socrat services
+  default-sort-by: group
+  custom-css: |
+    :root { accent-color: #38bda6; }
+    header { border-bottom: 2px solid #38bda6; }
+    h1, h2 { letter-spacing: -.025em; }
+endpoints:
+  - name: Socrat
+    group: Applications
+    url: "http://socrat-home.socrat-home:8080/"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Blog
+    group: Applications
+    url: "http://blog.blog/"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Cats
+    group: Applications
+    url: "http://cats.cats/"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Monori
+    group: Applications
+    url: "http://back.monori:8000/api/auth/oidc/status"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Wishlist
+    group: Applications
+    url: "http://wishlist.wishlist/"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: LMS
+    group: Applications
+    url: "http://lms.lms/healthz"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Wiki
+    group: Applications
+    url: "http://wiki-runtime-wiki.wiki:8080/healthz"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Format Quorum
+    group: Applications
+    url: "http://format-quorum.format-quorum/"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Analytics
+    group: Applications
+    url: "http://umami.umami/api/heartbeat"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Comments
+    group: Applications
+    url: "http://remark42.remark42/ping"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Images
+    group: Applications
+    url: "http://img-proxy.img-proxy/health"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Chat
+    group: AI
+    url: "http://open-webui.llm:8080/health/db"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Model gateway
+    group: AI
+    url: "http://litellm.llm:4000/health/readiness"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Inference
+    group: AI
+    url: "http://vllm.llm:8000/health"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Search
+    group: AI
+    url: "http://searxng.llm:8080/healthz"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: OpenHands
+    group: AI
+    url: "http://openhands.openhands:8000/"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Venice
+    group: AI
+    url: "http://venice-api.venice-api:8080/healthz"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Workflows
+    group: Automation
+    url: "http://n8n.automation/healthz/readiness"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Socrat Bot
+    group: Automation
+    url: "http://socrat-bot.socrat-bot:8080/healthz"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Pull request agent
+    group: Automation
+    url: "http://pr-agent.pr-agent/"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: SPI Triage
+    group: Automation
+    url: "http://spi-triage.automation:8080/healthz"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Blog updates
+    group: Automation
+    url: "http://blog-updates-worker.automation:8080/healthz"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Certification
+    group: Automation
+    url: "http://lms-certification-runner.automation:9000/healthz"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Wiki worker
+    group: Automation
+    url: "http://wiki-openapi-worker.automation:8080/healthz"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Sign-in
+    group: Platform
+    url: "http://authentik-server.identity/-/health/ready/"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Account recovery
+    group: Platform
+    url: "http://password-self-service.identity/healthz"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Grafana
+    group: Platform
+    url: "http://kube-prometheus-stack-grafana.cattle-monitoring-system/api/health"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Registry
+    group: Platform
+    url: "http://harbor-core.harbor/api/v2.0/ping"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Rancher
+    group: Platform
+    url: "http://rancher.cattle-system/ping"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Argo CD
+    group: Platform
+    url: "https://argocd.socrat.alchemmist.xyz/healthz"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Object storage
+    group: Platform
+    url: "http://rustfs-gateway.identity:8080/health"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: NetBird
+    group: Network
+    url: "http://netbird-edge-forwarder.identity:8080/ping"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: File sync A
+    group: Network
+    url: "http://syncthing-sync-0.syncthing/rest/noauth/health"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: File sync B
+    group: Network
+    url: "http://syncthing-sync-1.syncthing/rest/noauth/health"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Homepage over HTTPS
+    group: Public web
+    url: "https://socrat.alchemmist.xyz/"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Blog over HTTPS
+    group: Public web
+    url: "https://alchemmist.xyz/"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
+  - name: Wishlist over HTTPS
+    group: Public web
+    url: "https://wishlist.alchemmist.xyz/"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200"]
