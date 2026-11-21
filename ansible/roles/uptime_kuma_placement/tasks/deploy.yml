@@ -23,9 +23,9 @@
       - "{{ uptime_kuma_namespace }}"
       - --reset-values
       - --set-string
-      - "nodeName={{ uptime_kuma_destination }}"
+      - nodeName={{ uptime_kuma_destination }}
       - --set-string
-      - "hostPath={{ uptime_kuma_directory }}"
+      - hostPath={{ uptime_kuma_directory }}
       - --atomic
       - --wait
       - --timeout

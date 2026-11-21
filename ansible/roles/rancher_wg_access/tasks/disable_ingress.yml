@@ -32,11 +32,11 @@
            --show-error,
            --fail,
            --noproxy,
-           '*',
+           "*",
            --max-time,
-           '10',
+           "10",
            --write-out,
-           '\n%{remote_ip}',
+           "\\n%{remote_ip}",
            "https://{{ rancher_wg_host }}/ping"]
   loop: "{{ (rancher_wg_pods.stdout | from_json)['items'] }}"
   loop_control:
@@ -60,7 +60,7 @@
            --kubeconfig,
            "{{ rancher_wg_kubeconfig }}",
            --filter,
-           '^rancher$',
+           ^rancher$,
            --output,
            json]
   register: rancher_wg_release_metadata

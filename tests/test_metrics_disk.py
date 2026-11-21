@@ -116,3 +116,11 @@ def test_allocation_overhead_invalidates_foreign_logical_size_threshold() -> Non
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_shared_phase_excludes_retained_local_five(tmp_path, monkeypatch):
+    """A retained source must not enter the active budget a second time."""
+    (tmp_path / 'socrat-thanos-5m').mkdir()
+    (tmp_path / 'socrat-thanos-1h').mkdir()
+    monkeypatch.setenv('SKIP_OLD_FIVE', '1')
+    assert [row[1] for row in DISK.rows(str(tmp_path))] == ['/var/lib/socrat-thanos-1h']

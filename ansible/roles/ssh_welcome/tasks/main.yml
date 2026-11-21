@@ -21,7 +21,7 @@
     state: directory
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
 
 - name: Install welcome renderer
   ansible.builtin.copy:
@@ -29,7 +29,7 @@
     dest: /etc/homelab-welcome/welcome.py
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
 
 - name: Install portrait animation module
   ansible.builtin.copy:
@@ -37,7 +37,7 @@
     dest: /etc/homelab-welcome/portrait_animation.py
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
 
 - name: Install sampled patina colors
   ansible.builtin.copy:
@@ -45,7 +45,7 @@
     dest: /etc/homelab-welcome/patina.json
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
 
 - name: Install portrait samples
   ansible.builtin.copy:
@@ -53,7 +53,7 @@
     dest: /etc/homelab-welcome/portraits.json
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
 
 - name: Install public welcome configuration
   ansible.builtin.template:
@@ -61,7 +61,7 @@
     dest: /etc/homelab-welcome/config.json
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
   when: homelab_welcome_enabled
 
 - name: Install guarded SSH welcome hook
@@ -70,7 +70,7 @@
     dest: /etc/profile.d/homelab-welcome.sh
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
 
 - name: Find installed global interactive shell configuration
   ansible.builtin.stat:
@@ -81,15 +81,15 @@
 - name: Enable SSH welcome for bash and zsh
   ansible.builtin.blockinfile:
     path: "{{ item.item }}"
-    marker: '# {mark} HOMELAB SSH WELCOME'
-    block: '. /etc/profile.d/homelab-welcome.sh'
+    marker: "# {mark} HOMELAB SSH WELCOME"
+    block: . /etc/profile.d/homelab-welcome.sh
   loop: "{{ welcome_shell_configs.results }}"
   when: item.stat.exists
 
 - name: Suppress the distribution MOTD in SSH sessions
   ansible.builtin.lineinfile:
     path: /etc/pam.d/sshd
-    regexp: '^\s*session\s+optional\s+pam_motd\.so(?:\s.*)?$'
+    regexp: ^\s*session\s+optional\s+pam_motd\.so(?:\s.*)?$
     state: absent
     backup: true
   when: homelab_welcome_enabled
