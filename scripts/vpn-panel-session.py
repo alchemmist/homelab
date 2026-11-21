@@ -21,7 +21,7 @@ import urllib.request
 from collections.abc import Sequence
 from contextlib import closing
 from pathlib import Path
-from typing import cast
+from typing import Protocol, TextIO
 
 spec = importlib.util.spec_from_file_location(
     "inventory", Path(__file__).with_name("vpn-hardening-inventory.py")
@@ -57,7 +57,8 @@ def command(args, **kwargs) -> str:
     return output
 
 
-def token_rows(database=DB) -> "list[dict[str, object]]":
+def token_rows(database: Path = DB) -> list[dict[str, object]]:
+    """Read the native api_tokens table read-only ordered by id."""
     with closing(sqlite3.connect(h.check_path(database).as_uri() + "?mode=ro", uri=True)) as con:
         con.row_factory = sqlite3.Row
         return [dict(r) for r in con.execute("SELECT * FROM api_tokens ORDER BY id")]
@@ -143,6 +144,53 @@ def pod_identity() -> "dict[str, object]":
     ):
         raise ValueError("Core version drift")
     return {"name": p["metadata"]["name"], "uid": p["metadata"]["uid"], "image": IMAGE}
+
+
+class TokenAuditor(Protocol):
+    """Session shape needed to audit temporary and original token rows."""
+
+    database: Path
+    names: dict[str, str]
+    original: list[dict[str, object]]
+
+
+class ReleasableState(Protocol):
+    """Session shape needed to finish cleanup after the audit."""
+
+    state: Path
+    lock: TextIO | None
+
+
+def token_drift_errors(session: TokenAuditor) -> list[str]:
+    """Report any temporary row that remains and any original token drift."""
+    errors: list[str] = []
+    rows = token_rows(session.database)
+    if any(r["name"] in session.names.values() for r in rows):
+        errors.append("temporary-row-remains")
+    # Untouched tokens must remain byte-identical, not just still enabled.
+    original_ids = {r["id"] for r in session.original}
+    if session.original and [r for r in rows if r["id"] in original_ids] != session.original:
+        errors.append("original-token-drift")
+    return errors
+
+
+def finalize_cleanup(session: ReleasableState, errors: list[str]) -> None:
+    """Refuse on any cleanup uncertainty, then release the private state."""
+    if errors:
+        raise RuntimeError("Temporary credential cleanup uncertain; inspect private state")
+    if (session.state / "uncertain.json").exists():
+        h.save(
+            session.state / "credential-cleanup.json",
+            {"temporary_rows_removed": True, "existing_tokens_unchanged": True},
+        )
+        (session.state / "uncertain.json").unlink()
+    for name in ("bootstrap.stdout", "bootstrap.json", "cleanup.json", "worker.json"):
+        path = session.state / name
+        if path.exists():
+            path.unlink()
+    if session.lock:
+        session.lock.close()
+        session.lock = None
 
 
 class NativeSession:
@@ -316,8 +364,9 @@ class NativeSession:
             raise RuntimeError("Worker credential unavailable")
         return request(self.base, self.credentials["worker"]["token"], method, path, body)
 
-    def cleanup(self) -> None:
-        errors = []
+    def cleanup(self):
+        """Revoke every temporary token and prove the untouched rows stayed identical."""
+        errors: list[str] = []
         actor = "cleanup" if "cleanup" in self.credentials else "bootstrap"
         if actor in self.credentials:
             for kind in ("worker", "bootstrap", "cleanup"):
@@ -327,28 +376,8 @@ class NativeSession:
                     self._delete(kind, actor)
                 except (OSError, ValueError, RuntimeError):
                     errors.append(kind)
-        rows = token_rows(self.database)
-        if any(r["name"] in self.names.values() for r in rows):
-            errors.append("temporary-row-remains")
-        # Untouched tokens must remain byte-identical, not just still enabled.
-        original_ids = {r["id"] for r in self.original}
-        if self.original and [r for r in rows if r["id"] in original_ids] != self.original:
-            errors.append("original-token-drift")
-        if errors:
-            raise RuntimeError("Temporary credential cleanup uncertain; inspect private state")
-        if (self.state / "uncertain.json").exists():
-            h.save(
-                self.state / "credential-cleanup.json",
-                {"temporary_rows_removed": True, "existing_tokens_unchanged": True},
-            )
-            (self.state / "uncertain.json").unlink()
-        for name in ("bootstrap.stdout", "bootstrap.json", "cleanup.json", "worker.json"):
-            path = self.state / name
-            if path.exists():
-                path.unlink()
-        if self.lock:
-            self.lock.close()
-            self.lock = None
+        errors.extend(token_drift_errors(self))
+        finalize_cleanup(self, errors)
 
     def __enter__(self) -> typing.Self:
         enter: typing.Self = self

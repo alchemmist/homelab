@@ -79,24 +79,27 @@ class ProbeTests(unittest.TestCase):
     def test_trusted_tls_header_only_stream_and_cleanup(self) -> None:
         grpc, state = self.fake()
         result = check.probe(check.ENTRANCES[0], grpc_module=grpc)
-        self.assertTrue(result["registered_header"])
-        self.assertTrue(state["cancelled"] and state["closed"])
-        self.assertEqual(state["credentials"], "trusted-default-roots")
-        self.assertIn(("grpc.ssl_target_name_override", check.HOST), state["options"])
-        self.assertEqual(state["path"], "/signalexchange.SignalExchange/ConnectStream")
-        self.assertEqual(state["metadata"][0][0], "x-wiretrustee-peer-id")
-        self.assertEqual(len(state["metadata"][0][1]), 44)
+        assert result["registered_header"]
+        assert state["cancelled"]
+        assert state["closed"]
+        assert state["credentials"] == "trusted-default-roots"
+        assert ("grpc.ssl_target_name_override", check.HOST) in state["options"]
+        assert state["path"] == "/signalexchange.SignalExchange/ConnectStream"
+        assert state["metadata"][0][0] == "x-wiretrustee-peer-id"
+        expected_peer_id_length = 44
+        assert len(state["metadata"][0][1]) == expected_peer_id_length
         # Finally released the generator; it never yields request DATA.
-        self.assertEqual(list(state["requests"]), [])
-        self.assertNotIn("metadata", result)
+        assert list(state["requests"]) == []
+        assert "metadata" not in result
 
     def test_missing_header_and_rpc_error_fail_closed_and_release_stream(self) -> None:
         for registered, fail in [(False, False), (False, True)]:
             grpc, state = self.fake(registered, fail)
             result = check.probe(check.ENTRANCES[0], grpc_module=grpc)
-            self.assertFalse(result["registered_header"])
-            self.assertEqual(result["rpc_code"], "DEADLINE_EXCEEDED")
-            self.assertTrue(state["cancelled"] and state["closed"])
+            assert not result["registered_header"]
+            assert result["rpc_code"] == "DEADLINE_EXCEEDED"
+            assert state["cancelled"]
+            assert state["closed"]
 
     def test_unreviewed_destination_or_unbounded_deadline_refused(self) -> None:
         for address, deadline in [

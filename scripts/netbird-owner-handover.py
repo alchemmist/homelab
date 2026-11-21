@@ -23,7 +23,7 @@ ROOT = Path.home() / ".local/state/netbird-internal-stage/journal"
 BASE = "https://netbird.socrat.alchemmist.xyz/api/"
 
 
-def subject(uuid=UUID, connector=CONNECTOR):
+def subject(uuid=UUID, connector=CONNECTOR) -> str:
     a, b = uuid.encode(), connector.encode()
     return (
         base64.b64encode(b"\x0a" + bytes([len(a)]) + a + b"\x12" + bytes([len(b)]) + b)
@@ -32,7 +32,7 @@ def subject(uuid=UUID, connector=CONNECTOR):
     )
 
 
-def target_user(users, expected):
+def target_user(users, expected) -> dict[str, object]:
     if expected != subject():
         raise ValueError(
             "refusing subject: requires encoded raw owner UUID plus exact connector, never email"
@@ -56,10 +56,11 @@ def target_user(users, expected):
     age = datetime.datetime.now(datetime.UTC) - stamp
     if not 0 <= age.total_seconds() < 86400:
         raise ValueError("no recent genuine owner OIDC login evidence")
-    return u
+    owner: dict[str, object] = u
+    return owner
 
 
-def network_snapshot(api, allow_owner_device=False):
+def network_snapshot(api, allow_owner_device=False) -> list[dict[str, object]]:
     for name in ["setup-keys", "policies", "networks"]:
         if api(name) != []:
             raise ValueError("unexpected network grants; stop")
@@ -84,7 +85,7 @@ def network_snapshot(api, allow_owner_device=False):
     ]
 
 
-def main():
+def main() -> None:
     os.umask(0o077)
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--subject", required=True)
@@ -149,7 +150,7 @@ def main():
     with os.fdopen(fd, "w") as f:
         json.dump({"users": users, "account_id": accounts[0]["id"]}, f)
     api(
-        "users/" + urllib.parse.quote(target["id"], safe=""),
+        "users/" + urllib.parse.quote(cast("str", target["id"]), safe=""),
         {"role": "owner", "auto_groups": target["auto_groups"], "is_blocked": False},
     )
     after = api("users")

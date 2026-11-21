@@ -72,35 +72,29 @@ class ProductionSdkTraceTests(unittest.TestCase):
     def test_real_service_child_correlates_but_does_not_certify_inference_or_all_apps(self) -> None:
         doc, trace_id, parent_id = self.fixture()
         result = module().summarize_production_litellm(doc, trace_id, parent_id)
-        self.assertTrue(result["success"])
-        self.assertTrue(result["crossProcessW3cParentChildVerified"])
-        self.assertFalse(result["productionInferenceSuccessPathVerified"])
-        self.assertFalse(result["allApplicationSdkCoverageComplete"])
+        assert result["success"]
+        assert result["crossProcessW3cParentChildVerified"]
+        assert not result["productionInferenceSuccessPathVerified"]
+        assert not result["allApplicationSdkCoverageComplete"]
 
     def test_ingress_shared_probe_or_library_service_cannot_impersonate_production(self) -> None:
         for service in ["traefik", "homelab-live-sdk-probe", "homelab-litellm-sdk-canary"]:
             doc, trace_id, parent_id = self.fixture()
             doc["resourceSpans"][1]["resource"]["attributes"][0]["value"]["stringValue"] = service
-            self.assertFalse(
-                module().summarize_production_litellm(doc, trace_id, parent_id)["success"]
-            )
+            assert not module().summarize_production_litellm(doc, trace_id, parent_id)["success"]
 
     def test_wrong_trace_or_missing_parent_does_not_prove_w3c(self) -> None:
         for change in [{"traceId": "11" * 16}, {"parentSpanId": "22" * 8}]:
             doc, trace_id, parent_id = self.fixture()
             doc["resourceSpans"][1]["scopeSpans"][0]["spans"][0].update(change)
-            self.assertFalse(
-                module().summarize_production_litellm(doc, trace_id, parent_id)["success"]
-            )
+            assert not module().summarize_production_litellm(doc, trace_id, parent_id)["success"]
 
     def test_inference_requires_native_llm_span_and_does_not_invent_cross_app_parenting(
         self,
     ) -> None:
         doc, trace_id, parent_id = self.fixture()
         helper = module()
-        self.assertFalse(
-            helper.summarize_production_litellm(doc, trace_id, parent_id, inference=True)["success"]
-        )
+        assert not helper.summarize_production_litellm(doc, trace_id, parent_id, inference=True)["success"]
         llm = {
             "traceId": trace_id,
             "spanId": "aa" * 8,
@@ -109,9 +103,9 @@ class ProductionSdkTraceTests(unittest.TestCase):
         }
         doc["resourceSpans"][1]["scopeSpans"][0]["spans"].append(llm)
         report = helper.summarize_production_litellm(doc, trace_id, parent_id, inference=True)
-        self.assertTrue(report["productionInferenceSuccessPathVerified"])
-        self.assertFalse(report["productionLitellmHttpAuthRouterErrorPathVerified"])
-        self.assertFalse(report["nativeVllmDescendantInSameTraceVerified"])
+        assert report["productionInferenceSuccessPathVerified"]
+        assert not report["productionLitellmHttpAuthRouterErrorPathVerified"]
+        assert not report["nativeVllmDescendantInSameTraceVerified"]
         vllm: _ResourceSpan = {
             "resource": {"attributes": [{"key": "service.name", "value": {"stringValue": "vllm"}}]},
             "scopeSpans": [
@@ -128,11 +122,7 @@ class ProductionSdkTraceTests(unittest.TestCase):
             ],
         }
         doc["resourceSpans"].append(vllm)
-        self.assertTrue(
-            helper.summarize_production_litellm(doc, trace_id, parent_id, inference=True)[
-                "nativeVllmDescendantInSameTraceVerified"
-            ]
-        )
+        assert helper.summarize_production_litellm(doc, trace_id, parent_id, inference=True)["nativeVllmDescendantInSameTraceVerified"]
 
     def test_sensitive_marker_rejected_even_on_native_inference_path(self) -> None:
         doc, trace_id, parent_id = self.fixture()
@@ -146,8 +136,8 @@ class ProductionSdkTraceTests(unittest.TestCase):
         )
         doc["diagnostic"] = "OTEL_CANARY_PRIVATE_CONTENT_MUST_NOT_BE_CAPTURED"
         report = module().summarize_production_litellm(doc, trace_id, parent_id, inference=True)
-        self.assertFalse(report["success"])
-        self.assertTrue(report["sensitiveSyntheticContentFound"])
+        assert not report["success"]
+        assert report["sensitiveSyntheticContentFound"]
 
     def test_duplicate_ids_or_self_parenting_are_rejected(self) -> None:
         doc, trace_id, parent_id = self.fixture()
@@ -155,6 +145,4 @@ class ProductionSdkTraceTests(unittest.TestCase):
         for change in [{"spanId": parent_id}, {"parentSpanId": child["spanId"]}]:
             bad = copy.deepcopy(doc)
             bad["resourceSpans"][1]["scopeSpans"][0]["spans"][0].update(change)
-            self.assertFalse(
-                module().summarize_production_litellm(bad, trace_id, parent_id)["success"]
-            )
+            assert not module().summarize_production_litellm(bad, trace_id, parent_id)["success"]

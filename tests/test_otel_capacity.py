@@ -76,20 +76,17 @@ class CapacityPlacementTests(unittest.TestCase):
         doc = deployment()
         before = copy.deepcopy(doc)
         patch, undo = capacity.placement(doc)
-        self.assertEqual(doc, before)
-        self.assertEqual(patch["metadata"]["resourceVersion"], "123")
-        self.assertEqual(
-            patch["spec"]["strategy"]["rollingUpdate"],
-            {"maxSurge": 1, "maxUnavailable": 0},
-        )
-        self.assertEqual(set(patch["spec"]["template"]["spec"]), {"affinity"})
-        self.assertNotIn("replicas", patch["spec"])
-        self.assertEqual(undo["uid"], "controller-uid")
-        self.assertIsNone(undo["originalAffinity"])
+        assert doc == before
+        assert patch["metadata"]["resourceVersion"] == "123"
+        assert patch["spec"]["strategy"]["rollingUpdate"] == {"maxSurge": 1, "maxUnavailable": 0}
+        assert set(patch["spec"]["template"]["spec"]) == {"affinity"}
+        assert "replicas" not in patch["spec"]
+        assert undo["uid"] == "controller-uid"
+        assert undo["originalAffinity"] is None
         expression = patch["spec"]["template"]["spec"]["affinity"]["nodeAffinity"][
             "requiredDuringSchedulingIgnoredDuringExecution"
         ]["nodeSelectorTerms"][0]["matchExpressions"][0]
-        self.assertEqual(expression["values"], ["socrat-0", "socrat-1"])
+        assert expression["values"] == ["socrat-0", "socrat-1"]
 
     def test_pod_anti_affinity_preserved_and_reapply_is_idempotent(self) -> None:
         doc = deployment()
@@ -98,9 +95,9 @@ class CapacityPlacementTests(unittest.TestCase):
         }
         patch, _ = capacity.placement(doc)
         affinity = patch["spec"]["template"]["spec"]["affinity"]
-        self.assertIn("podAntiAffinity", affinity)
+        assert "podAntiAffinity" in affinity
         doc["spec"]["template"]["spec"]["affinity"] = affinity
-        self.assertEqual(capacity.placement(doc), (None, None))
+        assert capacity.placement(doc) == (None, None)
 
     def test_persistent_or_host_data_refused(self) -> None:
         for key in ("persistentVolumeClaim", "hostPath", "nfs"):
