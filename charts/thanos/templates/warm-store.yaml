@@ -34,7 +34,10 @@ spec:
   podSelector: {matchLabels: {app: thanos-warm-api}}
   policyTypes: [Ingress]
   ingress:
-    - from: [{podSelector: {matchLabels: {thanos-warm-client: seed}}}]
+    - from:
+        - podSelector: {matchLabels: {thanos-warm-client: seed}}
+        - podSelector: {matchLabels: {operator.prometheus.io/name: kube-prometheus-stack-prometheus}}
+        - podSelector: {matchExpressions: [{key: app, operator: In, values: [thanos-cascade, thanos-compactor, thanos-store]}]}
       ports: [{protocol: TCP, port: 9000}]
 ---
 apiVersion: v1

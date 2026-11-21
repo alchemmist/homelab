@@ -9,7 +9,7 @@ metadata:
     app: {{ $name }}
     app.kubernetes.io/part-of: thanos
 spec:
-  replicas: {{ if and $five (eq $.Values.fivePhase "cold") }}0{{ else if $component.spreadQuery }}2{{ else }}1{{ end }}
+  replicas: {{ if and (eq $name "thanos-compactor") $.Values.workshopHold }}0{{ else if and $five (eq $.Values.fivePhase "cold") }}0{{ else if $component.spreadQuery }}2{{ else }}1{{ end }}
   selector:
     matchLabels:
       app: {{ $name }}
