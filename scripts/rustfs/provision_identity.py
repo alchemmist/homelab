@@ -90,6 +90,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
     """Redirect handler that refuses to follow HTTP redirects."""
 
     def redirect_request(self, request, response, code, message, headers, newurl):
+        """Close the body and refuse redirects instead of following them."""
         if response is not None:
             response.close()
         raise ValueError("redirect refused")

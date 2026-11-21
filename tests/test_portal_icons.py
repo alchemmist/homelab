@@ -59,6 +59,8 @@ class Response:
         return False
 
     def read(self) -> bytes:
+        """Return the fixture body."""
+
         return self.body
 
 
@@ -99,6 +101,8 @@ class FakeAPI:
             self.content[url] = (ASSETS / filename).read_bytes()
 
     def __call__(self, request, timeout=None) -> Response:
+        """Serve fixture media without API credentials."""
+
         if isinstance(request, str):
             # No API bearer token is sent when reading media.
             return Response(self.content[request])

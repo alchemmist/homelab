@@ -66,6 +66,8 @@ class _Pod(TypedDict):
 class Convergence(unittest.TestCase):
     """Check refactor acceptance fixtures converge to expected state."""
     def fixture(self) -> tuple[_Deployment, list[_Pod]]:
+        """Return a fixture document for convergence tests."""
+
         d = {
             "metadata": {"generation": 2},
             "spec": {"replicas": 1},
@@ -89,20 +91,28 @@ class Convergence(unittest.TestCase):
         return cast(_Deployment, d), [p]
 
     def test_ready_desired_node(self) -> None:
+        """Ready desired node."""
+
         d, p = self.fixture()
         assert placement.converged(d, p, "socrat-5")
 
     def test_replica_zero_never_passes(self) -> None:
+        """Replica zero never passes."""
+
         d, _ = self.fixture()
         d["spec"]["replicas"] = 0
         assert not placement.converged(d, [], "socrat-5")
 
     def test_old_ready_pod_never_passes(self) -> None:
+        """Old ready pod never passes."""
+
         d, p = self.fixture()
         p[0]["spec"]["nodeName"] = "socrat-1"
         assert not placement.converged(d, p, "socrat-5")
 
     def test_missing_status_and_old_generation_never_pass(self) -> None:
+        """Missing status and old generation never pass."""
+
         d, p = self.fixture()
         p[0]["status"]["containerStatuses"] = []
         assert not placement.converged(d, p, "socrat-5")
@@ -111,6 +121,8 @@ class Convergence(unittest.TestCase):
         assert not placement.converged(d, p, "socrat-5")
 
     def test_terminating_or_extra_writer_never_passes(self) -> None:
+        """Terminating or extra writer never passes."""
+
         d, p = self.fixture()
         assert not placement.converged(d, p + copy.deepcopy(p), "socrat-5")
         p[0]["metadata"]["deletionTimestamp"] = "2026-11-16T00:00:00Z"
@@ -120,6 +132,8 @@ class Convergence(unittest.TestCase):
 class CurrentDocumentation(unittest.TestCase):
     """Verify current wiki documentation matches canonical values."""
     def test_current_wiki_storage_matches_canonical_values(self) -> None:
+        """Current wiki storage matches canonical values."""
+
         claim = yaml.safe_load((ROOT / "deploy/wiki-runtime/values.yaml").read_text())[
             "persistence"
         ]["existingClaim"]
@@ -127,6 +141,8 @@ class CurrentDocumentation(unittest.TestCase):
             assert "`" + claim + "`" in (ROOT / name).read_text()
 
     def test_current_context_is_bounded_and_history_separate(self) -> None:
+        """Current context is bounded and history separate."""
+
         text = (ROOT / "llm-wiki/context.md").read_text()
         context_line_budget = 160
         assert len(text.splitlines()) < context_line_budget
@@ -137,6 +153,8 @@ class CurrentDocumentation(unittest.TestCase):
 class GrafanaStorage(unittest.TestCase):
     """Check Grafana storage keeps existing data and retained claims."""
     def test_explicit_existing_data_and_retained_claims(self) -> None:
+        """Explicit existing data and retained claims."""
+
         v = yaml.safe_load((ROOT / "charts/grafana/values.yaml").read_text())["grafana"]
         assert v["nodeSelector"]["kubernetes.io/hostname"] == "socrat-5"
         assert v["persistence"]["existingClaim"] == "grafana-socrat5"
@@ -164,6 +182,8 @@ class GrafanaStorage(unittest.TestCase):
             )
 
     def test_mcp_remains_read_only_stateless_and_exact_version(self) -> None:
+        """Mcp remains read only stateless and exact version."""
+
         v = yaml.safe_load((ROOT / "charts/grafana-mcp/values.yaml").read_text())
         assert v["nodeSelector"]["kubernetes.io/hostname"] == "socrat-5"
         assert v["image"]["tag"] == "2.0.2"

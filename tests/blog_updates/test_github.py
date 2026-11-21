@@ -20,6 +20,7 @@ class Fake(GitHub):
         self.main = main or "a" * 40
 
     def api(self, method, path, body=None):
+        'Record a call and return the scripted next response.'
         self.calls.append((method, path, body))
         if path.startswith("pulls?"):
             return self.existing
@@ -30,6 +31,7 @@ class Fake(GitHub):
         return {}
 
     def read_updates(self, _ref):
+        'Return the scripted updates file for any ref.'
         return "original", "file-sha"
 
 
@@ -38,17 +40,20 @@ class WriterTests(unittest.TestCase):
 
     def test_closed_pr_not_reopened(self) -> None:
 
+        'Verify an existing closed PR is reused, not reopened.'
         g = Fake(existing=[{"html_url": "closed-pr", "state": "closed"}])
         assert g.propose("a" * 40, "new", "why")["status"] == "existing"
         assert all(c[0] == "GET" for c in g.calls)
 
     def test_advanced_main_refused(self) -> None:
+        'Verify staging work never targets the main branch.'
         g = Fake(main="b" * 40)
         with self.assertRaises(UnsafeInput):
             g.propose("a" * 40, "new", "why")
         assert all(c[0] == "GET" for c in g.calls)
 
     def test_only_updates_written(self) -> None:
+        'Verify the flow only ever writes the updates file.'
         g = Fake()
         r = g.propose("a" * 40, "new", "why")
         assert r["status"] == "created"
@@ -58,6 +63,7 @@ class WriterTests(unittest.TestCase):
         assert not any("merge" in c[1] for c in g.calls)
 
     def test_no_change_no_branch(self) -> None:
+        'Verify no branch or PR is created when nothing changed.'
         g = Fake()
         assert g.propose("a" * 40, "original", "why")["status"] == "no_change"
         assert all(c[0] == "GET" for c in g.calls)

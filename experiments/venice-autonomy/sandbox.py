@@ -246,6 +246,7 @@ class Sandbox:
             raise
 
     def inspect_security(self):
+        """Return the container's security-relevant inspect section."""
         info = json.loads(
             subprocess.check_output(["docker", "inspect", self.container_id], timeout=15)
         )[0]
@@ -302,6 +303,7 @@ class Sandbox:
         return result
 
     def execute(self, action, input_bytes=None, **kwargs):
+        """Run one wrapped command action with bounded timeout and stdin."""
         command = action["command"]
         wrapped = (
             "timeout -k 2 40 bash -lc "
@@ -329,6 +331,7 @@ class Sandbox:
         return {"returncode": code, "output": text, "exception_info": None}
 
     def snapshot(self):
+        """Pause the container and export a snapshot archive to state."""
         subprocess.run(
             ["docker", "pause", self.container_id], capture_output=True, check=True, timeout=15
         )
@@ -340,12 +343,15 @@ class Sandbox:
         return inspect_archive(data)
 
     def get_template_vars(self):
+        """Return template variables exposed to this sandbox."""
         return {"cwd": "/workspace", **self.config}
 
     def serialize(self):
+        """Return the JSON-serializable sandbox state summary."""
         return {"info": {"environment": self.config, "security": self.security}}
 
     def close(self):
+        """Tear down the container and verify no foreign writes remain."""
         import owned_resources
 
         expected = str(self.directory.resolve())

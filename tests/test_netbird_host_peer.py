@@ -36,6 +36,8 @@ class HostPeerTest(unittest.TestCase):
         return result
 
     def test_live_gate_no_default_and_real_jwt_only(self) -> None:
+        """The live gate requires JWT groups, known peers and memory headroom."""
+
         assert peer.preflight([], self.groups(), [], 600 * 1024) == ["0", "1"]
         for policies, groups, peers, mem in [
             ([{"name": "Default"}], self.groups(), [], 600 * 1024),
@@ -49,6 +51,8 @@ class HostPeerTest(unittest.TestCase):
                 peer.preflight(policies, groups, peers, mem)
 
     def test_machine_not_router_no_credentials_or_host_root(self) -> None:
+        """The machine peer is not a router and holds no credentials or host root."""
+
         for host in peer.HOSTS:
             docs = peer.peer(host)
             deployment = docs[1]
@@ -80,6 +84,8 @@ class HostPeerTest(unittest.TestCase):
                 assert forbidden not in blob
 
     def test_single_use_native_key_body(self) -> None:
+        """Setup keys are one-off, groupless and short-lived."""
+
         for host in peer.HOSTS:
             key = peer.setup_key_body(host)
             assert key["type"] == "one-off"
@@ -90,6 +96,8 @@ class HostPeerTest(unittest.TestCase):
             peer.setup_key_body("new-vm")
 
     def test_only_directed_tcp_ports_dedicated_groups(self) -> None:
+        """Policies use dedicated groups with directed TCP ports."""
+
         bodies = peer.policies(["jwt-grafana", "jwt-ssh"], ["machine-grafana", "machine-ssh"])
         for body, port in zip(bodies, ["8443", "2222"], strict=True):
             rule = body["rules"][0]
@@ -101,6 +109,8 @@ class HostPeerTest(unittest.TestCase):
             peer.policies(["same", "same"], ["d1", "d2"])
 
     def test_overlay_only_tls_host_sni_verified_upstream(self) -> None:
+        """The frontend is overlay-only TLS with SNI-verified upstream."""
+
         cfg = peer.frontend_config("100.96.1.2")
         static = yaml.safe_load(cfg["static.yaml"])
         dynamic = yaml.safe_load(cfg["dynamic.yaml"])
@@ -127,6 +137,8 @@ class HostPeerTest(unittest.TestCase):
 class StunTest(unittest.TestCase):
     """Validate the bounded STUN-only manifest without service SNAT."""
     def test_bounded_stun_only_no_service_snat(self) -> None:
+        """STUN is bounded, dedicated and without service SNAT."""
+
         docs = stun.manifests()
         assert len(docs) == 1
         spec = docs[0]["spec"]["template"]["spec"]
@@ -163,6 +175,8 @@ class StunTest(unittest.TestCase):
         return packet, response
 
     def test_binding_exact_transaction_and_source(self) -> None:
+        """Bindings parse only the exact transaction and source."""
+
         packet, response = self.binding()
         assert probe.parse_binding(packet, response) == {"address": "109.173.40.247", "port": 12345}
         for bad in [

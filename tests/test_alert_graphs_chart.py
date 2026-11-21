@@ -13,6 +13,8 @@ class AlertGraphsChartTests(unittest.TestCase):
     """Tests for the alert graphs chart template."""
 
     def render(self, enabled=False, extra=()) -> subprocess.CompletedProcess[str]:
+        """Run helm template for the chart, optionally with alert graphs enabled."""
+
 
         args = [
             "helm",
@@ -40,11 +42,15 @@ class AlertGraphsChartTests(unittest.TestCase):
         return subprocess.run(args + list(extra), cwd=ROOT, capture_output=True, text=True)
 
     def test_disabled_has_no_resources(self) -> None:
+        """Default render produces no alert-graphs resources."""
+
         result = self.render()
         assert result.returncode == 0, result.stderr
         assert "name: socrat-alert-graphs" not in result.stdout
 
     def test_enabled_isolated_role(self) -> None:
+        """Enabled render ships an isolated, digest-pinned gateway deployment."""
+
         result = self.render(True)
         assert result.returncode == 0, result.stderr
         assert "/app/graph_gateway.py" in result.stdout
@@ -58,6 +64,8 @@ class AlertGraphsChartTests(unittest.TestCase):
         assert "SPI_S3_WRITER_FILE" not in result.stdout
 
     def test_release_values_render_real_valid_images(self) -> None:
+        """Release values render valid immutable images and renderer limits."""
+
         result = self.render(
             False,
             [
@@ -84,6 +92,8 @@ class AlertGraphsChartTests(unittest.TestCase):
                     assert container["resources"]["limits"]["memory"] == "2Gi"
 
     def test_monitoring_helpers_use_one_portable_home_placement(self) -> None:
+        """Gateway and monitoring proxy share placement on portable home nodes."""
+
         import yaml
 
         result = self.render(extra=[
@@ -102,16 +112,22 @@ class AlertGraphsChartTests(unittest.TestCase):
             assert spec["affinity"]["nodeAffinity"] == {"requiredDuringSchedulingIgnoredDuringExecution": {"nodeSelectorTerms": [term(["socrat-0", "socrat-1"])]}, "preferredDuringSchedulingIgnoredDuringExecution": [{"weight": 100, "preference": term(["socrat-0"])}]}
 
     def test_requires_immutable_image(self) -> None:
+        """Non-digest gateway images are rejected as non-immutable."""
+
         result = self.render(True, ["--set", "gateway.digest=latest"])
         assert result.returncode != 0
         assert "immutable" in result.stderr
 
     def test_requires_renderer(self) -> None:
+        """Enabling alert graphs without the remote imageRenderer fails renders."""
+
         result = self.render(True, ["--set", "grafana.imageRenderer.enabled=false"])
         assert result.returncode != 0
         assert "remote imageRenderer" in result.stderr
 
     def test_bot_sources_are_exact_only(self) -> None:
+        """Bot source CIDRs must be exact /32 or /128 addresses."""
+
         result = self.render(True, ["--set", "alertGraphs.botSourceCIDRs[0]=10.0.0.0/8"])
         assert result.returncode != 0
         assert "exact /32 or /128" in result.stderr

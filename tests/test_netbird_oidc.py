@@ -434,6 +434,8 @@ class NetBirdOIDCTests(unittest.TestCase):
         return result
 
     def test_callback_follows_pinned_redirect_algorithm(self) -> None:
+        """The callback follows the pinned redirect algorithm."""
+
         assert oidc.callback_from_issuer(ISSUER) == CALLBACK
         assert oidc.callback_from_issuer(ISSUER + "/") == CALLBACK
         assert oidc.callback_from_issuer("https://netbird.socrat.alchemmist.xyz") == CALLBACK
@@ -450,6 +452,8 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert "configure" not in SOURCE.read_text()
 
     def test_profile_expression_is_allowlisted_and_not_a_groups_scope(self) -> None:
+        """The profile expression is allowlisted, not a groups scope."""
+
         expression = oidc.profile_expression()
         assert expression == expression.strip(), "Expression must survive Authentik serializer round-trip"
         assert "request.user.ak_groups.all()" in expression
@@ -464,6 +468,8 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert "groups" not in oidc.UPSTREAM_SCOPES
 
     def test_check_and_plan_are_get_only_and_do_not_invent_callback(self) -> None:
+        """Check and plan are GET-only and never invent a callback."""
+
         code, out, err = self.run_tool("check")
         assert code == 1, err
         assert "reconciled=false" in out
@@ -488,6 +494,8 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert any(call[1] == "/api/v3/core/applications/" and "superuser_full_list=true" in call[2] for call in self.fake.calls)
 
     def test_apply_requires_digest_and_keeps_secret_runtime_only(self) -> None:
+        """Apply requires a digest and keeps the secret runtime-only."""
+
         code, out, err = self.run_tool("apply", "--netbird-config", str(self.config))
         assert code == 1
         assert "Plan digest mismatch" in err
@@ -568,6 +576,8 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert json.loads((self.root / oidc.RUNTIME_NAME).read_text())["client_secret"] == secret
 
     def test_apply_does_not_adopt_or_continue_after_a_foreign_object(self) -> None:
+        """Apply neither adopts nor continues after a foreign object."""
+
         self.fake.providers.append(
             {
                 "pk": 77,
@@ -590,6 +600,8 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert self.fake.writes() == []
 
     def test_partial_provider_failure_retries_without_a_second_group(self) -> None:
+        """A partial provider failure retries without a second group."""
+
         self.fake.fail_provider = True
         approved = self.plan()
         code, out, err = self.run_tool(
@@ -609,6 +621,8 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert sum(1 for item in self.fake.providers if item["name"] == oidc.PROVIDER_NAME) == 1
 
     def test_tim_superuser_group_and_extra_member_block_without_writes(self) -> None:
+        """Superuser groups and extra members block without writes."""
+
         _sequence(self.fake.users[1]["groups"]).append(OWNER_GROUPS[0])
         code, out, err = self.run_tool("plan", "--netbird-config", str(self.config))
         assert code == 1
@@ -650,6 +664,8 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert self.fake.writes() == []
 
     def test_legacy_membership_loss_stops_without_a_user_patch(self) -> None:
+        """Legacy membership loss stops without a user patch."""
+
         self.fake.drop_legacy_on_add = True
         approved = self.plan()
         code, out, err = self.run_tool(
@@ -660,6 +676,8 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert not any(call[1].startswith("/api/v3/core/users/") and call[0] != "GET" for call in self.fake.calls)
 
     def test_journal_symlink_is_not_followed(self) -> None:
+        """A journal symlink is never followed."""
+
         approved = self.plan()
         outside = self.root / "outside.json"
         outside.write_text('{"client_secret": "nope"}\n')
@@ -673,6 +691,8 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert outside.read_text() == '{"client_secret": "nope"}\n'
 
     def test_markerless_nonempty_journal_is_not_replaced_or_used_to_mint_a_secret(self) -> None:
+        """A markerless journal is never replaced or used to mint a secret."""
+
         approved = self.plan()
         write_json(
             self.root / oidc.JOURNAL_NAME,
@@ -692,6 +712,8 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert self.fake.writes() == []
 
     def test_pinned_connector_source_matches_when_present(self) -> None:
+        """The pinned connector source matches its digest when present."""
+
         repo = Path(os.environ.get("NETBIRD_V082_SRC", "/tmp/netbird-v082-repo"))
         connector = repo / "idp/dex/connector.go"
         if not connector.is_file():
