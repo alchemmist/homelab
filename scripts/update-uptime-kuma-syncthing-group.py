@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Refresh the Uptime Kuma Syncthing monitor group in its SQLite database."""
+
 import datetime
 import json
 import shutil
