@@ -193,17 +193,12 @@ class FourAppMigrationTests(unittest.TestCase):
         """Move stateless apps while Umami's database stays on socrat-0."""
         for name in ["umami", "searxng"]:
             d = render(name)
-            self.assertEqual(
-                cast("DeploymentDoc", obj(d, "Deployment", name))["spec"]["template"]["spec"][
-                    "nodeSelector"
-                ],
-                {"kubernetes.io/hostname": "socrat-5"},
-            )
+            assert cast("DeploymentDoc", obj(d, "Deployment", name))["spec"]["template"]["spec"]["nodeSelector"] == {"kubernetes.io/hostname": "socrat-5"}
         db = cast("DeploymentDoc", obj(render("umami"), "Deployment", "umami-db"))["spec"][
             "template"
         ]["spec"]
-        self.assertEqual(db["nodeSelector"], {"kubernetes.io/hostname": "socrat-0"})
-        self.assertEqual(db["volumes"][0]["hostPath"]["path"], "/srv/umami/postgres")
+        assert db["nodeSelector"] == {"kubernetes.io/hostname": "socrat-0"}
+        assert db["volumes"][0]["hostPath"]["path"] == "/srv/umami/postgres"
 
     def test_dedicated_retained_vm_storage_and_original_claims(self) -> None:
         """Verify retained volumes and rebuilt claims for both UI apps."""
@@ -211,22 +206,15 @@ class FourAppMigrationTests(unittest.TestCase):
             with self.subTest(app=name):
                 docs = render(name)
                 old = cast("ClaimDoc", obj(docs, "PersistentVolumeClaim", name + "-data"))
-                self.assertEqual(old["spec"]["storageClassName"], "local-path")
-                self.assertEqual(old["metadata"]["annotations"]["helm.sh/resource-policy"], "keep")
+                assert old["spec"]["storageClassName"] == "local-path"
+                assert old["metadata"]["annotations"]["helm.sh/resource-policy"] == "keep"
                 pv = cast("VolumeDoc", obj(docs, "PersistentVolume", name + "-socrat5"))
-                self.assertEqual(pv["spec"]["persistentVolumeReclaimPolicy"], "Retain")
-                self.assertEqual(
-                    pv["spec"]["local"]["path"], "/mnt/files/homelab/" + name + "/data"
-                )
-                self.assertEqual(
-                    pv["spec"]["nodeAffinity"]["required"]["nodeSelectorTerms"][0][
-                        "matchExpressions"
-                    ][0]["values"],
-                    ["socrat-5"],
-                )
+                assert pv["spec"]["persistentVolumeReclaimPolicy"] == "Retain"
+                assert pv["spec"]["local"]["path"] == "/mnt/files/homelab/" + name + "/data"
+                assert pv["spec"]["nodeAffinity"]["required"]["nodeSelectorTerms"][0]["matchExpressions"][0]["values"] == ["socrat-5"]
                 claim = cast("ClaimDoc", obj(docs, "PersistentVolumeClaim", name + "-socrat5"))
-                self.assertEqual(claim["spec"]["volumeName"], name + "-socrat5")
-                self.assertEqual(claim["spec"]["storageClassName"], "")
+                assert claim["spec"]["volumeName"] == name + "-socrat5"
+                assert claim["spec"]["storageClassName"] == ""
 
     def test_activation_requires_verified_existing_data_and_single_writer(self) -> None:
         """Require the verified-migration guard and a single writer per app."""
@@ -249,17 +237,17 @@ class FourAppMigrationTests(unittest.TestCase):
                         name,
                     ),
                 )
-                self.assertIn(d["spec"]["replicas"], [0, 1])
-                self.assertEqual(d["spec"]["strategy"]["type"], "Recreate")
+                assert d["spec"]["replicas"] in [0, 1]
+                assert d["spec"]["strategy"]["type"] == "Recreate"
                 s = d["spec"]["template"]["spec"]
-                self.assertEqual(s["nodeSelector"], {"kubernetes.io/hostname": "socrat-5"})
+                assert s["nodeSelector"] == {"kubernetes.io/hostname": "socrat-5"}
                 init = next(
                     c for c in s["initContainers"] if c["name"] == "require-verified-migration"
                 )
-                self.assertIn(".homelab-vm105-migration-verified.json", init["args"][0])
+                assert ".homelab-vm105-migration-verified.json" in init["args"][0]
                 compile(init["args"][0], "<migration-guard>", "exec")
-                self.assertTrue(init["volumeMounts"][0]["readOnly"])
-                self.assertFalse(s["automountServiceAccountToken"])
+                assert init["volumeMounts"][0]["readOnly"]
+                assert not s["automountServiceAccountToken"]
 
     def test_private_gateway_address_and_node_stay_together(self) -> None:
         """Keep the gateway on socrat-0 with its pinned listen address."""
@@ -267,26 +255,20 @@ class FourAppMigrationTests(unittest.TestCase):
         s = cast("DeploymentDoc", obj(docs, "Deployment", "open-webui-gateway"))["spec"][
             "template"
         ]["spec"]
-        self.assertEqual(s["nodeSelector"], {"kubernetes.io/hostname": "socrat-0"})
+        assert s["nodeSelector"] == {"kubernetes.io/hostname": "socrat-0"}
         cm = cast("ConfigMapDoc", obj(docs, "ConfigMap", "open-webui-gateway"))["data"][
             "default.conf"
         ]
-        self.assertIn("listen 10.250.0.1:18080", cm)
-        self.assertIn("return 308 https://$host$request_uri;", cm)
+        assert "listen 10.250.0.1:18080" in cm
+        assert "return 308 https://$host$request_uri;" in cm
 
     def test_terminal_is_still_internal_and_webui_only(self) -> None:
         """Keep open-terminal reachable only from the open-webui pods."""
         docs = render("open-terminal")
-        self.assertFalse(any(d and d["kind"] == "Ingress" for d in docs))
+        assert not any(d and d["kind"] == "Ingress" for d in docs)
         policy = cast("PolicyDoc", obj(docs, "NetworkPolicy", "open-terminal-isolation"))["spec"]
-        self.assertEqual(
-            policy["ingress"][0]["from"],
-            [{"podSelector": {"matchLabels": {"app": "open-webui"}}}],
-        )
-        self.assertEqual(
-            cast("ServiceDoc", obj(docs, "Service", "open-terminal"))["spec"]["type"],
-            "ClusterIP",
-        )
+        assert policy["ingress"][0]["from"] == [{"podSelector": {"matchLabels": {"app": "open-webui"}}}]
+        assert cast("ServiceDoc", obj(docs, "Service", "open-terminal"))["spec"]["type"] == "ClusterIP"
 
     def test_idp_internal_tls_route_is_scoped_to_webui_pod(self) -> None:
         """Route the Authentik TLS name only inside the open-webui pod."""
@@ -294,17 +276,9 @@ class FourAppMigrationTests(unittest.TestCase):
         spec = cast("DeploymentDoc", obj(docs, "Deployment", "open-webui"))["spec"]["template"][
             "spec"
         ]
-        self.assertEqual(
-            spec["hostAliases"],
-            [{"ip": "10.43.218.222", "hostnames": ["auth.socrat.alchemmist.xyz"]}],
-        )
-        self.assertNotIn(
-            "hostAliases",
-            cast("DeploymentDoc", obj(docs, "Deployment", "open-webui-gateway"))["spec"][
-                "template"
-            ]["spec"],
-        )
+        assert spec["hostAliases"] == [{"ip": "10.43.218.222", "hostnames": ["auth.socrat.alchemmist.xyz"]}]
+        assert "hostAliases" not in cast("DeploymentDoc", obj(docs, "Deployment", "open-webui-gateway"))["spec"]["template"]["spec"]
         env = {e["name"]: e for e in spec["containers"][0]["env"]}
-        self.assertEqual(env["WEBUI_AUTH"]["value"], "True")
-        self.assertEqual(env["WEBUI_AUTH_COOKIE_SECURE"]["value"], "True")
-        self.assertNotIn("NODE_TLS_REJECT_UNAUTHORIZED", env)
+        assert env["WEBUI_AUTH"]["value"] == "True"
+        assert env["WEBUI_AUTH_COOKIE_SECURE"]["value"] == "True"
+        assert "NODE_TLS_REJECT_UNAUTHORIZED" not in env

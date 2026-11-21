@@ -7,6 +7,8 @@ import unittest
 from unittest.mock import patch
 from tests.test_rustfs_gateway import g
 
+ELAPSED_UPPER_BOUND = 0.9
+
 
 class Deadlines(unittest.TestCase):
     def test_trickled_header_and_recovery(self) -> None:
@@ -26,15 +28,15 @@ class Deadlines(unittest.TestCase):
                         break
                     time.sleep(0.05)
                 try:
-                    self.assertEqual(s.recv(1024), b"")
+                    assert s.recv(1024) == b""
                 except ConnectionResetError:
                     pass
-                self.assertLess(time.monotonic() - start, 0.9)
+                assert time.monotonic() - start < ELAPSED_UPPER_BOUND
                 s.close()
                 with socket.create_connection(server.server_address) as c:
                     c.settimeout(1)
                     c.sendall(b"GET / HTTP/1.0\r\nHost: rustfs.socrat.alchemmist.xyz\r\n\r\n")
-                    self.assertIn(b"401", c.recv(4096))
+                    assert b"401" in c.recv(4096)
             finally:
                 server.shutdown()
                 server.server_close()
@@ -71,7 +73,7 @@ class Deadlines(unittest.TestCase):
                             "http://127.0.0.1:%d/" % listener.getsockname()[1], timeout=1
                         ) as response:
                             g.bounded(response)
-                    self.assertLess(time.monotonic() - start, 0.9)
+                    assert time.monotonic() - start < ELAPSED_UPPER_BOUND
                 finally:
                     listener.close()
                     t.join(2)
@@ -133,19 +135,19 @@ class Deadlines(unittest.TestCase):
                                 + "/manifest.json HTTP/1.0\r\nHost: rustfs.socrat.alchemmist.xyz\r\nCookie: fixture\r\n\r\n"
                             ).encode()
                         )
-                        self.assertIn(b"502", c.recv(4096))
-                    self.assertLess(time.monotonic() - start, 0.9)
+                        assert b"502" in c.recv(4096)
+                    assert time.monotonic() - start < ELAPSED_UPPER_BOUND
                     # A second connection proves the bounded slot was returned,
                     # not merely that a client-side watchdog closed a socket.
                     until = time.monotonic() + 0.5
                     while not server.slots.acquire(blocking=False):
-                        self.assertLess(time.monotonic(), until)
+                        assert time.monotonic() < until
                         time.sleep(0.01)
                     server.slots.release()
                     with socket.create_connection(server.server_address) as c:
                         c.settimeout(1)
                         c.sendall(b"GET / HTTP/1.0\r\nHost: rustfs.socrat.alchemmist.xyz\r\n\r\n")
-                        self.assertIn(b"401", c.recv(4096))
+                        assert b"401" in c.recv(4096)
                 finally:
                     listener.close()
                     t.join(2)
@@ -171,10 +173,10 @@ class Deadlines(unittest.TestCase):
                 "http://127.0.0.1:%d/" % listener.getsockname()[1], timeout=1
             )
             timer = response.deadline_timer
-            self.assertFalse(timer.finished.is_set())
-            self.assertEqual(g.bounded(response), b"a")
+            assert not timer.finished.is_set()
+            assert g.bounded(response) == b"a"
             response.close()
-            self.assertTrue(timer.finished.is_set())
+            assert timer.finished.is_set()
         finally:
             listener.close()
             t.join(2)
@@ -211,7 +213,7 @@ class Deadlines(unittest.TestCase):
                     ).encode()
                 )
                 time.sleep(0.6)
-                self.assertTrue(server.slots.acquire(blocking=False))
+                assert server.slots.acquire(blocking=False)
                 server.slots.release()
             finally:
                 c.close()
