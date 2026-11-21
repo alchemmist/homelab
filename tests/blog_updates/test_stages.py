@@ -1,12 +1,12 @@
 """Tests for the blog updates stage helpers module."""
 
 import sys
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts/blog_updates"))
-from stages import checked_model
 from engine import UnsafeInput
+from stages import checked_model
 
 # checked_model retries a rejected model answer once, so a bad answer is seen twice.
 MODEL_CALL_CEILING = 2

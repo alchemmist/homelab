@@ -7,13 +7,14 @@ Does not alter other schedules; drift, duplicates and active runs block changes.
 """
 import argparse
 import json
-from pathlib import Path
 import subprocess
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def main():
+    """Run the command-line entry point."""
     p=argparse.ArgumentParser(description=__doc__);
     p.add_argument("--apply",action="store_true");
     a=p.parse_args()

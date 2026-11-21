@@ -4,13 +4,13 @@
 import argparse
 import json
 import os
-from pathlib import Path
 import socket
 import subprocess
 import tempfile
 import urllib.request
-from urllib.parse import quote
+from pathlib import Path
 from typing import cast
+from urllib.parse import quote
 
 SLUG = "socrat-change-password"
 HOST = "auth.socrat.alchemmist.xyz"

@@ -3,11 +3,11 @@
 import argparse
 import json
 import os
-from pathlib import Path
 import shutil
 import sqlite3
 import subprocess
 import tempfile
+from pathlib import Path
 
 CONFIG_PATHS = [
     Path("/etc/rancher/k3s"),
@@ -33,7 +33,8 @@ def backup():
         "file:/var/lib/rancher/k3s/server/db/state.db?mode=ro", uri=True
     ) as database:
         if database.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
-            raise RuntimeError("SQLite datastore integrity check failed")
+            msg = "SQLite datastore integrity check failed"
+            raise RuntimeError(msg)
     subprocess.run(
         ["tar", "-C", "/var/lib/rancher/k3s", "-cpf", str(destination / "server.tar"), "server"],
         check=True,
@@ -48,7 +49,8 @@ def restore(directory):
         directory.parent != Path("/var/backups/homelab-k3s")
         or not (directory / "server.tar").is_file()
     ):
-        raise RuntimeError("Unrecognized backup")
+        msg = "Unrecognized backup"
+        raise RuntimeError(msg)
     server = Path("/var/lib/rancher/k3s/server")
     if server.exists():
         server.rename(directory / "failed-server")

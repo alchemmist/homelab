@@ -3,10 +3,10 @@
 import base64
 import json
 import os
-from pathlib import Path
 import subprocess
 import sys
 import urllib.request
+from pathlib import Path
 
 root = Path(sys.argv[1])
 service = sys.argv[2]
@@ -32,8 +32,9 @@ def kubectl(args, body=None):
         capture_output=True,
     )
     if result.returncode:
+        msg_0 = "Kubernetes operation failed; details suppressed to protect configuration"
         raise RuntimeError(
-            "Kubernetes operation failed; details suppressed to protect configuration"
+            msg_0
         )
     return result.stdout
 
@@ -62,7 +63,8 @@ def reviewed_user(username, account):
     users = idp("GET", "core/users/?" + urlencode({"username": username}))["results"]
     exact = [u for u in users if u["username"] == username]
     if len(exact) != 1 or exact[0]["uuid"] != account.get("idpUserUuid"):
-        raise RuntimeError("Reviewed Authentik subject mismatch; no relinking allowed")
+        msg = "Reviewed Authentik subject mismatch; no relinking allowed"
+        raise RuntimeError(msg)
     return exact[0]
 
 
@@ -89,7 +91,8 @@ if service == "harbor":
         ]
     )
     if users.strip():
-        raise RuntimeError("Active non-admin Harbor identities require explicit migration review")
+        msg = "Active non-admin Harbor identities require explicit migration review"
+        raise RuntimeError(msg)
     previous = json.loads(
         kubectl(["-n", "harbor", "get", "deployment", "harbor-core", "-o", "json"])
     )
@@ -156,7 +159,8 @@ if service == "harbor":
     ) as r:
         after = json.load(r)
     if after["auth_mode"] != "oidc_auth":
-        raise RuntimeError("Harbor OIDC config did not activate")
+        msg = "Harbor OIDC config did not activate"
+        raise RuntimeError(msg)
     print("Harbor OIDC configured via supported override; local admin password unchanged")
 elif service == "grafana":
     # Public key/value settings were generated from the committed YAML by Ansible,
@@ -288,7 +292,7 @@ asyncio.run(main())"""
         "Open WebUI native OIDC configured; exact UUID links preserve users/chats; no email-based merging"
     )
 elif service == "rancher":
-    from observer_admission import retain_observer, authconfig_patch
+    from observer_admission import authconfig_patch, retain_observer
 
     accounts = json.loads((root / "account-mappings.json").read_text())
     original = json.loads(
@@ -309,7 +313,8 @@ elif service == "rancher":
         external_id = account.get("rancherOidcUserId", "u-authentik-" + username)
         collision = [u for u in all_users if principal in u.get("principalIds", [])]
         if any(u["metadata"]["name"] not in [user_id, external_id] for u in collision):
-            raise RuntimeError("OIDC principal belongs to an unexpected Rancher user")
+            msg = "OIDC principal belongs to an unexpected Rancher user"
+            raise RuntimeError(msg)
         existing = next(u for u in all_users if u["metadata"]["name"] == user_id)
         private_save(root / ("rancher-user-" + user_id + "-before-oidc.json"), existing)
         if collision:
@@ -329,7 +334,8 @@ elif service == "rancher":
             }
             kubectl(["create", "-f", "-"], external)
         else:
-            raise RuntimeError("External Rancher username exists with another principal")
+            msg = "External Rancher username exists with another principal"
+            raise RuntimeError(msg)
         for kind in [
             "globalrolebindings",
             "clusterroletemplatebindings",
@@ -522,4 +528,5 @@ elif service == "lms":
     )
     print("LMS OIDC secret reconciled; Authentik remains the only identity provider")
 else:
-    raise SystemExit("Unsupported integration")
+    msg = "Unsupported integration"
+    raise SystemExit(msg)

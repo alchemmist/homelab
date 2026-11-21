@@ -2,6 +2,7 @@
 """Emit SQL statements seeding the LMS certification batch from reviewed contracts."""
 import json
 from pathlib import Path
+
 import yaml
 from lms_reviewed_batch import SPECS
 
@@ -12,6 +13,7 @@ root = (
 
 
 def sql(s) -> str:
+    """Quote a string as a single SQL literal."""
     escaped: str = s.replace("'", "''")
     return "'" + escaped + "'"
 

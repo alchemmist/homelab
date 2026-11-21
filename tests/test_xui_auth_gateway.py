@@ -1,9 +1,10 @@
 """Retired IdP gateway must not reappear or alter VPN transports."""
 
-from pathlib import Path
 import subprocess
-import yaml
+from pathlib import Path
+
 import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 

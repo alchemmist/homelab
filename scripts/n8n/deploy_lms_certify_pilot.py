@@ -5,7 +5,9 @@ import json
 import secrets
 import subprocess
 from pathlib import Path
-from sync import api,CONFIG
+
+from sync import CONFIG, api
+
 root=Path(__file__).resolve().parents[2]; 
 lms=root.parent/'lms'; 
 docs=root/'docs/n8n/lms-certify'; 

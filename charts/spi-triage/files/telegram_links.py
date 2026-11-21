@@ -10,6 +10,9 @@ import re
 import time
 import uuid
 
+LINK_POST_TIMEOUT = 180
+LINK_LEASE_SECONDS = LINK_POST_TIMEOUT + 90
+
 _URL = re.compile(r'https://github\.com/alchemmist/homelab/issues/([1-9][0-9]*)(?:#issuecomment-([1-9][0-9]*))?\Z')
 
 
@@ -111,7 +114,7 @@ class Links:
             row = c.execute("SELECT * FROM spi_links WHERE state!='applied' AND available<=? AND lease<=? ORDER BY available,episode LIMIT 1", (now, now)).fetchone()
             if row is None: return False
             row = dict(row)
-            c.execute("UPDATE spi_links SET lease=?,owner=?,attempts=attempts+1 WHERE episode=?", (now+120, owner, row['episode']))
+            c.execute("UPDATE spi_links SET lease=?,owner=?,attempts=attempts+1 WHERE episode=?", (now+LINK_LEASE_SECONDS, owner, row['episode']))
             receipt = c.execute('SELECT receipt FROM spi_card_receipts WHERE episode=?', (row['episode'],)).fetchone()
         error, ack, applied = 'WAIT_RECEIPT', {}, False
         try:

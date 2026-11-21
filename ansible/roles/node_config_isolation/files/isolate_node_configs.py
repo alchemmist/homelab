@@ -3,15 +3,14 @@
 """Audit that per-node home config files stay isolated per node."""
 
 import argparse
-from datetime import datetime, timezone
 import json
 import os
-from pathlib import Path
 import pwd
 import shutil
 import stat
 import tempfile
-
+from datetime import datetime, timezone
+from pathlib import Path
 
 CONFIG_DIRECTORIES = (".config/hypr", ".config/waybar", ".config/alacritty")
 SCRIPT_NAMES = (
@@ -130,7 +129,8 @@ def main():
         account.pw_uid != os.geteuid()
         or Path(account.pw_dir).resolve() != Path(args.home).resolve()
     ):
-        raise ValueError("Run as the configured account with its actual home directory")
+        msg = "Run as the configured account with its actual home directory"
+        raise ValueError(msg)
     print(json.dumps(isolate(args.home, args.check)))
 
 

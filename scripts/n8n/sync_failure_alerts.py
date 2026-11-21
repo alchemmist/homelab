@@ -18,10 +18,12 @@ ALERTS_ID = "b2TlucyOTiZP9CzN"
 
 
 def graph(w) -> dict[str, object]:
+    """Return the workflow's nodes and connections for graph comparison."""
     return {k: w.get(k) for k in ("nodes", "connections")}
 
 
 def guard(w, target) -> None:
+    """Refuse binding when an error workflow is already set or a draft differs from the published graph."""
     if w.get("settings", {}).get("errorWorkflow") not in (None, "", target):
         raise RuntimeError("Existing error handler differs; refusing overwrite")
     published = w.get("activeVersion")
@@ -32,11 +34,13 @@ def guard(w, target) -> None:
 
 
 def body(w) -> dict[str, object]:
+    """Deep-copy the mutable workflow fields accepted by the PUT endpoint."""
     return {k: copy.deepcopy(w[k]) for k in ("name", "nodes", "connections", "settings")}
 
 
 def bind(api, before, target) -> dict[str, object]:
     # Fresh compare immediately before mutation; API has no documented CAS.
+    """Atomically set the errorWorkflow setting after a fresh compare-and-verify cycle."""
     fresh: dict[str, object] = api("GET", "workflows/" + before["id"])
     for k in ("name", "nodes", "connections", "settings", "active", "versionId", "activeVersionId"):
         if fresh.get(k) != before.get(k):
@@ -63,6 +67,7 @@ def bind(api, before, target) -> dict[str, object]:
 def protected_static(w) -> object:
     # Native active-workflow updates delete/recreate GitHub subscriptions. Never
     # restore the obsolete signing secret or suppress drift in other node state.
+    """Mask native GitHub webhook registration state before comparing staticData."""
     state = copy.deepcopy(w.get("staticData"))
     if not isinstance(state, dict):
         return state
@@ -79,6 +84,7 @@ def protected_static(w) -> object:
 
 
 def check(before, after, target, verify_static=True) -> None:
+    """Verify the workflow is unchanged except for the freshly bound error handler."""
     if (
         graph(before) != graph(after)
         or before["name"] != after["name"]
@@ -98,6 +104,7 @@ def check(before, after, target, verify_static=True) -> None:
 
 
 def main() -> None:
+    """Plan or apply binding the failure-alert workflow as the n8n error handler."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     args = p.parse_args()

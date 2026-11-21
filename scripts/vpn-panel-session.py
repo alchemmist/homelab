@@ -154,6 +154,7 @@ class NativeSession:
     """Panel session reconciler backed by the native VPN database."""
 
     def __init__(self, state, database=DB, worker_scope="node-sync") -> None:
+        """Initialize the native panel session."""
 
         if worker_scope not in ("node-sync", "admin"):
             raise ValueError("Unreviewed worker scope")

@@ -6,12 +6,11 @@ import argparse
 import ipaddress
 import json
 import os
-from pathlib import Path
 import re
 import socket
 import subprocess
 import sys
-
+from pathlib import Path
 
 CONFIG = Path.home() / ".config/homelab/ssh-gateway.json"
 STATE = Path.home() / ".local/state/homelab/ssh-mappings.json"
@@ -23,13 +22,16 @@ def load_config(path):
     ports = set()
     for node in config["nodes"]:
         if not re.fullmatch(r"socrat-\d+", node["name"]):
-            raise ValueError("Invalid node name")
+            msg = "Invalid node name"
+            raise ValueError(msg)
         ipaddress.IPv4Address(node["address"])
         if not 1024 <= node["external_port"] <= 65535 or node["external_port"] in ports:
-            raise ValueError("Invalid or duplicate external port")
+            msg = "Invalid or duplicate external port"
+            raise ValueError(msg)
         ports.add(node["external_port"])
         if not node["ports"] or any(not 1 <= port <= 65535 for port in node["ports"]):
-            raise ValueError("Invalid server ports")
+            msg = "Invalid server ports"
+            raise ValueError(msg)
     ipaddress.IPv4Address(config["gateway_address"])
     return config
 
@@ -67,7 +69,8 @@ def _reconcile_node(config, prefix, mappings, owned, node):
         if existing[2] != description and owned.get(str(node["external_port"])) != list(
             existing[:2]
         ):
-            raise RuntimeError("External port is occupied by an unmanaged mapping")
+            msg = "External port is occupied by an unmanaged mapping"
+            raise RuntimeError(msg)
         subprocess.run(
             prefix + ["-d", str(node["external_port"]), "TCP"],
             capture_output=True,
