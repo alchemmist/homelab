@@ -1,22 +1,26 @@
 """Two-card #509 pilot. Only validated scalar cases cross the executor/judge boundary."""
-import gzip
-import ast, contextlib, datetime, hashlib, hmac, json, os, re, shutil, sqlite3, subprocess, threading, time, uuid
+import ast, contextlib, datetime, gzip, hashlib, hmac, json, os, re, shutil, sqlite3, subprocess, threading, time, uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import Protocol, cast
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
+
+
+class _Condition(Protocol):
+    def __bool__(self) -> bool: ...
 
 BASE='61ca009312ee850c70cd87ed4c60296e2a78abcc'
 CARDS={'day_number':('server/app/transfer_match.py',['server/tests/unit/test_transfer_match.py']), '_amount':('server/app/workbook/parser.py',['server/tests/unit/test_workbook_parser.py','server/tests/unit/test_workbook_parser_mutation.py'])}
 MODEL='v-deepseek-uc'; DB='/state/survivor-first-v2.db'; REPO=Path('/scratch/monori'); WROOT='/home/openhands/workspace/monori-pilot-v1'; LOCK=threading.Lock()
 CAT=json.loads(Path('/code/mutants.json').read_text()); RUN='mutation-pilot-v2'; ENV={'PATH':os.environ['PATH'],'HOME':'/scratch','UV_CACHE_DIR':'/scratch/uv-cache','PYTHONPATH':'/scratch','PYTHONDONTWRITEBYTECODE':'1','TZ':'UTC','LANG':'C.UTF-8'}
 
-def http(url,body=None,key=None):
+def http(url:str,body:dict[str,object]|None=None,key:str|None=None):
     headers={'Content-Type':'application/json','User-Agent':'monori-pilot'}
     if key:headers['X-Session-API-Key']=key
     with urlopen(Request(url,headers=headers,data=None if body is None else json.dumps(body).encode()),timeout=25) as r:return json.load(r)
-def api(route,body=None):return http('http://localhost:8000/api/'+route,body,Path('/session-key').read_text().strip())
-def run(cmd,success=True,timeout=150):
+def api(route:str,body:dict[str,object]|None=None):return http('http://localhost:8000/api/'+route,body,Path('/session-key').read_text().strip())
+def run(cmd:list[str],success:_Condition=True,timeout:int=150):
     p=subprocess.run(cmd,cwd=REPO if REPO.exists() else '/scratch',env=ENV,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,timeout=timeout)
     if success and p.returncode:raise RuntimeError(str(cmd[0])+' failed: '+p.stdout[-450:])
     return p
@@ -30,7 +34,7 @@ def init():
 def state():
     with contextlib.closing(sqlite3.connect(DB)) as d, d:
         d.row_factory=sqlite3.Row;return [dict(r) for r in d.execute('select * from cards order by rowid')]
-def save(c,phase,note='',**kw):
+def save(c:dict[str, object],phase:str,note:str='',**kw:object):
     fields={'state':phase,'detail':note[:1000],**kw}; assert fields.keys()<={'state','detail','pr','due','cid','attempt'}
     with contextlib.closing(sqlite3.connect(DB)) as d, d:
         d.execute('update cards set '+','.join(k+'=?' for k in fields)+' where name=?',(*fields.values(),c['name']));d.execute('insert into transitions values(?,?,?,?)',(time.time(),c['name'],phase,note[:1000]))
@@ -45,7 +49,7 @@ def fixture():
     (REPO/'uv.lock').write_bytes(lock)
     run(['git','reset','--hard',BASE]);run(['git','clean','-fd','--','server/tests/unit']);run(['uv','sync','--locked','--group','test'],timeout=360)
 
-def render(name,data):
+def render(name:str,data:object):
     if not isinstance(data,dict) or set(data)!={'input','expected','why'} or not isinstance(data['why'],str) or not 8<=len(data['why'])<=500:raise ValueError('provide input, expected, why')
     x=data['input'];y=data['expected'];assert y is None or type(y) is int and abs(y)<10**12
     if name=='day_number':
@@ -56,12 +60,12 @@ def render(name,data):
         imp='from openpyxl import Workbook\n\nfrom monori.server.app.workbook.parser import _amount';call='_amount(cell)';setup=f'    cell = Workbook().active.cell(1, 1, value={json.dumps(x,ensure_ascii=False) if isinstance(x,str) else repr(x)})\n'
     return f'# Copyright (c) 2026\n"""Regression coverage for {name.strip("_")}."""\n\n{imp}\n\n\ndef test_{name.strip("_")}_regression() -> None:\n{setup}    assert {call}'+(' is None' if y is None else f' == {y}')+'\n'
 
-def pair(data):return json.dumps([data['input'],data['expected']],ensure_ascii=False,separators=(',',':'))
+def pair(data:dict[str,object]):return json.dumps([data['input'],data['expected']],ensure_ascii=False,separators=(',',':'))
 
-def rejected(name,mid,data):
+def rejected(name:str,mid:str,data:dict[str,object]):
     return sql('select reason from rejections where name=? and mid=? and pair=?',(name,mid,pair(data)))
 
-def measured(name,data):
+def measured(name:str,data:dict[str,object]):
     # Fixed trusted program; case data is passed as JSON argv, never as code.
     runner="""import json,sys
 from monori.server.app.transfer_match import day_number
@@ -70,9 +74,9 @@ from openpyxl import Workbook
 name,x=json.loads(sys.argv[1]);result=day_number(x) if name=='day_number' else _amount(Workbook().active.cell(1,1,value=x));print(json.dumps(result))"""
     val=json.loads(run(['.venv/bin/python','-c',runner,json.dumps([name,data['input']])]).stdout);assert val is None or type(val) is int;return json.dumps(val)
 
-def verify(c,data,chosen):
-    name=c['name'];text=render(name,data);fixture();src,suite=CARDS[name];file=REPO/src;orig=file.read_text();node=next(n for n in ast.parse(orig).body if isinstance(n,ast.FunctionDef) and n.name==name);lines=orig.splitlines(keepends=True);fn=''.join(lines[node.lineno-1:node.end_lineno]);dest='server/tests/unit/test_'+name.strip('_')+'_pilot_regression.py';path=REPO/dest;assert not path.exists();path.write_text(text);pytest=['.venv/bin/python','-m','pytest','-q','--tb=short','--disable-warnings'];testname='test_'+name.strip('_')+'_regression';
-    def test(args):return run(pytest+args,False,timeout=120)
+def verify(c:dict[str, object],data:dict[str,object],chosen:str):
+    name=cast("str",c['name']);text=render(name,data);fixture();src,suite=CARDS[name];file=REPO/src;orig=file.read_text();node=next(n for n in ast.parse(orig).body if isinstance(n,ast.FunctionDef) and n.name==name);lines=orig.splitlines(keepends=True);fn=''.join(lines[node.lineno-1:node.end_lineno]);dest='server/tests/unit/test_'+name.strip('_')+'_pilot_regression.py';path=REPO/dest;assert not path.exists();path.write_text(text);pytest=['.venv/bin/python','-m','pytest','-q','--tb=short','--disable-warnings'];testname='test_'+name.strip('_')+'_regression';
+    def test(args:list[str]):return run(pytest+args,False,timeout=120)
     try:
         if test([dest]).returncode:raise ValueError('unmodified main returned '+measured(name,data)+'; expected '+json.dumps(data['expected']))
         for mid,(a,b) in CAT[name].items():
@@ -88,14 +92,14 @@ def verify(c,data,chosen):
         raise ValueError('case passed on main but did not establish an assertion kill of '+chosen)
     finally:file.write_text(orig);path.unlink(missing_ok=True)
 
-def sql(q,args=()):
+def sql(q:str,args:tuple[object, ...]=()):
     with contextlib.closing(sqlite3.connect(DB)) as d,d:return d.execute(q,args).fetchall()
 
-def target(c):
+def target(c:dict[str, object]):
     rows=sql("select mid from scans where name=? and verdict='survived' order by rowid limit 1",(c['name'],));return rows[0][0] if rows else None
 
-def screen(c):
-    name=c['name'];src,suite=CARDS[name];fixture();file=REPO/src;orig=file.read_text();lines=orig.splitlines(keepends=True);n=next(n for n in ast.parse(orig).body if isinstance(n,ast.FunctionDef) and n.name==name);fn=''.join(lines[n.lineno-1:n.end_lineno]);seen=dict(sql('select mid,verdict from scans where name=?',(name,)))
+def screen(c:dict[str, object]):
+    name=cast("str",c['name']);src,suite=CARDS[name];fixture();file=REPO/src;orig=file.read_text();lines=orig.splitlines(keepends=True);n=next(n for n in ast.parse(orig).body if isinstance(n,ast.FunctionDef) and n.name==name);fn=''.join(lines[n.lineno-1:n.end_lineno]);seen=dict(sql('select mid,verdict from scans where name=?',(name,)))
     def test():return run(['.venv/bin/python','-m','pytest','-q','--tb=no',*suite],False,120)
     baseline=test()
     if baseline.returncode or not re.search(r'\d+ passed',baseline.stdout):raise RuntimeError('baseline suite not green')
@@ -122,7 +126,7 @@ def decision():
     c=current()
     return ROUTES.get(c['state'],'hold') if c and c['due']<=time.time() and not LOCK.locked() else 'hold'
 
-def step(action):
+def step(action:str):
     c=current()
     if not c or ROUTES.get(c['state'])!=action or c['due']>time.time():return
     name=c['name'];cid=c['cid'];conv='conversations/'+cid
@@ -178,7 +182,7 @@ def step(action):
     payload={'action':'create','head':BASE,'title':'test: cover '+name.strip('_')+' regression (#509)','files':{dest:text}};payload['proof']=hmac.new(Path('/proof/key').read_bytes(),json.dumps(payload,sort_keys=True).encode(),'sha256').hexdigest();save(c,'publishing',receipt)
     pr=http('http://monori-publisher:8081/v1',payload);save(c,'published',receipt,pr=pr['pr'])
 
-def background(action):
+def background(action:str):
     try:step(action)
     except Exception as ex:
         c=current()
