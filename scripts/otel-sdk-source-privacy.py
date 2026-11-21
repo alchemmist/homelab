@@ -9,34 +9,34 @@ Prototype only until pinned-runtime canaries and maintained bootstrap pass.
 import re
 from urllib.parse import urlsplit, urlunsplit
 
-PRIVATE_KEY = re.compile(r'authorization|password|secret|token|cookie|prompt|completion|request[.]body|response[.]body|gen_ai[.](input|output|system_instructions)|db[.](statement|query[.]text)|(?:exception|error)[.](message|stacktrace)', re.I)
-URL_KEYS = {'url.full', 'http.url', 'http.target', 'url.query'}
+PRIVATE_KEY = re.compile(r"authorization|password|secret|token|cookie|prompt|completion|request[.]body|response[.]body|gen_ai[.](input|output|system_instructions)|db[.](statement|query[.]text)|(?:exception|error)[.](message|stacktrace)", re.I)
+URL_KEYS = {"url.full", "http.url", "http.target", "url.query"}
 
 
 def safe_url(value):
     if not isinstance(value, str):
         return value
-    if value.startswith(('http://', 'https://')):
+    if value.startswith(("http://", "https://")):
         try:
             parsed = urlsplit(value)
-            host = parsed.hostname or ''
-            if ':' in host:
-                host = '[' + host + ']'
+            host = parsed.hostname or ""
+            if ":" in host:
+                host = "[" + host + "]"
             if parsed.port is not None:
-                host += ':' + str(parsed.port)
-            return urlunsplit((parsed.scheme, host, parsed.path, '<redacted>' if parsed.query else '', ''))
+                host += ":" + str(parsed.port)
+            return urlunsplit((parsed.scheme, host, parsed.path, "<redacted>" if parsed.query else "", ""))
         except ValueError:
-            return '<redacted-invalid-url>'
-    return value.split('?', 1)[0] + ('?<redacted>' if '?' in value else '')
+            return "<redacted-invalid-url>"
+    return value.split("?", 1)[0] + ("?<redacted>" if "?" in value else "")
 
 
 def attributes(values):
-    return {key: ('<redacted>' if key == 'url.query' else safe_url(value)) if key in URL_KEYS else value
+    return {key: ("<redacted>" if key == "url.query" else safe_url(value)) if key in URL_KEYS else value
             for key, value in (values or {}).items() if not PRIVATE_KEY.search(key)}
 
 
 def safe_name(value):
-    return re.sub(r'https?://[^\s]+', lambda match: safe_url(match.group()), value)
+    return re.sub(r"https?://[^\s]+", lambda match: safe_url(match.group()), value)
 
 
 def redact_span(span):
@@ -55,10 +55,10 @@ def redact_span(span):
 def activate():
     from opentelemetry import trace
     from opentelemetry.sdk import trace as sdk
-    if getattr(sdk.TracerProvider, '_homelab_source_privacy', False):
+    if getattr(sdk.TracerProvider, "_homelab_source_privacy", False):
         return
     if not isinstance(trace.get_tracer_provider(), trace.ProxyTracerProvider):
-        raise ValueError('Source privacy guard must activate before any real tracer provider')
+        raise ValueError("Source privacy guard must activate before any real tracer provider")
     class BeforeQueuePrivacy(sdk.SpanProcessor):
         def __init__(self, downstream):
             self.downstream = downstream
