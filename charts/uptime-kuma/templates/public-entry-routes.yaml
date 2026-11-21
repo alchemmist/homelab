@@ -28,6 +28,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ .service }}
+                name: public-web-kuma-proxy
                 port: {number: {{ .port }}}
 {{- end }}

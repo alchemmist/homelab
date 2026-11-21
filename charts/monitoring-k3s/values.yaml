@@ -80,7 +80,7 @@ serviceProbes:
     alertName: SocratServiceUmamiUnavailable
   - id: status
     title: Status
-    url: http://uptime-kuma.uptime-kuma.svc.cluster.local:80/api/status-page/socrat
+    url: http://gatus.uptime-kuma.svc.cluster.local:80/api/v1/endpoints/statuses
     module: http_2xx
     alertName: SocratServiceStatusUnavailable
   - id: wiki
