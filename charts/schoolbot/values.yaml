@@ -1,7 +1,7 @@
 ---
 replicaCount: 1
 image:
-  repository: harbor.socrat.alchemmist.xyz/homelab/schoolbot
+  repository: harbor.socrat.alchemmist.xyz/schoolbot/schoolbot
   tag: unreleased
   digest: ""
   pullPolicy: IfNotPresent
