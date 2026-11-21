@@ -4,8 +4,8 @@ telegramPathProbes:
   enabled: false
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/socrat-bot
-  tag: 2fea3abf92adf85d2cd44538d7d6b85f4ab44e7c
-  digest: sha256:ab85ad1143b6df6771c57ea272d93f8b54a74a546679421c788f990d1b35e213
+  tag: a0e9ff37bce420030ed1075fa8c5a9b9e5ddb034
+  digest: sha256:22d77941c43ee2c51341db7533d929289dba6dec5ff04d85d178dbd82bc52b31
   pullPolicy: IfNotPresent
 imagePullSecrets:
   - socrat-bot-harbor-pull
