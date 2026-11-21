@@ -11,13 +11,19 @@ import attempt
 
 
 class FakeEnvironment:
-    def __init__(self, snapshot, directory, image, protocol):
+    def __init__(
+        self,
+        snapshot: pathlib.Path,
+        directory: pathlib.Path,
+        image: str,
+        protocol: object,
+    ):
         self.container_id = "fake"
-        self.events = []
+        self.events: list[object] = []
         self.protocol = protocol
         directory.mkdir()
 
-    def snapshot(self, destination):
+    def snapshot(self, destination: pathlib.Path):
         shutil.copytree(os.environ["DECISION_CANDIDATE"], destination)
 
     def close(self):
@@ -35,7 +41,14 @@ def passing_verdict():
 
 
 class FinalDecisionTests(unittest.TestCase):
-    def run_main(self, verdict, candidate_main, clean=True, cleanup_error=False):
+    def run_main(
+        self,
+        verdict: object,
+        candidate_main: str,
+        *,
+        clean: bool = True,
+        cleanup_error: bool = False,
+    ):
         root = tempfile.TemporaryDirectory()
         self.addCleanup(root.cleanup)
         base = pathlib.Path(root.name)
@@ -69,7 +82,7 @@ class FinalDecisionTests(unittest.TestCase):
                     raise RuntimeError("cleanup failed")
                 super().close()
 
-        def invoke(*args, **kwargs):
+        def invoke(*args: object, **kwargs: object) -> dict[str, str]:
             if not clean:
                 raise RuntimeError("provider failed")
             return {"exit_status": "ConversationExecutionStatus.FINISHED"}
@@ -90,8 +103,8 @@ class FinalDecisionTests(unittest.TestCase):
                     repository_runner,
                     "load_protocol",
                     return_value=mock.Mock(
-                        verify_snapshot=lambda _path: {},
-                        grade_candidate_container=lambda *_args, **_kwargs: verdict,
+                        verify_snapshot=lambda path: {},
+                        grade_candidate_container=lambda *args, **kwargs: verdict,
                         PILOT_LABEL="",
                     ),
                 ),

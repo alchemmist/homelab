@@ -30,10 +30,7 @@
                     raise RuntimeError('Expected initialized Wiki repository: ' + directory)
                 for key in ['maintenance.autoDetach', 'gc.autoDetach']:
                     command = ['git', '-C', directory, 'config', '--local']
-                    current = subprocess.run(
-                        [*command, '--get', key],
-                        capture_output=True,
-                        text=True)
+                    current = subprocess.run([*command, '--get', key], capture_output=True, text=True)
                     if current.returncode not in (0, 1):
                         raise RuntimeError('Cannot inspect Wiki Git configuration')
                     if current.stdout.strip() != 'false':

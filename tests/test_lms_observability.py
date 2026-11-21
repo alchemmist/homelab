@@ -4,12 +4,17 @@ import importlib.util
 import json
 from pathlib import Path
 import subprocess
+from typing import TYPE_CHECKING
+
 import yaml
+
+if TYPE_CHECKING:
+    from _typeshed import Incomplete
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def render(*args):
+def render(*args: str) -> "list[Incomplete]":
     return list(
         yaml.safe_load_all(
             subprocess.check_output(
@@ -93,12 +98,9 @@ def test_renewal_scope_is_only_lms_leaf_and_lms_deployment():
     mod = importlib.util.module_from_spec(spec)
     exec(compile(source, "mirror.py", "exec"), mod.__dict__)
     mod.validate_destination(
-        {
-            "application": "lms",
-            "namespace": "lms",
-            "secret": "otel-app-tls-lms",
-            "reloadDeployments": ["lms"],
-        }
+        dict(
+            application="lms", namespace="lms", secret="otel-app-tls-lms", reloadDeployments=["lms"]
+        )
     )
     cm = next(d for d in docs if d["kind"] == "ConfigMap")
     assert cm["data"]["mirror.py"] == source
@@ -186,7 +188,7 @@ def test_dashboard_starts_with_waterfall_without_instruction_text_panel():
 
 
 def test_hibernated_database_alerts_do_not_page_for_production_lms():
-    def rules(*override):
+    def rules(*override: str) -> set[str]:
         docs = render('-f', str(ROOT / 'deploy/lms/values.yaml'), *override)
         group = next(d for d in docs if d and d['kind'] == 'PrometheusRule' and d['metadata']['name'] == 'lms-availability')['spec']['groups'][0]
         return {r['alert'] for r in group['rules']}

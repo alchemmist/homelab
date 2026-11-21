@@ -57,7 +57,7 @@ class BackupTests(unittest.TestCase):
 
 
 class BackupDeadlineTests(unittest.TestCase):
-    def run_failure(self, kind):
+    def run_failure(self, kind: str):
         import time
 
         with tempfile.TemporaryDirectory() as d:
@@ -162,7 +162,7 @@ except Exception:sys.exit(1)
             c.close()
             original = m.sqlite3.connect
 
-            def checked(path, *a, **kw) -> object:
+            def checked(path: str, *a: object, **kw: object):
                 if not kw.get("uri"):
                     self.assertEqual(stat.S_IMODE(Path(path).stat().st_mode), 0o600)
                     raise OSError("synthetic destination open failure")
@@ -195,7 +195,7 @@ class CleanupBoundaryTests(unittest.TestCase):
                 connect = m.sqlite3.connect
                 count = [0]
 
-                def owned(*a, **kw) -> object:
+                def owned(*a: object, **kw: object):
                     result = create(*a, **kw)
                     for suffix in ("-wal", "-shm", "-journal"):
                         Path(result[1] + suffix).touch(mode=0o600)
@@ -204,7 +204,7 @@ class CleanupBoundaryTests(unittest.TestCase):
                     return result
 
                 class Conn(sqlite3.Connection):
-                    def close(self) -> None:
+                    def close(self):
                         super().close()
                         count[0] += 1
                         if boundary == "pending-close":
@@ -212,7 +212,7 @@ class CleanupBoundaryTests(unittest.TestCase):
                         if count[0] == (2 if boundary == "second-close" else 1):
                             raise TimeoutError("synthetic close failure")
 
-                def connected(*a, **kw) -> object:
+                def connected(*a: object, **kw: object):
                     return connect(*a, **kw, factory=Conn)
 
                 with (
@@ -234,7 +234,7 @@ class CleanupBoundaryTests(unittest.TestCase):
         handler = signal.getsignal(signal.SIGALRM)
         timer = signal.getitimer(signal.ITIMER_REAL)
 
-        def caller(*args) -> None:
+        def caller(*args: object) -> None:
             pass
 
         try:

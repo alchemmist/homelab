@@ -3,24 +3,33 @@
 
 import argparse, base64, fcntl, hashlib, json, os, secrets, subprocess
 from pathlib import Path
+from typing import Protocol
 
 USER = "homelab_kuma_app"
 SCHEMA = "uptime_kuma"
 STATE = Path("/var/lib/homelab-kuma-account-recovery")
 
 
-def need(ok, message):
+class Truthy(Protocol):
+    """Value whose truthiness can be tested without a positional bool annotation."""
+
+    def __bool__(self) -> bool:
+        """Return the flag's truth value."""
+        ...
+
+
+def need(ok: Truthy, message: str):
     if not ok:
         raise RuntimeError(message)
 
 
-def k(*args, stdin=None):
+def k(*args, input: str | None = None) -> str:
     return subprocess.check_output(
-        ["kubectl", "-n", "uptime-kuma", *args], input=stdin, text=True, stderr=subprocess.DEVNULL
+        ["kubectl", "-n", "uptime-kuma", *args], input=input, text=True, stderr=subprocess.DEVNULL
     )
 
 
-def sql(statement):
+def sql(statement: str):
     return k(
         "exec",
         "-i",
@@ -29,7 +38,7 @@ def sql(statement):
         "sh",
         "-c",
         'MYSQL_PWD="$MARIADB_ROOT_PASSWORD" mariadb -h 127.0.0.1 -u root -N --raw',
-        stdin=statement + "\n",
+        input=statement + "\n",
     ).strip()
 
 
@@ -153,7 +162,7 @@ def main():
                 "uptime-kuma-db",
                 "--type=json",
                 "--patch-file=/dev/stdin",
-                stdin=json.dumps(patch),
+                input=json.dumps(patch),
             )
             # Validate the NEW account independently without exposing its password in argv.
             k(
@@ -168,7 +177,7 @@ def main():
                 + " -D "
                 + SCHEMA
                 + ' -Nse "SELECT 1"',
-                stdin=password + "\n",
+                input=password + "\n",
             )
             need(
                 sql("SHOW GRANTS FOR 'uptime_kuma'@'%';") == original,

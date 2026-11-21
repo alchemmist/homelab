@@ -10,7 +10,7 @@ spec.loader.exec_module(zone)
 
 
 def test_both_entrances_stay_published_while_both_are_healthy():
-    text = zone.render(1, True, True)
+    text = zone.render(1, home_up=True, vps_up=True)
     assert text.count("chat IN A %s" % zone.HOME) == 1
     assert text.count("chat IN A %s" % zone.VPS) == 1
     assert "mail IN A %s" % zone.HOME in text
@@ -18,7 +18,7 @@ def test_both_entrances_stay_published_while_both_are_healthy():
 
 
 def test_home_failure_leaves_only_the_vps_on_failover_names():
-    text = zone.render(2, False, True)
+    text = zone.render(2, home_up=False, vps_up=True)
     assert "llm IN A %s" % zone.VPS in text
     assert "llm IN A %s" % zone.HOME not in text
     assert "ns1 IN A %s" % zone.HOME in text
@@ -27,8 +27,8 @@ def test_home_failure_leaves_only_the_vps_on_failover_names():
 
 def test_netbird_and_existing_bot_survive_renderer_deploys_and_follow_health():
     for home_up, vps_up in [(True, True), (False, True), (True, False), (False, False)]:
-        text = zone.render(3, home_up, vps_up)
-        expected = zone.healthy_addresses(home_up, vps_up)
+        text = zone.render(3, home_up=home_up, vps_up=vps_up)
+        expected = zone.healthy_addresses(home_up=home_up, vps_up=vps_up)
         for name in ["netbird.socrat", "bot.socrat"]:
             for address in [zone.HOME, zone.VPS]:
                 assert (f"{name} IN A {address}" in text) == (address in expected)
@@ -37,13 +37,13 @@ def test_netbird_and_existing_bot_survive_renderer_deploys_and_follow_health():
 
 def test_independent_vps_relay_never_points_to_home():
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
-        text = zone.render(4, home, vps)
+        text = zone.render(4, home_up=home, vps_up=vps)
         assert f"netbird-relay-vps.socrat IN A {zone.VPS}" in text
         assert f"netbird-relay-vps.socrat IN A {zone.HOME}" not in text
 
 
 def test_total_probe_failure_keeps_both_addresses():
-    assert zone.healthy_addresses(False, False) == [zone.HOME, zone.VPS]
+    assert zone.healthy_addresses(home_up=False, vps_up=False) == [zone.HOME, zone.VPS]
 
 
 def _reviewed_openhands_addition(lines: list[str], addresses: list[str]) -> list[str]:
@@ -82,9 +82,9 @@ def test_rustfs_names_additive_without_changes_to_existing_records():
     prior["FAILOVER"].remove("vpn")
     prior["STATIC_A"]["vpn"] = ["91.189.82.238"]
     for home, vps in [(True, True), (False, True), (True, False), (False, False)]:
-        new = zone.render(123, home, vps).splitlines()
+        new = zone.render(123, home_up=home, vps_up=vps).splitlines()
         # Require the exact reviewed new records before the unchanged historical comparison.
-        new = _reviewed_openhands_addition(new, zone.healthy_addresses(home, vps))
+        new = _reviewed_openhands_addition(new, zone.healthy_addresses(home_up=home, vps_up=vps))
         # Independently approved concurrent SPI DNS addition is also historical-fixture scope.
         names = (
             "rustfs.socrat IN A ",
@@ -101,10 +101,9 @@ def test_rustfs_names_additive_without_changes_to_existing_records():
             for line in new
             if not line.startswith(names)
             and line not in ("@ IN NS ns3.alchemmist.xyz.", "ns3 IN A 91.189.82.238")
-        ] == [line for line in prior["render"](123, home, vps).splitlines()
-              if not (home and vps and line in {f"lms IN A {zone.VPS}", f"auth.socrat IN A {zone.VPS}"})]
+        ] == prior["render"](123, home, vps).splitlines()
         for name in ("rustfs.socrat", "spi-evidence.socrat"):
-            for address in zone.healthy_addresses(home, vps):
+            for address in zone.healthy_addresses(home_up=home, vps_up=vps):
                 assert new.count(f"{name} IN A {address}") == 1
 
 
@@ -114,32 +113,24 @@ def test_current_vps_address_after_provider_migration():
 
 def test_kuma_administration_name_follows_both_reviewed_entrances():
     for home, vps in [(True, True), (False, True), (True, False), (False, False)]:
-        text = zone.render(7, home, vps)
+        text = zone.render(7, home_up=home, vps_up=vps)
         for ip in [zone.HOME, zone.VPS]:
-            assert (f"kuma.socrat IN A {ip}" in text) == (ip in zone.healthy_addresses(home, vps))
+            assert (f"kuma.socrat IN A {ip}" in text) == (
+                ip in zone.healthy_addresses(home_up=home, vps_up=vps)
+            )
 
 
 def test_retired_tv_alias_is_not_rendered():
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
-        assert "tv IN A " not in zone.render(8, home, vps)
+        assert "tv IN A " not in zone.render(8, home_up=home, vps_up=vps)
 
 
 def test_vpn_has_only_moscow_even_when_original_entrances_fail():
     assert "vpn" not in zone.FAILOVER
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
-        lines = zone.render(123, home, vps).splitlines()
+        lines = zone.render(123, home_up=home, vps_up=vps).splitlines()
         assert [line for line in lines if line.startswith("vpn IN A ")] == [
             "vpn IN A 91.189.82.238"
         ]
         assert "ns1 IN A 109.173.40.247" in lines
         assert "ns2 IN A 109.120.141.60" in lines
-
-
-@pytest.mark.parametrize("home,vps", [(True, True), (True, False), (False, True), (False, False)])
-def test_lms_and_issuer_prefer_home_without_changing_other_failover_names(home, vps):
-    lines = zone.render(1, home, vps).splitlines()
-    for name in zone.FAILOVER:
-        expected = [zone.HOME] if home and name in {"lms", "auth.socrat"} else zone.healthy_addresses(home, vps)
-        assert [line for line in lines if line.startswith(name + " IN A ")] == [
-            f"{name} IN A {ip}" for ip in expected
-        ]

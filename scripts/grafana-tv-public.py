@@ -2,13 +2,14 @@
 """Audit/create native public sharing for ONE living-room dashboard, no anonymous org."""
 
 import argparse, base64, fcntl, hashlib, json, os, subprocess, urllib.request, urllib.error
+from collections.abc import Mapping
 from pathlib import Path
 
 UID = "socrat-traffic-light"
 STATE = Path("/var/lib/homelab-grafana-tv-public")
 
 
-def need(ok, msg):
+def need(ok: object, msg: str):
     if not ok:
         raise RuntimeError(msg)
 
@@ -46,7 +47,7 @@ def main():
             + base64.b64decode(secret["admin-password"])
         ).decode()
 
-        def api(method, path, data=None):
+        def api(method: str, path: str, data: Mapping[str, object] | None = None):
             req = urllib.request.Request(
                 "http://" + ip + path,
                 method=method,

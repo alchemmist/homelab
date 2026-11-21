@@ -37,12 +37,12 @@ def main():
         raise ValueError("enrollment keys and Secrets must be retired first")
 
     class NoRedirect(urllib.request.HTTPRedirectHandler):
-        def redirect_request(self, *a, **kw):
+        def redirect_request(self, *a: object, **kw: object) -> None:
             return None
 
     opener = urllib.request.build_opener(NoRedirect)
 
-    def api(method, endpoint, body=None):
+    def api(method: str, endpoint: str, body: object | None = None):
         req = urllib.request.Request(
             BASE + endpoint,
             method=method,
@@ -76,7 +76,7 @@ def main():
     if {n["id"] for n in api("GET", "networks")} != {n["id"] for n in state["networks"].values()}:
         raise ValueError("network drift")
     plan = []
-    for host, (_name, addresses) in compiler["NETWORKS"].items():
+    for host, (name, addresses) in compiler["NETWORKS"].items():
         network = state["networks"][host]
         resources = api("GET", "networks/" + network["id"] + "/resources")
         if {r["address"] for r in resources} != set(addresses):

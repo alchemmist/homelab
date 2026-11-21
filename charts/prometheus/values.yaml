@@ -147,8 +147,7 @@ kube-prometheus-stack:
           value: 768MiB
         - name: GOMAXPROCS
           value: '2'
-        image: >-
-          docker.io/otel/opentelemetry-collector-contrib@sha256:ac0bb9cdc844b55d2fd2655d03e596243787d6a8c52dd408b1dc96dd1bd372ee
+        image: docker.io/otel/opentelemetry-collector-contrib@sha256:ac0bb9cdc844b55d2fd2655d03e596243787d6a8c52dd408b1dc96dd1bd372ee
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -225,8 +224,7 @@ kube-prometheus-stack:
             - --url=http://127.0.0.1:9090
       podMetadata:
         annotations:
-          homelab.alchemmist.xyz/otel-config-sha256: >-
-            db9921b7fe480086f1378726a72c2159cababf78c4cc45eb9ad8e2f212698067
+          homelab.alchemmist.xyz/otel-config-sha256: db9921b7fe480086f1378726a72c2159cababf78c4cc45eb9ad8e2f212698067
           homelab.alchemmist.xyz/software-update-scrape-version: '1'
     thanosService:
       enabled: true
@@ -327,8 +325,7 @@ kube-prometheus-stack:
               check.
             summary: Cluster memory requests exceed total allocatable memory.
             rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer
-            runbook_url: >-
-              https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubememoryovercommit
+            runbook_url: https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubememoryovercommit
           expr: 'sum(namespace_memory:kube_pod_container_resource_requests:sum{})
 
             - sum(kube_node_status_allocatable{job="kube-state-metrics",resource="memory"})
@@ -358,8 +355,7 @@ kube-prometheus-stack:
       insecureSkipVerify: false
       metricRelabelings:
       - action: drop
-        regex: >-
-          (192\.168\.0\.(23|24)|10\.250\.0\.5):10250;(apiserver|etcd|scheduler|workqueue|kubeproxy)_.*
+        regex: (192\.168\.0\.(23|24)|10\.250\.0\.5):10250;(apiserver|etcd|scheduler|workqueue|kubeproxy)_.*
         sourceLabels:
         - instance
         - __name__

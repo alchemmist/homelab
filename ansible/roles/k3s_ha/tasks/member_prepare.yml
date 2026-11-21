@@ -37,7 +37,7 @@
     content: "{{ hostvars[k3s_ha_primary].k3s_ha_join_token }}\n"
     owner: root
     group: root
-    mode: "0600"
+    mode: '0600'
   no_log: true
 
 - name: Configure the joining server
@@ -46,7 +46,7 @@
     dest: /etc/rancher/k3s/config.yaml
     owner: root
     group: root
-    mode: "0600"
+    mode: '0600'
   register: k3s_ha_member_configuration
 
 - name: Install the server service without touching agent runtime data
@@ -55,19 +55,19 @@
     dest: /etc/systemd/system/k3s.service
     owner: root
     group: root
-    mode: "0644"
+    mode: '0644'
   register: k3s_ha_member_service
 
 - name: Create the old agent guard directory
   ansible.builtin.file:
     path: /etc/systemd/system/k3s-agent.service.d
     state: directory
-    mode: "0755"
+    mode: '0755'
 
 - name: Prevent concurrent agent and server services after promotion
   ansible.builtin.copy:
     dest: /etc/systemd/system/k3s-agent.service.d/40-homelab-server-mode.conf
-    mode: "0644"
+    mode: '0644'
     content: |
       [Unit]
       ConditionPathExists=!/etc/rancher/k3s/server-mode

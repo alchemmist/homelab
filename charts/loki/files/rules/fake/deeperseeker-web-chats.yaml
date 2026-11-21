@@ -1,4 +1,3 @@
----
 groups:
   - name: deeperseeker-web-chats
     interval: 1m
@@ -8,4 +7,3 @@ groups:
       - record: deeperseeker:web_chats:created:1h
         expr: |
           sum(count_over_time({service_name="deeperseeker", k8s_namespace_name="deeperseeker"} |~ "chat_session/create|created chat_session" [1h]))
-...

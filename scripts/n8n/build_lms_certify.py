@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Build the importable pilot workflow. Does not activate or deploy anything."""
 import json
+from collections.abc import Mapping
 from pathlib import Path
+from typing import cast
 from uuid import NAMESPACE_URL, uuid5
 from lms_reviewed_batch import SPECS, ORACLE_JS
 
@@ -13,10 +15,10 @@ LLM = 'http://litellm.llm.svc.cluster.local:4000/v1/chat/completions'
 nodes, edges = [], {}
 
 
-def node(name, kind, version, params, x, y, credential=None):
-    out = {"id": str(uuid5(NAMESPACE_URL, "lms-certification/" + name)), "name": name,
-           "type": "n8n-nodes-base." + kind, "typeVersion": version,
-           "position": [x, y], "parameters": params}
+def node(name: str, kind: str, version: float, params: Mapping[str, object], x: int, y: int,
+         credential: tuple[str, str] | None = None):
+    out = dict(id=str(uuid5(NAMESPACE_URL, 'lms-certification/' + name)), name=name,
+               type='n8n-nodes-base.' + kind, typeVersion=version, position=[x, y], parameters=params)
     if credential:
         typ, role = credential
         out['credentials'] = {typ: {'id': 'REPLACE_' + role, 'name': role}}
@@ -24,37 +26,41 @@ def node(name, kind, version, params, x, y, credential=None):
     return name
 
 
-def link(a, b, port=0):
+def link(a: str, b: str, port: int = 0):
     branches = edges.setdefault(a, {'main': []})['main']
     while len(branches) <= port:
         branches.append([])
-    branches[port].append({"node": b, "type": "main", "index": 0})
+    branches[port].append(dict(node=b, type='main', index=0))
 
 
-def chain(*names):
+def chain(*names: str) -> None:
     for a, b in zip(names, names[1:]):
         link(a, b)
 
 
-def code(name, js, x, y):
+def code(name: str, js: str, x: int, y: int):
     return node(name, 'code', 2, {'jsCode': js}, x, y)
 
 
-def check(name, expr, x, y):
+def check(name: str, expr: str, x: int, y: int):
     return node(name, 'if', 2.2, {'conditions': {'options': {'version': 2, 'typeValidation': 'strict'},
                 'conditions': [{'id': 'yes', 'leftValue': '={{ ' + expr + ' }}', 'rightValue': '',
                                 'operator': {'type': 'boolean', 'operation': 'true', 'singleValue': True}}],
                 'combinator': 'and'}}, x, y)
 
 
-def http(name, url, x, y, *, body=None, role=None, query=None):
-    params = {'url': url, 'options': {'timeout': 180000 if role=='LITELLM' else 90000 if body else 8000,
-              'response': {'response': {'fullResponse': True, 'neverError': True, 'responseFormat': 'json'}}}}
+def http(name: str, url: str, x: int, y: int, *,
+         body: str | None = None, role: str | None = None, query: str | None = None):
+    params: dict[str, object] = {
+        'url': url,
+        'options': {'timeout': 180000 if role=='LITELLM' else 90000 if body else 8000,
+                    'response': {'response': {'fullResponse': True, 'neverError': True,
+                                              'responseFormat': 'json'}}}}
     credential = None
     if body:
         params.update(method='POST', sendBody=True, specifyBody='json', jsonBody='={{ JSON.stringify(' + body + ') }}',
                       authentication='genericCredentialType', genericAuthType='httpHeaderAuth')
-        credential = ('httpHeaderAuth', role)
+        credential = ('httpHeaderAuth', cast("str", role))
     if query:
         params.update(sendQuery=True, queryParameters={'parameters': [{'name': 'query', 'value': query}]})
     result = node(name, 'httpRequest', 4.2, params, x, y, credential)
@@ -62,12 +68,12 @@ def http(name, url, x, y, *, body=None, role=None, query=None):
     return result
 
 
-def pg(name, sql, args, x, y):
+def pg(name: str, sql: str, args: str, x: int, y: int):
     return node(name, 'postgres', 2.6, {'operation': 'executeQuery', 'query': sql,
                 'options': {'queryReplacement': '={{ ' + args + ' }}'}}, x, y, ('postgres', 'CERTIFICATION_DB'))
 
 
-def idle(prefix, x, y):
+def idle(prefix: str, x: int, y: int):
     # Timestamp the original samples, not the Prometheus query evaluation.
     selector = '{__name__=~"vllm:num_requests_(running|waiting)",model_name="' + MODEL + '"}'
     values = http(prefix + ' queue depth', PROM, x, y, query=selector)
@@ -223,11 +229,11 @@ terminal = pg('Private outcome recorded', '''SELECT phase, count(*)::int AS task
 
 
 
-def ref(name):
+def ref(name: str):
     return '$(' + json.dumps(name) + ').item.json'
 
 
-def reducer(name, route, js, x, y):
+def reducer(name: str, route: str, js: str, x: int, y: int):
     n = code(name, f'''const {{phase,data}} = {ref(route)};
 const status = $json.statusCode;
 if ($json.error || status === 429 || status >= 500) return {{json: {{pause:true,reason:$json.error?'transport':'http_'+status}}}};
@@ -413,10 +419,9 @@ return {{json: {{phase:next,data}}}};'''
 link(previous, terminal, 1)
 
 assert len({n['name'] for n in nodes}) == len(nodes) == len({n['id'] for n in nodes}), 'Duplicate node names or IDs'
-workflow = {"name": "LMS certification — reviewed queue", "nodes": nodes, "connections": edges,
-           "settings": {"errorWorkflow": "iZn7biFh6321a1w8", "executionOrder": "v1",
-                         "timezone": "Europe/Moscow", "executionTimeout": 720,
-                         "saveDataSuccessExecution": "none", "saveDataErrorExecution": "all",
-                         "saveExecutionProgress": False, "saveManualExecutions": False}}
+workflow = dict(name='LMS certification — reviewed queue', nodes=nodes, connections=edges,
+                settings=dict(errorWorkflow='iZn7biFh6321a1w8', executionOrder='v1', timezone='Europe/Moscow',
+                              executionTimeout=720, saveDataSuccessExecution='none', saveDataErrorExecution='all',
+                              saveExecutionProgress=False, saveManualExecutions=False))
 if __name__ == '__main__':
     (ROOT / 'workflow.json').write_text(json.dumps(workflow, ensure_ascii=False, indent=2)+'\n')

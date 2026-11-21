@@ -11,6 +11,7 @@ import json
 import time
 import urllib.request
 import uuid
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -23,7 +24,7 @@ spec.loader.exec_module(helper)
 PROFILE = "process_cpu:cpu:nanoseconds:cpu:nanoseconds"
 
 
-def post(grafana, method, body):
+def post(grafana: str, method: str, body: Mapping[str, object]):
     req = urllib.request.Request(
         grafana.rstrip("/")
         + "/api/datasources/proxy/uid/pyroscope/querier.v1.QuerierService/"
@@ -35,7 +36,7 @@ def post(grafana, method, body):
         return json.load(response)
 
 
-def run(args):
+def run(args: argparse.Namespace):
     if not args.create_canary_session:
         raise ValueError("Explicit --create-canary-session is required")
     issuer, subject = "urn:homelab:lms-cpu-canary", str(uuid.uuid4())
@@ -73,7 +74,7 @@ print(json.dumps(dict(cookie=cookie)))
             durations.append((time.monotonic() - began) * 1000)
             count += 1
             time.sleep(max(0, 0.1 - (time.monotonic() - began)))
-        for _attempt in range(18):
+        for attempt in range(18):
             end_ms = int(time.time() * 1000)
             data = post(
                 args.grafana_url,

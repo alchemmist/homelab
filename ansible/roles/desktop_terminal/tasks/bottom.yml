@@ -11,9 +11,7 @@
   ansible.builtin.assert:
     that:
       - homelab_bottom_version.stdout.split()[1] is version('0.14.9', '>=')
-    fail_msg: >-
-      Update the configured bottom binary to version 0.14.9 or newer
-      before applying table sorting.
+    fail_msg: Update the configured bottom binary to version 0.14.9 or newer before applying table sorting.
     quiet: true
   when: homelab_monitor_binary_stat.stat.executable | default(false) or not ansible_check_mode
 

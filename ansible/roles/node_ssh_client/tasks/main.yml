@@ -16,18 +16,13 @@
     quiet: true
     that:
       - item.key is match('^socrat-[0-9]+$')
-      - >-
-        item.value.address is match('^(10\.[0-9]+\.[0-9]+\.[0-9]+|'
-        ~ '192\.168\.[0-9]+\.[0-9]+|'
-        ~ '172\.(1[6-9]|2[0-9]|3[01])\.[0-9]+\.[0-9]+)$')
+      - item.value.address is match('^(10\.[0-9]+\.[0-9]+\.[0-9]+|192\.168\.[0-9]+\.[0-9]+|172\.(1[6-9]|2[0-9]|3[01])\.[0-9]+\.[0-9]+)$')
       - item.value.address.split('.') | map('int') | select('lt', 256) | list | length == 4
       - node_port | string is match('^[0-9]+$')
       - node_port | int > 0
       - node_port | int < 65536
   vars:
-    node_port: >-
-      {{ item.value.ssh_port | default(hostvars.get(item.key,
-      {}).get('homelab_ssh_port', homelab_node_ssh_port)) }}
+    node_port: "{{ item.value.ssh_port | default(hostvars.get(item.key, {}).get('homelab_ssh_port', homelab_node_ssh_port)) }}"
   loop: "{{ homelab_node_ssh_hosts | dict2items }}"
   loop_control:
     label: "{{ item.key }}"
@@ -83,9 +78,7 @@
       - ('hostname ' ~ item.item.value.address) in item.stdout_lines
       - ('port ' ~ (node_port | string)) in item.stdout_lines
   vars:
-    node_port: >-
-      {{ item.item.value.ssh_port | default(hostvars.get(item.item.key,
-      {}).get('homelab_ssh_port', homelab_node_ssh_port)) }}
+    node_port: "{{ item.item.value.ssh_port | default(hostvars.get(item.item.key, {}).get('homelab_ssh_port', homelab_node_ssh_port)) }}"
   loop: "{{ node_ssh_resolved.results }}"
   loop_control:
     label: "{{ item.item.key }}"

@@ -1,7 +1,6 @@
 ---
 replicaCount: 1
-image: >-
-  ghcr.io/open-webui/open-webui:v0.12.3-slim@sha256:5adfb0355bbe4a5860c0ba9482cc0b40f573de3749a21a64cf4789391a14fffc
+image: ghcr.io/open-webui/open-webui:v0.12.3-slim@sha256:5adfb0355bbe4a5860c0ba9482cc0b40f573de3749a21a64cf4789391a14fffc
 nodeName: socrat-5
 webuiUrl: https://chat.alchemmist.xyz
 https:
@@ -67,12 +66,12 @@ otel:
 publicEntry:
   issuer: letsencrypt-http01
   routes:
-    - name: webui-alias
-      host: llm.socrat.alchemmist.xyz
-      namespace: llm
-      service: open-webui
-      port: 8080
-      authorization: native-oidc
+  - name: webui-alias
+    host: llm.socrat.alchemmist.xyz
+    namespace: llm
+    service: open-webui
+    port: 8080
+    authorization: native-oidc
 
 # New VM data is separate from the retained, never-deleted legacy claim.
 migrationStorage:

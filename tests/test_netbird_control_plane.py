@@ -14,7 +14,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(name, filename):
+def load(name: str, filename: str):
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / filename)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -28,7 +28,7 @@ backup = load("netbird_backup", "netbird-backup.py")
 
 
 def control_inputs():
-    review = dict.fromkeys(nb.REVIEWS, False)
+    review = {key: False for key in nb.REVIEWS}
     for key in nb.CONTROL_REVIEWS:
         review[key] = True
     return {
@@ -241,7 +241,7 @@ class ControlPlaneTests(unittest.TestCase):
                         "login_group": "pilot-login",
                         "routing_peers": [],
                         "resources": [],
-                        "review": dict.fromkeys(nb.REVIEWS, True),
+                        "review": {key: True for key in nb.REVIEWS},
                     }
                 )
             )
@@ -298,7 +298,7 @@ class BootstrapTests(unittest.TestCase):
     def test_claim_redacts_token_and_requires_setup(self):
         calls = []
 
-        def opener(url, body):
+        def opener(url: str, body: dict[str, object]):
             calls.append((url, body))
             if url.endswith("/api/instance"):
                 return {"setup_required": True}
@@ -320,7 +320,7 @@ class BootstrapTests(unittest.TestCase):
         )
         self.assertNotIn("create_pat", calls[1][1])
 
-        def claimed(url, body):
+        def claimed(url: str, body: dict[str, object]):
             return {"setup_required": False}
 
         with self.assertRaises(ValueError):

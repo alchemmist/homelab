@@ -3,7 +3,6 @@ import copy
 import json
 import sqlite3
 import urllib.request
-from collections.abc import Mapping, Sequence
 from datetime import timedelta
 
 
@@ -32,7 +31,7 @@ def configure():
     )
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
-    def request(path: str, payload: Mapping[str, object] | None = None):
+    def request(path, payload=None):
         req = urllib.request.Request(
             "http://127.0.0.1:8080" + path,
             headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
@@ -96,7 +95,7 @@ def configure():
         if after.get(key) != before.get(key):
             raise RuntimeError("Unrelated model settings changed")
 
-    def grants(model: Mapping[str, Sequence[Mapping[str, object]] | None]):
+    def grants(model):
         return sorted(
             (g.get("principal_type"), g.get("principal_id"), g.get("permission"))
             for g in model.get("access_grants") or []

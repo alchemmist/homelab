@@ -13,12 +13,7 @@
 
 - name: Download checksum-pinned official Authentik chart
   ansible.builtin.get_url:
-    url: >-
-      {{ 'https://github.com/goauthentik/helm/releases/download/authentik-'
-      ~ authentik_chart_version
-      ~ '/authentik-'
-      ~ authentik_chart_version
-      ~ '.tgz' }}
+    url: https://github.com/goauthentik/helm/releases/download/authentik-{{ authentik_chart_version }}/authentik-{{ authentik_chart_version }}.tgz
     dest: "{{ authentik_directory }}/chart.tgz"
     checksum: sha256:{{ authentik_chart_sha256 }}
     mode: "0600"
@@ -70,9 +65,7 @@
            -f,
            "{{ authentik_directory }}/foundation.yaml"]
   register: authentik_foundation
-  changed_when: >-
-    'created' in authentik_foundation.stdout
-    or 'configured' in authentik_foundation.stdout
+  changed_when: "'created' in authentik_foundation.stdout or 'configured' in authentik_foundation.stdout"
 
 - name: Wait for the shared critical database before starting Authentik
   ansible.builtin.command:

@@ -20,20 +20,13 @@
     that:
       - (kuma_private_current.stdout | from_json).spec.replicas == 1
       - (kuma_private_current.stdout | from_json).spec.template.spec.hostNetwork | bool
-      - (kuma_private_current.stdout | from_json).spec.template.spec
-        .nodeSelector['kubernetes.io/hostname'] in groups['all']
+      - (kuma_private_current.stdout | from_json).spec.template.spec.nodeSelector['kubernetes.io/hostname'] in groups['all']
 
 - name: Locate the active database and evaluate DNS drift
   ansible.builtin.set_fact:
-    kuma_private_node: >-
-      {{ (kuma_private_current.stdout | from_json).spec.template.spec.nodeSelector['kubernetes.io/hostname'] }}
-    kuma_private_data: >-
-      {{ ((kuma_private_current.stdout | from_json).spec.template.spec.volumes
-          | selectattr('name', 'equalto', 'data') | first).hostPath.path }}
-    kuma_private_dns_changed: >-
-      {{ (kuma_private_current.stdout | from_json).spec.template.spec.dnsPolicy != 'None'
-         or ((kuma_private_current.stdout | from_json).spec.template.spec.dnsConfig
-             | default({}, true)) != kuma_private_dns }}
+    kuma_private_node: "{{ (kuma_private_current.stdout | from_json).spec.template.spec.nodeSelector['kubernetes.io/hostname'] }}"
+    kuma_private_data: "{{ ((kuma_private_current.stdout | from_json).spec.template.spec.volumes | selectattr('name', 'equalto', 'data') | first).hostPath.path }}"
+    kuma_private_dns_changed: "{{ (kuma_private_current.stdout | from_json).spec.template.spec.dnsPolicy != 'None' or ((kuma_private_current.stdout | from_json).spec.template.spec.dnsConfig | default({}, true)) != kuma_private_dns }}"
 
 - name: Verify private DNS and strict HTTPS from the existing Kuma container
   ansible.builtin.command:
@@ -45,7 +38,7 @@
       - -n
       - "{{ kuma_private_namespace }}"
       - exec
-      - deployment/{{ kuma_private_deployment }}
+      - "deployment/{{ kuma_private_deployment }}"
       - --
       - node
       - -e
@@ -57,28 +50,20 @@
         resolver.setServers({{ kuma_private_dns.nameservers | to_json }});
         function probe(address) {
           return new Promise((resolve, reject) => {
-            const request = https.get({hostname: address, servername: host, path: '/ping',
-                                       headers: {Host: host}, timeout: 5000}, response => {
+            const request = https.get({hostname: address, servername: host, path: '/ping', headers: {Host: host}, timeout: 5000}, response => {
               let body = '';
               response.on('data', data => body += data);
-              response.on('end', () => response.statusCode === 200 && body.trim() === 'pong'
-                ? resolve() : reject(new Error('Unexpected Rancher response')));
+              response.on('end', () => response.statusCode === 200 && body.trim() === 'pong' ? resolve() : reject(new Error('Unexpected Rancher response')));
             });
             request.on('error', reject);
-            request.on('timeout', () =>
-              request.destroy(new Error('Rancher probe timed out')));
+            request.on('timeout', () => request.destroy(new Error('Rancher probe timed out')));
           });
         }
         (async () => {
           const addresses = await resolver.resolve4(host);
-          if (!addresses.length || addresses.some(address =>
-            !['10.250.0.1', '10.250.0.3'].includes(address))) {
-            throw new Error('Rancher DNS did not return private ingress addresses');
-          }
+          if (!addresses.length || addresses.some(address => !['10.250.0.1', '10.250.0.3'].includes(address))) throw new Error('Rancher DNS did not return private ingress addresses');
           for (const address of addresses) {
-            try {
-              await probe(address); console.log('Private Rancher HTTPS responds with pong'); return;
-            } catch (error) {}
+            try { await probe(address); console.log('Private Rancher HTTPS responds with pong'); return; } catch (error) {}
           }
           throw new Error('No private Rancher endpoint is healthy');
         })().catch(error => { console.error(error.message); process.exitCode = 1; });
@@ -88,7 +73,7 @@
   ansible.builtin.file:
     path: "{{ kuma_private_workdir }}"
     state: directory
-    mode: "0700"
+    mode: '0700'
   delegate_to: "{{ kuma_private_node }}"
   become: true
 
@@ -96,7 +81,7 @@
   ansible.builtin.copy:
     src: configure_monitor.py
     dest: "{{ kuma_private_workdir }}/configure_monitor.py"
-    mode: "0700"
+    mode: '0700'
   delegate_to: "{{ kuma_private_node }}"
   become: true
 
@@ -170,8 +155,7 @@
           - "{{ kuma_private_deployment }}"
           - --type=merge
           - -p
-          - "{{ {'spec': {'template': {'spec': {'dnsPolicy': 'None',
-                                               'dnsConfig': kuma_private_dns}}}} | to_json }}"
+          - "{{ {'spec': {'template': {'spec': {'dnsPolicy': 'None', 'dnsConfig': kuma_private_dns}}}} | to_json }}"
       changed_when: true
   always:
     - name: Ensure Kuma is running after maintenance
@@ -223,9 +207,7 @@
       - |
         import json, sqlite3, sys
         connection = sqlite3.connect('file:' + sys.argv[1] + '?mode=ro', uri=True)
-        row = connection.execute(
-          "SELECT status, time FROM heartbeat WHERE monitor_id = ? AND time >="
-          " datetime('now', '-3 minutes') ORDER BY id DESC LIMIT 1", (int(sys.argv[2]),)).fetchone()
+        row = connection.execute("SELECT status, time FROM heartbeat WHERE monitor_id = ? AND time >= datetime('now', '-3 minutes') ORDER BY id DESC LIMIT 1", (int(sys.argv[2]),)).fetchone()
         connection.close()
         print(json.dumps({'status': row[0], 'time': row[1]} if row else {}))
         sys.exit(0 if row and row[0] == 1 else 1)

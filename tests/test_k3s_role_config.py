@@ -1,4 +1,5 @@
 import argparse
+from collections.abc import Mapping, Sequence
 import importlib.util
 from pathlib import Path
 import stat
@@ -31,7 +32,7 @@ class RoleConfigTests(unittest.TestCase):
             check=False,
         )
 
-    def write(self, value):
+    def write(self, value: Mapping[str, object] | Sequence[object]) -> None:
         self.path.write_text(yaml.safe_dump(value))
         self.path.chmod(0o600)
 
@@ -81,15 +82,15 @@ class RoleConfigTests(unittest.TestCase):
 
     def test_control_plane_removes_conflicting_flags(self):
         self.write(
-            dict.fromkeys(
-                (
+            {
+                key: True
+                for key in (
                     "cluster-init",
                     "disable-apiserver",
                     "disable-controller-manager",
                     "disable-scheduler",
-                ),
-                True,
-            )
+                )
+            }
         )
         self.args.role = "control-plane"
         MODULE.configure(self.args)

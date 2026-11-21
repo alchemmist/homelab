@@ -12,7 +12,7 @@ import urllib.request
 FIELDS = ("ip", "local_port", "protocol", "remote_ip", "external_port", "wan", "status", "comment")
 
 
-def parse_forwards(page):
+def parse_forwards(page: str):
     rows = []
     for row in re.findall(r"<tr\b[^>]*>(.*?)</tr>", page, re.S | re.I):
         selected = re.search(r'name="(select\d+)"', row)
@@ -30,12 +30,12 @@ def parse_forwards(page):
     return rows
 
 
-def canonical(rows):
+def canonical(rows: list[dict[str, str]]):
     return sorted(tuple(row[field] for field in FIELDS) for row in rows)
 
 
 class Router:
-    def __init__(self, credentials, address):
+    def __init__(self, credentials: dict[str, str], address: str):
         self.base = "http://" + str(ipaddress.IPv4Address(address))
         self.cookie = None
         page = self.request("/login.htm")
@@ -62,7 +62,7 @@ class Router:
             raise ValueError("Router authentication failed")
         self.cookie = match.group(1)
 
-    def request(self, path, data=None):
+    def request(self, path: str, data: dict[str, str] | None = None):
         encoded = None if data is None else urllib.parse.urlencode(data).encode()
         headers = {} if self.cookie is None else {"Cookie": self.cookie}
         request = urllib.request.Request(self.base + path, data=encoded, headers=headers)
@@ -72,7 +72,7 @@ class Router:
     def forwards(self):
         return parse_forwards(self.request("/portfw.htm"))
 
-    def verify(self, expected):
+    def verify(self, expected: list[dict[str, str]]):
         for attempt in range(5):
             rows = self.forwards()
             if canonical(rows) == canonical(expected):
@@ -81,7 +81,9 @@ class Router:
                 time.sleep(1)
         raise RuntimeError("Router forwarding readback does not match expected state")
 
-    def replace(self, expected_rows, old, new):
+    def replace(
+        self, expected_rows: list[dict[str, str]], old: dict[str, str], new: dict[str, str]
+    ):
         rows = self.verify(expected_rows)
         matching = [row for row in rows if canonical([row]) == canonical([old])]
         if len(matching) != 1:
@@ -108,7 +110,7 @@ class Router:
                 self.verify(remaining + [old])
             raise
 
-    def add(self, row):
+    def add(self, row: dict[str, str]):
         if row["protocol"] != "TCP" or row["wan"] != "Wan2" or row["status"] != "Enabled":
             raise ValueError("Only enabled WAN2 TCP forwarding is supported")
         self.request(

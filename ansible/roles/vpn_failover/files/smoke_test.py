@@ -26,13 +26,13 @@ WORKLOADS = [
 ]
 
 
-def run(*args, timeout=45):
+def run(*args: str, timeout: int = 45) -> str:
     return subprocess.run(
         args, check=True, capture_output=True, text=True, timeout=timeout
     ).stdout.strip()
 
 
-def copy_directory(source, destination):
+def copy_directory(source: str | Path, destination: Path) -> None:
     source = Path(source)
     if source.is_dir():
         shutil.copytree(source, destination, symlinks=False)
@@ -40,7 +40,7 @@ def copy_directory(source, destination):
         destination.mkdir()
 
 
-def backup_database(source, destination):
+def backup_database(source: str | Path, destination: Path) -> None:
     source = Path(source)
     if not source.is_file() or source.stat().st_size == 0:
         raise RuntimeError("Live database is missing or empty")
@@ -51,7 +51,7 @@ def backup_database(source, destination):
                 raise RuntimeError("Smoke database integrity check failed")
 
 
-def launch(unit, properties, executable, *arguments):
+def launch(unit: str, properties: list[str], executable: str, *arguments: str) -> None:
     command = [
         "systemd-run",
         "--quiet",
@@ -69,7 +69,7 @@ def launch(unit, properties, executable, *arguments):
     run(*command, executable, *arguments)
 
 
-def main(runtime_root=ROOT):
+def main(runtime_root: Path = ROOT) -> None:
     if os.geteuid() != 0:
         raise RuntimeError("Smoke test requires root")
     os.umask(0o077)
@@ -97,7 +97,7 @@ def main(runtime_root=ROOT):
     namespace_created = False
     cleanup_errors = []
     try:
-        for name, db, cert, acme, binaries, _zone in workloads:
+        for name, db, cert, acme, binaries, zone in workloads:
             target = temporary / name
             target.mkdir()
             (target / "db").mkdir()
@@ -119,7 +119,7 @@ def main(runtime_root=ROOT):
         namespace_created = True
         run("ip", "-n", NAMESPACE, "link", "set", "lo", "up")
         run("ip", "-n", NAMESPACE, "address", "add", "172.18.0.1/16", "dev", "lo")
-        for name, _db, _cert, _acme, _binaries, zone in workloads:
+        for name, db, cert, acme, binaries, zone in workloads:
             target = temporary / name
             unit = "homelab-vpn-smoke-" + name + ".service"
             properties = [
@@ -190,7 +190,7 @@ def main(runtime_root=ROOT):
             try:
                 if run("systemctl", "show", unit, "--property=LoadState", "--value") != "not-found":
                     run("systemctl", "stop", unit)
-            except (OSError, RuntimeError, sqlite3.Error, subprocess.SubprocessError):
+            except Exception:
                 cleanup_errors.append("Could not stop " + unit)
         if namespace_created and not cleanup_errors:
             try:
@@ -198,7 +198,7 @@ def main(runtime_root=ROOT):
                 if remaining:
                     raise RuntimeError("Smoke namespace still has processes")
                 run("ip", "netns", "delete", NAMESPACE)
-            except (OSError, RuntimeError, sqlite3.Error, subprocess.SubprocessError):
+            except Exception:
                 cleanup_errors.append("Could not remove isolated network namespace")
         if not cleanup_errors:
             shutil.rmtree(temporary)
@@ -227,14 +227,6 @@ if __name__ == "__main__":
         parser = argparse.ArgumentParser()
         parser.add_argument("--runtime-root", type=Path, default=ROOT)
         main(parser.parse_args().runtime_root)
-    except (
-        OSError,
-        RuntimeError,
-        ValueError,
-        KeyError,
-        TypeError,
-        sqlite3.Error,
-        subprocess.SubprocessError,
-    ) as error:
+    except Exception as error:
         print(json.dumps({"error": str(error)}))
         raise SystemExit(1)

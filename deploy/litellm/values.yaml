@@ -6,7 +6,7 @@ replicaCount: 1
 numWorkers: 1
 image:
   repository: ghcr.io/berriai/litellm
-  tag: 1.105.1
+  tag: '1.105.1'
   pullPolicy: IfNotPresent
 strategy:
   type: RollingUpdate
@@ -94,18 +94,18 @@ envVars:
   OTEL_EXPORTER_OTLP_CERTIFICATE: /etc/otel-client/ca.crt
   OTEL_EXPORTER_OTLP_CLIENT_CERTIFICATE: /etc/otel-client/tls.crt
   OTEL_EXPORTER_OTLP_CLIENT_KEY: /etc/otel-client/tls.key
-  OTEL_EXPORTER_OTLP_INSECURE: "false"
+  OTEL_EXPORTER_OTLP_INSECURE: 'false'
   OTEL_EXPORTER_OTLP_HEADERS: Connection=close
   OTEL_SERVICE_NAME: litellm
   OTEL_TRACES_SAMPLER: always_on
   OTEL_METRICS_EXPORTER: none
   OTEL_LOGS_EXPORTER: none
-  LITELLM_OTEL_INTEGRATION_ENABLE_METRICS: "false"
-  LITELLM_OTEL_INTEGRATION_ENABLE_EVENTS: "false"
+  LITELLM_OTEL_INTEGRATION_ENABLE_METRICS: 'false'
+  LITELLM_OTEL_INTEGRATION_ENABLE_EVENTS: 'false'
   OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: NO_CONTENT
-  LITELLM_TELEMETRY: "False"
+  LITELLM_TELEMETRY: 'False'
   PROXY_BASE_URL: https://llm.alchemmist.xyz
-  FORWARDED_ALLOW_IPS: 127.0.0.1,10.42.0.0/16,10.250.0.0/24
+  FORWARDED_ALLOW_IPS: '127.0.0.1,10.42.0.0/16,10.250.0.0/24'
 db:
   deployStandalone: false
   useExisting: true
@@ -129,14 +129,14 @@ migrationJob:
       cpu: 100m
       memory: 512Mi
     limits:
-      cpu: "2"
+      cpu: '2'
       memory: 2Gi
 resources:
   requests:
     cpu: 250m
     memory: 1Gi
   limits:
-    cpu: "2"
+    cpu: '2'
     memory: 4Gi
 proxy_config:
   model_list:

@@ -21,24 +21,24 @@ def fixtures():
     calls = []
 
     class Native:
-        def __init__(self, app: str, db_engine: str):
+        def __init__(self, app, db_engine):
             self.app = app
             self.db_engine = db_engine
 
     class Http:
-        def instrument(self) -> None:
+        def instrument(self):
             calls.append("http")
 
-        def uninstrument(self) -> None:
+        def uninstrument(self):
             calls.append("http-stop")
 
     class FastApi:
         @staticmethod
-        def instrument_app(**kwargs):
+        def instrument_app(**kwargs: object):
             calls.append(kwargs)
 
         @staticmethod
-        def uninstrument_app(app: str):
+        def uninstrument_app(app):
             calls.append("fastapi-stop")
 
     native = SimpleNamespace(

@@ -1,5 +1,5 @@
 ---
-wg_tcp_version: 3.3.0
+wg_tcp_version: '3.3.0'
 wg_tcp_server: socrat-2
 wg_tcp_client: socrat-1
 wg_tcp_server_address: 109.120.141.60

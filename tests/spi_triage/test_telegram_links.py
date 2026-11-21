@@ -6,7 +6,7 @@ import unittest
 FILES = Path(__file__).resolve().parents[2] / "charts/spi-triage/files"
 
 
-def load(name):
+def load(name: str):
     spec = importlib.util.spec_from_file_location(name, FILES / (name + ".py"))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -23,42 +23,40 @@ class OutboxTest(unittest.TestCase):
         self.store = core.Store(Path(self.tmp.name) / "db")
         self.now = 1000
         self.calls = []
-        self.item = {
-            "link_protocol": 1,
-            "episode": "e",
-            "generation": 1,
-            "copies": [
-                {
-                    "chat_id": 1,
-                    "message_id": 2,
-                    "delivery_state": "applied",
-                    "applied_revision": 1,
-                    "applied_url": "https://github.com/alchemmist/homelab/issues/42#issuecomment-7",
-                }
+        self.item = dict(
+            link_protocol=1,
+            episode="e",
+            generation=1,
+            copies=[
+                dict(
+                    chat_id=1,
+                    message_id=2,
+                    delivery_state="applied",
+                    applied_revision=1,
+                    applied_url="https://github.com/alchemmist/homelab/issues/42#issuecomment-7",
+                )
             ],
-        }
+        )
         self.status = 200
         self.outbox = links.Links(
             self.store, self.http, clock=lambda: self.now, guarded_protocol=True
         )
 
-    def http(self, method, path, **kwargs):
+    def http(self, method: str, path: str, **kwargs: object):
         self.calls.append((method, path, kwargs))
-        return self.status, self.item if method == "GET" else {
-            "key": "Alert/pod/ns/name",
-            "updated": [{"chat_id": 1, "message_id": 2}],
-            "pending": [],
-        }
+        return self.status, self.item if method == "GET" else dict(
+            key="Alert/pod/ns/name", updated=[dict(chat_id=1, message_id=2)], pending=[]
+        )
 
-    def publication(self, **changes):
+    def publication(self, **changes: object) -> dict[str, object]:
         return dict(
-            {
-                "kind": "comment",
-                "role": "primary",
-                "issue_number": 42,
-                "id": 7,
-                "html_url": "https://github.com/alchemmist/homelab/issues/42#issuecomment-7",
-            },
+            dict(
+                kind="comment",
+                role="primary",
+                issue_number=42,
+                id=7,
+                html_url="https://github.com/alchemmist/homelab/issues/42#issuecomment-7",
+            ),
             **changes,
         )
 
@@ -68,12 +66,12 @@ class OutboxTest(unittest.TestCase):
     def receipt(self):
         self.outbox.record_card_receipt(
             "e",
-            {
-                "key": "Alert/pod/ns/name",
-                "episode": "e",
-                "immutable_key": True,
-                "copies": [{"chat_id": 1, "message_id": 2}],
-            },
+            dict(
+                key="Alert/pod/ns/name",
+                episode="e",
+                immutable_key=True,
+                copies=[dict(chat_id=1, message_id=2)],
+            ),
         )
 
     def retry(self):
@@ -114,14 +112,14 @@ class OutboxTest(unittest.TestCase):
     def test_partial_readback_not_desired_state(self):
         self.enqueue()
         self.receipt()
-        self.outbox.request = lambda *_a, **_kw: (
+        self.outbox.request = lambda *a, **kw: (
             200,
-            {
-                "key": "Alert/pod/ns/name",
-                "spi_url": self.publication()["html_url"],
-                "updated": [],
-                "pending": [{"chat_id": 1, "message_id": 2}],
-            },
+            dict(
+                key="Alert/pod/ns/name",
+                spi_url=self.publication()["html_url"],
+                updated=[],
+                pending=[dict(chat_id=1, message_id=2)],
+            ),
         )
         self.outbox.once()
         self.assertEqual(self.outbox.snapshot("e")["error"], "COPIES_PENDING")
@@ -133,7 +131,7 @@ class OutboxTest(unittest.TestCase):
         self.enqueue()
         self.receipt()
 
-        def fail(*a, **kw):
+        def fail(*a: object, **kw: object) -> None:
             raise TimeoutError("X-Internal-Token: secret-value")
 
         self.outbox.request = fail
@@ -153,7 +151,7 @@ class OutboxTest(unittest.TestCase):
     def test_episode_and_stale_revision(self):
         self.enqueue()
         self.outbox.record_card_receipt(
-            "e", {"key": "legacy", "copies": [{"chat_id": 1, "message_id": 2}]}
+            "e", dict(key="legacy", copies=[dict(chat_id=1, message_id=2)])
         )
         self.outbox.once()
         self.assertEqual(self.outbox.snapshot("e")["error"], "WAIT_IMMUTABLE_RECEIPT")
@@ -174,7 +172,7 @@ class OutboxTest(unittest.TestCase):
         self.receipt()
         original = self.http
 
-        def racing(method, path, **kwargs):
+        def racing(method: str, path: str, **kwargs: object):
             if method == "POST":
                 self.outbox.record_primary_publication(
                     "resolved",
@@ -210,11 +208,11 @@ class OutboxTest(unittest.TestCase):
             "https://github.com/alchemmist/homelab/issues/42",
         )
         for changes in [
-            {"role": "artifact"},
-            {"html_url": "https://github.com/alchemmist/homelab/issues/42"},
-            {"html_url": "https://evil/issues/42#issuecomment-7"},
-            {"id": 8},
-            {"html_url": self.publication()["html_url"] + "?token=x"},
+            dict(role="artifact"),
+            dict(html_url="https://github.com/alchemmist/homelab/issues/42"),
+            dict(html_url="https://evil/issues/42#issuecomment-7"),
+            dict(id=8),
+            dict(html_url=self.publication()["html_url"] + "?token=x"),
         ]:
             with self.assertRaises(ValueError):
                 links.primary_url(self.publication(**changes))

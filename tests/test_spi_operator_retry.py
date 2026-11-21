@@ -137,7 +137,7 @@ class RetryTests(unittest.TestCase):
         with sqlite3.connect(self.path) as c:
             return list(c.iterdump())
 
-    def mutate(self, sql, args=()):
+    def mutate(self, sql: str, args: tuple[object, ...] = ()):
         with sqlite3.connect(self.path) as c:
             c.execute(sql, args)
 
@@ -302,7 +302,7 @@ class ProductionStoreTests(unittest.TestCase):
             }
             m.retry(path, auth, True, manifest)
 
-            def audit() -> list[object]:
+            def audit():
                 with sqlite3.connect(path) as c:
                     return c.execute(
                         "SELECT * FROM operator_retry_audit ORDER BY job_id"

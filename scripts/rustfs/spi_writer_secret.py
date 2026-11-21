@@ -10,7 +10,7 @@ import stat
 from pathlib import Path
 
 
-def private_json(path):
+def private_json(path: Path):
     fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     with os.fdopen(fd, "rb") as stream:
         st = os.fstat(stream.fileno())
@@ -27,7 +27,7 @@ def private_json(path):
     return json.loads(raw)
 
 
-def render(directory):
+def render(directory: Path):
     try:
         d = Path(directory)
         st = d.lstat()

@@ -17,7 +17,7 @@ ADAPTER=json.loads((c.R/'worker_adapter.json').read_text())
 # Publisher is intentionally not a generic GitHub token. Never silently route another repo to it.
 if ADAPTER['adapter']!='monori-mutmut-v1' or ADAPTER['repository']!='alchemmist/monori':raise ValueError('Unenrolled publisher')
 
-def rpc(op,**kw):
+def rpc(op: str,**kw: object):
  p=c.pilot.cmd(['kubectl','-n','openhands','exec','-i','deploy/mutation-report-intake','--','python','-c',RPC],json.dumps(dict(op=op,repo=ADAPTER['repository_id'],issue=c.ISSUE,**kw)),timeout=20);return json.loads(p.stdout)
 
 def main():
@@ -26,8 +26,7 @@ def main():
  last=c.query("select v from meta where k='last_admission'") if c.D.exists() else []
  prior=int(last[0]['v']) if last else 0;c.ISSUE=next((i for i in reports if i>prior),reports[0]);r=rpc('get')
  revision=(c.R/'report_dispatch.py').stat().st_mtime_ns
- rows=r['cards']; c.BACK=[{"id": str(i+1),"family": x['target'],"section": x['section']}
-                         for i,x in enumerate(rows)];c.init(); allowed=set()
+ rows=r['cards']; c.BACK=[dict(id=str(i+1),family=x['target'],section=x['section']) for i,x in enumerate(rows)];c.init(); allowed=set()
  for x in rows:
   f,_,num=x['target'].partition('__mutmut_');allowed.update(f+'__mutmut_'+n for n in ([num] if num else c.C.get(f,{}).get('diffs',{})))
  if not allowed:
@@ -40,7 +39,7 @@ def main():
   log=c.A/c.key(t)/'pi-3.log'
   if log.exists() and b'502 Bad Gateway' in log.read_bytes()[-2000:]:c.mark(t,'queued','Recovered prior transport failure, no model verdict')
  c.query("update tasks set state='queued' where pr is null and state in ('screening','survived','authoring','rejected')");c.query("update tasks set state='published' where pr is not null and state in ('authoring','rejected')");c.query("update tasks set state='publication_uncertain' where state='publishing'");cache=0;nextrepair=0
- def sync(active=''):
+ def sync(active: str=''):
   tasks={x['id']:x for x in c.query('select id,state,pr from tasks')};changes=[]
   for row in rows:
    f,_,n=row['target'].partition('__mutmut_');ids=[f+'__mutmut_'+i for i in ([n] if n else c.C.get(f,{}).get('diffs',{}))];states={tasks[i]['state'] for i in ids if i in tasks};state='processing' if active in ids else 'partial' if 'queued' in states and len(states)>1 else 'queued' if states=={'queued'} else 'attention' if states-{'published','merged','already_killed','covered_pending_merge'} or not states else 'assessed';changes.append([row['section'],row['target'],state])

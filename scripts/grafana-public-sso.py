@@ -8,6 +8,7 @@ import json
 import os
 import subprocess
 from pathlib import Path
+from typing import cast
 
 NS = "cattle-monitoring-system"
 DEPLOY = "kube-prometheus-stack-grafana"
@@ -19,21 +20,24 @@ DESIRED = {
 }
 
 
-def require(ok, message):
+def require(ok: object, message: str):
     if not ok:
         raise RuntimeError(message)
 
 
-def kube(*args):
+def kube(*args: str) -> str:
     return subprocess.check_output(["kubectl", "-n", NS, *args], text=True)
 
 
-def env_plan(d):
-    containers = d["spec"]["template"]["spec"]["containers"]
+def env_plan(d: dict[str, object]):
+    spec = cast("dict[str, object]", d["spec"])
+    template = cast("dict[str, object]", spec["template"])
+    pod_spec = cast("dict[str, object]", template["spec"])
+    containers = cast("list[dict[str, object]]", pod_spec["containers"])
     index = next(i for i, c in enumerate(containers) if c["name"] == "grafana")
-    env = containers[index].get("env", [])
+    env = cast("list[dict[str, object]]", containers[index].get("env", []))
     require(len({e["name"] for e in env}) == len(env), "Duplicate env entries")
-    lookup = {e["name"]: e for e in env}
+    lookup = {cast("str", e["name"]): e for e in env}
     require(
         lookup["GF_AUTH_GENERIC_OAUTH_ENABLED"]["value"] == "true",
         "Native OIDC must already be activated",
@@ -43,7 +47,9 @@ def env_plan(d):
         "Precondition failed; stop and inspect privately",
     )
     require(
-        lookup["GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET"]["valueFrom"]["secretKeyRef"]
+        cast("dict[str, object]", lookup["GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET"]["valueFrom"])[
+            "secretKeyRef"
+        ]
         == {"name": "socrat-authentik-grafana", "key": "client-secret"},
         "Precondition failed; stop and inspect privately",
     )

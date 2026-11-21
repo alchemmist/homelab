@@ -1,5 +1,6 @@
 """Mac SSH must use narrow mesh routes, without SSH bastions or source masking."""
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 import shlex
 import subprocess
@@ -9,7 +10,7 @@ from jinja2 import Environment
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(path):
+def load(path: str):
     return yaml.safe_load((ROOT / path).read_text())
 
 
@@ -31,7 +32,7 @@ def test_worker_routes_mac_back_to_same_gateway_without_duplicate_peer():
     assert worker["wg_socrat_admin_clients"] == {}
 
 
-def render_firewall(rules):
+def render_firewall(rules: Sequence[Mapping[str, object]]) -> str:
     env = Environment()
     env.filters["quote"] = shlex.quote
     env.filters["bool"] = bool

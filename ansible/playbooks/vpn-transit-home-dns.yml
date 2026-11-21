@@ -11,9 +11,7 @@
         content: |
           {"log":{"loglevel":"warning"},"inbounds":[{"tag":"private-dns-tcp","listen":"10.250.0.40","port":53,"protocol":"tunnel","settings":{"rewriteAddress":"10.250.0.2","rewritePort":5354,"allowedNetwork":"tcp","followRedirect":false}},{"tag":"private-dns-udp","listen":"10.250.0.40","port":53,"protocol":"tunnel","settings":{"rewriteAddress":"10.250.0.2","rewritePort":5354,"allowedNetwork":"udp","followRedirect":false}}],"outbounds":[{"protocol":"freedom","sendThrough":"10.250.0.40"}]}
     - name: Validate DNS relay before activation
-      ansible.builtin.command: >-
-        /usr/local/libexec/xray-transit run -test
-        -config /etc/homelab-vpn-transit/dns.json
+      ansible.builtin.command: /usr/local/libexec/xray-transit run -test -config /etc/homelab-vpn-transit/dns.json
       changed_when: false
     - name: Install bounded DNS-only service without restarting production VPN relay
       ansible.builtin.copy:

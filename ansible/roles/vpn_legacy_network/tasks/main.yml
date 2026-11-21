@@ -5,7 +5,7 @@
     dest: /etc/systemd/system/vpn-legacy-loopback.service
     owner: root
     group: root
-    mode: "0644"
+    mode: '0644'
 
 - name: Maintain the legacy VPN address across reboots
   ansible.builtin.systemd_service:

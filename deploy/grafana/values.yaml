@@ -16,7 +16,7 @@ grafana:
     - name: require-existing-grafana-data
       image: docker.io/library/busybox:1.38.0
       imagePullPolicy: IfNotPresent
-      command: [sh, -ec, test -s /var/lib/grafana/grafana.db]
+      command: [sh, -ec, 'test -s /var/lib/grafana/grafana.db']
       securityContext:
         runAsUser: 472
         runAsGroup: 472

@@ -30,7 +30,7 @@ def init():
 def state():
     with contextlib.closing(sqlite3.connect(DB)) as d, d:
         d.row_factory=sqlite3.Row;return [dict(r) for r in d.execute('select * from cards order by rowid')]
-def save(c,phase,note='',**kw):
+def save(c: dict[str, object], phase: str, note: str = "", **kw: str | float) -> None:
     fields={'state':phase,'detail':note[:1000],**kw}; assert fields.keys()<={'state','detail','pr','due','cid','attempt'}
     with contextlib.closing(sqlite3.connect(DB)) as d, d:
         d.execute('update cards set '+','.join(k+'=?' for k in fields)+' where name=?',(*fields.values(),c['name']));d.execute('insert into transitions values(?,?,?,?)',(time.time(),c['name'],phase,note[:1000]))
@@ -180,15 +180,7 @@ def step(action):
 
 def background(action):
     try:step(action)
-    except (
-        OSError,
-        ValueError,
-        KeyError,
-        TypeError,
-        AssertionError,
-        sqlite3.Error,
-        subprocess.SubprocessError,
-    ) as ex:
+    except Exception as ex:
         c=current()
         if c and c['state']!='publishing':save(c,'blocked','Stage '+action+' failed: '+type(ex).__name__+' '+str(ex)[:250])
         print('stage failure',action,type(ex).__name__,flush=True)
@@ -199,5 +191,5 @@ class Handler(BaseHTTPRequestHandler):
         if action not in {*ROUTES.values(),'status','tick'} or self.headers.get('Transfer-Encoding') or int(self.headers.get('Content-Length',0))!=0:self.send_error(400);return
         if action==decision() and LOCK.acquire(False):threading.Thread(target=background,args=(action,),daemon=True).start()
         raw=json.dumps({'next':decision(),'cards':state(),'screened':sql('select name,verdict,count(*) from scans group by name,verdict')}).encode();self.send_response(200);self.send_header('Content-Type','application/json');self.end_headers();self.wfile.write(raw)
-    def log_message(self,*a):pass
+    def log_message(self,*a: object) -> None:pass
 if __name__=='__main__':init();ThreadingHTTPServer(('0.0.0.0',8083),Handler).serve_forever()

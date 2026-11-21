@@ -44,7 +44,7 @@
   tasks:
     - name: Require Kubernetes mode and no existing maintenance hold
       ansible.builtin.stat:
-        path: /var/lib/homelab-vpn-failover/{{ item }}
+        path: "/var/lib/homelab-vpn-failover/{{ item }}"
       loop: [active, inhibit]
       register: k3s_ha_vpn_markers
 

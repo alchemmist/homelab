@@ -172,19 +172,19 @@ class FakeAuthentik(threading.Thread):
         server = self
 
         class Handler(BaseHTTPRequestHandler):
-            def log_message(self, fmt, *args) -> None:
+            def log_message(self, fmt: str, *args: object) -> None:
                 return
 
-            def do_GET(self) -> None:
+            def do_GET(self):
                 self._handle("GET")
 
-            def do_POST(self) -> None:
+            def do_POST(self):
                 self._handle("POST")
 
-            def do_PATCH(self) -> None:
+            def do_PATCH(self):
                 self._handle("PATCH")
 
-            def _handle(self, method) -> None:
+            def _handle(self, method):
                 length = int(self.headers.get("Content-Length", "0"))
                 raw = self.rfile.read(length) if length else b""
                 payload = json.loads(raw) if raw else None
@@ -198,7 +198,7 @@ class FakeAuthentik(threading.Thread):
                     return self._send(500, {"detail": str(error)})
                 self._send(code, body)
 
-            def _send(self, code, body) -> None:
+            def _send(self, code, body):
                 data = b"" if body is None else json.dumps(body).encode()
                 self.send_response(code)
                 self.send_header("Content-Type", "application/json")
@@ -354,7 +354,7 @@ class NetBirdOIDCTests(unittest.TestCase):
         self.fake.close()
         self.tmp.cleanup()
 
-    def run_tool(self, *args):
+    def run_tool(self, *args: str):
         from io import StringIO
         import contextlib
 

@@ -17,18 +17,11 @@
       template:
         spec:
           affinity: "{{ ha_dependency_affinity }}"
-          nodeSelector: >-
-            {{ ha_coredns_spec.template.spec.get('nodeSelector', {}) | dict2items
-            | rejectattr('key', 'equalto', 'kubernetes.io/hostname') | items2dict }}
+          nodeSelector: "{{ ha_coredns_spec.template.spec.get('nodeSelector', {}) | dict2items | rejectattr('key', 'equalto', 'kubernetes.io/hostname') | items2dict }}"
 
 - name: Remove the obsolete CoreDNS hostname pin after merging
   ansible.builtin.set_fact:
-    ha_coredns_spec: >-
-      {{ ha_coredns_spec | combine({'template': ha_coredns_spec.template
-      | combine({'spec': ha_coredns_spec.template.spec
-      | combine({'nodeSelector': ha_coredns_spec.template.spec.get('nodeSelector', {})
-      | dict2items | rejectattr('key', 'equalto', 'kubernetes.io/hostname')
-      | items2dict})})}) }}
+    ha_coredns_spec: "{{ ha_coredns_spec | combine({'template': ha_coredns_spec.template | combine({'spec': ha_coredns_spec.template.spec | combine({'nodeSelector': ha_coredns_spec.template.spec.get('nodeSelector', {}) | dict2items | rejectattr('key', 'equalto', 'kubernetes.io/hostname') | items2dict})})}) }}"
 
 - name: Prevent packaged CoreDNS reconciliation on every manifest-writing server
   ansible.builtin.copy:

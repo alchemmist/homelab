@@ -14,7 +14,7 @@ vpn_failover_workloads:
     database: /srv/x-ui-lab/db
     cert: /srv/x-ui-lab/cert
     acme: /srv/x-ui-lab/acme
-    runtime: ""
+    runtime: ''
     timezone: Asia/Tehran
 vpn_failover_primary_ports:
   - {protocol: tcp, port: 18082}

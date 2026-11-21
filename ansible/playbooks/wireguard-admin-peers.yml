@@ -22,8 +22,7 @@
       register: wireguard_admin_peer_addresses
       changed_when: false
       failed_when: >-
-        (item.value.public_key + '\t' + item.value.address + '/32')
-        not in wireguard_admin_peer_addresses.stdout_lines
+        (item.value.public_key + '\t' + item.value.address + '/32') not in wireguard_admin_peer_addresses.stdout_lines
       loop: "{{ wg_socrat_admin_clients | dict2items }}"
       loop_control:
         label: "{{ item.key }}"

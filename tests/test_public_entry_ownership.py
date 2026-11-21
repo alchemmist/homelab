@@ -2,7 +2,6 @@
 
 import copy
 import subprocess
-from typing import TypedDict
 from unittest.mock import patch
 
 import pytest
@@ -18,28 +17,7 @@ from tests.public_entry_contract import CHARTS, ROOT, render
 PUBLIC_HANDOFF = "c6121e1975eb6218804a9be43d7c2a8e99584838"
 
 
-class _Metadata(TypedDict, total=False):
-    annotations: dict[str, str]
-    name: str
-    namespace: str
-
-
-class _Template(TypedDict, total=False):
-    metadata: _Metadata
-
-
-class _Spec(TypedDict, total=False):
-    template: _Template
-
-
-class _Resource(TypedDict, total=False):
-    data: dict[str, str]
-    kind: str
-    metadata: _Metadata
-    spec: _Spec
-
-
-def migration_payload(resource: _Resource):
+def migration_payload(resource):
     """Keep immutable handoff hashes; supply later source payloads independently.
 
     Only the two source-owned Grafana text inputs/checksum may differ. Validate
@@ -137,7 +115,7 @@ class OwnershipTests(unittest.TestCase):
 
 
 @pytest.mark.parametrize("violation", ["payload", "checksum", "token", "image"])
-def test_live_grafana_input_projection_rejects_mutations(violation: str):
+def test_live_grafana_input_projection_rejects_mutations(violation):
     """A passing baseline is required; normalization must not hide other changes."""
     OwnershipTests().test_every_transferred_payload_is_identical_to_reviewed_pre_migration_render()
     resources = copy.deepcopy(render("grafana"))

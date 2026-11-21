@@ -5,7 +5,7 @@ metadata:
   name: loki
   namespace: argocd
   finalizers:
-    - resources-finalizer.argocd.argoproj.io
+  - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
@@ -15,7 +15,7 @@ spec:
     helm:
       releaseName: loki
       valueFiles:
-        - alert-graphs.values.yaml
+      - alert-graphs.values.yaml
       parameters: []
   destination:
     namespace: cattle-monitoring-system
@@ -25,6 +25,6 @@ spec:
       prune: false
       selfHeal: true
     syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply=true
+    - CreateNamespace=true
+    - ServerSideApply=true
 ...

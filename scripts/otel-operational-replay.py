@@ -15,14 +15,34 @@ import subprocess
 import time
 import urllib.parse
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
+from typing import NotRequired, TypedDict, cast
+
+type _Json = None | bool | int | float | str | list[_Json] | dict[str, _Json]
+
+
+class _Series(TypedDict):
+    values: object
+
+
+class _Matrix(TypedDict):
+    resultType: str
+    result: list[_Series]
+
+
+class _MetricDocument(TypedDict):
+    status: str
+    data: _Matrix
+    warnings: NotRequired[object]
+
 
 SERVICE = "homelab-isolated-operational-replay"
 
 
-def fixtures(now):
+def fixtures(now: int):
     base_ms = (now // 10**9 - 45) * 1000
-    expected = [[(base_ms + i * 5000) / 1000, str(i)] for i in range(9)]
+    expected: list[list[float | str]] = [[(base_ms + i * 5000) / 1000, str(i)] for i in range(9)]
     resource = {"attributes": [{"key": "service.name", "value": {"stringValue": SERVICE}}]}
     metrics = {
         "resourceMetrics": [
@@ -36,8 +56,10 @@ def fixtures(now):
                                 "gauge": {
                                     "dataPoints": [
                                         {
-                                            "timeUnixNano": str(int(t * 1000) * 10**6),
-                                            "asDouble": int(v),
+                                            "timeUnixNano": str(
+                                                int(cast("float", point[0]) * 1000) * 10**6
+                                            ),
+                                            "asDouble": int(cast("str", point[1])),
                                             "attributes": [
                                                 {
                                                     "key": "source",
@@ -45,7 +67,7 @@ def fixtures(now):
                                                 }
                                             ],
                                         }
-                                        for t, v in expected
+                                        for point in expected
                                     ]
                                 },
                             }
@@ -100,7 +122,7 @@ def fixtures(now):
     return metrics, logs, traces, expected, {x[:32] for x in ids}
 
 
-def check_metrics(document, expected):
+def check_metrics(document: _MetricDocument, expected: object):
     if (
         document.get("status") != "success"
         or document.get("warnings")
@@ -111,23 +133,23 @@ def check_metrics(document, expected):
     return len(result) == 1 and result[0]["values"] == expected
 
 
-def rollback_candidate(original):
+def rollback_candidate(original: str):
     candidate = json.loads(original)
     processor = candidate["processors"]["batch/metrics"]
     processor["timeout"] = "2s" if processor["timeout"] != "2s" else "3s"
     return json.dumps(candidate).encode()
 
 
-def trace_records(document):
+def trace_records(document: _Json):
     found = []
 
-    def walk(value):
+    def walk(value: _Json):
         if isinstance(value, dict):
             if all(key in value for key in ["traceId", "spanId", "name"]):
-                identity = value["traceId"]
+                identity = cast("str", value["traceId"])
                 if len(identity) != 32:
                     identity = base64.b64decode(identity, validate=True).hex()
-                found.append((identity.lower(), value["name"]))
+                found.append((identity.lower(), cast("str", value["name"])))
             for child in value.values():
                 walk(child)
         elif isinstance(value, list):
@@ -138,7 +160,7 @@ def trace_records(document):
     return found
 
 
-def run(args):
+def run(args: argparse.Namespace):
     if os.geteuid() != 0 or os.readlink("/proc/self/ns/net") == os.readlink("/proc/1/ns/net"):
         raise ValueError("Root-owned isolated network namespace required")
     args.workspace.mkdir(mode=0o700)
@@ -156,7 +178,7 @@ def run(args):
     cluster["extensions"].pop("health_check", None)
     cluster["service"]["extensions"] = ["file_storage"]
     cluster["processors"]["batch/metrics"].update(send_batch_size=2, send_batch_max_size=2)
-    for _name, config, port in [("cluster", cluster, 18888), ("trace-gateway", gateway, 18889)]:
+    for name, config, port in [("cluster", cluster, 18888), ("trace-gateway", gateway, 18889)]:
         config["service"]["telemetry"] = {
             "metrics": {
                 "readers": [
@@ -226,7 +248,7 @@ def run(args):
     def save():
         (root / "result.json").write_text(json.dumps(report, indent=2) + "\n")
 
-    def request(port, path, body=None):
+    def request(port: int, path: str, body: object | None = None):
         payload = json.dumps(body).encode() if body is not None else None
         req = urllib.request.Request(
             "https://127.0.0.1:%d%s" % (port, path),
@@ -239,7 +261,7 @@ def run(args):
             raise ValueError("Bounded synthetic response exceeded")
         return json.loads(data) if data and path not in ["/ready", "/-/ready"] else {}
 
-    def start(name):
+    def start(name: str):
         if name in children and children[name].poll() is None:
             raise ValueError("Duplicate synthetic process")
         generations[name] = generations.get(name, 0) + 1
@@ -272,7 +294,7 @@ def run(args):
                 stderr=subprocess.STDOUT,
             )
 
-    def stop(name):
+    def stop(name: str):
         process = children[name]
         if process.poll() is not None:
             raise ValueError("Synthetic process exited before controlled stop")
@@ -281,7 +303,7 @@ def run(args):
         if process.returncode != 0:
             raise ValueError("Synthetic process graceful stop failed")
 
-    def wait(check, seconds=100):
+    def wait(check: Callable[[], object], seconds: int = 100):
         end = time.monotonic() + seconds
         while True:
             try:

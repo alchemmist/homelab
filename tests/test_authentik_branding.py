@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 THEME = ROOT / "deploy/authentik/quiet-mono"
 
 
-def load(name):
+def load(name: str):
     path = ROOT / "ansible/roles/authentik/files" / (name + ".py")
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)

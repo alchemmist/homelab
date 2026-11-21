@@ -4,17 +4,24 @@ import json
 import os
 import subprocess
 import sys
+from typing import TypedDict
 
 from reconcile_pods import Client, load_profiles, matching_profile, owner, positive, quantity
-
 
 RESOURCE_NAMES = ("cpu", "memory", "ephemeral-storage")
 
 
-def check(namespace, kubectl, kubeconfig, profile, owner_name):
+class _Profile(TypedDict, total=False):
+    namespace: str
+    ownerKind: str
+    containers: dict[str, dict[str, dict[str, str]]]
+    nodeSelector: dict[str, str]
+
+
+def check(namespace: str, kubectl: str, kubeconfig: str, profile: _Profile, owner_name: str):
     command = [kubectl, "--kubeconfig", kubeconfig, "--request-timeout=30s"]
     selector = {"resource-policy.socrat.io/probe": "preserved"}
-    selector.update(dict.fromkeys(profile.get("nodeSelector", {}), "previous"))
+    selector.update({key: "previous" for key in profile.get("nodeSelector", {})})
     containers = []
     for name in profile["containers"]:
         containers.append(

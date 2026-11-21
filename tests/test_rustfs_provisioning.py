@@ -8,22 +8,22 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
-import urllib.parse
+from typing import cast
 import urllib.error
+import urllib.parse
+import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def module(name):
-    spec = importlib.util.spec_from_file_location(
-        name, ROOT / "scripts/rustfs" / f"{name}.py"
-    )
+def module(name: str):
+    spec = importlib.util.spec_from_file_location(name, ROOT / "scripts/rustfs" / f"{name}.py")
     obj = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(obj)
     return obj
 
 
-def put(path, data):
+def put(path: Path, data: object):
     path.write_text(json.dumps(data))
     path.chmod(0o600)
 
@@ -31,13 +31,9 @@ def put(path, data):
 class Provisioning(unittest.TestCase):
     def test_policies_exact(self):
         b = module("bootstrap")
-        self.assertEqual(
-            b.POLICIES["spi-reader"]["Statement"][0]["Action"], ["s3:GetObject"]
-        )
+        self.assertEqual(b.POLICIES["spi-reader"]["Statement"][0]["Action"], ["s3:GetObject"])
         for p in b.POLICIES.values():
-            self.assertEqual(
-                p["Statement"][0]["Resource"], ["arn:aws:s3:::spi-evidence/spi/v1/*"]
-            )
+            self.assertEqual(p["Statement"][0]["Resource"], ["arn:aws:s3:::spi-evidence/spi/v1/*"])
             self.assertNotIn("s3:DeleteObject", p["Statement"][0]["Action"])
             self.assertNotIn("*", p["Statement"][0]["Action"])
 
@@ -81,7 +77,7 @@ class Provisioning(unittest.TestCase):
         buckets = []
         calls = []
 
-        def fake(mc, config, args, stdin=None) -> list[object]:
+        def fake(mc: str, config: str, args: list[str], stdin: bytes | None = None):
             calls.append(args)
             if args[:3] == ["admin", "user", "list"]:
                 return [{"accessKey": k} for k in users]
@@ -103,7 +99,7 @@ class Provisioning(unittest.TestCase):
                 policies[args[4]] = json.loads(Path(args[5]).read_text())
                 return []
             if args[:3] == ["admin", "user", "add"]:
-                access, secret = stdin.decode().splitlines()
+                access, secret = cast(bytes, stdin).decode().splitlines()
                 self.assertNotIn(secret, " ".join(args))
                 users[access] = {"userStatus": "enabled", "policyName": ""}
                 return []
@@ -155,14 +151,9 @@ class Provisioning(unittest.TestCase):
             ):
                 b.main()
             self.assertTrue(
-                all(
-                    a[0] in ("ls", "anonymous") or a[2] in ("list", "info")
-                    for a in calls
-                )
+                all(a[0] in ("ls", "anonymous") or a[2] in ("list", "info") for a in calls)
             )
-            self.assertEqual(
-                set(users), {creds[x]["access"] for x in ("reader", "writer")}
-            )
+            self.assertEqual(set(users), {creds[x]["access"] for x in ("reader", "writer")})
             users[creds["reader"]["access"]]["policyName"] = "consoleAdmin"
             with (
                 patch("sys.argv", argv + ["--apply"]),
@@ -196,9 +187,7 @@ class Provisioning(unittest.TestCase):
                 self.assertEqual(path.stat().st_mode & 0o777, 0o600)
                 doc = json.loads(path.read_text())
                 self.assertEqual(doc["metadata"]["namespace"], "rustfs")
-                self.assertEqual(
-                    doc["metadata"]["name"], path.name.removesuffix(".secret.json")
-                )
+                self.assertEqual(doc["metadata"]["name"], path.name.removesuffix(".secret.json"))
             self.assertNotEqual(
                 json.loads((d / "rustfs-reader.secret.json").read_text())["data"],
                 json.loads((d / "rustfs-root.secret.json").read_text())["data"],
@@ -212,7 +201,6 @@ class Provisioning(unittest.TestCase):
         tables["core/groups/"] = [
             {"pk": "owner", "name": "homelab-owner"},
             {"pk": "platform", "name": "homelab-platform-operator"},
-            {"pk": "reader", "name": "rustfs-console-readers"},
         ]
         tables["flows/instances/"] = [
             {"pk": s, "slug": s}
@@ -227,60 +215,41 @@ class Provisioning(unittest.TestCase):
             {"pk": "cert", "name": "authentik Self-signed Certificate"}
         ]
         tables["propertymappings/provider/scope/"] = [
-            {
-                "pk": n,
-                "scope_name": n,
-                "managed": "goauthentik.io/providers/oauth2/scope-" + n,
-            }
+            {"pk": n, "scope_name": n, "managed": "goauthentik.io/providers/oauth2/scope-" + n}
             for n in ("openid", "profile", "email")
         ]
         tables["propertymappings/provider/scope/"].append(
             {"pk": "unrelated-netbird", "scope_name": "profile", "managed": None}
         )
         tables["outposts/instances/"] = [
-            {
-                "pk": "outpost",
-                "managed": "goauthentik.io/outposts/embedded",
-                "providers": [17],
-            }
+            {"pk": "outpost", "managed": "goauthentik.io/outposts/embedded", "providers": [17]}
         ]
 
         class Response:
-            def __init__(self, data):
+            def __init__(self, data: object):
                 self.data = data
 
             def __enter__(self):
                 return self
 
-            def __exit__(self, *a):
+            def __exit__(self, *a: object) -> None:
                 pass
 
-            def read(self, *a) -> bytes:
+            def read(self, *a: object) -> bytes:
                 return json.dumps(self.data).encode()
 
         class HTTP:
-            def open(self, request, timeout) -> Response:
-                path = urllib.parse.urlsplit(request.full_url).path.removeprefix(
-                    "/api/v3/"
-                )
+            def open(self, request: urllib.request.Request, timeout: float):
+                path = urllib.parse.urlsplit(request.full_url).path.removeprefix("/api/v3/")
                 method = request.get_method()
                 if method == "GET":
-                    if (
-                        path.startswith("core/applications/")
-                        and path != "core/applications/"
-                    ):
+                    if path.startswith("core/applications/") and path != "core/applications/":
                         slug = path.split("/")[-2]
                         if detail_error[0]:
                             raise urllib.error.HTTPError(
-                                request.full_url,
-                                detail_error[0],
-                                "refused",
-                                {},
-                                io.BytesIO(),
+                                request.full_url, detail_error[0], "refused", {}, io.BytesIO()
                             )
-                        matches = [
-                            x for x in tables["core/applications/"] if x["slug"] == slug
-                        ]
+                        matches = [x for x in tables["core/applications/"] if x["slug"] == slug]
                         if matches:
                             return Response(matches[0])
                         raise urllib.error.HTTPError(
@@ -289,13 +258,11 @@ class Provisioning(unittest.TestCase):
                     # Simulate policy-filtered launcher list hiding all dedicated apps.
                     return Response(
                         {
-                            "results": []
-                            if path == "core/applications/"
-                            else tables[path],
+                            "results": [] if path == "core/applications/" else tables[path],
                             "pagination": {"next": None},
                         }
                     )
-                data = json.loads(request.data)
+                data = json.loads(cast("bytes", request.data))
                 writes.append((method, path, data))
                 if method == "PATCH":
                     self_outer.assertEqual(path, "outposts/instances/outpost/")
@@ -329,7 +296,7 @@ class Provisioning(unittest.TestCase):
                 contextlib.redirect_stdout(io.StringIO()),
             ):
                 m.main()
-            self.assertEqual(len(tables["policies/bindings/"]), 3)
+            self.assertEqual(len(tables["policies/bindings/"]), 2)
             self.assertEqual(len(tables["providers/oauth2/"]), 1)
             self.assertEqual(tables["providers/proxy/"], [])
             self.assertEqual(len(tables["core/applications/"]), 1)
@@ -382,30 +349,26 @@ class Provisioning(unittest.TestCase):
         expression = module("provision_identity").EXPRESSION
 
         def claim(
-            pk=5,
-            uuid="9e33877a-3eaa-4541-98eb-8cdc10088ef6",
-            username="alchemmist",
-            groups=(),
-        ) -> object:
+            pk: int = 5,
+            uuid: str = "9e33877a-3eaa-4541-98eb-8cdc10088ef6",
+            username: str = "alchemmist",
+            *,
+            member: bool = False,
+        ):
             user = SimpleNamespace(pk=pk, uuid=uuid, username=username)
             return eval(
                 expression.removeprefix("return "),
                 {
                     "request": SimpleNamespace(user=user),
-                    "ak_is_group_member": lambda _user, *, name: name in groups,
+                    "ak_is_group_member": lambda user, name: member,
                 },
             )["rustfs_policy"]
 
         self.assertEqual(claim(), ["consoleAdmin"])
         for changed in ({"pk": 6}, {"uuid": "other"}, {"username": "robot"}):
             self.assertEqual(claim(**changed), [])
-            self.assertEqual(
-                claim(**changed, groups=("homelab-owner",)), ["spi-console-reader"]
-            )
-        self.assertEqual(
-            claim(pk=99, username="spi-writer", groups=("rustfs-console-readers",)),
-            ["spi-console-reader"],
-        )
+            self.assertEqual(claim(**changed, member=True), ["spi-console-reader"])
+        self.assertEqual(claim(pk=99, username="spi-writer", member=True), ["spi-console-reader"])
 
     def test_builtin_scope_exact_managed_identity(self):
         m = module("provision_identity")
@@ -416,10 +379,6 @@ class Provisioning(unittest.TestCase):
         }
         custom = {"pk": "netbird", "scope_name": "profile", "managed": None}
         self.assertEqual(m.builtin_scope([official, custom], "profile"), "official")
-        for rows in (
-            [custom],
-            [official, dict(official)],
-            [dict(official, scope_name="groups")],
-        ):
+        for rows in ([custom], [official, dict(official)], [dict(official, scope_name="groups")]):
             with self.assertRaises(ValueError):
                 m.builtin_scope(rows, "profile")

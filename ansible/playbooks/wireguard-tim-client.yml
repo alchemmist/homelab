@@ -43,10 +43,7 @@
 
     - name: Include every registered node in private DNS
       ansible.builtin.set_fact:
-        homelab_private_dns_records: >-
-          {{ homelab_private_dns_records + [{'name': item.key.split('-')[-1]
-          ~ '.' ~ homelab_ssh_public_host,
-          'address': item.value.address}] }}
+        homelab_private_dns_records: "{{ homelab_private_dns_records + [{'name': item.key.split('-')[-1] ~ '.' ~ homelab_ssh_public_host, 'address': item.value.address}] }}"
       loop: "{{ wg_socrat_nodes | dict2items }}"
       loop_control:
         label: "{{ item.key }}"
@@ -57,9 +54,7 @@
       ansible.builtin.meta: flush_handlers
 
     - name: Verify private and public DNS resolution
-      ansible.builtin.command: >-
-        dig @{{ homelab_private_dns_listen_address }} {{ item }}
-        A +short +time=3 +tries=1
+      ansible.builtin.command: "dig @{{ homelab_private_dns_listen_address }} {{ item }} A +short +time=3 +tries=1"
       loop: [0.socrat.alchemmist.xyz,
              1.socrat.alchemmist.xyz,
              2.socrat.alchemmist.xyz,

@@ -8,16 +8,10 @@
   vars:
     ansible_host: '{{ inventory_hostname }}'
     ansible_port: 2222
-    ansible_ssh_common_args: >-
-      {{ "-o Hostname=10.250.0.2 -o ProxyJump=socrat-4
-      -o StrictHostKeyChecking=yes"
-      if inventory_hostname == "socrat-2"
-      else "-o ProxyJump=none -o StrictHostKeyChecking=yes" }}
+    ansible_ssh_common_args: '{{ "-o Hostname=10.250.0.2 -o ProxyJump=socrat-4 -o StrictHostKeyChecking=yes" if inventory_hostname == "socrat-2" else "-o ProxyJump=none -o StrictHostKeyChecking=yes" }}'
     observer_phase: '{{ vpn_observer_phase | default("audit") }}'
     recovery: /var/lib/homelab-recovery/20261113-vpn-runtime-monitor
-    expected_image: >-
-      {{ (lookup("file", playbook_dir + "/../../charts/x-ui/values.yaml")
-      | from_yaml).instances.primary.image }}
+    expected_image: '{{ (lookup("file", playbook_dir + "/../../charts/x-ui/values.yaml") | from_yaml).instances.primary.image }}'
   tasks:
     - ansible.builtin.assert:
         that: observer_phase in ['audit','install']
@@ -30,9 +24,7 @@
         dest: '{{ recovery }}/observer.py'
         mode: '0700'
     - name: Read local runtime, native files, boot fences, DB integrity and image identity
-      ansible.builtin.command: >-
-        python3 {{ recovery }}/observer.py --audit
-        --expected-image {{ expected_image }}
+      ansible.builtin.command: python3 {{ recovery }}/observer.py --audit --expected-image {{ expected_image }}
       register: audit
       changed_when: false
     - ansible.builtin.copy:
@@ -53,20 +45,12 @@
           - (audit.stdout | from_json).observation.check_success == 1
           - inventory_hostname != 'socrat-4' or (audit.stdout | from_json).relay_config_valid
           - inventory_hostname != 'socrat-4' or (audit.stdout | from_json).mesh_route_expected
-          - >-
-            inventory_hostname != 'socrat-2'
-            or (audit.stdout | from_json).native_files_and_live_db_valid
+          - inventory_hostname != 'socrat-2' or (audit.stdout | from_json).native_files_and_live_db_valid
           - inventory_hostname != 'socrat-2' or (audit.stdout | from_json).native_caddy_config_valid
-          - >-
-            inventory_hostname != 'socrat-2'
-            or (audit.stdout | from_json).native_image_matches_expected
-          - >-
-            inventory_hostname != 'socrat-2'
-            or (audit.stdout | from_json).configured_agent_is_server
+          - inventory_hostname != 'socrat-2' or (audit.stdout | from_json).native_image_matches_expected
+          - inventory_hostname != 'socrat-2' or (audit.stdout | from_json).configured_agent_is_server
           - inventory_hostname != 'socrat-2' or (audit.stdout | from_json).both_k3s_units_fenced
-          - >-
-            inventory_hostname != 'socrat-2'
-            or (audit.stdout | from_json).obsolete_agent_boot_fenced
+          - inventory_hostname != 'socrat-2' or (audit.stdout | from_json).obsolete_agent_boot_fenced
           - inventory_hostname != 'socrat-2' or not (audit.stdout | from_json).watchdog_inhibited
     - when: observer_phase == 'install'
       block:

@@ -15,7 +15,7 @@
     content: "LANG=en_US.UTF-8\n"
     owner: root
     group: root
-    mode: "0644"
+    mode: '0644'
 
 - name: Validate available UTF-8 locales
   ansible.builtin.command:
@@ -37,7 +37,7 @@
     state: directory
     owner: root
     group: root
-    mode: "0755"
+    mode: '0755'
 
 - name: Normalize the SSH character locale for macOS clients
   ansible.builtin.copy:
@@ -45,7 +45,7 @@
     content: "SetEnv LC_CTYPE=C.UTF-8\n"
     owner: root
     group: root
-    mode: "0644"
+    mode: '0644'
     validate: /usr/sbin/sshd -t -f %s
   register: homelab_ssh_locale_config
 

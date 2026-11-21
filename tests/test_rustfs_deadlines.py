@@ -47,7 +47,7 @@ class Deadlines(unittest.TestCase):
                 listener.bind(("127.0.0.1", 0))
                 listener.listen()
 
-                def peer() -> None:
+                def peer():
                     c, _ = listener.accept()
                     with c:
                         c.recv(4096)
@@ -88,7 +88,7 @@ class Deadlines(unittest.TestCase):
                 listener.listen()
                 url = "http://127.0.0.1:%d/" % listener.getsockname()[1]
 
-                def peer() -> None:
+                def peer():
                     c, _ = listener.accept()
                     with c:
                         c.recv(4096)
@@ -109,10 +109,10 @@ class Deadlines(unittest.TestCase):
                 t.start()
 
                 class Reader:
-                    def authorization(self, cookie) -> int:
+                    def authorization(self, cookie: str):
                         return 200 if cookie else 401
 
-                    def read(self, key) -> object:
+                    def read(self, key: str):
                         with g.opener().open(url, timeout=1) as response:
                             return g.bounded(response)
 
@@ -158,7 +158,7 @@ class Deadlines(unittest.TestCase):
         listener.bind(("127.0.0.1", 0))
         listener.listen()
 
-        def peer() -> None:
+        def peer():
             c, _ = listener.accept()
             with c:
                 c.recv(4096)
@@ -181,15 +181,15 @@ class Deadlines(unittest.TestCase):
 
     def test_response_write_deadline_releases_worker(self):
         class Handler(g.Handler):
-            def setup(self) -> None:
+            def setup(self):
                 self.request.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024)
                 super().setup()
 
         class Reader:
-            def authorization(self, cookie) -> int:
+            def authorization(self, cookie: str):
                 return 200
 
-            def read(self, key) -> object:
+            def read(self, key: str):
                 return b"x" * g.MAX_BYTES
 
         with patch.object(g, "REQUEST_SECONDS", 0.3), patch.object(g, "MAX_CONNECTIONS", 1):

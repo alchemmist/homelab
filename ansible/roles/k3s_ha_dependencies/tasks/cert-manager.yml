@@ -19,9 +19,7 @@
   ansible.builtin.assert:
     that:
       - (ha_cert_release.stdout | from_json | length) == 1
-      - >-
-        (ha_cert_release.stdout | from_json)[0].chart ==
-        'cert-manager-' ~ k3s_ha_dependencies_cert_manager_chart_version
+      - (ha_cert_release.stdout | from_json)[0].chart == 'cert-manager-' ~ k3s_ha_dependencies_cert_manager_chart_version
     fail_msg: Review the installed cert-manager version before updating the pinned HA chart version.
 
 - name: Read existing cert-manager release values without exposing configuration
@@ -43,9 +41,7 @@
 
 - name: Build component-specific cert-manager placement
   ansible.builtin.set_fact:
-    ha_cert_overrides: >-
-      {{ ha_cert_overrides | default({}) | combine({item.key: ha_cert_component}
-      if item.key else ha_cert_component, recursive=true) }}
+    ha_cert_overrides: "{{ ha_cert_overrides | default({}) | combine({item.key: ha_cert_component} if item.key else ha_cert_component, recursive=true) }}"
   vars:
     ha_cert_component:
       replicaCount: 2
@@ -89,16 +85,7 @@
 
 - name: Compare managed cert-manager placement values
   ansible.builtin.set_fact:
-    ha_cert_values_changed: >-
-      {{ ha_cert_values_changed or ha_cert_actual.get('replicaCount') != 2
-      or (ha_cert_actual.get('affinity', {})
-      | combine(ha_cert_expected.affinity, recursive=true))
-      != ha_cert_actual.get('affinity', {})
-      or (ha_cert_actual.get('strategy', {})
-      | combine(ha_cert_expected.strategy, recursive=true))
-      != ha_cert_actual.get('strategy', {})
-      or 'kubernetes.io/hostname' in (ha_cert_actual.get('nodeSelector', {})
-      | default({}, true)) }}
+    ha_cert_values_changed: "{{ ha_cert_values_changed or ha_cert_actual.get('replicaCount') != 2 or (ha_cert_actual.get('affinity', {}) | combine(ha_cert_expected.affinity, recursive=true)) != ha_cert_actual.get('affinity', {}) or (ha_cert_actual.get('strategy', {}) | combine(ha_cert_expected.strategy, recursive=true)) != ha_cert_actual.get('strategy', {}) or 'kubernetes.io/hostname' in (ha_cert_actual.get('nodeSelector', {}) | default({}, true)) }}"
   vars:
     ha_cert_saved: "{{ ha_cert_values_current.stdout | from_json | default({}, true) }}"
     ha_cert_actual: "{{ ha_cert_saved.get(item, {}) if item else ha_cert_saved }}"

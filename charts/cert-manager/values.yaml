@@ -6,8 +6,7 @@
 # Declare variables to be passed into your templates.
 global:
   # Reference to one or more secrets to be used when pulling images.
-  # For more information, see [Pull an Image from a Private
-  # Registry](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/).
+  # For more information, see [Pull an Image from a Private Registry](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/).
   #
   # For example:
   #  imagePullSecrets:
@@ -15,20 +14,15 @@ global:
   imagePullSecrets: []
 
   # Labels to apply to all resources.
-  # Please note that this does not add labels to the resources created dynamically by the
-  # controllers.
-  # For these resources, you have to add the labels in the template in the cert-manager custom
-  # resource:
+  # Please note that this does not add labels to the resources created dynamically by the controllers.
+  # For these resources, you have to add the labels in the template in the cert-manager custom resource:
   # For example, podTemplate/ ingressTemplate in ACMEChallengeSolverHTTP01Ingress
-  # For more information, see the [cert-manager
-  # documentation](https://cert-manager.io/docs/reference/api-docs/#acme.cert-manager.io/v1.ACMEChallengeSolverHTTP01Ingress).
+  # For more information, see the [cert-manager documentation](https://cert-manager.io/docs/reference/api-docs/#acme.cert-manager.io/v1.ACMEChallengeSolverHTTP01Ingress).
   # For example, secretTemplate in CertificateSpec
-  # For more information, see the [cert-manager
-  # documentation](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1.CertificateSpec).
+  # For more information, see the [cert-manager documentation](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1.CertificateSpec).
   commonLabels: {}
 
-  # The number of old ReplicaSets to retain to allow rollback (if not set, the default Kubernetes
-  # value is set to 10).
+  # The number of old ReplicaSets to retain to allow rollback (if not set, the default Kubernetes value is set to 10).
   # +docs:property
   # revisionHistoryLimit: 1
 
@@ -38,9 +32,7 @@ global:
   rbac:
     # Create required ClusterRoles and ClusterRoleBindings for cert-manager.
     create: true
-    # Aggregate ClusterRoles to Kubernetes default user-facing roles. For more information, see
-    # [User-facing
-    # roles](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#user-facing-roles)
+    # Aggregate ClusterRoles to Kubernetes default user-facing roles. For more information, see [User-facing roles](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#user-facing-roles)
     aggregateClusterRoles: true
 
   podSecurityPolicy:
@@ -106,8 +98,7 @@ crds:
 replicaCount: 1
 
 # Deployment update strategy for the cert-manager controller deployment.
-# For more information, see the [Kubernetes
-# documentation](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy).
+# For more information, see the [Kubernetes documentation](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy).
 #
 # For example:
 #  strategy:
@@ -215,8 +206,7 @@ serviceAccount:
 # +docs:property
 # automountServiceAccountToken: true
 
-# When this flag is enabled, secrets will be automatically removed when the certificate resource is
-# deleted.
+# When this flag is enabled, secrets will be automatically removed when the certificate resource is deleted.
 enableCertificateOwnerRef: false
 
 # This property is used to configure options for the controller pod.
@@ -260,23 +250,19 @@ enableCertificateOwnerRef: false
 config: {}
 
 # Setting Nameservers for DNS01 Self Check.
-# For more information, see the [cert-manager
-# documentation](https://cert-manager.io/docs/configuration/acme/dns01/#setting-nameservers-for-dns01-self-check).
+# For more information, see the [cert-manager documentation](https://cert-manager.io/docs/configuration/acme/dns01/#setting-nameservers-for-dns01-self-check).
 
-# A comma-separated string with the host and port of the recursive nameservers cert-manager should
-# query.
+# A comma-separated string with the host and port of the recursive nameservers cert-manager should query.
 dns01RecursiveNameservers: ""
 
 # Forces cert-manager to use only the recursive nameservers for verification.
-# Enabling this option could cause the DNS01 self check to take longer owing to caching performed
-# by the recursive nameservers.
+# Enabling this option could cause the DNS01 self check to take longer owing to caching performed by the recursive nameservers.
 dns01RecursiveNameserversOnly: false
 
 # Option to disable cert-manager's build-in auto-approver. The auto-approver
 # approves all CertificateRequests that reference issuers matching the 'approveSignerNames'
 # option. This 'disableAutoApproval' option is useful when you want to make all approval decisions
-# using a different approver (like approver-policy -
-# https://github.com/cert-manager/approver-policy).
+# using a different approver (like approver-policy - https://github.com/cert-manager/approver-policy).
 disableAutoApproval: false
 
 # List of signer names that cert-manager will approve by default. CertificateRequests
@@ -287,15 +273,13 @@ disableAutoApproval: false
 # ref: https://cert-manager.io/docs/concepts/certificaterequest/#approval
 # +docs:property
 approveSignerNames:
-  - issuers.cert-manager.io/*
-  - clusterissuers.cert-manager.io/*
+- issuers.cert-manager.io/*
+- clusterissuers.cert-manager.io/*
 
 # Additional command line flags to pass to cert-manager controller binary.
-# To see all available flags run `docker run quay.io/jetstack/cert-manager-controller:<version>
-# --help`.
+# To see all available flags run `docker run quay.io/jetstack/cert-manager-controller:<version> --help`.
 #
-# Use this flag to enable or disable arbitrary controllers. For example, to disable the
-# CertificateRequests approver.
+# Use this flag to enable or disable arbitrary controllers. For example, to disable the CertificateRequests approver.
 #
 # For example:
 #  extraArgs:
@@ -316,13 +300,11 @@ extraEnv: []
 #    cpu: 10m
 #    memory: 32Mi
 #
-# For more information, see [Resource Management for Pods and
-# Containers](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/).
+# For more information, see [Resource Management for Pods and Containers](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/).
 resources: {}
 
 # Pod Security Context.
-# For more information, see [Configure a Security Context for a Pod or
-# Container](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
+# For more information, see [Configure a Security Context for a Pod or Container](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
 # +docs:property
 securityContext:
   runAsNonRoot: true
@@ -330,14 +312,13 @@ securityContext:
     type: RuntimeDefault
 
 # Container Security Context to be set on the controller component container.
-# For more information, see [Configure a Security Context for a Pod or
-# Container](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
+# For more information, see [Configure a Security Context for a Pod or Container](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
 # +docs:property
 containerSecurityContext:
   allowPrivilegeEscalation: false
   capabilities:
     drop:
-      - ALL
+    - ALL
   readOnlyRootFilesystem: true
 
 # Additional volumes to add to the cert-manager controller pod.
@@ -365,14 +346,11 @@ podLabels: {}
 # +docs:property
 # serviceLabels: {}
 
-# Optionally set the IP family policy for the controller Service to configure dual-stack; see
-# [Configure
-# dual-stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/#services).
+# Optionally set the IP family policy for the controller Service to configure dual-stack; see [Configure dual-stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/#services).
 # +docs:property
 # serviceIPFamilyPolicy: ""
 
-# Optionally set the IP families for the controller Service that should be supported, in the order
-# in which they should be applied to ClusterIP. Can be IPv4 and/or IPv6.
+# Optionally set the IP families for the controller Service that should be supported, in the order in which they should be applied to ClusterIP. Can be IPv4 and/or IPv6.
 # +docs:property
 # serviceIPFamilies: []
 
@@ -383,24 +361,20 @@ podLabels: {}
 # the cluster to work.
 
 # Pod DNS policy.
-# For more information, see [Pod's DNS
-# Policy](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy).
+# For more information, see [Pod's DNS Policy](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy).
 # +docs:property
 # podDnsPolicy: "None"
 
 # Pod DNS configuration. The podDnsConfig field is optional and can work with any podDnsPolicy
-# settings. However, when a Pod's dnsPolicy is set to "None", the dnsConfig field has to be
-# specified.
-# For more information, see [Pod's DNS
-# Config](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config).
+# settings. However, when a Pod's dnsPolicy is set to "None", the dnsConfig field has to be specified.
+# For more information, see [Pod's DNS Config](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config).
 # +docs:property
 # podDnsConfig:
 #   nameservers:
 #     - "1.1.1.1"
 #     - "8.8.8.8"
 
-# Optional hostAliases for cert-manager-controller pods. May be useful when performing ACME DNS-01
-# self checks.
+# Optional hostAliases for cert-manager-controller pods. May be useful when performing ACME DNS-01 self checks.
 hostAliases: []
 # - ip: 127.0.0.1
 #   hostnames:
@@ -413,8 +387,7 @@ hostAliases: []
 
 # The nodeSelector on Pods tells Kubernetes to schedule Pods on the nodes with
 # matching labels.
-# For more information, see [Assigning Pods to
-# Nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/).
+# For more information, see [Assigning Pods to Nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/).
 #
 # This default ensures that Pods are only scheduled to Linux nodes.
 # It prevents Pods being scheduled to Windows nodes in a mixed OS cluster.
@@ -428,9 +401,11 @@ ingressShim: {}
   # Optional default issuer to use for ingress resources.
   # +docs:property=ingressShim.defaultIssuerName
   # defaultIssuerName: ""
+
   # Optional default issuer kind to use for ingress resources.
   # +docs:property=ingressShim.defaultIssuerKind
   # defaultIssuerKind: ""
+
   # Optional default issuer group to use for ingress resources.
   # +docs:property=ingressShim.defaultIssuerGroup
   # defaultIssuerGroup: ""
@@ -451,8 +426,7 @@ ingressShim: {}
 # no_proxy: 127.0.0.1,localhost
 
 
-# A Kubernetes Affinity, if required. For more information, see [Affinity v1
-# core](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#affinity-v1-core).
+# A Kubernetes Affinity, if required. For more information, see [Affinity v1 core](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#affinity-v1-core).
 #
 # For example:
 #   affinity:
@@ -466,8 +440,7 @@ ingressShim: {}
 #            - master
 affinity: {}
 
-# A list of Kubernetes Tolerations, if required. For more information, see [Toleration v1
-# core](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#toleration-v1-core).
+# A list of Kubernetes Tolerations, if required. For more information, see [Toleration v1 core](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#toleration-v1-core).
 #
 # For example:
 #   tolerations:
@@ -477,9 +450,7 @@ affinity: {}
 #     effect: NoSchedule
 tolerations: []
 
-# A list of Kubernetes TopologySpreadConstraints, if required. For more information, see [Topology
-# spread constraint v1
-# core](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#topologyspreadconstraint-v1-core
+# A list of Kubernetes TopologySpreadConstraints, if required. For more information, see [Topology spread constraint v1 core](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#topologyspreadconstraint-v1-core
 #
 # For example:
 #   topologySpreadConstraints:
@@ -498,8 +469,7 @@ topologySpreadConstraints: []
 # restarts the controller in case of a skew between the system clock and the monotonic clock.
 # LivenessProbe durations and thresholds are based on those used for the Kubernetes
 # controller-manager. For more information see the following on the
-# [Kubernetes GitHub
-# repository](https://github.com/kubernetes/kubernetes/blob/806b30170c61a38fedd54cc9ede4cd6275a1ad3b/cmd/kubeadm/app/util/staticpod/utils.go#L241-L245)
+# [Kubernetes GitHub repository](https://github.com/kubernetes/kubernetes/blob/806b30170c61a38fedd54cc9ede4cd6275a1ad3b/cmd/kubeadm/app/util/staticpod/utils.go#L241-L245)
 # +docs:property
 livenessProbe:
   enabled: true
@@ -577,8 +547,7 @@ prometheus:
     # +docs:property
     endpointAdditionalProperties: {}
 
-  # Note that you can not enable both PodMonitor and ServiceMonitor as they are mutually exclusive.
-  # Enabling both will result in an error.
+  # Note that you can not enable both PodMonitor and ServiceMonitor as they are mutually exclusive. Enabling both will result in an error.
   podmonitor:
     # Create a PodMonitor to add cert-manager to Prometheus.
     enabled: false
@@ -645,11 +614,9 @@ webhook:
   # If `replicas > 1`, consider setting `webhook.podDisruptionBudget.enabled=true`.
   replicaCount: 1
 
-  # The number of seconds the API server should wait for the webhook to respond before treating the
-  # call as a failure.
+  # The number of seconds the API server should wait for the webhook to respond before treating the call as a failure.
   # The value must be between 1 and 30 seconds. For more information, see
-  # [Validating webhook configuration
-  # v1](https://kubernetes.io/docs/reference/kubernetes-api/extend-resources/validating-webhook-configuration-v1/).
+  # [Validating webhook configuration v1](https://kubernetes.io/docs/reference/kubernetes-api/extend-resources/validating-webhook-configuration-v1/).
   #
   # The default is set to the maximum value of 30 seconds as
   # users sometimes report that the connection between the K8S API server and
@@ -692,8 +659,7 @@ webhook:
   config: {}
 
   # The update strategy for the cert-manager webhook deployment.
-  # For more information, see the [Kubernetes
-  # documentation](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy)
+  # For more information, see the [Kubernetes documentation](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy)
   #
   # For example:
   #  strategy:
@@ -704,8 +670,7 @@ webhook:
   strategy: {}
 
   # Pod Security Context to be set on the webhook component Pod.
-  # For more information, see [Configure a Security Context for a Pod or
-  # Container](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
+  # For more information, see [Configure a Security Context for a Pod or Container](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
   # +docs:property
   securityContext:
     runAsNonRoot: true
@@ -713,14 +678,13 @@ webhook:
       type: RuntimeDefault
 
   # Container Security Context to be set on the webhook component container.
-  # For more information, see [Configure a Security Context for a Pod or
-  # Container](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
+  # For more information, see [Configure a Security Context for a Pod or Container](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
   # +docs:property
   containerSecurityContext:
     allowPrivilegeEscalation: false
     capabilities:
       drop:
-        - ALL
+      - ALL
     readOnlyRootFilesystem: true
 
   podDisruptionBudget:
@@ -790,8 +754,7 @@ webhook:
 
 
   # Additional command line flags to pass to cert-manager webhook binary.
-  # To see all available flags run `docker run quay.io/jetstack/cert-manager-webhook:<version>
-  # --help`.
+  # To see all available flags run `docker run quay.io/jetstack/cert-manager-webhook:<version> --help`.
   extraArgs: []
   # Path to a file containing a WebhookConfiguration object used to configure the webhook.
   # - --config=<path-to-config-file>
@@ -814,13 +777,11 @@ webhook:
   #    cpu: 10m
   #    memory: 32Mi
   #
-  # For more information, see [Resource Management for Pods and
-  # Containers](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/).
+  # For more information, see [Resource Management for Pods and Containers](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/).
   resources: {}
 
   # Liveness probe values.
-  # For more information, see [Container
-  # probes](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes).
+  # For more information, see [Container probes](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes).
   #
   # +docs:property
   livenessProbe:
@@ -831,8 +792,7 @@ webhook:
     timeoutSeconds: 1
 
   # Readiness probe values.
-  # For more information, see [Container
-  # probes](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes).
+  # For more information, see [Container probes](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes).
   #
   # +docs:property
   readinessProbe:
@@ -844,8 +804,7 @@ webhook:
 
   # The nodeSelector on Pods tells Kubernetes to schedule Pods on the nodes with
   # matching labels.
-  # For more information, see [Assigning Pods to
-  # Nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/).
+  # For more information, see [Assigning Pods to Nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/).
   #
   # This default ensures that Pods are only scheduled to Linux nodes.
   # It prevents Pods being scheduled to Windows nodes in a mixed OS cluster.
@@ -853,8 +812,7 @@ webhook:
   nodeSelector:
     kubernetes.io/os: linux
 
-  # A Kubernetes Affinity, if required. For more information, see [Affinity v1
-  # core](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#affinity-v1-core).
+  # A Kubernetes Affinity, if required. For more information, see [Affinity v1 core](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#affinity-v1-core).
   #
   # For example:
   #   affinity:
@@ -868,8 +826,7 @@ webhook:
   #            - master
   affinity: {}
 
-  # A list of Kubernetes Tolerations, if required. For more information, see [Toleration v1
-  # core](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#toleration-v1-core).
+  # A list of Kubernetes Tolerations, if required. For more information, see [Toleration v1 core](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#toleration-v1-core).
   #
   # For example:
   #   tolerations:
@@ -879,9 +836,7 @@ webhook:
   #     effect: NoSchedule
   tolerations: []
 
-  # A list of Kubernetes TopologySpreadConstraints, if required. For more information, see
-  # [Topology spread constraint v1
-  # core](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#topologyspreadconstraint-v1-core).
+  # A list of Kubernetes TopologySpreadConstraints, if required. For more information, see [Topology spread constraint v1 core](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#topologyspreadconstraint-v1-core).
   #
   # For example:
   #   topologySpreadConstraints:
@@ -900,13 +855,10 @@ webhook:
   # Optional additional labels to add to the Webhook Service.
   serviceLabels: {}
 
-  # Optionally set the IP family policy for the controller Service to configure dual-stack; see
-  # [Configure
-  # dual-stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/#services).
+  # Optionally set the IP family policy for the controller Service to configure dual-stack; see [Configure dual-stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/#services).
   serviceIPFamilyPolicy: ""
 
-  # Optionally set the IP families for the controller Service that should be supported, in the
-  # order in which they should be applied to ClusterIP. Can be IPv4 and/or IPv6.
+  # Optionally set the IP families for the controller Service that should be supported, in the order in which they should be applied to ClusterIP. Can be IPv4 and/or IPv6.
   serviceIPFamilies: []
 
   image:
@@ -984,7 +936,7 @@ webhook:
   # Overrides the mutating webhook and validating webhook so they reach the webhook
   # service using the `url` field instead of a service.
   url: {}
-  # host:
+    # host:
 
   # Enables default network policies for webhooks.
   networkPolicy:
@@ -995,30 +947,30 @@ webhook:
     # inbound traffic.
     # +docs:property
     ingress:
-      - from:
-          - ipBlock:
-              cidr: 0.0.0.0/0
+    - from:
+      - ipBlock:
+          cidr: 0.0.0.0/0
 
     # Egress rule for the webhook network policy. By default, it allows all
     # outbound traffic to ports 80 and 443, as well as DNS ports.
     # +docs:property
     egress:
-      - ports:
-          - port: 80
-            protocol: TCP
-          - port: 443
-            protocol: TCP
-          - port: 53
-            protocol: TCP
-          - port: 53
-            protocol: UDP
-          # On OpenShift and OKD, the Kubernetes API server listens on.
-          # port 6443.
-          - port: 6443
-            protocol: TCP
-        to:
-          - ipBlock:
-              cidr: 0.0.0.0/0
+    - ports:
+      - port: 80
+        protocol: TCP
+      - port: 443
+        protocol: TCP
+      - port: 53
+        protocol: TCP
+      - port: 53
+        protocol: UDP
+      # On OpenShift and OKD, the Kubernetes API server listens on.
+      # port 6443.
+      - port: 6443
+        protocol: TCP
+      to:
+      - ipBlock:
+          cidr: 0.0.0.0/0
 
   # Additional volumes to add to the cert-manager controller pod.
   volumes: []
@@ -1074,8 +1026,7 @@ cainjector:
   config: {}
 
   # Deployment update strategy for the cert-manager cainjector deployment.
-  # For more information, see the [Kubernetes
-  # documentation](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy).
+  # For more information, see the [Kubernetes documentation](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy).
   #
   # For example:
   #  strategy:
@@ -1086,8 +1037,7 @@ cainjector:
   strategy: {}
 
   # Pod Security Context to be set on the cainjector component Pod
-  # For more information, see [Configure a Security Context for a Pod or
-  # Container](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
+  # For more information, see [Configure a Security Context for a Pod or Container](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
   # +docs:property
   securityContext:
     runAsNonRoot: true
@@ -1095,14 +1045,13 @@ cainjector:
       type: RuntimeDefault
 
   # Container Security Context to be set on the cainjector component container
-  # For more information, see [Configure a Security Context for a Pod or
-  # Container](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
+  # For more information, see [Configure a Security Context for a Pod or Container](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
   # +docs:property
   containerSecurityContext:
     allowPrivilegeEscalation: false
     capabilities:
       drop:
-        - ALL
+      - ALL
     readOnlyRootFilesystem: true
 
   podDisruptionBudget:
@@ -1121,8 +1070,7 @@ cainjector:
     # +docs:type=unknown
     # minAvailable: 1
 
-    # `maxUnavailable` configures the maximum unavailable pods for disruptions. It can either be
-    # set to
+    # `maxUnavailable` configures the maximum unavailable pods for disruptions. It can either be set to
     # an integer (e.g. 1) or a percentage value (e.g. 25%).
     # Cannot be used if `minAvailable` is set.
     # +docs:property
@@ -1142,8 +1090,7 @@ cainjector:
   # serviceAnnotations: {}
 
   # Additional command line flags to pass to cert-manager cainjector binary.
-  # To see all available flags run `docker run quay.io/jetstack/cert-manager-cainjector:<version>
-  # --help`.
+  # To see all available flags run `docker run quay.io/jetstack/cert-manager-cainjector:<version> --help`.
   extraArgs: []
   # Enable profiling for cainjector.
   # - --enable-profiling=true
@@ -1166,15 +1113,13 @@ cainjector:
   #    cpu: 10m
   #    memory: 32Mi
   #
-  # For more information, see [Resource Management for Pods and
-  # Containers](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/).
+  # For more information, see [Resource Management for Pods and Containers](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/).
   resources: {}
 
 
   # The nodeSelector on Pods tells Kubernetes to schedule Pods on the nodes with
   # matching labels.
-  # For more information, see [Assigning Pods to
-  # Nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/).
+  # For more information, see [Assigning Pods to Nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/).
   #
   # This default ensures that Pods are only scheduled to Linux nodes.
   # It prevents Pods being scheduled to Windows nodes in a mixed OS cluster.
@@ -1182,8 +1127,7 @@ cainjector:
   nodeSelector:
     kubernetes.io/os: linux
 
-  # A Kubernetes Affinity, if required. For more information, see [Affinity v1
-  # core](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#affinity-v1-core).
+  # A Kubernetes Affinity, if required. For more information, see [Affinity v1 core](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#affinity-v1-core).
   #
   # For example:
   #   affinity:
@@ -1197,8 +1141,7 @@ cainjector:
   #            - master
   affinity: {}
 
-  # A list of Kubernetes Tolerations, if required. For more information, see [Toleration v1
-  # core](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#toleration-v1-core).
+  # A list of Kubernetes Tolerations, if required. For more information, see [Toleration v1 core](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#toleration-v1-core).
   #
   # For example:
   #   tolerations:
@@ -1208,9 +1151,7 @@ cainjector:
   #     effect: NoSchedule
   tolerations: []
 
-  # A list of Kubernetes TopologySpreadConstraints, if required. For more information, see
-  # [Topology spread constraint v1
-  # core](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#topologyspreadconstraint-v1-core).
+  # A list of Kubernetes TopologySpreadConstraints, if required. For more information, see [Topology spread constraint v1 core](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#topologyspreadconstraint-v1-core).
   #
   # For example:
   #   topologySpreadConstraints:
@@ -1323,8 +1264,7 @@ startupapicheck:
   enabled: true
 
   # Pod Security Context to be set on the startupapicheck component Pod.
-  # For more information, see [Configure a Security Context for a Pod or
-  # Container](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
+  # For more information, see [Configure a Security Context for a Pod or Container](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
   # +docs:property
   securityContext:
     runAsNonRoot: true
@@ -1332,14 +1272,13 @@ startupapicheck:
       type: RuntimeDefault
 
   # Container Security Context to be set on the controller component container.
-  # For more information, see [Configure a Security Context for a Pod or
-  # Container](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
+  # For more information, see [Configure a Security Context for a Pod or Container](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
   # +docs:property
   containerSecurityContext:
     allowPrivilegeEscalation: false
     capabilities:
       drop:
-        - ALL
+      - ALL
     readOnlyRootFilesystem: true
 
   # Timeout for 'kubectl check api' command.
@@ -1360,15 +1299,14 @@ startupapicheck:
   # podAnnotations: {}
 
   # Additional command line flags to pass to startupapicheck binary.
-  # To see all available flags run `docker run
-  # quay.io/jetstack/cert-manager-startupapicheck:<version> --help`.
+  # To see all available flags run `docker run quay.io/jetstack/cert-manager-startupapicheck:<version> --help`.
   #
   # Verbose logging is enabled by default so that if startupapicheck fails, you
   # can know what exactly caused the failure. Verbose logs include details of
   # the webhook URL, IP address and TCP connect errors for example.
   # +docs:property
   extraArgs:
-    - -v
+  - -v
 
   # Additional environment variables to pass to cert-manager startupapicheck binary.
   # For example:
@@ -1384,15 +1322,13 @@ startupapicheck:
   #    cpu: 10m
   #    memory: 32Mi
   #
-  # For more information, see [Resource Management for Pods and
-  # Containers](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/).
+  # For more information, see [Resource Management for Pods and Containers](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/).
   resources: {}
 
 
   # The nodeSelector on Pods tells Kubernetes to schedule Pods on the nodes with
   # matching labels.
-  # For more information, see [Assigning Pods to
-  # Nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/).
+  # For more information, see [Assigning Pods to Nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/).
   #
   # This default ensures that Pods are only scheduled to Linux nodes.
   # It prevents Pods being scheduled to Windows nodes in a mixed OS cluster.
@@ -1400,8 +1336,7 @@ startupapicheck:
   nodeSelector:
     kubernetes.io/os: linux
 
-  # A Kubernetes Affinity, if required. For more information, see [Affinity v1
-  # core](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#affinity-v1-core).
+  # A Kubernetes Affinity, if required. For more information, see [Affinity v1 core](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#affinity-v1-core).
   # For example:
   #   affinity:
   #     nodeAffinity:
@@ -1414,8 +1349,7 @@ startupapicheck:
   #            - master
   affinity: {}
 
-  # A list of Kubernetes Tolerations, if required. For more information, see [Toleration v1
-  # core](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#toleration-v1-core).
+  # A list of Kubernetes Tolerations, if required. For more information, see [Toleration v1 core](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#toleration-v1-core).
   #
   # For example:
   #   tolerations:

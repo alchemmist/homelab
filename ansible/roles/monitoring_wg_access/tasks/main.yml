@@ -27,9 +27,7 @@
       - monitoring_wg_values.hostNetwork | default(true) | bool
       - monitoring_wg_values.basicAuth.enabled | bool
       - monitoring_wg_values.basicAuth.existingSecret | length > 0
-      - >-
-        monitoring_wg_values.privateGui.nodes | selectattr('nodeName', 'equalto',
-        monitoring_wg_node) | list | length == 1
+      - monitoring_wg_values.privateGui.nodes | selectattr('nodeName', 'equalto', monitoring_wg_node) | list | length == 1
 
 - name: Read existing Syncthing authentication
   ansible.builtin.command:
@@ -71,15 +69,9 @@
 - name: Create a certificate for the private Grafana gateway
   ansible.builtin.command:
     argv: [kubectl, --kubeconfig, "{{ monitoring_wg_kubeconfig }}", apply, -f, '-']
-    stdin: >-
-      {{ {'apiVersion': 'cert-manager.io/v1', 'kind': 'Certificate',
-      'metadata': {'name': monitoring_wg_tls_secret, 'namespace': monitoring_wg_namespace},
-      'spec': {'secretName': monitoring_wg_tls_secret, 'dnsNames': [monitoring_wg_host],
-      'issuerRef': {'name': monitoring_wg_cluster_issuer, 'kind': 'ClusterIssuer'}}}
-      | to_nice_yaml }}
+    stdin: "{{ {'apiVersion': 'cert-manager.io/v1', 'kind': 'Certificate', 'metadata': {'name': monitoring_wg_tls_secret, 'namespace': monitoring_wg_namespace}, 'spec': {'secretName': monitoring_wg_tls_secret, 'dnsNames': [monitoring_wg_host], 'issuerRef': {'name': monitoring_wg_cluster_issuer, 'kind': 'ClusterIssuer'}}} | to_nice_yaml }}"
   register: monitoring_wg_certificate
-  changed_when: "'created' in monitoring_wg_certificate.stdout or
-    'configured' in monitoring_wg_certificate.stdout"
+  changed_when: "'created' in monitoring_wg_certificate.stdout or 'configured' in monitoring_wg_certificate.stdout"
 
 - name: Wait for the private Grafana certificate
   ansible.builtin.command:
@@ -96,14 +88,7 @@
 
 - name: Merge Grafana into existing gateway hosts
   ansible.builtin.set_fact:
-    monitoring_wg_merged_values: >-
-      {{ monitoring_wg_values | combine({'privateGui': {'extraVirtualHosts':
-      (monitoring_wg_values.privateGui.extraVirtualHosts | default([])
-      | rejectattr('name', 'equalto', 'grafana') | list)
-      + [{'name': 'grafana', 'nodeName': monitoring_wg_node,
-      'host': monitoring_wg_host, 'tlsSecret': monitoring_wg_tls_secret,
-      'resolver': monitoring_wg_dns.stdout, 'upstream': monitoring_wg_upstream,
-      'clearAuthorization': true, 'trafficLightInset': true}]}}, recursive=true) }}
+    monitoring_wg_merged_values: "{{ monitoring_wg_values | combine({'privateGui': {'extraVirtualHosts': (monitoring_wg_values.privateGui.extraVirtualHosts | default([]) | rejectattr('name', 'equalto', 'grafana') | list) + [{'name': 'grafana', 'nodeName': monitoring_wg_node, 'host': monitoring_wg_host, 'tlsSecret': monitoring_wg_tls_secret, 'resolver': monitoring_wg_dns.stdout, 'upstream': monitoring_wg_upstream, 'clearAuthorization': true, 'trafficLightInset': true}]}}, recursive=true) }}"
   no_log: true
 
 - name: Create private deployment directory
@@ -187,9 +172,7 @@
 - name: Verify existing Syncthing credentials were preserved
   ansible.builtin.assert:
     that:
-      - >-
-        (monitoring_wg_auth_before.stdout | from_json).data ==
-        (monitoring_wg_auth_after.stdout | from_json).data
+      - (monitoring_wg_auth_before.stdout | from_json).data == (monitoring_wg_auth_after.stdout | from_json).data
   no_log: true
 
 - name: Verify private gateway rollout
@@ -225,6 +208,5 @@
   changed_when: false
   failed_when: >-
     monitoring_wg_grafana.rc != 0 or
-    (monitoring_wg_grafana.stdout | from_json
-    | selectattr('uid', 'equalto', 'socrat-overview') | list | length == 0)
+    (monitoring_wg_grafana.stdout | from_json | selectattr('uid', 'equalto', 'socrat-overview') | list | length == 0)
 ...

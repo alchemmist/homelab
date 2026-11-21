@@ -10,7 +10,7 @@
       ansible.builtin.copy:
         src: ../../scripts/vpn-home-transit-egress.py
         dest: /usr/local/libexec/vpn-home-transit-egress.py
-        mode: "0700"
+        mode: '0700'
     - name: Check for prior accepted or uncertain state before applying
       ansible.builtin.stat:
         path: /var/lib/homelab-vpn-transit/home-egress
@@ -21,7 +21,7 @@
     - name: Install persistent fail-closed startup ordering
       ansible.builtin.copy:
         dest: /etc/systemd/system/homelab-msk-home-egress.service
-        mode: "0644"
+        mode: '0644'
         content: |
           [Unit]
           Description=Known HOME NL service egress through Moscow with startup safety fence

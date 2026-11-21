@@ -7,11 +7,8 @@
 
 - name: Download verified Rancher dashboards chart
   ansible.builtin.get_url:
-    url: "https://raw.githubusercontent.com/rancher/charts/release-v2.15/assets/\
-      rancher-monitoring-dashboards/rancher-monitoring-dashboards-\
-      {{ monitoring_rancher_chart_version }}.tgz"
-    dest: "{{ monitoring_rancher_workdir }}/rancher-monitoring-dashboards-{{
-      monitoring_rancher_chart_version }}.tgz"
+    url: https://raw.githubusercontent.com/rancher/charts/release-v2.15/assets/rancher-monitoring-dashboards/rancher-monitoring-dashboards-{{ monitoring_rancher_chart_version }}.tgz
+    dest: "{{ monitoring_rancher_workdir }}/rancher-monitoring-dashboards-{{ monitoring_rancher_chart_version }}.tgz"
     checksum: sha256:{{ monitoring_rancher_chart_sha256 }}
     mode: "0600"
 
@@ -51,8 +48,7 @@
       - upgrade
       - --install
       - rancher-monitoring-dashboards
-      - "{{ monitoring_rancher_workdir }}/rancher-monitoring-dashboards-{{
-        monitoring_rancher_chart_version }}.tgz"
+      - "{{ monitoring_rancher_workdir }}/rancher-monitoring-dashboards-{{ monitoring_rancher_chart_version }}.tgz"
       - --namespace
       - "{{ monitoring_rancher_namespace }}"
       - --values

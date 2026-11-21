@@ -1,8 +1,7 @@
 ---
 - name: Inspect live placement before replacing the two node affinity lists
   ansible.builtin.command:
-    argv: [kubectl, -n, "{{ offload_workload.namespace }}", get, deployment,
-           "{{ offload_workload.name }}", -o, json]
+    argv: [kubectl, -n, "{{ offload_workload.namespace }}", get, deployment, "{{ offload_workload.name }}", -o, json]
   register: offload_current
   changed_when: false
 
@@ -37,14 +36,10 @@
     - name: Refuse unknown selector or foreign node affinity
       ansible.builtin.assert:
         that:
-          - offload_template.nodeSelector | default({})
-            | difference(['kubernetes.io/hostname', 'kubernetes.io/os']) | length == 0
-          - (offload_template.nodeSelector | default({})).get('kubernetes.io/hostname',
-            'socrat-1') == 'socrat-1'
-          - (offload_template.nodeSelector | default({})).get('kubernetes.io/os',
-            'linux') == 'linux'
-          - (offload_template.affinity | default({})).get('nodeAffinity', {}) in [{},
-            offload_patch_spec.spec.template.spec.affinity.nodeAffinity]
+          - offload_template.nodeSelector | default({}) | difference(['kubernetes.io/hostname', 'kubernetes.io/os']) | length == 0
+          - (offload_template.nodeSelector | default({})).get('kubernetes.io/hostname', 'socrat-1') == 'socrat-1'
+          - (offload_template.nodeSelector | default({})).get('kubernetes.io/os', 'linux') == 'linux'
+          - (offload_template.affinity | default({})).get('nodeAffinity', {}) in [{}, offload_patch_spec.spec.template.spec.affinity.nodeAffinity]
     - name: Apply the version-guarded placement change
       ansible.builtin.command:
         argv:
@@ -81,25 +76,16 @@
         import subprocess
         import sys
         command = ['kubectl', '-n', sys.argv[1]]
-        deployment = json.loads(subprocess.check_output(
-            command + ['get', 'deployment', sys.argv[2], '-o', 'json']))
+        deployment = json.loads(subprocess.check_output(command + ['get', 'deployment', sys.argv[2], '-o', 'json']))
         labels = deployment['spec']['selector']['matchLabels']
         selector = ','.join(key + '=' + value for key, value in labels.items())
-        pods = json.loads(subprocess.check_output(
-            command + ['get', 'pods', '-l', selector, '-o', 'json']))['items']
-        active = [pod for pod in pods
-                  if not pod['metadata'].get('deletionTimestamp')
-                  and pod['status'].get('phase') not in ('Succeeded', 'Failed')]
-        assert len(active) == deployment['spec']['replicas'], \
-            [(pod['metadata']['name'], pod['status']) for pod in active]
+        pods = json.loads(subprocess.check_output(command + ['get', 'pods', '-l', selector, '-o', 'json']))['items']
+        active = [pod for pod in pods if not pod['metadata'].get('deletionTimestamp') and pod['status'].get('phase') not in ('Succeeded', 'Failed')]
+        assert len(active) == deployment['spec']['replicas'], [(pod['metadata']['name'], pod['status']) for pod in active]
         for pod in active:
-            assert 'kubernetes.io/hostname' not in pod['spec'].get('nodeSelector', {}), \
-                pod['metadata']['name']
-            assert pod['spec'].get('nodeName') in ('socrat-0', 'socrat-1'), \
-                pod['metadata']['name']
-            assert any(condition['type'] == 'Ready' and condition['status'] == 'True'
-                       for condition in pod['status'].get('conditions', [])), \
-                pod['metadata']['name']
+            assert 'kubernetes.io/hostname' not in pod['spec'].get('nodeSelector', {}), pod['metadata']['name']
+            assert pod['spec'].get('nodeName') in ('socrat-0', 'socrat-1'), pod['metadata']['name']
+            assert any(condition['type'] == 'Ready' and condition['status'] == 'True' for condition in pod['status'].get('conditions', [])), pod['metadata']['name']
         print(sys.argv[2] + ': ready on ' + ', '.join(p['spec']['nodeName'] for p in active))
       - "{{ offload_workload.namespace }}"
       - "{{ offload_workload.name }}"

@@ -7,9 +7,7 @@
   tasks:
     - name: Read the managed VPS ingress settings
       ansible.builtin.set_fact:
-        vpn_edge_settings: >-
-          {{ lookup('file', playbook_dir + '/../../charts/traefik-edge/values.yaml')
-          | from_yaml }}
+        vpn_edge_settings: "{{ lookup('file', playbook_dir + '/../../charts/traefik-edge/values.yaml') | from_yaml }}"
 
     - name: Inspect the previous edge deployment
       ansible.builtin.command: >-
@@ -34,12 +32,8 @@
     - name: Require the shared public ingress class
       ansible.builtin.assert:
         that:
-          - >-
-            '--providers.kubernetesingress.ingressclass=traefik'
-            in vpn_home_ingress.stdout | lower
-        fail_msg: >-
-          Configure the home controller to watch the shared traefik class
-          before deploying VPS ingress.
+          - "'--providers.kubernetesingress.ingressclass=traefik' in vpn_home_ingress.stdout | lower"
+        fail_msg: Configure the home controller to watch the shared traefik class before deploying VPS ingress.
 
     - name: Copy the VPS ingress chart
       ansible.builtin.copy:

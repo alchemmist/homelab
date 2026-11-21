@@ -1,5 +1,4 @@
 import importlib.util
-from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
@@ -13,14 +12,14 @@ spec.loader.exec_module(check)
 
 
 class ProbeTests(unittest.TestCase):
-    def fake(self, registered=True, fail=False):
+    def fake(self, *, registered: bool = True, fail: bool = False):
         class RPCError(Exception):
-            def code(self) -> SimpleNamespace:
+            def code(self):
                 return SimpleNamespace(name="DEADLINE_EXCEEDED")
 
-        state = {"closed": False, "cancelled": False}
+        state: dict[str, object] = {"closed": False, "cancelled": False}
 
-        def metadata() -> list[tuple[str, str]]:
+        def metadata():
             if fail:
                 raise RPCError()
             return [("x-wiretrustee-peer-registered", "1")] if registered else []
@@ -31,17 +30,17 @@ class ProbeTests(unittest.TestCase):
             cancel=lambda: state.update(cancelled=True),
         )
 
-        def invoke(requests, **kwargs) -> SimpleNamespace:
+        def invoke(requests: object, **kwargs: object):
             state.update(requests=requests, **kwargs)
             return call
 
-        def stream(path) -> Callable[[str], SimpleNamespace]:
+        def stream(path: str):
             state["path"] = path
             return invoke
 
         channel = SimpleNamespace(stream_stream=stream, close=lambda: state.update(closed=True))
 
-        def secure(address, credentials, options) -> SimpleNamespace:
+        def secure(address: str, credentials: object, options: object):
             state.update(address=address, credentials=credentials, options=options)
             return channel
 
@@ -67,7 +66,7 @@ class ProbeTests(unittest.TestCase):
 
     def test_missing_header_and_rpc_error_fail_closed_and_release_stream(self):
         for registered, fail in [(False, False), (False, True)]:
-            grpc, state = self.fake(registered, fail)
+            grpc, state = self.fake(registered=registered, fail=fail)
             result = check.probe(check.ENTRANCES[0], grpc_module=grpc)
             self.assertFalse(result["registered_header"])
             self.assertEqual(result["rpc_code"], "DEADLINE_EXCEEDED")

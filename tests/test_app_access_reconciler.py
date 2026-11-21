@@ -58,12 +58,12 @@ def fixture():
 
 
 class FakeAPI:
-    def __init__(self, state):
+    def __init__(self, state: dict[str, list[dict[str, object]]]):
         self.state = copy.deepcopy(state)
-        self.writes = []
+        self.writes: list[tuple[str, str, dict[str, object] | None]] = []
 
-    def __call__(self, method, path, payload=None):
-        base = path.split("?")[0]
+    def __call__(self, method: str, path: str, payload: dict[str, object] | None = None):
+        base = path.partition("?")[0]
         if method == "GET":
             if base.startswith("providers/oauth2/") and base != "providers/oauth2/":
                 return copy.deepcopy(
@@ -75,24 +75,24 @@ class FakeAPI:
                 )
             rows = copy.deepcopy(self.state[base])
             if "?target=" in path:
-                target = path.split("?target=")[1].split("&")[0]
+                target = path.partition("?target=")[2].partition("&")[0]
                 rows = [r for r in rows if r["target"] == target]
             return {"results": rows, "pagination": {"next": None}}
         self.writes.append((method, path, payload))
         if method == "POST":
-            made = dict(payload, pk="created-" + str(len(self.writes)))
+            made = dict(payload or {}, pk="created-" + str(len(self.writes)))
             if base == "policies/bindings/":
                 made.update(user=None, policy=None, expires=None)
             self.state[base].append(made)
             return copy.deepcopy(made)
         pk = int(base.split("/")[2])
         item = next(p for p in self.state["providers/oauth2/"] if p["pk"] == pk)
-        item.update(payload)
+        item.update(payload or {})
         for app in self.state["core/applications/"]:
             if app["provider"] == pk:
                 app["provider_obj"] = copy.deepcopy(item)
         # PATCH may return a reduced serializer; verify with a fresh detail GET.
-        return {"pk": pk, **copy.deepcopy(payload)}
+        return {"pk": pk, **copy.deepcopy(payload or {})}
 
 
 class AppAccessTests(unittest.TestCase):
@@ -102,7 +102,7 @@ class AppAccessTests(unittest.TestCase):
             credential = root / "credentials.json"
             credential.write_text(json.dumps({"AUTHENTIK_BOOTSTRAP_TOKEN": "fake-test-only"}))
             credential.chmod(0o600)
-            fake = SimpleNamespace(open=lambda *_a, **_kw: io.BytesIO(b'{"pk": 3}'))
+            fake = SimpleNamespace(open=lambda *a, **kw: io.BytesIO(b'{"pk": 3}'))
             with patch.object(access.urllib.request, "build_opener", return_value=fake):
                 api = access.api_for(root)
             self.assertEqual(api("GET", "providers/oauth2/3/"), {"pk": 3})
@@ -240,7 +240,7 @@ class AppAccessTests(unittest.TestCase):
         plan = access.build_plan(state, catalog)
         api.state["core/applications/"][0]["policy_engine_mode"] = "all"
         with self.assertRaises(RuntimeError):
-            access.execute(api, state, catalog, plan["sha256"], lambda *_args: None)
+            access.execute(api, state, catalog, plan["sha256"], lambda *args: None)
         self.assertEqual(api.writes, [])
 
     def test_alias_scopes_attached_before_admission_and_idempotent(self):
@@ -255,7 +255,7 @@ class AppAccessTests(unittest.TestCase):
             [x["kind"] for x in plan["operations"]],
             ["group", "mapping", "mapping", "provider", "binding"],
         )
-        access.execute(api, state, catalog, plan["sha256"], lambda *_args: None)
+        access.execute(api, state, catalog, plan["sha256"], lambda *args: None)
         self.assertEqual(access.build_plan(access.inventory(api), catalog)["operations"], [])
 
 

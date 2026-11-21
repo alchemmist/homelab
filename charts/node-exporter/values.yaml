@@ -27,19 +27,15 @@ kube-prometheus-stack:
       KubeMemoryOvercommit:
         rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer
       KubeNodeNotReady:
-        rancher_url: >-
-          https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ $labels.node }}
+        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ $labels.node }}
       KubeNodeUnreachable:
-        rancher_url: >-
-          https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ $labels.node }}
+        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ $labels.node }}
       KubePodCrashLooping:
-        rancher_url: >-
-          https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/{{ $labels.namespace
-          }}/{{ $labels.pod }}
+        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/{{ $labels.namespace }}/{{ $labels.pod
+          }}
       KubePodNotReady:
-        rancher_url: >-
-          https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/{{ $labels.namespace
-          }}/{{ $labels.pod }}
+        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/{{ $labels.namespace }}/{{ $labels.pod
+          }}
     disabled:
       KubeMemoryOvercommit: true
       KubeNodeNotReady: true
@@ -48,6 +44,7 @@ kube-prometheus-stack:
       KubeletClientCertificateRenewalErrors: true
       KubeletServerCertificateExpiration: true
       KubeletServerCertificateRenewalErrors: true
+      NodeSystemSaturation: true
       NodeBondingDegraded: true
       NodeRAIDDegraded: true
       NodeRAIDDiskFailure: true
@@ -87,13 +84,33 @@ kube-prometheus-stack:
       prometheusOperator: false
       windows: false
     create: true
+  additionalPrometheusRulesMap:
+    node-saturation:
+      groups:
+      - name: node-exporter
+        rules:
+        - alert: NodeSystemSaturation
+          # The single-vCPU transit worker has a higher sustained load baseline.
+          expr: |-
+            (node_load1{job="node-exporter",node="socrat-4"}
+             / count without (cpu, mode) (node_cpu_seconds_total{job="node-exporter",mode="idle"}) > 4)
+            or
+            (node_load1{job="node-exporter",node!="socrat-4"}
+             / count without (cpu, mode) (node_cpu_seconds_total{job="node-exporter",mode="idle"}) > 2)
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: System saturated, load per core is very high.
+            description: 'Load per core on {{ $labels.instance }} has exceeded {{ if eq $labels.node "socrat-4" }}4{{ else }}2{{ end }} for 15 minutes (current: {{ printf "%.2f" $value }}).'
+            runbook_url: https://runbooks.prometheus-operator.dev/runbooks/node/nodesystemsaturation
   prometheus-node-exporter:
     env:
       DBUS_SYSTEM_BUS_ADDRESS: unix:path=/host/root/run/dbus/system_bus_socket
     extraArgs:
-      - --collector.textfile.directory=/host/root/var/lib/node_exporter/textfile_collector
-      - --collector.systemd
-      - --collector.systemd.enable-restarts-metrics
+    - --collector.textfile.directory=/host/root/var/lib/node_exporter/textfile_collector
+    - --collector.systemd
+    - --collector.systemd.enable-restarts-metrics
     resources:
       limits:
         memory: 64Mi

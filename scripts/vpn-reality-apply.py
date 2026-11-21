@@ -19,68 +19,9 @@ import time
 import uuid
 from contextlib import closing
 from pathlib import Path
-from typing import NotRequired, TypedDict
 
 
-class _InboundRow(TypedDict):
-    id: int
-    port: int
-    protocol: str
-    enable: int | bool
-    stream_settings: str
-
-
-class _PanelConfig(TypedDict):
-    inbounds: list[_InboundRow]
-    clients: list[object]
-
-
-class _XhttpSettings(TypedDict, total=False):
-    path: str
-    mode: str
-
-
-class _PublicKeySettings(TypedDict, total=False):
-    publicKey: str
-
-
-class _RealitySettings(TypedDict, total=False):
-    settings: _PublicKeySettings
-    shortIds: list[str]
-    serverNames: list[str]
-    target: str
-
-
-class _ClientStream(TypedDict):
-    realitySettings: _RealitySettings
-    xhttpSettings: NotRequired[_XhttpSettings]
-    splithttpSettings: NotRequired[_XhttpSettings]
-
-
-class _ApiStream(TypedDict, total=False):
-    security: str
-    network: str
-    realitySettings: _RealitySettings
-
-
-class _ApiInbound(TypedDict, total=False):
-    port: int
-    protocol: str
-    enable: bool
-    streamSettings: str | _ApiStream
-    id: int
-    clientStats: object
-
-
-class _RealityCorrection(TypedDict, total=False):
-    apiApplyEnabled: bool
-
-
-class _ApplyPolicy(TypedDict):
-    realityCorrection: _RealityCorrection
-
-
-def load(name: str, filename: str):
+def load(name, filename):
     spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name(filename))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -92,7 +33,7 @@ planner = load("reality_plan", "vpn-reality-plan.py")
 h = session_module.h
 
 
-def configuration(database: str | Path):
+def configuration(database):
     with closing(sqlite3.connect(h.check_path(database).as_uri() + "?mode=ro", uri=True)) as source:
         with closing(sqlite3.connect(":memory:")) as snapshot:
             source.backup(snapshot)
@@ -101,8 +42,8 @@ def configuration(database: str | Path):
             return h.projection(snapshot)
 
 
-def semantic(config: dict[str, list[object]]):
-    def normalize(value: object):
+def semantic(config):
+    def normalize(value):
         if isinstance(value, str) and value.lstrip().startswith(("{", "[")):
             try:
                 return normalize(json.loads(value))
@@ -120,7 +61,7 @@ def semantic(config: dict[str, list[object]]):
     }
 
 
-def corrected(config: _PanelConfig):
+def corrected(config):
     after = copy.deepcopy(config)
     rows = [r for r in after["inbounds"] if r["port"] == 32053]
     if len(rows) != 1:
@@ -137,14 +78,14 @@ def corrected(config: _PanelConfig):
     return after
 
 
-def json_field(value: object):
+def json_field(value):
     # 3x-ui3.11 emits native objects; its decoder also accepts legacy JSON strings.
     if value is None or value == "":
         return None
     return json.loads(value) if isinstance(value, str) else copy.deepcopy(value)
 
 
-def api_payload(inbound: _ApiInbound):
+def api_payload(inbound):
     after = copy.deepcopy(inbound)
     if after.get("port") != 32053 or after.get("protocol") != "vless" or not after.get("enable"):
         raise ValueError("Unexpected native inbound")
@@ -164,7 +105,7 @@ def api_payload(inbound: _ApiInbound):
     return after
 
 
-def vless_client(stream: _ClientStream, client_id: str, port: int):
+def vless_client(stream, client_id, port):
     reality = stream["realitySettings"]
     public = (reality.get("settings") or {}).get("publicKey")
     if not public or not reality.get("shortIds"):
@@ -234,7 +175,7 @@ def server_executable():
     return found[0]
 
 
-def transfer(port: int, state: Path, phase: str):
+def transfer(port, state, phase):
     output = state / (phase + "-body.bin")
     env = dict(os.environ, NO_PROXY="", no_proxy="")
     args = [
@@ -277,7 +218,7 @@ def transfer(port: int, state: Path, phase: str):
     return proof
 
 
-def apply(state: Path, policy: _ApplyPolicy, session_hash: str, target_hash: str):
+def apply(state, policy, session_hash, target_hash):
     if policy["realityCorrection"].get("apiApplyEnabled") is not True:
         raise ValueError("API apply is disabled by source policy")
     s = session_module.NativeSession(state)

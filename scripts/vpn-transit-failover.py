@@ -5,7 +5,6 @@ No API availability-only failover. Native mode is sticky until explicit failback
 """
 
 import argparse, fcntl, hashlib, json, os, pathlib, signal, socket, ssl, subprocess, time
-from typing import Protocol, TypedDict
 
 ROOT = pathlib.Path("/var/lib/homelab-vpn-transit/relay-failover")
 CONFIG = pathlib.Path("/etc/homelab-vpn-transit/failover.json")
@@ -15,28 +14,14 @@ TCP = (80, 443, 32053, 32083, 32084)
 UDP = (443, 32085, 32086)
 
 
-class _Flag(Protocol):
-    def __bool__(self) -> bool: ...
-
-
-class _OwnedProcess(TypedDict):
-    pid: int
-    cid: str
-
-
-class _FailoverConfig(TypedDict):
-    ws_path: str
-    binary_sha256: str
-
-
-def run(args: list[str], timeout: int = 25, check: _Flag = True):
+def run(args, timeout=25, check=True):
     p = subprocess.run(args, capture_output=True, text=True, timeout=timeout)
     if check and p.returncode:
         raise RuntimeError("Command failed: " + str(args[:3]))
     return p
 
 
-def atomic(path: pathlib.Path, value: object):
+def atomic(path: pathlib.Path, value: object) -> None:
     tmp = path.with_suffix(".tmp")
     data = json.dumps(value, sort_keys=True).encode()
     with tmp.open("wb") as f:
@@ -54,7 +39,7 @@ def boot_id():
     return pathlib.Path("/proc/sys/kernel/random/boot_id").read_text().strip()
 
 
-def active(unit: str):
+def active(unit):
     return run(["systemctl", "is-active", "--quiet", unit], check=False).returncode == 0
 
 
@@ -71,7 +56,7 @@ def free_ports():
     return True
 
 
-def identity(pid: int, cid: str):
+def identity(pid, cid):
     p = pathlib.Path("/proc") / str(pid)
     if not p.exists():
         return None
@@ -97,7 +82,7 @@ def pod_processes():
     return result
 
 
-def terminate_owned(i: _OwnedProcess):
+def terminate_owned(i):
     pid = i["pid"]
     now = identity(pid, i["cid"])
     if now is None:
@@ -113,12 +98,7 @@ def terminate_owned(i: _OwnedProcess):
         os.kill(pid, signal.SIGKILL)
 
 
-def probe(
-    config: _FailoverConfig,
-    host: str = "127.0.0.1",
-    source: tuple[str, int] | None = None,
-    detail: dict[str, object] | None = None,
-):
+def probe(config, host="127.0.0.1", source=None, detail=None):
     # Same strict TLS/WS identity and ACLs on the local and direct upstream path.
     d = detail if detail is not None else {}
     d.update(at=time.time(), stage="connect", ok=False)
@@ -172,11 +152,11 @@ class Controller:
             else {"mode": "prepared", "failures": 0}
         )
 
-    def save(self, **fields):
+    def save(self, **fields: object) -> None:
         self.state.update(fields)
         atomic(ROOT / "state.json", self.state)
 
-    def receipt(self, action: str, **fields: object):
+    def receipt(self, action: str, **fields: object) -> None:
         v = {"action": action, "at": time.time(), **fields}
         atomic(ROOT / (str(time.time_ns()) + "-" + action + ".json"), v)
 
@@ -220,7 +200,7 @@ class Controller:
         r = run(["ip", "route", "get", "10.250.0.2"]).stdout
         assert "dev wg-socrat" in r and "src 10.250.0.40" in r
 
-    def activate(self, reason: str):
+    def activate(self, reason):
         assert self.state["mode"] != "native-primary", (
             "Native primary cannot be reactivated as fallback"
         )

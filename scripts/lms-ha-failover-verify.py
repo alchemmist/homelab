@@ -21,7 +21,7 @@ helper = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(helper)
 
 
-def kube(*args):
+def kube(*args: str) -> str:
     r = subprocess.run(
         ["ssh", "-o", "BatchMode=yes", "socrat-0", shlex.join(["kubectl", *args])],
         capture_output=True,
@@ -68,7 +68,7 @@ new = None
 try:
     kube("cordon", node)
     kube("-n", "lms", "delete", "pod", old, "--wait=true", "--timeout=60s")
-    for _attempt in range(40):
+    for attempt in range(40):
         c = json.loads(kube("-n", "lms", "get", "cluster.postgresql.cnpg.io/lms-ha", "-o", "json"))
         candidate = c["status"].get("currentPrimary")
         if candidate and candidate != old:

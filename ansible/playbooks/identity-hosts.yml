@@ -16,7 +16,7 @@
       ansible.builtin.lineinfile:
         path: /etc/rancher/k3s/config.yaml
         regexp: "^write-kubeconfig-mode:"
-        line: "write-kubeconfig-mode: \"0640\""
+        line: 'write-kubeconfig-mode: "0640"'
     - name: Persist owner-only kubeconfig group
       ansible.builtin.lineinfile:
         path: /etc/rancher/k3s/config.yaml

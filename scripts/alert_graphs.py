@@ -6,12 +6,15 @@ not changed. Requires Helm and PyYAML, like the repository's chart contract test
 """
 
 import argparse
-from collections import defaultdict
 import hashlib
 import json
-from pathlib import Path
 import re
 import subprocess
+from collections import defaultdict
+from collections.abc import Sequence
+from pathlib import Path
+from typing import NotRequired, TypedDict
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,7 +31,20 @@ OWNERS = [
 ]
 
 
-def unparen(expr):
+class _AlertBody(TypedDict):
+    alert: str
+    expr: str
+
+
+class _AlertRule(TypedDict):
+    owner: str
+    group: str
+    resource: str
+    rule: _AlertBody
+    uid: NotRequired[str]
+
+
+def unparen(expr: str):
     expr = expr.strip()
     while expr.startswith("(") and expr.endswith(")"):
         depth, quote, escaped, closes = 0, None, False, None
@@ -56,7 +72,7 @@ def unparen(expr):
     return expr
 
 
-def diagnostic(expr):
+def diagnostic(expr: str):
     """Remove only a root numeric comparison; never rewrite inner PromQL logic."""
     expr = unparen(expr)
     depth, quote, escaped = 0, None, False
@@ -93,7 +109,7 @@ def diagnostic(expr):
     )
 
 
-def operands(expr):
+def operands(expr: str):
     """Expose logical/comparison inputs without mutating the actual alert rule."""
     expr = unparen(expr)
     depth, quote, escaped = 0, None, False
@@ -126,7 +142,7 @@ def operands(expr):
     return [(value, None, reason)]
 
 
-def render_owner(owner):
+def render_owner(owner: str):
     app = yaml.safe_load((ROOT / "deploy/argocd/apps" / f"{owner}.yaml").read_text())
     source = app["spec"].get("source")
     if source is None:
@@ -202,7 +218,10 @@ def inventory():
     return rules
 
 
-def build(rules, panel_ids=None):
+def build(
+    rules: Sequence[_AlertRule],
+    panel_ids: dict[str, dict[str, int]] | None = None,
+):
     # Append-only IDs preserve historical graph URLs when sorted rule names grow.
     panel_ids = {} if panel_ids is None else panel_ids
     for uid, names in panel_ids.items():
@@ -235,7 +254,7 @@ def build(rules, panel_ids=None):
             },
         )
         targets, reasons, thresholds = [], [], []
-        for _index, item in enumerate(variants):
+        for index, item in enumerate(variants):
             for expr, threshold, reason in operands(str(item["rule"]["expr"])):
                 if expr in ("vector(0)", "vector(1)") and len(variants) > 1:
                     continue
@@ -360,7 +379,7 @@ def build(rules, panel_ids=None):
     return dashboards, dict(mappings), rows
 
 
-def outputs(rules):
+def outputs(rules: Sequence[_AlertRule]):
     registry_path = ROOT / "deploy/monitoring/alert-graph-panel-ids.json"
     registry = json.loads(registry_path.read_text())
     if registry["schemaVersion"] != 1:

@@ -1,5 +1,4 @@
 import http.cookiejar, json, urllib.request
-from collections.abc import Mapping
 from pathlib import Path
 
 root = Path.home() / ".cache/homelab-authentik"
@@ -10,7 +9,7 @@ base = "https://auth.socrat.alchemmist.xyz"
 endpoint = base + "/api/v3/flows/executor/default-authentication-flow/"
 
 
-def call(data: Mapping[str, object] | None = None):
+def call(data=None):
     headers = {
         "Content-Type": "application/json",
         "Referer": base + "/if/flow/default-authentication-flow/",

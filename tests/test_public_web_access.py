@@ -1,4 +1,3 @@
-from collections.abc import Callable
 import copy, importlib.util, json
 from pathlib import Path
 import pytest
@@ -70,7 +69,7 @@ def test_legacy_proxy_creation_is_retired_without_mutation():
         lambda s: s["apps"][0].update(policy_engine_mode="all"),
     ],
 )
-def test_reject_unsafe_baseline(change: Callable[[dict[str, object]], object]):
+def test_reject_unsafe_baseline(change):
     s = state()
     change(s)
     with pytest.raises(ValueError):
@@ -138,9 +137,7 @@ def test_public_probe_reuses_migration_owned_addresses():
         ("grafana", "service", "grafana"),
     ],
 )
-def test_chart_rejects_mislabeled_authorization(
-    owner: str, key: str, value: str | int, tmp_path: Path
-):
+def test_chart_rejects_mislabeled_authorization(owner, key, value, tmp_path):
     import yaml, subprocess
 
     values = copy.deepcopy(entry_values(owner))

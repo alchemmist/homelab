@@ -69,13 +69,9 @@ class LoginRewriteTests(unittest.TestCase):
             ({"DISPLAY": ":0"}, False),
         ]
         for values, expected in cases:
-            assignments = {
-                "TTY": "/dev/tty1",
-                "SSH_CONNECTION": "",
-                "SSH_TTY": "",
-                "WAYLAND_DISPLAY": "",
-                "DISPLAY": "",
-            }
+            assignments = dict(
+                TTY="/dev/tty1", SSH_CONNECTION="", SSH_TTY="", WAYLAND_DISPLAY="", DISPLAY=""
+            )
             assignments.update(values)
             script = (
                 "\n".join(f"{key}={value!r}" for key, value in assignments.items()) + "\n" + block
@@ -130,7 +126,9 @@ class ConfigureTests(unittest.TestCase):
         runner.start()
         self.addCleanup(runner.stop)
 
-    def configure(self, cleanup=False, disable_shutdown=False, check=False):
+    def configure(
+        self, *, cleanup: bool = False, disable_shutdown: bool = False, check: bool = False
+    ):
         return MODULE.configure(
             self.home, "testuser", ".zshrc", cleanup, disable_shutdown, check=check
         )

@@ -6,7 +6,6 @@ import fcntl
 import hashlib
 import json
 import os
-from collections.abc import Mapping, Sequence
 from pathlib import Path
 import re
 import socket
@@ -37,7 +36,7 @@ headers = {"Authorization": "Bearer " + credentials["AUTHENTIK_BOOTSTRAP_TOKEN"]
 base = "https://auth.socrat.alchemmist.xyz/api/v3/"
 
 
-def api(method: str, path: str, payload: Mapping[str, object] | None = None):
+def api(method, path, payload=None):
     req = urllib.request.Request(
         base + path,
         method=method,
@@ -49,12 +48,12 @@ def api(method: str, path: str, payload: Mapping[str, object] | None = None):
         return json.loads(body) if body else None
 
 
-def private_json(path: Path, value: Mapping[str, object] | Sequence[object]):
+def private_json(path, value):
     with open(path, "x", opener=lambda p, f: os.open(p, f, 0o600)) as out:
         json.dump(value, out)
 
 
-def normalize(value: object, key: str = ""):
+def normalize(value, key=""):
     if isinstance(value, dict):
         return {k: normalize(v, k) for k, v in value.items()}
     if isinstance(value, list):
@@ -69,7 +68,7 @@ def normalize(value: object, key: str = ""):
     return value
 
 
-def stable(app: Mapping[str, object]):
+def stable(app):
     # These three fields are the icon and its derived, possibly signed URLs.
     return normalize(
         {

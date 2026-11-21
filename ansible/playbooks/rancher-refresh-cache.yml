@@ -5,9 +5,7 @@
   any_errors_fatal: true
   tasks:
     - name: Require a healthy Rancher deployment
-      ansible.builtin.command: >-
-        kubectl -n cattle-system rollout status deployment/rancher
-        --timeout=120s
+      ansible.builtin.command: kubectl -n cattle-system rollout status deployment/rancher --timeout=120s
       changed_when: false
 
     - name: Read the Rancher replica inventory
@@ -26,9 +24,7 @@
 
     - name: Replace each Rancher replica separately
       ansible.builtin.include_tasks: ../tasks/rancher-refresh-replica.yml
-      loop: >-
-        {{ (rancher_cache_pods.stdout | from_json)['items']
-        | map(attribute='metadata.name') | list }}
+      loop: "{{ (rancher_cache_pods.stdout | from_json)['items'] | map(attribute='metadata.name') | list }}"
       loop_control:
         loop_var: rancher_cache_pod
 

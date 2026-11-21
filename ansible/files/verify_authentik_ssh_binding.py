@@ -16,13 +16,12 @@ import stat
 import subprocess
 import tempfile
 import uuid
-from typing import cast
 
 DIRECTORY = Path("/var/lib/homelab-authentik-ssh-bindings")
 CONFIG = Path("/etc/ssh/sshd_config")
 
 
-def reject_contextual_config(path: Path = CONFIG, seen: set[Path] | None = None):
+def reject_contextual_config(path=CONFIG, seen=None):
     """We cannot prove all Match contexts via one sshd -T -C probe. Reject them.
 
     Follow OpenSSH Include globs, including inside included files. This deliberately
@@ -61,7 +60,7 @@ def reject_contextual_config(path: Path = CONFIG, seen: set[Path] | None = None)
                     reject_contextual_config(Path(included), seen)
 
 
-def verify_key_location(name: str, config: Path = CONFIG):
+def verify_key_location(name, config=CONFIG):
     reject_contextual_config(config)
     parsed = subprocess.run(
         [shutil.which("sshd") or "/usr/sbin/sshd", "-T"], text=True, capture_output=True, check=True
@@ -101,7 +100,7 @@ def verify_key_location(name: str, config: Path = CONFIG):
     return Path("/home") / name / ".ssh/authorized_keys"
 
 
-def verify(name: str, ident: str, directory: Path = DIRECTORY):
+def verify(name, ident, directory=DIRECTORY):
     if not re.fullmatch(r"[a-z_][a-z0-9_-]{0,30}", name) or name in {
         "root",
         "alchemmist",
@@ -140,7 +139,7 @@ def verify(name: str, ident: str, directory: Path = DIRECTORY):
     return {"bindingVerified": True, "accountExists": exists}
 
 
-def fingerprints(path: Path):
+def fingerprints(path):
     """Parse every non-comment line; reject options, duplicates and invalid keys."""
     result = []
     for line in path.read_text().splitlines():
@@ -167,13 +166,7 @@ def fingerprints(path: Path):
     return sorted(result)
 
 
-def verify_keys(
-    name: str,
-    ident: str,
-    state: str,
-    expected: object,
-    directory: Path = DIRECTORY,
-):
+def verify_keys(name, ident, state, expected, directory=DIRECTORY):
     if (
         state not in {"present", "disabled"}
         or not isinstance(expected, list)
@@ -189,7 +182,7 @@ def verify_keys(
     if not verify(name, ident, directory)["accountExists"]:
         raise ValueError("Applied account missing")
     actual = fingerprints(verify_key_location(name))
-    if actual != sorted(cast("list[str]", expected)):
+    if actual != sorted(expected):
         raise ValueError("Effective key fingerprints differ from reviewed assignment")
     if state == "disabled" and pwd.getpwnam(name).pw_shell != "/usr/sbin/nologin":
         raise ValueError("Disabled shell mismatch")

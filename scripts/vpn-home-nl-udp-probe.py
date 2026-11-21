@@ -18,11 +18,11 @@ PREFIX = b"hl-home-nl-v1:"
 PORT = 51843
 
 
-def valid(data: bytes, peer: tuple[str, int]):
+def valid(data, peer):
     return peer[0] == HOME and len(data) == len(PREFIX) + 16 and data.startswith(PREFIX)
 
 
-def server(timeout: int = 40):
+def server(timeout=40):
     assert socket.gethostname() == "socrat-2"
     assert 1 <= timeout <= 45
     deadline = time.monotonic() + timeout

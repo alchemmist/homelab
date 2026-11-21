@@ -7,9 +7,7 @@
       - homelab_private_dns_listen_address | length > 0
       - homelab_private_dns_listen_address is match('^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$')
       - homelab_private_dns_listen_address.split('.') | length == 4
-      - >-
-        homelab_private_dns_listen_address.split('.') | map('int')
-        | select('le', 255) | list | length == 4
+      - homelab_private_dns_listen_address.split('.') | map('int') | select('le', 255) | list | length == 4
       - homelab_private_dns_interface | length > 0
       - homelab_private_dns_port | int > 0
       - homelab_private_dns_port | int < 65536
@@ -80,7 +78,7 @@
     state: directory
     owner: root
     group: root
-    mode: "0755"
+    mode: '0755'
 
 - name: Ensure private DNS snippets directory exists
   ansible.builtin.file:
@@ -88,7 +86,7 @@
     state: directory
     owner: root
     group: root
-    mode: "0755"
+    mode: '0755'
 
 - name: Render private DNS configuration
   ansible.builtin.template:
@@ -96,17 +94,17 @@
     dest: "{{ homelab_private_dns_config_path }}"
     owner: root
     group: root
-    mode: "0644"
+    mode: '0644'
     validate: "{{ homelab_private_dns_binary }} --test --conf-file=%s"
   notify: Restart private DNS
 
 - name: Render private DNS systemd unit
   ansible.builtin.template:
     src: homelab-private-dns.service.j2
-    dest: /etc/systemd/system/{{ homelab_private_dns_unit_name }}
+    dest: "/etc/systemd/system/{{ homelab_private_dns_unit_name }}"
     owner: root
     group: root
-    mode: "0644"
+    mode: '0644'
   notify:
     - Reload systemd
     - Restart private DNS
@@ -116,7 +114,7 @@
     argv:
       - "{{ homelab_private_dns_binary }}"
       - --test
-      - --conf-file={{ homelab_private_dns_config_path }}
+      - "--conf-file={{ homelab_private_dns_config_path }}"
   changed_when: false
 
 - name: Enable and start private DNS

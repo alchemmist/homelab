@@ -27,8 +27,7 @@
       - rancher_wg_values.hostNetwork | default(true) | bool
       - rancher_wg_values.basicAuth.enabled | bool
       - rancher_wg_values.basicAuth.existingSecret | length > 0
-      - rancher_wg_nodes | difference(rancher_wg_values.privateGui.nodes
-        | map(attribute='nodeName') | list) | length == 0
+      - rancher_wg_nodes | difference(rancher_wg_values.privateGui.nodes | map(attribute='nodeName') | list) | length == 0
 
 - name: Read existing Syncthing authentication
   ansible.builtin.command:
@@ -70,15 +69,9 @@
 - name: Create a certificate for the private Rancher gateway
   ansible.builtin.command:
     argv: [kubectl, --kubeconfig, "{{ rancher_wg_kubeconfig }}", apply, -f, '-']
-    stdin: >-
-      {{ {'apiVersion': 'cert-manager.io/v1', 'kind': 'Certificate',
-         'metadata': {'name': rancher_wg_tls_secret, 'namespace': rancher_wg_namespace},
-         'spec': {'secretName': rancher_wg_tls_secret, 'dnsNames': [rancher_wg_host],
-                  'issuerRef': {'name': rancher_wg_cluster_issuer, 'kind': 'ClusterIssuer'}}}
-         | to_nice_yaml }}
+    stdin: "{{ {'apiVersion': 'cert-manager.io/v1', 'kind': 'Certificate', 'metadata': {'name': rancher_wg_tls_secret, 'namespace': rancher_wg_namespace}, 'spec': {'secretName': rancher_wg_tls_secret, 'dnsNames': [rancher_wg_host], 'issuerRef': {'name': rancher_wg_cluster_issuer, 'kind': 'ClusterIssuer'}}} | to_nice_yaml }}"
   register: rancher_wg_certificate
-  changed_when: "'created' in rancher_wg_certificate.stdout
-                 or 'configured' in rancher_wg_certificate.stdout"
+  changed_when: "'created' in rancher_wg_certificate.stdout or 'configured' in rancher_wg_certificate.stdout"
 
 - name: Wait for the private Rancher certificate
   ansible.builtin.command:
@@ -95,27 +88,18 @@
 
 - name: Initialize Rancher gateway hosts
   ansible.builtin.set_fact:
-    rancher_wg_hosts: >-
-      {{ rancher_wg_values.privateGui.extraVirtualHosts | default([])
-         | rejectattr('host', 'equalto', rancher_wg_host) | list }}
+    rancher_wg_hosts: "{{ rancher_wg_values.privateGui.extraVirtualHosts | default([]) | rejectattr('host', 'equalto', rancher_wg_host) | list }}"
   no_log: true
 
 - name: Add a Rancher gateway on each control plane
   ansible.builtin.set_fact:
-    rancher_wg_hosts: >-
-      {{ rancher_wg_hosts + [{'name': item | replace('socrat-', 'rancher-'),
-         'nodeName': item, 'host': rancher_wg_host, 'tlsSecret': rancher_wg_tls_secret,
-         'resolver': rancher_wg_dns.stdout, 'upstream': rancher_wg_upstream,
-         'responseStyle': rancher_wg_response_style, 'autoSizeGrafana': rancher_wg_autosize_grafana,
-         'allowedCIDRs': ['10.250.0.0/24', '10.42.0.0/16']}] }}
+    rancher_wg_hosts: "{{ rancher_wg_hosts + [{'name': item | replace('socrat-', 'rancher-'), 'nodeName': item, 'host': rancher_wg_host, 'tlsSecret': rancher_wg_tls_secret, 'resolver': rancher_wg_dns.stdout, 'upstream': rancher_wg_upstream, 'responseStyle': rancher_wg_response_style, 'autoSizeGrafana': rancher_wg_autosize_grafana, 'allowedCIDRs': ['10.250.0.0/24', '10.42.0.0/16']}] }}"
   loop: "{{ rancher_wg_nodes }}"
   no_log: true
 
 - name: Merge Rancher into existing gateway hosts
   ansible.builtin.set_fact:
-    rancher_wg_merged_values: >-
-      {{ rancher_wg_values
-         | combine({'privateGui': {'extraVirtualHosts': rancher_wg_hosts}}, recursive=true) }}
+    rancher_wg_merged_values: "{{ rancher_wg_values | combine({'privateGui': {'extraVirtualHosts': rancher_wg_hosts}}, recursive=true) }}"
   no_log: true
 
 - name: Create private deployment directory
@@ -199,8 +183,7 @@
 - name: Verify existing Syncthing credentials were preserved
   ansible.builtin.assert:
     that:
-      - (rancher_wg_auth_before.stdout | from_json).data
-        == (rancher_wg_auth_after.stdout | from_json).data
+      - (rancher_wg_auth_before.stdout | from_json).data == (rancher_wg_auth_after.stdout | from_json).data
   no_log: true
 
 - name: Verify private gateway rollout

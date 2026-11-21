@@ -16,7 +16,7 @@
     state: directory
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
-    mode: "0755"
+    mode: '0755'
     follow: true
 
 - name: Resolve the Alacritty configuration target
@@ -43,7 +43,7 @@
     value: "{{ homelab_alacritty_opacity | float | string }}"
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
-    mode: "0644"
+    mode: '0644'
     backup: true
 
 - name: Apply opacity to application background colors
@@ -54,7 +54,7 @@
     value: "{{ homelab_alacritty_transparent_background_colors | bool | ternary('true', 'false') }}"
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
-    mode: "0644"
+    mode: '0644'
     backup: true
 
 - name: Disable Alacritty background blur
@@ -62,21 +62,21 @@
     path: "{{ homelab_alacritty_config.stdout }}"
     section: window
     option: blur
-    value: "false"
+    value: 'false'
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
-    mode: "0644"
+    mode: '0644'
     backup: true
 
 - name: Use the installed terminal font for every face
   community.general.ini_file:
     path: "{{ homelab_alacritty_config.stdout }}"
-    section: font.{{ item }}
+    section: "font.{{ item }}"
     option: family
     value: "{{ homelab_alacritty_font_family | to_json }}"
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
-    mode: "0644"
+    mode: '0644'
     backup: true
   loop: [normal, bold, italic, bold_italic]
 
@@ -85,7 +85,7 @@
     argv:
       - /usr/bin/python3
       - -c
-      - import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))
+      - 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))'
       - "{{ homelab_alacritty_config.stdout }}"
   changed_when: false
   when: not ansible_check_mode

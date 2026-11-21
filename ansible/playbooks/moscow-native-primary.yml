@@ -9,12 +9,12 @@
   vars:
     ansible_host: socrat-4
     ansible_port: 2222
-    ansible_ssh_common_args: -o ProxyJump=none -o StrictHostKeyChecking=yes
-    phase: "{{ moscow_native_phase | default('preflight') }}"
+    ansible_ssh_common_args: '-o ProxyJump=none -o StrictHostKeyChecking=yes'
+    phase: '{{ moscow_native_phase | default("preflight") }}'
     recovery_root: /var/lib/homelab-recovery/20261112-moscow-native-primary
     tool: /usr/local/libexec/vpn-transit-failover.py
     expected_old_tool: 3f130631c493cf60feed9cc5dd1ee970b233c278fb9cf685a00f32e915f03d19
-    expected_new_tool: "{{ lookup('file', playbook_dir + '/../../scripts/vpn-transit-failover.py', rstrip=false) | hash('sha256') }}"
+    expected_new_tool: '{{ lookup("file", playbook_dir + "/../../scripts/vpn-transit-failover.py", rstrip=false) | hash("sha256") }}'
   tasks:
     - ansible.builtin.assert:
         that:
@@ -23,7 +23,7 @@
           - phase != 'promote' or (moscow_native_data_path_accepted | default(false) | bool)
     - name: Refuse handoff if any unexpected workload appeared on Moscow
       ansible.builtin.command:
-        argv: [kubectl, get, pods, -A, --field-selector=spec.nodeName=socrat-4, -o, json]
+        argv: [kubectl, get, pods, -A, '--field-selector=spec.nodeName=socrat-4', -o, json]
       delegate_to: socrat-0
       vars:
         ansible_host: socrat-0
@@ -35,9 +35,9 @@
         that:
           - ((workloads.stdout | from_json)['items'] | map(attribute='metadata.namespace') | sort | list) == ['cattle-monitoring-system','vpn-transit']
           - ((workloads.stdout | from_json)['items'] | map(attribute='metadata.ownerReferences') | map('first') | map(attribute='kind') | sort | list) == ['DaemonSet','ReplicaSet']
-        fail_msg: Unexpected workload set on Moscow; stop and inspect before handoff.
+        fail_msg: 'Unexpected workload set on Moscow; stop and inspect before handoff.'
     - ansible.builtin.stat:
-        path: "{{ item.path }}"
+        path: '{{ item.path }}'
         checksum_algorithm: sha256
       loop:
         - {path: /usr/local/libexec/xray-transit,
@@ -47,11 +47,11 @@
       register: immutable
     - ansible.builtin.assert:
         that: item.stat.checksum == item.item.sha
-      loop: "{{ immutable.results }}"
+      loop: '{{ immutable.results }}'
       loop_control:
-        label: "{{ item.item.path }}"
+        label: '{{ item.item.path }}'
     - ansible.builtin.stat:
-        path: "{{ tool }}"
+        path: '{{ tool }}'
         checksum_algorithm: sha256
       register: controller_file
     - ansible.builtin.assert:
@@ -69,28 +69,28 @@
     - ansible.builtin.command: /usr/local/libexec/xray-transit run -test -config /etc/homelab-vpn-transit/user.json
       changed_when: false
     - ansible.builtin.file:
-        path: "{{ recovery_root }}"
+        path: '{{ recovery_root }}'
         state: directory
         owner: root
         group: root
-        mode: "0700"
+        mode: '0700'
     - name: Keep the initial controller and state without overwriting receipts
       ansible.builtin.copy:
-        src: "{{ item.src }}"
-        dest: "{{ recovery_root }}/{{ item.dest }}"
+        src: '{{ item.src }}'
+        dest: '{{ recovery_root }}/{{ item.dest }}'
         remote_src: true
         force: false
-        mode: "0600"
+        mode: '0600'
       loop:
         - {src: /usr/local/libexec/vpn-transit-failover.py, dest: controller-before.py}
         - {src: /var/lib/homelab-vpn-transit/relay-failover/state.json, dest: state-before.json}
     - ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../../scripts/vpn-transit-failover.py"
-        dest: "{{ tool }}"
+        src: '{{ playbook_dir }}/../../scripts/vpn-transit-failover.py'
+        dest: '{{ tool }}'
         owner: root
         group: root
-        mode: "0700"
-        validate: python3 -c "import sys; compile(open(sys.argv[1]).read(), sys.argv[1], 'exec')" %s
+        mode: '0700'
+        validate: 'python3 -c "import sys; compile(open(sys.argv[1]).read(), sys.argv[1], ''exec'')" %s'
     - name: Explicit fenced handoff; never replay this after an uncertain failure
       ansible.builtin.command: python3 /usr/local/libexec/vpn-transit-failover.py activate
       when: phase == 'activate'
@@ -112,7 +112,7 @@
           - (after.stdout | from_json).native_active == (phase != 'preflight')
           - (after.stdout | from_json).fallback_marker == (phase != 'preflight')
     - ansible.builtin.copy:
-        content: "{{ after.stdout }}"
-        dest: "{{ recovery_root }}/{{ phase }}-accepted.json"
-        mode: "0600"
+        content: '{{ after.stdout }}'
+        dest: '{{ recovery_root }}/{{ phase }}-accepted.json'
+        mode: '0600'
 ...

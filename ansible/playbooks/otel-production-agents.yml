@@ -21,30 +21,30 @@
   tasks:
     - name: Prepare immutable upstream executable and configuration locations
       ansible.builtin.file:
-        path: "{{ item }}"
+        path: '{{ item }}'
         state: directory
         owner: root
         group: root
-        mode: "0755"
+        mode: '0755'
       loop: [/usr/local/lib/homelab-otel, /etc/homelab-otel]
     - name: Install hash-verified stock Collector executable
       ansible.builtin.unarchive:
-        src: "{{ otel_production_artifacts }}/agent.tar.gz"
+        src: '{{ otel_production_artifacts }}/agent.tar.gz'
         dest: /usr/local/lib/homelab-otel
         owner: root
         group: root
-        mode: "0755"
+        mode: '0755'
       when: otel_production_native_staged_dir is not defined
     - name: Install a streamed stock binary without buffering the full archive on small nodes
       ansible.builtin.command:
         argv: [install,
                -m,
-               "0755",
+               '0755',
                -o,
                root,
                -g,
                root,
-               "{{ otel_production_native_staged_dir }}/otelcol-contrib",
+               '{{ otel_production_native_staged_dir }}/otelcol-contrib',
                /usr/local/lib/homelab-otel/otelcol-contrib]
       when: otel_production_native_staged_dir is defined
       notify: Restart validated host agent
@@ -57,7 +57,7 @@
       ansible.builtin.command:
         argv: [install,
                -m,
-               "0755",
+               '0755',
                -o,
                root,
                -g,
@@ -72,22 +72,22 @@
       changed_when: false
     - name: Install full native logs pipeline with metrics initially unowned
       ansible.builtin.copy:
-        src: "{{ otel_production_artifacts }}/{{ inventory_hostname }}-agent.yaml"
+        src: '{{ otel_production_artifacts }}/{{ inventory_hostname }}-agent.yaml'
         dest: /etc/homelab-otel/agent.yaml
-        mode: "0644"
+        mode: '0644'
       notify: Restart validated host agent
     - name: Install frozen alias source for independent exporter
       ansible.builtin.copy:
-        src: "{{ otel_production_bundle }}/{{ inventory_hostname }}.yaml"
+        src: '{{ otel_production_bundle }}/{{ inventory_hostname }}.yaml'
         dest: /etc/homelab-otel/scrape.yaml
-        mode: "0644"
+        mode: '0644'
     - name: Create native textfile source and read-only namespace mountpoint
       ansible.builtin.file:
-        path: "{{ item }}"
+        path: '{{ item }}'
         state: directory
         owner: root
         group: root
-        mode: "0755"
+        mode: '0755'
       loop:
         # Explicit parent modes matter on fresh hosts provisioned under umask 0077.
         # UID65534 must traverse the dedicated read-only textfile namespace.
@@ -102,7 +102,7 @@
     - name: Install persistent independent host exporter
       ansible.builtin.copy:
         dest: /etc/systemd/system/homelab-otel-node-exporter.service
-        mode: "0644"
+        mode: '0644'
         content: |
           [Unit]
           Description=Stock independent native host metric source
@@ -124,7 +124,7 @@
     - name: Install persistent native full host agent
       ansible.builtin.copy:
         dest: /etc/systemd/system/homelab-otel-agent.service
-        mode: "0644"
+        mode: '0644'
         content: |
           [Unit]
           Description=Native OTLP host metrics and logs agent
@@ -165,15 +165,15 @@
         state: directory
         owner: root
         group: root
-        mode: "0755"
+        mode: '0755'
       when: inventory_hostname == 'socrat-4'
     - name: Install Moscow-only Collector parallelism override
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../files/otel/socrat4-cpu.conf"
+        src: '{{ playbook_dir }}/../files/otel/socrat4-cpu.conf'
         dest: /etc/systemd/system/homelab-otel-agent.service.d/20-single-cpu.conf
         owner: root
         group: root
-        mode: "0644"
+        mode: '0644'
       when: inventory_hostname == 'socrat-4'
       notify: Restart validated host agent
     - name: Validate installed host agent configuration before restart
@@ -183,19 +183,19 @@
           - validate
           - --config=/etc/homelab-otel/agent.yaml
       environment:
-        OTEL_NODE_NAME: "{{ inventory_hostname }}"
+        OTEL_NODE_NAME: '{{ inventory_hostname }}'
         OTEL_STORAGE_DIR: /var/lib/homelab-otel-agent
         OTEL_TLS_DIR: /var/lib/homelab-otel/tls
         OTEL_SCRAPE_CONFIG: /etc/homelab-otel/scrape.yaml
         OTEL_CLUSTER_ENDPOINT: 10.250.0.1:4317
         OTEL_CLUSTER_TLS_NAME: kube-prometheus-stack-prometheus.cattle-monitoring-system.svc
-        OTEL_LOG_INGESTION_START_NS: "{{ otel_production_boundary }}"
+        OTEL_LOG_INGESTION_START_NS: '{{ otel_production_boundary }}'
       changed_when: false
     - name: Apply validated agent changes before advancing serial rollout
       ansible.builtin.meta: flush_handlers
     - name: Enable production native sources and full logs agent
       ansible.builtin.systemd_service:
-        name: "{{ item }}"
+        name: '{{ item }}'
         daemon_reload: true
         enabled: true
         state: started
@@ -203,24 +203,22 @@
     - name: Discover the Tempo Service IPv4 address for the native gateway
       ansible.builtin.command:
         argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, -n, cattle-monitoring-system, get, service, otel-tempo,
-               -o, "jsonpath={.spec.clusterIP}"]
+               -o, 'jsonpath={.spec.clusterIP}']
       register: trace_gateway_service
       changed_when: false
-      failed_when: >-
-        trace_gateway_service.rc != 0 or not
-        (trace_gateway_service.stdout is regex('^[0-9]+(?:\\.[0-9]+){3}\\s*$'))
+      failed_when: trace_gateway_service.rc != 0 or not (trace_gateway_service.stdout is match('^[0-9]+(?:\.[0-9]+){3}$'))
       when: inventory_hostname == 'socrat-0'
     - name: Install trace gateway configuration on its planned host
       ansible.builtin.copy:
-        src: "{{ otel_production_artifacts }}/trace.yaml"
+        src: '{{ otel_production_artifacts }}/trace.yaml'
         dest: /etc/homelab-otel/traces.yaml
-        mode: "0644"
+        mode: '0644'
       when: inventory_hostname == 'socrat-0'
       notify: Restart native trace gateway
     - name: Install native tail sampling gateway
       ansible.builtin.copy:
         dest: /etc/systemd/system/homelab-otel-traces.service
-        mode: "0644"
+        mode: '0644'
         content: |
           [Unit]
           Description=Native OTel privacy and tail sampling gateway

@@ -12,7 +12,9 @@ import json
 import os
 import urllib.parse
 import urllib.request
+from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
+from typing import override
 
 UUID = "9e33877a-3eaa-4541-98eb-8cdc10088ef6"
 CONNECTOR = "authentik-dbkcr0p119kc73917k1g"
@@ -22,7 +24,31 @@ ROOT = Path.home() / ".local/state/netbird-internal-stage/journal"
 BASE = "https://netbird.socrat.alchemmist.xyz/api/"
 
 
-def subject(uuid=UUID, connector=CONNECTOR):
+def as_record(value: object) -> dict[str, object]:
+    """Return a JSON object record, failing loudly on malformed structure."""
+    if not isinstance(value, dict):
+        error = "structured JSON record required"
+        raise TypeError(error)
+    return value
+
+
+def as_list(value: object) -> list[object]:
+    """Return a JSON array, failing loudly on malformed structure."""
+    if not isinstance(value, list):
+        error = "structured JSON array required"
+        raise TypeError(error)
+    return value
+
+
+def as_str(value: object) -> str:
+    """Return a string JSON value, failing loudly on malformed structure."""
+    if not isinstance(value, str):
+        error = "string JSON value required"
+        raise TypeError(error)
+    return value
+
+
+def subject(uuid: str = UUID, connector: str = CONNECTOR) -> str:
     a, b = uuid.encode(), connector.encode()
     return (
         base64.b64encode(b"\x0a" + bytes([len(a)]) + a + b"\x12" + bytes([len(b)]) + b)
@@ -31,12 +57,12 @@ def subject(uuid=UUID, connector=CONNECTOR):
     )
 
 
-def target_user(users, expected):
+def target_user(users: Iterable[Mapping[str, object]], expected: str) -> Mapping[str, object]:
     if expected != subject():
         raise ValueError(
             "refusing subject: requires encoded raw owner UUID plus exact connector, never email"
         )
-    matches = [u for u in users if u["id"] == expected]
+    matches = [u for u in users if u.get("id") == expected]
     if len(matches) != 1:
         raise ValueError(
             "exact owner identity absent/ambiguous: personally log in first; no email fallback"
@@ -47,43 +73,49 @@ def target_user(users, expected):
         or u.get("idp_id") != CONNECTOR
         or u.get("is_service_user") is not False
         or u.get("is_blocked") is not False
-        or u.get("pending_approval")
+        or bool(u.get("pending_approval"))
         or u.get("status") != "active"
     ):
         raise ValueError("owner identity fields mismatch; refusing UUID/email substitution")
-    stamp = datetime.datetime.fromisoformat(u["last_login"].replace("Z", "+00:00"))
+    stamp = datetime.datetime.fromisoformat(as_str(u["last_login"]).replace("Z", "+00:00"))
     age = datetime.datetime.now(datetime.UTC) - stamp
     if not 0 <= age.total_seconds() < 86400:
         raise ValueError("no recent genuine owner OIDC login evidence")
     return u
 
 
-def network_snapshot(api, allow_owner_device=False):
+def network_snapshot(
+    api: Callable[[str], object], *, allow_owner_device: bool = False
+) -> list[Mapping[str, object]]:
     for name in ["setup-keys", "policies", "networks"]:
-        if api(name) != []:
+        if as_list(api(name)) != []:
             raise ValueError("unexpected network grants; stop")
     peers = api("peers")
-    if not peers:
+    if peers is None:
         return []
+    peer_list = as_list(peers)
+    if not peer_list:
+        return []
+    peer = as_record(peer_list[0])
     if (
         not allow_owner_device
-        or len(peers) != 1
-        or peers[0].get("user_id") != subject()
-        or peers[0].get("approval_required") is not False
-        or peers[0].get("login_expired") is not False
+        or len(peer_list) != 1
+        or peer.get("user_id") != subject()
+        or peer.get("approval_required") is not False
+        or peer.get("login_expired") is not False
     ):
         raise ValueError("only one exact-owner approved personal device may preexist")
     return [
         {
-            "id": peers[0]["id"],
-            "user_id": peers[0]["user_id"],
+            "id": peer["id"],
+            "user_id": peer["user_id"],
             "approval_required": False,
             "login_expired": False,
         }
     ]
 
 
-def main():
+def main() -> None:
     os.umask(0o077)
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--subject", required=True)
@@ -93,15 +125,18 @@ def main():
     a = p.parse_args()
     if a.subject != subject():
         raise ValueError("wrong encoded raw UUID/connector")
-    token = json.loads((ROOT / "bootstrap.json").read_text())["personal_access_token"]
+    token = as_str(
+        as_record(json.loads((ROOT / "bootstrap.json").read_text()))["personal_access_token"]
+    )
 
     class NoRedirect(urllib.request.HTTPRedirectHandler):
-        def redirect_request(self, req, fp, code, msg, headers, newurl):
+        @override
+        def redirect_request(self, *a: object, **kw: object) -> urllib.request.Request | None:
             return None  # Never forward a private PAT to a redirect destination.
 
     opener = urllib.request.build_opener(NoRedirect)
 
-    def api(path, body=None):
+    def api(path: str, body: object | None = None) -> object:
         request = urllib.request.Request(
             BASE + path,
             headers={"Authorization": "Token " + token, "Content-Type": "application/json"},
@@ -112,22 +147,24 @@ def main():
         with opener.open(request, timeout=20) as r:
             return json.load(r)
 
-    accounts = api("accounts")
-    if len(accounts) != 1 or not accounts[0]["settings"]["local_auth_disabled"]:
+    accounts = as_list(api("accounts"))
+    account = as_record(accounts[0])
+    if len(accounts) != 1 or not bool(
+        as_record(as_record(account["settings"]))["local_auth_disabled"]
+    ):
         raise ValueError("account/local-auth guard failed")
-    if (
-        accounts[0]["id"]
-        != json.loads((ROOT / "bootstrap-complete.json").read_text())["account_id"]
+    if as_str(account["id"]) != as_str(
+        as_record(json.loads((ROOT / "bootstrap-complete.json").read_text()))["account_id"]
     ):
         raise ValueError("wrong account")
-    network_before = network_snapshot(api, a.allow_existing_owner_device)
-    users = api("users")
+    network_before = network_snapshot(api, allow_owner_device=a.allow_existing_owner_device)
+    users = [as_record(u) for u in as_list(api("users"))]
     target = target_user(users, a.subject)
-    owners = [u for u in users if u["role"] == "owner"]
+    owners = [u for u in users if u.get("role") == "owner"]
     if (
         len(owners) != 1
-        or owners[0]["id"] != TECHNICAL
-        or owners[0]["email"] != "netbird-bootstrap@internal.invalid"
+        or as_str(owners[0]["id"]) != TECHNICAL
+        or as_str(owners[0]["email"]) != "netbird-bootstrap@internal.invalid"
     ):
         raise ValueError("expected technical owner only; no replay")
     if target["role"] != "user":
@@ -142,21 +179,21 @@ def main():
     journal = ROOT / "stage4-owner-handover-before.json"
     fd = os.open(journal, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as f:
-        json.dump({"users": users, "account_id": accounts[0]["id"]}, f)
+        json.dump({"users": users, "account_id": account["id"]}, f)
     api(
-        "users/" + urllib.parse.quote(target["id"], safe=""),
+        "users/" + urllib.parse.quote(as_str(target["id"]), safe=""),
         {"role": "owner", "auto_groups": target["auto_groups"], "is_blocked": False},
     )
-    after = api("users")
+    after = [as_record(u) for u in as_list(api("users"))]
     if [u["id"] for u in after if u["role"] == "owner"] != [target["id"]]:
         raise ValueError("post-transfer owner mismatch; stop")
-    if next(u for u in after if u["id"] == TECHNICAL)["role"] != "admin":
+    if next(u for u in after if u.get("id") == TECHNICAL)["role"] != "admin":
         raise ValueError("technical owner was not demoted")
-    expected_roles = {u["id"]: u["role"] for u in users}
+    expected_roles: dict[object, object] = {u["id"]: u["role"] for u in users}
     expected_roles.update({target["id"]: "owner", TECHNICAL: "admin"})
     if {u["id"]: u["role"] for u in after} != expected_roles:
         raise ValueError("unexpected other user/role change")
-    if network_snapshot(api, a.allow_existing_owner_device) != network_before:
+    if network_snapshot(api, allow_owner_device=a.allow_existing_owner_device) != network_before:
         raise ValueError("unexpected post-transfer network grants/device identity change")
     print(
         "Native owner transfer verified. Technical PAT remains private; existing owner device preserved; no network or other human role granted."

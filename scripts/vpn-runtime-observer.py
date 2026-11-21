@@ -15,24 +15,10 @@ import socket
 import subprocess
 import tempfile
 import time
-from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Protocol, TypedDict
-
-
-class _Profile(TypedDict):
-    component: str
-    command: list[str]
-    agent: str
-    native: list[str]
-    timer: str
-    marker: str
-    tcp: set[int]
-    udp: set[int]
-
 
 OUTPUT = Path("/var/lib/node_exporter/textfile_collector/vpn-runtime.prom")
-PROFILES: dict[str, _Profile] = {
+PROFILES = {
     "socrat-4": {
         "component": "relay",
         "command": ["python3", "/usr/local/libexec/vpn-transit-failover.py", "status"],
@@ -56,31 +42,18 @@ PROFILES: dict[str, _Profile] = {
 }
 
 
-class _Flag(Protocol):
-    def __bool__(self) -> bool: ...
-
-
-class _Status(TypedDict, total=False):
-    agent_active: bool
-    native_active: bool
-    fallback_marker: bool
-    mode: str
-    healthy: bool
-    data_path_healthy: bool
-
-
-def command(args: list[str], timeout: int = 30):
+def command(args, timeout=30):
     return subprocess.run(args, capture_output=True, text=True, timeout=timeout, check=False)
 
 
-def active(unit: str):
+def active(unit):
     p = command(["systemctl", "is-active", unit], 5)
     if p.returncode not in (0, 3):
         raise ValueError("Unobservable unit")
     return p.returncode == 0
 
 
-def listening(proc: Path, protocol: str):
+def listening(proc, protocol):
     ports = set()
     for suffix in ("", "6"):
         lines = (proc / ("net/" + protocol + suffix)).read_text().splitlines()
@@ -94,13 +67,7 @@ def listening(proc: Path, protocol: str):
     return ports
 
 
-def classify(
-    profile: _Profile,
-    status: _Status,
-    agent: _Flag,
-    native: Sequence[_Flag],
-    marker: _Flag,
-):
+def classify(profile, status, agent, native, marker):
     """Latch alone is insufficient: actual unit ownership must agree."""
     if profile["component"] == "relay":
         if status.get("agent_active") is not agent or status.get("native_active") is not all(
@@ -119,7 +86,7 @@ def classify(
     return -1
 
 
-def units_snapshot(units: Sequence[str]):
+def units_snapshot(units):
     result = command(
         ["systemctl", "show", *units, "-p", "Id", "-p", "LoadState", "-p", "ActiveState"], 5
     )
@@ -136,7 +103,7 @@ def units_snapshot(units: Sequence[str]):
     return states
 
 
-def observe(profile: _Profile, proc: Path = Path("/proc"), live_check: _Flag = False):
+def observe(profile, proc=Path("/proc"), live_check=False):
     before = Path(profile["marker"]).exists()
     cached = profile["component"] == "relay" and not live_check
     if cached:
@@ -182,7 +149,7 @@ def observe(profile: _Profile, proc: Path = Path("/proc"), live_check: _Flag = F
     }
 
 
-def write_metrics(path: Path, component: str, values: Mapping[str, object]):
+def write_metrics(path, component, values):
     lines = []
     for key, value in values.items():
         name = "socrat_vpn_component_" + key
@@ -202,7 +169,7 @@ def write_metrics(path: Path, component: str, values: Mapping[str, object]):
             os.unlink(name)
 
 
-def audit(host: str, profile: _Profile, expected_image: str | None = None):
+def audit(host, profile, expected_image=None):
     observation = observe(profile, live_check=True)
     native_units = [command(["systemctl", "cat", unit], 5).stdout for unit in profile["native"]]
     agent = command(["systemctl", "cat", profile["agent"]], 5).stdout

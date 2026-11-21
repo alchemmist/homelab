@@ -16,24 +16,9 @@ import time
 import uuid
 from contextlib import closing
 from pathlib import Path
-from typing import Protocol, TypedDict
 
 
-class _Flag(Protocol):
-    def __bool__(self) -> bool: ...
-
-
-class _WsSettings(TypedDict, total=False):
-    path: str
-
-
-class _StreamSettings(TypedDict, total=False):
-    network: str
-    security: str | None
-    wsSettings: _WsSettings
-
-
-def load(name: str, filename: str):
+def load(name, filename):
     spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name(filename))
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
@@ -47,7 +32,7 @@ guard = load("guard", "vpn-backend-guard.py")
 h = native.h
 
 
-def client(stream: _StreamSettings, password: str, port: int):
+def client(stream, password, port):
     path = stream.get("wsSettings", {}).get("path")
     if (
         stream.get("network") != "ws"
@@ -97,13 +82,7 @@ def client(stream: _StreamSettings, password: str, port: int):
     }
 
 
-def apply(
-    state: Path,
-    session_hash: str,
-    config_hash: str,
-    guard_hash: str,
-    accept_existing: _Flag = False,
-):
+def apply(state, session_hash, config_hash, guard_hash, accept_existing=False):
     s = native.NativeSession(state)
     original = target.configuration(s.database)
     if h.digest(original) != config_hash or h.digest(guard.plan()) != guard_hash:

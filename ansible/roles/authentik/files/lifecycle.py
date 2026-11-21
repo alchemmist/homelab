@@ -7,9 +7,7 @@ import fcntl
 import hashlib
 import json
 import os
-from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
-from typing import TypedDict, cast
 import re
 import sys
 import urllib.error
@@ -22,17 +20,13 @@ BASE = "https://auth.socrat.alchemmist.xyz/api/v3/"
 OWNER = "alchemmist"
 
 
-def api_for(root: Path):
+def api_for(root):
     path = root / "credentials.json"
     if root.stat().st_mode & 0o077 or path.stat().st_mode & 0o077:
         raise RuntimeError("Deployment directory/credentials must be private")
     token = json.loads(path.read_text())["AUTHENTIK_BOOTSTRAP_TOKEN"]
 
-    def api(
-        method: str,
-        endpoint: str,
-        payload: Mapping[str, object] | None = None,
-    ):
+    def api(method, endpoint, payload=None):
         req = urllib.request.Request(
             BASE + endpoint,
             method=method,
@@ -46,7 +40,7 @@ def api_for(root: Path):
     return api
 
 
-def unique(items: Sequence[Mapping[str, object]], field: str):
+def unique(items, field):
     result = {}
     for item in items:
         if item[field] in result:
@@ -55,20 +49,7 @@ def unique(items: Sequence[Mapping[str, object]], field: str):
     return result
 
 
-class UserRecord(TypedDict):
-    """Reviewed lifecycle row for one existing person."""
-
-    uuid: str
-    state: str
-    appGroups: object
-
-
-def build_plan(
-    api: Callable[..., Mapping[str, object]],
-    services: Mapping[str, Mapping[str, object]],
-    manifest: Mapping[str, object],
-    reviewed: Mapping[str, Mapping[str, object]],
-):
+def build_plan(api, services, manifest, reviewed):
     if set(manifest) != {"version", "users"} or manifest["version"] != 1:
         raise RuntimeError("Unsupported lifecycle schema")
     declared = app_groups(services)
@@ -99,8 +80,7 @@ def build_plan(
     operations = []
     snapshot = []
     seen_uuids = set()
-    users = cast("dict[str, UserRecord]", manifest["users"])
-    for name, desired in sorted(users.items()):
+    for name, desired in sorted(manifest["users"].items()):
         if not re.fullmatch(r"[a-z][a-z0-9_-]{0,63}", name):
             raise RuntimeError("Invalid username")
         if set(desired) != {"uuid", "state", "appGroups"}:
@@ -195,15 +175,10 @@ def build_plan(
     }
 
 
-def apply_plan(
-    api: Callable[..., object],
-    plan: Mapping[str, object],
-    approval: str,
-):
+def apply_plan(api, plan, approval):
     if approval != plan["sha256"]:
         raise RuntimeError("Plan approval hash mismatch; review a fresh plan")
-    operations = cast("list[dict[str, object]]", plan["operations"])
-    for operation in operations:
+    for operation in plan["operations"]:
         if operation["action"] in ("disable", "enable"):
             api(
                 "PATCH",

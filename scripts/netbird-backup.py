@@ -31,17 +31,17 @@ FILES = [
 ]
 
 
-def require(ok, message):
+def require(ok: object, message: str):
     if not ok:
         raise ValueError(message)
 
 
-def copy_pod(node, image, read_only):
+def copy_pod(node: str, image: str, *, read_only: bool):
     require(
-        isinstance(node, str) and node and "/" not in node and ".." not in node,
+        node != "" and "/" not in node and ".." not in node,
         "explicit data node required",
     )
-    require(isinstance(image, str) and "@sha256:" in image, "pinned server image required")
+    require("@sha256:" in image, "pinned server image required")
     return {
         "apiVersion": "v1",
         "kind": "Pod",
@@ -66,8 +66,8 @@ def copy_pod(node, image, read_only):
     }
 
 
-def plan(node, image):
-    pod = copy_pod(node, image, True)
+def plan(node: str, image: str):
+    pod = copy_pod(node, image, read_only=True)
     blob = json.dumps(pod)
     require("secret" not in blob and "NB_" not in blob, "backup pod must not carry credentials")
     return {
@@ -103,8 +103,10 @@ def plan(node, image):
     }
 
 
-def outside(path):
-    require(path is not None, "--out required")
+def outside(path: Path | None):
+    if path is None:
+        message = "--out required"
+        raise ValueError(message)
     require(not path.resolve().is_relative_to(ROOT), "--out must be outside the Git worktree")
 
 

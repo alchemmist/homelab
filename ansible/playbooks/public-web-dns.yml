@@ -8,15 +8,15 @@
     - ansible.builtin.file:
         path: /var/lib/homelab-public-web-dns
         state: directory
-        mode: "0700"
+        mode: '0700'
     - ansible.builtin.copy:
         src: ../../scripts/public-web-dns.py
         dest: /usr/local/sbin/homelab-public-web-dns
-        mode: "0700"
+        mode: '0700'
     - ansible.builtin.copy:
         src: ../../scripts/public_dns_zone.py
         dest: /var/lib/homelab-public-web-dns/proposed.py
-        mode: "0700"
+        mode: '0700'
     - ansible.builtin.command: /usr/local/sbin/homelab-public-web-dns
       register: dns_plan
       changed_when: false

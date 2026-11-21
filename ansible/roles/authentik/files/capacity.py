@@ -6,7 +6,7 @@ import os
 import subprocess
 
 
-def quantity(x: str | int):
+def quantity(x):
     for unit, mul in [
         ("Ki", 1024),
         ("Mi", 1024**2),

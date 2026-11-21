@@ -24,9 +24,7 @@
   until:
     - k3s_ha_etcd_members.rc == 0
     - (k3s_ha_etcd_members.stdout | from_json).members | length == 3
-    - >-
-      (k3s_ha_etcd_members.stdout | from_json).members | selectattr('isLearner', 'defined')
-      | selectattr('isLearner') | list | length == 0
+    - (k3s_ha_etcd_members.stdout | from_json).members | selectattr('isLearner', 'defined') | selectattr('isLearner') | list | length == 0
 
 - name: Verify all three etcd endpoints
   ansible.builtin.command:

@@ -23,7 +23,7 @@ class ReviewReuseTests(unittest.TestCase):
             for i in range(1, 62)
         ]
 
-    def prepare(self, issues, event=None):
+    def prepare(self, issues: list[dict[str, object]], event: dict[str, object] | None = None):
         m = Model(Mock(), "fake")
         m.call = Mock(return_value=GOOD)
         saved = []
@@ -112,7 +112,9 @@ class ReviewReuseTests(unittest.TestCase):
         m = Model(Mock(), "fake")
         saved = []
 
-        def choose(task, data, schema, deadline):
+        def choose(
+            task: str, data: dict[str, list[dict[str, int]]], schema: object, deadline: float
+        ):
             return dict(GOOD, issue_number=data["open_issues"][0]["number"])
 
         m.call = Mock(side_effect=choose)
@@ -132,7 +134,9 @@ class ReviewReuseTests(unittest.TestCase):
         saved = []
         calls = [0]
 
-        def choose(task, data, schema, deadline):
+        def choose(
+            task: str, data: dict[str, list[dict[str, int]]], schema: object, deadline: float
+        ):
             calls[0] += 1
             if calls[0] == 8:
                 raise Failure("LLM_ADMISSION_DEFERRED")
@@ -148,7 +152,7 @@ class ReviewReuseTests(unittest.TestCase):
             m.match(f.event(), issues, proof, lambda p: saved.append(copy.deepcopy(p)))
         self.assertEqual(saved[-1]["selection"], proof["selection"])
         m.call = Mock(
-            side_effect=lambda _task, data, *_args: dict(
+            side_effect=lambda task, data, *args: dict(
                 GOOD, issue_number=data["open_issues"][0]["number"]
             )
         )
@@ -255,16 +259,16 @@ class ChurnPublicationTests(unittest.TestCase):
             )
             model = Model(Mock(), "fake")
             model.call = Mock(
-                side_effect=lambda _task, data, *_args: dict(
+                side_effect=lambda task, data, *args: dict(
                     GOOD,
                     issue_number=1 if any(x["number"] == 1 for x in data["open_issues"]) else 0,
                 )
             )
-            model.analyze = Mock(side_effect=lambda *_args: f.report(1))
+            model.analyze = Mock(side_effect=lambda *args: f.report(1))
             evidence = Mock()
             bundle_count = [0]
 
-            def collect(event):
+            def collect(event: dict[str, object]):
                 bundle_count[0] += 1
                 return {
                     "bundle": prepare_bundle(
@@ -277,7 +281,7 @@ class ChurnPublicationTests(unittest.TestCase):
             evidence.collect.side_effect = collect
             stored = {}
 
-            def upload(key, raw):
+            def upload(key: str, raw: bytes):
                 if key in stored:
                     self.assertEqual(stored[key], raw)
                 stored[key] = raw
@@ -329,7 +333,7 @@ class ChurnPublicationTests(unittest.TestCase):
                 )
                 jobs.append((key, event))
 
-            def post(method, path, body):
+            def post(method: str, path: str, body: dict[str, str]):
                 self.assertEqual(method, "POST")
                 self.assertEqual(path, "/issues/1/comments")
                 self.assertNotIn("fake ", body["body"])

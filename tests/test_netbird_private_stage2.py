@@ -28,14 +28,14 @@ def test_settings_schema_and_private_local_auth() -> None:
 
 def test_only_exact_native_default_can_be_deleted() -> None:
     """Accept only one exact native Default policy for deletion."""
-    rule = {
-        "action": "accept",
-        "protocol": "all",
-        "bidirectional": True,
-        "sources": [{"name": "All"}],
-        "destinations": [{"name": "All"}],
-    }
-    policy = {"id": "exact-id", "name": "Default", "enabled": True, "rules": [rule]}
+    rule = dict(
+        action="accept",
+        protocol="all",
+        bidirectional=True,
+        sources=[{"name": "All"}],
+        destinations=[{"name": "All"}],
+    )
+    policy = dict(id="exact-id", name="Default", enabled=True, rules=[rule])
     assert stage2.default_policy([policy]) == "exact-id"
     with pytest.raises(ValueError):
         stage2.default_policy([policy, policy])
@@ -44,7 +44,7 @@ def test_only_exact_native_default_can_be_deleted() -> None:
         stage2.default_policy([policy])
 
 
-def test_private_files_never_overwrite(tmp_path) -> None:
+def test_private_files_never_overwrite(tmp_path: Path) -> None:
     """Create a mode-0600 file and refuse to replace it."""
     path = tmp_path / "secret.json"
     stage2.private(path, {"secret": "fixture"})

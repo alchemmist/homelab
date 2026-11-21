@@ -4,7 +4,6 @@ import copy
 import hashlib
 import json
 from pathlib import Path
-from typing import Protocol
 import runpy
 import shutil
 import sys
@@ -47,25 +46,14 @@ def test_current_application_coverage_and_asset_checksums():
         assert hashlib.sha256((ASSETS / filename).read_bytes()).hexdigest() == record["sha256"]
 
 
-class _URLRequest(Protocol):
-    """Subset of urllib.request.Request used by the icon client."""
-
-    data: bytes
-    full_url: str
-
-    def get_method(self) -> str:
-        """Return the HTTP method."""
-        ...
-
-
 class Response:
-    def __init__(self, body: object):
+    def __init__(self, body):
         self.body = body if isinstance(body, bytes) else json.dumps(body).encode()
 
     def __enter__(self):
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, *args: object) -> bool:
         return False
 
     def read(self):
@@ -102,7 +90,7 @@ class FakeAPI:
             self.files.append({"name": name, "url": url})
             self.content[url] = (ASSETS / filename).read_bytes()
 
-    def __call__(self, request: str | _URLRequest, timeout: float | None = None):
+    def __call__(self, request, timeout=None):
         if isinstance(request, str):
             # No API bearer token is sent when reading media.
             return Response(self.content[request])
@@ -125,7 +113,7 @@ class FakeAPI:
         return Response(detail)
 
 
-def run(tmp_path: Path, api: FakeAPI, expected: object | None = None):
+def run(tmp_path, api, expected=None):
     shutil.copytree(ASSETS, tmp_path / "service-icons")
     (tmp_path / "credentials.json").write_text(
         json.dumps({"AUTHENTIK_BOOTSTRAP_TOKEN": "fixture-only"})
@@ -139,7 +127,7 @@ def run(tmp_path: Path, api: FakeAPI, expected: object | None = None):
         runpy.run_path(str(SCRIPT), run_name="__main__")
 
 
-def test_updates_only_icons_and_keeps_unmanaged_app(tmp_path: Path):
+def test_updates_only_icons_and_keeps_unmanaged_app(tmp_path):
     api = FakeAPI()
     before = copy.deepcopy(api.apps)
     run(tmp_path, api, list(before.values()))
@@ -153,7 +141,7 @@ def test_updates_only_icons_and_keeps_unmanaged_app(tmp_path: Path):
     assert len(list(tmp_path.glob("portal-icons-receipt-*.json"))) == 1
 
 
-def test_reviewed_uid_mismatch_stops_before_any_patch(tmp_path: Path):
+def test_reviewed_uid_mismatch_stops_before_any_patch(tmp_path):
     api = FakeAPI()
     expected = copy.deepcopy(list(api.apps.values()))
     expected[0]["pk"] = "different-identity"
@@ -163,7 +151,7 @@ def test_reviewed_uid_mismatch_stops_before_any_patch(tmp_path: Path):
     assert not (tmp_path / "portal-icons-uncertain.json").exists()
 
 
-def test_uncertain_prior_run_cannot_be_replayed(tmp_path: Path):
+def test_uncertain_prior_run_cannot_be_replayed(tmp_path):
     api = FakeAPI()
     (tmp_path / "portal-icons-uncertain.json").write_text("{}")
     with pytest.raises(RuntimeError, match="explicit receipt/state review"):
@@ -171,7 +159,7 @@ def test_uncertain_prior_run_cannot_be_replayed(tmp_path: Path):
     assert not api.patches
 
 
-def test_served_checksum_mismatch_leaves_review_marker(tmp_path: Path):
+def test_served_checksum_mismatch_leaves_review_marker(tmp_path):
     api = FakeAPI()
     api.content[next(iter(api.content))] = b"not-the-pinned-svg"
     with pytest.raises(RuntimeError, match="Served media checksum mismatch"):
@@ -180,7 +168,7 @@ def test_served_checksum_mismatch_leaves_review_marker(tmp_path: Path):
     assert (tmp_path / "portal-icons-uncertain.json").exists()
 
 
-def test_property_mapping_membership_change_is_not_ignored(tmp_path: Path):
+def test_property_mapping_membership_change_is_not_ignored(tmp_path):
     api = FakeAPI()
     expected = copy.deepcopy(list(api.apps.values()))
     expected[0]["provider_obj"]["property_mappings"].append("different-mapping")

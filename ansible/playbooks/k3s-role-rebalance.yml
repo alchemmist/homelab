@@ -44,13 +44,13 @@
       ansible.builtin.file:
         path: /var/lib/homelab-k3s-rebalance
         state: directory
-        mode: "0700"
+        mode: '0700'
 
     - name: Install migration helpers
       ansible.builtin.copy:
         src: "{{ playbook_dir }}/../roles/k3s_role_rebalance/files/{{ item }}"
-        dest: /var/lib/homelab-k3s-rebalance/{{ item }}
-        mode: "0700"
+        dest: "/var/lib/homelab-k3s-rebalance/{{ item }}"
+        mode: '0700'
       loop: [configure_role.py, etcd_members.py]
 
     - name: Preserve the original service and configuration files
@@ -130,13 +130,13 @@
       ansible.builtin.copy:
         src: "{{ hostvars['socrat-0'].rebalance_transfer.path }}/snapshot"
         dest: /var/lib/homelab-k3s-rebalance/before.snapshot
-        mode: "0600"
+        mode: '0600'
 
     - name: Install and preserve the server token
       ansible.builtin.copy:
         content: "{{ hostvars['socrat-0'].rebalance_server_token.content | b64decode }}"
         dest: "{{ item }}"
-        mode: "0600"
+        mode: '0600'
       loop:
         - /etc/rancher/k3s/ha-server-token
         - /var/lib/homelab-k3s-rebalance/server-token
@@ -157,7 +157,7 @@
                --advertise-ip,
                10.250.0.5,
                --server,
-               https://10.250.0.1:6443,
+               'https://10.250.0.1:6443',
                --token-file,
                /etc/rancher/k3s/ha-server-token]
       register: rebalance_server_config
@@ -167,19 +167,19 @@
       ansible.builtin.copy:
         src: "{{ playbook_dir }}/../roles/k3s_ha/templates/k3s.service.j2"
         dest: /etc/systemd/system/k3s.service
-        mode: "0644"
+        mode: '0644'
       register: rebalance_server_unit
 
     - name: Create the former agent guard directory
       ansible.builtin.file:
         path: /etc/systemd/system/k3s-agent.service.d
         state: directory
-        mode: "0755"
+        mode: '0755'
 
     - name: Prevent an accidental concurrent agent startup
       ansible.builtin.copy:
         dest: /etc/systemd/system/k3s-agent.service.d/40-homelab-server-mode.conf
-        mode: "0644"
+        mode: '0644'
         content: |
           [Unit]
           ConditionPathExists=!/etc/rancher/k3s/server-mode
@@ -188,19 +188,19 @@
       ansible.builtin.copy:
         dest: /etc/rancher/k3s/server-mode
         content: "control-plane-etcd-and-agent\n"
-        mode: "0600"
+        mode: '0600'
 
     - name: Prepare the packaged manifest directory
       ansible.builtin.file:
         path: /var/lib/rancher/k3s/server/manifests
         state: directory
-        mode: "0755"
+        mode: '0755'
 
     - name: Preserve the existing managed CoreDNS deployment during server startup
       ansible.builtin.copy:
         dest: /var/lib/rancher/k3s/server/manifests/coredns.yaml.skip
-        content: ""
-        mode: "0644"
+        content: ''
+        mode: '0644'
 
     - name: Stop the agent process while retaining its containers
       ansible.builtin.systemd_service:
@@ -255,7 +255,7 @@
       ansible.builtin.copy:
         content: "{{ hostvars['socrat-0'].rebalance_server_token.content | b64decode }}"
         dest: /etc/rancher/k3s/ha-server-token
-        mode: "0600"
+        mode: '0600'
       no_log: true
 
     - name: Stage the dedicated control-plane configuration immediately before vote removal
@@ -273,7 +273,7 @@
                --advertise-ip,
                10.250.0.3,
                --server,
-               https://10.250.0.1:6443,
+               'https://10.250.0.1:6443',
                --token-file,
                /etc/rancher/k3s/ha-server-token]
       register: rebalance_cp_config
@@ -298,10 +298,10 @@
 
         - name: Restore the previous config only when the old member is confirmed present
           ansible.builtin.copy:
-            src: /etc/rancher/k3s/{{ (rebalance_cp_config.stdout | from_json).backup }}
+            src: "/etc/rancher/k3s/{{ (rebalance_cp_config.stdout | from_json).backup }}"
             dest: /etc/rancher/k3s/config.yaml
             remote_src: true
-            mode: "0600"
+            mode: '0600'
           when:
             - (rebalance_cp_config.stdout | from_json).backup is not none
             - rebalance_failed_members.rc == 0
@@ -315,7 +315,7 @@
       ansible.builtin.copy:
         dest: /etc/rancher/k3s/server-mode
         content: "control-plane-and-agent\n"
-        mode: "0600"
+        mode: '0600'
 
     - name: Restart socrat-1 only after its vote has been removed
       ansible.builtin.systemd_service:
@@ -377,7 +377,7 @@
       ansible.builtin.copy:
         src: "{{ rebalance_transfer.path }}/verified.snapshot"
         dest: /var/lib/homelab-k3s-rebalance/verified.snapshot
-        mode: "0600"
+        mode: '0600'
       delegate_to: socrat-3
       become_method: ansible.builtin.su
 
@@ -385,5 +385,5 @@
       ansible.builtin.copy:
         dest: /var/lib/homelab-k3s-rebalance/complete
         content: "etcd=socrat-0,socrat-2,socrat-3\ncontrol-plane=socrat-0,socrat-1,socrat-3\n"
-        mode: "0600"
+        mode: '0600'
 ...

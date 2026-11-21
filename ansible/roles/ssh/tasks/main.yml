@@ -29,24 +29,19 @@
         homelab_ssh_preserve_ports | map('string') | select('match', '^[0-9]+$') | list | length
         == homelab_ssh_preserve_ports | length
       - >-
-        homelab_ssh_preserve_ports | map('int') | select('gt', 0) | select('lt', 65536)
-        | list | length == homelab_ssh_preserve_ports | length
+        homelab_ssh_preserve_ports | map('int') | select('gt', 0) | select('lt', 65536) | list | length
+        == homelab_ssh_preserve_ports | length
     fail_msg: This role requires Debian, Ubuntu, or Arch Linux and a valid SSH server port.
 
 - name: Build the final SSH server port list
   ansible.builtin.set_fact:
-    homelab_ssh_final_ports: >-
-      {{ ([homelab_ssh_port | string] + (homelab_ssh_preserve_ports | map('string') | list))
-         | unique | list }}
+    homelab_ssh_final_ports: "{{ ([homelab_ssh_port | string] + (homelab_ssh_preserve_ports | map('string') | list)) | unique | list }}"
 
 - name: Select platform SSH names
   ansible.builtin.set_fact:
-    homelab_sshd_binary: "{{ '/usr/bin/sshd' if ansible_facts.os_family == 'Archlinux'
-                             else '/usr/sbin/sshd' }}"
-    homelab_ssh_service: >-
-      {{ 'sshd.service' if ansible_facts.os_family == 'Archlinux' else 'ssh.service' }}
-    homelab_ssh_socket_name: >-
-      {{ 'sshd.socket' if ansible_facts.os_family == 'Archlinux' else 'ssh.socket' }}
+    homelab_sshd_binary: "{{ '/usr/bin/sshd' if ansible_facts.os_family == 'Archlinux' else '/usr/sbin/sshd' }}"
+    homelab_ssh_service: "{{ 'sshd.service' if ansible_facts.os_family == 'Archlinux' else 'ssh.service' }}"
+    homelab_ssh_socket_name: "{{ 'sshd.socket' if ansible_facts.os_family == 'Archlinux' else 'ssh.socket' }}"
 
 - name: Install the SSH server
   ansible.builtin.package:
@@ -70,9 +65,7 @@
   ansible.builtin.assert:
     that:
       - homelab_ssh_initial_connection.stdout.split() | length == 4
-    fail_msg: >-
-      Run this role over SSH so the current listening port can be preserved
-      during migration.
+    fail_msg: Run this role over SSH so the current listening port can be preserved during migration.
 
 - name: Preserve current ports until the new endpoint has been verified
   ansible.builtin.set_fact:
@@ -93,8 +86,7 @@
 - name: Add the desired port while preserving existing access
   ansible.builtin.copy:
     dest: /etc/ssh/sshd_config.d/10-homelab-ports.conf
-    content: "{{ homelab_ssh_transition_ports | map('regex_replace', '^', 'Port ')
-                 | join('\n') }}\n"
+    content: "{{ homelab_ssh_transition_ports | map('regex_replace', '^', 'Port ') | join('\n') }}\n"
     owner: root
     group: root
     mode: "0644"
@@ -135,8 +127,7 @@
     name: "{{ homelab_ssh_service }}"
     enabled: true
     masked: false
-    state: "{{ 'restarted' if homelab_ssh_transition.changed or homelab_ssh_include.changed
-               or homelab_ssh_socket.changed else 'started' }}"
+    state: "{{ 'restarted' if homelab_ssh_transition.changed or homelab_ssh_include.changed or homelab_ssh_socket.changed else 'started' }}"
 
 - name: Switch to the final SSH endpoint port
   ansible.builtin.set_fact:
@@ -163,9 +154,7 @@
     that:
       - homelab_ssh_connection.stdout.split() | length == 4
       - homelab_ssh_connection.stdout.split()[-1] | int == homelab_ssh_port | int
-    fail_msg: >-
-      The endpoint still reaches the old server port. Update the router forwarding
-      or use the LAN inventory, then retry. Both ports remain available.
+    fail_msg: The endpoint still reaches the old server port. Update the router forwarding or use the LAN inventory, then retry. Both ports remain available.
   when: not ansible_check_mode
 
 - name: Persist only the desired SSH server port
@@ -192,15 +181,12 @@
           - >-
             homelab_sshd_final.stdout_lines | select('match', '^port ')
             | map('regex_replace', '^port ', '') | list | sort == homelab_ssh_final_ports | sort
-        fail_msg: >-
-          Remove conflicting Port directives from sshd_config or its included files
-          before retrying.
+        fail_msg: Remove conflicting Port directives from sshd_config or its included files before retrying.
   rescue:
     - name: Restore the verified transitional configuration
       ansible.builtin.copy:
         dest: /etc/ssh/sshd_config.d/10-homelab-ports.conf
-        content: "{{ homelab_ssh_transition_ports | map('regex_replace', '^', 'Port ')
-                     | join('\n') }}\n"
+        content: "{{ homelab_ssh_transition_ports | map('regex_replace', '^', 'Port ') | join('\n') }}\n"
         owner: root
         group: root
         mode: "0644"
@@ -208,9 +194,7 @@
 
     - name: Report the configuration conflict
       ansible.builtin.fail:
-        msg: >-
-          Final SSH configuration failed validation. Transitional ports remain available.
-          {{ ansible_failed_result.msg | default('Inspect sshd configuration.') }}
+        msg: Final SSH configuration failed validation. Transitional ports remain available. {{ ansible_failed_result.msg | default('Inspect sshd configuration.') }}
 
 - name: Apply the final SSH server port
   ansible.builtin.systemd_service:

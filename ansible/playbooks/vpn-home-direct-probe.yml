@@ -8,7 +8,7 @@
   vars:
     ansible_host: socrat-0
     ansible_port: 2222
-    ansible_ssh_common_args: -o ProxyJump=none -o StrictHostKeyChecking=yes
+    ansible_ssh_common_args: '-o ProxyJump=none -o StrictHostKeyChecking=yes'
     tool: /usr/local/libexec/vpn-home-transit-egress.py
     staging: /var/lib/homelab-vpn-transit/home-egress/direct-probe-upgrade-tool.py
   tasks:
@@ -17,13 +17,11 @@
           - inventory_hostname == 'socrat-0'
           - home_direct_probe_confirmed | default(false) | bool
     - ansible.builtin.stat:
-        path: "{{ tool }}"
+        path: '{{ tool }}'
         checksum_algorithm: sha256
       register: old
     - ansible.builtin.assert:
-        that: >-
-          old.stat.checksum ==
-          '4757adfbdee04817a8ab3df60426649d608a17f5cd10e6d608805c56050782ae'
+        that: old.stat.checksum == '4757adfbdee04817a8ab3df60426649d608a17f5cd10e6d608805c56050782ae'
     - name: Reserve a dedicated locked probe identity, never reuse an existing UID
       ansible.builtin.command: getent passwd 19091
       register: identity
@@ -44,13 +42,13 @@
     - name: Stage reviewed helper without changing boot's canonical helper yet
       ansible.builtin.copy:
         src: ../../scripts/vpn-home-transit-egress.py
-        dest: "{{ staging }}"
-        mode: "0700"
+        dest: '{{ staging }}'
+        mode: '0700'
     - name: Single CAS migration; stop on any uncertain result, never replay
       ansible.builtin.command: python3 {{ staging }} --upgrade-direct-probe
     - name: Install matching persistent boot source only after accepted migration
       ansible.builtin.copy:
         src: ../../scripts/vpn-home-transit-egress.py
-        dest: "{{ tool }}"
-        mode: "0700"
+        dest: '{{ tool }}'
+        mode: '0700'
 ...

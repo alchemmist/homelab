@@ -9,8 +9,7 @@
       ansible.builtin.fail:
         msg: >-
           This legacy installer is retired. Existing workloads belong to
-          deploy/argocd/apps/searxng.yaml and charts/searxng.
-          Commit reviewed changes to the owning Git sources.
+          deploy/argocd/apps/searxng.yaml and charts/searxng. Commit reviewed changes to the owning Git sources.
           No deployment, namespace or key initialization, workspace instruction
           update, user integration, DNS/firewall or imported follow-up is performed.
           Preserve existing credentials, authoritative data and native access.

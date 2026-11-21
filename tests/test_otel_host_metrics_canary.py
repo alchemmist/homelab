@@ -14,7 +14,7 @@ canary = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(canary)
 
 
-def log(message: str, **fields: object):
+def log(message, **fields: object):
     return "2026-10-30T20:33:41.405+0300\terror\t" + message + "\t" + json.dumps(fields)
 
 

@@ -14,9 +14,7 @@
 - name: Ensure dedicated Grafana and MCP credentials
   ansible.builtin.command:
     argv: [python3, "{{ grafana_mcp_directory }}/bootstrap_credentials.py"]
-    stdin: >-
-      {{ {'admin_user': grafana_mcp_admin_user,
-      'admin_password': grafana_mcp_admin_password} | to_json }}
+    stdin: "{{ {'admin_user': grafana_mcp_admin_user, 'admin_password': grafana_mcp_admin_password} | to_json }}"
   register: grafana_mcp_credentials
   changed_when: (grafana_mcp_credentials.stdout | from_json).changed
   no_log: true
@@ -64,20 +62,9 @@
 - name: Request private gateway certificate
   ansible.builtin.command:
     argv: [kubectl, --kubeconfig, "{{ grafana_mcp_kubeconfig }}", apply, -f, '-']
-    stdin: >-
-      {{ {'apiVersion': 'cert-manager.io/v1',
-      'kind': 'Certificate',
-      'metadata': {'name': grafana_mcp_tls_secret,
-      'namespace': 'syncthing'},
-      'spec': {'secretName': grafana_mcp_tls_secret,
-      'dnsNames': [grafana_mcp_host],
-      'issuerRef': {'name': 'letsencrypt-http01',
-      'kind': 'ClusterIssuer'}}}
-      | to_nice_yaml }}
+    stdin: "{{ {'apiVersion': 'cert-manager.io/v1', 'kind': 'Certificate', 'metadata': {'name': grafana_mcp_tls_secret, 'namespace': 'syncthing'}, 'spec': {'secretName': grafana_mcp_tls_secret, 'dnsNames': [grafana_mcp_host], 'issuerRef': {'name': 'letsencrypt-http01', 'kind': 'ClusterIssuer'}}} | to_nice_yaml }}"
   register: grafana_mcp_certificate
-  changed_when: >-
-    (grafana_mcp_certificate.stdout | lower)
-    is search('(?m)(created|configured|patched)\\s*$')
+  changed_when: "'created' in grafana_mcp_certificate.stdout or 'configured' in grafana_mcp_certificate.stdout"
 
 - name: Wait for private gateway certificate
   ansible.builtin.command:
@@ -110,19 +97,7 @@
 
 - name: Merge MCP virtual host while preserving existing hosts
   ansible.builtin.set_fact:
-    grafana_mcp_gateway_values: >-
-      {{ (grafana_mcp_gateway.stdout | from_json)
-      | combine({'privateGui': {'extraVirtualHosts':
-      ((grafana_mcp_gateway.stdout | from_json).privateGui.extraVirtualHosts
-      | rejectattr('name', 'equalto', 'grafana-mcp') | list)
-      + [{'name': 'grafana-mcp',
-      'host': grafana_mcp_host,
-      'nodeName': grafana_mcp_node,
-      'upstream': 'http://grafana-mcp.cattle-monitoring-system.svc.cluster.local:8000',
-      'tlsSecret': grafana_mcp_tls_secret,
-      'resolver': '10.43.0.10',
-      'clearAuthorization': false}]}},
-      recursive=true) }}
+    grafana_mcp_gateway_values: "{{ (grafana_mcp_gateway.stdout | from_json) | combine({'privateGui': {'extraVirtualHosts': ((grafana_mcp_gateway.stdout | from_json).privateGui.extraVirtualHosts | rejectattr('name', 'equalto', 'grafana-mcp') | list) + [{'name': 'grafana-mcp', 'host': grafana_mcp_host, 'nodeName': grafana_mcp_node, 'upstream': 'http://grafana-mcp.cattle-monitoring-system.svc.cluster.local:8000', 'tlsSecret': grafana_mcp_tls_secret, 'resolver': '10.43.0.10', 'clearAuthorization': false}]}}, recursive=true) }}"
   no_log: true
 
 - name: Stage private gateway chart

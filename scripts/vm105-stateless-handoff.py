@@ -13,7 +13,6 @@ import subprocess
 import time
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TypedDict
 
 import yaml
 
@@ -25,24 +24,7 @@ WORKERS = {
 K = ["kubectl", "--kubeconfig=/etc/rancher/k3s/k3s.yaml"]
 
 
-class _EndpointConditions(TypedDict, total=False):
-    ready: bool
-
-
-class _Endpoint(TypedDict, total=False):
-    addresses: list[str]
-    conditions: _EndpointConditions
-
-
-class _EndpointSlice(TypedDict, total=False):
-    endpoints: list[_Endpoint]
-
-
-class _EndpointSliceList(TypedDict, total=False):
-    items: list[_EndpointSlice]
-
-
-def call(args: list[str], data: str | None = None, timeout: int = 40):
+def call(args, data=None, timeout=40):
     r = subprocess.run(
         ["ssh", "socrat-0", shlex.join(K + args)],
         input=data,
@@ -55,15 +37,15 @@ def call(args: list[str], data: str | None = None, timeout: int = 40):
     return r.stdout
 
 
-def get(args: list[str]):
+def get(args):
     return json.loads(call(args + ["-o", "json"]))
 
 
-def worker_pods(name: str):
+def worker_pods(name):
     return get(["get", "pods", "-n", "automation", "-l", "app=" + name])["items"]
 
 
-def idle(pod: str, seconds: int = 900):
+def idle(pod, seconds=900):
     # PID1 is the original Python HTTP server, NOT this probe process. Handler
     # threads include in-progress and lock-queued stages. Never read payloads.
     code = "from pathlib import Path; assert Path('/proc/1/comm').read_text().strip().startswith('python'); print(len(list(Path('/proc/1/task').iterdir())))"
@@ -78,7 +60,7 @@ def idle(pod: str, seconds: int = 900):
     raise RuntimeError("Worker did not reach a proven idle checkpoint")
 
 
-def has_ready_endpoints(slices: _EndpointSliceList):
+def has_ready_endpoints(slices):
     return any(
         e.get("addresses") and (e.get("conditions") or {}).get("ready") is not False
         for s in (slices.get("items") or [])

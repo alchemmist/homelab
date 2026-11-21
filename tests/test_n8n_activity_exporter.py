@@ -39,7 +39,7 @@ class ActivityTest(unittest.TestCase):
     def test_running_is_fetched_separately_and_old_runs_still_count(self) -> None:
         """Count an old running row fetched by the explicit running query."""
         old = observer.get_page
-        observer.get_page = lambda _cursor=None, status=None: {
+        observer.get_page = lambda cursor=None, status=None: {
             "data": [{"id": "old", "startedAt": "2020-01-01T00:00:00Z", "status": "running"}]
             if status
             else [],
@@ -53,7 +53,7 @@ class ActivityTest(unittest.TestCase):
     def test_scan_budget_does_not_publish_partial_counts(self) -> None:
         """Refuse a history scan that never reaches the end of the window."""
         old = observer.get_page
-        observer.get_page = lambda *_args: {"data": [], "nextCursor": "more"}
+        observer.get_page = lambda *args: {"data": [], "nextCursor": "more"}
         try:
             with self.assertRaises(RuntimeError):
                 observer.collect()

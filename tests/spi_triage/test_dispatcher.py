@@ -142,14 +142,14 @@ class DispatchTransportTests(unittest.TestCase):
         import http.client
 
         class Connection:
-            def __init__(self, *args, **kwargs):
+            def __init__(self, *args: object, **kwargs: object) -> None:
                 self.sock, self.peer = socket.socketpair()
                 self.closed = False
 
             def connect(self):
                 pass
 
-            def request(self, *args, **kwargs):
+            def request(self, *args: object, **kwargs: object) -> None:
                 pass
 
             def getresponse(self):
@@ -168,7 +168,7 @@ class DispatchTransportTests(unittest.TestCase):
             patch("dispatcher.http.client.HTTPConnection", return_value=connection),
             patch(
                 "dispatcher.threading.Timer",
-                side_effect=lambda _seconds, callback: real_timer(0.02, callback),
+                side_effect=lambda seconds, callback: real_timer(0.02, callback),
             ),
         ):
             with self.assertRaises(http.client.RemoteDisconnected):

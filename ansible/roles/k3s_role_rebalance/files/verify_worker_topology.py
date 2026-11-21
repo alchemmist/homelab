@@ -1,7 +1,6 @@
 """Read-only verification of the topology replacing the 2026-10 rebalance."""
 
 import json
-import subprocess
 import sys
 from typing import Protocol, TypedDict
 
@@ -49,13 +48,6 @@ def verify(client: _EtcdClient):
 if __name__ == "__main__":
     try:
         print(json.dumps(verify(Etcd()), sort_keys=True))
-    except (
-        RuntimeError,
-        ValueError,
-        KeyError,
-        TypeError,
-        OSError,
-        subprocess.SubprocessError,
-    ) as error:
+    except Exception as error:
         print(json.dumps({"ok": False, "error": str(error)}), file=sys.stderr)
         sys.exit(1)

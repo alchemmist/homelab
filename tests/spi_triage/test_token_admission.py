@@ -151,7 +151,7 @@ class AdmissionTests(unittest.TestCase):
         seen = []
         saved = []
 
-        def call(task, data, schema, deadline):
+        def call(task: str, data: dict[str, list[dict[str, int]]], schema: object, deadline: float):
             self.assertLessEqual(m.reservation(m.payload(task, data, schema)), 30000)
             self.assertLessEqual(len(data["open_issues"]), 12)
             seen.extend(x["number"] for x in data["open_issues"])
@@ -195,7 +195,9 @@ class AdmissionTests(unittest.TestCase):
         saved = []
         calls = []
 
-        def choose(task, data, schema, deadline):
+        def choose(
+            task: str, data: dict[str, list[dict[str, int]]], schema: object, deadline: float
+        ):
             self.assertLessEqual(m.reservation(m.payload(task, data, schema)), 30000)
             ids = [x["number"] for x in data["open_issues"]]
             calls.append(ids)
@@ -211,10 +213,7 @@ class AdmissionTests(unittest.TestCase):
         self.assertIn("selection", saved[-1])
         completed = len(calls)
         m.call = Mock(
-            side_effect=lambda _t, d, _s, _dl: {
-                **GOOD,
-                "issue_number": d["open_issues"][0]["number"],
-            }
+            side_effect=lambda t, d, s, dl: {**GOOD, "issue_number": d["open_issues"][0]["number"]}
         )
         result = m.match(f.event(), issues, progress=saved[-1])
         self.assertEqual(result["reviewed_numbers"], list(range(1, 31)))

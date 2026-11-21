@@ -13,18 +13,13 @@ import os
 from pathlib import Path
 import socket
 import subprocess
-from typing import Protocol
 
 ROOT = Path("/var/lib/homelab-vpn-transit/home-egress")
 TABLE = "homelab_msk_home_egress"
 EXIT = "109.120.141.60"
 
 
-class _Flag(Protocol):
-    def __bool__(self) -> bool: ...
-
-
-def command(args: list[str]):
+def command(args):
     return subprocess.check_output(args, text=True, stderr=subprocess.PIPE)
 
 
@@ -32,7 +27,7 @@ DIRECT_PROBE_UID = 19091
 DIRECT_PROBE_COMMENT = "homelab-direct-ip-probe"
 
 
-def rules(direct_probe: _Flag | None = None):
+def rules(direct_probe=None):
     body = """
  ip daddr 109.120.141.60 tcp dport 53 counter dnat ip to 10.250.0.40:53
  ip daddr 109.120.141.60 udp dport 53 counter dnat ip to 10.250.0.40:53
@@ -71,7 +66,7 @@ def rules(direct_probe: _Flag | None = None):
 def projection():
     value = json.loads(command(["nft", "-j", "list", "table", "inet", TABLE]))
 
-    def clean(v: object):
+    def clean(v):
         if isinstance(v, list):
             return [clean(x) for x in v if not isinstance(x, dict) or "metainfo" not in x]
         if isinstance(v, dict):
@@ -166,7 +161,7 @@ def upgrade_direct_probe():
     )
 
 
-def run(boot: _Flag = False):
+def run(boot=False):
     assert os.geteuid() == 0 and socket.gethostname() in ("socrat-0", "socrat-1", "socrat-3")
     os.umask(0o077)
     source = rules()

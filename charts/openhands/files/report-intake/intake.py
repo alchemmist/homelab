@@ -3,10 +3,18 @@ import time, base64, hashlib, hmac, json, re, sqlite3
 from contextlib import closing
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+from typing import TypedDict, cast
+
+
+class _RegistryEntry(TypedDict, total=False):
+    name: str
+    label: str
+    adapter: str
+    reporters: list[int]
 
 SECTIONS = {'Survivors by area', 'No coverage by area', 'Timeouts'}
 
-def families(body):
+def families(body: str):
     section = None
     for line in body.splitlines():
         if line.startswith('#'):
@@ -17,10 +25,15 @@ def families(body):
         if hit and (hit[1] or section == 'Timeouts' and re.search(r'__mutmut_\d+$', hit[2])):
             yield section, hit[2], int(hit[1] or 1)
 
-def ingest(envelope, registry, secret, db):
-    raw = base64.b64decode(envelope['raw'], validate=True)
+def ingest(
+    envelope: dict[str, object],
+    registry: dict[str, _RegistryEntry],
+    secret: bytes,
+    db: str,
+):
+    raw = base64.b64decode(cast("str", envelope['raw']), validate=True)
     sig = 'sha256=' + hmac.new(secret, raw, hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(sig, envelope['signature']):
+    if not hmac.compare_digest(sig, cast("str", envelope['signature'])):
         raise PermissionError
     e = json.loads(raw); r = e['repository']; config = registry.get(str(r['id']))
     if not config or r['full_name'] != config['name']:
@@ -37,11 +50,17 @@ def ingest(envelope, registry, secret, db):
         if prior:return {'status':'duplicate' if prior==(digest,) else 'changed_report_requires_review'}
         status='queued' if rows else 'unsupported_report';c.execute('insert into reports values(?,?,?,?)',(rid,num,digest,status));c.executemany('insert into cards values(?,?,?,?,?,\'queued\')',[(rid,num,*row) for row in rows]);return {'status':status,'cards':len(rows),'issue':num}
 
-def lifecycle(path,x,db,secret,registry):
+def lifecycle(
+    path: str,
+    x: dict[str, object],
+    db: str,
+    secret: bytes,
+    registry: dict[str, _RegistryEntry],
+):
     ids=None; event='reconcile'
     if path=='/review':
-        raw=base64.b64decode(x['raw'],validate=True)
-        if not hmac.compare_digest(x['signature'],'sha256='+hmac.new(secret,raw,hashlib.sha256).hexdigest()):raise PermissionError
+        raw=base64.b64decode(cast("str",x['raw']),validate=True)
+        if not hmac.compare_digest(cast("str",x['signature']),'sha256='+hmac.new(secret,raw,hashlib.sha256).hexdigest()):raise PermissionError
         e=json.loads(raw);repo=e['repository'];cfg=registry.get(str(repo['id']))
         if not cfg or cfg['name']!=repo['full_name']:raise PermissionError
         p=e.get('pull_request') or e.get('issue') or {};event=e.get('action','ping');ids=[p['number']] if p.get('number') else []
@@ -59,8 +78,7 @@ class Handler(BaseHTTPRequestHandler):
             n=int(self.headers.get('Content-Length',0));assert self.path in ('/intake','/review','/review-tick') and 0<n<300000 and not self.headers.get('Transfer-Encoding');x=json.loads(self.rfile.read(n));registry=json.loads(Path('/code/repos.json').read_text());db='/state/reports.db';out=ingest(x,registry,Path('/auth/key').read_bytes(),db) if self.path=='/intake' else lifecycle(self.path,x,db,Path('/review-auth/key').read_bytes(),registry);code=200
         except PermissionError:code,out=403,{}
         except (ValueError,KeyError,TypeError,AssertionError):code,out=400,{}
-        except (OSError, sqlite3.Error):
-            code, out = 503, {}
+        except Exception:code,out=503,{}
         self.send_response(code);self.send_header('Content-Type','application/json');self.end_headers();self.wfile.write(json.dumps(out).encode())
-    def log_message(self,*args):pass
+    def log_message(self,*args: object) -> None:pass
 if __name__=='__main__': HTTPServer(('',8091),Handler).serve_forever()

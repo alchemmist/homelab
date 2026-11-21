@@ -1,13 +1,13 @@
 """Cold full-claim backup: no key on disk, no plaintext archive, never extract arbitrary paths."""
-import base64, hashlib, json, os, pathlib, sqlite3, subprocess, tarfile
+import base64, hashlib, io, json, os, pathlib, sqlite3, subprocess, tarfile
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 ROOT=pathlib.Path('/backup'); SRC=pathlib.Path('/source'); TMP=pathlib.Path('/tmp'); NAME='canvas-cold-20261119'; AAD=b'openhands-full-claim-v2'; CHUNK=1024*1024
 DB='openhands/automation/automations.db'; CONV='openhands/agent-canvas/conversations/'; IDS=('1ab3985a219341778dd28ec7d54dbfeb','51a35822a87043cca775fd5e662f0039'); HAND='workspace/the-loop-demo/HANDOFF.md'
-def b64(b):return base64.b64encode(b).decode('ascii')
-def file_digest(p):
+def b64(b: bytes) -> str:return base64.b64encode(b).decode('ascii')
+def file_digest(p: pathlib.Path) -> str:
     with p.open('rb') as f:return hashlib.file_digest(f,'sha256').hexdigest()
 
 def main():
@@ -20,9 +20,9 @@ def main():
         assert tar.wait()==0,'Source tar failed';dst.write(crypt.finalize());dst.flush();os.fsync(dst.fileno())
     assert n>0 and part.stat().st_size==n
     class Reader:
-        def __init__(self,f):
+        def __init__(self, f: io.BufferedReader) -> None:
             self.f=f;self.decrypt=Cipher(algorithms.AES(key),modes.GCM(iv,crypt.tag)).decryptor();self.decrypt.authenticate_additional_data(AAD);self.hash=hashlib.sha256();self.done=False
-        def read(self,size):
+        def read(self, size: int) -> bytes:
             if self.done:return b''
             buf=self.f.read(size)
             if not buf:self.decrypt.finalize();self.done=True;return b''
@@ -32,7 +32,7 @@ def main():
         r=Reader(f)
         while r.read(CHUNK):pass
         assert r.done and r.hash.digest()==digest.digest()
-    checks={DB,HAND,'openhands/settings.json',*(CONV+i+'/base_state.json' for i in IDS)};seen=set();events=dict.fromkeys(IDS,0);count=0
+    checks={DB,HAND,'openhands/settings.json',*(CONV+i+'/base_state.json' for i in IDS)};seen=set();events={i:0 for i in IDS};count=0
     with part.open('rb') as f:
         r=Reader(f)
         with tarfile.open(fileobj=r,mode='r|gz',bufsize=256*1024) as tf:

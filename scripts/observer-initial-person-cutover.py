@@ -14,6 +14,7 @@ import hashlib
 import importlib.util
 import json
 import os
+from collections.abc import Mapping
 from pathlib import Path
 
 UUID = "9547c492-d757-43f0-8476-98a9c33c4155"
@@ -21,12 +22,28 @@ READONLY = "acc10f26-5658-4ea1-9704-92bfebccaec2"
 NETBIRD = "a033c844-3d5b-41db-a7cc-697c1a7c0f4f"
 
 
-def require(ok, message):
+def require(ok: object, message: str) -> None:
     if not ok:
         raise RuntimeError(message)
 
 
-def plan(user, observer):
+def as_list(value: object) -> list[object]:
+    """Return a JSON array, stopping on unexpected structure."""
+    if not isinstance(value, list):
+        error = "Expected a JSON list"
+        raise TypeError(error)
+    return value
+
+
+def as_str(value: object) -> str:
+    """Return a JSON string, stopping on unexpected structure."""
+    if not isinstance(value, str):
+        error = "Expected a JSON string"
+        raise TypeError(error)
+    return value
+
+
+def plan(user: Mapping[str, object], observer: Mapping[str, object]) -> list[dict[str, object]]:
     require(user["pk"] == 94 and user["uuid"] == UUID, "Initial subject identity mismatch")
     require(
         user["is_active"] is True and user["is_superuser"] is False, "Initial human status drift"
@@ -38,20 +55,22 @@ def plan(user, observer):
         and observer["parents"] == [],
         "Observer carries unrelated IdP authority",
     )
-    groups = user["groups"]
+    groups = as_list(user["groups"])
     require(
-        isinstance(groups, list) and len(groups) == len(set(groups)) and NETBIRD in groups,
+        len(groups) == len(set(groups)) and NETBIRD in groups,
         "Approved NetBird membership missing or ambiguous",
     )
-    ops = []
+    ops: list[dict[str, object]] = []
     if observer["pk"] not in groups:
-        ops.append({"path": "core/groups/" + observer["pk"] + "/add_user/", "body": {"pk": 94}})
+        ops.append(
+            {"path": "core/groups/" + as_str(observer["pk"]) + "/add_user/", "body": {"pk": 94}}
+        )
     if READONLY in groups:
         ops.append({"path": "core/groups/" + READONLY + "/remove_user/", "body": {"pk": 94}})
     return ops
 
 
-def fingerprint(user, observer):
+def fingerprint(user: Mapping[str, object], observer: Mapping[str, object]) -> str:
     stable = {
         k: user[k]
         for k in ["pk", "uuid", "is_active", "is_superuser", "groups", "password_change_date"]
@@ -92,7 +111,7 @@ def main():
     args.state.mkdir(mode=0o700, parents=True, exist_ok=True)
     boot.private(args.state, directory=True)
 
-    def save(name, value):
+    def save(name: str, value: object) -> None:
         boot.save(args.state / name, value)
 
     with (args.state / "lock").open("a") as lock:

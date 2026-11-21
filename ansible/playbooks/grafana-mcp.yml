@@ -20,7 +20,7 @@
         dest: /etc/homelab-private-dns.d/grafana-mcp.conf
         owner: root
         group: root
-        mode: "0644"
+        mode: '0644'
       register: grafana_mcp_dns
 
     - name: Validate private DNS configuration
