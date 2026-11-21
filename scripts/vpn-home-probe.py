@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import cast
 
 
-def exclusive(path, value) -> None:
+def exclusive(path, value):
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
     with os.fdopen(fd, "w") as f:
         json.dump(value, f)
@@ -24,7 +24,7 @@ def exclusive(path, value) -> None:
         os.fsync(f.fileno())
 
 
-def network(endpoint="91.189.82.238") -> "dict[str, object]":
+def network(endpoint="91.189.82.238"):
     r = subprocess.run(
         ["ip", "-j", "route", "get", endpoint], capture_output=True, text=True, timeout=10
     )
@@ -278,7 +278,7 @@ if __name__ == "__main__":
     a = p.parse_args()
     try:
         print(json.dumps(run(a.state, a.approved_binary_sha256, endpoint=a.endpoint)))
-    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
+    except Exception:
         raise SystemExit(
             "Home probe stopped; inspect private evidence; no global network changes requested."
         ) from None

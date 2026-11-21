@@ -87,7 +87,7 @@ class Page(TypedDict):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, _request, response, _code, _message, _headers, _newurl):
+    def redirect_request(self, request, response, code, message, headers, newurl):
         if response is not None:
             response.close()
         raise ValueError("redirect refused")
@@ -314,11 +314,9 @@ def main():
     def one(path, key, value, required=False):
         return lookup(inventory[path], key, value, required=required)
 
-    groups = [
-        cast("dict[str, object]", one("core/groups/", "name", name, True))["pk"] for name in GROUPS
-    ]
+    groups = [one("core/groups/", "name", name, True)["pk"] for name in GROUPS]
     flow = {
-        slug: cast("dict[str, object]", one("flows/instances/", "slug", slug, True))["pk"]
+        slug: one("flows/instances/", "slug", slug, True)["pk"]
         for slug in (
             "default-authentication-flow",
             "default-provider-authorization-explicit-consent",
@@ -326,10 +324,9 @@ def main():
             "default-provider-invalidation-flow",
         )
     }
-    cert = cast(
-        "dict[str, object]",
-        one("crypto/certificatekeypairs/", "name", "authentik Self-signed Certificate", True),
-    )["pk"]
+    cert = one("crypto/certificatekeypairs/", "name", "authentik Self-signed Certificate", True)[
+        "pk"
+    ]
     mappings = [
         builtin_scope(inventory["propertymappings/provider/scope/"], name)
         for name in ("openid", "profile", "email")
@@ -412,7 +409,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except (ImportError, OSError, RuntimeError, ValueError):
+    except Exception:
         raise SystemExit(
             "Identity provisioning stopped; private state may be partial. No automatic rollback or existing identity edits."
-        ) from None
+        )

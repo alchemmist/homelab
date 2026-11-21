@@ -73,8 +73,7 @@ def monitoring_after(before: str) -> str:
     old = "--ports 32087,32053,32083,32063 "
     if before.count(old) != 1:
         raise ValueError("Monitoring preimage drift")
-    replaced: str = before.replace(old, "--ports 32087,32053,32083 ")
-    return replaced
+    return before.replace(old, "--ports 32087,32053,32083 ")
 
 
 def select(config: dict[str, object]) -> dict[str, object]:
@@ -94,16 +93,14 @@ def select(config: dict[str, object]) -> dict[str, object]:
         or stream.get("security") not in (None, "", "none")
     ):
         raise ValueError("Not the excluded legacy plaintext inbound")
-    selected: dict[str, object] = row
-    return selected
+    return row
 
 
 def desired(config: dict[str, object]) -> dict[str, object]:
     """Return the configuration with the legacy inbound disabled, exclusions kept."""
     result = copy.deepcopy(config)
     select(result)["enable"] = 0
-    projection: dict[str, object] = result
-    return projection
+    return result
 
 
 def plan(state: Path) -> dict[str, object]:
@@ -424,7 +421,7 @@ if __name__ == "__main__":
         else:
             value = plan(a.state)
             print(h.canonical({"plan": value, "plan_sha256": h.digest(value), "writes": 0}))
-    except (OSError, ValueError, RuntimeError, ImportError, subprocess.SubprocessError):
+    except Exception:
         import traceback
 
         try:

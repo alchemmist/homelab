@@ -382,7 +382,7 @@ def apply(
         cleanup_fixture(process, log, fixture=fixture, s=s, identity=identity)
 
 
-def main() -> None:
+def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--state", type=Path, required=True)
     p.add_argument("--apply", action="store_true")
@@ -423,14 +423,7 @@ def main() -> None:
 if __name__ == "__main__":
     try:
         main()
-    except (
-        OSError,
-        ValueError,
-        RuntimeError,
-        ImportError,
-        sqlite3.Error,
-        subprocess.SubprocessError,
-    ):
+    except Exception:
         import sys
         import traceback
 

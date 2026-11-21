@@ -38,7 +38,7 @@ backend = load("backend", "vpn-backend-enforce.py")
 h = native.h
 
 
-def restore(state) -> object:
+def restore(state):
     if os.geteuid() != 0 or socket.gethostname() != "socrat-2":
         raise ValueError("Requires VPS root")
     s = native.NativeSession(state)
@@ -376,14 +376,7 @@ if __name__ == "__main__":
         else:
             s = native.NativeSession(a.state)
             print(h.canonical({"session_sha256": h.digest(s.preview()), "writes": 0}))
-    except (
-        OSError,
-        ValueError,
-        RuntimeError,
-        ImportError,
-        sqlite3.Error,
-        subprocess.SubprocessError,
-    ):
+    except Exception:
         raise SystemExit(
             "Home native session stopped; inspect private receipts, no blind replay."
         ) from None

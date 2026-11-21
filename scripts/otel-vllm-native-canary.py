@@ -217,7 +217,7 @@ def run():
     loaded: list[str] = []
     original_loader = ssl.SSLContext.load_cert_chain
 
-    def observe_loader(context, certfile, keyfile=None, password=None) -> None:
+    def observe_loader(context, certfile, keyfile=None, password=None):
         public_hash = hashlib.sha256(Path(certfile).read_bytes()).hexdigest()
         result = original_loader(context, certfile, keyfile, password)
         loaded.append(public_hash)
@@ -251,16 +251,16 @@ def run():
         }
 
         class Audit(SpanProcessor):
-            def on_start(self, span, parent_context=None) -> None:
+            def on_start(self, span, parent_context=None):
                 pass
 
             def on_end(self, span):
                 audit_on_end(span, audit)
 
-            def shutdown(self) -> None:
+            def shutdown(self):
                 pass
 
-            def force_flush(self, timeout_millis=30000) -> bool:
+            def force_flush(self, timeout_millis=30000):
                 return True
 
         provider.add_span_processor(Audit())
@@ -338,7 +338,7 @@ def run():
 if __name__ == "__main__":
     try:
         run()
-    except (ImportError, OSError, RuntimeError, ValueError) as error:
+    except Exception as error:
         print(
             json.dumps(
                 {
@@ -349,4 +349,4 @@ if __name__ == "__main__":
                 }
             )
         )
-        raise SystemExit(1) from error
+        raise SystemExit(1)

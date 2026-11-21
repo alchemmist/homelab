@@ -72,7 +72,7 @@ def kub(args, document=None):
     return json.loads(p.stdout) if p.stdout.strip() else None
 
 
-def canonical(spec) -> object:
+def canonical(spec):
     s = json.loads(json.dumps(spec))
     c = s.get("matchConstraints")
     if c:
@@ -87,14 +87,14 @@ def canonical(spec) -> object:
     return s
 
 
-def validate_existing(want, have) -> None:
+def validate_existing(want, have):
     if have["metadata"].get("labels", {}).get("homelab.io/owner") != "socrat5-worker":
         raise ValueError("Foreign ownership; refuse adoption")
     if canonical(want["spec"]) != canonical(have["spec"]):
         raise ValueError("Admission guard drift; explicit review/preimage/CAS required")
 
 
-def main() -> None:
+def main():
     p = argparse.ArgumentParser(__doc__)
     p.add_argument("--manifest", type=Path, required=True)
     p.add_argument("--apply", action="store_true")
@@ -102,10 +102,10 @@ def main() -> None:
     docs = json.loads(args.manifest.read_text())
     require_expected_scope(docs)
     before = [kub(["get", o["kind"], NAME, "--ignore-not-found", "-o", "json"]) for o in docs]
-    for want, have in zip(docs, before, strict=True):
+    for want, have in zip(docs, before):
         if have:
             validate_existing(want, have)
-    missing = [o for o, have in zip(docs, before, strict=True) if not have]
+    missing = [o for o, have in zip(docs, before) if not have]
     if before[1] and not before[0]:
         raise ValueError("Partial live binding: inspect first")
     if args.apply and missing:

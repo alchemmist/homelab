@@ -77,10 +77,6 @@ print(json.dumps({'activeOrQueuedJobs':a,'liveOwners':b,'liveLinkLeases':d}))
             call(["exec", "deployment/spi-triage", "-n", "automation", "--", "python", "-c", code])
         ),
     )
-    if not isinstance(state, dict):
-        reason = "SPI returned a non-object idle state"
-        raise TypeError(reason)
-    return state
 
 
 def stop_signal(*_: object) -> None:
@@ -234,9 +230,6 @@ def main() -> None:
     iteration = 0
     while time.monotonic() < limit:
         state = idle_state()
-        if not isinstance(state, dict):
-            reason = "Unexpected idle-state payload"
-            raise TypeError(reason)
         iteration += 1
         if iteration == 1 or iteration % 4 == 0:
             print(json.dumps({"waitingForNaturalIdle": state}), flush=True)

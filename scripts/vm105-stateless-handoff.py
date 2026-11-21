@@ -36,8 +36,7 @@ def call(args: list[str], data: str | None = None, timeout: int = 40) -> str:
     )
     if r.returncode:
         raise RuntimeError("kubectl failed: " + r.stderr[-400:])
-    output: str = r.stdout
-    return output
+    return r.stdout
 
 
 def get(args: list[str]) -> dict[str, object]:

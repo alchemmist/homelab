@@ -265,9 +265,8 @@ def main():
             )
         )
 
-        def mc(*a, stdin=None) -> list[dict[str, object]]:
-            result: list[dict[str, object]] = run(args.mc, tmp, list(a), stdin)
-            return result
+        def mc(*a, stdin=None):
+            return run(args.mc, tmp, list(a), stdin)
 
         # Inventories must succeed before any mutation. No failure means 'absent'.
         users = mc("admin", "user", "list", "store")
@@ -303,13 +302,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except (
-        ImportError,
-        OSError,
-        RuntimeError,
-        ValueError,
-        subprocess.SubprocessError,
-    ):
+    except Exception:
         raise SystemExit(
             "Bootstrap stopped safely; inspect private state; no secrets or response bodies printed."
-        ) from None
+        )
