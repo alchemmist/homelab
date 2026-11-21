@@ -5,7 +5,7 @@ kind: ClusterRole
 metadata:
   name: homelab-project-observer
 rules:
-  - apiGroups: [""]
+  - apiGroups: ['']
     resources: [pods, services, endpoints, persistentvolumeclaims, events]
     verbs: [get, list, watch]
   - apiGroups: [apps]

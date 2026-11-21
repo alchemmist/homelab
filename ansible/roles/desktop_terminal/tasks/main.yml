@@ -54,7 +54,7 @@
     src: tmux.conf.j2
     dest: "{{ homelab_user_home }}/.tmux.conf"
     owner: "{{ homelab_user }}"
-    mode: "0644"
+    mode: '0644'
   when: not homelab_tmux_existing.stat.exists
 
 - name: Resolve the existing tmux configuration without replacing its symlink
@@ -78,8 +78,8 @@
 - name: Make optional popup key removal safe before the table exists
   ansible.builtin.replace:
     path: "{{ homelab_tmux_config.stdout }}"
-    regexp: ^(unbind(?:-key)?)([ \t]+-T[ \t]+popup[ \t]+.*)$
-    replace: \1 -q\2
+    regexp: '^(unbind(?:-key)?)([ \t]+-T[ \t]+popup[ \t]+.*)$'
+    replace: '\1 -q\2'
     backup: true
   when: homelab_tmux_existing.stat.exists or not ansible_check_mode
 
@@ -87,10 +87,10 @@
   tags: monitor
   ansible.builtin.template:
     src: "{{ item }}.j2"
-    dest: /usr/local/bin/{{ item }}
+    dest: "/usr/local/bin/{{ item }}"
     owner: root
     group: root
-    mode: "0755"
+    mode: '0755'
     validate: /bin/sh -n %s
   loop:
     - homelab-monitor-shell

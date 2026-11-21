@@ -10,28 +10,16 @@ import json
 from pathlib import Path
 import secrets
 import subprocess
-from typing import TypedDict
 
 ROOT = Path(__file__).resolve().parents[1]
 IMAGE = 'ghcr.io/openhands/agent-canvas:1.41.0@sha256:dcae97b63c9845fd1d4313857af6b10fb5888324a154238c4795ef86233d227c'
 
 
-class _MatchExpression(TypedDict, total=False):
-    key: str
-    operator: str
-    values: list[str]
-
-
-class _Selector(TypedDict, total=False):
-    matchLabels: dict[str, str]
-    matchExpressions: list[_MatchExpression]
-
-
-def kubectl(*args: str, data: bytes | None = None):
+def kubectl(*args, data=None):
     return subprocess.check_output(['kubectl', *args], input=data)
 
 
-def selector_matches(selector: _Selector, labels: dict[str, str]):
+def selector_matches(selector, labels):
     if any(labels.get(k) != v for k,v in selector.get('matchLabels',{}).items()):
         return False
     for rule in selector.get('matchExpressions',[]):
@@ -45,7 +33,7 @@ def selector_matches(selector: _Selector, labels: dict[str, str]):
     return True
 
 
-def resources(name: str, candidate: str, original: str):
+def resources(name, candidate, original):
     labels = {'app':name,'homelab-app':'openhands-demo-validation'}
     cm = {'apiVersion':'v1','kind':'ConfigMap','metadata':{'name':name,'namespace':'identity','labels':labels},'data':{'intervals.py':candidate,'test_intervals.py':original}}
     np = {'apiVersion':'networking.k8s.io/v1','kind':'NetworkPolicy','metadata':{'name':name,'namespace':'identity'},'spec':{'podSelector':{'matchLabels':{'app':name}},'policyTypes':['Ingress','Egress'],'ingress':[],'egress':[]}}

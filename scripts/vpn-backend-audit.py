@@ -57,7 +57,7 @@ def rules():
     return "\n".join(lines + [" }", "}"]) + "\n"
 
 
-def stable(value: object):
+def stable(value):
     if isinstance(value, dict):
         return {
             k: stable(v)
@@ -69,8 +69,8 @@ def stable(value: object):
     return value
 
 
-def run(args: list[str], stdin_text: str | None = None):
-    result = subprocess.run(args, capture_output=True, text=True, timeout=20, input=stdin_text)
+def run(args, **kwargs):
+    result = subprocess.run(args, capture_output=True, text=True, timeout=20, **kwargs)
     if result.returncode:
         raise RuntimeError("nft operation failed; inspect private state")
     return result.stdout
@@ -125,7 +125,7 @@ def expected_objects():
     return objects
 
 
-def normalize(value: object):
+def normalize(value):
     value = stable(value)
     if isinstance(value, dict):
         return {k: sorted(v) if k == "set" else normalize(v) for k, v in value.items()}
@@ -134,7 +134,7 @@ def normalize(value: object):
     return value
 
 
-def validate_objects(selected: object):
+def validate_objects(selected):
     copy = json.loads(json.dumps(selected))
     for item in copy:
         if "table" in item:
@@ -169,7 +169,7 @@ def read_table():
     return selected
 
 
-def plan(current: object):
+def plan(current):
     return {
         "table": TABLE,
         "policy": "accept",
@@ -181,7 +181,7 @@ def plan(current: object):
     }
 
 
-def apply(approval: str, state: Path):
+def apply(approval, state):
     if socket.gethostname() != "socrat-2" or os.geteuid() != 0:
         raise ValueError("Apply requires root on socrat-2")
     directory = helpers.private_directory(state)
@@ -197,12 +197,12 @@ def apply(approval: str, state: Path):
         if approval != helpers.digest(desired):
             raise ValueError("Fresh exact plan hash required")
         batch = rules()
-        run(["nft", "--check", "-f", "-"], stdin_text=batch)
+        run(["nft", "--check", "-f", "-"], input=batch)
         if stable(read_table()) != stable(before):
             raise ValueError("Table changed before apply")
         helpers.save(directory / "before.json", before)
         helpers.save(directory / "uncertain.json", {"plan_sha256": approval})
-        run(["nft", "-f", "-"], stdin_text=batch)
+        run(["nft", "-f", "-"], input=batch)
         after = read_table()
         if after is None or len([x for x in after if "rule" in x]) != len(PORTS) * (
             len(INTERFACES) + 1
@@ -214,7 +214,7 @@ def apply(approval: str, state: Path):
         return {**desired, "installed": True}
 
 
-def finalize_readback(approval: str, state: Path):
+def finalize_readback(approval, state):
     if socket.gethostname() != "socrat-2" or os.geteuid() != 0:
         raise ValueError("Finalization requires root on socrat-2")
     directory = helpers.private_directory(state)

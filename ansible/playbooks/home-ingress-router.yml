@@ -30,13 +30,13 @@
       ansible.builtin.file:
         path: "{{ router_helper_directory }}"
         state: directory
-        mode: "0700"
+        mode: '0700'
 
     - name: Install the guarded vendor-form helper
       ansible.builtin.copy:
         src: "{{ playbook_dir }}/../roles/home_ingress_ha/files/router_api.py"
         dest: "{{ router_helper_directory }}/router_api.py"
-        mode: "0700"
+        mode: '0700'
 
     - name: Read the current router forwards without exposing credentials
       ansible.builtin.command:
@@ -76,7 +76,7 @@
           ansible.builtin.copy:
             content: "{{ router_current.stdout }}\n"
             dest: "{{ router_backup.path }}"
-            mode: "0600"
+            mode: '0600'
 
         - name: Apply the guarded pair update independently of the SSH connection
           ansible.builtin.command:

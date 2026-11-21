@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT / "charts/spi-triage/files"))
 
 
 class OwnedLoggingTests(unittest.TestCase):
-    def contract(self, row: dict[str, str], service: str):
+    def contract(self, row, service):
         self.assertEqual(row["service"], service)
         self.assertIn(row["level"], ["info", "warn", "error", "debug"])
         self.assertTrue(row["ts"].endswith("Z"))

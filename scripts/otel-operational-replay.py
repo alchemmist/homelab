@@ -156,7 +156,7 @@ def run(args):
     cluster["extensions"].pop("health_check", None)
     cluster["service"]["extensions"] = ["file_storage"]
     cluster["processors"]["batch/metrics"].update(send_batch_size=2, send_batch_max_size=2)
-    for _name, config, port in [("cluster", cluster, 18888), ("trace-gateway", gateway, 18889)]:
+    for name, config, port in [("cluster", cluster, 18888), ("trace-gateway", gateway, 18889)]:
         config["service"]["telemetry"] = {
             "metrics": {
                 "readers": [

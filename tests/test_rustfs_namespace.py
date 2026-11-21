@@ -67,11 +67,11 @@ class Namespace(unittest.TestCase):
 
     def test_fixed_destination(self) -> None:
         """Require the in-cluster S3 endpoint and reject other origins."""
-        env = {
-            "AUTH_URL": "https://rustfs.socrat.alchemmist.xyz/outpost.goauthentik.io/auth/nginx",
-            "S3_ACCESS_KEY": "offline",
-            "S3_SECRET_KEY": "offline",
-        }
+        env = dict(
+            AUTH_URL="https://rustfs.socrat.alchemmist.xyz/outpost.goauthentik.io/auth/nginx",
+            S3_ACCESS_KEY="offline",
+            S3_SECRET_KEY="offline",
+        )
         with patch.dict(os.environ, env, clear=True):
             self.assertEqual(Reader().s3, "http://rustfs.rustfs.svc.cluster.local:9000")
             for endpoint in (

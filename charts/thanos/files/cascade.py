@@ -236,15 +236,12 @@ def disk_free_bytes(prometheus_url):
         'max(node_filesystem_avail_bytes{job="node-exporter",mountpoint="/",fstype=~"ext4|xfs"}'
         ' * on(instance) group_left(nodename) node_uname_info{job="node-exporter",nodename="socrat-1"})'
     )
-    if os.environ.get("FIVE_SHARED") == "1":
-        metric = 'socrat_five_bucket_available_bytes{backing_node="socrat-0"}'
-        query = f'{metric} and (time() - timestamp({metric}) < 100)'
     url = prometheus_url.rstrip("/") + "/api/v1/query?" + urllib.parse.urlencode({"query": query})
     try:
         with urllib.request.urlopen(url, timeout=20) as response:
             payload = json.load(response)
         result = payload.get("data", {}).get("result") or []
-        if payload.get("status") != "success" or len(result) != 1:
+        if payload.get("status") != "success" or not result:
             return None
         return int(float(result[0]["value"][1]))
     except (urllib.error.URLError, TimeoutError, KeyError, ValueError, json.JSONDecodeError):

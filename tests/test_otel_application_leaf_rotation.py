@@ -67,7 +67,7 @@ class LeafRotationTests(unittest.TestCase):
         module = load()
         calls = []
 
-        def kube(*args) -> dict[str, object]:
+        def kube(*args):
             calls.append(args)
             return {
                 "certificatePemBase64": base64.b64encode(
@@ -102,7 +102,7 @@ class LeafRotationTests(unittest.TestCase):
         module = load()
         with self.assertRaises(ValueError):
             module.public_certificate_identity(
-                lambda *_args: {
+                lambda *args: {
                     "certificatePemBase64": base64.b64encode(
                         b"-----BEGIN PRIVATE KEY-----"
                     ).decode()

@@ -9,8 +9,7 @@
         tasks_from: prepare
       vars:
         syncthing_private_ui_chart_dir: "{{ homelab_user_home }}/tmp-charts/syncthing"
-        syncthing_private_ui_values_path: >-
-          {{ homelab_user_home }}/tmp-charts/syncthing/private-ui-values.yml
+        syncthing_private_ui_values_path: "{{ homelab_user_home }}/tmp-charts/syncthing/private-ui-values.yml"
 
     - name: Prepare private Syncthing HTTPS before updating pods
       ansible.builtin.include_role:
@@ -40,9 +39,7 @@
         --wait
         --timeout 5m
       register: syncthing_helm
-      changed_when: >-
-        'has been upgraded' in syncthing_helm.stdout
-        or 'has been installed' in syncthing_helm.stdout
+      changed_when: "'has been upgraded' in syncthing_helm.stdout or 'has been installed' in syncthing_helm.stdout"
 
     - name: Show Syncthing DaemonSet status
       ansible.builtin.command: k3s kubectl -n syncthing get ds,pod -o wide

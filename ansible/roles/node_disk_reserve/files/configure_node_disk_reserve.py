@@ -141,14 +141,7 @@ def main():
     try:
         result = apply(json.loads(args.policy.read_text()))
         result["status"] = "ok"
-    except (
-        RuntimeError,
-        ValueError,
-        KeyError,
-        TypeError,
-        OSError,
-        subprocess.SubprocessError,
-    ) as error:
+    except Exception as error:
         result = {"status": "error", "error": str(error)}
     if os.geteuid() == 0:
         atomic_write(RESULT, (json.dumps(result, indent=2) + "\n").encode(), 0o644)

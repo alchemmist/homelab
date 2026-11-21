@@ -343,11 +343,11 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             controller.time.sleep,
             controller.cleanup_role,
         )
-        controller.process_signature = lambda _pid: next(snapshots)
+        controller.process_signature = lambda pid: next(snapshots)
         controller.os.getpgid = lambda pid: pid
-        controller.os.killpg = lambda _pid, sig: calls.append(sig)
+        controller.os.killpg = lambda pid, sig: calls.append(sig)
         controller.time.sleep = lambda *_: None
-        controller.cleanup_role = lambda _root: None
+        controller.cleanup_role = lambda root: None
         try:
             controller.cleanup_interrupted(
                 {
@@ -372,7 +372,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
         with tempfile.TemporaryDirectory() as directory:
             run = pathlib.Path(directory) / "run"
             owned = {}
-            for role, _bad in (("agent", True), ("verifier", False)):
+            for role, bad in (("agent", True), ("verifier", False)):
                 role_dir = run / role
                 role_dir.mkdir(parents=True)
                 (role_dir / "container-id").write_text("cid-" + role)
@@ -425,7 +425,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             original_run = owned_resources.subprocess.run
             original_signature = controller.process_signature
             owned_resources.subprocess.run = fake_run
-            controller.process_signature = lambda _pid: (_ for _ in ()).throw(
+            controller.process_signature = lambda pid: (_ for _ in ()).throw(
                 subprocess.CalledProcessError(1, ["ps"])
             )
             try:
@@ -472,11 +472,11 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
         original_getpgid = controller.os.getpgid
         controller.os.getpgid = lambda pid: pid
         try:
-            controller.process_signature = lambda _pid: ("Mon Nov 17 12:00:00 2026", foreign)
+            controller.process_signature = lambda pid: ("Mon Nov 17 12:00:00 2026", foreign)
             self.assertFalse(
                 controller.same_child(424242, directory, ("Mon Nov 17 12:00:00 2026", foreign))
             )
-            controller.process_signature = lambda _pid: ("Mon Nov 17 12:00:00 2026", exact)
+            controller.process_signature = lambda pid: ("Mon Nov 17 12:00:00 2026", exact)
             self.assertTrue(
                 controller.same_child(424242, directory, ("Mon Nov 17 12:00:00 2026", exact))
             )
@@ -498,11 +498,11 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             controller.time.sleep,
             controller.cleanup_role,
         )
-        controller.process_signature = lambda _pid: ("Mon Nov 17 12:00:00 2026", command)
+        controller.process_signature = lambda pid: ("Mon Nov 17 12:00:00 2026", command)
         controller.os.getpgid = lambda pid: pid
-        controller.os.killpg = lambda _pid, sig: calls.append(sig)
+        controller.os.killpg = lambda pid, sig: calls.append(sig)
         controller.time.sleep = lambda *_: None
-        controller.cleanup_role = lambda _root: None
+        controller.cleanup_role = lambda root: None
         try:
             controller.cleanup_interrupted({"pid": 424242, "directory": directory})
         finally:
@@ -587,7 +587,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             original_run = owned_resources.subprocess.run
             original_signature = controller.process_signature
             owned_resources.subprocess.run = fake_run
-            controller.process_signature = lambda _pid: (_ for _ in ()).throw(
+            controller.process_signature = lambda pid: (_ for _ in ()).throw(
                 subprocess.CalledProcessError(1, ["ps"])
             )
             try:
@@ -654,7 +654,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             original_run = owned_resources.subprocess.run
             original_signature = controller.process_signature
             owned_resources.subprocess.run = fake_run
-            controller.process_signature = lambda _pid: (_ for _ in ()).throw(
+            controller.process_signature = lambda pid: (_ for _ in ()).throw(
                 subprocess.CalledProcessError(1, ["ps"])
             )
             try:

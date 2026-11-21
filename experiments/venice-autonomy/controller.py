@@ -450,7 +450,7 @@ def render_report(state):
         "| Task | Attempt | Stored exit_status | Stored run_error_type | Stored cause_type | Resolved exit | Exit provenance | Provider errors | Provider provenance | Artifact accepted | Clean finish | Commands |",
         "|---|---:|---|---|---|---|---|---|---|---|---|---:|",
     ]
-    for task, _outcome, facts in unpacked:
+    for task, outcome, facts in unpacked:
         for index, attempt in enumerate(task.get("attempts", []), start=1):
             item = facts[index - 1]
             stored_exit = attempt.get("exit_status")

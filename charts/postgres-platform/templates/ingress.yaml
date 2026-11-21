@@ -28,8 +28,6 @@ spec:
         {{- end }}
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: harbor}}
           podSelector: {matchLabels: {app: harbor}, matchExpressions: [{key: component, operator: In, values: [core, jobservice, exporter]}]}
-        # Host-local LMS generation worker on socrat-1 (not the LMS web app).
-        - ipBlock: {cidr: 10.42.1.0/32}
         # The bot is hostNetwork on socrat-2. CNI can present its host or flannel address.
         - ipBlock: {cidr: 10.250.0.2/32}
         - ipBlock: {cidr: 10.42.0.0/32}

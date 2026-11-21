@@ -34,8 +34,8 @@
 - name: Resolve the local hostname without relying on DNS
   ansible.builtin.lineinfile:
     path: /etc/hosts
-    regexp: ^127\.0\.1\.1\s
-    line: 127.0.1.1 {{ inventory_hostname }}
+    regexp: '^127\.0\.1\.1\s'
+    line: "127.0.1.1 {{ inventory_hostname }}"
   tags: [utilities, shell]
 
 - name: Configure the standard interactive shell
@@ -153,7 +153,7 @@
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
-    mode: "0755"
+    mode: '0755'
   loop: [/etc/dconf/db/local.d, /etc/dconf/profile]
   tags: gnome
 
@@ -166,7 +166,7 @@
       sleep-inactive-battery-type='nothing'
     owner: root
     group: root
-    mode: "0644"
+    mode: '0644'
   tags: gnome
 
 - name: Enable the system dconf profile
@@ -175,7 +175,7 @@
     content: |
       user-db:user
       system-db:local
-    mode: "0644"
+    mode: '0644'
   tags: gnome
 
 - name: Compile the system desktop settings

@@ -18,29 +18,28 @@
       failed_when: hdd_mount.rc != 0 or hdd_mount.stdout != '/dev/sdb1'
     - name: Require known filesystem device IDs
       ansible.builtin.command:
-        argv: [stat, -c, "%d", "{{ item.path }}"]
+        argv: [stat, -c, '%d', '{{ item.path }}']
       loop:
-        - {path: /mnt/files, device: "2065"}
-        - {path: /, device: "2049"}
+        - {path: /mnt/files, device: '2065'}
+        - {path: /, device: '2049'}
       register: tier_device
       changed_when: false
       failed_when: tier_device.rc != 0 or tier_device.stdout != item.device
     - name: Prepare dedicated tier roots (no existing PVC moves)
       ansible.builtin.file:
-        path: "{{ item }}"
+        path: '{{ item }}'
         state: directory
         owner: root
         group: root
-        mode: "0700"
+        mode: '0700'
       loop: [/mnt/files/homelab/volumes, /var/lib/rancher/k3s/fast-storage]
     - name: Write filesystem identity sentinels on verified filesystems
       ansible.builtin.copy:
-        dest: "{{ item.path }}/.homelab-filesystem-id"
-        content: "{{ item.uuid }}"
+        dest: '{{ item.path }}/.homelab-filesystem-id'
+        content: '{{ item.uuid }}'
         owner: root
         group: root
-        mode: "0444"
+        mode: '0444'
       loop:
         - {path: /mnt/files/homelab/volumes, uuid: 3ec3263e-32e3-4b38-84e6-17cd168244b9}
         - {path: /var/lib/rancher/k3s/fast-storage, uuid: 60fd0998-0598-4672-88b5-3bec59f697c9}
-...

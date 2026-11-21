@@ -20,8 +20,7 @@
   ansible.builtin.command:
     argv: [kubectl, get, --raw, /apis/metrics.k8s.io/v1beta1/nodes]
   register: offload_metrics_api
-  until: offload_metrics_api.rc == 0
-    and (offload_metrics_api.stdout | from_json).get('items', []) | length > 0
+  until: offload_metrics_api.rc == 0 and (offload_metrics_api.stdout | from_json).get('items', []) | length > 0
   retries: 12
   delay: 5
   changed_when: false

@@ -155,7 +155,7 @@ try:
         page.on("response", observe)
         page.on(
             "pageerror",
-            lambda _e: (
+            lambda e: (
                 errors.append(True)
                 if urllib.parse.urlparse(page.url).hostname == "auth.socrat.alchemmist.xyz"
                 else None
@@ -167,7 +167,7 @@ try:
         page.locator("input[type=password]").filter(visible=True).fill(password)
         page.locator("button[type=submit]").click()
         denied = False
-        for _step in range(100):
+        for step in range(100):
             if page.locator("ak-stage-authenticator-totp").is_visible():
                 source = (
                     challenge.get("secret")
@@ -251,7 +251,7 @@ try:
             },
         )
         # Native policy/outpost caches may briefly retain the preceding denial.
-        for _attempt in range(8):
+        for attempt in range(8):
             page.goto(launch)
             page.wait_for_timeout(1800)
             if (
@@ -324,7 +324,7 @@ try:
             ),
         )
         page.locator("button[type=submit]").click()
-        for _attempt in range(100):
+        for attempt in range(100):
             page.wait_for_timeout(200)
             proxy = [
                 c

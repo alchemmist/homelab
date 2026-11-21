@@ -68,7 +68,7 @@ new = None
 try:
     kube("cordon", node)
     kube("-n", "lms", "delete", "pod", old, "--wait=true", "--timeout=60s")
-    for _attempt in range(40):
+    for attempt in range(40):
         c = json.loads(kube("-n", "lms", "get", "cluster.postgresql.cnpg.io/lms-ha", "-o", "json"))
         candidate = c["status"].get("currentPrimary")
         if candidate and candidate != old:

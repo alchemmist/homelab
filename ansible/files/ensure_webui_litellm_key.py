@@ -4,7 +4,6 @@ import hashlib
 import json
 import subprocess
 import urllib.request
-from collections.abc import Mapping
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", action="append")
@@ -12,7 +11,7 @@ args = parser.parse_args()
 desired_models = args.model or ["qwen3.8-27b"]
 
 
-def kubectl(*argv: str, data: str | None = None):
+def kubectl(*argv, data=None):
     return subprocess.run(
         ["kubectl", "-n", "llm", *argv], input=data, capture_output=True, text=True, check=True
     ).stdout
@@ -24,7 +23,7 @@ ip = kubectl("get", "svc", "litellm", "-o", "jsonpath={.spec.clusterIP}")
 opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
-def request(path: str, data: Mapping[str, object] | None = None):
+def request(path, data=None):
     req = urllib.request.Request(
         "http://" + ip + ":4000" + path,
         data=None if data is None else json.dumps(data).encode(),

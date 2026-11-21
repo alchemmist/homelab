@@ -1,4 +1,3 @@
----
 image: pragent/pr-agent:0.50.0-github_app
 replicaCount: 1
 nodeName: socrat-5
@@ -53,7 +52,7 @@ persistentInlineComments: true
 # old findings, the inline fingerprint misses the paraphrase, and the PR gets another copy.
 # A manual /review comment still reviews the whole pull request.
 handlePushTrigger: true
-pushCommands: "[\"/review -i\"]"
+pushCommands: '["/review -i"]'
 # The review summary is one comment that later runs update. A check run replaces that
 # comment with an empty review body, which is not how people read CodeRabbit.
 publishAsCheckRun: false
@@ -79,4 +78,3 @@ tolerations:
     operator: Equal
     value: "true"
     effect: NoSchedule
-...

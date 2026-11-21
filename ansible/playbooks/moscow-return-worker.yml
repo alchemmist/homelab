@@ -8,8 +8,8 @@
   vars:
     ansible_host: socrat-4
     ansible_port: 2222
-    ansible_ssh_common_args: -o ProxyJump=none -o StrictHostKeyChecking=yes
-    phase: "{{ moscow_return_phase | default('preflight') }}"
+    ansible_ssh_common_args: '-o ProxyJump=none -o StrictHostKeyChecking=yes'
+    phase: '{{ moscow_return_phase | default("preflight") }}'
     recovery_root: /var/lib/homelab-recovery/20261113-moscow-return-worker
     tool: /usr/local/libexec/vpn-transit-failover.py
   tasks:
@@ -19,7 +19,7 @@
       - phase in ['preflight','apply']
       - phase != 'apply' or (moscow_return_confirmed | default(false) | bool)
   - ansible.builtin.stat:
-      path: "{{ item.path }}"
+      path: '{{ item.path }}'
       checksum_algorithm: sha256
     loop:
     - {path: /usr/local/libexec/vpn-transit-failover.py,
@@ -31,9 +31,9 @@
     register: immutable
   - ansible.builtin.assert:
       that: item.stat.checksum == item.item.sha
-    loop: "{{ immutable.results }}"
+    loop: '{{ immutable.results }}'
     loop_control:
-      label: "{{ item.item.path }}"
+      label: '{{ item.item.path }}'
   - ansible.builtin.command: python3 {{ tool }} status
     changed_when: false
     register: before
@@ -56,17 +56,13 @@
   - ansible.builtin.assert:
       that:
       - (relay.stdout | from_json).spec.replicas == 1
-      - >-
-        (relay.stdout | from_json).spec.template.spec.nodeSelector['kubernetes.io/hostname']
-        == 'socrat-4'
+      - (relay.stdout | from_json).spec.template.spec.nodeSelector['kubernetes.io/hostname'] == 'socrat-4'
   - name: Verify inverse boot fences without changing units
     ansible.builtin.shell: |
       set -o pipefail
       set -eu
-      fallback_active=/var/lib/homelab-vpn-transit/relay-failover/fallback.active
-      systemctl cat k3s-agent | grep -F "ExecCondition=/usr/bin/test ! -e ${fallback_active}"
-      systemctl cat homelab-vpn-transit-native | grep -F \
-        "ExecCondition=+/usr/bin/test -e ${fallback_active}"
+      systemctl cat k3s-agent | grep -F 'ExecCondition=/usr/bin/test ! -e /var/lib/homelab-vpn-transit/relay-failover/fallback.active'
+      systemctl cat homelab-vpn-transit-native | grep -F 'ExecCondition=+/usr/bin/test -e /var/lib/homelab-vpn-transit/relay-failover/fallback.active'
       test -s /var/lib/rancher/k3s/agent/client-kubelet.crt
       test -s /var/lib/rancher/k3s/agent/containerd/io.containerd.metadata.v1.bolt/meta.db
     changed_when: false
@@ -75,13 +71,13 @@
   - when: phase == 'apply'
     block:
     - ansible.builtin.file:
-        path: "{{ recovery_root }}"
+        path: '{{ recovery_root }}'
         state: directory
-        mode: "0700"
+        mode: '0700'
     - ansible.builtin.copy:
-        content: "{{ before.stdout }}"
-        dest: "{{ recovery_root }}/before.json"
-        mode: "0600"
+        content: '{{ before.stdout }}'
+        dest: '{{ recovery_root }}/before.json'
+        mode: '0600'
         force: false
     - name: Demote only; retain live native path and persistent fence
       ansible.builtin.command: python3 {{ tool }} demote
@@ -99,9 +95,9 @@
       changed_when: false
       register: after
     - ansible.builtin.copy:
-        content: "{{ after.stdout }}"
-        dest: "{{ recovery_root }}/after.json"
-        mode: "0600"
+        content: '{{ after.stdout }}'
+        dest: '{{ recovery_root }}/after.json'
+        mode: '0600'
     - ansible.builtin.assert:
         that:
         - (after.stdout | from_json).mode == 'kubernetes'

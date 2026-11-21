@@ -6,9 +6,7 @@ apply/check never delete humans; retire-akadmin is a separate explicit guarded a
 import argparse
 import ast
 import fcntl
-from collections.abc import Mapping
 from datetime import datetime, timezone
-from typing import cast
 import json
 import os
 from pathlib import Path
@@ -103,7 +101,7 @@ def bootstrap_is_migration_aware(source: str) -> bool:
     return False
 
 
-def save(path: Path, data: Mapping[str, object]):
+def save(path, data):
     tmp = path.with_name(path.name + ".tmp-" + secrets.token_hex(8))
     fd = os.open(tmp, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     try:
@@ -116,12 +114,7 @@ def save(path: Path, data: Mapping[str, object]):
         tmp.unlink(missing_ok=True)
 
 
-def api(
-    token: str,
-    method: str,
-    path: str,
-    data: Mapping[str, object] | None = None,
-):
+def api(token, method, path, data=None):
     req = urllib.request.Request(
         BASE + path,
         method=method,
@@ -133,7 +126,7 @@ def api(
         return json.loads(raw) if raw else None
 
 
-def exact(token: str, endpoint: str, field: str, value: str):
+def exact(token, endpoint, field, value):
     rows = api(
         token, "GET", endpoint + "?" + field + "=" + quote(value, safe="") + "&page_size=1000"
     )["results"]
@@ -143,9 +136,9 @@ def exact(token: str, endpoint: str, field: str, value: str):
     return rows[0] if rows else None
 
 
-def verify(token: str, journal: Mapping[str, object]):
+def verify(token, journal):
     user = api(token, "GET", "core/users/" + str(journal["user_pk"]) + "/")
-    group = api(token, "GET", "core/groups/" + str(journal["group_pk"]) + "/")
+    group = api(token, "GET", "core/groups/" + journal["group_pk"] + "/")
     marker = {"homelab_automation_journal": journal["nonce"]}
     if not (
         user["uuid"] == journal["user_uuid"]
@@ -182,7 +175,7 @@ def verify(token: str, journal: Mapping[str, object]):
     return user
 
 
-def migrate(root: Path, action: str):
+def migrate(root, action):
     if root.stat().st_mode & 0o077:
         raise RuntimeError("Deployment directory is not private")
     path = root / "automation-api.json"
@@ -299,7 +292,7 @@ def migrate(root: Path, action: str):
     )
 
 
-def retire_default_admin(root: Path):
+def retire_default_admin(root):
     """Only after an independent node-admin recovery drill and encrypted backup."""
     import subprocess
 
@@ -395,13 +388,7 @@ if __name__ == "__main__":
                 retire_default_admin(a.root)
             else:
                 migrate(a.root, a.action)
-    except (
-        RuntimeError,
-        OSError,
-        ValueError,
-        KeyError,
-        TypeError,
-    ) as e:
+    except Exception as e:
         print(
             "Migration stopped safely ("
             + type(e).__name__

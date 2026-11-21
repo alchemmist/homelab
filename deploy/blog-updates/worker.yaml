@@ -1,4 +1,3 @@
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -27,7 +26,8 @@ spec:
           type: RuntimeDefault
       containers:
         - name: worker
-          image: python:3.13-alpine@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8
+          image: >-
+            python:3.13-alpine@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8
           command: [python, -B, /app/scripts/blog_updates/server.py]
           envFrom:
             - secretRef:
@@ -36,7 +36,7 @@ spec:
             - name: PROMPT_FILE
               value: /app/docs/n8n/blog-updates/prompt.md
             - name: WRITE_ENABLED
-              value: "false"
+              value: 'false'
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -67,7 +67,6 @@ spec:
         - name: prompt
           configMap:
             name: blog-updates-prompt
-...
 ---
 apiVersion: v1
 kind: Service
@@ -80,4 +79,3 @@ spec:
   ports:
     - port: 8080
       targetPort: 8080
-...

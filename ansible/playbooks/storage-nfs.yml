@@ -77,10 +77,8 @@
         owner: root
         group: root
         mode: '0644'
-        content: >
-          {{ nfs_export_path }}
-          192.168.0.0/24(rw,sync,no_subtree_check,no_root_squash,fsid=0)
-          10.250.0.0/24(rw,sync,no_subtree_check,no_root_squash,fsid=0)
+        content: |
+          {{ nfs_export_path }} 192.168.0.0/24(rw,sync,no_subtree_check,no_root_squash,fsid=0) 10.250.0.0/24(rw,sync,no_subtree_check,no_root_squash,fsid=0)
       notify: Reload NFS exports
 
     - name: Ensure /etc/exports exists
@@ -104,9 +102,7 @@
       changed_when: storage_ns.rc == 0
 
     - name: Add NFS provisioner Helm repo
-      ansible.builtin.command: >-
-        helm repo add nfs-subdir-external-provisioner
-        https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner
+      ansible.builtin.command: helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner
       register: nfs_repo
       failed_when: nfs_repo.rc not in [0, 1]
       changed_when: nfs_repo.rc == 0
@@ -129,9 +125,7 @@
         --wait
         --timeout 5m
       register: nfs_helm
-      changed_when: >-
-        'has been upgraded' in nfs_helm.stdout
-        or 'has been installed' in nfs_helm.stdout
+      changed_when: "'has been upgraded' in nfs_helm.stdout or 'has been installed' in nfs_helm.stdout"
 
     - name: Verify Git-owned local-path is not a competing default
       ansible.builtin.command:

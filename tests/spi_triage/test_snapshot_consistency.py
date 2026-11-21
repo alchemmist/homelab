@@ -11,7 +11,7 @@ from core import Failure, digest
 class SnapshotConsistencyTests(unittest.TestCase):
     def rows(self, n=61):
         return [
-            {"number": i, "title": "[SPI] fake", "updated_at": "first", "body": "", "comments": 0}
+            dict(number=i, title="[SPI] fake", updated_at="first", body="", comments=0)
             for i in range(1, n + 1)
         ]
 
@@ -39,7 +39,7 @@ class SnapshotConsistencyTests(unittest.TestCase):
         original = self.rows()
         m = Model(Mock(), "fake")
         saved = []
-        m.call = Mock(return_value={"issue_number": 0, "reason": "different", "confidence": "low"})
+        m.call = Mock(return_value=dict(issue_number=0, reason="different", confidence="low"))
         m.match(f.event(), original, on_progress=lambda p: saved.append(copy.deepcopy(p)))
         proof = copy.deepcopy(saved[-1])
         m.call.reset_mock()

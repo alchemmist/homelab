@@ -46,16 +46,12 @@
 - name: Disable Realtek power saving during wireless operation
   ansible.builtin.copy:
     dest: /etc/modprobe.d/homelab-rtl8723ae.conf
-    content: |
-      options rtl8723ae ips=0 fwlps=0 swlps=0 msi={{ homelab_wifi_msi | bool | ternary('1', '0') }}
+    content: "options rtl8723ae ips=0 fwlps=0 swlps=0 msi={{ homelab_wifi_msi | bool | ternary('1', '0') }}\n"
     mode: '0644'
   register: homelab_realtek_options
 
 - name: Check the active wireless power settings
-  ansible.builtin.command: >-
-    cat /sys/module/rtl8723ae/parameters/ips
-    /sys/module/rtl8723ae/parameters/fwlps
-    /sys/module/rtl8723ae/parameters/swlps
+  ansible.builtin.command: cat /sys/module/rtl8723ae/parameters/ips /sys/module/rtl8723ae/parameters/fwlps /sys/module/rtl8723ae/parameters/swlps
   register: homelab_realtek_runtime
   changed_when: false
   failed_when: false
@@ -63,9 +59,7 @@
 - name: Require the stable driver settings without hot-reloading a running driver
   ansible.builtin.assert:
     that: homelab_realtek_runtime.stdout_lines == ['N', 'N', 'N']
-    fail_msg: >-
-      Boot with the managed Realtek settings before attempting Wi-Fi.
-      This role does not hot-reload the driver remotely.
+    fail_msg: Boot with the managed Realtek settings before attempting Wi-Fi. This role does not hot-reload the driver remotely.
 
 - name: Start NetworkManager
   ansible.builtin.systemd_service:
@@ -81,10 +75,7 @@
 
 - name: Extract the derived WPA key without storing it in inventory
   ansible.builtin.set_fact:
-    homelab_wifi_psk: >-
-      {{ (homelab_wifi_credentials.content | b64decode
-      | regex_findall('(?m)^\s*psk=([0-9a-fA-F]{64})\s*$'))
-      | first }}
+    homelab_wifi_psk: "{{ (homelab_wifi_credentials.content | b64decode | regex_findall('(?m)^\\s*psk=([0-9a-fA-F]{64})\\s*$')) | first }}"
   no_log: true
 
 - name: Create the managed NetworkManager Wi-Fi profile
@@ -132,9 +123,7 @@
   changed_when: false
 
 - name: Read available wireless networks
-  ansible.builtin.command: >-
-    nmcli --wait 20 -f SSID,SIGNAL,FREQ device wifi list
-    ifname {{ homelab_wifi_interface }} --rescan yes
+  ansible.builtin.command: "nmcli --wait 20 -f SSID,SIGNAL,FREQ device wifi list ifname {{ homelab_wifi_interface }} --rescan yes"
   register: homelab_wifi_scan
   changed_when: false
 

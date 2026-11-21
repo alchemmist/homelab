@@ -16,11 +16,9 @@
       OTEL_LOG_INGESTION_START_NS: "1793220000000000000"
       OTEL_CLUSTER_ENDPOINT: 127.0.0.1:4317
       OTEL_CLUSTER_TLS_NAME: otel-validation.local
-      OTEL_METRICS_ENDPOINT: >-
-        https://otel-metrics-shadow.cattle-monitoring-system.svc.cluster.local:9443/api/v1/otlp
+      OTEL_METRICS_ENDPOINT: https://otel-metrics-shadow.cattle-monitoring-system.svc.cluster.local:9443/api/v1/otlp
       OTEL_LOKI_ENDPOINT: https://otel-loki.cattle-monitoring-system.svc.cluster.local:3100/otlp
-      OTEL_TRACE_GATEWAY_ENDPOINT: >-
-        otel-trace-gateway.cattle-monitoring-system.svc.cluster.local:4317
+      OTEL_TRACE_GATEWAY_ENDPOINT: otel-trace-gateway.cattle-monitoring-system.svc.cluster.local:4317
       OTEL_TEMPO_ENDPOINT: otel-tempo.cattle-monitoring-system.svc.cluster.local:4317
   tasks:
     - name: Require explicit verified binaries and validation-only TLS
@@ -68,14 +66,7 @@
 
     - name: Supply inert discovery for schema validation without starting a scraper
       ansible.builtin.copy:
-        content: |
-          global:
-            scrape_interval: 5s
-            scrape_timeout: 4s
-          scrape_configs:
-            - job_name: validation-only
-              static_configs:
-                - targets: [127.0.0.1:1]
+        content: "global:\n  scrape_interval: 5s\n  scrape_timeout: 4s\nscrape_configs:\n  - job_name: validation-only\n    static_configs:\n      - targets: [127.0.0.1:1]\n"
         dest: "{{ otel_validation_cache }}/scrape.yaml"
         mode: "0600"
 
@@ -143,12 +134,8 @@
         argv:
           - "{{ otel_validation_cache }}/bin/otelcol-contrib"
           - validate
-          - >-
-            --config={{ otel_validation_cache }}/config/{{ 'cluster'
-            if item == 'cluster' else 'agent' }}.yaml
-      environment: >-
-        {{ otel_validation_environment | combine({'OTEL_SCRAPE_CONFIG':
-        otel_validation_cache + '/config/scrape-' + item + '.yaml'}) }}
+          - --config={{ otel_validation_cache }}/config/{{ 'cluster' if item == 'cluster' else 'agent' }}.yaml
+      environment: "{{ otel_validation_environment | combine({'OTEL_SCRAPE_CONFIG': otel_validation_cache + '/config/scrape-' + item + '.yaml'}) }}"
       loop: [cluster, socrat-0, socrat-1, socrat-2, socrat-3]
       when: otel_validation_scrape_bundle is defined
       changed_when: false

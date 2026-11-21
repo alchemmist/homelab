@@ -216,15 +216,10 @@ def add_pg_platform_scrape(scrape):
         "static_configs": [{"targets": [f"pg-{tier}-primary-metrics.postgres.svc:9187"],
                             "labels": {"pg_cluster": f"pg-{tier}"}} for tier in ("common", "critical")],
         "metric_relabel_configs": [{"source_labels": ["__name__"], "action": "keep",
-                                    "regex": "cnpg_(collector_sync_replicas|dr_standbys|dr_receivers|pg_replication_streaming_replicas|pg_stat_replication_replay_lag_seconds|pg_replication_slots_pg_wal_lsn_diff)"}],
+                                    "regex": "cnpg_(collector_sync_replicas|pg_replication_streaming_replicas|pg_stat_replication_replay_lag_seconds|pg_replication_slots_pg_wal_lsn_diff)"}],
     }
     existing = [x for x in result["scrape_configs"] if x["job_name"] == job["job_name"]]
-    previous = copy.deepcopy(job)
-    rule = previous["metric_relabel_configs"][0]
-    rule["regex"] = rule["regex"].replace("dr_standbys|dr_receivers|", "")
-    if existing == [previous]:
-        existing[0].update(job)
-    elif existing and existing != [job]:
+    if existing and existing != [job]:
         raise ValueError("Conflicting postgres-platform scrape job")
     if not existing:
         result["scrape_configs"].append(job)

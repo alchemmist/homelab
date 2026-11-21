@@ -1,7 +1,6 @@
 """Create role groups without granting access or importing human identities."""
 
 import json
-from collections.abc import Mapping
 from pathlib import Path
 import sys
 import urllib.request
@@ -21,7 +20,7 @@ credentials = json.loads((root / "credentials.json").read_text())
 base = "https://auth.socrat.alchemmist.xyz/api/v3/"
 
 
-def api(method: str, path: str, payload: Mapping[str, object] | None = None):
+def api(method, path, payload=None):
     req = urllib.request.Request(
         base + path,
         method=method,
@@ -40,7 +39,7 @@ import os
 import secrets
 
 
-def unique(path: str, field: str, value: str):
+def unique(path, field, value):
     from urllib.parse import urlencode
 
     query = {field: value}

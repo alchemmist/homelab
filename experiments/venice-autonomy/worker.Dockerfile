@@ -7,7 +7,6 @@ RUN python -m pip install --no-cache-dir -r /opt/worker/requirements.txt \
     && mkdir -p /opt/agent /opt/grader \
     && chmod 755 /opt/agent /opt/grader \
     && rm -rf /root/.cache /tmp/*
-# Debian base-passwd nobody. A numeric uid stays resolvable when the name is absent.
-USER 65534
+USER nobody
 WORKDIR /workspace
 CMD ["python", "-c", "import fastapi, jsonschema, playwright, uvicorn, pydantic"]

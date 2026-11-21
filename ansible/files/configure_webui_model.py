@@ -5,20 +5,13 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
-from collections.abc import Mapping
 
 
 class ConfigurationError(Exception):
     pass
 
 
-def request_json(
-    opener: urllib.request.OpenerDirector,
-    base_url: str,
-    path: str,
-    token: str | None = None,
-    payload: Mapping[str, object] | None = None,
-):
+def request_json(opener, base_url, path, token=None, payload=None):
     headers = {"Accept": "application/json"}
     if token is not None:
         headers["Authorization"] = f"Bearer {token}"
@@ -38,7 +31,7 @@ def request_json(
         raise ConfigurationError("Open WebUI returned invalid JSON") from None
 
 
-def configure(args: argparse.Namespace):
+def configure(args):
     result = {
         "changed": False,
         "skipped": False,
@@ -127,8 +120,9 @@ def configure(args: argparse.Namespace):
                             "terminal": True,
                             "builtin_tools": True,
                         },
-                        "builtinTools": dict.fromkeys(
-                            [
+                        "builtinTools": {
+                            name: False
+                            for name in [
                                 "skills",
                                 "tasks",
                                 "notes",
@@ -140,9 +134,8 @@ def configure(args: argparse.Namespace):
                                 "chats",
                                 "memory",
                                 "subagents",
-                            ],
-                            False,
-                        ),
+                            ]
+                        },
                     },
                     "params": {},
                     "access_grants": [
@@ -190,7 +183,7 @@ def main():
     except ConfigurationError as error:
         print(str(error), file=sys.stderr)
         return 1
-    except (OSError, subprocess.SubprocessError):
+    except Exception:
         print("Unable to configure Open WebUI model defaults", file=sys.stderr)
         return 1
     print(json.dumps(result))

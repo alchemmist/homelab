@@ -36,10 +36,7 @@
     mode: "0755"
     follow: true
     backup: true
-  loop: >-
-    {{ ['toggle_noscreenshare.sh']
-    + (['waybar-gpu.py'] if homelab_waybar_profile == 'desktop'
-    else ['battery-degradation.sh', 'pacman_updates.sh', 'paru_updates.sh']) }}
+  loop: "{{ ['toggle_noscreenshare.sh'] + (['waybar-gpu.py'] if homelab_waybar_profile == 'desktop' else ['battery-degradation.sh', 'pacman_updates.sh', 'paru_updates.sh']) }}"
 
 - name: Deliver the shared Waybar configuration
   tags: waybar
@@ -71,7 +68,7 @@
     path: "{{ homelab_user_home }}/.config/flameshot/flameshot.ini"
     section: General
     option: disabledTrayIcon
-    value: "true"
+    value: 'true'
     no_extra_spaces: true
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"

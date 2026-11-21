@@ -69,7 +69,7 @@ def user():
 
 
 def plan(p=None, u=None):
-    return ssh.build_plan(ssh.bindings_map(ledger()), p or policy(), lambda _ident: u or user())
+    return ssh.build_plan(ssh.bindings_map(ledger()), p or policy(), lambda ident: u or user())
 
 
 class BindingTests(unittest.TestCase):
@@ -249,7 +249,7 @@ class KeyTests(unittest.TestCase):
 class ApiTests(unittest.TestCase):
     def api(self, doc=None):
         api = ssh.Authentik("https://auth.example.invalid", "fake-test-token")
-        api.opener.open = lambda _req, _timeout: io.BytesIO(
+        api.opener.open = lambda req, timeout: io.BytesIO(
             json.dumps(
                 doc if doc is not None else {"pagination": {"next": None}, "results": [user()]}
             ).encode()
@@ -302,7 +302,7 @@ class ApiTests(unittest.TestCase):
         with self.assertRaises(ssh.Refused):
             self.api({"results": [user()], "pagination": {"next": 2}}).user(UUID)
         api = self.api()
-        api.opener.open = lambda *_a, **_kw: (_ for _ in ()).throw(
+        api.opener.open = lambda *a, **kw: (_ for _ in ()).throw(
             urllib.error.URLError("sensitive-response")
         )
         with self.assertRaises(ssh.Refused) as caught:
@@ -701,7 +701,7 @@ class AnsibleIntentTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0, result.stdout)
         payload, _ = plan(p=policy(hosts=["unknown-host"]))
         self.assertNotEqual(self.run_play(payload).returncode, 0)
-        payload, _ = ssh.build_plan(ssh.bindings_map(ledger("tim")), policy(), lambda _: user())
+        payload, _ = ssh.build_plan(ssh.bindings_map(ledger("tim")), policy(), lambda ident: user())
         self.assertNotEqual(self.run_play(payload, manual=True).returncode, 0)
 
 

@@ -1,9 +1,7 @@
 """Exactly the same 77 resources, split between five single-service Applications."""
 
-from collections.abc import Iterator
 from functools import lru_cache
 import copy
-from typing import Protocol, TypedDict, cast, override
 from unittest.mock import patch
 
 import pytest
@@ -34,43 +32,8 @@ yaml.SafeLoader.add_constructor(
 )
 
 
-class _Tree(Protocol):
-    @override
-    def __eq__(self, other: object) -> bool: ...
-
-    @override
-    def __hash__(self) -> int: ...
-
-    def __getitem__(self, key: str) -> "_Tree": ...
-
-    def __iter__(self) -> Iterator["_Tree"]: ...
-
-    def count(self, value: object) -> int: ...
-
-    def pop(self, key: str) -> "_Tree": ...
-
-    def remove(self, value: object) -> None: ...
-
-
-class _ResourceMeta(TypedDict, total=False):
-    name: str
-    namespace: str
-
-
-class _ConfigMap(TypedDict):
-    apiVersion: str
-    kind: str
-    metadata: _ResourceMeta
-    data: dict[str, str]
-
-
-class _KeyedResource(TypedDict):
-    kind: str
-    metadata: _ResourceMeta
-
-
 @lru_cache(maxsize=None)
-def render(name: str):
+def render(name):
     text = subprocess.check_output(
         [
             "helm",
@@ -90,7 +53,7 @@ def render(name: str):
     ]
 
 
-def key(d: _KeyedResource):
+def key(d):
     return "/".join(
         [
             d["kind"],
@@ -102,16 +65,15 @@ def key(d: _KeyedResource):
     )
 
 
-def software_update_extension(document: _ConfigMap):
+def software_update_extension(document):
     """Review the one additive receiver without refreshing any handoff hash."""
-    collector_yaml = document["data"]["collector.yaml"]
     assert document == {
         "apiVersion": "v1",
         "kind": "ConfigMap",
         "metadata": {"name": "software-update-otel", "namespace": "cattle-monitoring-system"},
-        "data": {"collector.yaml": collector_yaml},
+        "data": {"collector.yaml": document["data"]["collector.yaml"]},
     }
-    assert yaml.safe_load(collector_yaml) == {
+    assert yaml.safe_load(document["data"]["collector.yaml"]) == {
         "receivers": {
             "prometheus/software_updates": {
                 "config": {
@@ -144,7 +106,7 @@ def software_update_extension(document: _ConfigMap):
     }, "Software update receiver scope changed"
 
 
-def migration_payload(document: _Tree):
+def migration_payload(document):
     """Check declared runtime overrides before comparing the unchanged handoff payload."""
     if document["kind"] != "Prometheus":
         return document
@@ -298,7 +260,7 @@ def test_aggregate_application_and_values_are_gone():
 @pytest.mark.parametrize(
     "violation", ["scrape-target", "second-owner", "otel-image", "otel-mount", "probe", "service"]
 )
-def test_current_extension_projection_rejects_mutations(violation: str):
+def test_current_extension_projection_rejects_mutations(violation):
     """The historical comparison stays strict after validating each new input."""
     test_disjoint_complete_payload_identical_handoff()
     graphs = {name: copy.deepcopy(render(name)) for name in COMPONENTS}

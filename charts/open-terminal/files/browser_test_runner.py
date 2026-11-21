@@ -97,7 +97,7 @@ def run(command, timeout=180, grace=2):
     owned = set()
     process = None
     for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
-        previous[sig] = signal.signal(sig, lambda number, _frame: interrupted.append(number))
+        previous[sig] = signal.signal(sig, lambda number, frame: interrupted.append(number))
     try:
         process = subprocess.Popen(command, start_new_session=True)
         deadline = time.monotonic() + timeout

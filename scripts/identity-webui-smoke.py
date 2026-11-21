@@ -146,7 +146,7 @@ asyncio.run(main())"""
     )
     status, headers, body = browser("https://chat.alchemmist.xyz/oauth/oidc/login")
     target = headers["Location"]
-    for _step in range(30):
+    for step in range(30):
         if "/if/flow/" in target or "/api/v3/flows/executor/" in target:
             if "/if/flow/" in target:
                 browser(urllib.parse.urljoin(base, target))
@@ -166,7 +166,7 @@ asyncio.run(main())"""
                 target = headers["Location"]
                 continue
             challenge = json.loads(body)
-            for _inner in range(12):
+            for inner in range(12):
                 component = challenge.get("component")
                 kind = challenge.get("type")
                 # Challenge data, TOTP secrets and OAuth parameters stay in memory.

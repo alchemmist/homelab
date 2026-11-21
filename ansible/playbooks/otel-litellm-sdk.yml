@@ -14,7 +14,7 @@
           - "{{ playbook_dir }}/../../scripts/otel-litellm-sdk-rollout.py"
           - --apply
           - --output
-          - "{{ otel_controller_root }}/litellm-sdk-reconcile-{{ lookup('pipe', 'date -u +%Y%m%dT%H%M%SZ') }}"
+          - '{{ otel_controller_root }}/litellm-sdk-reconcile-{{ lookup("pipe", "date -u +%Y%m%dT%H%M%SZ") }}'
       register: litellm_sdk_reconcile
       changed_when: (litellm_sdk_reconcile.stdout | from_json).applied
     - ansible.builtin.set_fact:

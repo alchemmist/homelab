@@ -130,26 +130,12 @@ def bootstrap(grafana, existing_secret, persist, has_admin=True):
                 },
             }
         )
-    except (
-        BootstrapError,
-        KeyError,
-        TypeError,
-        ValueError,
-        OSError,
-        subprocess.SubprocessError,
-    ):
+    except Exception:
         try:
             grafana.request(
                 "DELETE", "/api/serviceaccounts/" + account_id + "/tokens/" + str(token["id"])
             )
-        except (
-            BootstrapError,
-            KeyError,
-            TypeError,
-            ValueError,
-            OSError,
-            subprocess.SubprocessError,
-        ):
+        except Exception:
             raise BootstrapError(
                 "Credential persistence failed; newly created token cleanup also failed"
             ) from None
@@ -185,15 +171,7 @@ def main():
             has_admin=bool(credentials.get("admin_user") and credentials.get("admin_password")),
         )
         print(json.dumps(result))
-    except (
-        BootstrapError,
-        KeyError,
-        StopIteration,
-        TypeError,
-        ValueError,
-        OSError,
-        subprocess.SubprocessError,
-    ) as error:
+    except Exception as error:
         print(
             json.dumps(
                 {

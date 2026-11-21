@@ -23,22 +23,8 @@ log() { printf '%s\n' "$*"; }
 die() { printf 'nightnode: %s\n' "$*" >&2; exit 1; }
 
 load_config() {
-  local line key value
   if [[ -f "${CONFIG_FILE}" ]]; then
-    # KEY=VALUE lines only; blank and commented lines are skipped.
-    while IFS= read -r line || [[ -n "${line}" ]]; do
-      line="${line%$'\r'}"
-      [[ -z "${line}" || "${line}" =~ ^[[:space:]]*\# ]] && continue
-      key="${line%%=*}"
-      value="${line#*=}"
-      [[ "${key}" == "${line}" ]] && die "config line is not KEY=VALUE: ${line}"
-      key="${key#"${key%%[![:space:]]*}"}"
-      key="${key%"${key##*[![:space:]]}"}"
-      value="${value#"${value%%[![:space:]]*}"}"
-      value="${value%"${value##*[![:space:]]}"}"
-      [[ "${key}" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]] || die "config key is not a shell identifier: ${key}"
-      export "${key}=${value}"
-    done < "${CONFIG_FILE}"
+    source "${CONFIG_FILE}"
   fi
 }
 

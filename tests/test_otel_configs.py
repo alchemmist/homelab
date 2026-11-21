@@ -9,7 +9,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1] / "deploy/monitoring/otel"
 
 
-def config(name: str):
+def config(name):
     return yaml.safe_load((ROOT / (name + ".yaml")).read_text())
 
 

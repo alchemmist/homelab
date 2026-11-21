@@ -46,7 +46,7 @@ def test_all_current_applications_are_audited_with_reason() -> None:
 def test_official_launchers_pin_read_only_and_do_not_override_tool_allowlist(monkeypatch) -> None:
     """Pin read-only launcher args and reject an unknown server name."""
     m = module("run-official-mcp")
-    monkeypatch.setattr(m.creds, "read_private", lambda _p: "unit-test-token")
+    monkeypatch.setattr(m.creds, "read_private", lambda p: "unit-test-token")
     args, env = m.command("argocd")
     assert env["MCP_READ_ONLY"] == "true"
     assert "stdio" in args

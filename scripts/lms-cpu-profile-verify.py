@@ -73,7 +73,7 @@ print(json.dumps(dict(cookie=cookie)))
             durations.append((time.monotonic() - began) * 1000)
             count += 1
             time.sleep(max(0, 0.1 - (time.monotonic() - began)))
-        for _attempt in range(18):
+        for attempt in range(18):
             end_ms = int(time.time() * 1000)
             data = post(
                 args.grafana_url,

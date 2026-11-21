@@ -90,8 +90,8 @@ class FinalDecisionTests(unittest.TestCase):
                     repository_runner,
                     "load_protocol",
                     return_value=mock.Mock(
-                        verify_snapshot=lambda _path: {},
-                        grade_candidate_container=lambda *_args, **_kwargs: verdict,
+                        verify_snapshot=lambda path: {},
+                        grade_candidate_container=lambda *args, **kwargs: verdict,
                         PILOT_LABEL="",
                     ),
                 ),

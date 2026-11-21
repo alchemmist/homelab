@@ -15,11 +15,7 @@
       ansible.builtin.assert:
         that:
           - inventory_hostname == 'socrat-0'
-          - >-
-            wg_socrat_nodes['socrat-0']['address'] in
-            (relay_mesh_addresses.stdout | from_json
-            | map(attribute='addr_info') | flatten
-            | map(attribute='local') | list)
+          - "wg_socrat_nodes['socrat-0']['address'] in (relay_mesh_addresses.stdout | from_json | map(attribute='addr_info') | flatten | map(attribute='local') | list)"
     - name: Stop only owned bounded diagnostic relay units
       ansible.builtin.command: 'systemctl stop {{ item }}'
       loop:

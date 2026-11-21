@@ -22,7 +22,7 @@ FLOWS = {
     "authorization_flow_id": "5990fa74-d8bc-41b5-935a-b2dcbde4d2b9",
     "invalidation_flow_id": "d48cb1ca-bb68-462b-83ed-6976b231b53c",
 }
-GROUPS = ("homelab-owner", "homelab-platform-operator", "rustfs-console-readers")
+GROUPS = ("homelab-owner", "homelab-platform-operator")
 
 
 def authority(url):

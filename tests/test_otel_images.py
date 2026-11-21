@@ -1,4 +1,3 @@
-from collections.abc import Mapping, Sequence
 import hashlib
 import importlib.util
 import io
@@ -13,7 +12,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def module(name: str, filename: str):
+def module(name, filename):
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / filename)
     result = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(result)
@@ -24,11 +23,11 @@ LOCK = module("image_lock", "otel-image-lock.py")
 BINARIES = module("validation_binaries", "otel-validation-binaries.py")
 
 
-def digest(body: bytes):
+def digest(body):
     return "sha256:" + hashlib.sha256(body).hexdigest()
 
 
-def response(body: bytes, headers: dict[str, str] | None = None):
+def response(body, headers=None):
     result = io.BytesIO(body)
     result.headers = headers or {}
     return result
@@ -37,7 +36,7 @@ def response(body: bytes, headers: dict[str, str] | None = None):
 class ImageLockTests(unittest.TestCase):
     """Pin the linux/amd64 manifest and reject registry mismatches."""
 
-    def resolve(self, entries: Sequence[Mapping[str, object]], *, bad_digest: bool = False):
+    def resolve(self, entries, bad_digest=False):
         body = json.dumps({"manifests": entries}).encode()
         responses = [
             response(b'{"token":"private-fixture"}'),
@@ -74,14 +73,7 @@ class ImageLockTests(unittest.TestCase):
 class ValidationBinaryTests(unittest.TestCase):
     """Extract only the expected regular file and fail closed otherwise."""
 
-    def extract(
-        self,
-        output: Path,
-        *,
-        symlink: bool = False,
-        corrupt: bool = False,
-        absent: bool = False,
-    ):
+    def extract(self, output, symlink=False, corrupt=False, absent=False):
         layer = io.BytesIO()
         with tarfile.open(fileobj=layer, mode="w:gz") as archive:
             directory = tarfile.TarInfo("etc/loki")

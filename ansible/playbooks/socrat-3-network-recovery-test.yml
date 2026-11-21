@@ -22,8 +22,7 @@
   - name: Require the candidate ACPI table in the trial image
     ansible.builtin.shell: |-
       set -o pipefail
-      lsinitramfs /boot/initrd.img-6.12.111+deb13-amd64-homelab-network \
-        | grep -F kernel/firmware/acpi/ssdt-socrat3-wifi.aml
+      lsinitramfs /boot/initrd.img-6.12.111+deb13-amd64-homelab-network | grep -F kernel/firmware/acpi/ssdt-socrat3-wifi.aml
     changed_when: false
 
     args:
@@ -35,9 +34,7 @@
 
   - name: Refuse to overwrite an unrelated boot selection
     ansible.builtin.assert:
-      that: >-
-        network_trial_boot_selection.stdout_lines
-        | select('match', '^next_entry=.+$') | list | length == 0
+      that: network_trial_boot_selection.stdout_lines | select('match', '^next_entry=.+$') | list | length == 0
 
   - name: Evacuate ordinary workloads before the trial
     ansible.builtin.command: kubectl drain socrat-3 --ignore-daemonsets --timeout=120s
@@ -45,9 +42,7 @@
     become: false
 
   - name: Wait for the replicated homepage to recover elsewhere
-    ansible.builtin.command: >-
-      kubectl -n socrat-home rollout status deployment/socrat-home
-      --timeout=120s
+    ansible.builtin.command: kubectl -n socrat-home rollout status deployment/socrat-home --timeout=120s
     delegate_to: socrat-0
     become: false
     changed_when: false
@@ -72,18 +67,14 @@
     ansible.builtin.command: grub-editenv list
     register: network_trial_boot_after
     changed_when: false
-    failed_when: >-
-      network_trial_boot_after.stdout_lines
-      | select('match', '^next_entry=.+$') | list | length > 0
+    failed_when: network_trial_boot_after.stdout_lines | select('match', '^next_entry=.+$') | list | length > 0
 
   - name: Verify the loaded Ethernet driver matches the candidate
     ansible.builtin.shell: |
       set -eu
       work=$(mktemp -d)
       trap 'rm -rf "$work"' EXIT
-      objcopy --dump-section .note.gnu.build-id="$work/build-id" \
-        /usr/local/src/homelab-network-recovery/6.12.111+deb13-amd64/alx/alx.ko \
-        "$work/alx.ko"
+      objcopy --dump-section .note.gnu.build-id="$work/build-id" /usr/local/src/homelab-network-recovery/6.12.111+deb13-amd64/alx/alx.ko "$work/alx.ko"
       test -s "$work/build-id"
       cmp "$work/build-id" /sys/module/alx/notes/.note.gnu.build-id
     changed_when: false

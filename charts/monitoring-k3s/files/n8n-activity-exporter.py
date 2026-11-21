@@ -95,7 +95,7 @@ def loop():
             counts = collect()
             with LOCK:
                 STATE.update(ok=1, at=time.time(), counts=counts)
-        except (RuntimeError, OSError, ValueError, KeyError, TypeError):
+        except Exception:
             # Do not log response bodies, workflow metadata or API credentials.
             with LOCK:
                 STATE["ok"] = 0

@@ -1,4 +1,3 @@
-from collections.abc import Callable
 import copy
 import importlib.util
 from pathlib import Path
@@ -10,7 +9,7 @@ import pytest
 ROOT = Path(__file__).parents[1]
 
 
-def load(name: str, file: str):
+def load(name, file):
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / file)
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
@@ -22,7 +21,7 @@ p = load("entry_plan", "public-entry-failover-plan.py")
 REQUIRED = {"home": ["external-a", "external-b"], "vps": ["home-isp", "external-a"]}
 
 
-def batch(n: int, *, home: bool = True, vps: bool = True, now: int | None = None):
+def batch(n, home=True, vps=True, now=None):
     return {
         "round": n,
         "observations": [
@@ -74,7 +73,7 @@ def test_partition_never_silently_means_healthy_or_global_down():
         lambda b: b["observations"][0].update(checked_at=9999),
     ],
 )
-def test_missing_local_stale_future_hold(change: Callable[[dict[str, object]], object]):
+def test_missing_local_stale_future_hold(change):
     b = batch(1)
     change(b)
     r = p.plan(p.initial(["home", "vps"]), b, REQUIRED, 30)
@@ -84,7 +83,7 @@ def test_missing_local_stale_future_hold(change: Callable[[dict[str, object]], o
 def test_both_down_never_publish_empty():
     s = p.initial(["home", "vps"])
     for n in [1, 2, 3]:
-        r = p.plan(s, batch(n, home=False, vps=False), REQUIRED, n * 30)
+        r = p.plan(s, batch(n, False, False), REQUIRED, n * 30)
         s = r["state"]
     assert (
         s["published"] == ["home", "vps"] and r["observations"]["publication"] == "would_be_empty"

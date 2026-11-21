@@ -69,6 +69,6 @@ if __name__ == "__main__":
     except SystemExit:
         print("VPN_SUBSCRIPTION_PREPARE_FAILED")
         raise
-    except (OSError, ValueError):
+    except Exception:
         print("VPN_SUBSCRIPTION_PREPARE_FAILED")
         raise SystemExit(1)

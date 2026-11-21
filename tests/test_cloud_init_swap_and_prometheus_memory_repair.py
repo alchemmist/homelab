@@ -229,9 +229,9 @@ def test_admission_cache_propagation_is_bounded_and_verified(monkeypatch):
             {"requests": {"memory": "3Gi"}, "limits": {"memory": "8Gi"}},
         ]
     )
-    monkeypatch.setattr(PROM, "probe", lambda _sts: {})
+    monkeypatch.setattr(PROM, "probe", lambda sts: {})
     monkeypatch.setattr(
-        PROM, "kubectl", lambda *_args: {"spec": {"containers": [{"resources": next(responses)}]}}
+        PROM, "kubectl", lambda *args: {"spec": {"containers": [{"resources": next(responses)}]}}
     )
     monkeypatch.setattr(PROM.time, "sleep", lambda _: None)
     _, samples = PROM.wait_future_admission({})
@@ -239,11 +239,11 @@ def test_admission_cache_propagation_is_bounded_and_verified(monkeypatch):
 
 
 def test_admission_nonconvergence_is_failure(monkeypatch):
-    monkeypatch.setattr(PROM, "probe", lambda _sts: {})
+    monkeypatch.setattr(PROM, "probe", lambda sts: {})
     monkeypatch.setattr(
         PROM,
         "kubectl",
-        lambda *_args: {
+        lambda *args: {
             "spec": {
                 "containers": [
                     {"resources": {"requests": {"memory": "2Gi"}, "limits": {"memory": "3Gi"}}}

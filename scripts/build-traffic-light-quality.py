@@ -353,7 +353,7 @@ def panels():
                 ],
             )
         )
-    streaming = 'cnpg_dr_standbys{job="postgres-platform",pg_cluster="pg-common"}'
+    streaming = 'cnpg_pg_replication_streaming_replicas{job="postgres-platform",pg_cluster="pg-common"}'
     result.append(stat(934, "PG replicas", {"x": 4, "y": 12, "w": 2, "h": 2},
                        f"max({streaming} and (time() - timestamp({streaming}) < 90)) or vector(-2)",
                        "short", "Streaming standby count reported by the pg-common primary. Expected 1. No fresh primary telemetry is unknown, not zero. Replication is not a backup.",

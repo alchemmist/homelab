@@ -14,8 +14,8 @@ TABLE = "homelab_k3s_overlay_marks"
 OWNER = "homelab:k3s-overlay-marks:v1"
 
 
-def run(*args, stdin=None, ok=(0,)):
-    p = subprocess.run(args, input=stdin, text=True, capture_output=True, check=False)
+def run(*args, input=None, ok=(0,)):
+    p = subprocess.run(args, input=input, text=True, capture_output=True, check=False)
     if p.returncode not in ok:
         raise RuntimeError(p.stderr.strip())
     return p
@@ -129,7 +129,7 @@ def main():
     batch = rules(args.interface, args.pod_cidr, exists)
     expected = normalize({"nftables": desired(args.interface, args.pod_cidr)})
     # Read-only kernel syntax/capability check, even when already converged.
-    run("nft", "--check", "-f", "-", stdin=batch)
+    run("nft", "--check", "-f", "-", input=batch)
     needed = normalize(before) != expected
     if needed and args.apply:
         directory = Path("/var/lib/homelab-k3s-overlay-marks") / datetime.datetime.now(
@@ -139,7 +139,7 @@ def main():
         (directory / "before.json").write_text(json.dumps(before, indent=2) + "\n")
         (directory / "before.nft").write_text(before_text)
         # Delete/recreate only the owned table in ONE atomic netlink transaction.
-        run("nft", "-f", "-", stdin=batch)
+        run("nft", "-f", "-", input=batch)
         after = json.loads(run("nft", "-j", "list", "table", "inet", TABLE).stdout)
         (directory / "after.json").write_text(json.dumps(after, indent=2) + "\n")
         if normalize(after) != expected:

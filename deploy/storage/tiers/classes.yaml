@@ -1,10 +1,9 @@
----
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: local-hdd
   annotations:
-    storageclass.kubernetes.io/is-default-class: "false"
+    storageclass.kubernetes.io/is-default-class: 'false'
     defaultVolumeType: local
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
 provisioner: rancher.io/local-path
@@ -14,18 +13,17 @@ reclaimPolicy: Retain
 volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: false
 allowedTopologies:
-  - matchLabelExpressions:
-      - key: kubernetes.io/hostname
-        values:
-          - socrat-5
-...
+- matchLabelExpressions:
+  - key: kubernetes.io/hostname
+    values:
+    - socrat-5
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: local-ssd
   annotations:
-    storageclass.kubernetes.io/is-default-class: "false"
+    storageclass.kubernetes.io/is-default-class: 'false'
     defaultVolumeType: local
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
 provisioner: rancher.io/local-path
@@ -35,8 +33,7 @@ reclaimPolicy: Retain
 volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: false
 allowedTopologies:
-  - matchLabelExpressions:
-      - key: kubernetes.io/hostname
-        values:
-          - socrat-5
-...
+- matchLabelExpressions:
+  - key: kubernetes.io/hostname
+    values:
+    - socrat-5

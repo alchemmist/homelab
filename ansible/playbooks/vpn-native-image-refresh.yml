@@ -8,18 +8,13 @@
   vars:
     ansible_host: socrat-2
     ansible_port: 2222
-    ansible_ssh_common_args: >-
-      -o Hostname=10.250.0.2 -o ProxyJump=socrat-4
-      -o StrictHostKeyChecking=yes
+    ansible_ssh_common_args: '-o Hostname=10.250.0.2 -o ProxyJump=socrat-4 -o StrictHostKeyChecking=yes'
     phase: '{{ vpn_native_refresh_phase | default("stage") }}'
     root: /opt/homelab-vpn-failover
     candidate: /opt/homelab-vpn-failover/staged-20261113
     recovery: /var/lib/homelab-recovery/20261113-vpn-native-image
-    old_image: >-
-      ghcr.io/mhsanaei/3x-ui@sha256:6c7e73c5bc4b6d7d70866616f78d6c9866b4904defad3077c1e2b5c1c89c2ec1
-    image: >-
-      {{ (lookup("file", playbook_dir + "/../../charts/x-ui/values.yaml")
-      | from_yaml).instances.primary.image }}
+    old_image: ghcr.io/mhsanaei/3x-ui@sha256:6c7e73c5bc4b6d7d70866616f78d6c9866b4904defad3077c1e2b5c1c89c2ec1
+    image: '{{ (lookup("file", playbook_dir + "/../../charts/x-ui/values.yaml") | from_yaml).instances.primary.image }}'
   tasks:
     - name: Refuse an unknown phase or an unconfirmed promotion
       ansible.builtin.assert:
@@ -68,15 +63,11 @@
             state: directory
             mode: '0700'
         - name: Copy only the already-cached pinned image into an isolated candidate
-          ansible.builtin.command: >-
-            python3 {{ recovery }}/prepare_runtime.py
-            {{ image }} {{ candidate }}/primary
+          ansible.builtin.command: python3 {{ recovery }}/prepare_runtime.py {{ image }} {{ candidate }}/primary
           async: 240
           poll: 3
         - name: Validate candidate on copied DB/certs in isolated network namespace
-          ansible.builtin.command: >-
-            python3 {{ recovery }}/smoke_test.py
-            --runtime-root {{ candidate }}
+          ansible.builtin.command: python3 {{ recovery }}/smoke_test.py --runtime-root {{ candidate }}
           async: 180
           poll: 3
           register: smoke
@@ -94,7 +85,5 @@
             dest: '{{ recovery }}/promote.py'
             mode: '0700'
         - name: Atomic locked directory exchange; no unit or workload restart
-          ansible.builtin.command: >-
-            python3 {{ recovery }}/promote.py --candidate {{ candidate }}
-            --old-image {{ old_image }} --new-image {{ image }}
+          ansible.builtin.command: python3 {{ recovery }}/promote.py --candidate {{ candidate }} --old-image {{ old_image }} --new-image {{ image }}
 ...

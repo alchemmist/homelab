@@ -187,7 +187,7 @@ def main():
     args = parser.parse_args()
     try:
         verify(args)
-    except (RuntimeError, ValueError, KeyError, TypeError, OSError, subprocess.SubprocessError):
+    except Exception:
         # HTTP/key-info errors may contain a token in their URL. Never echo them.
         raise SystemExit(
             "Read-only gateway verification failed; review Git ownership and existing metrics prerequisites privately. No repair or fallback attempted."

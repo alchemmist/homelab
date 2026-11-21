@@ -14,7 +14,7 @@ RESOURCE_NAMES = ("cpu", "memory", "ephemeral-storage")
 def check(namespace, kubectl, kubeconfig, profile, owner_name):
     command = [kubectl, "--kubeconfig", kubeconfig, "--request-timeout=30s"]
     selector = {"resource-policy.socrat.io/probe": "preserved"}
-    selector.update(dict.fromkeys(profile.get("nodeSelector", {}), "previous"))
+    selector.update({key: "previous" for key in profile.get("nodeSelector", {})})
     containers = []
     for name in profile["containers"]:
         containers.append(

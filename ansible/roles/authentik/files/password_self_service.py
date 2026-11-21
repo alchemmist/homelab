@@ -4,7 +4,6 @@
 import argparse
 import json
 import os
-from collections.abc import Mapping
 from pathlib import Path
 import socket
 import subprocess
@@ -95,7 +94,7 @@ def main():
     os.umask(0o077)
     journal = Path(tempfile.mkdtemp(prefix="password-self-service-", dir=root))
 
-    def api(method: str, path: str, data: Mapping[str, object] | None = None):
+    def api(method, path, data=None):
         if method != "GET":
             assert args.apply and method == "POST", "Additive creation only"
         request = urllib.request.Request(
@@ -112,7 +111,7 @@ def main():
             ).write_text(json.dumps({"path": path, "result": result}, indent=2))
         return result
 
-    def all_rows(path: str):
+    def all_rows(path):
         data = api("GET", path + "?page_size=100")
         assert not data.get("next"), "Pagination requires review"
         return data["results"]
@@ -130,7 +129,7 @@ def main():
     }
     (journal / "preimage.json").write_text(json.dumps(snapshot, indent=2))
 
-    def exact(path: str, name: str):
+    def exact(path, name):
         matches = [r for r in snapshot[path] if r.get("name") == name]
         assert len(matches) == 1, "Missing/ambiguous native object: " + name
         return matches[0]
@@ -154,7 +153,7 @@ def main():
         print("GET-only preflight; receipt:", journal)
         return
 
-    def ensure(path: str, key: str, value: str, spec: Mapping[str, object]):
+    def ensure(path, key, value, spec):
         matches = [r for r in all_rows(path) if r.get(key) == value]
         assert len(matches) <= 1, "Ambiguous owned object"
         if matches:

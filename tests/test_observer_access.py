@@ -466,7 +466,7 @@ class BootstrapSafetyTests(unittest.TestCase):
             def __init__(self, credentials):
                 pass
 
-            def call(self, system, method, path, body=None) -> None:
+            def call(self, system, method, path, body=None):
                 outer.calls.append((system, method, path))
                 converge(
                     outer.state, [{"system": system, "method": method, "path": path, "body": body}]
@@ -478,7 +478,7 @@ class BootstrapSafetyTests(unittest.TestCase):
         with (
             patch.object(self.bootstrap, "Client", self.fake_client),
             patch.object(
-                self.bootstrap, "snapshot", side_effect=lambda *_args: copy.deepcopy(self.state)
+                self.bootstrap, "snapshot", side_effect=lambda *args: copy.deepcopy(self.state)
             ),
             patch(
                 "sys.argv",
@@ -570,7 +570,7 @@ class BootstrapSafetyTests(unittest.TestCase):
 
     def test_failed_write_leaves_uncertain_stop_and_no_blind_retry(self):
         approved = self.run_main()["plan_hash"]
-        self.fake_client.call = lambda *_args: (_ for _ in ()).throw(
+        self.fake_client.call = lambda *args: (_ for _ in ()).throw(
             RuntimeError("simulated uncertain write")
         )
         with self.assertRaisesRegex(RuntimeError, "uncertain"):
@@ -589,7 +589,7 @@ class LegacyChatMigrationTests(unittest.TestCase):
         self.migration = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.migration)
 
-        def binding(pk, group) -> dict[str, object]:
+        def binding(pk, group):
             return {
                 "pk": pk,
                 "target": "chat-app",
@@ -629,7 +629,7 @@ class LegacyChatMigrationTests(unittest.TestCase):
         outer = self
 
         class FakeClient:
-            def rows(self, path) -> object:
+            def rows(self, path):
                 if path.startswith("core/groups/"):
                     return copy.deepcopy(outer.state["groups"])
                 if path.startswith("core/applications/"):
@@ -640,7 +640,7 @@ class LegacyChatMigrationTests(unittest.TestCase):
                     return copy.deepcopy(outer.state["users"])
                 raise AssertionError("Unexpected API read")
 
-            def call(self, system, method, path, body=None) -> object:
+            def call(self, system, method, path, body=None):
                 outer.calls.append((system, method, path, body))
                 if method == "POST" and path == "core/groups/":
                     outer.state["groups"].append({"pk": "new-chat-group", "users": [], **body})
@@ -661,7 +661,6 @@ class LegacyChatMigrationTests(unittest.TestCase):
                     )
                 else:
                     raise AssertionError("Unexpected API mutation")
-                return None
 
         self.client = FakeClient()
 

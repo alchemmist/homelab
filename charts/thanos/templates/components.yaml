@@ -1,6 +1,4 @@
 {{- range $name, $component := .Values.components }}
-{{- $five := has $name (list "thanos-store-5m" "thanos-compactor-5m") }}
-{{- $shared := and $five (has $.Values.fivePhase (list "shared" "shared-hold")) }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -9,7 +7,7 @@ metadata:
     app: {{ $name }}
     app.kubernetes.io/part-of: thanos
 spec:
-  replicas: {{ if and $five (eq $.Values.fivePhase "cold") }}0{{ else if $component.spreadQuery }}2{{ else }}1{{ end }}
+  replicas: {{ if $component.spreadQuery }}2{{ else }}1{{ end }}
   selector:
     matchLabels:
       app: {{ $name }}
@@ -44,8 +42,6 @@ spec:
           labelSelector:
             matchLabels:
               app: {{ $name }}
-      {{- else if $shared }}
-{{ include "thanos.fivePlacement" . | indent 6 }}
       {{- else }}
       nodeSelector:
         kubernetes.io/hostname: {{ required (printf "components.%s.node is required for pinned components" $name) $component.node | quote }}
@@ -84,21 +80,9 @@ spec:
               drop:
                 - ALL
           volumeMounts:
-            {{- range $m := $component.volumeMounts }}
-            {{- if and $shared (eq $m.name "shelf") }}
-            - name: shelf
-              mountPath: {{ $m.mountPath }}
-              subPath: active
-              readOnly: {{ eq $name "thanos-store-5m" }}
-            {{- else }}{{ toYaml (list $m) | nindent 12 }}{{- end }}
-            {{- end }}
+            {{- toYaml $component.volumeMounts | nindent 12 }}
       volumes:
-        {{- range $v := $component.volumes }}
-        {{- if and $shared (eq $v.name "shelf") }}
-        - name: shelf
-          persistentVolumeClaim: {claimName: thanos-5m-s1-candidate}
-        {{- else }}{{ toYaml (list $v) | nindent 8 }}{{- end }}
-        {{- end }}
+        {{- toYaml $component.volumes | nindent 8 }}
 ---
 apiVersion: v1
 kind: Service

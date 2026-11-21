@@ -105,7 +105,7 @@ def main():
         wg("set", "wg-socrat", "peer", PEER, "endpoint", target)
         # Establish the symmetric authenticated path so peer roaming cannot
         # silently leave the far end pointing at the previous transport.
-        for _attempt in range(3):
+        for attempt in range(3):
             subprocess.run(
                 ["ping", "-n", "-c", "10", "-i", "0.2", "-W", "1", "10.250.0.3"],
                 stdout=subprocess.DEVNULL,

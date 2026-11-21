@@ -7,9 +7,9 @@
   any_errors_fatal: true
   become: true
   vars: &connection
-    ansible_host: "{{ inventory_hostname }}"
-    ansible_port: "{{ 2223 if inventory_hostname == \"socrat-1\" else 2222 }}"
-    ansible_ssh_common_args: -o ProxyJump=none -o StrictHostKeyChecking=yes
+    ansible_host: '{{ inventory_hostname }}'
+    ansible_port: '{{ 2223 if inventory_hostname == "socrat-1" else 2222 }}'
+    ansible_ssh_common_args: '-o ProxyJump=none -o StrictHostKeyChecking=yes'
     recovery_root: /var/lib/homelab-recovery/20261112-coredns-placement
     manifest_path: /var/lib/rancher/k3s/server/manifests/homelab-coredns-ha.yaml
     expected_preimage: 5da0bff4778dcad486884a25e4afd8f3515d53a26d0ad172f50691a212e75130
@@ -32,39 +32,39 @@
           - patch[2] == {'op':'replace','path':'/spec/template/spec/affinity','value':candidate.spec.template.spec.affinity}
           - patch[3] == {'op':'replace','path':'/spec/strategy','value':candidate.spec.strategy}
       vars:
-        before: "{{ lookup(\"file\", coredns_recovery_private_dir + \"/coredns-live-before.json\") | from_json }}"
-        candidate: "{{ lookup(\"file\", coredns_recovery_private_dir + \"/candidate.json\") | from_json }}"
-        patch: "{{ lookup(\"file\", coredns_recovery_private_dir + \"/patch.json\") | from_json }}"
+        before: '{{ lookup("file", coredns_recovery_private_dir + "/coredns-live-before.json") | from_json }}'
+        candidate: '{{ lookup("file", coredns_recovery_private_dir + "/candidate.json") | from_json }}'
+        patch: '{{ lookup("file", coredns_recovery_private_dir + "/patch.json") | from_json }}'
       no_log: true
     - ansible.builtin.stat:
-        path: "{{ manifest_path }}"
+        path: '{{ manifest_path }}'
         checksum_algorithm: sha256
       register: preimage
     - ansible.builtin.stat:
-        path: "{{ recovery_root }}"
+        path: '{{ recovery_root }}'
       register: receipt
     - ansible.builtin.assert:
         that:
           - preimage.stat.checksum == expected_preimage
           - not receipt.stat.exists
-        fail_msg: "STOP: preimage drift or previous attempt; inspect before retry."
+        fail_msg: 'STOP: preimage drift or previous attempt; inspect before retry.'
     - ansible.builtin.file:
-        path: "{{ recovery_root }}"
+        path: '{{ recovery_root }}'
         state: directory
         owner: root
         group: root
-        mode: "0700"
+        mode: '0700'
     - ansible.builtin.copy:
-        src: "{{ manifest_path }}"
-        dest: "{{ recovery_root }}/before.yaml"
+        src: '{{ manifest_path }}'
+        dest: '{{ recovery_root }}/before.yaml'
         remote_src: true
-        mode: "0600"
+        mode: '0600'
     - ansible.builtin.copy:
-        src: "{{ coredns_recovery_private_dir }}/candidate.json"
-        dest: "{{ recovery_root }}/candidate.json"
+        src: '{{ coredns_recovery_private_dir }}/candidate.json'
+        dest: '{{ recovery_root }}/candidate.json'
         owner: root
         group: root
-        mode: "0600"
+        mode: '0600'
 
 - name: Apply only the UID and full-spec compare-and-swap placement patch
   hosts: socrat-0
@@ -84,7 +84,7 @@
           - coredns
           - --type=json
           - -p
-          - "{{ lookup(\"file\", coredns_recovery_private_dir + \"/patch.json\") }}"
+          - '{{ lookup("file", coredns_recovery_private_dir + "/patch.json") }}'
       no_log: true
       changed_when: true
 

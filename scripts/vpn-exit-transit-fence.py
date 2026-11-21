@@ -11,7 +11,6 @@ import os
 import socket
 import subprocess
 from pathlib import Path
-from typing import Protocol
 
 ROOT = Path("/var/lib/homelab-vpn-transit/exit-fence")
 TABLE = "homelab_msk_exit_fence"
@@ -24,18 +23,14 @@ RULES = """table inet homelab_msk_exit_fence {
 """
 
 
-class _Flag(Protocol):
-    def __bool__(self) -> bool: ...
-
-
-def command(args: list[str]):
+def command(args):
     return subprocess.check_output(args, text=True, stderr=subprocess.PIPE)
 
 
 def projection():
     value = json.loads(command(["nft", "-j", "list", "table", "inet", TABLE]))
 
-    def clean(v: object):
+    def clean(v):
         if isinstance(v, list):
             return [clean(x) for x in v if not isinstance(x, dict) or "metainfo" not in x]
         if isinstance(v, dict):
@@ -45,7 +40,7 @@ def projection():
     return clean(value)
 
 
-def run(boot: _Flag = False):
+def run(boot=False):
     assert os.geteuid() == 0 and socket.gethostname() == "socrat-2"
     os.umask(0o077)
     route = json.loads(command(["ip", "-j", "route", "get", "91.189.82.238"]))

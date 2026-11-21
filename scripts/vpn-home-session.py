@@ -20,24 +20,9 @@ import time
 import uuid
 from contextlib import closing
 from pathlib import Path
-from typing import Protocol
 
 
-class _Flag(Protocol):
-    def __bool__(self) -> bool: ...
-
-
-class _Session(Protocol):
-    state: Path
-    database: Path
-    credentials: dict[str, dict[str, str]]
-
-    def call(self, method: str, path: str, body: object = None) -> object: ...
-
-    def cleanup(self) -> None: ...
-
-
-def load(name: str, filename: str):
+def load(name, filename):
     spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name(filename))
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
@@ -50,7 +35,7 @@ backend = load("backend", "vpn-backend-enforce.py")
 h = native.h
 
 
-def restore(state: Path):
+def restore(state):
     if os.geteuid() != 0 or socket.gethostname() != "socrat-2":
         raise ValueError("Requires VPS root")
     s = native.NativeSession(state)
@@ -68,7 +53,7 @@ def restore(state: Path):
     return s
 
 
-def finish(s: _Session):
+def finish(s):
     marker = s.state / "home-fixture-private.json"
     try:
         if marker.exists():
@@ -107,13 +92,7 @@ def finish(s: _Session):
     return proof
 
 
-def prepare(
-    state: Path,
-    approval: str,
-    endpoint: str = "91.189.82.238",
-    include_udp: _Flag = False,
-    include_all_vless: _Flag = False,
-):
+def prepare(state, approval, endpoint="91.189.82.238", include_udp=False, include_all_vless=False):
     import ipaddress
 
     if not ipaddress.ip_address(endpoint).is_global:
@@ -183,19 +162,19 @@ def prepare(
                 server_public = subprocess.check_output(
                     ["wg", "pubkey"], input=server["secretKey"] + "\n", text=True
                 ).strip()
-                settings = {
-                    "secretKey": private,
-                    "address": [candidate],
-                    "peers": [
+                settings = dict(
+                    secretKey=private,
+                    address=[candidate],
+                    peers=[
                         {
                             "publicKey": server_public,
                             "endpoint": endpoint + ":" + str(port),
                             "allowedIPs": ["0.0.0.0/0"],
                         }
                     ],
-                    "noKernelTun": True,
-                    "mtu": 1420,
-                }
+                    noKernelTun=True,
+                    mtu=1420,
+                )
                 udp_settings[label] = settings
         s.call("POST", "/clients/add", {"client": client, "inboundIds": inbound_ids})
         reality = target.vless_client(json.loads(rows[32053]["stream_settings"]), identifier, 1080)

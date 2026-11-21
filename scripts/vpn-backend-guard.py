@@ -21,8 +21,8 @@ TABLE = "homelab_xui_backend_guard"
 OWNER = "homelab issue83 public backend guard v1"
 
 
-def run(args: list[str], stdin_text: str | None = None):
-    r = subprocess.run(args, capture_output=True, text=True, timeout=20, input=stdin_text)
+def run(args, **kwargs):
+    r = subprocess.run(args, capture_output=True, text=True, timeout=20, **kwargs)
     if r.returncode:
         raise RuntimeError("Backend guard operation failed; inspect private receipts")
     return r.stdout
@@ -40,7 +40,7 @@ def rules():
 """
 
 
-def stable(value: object):
+def stable(value):
     if isinstance(value, dict):
         return {
             k: stable(v)
@@ -108,7 +108,7 @@ def expected():
     ]
 
 
-def validate(objects: object):
+def validate(objects):
     data = stable(objects)
     for obj in data:
         if "table" in obj:
@@ -177,17 +177,17 @@ def plan():
     }
 
 
-def apply(state: Path, approval: str):
+def apply(state, approval):
     require_host()
     wanted = plan()
     if h.digest(wanted) != approval or read_table() is not None:
         raise ValueError("Fresh empty-table approval required")
-    run(["nft", "--check", "-f", "-"], stdin_text=rules())
+    run(["nft", "--check", "-f", "-"], input=rules())
     h.save(state / "backend-guard-before.json", None)
     h.save(state / "backend-guard-uncertain.json", {"approval": approval, "plan": wanted})
     if plan() != wanted:
         raise ValueError("Preimage drift")
-    run(["nft", "-f", "-"], stdin_text=rules())
+    run(["nft", "-f", "-"], input=rules())
     after = read_table()
     if after is None:
         raise RuntimeError("Guard not present")
@@ -197,7 +197,7 @@ def apply(state: Path, approval: str):
     return wanted
 
 
-def finalize_readback(state: Path, approval: str):
+def finalize_readback(state, approval):
     require_host()
     marker = json.loads((state / "backend-guard-uncertain.json").read_text())
     if marker["approval"] != approval or h.digest(marker["plan"]) != approval:
@@ -223,8 +223,8 @@ def finalize_readback(state: Path, approval: str):
 def ensure():
     require_host()
     if read_table() is None:
-        run(["nft", "--check", "-f", "-"], stdin_text=rules())
-        run(["nft", "-f", "-"], stdin_text=rules())
+        run(["nft", "--check", "-f", "-"], input=rules())
+        run(["nft", "-f", "-"], input=rules())
         if read_table() is None:
             raise RuntimeError("Boot guard missing")
     return {"owned_guard_present": True}
@@ -246,7 +246,7 @@ WantedBy=multi-user.target
 """
 
 
-def persist(state: Path):
+def persist(state):
     require_host()
     if read_table() is None:
         raise ValueError("Verified live guard required before persistence")
@@ -258,7 +258,7 @@ def persist(state: Path):
         .read_bytes(),
         Path("/etc/systemd/system/homelab-xui-backend-guard.service"): UNIT.encode(),
     }
-    for path, _content in files.items():
+    for path, content in files.items():
         h.check_path(path)
         if path.exists():
             raise ValueError("Persistence path already exists; inspect instead of overwriting")

@@ -59,7 +59,7 @@ def inputs():
                 "dns_name": None,
             },
         ],
-        "review": dict.fromkeys(nb.REVIEWS, True),
+        "review": {k: True for k in nb.REVIEWS},
     }
 
 
@@ -516,7 +516,7 @@ class UpstreamContractTests(unittest.TestCase):
         )
         schemas = yaml.safe_load(path.read_text())["components"]["schemas"]
 
-        def check(name, body) -> None:
+        def check(name, body):
             schema = {"$ref": "#/components/schemas/" + name, "components": {"schemas": schemas}}
             jsonschema.Draft4Validator(schema).validate(body)
 

@@ -5,7 +5,7 @@ metadata:
   name: alertmanager
   namespace: argocd
   finalizers:
-    - resources-finalizer.argocd.argoproj.io
+  - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
@@ -15,8 +15,8 @@ spec:
     helm:
       releaseName: kube-prometheus-stack
       valueFiles:
-        - alert-graphs.values.yaml
-        - ../../deploy/storage/alertmanager-nfs/cutover.values.yaml
+      - alert-graphs.values.yaml
+      - ../../deploy/storage/alertmanager-nfs/cutover.values.yaml
       parameters: []
   destination:
     namespace: cattle-monitoring-system
@@ -26,5 +26,5 @@ spec:
       prune: false
       selfHeal: true
     syncOptions:
-      - ServerSideApply=true
+    - ServerSideApply=true
 ...

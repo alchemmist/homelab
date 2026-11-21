@@ -180,15 +180,7 @@ def step(action):
 
 def background(action):
     try:step(action)
-    except (
-        OSError,
-        ValueError,
-        KeyError,
-        TypeError,
-        AssertionError,
-        sqlite3.Error,
-        subprocess.SubprocessError,
-    ) as ex:
+    except Exception as ex:
         c=current()
         if c and c['state']!='publishing':save(c,'blocked','Stage '+action+' failed: '+type(ex).__name__+' '+str(ex)[:250])
         print('stage failure',action,type(ex).__name__,flush=True)

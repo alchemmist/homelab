@@ -9,7 +9,7 @@ grafana:
       repository: grafana/grafana-image-renderer
       tag: v5.12.10
       sha: "a7970b826f6e477461e02bf5463d92634e9ad27d525e4e50296978a2e592d2d7"
-    # 1↔5 encrypted relay passed loss/bulk acceptance; move only the renderer.
+    #1↔5 encrypted relay passed loss/bulk acceptance; move only the renderer.
     nodeSelector:
       kubernetes.io/hostname: socrat-5
     securityContext:

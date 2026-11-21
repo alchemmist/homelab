@@ -12,14 +12,11 @@
         dest: /tmp/bootstrap-wiki-runtime.py
         owner: root
         group: root
-        mode: "0700"
+        mode: '0700'
 
     - name: Bootstrap isolated runtime prerequisites
       ansible.builtin.command:
-        argv: >-
-          {{ ['python3', '/tmp/bootstrap-wiki-runtime.py']
-          + (['--skip-legacy-git']
-          if wiki_runtime_skip_legacy_git | bool else []) }}
+        argv: "{{ ['python3', '/tmp/bootstrap-wiki-runtime.py'] + (['--skip-legacy-git'] if wiki_runtime_skip_legacy_git | bool else []) }}"
       register: wiki_runtime_bootstrap
       changed_when: "'created' in wiki_runtime_bootstrap.stdout"
 ...

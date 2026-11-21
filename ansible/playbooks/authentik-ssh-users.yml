@@ -54,7 +54,7 @@
           block:
             - name: Refuse adoption of existing unbound Linux accounts before any writes
               ansible.builtin.script:
-                cmd: ../files/verify_authentik_ssh_binding.py {{ item.name | quote }} {{ item.authentik_uuid | quote }}
+                cmd: "../files/verify_authentik_ssh_binding.py {{ item.name | quote }} {{ item.authentik_uuid | quote }}"
                 executable: python3
               become: true
               changed_when: false
@@ -68,16 +68,16 @@
                 state: directory
                 owner: root
                 group: root
-                mode: "0700"
+                mode: '0700'
               become: true
 
             - name: Reserve immutable host bindings before creating accounts
               ansible.builtin.copy:
                 content: "{{ {'name': item.name, 'uuid': item.authentik_uuid} | to_json }}\n"
-                dest: /var/lib/homelab-authentik-ssh-bindings/{{ item.name }}.json
+                dest: "/var/lib/homelab-authentik-ssh-bindings/{{ item.name }}.json"
                 owner: root
                 group: root
-                mode: "0600"
+                mode: '0600'
                 force: false
               become: true
               loop: "{{ homelab_authentik_ssh_payload.by_host[inventory_hostname] }}"

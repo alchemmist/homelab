@@ -26,9 +26,7 @@
     that:
       - wiki_editor_gateway_values.privateGui.enabled | bool
       - wiki_editor_gateway_values.hostNetwork | bool
-      - wiki_editor_gateway_nodes
-        | difference(wiki_editor_gateway_values.privateGui.nodes
-          | map(attribute='nodeName') | list) | length == 0
+      - wiki_editor_gateway_nodes | difference(wiki_editor_gateway_values.privateGui.nodes | map(attribute='nodeName') | list) | length == 0
 
 - name: Require gateway authentication secret
   ansible.builtin.command:
@@ -63,12 +61,7 @@
 - name: Issue private gateway certificate
   ansible.builtin.command:
     argv: [kubectl, --kubeconfig, "{{ wiki_editor_kubeconfig }}", apply, -f, "-"]
-    stdin: >-
-      {{ {'apiVersion': 'cert-manager.io/v1', 'kind': 'Certificate',
-         'metadata': {'name': wiki_editor_tls_secret, 'namespace': wiki_editor_gateway_namespace},
-         'spec': {'secretName': wiki_editor_tls_secret, 'dnsNames': [wiki_editor_host],
-                  'issuerRef': {'name': wiki_editor_cluster_issuer, 'kind': 'ClusterIssuer'}}}
-         | to_nice_yaml }}
+    stdin: "{{ {'apiVersion': 'cert-manager.io/v1', 'kind': 'Certificate', 'metadata': {'name': wiki_editor_tls_secret, 'namespace': wiki_editor_gateway_namespace}, 'spec': {'secretName': wiki_editor_tls_secret, 'dnsNames': [wiki_editor_host], 'issuerRef': {'name': wiki_editor_cluster_issuer, 'kind': 'ClusterIssuer'}}} | to_nice_yaml }}"
   register: wiki_editor_cert
   changed_when: "'created' in wiki_editor_cert.stdout or 'configured' in wiki_editor_cert.stdout"
 
@@ -87,22 +80,12 @@
 
 - name: Preserve other private virtual hosts
   ansible.builtin.set_fact:
-    wiki_editor_gateway_hosts: >-
-      {{ wiki_editor_gateway_values.privateGui.extraVirtualHosts | default([])
-         | rejectattr('host', 'equalto', wiki_editor_host) | list }}
+    wiki_editor_gateway_hosts: "{{ wiki_editor_gateway_values.privateGui.extraVirtualHosts | default([]) | rejectattr('host', 'equalto', wiki_editor_host) | list }}"
   no_log: true
 
 - name: Add private wiki virtual hosts
   ansible.builtin.set_fact:
-    wiki_editor_gateway_hosts: >-
-      {{ wiki_editor_gateway_hosts + [{'name': 'wiki-' ~ item, 'nodeName': item,
-         'host': wiki_editor_host, 'tlsSecret': wiki_editor_tls_secret,
-         'resolver': wiki_editor_cluster_dns.stdout,
-         'upstream': (wiki_editor_runtime_upstream if wiki_editor_runtime_enabled | bool
-                      else wiki_editor_static_upstream),
-         'allowedCIDRs': ['10.250.0.0/24']}
-        | combine({} if wiki_editor_runtime_enabled | bool
-                   else {'editorUpstream': wiki_editor_upstream})] }}
+    wiki_editor_gateway_hosts: "{{ wiki_editor_gateway_hosts + [{'name': 'wiki-' ~ item, 'nodeName': item, 'host': wiki_editor_host, 'tlsSecret': wiki_editor_tls_secret, 'resolver': wiki_editor_cluster_dns.stdout, 'upstream': (wiki_editor_runtime_upstream if wiki_editor_runtime_enabled | bool else wiki_editor_static_upstream), 'allowedCIDRs': ['10.250.0.0/24']} | combine({} if wiki_editor_runtime_enabled | bool else {'editorUpstream': wiki_editor_upstream})] }}"
   loop: "{{ wiki_editor_gateway_nodes }}"
   no_log: true
 
@@ -121,14 +104,7 @@
 - name: Render merged values
   ansible.builtin.copy:
     dest: "{{ wiki_editor_directory }}/values.yaml"
-    content: >-
-      {{ wiki_editor_gateway_values
-         | combine({'privateGui': {'extraVirtualHosts': wiki_editor_gateway_hosts,
-                                  'editorAuthSecret': (wiki_editor_gateway_auth_secret
-                                                       if (wiki_editor_gateway_hosts
-                                                           | selectattr('editorUpstream', 'defined')
-                                                           | list | length > 0) else '')}},
-                   recursive=true) | to_nice_yaml }}
+    content: "{{ wiki_editor_gateway_values | combine({'privateGui': {'extraVirtualHosts': wiki_editor_gateway_hosts, 'editorAuthSecret': (wiki_editor_gateway_auth_secret if (wiki_editor_gateway_hosts | selectattr('editorUpstream', 'defined') | list | length > 0) else '')}}, recursive=true) | to_nice_yaml }}"
     mode: "0600"
   no_log: true
 

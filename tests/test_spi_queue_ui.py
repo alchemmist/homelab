@@ -8,87 +8,10 @@ from pathlib import Path
 import subprocess
 import threading
 import unittest
-from typing import NotRequired, TypedDict
 from unittest.mock import Mock, patch
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-
-
-class _Labels(TypedDict, total=False):
-    matchLabels: dict[str, str]
-
-
-class _IpBlock(TypedDict):
-    cidr: str
-
-
-class _Peer(TypedDict, total=False):
-    podSelector: _Labels
-    ipBlock: _IpBlock
-
-
-_NetworkRule = TypedDict(
-    "_NetworkRule",
-    {
-        "from": NotRequired[list[_Peer]],
-        "to": NotRequired[list[_Peer]],
-        "ports": NotRequired[list[dict[str, object]]],
-    },
-)
-
-
-class _HttpRule(TypedDict):
-    host: str
-
-
-class _VolumeMount(TypedDict):
-    mountPath: str
-
-
-class _SecretRef(TypedDict):
-    secretName: str
-
-
-class _Volume(TypedDict):
-    secret: _SecretRef
-
-
-class _Container(TypedDict, total=False):
-    image: str
-    env: list[dict[str, object]]
-    volumeMounts: list[_VolumeMount]
-
-
-class _PodSpec(TypedDict, total=False):
-    automountServiceAccountToken: bool
-    nodeSelector: dict[str, str]
-    containers: list[_Container]
-    volumes: list[_Volume]
-
-
-class _Metadata(TypedDict):
-    name: str
-    annotations: NotRequired[dict[str, str]]
-
-
-class _Template(TypedDict):
-    spec: _PodSpec
-
-
-class _Spec(TypedDict, total=False):
-    rules: list[_HttpRule]
-    template: _Template
-    ingress: list[_NetworkRule]
-    egress: list[_NetworkRule]
-
-
-class _Manifest(TypedDict, total=False):
-    kind: str
-    metadata: _Metadata
-    spec: _Spec
-
-
 spec = importlib.util.spec_from_file_location(
     "queue_web", ROOT / "charts/spi-triage/ui/queue_web.py"
 )
@@ -243,9 +166,9 @@ class QueueHelmTests(unittest.TestCase):
                 str(ROOT / "charts/spi-triage/values-off-live.yaml"),
             ]
         )
-        docs: list[_Manifest] = list(yaml.safe_load_all(raw))
+        docs = list(yaml.safe_load_all(raw))
 
-        def get(kind, name) -> _Manifest:
+        def get(kind, name):
             return next(
                 d for d in docs if d and d["kind"] == kind and d["metadata"]["name"] == name
             )

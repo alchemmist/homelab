@@ -1,6 +1,6 @@
 ---
 homelab_private_dns_interface: wg-socrat
-homelab_private_dns_listen_address: ""
+homelab_private_dns_listen_address: ''
 homelab_private_dns_port: 53
 homelab_private_dns_records: []
 homelab_private_dns_user: homelab-dns

@@ -28,7 +28,7 @@ backup = load("netbird_backup", "netbird-backup.py")
 
 
 def control_inputs():
-    review = dict.fromkeys(nb.REVIEWS, False)
+    review = {key: False for key in nb.REVIEWS}
     for key in nb.CONTROL_REVIEWS:
         review[key] = True
     return {
@@ -241,7 +241,7 @@ class ControlPlaneTests(unittest.TestCase):
                         "login_group": "pilot-login",
                         "routing_peers": [],
                         "resources": [],
-                        "review": dict.fromkeys(nb.REVIEWS, True),
+                        "review": {key: True for key in nb.REVIEWS},
                     }
                 )
             )

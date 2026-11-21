@@ -1,4 +1,3 @@
-from collections.abc import Iterable, Sequence
 import importlib.util
 import io
 import json
@@ -25,7 +24,7 @@ with patch.dict(sys.modules, {"dashboard_descriptions": DESCRIPTIONS}):
 
 
 class RancherDashboardFilteringTest(unittest.TestCase):
-    def render(self, resources: Sequence[object], allowed: Iterable[str] = ()):
+    def render(self, resources, allowed=()):
         output = io.StringIO()
         with (
             patch.object(RENDERER, "RANCHER_DASHBOARD_UIDS", set(allowed)),

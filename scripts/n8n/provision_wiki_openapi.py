@@ -97,7 +97,7 @@ def sync_workflow(worker_token):
     mapping["githubApi"] = blog["githubApi"]
     workflow = json.loads((BASE / "docs/n8n/wiki-openapi/workflow.json").read_text())
     for node in workflow["nodes"]:
-        for kind, _cred in list(node.get("credentials", {}).items()):
+        for kind, cred in list(node.get("credentials", {}).items()):
             node["credentials"][kind] = mapping[kind]
     existing = [
         item

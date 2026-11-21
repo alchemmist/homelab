@@ -7,7 +7,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(name: str):
+def load(name):
     spec = importlib.util.spec_from_file_location(
         name.replace("-", "_"), ROOT / "scripts" / (name + ".py")
     )

@@ -3,35 +3,31 @@ name: Native observer policy
 on:
   pull_request:
     paths:
-      - .github/workflows/observer-profile.yml
-      - deploy/identity/**
-      - deploy/platform/rancher/public-entry/**
-      - ansible/roles/authentik/**
-      - ansible/roles/identity_integrations/**
-      - scripts/observer-*.py
-      - deploy/wiki-runtime/**
-      - tests/test_observer_membership.py
-      - tests/test_observer_access.py
-      - tests/test_identity.py
-      - tests/test_app_iam.py
-      - tests/test_browser_auth_policy.py
-      - tests/test_native_browser_auth.py
+      - '.github/workflows/observer-profile.yml'
+      - 'deploy/identity/**'
+      - 'deploy/platform/rancher/public-entry/**'
+      - 'ansible/roles/authentik/**'
+      - 'ansible/roles/identity_integrations/**'
+      - 'scripts/observer-*.py'
+      - 'deploy/wiki-runtime/**'
+      - 'tests/test_observer_membership.py'
+      - 'tests/test_observer_access.py'
+      - 'tests/test_identity.py'
+      - 'tests/test_app_iam.py'
+      - 'tests/test_browser_auth_policy.py'
+      - 'tests/test_native_browser_auth.py'
   push:
     branches: [main]
     paths:
-      - .github/workflows/observer-profile.yml
-      - deploy/identity/**
-      - deploy/platform/rancher/public-entry/**
-      - ansible/roles/authentik/**
-      - ansible/roles/identity_integrations/**
-      - scripts/observer-*.py
-      - deploy/wiki-runtime/**
-      - tests/test_observer_membership.py
-      - tests/test_observer_access.py
-      - tests/test_identity.py
-      - tests/test_app_iam.py
-      - tests/test_browser_auth_policy.py
-      - tests/test_native_browser_auth.py
+      - '.github/workflows/observer-profile.yml'
+      - 'deploy/identity/**'
+      - 'deploy/platform/rancher/public-entry/**'
+      - 'ansible/roles/authentik/**'
+      - 'ansible/roles/identity_integrations/**'
+      - 'scripts/observer-*.py'
+      - 'deploy/wiki-runtime/**'
+      - 'tests/test_observer_membership.py'
+      - 'tests/test_observer_access.py'
 permissions:
   contents: read
 concurrency:

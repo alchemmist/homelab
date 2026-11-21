@@ -18,10 +18,10 @@ import urllib.request
 from pathlib import Path
 
 BASE = "https://auth.socrat.alchemmist.xyz/api/v3/"
-GROUPS = ("homelab-owner", "homelab-platform-operator", "rustfs-console-readers")
+GROUPS = ("homelab-owner", "homelab-platform-operator")
 # Explicit live-validated human identity; never grant admin to an entire SSO group.
 # UUID is also this provider's signed subject (sub_mode=user_uuid).
-EXPRESSION = 'return {"rustfs_policy": ["consoleAdmin"] if request.user.pk == 5 and str(request.user.uuid) == "9e33877a-3eaa-4541-98eb-8cdc10088ef6" and request.user.username == "alchemmist" else (["spi-console-reader"] if ak_is_group_member(request.user, name="homelab-owner") or ak_is_group_member(request.user, name="homelab-platform-operator") or ak_is_group_member(request.user, name="rustfs-console-readers") else [])}'
+EXPRESSION = 'return {"rustfs_policy": ["consoleAdmin"] if request.user.pk == 5 and str(request.user.uuid) == "9e33877a-3eaa-4541-98eb-8cdc10088ef6" and request.user.username == "alchemmist" else (["spi-console-reader"] if ak_is_group_member(request.user, name="homelab-owner") or ak_is_group_member(request.user, name="homelab-platform-operator") else [])}'
 COLLECTIONS = (
     "core/groups/",
     "flows/instances/",

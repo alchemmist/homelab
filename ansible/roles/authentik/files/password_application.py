@@ -4,14 +4,13 @@
 import argparse
 import json
 import os
-from collections.abc import Mapping
 from pathlib import Path
 import socket
 import tempfile
 import urllib.request
 
 
-def validate(spec: Mapping[str, object]):
+def validate(spec):
     assert spec["slug"] == "password-self-service"
     assert spec["provider"] is None
     assert spec["meta_launch_url"] == "https://auth.socrat.alchemmist.xyz/change-password"
@@ -33,7 +32,7 @@ def main():
         "109.173.40.247" if h == "auth.socrat.alchemmist.xyz" else h, *a, **kw
     )
 
-    def api(method: str, path: str, payload: Mapping[str, object] | None = None):
+    def api(method, path, payload=None):
         request = urllib.request.Request(
             "https://auth.socrat.alchemmist.xyz/api/v3/" + path,
             method=method,
