@@ -33,7 +33,7 @@ class _AuthPayload(TypedDict):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *_args, **_kwargs):
+    def redirect_request(self, *args, **kwargs):
         return None
 
 

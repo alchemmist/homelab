@@ -49,7 +49,7 @@ os.umask(0o077)
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *_a, **_kw):
+    def redirect_request(self, *a, **kw):
         return None
 
 

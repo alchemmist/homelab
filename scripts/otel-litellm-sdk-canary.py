@@ -48,7 +48,7 @@ def run():
             def shutdown(self) -> None:
                 pass
 
-            def force_flush(self, _timeout_millis=30000) -> bool:
+            def force_flush(self, timeout_millis=30000) -> bool:
                 return True
 
         handler._tracer_provider.add_span_processor(SourcePrivacyAudit())

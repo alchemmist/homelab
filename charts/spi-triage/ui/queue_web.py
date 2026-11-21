@@ -24,7 +24,7 @@ TOKEN = ""
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *_args, **_kwargs):
+    def redirect_request(self, *args, **kwargs):
         return None
 
 
@@ -39,7 +39,7 @@ def expire(sock):
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
-    def log_message(self, *_args):
+    def log_message(self, *args):
         pass
 
     def handle(self):
@@ -52,7 +52,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         finally:
             timer.cancel()
 
-    def send_error(self, _code, _message=None, _explain=None):
+    def send_error(self, code, message=None, explain=None):
         self.send(400, b"", "text/plain")
 
     def send(self, status, body, mime="application/json; charset=utf-8", location=None):
