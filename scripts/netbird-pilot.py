@@ -81,7 +81,7 @@ def identifier(value):
 
 
 def existing_node_host(value):
-    """Return whether the value names an existing socrat node."""
+    """Return whether value names an existing socrat node, not placement approval."""
     if not text(value):
         return False
     if re.fullmatch(r"socrat-[0-3]", value):
