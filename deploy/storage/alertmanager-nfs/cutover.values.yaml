@@ -3,7 +3,9 @@
 kube-prometheus-stack:
   alertmanager:
     alertmanagerSpec:
-      replicas: 1
+      # Temporary loss-of-1 drill exception: one RWO claim per ordinal.
+      replicas: 2
+      podAntiAffinity: hard
       nodeSelector:
         kubernetes.io/os: linux
       affinity:
@@ -20,7 +22,7 @@ kube-prometheus-stack:
                 matchExpressions:
                   - key: kubernetes.io/hostname
                     operator: In
-                    values: [socrat-0]
+                    values: [socrat-1]
       storage:
         volumeClaimTemplate:
           metadata:
