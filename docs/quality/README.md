@@ -46,7 +46,7 @@ Independent fast nodes collect failures together. Ownership is a real source-con
 | Shell | ShellCheck `--enable=all`; supported workflow shell bodies also checked | `scripts/quality/lint.py` |
 | Delivery | actionlint; zizmor auditor, including generated workflows | `scripts/quality/lint.py` |
 | Credentials | Gitleaks; immutable exact reviewed false positives; context drift remains blocking | `quality/secret-false-positives.json`, `quality/strict-policy.json` |
-| Containers | hadolint at style threshold; owned Dockerfile basename admission | `quality/hadolint.yaml`, `scripts/quality/lint.py` |
+| Containers | Hadolint at style threshold; inline/global ignore pragmas disabled; owned Dockerfile and Containerfile names (plain, prefix or suffix, case-insensitive) | `quality/hadolint.yaml`, `scripts/quality/lint.py` |
 | JavaScript | Node syntax checks; actual Node/PromQL/parser regression fixtures in reviewed suites | `scripts/quality/lint.py`, `quality/test-suites.json` |
 | Ansible | offline strict ansible-lint, parser floor plus enumerated non-conflicting rules | `quality/ansible-lint.yaml` |
 | Kubernetes | Helm rendering, local checksum-locked schema validation, default plus additional kube-linter checks and source contracts | `scripts/quality/charts.py`, `quality/kube-linter.yaml`, `quality/schemas.lock.json` |

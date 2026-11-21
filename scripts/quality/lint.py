@@ -1152,9 +1152,9 @@ def docker_targets(names: list[str]) -> list[str]:
     for name in names:
         basename = Path(name).name.casefold()
         if (
-            basename == "dockerfile"
-            or basename.startswith("dockerfile.")
-            or basename.endswith(".dockerfile")
+            basename in ("dockerfile", "containerfile")
+            or basename.startswith(("dockerfile.", "containerfile."))
+            or basename.endswith((".dockerfile", ".containerfile"))
         ):
             result.append(name)
     return result

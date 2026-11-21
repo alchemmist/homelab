@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import http.client
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -149,6 +150,11 @@ def test_auditor_and_transport_fixtures_share_stdlib_module() -> None:
         ("services/fixture/Dockerfile.worker", True),
         ("services/fixture/dockerfile", True),
         ("services/fixture/WORKER.DOCKERFILE", True),
+        ("Containerfile", True),
+        ("services/fixture/CONTAINERFILE.dev", True),
+        ("services/fixture/build.Containerfile", True),
+        ("Containerfile/not_a_build.py", False),
+        ("docs/build.Containerfile.md", False),
         ("Dockerfile/not_a_build.py", False),
         ("docs/worker.Dockerfile.md", False),
     ],
@@ -182,3 +188,18 @@ def test_docker_adapter_transports_each_source_and_keeps_findings() -> None:
         for source in sources
     ]
     assert all(item.kwargs == {"allowed": (0, 1)} for item in command.call_args_list)
+
+
+@pytest.mark.skipif(shutil.which("hadolint") is None, reason="installed by the docker profile")
+@pytest.mark.parametrize("pragma", ["ignore", "global ignore"])
+def test_docker_ignore_cannot_mask_diagnostic(pragma: str) -> None:
+    """Exercise the installed binary: neither local nor file-wide ignores can hide DL3007."""
+    result = subprocess.run(
+        ["hadolint", "--config", str(ROOT / "quality/hadolint.yaml"), "--format", "json", "-"],
+        input=f"# hadolint {pragma}=DL3007\nFROM debian:latest\n",
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 1, result.stderr
+    assert "DL3007" in {item["code"] for item in json.loads(result.stdout)}
