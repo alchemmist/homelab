@@ -395,7 +395,7 @@ def build_plan(inventory, issuer, journal):
         blockers.append("NetBird OIDC provider must stay off the embedded outpost")
     operations: list[dict[str, object]] = []
     if not blockers:
-        for name, group in zip(GROUP_NAMES, groups):
+        for name, group in zip(GROUP_NAMES, groups, strict=True):
             if group is None:
                 operations.append({"action": "create", "kind": "group", "name": name})
         if mapping is None:
@@ -434,7 +434,9 @@ def build_plan(inventory, issuer, journal):
                     {"action": "update", "kind": "application", "pk": application["pk"]}
                 )
         admission = next(
-            group for name, group in zip(GROUP_NAMES, groups) if name == ADMISSION_GROUP
+            group
+            for name, group in zip(GROUP_NAMES, groups, strict=True)
+            if name == ADMISSION_GROUP
         )
         app_bindings = []
         if application is not None:
@@ -470,7 +472,7 @@ def build_plan(inventory, issuer, journal):
             operations.append({"action": "create", "kind": "binding"})
         if not blockers:
             users_by_pk = {user["pk"]: user for user in users}
-            for name, group in zip(GROUP_NAMES, groups):
+            for name, group in zip(GROUP_NAMES, groups, strict=True):
                 if group is None:
                     for user in users:
                         operations.append(

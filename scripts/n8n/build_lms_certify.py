@@ -31,7 +31,7 @@ def link(a, b, port=0):
 
 
 def chain(*names):
-    for a, b in zip(names, names[1:]):
+    for a, b in zip(names, names[1:], strict=False):
         link(a, b)
 
 

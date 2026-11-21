@@ -30,10 +30,13 @@ class Lifecycle(unittest.TestCase):
             )
             for i in range(24)
         ]
-        expected = [m.counter.reservation(b) for m, b in zip(models, bodies)]
+        expected = [m.counter.reservation(b) for m, b in zip(models, bodies, strict=True)]
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
             actual = list(
-                pool.map(lambda pair: pair[0].counter.reservation(pair[1]), zip(models, bodies))
+                pool.map(
+                    lambda pair: pair[0].counter.reservation(pair[1]),
+                    zip(models, bodies, strict=True),
+                )
             )
         self.assertEqual(actual, expected)
         body = bodies[0]

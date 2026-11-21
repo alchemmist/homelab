@@ -153,7 +153,7 @@ class TrafficLightArgoTest(unittest.TestCase):
                     "eval_time": when,
                     "exp_samples": [] if n is None else [{"labels": "{}", "value": n}],
                 }
-                for (_, expr, _), n in zip(lab.queries()[1], counts)
+                for (_, expr, _), n in zip(lab.queries()[1], counts, strict=False)
             ]
 
         up = series('up{job="socrat-argocd"}')
