@@ -290,6 +290,21 @@
       "reason": "Source-only Canvas/Agent Server review: no deployed read-only operational MCP endpoint is declared. Agent tools/automation are not routine read-only diagnostics; no client, credential access, model invocation or runtime acceptance is authorized. Upstream MCP capabilities and authorization remain unverified."
     },
     {
+      "application": "descheduler",
+      "decision": "no-client",
+      "reason": "charts/descheduler renders a kube-system pod-eviction CronJob with policy and RBAC, not a read-only MCP service. Do not grant agent clients eviction authority."
+    },
+    {
+      "application": "postgres-platform",
+      "decision": "no-client",
+      "reason": "charts/postgres-platform declares CNPG clusters, volumes, NetworkPolicies and metrics Services. SQL and primary metrics are not MCP endpoints; no database credential or new client is authorized."
+    },
+    {
+      "application": "storage-tiers",
+      "decision": "no-client",
+      "reason": "deploy/storage/tiers defines StorageClasses, the local provisioner and its configuration/RBAC. This is volume lifecycle infrastructure with no declared diagnostic MCP endpoint."
+    },
+    {
       "application": "deeperseeker",
       "decision": "no-client",
       "reason": "Source-only owner web-bridge service inventory: no dedicated reviewed read-only operational MCP endpoint is declared. Browser/provider/session workers are not routine diagnostic tools; no new client, credential access or runtime execution is authorized."
