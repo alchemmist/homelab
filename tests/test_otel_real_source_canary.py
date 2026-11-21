@@ -23,12 +23,10 @@ class RealSourceCanaryTests(unittest.TestCase):
             {"/etc/otel/source-auth/ns/name/key": "/private/credential"},
             Path("/private/kubeconfig"),
         )
-        self.assertEqual(result["authorization"]["credentials_file"], "/private/credential")
-        self.assertEqual(
-            result["kubernetes_sd_configs"][0]["kubeconfig_file"], "/private/kubeconfig"
-        )
-        self.assertEqual(result["replacement"], "$$1")
-        self.assertNotIn("kubeconfig_file", original["kubernetes_sd_configs"][0])
+        assert result["authorization"]["credentials_file"] == "/private/credential"
+        assert result["kubernetes_sd_configs"][0]["kubeconfig_file"] == "/private/kubeconfig"
+        assert result["replacement"] == "$$1"
+        assert "kubeconfig_file" not in original["kubernetes_sd_configs"][0]
 
     def test_existing_discovery_auth_is_never_silently_replaced(self):
         with self.assertRaises(ValueError):
@@ -45,7 +43,7 @@ class RealSourceCanaryTests(unittest.TestCase):
             "labels": {"job": "source", "instance": "node", "namespace": "test"},
         }
         expected = CANARY.expected_targets({"activeTargets": [item]}, {"owned"})
-        self.assertEqual(expected, {CANARY.fingerprint({**item["labels"], "__name__": "up"})})
+        assert expected == {CANARY.fingerprint({**item["labels"], "__name__": "up"})}
         with self.assertRaises(ValueError):
             CANARY.expected_targets({"activeTargets": [item, item]}, {"owned"})
         with self.assertRaises(ValueError):

@@ -53,9 +53,9 @@ def document():
 class OpenWebuiProductionTraceTests(unittest.TestCase):
     def test_real_application_server_resource_and_parent_are_required(self):
         result = module().summarize_production_open_webui(document(), TRACE, PARENT)
-        self.assertTrue(result["success"])
-        self.assertFalse(result["productionOpenWebuiInferencePathVerified"])
-        self.assertFalse(result["allApplicationSdkCoverageComplete"])
+        assert result["success"]
+        assert not result["productionOpenWebuiInferencePathVerified"]
+        assert not result["allApplicationSdkCoverageComplete"]
         for kind in ["service", "parent", "name", "duplicate", "kind", "missing-kind"]:
             data = document()
             child = data["resourceSpans"][1]["scopeSpans"][0]["spans"][0]
@@ -73,6 +73,4 @@ class OpenWebuiProductionTraceTests(unittest.TestCase):
                 child["kind"] = "SPAN_KIND_INTERNAL"
             if kind == "missing-kind":
                 child.pop("kind")
-            self.assertFalse(
-                module().summarize_production_open_webui(data, TRACE, PARENT)["success"]
-            )
+            assert not module().summarize_production_open_webui(data, TRACE, PARENT)["success"]

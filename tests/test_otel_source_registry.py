@@ -81,20 +81,20 @@ class SourceRegistryTests(unittest.TestCase):
         args = fixtures()
         before = copy.deepcopy(args)
         result = REGISTRY.build(*args)
-        self.assertTrue(result["liveInventoryVerified"])
-        self.assertFalse(result["readyForCutover"])
-        self.assertFalse(result["sourceCapabilitiesVerified"])
-        self.assertEqual(result["targets"][0]["futureOwner"], "node-systemd-agent")
-        self.assertEqual(result["targets"][0]["labelNames"], ["instance", "job"])
-        self.assertEqual(result["activeIntervals"], {"5s": 1})
-        self.assertEqual(args, before)
+        assert result["liveInventoryVerified"]
+        assert not result["readyForCutover"]
+        assert not result["sourceCapabilitiesVerified"]
+        assert result["targets"][0]["futureOwner"] == "node-systemd-agent"
+        assert result["targets"][0]["labelNames"] == ["instance", "job"]
+        assert result["activeIntervals"] == {"5s": 1}
+        assert args == before
 
     def test_nondefault_intervals_are_reported_not_rewritten(self):
         args = fixtures()
         args[1]["activeTargets"][0]["scrapeInterval"] = "30s"
         result = REGISTRY.build(*args)
-        self.assertEqual(result["activeIntervals"], {"30s": 1})
-        self.assertEqual(result["findings"][0]["targets"], 1)
+        assert result["activeIntervals"] == {"30s": 1}
+        assert result["findings"][0]["targets"] == 1
 
     def test_unknown_jobs_and_monitor_endpoints_fail_closed(self):
         for field, value in [
@@ -107,7 +107,7 @@ class SourceRegistryTests(unittest.TestCase):
                 target["labels"]["job"] = value
             else:
                 target["scrapePool"] = value
-            self.assertFalse(REGISTRY.build(*args)["liveInventoryVerified"])
+            assert not REGISTRY.build(*args)["liveInventoryVerified"]
 
     def test_unselected_monitors_are_retained_without_activation(self):
         args = fixtures()
@@ -117,14 +117,14 @@ class SourceRegistryTests(unittest.TestCase):
         args[0]["items"].append(monitor)
         result = REGISTRY.build(*args)
         item = result["sources"]["serviceMonitor/monitoring/excluded"]
-        self.assertFalse(item["selectedByPrometheus"])
-        self.assertEqual(item["activeTargetCount"], 0)
-        self.assertTrue(result["liveInventoryVerified"])
+        assert not item["selectedByPrometheus"]
+        assert item["activeTargetCount"] == 0
+        assert result["liveInventoryVerified"]
 
     def test_active_target_outside_selector_is_an_error(self):
         args = fixtures()
         args[0]["items"][0]["metadata"]["labels"] = {}
-        self.assertFalse(REGISTRY.build(*args)["liveInventoryVerified"])
+        assert not REGISTRY.build(*args)["liveInventoryVerified"]
 
     def test_kubernetes_selector_semantics(self):
         cases = [
@@ -138,16 +138,16 @@ class SourceRegistryTests(unittest.TestCase):
             ({"matchExpressions": [{"key": "x", "operator": "DoesNotExist"}]}, {}, True),
         ]
         for selector, attributes, expected in cases:
-            self.assertEqual(REGISTRY.selected(selector, attributes), expected)
+            assert REGISTRY.selected(selector, attributes) == expected
         with self.assertRaises(ValueError):
             REGISTRY.selected({"matchExpressions": [{"key": "x", "operator": "unsupported"}]}, {})
 
     def test_unhealthy_or_missing_targets_block_inventory(self):
         args = fixtures()
         args[1]["activeTargets"][0]["health"] = "down"
-        self.assertFalse(REGISTRY.build(*args)["liveInventoryVerified"])
+        assert not REGISTRY.build(*args)["liveInventoryVerified"]
         args[1]["activeTargets"] = []
-        self.assertFalse(REGISTRY.build(*args)["liveInventoryVerified"])
+        assert not REGISTRY.build(*args)["liveInventoryVerified"]
 
     def test_secrets_urls_and_values_are_not_published(self):
         scrubbed = REGISTRY.scrub(
@@ -166,19 +166,19 @@ class SourceRegistryTests(unittest.TestCase):
             "private-vpn-path",
             "token=abc",
         ):
-            self.assertNotIn(secret, value)
+            assert secret not in value
         target = fixtures()[1]["activeTargets"][0]
         target["labels"]["instance"] = "https://user:pass@host/private-vpn-path?token=abc"
         target["scrapeUrl"] = "http://node:9100/hidden-path?auth=secret"
         summary = json.dumps(REGISTRY.target_summary(target))
         for secret in ("user:pass", "private-vpn-path", "token=abc", "hidden-path", "auth=secret"):
-            self.assertNotIn(secret, summary)
+            assert secret not in summary
 
     def test_nested_dashboard_queries_are_inventoried_without_mutation(self):
         document = {
             "panels": [{"id": 1, "panels": [{"id": 2, "targets": [{"expr": "up", "refId": "B"}]}]}]
         }
-        self.assertEqual(list(REGISTRY.expressions(document)), [(2, "B", "up")])
+        assert list(REGISTRY.expressions(document)) == [(2, "B", "up")]
 
     def test_duplicate_dashboard_uid_is_rejected(self):
         args = fixtures()
@@ -217,16 +217,16 @@ class SourceRegistryTests(unittest.TestCase):
             ]
         }
         REGISTRY.attach_producers(registry, producers, daemonsets)
-        self.assertTrue(registry["metricsSourceRegistryVerified"])
-        self.assertFalse(registry["sourceRegistryVerified"])
-        self.assertFalse(registry["readyForCutover"])
-        self.assertEqual(registry["diskProducerRefreshSeconds"], "30")
+        assert registry["metricsSourceRegistryVerified"]
+        assert not registry["sourceRegistryVerified"]
+        assert not registry["readyForCutover"]
+        assert registry["diskProducerRefreshSeconds"] == "30"
 
     def test_missing_producers_are_not_assumed_healthy(self):
         registry = REGISTRY.build(*fixtures())
         REGISTRY.attach_producers(registry, {}, {"items": []})
-        self.assertFalse(registry["sourceRegistryVerified"])
-        self.assertGreater(len(registry["errors"]), 0)
+        assert not registry["sourceRegistryVerified"]
+        assert len(registry["errors"]) > 0
 
 
 if __name__ == "__main__":
