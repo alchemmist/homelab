@@ -114,7 +114,7 @@ class OutboxTest(unittest.TestCase):
     def test_partial_readback_not_desired_state(self):
         self.enqueue()
         self.receipt()
-        self.outbox.request = lambda *a, **kw: (
+        self.outbox.request = lambda *_a, **_kw: (
             200,
             {
                 "key": "Alert/pod/ns/name",

@@ -40,7 +40,7 @@ with sync_playwright() as p:
             page.on(
                 "response", lambda r: responses.append(r) if "/-/quiet-mono/v1/" in r.url else None
             )
-            page.on("pageerror", lambda e: errors.append(True))
+            page.on("pageerror", lambda _e: errors.append(True))
             page.goto(BASE + "/if/flow/default-authentication-flow/")
             page.locator("input[name=uidField]").wait_for()
             page.wait_for_timeout(600)

@@ -373,7 +373,7 @@ class PreparationTests(unittest.TestCase):
             {"results": [], "pagination": {"next": True}},
         ):
             with self.assertRaises(RuntimeError):
-                prep.rows(lambda *args: response, "core/users/")
+                prep.rows(lambda *_args: response, "core/users/")
         original = self.api.__call__
 
         def api(method, path, payload=None):
