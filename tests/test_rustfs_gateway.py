@@ -5,6 +5,7 @@ import importlib.util
 import io
 import threading
 import unittest
+import urllib.request
 from email.message import Message
 from pathlib import Path
 
@@ -87,10 +88,10 @@ class Tests(unittest.TestCase):
         class Reader:
             calls = []
 
-            def authorization(self, cookie):
+            def authorization(self, cookie: str):
                 return 200 if cookie == "valid=1" else 401
 
-            def read(self, key):
+            def read(self, key: str):
                 self.calls.append(key)
                 return b'{"x":1}\n'
 
@@ -101,7 +102,7 @@ class Tests(unittest.TestCase):
         worker.start()
         try:
 
-            def request(path, headers={}, method="GET"):
+            def request(path: str, headers: dict[str, str] = {}, method: str = "GET"):
                 conn = http.client.HTTPConnection(*server.server_address, timeout=2)
                 conn.request(method, path, headers={"Host": g.HOST, **headers})
                 response = conn.getresponse()
@@ -225,11 +226,11 @@ class Integrity(unittest.TestCase):
             def __enter__(self):
                 return self
 
-            def __exit__(self, *args):
+            def __exit__(self, *args: object) -> None:
                 pass
 
         class HTTP:
-            def open(self, req, timeout):
+            def open(self, req: urllib.request.Request, timeout: float):
                 self.request = req
                 return response
 
@@ -255,10 +256,10 @@ class Integrity(unittest.TestCase):
     def test_signing_against_openssl_canonical_vector(self):
         import subprocess
 
-        def sha(data):
+        def sha(data: bytes):
             return hashlib.sha256(data).hexdigest()
 
-        def hmac_openssl(key, data):
+        def hmac_openssl(key: bytes, data: bytes):
             return subprocess.check_output(
                 [
                     "openssl",

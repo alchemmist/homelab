@@ -205,8 +205,8 @@ def test_clean_scripts_match_quality_shellcheck() -> None:
     assert result.stdout.strip() == "[]"
 
 
-def test_nightnode_keeps_the_dynamic_source_visible() -> None:
-    """SC1090 stays because the config path is not a constant ShellCheck can follow."""
+def test_nightnode_config_parser_is_shellcheck_clean() -> None:
+    """The validated assignment parser removes the dynamic-source finding."""
     result = _run(
         [
             _executable("shellcheck"),
@@ -218,22 +218,11 @@ def test_nightnode_keeps_the_dynamic_source_visible() -> None:
         env=_shell_env(),
         cwd=ROOT,
     )
-    assert result.returncode == 1
-    items = _items(result.stdout)
-    assert len(items) == 1
-    item = items[0]
-    assert item["code"] == DYNAMIC_SOURCE
-    assert item["line"] == DYNAMIC_SOURCE_LINE
-    assert item["column"] == DYNAMIC_SOURCE_COLUMN
-    file_name = item["file"]
-    message = item["message"]
-    assert isinstance(file_name, str)
-    assert isinstance(message, str)
-    assert file_name.endswith("scripts/nightnode/nightnode")
-    assert "non-constant" in message
+    assert result.returncode == 0
+    assert _items(result.stdout) == []
     source = _text(NIGHTNODE)
-    assert 'source "${CONFIG_FILE}"' in source
-    assert "shellcheck" not in source
+    assert 'source "${CONFIG_FILE}"' not in source
+    assert 'eval "export ${key}=${value}"' in source
 
 
 def test_owned_scripts_pass_syntax_check_without_executing() -> None:

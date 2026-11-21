@@ -4,8 +4,17 @@ import json
 import random
 import secrets
 import shlex
+from collections.abc import Sequence
+from typing import TypedDict, cast
 
-FIXTURES = {
+
+class _Fixture(TypedDict):
+    source: str
+    contract: str
+    visible: list[tuple[object, ...]]
+
+
+FIXTURES: dict[str, _Fixture] = {
     "median": {
         "source": "exports.solve = values => { const a=values.sort(); return a[Math.floor(a.length/2)]; };\n",
         "contract": "Return the numeric median of an array: numerically sort a copy, use the middle value for odd lengths, average both middle values for even lengths, throw RangeError for empty input. Never mutate caller input.",
@@ -24,24 +33,25 @@ FIXTURES = {
 }
 
 
-def expected(task, args):
+def expected(task: str, args: Sequence[object]) -> dict[str, object]:
+    value: object
     if task == "median":
-        values = sorted(args[0])
+        values = sorted(cast("Sequence[int]", args[0]))
         if not values:
             return {"error": "RangeError"}
         n = len(values)
         value = values[n // 2] if n % 2 else (values[n // 2 - 1] + values[n // 2]) / 2
     elif task == "clamp":
-        value, low, high = args
+        value, low, high = cast("Sequence[int]", args)
         if low > high:
             return {"error": "RangeError"}
         value = max(low, min(high, value))
     else:
-        value = html.escape(args[0], quote=True).replace("&#x27;", "&#39;")
+        value = html.escape(cast("str", args[0]), quote=True).replace("&#x27;", "&#39;")
     return {"value": value}
 
 
-def fixture_files(task):
+def fixture_files(task: str) -> dict[str, str]:
     definition = FIXTURES[task]
     tests = "const a=require('node:assert/strict');const {solve}=require('./lib.cjs');\n"
     for args in definition["visible"]:
@@ -56,7 +66,7 @@ def fixture_files(task):
     return {"lib.cjs": definition["source"], "test.cjs": tests}
 
 
-def task_prompt(task):
+def task_prompt(task: str) -> str:
     return (
         "Find and fix bugs in lib.cjs, exported function solve. Contract: "
         + FIXTURES[task]["contract"]
@@ -69,10 +79,10 @@ def task_prompt(task):
     )
 
 
-def cases_for(task, seed):
+def cases_for(task: str, seed: int) -> list[list[object]]:
     rng = random.Random(seed)
     if task == "median":
-        cases = [[[]], [[1]], [[10, 2, 1]], [[1, 2]], [[-1, -4, -2, -3]]]
+        cases: list[list[object]] = [[[]], [[1]], [[10, 2, 1]], [[1, 2]], [[-1, -4, -2, -3]]]
         cases += [
             [[rng.randint(-1000, 1000) for _ in range(rng.randint(1, 16))]] for _ in range(60)
         ]
@@ -179,18 +189,21 @@ process.stdout.write(JSON.stringify({results}));
 """
 
 
-def verifier_command(task, seed):
+def verifier_command(task: str, seed: int) -> tuple[str, str, list[list[object]]]:
     cases = cases_for(task, seed)
     nonce = secrets.token_hex(16)
     return "node -e " + shlex.quote(VERIFIER_SCRIPT), nonce, cases
 
 
-def seal_execution(nonce, result):
+def seal_execution(nonce: str, result: object) -> object:
     if not isinstance(result, dict):
         return result
     sealed = dict(result)
+    output = result.get("output")
+    if not isinstance(output, (str, bytes)):
+        return sealed
     try:
-        data = json.loads(result.get("output"))
+        data = json.loads(output)
     except (ValueError, TypeError):
         return sealed
     if not isinstance(data, dict) or "nonce" in data or not isinstance(data.get("results"), list):
@@ -200,14 +213,22 @@ def seal_execution(nonce, result):
     return sealed
 
 
-def check_verdict(task, nonce, cases, result):
+def check_verdict(
+    task: str,
+    nonce: str,
+    cases: list[list[object]],
+    result: object,
+) -> dict[str, object]:
     if not isinstance(result, dict):
         return {"accepted": False, "reason": "missing or invalid verifier output"}
     code = result.get("returncode")
     if type(code) is not int or code != 0:
         return {"accepted": False, "reason": "verifier process failed", "exit_code": code}
+    output = result.get("output")
+    if not isinstance(output, (str, bytes)):
+        return {"accepted": False, "reason": "missing or invalid verifier output"}
     try:
-        data = json.loads(result.get("output"))
+        data = json.loads(output)
     except (ValueError, TypeError):
         return {"accepted": False, "reason": "missing or invalid verifier output"}
     if (

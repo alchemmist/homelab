@@ -13,6 +13,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import TypedDict
 
 spec = importlib.util.spec_from_file_location(
     "reconcile", Path(__file__).with_name("netbird-node-reconcile.py")
@@ -21,7 +22,17 @@ mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
 
-def credential(result, user_id):
+class _TokenMetadata(TypedDict):
+    id: str
+    expiration_date: str
+
+
+class _TokenResult(TypedDict):
+    personal_access_token: _TokenMetadata
+    plain_token: str
+
+
+def credential(result: _TokenResult, user_id: str):
     metadata = result["personal_access_token"]
     return {
         "user_id": user_id,
@@ -31,7 +42,7 @@ def credential(result, user_id):
     }
 
 
-def renew(folder, config, bootstrap=None):
+def renew(folder: Path, config: object, bootstrap: Path | None = None):
     path = folder / "credential.json"
     intent = folder / "credential-intent.json"
     mod.require(not intent.exists(), "uncertain prior credential operation; inspect locally")

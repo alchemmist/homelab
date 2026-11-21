@@ -9,6 +9,7 @@ import sys
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
+from typing import cast
 
 ROOT = Path(__file__).resolve().parents[1]
 MIB = 1024**2
@@ -21,7 +22,7 @@ print(json.dumps({'availableMemoryBytes':int(m['MemAvailable'].split()[0])*1024,
 """
 
 
-def quantity(value):
+def quantity(value: object):
     value = str(value)
     for suffix, factor in [
         ("Ki", 1024),
@@ -39,19 +40,25 @@ def quantity(value):
     return int(Decimal(value))
 
 
-def requested_memory(pod):
+def _requests(holder: dict[str, object]) -> dict[str, object]:
+    resources = cast("dict[str, object]", holder.get("resources", {}))
+    return cast("dict[str, object]", resources.get("requests", {}))
+
+
+def requested_memory(pod: dict[str, object]):
     # Intentionally conservative: sum all init containers, including restartable
     # sidecars, instead of underestimating their maximum concurrent startup usage.
-    spec = pod["spec"]
-    total = sum(
-        quantity(c.get("resources", {}).get("requests", {}).get("memory", 0))
-        for c in spec.get("containers", []) + spec.get("initContainers", [])
+    spec = cast("dict[str, object]", pod["spec"])
+    containers = cast("list[dict[str, object]]", spec.get("containers", [])) + cast(
+        "list[dict[str, object]]", spec.get("initContainers", [])
     )
-    total += quantity(spec.get("overhead", {}).get("memory", 0))
-    return max(total, quantity(spec.get("resources", {}).get("requests", {}).get("memory", 0)))
+    total = sum(quantity(_requests(c).get("memory", 0)) for c in containers)
+    total += quantity(cast("dict[str, object]", spec.get("overhead", {})).get("memory", 0))
+    return max(total, quantity(_requests(spec).get("memory", 0)))
 
 
-def ssh(policy, node, command):
+def ssh(policy: dict[str, object], node: str, command: str):
+    nodes = cast("dict[str, dict[str, object]]", policy["nodes"])
     return subprocess.check_output(
         [
             "ssh",
@@ -59,7 +66,7 @@ def ssh(policy, node, command):
             "BatchMode=yes",
             "-o",
             "ConnectTimeout=10",
-            *policy["nodes"][node]["ssh"],
+            *cast("list[str]", nodes[node]["ssh"]),
             command,
         ],
         text=True,
@@ -67,12 +74,12 @@ def ssh(policy, node, command):
     )
 
 
-def collect(policy):
+def collect(policy: dict[str, object]):
     import shlex
 
     hosts = {
         node: json.loads(ssh(policy, node, "python3 -c " + shlex.quote(PROBE)))
-        for node in policy["nodes"]
+        for node in cast("dict[str, dict[str, object]]", policy["nodes"])
     }
     kube = "env K3S_CONFIG_FILE=/dev/null kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml "
     nodes = json.loads(ssh(policy, "socrat-0", kube + "get nodes -o json"))
@@ -109,34 +116,51 @@ def collect(policy):
     }
 
 
-def check(policy, observation, otel, now=None):
+def check(
+    policy: dict[str, object],
+    observation: dict[str, object],
+    otel: dict[str, object],
+    now: datetime | None = None,
+):
     now = now or datetime.now(UTC)
-    age = (now - datetime.fromisoformat(observation["collectedAt"])).total_seconds()
-    if age < 0 or age > policy["maximumObservationAgeSeconds"]:
+    age = (now - datetime.fromisoformat(cast("str", observation["collectedAt"]))).total_seconds()
+    if age < 0 or age > cast("int", policy["maximumObservationAgeSeconds"]):
         raise ValueError("Observation is stale or future-dated")
-    results = {}
-    for name, plan in policy["nodes"].items():
-        node = observation["nodes"][name]
+    results: dict[str, dict[str, object]] = {}
+    for name, plan in cast("dict[str, dict[str, object]]", policy["nodes"]).items():
+        node = cast("dict[str, dict[str, object]]", observation["nodes"])[name]
+        otel_nodes = cast("dict[str, dict[str, object]]", otel.get("nodes", {}))
+        otel_node = otel_nodes.get(name, {})
         future = max(
-            policy["reservedExternalMemoryMiB"][name] * MIB,
-            sum(otel.get("nodes", {}).get(name, {}).get("components", {}).values()),
+            cast("dict[str, int]", policy["reservedExternalMemoryMiB"])[name] * MIB,
+            sum(cast("dict[str, int]", otel_node.get("components", {})).values()),
         )
-        additions = sum(plan["componentsMiB"].values()) * MIB
-        reserve = policy["hostReserveMiB"] * MIB
+        additions = sum(cast("dict[str, int]", plan["componentsMiB"]).values()) * MIB
+        reserve = cast("int", policy["hostReserveMiB"]) * MIB
         required = additions + future + reserve
         reasons = []
         if not node["ready"] or node["unschedulable"] or node["pressures"]:
             reasons.append("node-unhealthy-or-unschedulable")
-        if any(t["effect"] in ["NoSchedule", "NoExecute"] for t in node["taints"]):
+        if any(
+            cast("dict[str, object]", t)["effect"] in ["NoSchedule", "NoExecute"]
+            for t in cast("list[object]", node["taints"])
+        ):
             reasons.append("untolerated-taint")
-        if node["availableMemoryBytes"] < required:
+        if cast("int", node["availableMemoryBytes"]) < required:
             reasons.append("physical-memory")
-        if node["allocatableMemoryBytes"] - node["requestedMemoryBytes"] < additions + future:
+        if (
+            cast("int", node["allocatableMemoryBytes"])
+            - cast("int", node["requestedMemoryBytes"])
+            < additions + future
+        ):
             reasons.append("scheduler-memory")
-        free_after = node["diskAvailableBytes"] - plan["additionalDiskGiB"] * GIB
+        free_after = (
+            cast("int", node["diskAvailableBytes"]) - cast("int", plan["additionalDiskGiB"]) * GIB
+        )
         disk_reserve = max(
-            plan["minimumFreeDiskGiB"] * GIB,
-            node["diskTotalBytes"] * policy["minimumFreeDiskFraction"],
+            cast("int", plan["minimumFreeDiskGiB"]) * GIB,
+            cast("int", node["diskTotalBytes"])
+            * cast("float", policy["minimumFreeDiskFraction"]),
         )
         if free_after < disk_reserve:
             reasons.append("disk-reserve")
@@ -146,8 +170,11 @@ def check(policy, observation, otel, now=None):
             "harborAdditionalMiB": additions // MIB,
             "otelReservedMiB": future // MIB,
             "requiredAvailableMiB": required // MIB,
-            "observedAvailableMiB": node["availableMemoryBytes"] // MIB,
-            "schedulerFreeMiB": (node["allocatableMemoryBytes"] - node["requestedMemoryBytes"])
+            "observedAvailableMiB": cast("int", node["availableMemoryBytes"]) // MIB,
+            "schedulerFreeMiB": (
+                cast("int", node["allocatableMemoryBytes"])
+                - cast("int", node["requestedMemoryBytes"])
+            )
             // MIB,
             "diskFreeAfterStagingGiB": round(free_after / GIB, 1),
         }
@@ -159,7 +186,7 @@ def check(policy, observation, otel, now=None):
     }
 
 
-def save_exclusive(path, obj):
+def save_exclusive(path: Path, obj: object):
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as f:
         json.dump(obj, f, indent=2)

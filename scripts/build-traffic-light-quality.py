@@ -2,7 +2,9 @@
 
 import copy
 import json
+from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import Protocol
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "charts/monitoring-k3s/dashboards/traffic-light.json"
@@ -10,17 +12,36 @@ DS = {"type": "prometheus", "uid": "prometheus"}
 IDS = {930, 931, 932, 933, 934, 935, 936}
 
 
-def fresh_job(job):
+class _PanelId(Protocol):
+    def __getitem__(self, key: str) -> int: ...
+
+
+class _Dashboard(Protocol):
+    def __getitem__(self, key: str) -> Sequence[_PanelId]: ...
+
+
+def fresh_job(job: str):
     return (
         f'(max(up{{job="{job}"}}) == 1) and on() (time() - max(timestamp(up{{job="{job}"}})) < 90)'
     )
 
 
-def fresh_metric(metric):
+def fresh_metric(metric: str):
     return f"(time() - max(timestamp({metric})) < 90)"
 
 
-def stat(pid, name, grid, expr, unit, description, trend=False, bands=None, decimals=0):
+def stat(
+    pid: int,
+    name: str,
+    grid: Mapping[str, int],
+    expr: str,
+    unit: str,
+    description: str,
+    *,
+    trend: bool = False,
+    bands: Sequence[Mapping[str, int | str | None]] | None = None,
+    decimals: int = 0,
+):
     mappings = {
         "-2": {"text": "No telemetry", "color": "#808080"},
         "-1": {"text": "Never succeeded", "color": "#808080"},
@@ -70,7 +91,7 @@ def stat(pid, name, grid, expr, unit, description, trend=False, bands=None, deci
     }
 
 
-def traffic(pid, name, namespace, pod, color):
+def traffic(pid: int, name: str, namespace: str, pod: str, color: str):
     # cAdvisor exports pod network once on the sandbox (no container label here).
     # Byte rates include protocol/probe traffic: NEVER call these object/OCI counts.
     labels = f'namespace="{namespace}",pod=~"{pod}",interface="eth0",job="kubelet"'
@@ -219,7 +240,7 @@ def cascade_summary():
     age = f"((time()-max({success}>0)) and on() {fresh_metric(success)} and on() ({fresh_job('kube-state-metrics')})) or vector(-2)"
     pod_re = "thanos-compactor(-5m|-1h)?-[0-9a-f]+-.+"
 
-    def live(metric):
+    def live(metric: str):
         return f'({metric} and (time()-timestamp({metric})<90) and on(instance) (up{{job="cattle-monitoring-system/thanos"}}==1))'
 
     todo = 'thanos_compact_todo_downsample_blocks{job="cattle-monitoring-system/thanos",pod=~"thanos-compactor-[0-9a-f]+-.+"}'
@@ -368,8 +389,12 @@ def panels():
     return result
 
 
-def build(source=None):
-    d = copy.deepcopy(source if source is not None else json.loads(SOURCE.read_text()))
+def build(source: dict[str, object] | None = None):
+    if source is None:
+        d = copy.deepcopy(json.loads(SOURCE.read_text()))
+    else:
+        copied = copy.deepcopy(source)
+        d = copied
     existing = {p["id"]: p for p in d["panels"]}
     # Owner deletions are authoritative; never resurrect retired/removed widgets.
     additions = [copy.deepcopy(existing[p["id"]]) for p in panels() if p["id"] in existing]
@@ -398,7 +423,7 @@ def build(source=None):
     return d
 
 
-def write(d):
+def write(d: _Dashboard):
     # Compact generated widgets only; keep original owner panels byte-formatted.
     # This reduces actual ConfigMap/annotation bytes without relaxing the size guard.
     text = json.dumps(d, ensure_ascii=False, indent=2)

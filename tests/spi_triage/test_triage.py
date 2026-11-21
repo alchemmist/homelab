@@ -4,7 +4,11 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import Mock
+
+if TYPE_CHECKING:
+    from _typeshed import Incomplete
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "charts/spi-triage/files"))
@@ -228,7 +232,7 @@ class EvidenceTests(unittest.TestCase):
     def test_host_profile_and_no_raw_trace_attributes(self):
         http = Mock()
 
-        def request(method, url, *args, **kwargs):
+        def request(method: str, url: str, *args: object, **kwargs: object) -> "Incomplete":
             if "/api/v1/query?" in url:
                 return {"data": {"result": [{"metric": {"nodename": "socrat-0"}}]}}
             if "/api/traces/" in url:
