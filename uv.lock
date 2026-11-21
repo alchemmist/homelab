@@ -579,8 +579,8 @@ dev = [
     { name = "pyflakes", specifier = "==3.4.0" },
     { name = "pytest", specifier = "==9.0.3" },
     { name = "pyyaml", specifier = "==6.0.3" },
-    { name = "quality-graph-cli", specifier = "==0.2.1" },
-    { name = "quality-graph-github", git = "https://github.com/alchemmist/quality-graph.git?subdirectory=packages%2Fgithub&rev=a1b57d64329e67f8fff04a70fdc8933fc9703f40" },
+    { name = "quality-graph-cli", specifier = "==0.2.2" },
+    { name = "quality-graph-github", specifier = "==0.2.2" },
     { name = "ruff", specifier = "==0.15.12" },
     { name = "types-pyyaml", specifier = "==6.0.12.20261113" },
     { name = "yamllint", specifier = "==1.38.0" },
@@ -1238,34 +1238,42 @@ wheels = [
 
 [[package]]
 name = "quality-graph-cli"
-version = "0.2.1"
+version = "0.2.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "quality-graph-core" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/95/33/2638915d8bee7b23eb34268c08f11b2ab81d03ef6e4c96c64bd2a90e8818/quality_graph_cli-0.2.1.tar.gz", hash = "sha256:af1fd1fc4df2535683fbcab6c9b7715d6b668f5dffd8e3164b12019d7c0eb001", size = 6616, upload-time = "2026-11-21T11:13:49.846Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/99/01/8ae7830a992a633850b0b0da5b026df5ceec90d42e28c77a0080c70a94b8/quality_graph_cli-0.2.2.tar.gz", hash = "sha256:d34456ca60be9b6466134c839890bcc7a9715c5c99d904fb80685a971fd87b1e", size = 6616, upload-time = "2026-11-21T21:39:26.43Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d9/16/897dfb360a26f38d58d57f68f55911798ae0b720e38141a90c2eff83f8de/quality_graph_cli-0.2.1-py3-none-any.whl", hash = "sha256:eff0c3fe9d4a3527d625014ac8c3d34af571b49ef655e1f1a55b40a6cb6f7f19", size = 8385, upload-time = "2026-11-21T11:13:48.666Z" },
+    { url = "https://files.pythonhosted.org/packages/1e/b6/44fe864913e10f05d99f4d139348dd9cc89d5df3b96d1a7b1f9ff406c01a/quality_graph_cli-0.2.2-py3-none-any.whl", hash = "sha256:a65b336b249e04a9d53b455e70e1d8100392d4773a4e13d6495917e8644b57d8", size = 8386, upload-time = "2026-11-21T21:39:25.299Z" },
 ]
 
 [[package]]
 name = "quality-graph-core"
-version = "0.2.1"
-source = { git = "https://github.com/alchemmist/quality-graph.git?subdirectory=packages%2Fcore&rev=a1b57d64329e67f8fff04a70fdc8933fc9703f40#a1b57d64329e67f8fff04a70fdc8933fc9703f40" }
+version = "0.2.2"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "defusedxml" },
     { name = "pyyaml" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/fd/88/cebf4847bad256019d7019de006a0164b03f170c8b175c97f6b7865ba004/quality_graph_core-0.2.2.tar.gz", hash = "sha256:b6613d38fcb5b91d0f42d45c8a529ba89eafc0c4880753e61dc9211a1b0d9a8d", size = 26391, upload-time = "2026-11-21T21:39:03.011Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/83/64/ded45dc201edb9426b49563d39cb766d5977ea4e1e936b66e0ab902ce6b6/quality_graph_core-0.2.2-py3-none-any.whl", hash = "sha256:e7c09052257825b9e7950149fc0d1b50241076e1842af2d9c5bb6a2a107a47df", size = 31551, upload-time = "2026-11-21T21:39:02.049Z" },
+]
 
 [[package]]
 name = "quality-graph-github"
-version = "0.2.1"
-source = { git = "https://github.com/alchemmist/quality-graph.git?subdirectory=packages%2Fgithub&rev=a1b57d64329e67f8fff04a70fdc8933fc9703f40#a1b57d64329e67f8fff04a70fdc8933fc9703f40" }
+version = "0.2.2"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "jinja2" },
     { name = "pyyaml" },
     { name = "quality-graph-core" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/de/57/4b35b06801dfa93a0b9ed6f27d3121711c6d88ecea6bef0fa4ad8788e220/quality_graph_github-0.2.2.tar.gz", hash = "sha256:75894a22258998c9549a059b5abc13760377e8303ab5d03b3eb720f0fefa9970", size = 38947, upload-time = "2026-11-21T21:39:23.481Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/be/4e/03e7c6932397c5344bc8e69ec0954b2423464aea25007a6c396e0804cba9/quality_graph_github-0.2.2-py3-none-any.whl", hash = "sha256:bfaf619d4ffbd4ac461852603acf2e5b882043e856547421fe66d20d08add442", size = 50456, upload-time = "2026-11-21T21:39:22.252Z" },
 ]
 
 [[package]]

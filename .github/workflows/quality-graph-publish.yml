@@ -23,7 +23,7 @@ jobs:
       pull-requests: read  # Verify current open PR identity; never modify the PR.
     steps:
       - name: Reconcile trusted Quality Graph state
-        uses: alchemmist/quality-graph@a1b57d64329e67f8fff04a70fdc8933fc9703f40
+        uses: alchemmist/quality-graph@a08603fcb44e9e22813b497ed391addf68797ce3
         with:
           operation: reconcile
   command:
@@ -40,6 +40,6 @@ jobs:
       pull-requests: read  # Read PR metadata; never modify the PR.
     steps:
       - name: Handle trusted Quality Graph command
-        uses: alchemmist/quality-graph@a1b57d64329e67f8fff04a70fdc8933fc9703f40
+        uses: alchemmist/quality-graph@a08603fcb44e9e22813b497ed391addf68797ce3
         with:
           operation: scheduled-command
