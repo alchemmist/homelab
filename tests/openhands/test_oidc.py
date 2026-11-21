@@ -9,7 +9,8 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location('openhands_oidc', ROOT/'scripts/provision-openhands-oidc.py')
-m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
 
 
 class NativeOIDC(unittest.TestCase):
@@ -64,7 +65,8 @@ class OIDCRender(unittest.TestCase):
         return subprocess.run(['helm','template','openhands',str(ROOT/'charts/openhands'),'-n','openhands','-f',str(ROOT/'deploy/openhands/values.yaml'),*args],text=True,capture_output=True)
 
     def objects(self):
-        r = self.helm(); self.assertEqual(r.returncode,0,r.stderr)
+        r = self.helm()
+        self.assertEqual(r.returncode,0,r.stderr)
         return [v for v in yaml.safe_load_all(r.stdout) if v]
 
     def test_only_ingress_terminates_at_oidc(self):
@@ -99,7 +101,8 @@ class OIDCRender(unittest.TestCase):
 
     def test_oidc_not_custom_auth_or_bearer_bypass(self):
         d = next(v for v in self.objects() if v['kind']=='Deployment' and v['metadata']['name']=='openhands-oidc')
-        pod = d['spec']['template']['spec']; c = pod['containers'][0]
+        pod = d['spec']['template']['spec']
+        c = pod['containers'][0]
         self.assertFalse(pod['automountServiceAccountToken'])
         self.assertIn('@sha256:',c['image'])
         for flag in ['--provider=oidc','--allowed-group=homelab-owner','--skip-jwt-bearer-tokens=false','--cookie-secure=true','--code-challenge-method=S256']:
@@ -118,7 +121,8 @@ class OIDCRender(unittest.TestCase):
 
     def test_session_cache_is_private_nonpersistent_and_restricted(self):
         d=next(v for v in self.objects() if v['kind']=='Deployment' and v['metadata']['name']=='openhands-oidc-sessions')
-        pod=d['spec']['template']['spec'];c=pod['containers'][0]
+        pod=d['spec']['template']['spec']
+        c=pod['containers'][0]
         self.assertEqual(d['spec']['strategy']['type'],'Recreate')
         self.assertFalse(pod['automountServiceAccountToken'])
         self.assertTrue(c['securityContext']['readOnlyRootFilesystem'])

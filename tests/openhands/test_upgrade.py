@@ -6,7 +6,8 @@ class UpgradeSafety(unittest.TestCase):
         r=subprocess.check_output(['helm','template','openhands',str(ROOT/'charts/openhands'),'-n','openhands','-f',str(ROOT/'deploy/openhands/values.yaml')],text=True)
         objs=[x for x in yaml.safe_load_all(r) if x]
         j=next(x for x in objs if x['kind']=='Job' and x['metadata']['name']=='openhands-cold-backup-20261119')
-        p=j['spec']['template']['spec'];self.assertFalse(p['automountServiceAccountToken'])
+        p=j['spec']['template']['spec']
+        self.assertFalse(p['automountServiceAccountToken'])
         self.assertEqual(p['volumes'][0]['persistentVolumeClaim'],{'claimName':'data-openhands-0','readOnly':True})
         self.assertEqual(p['volumes'][1]['persistentVolumeClaim']['claimName'],'openhands-cold-backups')
         np=next(x for x in objs if x['kind']=='NetworkPolicy' and x['metadata']['name']=='openhands-backup-pre142')
