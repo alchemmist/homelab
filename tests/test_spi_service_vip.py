@@ -1,6 +1,8 @@
 """The native SPI RPC endpoint is the fixed Service, not Pod/public DNS/IP."""
 
-import json, re, unittest
+import json
+import re
+import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
