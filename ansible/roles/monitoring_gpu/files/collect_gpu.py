@@ -78,15 +78,18 @@ def parse_metrics(output):
         if not row:
             continue
         if len(row) != len(QUERY):
-            raise ValueError("Unexpected NVIDIA query column count")
+            message = "Unexpected NVIDIA query column count"
+            raise ValueError(message)
         row = [value.strip() for value in row]
         if not row[0].startswith("GPU-"):
-            raise ValueError("Invalid NVIDIA GPU identity")
+            message = "Invalid NVIDIA GPU identity"
+            raise ValueError(message)
         labels = dict(zip(("uuid", "name", "index"), row[:3]))
         count += 1
         metrics.extend(_metric_lines(labels, row))
     if not count:
-        raise ValueError("No NVIDIA GPU returned")
+        message = "No NVIDIA GPU returned"
+        raise ValueError(message)
     return "".join(metrics)
 
 

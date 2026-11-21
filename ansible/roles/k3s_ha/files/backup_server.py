@@ -32,7 +32,8 @@ def backup():
         "file:/var/lib/rancher/k3s/server/db/state.db?mode=ro", uri=True
     ) as database:
         if database.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
-            raise RuntimeError("SQLite datastore integrity check failed")
+            message = "SQLite datastore integrity check failed"
+            raise RuntimeError(message)
     subprocess.run(
         ["tar", "-C", "/var/lib/rancher/k3s", "-cpf", str(destination / "server.tar"), "server"],
         check=True,
@@ -46,7 +47,8 @@ def restore(directory):
         directory.parent != Path("/var/backups/homelab-k3s")
         or not (directory / "server.tar").is_file()
     ):
-        raise RuntimeError("Unrecognized backup")
+        message = "Unrecognized backup"
+        raise RuntimeError(message)
     server = Path("/var/lib/rancher/k3s/server")
     if server.exists():
         server.rename(directory / "failed-server")

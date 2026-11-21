@@ -125,7 +125,8 @@ def resolve(dashboard, response, settings, values_key="nodeAlertLinks", name_pre
                 )
         result[str(panel["id"])] = sorted(links, key=lambda link: (link["title"], link["url"]))
     if not result:
-        raise ValueError("Dashboard has no alert panels")
+        message = "Dashboard has no alert panels"
+        raise ValueError(message)
     return {values_key: result}
 
 

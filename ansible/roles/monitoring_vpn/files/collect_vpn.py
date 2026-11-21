@@ -224,7 +224,8 @@ def _ports(raw) -> list[int]:
         if item:
             ports.append(int(item))
     if not ports:
-        raise argparse.ArgumentTypeError("at least one TCP port is required")
+        message = "at least one TCP port is required"
+        raise argparse.ArgumentTypeError(message)
     return ports
 
 

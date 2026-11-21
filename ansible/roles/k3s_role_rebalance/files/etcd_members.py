@@ -49,7 +49,8 @@ class Etcd:
                 and (member.get("name") == name or member.get("name", "").startswith(name + "-"))
             ]
             if len(matches) != 1 or matches[0] in result:
-                raise RuntimeError("Unknown or duplicate etcd member; refusing reconfiguration")
+                message = "Unknown or duplicate etcd member; refusing reconfiguration"
+                raise RuntimeError(message)
             result[matches[0]] = {
                 "id": int(member["ID"]),
                 "id_hex": format(int(member["ID"]), "x"),
@@ -74,7 +75,8 @@ class Etcd:
 
 def require_members(members, names):
     if set(members) != set(names) or any(item["learner"] for item in members.values()):
-        raise RuntimeError("Unexpected voting membership; refusing reconfiguration")
+        message = "Unexpected voting membership; refusing reconfiguration"
+        raise RuntimeError(message)
 
 
 def verify_final(client):
@@ -105,18 +107,21 @@ def remove_socrat_1(client):
                 break
             time.sleep(0.5)
         else:
-            raise RuntimeError("Leadership transfer did not converge")
+            message = "Leadership transfer did not converge"
+            raise RuntimeError(message)
     current = client.members()
     if current != members:
-        raise RuntimeError("Membership changed during preflight; refusing removal")
+        message = "Membership changed during preflight; refusing removal"
+        raise RuntimeError(message)
     try:
         client.call(["member", "remove", members["socrat-1"]["id_hex"]], structured=False)
     except (RuntimeError, subprocess.TimeoutExpired):
         current = client.members()
         if "socrat-1" in current:
-            raise RuntimeError(
+            message = (
                 "Removal failed and socrat-1 remains a member; restore its staged configuration"
-            ) from None
+            )
+            raise RuntimeError(message) from None
     return {"changed": True, "members": verify_final(client)}
 
 

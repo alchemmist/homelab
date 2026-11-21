@@ -46,21 +46,25 @@ def module_note(path):
         )
         value = note.read_bytes()
         if not value:
-            raise RuntimeError("ALX module has no GNU build-id note")
+            message = "ALX module has no GNU build-id note"
+            raise RuntimeError(message)
         return value
 
 
 def validate():
     if os.geteuid() != 0:
-        raise RuntimeError("This guard must run as root")
+        message = "This guard must run as root"
+        raise RuntimeError(message)
     if BOARD_PATH.read_text().strip() != "MS-16GP":
-        raise RuntimeError("Unexpected motherboard")
+        message = "Unexpected motherboard"
+        raise RuntimeError(message)
     kernel = platform.release()
     status = run(["dkms", "status", "-m", DKMS_NAME, "-v", DKMS_VERSION, "-k", kernel]).decode()
     expected = f"{DKMS_NAME}/{DKMS_VERSION}, {kernel}, {platform.machine()}: installed"
     accepted = {expected, expected + " (Original modules exist)"}
     if not accepted.intersection(line.strip() for line in status.splitlines()):
-        raise RuntimeError(f"Required ALX DKMS module is not installed for {kernel}")
+        message = f"Required ALX DKMS module is not installed for {kernel}"
+        raise RuntimeError(message)
     path = Path(run(["modinfo", "-n", "alx"]).decode().strip()).resolve(strict=True)
     directory = (Path("/lib/modules") / kernel / "updates/dkms").resolve()
     if path.parent != directory or path.name not in (
@@ -69,13 +73,13 @@ def validate():
         "alx.ko.zst",
         "alx.ko.gz",
     ):
-        raise RuntimeError("ALX resolves outside the current kernel DKMS directory")
+        message = "ALX resolves outside the current kernel DKMS directory"
+        raise RuntimeError(message)
     expected_note = module_note(path)
     run(["modprobe", "alx"])
     if LOADED_NOTE.read_bytes() != expected_note:
-        raise RuntimeError(
-            "Loaded ALX build-id differs from the guarded DKMS module; reboot required"
-        )
+        message = "Loaded ALX build-id differs from the guarded DKMS module; reboot required"
+        raise RuntimeError(message)
 
 
 def main():
@@ -88,9 +92,8 @@ def main():
             run(["modprobe", "rtl8723ae", "msi=1", "ips=0", "fwlps=0", "swlps=0"])
             for name, expected in {"msi": "Y", "ips": "N", "fwlps": "N", "swlps": "N"}.items():
                 if (WIFI_PARAMETERS / name).read_text().strip() != expected:
-                    raise RuntimeError(
-                        f"Loaded Wi-Fi parameter {name} differs from guarded configuration; no automatic reload attempted"
-                    )
+                    message = f"Loaded Wi-Fi parameter {name} differs from guarded configuration; no automatic reload attempted"
+                    raise RuntimeError(message)
     except (
         OSError,
         RuntimeError,

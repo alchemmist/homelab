@@ -36,7 +36,8 @@ CONFIG_FILES = (
 def inside(path, home):
     resolved = path.resolve(strict=True)
     if resolved != home and home not in resolved.parents:
-        raise ValueError(f"Configuration target is outside account home: {path}")
+        message = f"Configuration target is outside account home: {path}"
+        raise ValueError(message)
     return resolved
 
 
@@ -46,9 +47,11 @@ def inspect_tree(path, home, ancestors=()):
     if stat.S_ISREG(mode):
         return path.is_symlink()
     if not stat.S_ISDIR(mode):
-        raise ValueError(f"Unsupported configuration file type: {path}")
+        message = f"Unsupported configuration file type: {path}"
+        raise ValueError(message)
     if resolved in ancestors:
-        raise ValueError(f"Configuration symlink cycle: {path}")
+        message = f"Configuration symlink cycle: {path}"
+        raise ValueError(message)
     linked = path.is_symlink()
     for child in sorted(path.iterdir()):
         linked = inspect_tree(child, home, (*ancestors, resolved)) or linked
@@ -60,8 +63,10 @@ def check_parents(path, home):
         if parent == home:
             return
         if parent.is_symlink():
-            raise ValueError(f"Configuration parent is a symlink: {parent}")
-    raise ValueError(f"Configuration path is outside account home: {path}")
+            message = f"Configuration parent is a symlink: {parent}"
+            raise ValueError(message)
+    message = f"Configuration path is outside account home: {path}"
+    raise ValueError(message)
 
 
 def isolate(home, check=False):
@@ -125,7 +130,8 @@ def main():
         account.pw_uid != os.geteuid()
         or Path(account.pw_dir).resolve() != Path(args.home).resolve()
     ):
-        raise ValueError("Run as the configured account with its actual home directory")
+        message = "Run as the configured account with its actual home directory"
+        raise ValueError(message)
     print(json.dumps(isolate(args.home, args.check)))
 
 
