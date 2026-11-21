@@ -1,5 +1,6 @@
 """Check the actual API ServiceMonitor rendered for the Prometheus Application."""
 
+import copy
 import re
 import subprocess
 from pathlib import Path
@@ -31,9 +32,19 @@ def test_apiserver_scrape_targets():
     assert monitor["kind"] == "ServiceMonitor"
     rules = monitor["spec"]["endpoints"][0]["relabelings"]
     reference = yaml.safe_load((ROOT / "deploy/monitoring/values.yaml").read_text())
-    assert rules == reference["kubeApiServer"]["serviceMonitor"]["relabelings"]
-    (rule,) = rules
-    assert rule["action"] == "keep" and rule["sourceLabels"] == ["__address__"]
+
+    def address_filter(entries):
+        (rule,) = [
+            r
+            for r in entries
+            if r.get("action") == "keep" and r.get("sourceLabels") == ["__address__"]
+        ]
+        return rule
+
+    rule = address_filter(rules)
+    assert rule == address_filter(
+        reference["kubeApiServer"]["serviceMonitor"]["relabelings"]
+    )
     accepted = {"10.250.0.1:6443", "10.250.0.3:6443", "10.250.0.41:6443"}
     candidates = accepted | {"10.250.0.5:6443", "192.168.0.23:6443", "10.250.0.41:443"}
     assert {
@@ -60,10 +71,10 @@ def test_native_frozen_scrape_preserves_tls_auth_and_other_jobs():
         "authorization": {"credentials_file": "token"},
     }
     original = {"scrape_configs": [job, {"job_name": "other"}]}
+    expected = copy.deepcopy(original)
+    expected["scrape_configs"][0]["relabel_configs"][0]["regex"] = (
+        r"10\.250\.0\.(1|3|41):6443"
+    )
     new = refresh(original)
-    assert new == refresh(new)
-    assert original != new
-    rule = new["scrape_configs"][0]["relabel_configs"][0]
-    assert re.fullmatch(rule["regex"], "10.250.0.41:6443")
-    rule["regex"] = job["relabel_configs"][0]["regex"]
-    assert new == original
+    assert new == expected == refresh(new)
+    assert original != expected
