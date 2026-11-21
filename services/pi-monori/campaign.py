@@ -178,7 +178,7 @@ def publish(t,sha):
   (folder/'proof.json').write_text(json.dumps(receipt,indent=2))
  title='test: cover '+t['fam'].split('.')[-1].replace('ǁ','.')[:60]+f' [{ISSUE}:'+key(t)+']';payload={'action':'create','issue':ISSUE,'head':sha,'title':title,'files':{dest:text}};mark(t,'publishing','Reconcile this unique title on any ambiguous acknowledgement: '+title,sha)
  try:r=pilot.cmd(['kubectl','-n','openhands','exec','-i','openhands-0','-c','mutation-pilot','--','python','-c',pilot.PUBLISH],json.dumps(payload),timeout=95);obj=json.loads(r.stdout);assert obj['pr'] and obj['head']
- except (OSError,ValueError,subprocess.SubprocessError,AssertionError):
+ except (OSError,ValueError,KeyError,subprocess.SubprocessError,AssertionError):
   mark(t,'publication_uncertain',title,sha);return
  (folder/'publication.json').write_text(json.dumps(obj));mark(t,'published',obj['head'],sha,obj['pr'])
 

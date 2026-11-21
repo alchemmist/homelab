@@ -120,7 +120,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except (OSError, ValueError, SyntaxError, ImportError):
+    except (OSError, ValueError, SyntaxError, ImportError, RuntimeError):
         raise SystemExit(
             "Runtime gate failed; no secret/response body printed. Inspect private state; do not activate SPI."
         )

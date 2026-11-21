@@ -82,7 +82,7 @@ if __name__=='__main__':
   try:
    for item in queue('read'):
     try:audit(item)
-    except (OSError,ValueError,RuntimeError,sqlite3.Error,subprocess.SubprocessError) as e:
+    except (OSError,ValueError,KeyError,RuntimeError,sqlite3.Error,subprocess.SubprocessError) as e:
      print('Audit deferred',item['pr'],type(e).__name__,str(e)[:180],flush=True)
   except (OSError,ValueError,RuntimeError,sqlite3.Error,subprocess.SubprocessError) as e:
    print('Queue wait',type(e).__name__,flush=True)

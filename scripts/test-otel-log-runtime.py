@@ -3,6 +3,7 @@
 Only synthetic data; prints counts/IDs, never Collector logs or payloads. Requires Docker and PyYAML.
 """
 
+import http.client
 import json
 import pathlib
 import subprocess
@@ -224,7 +225,7 @@ def main():
                 try:
                     send(url, str(i), "INFO recovery-id-" + str(i))
                     return i
-                except (OSError, ValueError):
+                except (OSError, ValueError, http.client.HTTPException):
                     time.sleep(0.2)
             raise AssertionError("request retry deadline")
 
