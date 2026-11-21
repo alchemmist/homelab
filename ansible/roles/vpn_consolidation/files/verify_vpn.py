@@ -115,7 +115,7 @@ def subscriptions(connection):
         try:
             with opener.open(url, timeout=15) as response:
                 links = normalize_subscription(response.read(4 * 1024 * 1024))
-        except Exception:
+        except (OSError, ValueError):
             raise ValueError("Subscription request or validation failed") from None
         result[digest(identifier)] = {"fingerprint": digest(links), "links": len(links)}
     return result
@@ -185,7 +185,7 @@ def main():
     args = parser.parse_args()
     try:
         run(args.mode, args.directory)
-    except Exception as error:
+    except (OSError, ValueError, sqlite3.Error) as error:
         if isinstance(error, ValueError):
             print(str(error), file=sys.stderr)
         else:
