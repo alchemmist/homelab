@@ -1,3 +1,5 @@
+"""Tests for the NetBird signal reachability check script."""
+
 import importlib.util
 from pathlib import Path
 from types import SimpleNamespace

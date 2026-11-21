@@ -1,3 +1,5 @@
+"""Tests for the NetBird public entry point scripts."""
+
 import base64
 import datetime
 import importlib.util

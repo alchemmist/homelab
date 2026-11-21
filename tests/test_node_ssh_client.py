@@ -1,3 +1,5 @@
+"""Tests for the node SSH client helper."""
+
 import getpass
 from pathlib import Path
 import subprocess

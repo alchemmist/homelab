@@ -1,3 +1,5 @@
+"""Tests for the ssh_user role manual check helper."""
+
 import importlib.util
 from pathlib import Path
 import subprocess

@@ -1,3 +1,5 @@
+"""Tests for the NetBird private setup stage 2 script."""
+
 import importlib.util
 from pathlib import Path
 import pytest

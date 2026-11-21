@@ -1,3 +1,5 @@
+"""Tests for the identity management helper script."""
+
 import contextlib
 import hashlib
 import io

@@ -1,3 +1,5 @@
+"""Tests for the moscow-native-primary playbook phases."""
+
 from pathlib import Path
 import yaml
 
