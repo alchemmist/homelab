@@ -62,34 +62,39 @@ class BrowserTestRunnerTests(unittest.TestCase):
 
     def assert_child_gone(self):
         pid = int(self.pidfile.read_text())
-        self.assertFalse(Path(f"/proc/{pid}").exists(), f"child {pid} survived runner exit")
+        assert not Path(f"/proc/{pid}").exists(), f"child {pid} survived runner exit"
 
     def test_detached_child_cleaned_after_success(self):
         process = self.launch(self.parent_code("sys.exit(0)"))
-        self.assertEqual(process.wait(timeout=10), 0)
+        assert process.wait(timeout=10) == 0
         self.assert_child_gone()
 
     def test_detached_child_cleaned_after_failure(self):
         process = self.launch(self.parent_code("sys.exit(7)"))
-        self.assertEqual(process.wait(timeout=10), 7)
+        exit_failure_code = 7
+        assert process.wait(timeout=10) == exit_failure_code
         self.assert_child_gone()
 
     def test_timeout_cleans_child_and_preserves_unrelated_process(self):
         unrelated = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
         self.children.append(unrelated)
         process = self.launch(self.parent_code("time.sleep(60)"), timeout=0.5)
-        self.assertEqual(process.wait(timeout=10), 124)
+        # The runner exits with the 124 timeout status on its own cleanup path.
+        timeout_exit_code = 124
+        assert process.wait(timeout=10) == timeout_exit_code
         self.assert_child_gone()
-        self.assertIsNone(unrelated.poll())
+        assert unrelated.poll() is None
 
     def test_sigterm_cleans_detached_child(self):
         process = self.launch(self.parent_code("time.sleep(60)"))
         deadline = time.monotonic() + 5
         while not self.pidfile.exists() and time.monotonic() < deadline:
             time.sleep(0.02)
-        self.assertTrue(self.pidfile.exists())
+        assert self.pidfile.exists()
         process.terminate()
-        self.assertEqual(process.wait(timeout=10), 143)
+        # 128 + SIGTERM(15): the parent reports the signalled child.
+        sigterm_exit_code = 143
+        assert process.wait(timeout=10) == sigterm_exit_code
         self.assert_child_gone()
 
     def test_double_fork_adopted_before_first_snapshot(self):
@@ -101,7 +106,7 @@ class BrowserTestRunnerTests(unittest.TestCase):
             "if os.fork(): os._exit(0)\n" + self.child_code()
         )
         process = self.launch(body)
-        self.assertEqual(process.wait(timeout=10), 0)
+        assert process.wait(timeout=10) == 0
         self.assert_child_gone()
 
 

@@ -79,19 +79,19 @@ class AppIAMTests(unittest.TestCase):
     def test_legacy_catalog_groups_are_known_without_human_grants(self):
         declared = set(app_iam.LEGACY_GROUPS) | set(app_iam.app_groups(self.services))
         for slug, service in self.services.items():
-            self.assertLessEqual(set(app_iam.admission_groups(slug, service)), declared)
+            assert set(app_iam.admission_groups(slug, service)) <= declared
         teacher = next(g for g in self.fake.data["core/groups/"] if g["name"] == "lms-teachers")
-        self.assertFalse(teacher["is_superuser"])
-        self.assertFalse(teacher.get("users", []))
-        self.assertEqual(self.plan()["operations"], [])
+        assert not teacher["is_superuser"]
+        assert not teacher.get("users", [])
+        assert self.plan()["operations"] == []
 
     def test_default_manifest_has_no_grants_and_no_writes(self):
-        self.assertEqual(self.plan()["operations"], [])
-        self.assertEqual(self.api.writes, [])
+        assert self.plan()["operations"] == []
+        assert self.api.writes == []
         for group in self.fake.data["core/groups/"]:
             if group["name"].startswith("app-"):
-                self.assertFalse(group["is_superuser"])
-                self.assertEqual(group["users"], [])
+                assert not group["is_superuser"]
+                assert group["users"] == []
 
     def test_scoped_grant_remove_and_disabled_are_idempotent(self):
         tim = next(u for u in self.fake.data["core/users/"] if u["username"] == "antropophag")
@@ -101,19 +101,19 @@ class AppIAMTests(unittest.TestCase):
             "app-wiki-reader",
         ]
         plan = self.plan()
-        self.assertEqual([o["action"] for o in plan["operations"]], ["add", "add"])
+        assert [o["action"] for o in plan["operations"]] == ["add", "add"]
         lifecycle.apply_plan(self.api, plan, plan["sha256"])
-        self.assertEqual(self.plan()["operations"], [])
+        assert self.plan()["operations"] == []
         self.manifest["users"]["antropophag"].update(state="disabled", appGroups=[])
         plan = self.plan()
-        self.assertEqual([o["action"] for o in plan["operations"]], ["disable", "remove", "remove"])
+        assert [o["action"] for o in plan["operations"]] == ["disable", "remove", "remove"]
         lifecycle.apply_plan(self.api, plan, plan["sha256"])
-        self.assertFalse(tim["is_active"])
-        self.assertEqual(tim["groups"], before)
-        self.assertEqual(self.plan()["operations"], [])
+        assert not tim["is_active"]
+        assert tim["groups"] == before
+        assert self.plan()["operations"] == []
         # Legacy bootstrap never re-enables a disabled initialized account.
         identity.IdentityTests().configure(Path(self.temp.name), self.fake)
-        self.assertFalse(tim["is_active"])
+        assert not tim["is_active"]
 
     def test_approval_hash_and_live_state_drift(self):
         plan = self.plan()
@@ -121,8 +121,8 @@ class AppIAMTests(unittest.TestCase):
             lifecycle.apply_plan(self.api, plan, "stale")
         tim = next(u for u in self.fake.data["core/users/"] if u["username"] == "antropophag")
         tim["is_active"] = False
-        self.assertNotEqual(plan["sha256"], self.plan()["sha256"])
-        self.assertEqual(self.api.writes, [])
+        assert plan["sha256"] != self.plan()["sha256"]
+        assert self.api.writes == []
 
     def test_uuid_collision_and_email_do_not_link(self):
         self.fake.data["core/users/"][1]["uuid"] = "e51e6956-16b5-455a-bbda-b73f96e85232"
@@ -131,7 +131,7 @@ class AppIAMTests(unittest.TestCase):
         before = len(self.fake.requests)
         with self.assertRaisesRegex(RuntimeError, "UUID mismatch"):
             identity.IdentityTests().configure(Path(self.temp.name), self.fake)
-        self.assertFalse(any(m != "GET" for m, _, _, _ in self.fake.requests[before:]))
+        assert not any(m != "GET" for m, _, _, _ in self.fake.requests[before:])
 
     def test_protected_owner_and_elevated_grants_refused(self):
         self.manifest["users"]["alchemmist"]["state"] = "disabled"
@@ -141,7 +141,7 @@ class AppIAMTests(unittest.TestCase):
         self.manifest["users"]["antropophag"]["appGroups"] = ["homelab-owner"]
         with self.assertRaisesRegex(RuntimeError, "declared app groups"):
             self.plan()
-        self.assertEqual(self.api.writes, [])
+        assert self.api.writes == []
 
     def test_unsupported_native_role_and_machine_account_refused(self):
         self.manifest["users"]["antropophag"]["appGroups"] = ["app-rancher-user"]
@@ -176,7 +176,7 @@ class AppIAMTests(unittest.TestCase):
             group[field] = value
             with self.assertRaisesRegex(RuntimeError, "non-superuser"):
                 self.plan()
-            self.assertEqual(self.api.writes, [])
+            assert self.api.writes == []
             group.clear()
             group.update(old)
 
@@ -195,7 +195,7 @@ class AppIAMTests(unittest.TestCase):
                     self.assertRaisesRegex(RuntimeError, "non-superuser"),
                 ):
                     self.plan()
-                self.assertEqual(self.api.writes, [])
+                assert self.api.writes == []
                 group.clear()
                 group.update(old)
 
@@ -213,7 +213,7 @@ class AppIAMTests(unittest.TestCase):
                 self.plan()
             with self.assertRaisesRegex(RuntimeError, "binding drift"):
                 identity.IdentityTests().configure(Path(self.temp.name), self.fake)
-            self.assertEqual(binding, {**old, **change})
+            assert binding == {**old, **change}
             binding.clear()
             binding.update(old)
 
@@ -224,10 +224,10 @@ class AppIAMTests(unittest.TestCase):
         before = len(self.fake.requests)
         with self.assertRaisesRegex(RuntimeError, "instead of recreating"):
             identity.IdentityTests().configure(Path(self.temp.name), self.fake)
-        self.assertFalse(any(m != "GET" for m, _, _, _ in self.fake.requests[before:]))
+        assert not any(m != "GET" for m, _, _, _ in self.fake.requests[before:])
         del self.manifest["users"]["antropophag"]
-        self.assertEqual(self.plan()["operations"], [])
-        self.assertEqual(self.api.writes, [])
+        assert self.plan()["operations"] == []
+        assert self.api.writes == []
 
     def test_foreign_app_group_is_not_adopted(self):
         group = next(g for g in self.fake.data["core/groups/"] if g["name"] == "app-grafana-viewer")
@@ -252,8 +252,8 @@ class AppIAMTests(unittest.TestCase):
             page = len(calls)
             return {"results": [page], "pagination": {"next": page == 1}}
 
-        self.assertEqual(app_iam.rows(api, "core/groups/"), [1, 2])
-        self.assertIn("page=2", calls[-1])
+        assert app_iam.rows(api, "core/groups/") == [1, 2]
+        assert "page=2" in calls[-1]
         with self.assertRaisesRegex(RuntimeError, "binding drift"):
             app_iam.validate_bindings([{"group": "a"}, {"group": "a"}], {"a"})
 
@@ -275,17 +275,15 @@ class AppIAMTests(unittest.TestCase):
                 str(ROOT / "ansible/roles/identity_integrations/files/integrate.py"),
                 run_name="__main__",
             )
-        self.assertEqual(len(writes), 1)
+        assert len(writes) == 1
         data = writes[0]["stringData"]
-        self.assertEqual(
-            json.loads(data["WIKI_OIDC_LINKS"]),
-            {a["idpUserUuid"]: a["wikiUserId"] for a in self.reviewed.values()},
-        )
-        self.assertEqual(
-            json.loads(data["WIKI_OIDC_SUBJECT_ROLES"]),
-            {a["idpUserUuid"]: a["wikiRole"] for a in self.reviewed.values()},
-        )
-        self.assertEqual(json.loads(data["WIKI_OIDC_GROUP_ROLES"])["app-wiki-editor"], "editor")
+        assert json.loads(data["WIKI_OIDC_LINKS"]) == {
+            a["idpUserUuid"]: a["wikiUserId"] for a in self.reviewed.values()
+        }
+        assert json.loads(data["WIKI_OIDC_SUBJECT_ROLES"]) == {
+            a["idpUserUuid"]: a["wikiRole"] for a in self.reviewed.values()
+        }
+        assert json.loads(data["WIKI_OIDC_GROUP_ROLES"])["app-wiki-editor"] == "editor"
         # A same-name/email replacement must not rewrite any native link.
         self.fake.data["core/users/"][1]["uuid"] = "e51e6956-16b5-455a-bbda-b73f96e85232"
         with (
@@ -307,36 +305,34 @@ class AppIAMTests(unittest.TestCase):
             "grafana"
         ]["env"]
         expression = env["GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH"]
-        self.assertTrue(
-            expression.startswith("contains(groups[*], 'homelab-owner') && 'GrafanaAdmin'")
-        )
-        self.assertIn("'app-grafana-editor') && 'Editor'", expression)
+        assert expression.startswith("contains(groups[*], 'homelab-owner') && 'GrafanaAdmin'")
+        assert "'app-grafana-editor') && 'Editor'" in expression
         webui = json.loads((ROOT / "deploy/identity/open-webui-env.json").read_text())
-        self.assertEqual(webui["OAUTH_ADMIN_ROLES"], "homelab-owner")
-        self.assertEqual(webui["ENABLE_OAUTH_EMAIL_FALLBACK"], "True")
-        self.assertEqual(webui["OAUTH_MERGE_ACCOUNTS_BY_EMAIL"], "False")
-        self.assertIn("app-open-webui-user", webui["OAUTH_ALLOWED_ROLES"])
-        self.assertEqual(self.reviewed["antropophag"]["wikiRole"], "editor")
-        self.assertEqual(
-            self.reviewed["alchemmist"]["idpUserUuid"], self.manifest["users"]["alchemmist"]["uuid"]
+        assert webui["OAUTH_ADMIN_ROLES"] == "homelab-owner"
+        assert webui["ENABLE_OAUTH_EMAIL_FALLBACK"] == "True"
+        assert webui["OAUTH_MERGE_ACCOUNTS_BY_EMAIL"] == "False"
+        assert "app-open-webui-user" in webui["OAUTH_ALLOWED_ROLES"]
+        assert self.reviewed["antropophag"]["wikiRole"] == "editor"
+        assert (
+            self.reviewed["alchemmist"]["idpUserUuid"]
+            == self.manifest["users"]["alchemmist"]["uuid"]
         )
         for provider in self.fake.data["providers/oauth2/"]:
-            self.assertEqual(
-                provider["authorization_flow"], "default-provider-authorization-explicit-consent"
+            assert (
+                provider["authorization_flow"] == "default-provider-authorization-explicit-consent"
             )
-            self.assertEqual(provider["authentication_flow"], "default-authentication-flow")
-            self.assertEqual(
-                provider["sub_mode"],
-                self.services[provider["name"][8:]].get("subMode", "hashed_user_id"),
+            assert provider["authentication_flow"] == "default-authentication-flow"
+            assert provider["sub_mode"] == self.services[provider["name"][8:]].get(
+                "subMode", "hashed_user_id"
             )
         scope = next(
             s
             for s in self.fake.data["propertymappings/provider/scope/"]
             if s.get("name") == "homelab-groups"
         )
-        self.assertEqual(
-            scope["expression"],
-            'return {"groups": [group.name for group in request.user.ak_groups.all()]}',
+        assert (
+            scope["expression"]
+            == 'return {"groups": [group.name for group in request.user.ak_groups.all()]}'
         )
 
 
