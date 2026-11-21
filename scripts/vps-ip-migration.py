@@ -316,7 +316,7 @@ def backup_database(path, store):
     return target
 
 
-def migrate_database(path, old, new, store):
+def migrate_database(_path, _old, _new, _store):
     raise MigrationError("Production panel writes require native API; SQL migration prohibited")
 
 

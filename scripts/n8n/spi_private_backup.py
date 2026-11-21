@@ -24,7 +24,7 @@ def backup(source, directory, max_bytes=512 * 1024 * 1024, deadline_seconds=60):
     src = None
     dst = None
 
-    def expired(*args):
+    def expired(*_args):
         signal.setitimer(signal.ITIMER_REAL, 0)
         raise TimeoutError("backup deadline exceeded")
 
@@ -53,7 +53,7 @@ def backup(source, directory, max_bytes=512 * 1024 * 1024, deadline_seconds=60):
             signal.pthread_sigmask(signal.SIG_SETMASK, mask)
         page_size = src.execute("PRAGMA page_size").fetchone()[0]
 
-        def progress(status, remaining, total):
+        def progress(_status, _remaining, total):
             check()
             if total * page_size > max_bytes:
                 raise RuntimeError("backup size exceeded")

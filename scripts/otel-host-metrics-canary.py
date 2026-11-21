@@ -151,7 +151,7 @@ def environment(root, request):
     }
 
 
-def telemetry(root):
+def telemetry(_root):
     with urllib.request.urlopen("http://127.0.0.1:18888/metrics", timeout=5) as response:
         lines = response.read(4 * 1024 * 1024 + 1).decode().splitlines()
     selected = {}

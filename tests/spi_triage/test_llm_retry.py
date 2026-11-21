@@ -122,7 +122,8 @@ class EngineCheckpointTests(unittest.TestCase):
     tearDown = f.EngineTests.tearDown
 
     def test_partial_matching_checkpoint_saved_before_busy_failure(self):
-        def matching(event, issues, progress=None, on_progress=None):
+        def matching(_event, _issues, progress=None, on_progress=None):
+            del progress  # checkpoint payload is irrelevant to the re-raise path
             on_progress({"signature": "test", "decisions": []})
             raise Failure("LLM_HTTP_429")
 

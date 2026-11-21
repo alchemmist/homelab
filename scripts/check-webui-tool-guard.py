@@ -124,7 +124,7 @@ async def main():
         metadata["tools"]["read_file"] = {"type": "terminal", "spec": specs["read_file"]}
 
         async def read(params):
-            async def dispatch(**kwargs):
+            async def dispatch(**_kwargs):
                 return await raw("read_file", params)
 
             metadata["tools"]["read_file"]["callable"] = dispatch

@@ -31,7 +31,7 @@ class Resume(unittest.TestCase):
    path=d+'/db';held=True;observations=[]
    def chat(cid):
     state={'execution_status':'error','agent':{'llm':{'model':'test'}}};ev=dict(id=cid,kind='ConversationErrorEvent',source='environment',code='LLMRateLimitError',detail='RateLimitError max_parallel_requests=1 requests in flight')
-    def api(s='',method='GET'):
+    def api(s='',_method='GET'):
      if s.startswith('/events'):return {'items':[ev]}
      if not s:return state
      self.assertFalse(held);state['execution_status']='running';observations.append((cid,'tool result'));return {'success':True}

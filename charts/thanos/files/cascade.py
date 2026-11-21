@@ -410,7 +410,7 @@ def main(argv=None):
         sys.stdout.write("\n")
         return 0
 
-    def stop(signum, frame):
+    def stop(signum, _frame):
         raise SystemExit(128 + signum)
 
     signal.signal(signal.SIGTERM, stop)

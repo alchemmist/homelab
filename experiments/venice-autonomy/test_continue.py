@@ -20,7 +20,7 @@ class Conversation:
 
 
 def facts(continue_value):
-    def acceptance(sandbox, directory, round_number):
+    def acceptance(_sandbox, _directory, round_number):
         return {
             "round": round_number,
             "continue": continue_value,
@@ -47,7 +47,7 @@ class ContinueOpenHandsTests(unittest.TestCase):
         conversation = Conversation()
         decisions = iter([True, False])
 
-        def acceptance(sandbox, directory, round_number):
+        def acceptance(_sandbox, _directory, round_number):
             return {"round": round_number, "continue": next(decisions)}
 
         continue_openhands(conversation, None, None, acceptance)

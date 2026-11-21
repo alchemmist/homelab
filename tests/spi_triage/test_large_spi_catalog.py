@@ -61,7 +61,7 @@ class LargeCatalogTests(unittest.TestCase):
         saved = []
         calls = []
 
-        def first(task, data, schema, deadline):
+        def first(_task, data, _schema, _deadline):
             calls.append([x["number"] for x in data["open_issues"]])
             if len(calls) == 3:
                 raise Failure("LLM_ADMISSION_DEFERRED", 61)
@@ -75,7 +75,7 @@ class LargeCatalogTests(unittest.TestCase):
         completed = [x for batch in calls[:2] for x in batch]
         resumed = []
 
-        def second(task, data, schema, deadline):
+        def second(_task, data, _schema, _deadline):
             resumed.extend(x["number"] for x in data["open_issues"])
             return dict(GOOD)
 

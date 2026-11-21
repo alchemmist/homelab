@@ -40,7 +40,7 @@ def claim_name(volumes):
     return None
 
 
-def decide(desired_node, current_node, relocate):
+def decide(desired_node, current_node, _relocate):
     if current_node in (None, "", desired_node):
         return "proceed"
     return "refuse"

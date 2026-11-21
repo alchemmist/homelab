@@ -545,7 +545,7 @@ def manifests(c, publication="internal", port_forward_cidrs=None):
     return result
 
 
-def forwarder_files(c):
+def forwarder_files(_c):
     """In-namespace proxy. ipAllowList uses the socket address, not X-Forwarded-For."""
     server = "server." + NS + ".svc.cluster.local:80"
     dashboard = "dashboard." + NS + ".svc.cluster.local:80"

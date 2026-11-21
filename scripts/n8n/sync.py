@@ -42,7 +42,7 @@ def api(method, path, body=None):
     return json.loads(r.stdout) if r.stdout else {}
 
 
-def render_workflow(template, creds, calendar, cloud=None):
+def render_workflow(template, creds, calendar, _cloud=None):
     for kind in {k for n in template["nodes"] for k in n.get("credentials", {})}:
         if not creds.get(kind, {}).get("id"):
             raise RuntimeError("Missing credential mapping: " + kind)

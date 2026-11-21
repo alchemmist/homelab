@@ -10,7 +10,7 @@ assert not receipt.exists() and not encrypted.exists(), 'Never overwrite a previ
 source=sqlite3.connect('file:/source/openhands/automation/automations.db?mode=ro',uri=True)
 snapshot=sqlite3.connect('/tmp/snapshot.db');deadline=time.monotonic()+90
 
-def progress(status,left,total):
+def progress(_status,_left,_total):
     if time.monotonic()>deadline:raise RuntimeError('SQLite snapshot deadline')
 
 source.backup(snapshot,pages=64,progress=progress)
