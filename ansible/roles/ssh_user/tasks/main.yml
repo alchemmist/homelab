@@ -68,7 +68,7 @@
     name: "{{ ssh_user_key.username }}"
     state: present
     create_home: true
-    home: "/home/{{ ssh_user_key.username }}"
+    home: /home/{{ ssh_user_key.username }}
     shell: "{{ omit if ssh_user_before.exists else '/bin/bash' }}"
     password_lock: true
     groups: "{{ omit if ssh_user_before.exists else '' }}"
@@ -100,7 +100,7 @@
 - name: Ensure the private SSH directory
   become_user: "{{ ssh_user_key.username }}"
   ansible.builtin.file:
-    path: "/home/{{ ssh_user_key.username }}/.ssh"
+    path: /home/{{ ssh_user_key.username }}/.ssh
     state: directory
     owner: "{{ ssh_user_key.username }}"
     group: "{{ ssh_user_account.group }}"
@@ -125,7 +125,7 @@
 - name: Ensure private authorized_keys permissions
   become_user: "{{ ssh_user_key.username }}"
   ansible.builtin.file:
-    path: "/home/{{ ssh_user_key.username }}/.ssh/authorized_keys"
+    path: /home/{{ ssh_user_key.username }}/.ssh/authorized_keys
     state: file
     owner: "{{ ssh_user_key.username }}"
     group: "{{ ssh_user_account.group }}"

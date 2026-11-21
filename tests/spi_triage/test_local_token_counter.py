@@ -11,12 +11,12 @@ from local_token_counter import configured_counter, render, LocalCounter
 
 class CounterContract(unittest.TestCase):
     def body(self):
-        return dict(
-            model="qwen3.8-27b",
-            messages=[dict(role="system", content=" s "), dict(role="user", content=" u ")],
-            chat_template_kwargs={"enable_thinking": False},
-            max_tokens=768,
-        )
+        return {
+            "model": "qwen3.8-27b",
+            "messages": [{"role": "system", "content": " s "}, {"role": "user", "content": " u "}],
+            "chat_template_kwargs": {"enable_thinking": False},
+            "max_tokens": 768,
+        }
 
     def test_render(self):
         self.assertEqual(
@@ -55,17 +55,19 @@ class ProxyFloor(unittest.TestCase):
         from types import SimpleNamespace
 
         counter = object.__new__(LocalCounter)
-        counter._tokenizer = SimpleNamespace(encode=lambda *a, **kw: SimpleNamespace(ids=[1] * 10))
+        counter._tokenizer = SimpleNamespace(
+            encode=lambda *_a, **_kw: SimpleNamespace(ids=[1] * 10)
+        )
         return counter
 
     def body(self, text, maximum=2500):
-        return dict(
-            model="qwen3.8-27b",
-            messages=[dict(role="system", content="s"), dict(role="user", content=text)],
-            chat_template_kwargs={"enable_thinking": False},
-            max_tokens=maximum,
-            response_format={},
-        )
+        return {
+            "model": "qwen3.8-27b",
+            "messages": [{"role": "system", "content": "s"}, {"role": "user", "content": text}],
+            "chat_template_kwargs": {"enable_thinking": False},
+            "max_tokens": maximum,
+            "response_format": {},
+        }
 
     def test_raw_floor_and_rounding(self):
         for text in [" " * 100000 + "x", "a" * 60000, '😀\\"\n' * 1000] + [
