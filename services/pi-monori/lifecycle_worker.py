@@ -10,14 +10,18 @@ def sql(q,args=()):
   db.row_factory=sqlite3.Row;return [dict(x) for x in db.execute(q,args)]
 def init():
  sql('create table if not exists seen(k text primary key,due real,reason text)');sql('create table if not exists fixes(k text primary key,pr int,head text,remark text,detail text,state text,result text)')
-def api(action,n,h,**x):
+def api(action: str, n: int, h: str, **x: object):
  payload=dict(action=action,pr=n,head=h,**x);r=c.pilot.cmd(['kubectl','-n','openhands','exec','-i','openhands-0','-c','mutation-pilot','--','python','-c',c.pilot.PUBLISH],json.dumps(payload),timeout=95);return json.loads(r.stdout)
 QUEUE="""import sys,json,sqlite3,time
 x=json.load(sys.stdin);c=sqlite3.connect('/state/reports.db');c.row_factory=sqlite3.Row
 with c:
  if x['op']=='read':print(json.dumps([dict(r) for r in c.execute('select * from review_queue where dirty>processed order by processed,pr limit 8')]))
  else:c.execute('update review_queue set processed=?,state=?,head=?,note=? where pr=?',(x['dirty'],x['state'],x['head'],x['note'],x['pr']));print('true')"""
-def queue(op,**x):return json.loads(c.pilot.cmd(['kubectl','-n','openhands','exec','-i','deploy/mutation-report-intake','--','python','-c',QUEUE],json.dumps(dict(op=op,**x)),timeout=20).stdout)
+QUEUE_CMD = ['kubectl','-n','openhands','exec','-i',
+ 'deploy/mutation-report-intake','--','python','-c',QUEUE]
+def queue(op: str, **x: object):
+ p=c.pilot.cmd(QUEUE_CMD,json.dumps(dict(op=op,**x)),timeout=20)
+ return json.loads(p.stdout)
 def enqueue(n,head,remark,detail):
  k=hashlib.sha256(json.dumps([n,head,remark,detail]).encode()).hexdigest();sql("insert or ignore into fixes values(?,?,?,?,?,'pending','')",(k,n,head,remark,detail[:1800]));return k
 

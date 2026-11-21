@@ -4,6 +4,7 @@ import contextlib
 import copy
 import io
 import json
+from collections.abc import Sequence
 from pathlib import Path
 import sys
 import subprocess
@@ -260,9 +261,13 @@ class AppIAMTests(unittest.TestCase):
     def test_wiki_integration_keeps_exact_links_and_overrides(self):
         writes = []
 
-        def run(args, **kwargs):
+        def run(args: Sequence[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
             if "apply" in args:
-                writes.append(json.loads(kwargs["input"]))
+                payload = kwargs["input"]
+                if not isinstance(payload, (str, bytes, bytearray)):
+                    invalid_payload = "stubbed subprocess.run must receive a str input"
+                    raise AssertionError(invalid_payload)
+                writes.append(json.loads(payload))
             return subprocess.CompletedProcess(args, 0, "", "")
 
         with (

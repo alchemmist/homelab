@@ -42,13 +42,13 @@ class OutboxTest(unittest.TestCase):
             self.store, self.http, clock=lambda: self.now, guarded_protocol=True
         )
 
-    def http(self, method, path, **kwargs):
+    def http(self, method: str, path: str, **kwargs: object) -> tuple[int, dict[str, object]]:
         self.calls.append((method, path, kwargs))
         return self.status, self.item if method == "GET" else dict(
             key="Alert/pod/ns/name", updated=[dict(chat_id=1, message_id=2)], pending=[]
         )
 
-    def publication(self, **changes):
+    def publication(self, **changes: object) -> dict[str, object]:
         return dict(
             dict(
                 kind="comment",
@@ -131,7 +131,7 @@ class OutboxTest(unittest.TestCase):
         self.enqueue()
         self.receipt()
 
-        def fail(*a, **kw):
+        def fail(*a: object, **kw: object) -> None:
             raise TimeoutError("X-Internal-Token: secret-value")
 
         self.outbox.request = fail
@@ -172,7 +172,7 @@ class OutboxTest(unittest.TestCase):
         self.receipt()
         original = self.http
 
-        def racing(method, path, **kwargs):
+        def racing(method: str, path: str, **kwargs: object) -> tuple[int, dict[str, object]]:
             if method == "POST":
                 self.outbox.record_primary_publication(
                     "resolved",
@@ -212,7 +212,7 @@ class OutboxTest(unittest.TestCase):
             dict(html_url="https://github.com/alchemmist/homelab/issues/42"),
             dict(html_url="https://evil/issues/42#issuecomment-7"),
             dict(id=8),
-            dict(html_url=self.publication()["html_url"] + "?token=x"),
+            dict(html_url=str(self.publication()["html_url"]) + "?token=x"),
         ]:
             with self.assertRaises(ValueError):
                 links.primary_url(self.publication(**changes))

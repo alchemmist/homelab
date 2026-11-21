@@ -1,7 +1,8 @@
 import unittest, tempfile, json
 from pathlib import Path
-from unittest.mock import Mock
 from types import SimpleNamespace
+from typing import cast
+from unittest.mock import Mock
 import test_triage as fixture
 from core import Store, Failure
 from telegram_links import Links
@@ -19,8 +20,8 @@ class DeliveryIntegrationTests(unittest.TestCase):
     def tearDown(self):
         fixture.EngineTests.tearDown(self)
 
-    def process(self, *a, **kw):
-        return fixture.EngineTests.process(self, *a, **kw)
+    def process(self, *a: object, **kw: object) -> str:
+        return cast("str", fixture.EngineTests.process(self, *a, **kw))
 
     def test_new_issue_is_durably_linked_before_artifacts(self):
         self.github.request.return_value = {

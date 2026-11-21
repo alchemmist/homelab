@@ -74,7 +74,7 @@ def run():
         original_exporter = native.HttpOTLPSpanExporter
 
         class ObservedExporter(original_exporter):
-            def __init__(self, *args, **kwargs):
+            def __init__(self, *args: object, **kwargs: object) -> None:
                 super().__init__(*args, **kwargs)
                 constructed.append(self._session.headers.get("Connection", "").lower() == "close")
 

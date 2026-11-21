@@ -34,7 +34,7 @@ PROMETHEUS = os.environ.get(
 LOCK = ROOT / "step.lock"
 
 
-def log(event, **fields):
+def log(event: str, **fields: object) -> None:
     print(
         json.dumps({"service": "lms-certify", "event": event, **fields}, ensure_ascii=False),
         flush=True,

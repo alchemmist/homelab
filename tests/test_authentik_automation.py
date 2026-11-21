@@ -4,6 +4,7 @@ import importlib.util
 import io
 import json
 import os
+from collections.abc import Sequence
 from pathlib import Path
 import runpy
 import tempfile
@@ -197,7 +198,7 @@ class AutomationTests(unittest.TestCase):
         a.save(p / "automation-api.json", j)
         (p / "bootstrap.py").write_text((FILES / "bootstrap.py").read_text())
 
-    def kube_read(self, args, **kwargs):
+    def kube_read(self, args: Sequence[str], **kwargs: object) -> bytes:
         if "secret" in args:
             return json.dumps({"data": {}, "metadata": {"annotations": {}}}).encode()
         return json.dumps({"spec": {"template": {"spec": {"containers": [{"env": []}]}}}}).encode()

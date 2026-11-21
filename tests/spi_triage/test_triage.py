@@ -228,7 +228,7 @@ class EvidenceTests(unittest.TestCase):
     def test_host_profile_and_no_raw_trace_attributes(self):
         http = Mock()
 
-        def request(method, url, *args, **kwargs):
+        def request(method: str, url: str, *args: object, **kwargs: object) -> dict[str, object]:
             if "/api/v1/query?" in url:
                 return {"data": {"result": [{"metric": {"nodename": "socrat-0"}}]}}
             if "/api/traces/" in url:

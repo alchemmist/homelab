@@ -155,7 +155,7 @@ class ArtifactTests(unittest.TestCase):
 
 
 class TelemetryTests(unittest.TestCase):
-    def response(self, method, url, *args, **kw):
+    def response(self, method: str, url: str, *args: object, **kw: object) -> dict[str, object]:
         if "/api/search?" in url:
             return {"traces": [{"traceID": "a" * 32}]}
         if "/api/traces/" in url:

@@ -17,7 +17,7 @@ ADAPTER=json.loads((c.R/'worker_adapter.json').read_text())
 # Publisher is intentionally not a generic GitHub token. Never silently route another repo to it.
 if ADAPTER['adapter']!='monori-mutmut-v1' or ADAPTER['repository']!='alchemmist/monori':raise ValueError('Unenrolled publisher')
 
-def rpc(op,**kw):
+def rpc(op: str, **kw: object):
  p=c.pilot.cmd(['kubectl','-n','openhands','exec','-i','deploy/mutation-report-intake','--','python','-c',RPC],json.dumps(dict(op=op,repo=ADAPTER['repository_id'],issue=c.ISSUE,**kw)),timeout=20);return json.loads(p.stdout)
 
 def main():

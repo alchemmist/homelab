@@ -7,20 +7,32 @@ Private test keys and containers are removed in finally/TemporaryDirectory.
 """
 
 import json
+from collections.abc import Sequence
 from pathlib import Path
 import re
 import subprocess
 import tempfile
 import time
 import uuid
+from typing import TypedDict, Unpack
 
 ROOT = Path(__file__).resolve().parents[3]
 IMAGE = "homelab-ssh-user-fixture:local"
 USER = "ssh_fixture"
 
 
-def run(args, expected=0, **kw):
-    p = subprocess.run(args, capture_output=True, text=True, timeout=kw.pop("timeout", 180), **kw)
+class _RunKeywords(TypedDict, total=False):
+    input: str
+    cwd: Path
+
+
+def run(
+    args: Sequence[str],
+    expected: int = 0,
+    timeout: int = 180,
+    **kw: Unpack[_RunKeywords],
+) -> str:
+    p = subprocess.run(args, capture_output=True, text=True, timeout=timeout, **kw)
     if p.returncode != expected:
         # Fixture output contains public data only, but keep it private to avoid
         # copying verbose Ansible/module output into unrelated transcripts.

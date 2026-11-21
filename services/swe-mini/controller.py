@@ -87,7 +87,7 @@ def github(path, method="GET", data=None, auth=True):
     return response.json() if response.content else {}
 
 
-def save(run_id, **fields):
+def save(run_id: int | str, **fields: object) -> None:
     DB.execute(
         "UPDATE runs SET " + ",".join(key + "=?" for key in fields) + " WHERE id=?",
         [*fields.values(), run_id],

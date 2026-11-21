@@ -529,9 +529,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
 class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
     daemon_threads = True
 
-    def __init__(self, *args, **kwargs):
+    def __init__(
+        self,
+        server_address: tuple[str, int],
+        handler_class: type[socketserver.BaseRequestHandler],
+        *,
+        bind_and_activate: bool = True,
+    ) -> None:
         self.slots = threading.BoundedSemaphore(MAX_CONNECTIONS)
-        super().__init__(*args, **kwargs)
+        super().__init__(server_address, handler_class, bind_and_activate)
 
     def process_request(self, request, client_address):
         if not self.slots.acquire(blocking=False):
