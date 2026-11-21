@@ -225,7 +225,7 @@ endpoints:
     conditions: ["[STATUS] == 200"]
   - name: Object storage readiness
     group: Platform
-    url: "http://kube-prometheus-stack-prometheus.cattle-monitoring-system:9090/api/v1/query?query=kube_statefulset_status_replicas_ready%7Bnamespace%3D%22rustfs%22%2Cstatefulset%3D%22rustfs%22%7D"
+    url: "http://kube-prometheus-stack-prometheus.cattle-monitoring-system:9090/api/v1/query?query=kube_deployment_status_replicas_available%7Bnamespace%3D%22rustfs%22%2Cdeployment%3D%22rustfs%22%7D"
     interval: 60s
     client: {timeout: 8s, ignore-redirect: true}
     ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
@@ -265,3 +265,66 @@ endpoints:
     client: {timeout: 8s, ignore-redirect: true}
     ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
     conditions: ["[STATUS] == 200"]
+  - name: Grafana MCP readiness
+    group: Platform
+    url: "http://kube-prometheus-stack-prometheus.cattle-monitoring-system:9090/api/v1/query?query=kube_deployment_status_replicas_available%7Bnamespace%3D%22cattle-monitoring-system%22%2Cdeployment%3D%22grafana-mcp%22%7D"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200", "[BODY].data.result[0].value[1] >= 1"]
+  - name: Log storage readiness
+    group: Platform
+    url: "http://kube-prometheus-stack-prometheus.cattle-monitoring-system:9090/api/v1/query?query=kube_deployment_status_replicas_available%7Bnamespace%3D%22cattle-monitoring-system%22%2Cdeployment%3D%22otel-loki%22%7D"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200", "[BODY].data.result[0].value[1] >= 1"]
+  - name: Metrics queries readiness
+    group: Platform
+    url: "http://kube-prometheus-stack-prometheus.cattle-monitoring-system:9090/api/v1/query?query=kube_deployment_status_replicas_available%7Bnamespace%3D%22cattle-monitoring-system%22%2Cdeployment%3D%22thanos-query%22%7D"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200", "[BODY].data.result[0].value[1] >= 1"]
+  - name: VPN transit readiness
+    group: Network
+    url: "http://kube-prometheus-stack-prometheus.cattle-monitoring-system:9090/api/v1/query?query=kube_deployment_status_replicas_available%7Bnamespace%3D%22vpn-transit%22%2Cdeployment%3D%22vpn-transit%22%7D"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200", "[BODY].data.result[0].value[1] >= 1"]
+  - name: Home relay readiness
+    group: Network
+    url: "http://kube-prometheus-stack-prometheus.cattle-monitoring-system:9090/api/v1/query?query=kube_deployment_status_replicas_available%7Bnamespace%3D%22identity%22%2Cdeployment%3D%22netbird-relay-home%22%7D"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200", "[BODY].data.result[0].value[1] >= 1"]
+  - name: VPS relay readiness
+    group: Network
+    url: "http://kube-prometheus-stack-prometheus.cattle-monitoring-system:9090/api/v1/query?query=kube_deployment_status_replicas_available%7Bnamespace%3D%22identity%22%2Cdeployment%3D%22netbird-relay-vps%22%7D"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200", "[BODY].data.result[0].value[1] >= 1"]
+  - name: Terminal readiness
+    group: AI
+    url: "http://kube-prometheus-stack-prometheus.cattle-monitoring-system:9090/api/v1/query?query=kube_deployment_status_replicas_available%7Bnamespace%3D%22llm%22%2Cdeployment%3D%22open-terminal%22%7D"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200", "[BODY].data.result[0].value[1] >= 1"]
+  - name: SPI queue UI readiness
+    group: Automation
+    url: "http://kube-prometheus-stack-prometheus.cattle-monitoring-system:9090/api/v1/query?query=kube_deployment_status_replicas_available%7Bnamespace%3D%22automation%22%2Cdeployment%3D%22spi-queue-ui%22%7D"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200", "[BODY].data.result[0].value[1] >= 1"]
+  - name: Image optimizer readiness
+    group: Applications
+    url: "http://kube-prometheus-stack-prometheus.cattle-monitoring-system:9090/api/v1/query?query=kube_deployment_status_replicas_available%7Bnamespace%3D%22wishlist%22%2Cdeployment%3D%22wishlist-image-optimizer%22%7D"
+    interval: 60s
+    client: {timeout: 8s, ignore-redirect: true}
+    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
+    conditions: ["[STATUS] == 200", "[BODY].data.result[0].value[1] >= 1"]
