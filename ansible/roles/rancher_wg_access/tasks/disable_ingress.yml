@@ -1,4 +1,3 @@
----
 - name: Discover Rancher pods before removing the public route
   ansible.builtin.command:
     argv: [kubectl,
@@ -129,4 +128,3 @@
   register: rancher_wg_ingress
   changed_when: false
   failed_when: rancher_wg_ingress.stdout | trim | length > 0
-...

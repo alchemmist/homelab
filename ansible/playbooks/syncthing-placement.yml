@@ -1,4 +1,3 @@
----
 - name: Restrict Syncthing to nodes with a private proxy configuration
   hosts: socrat-0
   gather_facts: false
@@ -36,4 +35,3 @@
     - name: Wait for all configured Syncthing instances
       ansible.builtin.command: kubectl -n syncthing rollout status deployment/syncthing --timeout=300s
       changed_when: false
-...

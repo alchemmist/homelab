@@ -1,4 +1,3 @@
----
 - name: Prepare identity namespace before extending public edge RBAC
   hosts: socrat-0
   gather_facts: false
@@ -23,4 +22,3 @@
     K3S_CONFIG_FILE: /dev/null
   roles:
     - authentik
-...

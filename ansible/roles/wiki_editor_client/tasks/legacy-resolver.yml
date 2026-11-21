@@ -1,4 +1,3 @@
----
 - name: Require macOS
   ansible.builtin.assert:
     that: ansible_system == 'Darwin'
@@ -60,4 +59,3 @@
 - name: Reconcile resolver immediately
   ansible.builtin.command: /usr/local/libexec/socrat-wiki-resolver
   changed_when: false
-...

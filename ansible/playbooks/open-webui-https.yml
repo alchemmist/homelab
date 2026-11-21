@@ -1,4 +1,3 @@
----
 - name: Refuse the retired competing open-webui-https maintenance entrypoint
   hosts: socrat-0
   gather_facts: false
@@ -19,4 +18,3 @@
           current backup work remains explicitly deferred by the owner.
           See docs/infrastructure-contracts.md and docs/open-webui-upgrades.md.
       tags: [always]
-...

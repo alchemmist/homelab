@@ -1,4 +1,3 @@
----
 - name: Install persistent native host agents and trace gateway
   hosts: "{{ otel_production_hosts | default('socrat-0:socrat-1:socrat-2:socrat-3') }}"
   gather_facts: false
@@ -260,4 +259,3 @@
         enabled: true
         state: started
       when: inventory_hostname == 'socrat-0'
-...

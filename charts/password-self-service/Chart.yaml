@@ -1,6 +1,4 @@
----
 apiVersion: v2
 name: password-self-service
 version: 0.1.0
 description: Same-origin External password self-service using native Authentik flows
-...

@@ -1,4 +1,3 @@
----
 # Disable Fleet GitOps; Rancher MCM currently requires Fleet itself (v2.15.2).
 # Full Fleet removal requires an explicit decision to disable Rancher MCM first.
 features: continuous-delivery=false
@@ -41,4 +40,3 @@ extraEnv:
 hostAliases:
   - ip: 10.43.218.222
     hostnames: [auth.socrat.alchemmist.xyz]
-...

@@ -1,4 +1,3 @@
----
 name: SWE Mini Release
 on:
   workflow_dispatch: {}
@@ -64,4 +63,3 @@ jobs:
           ):
               (directory / 'config.json').unlink(missing_ok=True)
           PY
-...

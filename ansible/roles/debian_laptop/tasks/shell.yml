@@ -1,4 +1,3 @@
----
 - name: Install the standard interactive shell and prompt
   ansible.builtin.apt:
     name: [zsh, starship]
@@ -12,4 +11,3 @@
   ansible.builtin.user:
     name: "{{ homelab_user }}"
     shell: /usr/bin/zsh
-...

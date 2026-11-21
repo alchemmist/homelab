@@ -1,4 +1,3 @@
----
 - name: Publish private SearXNG HTTPS gateway
   hosts: socrat-0
   gather_facts: false
@@ -149,4 +148,3 @@
         name: homelab-private-dns.service
         state: restarted
       when: searxng_dns_record.changed
-...

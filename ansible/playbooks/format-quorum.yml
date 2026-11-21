@@ -1,4 +1,3 @@
----
 # Git -> existing Argo Application owns this workload. The former imperative
 # chart-default deployment would restart node1 against stale NFS data after the
 # VM105 handoff; do not reinstall that writer or re-bootstrap NFS on node1.
@@ -33,4 +32,3 @@
           - argocd.argoproj.io/refresh=hard
           - --overwrite
       changed_when: false
-...

@@ -1,4 +1,3 @@
----
 homelab_welcome_enabled: true
 homelab_welcome_logo: reference-16
 homelab_welcome_admin: alchemmist
@@ -10,4 +9,3 @@ homelab_welcome_kubectl: [env, K3S_CONFIG_FILE=/dev/null, kubectl]
 homelab_welcome_exporter_port: 9796
 homelab_welcome_disk: /
 homelab_welcome_animation: true
-...

@@ -1,4 +1,3 @@
----
 home_ingress_ha_vip: 192.168.0.250
 home_ingress_ha_prefix: 32
 home_ingress_ha_router_id: 250
@@ -19,4 +18,3 @@ home_ingress_ha_nodes:
     priority: 100
     peer: 192.168.0.23
     peer_mac: 10:7c:61:08:33:76
-...

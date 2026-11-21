@@ -1,4 +1,3 @@
----
 replicaCount: 2
 
 image:
@@ -42,4 +41,3 @@ homepageIndex:
 
 # Optional hard eligibility; production placement is owned by deploy values.
 nodeAffinity: {}
-...

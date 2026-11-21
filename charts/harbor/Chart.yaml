@@ -1,4 +1,3 @@
----
 # Vendored from https://helm.goharbor.io chart harbor 1.19.4 so Argo CD
 # does not helm-pull this chart on refresh. This chart has no subchart
 # dependencies; database and Redis are inlined templates.
@@ -24,4 +23,3 @@ sources:
 - https://github.com/goharbor/harbor
 - https://github.com/goharbor/harbor-helm
 version: 1.19.4
-...

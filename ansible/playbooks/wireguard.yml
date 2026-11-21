@@ -1,4 +1,3 @@
----
 - name: Configure Socrat WireGuard management mesh
   hosts: Socrat
   gather_facts: true
@@ -8,4 +7,3 @@
     - wireguard_socrat
 
 - ansible.builtin.import_playbook: wireguard-tcp-transport.yml
-...

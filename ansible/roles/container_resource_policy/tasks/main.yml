@@ -1,4 +1,3 @@
----
 - name: Verify native admission policy API support
   ansible.builtin.command:
     argv: [kubectl, get, --raw, /apis/admissionregistration.k8s.io/v1]
@@ -204,4 +203,3 @@
 - name: Show resource coverage
   ansible.builtin.debug:
     var: container_resource_policy_audit.stdout_lines
-...

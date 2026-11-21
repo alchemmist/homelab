@@ -1,6 +1,5 @@
 # Restored offline on 2026-11-01. This manifest does not copy or initialize data.
 # Restore and verify the directory before binding this volume on a new host.
----
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -38,4 +37,3 @@ spec:
   resources:
     requests:
       storage: 5Gi
-...

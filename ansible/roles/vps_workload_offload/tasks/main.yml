@@ -1,4 +1,3 @@
----
 # local-path-provisioner is now owned by Argo storage-tiers; never live-patch it here.
 # img-proxy is managed by Argo CD and pinned to socrat-2; do not offload it.
 - name: Remove only the two obsolete admission pins without reinstalling cluster-wide policy
@@ -24,4 +23,3 @@
   retries: 12
   delay: 5
   changed_when: false
-...

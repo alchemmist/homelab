@@ -1,4 +1,3 @@
----
 - name: Ensure the local administration directory exists
   ansible.builtin.file:
     path: /usr/local/sbin
@@ -35,4 +34,3 @@
   ansible.builtin.command: /usr/bin/python3 /usr/local/sbin/homelab-node-disk-reserve --policy /etc/homelab/node-disk-reserve.json
   register: homelab_disk_reserve_result
   changed_when: (homelab_disk_reserve_result.stdout | from_json).changed
-...

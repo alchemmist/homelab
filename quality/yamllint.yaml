@@ -1,4 +1,3 @@
----
 extends: default
 rules:
   line-length:
@@ -11,12 +10,8 @@ rules:
     level: error
   comments-indentation:
     level: error
-  document-start:
-    level: error
-    present: true
-  document-end:
-    level: error
-    present: true
+  document-start: disable
+  document-end: disable
   octal-values:
     forbid-implicit-octal: true
     forbid-explicit-octal: false
@@ -40,4 +35,3 @@ rules:
     required: only-when-needed
     check-keys: false
     allow-quoted-quotes: false
-...

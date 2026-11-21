@@ -1,4 +1,3 @@
----
 - name: Enroll the small transit worker without changing existing cluster members
   hosts: socrat-4
   gather_facts: true
@@ -14,4 +13,3 @@
         fail_msg: Native gateway is fenced. Use the explicit, reviewed rollback instead of worker enrollment.
   roles:
     - k3s_worker
-...

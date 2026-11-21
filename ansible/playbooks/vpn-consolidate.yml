@@ -1,4 +1,3 @@
----
 - name: Consolidate the existing VPN runtimes into one workload
   hosts: socrat-2
   gather_facts: false
@@ -8,4 +7,3 @@
     - vpn_consolidation
 
 - ansible.builtin.import_playbook: rancher-namespaces.yml
-...

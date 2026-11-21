@@ -1,4 +1,3 @@
----
 # Historical installation/branding/key initialization remains in Git history.
 # Do not replay it over the authoritative runtime or use it for model updates.
 - name: Refuse the retired competing LiteLLM installer
@@ -20,4 +19,3 @@
           separately; do not re-enable migration Jobs or run this historical
           initializer to update models. See docs/vm105-lms-litellm-renderer-20261116.md.
       tags: [always]
-...

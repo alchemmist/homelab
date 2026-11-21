@@ -1,4 +1,3 @@
----
 - name: Automatically log the server account into GNOME
   community.general.ini_file:
     path: /etc/gdm3/daemon.conf
@@ -83,4 +82,3 @@
     owner: alchemmist
     group: alchemmist
     mode: "0644"
-...

@@ -1,4 +1,3 @@
----
 - name: Verify real cluster sources through native OTLP without changing production ownership
   hosts: socrat-0
   gather_facts: false
@@ -135,4 +134,3 @@
         mode: '0600'
       delegate_to: localhost
       become: false
-...

@@ -1,4 +1,3 @@
----
 - name: Require the dedicated VPS
   ansible.builtin.assert:
     that: inventory_hostname == 'socrat-2'
@@ -285,4 +284,3 @@
     enabled: true
     state: started
   when: vpn_failover_arm | bool
-...

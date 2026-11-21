@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "6a4809ee5113e0ea7db6d2f895e317b0cdf9ad7cab3bafd0f4155e35c1c3d284",
+  "graphDigest": "359b4c8d7f1b818b45b7c27aebd318e6ea81de7381b7b224900ef1480993b89a",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -93,6 +93,33 @@
       },
       "timeoutMinutes": 5,
       "title": "YAML structure"
+    },
+    {
+      "env": {},
+      "id": "yaml-boundaries",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "exit-code"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/yaml_boundaries.py"
+      },
+      "timeoutMinutes": 5,
+      "title": "YAML document boundaries"
     },
     {
       "env": {},
@@ -268,6 +295,7 @@
       "needs": [
         "python",
         "yaml",
+        "yaml-boundaries",
         "shell",
         "workflow",
         "secrets",

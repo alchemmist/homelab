@@ -1,4 +1,3 @@
----
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/blog
   tag: "9628aad3c257ec4b4171d8eff808908742c9b640"
@@ -30,4 +29,3 @@ nodeAffinity:
           - key: kubernetes.io/hostname
             operator: In
             values: [socrat-0, socrat-5]
-...

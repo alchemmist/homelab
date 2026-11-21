@@ -1,4 +1,3 @@
----
 - name: Remove the rejected browser trial from socrat-3
   hosts: socrat-3
   gather_facts: false
@@ -10,4 +9,3 @@
         state: absent
         purge: true
         autoremove: false
-...

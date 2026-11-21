@@ -1,4 +1,3 @@
----
 # Fresh-host staging only: no registrar mutation or web-IP changes.
 # The renderer now includes the independently accepted ns3 NS/A addition.
 # Default is read-only. Live apply additionally requires the SHA256 of the
@@ -95,4 +94,3 @@
         - name: Verify both the old relay and new authority are active
           ansible.builtin.command: systemctl is-active knot homelab-vpn-dns-transit
           changed_when: false
-...

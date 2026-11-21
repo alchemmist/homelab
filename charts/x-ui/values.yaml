@@ -1,4 +1,3 @@
----
 replicaCount: 1
 nodeName: socrat-2
 service:
@@ -49,4 +48,3 @@ instances:
         memory: 64Mi
       limits:
         memory: 512Mi
-...

@@ -1,4 +1,3 @@
----
 - name: Move only known HOME NL services through Moscow without default route changes
   hosts: socrat-0:socrat-1:socrat-3
   serial: 1
@@ -45,4 +44,3 @@
         enabled: true
         state: started
         daemon_reload: true
-...

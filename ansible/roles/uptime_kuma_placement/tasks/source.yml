@@ -1,4 +1,3 @@
----
 - name: Prepare the stopped source archive
   delegate_to: "{{ uptime_kuma_source }}"
   become: true
@@ -40,4 +39,3 @@
         src: "{{ kuma_source_transfer.path }}"
         dest: "{{ kuma_local_transfer.path }}/data.tar"
         flat: true
-...

@@ -1,4 +1,3 @@
----
 - name: Validate home ingress node
   ansible.builtin.assert:
     that:
@@ -177,4 +176,3 @@
     name: keepalived
     enabled: true
     state: started
-...

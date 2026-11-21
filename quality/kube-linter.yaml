@@ -1,4 +1,3 @@
----
 # kube-linter 0.8.3. Default checks stay on. Extra checks are explicit.
 # Omissions are architecture conflicts in docs/quality/strict-policy.md.
 checks:
@@ -25,4 +24,3 @@ checks:
     - use-namespace
     - wildcard-in-rules
     - writable-host-mount
-...

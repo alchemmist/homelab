@@ -1,4 +1,3 @@
----
 - name: Join only the headless worker with bootstrap scheduling protection
   hosts: socrat-5
   become: true
@@ -97,4 +96,3 @@
     - name: Reload new-worker unit dependencies without restarting it
       ansible.builtin.systemd_service:
         daemon_reload: true
-...

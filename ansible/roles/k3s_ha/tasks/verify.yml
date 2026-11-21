@@ -1,4 +1,3 @@
----
 - name: Install the etcd administration client
   ansible.builtin.apt:
     name: etcd-client
@@ -42,4 +41,3 @@
 - name: Save the first verified HA snapshot
   ansible.builtin.command: /usr/local/bin/k3s etcd-snapshot save --name homelab-ha-verified
   changed_when: true
-...

@@ -1,4 +1,3 @@
----
 - name: Deploy homelab applications
   hosts: socrat-0
   gather_facts: false
@@ -108,4 +107,3 @@
         var: app_status.stdout_lines
 
 - ansible.builtin.import_playbook: rancher-namespaces.yml
-...

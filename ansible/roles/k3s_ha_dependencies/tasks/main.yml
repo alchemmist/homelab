@@ -1,4 +1,3 @@
----
 - name: Persist cert-manager HA settings in the existing Helm release
   ansible.builtin.include_tasks: cert-manager.yml
 
@@ -7,4 +6,3 @@
   loop: "{{ k3s_ha_dependencies_deployments }}"
   loop_control:
     loop_var: ha_dependency
-...

@@ -1,4 +1,3 @@
----
 affinity:
   nodeAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
@@ -102,4 +101,3 @@ webhook:
       maxSurge: 1
       maxUnavailable: 1
     type: RollingUpdate
-...

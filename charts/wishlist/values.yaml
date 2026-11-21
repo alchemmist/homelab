@@ -1,4 +1,3 @@
----
 replicaCount: 1
 
 image:
@@ -51,4 +50,3 @@ images:
     limits:
       memory: 2Gi
       ephemeral-storage: 4Gi
-...

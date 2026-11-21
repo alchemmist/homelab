@@ -1,4 +1,3 @@
----
 - name: Route chat attachments into the selected terminal filesystem
   hosts: socrat-0
   gather_facts: false
@@ -27,4 +26,3 @@
         python /tmp/configure-terminal-uploads.py
       register: terminal_upload_config
       changed_when: (terminal_upload_config.stdout | from_json).changed
-...

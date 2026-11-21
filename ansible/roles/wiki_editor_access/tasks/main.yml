@@ -1,4 +1,3 @@
----
 - name: Read private gateway values
   ansible.builtin.command:
     argv: [helm,
@@ -150,4 +149,3 @@
            5m]
   when: (wiki_editor_manifest.stdout | from_json).changed
   changed_when: true
-...

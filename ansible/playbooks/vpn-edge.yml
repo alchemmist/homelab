@@ -1,4 +1,3 @@
----
 - name: Deploy VPS ingress for public cluster services
   hosts: socrat-0
   any_errors_fatal: true
@@ -58,4 +57,3 @@
       changed_when: false
 
 - ansible.builtin.import_playbook: rancher-namespaces.yml
-...

@@ -1,4 +1,3 @@
----
 - name: Inspect whether the external-quorum topology replaced this bootstrap workflow
   ansible.builtin.stat:
     path: /var/lib/homelab-k3s-rebalance/complete
@@ -50,4 +49,3 @@
     owner: root
     group: root
     mode: '0700'
-...

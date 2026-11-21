@@ -1,4 +1,3 @@
----
 - name: Publish private n8n HTTPS gateway
   hosts: socrat-0
   gather_facts: false
@@ -149,4 +148,3 @@
         name: homelab-private-dns.service
         state: restarted
       when: n8n_dns_record.changed
-...

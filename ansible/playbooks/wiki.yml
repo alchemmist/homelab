@@ -1,4 +1,3 @@
----
 - name: Bootstrap the shared wiki runtime prerequisites for Argo CD
   hosts: socrat-0
   gather_facts: false
@@ -19,4 +18,3 @@
         argv: "{{ ['python3', '/tmp/bootstrap-wiki-runtime.py'] + (['--skip-legacy-git'] if wiki_runtime_skip_legacy_git | bool else []) }}"
       register: wiki_runtime_bootstrap
       changed_when: "'created' in wiki_runtime_bootstrap.stdout"
-...

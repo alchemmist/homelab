@@ -1,4 +1,3 @@
----
 - name: Preserve the Git storage owner across K3s startup and node promotion
   hosts: Socrat
   become: true

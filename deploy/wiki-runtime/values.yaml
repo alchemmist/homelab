@@ -1,4 +1,3 @@
----
 # Single writer; zero is reserved for coordinated offline maintenance.
 replicaCount: 1
 image:
@@ -88,4 +87,3 @@ observerMembership:
 hostAliases:
   - ip: 10.43.218.222
     hostnames: [auth.socrat.alchemmist.xyz]
-...

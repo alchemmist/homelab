@@ -1,4 +1,3 @@
----
 - name: Reconcile only proof-gated source-safe native Open WebUI HTTP tracing
   hosts: localhost
   connection: local
@@ -33,4 +32,3 @@
         mode: "0600"
         content: |
           {{ (open_webui_existing_epoch.content | b64decode | from_json) | combine({'openWebuiSdkConfigurationSHA256': hostvars['localhost'].open_webui_sdk_configuration_sha256}) | to_json(sort_keys=True) }}
-...

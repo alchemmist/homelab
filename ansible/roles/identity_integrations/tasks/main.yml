@@ -1,4 +1,3 @@
----
 - name: Copy explicit OIDC integration controller
   ansible.builtin.copy:
     src: integrate.py
@@ -70,4 +69,3 @@
     name: identity_app_access
   vars:
     identity_app_access_apply: true
-...

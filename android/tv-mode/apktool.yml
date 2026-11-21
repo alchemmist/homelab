@@ -1,4 +1,3 @@
----
 version: 2.11.1
 apkFileName: tv-mode.apk
 isFrameworkApk: false
@@ -8,4 +7,3 @@ usesFramework:
 sdkInfo:
   minSdkVersion: 30
   targetSdkVersion: 30
-...

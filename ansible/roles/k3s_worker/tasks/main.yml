@@ -1,4 +1,3 @@
----
 - name: Restrict worker provisioning to its dedicated Debian host
   ansible.builtin.assert:
     that:
@@ -227,4 +226,3 @@
   until: k3s_worker_ready.rc == 0
   delegate_to: "{{ k3s_worker_primary }}"
   changed_when: false
-...

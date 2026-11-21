@@ -1,4 +1,3 @@
----
 - name: Read installed private gateway values
   ansible.builtin.command:
     argv: [helm,
@@ -209,4 +208,3 @@
   failed_when: >-
     monitoring_wg_grafana.rc != 0 or
     (monitoring_wg_grafana.stdout | from_json | selectattr('uid', 'equalto', 'socrat-overview') | list | length == 0)
-...

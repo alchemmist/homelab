@@ -1,4 +1,3 @@
----
 - name: Boot the approved isolated network recovery candidate once
   hosts: socrat-3
   gather_facts: false
@@ -93,4 +92,3 @@
   - name: Report boot evidence
     ansible.builtin.debug:
       var: network_trial_evidence.stdout_lines
-...

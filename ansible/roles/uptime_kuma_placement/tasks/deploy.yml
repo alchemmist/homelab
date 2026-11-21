@@ -1,4 +1,3 @@
----
 - name: Require the destination database before deployment
   ansible.builtin.stat:
     path: "{{ uptime_kuma_directory }}/kuma.db"
@@ -43,4 +42,3 @@
       - (kuma_result_pods.stdout | from_json)['items'] | length == 1
       - (kuma_result_pods.stdout | from_json)['items'][0].spec.nodeName == uptime_kuma_destination
       - (kuma_result_pods.stdout | from_json)['items'][0].status.conditions | selectattr('type', 'equalto', 'Ready') | map(attribute='status') | list == ['True']
-...

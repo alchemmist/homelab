@@ -1,4 +1,3 @@
----
 - name: Refuse the retired combined monitoring installer
   ansible.builtin.fail:
     msg: >-
@@ -8,4 +7,3 @@
       separately under the appropriate runbook; do not upgrade or uninstall the
       historical kube-prometheus-stack Helm release.
   tags: [always]
-...

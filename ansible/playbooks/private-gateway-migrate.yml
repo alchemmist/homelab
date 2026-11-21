@@ -1,4 +1,3 @@
----
 # Migrate the private HTTPS gateway from the syncthing chart (privateGui) to the
 # standalone private-gateway chart. Both gateways bind the same hostNetwork
 # ports (18443/18444) on the same WireGuard IPs, so they CANNOT run at the
@@ -248,4 +247,3 @@
       register: private_gateway_post_syncthing_ready
       changed_when: false
       failed_when: private_gateway_post_syncthing_ready.stdout != '1'
-...

@@ -1,4 +1,3 @@
----
 # Private HTTPS gateway: one nginx DaemonSet serving the WireGuard network.
 listenPort: 18443
 healthPort: 18444
@@ -119,4 +118,3 @@ resources:
     memory: 128Mi
   limits:
     memory: 512Mi
-...

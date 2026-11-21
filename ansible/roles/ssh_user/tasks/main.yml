@@ -1,4 +1,3 @@
----
 - name: Require an explicit username and controller-side public key file
   ansible.builtin.assert:
     that:
@@ -139,4 +138,3 @@
     executable: python3
   changed_when: false
   when: not ansible_check_mode
-...

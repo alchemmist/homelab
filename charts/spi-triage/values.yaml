@@ -1,4 +1,3 @@
----
 serviceClusterIP: "" # Optional fixed existing Service VIP; never a Pod/public address.
 # Full-service image is activated only after a protected, naturally drained release.
 tokenAccountingMode: byte-bound-v1
@@ -63,4 +62,3 @@ brokerAffinity:
             - key: kubernetes.io/hostname
               operator: In
               values: [socrat-0]
-...

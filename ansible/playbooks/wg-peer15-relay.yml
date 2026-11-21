@@ -1,4 +1,3 @@
----
 # Installs ONLY the keyless relay on socrat-0. Does not restart WG, K3s or networking.
 # After relay health, deploy the narrow endpoint helper and run apply on socrat-5.
 # Roll back endpoint on socrat-5 BEFORE stopping relay on socrat-0; see handoff document.
@@ -61,4 +60,3 @@
         name: homelab-wg-peer15-relay.service
         daemon_reload: true
         state: restarted
-...

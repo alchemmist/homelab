@@ -1,4 +1,3 @@
----
 - name: Read Rancher node metadata through the administrator account
   ansible.builtin.command:
     argv: "{{ homelab_welcome_kubectl + ['get', 'node', inventory_hostname, '-o', 'json', '--request-timeout=10s'] }}"
@@ -92,4 +91,3 @@
     state: absent
     backup: true
   when: homelab_welcome_enabled
-...

@@ -1,4 +1,3 @@
----
 - name: Inspect live placement before replacing the two node affinity lists
   ansible.builtin.command:
     argv: [kubectl, -n, "{{ offload_workload.namespace }}", get, deployment, "{{ offload_workload.name }}", -o, json]
@@ -90,4 +89,3 @@
       - "{{ offload_workload.namespace }}"
       - "{{ offload_workload.name }}"
   changed_when: false
-...

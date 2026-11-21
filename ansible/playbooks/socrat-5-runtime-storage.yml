@@ -1,4 +1,3 @@
----
 # Day-2 persistence ONLY. Refuses unmigrated nodes; never copies data or restarts K3s.
 - name: Maintain the accepted socrat-5 containerd HDD mount
   hosts: socrat-5

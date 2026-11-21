@@ -1,4 +1,3 @@
----
 # Optional public-key import. Default and --check validate intent only, no host connection.
 # Existing users.yml and inventory remain independent and unchanged.
 - name: Review optional Authentik SSH user assignments
@@ -108,4 +107,3 @@
                 argv: [rmdir, /run/homelab-authentik-ssh-apply.lock]
               become: true
               changed_when: true
-...

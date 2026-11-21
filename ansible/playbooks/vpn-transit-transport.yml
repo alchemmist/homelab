@@ -1,4 +1,3 @@
----
 - name: Verify existing shared mesh without provisioning a duplicate channel
   hosts: socrat-2:socrat-4
   gather_facts: false
@@ -12,4 +11,3 @@
       register: mesh_route
       changed_when: false
       failed_when: "'dev wg-socrat' not in mesh_route.stdout"
-...

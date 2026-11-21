@@ -342,12 +342,30 @@ def test_nonsecret_tokenizer_exception_cannot_hide_other_values(tmp_path, monkey
     assert not lint.nonsecret_tokenizer_option("services/spi-tokenizer/Dockerfile", item)
 
 
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        (b"# heading\n---\na: b\n...\n", [1, 3]),
+        (b"a: b\n---\nc: d\n", []),
+        (b"value: |\n  ---\n  ...\n", []),
+        (b"%YAML 1.2\n---\na: b\n", []),
+        (b"---\n---\na: b\n", []),
+    ],
+)
+def test_yaml_boundary_policy(source: bytes, expected: list[int]) -> None:
+    """Keep delimiters with YAML meaning, rejecting redundant outer ones."""
+    from yaml_boundaries import redundant
+
+    assert redundant(source.splitlines(keepends=True)) == expected
+
+
 def test_graph_is_cost_layered_and_titles_are_semantic() -> None:
     import yaml
 
     graph = yaml.safe_load((ROOT / "qg.yaml").read_text())["nodes"]
     assert len({n["title"] for n in graph.values()}) == len(graph)
     cheap = {"python", "yaml", "shell", "workflow", "secrets", "docker", "javascript", "tests-fast"}
+    cheap.add("yaml-boundaries")
     for node in cheap:
         assert graph[node]["needs"] == ["graph"]
     assert set(graph["ownership"]["needs"]) == cheap

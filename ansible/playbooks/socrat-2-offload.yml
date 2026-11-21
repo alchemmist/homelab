@@ -1,4 +1,3 @@
----
 - name: Move auxiliary workloads off the VPN VPS
   hosts: socrat-0
   gather_facts: false
@@ -20,4 +19,3 @@
         fail_msg: This playbook only rolls out the two selected deployments.
   roles:
     - vps_workload_offload
-...

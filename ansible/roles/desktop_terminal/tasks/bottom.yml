@@ -1,4 +1,3 @@
----
 - name: Read the configured bottom version
   ansible.builtin.command:
     argv: ["{{ homelab_monitor_binary }}", --version]
@@ -64,4 +63,3 @@
       - "{{ homelab_bottom_config.stdout }}"
   changed_when: false
   when: not ansible_check_mode
-...

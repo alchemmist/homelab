@@ -1,4 +1,3 @@
----
 # URL-only closeout: deliberately does NOT run TV provisioning, install APKs,
 # import VPN profiles, touch DNS, change scale/fonts, remap keys or switch HDMI.
 - name: Audit or apply the approved public URL to the existing Fully installation
@@ -149,4 +148,3 @@
           ansible.builtin.file:
             path: "{{ tv_state }}/tv-uncertain.json"
             state: absent
-...

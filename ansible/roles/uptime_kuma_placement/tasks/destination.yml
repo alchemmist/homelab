@@ -1,4 +1,3 @@
----
 - name: Install the stopped destination data
   delegate_to: "{{ uptime_kuma_destination }}"
   become: true
@@ -65,4 +64,3 @@
         fi
         mv -- {{ (kuma_destination_transfer.path ~ '/data') | quote }} {{ uptime_kuma_directory | quote }}
       changed_when: true
-...

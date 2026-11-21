@@ -1,4 +1,3 @@
----
 auth_enabled: false
 server:
   http_listen_address: ${OTEL_BIND_IP}
@@ -84,4 +83,3 @@ ruler:
       store: inmemory
   remote_write:
     enabled: false
-...

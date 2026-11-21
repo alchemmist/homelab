@@ -1,4 +1,3 @@
----
 - name: Install Internet clock synchronization
   ansible.builtin.apt:
     name: chrony
@@ -37,4 +36,3 @@
     homelab_chrony_sources.rc != 0 or
     (homelab_chrony_sources.stdout_lines | select('match', '^\^\*\s') | list | length) == 0
   when: not ansible_check_mode
-...

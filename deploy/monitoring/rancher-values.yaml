@@ -1,4 +1,3 @@
----
 global:
   cattle:
     clusterId: local
@@ -40,4 +39,3 @@ dashboardArtifacts:
 rancherMonitoring:
   enabled: true
   prometheusServiceAccount: kube-prometheus-stack-prometheus
-...

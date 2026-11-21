@@ -1,4 +1,3 @@
----
 # One-shot correction: route lookup alone does NOT bypass existing OUTPUT DNAT.
 - name: Exempt only HOME0's dedicated public-IP probe UID from Moscow DNAT
   hosts: socrat-0
@@ -51,4 +50,3 @@
         src: ../../scripts/vpn-home-transit-egress.py
         dest: '{{ tool }}'
         mode: '0700'
-...

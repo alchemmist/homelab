@@ -1,4 +1,3 @@
----
 - name: Publish Grafana in the private WireGuard DNS
   hosts: socrat-0:socrat-1:socrat-2
   gather_facts: false
@@ -33,4 +32,3 @@
         name: homelab-private-dns.service
         state: restarted
       when: monitoring_dns_record.changed
-...

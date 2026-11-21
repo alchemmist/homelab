@@ -1,4 +1,3 @@
----
 - name: Measure system journal rates without exporting log contents
   hosts: Socrat
   gather_facts: false
@@ -52,4 +51,3 @@
     - name: Report measurement availability
       ansible.builtin.debug:
         msg: "{{ inventory_hostname }}: privileged journal counts saved; raw messages were not persisted"
-...

@@ -1,4 +1,3 @@
----
 # No workload/agent/watchdog restart. Default audit only; install adds metrics timer.
 - name: Audit and observe both local VPN runtimes without changing execution mode
   hosts: socrat-2:socrat-4
@@ -104,4 +103,3 @@
         - ansible.builtin.systemd_service:
             name: homelab-vpn-runtime-observer.service
             state: started
-...

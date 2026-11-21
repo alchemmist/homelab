@@ -1,4 +1,3 @@
----
 - name: Require a known authoritative listener
   ansible.builtin.assert:
     that:
@@ -98,4 +97,3 @@
     enabled: true
     state: started
     daemon_reload: true
-...

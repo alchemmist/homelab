@@ -1,4 +1,3 @@
----
 - name: Prepare explicitly authorized headless Debian worker owner and terminal
   hosts: socrat-5
   gather_facts: true
@@ -83,4 +82,3 @@
       changed_when: false
   roles:
     - starship
-...

@@ -162,14 +162,6 @@
       "comments-indentation": {
         "level": "error"
       },
-      "document-start": {
-        "level": "error",
-        "present": true
-      },
-      "document-end": {
-        "level": "error",
-        "present": true
-      },
       "octal-values": {
         "forbid-implicit-octal": true,
         "forbid-explicit-octal": false
@@ -195,7 +187,9 @@
       }
     },
     "disabled": {
-      "key-ordering": "Unsatisfiable beside ansible-lint key-order. Task mappings use that semantic order, not Unicode alphabetical order, so both rules cannot pass on the same mapping."
+      "key-ordering": "Unsatisfiable beside ansible-lint key-order. Task mappings use that semantic order, not Unicode alphabetical order, so both rules cannot pass on the same mapping.",
+      "document-start": "The yaml-boundaries graph gate rejects redundant outer markers and preserves required YAML stream boundaries.",
+      "document-end": "The yaml-boundaries graph gate rejects redundant outer markers and preserves required YAML stream boundaries."
     }
   },
   "generatedWorkflows": {

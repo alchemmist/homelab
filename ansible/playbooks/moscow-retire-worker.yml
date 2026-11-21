@@ -1,4 +1,3 @@
----
 # One-time finalization AFTER native-primary and authenticated data-path acceptance.
 # Removes only the retired Node object and verified local leftover pod processes.
 - name: Retire the fenced Moscow worker without uninstalling or flushing networking
@@ -79,4 +78,3 @@
         content: "{{ final.stdout }}"
         dest: "{{ recovery_root }}/host-only-accepted.json"
         mode: "0600"
-...

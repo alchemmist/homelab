@@ -1,5 +1,3 @@
----
 - name: Guard independent GitOps owners before any legacy setup
   ansible.builtin.import_tasks: gitops-guard.yml
   tags: [always]
-...

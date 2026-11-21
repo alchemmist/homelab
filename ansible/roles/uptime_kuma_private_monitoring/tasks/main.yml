@@ -1,4 +1,3 @@
----
 - name: Inspect the current Kuma deployment
   ansible.builtin.command:
     argv: [k3s,
@@ -220,4 +219,3 @@
   retries: 12
   delay: 10
   changed_when: false
-...

@@ -1,4 +1,3 @@
----
 - name: Configure public SSH aliases on the controller
   hosts: localhost
   connection: local
@@ -27,4 +26,3 @@
         create: true
         mode: '0600'
         backup: true
-...

@@ -1,4 +1,3 @@
----
 - name: Require Linux for the WireGuard administrative firewall
   ansible.builtin.assert:
     that:
@@ -64,4 +63,3 @@
     enabled: true
     state: started
     daemon_reload: true
-...

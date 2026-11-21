@@ -1,4 +1,3 @@
----
 - name: Preflight the complete existing overlay without changes
   hosts: Socrat
   any_errors_fatal: true
@@ -38,4 +37,3 @@
   roles:
   - role: k3s_overlay_marks
     when: k3s_overlay_marks_apply | default(false) | bool
-...

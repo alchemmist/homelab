@@ -1,4 +1,3 @@
----
 - name: Point the existing public web forwards at the verified home ingress VIP
   hosts: socrat-0
   gather_facts: false
@@ -108,4 +107,3 @@
       retries: 6
       delay: 3
       until: router_public_probe.rc == 0 and router_public_probe.stdout == '404'
-...

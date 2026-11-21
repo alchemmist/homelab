@@ -1,4 +1,3 @@
----
 - name: Use gateway context budgeting instead of percentage-based WebUI compaction
   hosts: socrat-0
   gather_facts: false
@@ -27,4 +26,3 @@
         python /tmp/configure-webui-compaction.py
       register: webui_compaction_config
       changed_when: (webui_compaction_config.stdout | from_json).changed
-...

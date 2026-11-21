@@ -1,4 +1,3 @@
----
 auth_enabled: false
 server:
   http_listen_address: ${OTEL_BIND_IP}
@@ -70,4 +69,3 @@ compactor:
   compaction_interval: 2m
 analytics:
   reporting_enabled: false
-...

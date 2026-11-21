@@ -1,4 +1,3 @@
----
 # Client credentials stay in this Kubernetes Secret, not Helm values.
 core:
   extraEnvVars:
@@ -7,4 +6,3 @@ core:
         secretKeyRef:
           name: socrat-authentik-harbor
           key: config-json
-...

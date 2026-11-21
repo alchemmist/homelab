@@ -1,4 +1,3 @@
----
 # Vendored from charts.goauthentik.io authentik 2026.8.5.
 # Conditional subcharts (postgresql, authentik-remote-cluster) are omitted:
 # this install disables both, and Argo CD dependency builds against those
@@ -68,4 +67,3 @@ sources:
 - https://github.com/goauthentik/authentik
 type: application
 version: 2026.8.5
-...

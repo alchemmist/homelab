@@ -1,4 +1,3 @@
----
 - name: Require physical and scheduler memory headroom before adding identity services
   ansible.builtin.script:
     cmd: capacity.py
@@ -156,4 +155,3 @@
     name: identity_app_access
   vars:
     identity_app_access_apply: true
-...

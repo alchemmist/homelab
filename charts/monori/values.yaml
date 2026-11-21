@@ -1,4 +1,3 @@
----
 frontNodeName: socrat-0  # Only frontend placement; backend/sync retain node0 storage.
 host: monori.alchemmist.xyz
 tlsSecret: monori-tls
@@ -33,4 +32,3 @@ statefulRecreate: false
 requireExistingData: false
 backClaim: ""
 syncClaim: ""
-...

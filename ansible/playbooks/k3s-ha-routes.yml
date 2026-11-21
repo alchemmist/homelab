@@ -1,4 +1,3 @@
----
 - name: Route home control plane addresses through WireGuard
   hosts: socrat-2
   any_errors_fatal: true
@@ -6,4 +5,3 @@
   become: true
   roles:
     - k3s_ha_routes
-...

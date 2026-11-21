@@ -1,4 +1,3 @@
----
 - name: Add private wiki gateway
   hosts: socrat-0
   gather_facts: false
@@ -26,4 +25,3 @@
       ansible.builtin.systemd:
         name: homelab-private-dns.service
         state: restarted
-...

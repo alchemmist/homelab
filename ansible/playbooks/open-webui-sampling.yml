@@ -1,4 +1,3 @@
----
 - name: Apply the Qwen non-thinking sampling profile
   hosts: socrat-0
   gather_facts: false
@@ -27,4 +26,3 @@
         python /tmp/configure-webui-sampling.py
       register: webui_sampling_config
       changed_when: (webui_sampling_config.stdout | from_json).changed
-...

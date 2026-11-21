@@ -1,4 +1,3 @@
----
 - name: Reconcile inventory-backed NetBird node on the trusted controller
   when: netbird_node_enabled | bool
   delegate_to: "{{ netbird_node_controller }}"
@@ -140,4 +139,3 @@
       ansible.builtin.debug:
         msg: "{{ netbird_node_reconcile.stdout | from_json }}"
       when: not ansible_check_mode
-...

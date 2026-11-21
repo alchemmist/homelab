@@ -1,4 +1,3 @@
----
 # One-time, guarded recovery. Requires private reviewed before/candidate/patch JSON.
 # Not a generic dependency role replay; no application or node restart.
 - name: Preserve and stage CoreDNS manifests on the verified writers
@@ -109,4 +108,3 @@
             os.chmod(new,0o644)
             os.replace(new,old)
       changed_when: true
-...

@@ -1,4 +1,3 @@
----
 - name: Read existing Kubernetes namespaces
   ansible.builtin.command:
     argv:
@@ -29,4 +28,3 @@
     - item.metadata.name in rancher_system_namespace_names
     - (item.metadata.annotations | default({})).get('management.cattle.io/system-namespace', '') != 'true'
   changed_when: true
-...

@@ -1,4 +1,3 @@
----
 - name: Persist forwarding on the private client gateway
   tags: tim_gateway
   hosts: socrat-0
@@ -63,4 +62,3 @@
       register: tim_dns_result
       changed_when: false
       failed_when: tim_dns_result.rc != 0 or tim_dns_result.stdout | trim == ''
-...

@@ -1,4 +1,3 @@
----
 # Preserve only an already activated native integration after Helm changes.
 - name: Preserve activated LiteLLM native identity configuration
   hosts: socrat-0
@@ -28,4 +27,3 @@
       vars:
         identity_oidc_services: [litellm]
       when: litellm_identity_active.stdout | trim | length > 0
-...

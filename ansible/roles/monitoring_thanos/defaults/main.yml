@@ -1,4 +1,3 @@
----
 monitoring_thanos_namespace: cattle-monitoring-system
 monitoring_thanos_release: thanos
 monitoring_thanos_kubeconfig: /etc/rancher/k3s/k3s.yaml
@@ -18,4 +17,3 @@ monitoring_thanos_nodes:
   - name: socrat-3
     disk_bytes: 21474836480
     memory_bytes: 0
-...

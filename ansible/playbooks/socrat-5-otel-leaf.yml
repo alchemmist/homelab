@@ -1,4 +1,3 @@
----
 - name: Add only new worker leaf identity without replaying full telemetry bootstrap
   hosts: socrat-0
   gather_facts: false
@@ -18,4 +17,3 @@
         flat: true
       no_log: true
       loop: [token.json, kubernetes-ca.crt, credentials.json]
-...

@@ -1,4 +1,3 @@
----
 image:
   repository: ghcr.io/alchemmist/lms
   tag: 10307eea58e346b560749cc6861b1bbb53b209f5
@@ -30,4 +29,3 @@ webNodes: [socrat-5]
 hostAliases:
   - ip: 10.43.218.222
     hostnames: [auth.socrat.alchemmist.xyz]
-...

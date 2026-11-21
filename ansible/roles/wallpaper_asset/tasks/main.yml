@@ -1,4 +1,3 @@
----
 - name: Create the shared wallpaper directory
   ansible.builtin.file:
     path: "{{ homelab_wallpaper_path | dirname }}"
@@ -14,4 +13,3 @@
     owner: root
     group: root
     mode: '0644'
-...

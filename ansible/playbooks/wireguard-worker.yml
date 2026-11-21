@@ -1,4 +1,3 @@
----
 - name: Configure the management interface on the new worker only
   hosts: socrat-3
   gather_facts: true
@@ -7,4 +6,3 @@
   any_errors_fatal: true
   roles:
     - wireguard_socrat
-...

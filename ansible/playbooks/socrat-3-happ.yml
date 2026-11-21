@@ -1,4 +1,3 @@
----
 - name: Install Happ on socrat-3
   hosts: socrat-3
   gather_facts: false
@@ -82,4 +81,3 @@
         name: happd
         daemon_reload: true
         state: restarted
-...

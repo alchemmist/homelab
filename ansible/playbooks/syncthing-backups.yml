@@ -1,4 +1,3 @@
----
 - name: Deploy Syncthing DaemonSet for Socrat backup sync
   hosts: socrat-0
   gather_facts: false
@@ -49,4 +48,3 @@
     - name: Print Syncthing status
       ansible.builtin.debug:
         var: syncthing_status.stdout_lines
-...

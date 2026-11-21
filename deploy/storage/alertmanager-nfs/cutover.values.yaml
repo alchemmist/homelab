@@ -1,4 +1,3 @@
----
 # Active: preserve the migrated PVC identity and its storage settings.
 kube-prometheus-stack:
   alertmanager:
@@ -31,4 +30,3 @@ kube-prometheus-stack:
             resources:
               requests:
                 storage: 1Gi
-...

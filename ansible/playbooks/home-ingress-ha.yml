@@ -1,4 +1,3 @@
----
 - name: Stage home ingress redundancy without changing router forwards
   hosts: socrat-0:socrat-1
   order: sorted
@@ -8,4 +7,3 @@
   become: true
   roles:
     - home_ingress_ha
-...

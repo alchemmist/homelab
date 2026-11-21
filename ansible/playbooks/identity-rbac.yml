@@ -1,4 +1,3 @@
----
 - name: Install unbound project observer role, without modifying existing grants
   hosts: socrat-0
   gather_facts: false
@@ -12,4 +11,3 @@
         K3S_CONFIG_FILE: /dev/null
       register: identity_rbac
       changed_when: "'created' in identity_rbac.stdout or 'configured' in identity_rbac.stdout"
-...

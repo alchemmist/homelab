@@ -1,4 +1,3 @@
----
 - name: Apply only reviewed files and address fields with private preimages
   ansible.builtin.script:
     cmd: >-
@@ -18,4 +17,3 @@
 
   vars:
     ansible_ssh_use_tty: false
-...

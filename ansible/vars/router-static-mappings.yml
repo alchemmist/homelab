@@ -1,4 +1,3 @@
----
 router_static_mappings:
   - name: socrat-http
     interface: WAN2
@@ -55,4 +54,3 @@ router_static_mapping_state:
   mode: persistent
   management: manual-vendor-interface
   router_address: 192.168.0.1
-...

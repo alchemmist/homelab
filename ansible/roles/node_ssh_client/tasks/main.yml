@@ -1,4 +1,3 @@
----
 - name: Gather platform facts for the SSH client
   ansible.builtin.setup:
     gather_subset: ["!all", "!min", os_family]
@@ -83,4 +82,3 @@
   loop_control:
     label: "{{ item.item.key }}"
   when: not ansible_check_mode
-...

@@ -1,4 +1,3 @@
----
 - name: Read the Prometheus node requested by the monitoring values
   ansible.builtin.set_fact:
     monitoring_prometheus_desired_node: "{{ (lookup('file', playbook_dir + '/../../charts/prometheus/values.yaml') | from_yaml)['kube-prometheus-stack'].prometheus.prometheusSpec.nodeSelector['kubernetes.io/hostname'] }}"
@@ -176,4 +175,3 @@
       - --timeout
       - 10m
   changed_when: true
-...

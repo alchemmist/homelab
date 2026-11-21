@@ -1,4 +1,3 @@
----
 databaseSecret: socrat-bot-pg-common
 replicaCount: 1
 image:
@@ -42,4 +41,3 @@ resources:
 graphs:
   enabled: true
   existingSecret: socrat-bot-graph-client
-...

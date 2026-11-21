@@ -1,4 +1,3 @@
----
 - name: Test wireless MSI with automatic rollback and Ethernet retained
   hosts: socrat-3
   gather_facts: false
@@ -55,4 +54,3 @@
     - name: Report the bounded trial result
       ansible.builtin.debug:
         var: wifi_trial_result.stdout_lines
-...

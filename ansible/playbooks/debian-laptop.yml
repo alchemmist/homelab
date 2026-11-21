@@ -1,4 +1,3 @@
----
 - name: Bootstrap Ansible on the minimal Debian installation
   hosts: socrat-3
   gather_facts: false
@@ -21,4 +20,3 @@
   become: true
   roles:
     - debian_laptop
-...

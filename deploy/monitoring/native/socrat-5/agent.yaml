@@ -1,4 +1,3 @@
----
 extensions:
   file_storage:
     create_directory: true
@@ -203,4 +202,3 @@ service:
       - transform/log-privacy
       exporters:
       - otlp/logs
-...

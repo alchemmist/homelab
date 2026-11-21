@@ -1,4 +1,3 @@
----
 # All activation is explicit and remains off in committed source.
 enabled: false
 image: rustfs/rustfs:1.0.4@sha256:ed9210d6411d77ffceb70d94b964a3cb7d225983368bc25bebe01e995293dcc2
@@ -39,4 +38,3 @@ catsMedia:
 # Wishlist gift photos. Reachable from the wishlist app, not from other namespaces.
 wishlistMedia:
   enabled: false
-...

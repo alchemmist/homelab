@@ -1,4 +1,3 @@
----
 # Skip the packaged writer, not --disable=local-storage (which uninstalls resources).
 # Git Application storage-tiers owns the SAME resources and preserves their UIDs.
 - name: Inspect the packaged manifest directory

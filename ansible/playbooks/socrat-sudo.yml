@@ -1,4 +1,3 @@
----
 # Installs the console entry only. Does not write /etc/socrat-sudo.env and does not change sudoers.
 - name: Install the socrat-sudo console entry
   hosts: Socrat
@@ -21,4 +20,3 @@
         owner: root
         group: root
         mode: "0755"
-...

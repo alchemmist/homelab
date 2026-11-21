@@ -1,4 +1,3 @@
----
 - name: Require the dedicated maintenance Ethernet interface
   ansible.builtin.assert:
     that:
@@ -31,4 +30,3 @@
       - /usr/local/sbin/homelab-ethernet-guard
   when: homelab_ethernet_guard_active.stdout | trim != 'active'
   changed_when: true
-...

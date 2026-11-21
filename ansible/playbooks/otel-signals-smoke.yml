@@ -1,4 +1,3 @@
----
 - name: Verify native Loki and Tempo OTLP ingestion with isolated synthetic signals
   hosts: socrat-0
   gather_facts: false
@@ -134,4 +133,3 @@
         mode: '0600'
       delegate_to: localhost
       become: false
-...

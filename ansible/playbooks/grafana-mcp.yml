@@ -1,4 +1,3 @@
----
 - name: Deploy private read-only Grafana MCP
   hosts: socrat-0
   gather_facts: false
@@ -32,4 +31,3 @@
         name: homelab-private-dns.service
         state: restarted
       when: grafana_mcp_dns.changed
-...

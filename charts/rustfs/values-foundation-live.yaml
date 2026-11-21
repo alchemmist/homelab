@@ -1,4 +1,3 @@
----
 # Controlled foundation only. Browser admission must be complete before routing.
 enabled: true
 # Exact automation/app=spi-triage TCP9000 writer ingress; no broader access.
@@ -27,4 +26,3 @@ catsMedia:
 
 wishlistMedia:
   enabled: true
-...

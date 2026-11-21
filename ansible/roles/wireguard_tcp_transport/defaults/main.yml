@@ -1,4 +1,3 @@
----
 wg_tcp_version: '3.3.0'
 wg_tcp_server: socrat-2
 wg_tcp_client: socrat-1
@@ -8,4 +7,3 @@ wg_tcp_interface: wg-socrat
 wg_tcp_directory: /etc/wireguard-tcp-transport
 wg_tcp_username: wireguard
 wg_tcp_client_interface: wlan0
-...

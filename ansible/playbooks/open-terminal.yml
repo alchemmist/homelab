@@ -1,4 +1,3 @@
----
 - name: Refuse the retired competing open-terminal installer
   hosts: socrat-0
   gather_facts: false
@@ -16,4 +15,3 @@
           New installation or recovery requires separately reviewed prerequisites;
           do not replay this historical bootstrap. See docs/infrastructure-contracts.md.
       tags: [always]
-...

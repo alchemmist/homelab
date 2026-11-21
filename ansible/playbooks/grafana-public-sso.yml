@@ -1,4 +1,3 @@
----
 - name: Audit or explicitly activate native Grafana SSO without syncing the monitoring stack
   hosts: socrat-0
   gather_facts: false
@@ -16,4 +15,3 @@
     - ansible.builtin.debug:
         var: sso.stdout
       when: not ansible_check_mode
-...

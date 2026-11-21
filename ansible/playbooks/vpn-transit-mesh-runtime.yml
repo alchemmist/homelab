@@ -1,4 +1,3 @@
----
 - name: Prepare offline Pod/native user relay and independent management on Moscow
   hosts: socrat-4
   become: true
@@ -142,4 +141,3 @@
         dest: /var/lib/homelab-vpn-transit/mesh-runtime-prepared.json
         mode: '0600'
         content: '{{ {"prepared":true,"image":image_build.stdout | from_json,"activated":false} | to_nice_json }}'
-...

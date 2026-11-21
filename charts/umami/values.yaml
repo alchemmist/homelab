@@ -1,4 +1,3 @@
----
 umamiImage: ghcr.io/umami-software/umami@sha256:e69d1a7932e9dab0fc523edc7be1f3a53f3c261f57856fc2167ae74a8fc022e8
 postgresImage: postgres:15
 hostPath: /srv/umami
@@ -11,4 +10,3 @@ clusterIssuer: letsencrypt-http01
 appReplicas: 1
 # Legacy DB hostPath stays on socrat-0.
 nodeName: socrat-5
-...

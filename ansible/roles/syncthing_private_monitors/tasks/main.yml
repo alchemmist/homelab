@@ -1,4 +1,3 @@
----
 - name: Check for the existing Uptime Kuma database
   ansible.builtin.stat:
     path: "{{ syncthing_private_monitors_database }}"
@@ -120,4 +119,3 @@
             - syncthing_private_monitors_replicas is defined
             - syncthing_private_monitors_replicas.rc | default(1) == 0
             - syncthing_private_monitors_replicas.stdout | int > 0
-...

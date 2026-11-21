@@ -1,4 +1,3 @@
----
 - name: Audit or create the owned no-NFS worker admission boundary
   hosts: socrat-0
   gather_facts: false
@@ -26,4 +25,3 @@
           --manifest /var/lib/homelab-socrat5-storage-guard.json
           {{ '--apply' if socrat5_storage_guard_apply | default(false) | bool else '' }}
       changed_when: false
-...

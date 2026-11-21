@@ -1,4 +1,3 @@
----
 - name: Maintain guarded wireless startup for the validated MSI configuration
   ansible.builtin.import_tasks: wifi_guard.yml
   when: homelab_wifi_msi | bool
@@ -41,4 +40,3 @@
     - not homelab_wifi_autoconnect | bool
     - homelab_wifi_autoconnect_state.rc == 0
     - homelab_wifi_autoconnect_state.stdout | trim == 'yes'
-...

@@ -1,4 +1,3 @@
----
 - name: Check available memory and disk on the storage node
   ansible.builtin.command:
     argv:
@@ -160,4 +159,3 @@
   loop_control:
     label: "{{ item.metadata.name }}"
   changed_when: true
-...

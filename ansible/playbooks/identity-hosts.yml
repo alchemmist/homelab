@@ -1,4 +1,3 @@
----
 # Needs --ask-become-pass. No node/service restarts.
 - name: Protect the primary cluster administrator credential without breaking owner automation
   hosts: socrat-0
@@ -50,4 +49,3 @@
       failed_when: identity_owner_check.stdout | trim != 'yes'
 
 - ansible.builtin.import_playbook: users.yml
-...

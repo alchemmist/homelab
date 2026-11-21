@@ -1,4 +1,3 @@
----
 name: Native observer policy
 on:
   pull_request:
@@ -56,4 +55,3 @@ jobs:
           tests/test_app_iam.py
           tests/test_browser_auth_policy.py
           tests/test_native_browser_auth.py
-...

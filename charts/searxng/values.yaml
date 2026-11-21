@@ -1,4 +1,3 @@
----
 image: docker.io/searxng/searxng@sha256:d81e14a4328ba7a57f297dff0472be629d30bf29580406c0d5b3bdab563c9bed
 nodeName: socrat-5
 secretName: searxng-secret
@@ -25,4 +24,3 @@ publicEntry:
     service: searxng
     port: 8080
     authorization: public
-...

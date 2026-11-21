@@ -1,4 +1,3 @@
----
 extensions:
   file_storage:
     create_directory: true
@@ -97,4 +96,3 @@ service:
       receivers: [otlp]
       processors: [memory_limiter, transform/privacy, tail_sampling, batch]
       exporters: [otlp/tempo]
-...

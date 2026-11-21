@@ -1,8 +1,6 @@
----
 - name: Configure SSH welcome on Socrat nodes
   hosts: Socrat
   gather_facts: false
   become: true
   roles:
     - ssh_welcome
-...

@@ -1,4 +1,3 @@
----
 - name: Register administrative clients on the existing public entry points
   hosts: socrat-0:socrat-1:socrat-2
   gather_facts: true
@@ -26,4 +25,3 @@
       loop: "{{ wg_socrat_admin_clients | dict2items }}"
       loop_control:
         label: "{{ item.key }}"
-...

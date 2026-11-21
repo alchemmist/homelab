@@ -1,4 +1,3 @@
----
 replicaCount: 2
 
 image:
@@ -38,4 +37,3 @@ nodeAffinity:
 
 imagePullSecrets:
   - cats-harbor-pull
-...

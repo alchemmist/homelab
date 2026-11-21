@@ -1,4 +1,3 @@
----
 # Explicit inverse of native-primary retirement. Never enroll/uninstall/flush.
 - name: Return preserved Moscow worker with fenced VPN handoff
   hosts: socrat-4
@@ -105,4 +104,3 @@
         - (after.stdout | from_json).agent_active
         - not (after.stdout | from_json).native_active
         - not (after.stdout | from_json).fallback_marker
-...

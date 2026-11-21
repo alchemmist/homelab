@@ -1,8 +1,6 @@
----
 apiVersion: v2
 name: venice-api
 description: OpenAI-compatible bridge to the Venice agentic chat
 version: 0.1.0
 appVersion: latest
 type: application
-...

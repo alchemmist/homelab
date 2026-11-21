@@ -1,4 +1,3 @@
----
 - name: Install fixed-destination native Xray transit on Moscow only
   hosts: socrat-4
   gather_facts: false
@@ -71,4 +70,3 @@
         enabled: true
         state: started
         daemon_reload: true
-...

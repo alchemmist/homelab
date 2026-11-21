@@ -1,4 +1,3 @@
----
 - name: Create monitoring integration staging directory
   ansible.builtin.file:
     path: "{{ monitoring_rancher_workdir }}"
@@ -119,4 +118,3 @@
   loop:
     - monitoring-access
     - grafana_ingress_auth.py
-...

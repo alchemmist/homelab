@@ -1,4 +1,3 @@
----
 - name: Deploy local GPU inference
   hosts: socrat-0
   gather_facts: false
@@ -106,4 +105,3 @@
       - '16384'
     register: llm_webui_defaults
     changed_when: (llm_webui_defaults.stdout | from_json).changed
-...

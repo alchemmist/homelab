@@ -1,4 +1,3 @@
----
 rule_files:
 - service-availability.rules.yml
 evaluation_interval: 30s
@@ -5998,4 +5997,3 @@ tests:
       exp_samples:
         - labels: "{}"
           value: 1
-...

@@ -1,4 +1,3 @@
----
 replicaCount: 1
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/socrat-bot
@@ -38,4 +37,3 @@ resources:
 graphs:
   enabled: false
   existingSecret: socrat-bot-graph-client
-...

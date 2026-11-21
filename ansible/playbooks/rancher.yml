@@ -1,4 +1,3 @@
----
 # Compatibility entrypoint only. Historical installer remains in Git history;
 # do not restore its upstream Helm upgrade or post-install imperative patches.
 - name: Refuse the retired competing Rancher installer
@@ -19,4 +18,3 @@
           review docs/vm105-management-20261116.md and the current prerequisites
           separately; this refusal is not an automated empty-cluster restore.
       tags: [always]
-...

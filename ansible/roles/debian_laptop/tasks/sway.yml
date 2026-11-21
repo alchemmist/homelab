@@ -1,4 +1,3 @@
----
 - name: Install the lightweight desktop and family applications
   ansible.builtin.apt:
     name: [sway,
@@ -185,4 +184,3 @@
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
     mode: '0644'
-...

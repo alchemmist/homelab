@@ -1,4 +1,3 @@
----
 # Definition only: no human bindings and no direct Kubernetes OIDC integration implied.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -17,4 +16,3 @@ rules:
   - apiGroups: [networking.k8s.io]
     resources: [ingresses, networkpolicies]
     verbs: [get, list, watch]
-...

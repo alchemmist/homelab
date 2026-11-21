@@ -1,4 +1,3 @@
----
 authentik:
   error_reporting:
     enabled: false
@@ -70,4 +69,3 @@ worker:
       ephemeral-storage: 256Mi
       memory: 768Mi
   serviceAccountName: identity-runtime
-...

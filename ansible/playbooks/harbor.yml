@@ -1,4 +1,3 @@
----
 # Edge RBAC requires the namespace to exist before its Helm upgrade.
 - name: Prepare Harbor namespace before extending public ingress
   hosts: socrat-0
@@ -22,4 +21,3 @@
   any_errors_fatal: true
   roles:
     - harbor
-...

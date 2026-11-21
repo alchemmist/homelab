@@ -1,4 +1,3 @@
----
 - name: Remember the final SSH endpoint port
   ansible.builtin.set_fact:
     homelab_ssh_endpoint_port: "{{ ansible_port | default(homelab_ssh_port) }}"
@@ -216,4 +215,3 @@
 - name: Configure private SSH aliases between cluster nodes
   ansible.builtin.import_role:
     name: node_ssh_client
-...

@@ -1,4 +1,3 @@
----
 - name: Verify the worker before admitting ordinary workloads
   hosts: socrat-0
   gather_facts: false
@@ -72,4 +71,3 @@
       always:
         - name: Remove disposable verification workloads
           ansible.builtin.command: kubectl delete namespace homelab-worker-check --ignore-not-found --wait=true --timeout=90s
-...

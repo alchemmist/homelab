@@ -1,4 +1,3 @@
----
 - name: Preserve the complete current CoreDNS deployment specification
   ansible.builtin.set_fact:
     ha_coredns_spec: "{{ (ha_dependency_current.stdout | from_json).spec }}"
@@ -52,4 +51,3 @@
   become: true
   delegate_to: "{{ item }}"
   loop: "{{ k3s_ha_dependencies_manifest_servers }}"
-...

@@ -1,4 +1,3 @@
----
 - name: Check that starship is installed
   ansible.builtin.shell: command -v starship
   changed_when: false
@@ -140,4 +139,3 @@
 - name: Configure the shared SSH welcome screen
   ansible.builtin.import_role:
     name: ssh_welcome
-...

@@ -1,5 +1,4 @@
 # Restored and sealed cold before activation; old claim retained, never pruned.
----
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -68,4 +67,3 @@ spec:
       storage: 1Gi
   storageClassName: ""
   volumeName: grafana-socrat5
-...

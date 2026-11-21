@@ -1,4 +1,3 @@
----
 - name: Install the legacy VPN loopback service
   ansible.builtin.copy:
     src: vpn-legacy-loopback.service
@@ -13,4 +12,3 @@
     enabled: true
     state: started
     daemon_reload: true
-...

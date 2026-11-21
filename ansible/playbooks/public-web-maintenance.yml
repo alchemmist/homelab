@@ -1,4 +1,3 @@
----
 - name: Explicit bounded public-web maintenance (audit by default)
   hosts: socrat-0
   gather_facts: false
@@ -27,4 +26,3 @@
     - ansible.builtin.debug:
         var: maintenance.stdout
       when: not ansible_check_mode
-...

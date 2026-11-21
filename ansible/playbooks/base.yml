@@ -1,4 +1,3 @@
----
 - name: Configure base homelab host settings
   hosts: Socrat
   gather_facts: false
@@ -8,4 +7,3 @@
     - base
     - wallpaper_asset
     - netbird_node
-...

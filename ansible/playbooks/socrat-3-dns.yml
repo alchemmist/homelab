@@ -1,4 +1,3 @@
----
 - name: Repair shared wired and wireless DNS without reconnecting interfaces
   hosts: socrat-3
   gather_facts: false
@@ -8,4 +7,3 @@
       ansible.builtin.import_role:
         name: debian_laptop
         tasks_from: wifi_dns
-...

@@ -1,4 +1,3 @@
----
 - name: Install WireGuard packages on Debian nodes
   ansible.builtin.apt:
     name:
@@ -165,4 +164,3 @@
 - name: Print wg-socrat address
   ansible.builtin.debug:
     var: wg_socrat_addr.stdout_lines
-...

@@ -1,4 +1,3 @@
----
 - name: Keep socrat-3 out of C2 idle and arm its hardware watchdog
   hosts: socrat-3
   gather_facts: false
@@ -156,4 +155,3 @@
       delay: 1
       register: host_watchdog_verified
       until: host_watchdog_verified.rc == 0
-...

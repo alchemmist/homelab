@@ -1,4 +1,3 @@
----
 - name: Ensure the terminal font is available
   ansible.builtin.import_tasks: fonts.yml
 
@@ -89,4 +88,3 @@
       - "{{ homelab_alacritty_config.stdout }}"
   changed_when: false
   when: not ansible_check_mode
-...

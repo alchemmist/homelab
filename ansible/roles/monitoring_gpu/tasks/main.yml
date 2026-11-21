@@ -1,4 +1,3 @@
----
 - name: Create node exporter textfile directory
   ansible.builtin.file:
     path: "{{ monitoring_gpu_textfile_directory }}"
@@ -39,4 +38,3 @@
         enabled: true
         state: started
         daemon_reload: true
-...

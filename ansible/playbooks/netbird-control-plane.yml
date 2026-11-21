@@ -1,4 +1,3 @@
----
 # Explicit control-plane check. Not imported by site.yml.
 # Default action is check. plan and apply require extra vars and still pass
 # through scripts/netbird-deploy.py, which refuses repo inputs, Argo sync,
@@ -10,4 +9,3 @@
   become: false
   roles:
     - netbird_control_plane
-...

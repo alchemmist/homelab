@@ -1,4 +1,3 @@
----
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -33,4 +32,3 @@ spec:
       namespace: wishlist
       jsonPointers:
         - /spec/template/metadata/annotations/homelab.alchemmist.xyz~1client-certificate-sha256
-...

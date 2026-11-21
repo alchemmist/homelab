@@ -1,4 +1,3 @@
----
 # Stage + isolated copy-only smoke; promotion requires a separate explicit phase.
 - name: Refresh stale NL standby image without restarting the working VPN
   hosts: socrat-2
@@ -86,4 +85,3 @@
             mode: '0700'
         - name: Atomic locked directory exchange; no unit or workload restart
           ansible.builtin.command: python3 {{ recovery }}/promote.py --candidate {{ candidate }} --old-image {{ old_image }} --new-image {{ image }}
-...

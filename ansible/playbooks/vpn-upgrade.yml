@@ -1,4 +1,3 @@
----
 - name: Upgrade the primary VPN and its dormant recovery runtime
   hosts: socrat-2
   gather_facts: false
@@ -183,4 +182,3 @@
     - name: Report the private backup location
       ansible.builtin.debug:
         msg: Verified VPN upgrade; backups and previous recovery runtime retained in {{ vpn_upgrade_backup.stdout }}
-...

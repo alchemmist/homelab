@@ -1,4 +1,3 @@
----
 - name: Check whether the current resolver has DNS servers
   ansible.builtin.command: grep -Eq '^nameserver[[:space:]]+' /etc/resolv.conf
   register: homelab_dns_present
@@ -61,4 +60,3 @@
 - name: Verify public DNS resolution
   ansible.builtin.command: timeout 10 getent ahostsv4 github.com
   changed_when: false
-...

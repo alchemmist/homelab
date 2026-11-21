@@ -1,4 +1,3 @@
----
 # Install guard before admitting peer. Does NOT restart WG, K3s or VPN.
 - name: Persist source-scoped bootstrap isolation on Moscow
   hosts: socrat-4
@@ -51,4 +50,3 @@
         enabled: true
         state: started
         daemon_reload: true
-...

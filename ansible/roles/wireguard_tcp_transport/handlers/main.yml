@@ -1,8 +1,6 @@
----
 - name: Restart WireGuard TCP transport
   ansible.builtin.systemd:
     name: wireguard-tcp-transport.service
     state: restarted
     enabled: true
     daemon_reload: true
-...

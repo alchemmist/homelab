@@ -1,4 +1,3 @@
----
 - name: Enable native OTLP metrics on independent host agents after the cluster ownership switch
   hosts: socrat-0:socrat-1:socrat-2:socrat-3
   gather_facts: false
@@ -24,4 +23,3 @@
       delay: 2
       until: agent_health.rc == 0
       changed_when: false
-...

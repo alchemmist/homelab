@@ -1,4 +1,3 @@
----
 - name: Enable the existing host swap partition on socrat-3
   hosts: socrat-3
   gather_facts: false
@@ -81,4 +80,3 @@
       register: host_swap_verified
       changed_when: false
       failed_when: host_swap_uuid not in host_swap_verified.stdout.split()
-...

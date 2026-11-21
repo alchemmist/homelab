@@ -1,4 +1,3 @@
----
 - name: Require macOS for WireGuard admin client preparation
   ansible.builtin.assert:
     that:
@@ -176,4 +175,3 @@
     mode: "0644"
   when: wireguard_admin_dns_mode == 'split'
   tags: dns
-...

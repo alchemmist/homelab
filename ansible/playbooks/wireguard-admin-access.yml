@@ -1,4 +1,3 @@
----
 - name: Configure independent administrative access on Socrat nodes
   hosts: Socrat
   gather_facts: true
@@ -26,4 +25,3 @@
       when: wireguard_private_web_enabled | default(false)
 
 - ansible.builtin.import_playbook: wireguard-tcp-transport.yml
-...

@@ -1,4 +1,3 @@
----
 - name: Prepare NFS client packages for shared Kubernetes storage
   hosts: Socrat
   gather_facts: true
@@ -157,4 +156,3 @@
         systemctl restart nfs-mountd nfs-server
 
 - ansible.builtin.import_playbook: rancher-namespaces.yml
-...

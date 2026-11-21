@@ -1,4 +1,3 @@
----
 - name: Append the new transit worker without restarting existing interfaces
   hosts: socrat-0:socrat-1:socrat-2:socrat-3
   gather_facts: false
@@ -33,4 +32,3 @@
         name: wg-quick@wg-socrat
         state: restarted
       when: "'10.250.0.40' not in edge_wg_address.stdout"
-...

@@ -1,4 +1,3 @@
----
 - name: Read the installed certificate controller release
   ansible.builtin.command:
     argv: [helm,
@@ -146,4 +145,3 @@
            "{{ {'data': {'rancher-private.server': rancher_wg_cluster_dns_zone}} | to_json }}"]
   register: rancher_wg_dns_patch
   changed_when: "'(no change)' not in rancher_wg_dns_patch.stdout"
-...

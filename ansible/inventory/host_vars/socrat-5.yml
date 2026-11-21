@@ -1,4 +1,3 @@
----
 # Native Debian KVM worker (VM105); no desktop/wallpaper/display autostart roles.
 # Original Node/WG/SSH/NetBird identities retained; accepted applications now run here.
 homelab_boot_k3s_service: k3s.service
@@ -35,4 +34,3 @@ wg_socrat_extra_allowed_peer_ips:
   socrat-5:
     socrat-0: [192.168.0.23/32]
     socrat-1: [192.168.0.24/32]
-...

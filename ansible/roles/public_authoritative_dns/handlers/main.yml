@@ -1,4 +1,3 @@
----
 - name: Reload systemd
   ansible.builtin.systemd:
     daemon_reload: true
@@ -7,4 +6,3 @@
   ansible.builtin.service:
     name: knot
     state: restarted
-...

@@ -1,4 +1,3 @@
----
 - name: Keep this role off routers, WireGuard, and K3s transport
   ansible.builtin.assert:
     that:
@@ -36,4 +35,3 @@
     chdir: "{{ netbird_repo_root }}"
   changed_when: false
   when: netbird_action == 'plan'
-...

@@ -1,4 +1,3 @@
----
 - name: Configure shared SearXNG search in Open WebUI
   hosts: socrat-0
   gather_facts: false
@@ -27,4 +26,3 @@
         python /tmp/configure-webui-search.py
       register: webui_search_config
       changed_when: (webui_search_config.stdout | from_json).changed
-...

@@ -1,4 +1,3 @@
----
 # Explicit phases. Default prepares/tests the controller but NEVER hands off traffic.
 # promote must follow actual native-path acceptance; it does not remove a Node.
 - name: Guarded Moscow native-primary preparation and handoff
@@ -115,4 +114,3 @@
         content: '{{ after.stdout }}'
         dest: '{{ recovery_root }}/{{ phase }}-accepted.json'
         mode: '0600'
-...

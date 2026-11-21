@@ -1,4 +1,3 @@
----
 # Apply only the reviewed CPU override, not the production-agent installer.
 - name: Tune telemetry parallelism on the one-vCPU Moscow gateway
   hosts: socrat-4
@@ -114,4 +113,3 @@
       loop: '{{ postimages.results }}'
       loop_control:
         label: '{{ item.item.path }}'
-...

@@ -1,4 +1,3 @@
----
 - name: Create boot service override directories
   ansible.builtin.file:
     path: "{{ item }}"
@@ -84,4 +83,3 @@
 - name: Keep existing user infrastructure available without an interactive login
   ansible.builtin.command: "loginctl enable-linger {{ homelab_user }}"
   when: homelab_boot_linger.stdout != 'yes'
-...

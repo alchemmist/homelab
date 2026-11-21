@@ -1,4 +1,3 @@
----
 - name: Install the protected wireless loader
   ansible.builtin.copy:
     src: "{{ playbook_dir }}/../roles/debian_laptop/files/load_guarded_wifi.py"
@@ -39,4 +38,3 @@
     name: homelab-guarded-wifi.service
     daemon_reload: true
     enabled: true
-...

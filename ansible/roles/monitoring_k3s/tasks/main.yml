@@ -1,4 +1,3 @@
----
 - name: Ensure private monitoring staging directory
   ansible.builtin.file:
     path: "{{ monitoring_k3s_remote_dir }}"
@@ -150,4 +149,3 @@
     - --timeout
     - 5m
   changed_when: true
-...

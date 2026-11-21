@@ -1,4 +1,3 @@
----
 # Run after WebUI Helm changes so explicit identity settings cannot drift away.
 - name: Preserve an already activated Open WebUI identity integration
   hosts: socrat-0
@@ -28,4 +27,3 @@
       vars:
         identity_oidc_services: [open-webui]
       when: webui_identity_active.stdout | trim | length > 0
-...

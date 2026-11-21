@@ -1,4 +1,3 @@
----
 - name: Install the validated guarded wireless configuration
   hosts: socrat-3
   gather_facts: true
@@ -94,4 +93,3 @@
 
     - name: Restore scheduling on the verified worker
       ansible.builtin.command: kubectl uncordon socrat-3
-...

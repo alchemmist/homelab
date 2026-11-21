@@ -1,4 +1,3 @@
----
 # +docs:section=Global
 
 # Default values for cert-manager.
@@ -1454,4 +1453,3 @@ creator: helm
 # for more info.
 # +docs:hidden
 enabled: true
-...

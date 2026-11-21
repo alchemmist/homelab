@@ -1,4 +1,3 @@
----
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/venice-api
   tag: ce82fea9ab38d5afc56c078e1c53671d53f7a158
@@ -33,4 +32,3 @@ browserCandidate:
   serveApi: false
   maxPendingRequests: 4
   queueTimeout: 180
-...

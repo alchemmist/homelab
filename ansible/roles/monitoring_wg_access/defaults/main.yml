@@ -1,4 +1,3 @@
----
 monitoring_wg_namespace: syncthing
 monitoring_wg_release: syncthing
 monitoring_wg_kubeconfig: /etc/rancher/k3s/k3s.yaml
@@ -8,4 +7,3 @@ monitoring_wg_node: socrat-1
 monitoring_wg_tls_secret: grafana-private-tls
 monitoring_wg_cluster_issuer: letsencrypt-http01
 monitoring_wg_upstream: http://kube-prometheus-stack-grafana.cattle-monitoring-system.svc.cluster.local:80
-...

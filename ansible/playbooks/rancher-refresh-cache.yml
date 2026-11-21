@@ -1,4 +1,3 @@
----
 - name: Rebuild Rancher UI caches after Kubernetes datastore revision rollback
   hosts: socrat-0
   gather_facts: false
@@ -41,4 +40,3 @@
     - name: Report verified node names
       ansible.builtin.debug:
         var: rancher_cache_verification.stdout_lines
-...

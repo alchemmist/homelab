@@ -1,4 +1,3 @@
----
 # Canonical independently deployable stateless gateway image; no SPI worker rollout.
 # Updated by deploy-to-socrat@v1, app=grafana, component=gateway.
 gateway:
@@ -31,4 +30,3 @@ grafana:
         - name: storage
           mountPath: /var/lib/grafana
           readOnly: true
-...

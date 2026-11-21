@@ -1,4 +1,3 @@
----
 - name: Reconcile application-specific access without deploying Authentik
   hosts: socrat-0
   gather_facts: false
@@ -10,4 +9,3 @@
     identity_app_access_apply: false
   roles:
     - identity_app_access
-...

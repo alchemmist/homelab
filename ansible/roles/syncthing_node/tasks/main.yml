@@ -1,4 +1,3 @@
----
 # Kubernetes owns Syncthing on Socrat nodes. The Helm chart deploys it as a
 # hostNetwork DaemonSet, so any host/user-level Syncthing service would collide
 # on ports 8384/22000/21027 and make the node-local pod crash-loop.
@@ -67,4 +66,3 @@
     owner: root
     group: root
     mode: '0755'
-...

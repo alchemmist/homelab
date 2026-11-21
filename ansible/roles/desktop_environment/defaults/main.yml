@@ -1,4 +1,3 @@
----
 homelab_desktop_profile: desktop
 homelab_wallpaper_path: /usr/local/share/wallpapers/homelab/default.png
 homelab_hypr_monitors:
@@ -24,4 +23,3 @@ homelab_hypr_environment:
   MOZ_ENABLE_WAYLAND: '1'
   GDK_SCALE: '1'
   OLLAMA_VULKAN: '1'
-...

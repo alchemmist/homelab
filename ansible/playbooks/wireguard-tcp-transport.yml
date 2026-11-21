@@ -1,4 +1,3 @@
----
 - name: Prepare authenticated WireGuard transport server
   hosts: socrat-2
   gather_facts: true
@@ -14,4 +13,3 @@
   any_errors_fatal: true
   roles:
     - wireguard_tcp_transport
-...
