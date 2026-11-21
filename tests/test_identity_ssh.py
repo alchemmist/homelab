@@ -150,7 +150,7 @@ class BindingTests(unittest.TestCase):
     def test_disabled_and_removed_hosts_need_no_live_identity(self):
         p = policy("disabled", hosts=["socrat-1"], revoked=["socrat-2"])
 
-        def unavailable(ident):
+        def unavailable(ident) -> None:
             raise AssertionError("Must not call IdP for revocation")
 
         payload, _ = ssh.build_plan(ssh.bindings_map(ledger()), p, unavailable)
@@ -182,7 +182,7 @@ class HistoryTests(unittest.TestCase):
             root = Path(d)
             binding_path, policy_path = root / "bindings.json", root / "policy.json"
 
-            def git(*args):
+            def git(*args) -> str:
                 return subprocess.run(
                     ["git", "-C", str(root), *args], check=True, text=True, capture_output=True
                 ).stdout
@@ -260,7 +260,7 @@ class ApiTests(unittest.TestCase):
         api = self.api()
         seen = []
 
-        def opened(req, timeout):
+        def opened(req, timeout) -> io.BytesIO:
             seen.append(req)
             return io.BytesIO(
                 json.dumps({"pagination": {"next": None}, "results": [user()]}).encode()
@@ -386,7 +386,7 @@ class HostBindingTests(unittest.TestCase):
 
         original_stat = Path.lstat
 
-        def root_stat(path):
+        def root_stat(path) -> SimpleNamespace:
             info = original_stat(path)
             return SimpleNamespace(st_uid=0, st_mode=info.st_mode, st_size=info.st_size)
 
@@ -423,7 +423,7 @@ class HostBindingTests(unittest.TestCase):
             # Metadata is mocked only to allow a non-root offline test process.
             original = Path.lstat
 
-            def root_stat(path):
+            def root_stat(path) -> SimpleNamespace:
                 info = original(path)
                 return SimpleNamespace(st_uid=0, st_mode=info.st_mode, st_size=info.st_size)
 
@@ -456,7 +456,7 @@ class HostBindingTests(unittest.TestCase):
             "kerberosauthentication": "no",
         }
 
-        def response(values):
+        def response(values) -> subprocess.CompletedProcess[str]:
             return subprocess.CompletedProcess(
                 [], 0, "\n".join(k + " " + v for k, v in values.items()), ""
             )

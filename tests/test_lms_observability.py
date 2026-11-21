@@ -183,7 +183,7 @@ def test_dashboard_starts_with_waterfall_without_instruction_text_panel():
 
 
 def test_hibernated_database_alerts_do_not_page_for_production_lms():
-    def rules(*override):
+    def rules(*override) -> set[str]:
         docs = render('-f', str(ROOT / 'deploy/lms/values.yaml'), *override)
         group = next(d for d in docs if d and d['kind'] == 'PrometheusRule' and d['metadata']['name'] == 'lms-availability')['spec']['groups'][0]
         return {r['alert'] for r in group['rules']}

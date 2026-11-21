@@ -165,7 +165,7 @@ class ModuleNoteTests(unittest.TestCase):
                 encoded = encode(b"elf-module")
                 source.write_bytes(encoded)
 
-                def objcopy(command):
+                def objcopy(command) -> bytes:
                     self.assertEqual(command[:2], ["objcopy", "--dump-section"])
                     self.assertEqual(Path(command[3]).read_bytes(), b"elf-module")
                     self.assertNotEqual(command[3], command[4])

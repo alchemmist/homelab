@@ -111,11 +111,12 @@ class EngineStorageTests(unittest.TestCase):
     def test_per_file_checkpoint_restart_toggle(self):
         n = [0]
 
-        def upload(k, b):
+        def upload(k, b) -> dict[str, object]:
             n[0] += 1
             if n[0] == 2:
                 raise StorageTransient(2)
-            return self.verify(k, b)
+            result: dict[str, object] = self.verify(k, b)
+            return result
 
         self.s.ensure_object.side_effect = upload
         with self.assertRaisesRegex(Failure, "STORAGE_TRANSIENT"):
@@ -425,7 +426,7 @@ class EngineStorageTests(unittest.TestCase):
                 ]
                 original_save = self.store.save
 
-                def checkpoint(*args, **kwargs):
+                def checkpoint(*args, **kwargs) -> None:
                     original_save(*args, **kwargs)
                     if args[1] == 3:
                         self.assertIsNotNone(self.store.get(self.key)["intent"])
@@ -450,7 +451,7 @@ class EngineStorageTests(unittest.TestCase):
         key = self.resolved_job()
         self.g.request.side_effect = [{"state": "open"}, {"state": "closed"}]
 
-        def upload(k, b):
+        def upload(k, b) -> dict[str, object]:
             return {
                 "bucket": "spi-evidence",
                 "key": k,
@@ -502,20 +503,21 @@ class EngineStorageTests(unittest.TestCase):
         stored = {}
         posts = []
 
-        def ensure(k, b):
+        def ensure(k, b) -> dict[str, object]:
             if k not in stored:
                 stored[k] = b
                 if len(stored) == 1:
                     raise StorageTransient(1)
             self.assertEqual(stored[k], b)
-            return self.verify(k, b)
+            result: dict[str, object] = self.verify(k, b)
+            return result
 
         self.s.ensure_object.side_effect = ensure
         with self.assertRaisesRegex(Failure, "STORAGE_TRANSIENT"):
             self.engine.run("publish", self.key)
         self.store.save(self.key, 3, self.store.get(self.key)["result"], state="processing")
 
-        def post(method, path, data):
+        def post(method, path, data) -> None:
             self.assertEqual(
                 len(self.store.get(self.key)["result"]["storage_publication"]["verified"]), 2
             )

@@ -31,7 +31,9 @@ def test_power_and_quorum_with_native_promtool(tmp_path):
     assert rules["SocratEtcdQuorumHealthUnproven"]["for"] == "30s"
     (tmp_path / "rules.yaml").write_text(yaml.safe_dump({"groups": [group]}))
 
-    def fixture(name, online=1, capacity=88, voters=3, fire=(), missing=False, stale=False):
+    def fixture(
+        name, online=1, capacity=88, voters=3, fire=(), missing=False, stale=False
+    ) -> dict[str, object]:
         series = (
             []
             if missing
