@@ -16,6 +16,7 @@ import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from typing import cast
 
 SERVICE = "homelab-isolated-operational-replay"
 
@@ -121,7 +122,7 @@ def rollback_candidate(original):
 def trace_records(document):
     found = []
 
-    def walk(value):
+    def walk(value) -> None:
         if isinstance(value, dict):
             if all(key in value for key in ["traceId", "spanId", "name"]):
                 identity = value["traceId"]
@@ -474,7 +475,7 @@ def run(args):
         outage_start = time.monotonic()
         metrics, logs, traces, expected, ids = fixtures(time.time_ns())
 
-        def ingress_ready():
+        def ingress_ready() -> bool:
             with socket.create_connection(("127.0.0.1", 4318), timeout=4) as connection:
                 with context.wrap_socket(connection, server_hostname="127.0.0.1"):
                     return True
@@ -543,7 +544,7 @@ if __name__ == "__main__":
     os.umask(0o077)
     try:
         print(json.dumps(run(parser.parse_args())))
-    except Exception as error:
+    except (OSError, RuntimeError, subprocess.SubprocessError, ValueError) as error:
         print(
             json.dumps(
                 {
@@ -553,4 +554,4 @@ if __name__ == "__main__":
                 }
             )
         )
-        raise SystemExit(1)
+        raise SystemExit(1) from error

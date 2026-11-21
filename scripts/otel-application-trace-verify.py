@@ -37,7 +37,7 @@ def summarize(
     spans = []
     services = set()
 
-    def walk(value):
+    def walk(value) -> None:
         if isinstance(value, dict):
             for entry in value.get("attributes", []):
                 if entry.get("key") == "service.name":
@@ -119,7 +119,7 @@ def summarize_production_litellm(document, trace_id, parent_id, inference=False)
         and span["name"] == "homelab.synthetic.live-sdk-validation"
     ]
 
-    def descendant(span):
+    def descendant(span) -> bool:
         if identifier(span["spanId"]) == parent_id:
             return False
         seen = {identifier(span["spanId"])}
@@ -185,7 +185,7 @@ def summarize_native_production(
 ):
     records = []
 
-    def walk(value, service=None):
+    def walk(value, service=None) -> None:
         if isinstance(value, dict):
             for attribute in value.get("resource", {}).get("attributes", []):
                 if attribute.get("key") == "service.name":

@@ -11,23 +11,23 @@ import fcntl
 import hashlib
 import json
 import os
-from pathlib import Path
 import socket
 import subprocess
 import time
+from pathlib import Path
 
 ROOT = Path("/opt/homelab-vpn-failover")
 STATE = Path("/var/lib/homelab-vpn-failover")
 RECEIPT = Path("/var/lib/homelab-recovery/20261113-vpn-native-image/promotion.json")
 
 
-def active(unit):
+def active(unit) -> bool:
     p = subprocess.run(["systemctl", "is-active", "--quiet", unit], capture_output=True, timeout=5)
     assert p.returncode in (0, 3)
     return p.returncode == 0
 
 
-def running_core():
+def running_core() -> str:
     found = []
     for path in Path("/proc").glob("[0-9]*/exe"):
         try:
@@ -44,7 +44,7 @@ def running_core():
     return hashlib.sha256(found[0].read_bytes()).hexdigest()
 
 
-def promote(candidate, old_image, new_image):
+def promote(candidate, old_image, new_image) -> None:
     assert os.geteuid() == 0 and socket.gethostname() == "socrat-2"
     assert (
         candidate.parent == ROOT
@@ -128,7 +128,7 @@ if __name__ == "__main__":
     a = p.parse_args()
     try:
         promote(a.candidate, a.old_image, a.new_image)
-    except Exception:
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
         raise SystemExit(
             "Native image promotion stopped; inspect private intent/receipts, never replay."
         ) from None

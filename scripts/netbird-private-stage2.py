@@ -17,6 +17,7 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import cast
 
 ROOT = Path.home() / ".local/state/netbird-internal-stage"
 KUBE = [
@@ -142,7 +143,7 @@ def main():
     token = None
     process_slot = {}
 
-    def api(method, path, body=None):
+    def api(method, path, body=None) -> dict[str, object] | list[object] | None:
         headers = {"Content-Type": "application/json"}
         if token:
             headers["Authorization"] = "Token " + token
@@ -154,8 +155,9 @@ def main():
         )
         try:
             with urllib.request.urlopen(req, timeout=25) as response:
-                result = response.read()
-                return json.loads(result) if result else None
+                raw = response.read()
+                payload: dict[str, object] | list[object] | None = json.loads(raw) if raw else None
+                return payload
         except urllib.error.HTTPError as error:
             code = error.code
             error.close()
@@ -180,21 +182,24 @@ def main():
                 journal / "bootstrap-password.json",
                 {"email": "netbird-bootstrap@internal.invalid", "password": password},
             )
-            result = api(
-                "POST",
-                "setup",
-                {
-                    "email": "netbird-bootstrap@internal.invalid",
-                    "password": password,
-                    "name": "Private technical bootstrap",
-                    "create_pat": True,
-                    "pat_expire_in": 1,
-                },
+            result = cast(
+                "dict[str, object]",
+                api(
+                    "POST",
+                    "setup",
+                    {
+                        "email": "netbird-bootstrap@internal.invalid",
+                        "password": password,
+                        "name": "Private technical bootstrap",
+                        "create_pat": True,
+                        "pat_expire_in": 1,
+                    },
+                ),
             )
             token = result.get("personal_access_token")
             require(isinstance(token, str) and token, "setup did not return PAT; stop")
             private(journal / "bootstrap.json", result)
-            accounts = api("GET", "accounts")
+            accounts = cast("list[dict[str, object]]", api("GET", "accounts"))
             require(len(accounts) == 1, "expected one account")
             require(
                 api("GET", "peers") == [] and api("GET", "setup-keys") == [],
@@ -204,8 +209,11 @@ def main():
             api("DELETE", "policies/" + policy_id)
             require(api("GET", "policies") == [], "policies not empty")
             desired = settings_body(accounts[0])
-            api("PUT", "accounts/" + accounts[0]["id"], desired)
-            actual = api("GET", "accounts")[0]["settings"]
+            api("PUT", "accounts/" + cast("str", accounts[0]["id"]), desired)
+            actual = cast(
+                "dict[str, object]",
+                cast("list[dict[str, object]]", api("GET", "accounts"))[0]["settings"],
+            )
             for key in (
                 "jwt_groups_enabled",
                 "jwt_groups_claim_name",
@@ -250,8 +258,10 @@ def main():
                 issuer="https://auth.socrat.alchemmist.xyz/application/o/netbird-pilot/",
                 **runtime,
             )
-            result = api("POST", "identity-providers", body)
-            require(len(api("GET", "identity-providers")) == 1, "IdP count drift")
+            result = cast("dict[str, object]", api("POST", "identity-providers", body))
+            require(
+                len(cast("list[object]", api("GET", "identity-providers"))) == 1, "IdP count drift"
+            )
             private(
                 journal / "identity-provider.json",
                 {"id": result["id"], "type": result["type"], "issuer": result["issuer"]},
@@ -269,6 +279,6 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except (ValueError, OSError, subprocess.SubprocessError, KeyError, TypeError):
+    except (ValueError, OSError, subprocess.SubprocessError, KeyError, TypeError) as exc:
         print("BLOCKED: stage2 stopped; inspect private journal; no blind write retries")
-        raise SystemExit(2)
+        raise SystemExit(2) from exc

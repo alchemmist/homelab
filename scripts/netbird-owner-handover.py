@@ -13,6 +13,7 @@ import os
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from typing import cast
 
 UUID = "9e33877a-3eaa-4541-98eb-8cdc10088ef6"
 CONNECTOR = "authentik-dbkcr0p119kc73917k1g"
@@ -101,12 +102,12 @@ def main():
     token = json.loads((ROOT / "bootstrap.json").read_text())["personal_access_token"]
 
     class NoRedirect(urllib.request.HTTPRedirectHandler):
-        def redirect_request(self, req, fp, code, msg, headers, newurl):
+        def redirect_request(self, _req, _fp, _code, _msg, _headers, _newurl) -> None:
             return None  # Never forward a private PAT to a redirect destination.
 
     opener = urllib.request.build_opener(NoRedirect)
 
-    def api(path, body=None):
+    def api(path, body=None) -> list[dict[str, object]]:
         request = urllib.request.Request(
             BASE + path,
             headers={"Authorization": "Token " + token, "Content-Type": "application/json"},
@@ -115,7 +116,8 @@ def main():
         )
         # Standard trusted TLS, no certificate bypass, redirect or mutation retries.
         with opener.open(request, timeout=20) as r:
-            return json.load(r)
+            payload: list[dict[str, object]] = json.load(r)
+            return payload
 
     accounts = api("accounts")
     require(
@@ -173,10 +175,10 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception as exc:
+    except (ValueError, KeyError, TypeError, RuntimeError, OSError) as exc:
         print(
             "BLOCKED: "
             + (str(exc) if isinstance(exc, ValueError) else type(exc).__name__)
             + ". Inspect private journal; never blindly retry."
         )
-        raise SystemExit(2)
+        raise SystemExit(2) from exc

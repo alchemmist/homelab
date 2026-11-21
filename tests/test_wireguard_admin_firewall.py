@@ -15,14 +15,14 @@ ROLLBACK = (ROLE / "ROLLBACK.md").read_text()
 
 
 class WireGuardAdminFirewallTests(unittest.TestCase):
-    def test_uses_client_registry_and_exact_interface(self):
+    def test_uses_client_registry_and_exact_interface(self) -> None:
         self.assertIn("wg_socrat_admin_clients", DEFAULTS)
         self.assertIn("interface={{ wg_socrat_admin_firewall_interface | quote }}", SCRIPT)
         self.assertIn("wg-socrat", DEFAULTS)
         self.assertIn("dict2items", SCRIPT)
         self.assertIn("item.value.address", TASKS)
 
-    def test_only_allows_ssh_and_private_dns_to_the_node(self):
+    def test_only_allows_ssh_and_private_dns_to_the_node(self) -> None:
         self.assertIn("--dport {{ wg_socrat_admin_firewall_ssh_port }}", SCRIPT)
         self.assertIn("--dport {{ wg_socrat_admin_firewall_dns_port }}", SCRIPT)
         self.assertIn("-p tcp", SCRIPT)
@@ -32,19 +32,19 @@ class WireGuardAdminFirewallTests(unittest.TestCase):
         self.assertIn("--ctorigdstport", SCRIPT)
         self.assertIn("REJECT --reject-with icmp-port-unreachable", SCRIPT)
 
-    def test_private_web_access_is_explicitly_disabled_by_default(self):
+    def test_private_web_access_is_explicitly_disabled_by_default(self) -> None:
         self.assertIn("wireguard_private_web_enabled: false", DEFAULTS)
         self.assertIn("{% if wireguard_private_web_enabled | bool %}", SCRIPT)
         self.assertIn("--dport {{ wireguard_private_web_proxy_port }}", SCRIPT)
         self.assertIn("--ctorigdstport {{ wireguard_private_web_public_port }}", SCRIPT)
 
-    def test_forwarding_from_admin_clients_is_rejected(self):
+    def test_forwarding_from_admin_clients_is_rejected(self) -> None:
         self.assertIn("FORWARD", SCRIPT)
         self.assertIn("REJECT --reject-with icmp-admin-prohibited", SCRIPT)
         self.assertIn('INPUT 1 -i "$interface"', SCRIPT)
         self.assertIn('FORWARD 1 -i "$interface"', SCRIPT)
 
-    def test_preserves_unrelated_firewall_chains(self):
+    def test_preserves_unrelated_firewall_chains(self) -> None:
         self.assertIn("input_chain_a={{ wg_socrat_admin_firewall_chain_prefix }}_INPUT_A", SCRIPT)
         self.assertIn("input_chain_b={{ wg_socrat_admin_firewall_chain_prefix }}_INPUT_B", SCRIPT)
         self.assertIn(
@@ -58,7 +58,7 @@ class WireGuardAdminFirewallTests(unittest.TestCase):
         self.assertIn("remove_rules", SCRIPT)
         self.assertIn("delete_all", SCRIPT)
 
-    def test_replaces_owned_policy_only_after_new_chain_is_built(self):
+    def test_replaces_owned_policy_only_after_new_chain_is_built(self) -> None:
         self.assertIn('"$iptables" -w 5', SCRIPT)
         self.assertIn("new_input_chain", SCRIPT)
         self.assertIn("new_forward_chain", SCRIPT)
@@ -68,11 +68,11 @@ class WireGuardAdminFirewallTests(unittest.TestCase):
         )
         self.assertLess(SCRIPT.index('ipt -A "$new_input_chain"'), SCRIPT.index("ipt -I INPUT 1"))
 
-    def test_transit_is_scoped_and_nat_is_reversible(self):
+    def test_transit_is_scoped_and_nat_is_reversible(self) -> None:
         env = Environment()
         env.filters["quote"] = shlex.quote
         env.filters["bool"] = bool
-        env.filters["dict2items"] = lambda value: [dict(key=k, value=v) for k, v in value.items()]
+        env.filters["dict2items"] = lambda value: [{"key": k, "value": v} for k, v in value.items()]
         script = env.from_string(SCRIPT).render(
             wg_socrat_admin_firewall_interface="wg-socrat",
             wg_socrat_admin_firewall_chain_prefix="WG_SOCRAT_ADMIN",
@@ -111,7 +111,7 @@ class WireGuardAdminFirewallTests(unittest.TestCase):
         self.assertIn('nat_delete_all "$chain"', script)
         self.assertIn('nat_delete_chain "$chain"', script)
 
-    def test_persistent_unit_runs_after_wireguard_and_supports_removal(self):
+    def test_persistent_unit_runs_after_wireguard_and_supports_removal(self) -> None:
         self.assertIn("After=network-online.target wg-quick@wg-socrat.service", UNIT)
         self.assertIn("ExecStart={{ wg_socrat_admin_firewall_script_path }}", UNIT)
         self.assertIn("ExecStop={{ wg_socrat_admin_firewall_script_path }} remove", UNIT)

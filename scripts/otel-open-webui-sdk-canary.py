@@ -156,7 +156,11 @@ def run():
         return result
 
     if renewal:
-        ssl.SSLContext.load_cert_chain = observe_loader
+
+        def wrapped_loader(*args: object, **kwargs: object) -> None:
+            observe_loader(*args, **kwargs)
+
+        ssl.SSLContext.load_cert_chain = wrapped_loader
     with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
         ensure_profile_mode()
         import httpx
@@ -172,7 +176,7 @@ def run():
         original_exporter = native.HttpOTLPSpanExporter
 
         class ObservedExporter(original_exporter):
-            def __init__(self, *args, **kwargs):
+            def __init__(self, *args, **kwargs) -> None:
                 super().__init__(*args, **kwargs)
                 constructed.append(self._session.headers.get("Connection", "").lower() == "close")
 
@@ -185,7 +189,7 @@ def run():
         worker.start()
         app = FastAPI()
 
-        async def route(request: Request):
+        async def route(request: Request) -> None:
             payload = await request.json()
             async with httpx.AsyncClient() as client:
                 await client.post(
@@ -225,7 +229,7 @@ def run():
         provider.add_span_processor(make_audit(audit)())
         tracer = trace.get_tracer("homelab.synthetic.open-webui-profile")
 
-        def emit_request():
+        def emit_request() -> dict[str, object]:
             with tracer.start_as_current_span("homelab.synthetic.open-webui-validation") as parent:
                 parent.set_attribute("homelab.synthetic", True)
                 parent.set_status(Status(StatusCode.ERROR, "synthetic mandatory sampling root"))
@@ -324,7 +328,7 @@ def run():
 if __name__ == "__main__":
     try:
         run()
-    except Exception as error:
+    except (ImportError, OSError, RuntimeError, ValueError) as error:
         print(
             json.dumps(
                 {
@@ -336,4 +340,4 @@ if __name__ == "__main__":
                 }
             )
         )
-        raise SystemExit(1)
+        raise SystemExit(1) from error
