@@ -50,9 +50,9 @@ class ImageLockTests(unittest.TestCase):
         result = self.resolve(
             [{"digest": "sha256:platform", "platform": {"os": "linux", "architecture": "amd64"}}]
         )
-        self.assertIn("@sha256:", result["image"])
-        self.assertEqual(result["linuxAMD64Digest"], "sha256:platform")
-        self.assertNotIn("private-fixture", str(result))
+        assert "@sha256:" in result["image"]
+        assert result["linuxAMD64Digest"] == "sha256:platform"
+        assert "private-fixture" not in str(result)
 
     def test_registry_hash_mismatch(self) -> None:
         """Reject a registry digest that does not match the body."""
@@ -107,10 +107,11 @@ class ValidationBinaryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary)
             receipt = self.extract(output)
-            self.assertEqual((output / "loki").read_bytes(), b"ELF")
-            self.assertFalse((output / "etc").exists())
-            self.assertEqual(receipt["sha256"], hashlib.sha256(b"ELF").hexdigest())
-            self.assertEqual((output / "loki").stat().st_mode & 0o777, 0o700)
+            assert (output / "loki").read_bytes() == b"ELF"
+            assert not (output / "etc").exists()
+            assert receipt["sha256"] == hashlib.sha256(b"ELF").hexdigest()
+            owner_executable_mode = 0o700
+            assert (output / "loki").stat().st_mode & 511 == owner_executable_mode
 
     def test_binary_symlink_is_rejected(self) -> None:
         """Reject a symlink planted at the expected binary path."""

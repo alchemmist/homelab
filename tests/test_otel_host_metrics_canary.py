@@ -34,10 +34,10 @@ class HostMetricsCanaryTests(unittest.TestCase):
     def test_only_exact_pinned_shutdown_errors_with_actual_replay_are_accounted(self):
         text = shutdown() + "\n" + log("Moved items for dispatching back to queue", numberOfItems=1)
         result = canary.classify_shutdown_replay(text)
-        self.assertTrue(result["shutdownReplayAccounted"])
-        self.assertEqual(result["shutdownSendErrorEvents"], 1)
-        self.assertEqual(result["restoredInFlightRequests"], 1)
-        self.assertFalse(canary.classify_shutdown_replay(shutdown())["shutdownReplayAccounted"])
+        assert result["shutdownReplayAccounted"]
+        assert result["shutdownSendErrorEvents"] == 1
+        assert result["restoredInFlightRequests"] == 1
+        assert not canary.classify_shutdown_replay(shutdown())["shutdownReplayAccounted"]
 
     def test_generic_or_different_version_drop_is_never_exempted(self):
         for text in [
@@ -46,7 +46,7 @@ class HostMetricsCanaryTests(unittest.TestCase):
             shutdown().replace("metrics", "logs"),
             "Exporting failed. Dropping data. malformed json",
         ]:
-            self.assertFalse(canary.classify_shutdown_replay(text)["shutdownReplayAccounted"])
+            assert not canary.classify_shutdown_replay(text)["shutdownReplayAccounted"]
 
     def test_persistent_metadata_error_or_replay_mismatch_fails(self):
         for suffix in [
@@ -60,9 +60,9 @@ class HostMetricsCanaryTests(unittest.TestCase):
                 + log("Moved items for dispatching back to queue", numberOfItems=1)
                 + suffix
             )
-            self.assertFalse(canary.classify_shutdown_replay(text)["shutdownReplayAccounted"])
+            assert not canary.classify_shutdown_replay(text)["shutdownReplayAccounted"]
         text = shutdown() + "\n" + log("Moved items for dispatching back to queue", numberOfItems=2)
-        self.assertFalse(canary.classify_shutdown_replay(text)["shutdownReplayAccounted"])
+        assert not canary.classify_shutdown_replay(text)["shutdownReplayAccounted"]
 
     def test_metrics_only_configs_preserve_native_limits_and_queue_fsync(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -73,17 +73,19 @@ class HostMetricsCanaryTests(unittest.TestCase):
                 )
                 (directory / (role + "-source.json")).write_text(json.dumps(source))
             agent, gateway = canary.configs(directory, {"backendIP": "10.250.0.3"})
-            self.assertEqual(set(agent["receivers"]), {"prometheus"})
-            self.assertEqual(set(agent["service"]["pipelines"]), {"metrics"})
-            self.assertEqual(agent["processors"]["memory_limiter"]["limit_mib"], 208)
-            self.assertEqual(agent["exporters"]["otlp"]["sending_queue"]["queue_size"], 128 * 2**20)
-            self.assertTrue(agent["extensions"]["file_storage"]["fsync"])
-            self.assertEqual(gateway["processors"]["memory_limiter"]["limit_mib"], 896)
-            self.assertEqual(set(gateway["exporters"]), {"otlp_http/metrics"})
+            assert set(agent["receivers"]) == {"prometheus"}
+            assert set(agent["service"]["pipelines"]) == {"metrics"}
+            agent_limit_mib = 208
+            assert agent["processors"]["memory_limiter"]["limit_mib"] == agent_limit_mib
+            assert agent["exporters"]["otlp"]["sending_queue"]["queue_size"] == 128 * 2**20
+            assert agent["extensions"]["file_storage"]["fsync"]
+            gateway_limit_mib = 896
+            assert gateway["processors"]["memory_limiter"]["limit_mib"] == gateway_limit_mib
+            assert set(gateway["exporters"]) == {"otlp_http/metrics"}
             grpc = gateway["receivers"]["otlp"]["protocols"]["grpc"]
-            self.assertEqual(grpc["endpoint"], "10.250.0.3:43170")
-            self.assertIn("client_ca_file", grpc["tls"])
-            self.assertNotIn("insecure", json.dumps(agent))
+            assert grpc["endpoint"] == "10.250.0.3:43170"
+            assert "client_ca_file" in grpc["tls"]
+            assert "insecure" not in json.dumps(agent)
 
     def test_backend_cleanup_is_after_all_agent_barrier_and_never_delegated(self):
         plays = yaml.safe_load(
@@ -91,20 +93,19 @@ class HostMetricsCanaryTests(unittest.TestCase):
         )
         cleanup = plays[1]["tasks"][0]["always"]
         names = [task["name"] for task in cleanup]
-        self.assertLess(
-            names.index("Stop all native agents before stopping their shared test backend"),
-            names.index("Stop gateway then shadow Prometheus only after the agent barrier"),
-        )
+        assert names.index(
+            "Stop all native agents before stopping their shared test backend"
+        ) < names.index("Stop gateway then shadow Prometheus only after the agent barrier")
         for task in plays[1]["tasks"][0]["block"] + cleanup:
-            self.assertNotEqual(task.get("delegate_to"), "socrat-1")
+            assert task.get("delegate_to") != "socrat-1"
 
     def test_outage_proof_uses_raw_range_vector_not_query_range_lookback(self):
         text = (ROOT / "scripts/otel-host-metrics-canary.py").read_text()
-        self.assertIn("query(root, 'up[10m]')", text)
-        self.assertIn("stops < float(timestamp) < restart", text)
-        self.assertIn("RuntimeMaxSec=900", text)
-        self.assertIn("'User=65534'", text)
-        self.assertIn("queueSaturationOrFullHighWaterVerified", text)
+        assert "query(root, 'up[10m]')" in text
+        assert "stops < float(timestamp) < restart" in text
+        assert "RuntimeMaxSec=900" in text
+        assert "'User=65534'" in text
+        assert "queueSaturationOrFullHighWaterVerified" in text
 
     def test_native_contract_is_fresh_and_content_bound(self):
         import datetime
@@ -151,9 +152,7 @@ class HostMetricsCanaryTests(unittest.TestCase):
             }
             (directory / "receipt.json").write_text(json.dumps(receipt))
             images = {"collector": {"image": "official@sha256:abc"}}
-            self.assertEqual(
-                request.pinned_binary(directory, "collector", "binary", images), digest
-            )
+            assert request.pinned_binary(directory, "collector", "binary", images) == digest
             (directory / "binary").write_bytes(b"changed")
             with self.assertRaises(ValueError):
                 request.pinned_binary(directory, "collector", "binary", images)
