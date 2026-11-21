@@ -223,7 +223,7 @@ def _require_activation_converged(
 
 
 def main():
-"""Plan or apply the guarded internal stage activation."""
+    """Plan or apply the guarded internal stage activation."""
     os.umask(0o077)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true")

@@ -32,7 +32,7 @@ FORBIDDEN_KINDS = {
 
 
 def load_json(path) -> dict[str, object]:
-"""Parse a JSON document from disk."""
+    """Parse a JSON document from disk."""
     document: dict[str, object] = json.loads(Path(path).read_text())
     return document
 
@@ -93,7 +93,7 @@ def assert_candidates(candidates) -> None:
 
 
 def scope_matches_chart(chart, delta) -> dict[str, object]:
-"""Summarize the chart's CRD watch scopes for the given Helm delta."""
+    """Summarize the chart's CRD watch scopes for the given Helm delta."""
     watched = list(chart["watchNamespaces"])
     crd = chart["kubernetesCRD"]["namespaces"]
     return {
@@ -234,7 +234,7 @@ def assert_safe_manifests(docs, publication="internal") -> None:
 
 
 def plan_document(manifest) -> dict[str, object]:
-"""Describe the annotated apply plan for a rendered manifest document."""
+    """Describe the annotated apply plan for a rendered manifest document."""
     return {
         "manifest": manifest.name,
         "argo_sync": False,
@@ -260,7 +260,7 @@ def plan_document(manifest) -> dict[str, object]:
 
 
 def render_publication(inputs, out, stage, audit) -> None:
-"""Render and validate the control plane into the requested publication stage."""
+    """Render and validate the control plane into the requested publication stage."""
     if stage == "internal":
         nb.render_control_plane(
             inputs, out, nb.port_forward_sources(audit.get("port_forward_cidrs"))
@@ -273,7 +273,7 @@ def render_publication(inputs, out, stage, audit) -> None:
 
 
 def apply_argv(manifest, context, publication="internal") -> list[str]:
-"""Validate the rendered manifest and return the explicit kubectl apply command."""
+    """Validate the rendered manifest and return the explicit kubectl apply command."""
     nb.require(
         nb.text(context) and context not in {"", "current", "default"},
         "explicit kubectl context required",
@@ -298,7 +298,7 @@ def apply_argv(manifest, context, publication="internal") -> list[str]:
 
 
 def main() -> None:
-"""Dispatch the requested check, plan, apply, or scope command."""
+    """Dispatch the requested check, plan, apply, or scope command."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("command", choices=["check", "plan", "apply", "scope"])
     p.add_argument("--inputs", type=Path, default=ROOT / "deploy/netbird/pilot.inputs.json")

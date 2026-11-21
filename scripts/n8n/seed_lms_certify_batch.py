@@ -12,7 +12,7 @@ root = (
 
 
 def sql(s) -> str:
-"""Quote a string as a single SQL literal."""
+    """Quote a string as a single SQL literal."""
     escaped: str = s.replace("'", "''")
     return "'" + escaped + "'"
 

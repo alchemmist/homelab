@@ -7,7 +7,7 @@ from sync import BASE, CONFIG, api, render_workflow
 
 
 def main() -> None:
-"""Create or update the inactive Yandex session maintenance workflow."""
+    """Create or update the inactive Yandex session maintenance workflow."""
     template = json.loads((BASE / "docs/n8n/yandex-session-maintenance.json").read_text())
     creds = json.loads((CONFIG / "calendar-credentials.json").read_text())
     w = render_workflow(template, creds, {})

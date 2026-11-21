@@ -25,7 +25,7 @@ spec.loader.exec_module(node)
 
 
 def desired(values, inventory, image) -> list[str]:
-"""Reconcile desired node resources for every Git-managed host in the inventory."""
+    """Reconcile desired node resources for every Git-managed host in the inventory."""
     hosts = set()
 
     def visit(group) -> None:
@@ -82,7 +82,7 @@ def desired(values, inventory, image) -> list[str]:
 
 
 def main() -> int:
-"""Render the Ansible inventory and apply or check desired node state."""
+    """Render the Ansible inventory and apply or check desired node state."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--check", action="store_true")
     args = p.parse_args()

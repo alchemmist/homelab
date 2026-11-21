@@ -26,7 +26,7 @@ spec.loader.exec_module(mod)
 
 
 def credential(result, user_id) -> dict[str, object]:
-"""Extract the token fields of the created personal access credential."""
+    """Extract the token fields of the created personal access credential."""
     metadata = result["personal_access_token"]
     return {
         "user_id": user_id,
@@ -37,7 +37,7 @@ def credential(result, user_id) -> dict[str, object]:
 
 
 def renew(folder, config, bootstrap=None) -> bool:
-"""Atomically renew and persist the node credential in the state folder."""
+    """Atomically renew and persist the node credential in the state folder."""
     path = folder / "credential.json"
     intent = folder / "credential-intent.json"
     mod.require(not intent.exists(), "uncertain prior credential operation; inspect locally")
@@ -109,7 +109,7 @@ def renew(folder, config, bootstrap=None) -> bool:
 
 
 def main() -> None:
-"""Validate the CLI paths and drive the credential renewal."""
+    """Validate the CLI paths and drive the credential renewal."""
     os.umask(0o077)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state-dir", required=True, type=Path)

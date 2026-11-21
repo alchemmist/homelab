@@ -17,13 +17,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def require(ok, message) -> None:
-"""Fail with the given message unless the constraint holds."""
+    """Fail with the given message unless the constraint holds."""
     if not ok:
         raise ValueError(message)
 
 
 def setup_body(email, password, name) -> dict[str, str]:
-"""Validate and assemble the SetupRequest body without any PAT creation fields."""
+    """Validate and assemble the SetupRequest body without any PAT creation fields."""
     require(
         isinstance(email, str) and 3 <= len(email) <= 254 and email.count("@") == 1, "email invalid"
     )
@@ -34,7 +34,7 @@ def setup_body(email, password, name) -> dict[str, str]:
 
 
 def assert_loopback(origin) -> None:
-"""Require a plain http loopback origin with no credentials or API path."""
+    """Require a plain http loopback origin with no credentials or API path."""
     require(isinstance(origin, str) and "://" in origin, "origin required")
     scheme, rest = origin.split("://", 1)
     require(scheme == "http", "bootstrap requires a local http port-forward")
@@ -56,7 +56,7 @@ def assert_loopback(origin) -> None:
 
 
 def redact(payload) -> dict[str, object]:
-"""Keep only non-secret fields from the setup response, flagging any issued PAT."""
+    """Keep only non-secret fields from the setup response, flagging any issued PAT."""
     require(
         isinstance(payload, dict) and "user_id" in payload and "email" in payload,
         "unexpected setup response",
@@ -68,7 +68,7 @@ def redact(payload) -> dict[str, object]:
 
 
 def claim(origin, email, password, name, opener) -> dict[str, object]:
-"""Run the loopback-only setup claim and return the redacted response."""
+    """Run the loopback-only setup claim and return the redacted response."""
     assert_loopback(origin)
     base = origin.rstrip("/")
     status = opener(base + "/api/instance", None)
@@ -83,7 +83,7 @@ def claim(origin, email, password, name, opener) -> dict[str, object]:
 
 
 def env_credentials() -> tuple[str, str, str]:
-"""Read the bootstrap credentials from the expected environment variables."""
+    """Read the bootstrap credentials from the expected environment variables."""
     return (
         os.environ.get("NB_BOOTSTRAP_EMAIL", ""),
         os.environ.get("NB_BOOTSTRAP_PASSWORD", ""),
@@ -92,7 +92,7 @@ def env_credentials() -> tuple[str, str, str]:
 
 
 def urllib_opener(url, body) -> object:
-"""Perform the HTTP GET or POST against the local endpoint and decode JSON."""
+    """Perform the HTTP GET or POST against the local endpoint and decode JSON."""
     data = None if body is None else json.dumps(body).encode()
     method = "GET" if body is None else "POST"
     request = urllib.request.Request(
@@ -109,7 +109,7 @@ def urllib_opener(url, body) -> object:
 
 
 def main() -> None:
-"""Claim the instance via the loopback origin and print only redacted output."""
+    """Claim the instance via the loopback origin and print only redacted output."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
         "--origin",
