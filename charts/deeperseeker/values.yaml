@@ -1,9 +1,10 @@
+---
 image:
   # Built from artyom08-dev/deeperseeker 1b1148e plus local proxy wiring
   # (DEEPSEEKER_BROWSER_PROXY / DEEPSEEKER_UPSTREAM_PROXY / DEEPSEEKER_TOKEN_CONCURRENCY).
   repository: harbor.socrat.alchemmist.xyz/homelab/deeperseeker
-  tag: "1b1148ec1e2a"
-  digest: "sha256:696884aa3c846f4471b6876b4b3455e8fa047dfd2638f050c5f0b8cf270e16ac"
+  tag: 1b1148ec1e2a
+  digest: sha256:696884aa3c846f4471b6876b4b3455e8fa047dfd2638f050c5f0b8cf270e16ac
   pullPolicy: IfNotPresent
 
 imagePullSecrets:
@@ -41,8 +42,9 @@ rateLimitCooldown: "300"
 persistSessions: "true"
 # Token is captured in Selkies on Linux. The bridge binary is Chrome 156, not Windows and not 158.
 browserPlatform: Linux
-browserUserAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36"
+browserUserAgent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36
 # chat.deepseek.com returned a WAF challenge from this network; do not invent a newer value.
-clientVersion: "2.8.0"
+clientVersion: 2.8.0
 cookieHeadless: "true"
 warmupNonHeadless: "false"
+...

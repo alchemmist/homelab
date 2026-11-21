@@ -9,7 +9,7 @@
     state: directory
     owner: root
     group: root
-    mode: '0700'
+    mode: "0700"
 
 - name: Configure pod network transport through WireGuard
   ansible.builtin.copy:
@@ -17,7 +17,7 @@
     content: "flannel-iface: wg-socrat\n"
     owner: root
     group: root
-    mode: '0600'
+    mode: "0600"
   register: homelab_k3s_agent_network
 
 - name: Check whether the k3s agent is already installed

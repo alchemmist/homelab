@@ -18,16 +18,16 @@ class Lifecycle(unittest.TestCase):
             models = [Model(Mock(), "unused") for _ in range(24)]
         self.assertEqual(len({id(m.counter.tokenizer) for m in models}), 1)
         bodies = [
-            dict(
-                model="qwen3.8-27b",
-                messages=[
-                    dict(role="system", content="system"),
-                    dict(role="user", content=("hello " + str(i)) * 10),
+            {
+                "model": "qwen3.8-27b",
+                "messages": [
+                    {"role": "system", "content": "system"},
+                    {"role": "user", "content": ("hello " + str(i)) * 10},
                 ],
-                chat_template_kwargs={"enable_thinking": False},
-                max_tokens=768,
-                response_format={},
-            )
+                "chat_template_kwargs": {"enable_thinking": False},
+                "max_tokens": 768,
+                "response_format": {},
+            }
             for i in range(24)
         ]
         expected = [m.counter.reservation(b) for m, b in zip(models, bodies)]
@@ -79,18 +79,18 @@ class Lifecycle(unittest.TestCase):
         if m.counter is None:
             with patch.dict(os.environ, SPI_TOKEN_ACCOUNTING_MODE="local-qwen-v1"):
                 m = Model(Mock(), "unused")
-        base = dict(
-            model="qwen3.8-27b",
-            messages=[dict(role="system", content="s"), dict(role="user", content="u")],
-            chat_template_kwargs={"enable_thinking": False},
-            max_tokens=768,
-            response_format={},
-        )
+        base = {
+            "model": "qwen3.8-27b",
+            "messages": [{"role": "system", "content": "s"}, {"role": "user", "content": "u"}],
+            "chat_template_kwargs": {"enable_thinking": False},
+            "max_tokens": 768,
+            "response_format": {},
+        }
         for key, value in [
             ("model", "wrong"),
             ("tools", []),
             ("chat_template_kwargs", {"enable_thinking": True}),
-            ("messages", [dict(role="assistant", content="x")]),
+            ("messages", [{"role": "assistant", "content": "x"}]),
         ]:
             with self.assertRaises(Failure):
                 m.counter.reservation(dict(base, **{key: value}))
