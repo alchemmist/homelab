@@ -24,6 +24,7 @@ SPEC.loader.exec_module(nb)
 
 
 def probe(ip, port, dns_name=None, tls=False, timeout=4):
+"""Connect once and record only class-level reachability evidence, no payloads."""
     started = time.monotonic()
     result = {"ip": ip, "port": port, "tcp_connected": False, "tls_verified": False}
     try:
@@ -41,6 +42,7 @@ def probe(ip, port, dns_name=None, tls=False, timeout=4):
 
 
 def run(c, expect, phase, attempts=1, interval=2, negative=None):
+"""Probe with retries until the expected allow/deny outcome is observed."""
     results = []
     for attempt in range(attempts):
         for r in c["resources"] if negative is None else [negative]:
@@ -79,6 +81,7 @@ def run(c, expect, phase, attempts=1, interval=2, negative=None):
 
 
 def main():
+"""Execute the probe plan from the inputs file and report observed outcomes."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--inputs", required=True, type=Path)
     p.add_argument("--expect", choices=["allow", "deny"], required=True)

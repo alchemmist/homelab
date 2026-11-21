@@ -16,6 +16,7 @@ BODY = b"# Public n8n HTTPS must not depend on private VPN DNS. Authentik remain
 
 
 def apply() -> None:
+"""Install the reviewed public n8n resolver file after backing up any previous one."""
     if sys.platform != "darwin" or os.geteuid() != 0:
         raise RuntimeError("Native macOS administrator authorization required")
     folder = Path("/etc/resolver")

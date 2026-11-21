@@ -10,6 +10,7 @@ from sync import BASE, CONFIG, api
 
 
 def render(template, mapping) -> dict[str, object]:
+"""Bind private SPI credentials from the mapping into a workflow copy."""
     w: dict[str, object] = copy.deepcopy(template)
     aliases = {
         "SPI_WORKER_CREDENTIAL_ID": "worker",
@@ -26,6 +27,7 @@ def render(template, mapping) -> dict[str, object]:
 
 
 def sync(relative) -> dict[str, object]:
+"""Upsert the reviewed workflow inactive, refusing ambiguous or active matches."""
     mapping = json.loads((CONFIG / "spi-credentials.json").read_text())
     template = json.loads((BASE / relative).read_text())
     w = render(template, mapping)

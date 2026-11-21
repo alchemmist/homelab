@@ -19,6 +19,7 @@ PUBLIC_DNS = ("1.1.1.1", "9.9.9.9")
 
 
 def render() -> bytes:
+"""Return the reviewed public resolver file body for NetBird bootstrap."""
     return (
         "# NetBird/Auth bootstrap must not depend on the private VPN DNS path.\n"
         + "".join("nameserver " + ip + "\n" for ip in PUBLIC_DNS)
@@ -27,6 +28,7 @@ def render() -> bytes:
 
 
 def apply() -> None:
+"""Install the rendered resolver file under explicit macOS root authorization."""
     if sys.platform != "darwin" or os.geteuid() != 0:
         raise RuntimeError("Explicit macOS root authorization required")
     folder = Path("/etc/resolver")

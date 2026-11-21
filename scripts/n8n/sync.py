@@ -15,6 +15,7 @@ CONFIG = Path.home() / ".config/n8n"
 
 
 def api(method, path, body=None) -> dict[str, object]:
+"""Call the private n8n REST API via curl and return parsed JSON."""
     cmd = [
         "curl",
         "--fail-with-body",
@@ -50,6 +51,7 @@ def api(method, path, body=None) -> dict[str, object]:
 
 
 def render_workflow(template, creds, calendar, cloud=None) -> dict[str, object]:
+"""Materialize credentials and calendar selection into a workflow copy."""
     for kind in {k for n in template["nodes"] for k in n.get("credentials", {})}:
         if not creds.get(kind, {}).get("id"):
             raise RuntimeError("Missing credential mapping: " + kind)
@@ -69,6 +71,7 @@ def render_workflow(template, creds, calendar, cloud=None) -> dict[str, object]:
 
 
 def require_yandex_policy(workflow) -> None:
+"""Enforce that Yandex nodes only perform reviewed, token-authenticated actions."""
     for node in workflow["nodes"]:
         if node["type"] == "CUSTOM.yandexStation":
             if set(node.get("credentials", {})) != {"yandexStationApi"}:
@@ -92,6 +95,7 @@ def require_yandex_policy(workflow) -> None:
 
 
 def main() -> None:
+"""Upsert the inactive calendar workflow from the reviewed local template."""
     mapping = CONFIG / "calendar-credentials.json"
     if not mapping.exists():
         raise RuntimeError(
