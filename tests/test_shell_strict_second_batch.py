@@ -202,8 +202,8 @@ def test_clean_scripts_match_quality_shellcheck() -> None:
     assert result.stdout.strip() == "[]"
 
 
-def test_nightnode_config_parser_is_shellcheck_clean() -> None:
-    """The explicit KEY=VALUE parser does not execute config files."""
+def test_nightnode_parses_config_without_dynamic_source() -> None:
+    """Config parsing is shellcheck-clean and does not execute config files."""
     result = _run(
         [
             _executable("shellcheck"),
@@ -218,8 +218,9 @@ def test_nightnode_config_parser_is_shellcheck_clean() -> None:
     assert result.returncode == SUCCESS_EXIT
     assert _items(result.stdout) == []
     source = _text(NIGHTNODE)
-    assert 'source "${CONFIG_FILE}"' not in source
+    assert 'while IFS= read -r line' in source
     assert 'export "${key}=${value}"' in source
+    assert 'source "${CONFIG_FILE}"' not in source
     assert "shellcheck" not in source
 
 

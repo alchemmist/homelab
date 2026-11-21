@@ -27,12 +27,19 @@ load_config() {
   if [[ -f "${CONFIG_FILE}" ]]; then
     # KEY=VALUE lines only; blank and commented lines are skipped.
     while IFS= read -r line || [[ -n "${line}" ]]; do
-      line="${line%$'\r'}"
       line="${line#"${line%%[![:space:]]*}"}"
       [[ -z "${line}" || "${line}" == \#* ]] && continue
       key="${line%%=*}"
       value="${line#*=}"
-      [[ "${key}" == "${line}" || ! "${key}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] && die "config key is invalid: ${key}"
+      [[ "${key}" == "${line}" || ! "${key}" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]] \
+        && die "config line is not a valid KEY=VALUE: ${line}"
+      value="${value%$'\r'}"
+      value="${value%"${value##*[![:space:]]}"}"
+      if [[ "${value}" == \"*\" && "${value}" == *\" || "${value}" == \'*\' && "${value}" == *\' ]]; then
+        value="${value:1:${#value}-2}"
+      else
+        value="${value%%[[:space:]]#*}"
+      fi
       export "${key}=${value}"
     done < "${CONFIG_FILE}"
   fi
