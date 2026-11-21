@@ -150,7 +150,8 @@ def main():
     )["items"]
     report = summarize(objects)
     if args.output.exists():
-        raise ValueError("Preserve prior registry observations")
+        message = "Preserve prior registry observations"
+        raise ValueError(message)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with open(args.output, "x", opener=lambda path, flags: os.open(path, flags, 0o600)) as stream:
         json.dump(report, stream, indent=2)

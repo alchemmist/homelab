@@ -34,7 +34,8 @@ def require(expected: object, message: str) -> None:
 
 def leaf_name(application):
     if application not in APPLICATIONS:
-        raise ValueError("Only explicitly allowed application client leaves may be renewed")
+        message = "Only explicitly allowed application client leaves may be renewed"
+        raise ValueError(message)
     return "otel-app-tls-" + application
 
 
@@ -43,12 +44,15 @@ def renewal_conditions(certificate, application="litellm"):
         certificate["metadata"]["name"] != leaf_name(application)
         or certificate["metadata"]["namespace"] != NS
     ):
-        raise ValueError("Only the selected dedicated application client leaf is in this exercise")
+        message = "Only the selected dedicated application client leaf is in this exercise"
+        raise ValueError(message)
     conditions = certificate.get("status", {}).get("conditions", [])
     if not any(c["type"] == "Ready" and c["status"] == "True" for c in conditions):
-        raise ValueError("Certificate is not ready before exercise")
+        message = "Certificate is not ready before exercise"
+        raise ValueError(message)
     if any(c["type"] == "Issuing" and c["status"] == "True" for c in conditions):
-        raise ValueError("Existing issuance must complete; never overlap requests")
+        message = "Existing issuance must complete; never overlap requests"
+        raise ValueError(message)
     result = [c for c in conditions if c["type"] != "Issuing"]
     result.append(
         {
@@ -71,7 +75,8 @@ def public_certificate_identity(kube, namespace, application="litellm"):
     )
     data = base64.b64decode(selected["certificatePemBase64"], validate=True)
     if b"-----BEGIN CERTIFICATE-----" not in data or b"PRIVATE KEY" in data:
-        raise ValueError("Expected only public certificate PEM")
+        message = "Expected only public certificate PEM"
+        raise ValueError(message)
     public_key = subprocess.run(
         ["openssl", "x509", "-pubkey", "-noout"],
         input=data,
@@ -80,7 +85,8 @@ def public_certificate_identity(kube, namespace, application="litellm"):
         timeout=10,
     ).stdout
     if b"PUBLIC KEY" not in public_key or b"PRIVATE KEY" in public_key:
-        raise ValueError("Expected public certificate key only")
+        message = "Expected public certificate key only"
+        raise ValueError(message)
     return {
         "certificateSHA256": hashlib.sha256(data).hexdigest(),
         "publicKeySHA256": hashlib.sha256(public_key).hexdigest(),
@@ -167,7 +173,8 @@ def run(output, application="litellm"):
             break
         time.sleep(2)
     else:
-        raise ValueError("Native renewal deadline exceeded; preserve progress")
+        message = "Native renewal deadline exceeded; preserve progress"
+        raise ValueError(message)
     require(after["spec"] == before["spec"], "Certificate spec changed during exercise")
     identity_after = public_certificate_identity(kube, NS, application)
     source_after = identity_after["certificateSHA256"]
@@ -203,19 +210,22 @@ def run(output, application="litellm"):
         job = kube("-n", NS, "get", "job", job_name, "-o", "json")
         if job.get("status", {}).get("failed"):
             (output / "failed-job-status.json").write_text(json.dumps(job["status"]))
-            raise ValueError("Bounded mirror job failed; do not retry silently")
+            message = "Bounded mirror job failed; do not retry silently"
+            raise ValueError(message)
         if job.get("status", {}).get("succeeded"):
             break
         time.sleep(2)
     else:
-        raise ValueError("Mirror deadline exceeded; preserve native issuance")
+        message = "Mirror deadline exceeded; preserve native issuance"
+        raise ValueError(message)
     log = kube("-n", NS, "logs", "job/" + job_name)
     (output / "mirror-result.json").write_text(json.dumps(log, indent=2) + "\n")
     if (
         application not in log["nativeClientMtlsVerified"]
         or public_certificate_hash(kube, "llm", application) != source_after
     ):
-        raise ValueError("New client mTLS or mirror equality was not proven")
+        message = "New client mTLS or mirror equality was not proven"
+        raise ValueError(message)
     progress.update(
         success=True,
         phase="native-leaf-renewal-and-mirror-verified",

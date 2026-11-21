@@ -25,7 +25,8 @@ def run():
         litellm.set_verbose = False
         handler = OpenTelemetry()
         if handler.config.enable_metrics or handler.config.enable_events:
-            raise ValueError("Duplicate metrics or message events must not be enabled")
+            message = "Duplicate metrics or message events must not be enabled"
+            raise ValueError(message)
         source_audit = {"endedSpans": 0, "sensitiveSyntheticContentFoundAtSource": False}
 
         class SourcePrivacyAudit(SpanProcessor):

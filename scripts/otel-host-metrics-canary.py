@@ -27,10 +27,12 @@ def command(arguments):
 def verify(path, expected):
     stat = path.lstat()
     if path.is_symlink() or not path.is_file() or stat.st_uid != 0 or stat.st_mode & 0o022:
-        raise ValueError("Native canary executable must be root owned and not writable by others")
+        message = "Native canary executable must be root owned and not writable by others"
+        raise ValueError(message)
     with path.open("rb") as stream:
         if hashlib.file_digest(stream, "sha256").hexdigest() != expected:
-            raise ValueError("Native executable differs from pinned controller digest")
+            message = "Native executable differs from pinned controller digest"
+            raise ValueError(message)
 
 
 def configs(root, request):
@@ -93,7 +95,8 @@ def query(root, expression, range_parameters=None):
     with urllib.request.urlopen(url, context=context(root), timeout=5) as response:
         payload = json.load(response)
     if payload.get("status") != "success":
-        raise ValueError("Native shadow Prometheus query failed")
+        message = "Native shadow Prometheus query failed"
+        raise ValueError(message)
     return payload["data"]["result"]
 
 
@@ -138,7 +141,8 @@ def wait_port(ip, port):
                 return
         except OSError:
             time.sleep(0.25)
-    raise RuntimeError("Owned native listener did not become ready")
+    message = "Owned native listener did not become ready"
+    raise RuntimeError(message)
 
 
 def environment(root, request):
@@ -174,7 +178,8 @@ def telemetry(root):
             ):
                 selected[name] = selected.get(name, 0) + float(value)
     if not selected:
-        raise ValueError("Native exporter telemetry is absent")
+        message = "Native exporter telemetry is absent"
+        raise ValueError(message)
     return selected
 
 
@@ -233,12 +238,14 @@ def validate_contract(root, request, now=None):
     collected = datetime.fromisoformat(request["scrapeContractCollectedAt"])
     age = ((now or datetime.now(timezone.utc)) - collected).total_seconds()
     if not 0 <= age <= 900:
-        raise ValueError("Native host scrape contract is stale or future-dated")
+        message = "Native host scrape contract is stale or future-dated"
+        raise ValueError(message)
     node = socket.gethostname()
     document = json.loads((root / "scrape.json").read_text())
     encoded = json.dumps(document, sort_keys=True, separators=(",", ":")).encode()
     if hashlib.sha256(encoded).hexdigest() != request["hostScrapeSHA256"][node]:
-        raise ValueError("Frozen native host source config changed after compilation")
+        message = "Frozen native host source config changed after compilation"
+        raise ValueError(message)
 
 
 def require(expected: object, message: str) -> None:
@@ -475,7 +482,8 @@ def await_queue_phase(root, _request, result):
             break
         time.sleep(1)
     else:
-        raise ValueError("Persistent exporter queue did not reach expected bounded state")
+        message = "Persistent exporter queue did not reach expected bounded state"
+        raise ValueError(message)
 
 
 def drain_start_phase(root, request, _result):

@@ -29,7 +29,8 @@ def run(lock, component, output):
     ) as response:
         manifest = response.read()
     if "sha256:" + hashlib.sha256(manifest).hexdigest() != image["linuxAMD64Digest"]:
-        raise ValueError("Upstream OCI manifest differs from lock")
+        message = "Upstream OCI manifest differs from lock"
+        raise ValueError(message)
     (blobs / image["linuxAMD64Digest"].split(":")[1]).write_bytes(manifest)
     document = json.loads(manifest)
     for descriptor in [document["config"], *document["layers"]]:
@@ -45,11 +46,13 @@ def run(lock, component, output):
             while chunk := response.read(4 * 1024**2):
                 size += len(chunk)
                 if size > descriptor["size"]:
-                    raise ValueError("OCI blob size exceeds pinned manifest")
+                    message = "OCI blob size exceeds pinned manifest"
+                    raise ValueError(message)
                 digest.update(chunk)
                 stream.write(chunk)
         if size != descriptor["size"] or "sha256:" + digest.hexdigest() != descriptor["digest"]:
-            raise ValueError("OCI blob checksum differs")
+            message = "OCI blob checksum differs"
+            raise ValueError(message)
     (output / "oci" / "oci-layout").write_text('{"imageLayoutVersion":"1.0.0"}')
     (output / "oci" / "index.json").write_text(
         json.dumps(
