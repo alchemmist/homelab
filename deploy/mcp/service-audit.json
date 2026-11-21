@@ -285,11 +285,6 @@
       "reason": "Source-only review: no dedicated deployed read-only MCP endpoint is declared for this Application; no client or credential access authorized."
     },
     {
-      "application": "swe-mini",
-      "decision": "no-client",
-      "reason": "Source-only controller/job queue review: no dedicated first-party read-only MCP endpoint is declared; no new client, credential access or runtime acceptance is authorized."
-    },
-    {
       "application": "openhands",
       "decision": "no-client",
       "reason": "Source-only Canvas/Agent Server review: no deployed read-only operational MCP endpoint is declared. Agent tools/automation are not routine read-only diagnostics; no client, credential access, model invocation or runtime acceptance is authorized. Upstream MCP capabilities and authorization remain unverified."

@@ -12,3 +12,13 @@ def test_no_swe_mini_release_workflow() -> None:
         if workflow.suffix in {".yaml", ".yml"}:
             assert "swe-mini" not in workflow.name
             assert "swe-mini" not in workflow.read_text(), workflow
+
+
+def test_no_swe_mini_gitops_owner() -> None:
+    """Cover renamed child manifests in the recursive root source as well as chart inputs."""
+    for manifest in (_ROOT / "deploy/argocd/apps").rglob("*"):
+        if manifest.suffix in {".yaml", ".yml", ".json"}:
+            assert "swe-mini" not in manifest.read_text(), manifest
+    assert not (_ROOT / "deploy/swe-mini").exists()
+    assert not (_ROOT / "charts/swe-mini").exists()
+    assert not (_ROOT / "scripts/provision-swe-mini.py").exists()
