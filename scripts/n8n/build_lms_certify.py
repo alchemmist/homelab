@@ -3,7 +3,8 @@
 import json
 from pathlib import Path
 from uuid import NAMESPACE_URL, uuid5
-from lms_reviewed_batch import SPECS, ORACLE_JS
+
+from lms_reviewed_batch import ORACLE_JS, SPECS
 
 ROOT = Path(__file__).resolve().parents[2] / 'docs/n8n/lms-certify'
 PROM = 'http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090/api/v1/query'

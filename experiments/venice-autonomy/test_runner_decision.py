@@ -6,8 +6,8 @@ import tempfile
 import unittest
 from unittest import mock
 
-import repository_runner
 import attempt
+import repository_runner
 
 
 class FakeEnvironment:

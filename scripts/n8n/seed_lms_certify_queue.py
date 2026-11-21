@@ -2,7 +2,9 @@
 """Emit private SQL queue entries from actual statements and public examples."""
 import json
 from pathlib import Path
+
 import yaml
+
 root=Path(__file__).resolve().parents[2].parent/'lms/content/courses/programming/blocks/basics/lessons/builtin-functions/tasks'
 contracts={
  'add-two-numbers':('sum',[

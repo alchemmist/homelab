@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 import json
 from pathlib import Path
+
 import yaml
 from lms_reviewed_batch import SPECS
+
 root=Path(__file__).resolve().parents[2].parent/'lms/content/courses/programming/blocks/basics/lessons'
 def sql(s):return "'"+s.replace("'","''")+"'"
 print('BEGIN;')

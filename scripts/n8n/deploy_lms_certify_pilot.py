@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 """Provision the private pilot and bind credentials; does not activate n8n."""
-import base64,json,secrets,subprocess
+import base64
+import json
+import secrets
+import subprocess
 from pathlib import Path
-from sync import api,CONFIG
+
+from sync import CONFIG, api
+
 root=Path(__file__).resolve().parents[2]; lms=root.parent/'lms'; docs=root/'docs/n8n/lms-certify'; ns='automation'
 wid='UUj3hoNCdbWGY4m7'
 if api('GET','workflows/'+wid)['active']:

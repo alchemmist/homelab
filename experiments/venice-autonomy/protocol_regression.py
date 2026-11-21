@@ -9,8 +9,8 @@ import json
 import os
 import re
 import selectors
-import signal
 import shutil
+import signal
 import subprocess
 import sys
 import tarfile

@@ -3,12 +3,12 @@
 
 import argparse
 import base64
-from urllib.parse import urlsplit
 import json
-from pathlib import Path
-import subprocess
 import shlex
+import subprocess
 from datetime import datetime, timezone
+from pathlib import Path
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 

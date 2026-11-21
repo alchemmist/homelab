@@ -3,13 +3,14 @@ import fcntl
 import hashlib
 import json
 import os
-import owned_resources
 import pathlib
 import shlex
 import signal
 import subprocess
 import sys
 import time
+
+import owned_resources
 
 DEFAULT_ENGINES = ("mini_native", "openhands")
 ENGINES = DEFAULT_ENGINES + ("mini_text",)

@@ -7,13 +7,13 @@ checks, keeping owner, editor and unlinked machine credentials untouched.
 """
 import json
 import os
-from pathlib import Path
 import ssl
 import threading
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from pathlib import Path
 
 ORIGIN = 'https://auth.socrat.alchemmist.xyz/api/v3/'
 PRINCIPAL = 'genericoidc_group://homelab-observer'

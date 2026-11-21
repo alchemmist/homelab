@@ -1,7 +1,15 @@
 #!/usr/bin/env python3
 """Audit/create native public sharing for ONE living-room dashboard, no anonymous org."""
 
-import argparse, base64, fcntl, hashlib, json, os, subprocess, urllib.request, urllib.error
+import argparse
+import base64
+import fcntl
+import hashlib
+import json
+import os
+import subprocess
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 UID = "socrat-traffic-light"

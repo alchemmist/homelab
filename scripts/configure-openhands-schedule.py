@@ -7,8 +7,8 @@ Does not alter other schedules; drift, duplicates and active runs block changes.
 """
 import argparse
 import json
-from pathlib import Path
 import subprocess
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 

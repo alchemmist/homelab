@@ -6,12 +6,13 @@ not changed. Requires Helm and PyYAML, like the repository's chart contract test
 """
 
 import argparse
-from collections import defaultdict
 import hashlib
 import json
-from pathlib import Path
 import re
 import subprocess
+from collections import defaultdict
+from pathlib import Path
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
