@@ -5,20 +5,19 @@ Not a foundation reconciler, lifecycle controller, or native integration rollout
 """
 
 import argparse
+from contextlib import contextmanager
 import fcntl
 import hashlib
 import json
 import os
+from pathlib import Path
 import re
 import stat
 import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections.abc import Iterable, Mapping
-from contextlib import contextmanager
-from pathlib import Path
-from typing import IO, NoReturn, Protocol, TypedDict
+from typing import Iterator, Never, TypedDict
 from uuid import uuid4
 
 BASE = "https://auth.socrat.alchemmist.xyz/api/v3/"
@@ -56,40 +55,45 @@ COLLECTIONS = (
 )
 
 
-class _Api(Protocol):
-    def __call__(
-        self, method: str, endpoint: str, payload: Mapping[str, object] | None = None
-    ) -> object: ...
+class Operation(TypedDict):
+    """Single Authentik API mutation encoded in the plan receipt."""
+
+    method: str
+    path: str
+    payload: dict[str, object]
 
 
-class _Service(TypedDict):
-    appRoles: Mapping[str, object]
-    groups: list[str]
+class PlanOut(TypedDict):
+    """Plan receipt emitted to the offline encrypted evidence blob."""
+
+    sha256: str
+    tool_sha256: str
+    stage: str
+    snapshot_hashes: dict[str, str]
+    evidence_sha256: str | None
+    operations: list[Operation]
 
 
-class _ReviewedEntry(TypedDict, total=False):
-    idpUserUuid: str
-    groups: list[str]
-
-
-def require(condition: object, message: str):
+def require(condition, message) -> None:
     if not condition:
         raise RuntimeError(message)
 
 
-def encoded(value: object):
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+def encoded(value) -> bytes:
+    return json.dumps(
+        value, sort_keys=True, separators=(",", ":"), allow_nan=False
+    ).encode()
 
 
-def digest(value: object):
+def digest(value) -> str:
     return hashlib.sha256(encoded(value)).hexdigest()
 
 
-def tool_hash():
+def tool_hash() -> str:
     return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 
 
-def private(path: Path, directory: object = False):
+def private(path, directory=False) -> None:
     s = path.lstat()
     require(
         not stat.S_ISLNK(s.st_mode)
@@ -101,21 +105,13 @@ def private(path: Path, directory: object = False):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(
-        self,
-        req: object,
-        fp: IO[bytes] | None,
-        code: int,
-        msg: str,
-        headers: object,
-        newurl: str,
-    ):
+    def redirect_request(self, req, fp, code, msg, headers, newurl) -> Never:
         if fp is not None:
             fp.close()
         raise RuntimeError("API redirect refused")
 
 
-def api_for(root: Path):
+def api_for(root) -> object:
     private(root, directory=True)
     path = root / "credentials.json"
     private(path)
@@ -133,17 +129,20 @@ def api_for(root: Path):
     token = tokens[0]
     opener = urllib.request.build_opener(NoRedirect())  # default verified HTTPS context
 
-    def api(method: str, endpoint: str, payload: Mapping[str, object] | None = None):
+    def api(method, endpoint, payload=None):
         require(
             method in ("GET", "POST")
-            and endpoint.partition("?")[0] in COLLECTIONS
+            and endpoint.split("?")[0] in COLLECTIONS
             and (method == "GET" or endpoint in ("core/groups/", "policies/bindings/")),
             "Request outside preparation boundary",
         )
         request = urllib.request.Request(
             BASE + endpoint,
             method=method,
-            headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
+            headers={
+                "Authorization": "Bearer " + token,
+                "Content-Type": "application/json",
+            },
             data=encoded(payload) if payload is not None else None,
         )
         try:
@@ -161,21 +160,20 @@ def api_for(root: Path):
     return api
 
 
-def rows(api: _Api, path: str):
-    result = []
+def rows(api, path) -> list[dict[str, object]]:
+    result: list[dict[str, object]] = []
     for page in range(1, 1001):
         query: dict[str, object] = {"page_size": 100, "page": page}
         if path == "core/applications/":
             query["superuser_full_list"] = "true"
         data = api("GET", path + "?" + urllib.parse.urlencode(query))
-        if not (
+        require(
             isinstance(data, dict)
             and type(data.get("results")) is list
             and type(data.get("pagination")) is dict
-            and "next" in data["pagination"]
-        ):
-            reason = "Incomplete paginated inventory"
-            raise RuntimeError(reason)
+            and "next" in data["pagination"],
+            "Incomplete paginated inventory",
+        )
         result.extend(data["results"])
         nxt = data["pagination"]["next"]
         require(
@@ -187,27 +185,24 @@ def rows(api: _Api, path: str):
     raise RuntimeError("Pagination limit exceeded")
 
 
-def _reject(message: str) -> NoReturn:
-    raise RuntimeError(message)
-
-
-def unique(items: Iterable[Mapping[str, object]], key: str):
-    result = {}
+def unique(items, key) -> dict[object, dict[str, object]]:
+    result: dict[object, dict[str, object]] = {}
     for item in items:
-        if not (
+        require(
             isinstance(item, dict)
             and key in item
-            and (type(item[key]) in (str, int) if key == "pk" else type(item[key]) is str)
-            and item[key] not in result
-        ):
-            reason = "Missing/ambiguous inventory identity"
-            raise RuntimeError(reason)
+            and (
+                type(item[key]) in (str, int) if key == "pk" else type(item[key]) is str
+            )
+            and item[key] not in result,
+            "Missing/ambiguous inventory identity",
+        )
         result[item[key]] = item
     return result
 
 
-def snapshot(api: _Api):
-    state = {}
+def snapshot(api) -> dict[str, list[dict[str, object]]]:
+    state: dict[str, list[dict[str, object]]] = {}
     for path in COLLECTIONS:
         items = rows(api, path)
         unique(items, "pk")
@@ -215,11 +210,11 @@ def snapshot(api: _Api):
     return state
 
 
-def hashes(state: Mapping[object, object]):
+def hashes(state) -> dict[str, str]:
     return {path: digest(items) for path, items in state.items()}
 
 
-def empty_group(group: Mapping[str, object]):
+def empty_group(group) -> None:
     require(
         group.get("is_superuser") is False
         and all(
@@ -234,7 +229,7 @@ def empty_group(group: Mapping[str, object]):
     )
 
 
-def group_payload(name: str):
+def group_payload(name) -> dict[str, object]:
     return {
         "name": name,
         "is_superuser": False,
@@ -246,11 +241,11 @@ def group_payload(name: str):
     }
 
 
-def evidence_input(path: Path | None):
+def evidence_input(path) -> dict[str, object] | None:
     if path is None:
         return None
     private(path)
-    evidence = json.loads(path.read_text())
+    evidence: dict[str, object] = json.loads(path.read_text())
     required = {
         "version",
         "reviewed_commit",
@@ -265,14 +260,14 @@ def evidence_input(path: Path | None):
         set(evidence) == required
         and evidence["version"] == 1
         and evidence["writers_paused"] is True
-        and re.fullmatch(r"[0-9a-f]{40}", evidence["reviewed_commit"]) is not None
+        and re.fullmatch(r"[0-9a-f]{40}", str(evidence["reviewed_commit"])) is not None
         and all(
-            re.fullmatch(r"[0-9a-f]{64}", evidence[k]) is not None
+            re.fullmatch(r"[0-9a-f]{64}", str(evidence[k])) is not None
             for k in ("reviewed_tool_sha256", "backup_sha256", "restore_test_sha256")
         )
         and all(
-            isinstance(evidence[k], str) and evidence[k].strip()
-            for k in ("recovery_owner", "change_window")
+            isinstance(value, str) and value.strip()
+            for value in (evidence[k] for k in ("recovery_owner", "change_window"))
         )
         and evidence["reviewed_tool_sha256"] == tool_hash(),
         "Reviewed backup/recovery evidence invalid",
@@ -281,19 +276,19 @@ def evidence_input(path: Path | None):
 
 
 def build_plan(
-    api: _Api,
-    services: Mapping[str, _Service],
-    reviewed: Mapping[str, _ReviewedEntry],
-    stage: str = "groups-only",
-    evidence: Mapping[str, object] | None = None,
-):
+    api, services, reviewed, stage="groups-only", evidence=None
+) -> tuple[PlanOut, dict[str, list[dict[str, object]]]]:
     require(stage in ("groups-only", "groups+empty-bindings"), "Unknown stage")
-    actual = {slug: set(s.get("appRoles", {})) for slug, s in services.items() if s.get("appRoles")}
-    require(actual == {k: set(v) for k, v in ALLOWLIST.items()}, "Catalog allowlist changed")
+    actual = {
+        slug: set(s.get("appRoles", {}))
+        for slug, s in services.items()
+        if s.get("appRoles")
+    }
     require(
-        all(
-            (reviewed[n]["idpUserUuid"] if n in reviewed else None) == u for n, u in PINNED.items()
-        ),
+        actual == {k: set(v) for k, v in ALLOWLIST.items()}, "Catalog allowlist changed"
+    )
+    require(
+        all(reviewed.get(n, {}).get("idpUserUuid") == u for n, u in PINNED.items()),
         "Reviewed owner/Tim UUID mismatch",
     )
     state = snapshot(api)
@@ -304,37 +299,47 @@ def build_plan(
     providers = unique(state["providers/all/"], "pk")
     names = {f"app-{s}-{r}" for s, roles in ALLOWLIST.items() for r in roles}
     require(
-        not any(n.startswith("app-") and n not in names for n in groups),
+        not any(str(n).startswith("app-") and n not in names for n in groups),
         "Unexpected app group; separate review required",
     )
     for name in names & groups.keys():
         empty_group(groups[name])
     app_pks = {g["pk"] for n, g in groups.items() if n in names}
     for user in users.values():
-        if not (isinstance(user.get("groups"), list) and not app_pks.intersection(user["groups"])):
-            reason = "App membership present or user inventory incomplete"
-            raise RuntimeError(reason)
-    for name, uuid in PINNED.items():
-        user = users.get(name)
+        membership: object = user.get("groups")
         require(
-            user is not None
-            and user.get("uuid") == uuid
-            and user.get("is_active") is True
-            and user.get("type") == "internal",
+            isinstance(membership, list) and not app_pks.intersection(membership),
+            "App membership present or user inventory incomplete",
+        )
+    for name, uuid in PINNED.items():
+        pinned_user = users.get(name)
+        require(
+            pinned_user is not None
+            and pinned_user.get("uuid") == uuid
+            and pinned_user.get("is_active") is True
+            and pinned_user.get("type") == "internal",
             "Pinned active owner/Tim missing or changed",
         )
+        pinned_groups: object = (
+            pinned_user["groups"] if pinned_user is not None else None
+        )
         require(
-            all(
-                g in groups and groups[g]["pk"] in user["groups"] for g in reviewed[name]["groups"]
+            isinstance(pinned_groups, list)
+            and all(
+                g in groups and groups[g]["pk"] in pinned_groups
+                for g in reviewed[name]["groups"]
             ),
             "Pinned legacy membership missing",
         )
+    tim = users["antropophag"]
+    tim_groups: object = tim.get("groups")
     require(
-        users["antropophag"].get("is_superuser") is False
-        and groups["homelab-owner"]["pk"] not in users["antropophag"]["groups"],
+        isinstance(tim_groups, list)
+        and tim.get("is_superuser") is False
+        and groups["homelab-owner"]["pk"] not in tim_groups,
         "Tim privilege drift",
     )
-    operations = []
+    operations: list[Operation] = []
     missing = names - groups.keys()
     # Never invent future PK pairs. Stage B is planned only AFTER Stage A GET verification.
     require(
@@ -348,6 +353,7 @@ def build_plan(
     bindings = state["policies/bindings/"]
     for slug in sorted(ALLOWLIST):
         app = apps.get(slug)
+        app_pk: object = app["pk"] if app is not None else None
         require(
             app is not None
             and app.get("policy_engine_mode") == "any"
@@ -355,19 +361,18 @@ def build_plan(
             "Application/provider missing or not ANY",
         )
         legacy = services[slug].get("groups")
-        if not (
+        require(
             type(legacy) is list
             and legacy
             and len(set(legacy)) == len(legacy)
-            and all(n in groups and not n.startswith("app-") for n in legacy)
-        ):
-            reason = "Missing/invalid legacy admission groups"
-            raise RuntimeError(reason)
+            and all(n in groups and not n.startswith("app-") for n in legacy),
+            "Missing/invalid legacy admission groups",
+        )
         allowed_names = legacy + [f"app-{slug}-{r}" for r in ALLOWLIST[slug]]
         allowed = {groups[n]["pk"] for n in allowed_names if n in groups}
         seen = set()
         for binding in bindings:
-            if binding.get("target") != app["pk"]:
+            if binding.get("target") != app_pk:
                 continue
             group = binding.get("group")
             require(
@@ -390,7 +395,7 @@ def build_plan(
                             "method": "POST",
                             "path": "policies/bindings/",
                             "payload": {
-                                "target": app["pk"],
+                                "target": app_pk,
                                 "group": groups[name]["pk"],
                                 "enabled": True,
                                 "negate": False,
@@ -412,32 +417,36 @@ def build_plan(
         "snapshot_hashes": hashes(state),
         "operations": operations,
     }
-    return {
-        "sha256": digest(context),
-        "tool_sha256": context["tool_sha256"],
-        "stage": stage,
-        "snapshot_hashes": context["snapshot_hashes"],
-        "evidence_sha256": digest(evidence) if evidence is not None else None,
-        "operations": operations,
-    }, state
+    return PlanOut(
+        sha256=digest(context),
+        tool_sha256=tool_hash(),
+        stage=stage,
+        snapshot_hashes=hashes(state),
+        evidence_sha256=digest(evidence) if evidence is not None else None,
+        operations=operations,
+    ), state
 
 
 @contextmanager
-def locked(root: Path):
+def locked(root: "Path") -> Iterator[None]:
     private(root, directory=True)
-    fd = os.open(root / ".app-iam-prepare.lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    fd = os.open(
+        root / ".app-iam-prepare.lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600
+    )
     try:
         private(root / ".app-iam-prepare.lock")
         try:
             fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
-            raise RuntimeError("Another preparation invocation holds the lock") from None
+            raise RuntimeError(
+                "Another preparation invocation holds the lock"
+            ) from None
         yield
     finally:
         os.close(fd)  # never unlink a lock inode another invocation may hold
 
 
-def sync_directory(path: Path):
+def sync_directory(path) -> None:
     fd = os.open(path, os.O_RDONLY)
     try:
         os.fsync(fd)
@@ -445,7 +454,7 @@ def sync_directory(path: Path):
         os.close(fd)
 
 
-def atomic_json(path: Path, value: object):
+def atomic_json(path, value) -> None:
     fd, tmp = tempfile.mkstemp(prefix=".pending-", dir=path.parent)
     try:
         with os.fdopen(fd, "wb") as f:
@@ -463,19 +472,14 @@ def atomic_json(path: Path, value: object):
             os.unlink(tmp)
 
 
-def apply_plan(
-    api: _Api,
-    root: Path,
-    services: Mapping[str, _Service],
-    reviewed: Mapping[str, _ReviewedEntry],
-    stage: str,
-    evidence: Mapping[str, object] | None,
-    approval: str,
-):
+def apply_plan(api, root, services, reviewed, stage, evidence, approval) -> int:
     """Caller holds exclusive local lock. No resume, rollback or automatic adoption."""
     require(evidence is not None, "Apply requires reviewed backup/recovery evidence")
     plan, state = build_plan(api, services, reviewed, stage, evidence)
-    require(approval == plan["sha256"], "Approval mismatch or baseline drift; review fresh plan")
+    require(
+        approval == plan["sha256"],
+        "Approval mismatch or baseline drift; review fresh plan",
+    )
     journals = root / "app-iam-prepare-journal"
     if not journals.exists():
         journals.mkdir(mode=0o700)
@@ -487,28 +491,29 @@ def apply_plan(
         if status.exists():
             private(status)
         require(
-            status.exists() and json.loads(status.read_text()).get("status") == "complete",
+            status.exists()
+            and json.loads(status.read_text()).get("status") == "complete",
             "Unresolved prior journal; manual inventory/review required",
         )
     run = journals / str(uuid4())
     run.mkdir(mode=0o700)
     sync_directory(journals)
-    record = {"sha256": plan["sha256"], "status": "in-progress"}
+    record: dict[str, object] = {"sha256": plan["sha256"], "status": "in-progress"}
     atomic_json(run / "run.json", record)
     try:
         # Second complete fresh snapshot immediately before first write.
         require(hashes(snapshot(api)) == hashes(state), "Baseline drift before apply")
         for index, operation in enumerate(plan["operations"], 1):
-            entry = {"operation": operation, "status": "pending"}
+            entry: dict[str, object] = {"operation": operation, "status": "pending"}
             path = run / f"{index:02d}.json"
             atomic_json(path, entry)  # durable intent BEFORE sending POST
             created = api(operation["method"], operation["path"], operation["payload"])
-            if not (
+            require(
                 isinstance(created, dict)
                 and "pk" in created
-                and all(created.get(k) == v for k, v in operation["payload"].items())
-            ):
-                _reject("Create response mismatch; stop and inventory")
+                and all(created.get(k) == v for k, v in operation["payload"].items()),
+                "Create response mismatch; stop and inventory",
+            )
             if operation["path"] == "core/groups/":
                 empty_group(created)
             else:
@@ -527,7 +532,8 @@ def apply_plan(
             state[operation["path"]].sort(key=encoded)
             fresh = snapshot(api)
             require(
-                hashes(fresh) == hashes(state), "Unexpected post-create drift; stop and inventory"
+                hashes(fresh) == hashes(state),
+                "Unexpected post-create drift; stop and inventory",
             )
             state = fresh
             entry.update(status="verified", snapshot_hashes=hashes(state))
@@ -546,12 +552,16 @@ def apply_plan(
     return len(plan["operations"])
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
-    parser.add_argument("action", choices=("plan", "check", "apply"), default="plan", nargs="?")
     parser.add_argument(
-        "--stage", choices=("groups-only", "groups+empty-bindings"), default="groups-only"
+        "action", choices=("plan", "check", "apply"), default="plan", nargs="?"
+    )
+    parser.add_argument(
+        "--stage",
+        choices=("groups-only", "groups+empty-bindings"),
+        default="groups-only",
     )
     parser.add_argument("--evidence", type=Path)
     parser.add_argument("--approve-sha256")
@@ -563,12 +573,22 @@ def main():
         evidence = evidence_input(args.evidence)
         if args.action == "apply":
             count = apply_plan(
-                api, args.root, services, reviewed, args.stage, evidence, args.approve_sha256
+                api,
+                args.root,
+                services,
+                reviewed,
+                args.stage,
+                evidence,
+                args.approve_sha256,
             )
-            print(f"PASS: {count} verified create requests; no assignments or native rollout")
+            print(
+                f"PASS: {count} verified create requests; no assignments or native rollout"
+            )
             return 0
         plan, _ = build_plan(api, services, reviewed, args.stage, evidence)
-        print(json.dumps(plan, indent=2))  # only request allowlist + hashes, never API responses
+        print(
+            json.dumps(plan, indent=2)
+        )  # only request allowlist + hashes, never API responses
         return int(args.action == "check" and bool(plan["operations"]))
 
 

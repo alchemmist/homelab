@@ -9,13 +9,13 @@ import tempfile
 import yaml
 
 
-def configure(args: argparse.Namespace):
+def configure(args) -> dict[str, object]:
     path = Path(args.config)
     if path.is_symlink():
         raise ValueError("config must not be a symlink")
     exists = path.exists()
     original = path.read_bytes() if exists else b""
-    current = yaml.safe_load(original) or {}
+    current: dict[str, object] = yaml.safe_load(original) or {}
     if not isinstance(current, dict):
         raise ValueError("config must be a YAML mapping")
     desired = dict(current)
@@ -47,8 +47,10 @@ def configure(args: argparse.Namespace):
     if not isinstance(sans, list) or any(not isinstance(value, str) for value in sans):
         raise ValueError("tls-san must contain strings")
     desired["tls-san"] = list(dict.fromkeys(sans + [args.advertise_ip, "127.0.0.1"]))
-    changed = desired != current or not exists or stat.S_IMODE(path.stat().st_mode) != 0o600
-    result = {"changed": changed, "backup": None}
+    changed = (
+        desired != current or not exists or stat.S_IMODE(path.stat().st_mode) != 0o600
+    )
+    result: dict[str, object] = {"changed": changed, "backup": None}
     if not changed or args.check:
         return result
     encoded = yaml.safe_dump(desired, sort_keys=False).encode()
@@ -78,7 +80,7 @@ def configure(args: argparse.Namespace):
     return result
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
     parser.add_argument("--role", choices=("server", "control-plane"), required=True)

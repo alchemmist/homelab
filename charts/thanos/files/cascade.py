@@ -8,26 +8,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
-from types import FrameType
-from typing import NotRequired, Protocol, TypedDict, cast, runtime_checkable
-
-
-class _Block(TypedDict):
-    ulid: str
-    minTime: int
-    maxTime: int
-    resolution: int
-    deletionMark: NotRequired[bool]
-    bytes: NotRequired[int]
-
-
-@runtime_checkable
-class _FileLike(Protocol):
-    def fileno(self) -> int: ...
-
-    def read(self, size: int = ..., /) -> bytes: ...
 
 
 RAW_RESOLUTION = 0
@@ -40,7 +21,7 @@ FIVE_BYTES_PER_DAY = int(0.35 * 1024**3)
 DAY_MS = 86400000
 
 
-def fully_covered(block: _Block, covers: Iterable[_Block]) -> bool:
+def fully_covered(block, covers):
     start = block["minTime"]
     end = block["maxTime"]
     if end <= start:
@@ -62,36 +43,28 @@ def fully_covered(block: _Block, covers: Iterable[_Block]) -> bool:
     return cursor >= end
 
 
-def block_bytes(block: _Block) -> int:
-    block_size = block.get("bytes")
-    if block_size is not None:
-        return int(block_size)
+def block_bytes(block):
+    if "bytes" in block and block["bytes"] is not None:
+        return int(block["bytes"])
     span = max(0, block["maxTime"] - block["minTime"]) / DAY_MS
     return int(span * FIVE_BYTES_PER_DAY)
 
 
-def selected(blocks: Iterable[_Block]) -> list[str]:
+def selected(blocks):
     return sorted(block["ulid"] for block in blocks)
 
 
 def plan(
-    raw_blocks: list[_Block],
-    five_blocks: list[_Block],
-    hour_blocks: list[_Block],
-    now_ms: int,
-    disk_free_bytes: int | None,
-    *,
-    five_reachable: bool,
-    hour_reachable: bool,
-) -> dict[str, list[str]]:
+    raw_blocks, five_blocks, hour_blocks, now_ms, disk_free_bytes, five_reachable, hour_reachable
+):
     raw_hours = [block for block in raw_blocks if block.get("resolution") == HOUR_RESOLUTION]
     raw_fives = [block for block in raw_blocks if block.get("resolution") == FIVE_RESOLUTION]
     shelf_five_ids = {block["ulid"] for block in five_blocks}
     shelf_hour_ids = {block["ulid"] for block in hour_blocks}
     shelf_hours = [block for block in hour_blocks if block.get("resolution") == HOUR_RESOLUTION]
 
-    copy_five: list[_Block] = []
-    mark_five_source: list[_Block] = []
+    copy_five = []
+    mark_five_source = []
     if five_reachable:
         for block in raw_fives:
             if block.get("deletionMark") or not fully_covered(block, raw_hours):
@@ -101,8 +74,8 @@ def plan(
             else:
                 copy_five.append(block)
 
-    copy_hour: list[_Block] = []
-    mark_hour_source: list[_Block] = []
+    copy_hour = []
+    mark_hour_source = []
     if hour_reachable:
         for block in raw_hours:
             if block.get("deletionMark"):
@@ -121,7 +94,7 @@ def plan(
         and fully_covered(block, raw_fives)
     ]
 
-    mark_five_shelf: list[_Block] = []
+    mark_five_shelf = []
     if hour_reachable:
         eligible = [
             block
@@ -156,9 +129,9 @@ def plan(
     }
 
 
-def parse_ls(text: str) -> list[_Block]:
+def parse_ls(text):
     decoder = json.JSONDecoder()
-    blocks: list[_Block] = []
+    blocks = []
     index = 0
     length = len(text)
     while index < length:
@@ -180,28 +153,26 @@ def parse_ls(text: str) -> list[_Block]:
     return blocks
 
 
-def apply_deletion_marks(blocks: list[_Block], unmarked_ulids: Iterable[str]) -> list[_Block]:
+def apply_deletion_marks(blocks, unmarked_ulids):
     unmarked = set(unmarked_ulids)
     for block in blocks:
         block["deletionMark"] = block["ulid"] not in unmarked
     return blocks
 
 
-def load_plan(payload: Mapping[str, object]) -> dict[str, list[str]]:
+def load_plan(payload):
     return plan(
-        cast("list[_Block]", payload.get("raw") or []),
-        cast("list[_Block]", payload.get("five") or []),
-        cast("list[_Block]", payload.get("hour") or []),
-        int(cast("str", payload["nowMs"])),
-        cast("int | None", payload.get("diskFreeBytes")),
-        five_reachable=bool(payload.get("fiveReachable")),
-        hour_reachable=bool(payload.get("hourReachable")),
+        payload.get("raw") or [],
+        payload.get("five") or [],
+        payload.get("hour") or [],
+        int(payload["nowMs"]),
+        payload.get("diskFreeBytes"),
+        bool(payload.get("fiveReachable")),
+        bool(payload.get("hourReachable")),
     )
 
 
-def kubernetes_request(
-    method: str, path: str, body: Mapping[str, object] | None = None, timeout: float = 30
-) -> dict[str, object]:
+def kubernetes_request(method, path, body=None, timeout=30):
     token = Path("/var/run/secrets/kubernetes.io/serviceaccount/token").read_text().strip()
     host = os.environ.get("KUBERNETES_SERVICE_HOST", "kubernetes.default.svc")
     port = os.environ.get("KUBERNETES_SERVICE_PORT", "443")
@@ -221,10 +192,10 @@ def kubernetes_request(
     )
     with urllib.request.urlopen(request, context=context, timeout=timeout) as response:
         raw = response.read()
-    return cast("dict[str, object]", json.loads(raw) if raw else {})
+    return json.loads(raw) if raw else {}
 
 
-def scale_compactor(namespace: str, name: str, replicas: int) -> None:
+def scale_compactor(namespace, name, replicas):
     kubernetes_request(
         "PATCH",
         f"/apis/apps/v1/namespaces/{namespace}/deployments/{name}/scale",
@@ -232,13 +203,13 @@ def scale_compactor(namespace: str, name: str, replicas: int) -> None:
     )
 
 
-def wait_compactor_idle(namespace: str, name: str, timeout: float = 180) -> None:
+def wait_compactor_idle(namespace, name, timeout=180):
     deadline = time.monotonic() + timeout
     path = f"/apis/apps/v1/namespaces/{namespace}/deployments/{name}"
     while True:
         deployment = kubernetes_request("GET", path)
-        spec = cast("dict[str, object]", deployment.get("spec", {})).get("replicas", 0) or 0
-        status = cast("dict[str, object]", deployment.get("status", {}))
+        spec = deployment.get("spec", {}).get("replicas", 0) or 0
+        status = deployment.get("status", {})
         ready = status.get("readyReplicas") or 0
         current = status.get("replicas") or 0
         if spec == 0 and ready == 0 and current == 0:
@@ -248,7 +219,7 @@ def wait_compactor_idle(namespace: str, name: str, timeout: float = 180) -> None
         time.sleep(2)
 
 
-def default_runner(argv: list[str]) -> str:
+def default_runner(argv):
     completed = subprocess.run(
         argv, check=False, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
@@ -260,24 +231,27 @@ def default_runner(argv: list[str]) -> str:
     return completed.stdout
 
 
-def disk_free_bytes(prometheus_url: str) -> int | None:
+def disk_free_bytes(prometheus_url):
     query = (
         'max(node_filesystem_avail_bytes{job="node-exporter",mountpoint="/",fstype=~"ext4|xfs"}'
         ' * on(instance) group_left(nodename) node_uname_info{job="node-exporter",nodename="socrat-1"})'
     )
+    if os.environ.get("FIVE_SHARED") == "1":
+        metric = 'socrat_five_bucket_available_bytes{backing_node="socrat-0"}'
+        query = f'{metric} and (time() - timestamp({metric}) < 100)'
     url = prometheus_url.rstrip("/") + "/api/v1/query?" + urllib.parse.urlencode({"query": query})
     try:
         with urllib.request.urlopen(url, timeout=20) as response:
             payload = json.load(response)
         result = payload.get("data", {}).get("result") or []
-        if payload.get("status") != "success" or not result:
+        if payload.get("status") != "success" or len(result) != 1:
             return None
         return int(float(result[0]["value"][1]))
     except (urllib.error.URLError, TimeoutError, KeyError, ValueError, json.JSONDecodeError):
         return None
 
 
-def list_blocks(config: str, thanos_bin: str, runner: Callable[[list[str]], str]) -> list[_Block]:
+def list_blocks(config, thanos_bin, runner):
     common = ["--objstore.config-file=" + config, "-o", "json", "--timeout=2m", "--log.level=error"]
     listed = runner([thanos_bin, "tools", "bucket", "ls", *common])
     unmarked = runner([thanos_bin, "tools", "bucket", "ls", *common, "--exclude-delete"])
@@ -286,7 +260,7 @@ def list_blocks(config: str, thanos_bin: str, runner: Callable[[list[str]], str]
     return blocks
 
 
-def command_code(result: object, label: str) -> None:
+def command_code(result, label):
     if isinstance(result, int) and result != 0:
         raise subprocess.CalledProcessError(result, label)
     if result is None:
@@ -296,12 +270,7 @@ def command_code(result: object, label: str) -> None:
     raise subprocess.CalledProcessError(1, label)
 
 
-def mark_blocks(
-    ulids: Iterable[str],
-    config: str,
-    thanos_bin: str,
-    runner: Callable[[list[str]], str],
-) -> None:
+def mark_blocks(ulids, config, thanos_bin, runner):
     for ulid in ulids:
         command_code(
             runner(
@@ -321,21 +290,15 @@ def mark_blocks(
         )
 
 
-def shelf_open(
-    url: str,
-    token: str,
-    method: str,
-    data: bytes | _FileLike | None = None,
-    timeout: float = 120,
-) -> urllib.request._UrlopenRet:
+def shelf_open(url, token, method, data=None, timeout=120):
     headers = {"Authorization": "Bearer " + token, "Accept": "application/json"}
-    if isinstance(data, _FileLike):
+    if hasattr(data, "read"):
         headers["Content-Length"] = str(os.fstat(data.fileno()).st_size)
     request = urllib.request.Request(url, data=data, method=method, headers=headers)
     return urllib.request.urlopen(request, timeout=timeout)
 
 
-def fetch_shelf(base: str, token: str) -> tuple[list[_Block], bool]:
+def fetch_shelf(base, token):
     if not base or not token:
         return [], False
     try:
@@ -343,12 +306,12 @@ def fetch_shelf(base: str, token: str) -> tuple[list[_Block], bool]:
             payload = json.load(response)
         if not isinstance(payload, list):
             return [], False
-        return cast("list[_Block]", payload), True
+        return payload, True
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, ValueError):
         return [], False
 
 
-def upload_block(base: str, token: str, directory: str, ulid: str) -> None:
+def upload_block(base, token, directory, ulid):
     root = os.path.join(directory, ulid)
     if not os.path.isdir(root):
         raise FileNotFoundError(ulid)
@@ -368,7 +331,7 @@ def upload_block(base: str, token: str, directory: str, ulid: str) -> None:
         response.read()
 
 
-def mark_shelf(base: str, token: str, ulids: Iterable[str]) -> None:
+def mark_shelf(base, token, ulids):
     for ulid in ulids:
         with shelf_open(
             base.rstrip("/") + "/v1/blocks/" + ulid + "/deletion-mark", token, "POST", b"{}"
@@ -376,14 +339,14 @@ def mark_shelf(base: str, token: str, ulids: Iterable[str]) -> None:
             response.read()
 
 
-def read_token() -> str:
+def read_token():
     path = os.environ.get("SHELF_TOKEN_FILE", "")
     if not path:
         return ""
     return Path(path).read_text().strip()
 
 
-def execute() -> int:
+def execute():
     thanos_bin = os.environ.get("THANOS_BIN", "/usr/local/bin/thanos")
     namespace = os.environ.get("NAMESPACE", "cattle-monitoring-system")
     compactor = os.environ.get("COMPACTOR_NAME", "thanos-compactor")
@@ -406,8 +369,8 @@ def execute() -> int:
             hour_blocks,
             int(time.time() * 1000),
             disk_free_bytes(prometheus_url),
-            five_reachable=five_reachable,
-            hour_reachable=hour_reachable,
+            five_reachable,
+            hour_reachable,
         )
         if five_reachable:
             for ulid in current["copyFive"]:
@@ -424,8 +387,8 @@ def execute() -> int:
             hour_blocks,
             int(time.time() * 1000),
             disk_free_bytes(prometheus_url),
-            five_reachable=five_reachable,
-            hour_reachable=hour_reachable,
+            five_reachable,
+            hour_reachable,
         )
         mark_blocks(
             confirmed["markRaw"] + confirmed["markFiveSource"] + confirmed["markHourSource"],
@@ -440,7 +403,7 @@ def execute() -> int:
     return 0
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv or argv[0] not in ("plan", "run"):
         print("usage: cascade.py plan|run", file=sys.stderr)
@@ -450,7 +413,7 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.write("\n")
         return 0
 
-    def stop(signum: int, frame: FrameType | None) -> None:
+    def stop(signum, frame):
         raise SystemExit(128 + signum)
 
     signal.signal(signal.SIGTERM, stop)

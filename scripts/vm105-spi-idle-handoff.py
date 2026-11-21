@@ -68,7 +68,7 @@ print(json.dumps({'activeOrQueuedJobs':a,'liveOwners':b,'liveLinkLeases':d}))
     )
 
 
-def stop_signal(*_):
+def stop_signal(*_: object):
     raise SystemExit("Interrupted; restoring temporary hold")
 
 

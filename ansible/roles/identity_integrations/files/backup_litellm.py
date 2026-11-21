@@ -28,7 +28,9 @@ files = {
     "config.json": get("get", "configmap", "litellm-config", "-o", "json"),
     "secrets.json": get("get", "secret", "litellm-env", "litellm-db", "-o", "json"),
 }
-oidc = get("get", "secret", "socrat-authentik-litellm", "--ignore-not-found", "-o", "json")
+oidc = get(
+    "get", "secret", "socrat-authentik-litellm", "--ignore-not-found", "-o", "json"
+)
 if oidc.strip():
     files["oidc-secret.json"] = oidc
 archive = io.BytesIO()

@@ -52,8 +52,8 @@ ADDED = ["@ IN NS ns3.alchemmist.xyz.", "ns3 IN A 91.189.82.238"]
 
 def delta(old: ModuleType, new: ModuleType) -> None:
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
-        before = old.render(123, home, vps).splitlines()
-        after = new.render(123, home, vps).splitlines()
+        before = old.render(123, home_up=home, vps_up=vps).splitlines()
+        after = new.render(123, home_up=home, vps_up=vps).splitlines()
         require(
             [x for x in after if x not in ADDED] == [x for x in before if x not in ADDED],
             "Unrelated DNS record change; stop",

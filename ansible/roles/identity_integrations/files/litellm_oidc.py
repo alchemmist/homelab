@@ -5,13 +5,12 @@ import argparse
 import hashlib
 import json
 import os
+from pathlib import Path
 import secrets
 import socket
 import subprocess
 import urllib.request
 import uuid
-from collections.abc import Iterable
-from pathlib import Path
 
 HOST = "auth.socrat.alchemmist.xyz"
 BASE = "https://" + HOST
@@ -19,9 +18,7 @@ OWNER_ID = "socrat-admin"
 MAPPING = "homelab-litellm-reviewed-identity"
 
 
-def identity_expression(
-    owner_uid: str, owner_email: str, user_uuids: Iterable[str] = (), user_group: str | None = None
-):
+def identity_expression(owner_uid, owner_email, user_uuids=(), user_group=None) -> str:
     # Identities/roles are selected by reviewed immutable subject, never email.
     return (
         "uid = str(request.user.uuid)\n"
@@ -48,7 +45,7 @@ def identity_expression(
     )
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("root", type=Path)
     p.add_argument("--public-edge", default="109.173.40.247")
@@ -62,7 +59,7 @@ def main():
     kube = ["kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml", "-n", "llm"]
     credentials = json.loads((args.root / "credentials.json").read_text())
 
-    def api(method: str, path: str, payload: object | None = None):
+    def api(method, path, payload=None):
         req = urllib.request.Request(
             BASE + "/api/v3/" + path,
             method=method,
@@ -76,22 +73,24 @@ def main():
             body = r.read()
             return json.loads(body) if body else None
 
-    def kubectl(arguments: list[str], data: bytes | None = None):
-        r = subprocess.run(kube + arguments, input=data, capture_output=True, timeout=90)
+    def kubectl(arguments, data=None):
+        r = subprocess.run(
+            kube + arguments, input=data, capture_output=True, timeout=90
+        )
         if r.returncode:
             raise RuntimeError(
                 "Kubernetes operation failed; output suppressed to protect credentials"
             )
         return r.stdout
 
-    def private(path: Path, data: object, *, overwrite: bool = False):
+    def private(path, data, overwrite=False):
         if path.exists() and not overwrite:
             return
         with open(path, "w", opener=lambda p, f: os.open(p, f, 0o600)) as out:
             json.dump(data, out, indent=2)
         path.chmod(0o600)
 
-    def one(path: str, field: str, value: object):
+    def one(path, field, value):
         rows = api(
             "GET",
             path
@@ -119,16 +118,22 @@ async def main():
  finally:await db.disconnect()
 asyncio.run(main())
 """
-    raw = kubectl(["exec", "-i", "deployment/litellm", "--", "python", "-"], query.encode())
+    raw = kubectl(
+        ["exec", "-i", "deployment/litellm", "--", "python", "-"], query.encode()
+    )
     users = json.loads(raw.decode().splitlines()[-1])
-    owner_rows = [r for r in users if r["user_id"] == OWNER_ID and r["user_role"] == "proxy_admin"]
+    owner_rows = [
+        r for r in users if r["user_id"] == OWNER_ID and r["user_role"] == "proxy_admin"
+    ]
     if len(owner_rows) != 1 or len(users) > 5:
         raise RuntimeError("Reviewed owner identity / free-tier capacity gate failed")
     if any(r.get("password") for r in users if r["user_id"] != OWNER_ID):
         raise RuntimeError("Non-owner password identity requires explicit review")
     owner = one("core/users/", "username", "alchemmist")
     group = one("core/groups/", "name", "homelab-owner")
-    reviewed = json.loads((args.root / "account-mappings.json").read_text())["alchemmist"]
+    reviewed = json.loads((args.root / "account-mappings.json").read_text())[
+        "alchemmist"
+    ]
     if (
         not owner
         or owner["uuid"] != reviewed.get("idpUserUuid")
@@ -143,7 +148,10 @@ asyncio.run(main())
     granted_users = []
     for username, grant in grants.items():
         uid = str(uuid.UUID(grant["idpUserUuid"]))
-        if uid == owner["uuid"] or grant != {"idpUserUuid": uid, "litellmRole": "internal_user"}:
+        if uid == owner["uuid"] or grant != {
+            "idpUserUuid": uid,
+            "litellmRole": "internal_user",
+        }:
             raise RuntimeError("Unreviewed user privilege or owner override")
         subject = one("core/users/", "username", username)
         if (
@@ -152,7 +160,9 @@ asyncio.run(main())
             or not subject["is_active"]
             or subject.get("is_superuser")
         ):
-            raise RuntimeError("Reviewed LiteLLM subject missing, inactive, privileged or rebound")
+            raise RuntimeError(
+                "Reviewed LiteLLM subject missing, inactive, privileged or rebound"
+            )
         granted_users.append(subject)
     if len({u["uuid"] for u in granted_users}) != len(granted_users):
         raise RuntimeError("Duplicate LiteLLM subject")
@@ -165,7 +175,9 @@ asyncio.run(main())
         or access_group.get("roles") != []
         or access_group.get("attributes") != {"homelab_app_iam": 1}
     ):
-        raise RuntimeError("Reviewed non-privileged LiteLLM app group missing or drifted")
+        raise RuntimeError(
+            "Reviewed non-privileged LiteLLM app group missing or drifted"
+        )
     if not args.apply:
         print(
             "Preflight passed: native OIDC available, reviewed owner and owner-only local password boundary; no changes"
@@ -196,7 +208,7 @@ asyncio.run(main())
         }
         private(client_path, clients, overwrite=True)
     mapping = one("propertymappings/provider/scope/", "name", MAPPING)
-    settings = {
+    settings: dict[str, object] = {
         "name": MAPPING,
         "scope_name": "litellm_identity",
         "expression": identity_expression(
@@ -209,7 +221,8 @@ asyncio.run(main())
     if not mapping or any(mapping.get(k) != v for k, v in settings.items()):
         mapping = api(
             "PATCH" if mapping else "POST",
-            "propertymappings/provider/scope/" + (mapping["pk"] + "/" if mapping else ""),
+            "propertymappings/provider/scope/"
+            + (mapping["pk"] + "/" if mapping else ""),
             settings,
         )
     scopes = api("GET", "propertymappings/provider/scope/?page_size=100")["results"]
@@ -219,7 +232,8 @@ asyncio.run(main())
             r
             for r in scopes
             if r.get("scope_name") == scope
-            and r.get("name") == "authentik default OAuth Mapping: OpenID '" + scope + "'"
+            and r.get("name")
+            == "authentik default OAuth Mapping: OpenID '" + scope + "'"
         ]
         if len(matches) != 1:
             raise RuntimeError(
@@ -227,8 +241,13 @@ asyncio.run(main())
             )
         mappings.append(matches[0]["pk"])
     mappings.append(mapping["pk"])
-    flows = {r["slug"]: r["pk"] for r in api("GET", "flows/instances/?page_size=100")["results"]}
-    cert = one("crypto/certificatekeypairs/", "name", "authentik Self-signed Certificate")
+    flows = {
+        r["slug"]: r["pk"]
+        for r in api("GET", "flows/instances/?page_size=100")["results"]
+    }
+    cert = one(
+        "crypto/certificatekeypairs/", "name", "authentik Self-signed Certificate"
+    )
     provider = one("providers/oauth2/", "name", "homelab-litellm")
     settings = {
         "name": "homelab-litellm",
@@ -242,7 +261,10 @@ asyncio.run(main())
         "property_mappings": mappings,
         "signing_key": cert["pk"],
         "redirect_uris": [
-            {"matching_mode": "strict", "url": "https://llm.alchemmist.xyz/sso/callback"}
+            {
+                "matching_mode": "strict",
+                "url": "https://llm.alchemmist.xyz/sso/callback",
+            }
         ],
         "include_claims_in_id_token": True,
         "access_token_validity": "minutes=5",
@@ -254,7 +276,11 @@ asyncio.run(main())
         settings,
     )
     manifest = json.loads((args.root / "service-icons/sources.json").read_text())
-    icon = "service-icons/litellm-" + manifest["files"]["litellm.svg"]["sha256"][:12] + ".svg"
+    icon = (
+        "service-icons/litellm-"
+        + manifest["files"]["litellm.svg"]["sha256"][:12]
+        + ".svg"
+    )
     app = one("core/applications/", "slug", "litellm")
     settings = {
         "name": "LiteLLM",
@@ -267,14 +293,19 @@ asyncio.run(main())
         "policy_engine_mode": "any",
     }
     app = api(
-        "PATCH" if app else "POST", "core/applications/" + ("litellm/" if app else ""), settings
+        "PATCH" if app else "POST",
+        "core/applications/" + ("litellm/" if app else ""),
+        settings,
     )
-    bindings = api("GET", "policies/bindings/?target=" + app["pk"] + "&page_size=100")["results"]
+    bindings = api("GET", "policies/bindings/?target=" + app["pk"] + "&page_size=100")[
+        "results"
+    ]
     approved_pks = {u["pk"] for u in granted_users}
 
-    def accepted_binding(b: dict[str, object]):
+    def accepted_binding(b):
         target_ok = (
-            b.get("group") in {group["pk"], access_group["pk"]} and b.get("user") is None
+            b.get("group") in {group["pk"], access_group["pk"]}
+            and b.get("user") is None
         ) or (b.get("group") is None and b.get("user") in approved_pks)
         return (
             target_ok
@@ -286,7 +317,9 @@ asyncio.run(main())
         )
 
     if any(not accepted_binding(b) for b in bindings):
-        raise RuntimeError("Unexpected application admission binding; review before rollout")
+        raise RuntimeError(
+            "Unexpected application admission binding; review before rollout"
+        )
     if len({(b.get("group"), b.get("user")) for b in bindings}) != len(bindings):
         raise RuntimeError("Duplicate application admission binding")
     if not any(b.get("group") == group["pk"] for b in bindings):
@@ -328,56 +361,78 @@ asyncio.run(main())
                     "failure_result": False,
                 },
             )
+    string_data: dict[str, str] = {
+        "GENERIC_CLIENT_ID": clients["litellm"]["client_id"],
+        "GENERIC_CLIENT_SECRET": clients["litellm"]["client_secret"],
+        "GENERIC_AUTHORIZATION_ENDPOINT": BASE + "/application/o/authorize/",
+        "GENERIC_TOKEN_ENDPOINT": BASE + "/application/o/token/",
+        "GENERIC_USERINFO_ENDPOINT": BASE + "/application/o/userinfo/",
+        "GENERIC_SCOPE": "openid profile email litellm_identity",
+        "GENERIC_CLIENT_USE_PKCE": "true",
+        "GENERIC_USER_ID_ATTRIBUTE": "litellm_user_id",
+        "GENERIC_USER_EMAIL_ATTRIBUTE": "litellm_user_email",
+        "GENERIC_USER_ROLE_ATTRIBUTE": "litellm_user_role",
+        "PROXY_BASE_URL": "https://llm.alchemmist.xyz",
+    }
     secret = {
         "apiVersion": "v1",
         "kind": "Secret",
         "metadata": {"name": "socrat-authentik-litellm", "namespace": "llm"},
         "type": "Opaque",
-        "stringData": {
-            "GENERIC_CLIENT_ID": clients["litellm"]["client_id"],
-            "GENERIC_CLIENT_SECRET": clients["litellm"]["client_secret"],
-            "GENERIC_AUTHORIZATION_ENDPOINT": BASE + "/application/o/authorize/",
-            "GENERIC_TOKEN_ENDPOINT": BASE + "/application/o/token/",
-            "GENERIC_USERINFO_ENDPOINT": BASE + "/application/o/userinfo/",
-            "GENERIC_SCOPE": "openid profile email litellm_identity",
-            "GENERIC_CLIENT_USE_PKCE": "true",
-            "GENERIC_USER_ID_ATTRIBUTE": "litellm_user_id",
-            "GENERIC_USER_EMAIL_ATTRIBUTE": "litellm_user_email",
-            "GENERIC_USER_ROLE_ATTRIBUTE": "litellm_user_role",
-            "PROXY_BASE_URL": "https://llm.alchemmist.xyz",
-        },
+        "stringData": string_data,
     }
     import base64
 
-    old = kubectl(["get", "secret", "socrat-authentik-litellm", "--ignore-not-found", "-o", "json"])
+    old = kubectl(
+        [
+            "get",
+            "secret",
+            "socrat-authentik-litellm",
+            "--ignore-not-found",
+            "-o",
+            "json",
+        ]
+    )
     old_data = json.loads(old).get("data", {}) if old else {}
     changed_secret = any(
         old_data.get(k) != base64.b64encode(v.encode()).decode()
-        for k, v in secret["stringData"].items()
+        for k, v in string_data.items()
     )
     kubectl(["apply", "-f", "-"], json.dumps(secret).encode())
     env_from = container.get("envFrom", [])
     has_mount = any(
-        e.get("secretRef", {}).get("name") == "socrat-authentik-litellm" for e in env_from
+        e.get("secretRef", {}).get("name") == "socrat-authentik-litellm"
+        for e in env_from
     )
     if not has_mount or changed_secret:
         if not has_mount:
             env_from = env_from + [{"secretRef": {"name": "socrat-authentik-litellm"}}]
-        patch = {
+        patch: dict[str, object] = {
             "spec": {
                 "template": {
-                    "spec": {"containers": [{"name": container["name"], "envFrom": env_from}]}
+                    "metadata": {
+                        "annotations": {
+                            "socrat.alchemmist.xyz/oidc-env-sha256": hashlib.sha256(
+                                json.dumps(string_data, sort_keys=True).encode()
+                            ).hexdigest()
+                        }
+                    },
+                    "spec": {
+                        "containers": [{"name": container["name"], "envFrom": env_from}]
+                    },
                 }
             }
         }
-        patch["spec"]["template"]["metadata"] = {
-            "annotations": {
-                "socrat.alchemmist.xyz/oidc-env-sha256": hashlib.sha256(
-                    json.dumps(secret["stringData"], sort_keys=True).encode()
-                ).hexdigest()
-            }
-        }
-        kubectl(["patch", "deployment", "litellm", "--type=strategic", "-p", json.dumps(patch)])
+        kubectl(
+            [
+                "patch",
+                "deployment",
+                "litellm",
+                "--type=strategic",
+                "-p",
+                json.dumps(patch),
+            ]
+        )
         print(
             "Native OIDC configured; graceful rolling update started. Do not force-delete draining pods."
         )

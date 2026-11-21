@@ -6,18 +6,19 @@ D=pathlib.Path('/mnt/files/homelab/runtime/containerd')
 R=pathlib.Path('/var/lib/homelab-recovery/runtime-hdd-boot-20261120')
 STATE=R/'state.json'
 
-def run(args,timeout=5400,allowed=(0,)):
+def run(args: list[str], timeout: int = 5400, allowed: tuple[int, ...] = (0,)):
  p=subprocess.run(args,text=True,capture_output=True,timeout=timeout)
  if p.returncode not in allowed:
   (R/'last-command-error.txt').write_text(p.stderr[-4000:])
   raise RuntimeError('Failed '+args[0]+' exit '+str(p.returncode))
  return p
 
-def save(x):
+def save(x: dict[str, object]):
  t=STATE.with_suffix('.tmp');t.write_text(json.dumps(x,indent=2));t.replace(STATE)
  print(x['phase'],flush=True)
 
-def mount_source(p):return run(['findmnt','-nro','SOURCE','--mountpoint',str(p)]).stdout.strip()
+def mount_source(p: "str | pathlib.Path"):
+ return run(['findmnt','-nro','SOURCE','--mountpoint',str(p)]).stdout.strip()
 
 def boot_id():return pathlib.Path('/proc/sys/kernel/random/boot_id').read_text().strip()
 

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import os
 import time
 
@@ -12,15 +10,15 @@ ROLES = (
 )
 
 
-def allocated(path: str) -> int:
+def allocated(path):
     stat = os.lstat(path)
-    blocks: int | None = getattr(stat, "st_blocks", None)
+    blocks = getattr(stat, "st_blocks", None)
     if blocks is None:
         return stat.st_size
     return blocks * 512
 
 
-def directory_bytes(path: str) -> int:
+def directory_bytes(path):
     total = allocated(path)
     for root, dirs, files in os.walk(path, followlinks=False):
         for name in dirs:
@@ -30,15 +28,15 @@ def directory_bytes(path: str) -> int:
     return total
 
 
-def host_path(path: str, host_root: str) -> str:
+def host_path(path, host_root):
     prefix = host_root.rstrip("/")
     if path == prefix or path.startswith(prefix + "/"):
         return "/var/lib" + path[len(prefix) :]
     return path
 
 
-def rows(host_root: str) -> list[tuple[str, str, int]]:
-    found: list[tuple[str, str, int]] = []
+def rows(host_root):
+    found = []
     storage = os.path.join(host_root, "rancher/k3s/storage")
     if os.path.isdir(storage):
         for name in sorted(os.listdir(storage)):
@@ -48,13 +46,15 @@ def rows(host_root: str) -> list[tuple[str, str, int]]:
             if os.path.isdir(path):
                 found.append(("prometheus", "/var/lib/prometheus", directory_bytes(path)))
     for role, dirname in ROLES:
+        if dirname == "socrat-thanos-5m" and os.environ.get("SKIP_OLD_FIVE") == "1":
+            continue
         path = os.path.join(host_root, dirname)
         if os.path.isdir(path):
             found.append((role, host_path(path, host_root), directory_bytes(path)))
     return found
 
 
-def render(node: str, entries: list[tuple[str, str, int]]) -> str:
+def render(node, entries):
     lines = [
         "# HELP socrat_metrics_directory_bytes Allocated bytes in one metrics cascade directory.",
         "# TYPE socrat_metrics_directory_bytes gauge",
@@ -67,7 +67,7 @@ def render(node: str, entries: list[tuple[str, str, int]]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def write(path: str, body: str) -> None:
+def write(path, body):
     temporary = path + ".tmp"
     with open(temporary, "w", encoding="utf-8") as handle:
         handle.write(body)

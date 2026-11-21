@@ -34,8 +34,8 @@ def load(path: Path, name: str):
 
 def delta(old: _ZoneRenderer, new: _ZoneRenderer):
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
-        before = old.render(123, home, vps).splitlines()
-        after = new.render(123, home, vps).splitlines()
+        before = old.render(123, home_up=home, vps_up=vps).splitlines()
+        after = new.render(123, home_up=home, vps_up=vps).splitlines()
         require(
             [x for x in after if not x.startswith("tv IN A ")]
             == [x for x in before if not x.startswith("tv IN A ")],

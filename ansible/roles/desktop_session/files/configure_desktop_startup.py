@@ -15,12 +15,12 @@ LOGIN_BLOCK = """if [[ -o interactive && -z "${SSH_CONNECTION:-}" && -z "${SSH_T
     exec /usr/local/bin/start-socrat-hyprland
 fi
 """
-STARTUP_BLOCK = re.compile(
+STARTUP_BLOCK: re.Pattern[str] = re.compile(
     r"(?m)^if [^\n]+\n[ \t]+exec (?:/usr/local/bin/start-socrat-hyprland|"
     r"~/\.local/bin/wlinitrc|/home/[^/\n]+/\.local/bin/wlinitrc)\nfi[ \t]*\n?"
 )
-IDLE_LISTENER = re.compile(r"(?ms)^listener\s*\{[^{}]*^\}[ \t]*\n?")
-IDLE_SHUTDOWN = re.compile(
+IDLE_LISTENER: re.Pattern[str] = re.compile(r"(?ms)^listener\s*\{[^{}]*^\}[ \t]*\n?")
+IDLE_SHUTDOWN: re.Pattern[str] = re.compile(
     r"(?m)^\s*on-timeout\s*=\s*systemctl\s+(?:poweroff|suspend|hibernate|hybrid-sleep|suspend-then-hibernate)\b"
 )
 LEGACY_PATHS = {
@@ -32,43 +32,53 @@ LEGACY_PATHS = {
 }
 
 
-def rewrite_login(text: str, *, selected: bool):
+def rewrite_login(text, selected) -> str:
     matches = list(STARTUP_BLOCK.finditer(text))
     if len(matches) > 1:
         raise ValueError("Multiple startup blocks require manual review")
     residual = STARTUP_BLOCK.sub("", text)
     if re.search(
-        r"(?m)^[^#\n]*\bexec\s+[^\n]*(?:Hyprland|start-hyprland|wlinitrc|tdm\.sh)", residual
+        r"(?m)^[^#\n]*\bexec\s+[^\n]*(?:Hyprland|start-hyprland|wlinitrc|tdm\.sh)",
+        residual,
     ):
         raise ValueError("Unrecognized desktop startup command requires manual review")
     if matches:
-        return STARTUP_BLOCK.sub(lambda _: LOGIN_BLOCK if selected else "", text)
+
+        def substitute(_match: re.Match[str]) -> str:
+            return LOGIN_BLOCK if selected else ""
+
+        return STARTUP_BLOCK.sub(substitute, text)
     if not selected:
-        return text
+        return str(text)
+    content = str(text)
     return (
-        text
-        + ("\n" if text and not text.endswith("\n") else "")
-        + ("\n" if text else "")
+        content
+        + ("\n" if content and not content.endswith("\n") else "")
+        + ("\n" if content else "")
         + LOGIN_BLOCK
     )
 
 
-def remove_idle_shutdown(text: str):
+def remove_idle_shutdown(text) -> str:
     return IDLE_LISTENER.sub(
         lambda match: "" if IDLE_SHUTDOWN.search(match.group()) else match.group(), text
     )
 
 
-def replace_file(path: Path, content: str, uid: int, gid: int):
+def replace_file(path, content, uid, gid) -> None:
     previous = path.stat() if path.exists() else None
-    descriptor, name = tempfile.mkstemp(prefix="." + path.name + ".homelab-", dir=path.parent)
+    descriptor, name = tempfile.mkstemp(
+        prefix="." + path.name + ".homelab-", dir=path.parent
+    )
     temporary = Path(name)
     try:
         with os.fdopen(descriptor, "w") as stream:
             stream.write(content)
             stream.flush()
             os.fsync(stream.fileno())
-            os.fchmod(stream.fileno(), stat.S_IMODE(previous.st_mode) if previous else 0o644)
+            os.fchmod(
+                stream.fileno(), stat.S_IMODE(previous.st_mode) if previous else 0o644
+            )
             os.fchown(
                 stream.fileno(),
                 previous.st_uid if previous else uid,
@@ -80,14 +90,8 @@ def replace_file(path: Path, content: str, uid: int, gid: int):
 
 
 def configure(
-    home: Path,
-    username: str,
-    login_file: str,
-    *,
-    cleanup: bool,
-    disable_shutdown: bool,
-    check: bool = False,
-):
+    home, username, login_file, cleanup, disable_shutdown, check=False
+) -> dict[str, object]:
     user = pwd.getpwnam(username)
     if not user.pw_shell.endswith("/zsh"):
         raise ValueError("This setup requires the existing zsh login shell")
@@ -104,12 +108,14 @@ def configure(
         if not path.exists() and filename != login_file:
             continue
         old = path.read_text() if path.exists() else ""
-        new = rewrite_login(old, selected=filename == login_file)
+        new = rewrite_login(old, filename == login_file)
         if old != new:
             with tempfile.NamedTemporaryFile(mode="w", suffix=".zsh") as candidate:
                 candidate.write(new)
                 candidate.flush()
-                result = subprocess.run(["/usr/bin/zsh", "-n", candidate.name], capture_output=True)
+                result = subprocess.run(
+                    ["/usr/bin/zsh", "-n", candidate.name], capture_output=True
+                )
                 if result.returncode:
                     raise ValueError("Invalid zsh syntax in " + filename)
             edits.append((filename, path, new))
@@ -160,7 +166,7 @@ def configure(
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--home", type=Path, required=True)
     parser.add_argument("--user", required=True)
@@ -175,8 +181,8 @@ def main():
                 args.home,
                 args.user,
                 args.login_file,
-                cleanup=args.remove_selector,
-                disable_shutdown=args.disable_idle_shutdown,
+                args.remove_selector,
+                args.disable_idle_shutdown,
                 check=args.check,
             )
         )

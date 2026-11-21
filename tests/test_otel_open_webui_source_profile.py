@@ -34,7 +34,7 @@ def fixtures():
 
     class FastApi:
         @staticmethod
-        def instrument_app(**kwargs):
+        def instrument_app(**kwargs: object):
             calls.append(kwargs)
 
         @staticmethod

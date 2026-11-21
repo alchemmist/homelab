@@ -2,6 +2,7 @@
 
 import copy
 import unittest
+from collections.abc import Callable
 from unittest.mock import Mock
 import test_triage as f
 from integrations import GitHub, Model
@@ -9,24 +10,30 @@ from core import Failure, digest
 
 
 class SnapshotConsistencyTests(unittest.TestCase):
-    def rows(self, n=61):
+    def rows(self, n: int = 61) -> list[dict[str, int | str]]:
         return [
             dict(number=i, title="[SPI] fake", updated_at="first", body="", comments=0)
             for i in range(1, n + 1)
         ]
 
-    def transport(self, mutation, descending=False, n=61):
+    def transport(
+        self,
+        mutation: Callable[[list[dict[str, int | str]]], None],
+        *,
+        descending: bool = False,
+        n: int = 61,
+    ):
         g = GitHub(Mock(), "unused")
         rows = self.rows(n)
         calls = []
 
-        def request(method, path, body=None):
+        def request(method: str, path: str, body: object | None = None):
             import urllib.parse
 
             q = urllib.parse.parse_qs(urllib.parse.urlsplit(path).query)
             page = int(q["page"][0])
             calls.append(path)
-            ordered = sorted(rows, key=lambda x: x["number"], reverse=descending)
+            ordered = sorted(rows, key=lambda x: int(x["number"]), reverse=descending)
             result = copy.deepcopy(ordered[(page - 1) * 20 : page * 20])
             if len(calls) == 1:
                 mutation(rows)

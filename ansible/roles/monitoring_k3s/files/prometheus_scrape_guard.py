@@ -1,56 +1,6 @@
 import json
 import sys
-from typing import TypedDict
 
-
-class _Limits(TypedDict, total=False):
-    memory: str | int | float
-
-
-class _Resources(TypedDict, total=False):
-    limits: _Limits
-
-
-class _Container(TypedDict, total=False):
-    name: str
-    resources: _Resources
-
-
-class _ContainerStatus(TypedDict, total=False):
-    name: str
-    ready: bool
-    resources: _Resources
-
-
-class _PodSpec(TypedDict, total=False):
-    containers: list[_Container]
-
-
-class _PodStatus(TypedDict, total=False):
-    phase: str
-    containerStatuses: list[_ContainerStatus]
-
-
-class _Pod(TypedDict, total=False):
-    spec: _PodSpec
-    status: _PodStatus
-
-
-class _PodList(TypedDict, total=False):
-    items: list[_Pod]
-
-
-class _PromSpec(TypedDict, total=False):
-    scrapeInterval: str
-    resources: _Resources
-
-
-class _Prom(TypedDict, total=False):
-    spec: _PromSpec
-    items: list["_Prom"]
-
-
-_Document = _Prom | list[object] | str | int | float | bool | None
 
 MEMORY_FACTORS = (
     ("Ti", 1024**4),
@@ -65,7 +15,7 @@ MEMORY_FACTORS = (
 )
 
 
-def memory_bytes(value: object):
+def memory_bytes(value) -> int:
     text = str(value).strip()
     for suffix, factor in MEMORY_FACTORS:
         if text.endswith(suffix):
@@ -73,15 +23,15 @@ def memory_bytes(value: object):
     return int(float(text))
 
 
-def problems(document: _Document, pods: _PodList | None = None):
+def problems(document, pods=None) -> list[str]:
     if not document:
         return ["Prometheus is not installed"]
-    if not isinstance(document, dict):
-        return ["Prometheus is not installed"]
-    prom = document
-    raw_items = prom.get("items")
-    items = raw_items if isinstance(raw_items, list) else [prom]
-    if not items or not isinstance(items[0], dict):
+    items = (
+        document.get("items")
+        if isinstance(document, dict) and "items" in document
+        else [document]
+    )
+    if not items:
         return ["Prometheus is not installed"]
     spec = items[0].get("spec") or {}
     found = []
@@ -92,13 +42,17 @@ def problems(document: _Document, pods: _PodList | None = None):
         found.append("Prometheus memory limit is below 8Gi")
     if pods is not None:
         running = [
-            p for p in pods.get("items", []) if p.get("status", {}).get("phase") == "Running"
+            p
+            for p in pods.get("items", [])
+            if p.get("status", {}).get("phase") == "Running"
         ]
         if not running:
             found.append("No running Prometheus Pod to verify effective memory")
         for pod in running:
             containers = [
-                c for c in pod.get("spec", {}).get("containers", []) if c["name"] == "prometheus"
+                c
+                for c in pod.get("spec", {}).get("containers", [])
+                if c["name"] == "prometheus"
             ]
             statuses = [
                 c
@@ -114,14 +68,16 @@ def problems(document: _Document, pods: _PodList | None = None):
                 ("Pod spec", containers[0].get("resources", {})),
                 ("runtime status", statuses[0].get("resources", {})),
             ]:
-                if memory_bytes(resources.get("limits", {}).get("memory", "0")) < memory_bytes(
-                    "8Gi"
-                ):
-                    found.append("Effective Prometheus " + label + " memory limit is below 8Gi")
+                if memory_bytes(
+                    resources.get("limits", {}).get("memory", "0")
+                ) < memory_bytes("8Gi"):
+                    found.append(
+                        "Effective Prometheus " + label + " memory limit is below 8Gi"
+                    )
     return found
 
 
-def main():
+def main() -> int:
     document = json.load(sys.stdin)
     found = (
         problems(document["prometheus"], document["pods"])

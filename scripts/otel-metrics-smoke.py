@@ -126,7 +126,7 @@ def run(args: argparse.Namespace):
             self.end_headers()
             self.wfile.write(body)
 
-        def log_message(self, *unused):
+        def log_message(self, *unused: object):
             pass
 
     server = ThreadingHTTPServer(("127.0.0.1", 19100), Handler)

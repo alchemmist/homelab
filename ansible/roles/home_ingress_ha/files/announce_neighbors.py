@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import argparse
 import ipaddress
 import json
@@ -9,10 +7,23 @@ import struct
 import subprocess
 from typing import TypedDict
 
+
 ETH_P_ARP = 0x0806
 
 
-def ipv4(value: object):
+class Neighbor(TypedDict):
+    address: str
+    mac: str
+
+
+class InterfaceConfig(TypedDict):
+    interface: str
+    address: str
+    vip: str
+    neighbors: list[Neighbor]
+
+
+def ipv4(value) -> str:
     if not isinstance(value, str):
         raise ValueError("Expected an IPv4 address string")
     address = ipaddress.IPv4Address(value)
@@ -26,7 +37,7 @@ def ipv4(value: object):
     return str(address)
 
 
-def mac_bytes(value: object):
+def mac_bytes(value) -> bytes:
     if not isinstance(value, str) or not re.fullmatch(
         r"(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}", value
     ):
@@ -37,20 +48,26 @@ def mac_bytes(value: object):
     return result
 
 
-def validate_config(config: object) -> _Config:
-    if not isinstance(config, dict) or set(config) != {"interface", "address", "vip", "neighbors"}:
+def validate_config(config) -> InterfaceConfig:
+    if not isinstance(config, dict) or set(config) != {
+        "interface",
+        "address",
+        "vip",
+        "neighbors",
+    }:
         raise ValueError("Invalid configuration fields")
     interface = config["interface"]
     if not isinstance(interface, str) or not re.fullmatch(
         r"[A-Za-z0-9][A-Za-z0-9_.-]{0,14}", interface
     ):
         raise ValueError("Invalid interface name")
-    result = {
-        "interface": interface,
-        "address": ipv4(config["address"]),
-        "vip": ipv4(config["vip"]),
-        "neighbors": [],
-    }
+    neighbors: list[Neighbor] = []
+    result = InterfaceConfig(
+        interface=interface,
+        address=ipv4(config["address"]),
+        vip=ipv4(config["vip"]),
+        neighbors=neighbors,
+    )
     if result["address"] == result["vip"]:
         raise ValueError("Physical address and VIP must differ")
     if not isinstance(config["neighbors"], list) or not config["neighbors"]:
@@ -62,11 +79,11 @@ def validate_config(config: object) -> _Config:
         if address in (result["address"], result["vip"]):
             raise ValueError("Neighbor address must differ from local addresses")
         mac_bytes(neighbor["mac"])
-        result["neighbors"].append({"address": address, "mac": neighbor["mac"]})
+        neighbors.append(Neighbor(address=address, mac=neighbor["mac"]))
     return result
 
 
-def read_interface(interface: str):
+def read_interface(interface) -> dict[str, object]:
     output = subprocess.run(
         ["ip", "-j", "address", "show", "dev", interface],
         check=True,
@@ -74,13 +91,13 @@ def read_interface(interface: str):
         text=True,
         timeout=2,
     )
-    records = json.loads(output.stdout)
+    records: list[dict[str, object]] = json.loads(output.stdout)
     if len(records) != 1 or records[0].get("ifname") != interface:
         raise ValueError("Expected exactly the configured interface")
     return records[0]
 
 
-def arp_request(source_mac: str, source_address: str, target_mac: str, target_address: str):
+def arp_request(source_mac, source_address, target_mac, target_address) -> bytes:
     sender = mac_bytes(source_mac)
     target = mac_bytes(target_mac)
     return (
@@ -95,30 +112,7 @@ def arp_request(source_mac: str, source_address: str, target_mac: str, target_ad
     )
 
 
-class _Neighbor(TypedDict):
-    address: str
-    mac: str
-
-
-class _Config(TypedDict):
-    interface: str
-    address: str
-    vip: str
-    neighbors: list[_Neighbor]
-
-
-class _AddrInfo(TypedDict, total=False):
-    local: str
-    family: str
-
-
-class _InterfaceState(TypedDict, total=False):
-    ifname: str
-    address: str
-    addr_info: list[_AddrInfo]
-
-
-def frames_for_interface(config: _Config, state: _InterfaceState):
+def frames_for_interface(config, state) -> list[bytes]:
     config = validate_config(config)
     if state.get("ifname") != config["interface"]:
         raise ValueError("Interface does not match configuration")
@@ -140,10 +134,12 @@ def frames_for_interface(config: _Config, state: _InterfaceState):
     ]
 
 
-def announce(config: object):
+def announce(config) -> int:
     config = validate_config(config)
     frames = frames_for_interface(config, read_interface(config["interface"]))
-    with socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.htons(ETH_P_ARP)) as connection:
+    with socket.socket(
+        socket.AF_PACKET, socket.SOCK_RAW, socket.htons(ETH_P_ARP)
+    ) as connection:
         connection.settimeout(1)
         connection.bind((config["interface"], 0))
         for frame in frames:
@@ -152,7 +148,7 @@ def announce(config: object):
     return len(frames)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
     args = parser.parse_args()
