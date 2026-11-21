@@ -49,7 +49,7 @@ class Page(TypedDict):
     pagination: NotRequired[Pagination]
 
 
-class Group(TypedDict):
+class Group(TypedDict, total=False):
     """Live Authentik group fields the admission check reads."""
 
     name: str
@@ -82,7 +82,7 @@ def admission_groups(slug: str, service: Service):
     ]
 
 
-def rows(api: Callable[[str, str], Page], path: str):
+def rows(api: Callable[..., Page], path: str):
     """Follow Authentik page numbers, never arbitrary next URLs with credentials."""
     result = []
     page = 1

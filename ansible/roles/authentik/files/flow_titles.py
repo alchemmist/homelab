@@ -24,7 +24,7 @@ class TitleApi(Protocol):
         method: str,
         path: str,
         value: dict[str, str] | None = None,
-    ) -> Mapping[str, str]:
+    ) -> Mapping[str, object]:
         """Issue one Authentik flow request."""
 
 

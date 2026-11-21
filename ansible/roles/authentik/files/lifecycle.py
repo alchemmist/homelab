@@ -64,7 +64,7 @@ class UserRecord(TypedDict):
 
 
 def build_plan(
-    api: Callable[[str, str], Mapping[str, object]],
+    api: Callable[..., Mapping[str, object]],
     services: Mapping[str, Mapping[str, object]],
     manifest: Mapping[str, object],
     reviewed: Mapping[str, Mapping[str, object]],
@@ -196,7 +196,7 @@ def build_plan(
 
 
 def apply_plan(
-    api: Callable[[str, str, Mapping[str, object] | None], object],
+    api: Callable[..., object],
     plan: Mapping[str, object],
     approval: str,
 ):

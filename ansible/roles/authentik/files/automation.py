@@ -145,7 +145,7 @@ def exact(token: str, endpoint: str, field: str, value: str):
 
 def verify(token: str, journal: Mapping[str, object]):
     user = api(token, "GET", "core/users/" + str(journal["user_pk"]) + "/")
-    group = api(token, "GET", "core/groups/" + cast("str", journal["group_pk"]) + "/")
+    group = api(token, "GET", "core/groups/" + str(journal["group_pk"]) + "/")
     marker = {"homelab_automation_journal": journal["nonce"]}
     if not (
         user["uuid"] == journal["user_uuid"]
