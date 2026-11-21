@@ -461,7 +461,7 @@ def run(args):
     )
     args.workspace.mkdir(mode=0o700)
     root = args.workspace
-    environment, report, context, boundary = replay_prepare(args, root)
+    environment, report, context = replay_prepare(args, root)
     children: dict[object, subprocess.Popen[bytes]] = {}
     generations: dict[object, int] = {}
     replay_save(root, report)

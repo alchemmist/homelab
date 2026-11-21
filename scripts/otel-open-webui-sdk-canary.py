@@ -264,6 +264,8 @@ def run():
         )
         traces = [first]
         after_hash = await_renewal(renewal, before_hash, first, loaded, traces)
+        if renewal:
+            traces.append(emit_request())
         trace_id, parent_id, status = first["traceId"], first["parentSpanId"], first["httpStatus"]
         flushed = provider.force_flush(timeout_millis=10000)
         provider.shutdown()
