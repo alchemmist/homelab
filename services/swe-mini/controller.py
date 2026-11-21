@@ -311,7 +311,7 @@ def tick():
         log = CORE.read_namespaced_pod_log(pods[0].metadata.name, NS, limit_bytes=2_000_000)
         try:
             result = decode_result(log, signing_key(run["id"], run["state"]))
-        except Exception:
+        except (ValueError, OSError):
             if run["state"] == "review":
                 try:
                     CORE.delete_namespaced_config_map(run["job"] + "-proposal", NS)
@@ -459,7 +459,15 @@ def run_once():
     try:
         if tick() is not False:
             STATUS["error"] = ""
-    except Exception as exc:
+    except (
+        client.ApiException,
+        requests.RequestException,
+        sqlite3.OperationalError,
+        ValueError,
+        KeyError,
+        TypeError,
+        OSError,
+    ) as exc:
         # Never log bodies, tokens or raw third-party error responses.
         STATUS["error"] = type(exc).__name__
         response = getattr(exc, "response", None)

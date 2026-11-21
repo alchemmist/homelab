@@ -194,7 +194,7 @@ class FakeAuthentik(threading.Thread):
                     return self._send(401, {"detail": "unauthorized"})
                 try:
                     code, body = server.route(method, parsed.path, parsed.query, payload)
-                except Exception as error:
+                except (KeyError, TypeError, ValueError, StopIteration) as error:
                     return self._send(500, {"detail": str(error)})
                 self._send(code, body)
 
