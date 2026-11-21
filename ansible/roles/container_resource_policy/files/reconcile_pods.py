@@ -217,7 +217,7 @@ def active(pod: dict[str, object]):
     return _mapping(pod.get("status", {})).get("phase") not in ("Succeeded", "Failed")
 
 
-def owner(pod: dict[str, object]):
+def owner(pod: dict[str, object]) -> Mapping[str, object] | None:
     return next(
         (
             item
@@ -318,9 +318,9 @@ def label(pod: dict[str, object]):
 
 
 def excluded(pod: dict[str, object], nodes: Iterable[str]):
-    spec = _mapping(pod.get("spec", {}))
+    spec = _mapping(pod.get("spec") or {})
     node_name = spec.get("nodeName")
-    host_name = _mapping(spec.get("nodeSelector", {})).get("kubernetes.io/hostname")
+    host_name = _mapping(spec.get("nodeSelector") or {}).get("kubernetes.io/hostname")
     return ((node_name in nodes) if isinstance(node_name, str) else False) or (
         (host_name in nodes) if isinstance(host_name, str) else False
     )

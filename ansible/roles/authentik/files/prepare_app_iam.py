@@ -67,7 +67,7 @@ class _Service(TypedDict):
     groups: list[str]
 
 
-class _ReviewedEntry(TypedDict):
+class _ReviewedEntry(TypedDict, total=False):
     idpUserUuid: str
     groups: list[str]
 

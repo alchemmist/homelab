@@ -339,13 +339,15 @@ def _pilot_snapshot(inventory: dict[str, list[dict[str, object]]]):
 
 
 def _group_owned(group: dict[str, object] | None, journal: _Journal):
-    recorded = journal.get("groups", {}).get(group["name"]) if group else None
+    groups = journal.get("groups")
+    recorded = groups.get(group["name"]) if group and isinstance(groups, dict) else None
     attributes = group.get("attributes") if group else None
     if not isinstance(attributes, dict):
         attributes = {}
     return bool(
         recorded
         and group
+        and isinstance(recorded, dict)
         and group.get("pk") == recorded.get("pk")
         and attributes.get(MARKER_ATTRIBUTE) == journal.get("marker")
     )
@@ -691,9 +693,8 @@ def _legacy_preserved(before: Iterable[_Snapshot], after: Iterable[_Snapshot]):
 def execute_apply(api: Authentik, root: Path, issuer: str | None, approved: str | None):
     journal_path = root / JOURNAL_NAME
     runtime_path = root / RUNTIME_NAME
-    journal = _private_read(journal_path)
-    if not journal:
-        journal = {}
+    loaded = _private_read(journal_path)
+    journal: _Journal = loaded if isinstance(loaded, dict) else {}
     inventory = load_inventory(api)
     plan = build_plan(inventory, issuer, journal)
     if plan["blockers"]:

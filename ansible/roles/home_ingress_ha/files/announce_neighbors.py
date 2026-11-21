@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import ipaddress
 import json
@@ -35,7 +37,7 @@ def mac_bytes(value: object):
     return result
 
 
-def validate_config(config: object):
+def validate_config(config: object) -> _Config:
     if not isinstance(config, dict) or set(config) != {"interface", "address", "vip", "neighbors"}:
         raise ValueError("Invalid configuration fields")
     interface = config["interface"]
@@ -138,7 +140,7 @@ def frames_for_interface(config: _Config, state: _InterfaceState):
     ]
 
 
-def announce(config: _Config):
+def announce(config: object):
     config = validate_config(config)
     frames = frames_for_interface(config, read_interface(config["interface"]))
     with socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.htons(ETH_P_ARP)) as connection:
