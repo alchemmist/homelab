@@ -16,7 +16,9 @@ spec.loader.exec_module(m)
 class ScopedRolloutTests(unittest.TestCase):
     """Owned log exporters change without rewriting metrics, cursors, or endpoints."""
 
-    def setUp(self):
+    def setUp(self) -> None:
+        """Load the desired agent config and a live variant."""
+
         self.desired = yaml.safe_load((ROOT / "deploy/monitoring/otel/agent.yaml").read_text())
         self.live = copy.deepcopy(self.desired)
         self.live["service"]["pipelines"]["logs"]["exporters"] = ["otlp"]
@@ -27,11 +29,12 @@ class ScopedRolloutTests(unittest.TestCase):
         self.live["receivers"]["filelog"]["start_at"] = "beginning"
         self.live["receivers"]["filelog"]["include"] = ["/original/path"]
         result = m.merge(self.live, self.desired)
-        self.assertEqual(result["receivers"], self.live["receivers"])
-        self.assertEqual(result["extensions"], self.live["extensions"])
-        self.assertEqual(result["exporters"]["otlp"], self.live["exporters"]["otlp"])
-        self.assertEqual(
-            result["service"]["pipelines"]["metrics"], self.live["service"]["pipelines"]["metrics"]
+        assert result["receivers"] == self.live["receivers"]
+        assert result["extensions"] == self.live["extensions"]
+        assert result["exporters"]["otlp"] == self.live["exporters"]["otlp"]
+        assert (
+            result["service"]["pipelines"]["metrics"]
+            == self.live["service"]["pipelines"]["metrics"]
         )
 
     def test_only_known_broad_exclusion_is_narrowed(self) -> None:
@@ -44,9 +47,9 @@ class ScopedRolloutTests(unittest.TestCase):
         expected["filelog"]["exclude"] = self.desired["receivers"]["filelog"]["exclude"] + [
             "/custom/exclusion"
         ]
-        self.assertEqual(result["receivers"], expected)
-        self.assertEqual(self.live, before)
-        self.assertEqual(result["extensions"], before["extensions"])
+        assert result["receivers"] == expected
+        assert self.live == before
+        assert result["extensions"] == before["extensions"]
 
     def test_shared_mutation_refused(self) -> None:
         """Verify a shared memory limiter edit fails before the merge is accepted."""
@@ -58,8 +61,9 @@ class ScopedRolloutTests(unittest.TestCase):
         """Verify an existing live log endpoint is kept over the desired value."""
         self.live["exporters"]["otlp/logs"] = copy.deepcopy(self.desired["exporters"]["otlp/logs"])
         self.live["exporters"]["otlp/logs"]["endpoint"] = "existing:4317"
-        self.assertEqual(
-            m.merge(self.live, self.desired)["exporters"]["otlp/logs"]["endpoint"], "existing:4317"
+        assert (
+            m.merge(self.live, self.desired)["exporters"]["otlp/logs"]["endpoint"]
+            == "existing:4317"
         )
 
     def test_pinned_counter_names_and_ambiguity(self) -> None:
@@ -69,19 +73,21 @@ class ScopedRolloutTests(unittest.TestCase):
         )
         gate = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(gate)
-        self.assertEqual(
+        record_gauge = {'otelcol_exporter_sent_log_records{exporter="otlp/logs"}': 12}
+        expected_records = 12
+        assert (
             gate.total(
-                {'otelcol_exporter_sent_log_records{exporter="otlp/logs"}': 12},
+                record_gauge,
                 "otelcol_exporter_sent_log_records_total",
-            ),
-            12,
+            )
+            == expected_records
         )
-        self.assertEqual(
+        assert (
             gate.total(
-                {"otelcol_exporter_sent_log_records_total": 12},
+                {"otelcol_exporter_sent_log_records_total": expected_records},
                 "otelcol_exporter_sent_log_records_total",
-            ),
-            12,
+            )
+            == expected_records
         )
         with self.assertRaises(ValueError):
             gate.total(

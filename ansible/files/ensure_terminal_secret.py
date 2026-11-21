@@ -1,3 +1,5 @@
+"""Ensure the terminal access Kubernetes secret exists."""
+
 import json
 import secrets
 import subprocess

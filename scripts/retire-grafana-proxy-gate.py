@@ -13,11 +13,13 @@ from pathlib import Path
 
 
 def require(ok, message):
+    """Execute require."""
     if not ok:
         raise RuntimeError(message)
 
 
 def main():
+    """Execute main."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")

@@ -1,3 +1,4 @@
+"""Bootstrap the wiki runtime resources on the Kubernetes cluster."""
 import argparse
 import base64
 import json
@@ -7,14 +8,18 @@ import subprocess
 
 
 class BootstrapError(Exception):
-    pass
+    """Exception raised when the wiki runtime bootstrap fails."""
 
 
 class Kubernetes:
-    def __init__(self, command):
+    """Kubernetes client that shells out to kubectl."""
+
+    def __init__(self, command: list[str]) -> None:
+
         self.command = command
 
-    def run(self, *args, payload=None):
+    def run(self, *args: str, payload: object | None = None) -> str:
+        'Run a kubectl subcommand and return trimmed stdout.'
         result = subprocess.run(
             self.command + list(args),
             input=json.dumps(payload) if payload else None,
@@ -27,26 +32,31 @@ class Kubernetes:
             )
         return result.stdout
 
-    def get(self, kind, name, namespace):
+    def get(self, kind: str, name: str, namespace: str) -> dict[str, object] | None:
+        'Fetch one object if present, or None when not found.'
         value = self.run("-n", namespace, "get", kind, name, "--ignore-not-found", "-o", "json")
-        return json.loads(value) if value.strip() else None
+        if not value.strip():
+            return None
+        resource_map: dict[str, object] = json.loads(value)
+        return resource_map
 
-    def create(self, resource):
+    def create(self, resource: dict[str, object]) -> None:
+        'Create a resource from the given manifest on stdin.'
         self.run("create", "-f", "-", payload=resource)
 
 
-def encoded(value):
+def encoded(value: str) -> str:
     return base64.b64encode(value.encode()).decode()
 
 
-def decoded(value):
+def decoded(value: str) -> str:
     try:
         return base64.b64decode(value, validate=True).decode()
     except (ValueError, UnicodeError, TypeError):
         raise BootstrapError("Invalid encoded credential in source Secret") from None
 
 
-def resource(kind, name, namespace, **fields):
+def resource(kind: str, name: str, namespace: str, **fields: object) -> dict[str, object]:
     return {
         "apiVersion": "v1",
         "kind": kind,
@@ -55,18 +65,79 @@ def resource(kind, name, namespace, **fields):
     }
 
 
-def required_data(item, key):
+def required_data(item: dict[str, object] | None, key: str) -> str:
     value = (item or {}).get("data", {}).get(key)
     if not isinstance(value, str) or not value:
         raise BootstrapError("Required credential/configuration field is missing")
     return value
 
 
-def prerequisites(_kube):
+def prerequisites(_kube: Kubernetes) -> list[dict[str, object]]:
     return [{"apiVersion": "v1", "kind": "Namespace", "metadata": {"name": "wiki"}}]
 
 
-def bootstrap(kube, skip_legacy_git=False):
+def _data_pvc() -> dict[str, object]:
+    """Build the helm-kept data PVC bound to the local-path storage class."""
+    return {
+        "apiVersion": "v1",
+        "kind": "PersistentVolumeClaim",
+        "metadata": {
+            "name": "wiki-runtime-data",
+            "namespace": "wiki",
+            "annotations": {"helm.sh/resource-policy": "keep"},
+        },
+        "spec": {
+            "accessModes": ["ReadWriteOnce"],
+            "storageClassName": "local-path",
+            "resources": {"requests": {"storage": "5Gi"}},
+        },
+    }
+
+
+def _check_pvc(existing_pvc: dict[str, object] | None) -> None:
+    """Reject an existing data PVC that no longer matches the storage policy."""
+    if not existing_pvc:
+        return
+    spec = existing_pvc.get("spec")
+    if isinstance(spec, dict):
+        storage, modes = spec.get("storageClassName"), spec.get("accessModes")
+    else:
+        storage, modes = None, None
+    if storage != "local-path" or modes != ["ReadWriteOnce"]:
+        raise BootstrapError("Existing wiki-runtime-data PVC has unexpected storage configuration")
+
+
+def _check_secrets(existing: list[dict[str, object] | None]) -> None:
+    """Refuse to touch existing bootstrap/git Secrets whose payloads look damaged."""
+    if existing[1] and len(decoded(required_data(existing[1], "token"))) < 32:
+        raise BootstrapError(
+            "Existing bootstrap Secret token is unexpectedly short; not overwriting it"
+        )
+    if existing[2]:
+        for key in ("id_ed25519", "known_hosts"):
+            required_data(existing[2], key)
+
+
+def _git_secret(
+    kube: Kubernetes, existing_git: dict[str, object] | None, *, skip_legacy_git: bool
+) -> dict[str, object] | None:
+    """Materialize the runtime git Secret from reviewed wiki-editor sources."""
+    if existing_git or skip_legacy_git:
+        return None
+    key = required_data(kube.get("secret", "wiki-editor-git", "wiki"), "id_ed25519")
+    decoded(key)
+    hosts = required_data(kube.get("configmap", "wiki-editor-hosts", "wiki"), "known_hosts")
+    return resource(
+        "Secret",
+        "wiki-runtime-git",
+        "wiki",
+        type="Opaque",
+        data={"id_ed25519": key, "known_hosts": encoded(hosts)},
+    )
+
+
+def bootstrap(kube: Kubernetes, *, skip_legacy_git: bool = False) -> list[str]:
+    """Create missing wiki runtime storage and Secrets; never rotate existing ones."""
     infrastructure = prerequisites(kube)
     targets = [
         ("persistentvolumeclaim", "wiki-runtime-data", "wiki"),
@@ -74,33 +145,9 @@ def bootstrap(kube, skip_legacy_git=False):
         ("secret", "wiki-runtime-git", "wiki"),
     ]
     existing = [kube.get(*target) for target in targets]
-    pvc = resource(
-        "PersistentVolumeClaim",
-        "wiki-runtime-data",
-        "wiki",
-        spec={
-            "accessModes": ["ReadWriteOnce"],
-            "storageClassName": "local-path",
-            "resources": {"requests": {"storage": "5Gi"}},
-        },
-    )
-    pvc["metadata"]["annotations"] = {"helm.sh/resource-policy": "keep"}
-    if existing[0]:
-        spec = existing[0].get("spec", {})
-        if spec.get("storageClassName") != "local-path" or spec.get("accessModes") != [
-            "ReadWriteOnce"
-        ]:
-            raise BootstrapError(
-                "Existing wiki-runtime-data PVC has unexpected storage configuration"
-            )
-    if existing[1]:
-        if len(decoded(required_data(existing[1], "token"))) < 32:
-            raise BootstrapError(
-                "Existing bootstrap Secret token is unexpectedly short; not overwriting it"
-            )
-    if existing[2]:
-        for key in ("id_ed25519", "known_hosts"):
-            required_data(existing[2], key)
+    pvc = _data_pvc()
+    _check_pvc(existing[0])
+    _check_secrets(existing)
     bootstrap_secret = (
         resource(
             "Secret",
@@ -112,18 +159,7 @@ def bootstrap(kube, skip_legacy_git=False):
         if not existing[1]
         else None
     )
-    git_secret = None
-    if not existing[2] and not skip_legacy_git:
-        key = required_data(kube.get("secret", "wiki-editor-git", "wiki"), "id_ed25519")
-        decoded(key)
-        hosts = required_data(kube.get("configmap", "wiki-editor-hosts", "wiki"), "known_hosts")
-        git_secret = resource(
-            "Secret",
-            "wiki-runtime-git",
-            "wiki",
-            type="Opaque",
-            data={"id_ed25519": key, "known_hosts": encoded(hosts)},
-        )
+    git_secret = _git_secret(kube, existing[2], skip_legacy_git=skip_legacy_git)
     results = []
     for item in infrastructure:
         metadata = item["metadata"]
@@ -159,7 +195,7 @@ def main():
         command = shlex.split(args.kubectl)
         if not command:
             raise BootstrapError("kubectl command must not be empty")
-        for line in bootstrap(Kubernetes(command), args.skip_legacy_git):
+        for line in bootstrap(Kubernetes(command), skip_legacy_git=args.skip_legacy_git):
             print(line)
     except (BootstrapError, OSError, json.JSONDecodeError):
         parser.exit(

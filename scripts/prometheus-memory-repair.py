@@ -28,17 +28,11 @@ def require(ok, message):
         raise RuntimeError(message)
 
 
-def expression_change(expr):
-    needle = '"ownerPattern": dyn(' + json.dumps(PATTERN) + ")"
-    require(expr.count(needle) == 1, "Prometheus profile not unique")
-    start = expr.index(needle)
-    next_profile = expr.find('"ownerPattern"', start + len(needle))
-    end_profile = next_profile if next_profile >= 0 else len(expr)
-    begin = expr.find('"prometheus": {', start, end_profile)
-    require(begin >= 0, "Prometheus container profile missing")
+def profile_end(expr: str, begin: int, end_profile: int):
+    """Scan from the profile's opening brace and return its balanced end index."""
     # CEL wraps values in dyn(...), but braces and JSON strings are balanced.
     # Do not depend on the indentation used by a previous Ansible renderer.
-    depth, quoted, escaped, end = 0, False, False, None
+    depth, quoted, escaped = 0, False, False
     for index in range(expr.index("{", begin), end_profile):
         char = expr[index]
         if quoted:
@@ -55,8 +49,19 @@ def expression_change(expr):
         elif char == "}":
             depth -= 1
             if depth == 0:
-                end = index + 1
-                break
+                return index + 1
+    return None
+
+
+def expression_change(expr):
+    needle = '"ownerPattern": dyn(' + json.dumps(PATTERN) + ")"
+    require(expr.count(needle) == 1, "Prometheus profile not unique")
+    start = expr.index(needle)
+    next_profile = expr.find('"ownerPattern"', start + len(needle))
+    end_profile = next_profile if next_profile >= 0 else len(expr)
+    begin = expr.find('"prometheus": {', start, end_profile)
+    require(begin >= 0, "Prometheus container profile missing")
+    end = profile_end(expr, begin, end_profile)
     require(end is not None, "Unbalanced container profile")
     block = expr[begin:end]
     require(block.count('"memory"') == 2, "Unexpected RAM fields")

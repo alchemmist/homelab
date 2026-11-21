@@ -2,7 +2,7 @@
 
 import importlib.util
 from pathlib import Path
-
+from typing import TypedDict
 import pytest
 
 spec = importlib.util.spec_from_file_location(
@@ -12,7 +12,14 @@ m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 
 
-def before():
+class ZoneConfigMap(TypedDict):
+    """Shape of the owned internal-DNS config map copies these tests edit."""
+
+    metadata: dict[str, str]
+    data: dict[str, str]
+
+
+def before() -> ZoneConfigMap:
     return {
         "metadata": {"uid": "owned", "resourceVersion": "123"},
         "data": {"rancher-private.server": "keep exact"},
@@ -50,7 +57,11 @@ def test_cas_guards_and_no_wholesale_replacement() -> None:
     """Require CAS tests before an add of only the owned key."""
     original = before()
     p = m.patch(original, m.desired(original, "10.43.218.222"))
-    assert [x["path"] for x in p[:3]] == ["/metadata/uid", "/metadata/resourceVersion", "/data"]
+    assert [x["path"] for x in p[:3]] == [
+        "/metadata/uid",
+        "/metadata/resourceVersion",
+        "/data",
+    ]
     assert all(x["op"] == "test" for x in p[:3])
     assert p[3]["op"] == "add" and p[3]["path"] == "/data/" + m.KEY
 
