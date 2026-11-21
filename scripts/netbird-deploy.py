@@ -16,8 +16,6 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location("netbird_pilot", ROOT / "scripts/netbird-pilot.py")
-if SPEC is None or SPEC.loader is None:
-    raise RuntimeError("netbird-pilot module missing or unloadable")
 nb = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(nb)
 CONFIRM = "apply-netbird-control-plane"
@@ -31,12 +29,11 @@ FORBIDDEN_KINDS = {
 }
 
 
-def load_json(path) -> dict[str, object]:
-    document: dict[str, object] = json.loads(Path(path).read_text())
-    return document
+def load_json(path):
+    return json.loads(Path(path).read_text())
 
 
-def assert_candidates(candidates) -> None:
+def assert_candidates(candidates):
     """Repo candidate marks are not approval. verified must stay false."""
     nb.require(
         candidates["management_fqdn"]["value"] == "netbird.socrat.alchemmist.xyz",
@@ -91,7 +88,7 @@ def assert_candidates(candidates) -> None:
     nb.require(routers["new_machines_approved"] is False, "new machines were not approved")
 
 
-def scope_matches_chart(chart, delta) -> dict[str, object]:
+def scope_matches_chart(chart, delta):
     watched = list(chart["watchNamespaces"])
     crd = chart["kubernetesCRD"]["namespaces"]
     return {
@@ -106,8 +103,8 @@ def scope_matches_chart(chart, delta) -> dict[str, object]:
     }
 
 
-def report(inputs, candidates, audit, chart, delta) -> dict[str, object]:
-    """Internal bootstrap and edge publication are separate gates.
+def report(inputs, candidates, audit, chart, delta):
+    """Keep internal bootstrap and edge publication as separate gates.
 
     UDP 3478 not listening is the preexisting state. Requiring it before apply is
     circular, because nothing is published to bind it. A listener that is already
@@ -185,8 +182,8 @@ def report(inputs, candidates, audit, chart, delta) -> dict[str, object]:
     }
 
 
-def assert_safe_manifests(docs, publication="internal") -> None:
-    """Assert that internal publication omits Service, Ingress, and NodePort; edge may add them."""
+def assert_safe_manifests(docs, publication="internal"):
+    """Keep internal publication free of Service, Ingress, or NodePort resources."""
     nb.require(publication in ("internal", "edge"), "publication invalid")
     namespaces = set()
     runtime_refs = []
@@ -231,7 +228,7 @@ def assert_safe_manifests(docs, publication="internal") -> None:
     nb.require(runtime_refs == [nb.NS], "runtime secret reference must stay in netbird-pilot")
 
 
-def plan_document(manifest) -> dict[str, object]:
+def plan_document(manifest):
     return {
         "manifest": manifest.name,
         "argo_sync": False,
@@ -256,7 +253,7 @@ def plan_document(manifest) -> dict[str, object]:
     }
 
 
-def render_publication(inputs, out, stage, audit) -> None:
+def render_publication(inputs, out, stage, audit):
     if stage == "internal":
         nb.render_control_plane(
             inputs, out, nb.port_forward_sources(audit.get("port_forward_cidrs"))
@@ -268,7 +265,7 @@ def render_publication(inputs, out, stage, audit) -> None:
         yaml.safe_dump_all(nb.manifests(inputs, "edge"), handle, sort_keys=False)
 
 
-def apply_argv(manifest, context, publication="internal") -> list[str]:
+def apply_argv(manifest, context, publication="internal"):
     nb.require(
         nb.text(context) and context not in {"", "current", "default"},
         "explicit kubectl context required",
@@ -292,7 +289,7 @@ def apply_argv(manifest, context, publication="internal") -> list[str]:
     ]
 
 
-def main() -> None:
+def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("command", choices=["check", "plan", "apply", "scope"])
     p.add_argument("--inputs", type=Path, default=ROOT / "deploy/netbird/pilot.inputs.json")
