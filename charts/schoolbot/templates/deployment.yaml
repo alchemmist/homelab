@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Chart.Name }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Chart.Name }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+        {{- end }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: {{ .Values.podSecurity.user }}
+        runAsGroup: {{ .Values.podSecurity.group }}
+        fsGroup: {{ .Values.podSecurity.group }}
+      containers:
+        - name: schoolbot
+          {{- $image := printf "%s:%s" .Values.image.repository .Values.image.tag -}}
+          {{- if .Values.image.digest }}
+          {{- $image = printf "%s@%s" .Values.image.repository .Values.image.digest -}}
+          {{- end }}
+          image: {{ $image | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+          env:
+            - name: PUBLIC_BASE_URL
+              value: {{ .Values.publicBaseUrl | quote }}
+            - name: COOKIE_SECURE
+              value: {{ .Values.cookieSecure | quote }}
+            - name: ADMIN_UI
+              value: {{ .Values.adminUi | quote }}
+            - name: UPDATE_MODE
+              value: {{ .Values.updateMode | quote }}
+            - name: TIMEZONE
+              value: {{ .Values.timezone | quote }}
+            - name: RUSSIAN_CA_BUNDLE
+              value: /certs/russian_trusted_root_ca.pem
+            - name: ATTACHMENTS_DIR
+              value: /data/attachments
+            - name: SEED_SCHOOL
+              value: "false"
+            - name: TRUSTED_PROXY_COUNT
+              value: "0"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.envSecretName }}
+                  key: DATABASE_URL
+            - name: APP_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.envSecretName }}
+                  key: APP_MASTER_KEY
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.envSecretName }}
+                  key: SESSION_SECRET
+            - name: ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.envSecretName }}
+                  key: ADMIN_USERNAME
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.envSecretName }}
+                  key: ADMIN_PASSWORD
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+            failureThreshold: 18
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+          resources:
+            requests:
+              cpu: {{ .Values.resources.requests.cpu }}
+              memory: {{ .Values.resources.requests.memory }}
+            limits:
+              memory: {{ .Values.resources.limits.memory }}
+          volumeMounts:
+            - name: attachments
+              mountPath: /data/attachments
+      volumes:
+        - name: attachments
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-attachments
