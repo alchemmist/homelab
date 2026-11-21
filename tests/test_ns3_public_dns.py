@@ -38,7 +38,7 @@ def test_exact_addition_and_idempotent_delta() -> None:
     guard.delta(Old, zone)
     guard.delta(zone, zone)
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
-        lines = zone.render(123, home, vps).splitlines()
+        lines = zone.render(123, home_up=home, vps_up=vps).splitlines()
         assert all(lines.count(x) == 1 for x in guard.ADDED)
         for name in zone.FAILOVER:
             assert f"{name} IN A 91.189.82.238" not in lines

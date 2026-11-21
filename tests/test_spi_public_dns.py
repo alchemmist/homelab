@@ -23,12 +23,12 @@ class SPIOnlyDNSTests(unittest.TestCase):
         guard.delta(old, new)
         for home, vps in ((True, True), (True, False), (False, True), (False, False)):
             with self.subTest(home=home, vps=vps):
-                before = old.render(123, home, vps).splitlines()
-                after = new.render(123, home, vps).splitlines()
+                before = old.render(123, home_up=home, vps_up=vps).splitlines()
+                after = new.render(123, home_up=home, vps_up=vps).splitlines()
                 self.assertEqual([r for r in after if not r.startswith("spi.socrat IN A ")], before)
                 self.assertEqual(
                     [r for r in after if r.startswith("spi.socrat IN A ")],
-                    ["spi.socrat IN A " + a for a in old.healthy_addresses(home, vps)],
+                    ["spi.socrat IN A " + a for a in old.healthy_addresses(home_up=home, vps_up=vps)],
                 )
                 self.assertNotIn("*.socrat", "\n".join(after))
         new.TTL += 1

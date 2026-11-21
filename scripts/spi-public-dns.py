@@ -126,7 +126,7 @@ def main():
             require(
                 "New authoritative record not confirmed",
                 ok="A" in result.split()
-                and any(ip in result.split() for ip in newmod.healthy_addresses(True, True)),
+                and any(ip in result.split() for ip in newmod.healthy_addresses(home_up=True, vps_up=True)),
             )
             (ROOT / "after.json").write_text(
                 json.dumps({"renderer_sha256": context["after"], "zone_read_confirmed": True})

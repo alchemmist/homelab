@@ -130,7 +130,7 @@ def main():
             )
             require(
                 "A" in result.split()
-                and any(ip in result.split() for ip in newmod.healthy_addresses(True, True)),
+                and any(ip in result.split() for ip in newmod.healthy_addresses(home_up=True, vps_up=True)),
                 "New authoritative record not confirmed",
             )
             (ROOT / "after.json").write_text(

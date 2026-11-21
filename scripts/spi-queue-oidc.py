@@ -31,7 +31,7 @@ FLOWS = {
 }
 
 
-def require(message: str, *, ok: bool):
+def require(message: str, *, ok: bool) -> None:
     if not ok:
         raise RuntimeError(message)
 
@@ -107,8 +107,8 @@ class API:
                 "Native API transport failed; do not retry ambiguous writes"
             ) from None
 
-    def rows(self, path: str):
-        result = []
+    def rows(self, path: str) -> list[dict[str, object]]:
+        result: list[dict[str, object]] = []
         for page in range(1, 21):
             data = self.call(
                 "GET",
@@ -120,7 +120,8 @@ class API:
                 and isinstance(data.get("results"), list)
                 and all(isinstance(row, dict) for row in data["results"]),
             )
-            pagination = data.get("pagination")
+            row_data = cast("dict[str, object]", data)
+            pagination = row_data.get("pagination")
             require(
                 "Malformed native pagination", ok=pagination is None or isinstance(pagination, dict)
             )
@@ -129,13 +130,13 @@ class API:
                 "Malformed native pagination cursor",
                 ok=next_page is None or (type(next_page) is int and next_page in (0, page + 1)),
             )
-            result.extend(data["results"])
+            result.extend(cast("list[dict[str, object]]", row_data["results"]))
             if not next_page:
                 return result
         raise RuntimeError("Bounded native pagination exceeded")
 
 
-def one(api: API, path: str, field: str, value: object):
+def one(api: API, path: str, field: str, value: str | int) -> dict[str, object] | None:
     query = urllib.parse.urlencode({field: value})
     if path == "core/applications/":
         query += "&superuser_full_list=true"
