@@ -302,6 +302,9 @@ def main():
     )
     if not endpoint.startswith("unix://"):
         raise SystemExit("local Unix Docker socket required")
+    # Context variables must not override the verified socket on subsequent commands.
+    os.environ.pop("DOCKER_CONTEXT", None)
+    os.environ["DOCKER_HOST"] = endpoint
     for image in (VERSION, WORKLOAD):
         docker("image", "inspect", image)
     os.environ["K3S_TOKEN"] = TOKEN
