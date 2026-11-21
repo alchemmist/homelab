@@ -57,11 +57,18 @@ spec:
               value: "false"
             - name: TRUSTED_PROXY_COUNT
               value: "0"
-            - name: DATABASE_URL
+            - name: DATABASE_USERNAME
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.envSecretName }}
-                  key: DATABASE_URL
+                  key: DATABASE_USERNAME
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.envSecretName }}
+                  key: DATABASE_PASSWORD
+            - name: DATABASE_URL
+              value: {{ printf "postgresql+asyncpg://$(DATABASE_USERNAME):$(DATABASE_PASSWORD)@%s:%v/%s?sslmode=require" .Values.database.host .Values.database.port .Values.database.name | quote }}
             - name: APP_MASTER_KEY
               valueFrom:
                 secretKeyRef:

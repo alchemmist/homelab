@@ -23,7 +23,11 @@ cookieSecure: true
 adminUi: false
 updateMode: polling
 timezone: Europe/Moscow
-# Secret is created in the cluster. DATABASE_URL is still a placeholder.
+# Role and database schoolbot are created on pg-internal. Password stays in the secret.
+database:
+  host: pg-internal-rw.postgres.svc.cluster.local
+  port: 5432
+  name: schoolbot
 envSecretName: schoolbot-env
 podSecurity:
   user: 10001
