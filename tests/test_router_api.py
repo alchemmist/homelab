@@ -195,7 +195,7 @@ class RouterApiTests(unittest.TestCase):
         request = router.request
         lost = False
 
-        def lose_delete_response(path, data=None):
+        def lose_delete_response(path, data=None) -> object:
             nonlocal lost
             response = request(path, data)
             if data and "deleteSelPortFw" in data and not lost:
@@ -215,7 +215,7 @@ class RouterApiTests(unittest.TestCase):
         request = router.request
         lost = False
 
-        def lose_add_response(path, data=None):
+        def lose_add_response(path, data=None) -> object:
             nonlocal lost
             response = request(path, data)
             if data and data.get("addPortFwFlag") == "1" and not lost:
@@ -235,7 +235,7 @@ class RouterApiTests(unittest.TestCase):
         router = SimulatedRouter()
         request = router.request
 
-        def concurrent_change_after_delete(path, data=None):
+        def concurrent_change_after_delete(path, data=None) -> object:
             response = request(path, data)
             if data and "deleteSelPortFw" in data:
                 router.rows.append(forward("192.168.0.50", 9000, 9000, "TCP", "concurrent"))

@@ -1,7 +1,9 @@
 ---
 - name: Read the Prometheus node requested by the monitoring values
   ansible.builtin.set_fact:
-    monitoring_prometheus_desired_node: "{{ (lookup('file', playbook_dir + '/../../charts/prometheus/values.yaml') | from_yaml)['kube-prometheus-stack'].prometheus.prometheusSpec.nodeSelector['kubernetes.io/hostname'] }}"
+    monitoring_prometheus_desired_node: "{{ (lookup('file', playbook_dir + \
+      '/../../charts/prometheus/values.yaml') | from_yaml)['kube-prometheus-stack']\
+      .prometheus.prometheusSpec.nodeSelector['kubernetes.io/hostname'] }}"
 
 - name: Create the Thanos staging directory
   ansible.builtin.file:
@@ -49,13 +51,21 @@
 - name: Decide whether Prometheus can leave socrat-1
   ansible.builtin.command:
     argv: [python3, "{{ monitoring_thanos_directory }}/prometheus_relocate.py"]
-    stdin: "{{ {'desired': monitoring_prometheus_desired_node, 'relocate': monitoring_prometheus_relocate | default(false) | bool, 'pods': ((monitoring_thanos_prometheus_pods.stdout | from_json)['items'] if monitoring_thanos_prometheus_pods.rc == 0 else []), 'volumes': (monitoring_thanos_persistent_volumes.stdout | from_json)['items']} | to_json }}"
+    stdin: >-
+      {{ {'desired': monitoring_prometheus_desired_node,
+      'relocate': monitoring_prometheus_relocate | default(false) | bool,
+      'pods': ((monitoring_thanos_prometheus_pods.stdout | from_json)['items']
+      if monitoring_thanos_prometheus_pods.rc == 0 else []),
+      'volumes': (monitoring_thanos_persistent_volumes.stdout | from_json)['items']}
+      | to_json }}
   register: monitoring_thanos_prometheus_decision
   changed_when: false
 
 - name: Refuse to install the cascade while Prometheus data is still on socrat-1
   ansible.builtin.fail:
-    msg: Prometheus storage cannot be relocated by deleting its PVC. Preserve the existing volume and use a separately verified backup and restore procedure.
+    msg: >-
+      Prometheus storage cannot be relocated by deleting its PVC. Preserve the
+      existing volume and use a separately verified backup and restore procedure.
   when: (monitoring_thanos_prometheus_decision.stdout | from_json).action == 'refuse'
 
 - name: Measure cascade node capacity
@@ -67,7 +77,10 @@
         import json, os
         disk = os.statvfs("/")
         memory = dict(line.split(":", 1) for line in open("/proc/meminfo"))
-        print(json.dumps({"disk_available": disk.f_bavail * disk.f_frsize, "memory_available": int(memory["MemAvailable"].split()[0]) * 1024}))
+        print(json.dumps({
+            "disk_available": disk.f_bavail * disk.f_frsize,
+            "memory_available": int(memory["MemAvailable"].split()[0]) * 1024,
+        }))
   delegate_to: "{{ item.name }}"
   loop: "{{ monitoring_thanos_nodes }}"
   register: monitoring_thanos_capacity
@@ -77,8 +90,11 @@
   ansible.builtin.assert:
     that:
       - (item.stdout | from_json).disk_available | int >= item.item.disk_bytes | int
-      - item.item.memory_bytes | int == 0 or (item.stdout | from_json).memory_available | int >= item.item.memory_bytes | int
-    fail_msg: "Thanos needs 80 GiB and 6 GiB available RAM on socrat-0, 40 GiB on socrat-1, and 20 GiB on socrat-3."
+      - >-
+        item.item.memory_bytes | int == 0 or (item.stdout | from_json).memory_available
+        | int >= item.item.memory_bytes | int
+    fail_msg: "Thanos needs 80 GiB and 6 GiB available RAM on socrat-0,
+      40 GiB on socrat-1, and 20 GiB on socrat-3."
   loop: "{{ monitoring_thanos_capacity.results }}"
 
 - name: Create the Thanos raw directories on socrat-0
@@ -115,7 +131,8 @@
 
 - name: Download the pinned Thanos archive
   ansible.builtin.get_url:
-    url: "https://github.com/thanos-io/thanos/releases/download/v{{ monitoring_thanos_version }}/thanos-{{ monitoring_thanos_version }}.linux-amd64.tar.gz"
+    url: "https://github.com/thanos-io/thanos/releases/download/v{{
+      monitoring_thanos_version }}/thanos-{{ monitoring_thanos_version }}.linux-amd64.tar.gz"
     dest: "{{ monitoring_thanos_directory }}/thanos.tar.gz"
     checksum: "sha256:{{ monitoring_thanos_archive_sha256 }}"
     mode: "0644"
@@ -125,11 +142,13 @@
     src: "{{ monitoring_thanos_directory }}/thanos.tar.gz"
     dest: "{{ monitoring_thanos_directory }}"
     remote_src: true
-    creates: "{{ monitoring_thanos_directory }}/thanos-{{ monitoring_thanos_version }}.linux-amd64/thanos"
+    creates: "{{ monitoring_thanos_directory }}/thanos-{{
+      monitoring_thanos_version }}.linux-amd64/thanos"
 
 - name: Install the Thanos binary on socrat-0
   ansible.builtin.copy:
-    src: "{{ monitoring_thanos_directory }}/thanos-{{ monitoring_thanos_version }}.linux-amd64/thanos"
+    src: "{{ monitoring_thanos_directory }}/thanos-{{
+      monitoring_thanos_version }}.linux-amd64/thanos"
     dest: /usr/local/bin/thanos
     mode: "0755"
     remote_src: true

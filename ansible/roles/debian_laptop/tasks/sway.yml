@@ -42,16 +42,16 @@
     state: directory
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
-    mode: '0755'
+    mode: "0755"
   loop: [sway, waybar, wofi, gtk-3.0, homelab-desktop]
 
 - name: Deploy the Sway desktop and panel configuration
   ansible.builtin.template:
-    src: "sway/{{ item.src }}"
+    src: sway/{{ item.src }}
     dest: "{{ homelab_user_home }}/.config/{{ item.dest }}"
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
-    mode: '0644'
+    mode: "0644"
     backup: true
   loop:
     - {src: config.j2, dest: sway/config}
@@ -62,11 +62,11 @@
 
 - name: Install mouse-friendly desktop launchers
   ansible.builtin.copy:
-    src: "sway/{{ item }}"
-    dest: "/usr/local/bin/{{ item }}"
+    src: sway/{{ item }}
+    dest: /usr/local/bin/{{ item }}
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
   loop: [homelab-sway-app,
          homelab-sway-menu,
          homelab-sway-shortcuts,
@@ -81,12 +81,12 @@
     value: "{{ item.value }}"
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
-    mode: '0644'
+    mode: "0644"
   loop:
     - {key: gtk-theme-name, value: Adwaita}
     - {key: gtk-icon-theme-name, value: Papirus}
-    - {key: gtk-font-name, value: 'Noto Sans 11'}
-    - {key: gtk-decoration-layout, value: ':minimize,maximize,close'}
+    - {key: gtk-font-name, value: Noto Sans 11}
+    - {key: gtk-decoration-layout, value: ":minimize,maximize,close"}
 
 - name: Make Firefox the browser for opened links
   community.general.ini_file:
@@ -96,7 +96,7 @@
     value: firefox-esr.desktop
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
-    mode: '0644'
+    mode: "0644"
     backup: true
   loop: [x-scheme-handler/http, x-scheme-handler/https, text/html]
 
@@ -108,11 +108,11 @@
     value: "{{ item.value }}"
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
-    mode: '0644'
+    mode: "0644"
     backup: true
   loop:
-    - {key: startup_mode, value: '"Windowed"'}
-    - {key: decorations, value: '"Full"'}
+    - {key: startup_mode, value: "\"Windowed\""}
+    - {key: decorations, value: "\"Full\""}
 
 - name: Let the desktop account read keyboards for the graphics wake key
   ansible.builtin.user:
@@ -134,7 +134,7 @@
       exec /usr/bin/sway --config "$HOME/.config/sway/config"
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
     validate: /bin/sh -n %s
 
 - name: Register the lightweight desktop with the existing login manager
@@ -150,10 +150,12 @@
       DesktopNames=sway
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
 
 - name: Validate Sway configuration before changing the default session
-  ansible.builtin.command: /usr/bin/sway --validate --config {{ homelab_user_home }}/.config/sway/config
+  ansible.builtin.command: >-
+    /usr/bin/sway --validate --config
+    {{ homelab_user_home }}/.config/sway/config
   become: false
   environment:
     WLR_BACKENDS: headless
@@ -169,7 +171,7 @@
     value: "{{ item.value }}"
     owner: root
     group: root
-    mode: '0600'
+    mode: "0600"
     backup: true
   loop:
     - {key: XSession, value: homelab-sway}
@@ -184,5 +186,5 @@
     value: homelab-sway
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
-    mode: '0644'
+    mode: "0644"
 ...

@@ -255,7 +255,14 @@ if __name__ == "__main__":
             main()
         else:
             raise RuntimeError("unsupported option")
-    except Exception as exc:
+    except (
+        RuntimeError,
+        OSError,
+        ValueError,
+        KeyError,
+        TypeError,
+        subprocess.SubprocessError,
+    ) as exc:
         print(
             "Argo CD Authentik OIDC setup failed at "
             + STAGE

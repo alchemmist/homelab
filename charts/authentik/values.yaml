@@ -288,16 +288,16 @@ server:
   image:
     # -- Repository to use to the authentik server
     # @default -- `""` (defaults to global.image.repository)
-    repository: "" # defaults to global.image.repository
+    repository: ""  # defaults to global.image.repository
     # -- Tag to use to the authentik server
     # @default -- `""` (defaults to global.image.tag)
-    tag: "" # defaults to global.image.tag
+    tag: ""  # defaults to global.image.tag
     # -- Digest to use to the authentik server
     # @default -- `""` (defaults to global.image.digest)
-    digest: "" # defaults to global.image.digest
+    digest: ""  # defaults to global.image.digest
     # -- Image pull policy to use to the authentik server
     # @default -- `""` (defaults to global.image.pullPolicy)
-    pullPolicy: "" # defaults to global.image.pullPolicy
+    pullPolicy: ""  # defaults to global.image.pullPolicy
 
   # -- Secrets with credentials to pull images from a private registry
   # @default -- `[]` (defaults to global.imagePullSecrets)
@@ -721,16 +721,16 @@ worker:
   image:
     # -- Repository to use to the authentik worker
     # @default -- `""` (defaults to global.image.repository)
-    repository: "" # defaults to global.image.repository
+    repository: ""  # defaults to global.image.repository
     # -- Tag to use to the authentik worker
     # @default -- `""` (defaults to global.image.tag)
-    tag: "" # defaults to global.image.tag
+    tag: ""  # defaults to global.image.tag
     # -- Digest to use to the authentik worker
     # @default -- `""` (defaults to global.image.digest)
-    digest: "" # defaults to global.image.digest
+    digest: ""  # defaults to global.image.digest
     # -- Image pull policy to use to the authentik worker
     # @default -- `""` (defaults to global.image.pullPolicy)
-    pullPolicy: "" # defaults to global.image.pullPolicy
+    pullPolicy: ""  # defaults to global.image.pullPolicy
 
   # -- Secrets with credentials to pull images from a private registry
   # @default -- `[]` (defaults to global.imagePullSecrets)
@@ -1126,7 +1126,7 @@ postgresql:
       max_connections = 500
     extraEnvVars:
       - name: POSTGRES_DB
-        value: '{{ (include "postgresql.v1.database" .) }}'
+        value: "{{ (include \"postgresql.v1.database\" .) }}"
     resourcesPreset: none
     # persistence:
     #   enabled: true

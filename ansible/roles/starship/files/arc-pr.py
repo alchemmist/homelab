@@ -24,7 +24,7 @@ def arc(args, cwd=None):
             text=True,
             timeout=15,
         ).stdout.strip()
-    except Exception:
+    except (OSError, subprocess.SubprocessError):
         return ""
 
 
@@ -46,7 +46,7 @@ def refresh(root, branch, base):
         num = j.get("id")
         if num and j.get("status") not in ("merged", "discarded", "closed"):
             pr_out = f"(#{num})"
-    except Exception:
+    except (ValueError, AttributeError, TypeError):
         pr_out = ""
     write_atomic(base + ".pr", pr_out)
 
