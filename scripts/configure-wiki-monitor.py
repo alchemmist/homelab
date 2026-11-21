@@ -1,3 +1,4 @@
+"""Configure wiki uptime monitoring monitors via the Kuma socket.io API."""
 import argparse
 import getpass
 import json
