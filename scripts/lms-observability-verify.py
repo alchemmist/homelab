@@ -254,7 +254,10 @@ print(json.dumps(dict(cookie=cookie)))
             raise RuntimeError("Live Grafana browser verification failed: " + ui.stderr[-2500:])
         ui_proof = json.loads(ui.stdout)
         loki = cast("LokiDatasource", get_json(args.grafana_url + "/api/datasources/uid/loki"))
-        derived = cast("list[dict[str, str]]", loki["jsonData"].get("derivedFields", []))
+        # Grafana may omit jsonData for an incompletely provisioned datasource;
+        # treat that as no derived fields rather than turning verification into a
+        # KeyError unrelated to the trace-link assertion.
+        derived = cast("list[dict[str, str]]", loki.get("jsonData", {}).get("derivedFields", []))
         link_verified = any(
             field.get("name") == "TraceID"
             and field.get("datasourceUid") == "tempo"
