@@ -25,84 +25,107 @@ def kube_secret(ns, name):
     return json.loads(raw) if raw.strip() else None
 
 
+def wait_forward(port) -> None:
+    """Block until the local port-forward accepts connections."""
+    for _ in range(40):
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=1):
+                return
+        except OSError:
+            time.sleep(0.25)
+
+
+def start_forward():
+    """Start a port-forward to the litellm service; return (port, forward)."""
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    forward = subprocess.Popen(
+        ["kubectl", "-n", "llm", "port-forward", "svc/litellm", f"{port}:4000"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    wait_forward(port)
+    return port, forward
+
+
+def stop_forward(forward) -> None:
+    """Terminate and reap the local port-forward process."""
+    forward.terminate()
+    forward.wait(timeout=10)
+
+
+def monori_secret_current(current) -> bool:
+    """Return True if the secret already holds the openhands-monori key alias."""
+    return bool(
+        current and current["metadata"].get("annotations", {}).get("homelab/key-alias")
+        == "openhands-monori"
+    )
+
+
+def create_model_secret() -> None:
+    """Generate the scoped LiteLLM key and store it in the openhands-model Secret."""
+    master = (
+        base64.b64decode(kube_secret("llm", "litellm-env")["data"]["LITELLM_MASTER_KEY"])
+        .decode()
+        .strip()
+    )
+    port, forward = start_forward()
+    headers = {"Authorization": "Bearer " + master, "Content-Type": "application/json"}
+    created = None
+    try:
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{port}/key/generate",
+            headers=headers,
+            data=json.dumps(
+                {
+                    "key_alias": "openhands-monori",
+                    "models": ["v-deepseek-uc", "qwen3.8-27b"],
+                    "max_parallel_requests": 3,
+                    "metadata": {"purpose": "owner-approved OpenHands; no paid fallback"},
+                }
+            ).encode(),
+        )
+        created = json.load(urllib.request.urlopen(request, timeout=30))["key"]
+        payload = {
+            "apiVersion": "v1",
+            "kind": "Secret",
+            "metadata": {
+                "name": "openhands-model",
+                "namespace": "openhands",
+                "annotations": {"homelab/key-alias": "openhands-monori"},
+            },
+            "type": "Opaque",
+            "data": {"api-key": base64.b64encode(created.encode()).decode()},
+        }
+        subprocess.run(
+            ["kubectl", "apply", "-f", "-"],
+            input=json.dumps(payload),
+            text=True,
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+    except Exception:
+        if created:
+            request = urllib.request.Request(
+                f"http://127.0.0.1:{port}/key/delete",
+                headers=headers,
+                data=json.dumps({"keys": [created]}).encode(),
+            )
+            urllib.request.urlopen(request, timeout=30).close()
+        raise RuntimeError("Scoped model provisioning failed; values withheld") from None
+    finally:
+        stop_forward(forward)
+
+
 def main():
     dry = os.environ.get("PROVISION_OPENHANDS_DRY_RUN") == "1"
     current = kube_secret("openhands", "openhands-model")
-    if dry and (
-        not current
-        or current["metadata"].get("annotations", {}).get("homelab/key-alias") != "openhands-monori"
-    ):
+    if dry and not monori_secret_current(current):
         print("dry-run: would create openhands-monori without o-deepseek, max_parallel_requests 3")
         return
-    if (
-        not current
-        or current["metadata"].get("annotations", {}).get("homelab/key-alias") != "openhands-monori"
-    ):
-        master = (
-            base64.b64decode(kube_secret("llm", "litellm-env")["data"]["LITELLM_MASTER_KEY"])
-            .decode()
-            .strip()
-        )
-        with socket.socket() as s:
-            s.bind(("127.0.0.1", 0))
-            port = s.getsockname()[1]
-        forward = subprocess.Popen(
-            ["kubectl", "-n", "llm", "port-forward", "svc/litellm", f"{port}:4000"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        created = None
-        try:
-            for _ in range(40):
-                try:
-                    with socket.create_connection(("127.0.0.1", port), timeout=1):
-                        break
-                except OSError:
-                    time.sleep(0.25)
-            headers = {"Authorization": "Bearer " + master, "Content-Type": "application/json"}
-            request = urllib.request.Request(
-                f"http://127.0.0.1:{port}/key/generate",
-                headers=headers,
-                data=json.dumps(
-                    {
-                        "key_alias": "openhands-monori",
-                        "models": ["v-deepseek-uc", "qwen3.8-27b"],
-                        "max_parallel_requests": 3,
-                        "metadata": {"purpose": "owner-approved OpenHands; no paid fallback"},
-                    }
-                ).encode(),
-            )
-            created = json.load(urllib.request.urlopen(request, timeout=30))["key"]
-            payload = {
-                "apiVersion": "v1",
-                "kind": "Secret",
-                "metadata": {
-                    "name": "openhands-model",
-                    "namespace": "openhands",
-                    "annotations": {"homelab/key-alias": "openhands-monori"},
-                },
-                "type": "Opaque",
-                "data": {"api-key": base64.b64encode(created.encode()).decode()},
-            }
-            subprocess.run(
-                ["kubectl", "apply", "-f", "-"],
-                input=json.dumps(payload),
-                text=True,
-                check=True,
-                stdout=subprocess.DEVNULL,
-            )
-        except Exception:
-            if created:
-                request = urllib.request.Request(
-                    f"http://127.0.0.1:{port}/key/delete",
-                    headers=headers,
-                    data=json.dumps({"keys": [created]}).encode(),
-                )
-                urllib.request.urlopen(request, timeout=30).close()
-            raise RuntimeError("Scoped model provisioning failed; values withheld") from None
-        finally:
-            forward.terminate()
-            forward.wait(timeout=10)
+    if not monori_secret_current(current):
+        create_model_secret()
     key = base64.b64decode(kube_secret("openhands", "openhands-model")["data"]["api-key"]).decode()
     # o-deepseek rpm is shared. This key must not hold that model. Parallelism
     # stays at least 3 and is never lowered below the live key.
@@ -119,13 +142,8 @@ def main():
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
+    wait_forward(port)
     try:
-        for _ in range(40):
-            try:
-                with socket.create_connection(("127.0.0.1", port), timeout=1):
-                    break
-            except OSError:
-                time.sleep(0.25)
         headers = {"Authorization": "Bearer " + master, "Content-Type": "application/json"}
         info = json.load(
             urllib.request.urlopen(
@@ -159,8 +177,7 @@ def main():
         )
         urllib.request.urlopen(request, timeout=30).close()
     finally:
-        forward.terminate()
-        forward.wait(timeout=10)
+        stop_forward(forward)
     policy = (
         Path(__file__)
         .resolve()

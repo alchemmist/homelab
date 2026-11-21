@@ -7,11 +7,19 @@ transaction journal lives in a private local file on the Authentik container;
 contains metadata only, no cookie/client/encryption secrets. Do not auto-retry.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
 import hashlib
 import json
 import os
 import re
 from pathlib import Path
+from typing import Protocol, TypedDict
 from urllib.parse import urlsplit
 
 NAME = "spi-rustfs-browser-private"
@@ -25,7 +33,252 @@ FLOWS = {
 GROUPS = ("homelab-owner", "homelab-platform-operator")
 
 
+class MappingQuery(Protocol):
+    """A Django values-list query result capable of iteration."""
+
+    def values_list(self, *args: object, **kwargs: object) -> Iterable[int]:
+        """Return the selected primary keys as a flat iterable."""
+        ...
+
+
+class HandleProvider(Protocol):
+    """Handle of an ORM-related manager with a values-list query."""
+
+    def values_list(self, *args: object, **kwargs: object) -> Iterable[int]:
+        """Return the selected primary keys as a flat iterable."""
+        ...
+
+
+class OutpostLike(Protocol):
+    """Outpost instance exposing its provider relations."""
+
+    providers: HandleProvider
+
+
+class OutpostManager(Protocol):
+    """ORM manager exposing provider-filtered outpost queries."""
+
+    def filter(self, **kwargs: object) -> MappingQuery:
+        """Return the outposts matching the given filters."""
+        ...
+
+
+class OutpostModel(Protocol):
+    """Outpost ORM model class with a query manager."""
+
+    objects: OutpostManager
+
+
+class BindingQuery(Protocol):
+    """Ordered policy-binding queryset exposing column selection."""
+
+    def order_by(self, *args: object) -> BindingQuery:
+        """Return an ordered copy of the query."""
+        ...
+
+    def values(self, *args: object) -> Iterable[object]:
+        """Return the selected columns of the query as an iterable."""
+        ...
+
+
+class BindingManager(Protocol):
+    """ORM manager exposing target-filtered policy-binding queries."""
+
+    def filter(self, **kwargs: object) -> BindingQuery:
+        """Return the bindings matching the given filters."""
+        ...
+
+
+class BindingModel(Protocol):
+    """PolicyBinding ORM model class with a query manager."""
+
+    objects: BindingManager
+
+
+class ProviderLike(Protocol):
+    """Proxy/OAuth2 provider instance fields the contract check reads."""
+
+    pk: object
+    property_mappings: HandleProvider
+    redirect_uris: object
+    certificate_id: object
+    client_id: object
+    client_secret: str
+    signing_key_id: object
+    encryption_key_id: object
+
+
+class AppLike(Protocol):
+    """Application instance fields the contract check reads."""
+
+    pk: object
+    slug: object
+    policy_engine_mode: object
+
+
+class StateModels(TypedDict):
+    """ORM model classes the captured-state reader queries."""
+
+    bindings: BindingModel
+    outpost: OutpostModel
+
+
+class StateContext(TypedDict):
+    """Values the captured-state reader captures alongside its arguments."""
+
+    settings: dict[str, object]
+    native_guard: str
+    outpost: OutpostLike
+    models: StateModels
+
+
+def captured_state(
+    provider: ProviderLike, app: AppLike, context: StateContext
+) -> dict[str, object]:
+    """Capture the mutable deployment contract: settings, bindings, mappings."""
+    settings = context["settings"]
+    native_guard = context["native_guard"]
+    outpost = context["outpost"]
+    models = context["models"]
+    actual: dict[str, object] = {key: str(getattr(provider, key)) for key in settings}
+    actual["property_mappings"] = sorted(
+        str(x) for x in provider.property_mappings.values_list("pk", flat=True)
+    )
+    actual["redirect_uris"] = provider.redirect_uris
+    actual["certificate_id"] = str(provider.certificate_id)
+    actual["client_id"] = provider.client_id
+    actual["client_secret_sha256"] = hashlib.sha256(provider.client_secret.encode()).hexdigest()
+    actual["signing_key_id"] = str(provider.signing_key_id)
+    actual["encryption_key_id"] = str(provider.encryption_key_id)
+    bindings = list(
+        models["bindings"]
+        .objects.filter(target=app.pk)
+        .order_by("order")
+        .values(
+            "pk",
+            "group_id",
+            "user_id",
+            "policy_id",
+            "order",
+            "enabled",
+            "negate",
+            "failure_result",
+        )
+    )
+    return {
+        "provider": provider.pk,
+        "settings": actual,
+        "app": str(app.pk),
+        "slug": app.slug,
+        "mode": app.policy_engine_mode,
+        "bindings": bindings,
+        "native_guard": native_guard,
+        "outpost_providers": sorted(outpost.providers.values_list("pk", flat=True)),
+        "provider_outposts": sorted(
+            str(x)
+            for x in models["outpost"]
+            .objects.filter(providers=provider)
+            .values_list("pk", flat=True)
+        ),
+    }
+
+
+class DriftOutpost(Protocol):
+    """Outpost identity fields pinned by the drift check."""
+
+    managed: object
+    type: object
+
+
+class DriftHuman(Protocol):
+    """Human operator identity fields pinned by the drift check."""
+
+    username: object
+    uuid: object
+
+
+def require_outpost_shape(outpost: DriftOutpost) -> None:
+    """Fail unless the embedded proxy outpost keeps its managed identity."""
+    if outpost.managed != "goauthentik.io/outposts/embedded" or outpost.type != "proxy":
+        raise ValueError("outpost identity drift")
+
+
+def require_human_shape(human: DriftHuman) -> None:
+    """Fail unless the pinned human operator identity is unchanged."""
+    if human.username != "alchemmist" or str(human.uuid) != "9e33877a-3eaa-4541-98eb-8cdc10088ef6":
+        raise ValueError("human identity drift")
+
+
+def require_unique_origin(hosts: Iterable[str]) -> None:
+    """Fail if any existing provider already answers on the canonical origin."""
+    if any(authority(url) == authority(HOST) for url in hosts):
+        raise ValueError("canonical-host provider already exists")
+
+
+def require_fresh_journal(journal: Path) -> None:
+    """Fail if a rerun journal exists; interrupted applies are resolved manually."""
+    if journal.exists():
+        raise ValueError("journal already exists; no retry")
+
+
+def require_valid_action(action: str, nonce: str | None) -> None:
+    """Fail unless an explicit supported action carries a 128-bit hex nonce."""
+    if action not in ("plan", "apply", "rollback") or not re.fullmatch("[a-f0-9]{32}", nonce or ""):
+        raise ValueError("explicit action and random 128-bit operator nonce required")
+
+
+def ensure_journal_dir(root: Path, action: str) -> None:
+    """Prepare the private journal directory for mutating actions."""
+    if action == "plan":
+        return
+    if root.exists():
+        st = root.lstat()
+        if root.is_symlink() or st.st_uid != os.getuid() or st.st_mode & 0o077:
+            raise ValueError("unsafe journal directory")
+    else:
+        root.mkdir(mode=0o700)
+
+
+def require_safe_journal(journal: Path) -> None:
+    """Fail unless the journal file is an operator-owned private regular file."""
+    st = journal.lstat()
+    if journal.is_symlink() or st.st_uid != os.getuid() or st.st_mode & 0o077:
+        raise ValueError("unsafe journal")
+
+
+def expected_native_bindings() -> list[dict[str, object]]:
+    """Return the pinned group-only authorization binding set."""
+    return [
+        {
+            "group__name": name,
+            "user_id": None,
+            "policy_id": None,
+            "order": order,
+            "enabled": True,
+            "negate": False,
+            "failure_result": False,
+        }
+        for order, name in enumerate(GROUPS)
+    ]
+
+
+def require_default_flows() -> None:
+    """Fail unless each pinned flow keeps its default slug and primary key."""
+    from authentik.flows.models import Flow
+
+    for field, pk in FLOWS.items():
+        Flow.objects.get(
+            pk=pk,
+            slug={
+                "authentication_flow_id": "default-authentication-flow",
+                "authorization_flow_id": "default-provider-authorization-implicit-consent",
+                "invalidation_flow_id": "default-provider-invalidation-flow",
+            }[field],
+        )
+
+
 def authority(url):
+    """Execute authority."""
     parsed = urlsplit(url)
     if (
         parsed.scheme not in ("https", "http")
@@ -41,39 +294,28 @@ def authority(url):
 
 
 def digest(value):
+    """Execute digest."""
     return hashlib.sha256(json.dumps(value, sort_keys=True, default=str).encode()).hexdigest()
 
 
 def run(action="plan", nonce=None):
+    """Execute run."""
+    from django.db import transaction
     from authentik.core.models import Application, Group, User
-    from authentik.flows.models import Flow
     from authentik.outposts.models import Outpost
     from authentik.policies.models import PolicyBinding
     from authentik.providers.oauth2.models import OAuth2Provider, ScopeMapping
     from authentik.providers.proxy.models import ProxyProvider
-    from django.db import transaction
 
-    if action not in ("plan", "apply", "rollback") or not re.fullmatch("[a-f0-9]{32}", nonce or ""):
-        raise ValueError("explicit action and random 128-bit operator nonce required")
+    require_valid_action(action, nonce)
     root = Path("/tmp/rustfs-private-migration-" + nonce)
     journal = root / "metadata.json"
-    if action != "plan":
-        if root.exists():
-            st = root.lstat()
-            if root.is_symlink() or st.st_uid != os.getuid() or st.st_mode & 0o077:
-                raise ValueError("unsafe journal directory")
-        else:
-            root.mkdir(mode=0o700)
+    ensure_journal_dir(root, action)
     with transaction.atomic():
         outpost = Outpost.objects.select_for_update().get(pk=OUTPOST)
-        if outpost.managed != "goauthentik.io/outposts/embedded" or outpost.type != "proxy":
-            raise ValueError("outpost identity drift")
+        require_outpost_shape(outpost)
         human = User.objects.get(pk=5)
-        if (
-            human.username != "alchemmist"
-            or str(human.uuid) != "9e33877a-3eaa-4541-98eb-8cdc10088ef6"
-        ):
-            raise ValueError("human identity drift")
+        require_human_shape(human)
         native = OAuth2Provider.objects.get(pk=12, name="spi-rustfs-native")
         app_native = Application.objects.get(
             pk="3d0da327-3083-4906-b0d4-b5328795b2a0", provider=native
@@ -93,18 +335,7 @@ def run(action="plan", nonce=None):
                 "failure_result",
             )
         )
-        expected_bindings = [
-            {
-                "group__name": name,
-                "user_id": None,
-                "policy_id": None,
-                "order": order,
-                "enabled": True,
-                "negate": False,
-                "failure_result": False,
-            }
-            for order, name in enumerate(GROUPS)
-        ]
+        expected_bindings = expected_native_bindings()
         if app_native.policy_engine_mode != "any" or native_bindings != expected_bindings:
             raise ValueError("native authorization drift")
         native_guard = digest(
@@ -116,15 +347,7 @@ def run(action="plan", nonce=None):
             }
         )
         groups = [Group.objects.get(name=name) for name in GROUPS]
-        for field, pk in FLOWS.items():
-            Flow.objects.get(
-                pk=pk,
-                slug={
-                    "authentication_flow_id": "default-authentication-flow",
-                    "authorization_flow_id": "default-provider-authorization-implicit-consent",
-                    "invalidation_flow_id": "default-provider-invalidation-flow",
-                }[field],
-            )
+        require_default_flows()
         original = sorted(outpost.providers.values_list("pk", flat=True))
         settings = dict(
             name=NAME,
@@ -139,51 +362,19 @@ def run(action="plan", nonce=None):
         )
 
         def state(provider, app):
-            actual = {key: str(getattr(provider, key)) for key in settings}
-            actual["property_mappings"] = sorted(
-                str(x) for x in provider.property_mappings.values_list("pk", flat=True)
+            return captured_state(
+                provider,
+                app,
+                {
+                    "settings": settings,
+                    "native_guard": native_guard,
+                    "outpost": outpost,
+                    "models": {"bindings": PolicyBinding, "outpost": Outpost},
+                },
             )
-            actual["redirect_uris"] = provider.redirect_uris
-            actual["certificate_id"] = str(provider.certificate_id)
-            actual["client_id"] = provider.client_id
-            actual["client_secret_sha256"] = hashlib.sha256(
-                provider.client_secret.encode()
-            ).hexdigest()
-            actual["signing_key_id"] = str(provider.signing_key_id)
-            actual["encryption_key_id"] = str(provider.encryption_key_id)
-            bindings = list(
-                PolicyBinding.objects.filter(target=app.pk)
-                .order_by("order")
-                .values(
-                    "pk",
-                    "group_id",
-                    "user_id",
-                    "policy_id",
-                    "order",
-                    "enabled",
-                    "negate",
-                    "failure_result",
-                )
-            )
-            return {
-                "provider": provider.pk,
-                "settings": actual,
-                "app": str(app.pk),
-                "slug": app.slug,
-                "mode": app.policy_engine_mode,
-                "bindings": bindings,
-                "native_guard": native_guard,
-                "outpost_providers": sorted(outpost.providers.values_list("pk", flat=True)),
-                "provider_outposts": sorted(
-                    str(x)
-                    for x in Outpost.objects.filter(providers=provider).values_list("pk", flat=True)
-                ),
-            }
 
         if action == "rollback":
-            st = journal.lstat()
-            if journal.is_symlink() or st.st_uid != os.getuid() or st.st_mode & 0o077:
-                raise ValueError("unsafe journal")
+            require_safe_journal(journal)
             saved = json.loads(journal.read_text())
             provider = ProxyProvider.objects.select_for_update().get(
                 pk=saved["created"]["provider"], name=NAME
@@ -212,11 +403,7 @@ def run(action="plan", nonce=None):
             or Application.objects.filter(slug=NAME).exists()
         ):
             raise ValueError("name already exists; no adoption/overwrite")
-        if any(
-            authority(url) == authority(HOST)
-            for url in ProxyProvider.objects.values_list("external_host", flat=True)
-        ):
-            raise ValueError("canonical-host provider already exists")
+        require_unique_origin(ProxyProvider.objects.values_list("external_host", flat=True))
         if action == "plan":
             print(
                 json.dumps(
@@ -231,8 +418,7 @@ def run(action="plan", nonce=None):
                 )
             )
             return
-        if journal.exists():
-            raise ValueError("journal already exists; no retry")
+        require_fresh_journal(journal)
         provider = ProxyProvider.objects.create(**settings)
         # Exact installed ProxyProviderSerializer.create behavior (2026.8.5).
         provider.set_oauth_defaults()

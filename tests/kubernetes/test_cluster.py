@@ -2,8 +2,9 @@
 
 import importlib.util
 import json
-import subprocess
 from pathlib import Path
+import subprocess
+from typing import cast
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -18,6 +19,7 @@ NGINX_DIGEST = "sha256:b3c656d55d7ad751196f21b7fd2e8d4da9cb430e32f646adcf92441b7
 
 
 def run(argv, *, data=None, check=True, timeout=180):
+    """Run run."""
     result = subprocess.run(
         argv, input=data, text=True, capture_output=True, check=False, timeout=timeout
     )
@@ -29,8 +31,19 @@ def run(argv, *, data=None, check=True, timeout=180):
     return result
 
 
+class Kube(Protocol):
+    """Callable running `kubectl`, mirroring a types.SimpleNamespace-style wrapper."""
+
+    def __call__(
+        self, *args: str, data: str | None = None, check: bool = True, timeout: int = 180
+    ) -> subprocess.CompletedProcess[str]:
+        """Invoke kubectl with the given arguments."""
+        ...
+
+
 @pytest.fixture(scope="module")
 def cluster(tmp_path_factory):
+    """Run cluster."""
     directory = tmp_path_factory.mktemp("kind-private")
     directory.chmod(0o700)
     config = directory / "kubeconfig"
@@ -56,18 +69,21 @@ def cluster(tmp_path_factory):
         )
         config.chmod(0o600)
 
-        def kube(*args, **kwargs):
-            return run(
-                [
-                    "kubectl",
-                    "--kubeconfig",
-                    str(config),
-                    "--context",
-                    context,
-                    "--request-timeout=30s",
-                    *args,
-                ],
-                **kwargs,
+        def kube(*args, **kwargs) -> "subprocess.CompletedProcess[str]":
+            return cast(
+                "subprocess.CompletedProcess[str]",
+                run(
+                    [
+                        "kubectl",
+                        "--kubeconfig",
+                        str(config),
+                        "--context",
+                        context,
+                        "--request-timeout=30s",
+                        *args,
+                    ],
+                    **kwargs,
+                ),
             )
 
         view = json.loads(kube("config", "view", "-o", "json").stdout)
@@ -87,6 +103,7 @@ def cluster(tmp_path_factory):
 
 
 def test_release_reconciles_and_serves_http(cluster):
+    """Run test release reconciles and serves http."""
     _, config, context, kube = cluster
     ns = "chart-contract"
     kube("create", "namespace", ns)
@@ -128,6 +145,7 @@ def test_release_reconciles_and_serves_http(cluster):
 
 
 def test_apiserver_rejects_invalid_rendered_replica_count(cluster):
+    """Run test apiserver rejects invalid rendered replica count."""
     *_, kube = cluster
     rendered = run(
         ["helm", "template", "cats", str(ROOT / "charts/cats"), "--set", "replicaCount=-1"]
@@ -139,6 +157,7 @@ def test_apiserver_rejects_invalid_rendered_replica_count(cluster):
 
 
 def test_application_reader_is_enforced_by_real_rbac(cluster):
+    """Run test application reader is enforced by real rbac."""
     *_, kube = cluster
     spec = importlib.util.spec_from_file_location(
         "fixture_pki", ROOT / "scripts/otel-application-pki.py"
@@ -164,6 +183,7 @@ def test_application_reader_is_enforced_by_real_rbac(cluster):
 
 
 def test_local_pv_retains_identity_after_claim_deletion(cluster):
+    """Run test local pv retains identity after claim deletion."""
     name, _, _, kube = cluster
     ns = "storage-contract"
     kube("create", "namespace", ns)

@@ -5,7 +5,6 @@ import argparse
 import grp
 import json
 import os
-from pathlib import Path
 import pwd
 import re
 import shutil
@@ -13,6 +12,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 PROTECTED = {"root", "alchemmist", "ghactions", "nobody"}
 PRIVILEGED = {
@@ -143,6 +143,28 @@ def ssh_policy(name):
     )
 
 
+def enforce_account_state(
+    home: Path, keys: Path, account: pwd.struct_passwd, *, present: bool, locked: bool
+) -> None:
+    """Verify the post-apply invariants for a managed SSH account."""
+    require(present and locked, "Requested key/password lock missing after apply")
+    require(
+        stat.S_IMODE((home / ".ssh").stat().st_mode) == 0o700
+        and stat.S_IMODE(keys.stat().st_mode) == 0o600
+        and (home / ".ssh").stat().st_uid == keys.stat().st_uid == account.pw_uid,
+        "SSH file permissions/ownership incorrect after apply",
+    )
+
+
+def login_defs_uid_min() -> int:
+    """Return the configured minimum UID for regular accounts."""
+    uid_min = 1000
+    for line in Path("/etc/login.defs").read_text().splitlines():
+        if re.match(r"^\s*UID_MIN\s+\d+", line):
+            uid_min = int(line.split()[1])
+    return uid_min
+
+
 def inspect(name, expected=None, enforce=False):
     username(name)
     require(os.geteuid() == 0, "Account verification requires root")
@@ -159,11 +181,10 @@ def inspect(name, expected=None, enforce=False):
     if account is None:
         require(not enforce, "Account missing after apply")
         return {"username": name, "exists": False, "has_requested_key": False}
-    uid_min = 1000
-    for line in Path("/etc/login.defs").read_text().splitlines():
-        if re.match(r"^\s*UID_MIN\s+\d+", line):
-            uid_min = int(line.split()[1])
-    require(account.pw_uid >= uid_min and account.pw_gid != 0, "System/root account is protected")
+    require(
+        account.pw_uid >= login_defs_uid_min() and account.pw_gid != 0,
+        "System/root account is protected",
+    )
     require(
         any(line.startswith(name + ":") for line in Path("/etc/passwd").read_text().splitlines()),
         "Non-local account requires a separate identity provider procedure",
@@ -212,13 +233,7 @@ def inspect(name, expected=None, enforce=False):
             locked = fields[1].startswith(("!", "*"))
             break
     if enforce:
-        require(present and locked, "Requested key/password lock missing after apply")
-        require(
-            stat.S_IMODE((home / ".ssh").stat().st_mode) == 0o700
-            and stat.S_IMODE(keys.stat().st_mode) == 0o600
-            and (home / ".ssh").stat().st_uid == keys.stat().st_uid == account.pw_uid,
-            "SSH file permissions/ownership incorrect after apply",
-        )
+        enforce_account_state(home, keys, account, present=present, locked=locked)
     return {
         "username": name,
         "exists": True,

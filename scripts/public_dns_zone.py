@@ -72,6 +72,7 @@ TXT = [
 
 
 def healthy_addresses(home_up, vps_up):
+    """Execute healthy_addresses."""
     chosen = []
     if home_up:
         chosen.append(HOME)
@@ -83,6 +84,7 @@ def healthy_addresses(home_up, vps_up):
 
 
 def render(serial, home_up, vps_up):
+    """Execute render."""
     addresses = healthy_addresses(home_up, vps_up)
     lines = [
         "$ORIGIN alchemmist.xyz.",
@@ -109,6 +111,7 @@ def render(serial, home_up, vps_up):
 
 
 def probe(address, port, timeout):
+    """Execute probe."""
     sock = socket.socket()
     sock.settimeout(timeout)
     try:
@@ -121,6 +124,7 @@ def probe(address, port, timeout):
 
 
 def main():
+    """Execute main."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--serial", type=int, required=True)
     parser.add_argument("--output", type=Path, required=True)
