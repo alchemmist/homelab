@@ -32,11 +32,13 @@ FILES = [
 
 
 def require(ok, message):
+    """Fail with the given message unless the constraint holds."""
     if not ok:
         raise ValueError(message)
 
 
 def copy_pod(node, image, read_only):
+    """Build the credential-free copy pod manifest pinned to the data node."""
     require(
         isinstance(node, str) and node and "/" not in node and ".." not in node,
         "explicit data node required",
@@ -67,6 +69,7 @@ def copy_pod(node, image, read_only):
 
 
 def plan(node, image):
+    """Assemble the quiesced backup plan around the read-only copy pod."""
     pod = copy_pod(node, image, True)
     blob = json.dumps(pod)
     require("secret" not in blob and "NB_" not in blob, "backup pod must not carry credentials")
@@ -104,11 +107,13 @@ def plan(node, image):
 
 
 def outside(path):
+    """Require the backup destination to exist outside the Git worktree."""
     require(path is not None, "--out required")
     require(not path.resolve().is_relative_to(ROOT), "--out must be outside the Git worktree")
 
 
 def main():
+    """Write the backup plan and, when confirmed, execute the quiesced copy."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("command", choices=["plan", "execute"])
     p.add_argument("--node", required=True)

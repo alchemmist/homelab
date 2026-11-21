@@ -33,6 +33,8 @@ for task,(contract,faults,fixtures) in contracts.items():
  suite=yaml.safe_load((path/'tests.yaml').read_text())
  examples=[{'input':c['input'],'output':c['output']} for c in suite.get('cases',[]) if c.get('public')]
  data={'statement':(path/'statement.md').read_text(),'contract':contract,'examples':examples or fixtures,'example_origin':'canonical' if examples else 'operator_fixture','faults':[['empty program','pass'],*faults],'calls':0,'cases':[]}
- def sql(s):return "'"+s.replace("'","''")+"'"
+ def sql(s):
+  """Quote a string as a single SQL literal."""
+  return "'"+s.replace("'","''")+"'"
  print('INSERT INTO lms_certification.pilot(id,phase,data) VALUES ('+sql('basics/builtin-functions/'+task)+",'solve',"+sql(json.dumps(data,ensure_ascii=False))+"::jsonb) ON CONFLICT (id) DO UPDATE SET data=EXCLUDED.data WHERE pilot.phase='solve' AND pilot.data->>'contract'='draft_stdin' AND coalesce((pilot.data->>'calls')::int,0)=0;")
 print('COMMIT;')

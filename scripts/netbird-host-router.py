@@ -73,6 +73,7 @@ EXECUTABLE_MARKERS = (
 
 
 def require(ok, message):
+    """Fail with the given message unless the constraint holds."""
     if not ok:
         raise ValueError(message)
 
@@ -129,12 +130,14 @@ def default_facts():
 
 
 def parse_mib(value):
+    """Parse a Kubernetes-style memory limit such as "96m" into MiB."""
     match = re.fullmatch(r"([1-9][0-9]*)m", value or "")
     require(match is not None, "memory limit must look like 96m")
     return int(match.group(1))
 
 
 def client_image():
+    """Return the verified, digest-pinned NetBird 0.82.0 client image reference."""
     item = json.loads(LOCK.read_text())["images"]["client"]
     require(
         item["repository"] == "netbirdio/netbird" and item["tag"] == "0.82.0",
@@ -156,6 +159,7 @@ def _host_map(facts):
 
 
 def classify(host, address):
+    """Classify an address as input, forward, or unreachable for the host."""
     ip = ipaddress.ip_address(address)
     owned = {ipaddress.ip_address(item) for item in host["owned"]}
     if ip in owned:
@@ -167,6 +171,7 @@ def classify(host, address):
 
 
 def validate(facts):
+    """Enforce every reviewed invariant on the facts document after freezing."""
     require(
         isinstance(facts, dict) and facts.get("schema_version") == 1, "unsupported schema_version"
     )
@@ -307,6 +312,7 @@ def validate(facts):
 
 
 def blockers_for(facts):
+    """Return deployment blockers and operator notes derived from the validated facts."""
     facts = validate(facts)
     hosts = _host_map(facts)
     blockers = []
@@ -350,6 +356,7 @@ def blockers_for(facts):
 
 
 def bind_allowed(address, overlay_cidr):
+    """Return True only for a dedicated, non-loopback address inside the overlay."""
     try:
         addr = ipaddress.ip_address(address)
         overlay = ipaddress.ip_network(overlay_cidr, strict=True)
@@ -366,6 +373,7 @@ def bind_allowed(address, overlay_cidr):
 
 
 def roles(facts):
+    """Summarize each host's SSH delivery and Grafana roles from validated facts."""
     facts = validate(facts)
     hosts = _host_map(facts)
     return {
@@ -433,6 +441,7 @@ cat >"$tmp" <<'NFT'
 
 
 def assign_overlay(script, address, overlay_cidr):
+    """Substitute the concrete overlay IP into the verified firewall script."""
     require(
         bind_allowed(address, overlay_cidr), "overlay address is not a dedicated NetBird address"
     )
@@ -442,6 +451,7 @@ def assign_overlay(script, address, overlay_cidr):
 
 
 def firewall_rules(script, chain):
+    """Extract the rules declared for the given nftables chain from the script."""
     rules = []
     for line in script.splitlines():
         if line.startswith("add rule ip %s %s " % (TABLE, chain)):
@@ -762,6 +772,7 @@ def _client_env(facts):
 
 
 def assert_clean(filename, content):
+    """Require that a rendered file contains no forbidden privilege-escalation markers."""
     markers = EXECUTABLE_MARKERS
     if filename == "grafana-frontend.py":
         markers = (
@@ -783,6 +794,7 @@ def assert_clean(filename, content):
 
 
 def render_host(host, facts, image):
+    """Render and host-verify every deployment file for one host."""
     runtime = host["runtime"] or "docker"
     files = {
         "netbird-host-router.service": _unit(host, facts, image, runtime),
@@ -837,6 +849,7 @@ def render_host(host, facts, image):
 
 
 def build(facts):
+    """Build the full plan document and rendered file set from the validated facts."""
     facts = validate(facts)
     image = client_image()
     blockers, notes = blockers_for(facts)
@@ -885,6 +898,7 @@ def _outside_worktree(path):
 
 
 def write_plan(out, plan, rendered):
+    """Materialize the digested plan and per-host rendered files into a new directory."""
     require(_outside_worktree(out), "--out must be outside the Git worktree")
     target = Path(out)
     require(not target.exists(), "--out must be a new directory")
@@ -925,6 +939,7 @@ OWNED = {
 
 
 def apply_tree(plan_dir, root, host, overlay_ip=None):
+    """Verify digests and write the reviewed files into the target root directory."""
     plan_dir = Path(plan_dir)
     root = Path(root)
     plan = json.loads((plan_dir / "plan.json").read_text())
@@ -964,6 +979,7 @@ def apply_tree(plan_dir, root, host, overlay_ip=None):
 
 
 def main(argv):
+    """Dispatch the check, plan, or apply subcommand."""
     parser = argparse.ArgumentParser(
         description="Plan NetBird peers on existing socrat-0 and socrat-2 hosts"
     )

@@ -23,6 +23,7 @@ BASE = "https://netbird.socrat.alchemmist.xyz/api/"
 
 
 def subject(uuid=UUID, connector=CONNECTOR):
+    """Encode the raw owner UUID and connector into the protobuf subject string."""
     a, b = uuid.encode(), connector.encode()
     return (
         base64.b64encode(b"\x0a" + bytes([len(a)]) + a + b"\x12" + bytes([len(b)]) + b)
@@ -32,6 +33,7 @@ def subject(uuid=UUID, connector=CONNECTOR):
 
 
 def target_user(users, expected):
+    """Resolve the exact owner user from the subject encoding, refusing look-alikes."""
     if expected != subject():
         raise ValueError(
             "refusing subject: requires encoded raw owner UUID plus exact connector, never email"
@@ -59,6 +61,7 @@ def target_user(users, expected):
 
 
 def network_snapshot(api, allow_owner_device=False):
+    """Verify that no network grants remain and collect the sole allowed owner device."""
     for name in ["setup-keys", "policies", "networks"]:
         if api(name) != []:
             raise ValueError("unexpected network grants; stop")
@@ -84,6 +87,7 @@ def network_snapshot(api, allow_owner_device=False):
 
 
 def main():
+    """Hand over NetBird ownership to the exact reviewed subject user."""
     os.umask(0o077)
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--subject", required=True)

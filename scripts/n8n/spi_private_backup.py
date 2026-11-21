@@ -14,6 +14,7 @@ import time
 
 
 def backup(source, directory, max_bytes=512 * 1024 * 1024, deadline_seconds=60):
+    """Stream a consistent SQLite backup to stdout within size and time bounds."""
     if deadline_seconds <= 0 or max_bytes <= 0:
         raise ValueError("invalid bounds")
     start = time.monotonic()
@@ -120,6 +121,7 @@ def backup(source, directory, max_bytes=512 * 1024 * 1024, deadline_seconds=60):
 
 
 def main():
+    """Run the backup from CLI arguments and report only an opaque failure flag."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--source", default="/data/spi.sqlite")
     p.add_argument("--private-pvc-directory", required=True)

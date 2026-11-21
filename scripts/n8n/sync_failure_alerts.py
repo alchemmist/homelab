@@ -16,10 +16,12 @@ ALERTS_ID = "b2TlucyOTiZP9CzN"
 
 
 def graph(w):
+    """Return the workflow's nodes and connections for graph comparison."""
     return {k: w.get(k) for k in ("nodes", "connections")}
 
 
 def guard(w, target):
+    """Refuse binding when an error workflow is already set or a draft differs from the published graph."""
     if w.get("settings", {}).get("errorWorkflow") not in (None, "", target):
         raise RuntimeError("Existing error handler differs; refusing overwrite")
     published = w.get("activeVersion")
@@ -30,10 +32,12 @@ def guard(w, target):
 
 
 def body(w):
+    """Deep-copy the mutable workflow fields accepted by the PUT endpoint."""
     return {k: copy.deepcopy(w[k]) for k in ("name", "nodes", "connections", "settings")}
 
 
 def bind(api, before, target):
+    """Atomically set the errorWorkflow setting after a fresh compare-and-verify cycle."""
     # Fresh compare immediately before mutation; API has no documented CAS.
     fresh = api("GET", "workflows/" + before["id"])
     for k in ("name", "nodes", "connections", "settings", "active", "versionId", "activeVersionId"):
@@ -58,6 +62,7 @@ def bind(api, before, target):
 
 
 def protected_static(w):
+    """Mask native GitHub webhook registration state before comparing staticData."""
     # Native active-workflow updates delete/recreate GitHub subscriptions. Never
     # restore the obsolete signing secret or suppress drift in other node state.
     state = copy.deepcopy(w.get("staticData"))
@@ -76,6 +81,7 @@ def protected_static(w):
 
 
 def check(before, after, target, verify_static=True):
+    """Verify the workflow is unchanged except for the freshly bound error handler."""
     if (
         graph(before) != graph(after)
         or before["name"] != after["name"]
@@ -95,6 +101,7 @@ def check(before, after, target, verify_static=True):
 
 
 def main():
+    """Plan or apply binding the failure-alert workflow as the n8n error handler."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     args = p.parse_args()
