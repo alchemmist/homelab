@@ -112,7 +112,7 @@ class PrivateDnsRoleTests(unittest.TestCase):
         )
         self.assertNotEqual(result.returncode, 0)
 
-    def run_validation(self, variables) -> subprocess.CompletedProcess[str]:
+    def run_validation(self, variables: dict[str, str]) -> subprocess.CompletedProcess[str]:
         playbook = """
 - hosts: localhost
   connection: local
