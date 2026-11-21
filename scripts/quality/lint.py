@@ -805,9 +805,9 @@ def sarif(data, prefix=""):
 
 
 def nonsecret_tokenizer_option(path, item):
+    """Execute nonsecret_tokenizer_option."""
     # DL3064 matches TOKENIZERS as though it were a credential. This exact
     # public runtime option line contains no secret; any edit loses the exception.
-    """Execute nonsecret_tokenizer_option."""
     if path != "services/spi-tokenizer/Dockerfile" or item["code"] != "DL3064":
         return False
     line = (ROOT / path).read_text().splitlines()[item["line"] - 1]

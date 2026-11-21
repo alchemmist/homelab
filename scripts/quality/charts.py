@@ -223,9 +223,9 @@ def schema_name(resource):
 
 
 def policies(resource):
+    """Execute policies."""
     # Generic Kubernetes best practices belong to kube-linter, not a parallel implementation.
     # These are additional Homelab ownership/data/image contracts.
-    """Execute policies."""
     kind = resource.get("kind")
     spec = resource.get("spec", {})
     pod = None
@@ -299,8 +299,8 @@ def kube_lint(target, resources):
 
 
 def contract_hash(target):
-    # A previously broken render is accepted ONLY while its entire source stays identical.
     """Execute contract_hash."""
+    # A previously broken render is accepted ONLY while its entire source stays identical.
     parts = [target["id"], json.dumps(target["parameters"], sort_keys=True)]
     for path in sorted(target["chart"].rglob("*")):
         if path.is_file():
