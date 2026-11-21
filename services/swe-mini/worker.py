@@ -8,6 +8,7 @@ from pathlib import Path
 import subprocess
 import sys
 import time
+from typing import cast
 
 from policy import (
     LANES,
@@ -105,115 +106,92 @@ def harden_parent():
         raise RuntimeError("Authenticated non-dumpable worker wrapper required")
 
 
-def main():
-    harden_parent()
-    ART.mkdir(parents=True, exist_ok=True)
-    Path("/workspace/tmp").mkdir(exist_ok=True)
-    lane = os.environ["LANE"]
-    phase = os.environ.get("PHASE", "work")
-    revision = os.environ["REVISION"]
-    assert len(revision) == 40 and all(c in "0123456789abcdef" for c in revision)
-    ROOT.parent.mkdir(exist_ok=True)
-    if lane == "smoke":
-        ROOT.mkdir(exist_ok=True)
-        (ART / "task.txt").write_text(
-            "This is an isolated autonomy acceptance test. Execute a bash command to write exactly swe-mini-autonomy-ok to /workspace/repo/proof.txt. Then read the file using a separate bash command, verify its contents, and explicitly submit with echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT. Do not access the network or any other files."
-        )
-        rc = command([sys.executable, "/app/worker.py", "--agent"], timeout=900)
-        exit_file = ART / "agent-exit.json"
-        exit_result = json.loads(exit_file.read_text()) if exit_file.exists() else {}
-        status = exit_result.get("exit_status", "MissingExit")
-        marker = ROOT / "proof.txt"
-        valid = marker.exists() and marker.read_text().strip() == "swe-mini-autonomy-ok"
-        print(
-            signed_result(
-                dict(
-                    lane=lane,
-                    phase=phase,
-                    revision=revision,
-                    agent_rc=rc,
-                    agent_status=status,
-                    baseline={"isolated_shell": 0},
-                    checks={
-                        "marker": 0 if valid else 1,
-                        "multiple_calls": 0 if exit_result.get("n_calls", 0) >= 2 else 1,
-                    },
-                    changes=[],
-                    report="Native mini-swe-agent + configured DeepSeek: isolated shell execution and explicit submission acceptance. Next real task must start automatically.",
-                )
-            ),
-            flush=True,
-        )
-        return
-    if command(
-        ["git", "clone", "--quiet", "https://github.com/alchemmist/monori.git", str(ROOT)],
-        cwd=ROOT.parent,
-    ):
-        raise RuntimeError("Clone failed")
-    if command(["git", "checkout", "--detach", revision]):
-        raise RuntimeError("Checkout failed")
-    setup = {
-        "python": command(
-            ["uv", "sync", "--locked", "--group", "test", "--group", "analyze", "--group", "audit"]
+def _smoke_lane(lane: str, phase: str, revision: str) -> None:
+    """Isolated autonomy acceptance: shell execution plus explicit submission."""
+    ROOT.mkdir(exist_ok=True)
+    (ART / "task.txt").write_text(
+        "This is an isolated autonomy acceptance test. Execute a bash command to write exactly swe-mini-autonomy-ok to /workspace/repo/proof.txt. Then read the file using a separate bash command, verify its contents, and explicitly submit with echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT. Do not access the network or any other files."
+    )
+    rc = command([sys.executable, "/app/worker.py", "--agent"], timeout=900)
+    exit_file = ART / "agent-exit.json"
+    exit_result = json.loads(exit_file.read_text()) if exit_file.exists() else {}
+    status = exit_result.get("exit_status", "MissingExit")
+    marker = ROOT / "proof.txt"
+    valid = marker.exists() and marker.read_text().strip() == "swe-mini-autonomy-ok"
+    print(
+        signed_result(
+            dict(
+                lane=lane,
+                phase=phase,
+                revision=revision,
+                agent_rc=rc,
+                agent_status=status,
+                baseline={"isolated_shell": 0},
+                checks={
+                    "marker": 0 if valid else 1,
+                    "multiple_calls": 0 if exit_result.get("n_calls", 0) >= 2 else 1,
+                },
+                changes=[],
+                report="Native mini-swe-agent + configured DeepSeek: isolated shell execution and explicit submission acceptance. Next real task must start automatically.",
+            )
         ),
-        "node": command(
-            ["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], cwd=ROOT / "web"
+        flush=True,
+    )
+
+
+def _baseline_checks(setup: "dict[str, object]") -> "dict[str, object]":
+    """Baseline phase status; frontend checks may be deferred under the bootstrap path."""
+    if not bool(setup["node"]):
+        return cast("dict[str, object]", checks())
+    return {
+        "backend": command(
+            [
+                "uv",
+                "run",
+                "--locked",
+                "--group",
+                "test",
+                "pytest",
+                "-q",
+                "server/tests",
+                "-m",
+                "not integration",
+            ]
         ),
+        "frontend": 125,
+        "build": 125,
     }
-    if setup["python"]:
-        raise RuntimeError("Python dependency setup failed; see bounded command log")
-    original_package = json.loads(
-        subprocess.check_output(["git", "show", revision + ":web/package.json"], cwd=ROOT)
-    )
-    baseline = (
-        checks()
-        if not setup["node"]
-        else {
-            "backend": command(
-                [
-                    "uv",
-                    "run",
-                    "--locked",
-                    "--group",
-                    "test",
-                    "pytest",
-                    "-q",
-                    "server/tests",
-                    "-m",
-                    "not integration",
-                ]
-            ),
-            "frontend": 125,
-            "build": 125,
-        }
-    )
-    bootstrap = bool(setup["node"])
-    candidate_checks = None
-    if phase == "review":
-        proposal = json.loads(Path("/proposal/proposal.json").read_text())
-        for item in validate_changes(proposal["changes"]):
-            p = ROOT / item["path"]
-            p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_bytes(base64.b64decode(item["content"]))
-        # Fresh installation, BEFORE any reviewer-model command can alter tools or .venv.
-        # A work-agent's writable dependency cache is never trusted as validation.
-        if dependency_repair(proposal["changes"]):
-            validate_dependency_update(proposal["changes"], original_package)
-            if command(
-                ["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], cwd=ROOT / "web"
-            ):
-                raise RuntimeError("Candidate dependencies do not install cleanly")
-        candidate_checks = checks()
-        task = """Independently review the existing uncommitted patch. Do not implement or change the patch.
+
+
+def _review_candidate(original_package: "dict[str, object]") -> "tuple[dict[str, object], object]":
+    """Apply the reviewer's candidate and install its prior dependency repair."""
+    proposal = cast("dict[str, object]", json.loads(Path("/proposal/proposal.json").read_text()))
+    for item in validate_changes(proposal["changes"]):
+        p = ROOT / item["path"]
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(base64.b64decode(item["content"]))
+    # Fresh installation, BEFORE any reviewer-model command can alter tools or .venv.
+    # A work-agent's writable dependency cache is never trusted as validation.
+    if dependency_repair(proposal["changes"]):
+        validate_dependency_update(proposal["changes"], original_package)
+        if command(["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], cwd=ROOT / "web"):
+            raise RuntimeError("Candidate dependencies do not install cleanly")
+    return proposal, checks()
+
+
+def _review_task_text(proposal: "dict[str, object]") -> str:
+    return """Independently review the existing uncommitted patch. Do not implement or change the patch.
 Read AGENTS.md. Reproduce claims, inspect regression tests and look for security/correctness problems.
 You have NO authority over production. Use local synthetic fixtures only.
 Write /workspace/artifacts/review.json as {"approved": true/false, "reason": "specific evidence and commands"}.
 Approve only a concrete narrow improvement with convincing executable evidence. Otherwise reject.
-Then submit using the standard completion command. Original report follows:\n""" + proposal[
-            "report"
-        ]
-    else:
-        task = f"""Work on Monori in {ROOT}. Direction: {LANES[lane]}
+Then submit using the standard completion command. Original report follows:\n""" + cast(
+        "str", proposal["report"]
+    )
+
+
+def _work_task_text(lane: str, baseline: "dict[str, object]") -> str:
+    return f"""Work on Monori in {ROOT}. Direction: {LANES[lane]}
 Read AGENTS.md, README.md, Makefile and relevant docs first. Pick ONE narrow concrete finding.
 Do not stop after analysis: reproduce, implement a minimal patch, run relevant tests, inspect the diff.
 You may start local servers and use Playwright Chromium, curl, Python, Node, uv, npm, bandit and pip-audit.
@@ -228,6 +206,123 @@ limitations and public research URLs. No finding is better than speculative chur
 At most one small patch. Do not commit; the supervisor extracts working-tree changes.
 Baseline checks: {json.dumps(baseline)}. Baseline failures must be reported, not hidden.
 """
+
+
+def _require_revision() -> str:
+    """Return the full pinned commit revision supplied by the supervisor."""
+    revision = os.environ["REVISION"]
+    assert len(revision) == 40 and all(c in "0123456789abcdef" for c in revision)
+    return revision
+
+
+def _clone_workspace(revision: str) -> None:
+    """Clone Monori and check out the exact pinned revision."""
+    if command(
+        ["git", "clone", "--quiet", "https://github.com/alchemmist/monori.git", str(ROOT)],
+        cwd=ROOT.parent,
+    ):
+        raise RuntimeError("Clone failed")
+    if command(["git", "checkout", "--detach", revision]):
+        raise RuntimeError("Checkout failed")
+
+
+def _finalize_review(
+    result: "dict[str, object]", proposal: "dict[str, object]", candidate_checks: object
+) -> None:
+    """Attach reviewer verdicts and reject any tampering with the candidate patch."""
+    result["candidate_checks"] = candidate_checks
+    review = ART / "review.json"
+    result["review"] = (
+        json.loads(review.read_text())
+        if review.exists()
+        else {"approved": False, "reason": "No review"}
+    )
+    command(["git", "add", "-N", "--", "."])
+    actual_paths = set(
+        filter(
+            None,
+            subprocess.check_output(["git", "diff", "--name-only", "-z"], cwd=ROOT)
+            .decode()
+            .split("\0"),
+        )
+    )
+    expected = {
+        cast("str", item["path"]): base64.b64decode(cast("str", item["content"]))
+        for item in cast("list[dict[str, object]]", proposal["changes"])
+    }
+    if actual_paths != set(expected) or any(
+        (ROOT / str(path)).is_symlink() or (ROOT / str(path)).read_bytes() != data
+        for path, data in expected.items()
+    ):
+        result["review"] = {
+            "approved": False,
+            "reason": "Reviewer modified the candidate patch; refused",
+        }
+
+
+def _collect_work_changes(
+    result: "dict[str, object]", original_package: "dict[str, object]"
+) -> None:
+    """Validate and capture the one allowed patch from the worker tree."""
+    report = ART / "report.md"
+    result["report"] = report.read_text()[:18000] if report.exists() else "No report"
+    command(["git", "add", "-N", "--", "."])
+    paths = (
+        subprocess.check_output(["git", "diff", "--name-only", "-z"], cwd=ROOT).decode().split("\0")
+    )
+    for path in filter(None, paths):
+        p = ROOT / path
+        if not p.is_file() or p.is_symlink():
+            raise ValueError("Deletion/symlink not permitted")
+        cast("list[dict[str, object]]", result["changes"]).append(
+            {
+                "path": path,
+                "mode": "100644",
+                "content": base64.b64encode(p.read_bytes()).decode(),
+            }
+        )
+    changes = cast("list[dict[str, object]]", result["changes"])
+    if changes:
+        validate_changes(changes)
+        if any(i["path"] in {"web/package.json", "web/package-lock.json"} for i in changes):
+            validate_dependency_update(changes, original_package)
+
+
+def main():
+    harden_parent()
+    ART.mkdir(parents=True, exist_ok=True)
+    Path("/workspace/tmp").mkdir(exist_ok=True)
+    lane = os.environ["LANE"]
+    phase = os.environ.get("PHASE", "work")
+    revision = _require_revision()
+    ROOT.parent.mkdir(exist_ok=True)
+    if lane == "smoke":
+        _smoke_lane(lane, phase, revision)
+        return
+    _clone_workspace(revision)
+    setup = {
+        "python": command(
+            ["uv", "sync", "--locked", "--group", "test", "--group", "analyze", "--group", "audit"]
+        ),
+        "node": command(
+            ["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], cwd=ROOT / "web"
+        ),
+    }
+    if setup["python"]:
+        raise RuntimeError("Python dependency setup failed; see bounded command log")
+    original_package = json.loads(
+        subprocess.check_output(["git", "show", revision + ":web/package.json"], cwd=ROOT)
+    )
+    baseline = _baseline_checks(setup)
+    bootstrap = bool(setup["node"])
+    task = ""
+    proposal = None
+    candidate_checks = None
+    if phase == "review":
+        proposal, candidate_checks = _review_candidate(original_package)
+        task = _review_task_text(proposal)
+    else:
+        task = _work_task_text(lane, baseline)
     if bootstrap and phase == "work":
         task += """\nPRIORITY: npm ci failed before your run. Inspect /workspace/artifacts/commands.log.
 Instead of the normal lane, repair ONLY web/package.json AND web/package-lock.json.
@@ -262,58 +357,9 @@ This narrow bootstrap exception overrides the general ban on dependency manifest
         else "MissingExit"
     )
     if phase == "review":
-        result["candidate_checks"] = candidate_checks
-        review = ART / "review.json"
-        result["review"] = (
-            json.loads(review.read_text())
-            if review.exists()
-            else {"approved": False, "reason": "No review"}
-        )
-        command(["git", "add", "-N", "--", "."])
-        actual_paths = set(
-            filter(
-                None,
-                subprocess.check_output(["git", "diff", "--name-only", "-z"], cwd=ROOT)
-                .decode()
-                .split("\0"),
-            )
-        )
-        expected = {item["path"]: base64.b64decode(item["content"]) for item in proposal["changes"]}
-        if actual_paths != set(expected) or any(
-            (ROOT / path).is_symlink() or (ROOT / path).read_bytes() != data
-            for path, data in expected.items()
-        ):
-            result["review"] = {
-                "approved": False,
-                "reason": "Reviewer modified the candidate patch; refused",
-            }
+        _finalize_review(result, cast("dict[str, object]", proposal), candidate_checks)
     else:
-        report = ART / "report.md"
-        result["report"] = report.read_text()[:18000] if report.exists() else "No report"
-        command(["git", "add", "-N", "--", "."])
-        paths = (
-            subprocess.check_output(["git", "diff", "--name-only", "-z"], cwd=ROOT)
-            .decode()
-            .split("\0")
-        )
-        for path in filter(None, paths):
-            p = ROOT / path
-            if not p.is_file() or p.is_symlink():
-                raise ValueError("Deletion/symlink not permitted")
-            result["changes"].append(
-                {
-                    "path": path,
-                    "mode": "100644",
-                    "content": base64.b64encode(p.read_bytes()).decode(),
-                }
-            )
-        if result["changes"]:
-            validate_changes(result["changes"])
-            if any(
-                i["path"] in {"web/package.json", "web/package-lock.json"}
-                for i in result["changes"]
-            ):
-                validate_dependency_update(result["changes"], original_package)
+        _collect_work_changes(result, original_package)
     result["command_tail"] = (ART / "commands.log").read_text(errors="replace")[-16000:]
     # No model transcript or shell stdout is streamed into cluster logs.
     print(signed_result(result), flush=True)

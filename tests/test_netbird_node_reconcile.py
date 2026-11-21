@@ -11,6 +11,7 @@ spec = importlib.util.spec_from_file_location("nodes", ROOT / "scripts/netbird-n
 n = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(n)
 IMAGE = "netbirdio/netbird:0.82.0@sha256:" + "a" * 64
+_MISS = object()
 
 
 def node(host):
@@ -75,30 +76,36 @@ class Fake(n.Runtime):
     def save(self):
         pass
 
+    def _get(self, path: str) -> object:
+        if path == "groups":
+            return [self.admin, self.group, {"name": "All", "id": "all", "issued": "api"}]
+        if path == "networks":
+            return [{"id": "net", "name": n.NETWORK}]
+        if path.endswith("/routers"):
+            return [
+                {
+                    "id": "router",
+                    "peer_groups": ["nodes"],
+                    "enabled": True,
+                    "masquerade": True,
+                    "metric": 80,
+                }
+            ]
+        if path == "policies":
+            return copy.deepcopy(self.policies)
+        if path == "peers":
+            return [self.peer] if self.enrolled else []
+        if path == "groups/nodes":
+            return copy.deepcopy(self.group)
+        if path.endswith("/resources"):
+            return self.resources
+        return _MISS
+
     def api(self, method, path, body=None):
         if method == "GET":
-            if path == "groups":
-                return [self.admin, self.group, {"name": "All", "id": "all", "issued": "api"}]
-            if path == "networks":
-                return [{"id": "net", "name": n.NETWORK}]
-            if path.endswith("/routers"):
-                return [
-                    {
-                        "id": "router",
-                        "peer_groups": ["nodes"],
-                        "enabled": True,
-                        "masquerade": True,
-                        "metric": 80,
-                    }
-                ]
-            if path == "policies":
-                return copy.deepcopy(self.policies)
-            if path == "peers":
-                return [self.peer] if self.enrolled else []
-            if path == "groups/nodes":
-                return copy.deepcopy(self.group)
-            if path.endswith("/resources"):
-                return self.resources
+            value = self._get(path)
+            if value is not _MISS:
+                return value
         self.writes.append((method, path, copy.deepcopy(body)))
         if path == "setup-keys":
             return {"id": "one-use", "key": "fixture-not-a-real-secret"}

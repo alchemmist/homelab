@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import sqlite3
 import threading
+from typing import cast
 import time
 import uuid
 
@@ -54,7 +55,7 @@ def signing_key(run_id, phase):
 def github(path, method="GET", data=None, auth=True):
     headers = {}
     if auth:
-        if TOKEN["expires"] < time.time():
+        if cast("float", TOKEN["expires"]) < time.time():
             app_id = Path("/github/github-app-id").read_text().strip()
             key = Path("/github/github-private-key").read_text()
             signed = jwt.encode(
@@ -79,7 +80,7 @@ def github(path, method="GET", data=None, auth=True):
             )
             r.raise_for_status()
             TOKEN.update(value=r.json()["token"], expires=time.time() + 3000)
-        headers["Authorization"] = "Bearer " + TOKEN["value"]
+        headers["Authorization"] = "Bearer " + cast("str", TOKEN["value"])
     response = SESSION.request(
         method, "https://api.github.com/" + path, headers=headers, json=data, timeout=40
     )
@@ -265,132 +266,181 @@ def publish(run, result, review):
     return pr["html_url"]
 
 
-def tick():
-    global NEXT_IDLE_CHECK
-    active = DB.execute(
-        "SELECT * FROM runs WHERE state IN ('queued','work','review','publishing') ORDER BY created LIMIT 1"
-    ).fetchone()
-    if active:
-        columns = [r[1] for r in DB.execute("PRAGMA table_info(runs)")]
-        run = dict(zip(columns, active))
-        if run["state"] == "queued":
-            start_job(run, "work")
-            return
-        if run["state"] == "publishing":
-            url = publish(run, json.loads(run["result"]), json.loads(run["review"]))
-            save(run["id"], state="published", pr=url)
-            return
-        try:
-            job = BATCH.read_namespaced_job(run["job"], NS)
-        except client.ApiException as exc:
-            if exc.status != 404:
-                raise
-            field = "result" if run["state"] == "work" else "review"
-            save(
-                run["id"],
-                state="failed",
-                **{
-                    field: json.dumps(
-                        {
-                            "error": "Worker Job expired or was removed; queue will continue with a fresh task"
-                        }
-                    )
-                },
-            )
-            return
-        if not job.status.succeeded and not job.status.failed:
-            return
-        pods = CORE.list_namespaced_pod(NS, label_selector="job-name=" + run["job"]).items
-        if len(pods) != 1:
-            save(
-                run["id"],
-                state="failed",
-                review=json.dumps({"error": "Missing or ambiguous worker Pod; no publication"}),
-            )
-            return
-        log = CORE.read_namespaced_pod_log(pods[0].metadata.name, NS, limit_bytes=2_000_000)
-        try:
-            result = decode_result(log, signing_key(run["id"], run["state"]))
-        except Exception:
-            if run["state"] == "review":
-                try:
-                    CORE.delete_namespaced_config_map(run["job"] + "-proposal", NS)
-                except client.ApiException as exc:
-                    if exc.status != 404:
-                        raise
-            save(
-                run["id"],
-                state="failed",
-                review=json.dumps({"error": "Missing worker result; inspect job status"}),
-            )
-            return
-        if run["state"] == "review":
-            try:
-                CORE.delete_namespaced_config_map(run["job"] + "-proposal", NS)
-            except client.ApiException as exc:
-                if exc.status != 404:
-                    raise
-        field = "result" if run["state"] == "work" else "review"
-        save(run["id"], **{field: json.dumps(result)})
-        if (
-            result.get("error")
-            or result.get("revision") != run["revision"]
-            or result.get("agent_status") != "Submitted"
-            or result.get("agent_rc") != 0
-        ):
-            save(run["id"], state="failed")
-            return
-        candidate = (
+def _drop_proposal(run: "dict[str, object]") -> None:
+    """Remove the bound proposal ConfigMap once the review phase ends."""
+    if run["state"] != "review":
+        return
+    try:
+        CORE.delete_namespaced_config_map(cast("str", run["job"]) + "-proposal", NS)
+    except client.ApiException as exc:
+        if exc.status != 404:
+            raise
+
+
+def _worker_result(run: "dict[str, object]") -> "dict[str, object] | None":
+    """Read the single worker Pod and its authenticated output envelope."""
+    pods = CORE.list_namespaced_pod(NS, label_selector="job-name=" + cast("str", run["job"])).items
+    if len(pods) != 1:
+        save(
+            run["id"],
+            state="failed",
+            review=json.dumps({"error": "Missing or ambiguous worker Pod; no publication"}),
+        )
+        return None
+    log = CORE.read_namespaced_pod_log(pods[0].metadata.name, NS, limit_bytes=2_000_000)
+    try:
+        result = decode_result(log, signing_key(run["id"], run["state"]))
+    except Exception:
+        _drop_proposal(run)
+        save(
+            run["id"],
+            state="failed",
+            review=json.dumps({"error": "Missing worker result; inspect job status"}),
+        )
+        return None
+    _drop_proposal(run)
+    return cast("dict[str, object]", result)
+
+
+def _candidate_valid(
+    run: "dict[str, object]", result: "dict[str, object]"
+) -> "tuple[bool, object]":
+    """Validate the patch; denote whether it is a narrowly scoped dependency repair."""
+    candidate = cast(
+        "list[dict[str, object]]",
+        (
             result.get("changes", [])
             if run["state"] == "work"
-            else json.loads(run["result"] or "{}").get("changes", [])
-        )
-        repair = dependency_repair(candidate)
-        try:
-            if candidate:
-                validate_changes(candidate)
-            if any(i["path"] in {"web/package.json", "web/package-lock.json"} for i in candidate):
-                base = github(
-                    f"repos/{REPO}/contents/web/package.json?ref={run['revision']}", auth=True
-                )
-                validate_dependency_update(candidate, json.loads(base64.b64decode(base["content"])))
-        except (ValueError, KeyError, TypeError):
-            save(run["id"], state="rejected")
-            return
-        # Only a narrowly validated dependency repair may start from a red frontend install.
-        baseline_ok = not any(result.get("baseline", {"missing": 1}).values())
-        bootstrap_ok = (
-            repair
-            and result.get("setup", {}).get("node", 0) != 0
-            and result.get("baseline", {}).get("backend") == 0
-        )
-        if (
-            not result.get("checks")
-            or any(result["checks"].values())
-            or not (baseline_ok or bootstrap_ok)
-        ):
-            save(run["id"], state="rejected")
-            return
-        if run["state"] == "work":
-            if not result.get("changes"):
-                save(run["id"], state="done")
-                return
-            validate_changes(result["changes"])
-            run["result"] = json.dumps(result)
-            start_job(run, "review")
-        else:
-            if (
-                not result.get("candidate_checks")
-                or any(result["candidate_checks"].values())
-                or result.get("review", {}).get("approved") is not True
-            ):
-                save(run["id"], state="rejected")
-            else:
-                save(run["id"], state="publishing")
+            else json.loads(cast("str", run["result"] or "{}")).get("changes", [])
+        ),
+    )
+    repair = dependency_repair(candidate)
+    try:
+        if candidate:
+            validate_changes(candidate)
+        if any(i["path"] in {"web/package.json", "web/package-lock.json"} for i in candidate):
+            base = github(
+                f"repos/{REPO}/contents/web/package.json?ref={run['revision']}", auth=True
+            )
+            validate_dependency_update(candidate, json.loads(base64.b64decode(base["content"])))
+    except (ValueError, KeyError, TypeError):
+        save(run["id"], state="rejected")
+        return False, repair
+    return True, repair
+
+
+def _publish_gate(result: "dict[str, object]", repair: object) -> bool:
+    """Green checks, optionally excused by a validated bootstrap dependency repair."""
+    # Only a narrowly validated dependency repair may start from a red frontend install.
+    baseline = cast("dict[str, object]", result.get("baseline", {"missing": 1}))
+    setup = cast("dict[str, object]", result.get("setup", {}))
+    baseline_ok = not any(baseline.values())
+    bootstrap_ok = bool(repair) and setup.get("node", 0) != 0 and baseline.get("backend") == 0
+    checks = result.get("checks")
+    checks_ok = bool(checks) and not any(cast("dict[str, object]", checks).values())
+    return bool(checks_ok and (baseline_ok or bootstrap_ok))
+
+
+def _review_gate(result: "dict[str, object]") -> bool:
+    """Review passage needs green candidate checks and explicit approval."""
+    candidate_checks = result.get("candidate_checks")
+    review = cast("dict[str, object]", result.get("review", {}))
+    return bool(
+        candidate_checks
+        and not any(cast("dict[str, object]", candidate_checks).values())
+        and review.get("approved") is True
+    )
+
+
+def _enter_review_or_done(run: "dict[str, object]", result: "dict[str, object]") -> None:
+    """Queue the review phase, or finish runs with no patch."""
+    if not bool(result.get("changes")):
+        save(run["id"], state="done")
         return
+    validate_changes(result["changes"])
+    run["result"] = json.dumps(result)
+    start_job(run, "review")
+
+
+def _advance_completed(run: "dict[str, object]", result: "dict[str, object]") -> None:
+    """Persist the envelope and advance the run by its current phase."""
+    field = "result" if run["state"] == "work" else "review"
+    save(run["id"], **{field: json.dumps(result)})
+    if (
+        bool(result.get("error"))
+        or result.get("revision") != run["revision"]
+        or result.get("agent_status") != "Submitted"
+        or result.get("agent_rc") != 0
+    ):
+        save(run["id"], state="failed")
+        return
+    valid, repair = _candidate_valid(run, result)
+    if not valid:
+        return
+    if not _publish_gate(result, repair):
+        save(run["id"], state="rejected")
+        return
+    if run["state"] == "work":
+        _enter_review_or_done(run, result)
+    else:
+        save(run["id"], state="publishing" if _review_gate(result) else "rejected")
+
+
+def _advance_active_run(run: "dict[str, object]") -> None:
+    """Drive one active run a single state forward."""
+    if run["state"] == "queued":
+        start_job(run, "work")
+        return
+    if run["state"] == "publishing":
+        url = publish(
+            run, json.loads(cast("str", run["result"])), json.loads(cast("str", run["review"]))
+        )
+        save(run["id"], state="published", pr=url)
+        return
+    try:
+        job = BATCH.read_namespaced_job(run["job"], NS)
+    except client.ApiException as exc:
+        if exc.status != 404:
+            raise
+        field = "result" if run["state"] == "work" else "review"
+        save(
+            run["id"],
+            state="failed",
+            **{
+                field: json.dumps(
+                    {
+                        "error": "Worker Job expired or was removed; queue will continue with a fresh task"
+                    }
+                )
+            },
+        )
+        return
+    if not job.status.succeeded and not job.status.failed:
+        return
+    result = _worker_result(run)
+    if result is None:
+        return
+    _advance_completed(run, result)
+
+
+def _dependency_merge_pending(prs: "list[dict[str, object]]", revision: str) -> bool:
+    """Report True while an already published dependency-repair PR is still open."""
+    open_urls = {p["html_url"] for p in prs}
+    for pr, payload in DB.execute(
+        "SELECT pr,result FROM runs WHERE state='published' AND revision=? ORDER BY created DESC LIMIT 100",
+        (revision,),
+    ):
+        if pr in open_urls and dependency_repair(json.loads(payload or "{}").get("changes", [])):
+            return True
+    return False
+
+
+def _idle_tick() -> "bool | None":
+    """Discovery for the next task when no run is active."""
+    global NEXT_IDLE_CHECK
     if os.getenv("PAUSED", "false") == "true":
         STATUS["state"] = "paused"
-        return
+        return None
     previous = DB.execute("SELECT created,lane FROM runs ORDER BY created DESC LIMIT 1").fetchone()
     latest = previous[0] if previous else 0
     if (
@@ -398,7 +448,7 @@ def tick():
         and previous[1] != "smoke"
         and time.time() - latest < int(os.getenv("MIN_INTERVAL_SECONDS", "1800"))
     ):
-        return
+        return None
     # Waiting is healthy; external discovery is bounded, including after failures.
     if time.monotonic() < NEXT_IDLE_CHECK:
         return False
@@ -407,16 +457,11 @@ def tick():
     prs = github(f"repos/{REPO}/pulls?state=open&per_page=100")
     if sum(p["head"]["ref"].startswith("swe-mini/") for p in prs) >= 5:
         STATUS["state"] = "waiting_for_pr_review"
-        return
+        return None
     revision = github(f"repos/{REPO}/commits/main", auth=True)["sha"]
-    open_urls = {p["html_url"] for p in prs}
-    for pr, payload in DB.execute(
-        "SELECT pr,result FROM runs WHERE state='published' AND revision=? ORDER BY created DESC LIMIT 100",
-        (revision,),
-    ):
-        if pr in open_urls and dependency_repair(json.loads(payload or "{}").get("changes", [])):
-            STATUS["state"] = "waiting_for_dependency_merge"
-            return
+    if _dependency_merge_pending(prs, revision):
+        STATUS["state"] = "waiting_for_dependency_merge"
+        return None
     index = DB.execute("SELECT count(*) FROM runs").fetchone()[0]
     lane = "smoke" if index == 0 else list(LANES)[(index - 1) % len(LANES)]
     run_id = time.strftime("%y%m%d%H%M%S") + "-" + uuid.uuid4().hex[:5]
@@ -427,13 +472,25 @@ def tick():
     DB.commit()
     STATUS["state"] = "running"
     logging.info("Queued run %s lane=%s revision=%s", run_id, lane, revision[:12])
+    return None
+
+
+def tick() -> "bool | None":
+    active = DB.execute(
+        "SELECT * FROM runs WHERE state IN ('queued','work','review','publishing') ORDER BY created LIMIT 1"
+    ).fetchone()
+    if active:
+        columns = [r[1] for r in DB.execute("PRAGMA table_info(runs)")]
+        _advance_active_run(dict(zip(columns, active)))
+        return None
+    return _idle_tick()
 
 
 class Health(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path in ("/healthz", "/livez", "/dependencies"):
             # External API failures cannot be repaired by restarting this process.
-            alive = time.time() - STATUS["last_tick"] < 180
+            alive = time.time() - cast("float", STATUS["last_tick"]) < 180
             ready = alive and (self.path != "/dependencies" or not STATUS["error"])
             self.send_response(200 if ready else 503)
             payload = json.dumps(STATUS).encode()

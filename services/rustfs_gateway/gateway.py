@@ -383,6 +383,86 @@ class Handler(http.server.BaseHTTPRequestHandler):
     do_OPTIONS = do_POST
     do_PATCH = do_POST
 
+    def _legacy_redirect(self) -> None:
+        if self.command not in ("GET", "HEAD"):
+            self.respond(405)
+            return
+        try:
+            target = self.raw_requestline.split()[1].decode("ascii")
+            if target != self.path:
+                raise ValueError("normalized target denied")
+            valid_key(target)
+        except (ValueError, IndexError):
+            self.respond(404)
+            return
+        self.respond(308, location=ORIGIN + target)
+
+    def _sso_or_challenge(self) -> None:
+        # Browser clicks must enter SSO and return to the exact file, not
+        # stop at an empty 401. Never derive the origin from caller headers
+        # or inspect object existence before authentication.
+        location = None
+        if self.command == "GET" and "text/html" in self.headers.get("Accept", "").lower():
+            try:
+                target = self.raw_requestline.split()[1].decode("ascii")
+                if target != self.path:
+                    raise ValueError("normalized target denied")
+                valid_key(target)
+                location = (
+                    ORIGIN
+                    + "/outpost.goauthentik.io/start?"
+                    + urllib.parse.urlencode({"rd": ORIGIN + target})
+                )
+            except (ValueError, IndexError):
+                pass
+        self.respond(302 if location else 401, location=location)
+
+    def _authenticated(self) -> bool:
+        """Return True on authorization; False after sending the failure response."""
+        # Authentication precedes canonical validation/error responses; never trust X-auth headers.
+        cookies = self.headers.get_all("Cookie", [])
+        auth_status = 401
+        if len(cookies) == 1:
+            reader = self.server.reader
+            auth_status = reader.authorization(cookies[0])
+        if auth_status == 200:
+            return True
+        if auth_status != 401:
+            self.respond(auth_status)
+            return False
+        self._sso_or_challenge()
+        return False
+
+    def _range_response(self, filename: str, body: bytes) -> None:
+        """Serve either the requested single byte range or the whole object."""
+        ranges = self.headers.get_all("Range", []) if self.command == "GET" else []
+        if not ranges:
+            self.respond(200, body, filename)
+            return
+        try:
+            if len(ranges) != 1:
+                raise ValueError("multiple ranges")
+            start, end = byte_range(ranges[0], len(body))
+        except ValueError:
+            self.respond(416, full_length=len(body))
+            return
+        self.respond(
+            206,
+            body[start : end + 1],
+            filename,
+            content_range=f"bytes {start}-{end}/{len(body)}",
+        )
+
+    def _serve_file(self, key: str) -> None:
+        try:
+            body = self.server.reader.read(key)
+        except (OSError, ValueError, urllib.error.URLError) as error:
+            if isinstance(error, urllib.error.HTTPError):
+                error.close()
+            self.respond(502)
+            return
+        self._range_response(key.rsplit("/", 1)[1], body)
+
     def answer(self):
         self.close_connection = True
         self.header_timer.cancel()
@@ -390,50 +470,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         # immutable key. Never reflect queries, forwarded headers, or caller hosts.
         hosts = self.headers.get_all("Host", [])
         if hosts == [LEGACY_HOST]:
-            if self.command not in ("GET", "HEAD"):
-                self.respond(405)
-                return
-            try:
-                target = self.raw_requestline.split()[1].decode("ascii")
-                if target != self.path:
-                    raise ValueError("normalized target denied")
-                valid_key(target)
-            except (ValueError, IndexError):
-                self.respond(404)
-                return
-            self.respond(308, location=ORIGIN + target)
+            self._legacy_redirect()
             return
         if hosts != [HOST]:
             self.respond(421)
             return
-        # Authentication precedes canonical validation/error responses; never trust X-auth headers.
-        cookies = self.headers.get_all("Cookie", [])
-        auth_status = 401
-        if len(cookies) == 1:
-            reader = self.server.reader
-            auth_status = reader.authorization(cookies[0])
-        if auth_status != 200:
-            if auth_status != 401:
-                self.respond(auth_status)
-                return
-            # Browser clicks must enter SSO and return to the exact file, not
-            # stop at an empty401. Never derive the origin from caller headers
-            # or inspect object existence before authentication.
-            location = None
-            if self.command == "GET" and "text/html" in self.headers.get("Accept", "").lower():
-                try:
-                    target = self.raw_requestline.split()[1].decode("ascii")
-                    if target != self.path:
-                        raise ValueError("normalized target denied")
-                    valid_key(target)
-                    location = (
-                        ORIGIN
-                        + "/outpost.goauthentik.io/start?"
-                        + urllib.parse.urlencode({"rd": ORIGIN + target})
-                    )
-                except (ValueError, IndexError):
-                    pass
-            self.respond(302 if location else 401, location=location)
+        if not self._authenticated():
             return
         if self.command not in ("GET", "HEAD"):
             self.respond(405)
@@ -451,31 +493,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         except (ValueError, IndexError):
             self.respond(404)
             return
-        try:
-            body = self.server.reader.read(key)
-        except (OSError, ValueError, urllib.error.URLError) as error:
-            if isinstance(error, urllib.error.HTTPError):
-                error.close()
-            self.respond(502)
-            return
-        filename = key.rsplit("/", 1)[1]
-        ranges = self.headers.get_all("Range", []) if self.command == "GET" else []
-        if ranges:
-            try:
-                if len(ranges) != 1:
-                    raise ValueError("multiple ranges")
-                start, end = byte_range(ranges[0], len(body))
-            except ValueError:
-                self.respond(416, full_length=len(body))
-                return
-            self.respond(
-                206,
-                body[start : end + 1],
-                filename,
-                content_range=f"bytes {start}-{end}/{len(body)}",
-            )
-            return
-        self.respond(200, body, filename)
+        self._serve_file(key)
 
     def send_error(self, code, message=None, explain=None):
         # Parser/unsupported-method errors must not echo raw request lines or

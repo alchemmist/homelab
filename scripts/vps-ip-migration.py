@@ -18,6 +18,7 @@ import sys
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TypedDict
 
 HOSTS = ("socrat-0", "socrat-1", "socrat-2", "socrat-3")
 SOURCE_FILES = (
@@ -423,6 +424,90 @@ def refresh_guard(old_text, new):
         raise MigrationError("Unable to inspect old owned guard rule")
 
 
+class _HostPlan(TypedDict):
+    """Reviewed host migration plan fields threaded to the apply stage."""
+
+    hostname: str
+    changes: list[tuple[Path, str, str]]
+    databases: dict[str, int]
+    peers: list[tuple[str, str]]
+    services: list[str]
+    restart_services: list[str]
+    new: str
+    report: dict[str, object]
+
+
+def _require_new_ip_assigned(new: str) -> None:
+    """Refuse to plan a VPS migration whose provider has not assigned the new IPv4."""
+    links = json.loads(run(["ip", "-j", "-4", "addr", "show"]))
+    assigned = [a["local"] for link in links for a in link.get("addr_info", [])]
+    if new not in assigned:
+        raise MigrationError("Provider has not assigned new IPv4 on this VPS")
+
+
+def _apply_host_plan(plan: _HostPlan, store: Preimages) -> None:
+    """Execute the reviewed host migration plan and record preimage receipts."""
+    changes = plan["changes"]
+    report = plan["report"]
+    databases = plan["databases"]
+    peers = plan["peers"]
+    services = plan["services"]
+    restart_services = plan["restart_services"]
+    new = plan["new"]
+    write_changes(changes, store, lambda p: str(p).lstrip("/"))
+    report["database_address_rows_updated"] = {}
+    for path, count in databases.items():
+        if count:
+            backup_database(Path(path), store)
+    for key, endpoint in peers:
+        run(["wg", "set", "wg-socrat", "peer", key, "endpoint", endpoint])
+    if "wireguard-tcp-transport-guard.service" in services:
+        run(["systemctl", "daemon-reload"])
+        if "wireguard-tcp-transport-guard.service" in restart_services:
+            before = next(
+                text
+                for p, text, _ in changes
+                if str(p).endswith("wireguard-tcp-transport-guard.service")
+            )
+            refresh_guard(before, new)
+    for service in restart_services:
+        run(["systemctl", "restart", service])
+    if plan["hostname"] in HOSTS[:3] and any(
+        str(p).startswith("/usr/local/libexec/public") or str(p) == "/etc/hosts"
+        for p, _, _ in changes
+    ):
+        run(["/usr/local/libexec/public-dns-refresh"])
+    report.update(changed=True, state="host-phase-complete-not-acceptance")
+
+
+def _require_local_anchor_paths(hostname: str) -> None:
+    """Ensure site-specific owner scripts and WireGuard config exist before planning."""
+    if not Path("/etc/wireguard/wg-socrat.conf").is_file():
+        raise MigrationError("Required WireGuard configuration is missing")
+    if hostname in HOSTS[:3] and not Path("/usr/local/libexec/public_dns_zone.py").is_file():
+        raise MigrationError("Required authoritative DNS owner is missing")
+
+
+def _planned_peers(
+    changes: list[tuple[Path, str, str]], old: str, new: str
+) -> list[tuple[str, str]]:
+    """Return WireGuard endpoint conversions planned from the changed config."""
+    peers: list[tuple[str, str]] = []
+    for path, before, _ in changes:
+        if str(path) == "/etc/wireguard/wg-socrat.conf":
+            peers += wg_endpoint_changes(before, old, new)
+    return peers
+
+
+def _validate_guard_format(changes: list[tuple[Path, str, str]], old: str) -> None:
+    """Refuse migration when the transport guard unit text is not understood."""
+    for path, before, _ in changes:
+        if str(path).endswith("wireguard-tcp-transport-guard.service") and not re.search(
+            r"wireguard-tcp-transport-guard.py\s+\S+\s+" + re.escape(old) + r"\s+\d+", before
+        ):
+            raise MigrationError("Unknown guard unit format")
+
+
 def host(
     hostname,
     old,
@@ -437,27 +522,15 @@ def host(
         raise MigrationError("Unexpected host identity")
     refuse_unfinished(backup_root, hostname + "-" + old + "-to-" + new)
     if require_assigned and hostname == "socrat-2":
-        links = json.loads(run(["ip", "-j", "-4", "addr", "show"]))
-        assigned = [a["local"] for link in links for a in link.get("addr_info", [])]
-        if new not in assigned:
-            raise MigrationError("Provider has not assigned new IPv4 on this VPS")
+        _require_new_ip_assigned(new)
     paths = [Path(p) for p in COMMON_FILES + (VPS_FILES if hostname == "socrat-2" else ())]
-    if not Path("/etc/wireguard/wg-socrat.conf").is_file():
-        raise MigrationError("Required WireGuard configuration is missing")
-    if hostname in HOSTS[:3] and not Path("/usr/local/libexec/public_dns_zone.py").is_file():
-        raise MigrationError("Required authoritative DNS owner is missing")
+    _require_local_anchor_paths(hostname)
     dns_owner = Path("/usr/local/libexec/public_dns_zone.py")
     if dns_owner.is_file():
         validate_dns_anchor(dns_owner.read_text(), old, new)
     changes = file_plan(paths, old, new)
-    peers = []
-    for path, before, _ in changes:
-        if str(path) == "/etc/wireguard/wg-socrat.conf":
-            peers += wg_endpoint_changes(before, old, new)
-        if str(path).endswith("wireguard-tcp-transport-guard.service") and not re.search(
-            r"wireguard-tcp-transport-guard.py\s+\S+\s+" + re.escape(old) + r"\s+\d+", before
-        ):
-            raise MigrationError("Unknown guard unit format")
+    peers = _planned_peers(changes, old, new)
+    _validate_guard_format(changes, old)
     databases = {}
     if hostname == "socrat-2":
         if not Path(DATABASES[0]).is_file():
@@ -488,30 +561,19 @@ def host(
         report["state"] = "applying"
         store.receipt(report)
         try:
-            write_changes(changes, store, lambda p: str(p).lstrip("/"))
-            report["database_address_rows_updated"] = {}
-            for path, count in databases.items():
-                if count:
-                    backup_database(Path(path), store)
-            for key, endpoint in peers:
-                run(["wg", "set", "wg-socrat", "peer", key, "endpoint", endpoint])
-            if "wireguard-tcp-transport-guard.service" in services:
-                run(["systemctl", "daemon-reload"])
-                if "wireguard-tcp-transport-guard.service" in restart_services:
-                    before = next(
-                        text
-                        for p, text, _ in changes
-                        if str(p).endswith("wireguard-tcp-transport-guard.service")
-                    )
-                    refresh_guard(before, new)
-            for service in restart_services:
-                run(["systemctl", "restart", service])
-            if hostname in HOSTS[:3] and any(
-                str(p).startswith("/usr/local/libexec/public") or str(p) == "/etc/hosts"
-                for p, _, _ in changes
-            ):
-                run(["/usr/local/libexec/public-dns-refresh"])
-            report.update(changed=True, state="host-phase-complete-not-acceptance")
+            _apply_host_plan(
+                {
+                    "hostname": hostname,
+                    "changes": changes,
+                    "databases": databases,
+                    "peers": peers,
+                    "services": services,
+                    "restart_services": restart_services,
+                    "new": new,
+                    "report": report,
+                },
+                store,
+            )
         except Exception:
             report["state"] = "partial-failure-stop-and-investigate"
             store.receipt(report)

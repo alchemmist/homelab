@@ -15,6 +15,7 @@ import urllib.parse
 import urllib.request
 from contextlib import closing
 from pathlib import Path
+from typing import Protocol
 
 
 def load(name, filename):
@@ -202,6 +203,78 @@ def check_delta(before, after):
     }
 
 
+class _PanelSession(Protocol):
+    """Attributes of the loaded panel session helper used by the extraction."""
+
+    database: Path
+    state: Path
+
+    def call(self, method: str, path: str) -> object: ...
+
+    def open(self, session_hash: str) -> None: ...
+
+    def cleanup(self) -> None: ...
+
+
+def _verify_prospective_publications(
+    s: _PanelSession, before: dict[str, list[str]]
+) -> dict[str, list[str]]:
+    """Snapshot JSON subscriptions and verify the exact prospective publication diff."""
+    json_before: dict[str, list[str]] = snapshot(s.database, s.state, "json-before", True)
+    if set(json_before) != set(before):
+        raise ValueError("JSON identity mismatch")
+    if sum(sum(json_legacy(v) for v in rows) for rows in json_before.values()) != 7:
+        raise ValueError("JSON population drift")
+    # Verify exact publication diff prospectively, before making any write.
+    prospective = {key: [u for u in links if not is_legacy(u)] for key, links in before.items()}
+    check_delta(before, prospective)
+    return json_before
+
+
+def _require_api_db_parity(
+    row: dict[str, object],
+    legacy: dict[str, object],
+    original: object,
+    pre: object,
+    s: _PanelSession,
+) -> None:
+    """Raise unless the native API row matches the DB and the config is unchanged."""
+    if target.semantic(pre) != target.semantic(original) or target.semantic(
+        target.configuration(s.database)
+    ) != target.semantic(original):
+        raise ValueError("Concurrent config change")
+    for api_key, db_key in [
+        ("settings", "settings"),
+        ("streamSettings", "stream_settings"),
+        ("sniffing", "sniffing"),
+    ]:
+        if target.json_field(row[api_key]) != target.json_field(legacy[db_key]):
+            raise ValueError("API/DB drift")
+
+
+def _verify_json_after(json_before: dict[str, list[str]], json_after: dict[str, list[str]]) -> None:
+    """Raise unless the JSON publication matches the expected removals."""
+    if set(json_before) != set(json_after):
+        raise ValueError("JSON identity set changed")
+    for key, rows in json_before.items():
+        if json_after[key] != [v for v in rows if not json_legacy(v)]:
+            raise ValueError("Unexpected JSON publication delta")
+
+
+def _wait_local_listener() -> None:
+    """Wait until the retained legacy listener answers locally."""
+    import socket
+
+    for attempt in range(30):
+        try:
+            with socket.create_connection(("127.0.0.1", 32063), timeout=1):
+                return
+        except OSError:
+            if attempt == 29:
+                raise
+            time.sleep(0.5)
+
+
 def apply(state, session_hash, config_hash):
     s = native.NativeSession(state)
     original = target.configuration(s.database)
@@ -219,31 +292,14 @@ def apply(state, session_hash, config_hash):
             raise ValueError("Config changed opening session")
         h.save(s.state / "proxy-before-private.json", original)
         before = snapshot(s.database, s.state, "subscriptions-before")
-        json_before = snapshot(s.database, s.state, "json-before", True)
-        if set(json_before) != set(before):
-            raise ValueError("JSON identity mismatch")
-        if sum(sum(json_legacy(v) for v in rows) for rows in json_before.values()) != 7:
-            raise ValueError("JSON population drift")
-        # Verify exact publication diff prospectively, before making any write.
-        prospective = {key: [u for u in links if not is_legacy(u)] for key, links in before.items()}
-        check_delta(before, prospective)
+        json_before = _verify_prospective_publications(s, before)
         pre = target.configuration(s.database)
         rows = s.call("GET", "/inbounds/list")
         matches = [r for r in rows if r["id"] == legacy["id"]]
         if len(matches) != 1:
             raise ValueError("Missing native inbound")
         dto = payload(matches[0], legacy["id"])
-        if target.semantic(pre) != target.semantic(original) or target.semantic(
-            target.configuration(s.database)
-        ) != target.semantic(original):
-            raise ValueError("Concurrent config change")
-        for api_key, db_key in [
-            ("settings", "settings"),
-            ("streamSettings", "stream_settings"),
-            ("sniffing", "sniffing"),
-        ]:
-            if target.json_field(matches[0][api_key]) != target.json_field(legacy[db_key]):
-                raise ValueError("API/DB drift")
+        _require_api_db_parity(matches[0], legacy, original, pre, s)
         h.save(
             s.state / "subscription-write-uncertain.json",
             {"field": "excludeFromSub", "inbound_id": legacy["id"], "old": False, "new": True},
@@ -256,23 +312,10 @@ def apply(state, session_hash, config_hash):
         after = snapshot(s.database, s.state, "subscriptions-after")
         proof = check_delta(before, after)
         json_after = snapshot(s.database, s.state, "json-after", True)
-        if set(json_before) != set(json_after):
-            raise ValueError("JSON identity set changed")
-        for key, rows in json_before.items():
-            if json_after[key] != [v for v in rows if not json_legacy(v)]:
-                raise ValueError("Unexpected JSON publication delta")
+        _verify_json_after(json_before, json_after)
         proof["json_subscriptions_verified"] = True
         # Listener deliberately remains enabled; no artificial device acceptance.
-        import socket
-
-        for attempt in range(30):
-            try:
-                with socket.create_connection(("127.0.0.1", 32063), timeout=1):
-                    break
-            except OSError:
-                if attempt == 29:
-                    raise
-                time.sleep(0.5)
+        _wait_local_listener()
         proof.update(
             {
                 "only_exclude_from_sub_changed": True,

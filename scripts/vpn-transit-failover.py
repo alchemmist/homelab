@@ -283,34 +283,23 @@ class Controller:
             self.activate("failback failed; native rollback")
             raise
 
-    def tick(self):
-        if self.state["mode"] == "prepared":
-            return
-        if self.marker.exists():
-            ok = active(NATIVE) and self.healthy()
-            # A late healthy native relay may outlive activate()'s bounded probe window.
-            # Reconcile bookkeeping only: never replay activation, remove the fence or
-            # start an agent. Unknown states and unhealthy transitions remain fenced.
-            if self.state["mode"] == "transition-to-native" and ok:
-                if active(AGENT):
-                    raise RuntimeError("Agent active during fenced native transition")
-                self.prerequisites()
-                self.receipt("native-reconciled", reason="native healthy after activation deadline")
-                self.save(mode="native", failures=0, healthy=True)
-            else:
-                self.save(healthy=ok, last_probe=getattr(self, "last_probe", {}))
-            return
-        if self.state["mode"] != "kubernetes":
-            raise RuntimeError("Uncertain transition; inspect receipts, do not replay")
-        boot = boot_id()
-        if self.state.get("boot_id") != boot:
-            self.save(boot_id=boot, grace_until=time.time() + 120, healthy=False, failures=0)
-        ok = self.healthy()
-        if not ok and time.time() < self.state.get("grace_until", 0):
-            self.save(healthy=False, last_probe=getattr(self, "last_probe", {}))
-            return
-        if ok:
-            self.save(grace_until=0)
+    def _reconcile_fenced_native(self) -> None:
+        """Reconcile bookkeeping only while the native fence is still in place."""
+        ok = active(NATIVE) and self.healthy()
+        # A late healthy native relay may outlive activate()'s bounded probe window.
+        # Reconcile bookkeeping only: never replay activation, remove the fence or
+        # start an agent. Unknown states and unhealthy transitions remain fenced.
+        if self.state["mode"] == "transition-to-native" and ok:
+            if active(AGENT):
+                raise RuntimeError("Agent active during fenced native transition")
+            self.prerequisites()
+            self.receipt("native-reconciled", reason="native healthy after activation deadline")
+            self.save(mode="native", failures=0, healthy=True)
+        else:
+            self.save(healthy=ok, last_probe=getattr(self, "last_probe", {}))
+
+    def _record_health(self, *, ok: bool) -> None:
+        """Persist probe health and run the bounded data-path failure escalation."""
         n = 0 if ok else self.state.get("failures", 0) + 1
         self.save(healthy=ok, failures=min(n, 4), last_probe=getattr(self, "last_probe", {}))
         if ok:
@@ -325,6 +314,25 @@ class Controller:
             self.save(failure_scope=diagnosis["scope"], failure_diagnosis=diagnosis)
             if diagnosis["recover_local"]:
                 self.activate("four data-path failures; " + diagnosis["scope"])
+
+    def tick(self):
+        if self.state["mode"] == "prepared":
+            return
+        if self.marker.exists():
+            self._reconcile_fenced_native()
+            return
+        if self.state["mode"] != "kubernetes":
+            raise RuntimeError("Uncertain transition; inspect receipts, do not replay")
+        boot = boot_id()
+        if self.state.get("boot_id") != boot:
+            self.save(boot_id=boot, grace_until=time.time() + 120, healthy=False, failures=0)
+        ok = self.healthy()
+        if not ok and time.time() < self.state.get("grace_until", 0):
+            self.save(healthy=False, last_probe=getattr(self, "last_probe", {}))
+            return
+        if ok:
+            self.save(grace_until=0)
+        self._record_health(ok=ok)
 
     def status(self):
         return {

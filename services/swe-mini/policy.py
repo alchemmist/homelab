@@ -7,6 +7,7 @@ import hmac
 import json
 import re
 from pathlib import PurePosixPath
+from typing import cast
 
 LANES = {
     "backend": "Find and reproduce a backend correctness bug; add a regression test and a small fix.",
@@ -86,13 +87,21 @@ def dependency_repair(changes):
     return {item["path"] for item in changes} == DEPENDENCY_PATHS
 
 
-def validate_dependency_update(changes, original):
-    if not dependency_repair(changes):
-        raise ValueError(
-            "Dependency repair must contain exactly manifest and lock, no source changes"
-        )
-    files = {i["path"]: json.loads(base64.b64decode(i["content"])) for i in changes}
-    updated = files["web/package.json"]
+def _each_version_change(before: "dict[str, object]", after: "dict[str, object]") -> bool:
+    """Flag in-place semantic version changes; reject other version forms."""
+    changed = False
+    for name, version in after.items():
+        if version != before[name]:
+            changed = True
+            if not isinstance(version, str) or not re.fullmatch(
+                r"[~^]?\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?", version
+            ):
+                raise ValueError("Only registry semantic version changes")
+    return changed
+
+
+def _groups_change_only(original: "dict[str, object]", updated: "dict[str, object]") -> None:
+    """Use only the two dependency groups with in-place version changes."""
     groups = {"dependencies", "devDependencies"}
     if {k: v for k, v in original.items() if k not in groups} != {
         k: v for k, v in updated.items() if k not in groups
@@ -100,23 +109,33 @@ def validate_dependency_update(changes, original):
         raise ValueError("Dependency repair cannot modify scripts, engines, metadata or tooling")
     changed = False
     for group in groups:
-        before, after = original.get(group, {}), updated.get(group, {})
+        before, after = (
+            cast("dict[str, object]", original.get(group, {})),
+            cast("dict[str, object]", updated.get(group, {})),
+        )
         if before.keys() != after.keys():
             raise ValueError("No dependency additions/removals")
-        for name, version in after.items():
-            if version != before[name]:
-                changed = True
-                if not isinstance(version, str) or not re.fullmatch(
-                    r"[~^]?\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?", version
-                ):
-                    raise ValueError("Only registry semantic version changes")
+        changed = _each_version_change(before, after) or changed
     if not changed:
         raise ValueError("No dependency version change")
-    lock = files["web/package-lock.json"]
+
+
+def _lock_registry_urls(lock: "dict[str, object]") -> None:
+    """Lock must stay a v3 npm-registry lockfile with standard resolved URLs."""
     if lock.get("lockfileVersion") != 3:
         raise ValueError("Unexpected lockfile format")
-    for entry in lock.get("packages", {}).values():
-        url = entry.get("resolved", "")
+    for entry in cast("dict[str, object]", lock.get("packages", {})).values():
+        url = cast("str", cast("dict[str, object]", entry).get("resolved", ""))
         if url and not url.startswith("https://registry.npmjs.org/"):
             raise ValueError("Nonstandard dependency registry")
+
+
+def validate_dependency_update(changes, original):
+    if not dependency_repair(changes):
+        raise ValueError(
+            "Dependency repair must contain exactly manifest and lock, no source changes"
+        )
+    files = {i["path"]: json.loads(base64.b64decode(i["content"])) for i in changes}
+    _groups_change_only(original, files["web/package.json"])
+    _lock_registry_urls(files["web/package-lock.json"])
     return changes

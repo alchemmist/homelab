@@ -19,6 +19,7 @@ import time
 import uuid
 from contextlib import closing
 from pathlib import Path
+from typing import IO, Protocol, cast
 
 
 def load(name, filename):
@@ -218,6 +219,140 @@ def transfer(port, state, phase):
     return proof
 
 
+class _PanelSession(Protocol):
+    """Attributes of the loaded panel session helper used by the extraction."""
+
+    state: Path
+    database: Path
+
+    def call(self, method: str, path: str, body: object) -> object: ...
+
+    def open(self, session_hash: str) -> None: ...
+
+    def cleanup(self) -> None: ...
+
+
+def _require_candidate_tls() -> None:
+    """Validate the candidate upstream over TLS 1.3 with HTTP/2 ALPN."""
+    context = ssl.create_default_context()
+    context.set_alpn_protocols(["h2"])
+    with socket.create_connection(("www.yahoo.com", 443), timeout=10) as raw:
+        with context.wrap_socket(raw, server_hostname="www.yahoo.com") as tls:
+            if tls.version() != "TLSv1.3" or tls.selected_alpn_protocol() != "h2":
+                raise ValueError("Candidate failed TLS/H2")
+
+
+def _launch_probe_client(
+    s: _PanelSession,
+    target: dict[str, object],
+    executable: str,
+    fixture_id: str,
+) -> "tuple[IO[str], subprocess.Popen[bytes], int]":
+    """Start the probe client and wait for its local SOCKS listener."""
+    with socket.socket() as reservation:
+        reservation.bind(("127.0.0.1", 0))
+        port = reservation.getsockname()[1]
+    cfg = vless_client(json.loads(cast("str", target["stream_settings"])), fixture_id, port)
+    h.save(s.state / "probe-client-private.json", cfg)
+    log = (s.state / "probe-client-private.log").open("x")
+    os.chmod(log.name, 0o600)
+    proc = subprocess.Popen(
+        [executable, "run", "-c", str(s.state / "probe-client-private.json")],
+        stdout=log,
+        stderr=subprocess.STDOUT,
+    )
+    for _ in range(40):
+        if proc.poll() is not None:
+            raise RuntimeError("Private acceptance client exited")
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=0.3):
+                return log, proc, port
+        except OSError:
+            time.sleep(0.25)
+    return log, proc, port
+
+
+def _require_projection_parity(api_row: dict[str, object], db_target: dict[str, object]) -> None:
+    """Raise unless the native API row matches the DB projection."""
+    for api_key, db_key in (
+        ("settings", "settings"),
+        ("streamSettings", "stream_settings"),
+        ("sniffing", "sniffing"),
+    ):
+        if json_field(api_row[api_key]) != json_field(db_target[db_key]):
+            raise ValueError("API/DB projection mismatch")
+
+
+def _wait_local_fallback_tls() -> None:
+    """Wait until the corrected target accepts TLS 1.3 with HTTP/2 locally."""
+    for attempt in range(40):
+        try:
+            ctx = ssl.create_default_context()
+            ctx.set_alpn_protocols(["h2"])
+            with socket.create_connection(("127.0.0.1", 32053), timeout=2) as raw:
+                with ctx.wrap_socket(raw, server_hostname="www.yahoo.com") as tls:
+                    if tls.version() != "TLSv1.3" or tls.selected_alpn_protocol() != "h2":
+                        raise ValueError("Fallback TLS/H2 failed")
+        except (OSError, ssl.SSLError):
+            if attempt == 39:
+                raise RuntimeError("Fallback never converged")
+            time.sleep(0.5)
+        else:
+            return
+
+
+def _stop_probe_client(proc: "subprocess.Popen[bytes] | None", log: "IO[str] | None") -> None:
+    """Terminate the probe client process and close its log handle."""
+    if proc is not None:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait(timeout=5)
+    if log:
+        log.close()
+
+
+def _remove_fixture(
+    s: _PanelSession, *, fixture: bool, email: str, fixture_id: str, sub_id: str
+) -> None:
+    """Remove the temporary fixture, verifying ownership before deletion."""
+    if not fixture:
+        return
+    with closing(sqlite3.connect(s.database.as_uri() + "?mode=ro", uri=True)) as con:
+        rows = con.execute("SELECT uuid,sub_id FROM clients WHERE email=?", (email,)).fetchall()
+    if rows:
+        if rows != [(fixture_id, sub_id)]:
+            raise ValueError("Fixture ownership mismatch")
+        s.call("POST", "/clients/del/" + email, {})
+    with closing(sqlite3.connect(s.database.as_uri() + "?mode=ro", uri=True)) as con:
+        if con.execute("SELECT COUNT(*) FROM clients WHERE email=?", (email,)).fetchone()[0]:
+            raise ValueError("Fixture cleanup incomplete")
+
+
+def _final_receipt(s: _PanelSession, *, applied: bool, original: object) -> dict[str, object]:
+    """Verify proxy preservation and persist the acceptance receipt."""
+    final = configuration(s.database)
+    expected = corrected(original) if applied else original
+    h.save(s.state / "proxy-after-private.json", final)
+    if semantic(final) != semantic(expected):
+        raise RuntimeError("Final proxy preservation check failed")
+    receipt: dict[str, object] = {
+        "target_corrected": applied,
+        "fixture_removed": True,
+        "temporary_credentials_removed": True,
+        "existing_credentials_preserved": True,
+        "only_target_changed": True,
+        "human_credentials_used": False,
+        "russian_isp_acceptance": False,
+        "plaintext_retired": False,
+        "raw_backends_enforced": False,
+    }
+    h.save(s.state / "receipt.json", receipt)
+    return receipt
+
+
 def apply(state, policy, session_hash, target_hash):
     if policy["realityCorrection"].get("apiApplyEnabled") is not True:
         raise ValueError("API apply is disabled by source policy")
@@ -227,12 +362,7 @@ def apply(state, policy, session_hash, target_hash):
     if plan["plan_sha256"] != target_hash or len(plan["operations"]) != 1:
         raise ValueError("Target approval drift")
     # Candidate must be validated before credentials or client state are written.
-    context = ssl.create_default_context()
-    context.set_alpn_protocols(["h2"])
-    with socket.create_connection(("www.yahoo.com", 443), timeout=10) as raw:
-        with context.wrap_socket(raw, server_hostname="www.yahoo.com") as tls:
-            if tls.version() != "TLSv1.3" or tls.selected_alpn_protocol() != "h2":
-                raise ValueError("Candidate failed TLS/H2")
+    _require_candidate_tls()
     executable = server_executable()
     email = s.state.name + "-probe"
     fixture_id = str(uuid.uuid4())
@@ -278,26 +408,7 @@ def apply(state, policy, session_hash, target_hash):
                 "inboundIds": [target["id"]],
             },
         )
-        with socket.socket() as reservation:
-            reservation.bind(("127.0.0.1", 0))
-            port = reservation.getsockname()[1]
-        cfg = vless_client(json.loads(target["stream_settings"]), fixture_id, port)
-        h.save(s.state / "probe-client-private.json", cfg)
-        log = (s.state / "probe-client-private.log").open("x")
-        os.chmod(log.name, 0o600)
-        proc = subprocess.Popen(
-            [executable, "run", "-c", str(s.state / "probe-client-private.json")],
-            stdout=log,
-            stderr=subprocess.STDOUT,
-        )
-        for _ in range(40):
-            if proc.poll() is not None:
-                raise RuntimeError("Private acceptance client exited")
-            try:
-                with socket.create_connection(("127.0.0.1", port), timeout=0.3):
-                    break
-            except OSError:
-                time.sleep(0.25)
+        log, proc, port = _launch_probe_client(s, target, executable, fixture_id)
         time.sleep(1)
         before = transfer(port, s.state, "before")
         # Fresh native DTO plus complete config preimage after our own fixture.
@@ -311,13 +422,7 @@ def apply(state, policy, session_hash, target_hash):
         if semantic(before_api) != semantic(prewrite):
             raise ValueError("Concurrent config change during API read")
         db_target = next(r for r in prewrite["inbounds"] if r["id"] == target["id"])
-        for api_key, db_key in (
-            ("settings", "settings"),
-            ("streamSettings", "stream_settings"),
-            ("sniffing", "sniffing"),
-        ):
-            if json_field(matches[0][api_key]) != json_field(db_target[db_key]):
-                raise ValueError("API/DB projection mismatch")
+        _require_projection_parity(matches[0], db_target)
         h.save(s.state / "proxy-prewrite-private.json", prewrite)
         h.save(s.state / "target-write-uncertain.json", {"target_plan_sha256": target_hash})
         # Only one native write. An ambiguous response is not automatically retried.
@@ -327,19 +432,7 @@ def apply(state, policy, session_hash, target_hash):
         if semantic(configuration(s.database)) != semantic(expected):
             raise RuntimeError("Unexpected API normalization/drift; inspect private data")
         # Wait only on real local fallback readiness, not repeated external transfers.
-        for attempt in range(40):
-            try:
-                ctx = ssl.create_default_context()
-                ctx.set_alpn_protocols(["h2"])
-                with socket.create_connection(("127.0.0.1", 32053), timeout=2) as raw:
-                    with ctx.wrap_socket(raw, server_hostname="www.yahoo.com") as tls:
-                        if tls.version() != "TLSv1.3" or tls.selected_alpn_protocol() != "h2":
-                            raise ValueError("Fallback TLS/H2 failed")
-                break
-            except (OSError, ssl.SSLError):
-                if attempt == 39:
-                    raise RuntimeError("Fallback never converged")
-                time.sleep(0.5)
+        _wait_local_fallback_tls()
         after = transfer(port, s.state, "after")
         h.save(
             s.state / "target-acceptance.json",
@@ -353,50 +446,12 @@ def apply(state, policy, session_hash, target_hash):
         )
         (s.state / "target-write-uncertain.json").unlink()
     finally:
-        if proc is not None:
-            proc.terminate()
-            try:
-                proc.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.wait(timeout=5)
-        if log:
-            log.close()
+        _stop_probe_client(proc, log)
         try:
-            if fixture:
-                with closing(sqlite3.connect(s.database.as_uri() + "?mode=ro", uri=True)) as con:
-                    rows = con.execute(
-                        "SELECT uuid,sub_id FROM clients WHERE email=?", (email,)
-                    ).fetchall()
-                if rows:
-                    if rows != [(fixture_id, sub_id)]:
-                        raise ValueError("Fixture ownership mismatch")
-                    s.call("POST", "/clients/del/" + email, {})
-                with closing(sqlite3.connect(s.database.as_uri() + "?mode=ro", uri=True)) as con:
-                    if con.execute(
-                        "SELECT COUNT(*) FROM clients WHERE email=?", (email,)
-                    ).fetchone()[0]:
-                        raise ValueError("Fixture cleanup incomplete")
+            _remove_fixture(s, fixture=fixture, email=email, fixture_id=fixture_id, sub_id=sub_id)
         finally:
             s.cleanup()
-    final = configuration(s.database)
-    expected = corrected(original) if applied else original
-    h.save(s.state / "proxy-after-private.json", final)
-    if semantic(final) != semantic(expected):
-        raise RuntimeError("Final proxy preservation check failed")
-    receipt = {
-        "target_corrected": applied,
-        "fixture_removed": True,
-        "temporary_credentials_removed": True,
-        "existing_credentials_preserved": True,
-        "only_target_changed": True,
-        "human_credentials_used": False,
-        "russian_isp_acceptance": False,
-        "plaintext_retired": False,
-        "raw_backends_enforced": False,
-    }
-    h.save(s.state / "receipt.json", receipt)
-    return receipt
+    return _final_receipt(s, applied=applied, original=original)
 
 
 def main():

@@ -2,6 +2,7 @@
 
 import ast
 import copy
+from typing import cast
 import importlib.util
 import json
 from pathlib import Path
@@ -581,6 +582,61 @@ class BootstrapSafetyTests(unittest.TestCase):
         self.assertFalse((self.root / "observer-ready.json").exists())
 
 
+class FakeMigrationClient:
+    """In-memory Authentik client covering the migration's read/write surface."""
+
+    def __init__(self, state: "dict[str, object]", calls: "list[object]") -> None:
+        """Keep the in-memory state and the recorded mutation log."""
+        self.state = state
+        self.calls = calls
+
+    def rows(self, path: str) -> "list[dict[str, object]]":
+        """Serve the read-only listing endpoints of the fake client."""
+
+        def listed(key: str) -> "list[dict[str, object]]":
+            return cast("list[dict[str, object]]", copy.deepcopy(self.state[key]))
+
+        if path.startswith("core/groups/"):
+            return listed("groups")
+        if path.startswith("core/applications/"):
+            return [cast("dict[str, object]", copy.deepcopy(self.state["app"]))]
+        if path.startswith("policies/bindings/"):
+            return listed("bindings")
+        if path.startswith("core/users/"):
+            return listed("users")
+        raise AssertionError("Unexpected API read")
+
+    def call(
+        self,
+        system: str,
+        method: str,
+        path: str,
+        body: "dict[str, object] | None" = None,
+    ) -> object:
+        """Serve one mutation of the fake client, or the requested single row."""
+        body = body or {}
+        self.calls.append((system, method, path, body))
+        users = cast("list[dict[str, object]]", self.state["users"])
+        groups = cast("list[dict[str, object]]", self.state["groups"])
+        bindings = cast("list[dict[str, object]]", self.state["bindings"])
+        if method == "POST" and path == "core/groups/":
+            groups.append({"pk": "new-chat-group", "users": [], **body})
+        elif method == "POST" and path.endswith("/add_user/"):
+            cast("list[object]", users[0]["groups"]).append("new-chat-group")
+            cast("list[object]", groups[-1]["users"]).append(92)
+        elif method == "POST" and path == "policies/bindings/":
+            bindings.append({"pk": "new-binding", **body})
+        elif method == "DELETE":
+            self.state["bindings"] = [b for b in bindings if b["pk"] != path.split("/")[-2]]
+        elif method == "GET" and path.startswith("core/users/"):
+            return copy.deepcopy(users[0])
+        elif method == "GET" and path.startswith("policies/bindings/"):
+            return copy.deepcopy(next(b for b in bindings if b["pk"] == path.split("/")[-2]))
+        else:
+            raise AssertionError("Unexpected API mutation")
+        return None
+
+
 class LegacyChatMigrationTests(unittest.TestCase):
     def setUp(self):
         spec = importlib.util.spec_from_file_location(
@@ -626,43 +682,9 @@ class LegacyChatMigrationTests(unittest.TestCase):
             ],
         }
         self.calls = []
-        outer = self
-
-        class FakeClient:
-            def rows(self, path):
-                if path.startswith("core/groups/"):
-                    return copy.deepcopy(outer.state["groups"])
-                if path.startswith("core/applications/"):
-                    return [copy.deepcopy(outer.state["app"])]
-                if path.startswith("policies/bindings/"):
-                    return copy.deepcopy(outer.state["bindings"])
-                if path.startswith("core/users/"):
-                    return copy.deepcopy(outer.state["users"])
-                raise AssertionError("Unexpected API read")
-
-            def call(self, system, method, path, body=None):
-                outer.calls.append((system, method, path, body))
-                if method == "POST" and path == "core/groups/":
-                    outer.state["groups"].append({"pk": "new-chat-group", "users": [], **body})
-                elif method == "POST" and path.endswith("/add_user/"):
-                    outer.state["users"][0]["groups"].append("new-chat-group")
-                    outer.state["groups"][-1]["users"].append(92)
-                elif method == "POST" and path == "policies/bindings/":
-                    outer.state["bindings"].append({"pk": "new-binding", **body})
-                elif method == "DELETE":
-                    outer.state["bindings"] = [
-                        b for b in outer.state["bindings"] if b["pk"] != path.split("/")[-2]
-                    ]
-                elif method == "GET" and path.startswith("core/users/"):
-                    return copy.deepcopy(outer.state["users"][0])
-                elif method == "GET" and path.startswith("policies/bindings/"):
-                    return copy.deepcopy(
-                        next(b for b in outer.state["bindings"] if b["pk"] == path.split("/")[-2])
-                    )
-                else:
-                    raise AssertionError("Unexpected API mutation")
-
-        self.client = FakeClient()
+        self.client = FakeMigrationClient(
+            cast("dict[str, object]", self.state), cast("list[object]", self.calls)
+        )
 
     def test_one_time_migration_preserves_native_subject_and_owner_then_converges(self):
         before = copy.deepcopy(self.state)

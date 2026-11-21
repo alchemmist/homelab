@@ -56,48 +56,51 @@ class SimulatedRouter(ROUTER.Router):
         self.fail_add_port = fail_add_port
         self.failed = False
 
+    def _page_rows(self) -> str:
+        rendered = []
+        for index, row in enumerate(self.rows, 1):
+            cells = "".join(
+                '<td><font size="2">' + html.escape(row[field]) + "</td>" for field in ROUTER.FIELDS
+            )
+            rendered.append(
+                "<tr>" + cells + f'<td><input name="select{index}" value="ON"></td></tr>'
+            )
+        return "".join(rendered)
+
+    def _delete_row(self, data: "dict[str, str]") -> None:
+        selectors = [key for key in data if key.startswith("select")]
+        if len(selectors) != 1:
+            raise AssertionError("Deletion must target exactly one row")
+        self.rows.pop(int(selectors[0][6:]) - 1)
+
+    def _add_row(self, data: "dict[str, str]") -> None:
+        if (
+            data["externalFromPort"] == self.fail_add_port
+            and data["ip"] == "192.168.0.250"
+            and not self.failed
+        ):
+            self.failed = True
+            raise OSError("Simulated target add failure")
+        if data["WAN2"] != "ON" or data["protocol"] != "1":
+            raise AssertionError("Unexpected interface or protocol")
+        if data["fromPort"] != data["toPort"] or data["externalFromPort"] != data["externalToPort"]:
+            raise AssertionError("Port range unexpectedly changed")
+        self.rows.append(
+            forward(data["ip"], data["fromPort"], data["externalFromPort"], "TCP", data["comment"])
+        )
+
     def request(self, path, data=None):
         if data is None:
             if path != "/portfw.htm":
                 raise AssertionError(path)
-            rows = []
-            for index, row in enumerate(self.rows, 1):
-                cells = "".join(
-                    '<td><font size="2">' + html.escape(row[field]) + "</td>"
-                    for field in ROUTER.FIELDS
-                )
-                rows.append(
-                    "<tr>" + cells + f'<td><input name="select{index}" value="ON"></td></tr>'
-                )
-            return "<table>" + "".join(rows) + "</table>"
+            return "<table>" + self._page_rows() + "</table>"
         if path != "/boafrm/formPortFw":
             raise AssertionError(path)
         self.mutations.append(copy.deepcopy(data))
         if "deleteSelPortFw" in data:
-            selectors = [key for key in data if key.startswith("select")]
-            if len(selectors) != 1:
-                raise AssertionError("Deletion must target exactly one row")
-            self.rows.pop(int(selectors[0][6:]) - 1)
+            self._delete_row(data)
         elif data.get("addPortFwFlag") == "1":
-            if (
-                data["externalFromPort"] == self.fail_add_port
-                and data["ip"] == "192.168.0.250"
-                and not self.failed
-            ):
-                self.failed = True
-                raise OSError("Simulated target add failure")
-            if data["WAN2"] != "ON" or data["protocol"] != "1":
-                raise AssertionError("Unexpected interface or protocol")
-            if (
-                data["fromPort"] != data["toPort"]
-                or data["externalFromPort"] != data["externalToPort"]
-            ):
-                raise AssertionError("Port range unexpectedly changed")
-            self.rows.append(
-                forward(
-                    data["ip"], data["fromPort"], data["externalFromPort"], "TCP", data["comment"]
-                )
-            )
+            self._add_row(data)
         else:
             raise AssertionError("Unexpected mutation")
         return "<html>Applied</html>"

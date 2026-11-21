@@ -64,18 +64,13 @@ def atomic_write(data):
             os.unlink(name)
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("mode", choices=["apply", "rollback"])
-    args = parser.parse_args()
+def _require_safe_preconditions(text: str) -> None:
+    """Require root, canonical config ownership, no SaveConfig and node5 identity."""
     if os.geteuid() != 0:
         raise RuntimeError("Root required, not a setuid helper")
-    target = RELAY if args.mode == "apply" else DIRECT
     st = CONFIG.stat()
     if st.st_uid != 0 or stat.S_IMODE(st.st_mode) != 0o600:
         raise RuntimeError("Unexpected config ownership/mode")
-    original = CONFIG.read_bytes()
-    text = original.decode("utf-8")
     if re.search(r"(?mi)^SaveConfig\s*=\s*true\s*$", text):
         raise RuntimeError("SaveConfig would override reviewed endpoint")
     addresses = json.loads(
@@ -83,24 +78,28 @@ def main():
     )
     if "10.250.0.41" not in [a["local"] for d in addresses for a in d["addr_info"]]:
         raise RuntimeError("This command is restricted to node5")
-    changed = replace_endpoint(text, target).encode("utf-8")
-    allowed_before = wg("show", "wg-socrat", "allowed-ips")
-    current = dict(l.split() for l in wg("show", "wg-socrat", "endpoints").splitlines())[PEER]
-    if current not in (DIRECT, RELAY):
-        raise RuntimeError("Unreviewed runtime peer endpoint")
+
+
+def _store_apply_preimage(mode: str, text: str, original: bytes) -> None:
+    """On first apply, verify and persist the root-only direct-endpoint preimage."""
+    if mode != "apply":
+        return
     BACKUP.mkdir(parents=True, mode=0o700, exist_ok=True)
     os.chmod(BACKUP, 0o700)
     preimage = BACKUP / "wg-socrat-before-private.conf"
-    if args.mode == "apply" and not preimage.exists():
-        if replace_endpoint(text, DIRECT).encode() != original:
-            raise RuntimeError("Missing original direct preimage")
-        with preimage.open("xb") as f:
-            os.chmod(preimage, 0o600)
-            f.write(original)
-            f.flush()
-            os.fsync(f.fileno())
-    if changed != original:
-        atomic_write(changed)
+    if preimage.exists():
+        return
+    if replace_endpoint(text, DIRECT).encode("utf-8") != original:
+        raise RuntimeError("Missing original direct preimage")
+    with preimage.open("xb") as f:
+        os.chmod(preimage, 0o600)
+        f.write(original)
+        f.flush()
+        os.fsync(f.fileno())
+
+
+def _settle_endpoint(target: str, allowed_before: str, current: str, original: bytes) -> None:
+    """Apply the reviewed endpoint, converge it and roll back on any failure."""
     try:
         wg("set", "wg-socrat", "peer", PEER, "endpoint", target)
         # Establish the symmetric authenticated path so peer roaming cannot
@@ -127,6 +126,25 @@ def main():
         atomic_write(original)
         wg("set", "wg-socrat", "peer", PEER, "endpoint", current)
         raise
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("mode", choices=["apply", "rollback"])
+    args = parser.parse_args()
+    target = RELAY if args.mode == "apply" else DIRECT
+    original = CONFIG.read_bytes()
+    text = original.decode("utf-8")
+    _require_safe_preconditions(text)
+    changed = replace_endpoint(text, target).encode("utf-8")
+    allowed_before = wg("show", "wg-socrat", "allowed-ips")
+    current = dict(l.split() for l in wg("show", "wg-socrat", "endpoints").splitlines())[PEER]
+    if current not in (DIRECT, RELAY):
+        raise RuntimeError("Unreviewed runtime peer endpoint")
+    _store_apply_preimage(args.mode, text, original)
+    if changed != original:
+        atomic_write(changed)
+    _settle_endpoint(target, allowed_before, current, original)
     print(
         json.dumps(
             {

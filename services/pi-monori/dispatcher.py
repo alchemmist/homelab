@@ -22,21 +22,30 @@ def suite(paths,timeout=220):
 def mutfile(name,src,mid):
     s=gitfile(src);fn=next(n for n in ast.parse(s).body if isinstance(n,ast.FunctionDef) and n.name==name);lines=s.splitlines(keepends=True);a,b=CAT[name][mid];part=lines[fn.lineno-1:fn.end_lineno];idx=[i for i,line in enumerate(part) if line.rstrip('\n')==a];assert len(idx)==1;part[idx[0]]=b+'\n';return ''.join(lines[:fn.lineno-1]+part+lines[fn.end_lineno:])
 
-def inspect_test(text,name):
-    if not 30<len(text)<15000:raise ValueError('missing or oversized new regression test')
-    tree=ast.parse(text); calls={'integer_value','_amount','Workbook','pytest.raises','str','isinstance','len','type','bool','int','float','dict','list','tuple','set','Cell','Decimal','range','date','pytest.mark.parametrize'};modules={'pytest','datetime','decimal','openpyxl','openpyxl.cell.cell','monori.common.json_values','monori.server.app.workbook.parser'}
-    tests=[n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name.startswith('test_')]
-    if not tests or any(not isinstance(n,(ast.FunctionDef,ast.Import,ast.ImportFrom,ast.Expr)) for n in tree.body):raise ValueError('new file must be a small isolated regression')
+def _guard_imports_and_nodes(tree: ast.Module, modules: set[str]) -> None:
+    """Reject unexpected imports, dunder access and unsupported test constructs."""
     for n in ast.walk(tree):
         if isinstance(n,(ast.Import,ast.ImportFrom)):
             ms=[n.module] if isinstance(n,ast.ImportFrom) else [a.name for a in n.names]
             if any(m not in modules for m in ms) or any(a.asname or a.name.startswith('__') or a.name=='*' for a in n.names):raise ValueError('unexpected import in test')
         if isinstance(n,(ast.Name,ast.Attribute)) and (getattr(n,'id','').startswith('__') or getattr(n,'attr','').startswith('__')):raise ValueError('dunder forbidden')
         if isinstance(n,(ast.While,ast.AsyncFunctionDef,ast.ClassDef,ast.Lambda,ast.Global,ast.Nonlocal,ast.Delete,ast.Try)):raise ValueError('unsupported test construct')
+
+def _guard_calls(tree: ast.Module, calls: set[str], name: str) -> None:
+    """Allow only whitelisted calls, ending with one direct call of the target."""
+    for n in ast.walk(tree):
         if isinstance(n,ast.Call):
             called=ast.unparse(n.func)
             if called not in calls and not (isinstance(n.func,ast.Attribute) and n.func.attr in {'cell','search','group'}):raise ValueError('unsupported test call: '+called[:60])
     if not any(isinstance(n,ast.Call) and ast.unparse(n.func)==name for n in ast.walk(tree)):raise ValueError('test must call the assigned function directly')
+
+def inspect_test(text,name):
+    if not 30<len(text)<15000:raise ValueError('missing or oversized new regression test')
+    tree=ast.parse(text); calls={'integer_value','_amount','Workbook','pytest.raises','str','isinstance','len','type','bool','int','float','dict','list','tuple','set','Cell','Decimal','range','date','pytest.mark.parametrize'};modules={'pytest','datetime','decimal','openpyxl','openpyxl.cell.cell','monori.common.json_values','monori.server.app.workbook.parser'}
+    tests=[n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name.startswith('test_')]
+    if not tests or any(not isinstance(n,(ast.FunctionDef,ast.Import,ast.ImportFrom,ast.Expr)) for n in tree.body):raise ValueError('new file must be a small isolated regression')
+    _guard_imports_and_nodes(tree, modules)
+    _guard_calls(tree, calls, name)
 
 PUBLISH='''import sys,json,hmac,pathlib,urllib.request as u
 x=json.load(sys.stdin);x['proof']=hmac.new(pathlib.Path('/proof/key').read_bytes(),json.dumps(x,sort_keys=True).encode(),'sha256').hexdigest();r=u.urlopen(u.Request('http://monori-publisher:8081/v1',data=json.dumps(x).encode(),headers={'Content-Type':'application/json'}),timeout=75);print(r.read().decode())'''

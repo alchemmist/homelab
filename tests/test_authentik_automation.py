@@ -35,6 +35,38 @@ class Fake:
         self.tokens = []
         self.writes = []
 
+    def _post_row(self, parts: "list[str]", data: "dict[str, object]") -> "dict[str, object]":
+        if parts[1] == "groups":
+            r = dict(pk="group-machine", users=[], **data)
+        elif parts[1] == "users":
+            r = dict(pk=7, uuid="machine-uuid", is_superuser=True, **data)
+            self.groups[0]["users"].append(r["pk"])
+        else:
+            r = dict(data)
+        return r
+
+    def _delete_row(self, rows: "list[dict[str, object]]", parts: "list[str]") -> None:
+        row = next(r for r in rows if str(r.get("pk")) == parts[2])
+        rows.remove(row)
+        self.tokens[:] = [t for t in self.tokens if t["user"] != row["pk"]]
+
+    def _fetch_row(
+        self, rows: "list[dict[str, object]]", parts: "list[str]"
+    ) -> "dict[str, object]":
+        return next(
+            r
+            for r in rows
+            if str(r.get("pk", r.get("identifier"))) == parts[2] or r.get("identifier") == parts[2]
+        )
+
+    def _filtered_rows(
+        self, rows: "list[dict[str, object]]", query: str
+    ) -> "list[dict[str, object]]":
+        for key, values in parse_qs(query).items():
+            if key != "page_size":
+                rows = [r for r in rows if r.get(key) == values[0]]
+        return rows
+
     def __call__(self, token, method, path, data=None):
         endpoint, _, query = path.partition("?")
         parts = endpoint.strip("/").split("/")
@@ -49,33 +81,17 @@ class Fake:
             return {"results": []}
         rows = {"users": self.users, "groups": self.groups, "tokens": self.tokens}[parts[1]]
         if method == "DELETE":
-            row = next(r for r in rows if str(r.get("pk")) == parts[2])
-            rows.remove(row)
-            self.tokens[:] = [t for t in self.tokens if t["user"] != row["pk"]]
+            self._delete_row(rows, parts)
             return None
         if method == "POST":
-            if parts[1] == "groups":
-                r = dict(pk="group-machine", users=[], **data)
-            elif parts[1] == "users":
-                r = dict(pk=7, uuid="machine-uuid", is_superuser=True, **data)
-                self.groups[0]["users"].append(r["pk"])
-            else:
-                r = dict(data)
+            r = self._post_row(parts, data)
             rows.append(r)
             return r
         if len(parts) > 2:
             if parts[-1] == "view_key":
                 return {"key": "unit-machine-token"}
-            return next(
-                r
-                for r in rows
-                if str(r.get("pk", r.get("identifier"))) == parts[2]
-                or r.get("identifier") == parts[2]
-            )
-        for key, values in parse_qs(query).items():
-            if key != "page_size":
-                rows = [r for r in rows if r.get(key) == values[0]]
-        return {"results": rows}
+            return self._fetch_row(rows, parts)
+        return {"results": self._filtered_rows(rows, query)}
 
 
 class AutomationTests(unittest.TestCase):

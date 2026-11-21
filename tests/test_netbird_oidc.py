@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+from typing import cast
 import threading
 import unittest
 import urllib.parse
@@ -223,7 +224,7 @@ class FakeAuthentik(threading.Thread):
     def page(self, rows):
         return {"pagination": {"next": None, "count": len(rows)}, "results": rows}
 
-    def route(self, method, path, query, payload):
+    def _route_get(self, method: str, path: str, query: str) -> "tuple[int, object] | None":
         if method == "GET" and path == "/api/v3/admin/version/":
             return 200, {"version_current": oidc.AUTHENTIK_VERSION}
         collections = {
@@ -241,40 +242,91 @@ class FakeAuthentik(threading.Thread):
         if method == "GET" and path == "/api/v3/core/applications/":
             rows = self.applications if "superuser_full_list=true" in query else []
             return 200, self.page(rows)
-        if method == "POST" and path == "/api/v3/core/groups/":
+        return None
+
+    def _post_provider(self, payload: "dict[str, object]") -> "tuple[int, dict[str, object]]":
+        if self.fail_provider:
+            self.fail_provider = False
+            return 500, {"detail": "unavailable"}
+        if self.attach_outpost:
+            self.outposts[0]["providers"] = list(self.outposts[0]["providers"]) + [101]
+        self._seq += 1
+        created = dict(payload)
+        self.provider_secrets[self._seq] = created.pop("client_secret", None)
+        created["pk"] = self._seq
+        self.providers.append(created)
+        return 201, created
+
+    def _post_object(
+        self, path: str, payload: "dict[str, object]"
+    ) -> "tuple[int, dict[str, object]]":
+        self._seq += 1
+        created = dict(payload)
+        if path == "/api/v3/core/applications/":
+            created["pk"] = "app-" + str(self._seq)
+            self.applications.append(created)
+        else:
+            created["pk"] = self._seq
+            self.bindings.append(created)
+        return 201, created
+
+    def _post_group_add_user(
+        self, path: str, payload: "dict[str, object]"
+    ) -> "tuple[int, dict[str, object]]":
+        pk = path.split("/")[-3]
+        group = next(item for item in self.groups if item["pk"] == pk)
+        user_pk = payload["pk"]
+        user = next(item for item in self.users if item["pk"] == user_pk)
+        group_users = cast("list[object]", group["users"])
+        user_groups = cast("list[object]", user["groups"])
+        if user_pk not in group_users:
+            group_users.append(user_pk)
+        if group["pk"] not in user_groups:
+            user_groups.append(group["pk"])
+        if self.drop_legacy_on_add:
+            user["groups"] = [item for item in user_groups if item == group["pk"]]
+        return 200, {"pk": user_pk}
+
+    def _route_post(
+        self, method: str, path: str, payload: "dict[str, object]"
+    ) -> "tuple[int, object] | None":
+        if method != "POST":
+            return None
+        if path == "/api/v3/core/groups/":
             self._seq += 1
             created = dict(payload)
             created["pk"] = "group-" + str(self._seq)
             created["num_pk"] = self._seq
             self.groups.append(created)
             return 201, created
-        if method == "POST" and path == "/api/v3/propertymappings/provider/scope/":
+        if path == "/api/v3/propertymappings/provider/scope/":
             self._seq += 1
             created = dict(payload)
             # Match Authentik's trim_whitespace serializer behavior.
-            created["expression"] = created["expression"].strip()
+            created["expression"] = cast("str", created["expression"]).strip()
             created["pk"] = "map-" + str(self._seq)
             created["managed"] = None
             self.scopes.append(created)
             return 201, created
-        if method == "PATCH" and path.startswith("/api/v3/propertymappings/provider/scope/"):
-            pk = path.rstrip("/").split("/")[-1]
-            row = next(item for item in self.scopes if item["pk"] == pk)
+        if path == "/api/v3/providers/oauth2/":
+            return self._post_provider(payload)
+        if path in ("/api/v3/core/applications/", "/api/v3/policies/bindings/"):
+            return self._post_object(path, payload)
+        if path.startswith("/api/v3/core/groups/") and path.endswith("/add_user/"):
+            return self._post_group_add_user(path, payload)
+        return None
+
+    def _route_patch(
+        self, method: str, path: str, payload: "dict[str, object]"
+    ) -> "tuple[int, object] | None":
+        if method != "PATCH":
+            return None
+        if path.startswith("/api/v3/propertymappings/provider/scope/"):
+            scope_pk = path.rstrip("/").split("/")[-1]
+            row = next(item for item in self.scopes if item["pk"] == scope_pk)
             row.update(payload)
             return 200, row
-        if method == "POST" and path == "/api/v3/providers/oauth2/":
-            if self.fail_provider:
-                self.fail_provider = False
-                return 500, {"detail": "unavailable"}
-            if self.attach_outpost:
-                self.outposts[0]["providers"] = list(self.outposts[0]["providers"]) + [101]
-            self._seq += 1
-            created = dict(payload)
-            self.provider_secrets[self._seq] = created.pop("client_secret", None)
-            created["pk"] = self._seq
-            self.providers.append(created)
-            return 201, created
-        if method == "PATCH" and path.startswith("/api/v3/providers/oauth2/"):
+        if path.startswith("/api/v3/providers/oauth2/"):
             pk = int(path.rstrip("/").split("/")[-1])
             row = next(item for item in self.providers if item["pk"] == pk)
             updated = dict(payload)
@@ -282,40 +334,20 @@ class FakeAuthentik(threading.Thread):
                 self.provider_secrets[pk] = updated.pop("client_secret")
             row.update(updated)
             return 200, row
-        if method == "POST" and path == "/api/v3/core/applications/":
-            self._seq += 1
-            created = dict(payload)
-            created["pk"] = "app-" + str(self._seq)
-            self.applications.append(created)
-            return 201, created
-        if method == "PATCH" and path.startswith("/api/v3/core/applications/"):
+        if path.startswith("/api/v3/core/applications/"):
             slug = path.rstrip("/").split("/")[-1]
             row = next(item for item in self.applications if item["slug"] == slug)
             row.update(payload)
             return 200, row
-        if method == "POST" and path == "/api/v3/policies/bindings/":
-            self._seq += 1
-            created = dict(payload)
-            created["pk"] = self._seq
-            self.bindings.append(created)
-            return 201, created
-        if (
-            method == "POST"
-            and path.startswith("/api/v3/core/groups/")
-            and path.endswith("/add_user/")
-        ):
-            pk = path.split("/")[-3]
-            group = next(item for item in self.groups if item["pk"] == pk)
-            user_pk = payload["pk"]
-            user = next(item for item in self.users if item["pk"] == user_pk)
-            if user_pk not in group["users"]:
-                group["users"].append(user_pk)
-            if group["pk"] not in user["groups"]:
-                user["groups"].append(group["pk"])
-            if self.drop_legacy_on_add:
-                user["groups"] = [item for item in user["groups"] if item == group["pk"]]
-            return 200, {"pk": user_pk}
-        return 404, {"detail": "missing"}
+        return None
+
+    def route(self, method, path, query, payload):
+        response = self._route_get(method, path, query)
+        if response is None:
+            response = self._route_post(method, path, payload)
+        if response is None:
+            response = self._route_patch(method, path, payload)
+        return response if response is not None else (404, {"detail": "missing"})
 
     def writes(self):
         return [call for call in self.calls if call[0] != "GET"]

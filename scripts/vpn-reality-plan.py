@@ -11,6 +11,7 @@ import json
 import sqlite3
 from contextlib import closing
 from pathlib import Path
+from typing import cast
 
 spec = importlib.util.spec_from_file_location(
     "inventory", Path(__file__).with_name("vpn-hardening-inventory.py")
@@ -19,24 +20,33 @@ inventory = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(inventory)
 
 
-def build(config, policy):
+def _validated_inbound(
+    config: dict[str, object], policy: dict[str, object]
+) -> tuple[dict[str, object], dict[str, object]]:
+    """Validate migration policy and return the single matching inbound row."""
     if (
         policy.get("version") != 1
         or policy.get("newVpsOrPublicIp") is not False
         or policy.get("scope") != "existing-socrat-2-only"
     ):
         raise ValueError("Unsupported scope")
-    desired = policy["realityCorrection"]
+    desired = cast("dict[str, object]", policy["realityCorrection"])
     if (
         not isinstance(desired.get("apiApplyEnabled"), bool)
         or desired.get("preserveClientMaterial") is not True
     ):
         raise ValueError("Explicit apply policy and preserved client material required")
-    matches = [x for x in config["inbounds"] if x["port"] == desired["port"]]
+    rows = cast("list[dict[str, object]]", config["inbounds"])
+    matches = [x for x in rows if x["port"] == desired["port"]]
     if len(matches) != 1:
         raise ValueError("Expected exactly one target inbound")
-    row = matches[0]
-    stream = json.loads(row["stream_settings"])
+    return matches[0], desired
+
+
+def _validate_transport(
+    row: dict[str, object], stream: dict[str, object], desired: dict[str, object]
+) -> tuple[str, str]:
+    """Reject transport drift or a disabled inbound before any planning."""
     if not row["enable"] or any(
         (
             row["protocol"] != desired["protocol"],
@@ -45,16 +55,23 @@ def build(config, policy):
         )
     ):
         raise ValueError("Unexpected transport or disabled inbound")
-    reality = stream["realitySettings"]
+    reality = cast("dict[str, object]", stream["realitySettings"])
     if reality["serverNames"] != desired["serverNames"]:
         raise ValueError("Unexpected client-visible SNI; do not migrate it implicitly")
     keys = [key for key in ("target", "dest") if key in reality]
     if len(keys) != 1:
         raise ValueError("Ambiguous REALITY target schema")
-    key = keys[0]
-    current = reality[key]
-    if current not in (desired["oldTarget"], desired["newTarget"]):
+    key: str = keys[0]
+    current: object = reality[key]
+    if current != desired["oldTarget"] and current != desired["newTarget"]:
         raise ValueError("Target drift; stop")
+    return key, str(current)
+
+
+def build(config, policy):
+    row, desired = _validated_inbound(config, policy)
+    stream = json.loads(cast("str", row["stream_settings"]))
+    key, current = _validate_transport(row, stream, desired)
     after = copy.deepcopy(config)
     operations = []
     if current != desired["newTarget"]:
