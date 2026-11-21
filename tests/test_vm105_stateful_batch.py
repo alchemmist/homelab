@@ -54,7 +54,7 @@ def assert_monori_release_images(documents, images):
 
 class StatefulBoundaries(unittest.TestCase):
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         cls.tmp = tempfile.TemporaryDirectory()
         cls.old = pathlib.Path(cls.tmp.name)
         archive = subprocess.check_output(
@@ -74,7 +74,7 @@ class StatefulBoundaries(unittest.TestCase):
         subprocess.run(["tar", "-xf", "-", "-C", str(cls.old)], input=archive, check=True)
 
     @classmethod
-    def tearDownClass(cls):
+    def tearDownClass(cls) -> None:
         cls.tmp.cleanup()
 
     def test_only_intended_deployments_and_retention_annotation_change(self):

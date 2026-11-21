@@ -544,7 +544,7 @@ class UpstreamContractTests(unittest.TestCase):
 
 class ProbeTests(unittest.TestCase):
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         spec = importlib.util.spec_from_file_location(
             "netbird_probe", ROOT / "scripts/netbird-pilot-probe.py"
         )

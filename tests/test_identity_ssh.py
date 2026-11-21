@@ -360,7 +360,7 @@ class HostBindingTests(unittest.TestCase):
         self.addCleanup(patch.stopall)
 
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         spec = importlib.util.spec_from_file_location(
             "host_binding", ROOT / "ansible/files/verify_authentik_ssh_binding.py"
         )

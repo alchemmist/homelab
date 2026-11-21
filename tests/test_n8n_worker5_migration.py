@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class Worker5MigrationTest(unittest.TestCase):
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         cls.values = yaml.safe_load((ROOT / "charts/n8n/values.yaml").read_text())
         cls.docs = list(
             yaml.safe_load_all(
