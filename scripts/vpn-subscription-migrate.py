@@ -15,9 +15,57 @@ import urllib.parse
 import urllib.request
 from contextlib import closing
 from pathlib import Path
+from typing import Protocol, TypedDict
 
 
-def load(name, filename):
+class _Flag(Protocol):
+    def __bool__(self) -> bool: ...
+
+
+class _LegacyInbound(TypedDict):
+    id: int
+    port: int
+    protocol: str
+    enable: int | bool
+    stream_settings: str
+    exclude_from_sub: bool
+
+
+class _PanelConfig(TypedDict):
+    inbounds: list[_LegacyInbound]
+
+
+class _ApiInbound(TypedDict, total=False):
+    id: int
+    port: int
+    protocol: str
+    enable: bool
+    excludeFromSub: bool
+    streamSettings: object
+    settings: object
+    sniffing: object
+    clientStats: object
+
+
+class _Vnext(TypedDict, total=False):
+    port: int
+
+
+class _OutboundSettings(TypedDict, total=False):
+    port: int
+    vnext: list[_Vnext]
+
+
+class _Outbound(TypedDict, total=False):
+    protocol: str
+    settings: _OutboundSettings
+
+
+class _JsonConfig(TypedDict, total=False):
+    outbounds: list[_Outbound]
+
+
+def load(name: str, filename: str):
     spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name(filename))
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
@@ -29,7 +77,7 @@ target = load("target_helpers", "vpn-reality-apply.py")
 h = native.h
 
 
-def select(config):
+def select(config: _PanelConfig):
     rows = [r for r in config["inbounds"] if r["port"] == 32063]
     if len(rows) != 1:
         raise ValueError("Expected one legacy inbound")
@@ -47,14 +95,14 @@ def select(config):
     return row
 
 
-def desired(config):
+def desired(config: _PanelConfig):
     result = copy.deepcopy(config)
     row = select(result)
     row["exclude_from_sub"] = True
     return result
 
 
-def payload(inbound, expected_id):
+def payload(inbound: _ApiInbound, expected_id: int):
     obj = copy.deepcopy(inbound)
     stream = target.json_field(obj.get("streamSettings"))
     if (
@@ -72,7 +120,7 @@ def payload(inbound, expected_id):
     return obj
 
 
-def normalize(body):
+def normalize(body: bytes):
     text = body.decode("utf-8").strip()
     if "://" not in text:
         text = base64.b64decode(text + "=" * (-len(text) % 4), validate=True).decode("utf-8")
@@ -95,7 +143,7 @@ def normalize(body):
     return sorted(result)
 
 
-def normalize_json(value):
+def normalize_json(value: object):
     if isinstance(value, dict):
         out = {k: normalize_json(v) for k, v in value.items()}
         if isinstance(out.get("realitySettings"), dict):
@@ -106,7 +154,7 @@ def normalize_json(value):
     return value
 
 
-def json_legacy(config):
+def json_legacy(config: _JsonConfig):
     return any(
         o.get("protocol") == "vless"
         and (
@@ -117,12 +165,18 @@ def json_legacy(config):
     )
 
 
-def is_legacy(uri):
+def is_legacy(uri: str):
     p = urllib.parse.urlsplit(uri)
     return p.scheme == "vless" and p.port == 32063
 
 
-def snapshot(database, state, phase, json_format=False, exclude_client_ids=()):
+def snapshot(
+    database: Path,
+    state: Path,
+    phase: str,
+    json_format: _Flag = False,
+    exclude_client_ids: tuple[int, ...] = (),
+):
     directory = h.private_directory(state / phase)
     with closing(sqlite3.connect(database.as_uri() + "?mode=ro", uri=True)) as c:
         settings = dict(c.execute("SELECT key,value FROM settings"))
@@ -171,7 +225,7 @@ def snapshot(database, state, phase, json_format=False, exclude_client_ids=()):
     return result
 
 
-def check_delta(before, after):
+def check_delta(before: dict[str, list[str]], after: dict[str, list[str]]):
     if set(before) != set(after):
         raise ValueError("Identity set changed")
     affected = 0
@@ -202,7 +256,7 @@ def check_delta(before, after):
     }
 
 
-def apply(state, session_hash, config_hash):
+def apply(state: Path, session_hash: str, config_hash: str):
     s = native.NativeSession(state)
     original = target.configuration(s.database)
     legacy = select(original)

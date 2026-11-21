@@ -153,7 +153,9 @@
     mode: '0644'
 
 - name: Validate Sway configuration before changing the default session
-  ansible.builtin.command: /usr/bin/sway --validate --config {{ homelab_user_home }}/.config/sway/config
+  ansible.builtin.command: >-
+    /usr/bin/sway --validate --config
+    {{ homelab_user_home }}/.config/sway/config
   become: false
   environment:
     WLR_BACKENDS: headless

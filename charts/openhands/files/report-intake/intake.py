@@ -59,7 +59,8 @@ class Handler(BaseHTTPRequestHandler):
             n=int(self.headers.get('Content-Length',0));assert self.path in ('/intake','/review','/review-tick') and 0<n<300000 and not self.headers.get('Transfer-Encoding');x=json.loads(self.rfile.read(n));registry=json.loads(Path('/code/repos.json').read_text());db='/state/reports.db';out=ingest(x,registry,Path('/auth/key').read_bytes(),db) if self.path=='/intake' else lifecycle(self.path,x,db,Path('/review-auth/key').read_bytes(),registry);code=200
         except PermissionError:code,out=403,{}
         except (ValueError,KeyError,TypeError,AssertionError):code,out=400,{}
-        except Exception:code,out=503,{}
+        except (OSError, sqlite3.Error):
+            code, out = 503, {}
         self.send_response(code);self.send_header('Content-Type','application/json');self.end_headers();self.wfile.write(json.dumps(out).encode())
     def log_message(self,*args):pass
 if __name__=='__main__': HTTPServer(('',8091),Handler).serve_forever()

@@ -23,7 +23,7 @@ CONTROL_ADDRESSES = ("109.120.141.60", "109.173.40.247")
 MAX_BYTES = 2 * 1024 * 1024
 
 
-def endpoint(url):
+def endpoint(url: str):
     parsed = urllib.parse.urlsplit(url)
     if (
         parsed.scheme != "https"
@@ -43,7 +43,7 @@ def endpoint(url):
     return parsed
 
 
-def check(url, vantage, family=4, control_address=None):
+def check(url: str, vantage: str, family: int = 4, control_address: str | None = None):
     parsed = endpoint(url)
     if control_address is not None and (control_address not in CONTROL_ADDRESSES or family != 4):
         raise ValueError("Explicit controls are limited to the two approved IPv4 ingress addresses")

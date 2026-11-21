@@ -23,7 +23,7 @@
       dev.vodik7.tvquickactions.free/dev.vodik7.tvquickactions.KeyAccessibilityService
     homelab_tv_wireguard_package: com.wireguard.android
     homelab_tv_happ_package: su.happ.proxyutility
-    homelab_tv_private_dns_mode: off
+    homelab_tv_private_dns_mode: "off"
     homelab_tv_hdmi_package: xyz.alchemmist.hdmi
     homelab_tv_grafana_package: xyz.alchemmist.grafana
     homelab_tv_youtube_package: xyz.alchemmist.tvmode

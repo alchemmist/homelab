@@ -32,7 +32,7 @@ def main():
         r=Reader(f)
         while r.read(CHUNK):pass
         assert r.done and r.hash.digest()==digest.digest()
-    checks={DB,HAND,'openhands/settings.json',*(CONV+i+'/base_state.json' for i in IDS)};seen=set();events={i:0 for i in IDS};count=0
+    checks={DB,HAND,'openhands/settings.json',*(CONV+i+'/base_state.json' for i in IDS)};seen=set();events=dict.fromkeys(IDS,0);count=0
     with part.open('rb') as f:
         r=Reader(f)
         with tarfile.open(fileobj=r,mode='r|gz',bufsize=256*1024) as tf:

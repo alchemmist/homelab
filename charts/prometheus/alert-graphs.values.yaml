@@ -4,28 +4,28 @@ kube-prometheus-stack:
   additionalPrometheusRulesMap:
     homelab-memory-overcommit:
       groups:
-      - name: homelab-memory-overcommit
-        rules:
-        - alert: KubeMemoryOvercommit
-          annotations:
-            description: Cluster memory requests exceed the allocatable memory of
-              all nodes by {{ $value | humanize }} bytes. Pods will stay Pending.
-              Loss of socrat-0 is an accepted hardware limit and is not part of this
-              check.
-            rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer
-            runbook_url: https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubememoryovercommit
-            spi_graphs: '{"version":1,"graphs":[{"id":"primary","title":"KubeMemoryOvercommit","dashboard_uid":"alerts-21116c7cdd670d44","panel_id":1,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"KubeMemoryOvercommit
-              / rule evaluations","dashboard_uid":"alerts-21116c7cdd670d44","panel_id":2,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
-            summary: Cluster memory requests exceed total allocatable memory.
-          expr: 'sum(namespace_memory:kube_pod_container_resource_requests:sum{})
+        - name: homelab-memory-overcommit
+          rules:
+            - alert: KubeMemoryOvercommit
+              annotations:
+                description: Cluster memory requests exceed the allocatable memory of
+                  all nodes by {{ $value | humanize }} bytes. Pods will stay Pending.
+                  Loss of socrat-0 is an accepted hardware limit and is not part of this
+                  check.
+                rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer
+                runbook_url: https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubememoryovercommit
+                spi_graphs: '{"version":1,"graphs":[{"id":"primary","title":"KubeMemoryOvercommit","dashboard_uid":"alerts-21116c7cdd670d44","panel_id":1,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"KubeMemoryOvercommit
+                  / rule evaluations","dashboard_uid":"alerts-21116c7cdd670d44","panel_id":2,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
+                summary: Cluster memory requests exceed total allocatable memory.
+              expr: 'sum(namespace_memory:kube_pod_container_resource_requests:sum{})
 
-            - sum(kube_node_status_allocatable{job="kube-state-metrics",resource="memory"})
-            > 0
+                - sum(kube_node_status_allocatable{job="kube-state-metrics",resource="memory"})
+                > 0
 
-            '
-          for: 10m
-          labels:
-            severity: warning
+                '
+              for: 10m
+              labels:
+                severity: warning
   defaultRules:
     additionalRuleAnnotations:
       CPUThrottlingHigh:

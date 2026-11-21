@@ -34,7 +34,7 @@
           the matching Kubernetes deployment. See docs/vpn-cutover.md.
 
     - name: Inspect Docker service state
-      ansible.builtin.service_facts:
+      ansible.builtin.service_facts: {}
 
     - name: Check the emergency VPN container
       ansible.builtin.command:
@@ -124,7 +124,7 @@
         enabled: false
 
     - name: Inspect host services
-      ansible.builtin.service_facts:
+      ansible.builtin.service_facts: {}
 
     - name: Check whether Docker still runs any containers
       ansible.builtin.command: docker ps --quiet
