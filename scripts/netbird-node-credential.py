@@ -122,7 +122,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, RuntimeError, OSError) as e:
         print(
             json.dumps(
                 {

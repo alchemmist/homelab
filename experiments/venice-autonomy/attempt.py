@@ -4,6 +4,7 @@ import json
 import os
 import pathlib
 import signal
+import subprocess
 import time
 
 from fixtures import check_verdict, fixture_files, task_prompt, verifier_command, seal_execution
@@ -305,7 +306,15 @@ def attempt(engine, task, directory, seed, feedback=""):
                 else:
                     result = run_openhands(sandbox, directory, prompt, base_url, key)
                 summary.update(result)
-            except (Exception, KeyboardInterrupt) as error:
+            except (
+                KeyboardInterrupt,
+                OSError,
+                ValueError,
+                KeyError,
+                TypeError,
+                RuntimeError,
+                subprocess.SubprocessError,
+            ) as error:
                 record_exception(summary, error, key, "run_error")
             summary["actual_commands"] = len(sandbox.events)
             snapshot = sandbox.snapshot()
@@ -319,7 +328,15 @@ def attempt(engine, task, directory, seed, feedback=""):
             verdict = check_verdict(task, nonce, cases, seal_execution(nonce, execution))
             summary["verdict"] = verdict
             summary["accepted"] = verdict["accepted"] and summary["test_unchanged"]
-    except (Exception, KeyboardInterrupt) as error:
+    except (
+        KeyboardInterrupt,
+        OSError,
+        ValueError,
+        KeyError,
+        TypeError,
+        RuntimeError,
+        subprocess.SubprocessError,
+    ) as error:
         record_exception(summary, error, key, "infrastructure_error")
     summary["elapsed_seconds"] = round(time.time() - started, 3)
     (directory / "summary.json").write_text(json.dumps(summary, indent=2))

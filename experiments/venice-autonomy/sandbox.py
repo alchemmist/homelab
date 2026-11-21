@@ -343,14 +343,14 @@ class Sandbox:
         if self.container_id:
             try:
                 owned_resources.remove_container(self.container_id, expected)
-            except Exception as error:
+            except (OSError, ValueError, subprocess.SubprocessError) as error:
                 errors.append(str(error))
             else:
                 self.container_id = None
         if self.volume_name:
             try:
                 owned_resources.remove_volume(self.volume_name, expected)
-            except Exception as error:
+            except (OSError, ValueError, subprocess.SubprocessError) as error:
                 errors.append(str(error))
             else:
                 self.volume_name = None

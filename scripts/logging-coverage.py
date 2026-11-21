@@ -275,7 +275,14 @@ def main():
                 }
             )
         )
-    except Exception:
+    except (
+        ValueError,
+        KeyError,
+        TypeError,
+        RuntimeError,
+        OSError,
+        subprocess.SubprocessError,
+    ):
         # Exception text, HTTP errors and kubectl stderr may contain sensitive data.
         parser.exit(2, "Coverage check failed; no raw response or credential details emitted.\n")
 

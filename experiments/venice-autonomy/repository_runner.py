@@ -536,7 +536,14 @@ def main(argv=None):
                 result.get("exit_status") == "ConversationExecutionStatus.FINISHED"
                 and "run_error" not in summary
             )
-        except Exception as error:
+        except (
+            OSError,
+            ValueError,
+            KeyError,
+            TypeError,
+            RuntimeError,
+            subprocess.SubprocessError,
+        ) as error:
             attempt.record_exception(summary, error, key, "run_error")
             summary["clean_finish"] = False
         candidate = directory / "candidate"
@@ -551,10 +558,19 @@ def main(argv=None):
         summary["accepted"] = artifact_accepted(summary["verdict"], snapshot, candidate)
         try:
             environment.close()
-        except Exception as error:
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
             summary["cleanup_error_type"] = type(error).__name__
             environment.container_id = None
-    except BaseException as error:
+    except (
+        KeyboardInterrupt,
+        SystemExit,
+        OSError,
+        ValueError,
+        KeyError,
+        TypeError,
+        RuntimeError,
+        subprocess.SubprocessError,
+    ) as error:
         if isinstance(error, (KeyboardInterrupt, SystemExit)):
             raise
         load_local("attempt").record_exception(summary, error, key, "infrastructure_error")
@@ -564,7 +580,7 @@ def main(argv=None):
         if environment is not None and environment.container_id:
             try:
                 environment.close()
-            except Exception as error:
+            except (OSError, ValueError, subprocess.SubprocessError) as error:
                 summary["cleanup_error_type"] = type(error).__name__
         summary["elapsed_seconds"] = round(time.time() - started, 3)
         (directory / "summary.json").write_text(json.dumps(summary, indent=2))

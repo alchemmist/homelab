@@ -149,7 +149,7 @@ try:
                 if component == "ak-stage-authenticator-totp":
                     challenge.clear()
                     challenge.update(data)
-            except Exception:
+            except (ValueError, TypeError, IndexError, KeyError, AttributeError):
                 pass
 
         page.on("response", observe)
@@ -394,7 +394,18 @@ try:
         print("PASS: forged identity headers do not bypass gateway authentication")
         assert not errors, "Authentik JS error observed"
         browser.close()
-except Exception as error:
+except (
+    AssertionError,
+    AttributeError,
+    ImportError,
+    IndexError,
+    KeyError,
+    OSError,
+    RuntimeError,
+    TypeError,
+    ValueError,
+    subprocess.SubprocessError,
+) as error:
     print("Acceptance failed (sanitized):", type(error).__name__, flush=True)
     raise SystemExit(1)
 finally:

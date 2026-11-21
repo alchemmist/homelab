@@ -126,7 +126,7 @@ try:
                     if data.get("component") == "ak-stage-authenticator-totp":
                         totp_challenge.clear()
                         totp_challenge.update(data)
-                except Exception:
+                except (ValueError, TypeError, IndexError, KeyError, AttributeError):
                     pass
 
         page.on("response", observe)

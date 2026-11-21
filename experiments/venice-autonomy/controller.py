@@ -355,7 +355,7 @@ def cleanup_interrupted(running):
     for role in ("agent", "verifier"):
         try:
             cleanup_role(pathlib.Path(directory) / role)
-        except Exception as error:
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
             errors.append(f"{role}: {error}")
     if errors:
         raise ValueError("cleanup errors: " + "; ".join(errors))

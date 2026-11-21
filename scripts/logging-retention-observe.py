@@ -50,7 +50,7 @@ def main():
         while True:
             try:
                 row = sample(args.prometheus)
-            except Exception as error:
+            except (OSError, ValueError, KeyError, TypeError) as error:
                 row = {
                     "observedAtUnix": time.time(),
                     "errorType": type(error).__name__,

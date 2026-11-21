@@ -7,6 +7,7 @@ When enabled, legacy passwords and pre-migration sessions are owner-only.
 import json
 import os
 import secrets
+import sqlite3
 import time
 
 from fastapi import HTTPException, Request
@@ -150,7 +151,7 @@ def install_oidc(app, store, origin, prefix, cookie_path, session_seconds):
             )
         except HTTPException:
             raise
-        except Exception:
+        except (ValueError, KeyError, TypeError, RuntimeError, OSError, sqlite3.Error):
             # Do not expose codes, JWTs, credentials or provider exception URLs.
             raise HTTPException(401, "OIDC verification failed") from None
         request.session.clear()
