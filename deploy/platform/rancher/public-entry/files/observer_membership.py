@@ -175,7 +175,8 @@ def reconcile_rancher():
         result, cursor = [], ''
         for _ in range(201):
             data = call('GET', path + '?limit=100' + ('&continue=' + urllib.parse.quote(cursor, safe='') if cursor else ''))
-            result.extend(data['items']);cursor=data['metadata'].get('continue', '')
+            result.extend(data['items'])
+            cursor=data['metadata'].get('continue', '')
             if not cursor:
                 return result
         raise RuntimeError('Incomplete native cache pagination')

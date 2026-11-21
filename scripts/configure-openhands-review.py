@@ -1,9 +1,11 @@
 """Run from operator checkout. Install read-only MCP and a non-active review profile."""
 import subprocess,json,hashlib,pathlib
 root=pathlib.Path(__file__).resolve().parents[1]
-source=(root/'tools/openhands-mcp/monori_github_read.py').read_bytes();digest=hashlib.sha256(source).hexdigest()
+source=(root/'tools/openhands-mcp/monori_github_read.py').read_bytes()
+digest=hashlib.sha256(source).hexdigest()
 path='/home/openhands/.openhands/tools/monori-review/'+digest+'.py'
-cmd=['kubectl','-n','openhands','exec','-i','openhands-0','--','python','-Ic'];subprocess.run(cmd+['import sys,pathlib,hashlib;p=pathlib.Path(sys.argv[1]);b=sys.stdin.buffer.read();p.parent.mkdir(parents=True,exist_ok=True);assert not p.is_symlink();assert not p.exists() or p.read_bytes()==b;\nif not p.exists():p.open("xb").write(b)\nassert hashlib.sha256(p.read_bytes()).hexdigest()==p.stem',path],input=source,check=True)
+cmd=['kubectl','-n','openhands','exec','-i','openhands-0','--','python','-Ic']
+subprocess.run(cmd+['import sys,pathlib,hashlib;p=pathlib.Path(sys.argv[1]);b=sys.stdin.buffer.read();p.parent.mkdir(parents=True,exist_ok=True);assert not p.is_symlink();assert not p.exists() or p.read_bytes()==b;\nif not p.exists():p.open("xb").write(b)\nassert hashlib.sha256(p.read_bytes()).hexdigest()==p.stem',path],input=source,check=True)
 code='''import json,sys,pathlib,urllib.request
 key=pathlib.Path.home().joinpath('.openhands/agent-canvas/api-key.txt').read_text().strip()
 def api(p,b=None,method=None):

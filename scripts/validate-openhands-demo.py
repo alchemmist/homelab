@@ -23,7 +23,8 @@ def selector_matches(selector, labels):
     if any(labels.get(k) != v for k,v in selector.get('matchLabels',{}).items()):
         return False
     for rule in selector.get('matchExpressions',[]):
-        key,op=rule['key'],rule['operator'];values=rule.get('values',[])
+        key,op=rule['key'],rule['operator']
+        values=rule.get('values',[])
         if op=='In': matches=key in labels and labels[key] in values
         elif op=='NotIn': matches=key not in labels or labels[key] not in values
         elif op=='Exists': matches=key in labels
@@ -65,7 +66,8 @@ def main():
     created = []
     try:
         for kind,obj in [('configmap',cm),('networkpolicy',np),('job',job)]:
-            kubectl('create','-f','-',data=json.dumps(obj).encode()); created.append(kind)
+            kubectl('create','-f','-',data=json.dumps(obj).encode())
+            created.append(kind)
         wait = subprocess.run(['kubectl','-n','identity','wait','--for=condition=complete','job/'+name,'--timeout=65s'],capture_output=True)
         logs = kubectl('-n','identity','logs','job/'+name).decode()
         print(logs)

@@ -6,5 +6,7 @@ def artifact_response(raw):
  # never evaluate surrounding prose, commands, paths, or agent claims.
  matches=re.findall(r'(?ms)^```python[ \t]*\r?\n(.{1,19999}?)^```[ \t]*$',raw)
  if len(matches)!=1:raise ValueError('Expected exactly one fenced Python file')
- text=matches[0];ast.parse(text);return text
+ text=matches[0]
+ ast.parse(text)
+ return text
 

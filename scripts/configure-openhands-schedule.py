@@ -14,7 +14,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--apply',action='store_true');a=p.parse_args()
+    p=argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--apply',action='store_true')
+    a=p.parse_args()
     desired=json.loads((ROOT/'services/openhands/the-loop-demo/schedule.json').read_text())
     code='''import json,sys,pathlib,urllib.request,importlib.metadata
 request=json.load(sys.stdin);desired=request['desired'];key=pathlib.Path('/home/openhands/.openhands/agent-canvas/api-key.txt').read_text().strip()
