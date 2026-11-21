@@ -39,6 +39,7 @@ class Grafana:
     """Minimal Grafana HTTP API client."""
 
     def __init__(self, url: str, username: str, password: str) -> None:
+        """Initialize the Grafana client."""
 
         self.url = url
         encoded = base64.b64encode((username + ":" + password).encode()).decode()

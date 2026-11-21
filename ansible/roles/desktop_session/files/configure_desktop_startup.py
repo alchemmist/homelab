@@ -1,17 +1,16 @@
 """Configure per-user desktop startup login files and idle shutdown."""
 
 import argparse
-from datetime import datetime, timezone
 import json
 import os
-from pathlib import Path
 import pwd
 import re
 import shutil
 import stat
 import subprocess
 import tempfile
-
+from datetime import datetime, timezone
+from pathlib import Path
 
 LOGIN_BLOCK = """if [[ -o interactive && -z "${SSH_CONNECTION:-}" && -z "${SSH_TTY:-}" && "${TTY:-}" == /dev/tty1 && -z "${WAYLAND_DISPLAY:-}" && -z "${DISPLAY:-}" ]]; then
     exec /usr/local/bin/start-socrat-hyprland

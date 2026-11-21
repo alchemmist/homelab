@@ -3,10 +3,10 @@
 import base64
 import json
 import os
-from pathlib import Path
 import subprocess
 import sys
 import urllib.request
+from pathlib import Path
 
 root = Path(sys.argv[1])
 service = sys.argv[2]
@@ -288,7 +288,7 @@ asyncio.run(main())"""
         "Open WebUI native OIDC configured; exact UUID links preserve users/chats; no email-based merging"
     )
 elif service == "rancher":
-    from observer_admission import retain_observer, authconfig_patch
+    from observer_admission import authconfig_patch, retain_observer
 
     accounts = json.loads((root / "account-mappings.json").read_text())
     original = json.loads(
