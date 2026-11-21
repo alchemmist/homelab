@@ -1,12 +1,13 @@
 import importlib.util
 from pathlib import Path
+from types import ModuleType
 import unittest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def module():
+def module() -> ModuleType:
     spec = importlib.util.spec_from_file_location(
         "webui_rollout", ROOT / "scripts/otel-open-webui-sdk-rollout.py"
     )
@@ -16,7 +17,7 @@ def module():
 
 
 class OpenWebuiRolloutTests(unittest.TestCase):
-    def test_sdk_environment_trace_only_private_mtls_and_long_request_drain(self):
+    def test_sdk_environment_trace_only_private_mtls_and_long_request_drain(self) -> None:
         env = module().sdk_environment()
         self.assertEqual(env["OTEL_OTLP_SPAN_EXPORTER"], "http")
         self.assertEqual(env["OTEL_EXPORTER_OTLP_ENDPOINT"], "https://10.250.0.3:44318/v1/traces")
@@ -28,7 +29,7 @@ class OpenWebuiRolloutTests(unittest.TestCase):
         self.assertEqual(env["UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN"], "7200")
         self.assertIn("/app/backend", env["PYTHONPATH"].split(":"))
 
-    def test_only_kubernetes_empty_env_default_is_normalized(self):
+    def test_only_kubernetes_empty_env_default_is_normalized(self) -> None:
         helper = module()
         self.assertTrue(helper.environment_matches({"name": "EMPTY"}, "EMPTY", ""))
         self.assertTrue(helper.environment_matches({"name": "EMPTY", "value": ""}, "EMPTY", ""))
@@ -40,7 +41,7 @@ class OpenWebuiRolloutTests(unittest.TestCase):
         self.assertFalse(helper.environment_matches({"name": "EMPTY"}, "EMPTY", "true"))
         self.assertFalse(helper.environment_matches(None, "EMPTY", ""))
 
-    def test_maintained_overlay_matches_exact_three_source_files_and_env(self):
+    def test_maintained_overlay_matches_exact_three_source_files_and_env(self) -> None:
         helper = module()
         overlay = yaml.safe_load(
             (ROOT / "deploy/monitoring/otel-open-webui-sdk-values.yaml").read_text()

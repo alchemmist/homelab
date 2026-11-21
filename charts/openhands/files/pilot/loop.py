@@ -72,7 +72,8 @@ name,x=json.loads(sys.argv[1]);result=day_number(x) if name=='day_number' else _
 
 def verify(c,data,chosen):
     name=c['name'];text=render(name,data);fixture();src,suite=CARDS[name];file=REPO/src;orig=file.read_text();node=next(n for n in ast.parse(orig).body if isinstance(n,ast.FunctionDef) and n.name==name);lines=orig.splitlines(keepends=True);fn=''.join(lines[node.lineno-1:node.end_lineno]);dest='server/tests/unit/test_'+name.strip('_')+'_pilot_regression.py';path=REPO/dest;assert not path.exists();path.write_text(text);pytest=['.venv/bin/python','-m','pytest','-q','--tb=short','--disable-warnings'];testname='test_'+name.strip('_')+'_regression';
-    def test(args):return run(pytest+args,False,timeout=120)
+    def test(args) -> "subprocess.CompletedProcess[str]":
+        outcome: "subprocess.CompletedProcess[str]" = run(pytest+args,False,timeout=120);return outcome
     try:
         if test([dest]).returncode:raise ValueError('unmodified main returned '+measured(name,data)+'; expected '+json.dumps(data['expected']))
         for mid,(a,b) in CAT[name].items():
@@ -96,7 +97,8 @@ def target(c):
 
 def screen(c):
     name=c['name'];src,suite=CARDS[name];fixture();file=REPO/src;orig=file.read_text();lines=orig.splitlines(keepends=True);n=next(n for n in ast.parse(orig).body if isinstance(n,ast.FunctionDef) and n.name==name);fn=''.join(lines[n.lineno-1:n.end_lineno]);seen=dict(sql('select mid,verdict from scans where name=?',(name,)))
-    def test():return run(['.venv/bin/python','-m','pytest','-q','--tb=no',*suite],False,120)
+    def test() -> "subprocess.CompletedProcess[str]":
+        outcome: "subprocess.CompletedProcess[str]" = run(['.venv/bin/python','-m','pytest','-q','--tb=no',*suite],False,120);return outcome
     baseline=test()
     if baseline.returncode or not re.search(r'\d+ passed',baseline.stdout):raise RuntimeError('baseline suite not green')
     if target(c):save(c,'queued','Restored survivor '+target(c));return

@@ -12,7 +12,7 @@ SCRIPT = Path(__file__).resolve().parents[1] / "scripts/n8n/spi_private_backup.p
 
 
 class BackupTests(unittest.TestCase):
-    def test_private_stream_and_cleanup(self):
+    def test_private_stream_and_cleanup(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             src = Path(d) / "source"
             dst = Path(d) / "host"
@@ -42,7 +42,7 @@ class BackupTests(unittest.TestCase):
             c.close()
             self.assertEqual(list(Path(d).glob(".spi-prechange-*")), [])
 
-    def test_bound_failure_cleans(self):
+    def test_bound_failure_cleans(self) -> None:
         spec = importlib.util.spec_from_file_location("backup", SCRIPT)
         m = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(m)
@@ -57,7 +57,7 @@ class BackupTests(unittest.TestCase):
 
 
 class BackupDeadlineTests(unittest.TestCase):
-    def run_failure(self, kind):
+    def run_failure(self, kind) -> None:
         import time
 
         with tempfile.TemporaryDirectory() as d:
@@ -102,19 +102,19 @@ class BackupDeadlineTests(unittest.TestCase):
                 proc.stderr.close()
                 c.close()
 
-    def test_actual_blocked_consumer(self):
+    def test_actual_blocked_consumer(self) -> None:
         self.run_failure("blocked")
 
-    def test_broken_pipe(self):
+    def test_broken_pipe(self) -> None:
         self.run_failure("broken")
 
-    def test_busy_source(self):
+    def test_busy_source(self) -> None:
         self.run_failure("busy")
 
-    def test_connection_open_cleanup(self):
+    def test_connection_open_cleanup(self) -> None:
         self.run_failure("open")
 
-    def test_slow_integrity_deadline(self):
+    def test_slow_integrity_deadline(self) -> None:
         # Real subprocess and real SQLite VM; progress callback intentionally
         # sleeps while integrity is running, not a mocked monotonic clock.
         code = """import importlib.util,sqlite3,sys,time
@@ -147,7 +147,7 @@ except Exception:sys.exit(1)
             self.assertNotEqual(result.returncode, 0)
             self.assertEqual(list(Path(d).glob(".spi-prechange-*")), [])
 
-    def test_alarm_restored_and_pvc_private(self):
+    def test_alarm_restored_and_pvc_private(self) -> None:
         import signal
         from unittest.mock import patch
 
@@ -177,7 +177,7 @@ except Exception:sys.exit(1)
 
 
 class CleanupBoundaryTests(unittest.TestCase):
-    def test_real_ownership_and_close_failures(self):
+    def test_real_ownership_and_close_failures(self) -> None:
         import signal
         from unittest.mock import patch
 
@@ -226,7 +226,7 @@ class CleanupBoundaryTests(unittest.TestCase):
                 self.assertEqual(signal.getsignal(signal.SIGALRM), old)
                 self.assertEqual(signal.getitimer(signal.ITIMER_REAL), (0.0, 0.0))
 
-    def test_prior_periodic_timer_restored_on_open_failure(self):
+    def test_prior_periodic_timer_restored_on_open_failure(self) -> None:
         import signal
 
         spec = importlib.util.spec_from_file_location("backup", SCRIPT)

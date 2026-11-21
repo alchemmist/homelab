@@ -1,7 +1,7 @@
 """Read the generated mutmut 3.8.1 sources, not self-reported historic exit codes."""
 import ast, collections, gzip, hashlib, json, pathlib, re, sys
 
-def extract(root):
+def extract(root: pathlib.Path):
     families={}
     for meta in sorted(root.rglob('*.py.meta')):
         f=meta.with_suffix(''); src=f.read_text();lines=src.splitlines(keepends=True);module=str(f.relative_to(root)).removesuffix('.py').replace('/','.');gen=collections.defaultdict(dict)
