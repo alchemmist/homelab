@@ -130,7 +130,6 @@ def reconcile(config):
     }
     owned = json.loads(STATE.read_text()) if STATE.exists() else {}
     errors: list[str] = []
-    errors: list[str] = []
     for node in config["nodes"]:
         try:
             _reconcile_node(config, prefix, mappings, owned, node)
