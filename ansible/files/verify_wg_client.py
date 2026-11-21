@@ -10,6 +10,7 @@ ADDRESSES = ["10.250.0.1", "10.250.0.3", "10.250.0.2", "10.250.0.5"]
 
 
 def run(*args, input=None, timeout=30):
+    """Run."""
     result = subprocess.run(args, input=input, capture_output=True, text=True, timeout=timeout)
     if result.returncode:
         detail = "" if args[0] in ("wg", "wg-quick") else ": " + result.stderr.strip()
@@ -18,10 +19,12 @@ def run(*args, input=None, timeout=30):
 
 
 def net(*args, timeout=30):
+    """Net."""
     return run("ip", "netns", "exec", NAMESPACE, *args, timeout=timeout)
 
 
 def main():
+    """Main."""
     parser = argparse.ArgumentParser()
     parser.add_argument("profile")
     parser.add_argument("hostkeys")

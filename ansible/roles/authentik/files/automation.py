@@ -102,6 +102,7 @@ def bootstrap_is_migration_aware(source: str) -> bool:
 
 
 def save(path, data):
+    """Save."""
     tmp = path.with_name(path.name + ".tmp-" + secrets.token_hex(8))
     fd = os.open(tmp, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     try:
@@ -115,6 +116,7 @@ def save(path, data):
 
 
 def api(token, method, path, data=None):
+    """Api."""
     req = urllib.request.Request(
         BASE + path,
         method=method,
@@ -127,6 +129,7 @@ def api(token, method, path, data=None):
 
 
 def exact(token, endpoint, field, value):
+    """Exact."""
     rows = api(
         token, "GET", endpoint + "?" + field + "=" + quote(value, safe="") + "&page_size=1000"
     )["results"]
@@ -137,6 +140,7 @@ def exact(token, endpoint, field, value):
 
 
 def verify(token, journal):
+    """Verify."""
     user = api(token, "GET", "core/users/" + str(journal["user_pk"]) + "/")
     group = api(token, "GET", "core/groups/" + journal["group_pk"] + "/")
     marker = {"homelab_automation_journal": journal["nonce"]}
@@ -176,6 +180,7 @@ def verify(token, journal):
 
 
 def migrate(root, action):
+    """Migrate."""
     if root.stat().st_mode & 0o077:
         raise RuntimeError("Deployment directory is not private")
     path = root / "automation-api.json"

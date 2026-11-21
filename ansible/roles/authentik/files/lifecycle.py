@@ -21,6 +21,7 @@ OWNER = "alchemmist"
 
 
 def api_for(root):
+    """Api for."""
     path = root / "credentials.json"
     if root.stat().st_mode & 0o077 or path.stat().st_mode & 0o077:
         raise RuntimeError("Deployment directory/credentials must be private")
@@ -41,6 +42,7 @@ def api_for(root):
 
 
 def unique(items, field):
+    """Unique."""
     result = {}
     for item in items:
         if item[field] in result:
@@ -50,6 +52,7 @@ def unique(items, field):
 
 
 def build_plan(api, services, manifest, reviewed):
+    """Build plan."""
     if set(manifest) != {"version", "users"} or manifest["version"] != 1:
         raise RuntimeError("Unsupported lifecycle schema")
     declared = app_groups(services)
@@ -176,6 +179,7 @@ def build_plan(api, services, manifest, reviewed):
 
 
 def apply_plan(api, plan, approval):
+    """Apply plan."""
     if approval != plan["sha256"]:
         raise RuntimeError("Plan approval hash mismatch; review a fresh plan")
     for operation in plan["operations"]:
@@ -197,6 +201,7 @@ def apply_plan(api, plan, approval):
 
 
 def main():
+    """Main."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
     parser.add_argument("action", choices=["plan", "check", "apply"], default="plan", nargs="?")

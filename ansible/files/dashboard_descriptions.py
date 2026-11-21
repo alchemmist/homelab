@@ -16,6 +16,7 @@ READINESS_SUBJECTS = {
 
 
 def apply_alert_descriptions(resource):
+    """Apply alert descriptions."""
     if not isinstance(resource, dict) or resource.get("kind") != "PrometheusRule":
         return
     for group in resource.get("spec", {}).get("groups", []):
@@ -34,6 +35,7 @@ def apply_alert_descriptions(resource):
 
 @lru_cache(maxsize=1)
 def load_descriptions():
+    """Load descriptions."""
     descriptions = {}
     for path in sorted(Path(__file__).with_name("dashboard-descriptions").glob("*.json")):
         entries = json.loads(path.read_text())
@@ -45,6 +47,7 @@ def load_descriptions():
 
 
 def panels(dashboard):
+    """Panels."""
     for panel in dashboard.get("panels", []):
         if panel.get("type") not in {"row", "text"}:
             yield panel
@@ -52,6 +55,7 @@ def panels(dashboard):
 
 
 def apply_descriptions(dashboard, descriptions=None):
+    """Apply descriptions."""
     catalog = load_descriptions() if descriptions is None else descriptions
     uid = dashboard["uid"]
     entries = catalog.get(uid, {})

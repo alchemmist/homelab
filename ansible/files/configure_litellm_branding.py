@@ -5,6 +5,7 @@ import urllib.request
 
 
 def kubectl(*args):
+    """Kubectl."""
     return subprocess.check_output(["kubectl", "-n", "llm", *args], text=True)
 
 
@@ -21,6 +22,7 @@ urls = {
 
 
 def request(path, payload=None, method=None):
+    """Request."""
     req = urllib.request.Request(
         base + path,
         headers=headers,

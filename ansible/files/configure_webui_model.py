@@ -12,6 +12,7 @@ class ConfigurationError(Exception):
 
 
 def request_json(opener, base_url, path, token=None, payload=None):
+    """Request json."""
     headers = {"Accept": "application/json"}
     if token is not None:
         headers["Authorization"] = f"Bearer {token}"
@@ -32,6 +33,7 @@ def request_json(opener, base_url, path, token=None, payload=None):
 
 
 def configure(args):
+    """Configure."""
     result = {
         "changed": False,
         "skipped": False,
@@ -168,6 +170,7 @@ def configure(args):
 
 
 def main():
+    """Main."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", required=True)
     parser.add_argument("--max-output-tokens", type=int, default=16384)

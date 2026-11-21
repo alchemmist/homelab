@@ -61,6 +61,7 @@ def reject_contextual_config(path=CONFIG, seen=None):
 
 
 def verify_key_location(name, config=CONFIG):
+    """Verify key location."""
     reject_contextual_config(config)
     parsed = subprocess.run(
         [shutil.which("sshd") or "/usr/sbin/sshd", "-T"], text=True, capture_output=True, check=True
@@ -101,6 +102,7 @@ def verify_key_location(name, config=CONFIG):
 
 
 def verify(name, ident, directory=DIRECTORY):
+    """Verify."""
     if not re.fullmatch(r"[a-z_][a-z0-9_-]{0,30}", name) or name in {
         "root",
         "alchemmist",
@@ -167,6 +169,7 @@ def fingerprints(path):
 
 
 def verify_keys(name, ident, state, expected, directory=DIRECTORY):
+    """Verify keys."""
     if (
         state not in {"present", "disabled"}
         or not isinstance(expected, list)

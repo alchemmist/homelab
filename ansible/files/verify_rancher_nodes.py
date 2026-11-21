@@ -7,6 +7,7 @@ import urllib.request
 
 
 def kubectl(*arguments):
+    """Kubectl."""
     return json.loads(
         subprocess.check_output(
             ["kubectl", *arguments, "-o", "json"],
@@ -16,6 +17,7 @@ def kubectl(*arguments):
 
 
 def verify():
+    """Verify."""
     expected = sorted(node["metadata"]["name"] for node in kubectl("get", "nodes")["items"])
     tokens = kubectl("get", "tokens.management.cattle.io")["items"]
     token = next(

@@ -8,6 +8,7 @@ import sys
 
 
 def render(root):
+    """Render."""
     assets = json.loads((root / "assets.json").read_text())
     binary = {}
     names = {}
