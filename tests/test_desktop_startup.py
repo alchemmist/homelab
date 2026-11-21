@@ -1,3 +1,5 @@
+"""Tests for the desktop startup configuration script."""
+
 import importlib.util
 import os
 from pathlib import Path

@@ -1,3 +1,5 @@
+"""Tests for SPI triage message delivery integration."""
+
 import unittest, tempfile, json
 from pathlib import Path
 from unittest.mock import Mock

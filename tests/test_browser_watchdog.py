@@ -1,3 +1,5 @@
+"""Tests for the open-terminal browser watchdog."""
+
 import importlib.util
 import signal
 import sys

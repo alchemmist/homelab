@@ -1,3 +1,5 @@
+"""Tests for the SPI triage Telegram link helpers."""
+
 import importlib.util
 from pathlib import Path
 import tempfile

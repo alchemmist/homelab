@@ -1,3 +1,5 @@
+"""Tests for the SPI triage storage runtime."""
+
 import json
 import os
 from pathlib import Path

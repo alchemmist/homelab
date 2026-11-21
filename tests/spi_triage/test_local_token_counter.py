@@ -1,3 +1,5 @@
+"""Tests for the local token counter used by SPI triage."""
+
 import os
 import sys
 import unittest

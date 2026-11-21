@@ -1,3 +1,5 @@
+"""Tests for the swe-mini policy module."""
+
 import base64
 import importlib.util
 import json

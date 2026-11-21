@@ -1,3 +1,5 @@
+"""Tests for the OpenHands upgrade safety checks."""
+
 import pathlib,subprocess,unittest,yaml
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 

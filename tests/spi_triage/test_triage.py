@@ -1,3 +1,5 @@
+"""Tests for the SPI triage pipeline entry point."""
+
 import importlib.util
 import json
 import sys

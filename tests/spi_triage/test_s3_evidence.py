@@ -1,3 +1,5 @@
+"""Tests for SPI triage evidence upload to S3."""
+
 import datetime
 import hashlib
 import sys

@@ -1,3 +1,5 @@
+"""Tests for the SPI triage S3 storage engine."""
+
 import hashlib
 import importlib.util
 import re

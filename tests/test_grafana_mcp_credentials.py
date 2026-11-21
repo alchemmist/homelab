@@ -1,3 +1,5 @@
+"""Tests for the Grafana MCP credential bootstrap."""
+
 import base64
 import importlib.util
 from pathlib import Path

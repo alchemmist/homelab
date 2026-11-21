@@ -1,3 +1,5 @@
+"""Tests for Grafana alert link resolution."""
+
 import importlib.util
 from pathlib import Path
 import unittest
