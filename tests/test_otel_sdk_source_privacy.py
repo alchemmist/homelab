@@ -2,9 +2,9 @@
 
 import importlib.util
 import math
+import unittest
 from pathlib import Path
 from types import ModuleType
-import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 

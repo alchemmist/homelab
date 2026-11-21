@@ -1,9 +1,9 @@
 """Tests for the k3s worker topology verification helper."""
 
 import importlib.util
-from pathlib import Path
 import sys
 import unittest
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 HELPERS = ROOT / "ansible/roles/k3s_role_rebalance/files"

@@ -9,10 +9,9 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 from typing import override
+from unittest.mock import patch
 from urllib.error import URLError
-
 
 SOURCE = Path(__file__).resolve().parents[1] / "ansible/roles/monitoring_vpn/files/collect_vpn.py"
 SPEC = importlib.util.spec_from_file_location("collect_vpn", SOURCE)
