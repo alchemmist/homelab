@@ -28,9 +28,12 @@ def resolve(host):
     if result.returncode:
         raise socket.gaierror("resolution failed")
     try:
+        rows = json.loads(result.stdout)
+        if not isinstance(rows, list) or not rows:
+            raise ValueError("expected resolved addresses")
         return [
             (socket.AddressFamily(f), k, p, n, tuple(a))
-            for f, k, p, n, a in json.loads(result.stdout)
+            for f, k, p, n, a in rows
         ]
     except (ValueError, TypeError) as exc:
         raise socket.gaierror("invalid resolver response") from exc
