@@ -8,6 +8,7 @@ or re-enrollment by friendly name. Uncertain writes stop for operator inspection
 
 import argparse
 import fcntl
+import http.client
 import ipaddress
 import json
 import os
@@ -889,6 +890,7 @@ if __name__ == "__main__":
         RuntimeError,
         OSError,
         subprocess.SubprocessError,
+        http.client.HTTPException,
     ) as e:
         print(
             json.dumps(

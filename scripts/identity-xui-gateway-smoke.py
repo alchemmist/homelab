@@ -32,7 +32,7 @@ import urllib.parse
 import urllib.request
 import uuid
 
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import Error as PlaywrightError, sync_playwright
 
 BASE = "https://auth.socrat.alchemmist.xyz"
 original = socket.getaddrinfo
@@ -401,6 +401,7 @@ except (
     IndexError,
     KeyError,
     OSError,
+    PlaywrightError,
     RuntimeError,
     TypeError,
     ValueError,

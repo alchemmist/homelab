@@ -208,6 +208,7 @@ def main():
         RuntimeError,
         OSError,
         subprocess.SubprocessError,
+        IndexError,
     ) as exc:
         return _error_report(type(exc).__name__)
 

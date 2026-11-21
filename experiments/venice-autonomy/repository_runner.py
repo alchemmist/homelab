@@ -543,6 +543,7 @@ def main(argv=None):
             KeyError,
             TypeError,
             RuntimeError,
+            tokenize.TokenError,
             subprocess.SubprocessError,
         ) as error:
             attempt.record_exception(summary, error, key, "run_error")
