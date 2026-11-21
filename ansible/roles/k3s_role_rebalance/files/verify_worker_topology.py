@@ -3,13 +3,37 @@
 import json
 import subprocess
 import sys
+from typing import Protocol, TypedDict
 
 from etcd_members import Etcd, require_members
 
 VOTERS = {"socrat-0", "socrat-1", "socrat-2"}
 
 
-def verify(client):
+class _MemberView(TypedDict):
+    id: int
+    id_hex: str
+    peer_urls: list[str]
+    learner: bool
+
+
+class _StatusHeader(TypedDict):
+    member_id: int
+
+
+class _EndpointStatus(TypedDict):
+    header: _StatusHeader
+
+
+class _EtcdClient(Protocol):
+    def members(self) -> dict[str, _MemberView]: ...
+
+    def health(self, name: str) -> None: ...
+
+    def status(self, name: str) -> _EndpointStatus: ...
+
+
+def verify(client: _EtcdClient):
     members = client.members()
     require_members(members, VOTERS)
     for name in sorted(VOTERS):

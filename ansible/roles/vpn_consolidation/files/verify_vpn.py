@@ -31,15 +31,15 @@ RUNTIME_COLUMNS = {
 }
 
 
-def canonical(value):
+def canonical(value: object):
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
-def digest(value):
+def digest(value: object):
     return hashlib.sha256(canonical(value).encode()).hexdigest()
 
 
-def configuration(connection):
+def configuration(connection: sqlite3.Connection):
     connection.row_factory = sqlite3.Row
     result = {}
     for table in TABLES:
@@ -53,7 +53,7 @@ def configuration(connection):
     return result
 
 
-def normalize_subscription(body):
+def normalize_subscription(body: bytes):
     text = body.decode("utf-8").strip()
     if "://" not in text:
         text = base64.b64decode(text + "=" * (-len(text) % 4), validate=True).decode("utf-8")
@@ -76,7 +76,7 @@ def normalize_subscription(body):
     return sorted(links)
 
 
-def subscriptions(connection):
+def subscriptions(connection: sqlite3.Connection):
     settings = dict(connection.execute("SELECT key, value FROM settings"))
     if settings.get("subCertFile") or settings.get("subKeyFile"):
         raise ValueError("Local TLS subscription endpoint is unsupported")
@@ -121,11 +121,11 @@ def subscriptions(connection):
     return result
 
 
-def connect(path):
+def connect(path: str | os.PathLike[str]):
     return sqlite3.connect(Path(path).resolve().as_uri() + "?mode=ro", uri=True)
 
 
-def inspect(connection):
+def inspect(connection: sqlite3.Connection):
     if connection.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
         raise ValueError("SQLite integrity check failed")
     config = configuration(connection)
@@ -135,7 +135,7 @@ def inspect(connection):
     }
 
 
-def run(mode, directory):
+def run(mode: str, directory: str | os.PathLike[str]):
     if os.geteuid() != 0:
         raise ValueError("Run as root")
     os.umask(0o077)
