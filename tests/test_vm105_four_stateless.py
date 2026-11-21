@@ -10,7 +10,15 @@ import yaml
 R = Path(__file__).resolve().parents[1]
 
 
-def render(chart, values, namespace):
+def _mapping(value: object) -> dict[str, object]:
+    """Narrow decoded Kubernetes object fields to mappings for typed callers."""
+    assert isinstance(value, dict)
+    return value
+
+
+def render(
+    chart: str, values: dict[str, object], namespace: str
+) -> dict[tuple[str, str], dict[str, object]]:
     with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as f:
         yaml.safe_dump(values, f)
         f.flush()
@@ -21,19 +29,26 @@ def render(chart, values, namespace):
     return {(x["kind"], x["metadata"]["name"]): x for x in yaml.safe_load_all(raw) if x}
 
 
-def values(chart):
-    v = yaml.safe_load((R / "charts" / chart / "values.yaml").read_text())
+def _text(value: object) -> str:
+    """Narrow a decoded values field to text for typed test callers."""
+    assert isinstance(value, str)
+    return value
+
+
+def values(chart: str) -> dict[str, object]:
+    loaded = yaml.safe_load((R / "charts" / chart / "values.yaml").read_text())
+    v = _mapping(loaded)
     # Production overrides here are top-level keys; maintain explicit queue map.
     for k, x in yaml.safe_load((R / "deploy" / chart / "values.yaml").read_text()).items():
         if isinstance(x, dict) and isinstance(v.get(k), dict):
-            v[k].update(x)
+            _mapping(v[k]).update(x)
         else:
             v[k] = x
     return v
 
 
 class PlacementTests(unittest.TestCase):
-    def test_monori_only_frontend_changes(self):
+    def test_monori_only_frontend_changes(self) -> None:
         new = values("monori")
         old = copy.deepcopy(new)
         old["frontNodeName"] = "socrat-0"
@@ -41,21 +56,26 @@ class PlacementTests(unittest.TestCase):
         self.assertEqual([k for k in a if a[k] != b[k]], [("Deployment", "monori")])
         for name in ["monori-back", "monori-sync"]:
             self.assertEqual(
-                b["Deployment", name]["spec"]["template"]["spec"]["nodeSelector"],
-                {"kubernetes.io/hostname": new["statefulNodeName"]},
+                _mapping(
+                    _mapping(_mapping(_mapping(b["Deployment", name])["spec"])["template"])["spec"]
+                )["nodeSelector"],
+                {"kubernetes.io/hostname": _text(new["statefulNodeName"])},
             )
-        pod = b["Deployment", "monori"]["spec"]["template"]["spec"]
+        pod = _mapping(_mapping(_mapping(b["Deployment", "monori"])["spec"])["template"])
+        pod = _mapping(pod["spec"])
         self.assertEqual(pod["nodeSelector"], {"kubernetes.io/hostname": "socrat-5"})
         self.assertNotIn("volumes", pod)
 
-    def test_spi_only_queue_ui_changes_not_backend_jobs_rbac_or_network_policy(self):
+    def test_spi_only_queue_ui_changes_not_backend_jobs_rbac_or_network_policy(self) -> None:
         new = values("spi-triage")
         old = copy.deepcopy(new)
-        old["queueUI"]["nodeName"] = "socrat-3"
-        old["queueUI"]["hostAliases"] = []
+        queue = _mapping(old["queueUI"])
+        queue["nodeName"] = "socrat-3"
+        queue["hostAliases"] = []
         a, b = render("spi-triage", old, "automation"), render("spi-triage", new, "automation")
         self.assertEqual([k for k in a if a[k] != b[k]], [("Deployment", "spi-queue-ui")])
-        pod = b["Deployment", "spi-queue-ui"]["spec"]["template"]["spec"]
+        pod = _mapping(_mapping(_mapping(b["Deployment", "spi-queue-ui"])["spec"])["template"])
+        pod = _mapping(pod["spec"])
         self.assertEqual(pod["nodeSelector"], {"kubernetes.io/hostname": "socrat-5"})
         self.assertEqual(
             pod["hostAliases"],
@@ -63,7 +83,7 @@ class PlacementTests(unittest.TestCase):
         )
         self.assertFalse(pod["automountServiceAccountToken"])
 
-    def test_worker_single_recreate_no_pvc_auth_and_write_modes_preserved(self):
+    def test_worker_single_recreate_no_pvc_auth_and_write_modes_preserved(self) -> None:
         for folder, expected in [("blog-updates", "false"), ("wiki-openapi", "true")]:
             docs = list(yaml.safe_load_all((R / "deploy" / folder / "worker.yaml").read_text()))
             d = next(x for x in docs if x and x["kind"] == "Deployment")
@@ -84,7 +104,7 @@ class PlacementTests(unittest.TestCase):
                     {"kubernetes.io/hostname": "socrat-1"},
                 )
 
-    def test_endpoint_slice_null_is_a_valid_empty_drain(self):
+    def test_endpoint_slice_null_is_a_valid_empty_drain(self) -> None:
         import importlib.util
 
         spec = importlib.util.spec_from_file_location(
@@ -117,7 +137,7 @@ class PlacementTests(unittest.TestCase):
             )
         )
 
-    def test_drain_is_two_exact_services_only_and_finally_restores(self):
+    def test_drain_is_two_exact_services_only_and_finally_restores(self) -> None:
         p = R / "deploy/migrations/vm105-four-stateless-20261116/drain-services.yaml"
         docs = [x for x in yaml.safe_load_all(p.read_text()) if x]
         self.assertEqual(

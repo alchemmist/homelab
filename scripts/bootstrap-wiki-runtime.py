@@ -11,7 +11,7 @@ class BootstrapError(Exception):
 
 
 class Kubernetes:
-    def __init__(self, command):
+    def __init__(self, command) -> None:
         self.command = command
 
     def run(self, *args, payload=None):

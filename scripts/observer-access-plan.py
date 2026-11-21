@@ -51,7 +51,7 @@ def build(state, policy):
         ) from None
 
 
-def _build(state, policy):
+def _build(state, policy) -> list[dict[str, object]]:
     require(policy["version"] == 1 and policy["group"] == "homelab-observer", "Unreviewed profile")
     require(
         set(policy["nativeAdmission"]) == {"grafana", "wiki", "rancher", "argocd"}

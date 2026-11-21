@@ -92,7 +92,7 @@ class AlertGraphsChartTests(unittest.TestCase):
         dep, = [d for d in yaml.safe_load_all(result.stdout) if d and d["kind"] == "Deployment"]
         self.assertEqual(dep["spec"].get("replicas", 1), 1)
         proxy = yaml.safe_load((ROOT / "deploy/monitoring/rancher-values.yaml").read_text())["monitoringProxy"]
-        def term(nodes):
+        def term(nodes) -> dict[str, object]:
             return {"matchExpressions": [{"key": "kubernetes.io/hostname", "operator": "In", "values": nodes}]}
         for spec in [dep["spec"]["template"]["spec"], proxy]:
             self.assertEqual(spec["nodeSelector"], {"kubernetes.io/os": "linux"})

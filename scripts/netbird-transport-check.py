@@ -26,7 +26,7 @@ ENTRANCES = ["109.173.40.247", "109.120.141.60"]
 
 
 class WS:
-    def __init__(self, address):
+    def __init__(self, address) -> None:
         self.s = ssl.create_default_context().wrap_socket(
             socket.create_connection((address, 443), timeout=10), server_hostname=HOST
         )
@@ -171,4 +171,4 @@ if __name__ == "__main__":
             + type(exc).__name__
             + "; inspect implementation, never blindly retry"
         )
-        raise SystemExit(2)
+        raise SystemExit(2) from exc

@@ -2,12 +2,13 @@ import base64
 import copy
 import importlib.util
 from pathlib import Path
+from types import ModuleType
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def module():
+def module() -> ModuleType:
     spec = importlib.util.spec_from_file_location(
         "ops_replay", ROOT / "scripts/otel-operational-replay.py"
     )
@@ -17,7 +18,7 @@ def module():
 
 
 class OperationalReplayTests(unittest.TestCase):
-    def test_exact_fixture_counts_cadence_and_unique_native_ids(self):
+    def test_exact_fixture_counts_cadence_and_unique_native_ids(self) -> None:
         helper = module()
         metrics, logs, traces, expected, ids = helper.fixtures(1793536000 * 10**9)
         self.assertEqual(len(expected), 9)
@@ -32,7 +33,7 @@ class OperationalReplayTests(unittest.TestCase):
             [int(p["timeUnixNano"]) // 10**6 for p in points], [int(p[0] * 1000) for p in expected]
         )
 
-    def test_matrix_requires_exact_values_timestamps_multiplicity_and_no_partial(self):
+    def test_matrix_requires_exact_values_timestamps_multiplicity_and_no_partial(self) -> None:
         helper = module()
         expected = [[1, "0"], [6, "1"]]
         data = {
@@ -52,7 +53,7 @@ class OperationalReplayTests(unittest.TestCase):
                 changed["warnings"] = ["partial"]
             self.assertFalse(helper.check_metrics(changed, expected))
 
-    def test_rollback_candidate_changes_only_batch_timeout_preserving_queues_and_tls(self):
+    def test_rollback_candidate_changes_only_batch_timeout_preserving_queues_and_tls(self) -> None:
         import json
 
         original = {
@@ -71,7 +72,7 @@ class OperationalReplayTests(unittest.TestCase):
         changed["processors"]["batch/metrics"]["timeout"] = "1s"
         self.assertEqual(changed, original)
 
-    def test_native_trace_json_hex_and_base64(self):
+    def test_native_trace_json_hex_and_base64(self) -> None:
         helper = module()
         trace = "12" * 16
         for identity in [trace, base64.b64encode(bytes.fromhex(trace)).decode()]:

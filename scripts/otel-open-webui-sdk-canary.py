@@ -28,23 +28,27 @@ def run():
     loaded = []
     original_loader = ssl.SSLContext.load_cert_chain
 
-    def certificate_hash():
+    def certificate_hash() -> str:
         return hashlib.sha256(Path("/etc/otel-client/tls.crt").read_bytes()).hexdigest()
 
-    def observe_loader(context, certfile, keyfile=None, password=None):
+    def observe_loader(context, certfile, keyfile=None, password=None) -> None:
         public_hash = hashlib.sha256(Path(certfile).read_bytes()).hexdigest()
         result = original_loader(context, certfile, keyfile, password)
         loaded.append(public_hash)
         return result
 
-    def progress(value):
+    def progress(value) -> None:
         path = Path("/run/otel-test/renewal-progress.json")
         temporary = path.with_suffix(".new")
         temporary.write_text(json.dumps(value))
         temporary.replace(path)
 
     if renewal:
-        ssl.SSLContext.load_cert_chain = observe_loader
+
+        def wrapped_loader(*args: object, **kwargs: object) -> None:
+            observe_loader(*args, **kwargs)
+
+        ssl.SSLContext.load_cert_chain = wrapped_loader
     with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
         import open_webui_source_profile
         import source_privacy
@@ -74,7 +78,7 @@ def run():
         original_exporter = native.HttpOTLPSpanExporter
 
         class ObservedExporter(original_exporter):
-            def __init__(self, *args, **kwargs):
+            def __init__(self, *args, **kwargs) -> None:
                 super().__init__(*args, **kwargs)
                 constructed.append(self._session.headers.get("Connection", "").lower() == "close")
 
@@ -83,10 +87,10 @@ def run():
         import threading
 
         class Backend(http.server.BaseHTTPRequestHandler):
-            def log_message(self, *args):
+            def log_message(self, *args) -> None:
                 pass
 
-            def do_POST(self):
+            def do_POST(self) -> None:
                 length = int(self.headers.get("Content-Length", "0"))
                 if length > 65536:
                     raise ValueError("Synthetic backend budget exceeded")
@@ -102,7 +106,7 @@ def run():
         worker.start()
         app = FastAPI()
 
-        async def route(request: Request):
+        async def route(request: Request) -> None:
             payload = await request.json()
             async with httpx.AsyncClient() as client:
                 await client.post(
@@ -139,10 +143,10 @@ def run():
         }
 
         class Audit(SpanProcessor):
-            def on_start(self, span, parent_context=None):
+            def on_start(self, span, parent_context=None) -> None:
                 pass
 
-            def on_end(self, span):
+            def on_end(self, span) -> None:
                 audit["endedSpans"] += 1
                 audit["sensitiveSyntheticContentFoundBeforeDownstreamProcessor"] |= any(
                     marker in span.to_json() for marker in MARKERS
@@ -150,16 +154,16 @@ def run():
                 audit["httpClientSpanSeen"] |= span.kind.name == "CLIENT"
                 audit["serverSpanSeen"] |= span.kind.name == "SERVER"
 
-            def shutdown(self):
+            def shutdown(self) -> None:
                 pass
 
-            def force_flush(self, timeout_millis=30000):
+            def force_flush(self, timeout_millis=30000) -> bool:
                 return True
 
         provider.add_span_processor(Audit())
         tracer = trace.get_tracer("homelab.synthetic.open-webui-profile")
 
-        def emit_request():
+        def emit_request() -> dict[str, object]:
             with tracer.start_as_current_span("homelab.synthetic.open-webui-validation") as parent:
                 parent.set_attribute("homelab.synthetic", True)
                 parent.set_status(Status(StatusCode.ERROR, "synthetic mandatory sampling root"))
@@ -280,4 +284,4 @@ if __name__ == "__main__":
                 }
             )
         )
-        raise SystemExit(1)
+        raise SystemExit(1) from error
