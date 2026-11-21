@@ -1,6 +1,7 @@
 import importlib.util
 import json
 from pathlib import Path
+from types import ModuleType
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -8,7 +9,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def module(name):
+def module(name) -> ModuleType:
     spec = importlib.util.spec_from_file_location(
         name.replace("-", "_"), ROOT / "scripts" / (name + ".py")
     )
@@ -18,7 +19,7 @@ def module(name):
 
 
 class ProductionSafetyTests(unittest.TestCase):
-    def test_host_token_roles_are_named_and_cannot_read_ca_private_key(self):
+    def test_host_token_roles_are_named_and_cannot_read_ca_private_key(self) -> None:
         boot = module("otel-production-bootstrap")
         resources = boot.resources({"requiredSecretKeys": []}, "10.43.1.2", {})
         roles = [
@@ -37,12 +38,12 @@ class ProductionSafetyTests(unittest.TestCase):
                 if rule["resources"] == ["serviceaccounts/token"]:
                     self.assertEqual(rule["resourceNames"], [role["metadata"]["name"]])
 
-    def test_verified_private_wireguard_addresses_are_not_interchanged(self):
+    def test_verified_private_wireguard_addresses_are_not_interchanged(self) -> None:
         boot = module("otel-production-bootstrap")
         self.assertEqual(boot.NODES["socrat-0"], "10.250.0.1")
         self.assertEqual(boot.NODES["socrat-2"], "10.250.0.2")
 
-    def test_native_overlay_does_not_turn_on_legacy_scraping(self):
+    def test_native_overlay_does_not_turn_on_legacy_scraping(self) -> None:
         import yaml
 
         values = yaml.safe_load(
