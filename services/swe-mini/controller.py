@@ -272,7 +272,7 @@ def tick():
     ).fetchone()
     if active:
         columns = [r[1] for r in DB.execute("PRAGMA table_info(runs)")]
-        run = dict(zip(columns, active))
+        run = dict(zip(columns, active, strict=True))
         if run["state"] == "queued":
             start_job(run, "work")
             return

@@ -31,6 +31,7 @@ def forward(address, local_port, external_port, protocol, comment):
                 "Enabled",
                 comment,
             ],
+            strict=True,
         )
     )
 

@@ -192,7 +192,7 @@ class StatefulBoundaries(unittest.TestCase):
             docs = list(
                 yaml.safe_load_all((R / "deploy/storage" / (file + "-socrat5.yaml")).read_text())
             )
-            for pv, pvc in zip(docs[::2], docs[1::2]):
+            for pv, pvc in zip(docs[::2], docs[1::2], strict=False):
                 count += 1
                 self.assertEqual(pv["spec"]["persistentVolumeReclaimPolicy"], "Retain")
                 self.assertTrue(pv["spec"]["local"]["path"].startswith("/mnt/files/homelab/"))

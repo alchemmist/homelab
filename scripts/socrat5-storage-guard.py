@@ -58,10 +58,10 @@ def main():
     if [o["kind"] for o in docs] != list(KINDS) or any(o["metadata"]["name"] != NAME for o in docs):
         raise ValueError("Unexpected scope")
     before = [kub(["get", o["kind"], NAME, "--ignore-not-found", "-o", "json"]) for o in docs]
-    for want, have in zip(docs, before):
+    for want, have in zip(docs, before, strict=True):
         if have:
             validate_existing(want, have)
-    missing = [o for o, have in zip(docs, before) if not have]
+    missing = [o for o, have in zip(docs, before, strict=True) if not have]
     if before[1] and not before[0]:
         raise ValueError("Partial live binding: inspect first")
     if args.apply and missing:

@@ -66,7 +66,7 @@ class EngineStorageTests(unittest.TestCase):
             r"\]\((https://(?:rustfs|spi-evidence)\.socrat\.alchemmist\.xyz/[^\s)]+)\)", body
         )
         self.assertEqual(len(urls), len(objects))
-        for url, (key, raw) in zip(urls, objects):
+        for url, (key, raw) in zip(urls, objects, strict=True):
             parsed = urlsplit(url)
             self.assertEqual(parsed.scheme, "https")
             self.assertEqual(parsed.netloc, urlsplit(gateway.ORIGIN).netloc)
@@ -152,7 +152,9 @@ class EngineStorageTests(unittest.TestCase):
         audit = copy.deepcopy(result["snapshot_audit"])
         self.assertEqual(audit[0]["evidence"]["bundle"], original)
         for (key, raw), receipt in zip(
-            storage_objects(original), audit[0]["storage_publication"]["verified"]
+            storage_objects(original),
+            audit[0]["storage_publication"]["verified"],
+            strict=True,
         ):
             self.assertEqual(receipt["sha256"], hashlib.sha256(raw).hexdigest())
             self.assertEqual(receipt["key"], key)

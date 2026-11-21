@@ -21,7 +21,7 @@ class OperationalReplayTests(unittest.TestCase):
         helper = module()
         metrics, logs, traces, expected, ids = helper.fixtures(1793536000 * 10**9)
         self.assertEqual(len(expected), 9)
-        self.assertTrue(all(b[0] - a[0] == 5 for a, b in zip(expected, expected[1:])))
+        self.assertTrue(all(b[0] - a[0] == 5 for a, b in zip(expected, expected[1:], strict=False)))
         self.assertEqual(len(logs["resourceLogs"][0]["scopeLogs"][0]["logRecords"]), 24)
         self.assertEqual(len(helper.trace_records(traces)), 9)
         self.assertEqual(len(ids), 9)
