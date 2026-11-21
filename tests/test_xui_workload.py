@@ -30,7 +30,7 @@ class XuiWorkloadTests(unittest.TestCase):
         cls.containers = {item["name"]: item for item in cls.pod["containers"]}
         cls.volumes = {item["name"]: item["hostPath"] for item in cls.pod["volumes"]}
 
-    def test_single_workload_cannot_create_concurrent_database_writers(self):
+    def test_single_workload_cannot_create_concurrent_database_writers(self) -> None:
         self.assertEqual(
             [item["metadata"]["name"] for item in self.documents if item["kind"] == "Deployment"],
             ["x-ui"],
@@ -42,7 +42,7 @@ class XuiWorkloadTests(unittest.TestCase):
         self.assertEqual(self.pod["dnsPolicy"], "Default")
         self.assertEqual(self.pod["nodeSelector"], {"kubernetes.io/hostname": "socrat-2"})
 
-    def test_existing_database_and_runtime_paths_remain_isolated(self):
+    def test_existing_database_and_runtime_paths_remain_isolated(self) -> None:
         expected = {
             "primary": {
                 "/etc/x-ui": "/srv/x-ui-lab/db",
@@ -60,7 +60,7 @@ class XuiWorkloadTests(unittest.TestCase):
                 database = next(mount for mount in mounts if mount["mountPath"] == "/etc/x-ui")
                 self.assertEqual(self.volumes[database["name"]]["type"], "Directory")
 
-    def test_versions_and_probe_endpoints_are_preserved(self):
+    def test_versions_and_probe_endpoints_are_preserved(self) -> None:
         expected = {
             "primary": (
                 "1628adbd9bed680d25d6f714bef4a20f132105f4612ea294952f6665dad32e5b",
@@ -85,7 +85,7 @@ class XuiWorkloadTests(unittest.TestCase):
         self.assertEqual(len(names), len(set(names)))
         self.assertTrue(all(len(name) <= 15 for name in names))
 
-    def test_service_selects_unified_pod_and_primary_ports(self):
+    def test_service_selects_unified_pod_and_primary_ports(self) -> None:
         service = next(item for item in self.documents if item["kind"] == "Service")
         self.assertEqual(
             service["spec"]["selector"], self.deployment["spec"]["template"]["metadata"]["labels"]
