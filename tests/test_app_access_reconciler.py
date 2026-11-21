@@ -58,6 +58,8 @@ def fixture():
 
 
 class FakeAPI:
+    """In-memory stand-in for the reconciler's HTTP API client."""
+
     def __init__(self, state):
         self.state = copy.deepcopy(state)
         self.writes = []
@@ -96,6 +98,8 @@ class FakeAPI:
 
 
 class AppAccessTests(unittest.TestCase):
+    """Exercise the app-access reconciler against a fake API."""
+
     def test_api_guard_accepts_provider_get_but_rejects_other_writes(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

@@ -9,6 +9,8 @@ ROLE = ROOT / "ansible/roles/home_ingress_ha"
 
 
 class KeepalivedStartupTest(unittest.TestCase):
+    """Exercise the keepalived startup wait template."""
+
     def run_wait(self, appear_at):
         script = (ROLE / "templates/wait-home-ingress-interface.sh.j2").read_text()
         script = script.replace(

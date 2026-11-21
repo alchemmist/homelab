@@ -16,6 +16,8 @@ SPEC.loader.exec_module(MODULE)
 
 
 class KumaPrivateMonitorTests(unittest.TestCase):
+    """Validate Uptime Kuma's private monitoring database."""
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

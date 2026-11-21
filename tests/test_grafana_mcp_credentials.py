@@ -19,6 +19,8 @@ def secret(**values):
 
 
 class CredentialsTests(unittest.TestCase):
+    """Validate Grafana MCP service-account credential handling."""
+
     def test_existing_valid_secret_is_preserved(self):
         grafana = Mock()
         grafana.request.side_effect = [

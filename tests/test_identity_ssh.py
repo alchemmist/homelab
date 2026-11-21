@@ -73,6 +73,8 @@ def plan(p=None, u=None):
 
 
 class BindingTests(unittest.TestCase):
+    """Validate append-only semantics of the SSH binding history."""
+
     def test_append_only_both_directions(self):
         current = ssh.bindings_map(ledger())
         ssh.validate_history(current, [ledger()])
@@ -177,6 +179,8 @@ class BindingTests(unittest.TestCase):
 
 
 class HistoryTests(unittest.TestCase):
+    """Run the committed history checks against real ledger snapshots."""
+
     def test_real_committed_history_catches_rebinding_and_removed_scope(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
@@ -214,6 +218,8 @@ class HistoryTests(unittest.TestCase):
 
 
 class KeyTests(unittest.TestCase):
+    """Verify the OpenSSH public key parser on real key files."""
+
     def test_real_openssh_parser_strips_comments_and_handles_two_tim_keys(self):
         keys, fingerprints = ssh.public_keys(TIM["authorized_keys"])
         self.assertEqual(len(keys), 2)
@@ -247,6 +253,8 @@ class KeyTests(unittest.TestCase):
 
 
 class ApiTests(unittest.TestCase):
+    """Exercise the Authentik API wrapper's pagination behaviour."""
+
     def api(self, doc=None):
         api = ssh.Authentik("https://auth.example.invalid", "fake-test-token")
         api.opener.open = lambda req, timeout: io.BytesIO(
@@ -311,6 +319,8 @@ class ApiTests(unittest.TestCase):
 
 
 class ExportTests(unittest.TestCase):
+    """Check the SSH export plan's payload and refusal behaviour."""
+
     def test_explicit_digest_private_new_file_and_public_only_payload(self):
         payload, _ = plan()
         with tempfile.TemporaryDirectory() as d:
@@ -352,6 +362,8 @@ class ExportTests(unittest.TestCase):
 
 
 class HostBindingTests(unittest.TestCase):
+    """Validate host binding verification against a mocked key location."""
+
     def setUp(self):
         self.real_location = self.host.verify_key_location
         self.location = patch.object(
@@ -616,6 +628,8 @@ class HostBindingTests(unittest.TestCase):
 
 @unittest.skipUnless(shutil.which("ansible-playbook"), "ansible-playbook unavailable")
 class AnsibleIntentTests(unittest.TestCase):
+    """Run the Ansible intent playbooks against generated inventories."""
+
     def run_play(self, payload, *flags, manual=False, review=None):
         with tempfile.TemporaryDirectory() as d:
             path = Path(d)

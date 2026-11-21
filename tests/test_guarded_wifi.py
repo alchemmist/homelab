@@ -17,6 +17,8 @@ SPEC.loader.exec_module(GUARD)
 
 
 class GuardedWifiTests(unittest.TestCase):
+    """Cover the guarded wifi module build and installation flow."""
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
@@ -154,6 +156,8 @@ class GuardedWifiTests(unittest.TestCase):
 
 
 class ModuleNoteTests(unittest.TestCase):
+    """Verify module notes round-trip without losing the original."""
+
     def test_decompression_and_note_extraction_preserve_original(self):
         for suffix, encode in (
             (".ko", lambda value: value),

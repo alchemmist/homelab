@@ -39,6 +39,8 @@ def state(vip=False):
 
 
 class IngressNeighborsTest(unittest.TestCase):
+    """Exercise the ingress neighbour discovery helper."""
+
     def setUp(self):
         packet_family = patch.object(NEIGHBORS.socket, "AF_PACKET", 17, create=True)
         packet_family.start()

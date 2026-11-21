@@ -11,6 +11,8 @@ SPEC.loader.exec_module(MODULE)
 
 
 class FakeEtcd:
+    """Fake etcd membership client recording every call it receives."""
+
     def __init__(self):
         self.membership = {
             name: {
@@ -50,6 +52,8 @@ class FakeEtcd:
 
 
 class RebalanceTest(unittest.TestCase):
+    """Verify etcd rebalance safety checks before any member removal."""
+
     def test_final_verification_never_removes_an_unexpected_member(self):
         client = FakeEtcd()
         with self.assertRaises(RuntimeError):

@@ -15,6 +15,8 @@ RUNNER = Path(__file__).resolve().parents[1] / "charts/open-terminal/files/brows
     sys.platform == "linux", "Linux process ownership and subreaper semantics required"
 )
 class BrowserTestRunnerTests(unittest.TestCase):
+    """Exercise the browser test runner's process and lifecycle handling."""
+
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.pidfile = Path(self.directory.name) / "child.pid"

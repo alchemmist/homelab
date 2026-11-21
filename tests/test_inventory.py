@@ -15,6 +15,8 @@ NODES = {f"socrat-{i}" for i in range(6)}
 
 
 class InventoryStructureTests(unittest.TestCase):
+    """Check the main inventory's structure and connection settings."""
+
     def test_main_inventory_contains_every_node_and_only_connection_settings(self):
         inventory = yaml.safe_load((ANSIBLE / "inventory/hosts.yml").read_text())
         hosts = inventory["all"]["children"]["Socrat"]["hosts"]
@@ -51,6 +53,8 @@ class InventoryStructureTests(unittest.TestCase):
 
 @unittest.skipUnless(shutil.which("ansible-inventory"), "ansible-inventory is required")
 class ResolvedInventoryTests(unittest.TestCase):
+    """Verify resolution across combined inventory sources."""
+
     def inventory(self, *sources):
         command = ["ansible-inventory"]
         for source in sources:

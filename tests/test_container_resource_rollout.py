@@ -72,6 +72,8 @@ def profiled_pod():
 
 
 class RolloutTests(unittest.TestCase):
+    """Check container resource rollout reconciliation decisions."""
+
     def test_profile_node_selector_requires_reconciliation_when_missing_or_different(self):
         expected = dict(profile(), nodeSelector={"kubernetes.io/hostname": "socrat-1"})
         for selector in ({}, {"kubernetes.io/hostname": "socrat-2"}):

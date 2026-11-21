@@ -16,6 +16,8 @@ SPEC.loader.exec_module(MODULE)
 
 
 class RoleConfigTests(unittest.TestCase):
+    """Exercise the k3s role config writer against temporary files."""
+
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)

@@ -32,6 +32,8 @@ def obj(docs, kind, name):
 
 
 class FourAppMigrationTests(unittest.TestCase):
+    """Verify vm105 migration renders for the four expected apps."""
+
     def test_stateless_placement_does_not_move_umami_database(self):
         for name in ["umami", "searxng"]:
             d = render(name)

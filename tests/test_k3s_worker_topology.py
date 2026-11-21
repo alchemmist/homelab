@@ -14,6 +14,8 @@ spec.loader.exec_module(module)
 
 
 class FakeEtcd:
+    """Fake etcd client exposing canned voter state."""
+
     def __init__(self):
         self.data = {
             name: {"id": i, "learner": False} for i, name in enumerate(sorted(module.VOTERS), 1)
@@ -35,6 +37,8 @@ class FakeEtcd:
 
 
 class WorkerTopologyTests(unittest.TestCase):
+    """Verify worker topology checks against a fake etcd cluster."""
+
     def test_three_healthy_votes_without_worker_endpoint(self):
         client = FakeEtcd()
         result = module.verify(client)

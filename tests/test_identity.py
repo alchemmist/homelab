@@ -17,6 +17,8 @@ from app_iam import admission_groups
 
 
 class FakeAuthentik:
+    """Fake Authentik HTTP API serving canned JSON documents."""
+
     def __init__(self):
         self.data = {
             "core/groups/": [],
@@ -110,6 +112,8 @@ class FakeAuthentik:
 
 
 class IdentityTests(unittest.TestCase):
+    """Run the identity configure script against a fake Authentik."""
+
     def configure(self, root, api):
         with (
             patch("sys.argv", ["configure.py", str(root)]),
@@ -331,6 +335,8 @@ class IdentityTests(unittest.TestCase):
 
 
 class RolloutRegressionTests(unittest.TestCase):
+    """Guard rollout regressions such as pinned icon consistency."""
+
     def test_pinned_icons_match_local_portal_assets(self):
         import hashlib, xml.etree.ElementTree as ET
 

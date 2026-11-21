@@ -22,6 +22,8 @@ from tests import test_identity as identity
 
 
 class LifecycleAPI:
+    """Minimal fake lifecycle API that records every write it receives."""
+
     def __init__(self, fake):
         self.fake = fake
         self.writes = []
@@ -50,6 +52,8 @@ class LifecycleAPI:
 
 
 class AppIAMTests(unittest.TestCase):
+    """Cover the application IAM provisioning lifecycle end to end."""
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
