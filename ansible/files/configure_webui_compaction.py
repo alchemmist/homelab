@@ -16,14 +16,14 @@ def configure():
     with sqlite3.connect("file:/app/backend/data/webui.db?mode=ro", uri=True) as db:
         admins = db.execute("SELECT id FROM user WHERE role = 'admin'").fetchall()
     if len(admins) != 1:
-        msg = "Expected one administrator for local configuration"
-        raise RuntimeError(msg)
+        message = "Expected one administrator for local configuration"
+        raise RuntimeError(message)
     admin_id = admins[0][0]
     auth = asyncio.run(get_auth(admin_id))
     mfa_config = asyncio.run(get_mfa_config())
     if (auth.mfa and auth.mfa.secret) or is_mfa_required("password", mfa_config):
-        msg = "An authenticated administrator session is required with MFA"
-        raise RuntimeError(msg)
+        message = "An authenticated administrator session is required with MFA"
+        raise RuntimeError(message)
     token = create_token(
         {
             "id": admin_id,
@@ -80,8 +80,8 @@ Do not write a promise such as "I will" or "Let me". Produce the checkpoint now.
     if changed:
         request(path, desired)
     if request(path) != desired:
-        msg = "Context compaction settings failed readback validation"
-        raise RuntimeError(msg)
+        message = "Context compaction settings failed readback validation"
+        raise RuntimeError(message)
     return {
         "changed": changed,
         "native_compaction": False,

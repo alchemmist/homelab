@@ -28,9 +28,8 @@ class Kubernetes:
             text=True,
         )
         if result.returncode:
-            raise BootstrapError(
-                "kubectl failed; inspect resource permissions and availability without logging secret payloads"
-            )
+            message = "kubectl failed; inspect resource permissions and availability without logging secret payloads"
+            raise BootstrapError(message)
         return result.stdout
 
     def get(self, kind: str, name: str, namespace: str) -> dict[str, object] | None:
@@ -54,7 +53,8 @@ def decoded(value: str) -> str:
     try:
         return base64.b64decode(value, validate=True).decode()
     except (ValueError, UnicodeError, TypeError):
-        raise BootstrapError("Invalid encoded credential in source Secret") from None
+        message = "Invalid encoded credential in source Secret"
+        raise BootstrapError(message) from None
 
 
 def resource(kind: str, name: str, namespace: str, **fields: object) -> dict[str, object]:
@@ -69,7 +69,8 @@ def resource(kind: str, name: str, namespace: str, **fields: object) -> dict[str
 def required_data(item: dict[str, object] | None, key: str) -> str:
     value = (item or {}).get("data", {}).get(key)
     if not isinstance(value, str) or not value:
-        raise BootstrapError("Required credential/configuration field is missing")
+        message = "Required credential/configuration field is missing"
+        raise BootstrapError(message)
     return value
 
 
@@ -105,15 +106,15 @@ def _check_pvc(existing_pvc: dict[str, object] | None) -> None:
     else:
         storage, modes = None, None
     if storage != "local-path" or modes != ["ReadWriteOnce"]:
-        raise BootstrapError("Existing wiki-runtime-data PVC has unexpected storage configuration")
+        message = "Existing wiki-runtime-data PVC has unexpected storage configuration"
+        raise BootstrapError(message)
 
 
 def _check_secrets(existing: list[dict[str, object] | None]) -> None:
     """Refuse to touch existing bootstrap/git Secrets whose payloads look damaged."""
     if existing[1] and len(decoded(required_data(existing[1], "token"))) < 32:
-        raise BootstrapError(
-            "Existing bootstrap Secret token is unexpectedly short; not overwriting it"
-        )
+        message = "Existing bootstrap Secret token is unexpectedly short; not overwriting it"
+        raise BootstrapError(message)
     if existing[2]:
         for key in ("id_ed25519", "known_hosts"):
             required_data(existing[2], key)
@@ -195,7 +196,8 @@ def main():
     try:
         command = shlex.split(args.kubectl)
         if not command:
-            raise BootstrapError("kubectl command must not be empty")
+            message = "kubectl command must not be empty"
+            raise BootstrapError(message)
         for line in bootstrap(Kubernetes(command), skip_legacy_git=args.skip_legacy_git):
             print(line)
     except (BootstrapError, OSError, json.JSONDecodeError):

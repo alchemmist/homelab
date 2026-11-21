@@ -34,7 +34,8 @@ def build(source=None):
         g = p["gridPos"]
         cells = {(x,y) for x in range(g["x"],g["x"]+g["w"]) for y in range(g["y"],g["y"]+g["h"])}
         if cells & occupied or not(0 <= g["x"] < g["x"]+g["w"] <= 24 and 0 <= g["y"] < g["y"]+g["h"] <= bottom):
-            raise ValueError("Overlap or Argo bottom boundary exceeded; preserve owner layout and stop")
+            message = "Overlap or Argo bottom boundary exceeded; preserve owner layout and stop"
+            raise ValueError(message)
         occupied |= cells
     return d
 

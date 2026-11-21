@@ -221,9 +221,8 @@ def run(verify_scope=False):
     if verify_scope:
         try:
             api(cfg, token, context, namespace + "/secrets/otel-root-ca")
-            raise ValueError(
-                "Host credentials may read CA private key; refusing overprivileged bootstrap"
-            )
+            message = "Host credentials may read CA private key; refusing overprivileged bootstrap"
+            raise ValueError(message)
         except urllib.error.HTTPError as error:
             code = error.code
             error.close()

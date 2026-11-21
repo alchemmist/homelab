@@ -48,7 +48,8 @@ def configuration(original):
     settings = result.setdefault("litellm_settings", {})
     callbacks = settings.get("callbacks", [])
     if not isinstance(callbacks, list) or "prometheus" not in callbacks:
-        raise ValueError("Existing authenticated Prometheus callback must be preserved")
+        message = "Existing authenticated Prometheus callback must be preserved"
+        raise ValueError(message)
     if "otel" not in callbacks:
         callbacks.append("otel")
     settings["turn_off_message_logging"] = True

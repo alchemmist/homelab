@@ -37,6 +37,7 @@ class Certificate(TypedDict):
 
 
 def load() -> types.ModuleType:
+    """Test behavior for load."""
     spec = importlib.util.spec_from_file_location(
         "leaf_rotation", ROOT / "scripts/otel-application-leaf-rotation.py"
     )

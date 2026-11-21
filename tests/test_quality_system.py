@@ -752,7 +752,7 @@ def test_frozen_scope_excludes_exact_existing_files_not_new_neighbours(tmp_path:
     (root / neighbour).write_text('"""New owned source."""\n')
     with patch.object(common, "ROOT", root):
         frozen = common.frozen_source_files()
-        assert len(frozen) == 17
+        assert len(frozen) == 15
         assert common.owned([*frozen, neighbour]) == [neighbour]
         assert common.owned(["charts/spi-triage/ui/queue_web.py"]) == [
             "charts/spi-triage/ui/queue_web.py"

@@ -2,9 +2,9 @@
 
 import argparse
 import json
+from pathlib import Path
 import subprocess
 import time
-from pathlib import Path
 
 NAMESPACE = "homelab-tim-check"
 INTERFACE = "wg-tim-check"
@@ -32,8 +32,8 @@ def _require_clean_namespace() -> None:
         or Path("/sys/class/net/" + INTERFACE).exists()
         or resolver_dir.exists()
     ):
-        msg = "Verification namespace or interface already exists"
-        raise RuntimeError(msg)
+        message = "Verification namespace or interface already exists"
+        raise RuntimeError(message)
 
 
 def _translated_endpoints(profile: str) -> str:

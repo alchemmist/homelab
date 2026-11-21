@@ -28,26 +28,27 @@ def pinned_binary(directory, key, filename, images):
         or entry["image"] != images[key]["image"]
         or digest(binary) != entry["sha256"]
     ):
-        msg = "Canary binary differs from verified receipt or repository image lock"
-        raise ValueError(msg)
+        message = "Canary binary differs from verified receipt or repository image lock"
+        raise ValueError(message)
     return entry["sha256"]
 
 
 def create(bundle, binaries, prometheus, exporter_path, backend_ip):
+    exporter_path = Path(exporter_path)
     if ipaddress.ip_address(backend_ip) not in ipaddress.ip_network("10.250.0.0/24"):
-        msg = "Backend must use an existing private WireGuard address"
-        raise ValueError(msg)
+        message = "Backend must use an existing private WireGuard address"
+        raise ValueError(message)
     if (
         not str(exporter_path).startswith("/var/tmp/otel-host-source-canary-")
         or ".." in exporter_path.parts
     ):
-        msg = "Explicit already verified native source executable path required"
-        raise ValueError(msg)
+        message = "Explicit already verified native source executable path required"
+        raise ValueError(message)
     contract = json.loads((bundle / "contract.json").read_text())
     age = (datetime.now(UTC) - datetime.fromisoformat(contract["collectedAt"])).total_seconds()
     if not 0 <= age <= 900:
-        msg = "Fresh complete scrape contract required"
-        raise ValueError(msg)
+        message = "Fresh complete scrape contract required"
+        raise ValueError(message)
     labels, hashes = {}, {}
     for node in NODES:
         document = yaml.safe_load((bundle / (node + ".yaml")).read_text())
@@ -55,16 +56,16 @@ def create(bundle, binaries, prometheus, exporter_path, backend_ip):
             json.dumps(document, sort_keys=True, separators=(",", ":")).encode()
         ).hexdigest()
         if actual != contract["outputSHA256"][node]:
-            msg = "Native source document differs from compiled contract"
-            raise ValueError(msg)
+            message = "Native source document differs from compiled contract"
+            raise ValueError(message)
         jobs = document["scrape_configs"]
         if (
             len(jobs) != 1
             or len(jobs[0]["static_configs"]) != 1
             or jobs[0]["static_configs"][0]["targets"] != ["127.0.0.1:19100"]
         ):
-            msg = "Exactly one independent loopback host source is required"
-            raise ValueError(msg)
+            message = "Exactly one independent loopback host source is required"
+            raise ValueError(message)
         labels[node] = jobs[0]["static_configs"][0]["labels"]
         hashes[node] = actual
     images = json.loads((ROOT / "deploy/monitoring/otel-images.lock.json").read_text())["images"]

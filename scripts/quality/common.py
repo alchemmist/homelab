@@ -183,7 +183,11 @@ def frozen_source_files() -> frozenset[str]:
             message = "Frozen compatibility bytes drift: " + relative
             raise ValueError(message)
         verified.add(relative)
-    return frozenset(verified)
+    # Verify the whole compatibility snapshot, but lint our locally patched modules.
+    return frozenset(verified) - {
+        "charts/spi-triage/files/telegram_delivery.py",
+        "charts/spi-triage/files/telegram_links.py",
+    }
 
 
 def owned(names: Iterable[str]) -> list[str]:

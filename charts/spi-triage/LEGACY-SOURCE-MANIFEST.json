@@ -1,6 +1,6 @@
 {
   "canonical_repository": "https://github.com/alchemmist/spi-triage",
-  "purpose": "Frozen compatibility inputs only; remove after first full bundle activation, never develop here.",
+  "purpose": "Pinned legacy compatibility inputs; remove after first full bundle activation. The two locally patched Telegram modules are Homelab-owned for quality checks (see docs/quality/frozen-inputs.md).",
   "backend_sha256": {
     "card_correlation.py": "10ab30eae9fe3ff4541499cb5f3ef89825e871a48731fabfff3c46274867018a",
     "core.py": "34d20cc1e1db359f5a86a643a7fc154b4c84d0493a50991a493e785c7451d757",
@@ -16,8 +16,8 @@
     "s3_evidence.py": "e61b335cd729d51f205e6fb123add9180d539d5757262c577c3669a439b05ca4",
     "service.py": "afd81033940bdbbd3471f41b45202c0dd803a813a78770e52c83b29ecebb169d",
     "storage_runtime.py": "bdd97cd9c5fef7fd7618ea63322d36a35da760532c319b9d1dee52de7526bf0d",
-    "telegram_delivery.py": "846c45970e51f55c771a7b567c84f9e2f0f7568d99d7f5bfbb1dd32e8f623388",
-    "telegram_links.py": "15db1593ef455029e5cde93a4b758338138224fc702c1639d6eb461f55443a67",
+    "telegram_delivery.py": "86bbd147dd16c820e0ce29da25c36fbe85927b12d356ef6fd9443c35828cec26",
+    "telegram_links.py": "3c5b7ab8d54603c01c5a4ead2c6bc22aeb8ac728972008df18e39fee096979ad",
     "telemetry.py": "d6879667231f90f720548740912d88467eae5f8e4d593955190560687e4a3ac2"
   }
 }

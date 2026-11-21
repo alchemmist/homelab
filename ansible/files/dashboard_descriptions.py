@@ -63,7 +63,8 @@ def apply_descriptions(dashboard, descriptions=None):
     for panel in panels(dashboard):
         description = entries.get(str(panel["id"]))
         if not isinstance(description, str) or not description.strip():
-            raise ValueError(f"Missing description for dashboard {uid}, panel {panel['id']}")
+            message = f"Missing description for dashboard {uid}, panel {panel['id']}"
+            raise ValueError(message)
         panel["description"] = description
         unit = PANEL_UNITS.get(uid, {}).get(panel["id"])
         if unit:

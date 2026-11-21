@@ -20,6 +20,7 @@ MANIFEST = json.loads((ASSETS / "sources.json").read_text())
 
 
 def targets() -> dict[str, str]:
+    """Test behavior for targets."""
     result: dict[str, str] = {}
     for filename, source in MANIFEST["files"].items():
         name = "service-icons/" + Path(filename).stem + "-" + source["sha256"][:12] + ".svg"
@@ -30,6 +31,7 @@ def targets() -> dict[str, str]:
 
 
 def test_current_application_coverage_and_asset_checksums() -> None:
+    """Test behavior for test_current_application_coverage_and_asset_checksums."""
     mapping = targets()
     assert set(mapping) == {
         "grafana",
@@ -130,6 +132,7 @@ class FakeAPI:
 
 
 def run(tmp_path, api, expected=None) -> None:
+    """Test behavior for run."""
     shutil.copytree(ASSETS, tmp_path / "service-icons")
     (tmp_path / "credentials.json").write_text(
         json.dumps({"AUTHENTIK_BOOTSTRAP_TOKEN": "fixture-only"})
@@ -144,6 +147,7 @@ def run(tmp_path, api, expected=None) -> None:
 
 
 def test_updates_only_icons_and_keeps_unmanaged_app(tmp_path) -> None:
+    """Test behavior for test_updates_only_icons_and_keeps_unmanaged_app."""
     api = FakeAPI()
     before = copy.deepcopy(api.apps)
     run(tmp_path, api, list(before.values()))
@@ -158,6 +162,7 @@ def test_updates_only_icons_and_keeps_unmanaged_app(tmp_path) -> None:
 
 
 def test_reviewed_uid_mismatch_stops_before_any_patch(tmp_path) -> None:
+    """Test behavior for test_reviewed_uid_mismatch_stops_before_any_patch."""
     api = FakeAPI()
     expected = copy.deepcopy(list(api.apps.values()))
     expected[0]["pk"] = "different-identity"
@@ -168,6 +173,7 @@ def test_reviewed_uid_mismatch_stops_before_any_patch(tmp_path) -> None:
 
 
 def test_uncertain_prior_run_cannot_be_replayed(tmp_path) -> None:
+    """Test behavior for test_uncertain_prior_run_cannot_be_replayed."""
     api = FakeAPI()
     (tmp_path / "portal-icons-uncertain.json").write_text("{}")
     with pytest.raises(RuntimeError, match="explicit receipt/state review"):
@@ -176,6 +182,7 @@ def test_uncertain_prior_run_cannot_be_replayed(tmp_path) -> None:
 
 
 def test_served_checksum_mismatch_leaves_review_marker(tmp_path) -> None:
+    """Test behavior for test_served_checksum_mismatch_leaves_review_marker."""
     api = FakeAPI()
     api.content[next(iter(api.content))] = b"not-the-pinned-svg"
     with pytest.raises(RuntimeError, match="Served media checksum mismatch"):
@@ -185,6 +192,7 @@ def test_served_checksum_mismatch_leaves_review_marker(tmp_path) -> None:
 
 
 def test_property_mapping_membership_change_is_not_ignored(tmp_path) -> None:
+    """Test behavior for test_property_mapping_membership_change_is_not_ignored."""
     api = FakeAPI()
     expected = copy.deepcopy(list(api.apps.values()))
     provider = expected[0]["provider_obj"]

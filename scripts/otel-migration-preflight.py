@@ -34,7 +34,8 @@ def remote(host, arguments):
         check=False,
     )
     if result.returncode:
-        raise RuntimeError(f"{host}: read-only probe failed (exit {result.returncode})")
+        message = f"{host}: read-only probe failed (exit {result.returncode})"
+        raise RuntimeError(message)
     return json.loads(result.stdout)
 
 
@@ -46,7 +47,8 @@ def prometheus(host, namespace, endpoint):
     path = f"/api/v1/namespaces/{namespace}/services/http:kube-prometheus-stack-prometheus:9090/proxy/api/v1/{endpoint}"
     payload = kube(host, namespace, "get", "--raw", path)
     if payload.get("status") != "success":
-        raise RuntimeError("Prometheus read-only API failed")
+        message = "Prometheus read-only API failed"
+        raise RuntimeError(message)
     return payload["data"]
 
 
@@ -125,9 +127,8 @@ def collect(policy, host):
             for point in points
         ]
         if len(targets) < 78:
-            raise RuntimeError(
-                "Native production has fewer than the contracted 78 fresh source targets"
-            )
+            message = "Native production has fewer than the contracted 78 fresh source targets"
+            raise RuntimeError(message)
     else:
         targets = prometheus(host, namespace, "targets")["activeTargets"]
     target_summaries = [
@@ -227,7 +228,8 @@ def node_errors(node, reservation, inventory, capacity, now, maximum_age, fracti
         )
     ] + list(components.values())
     if not components or any(not nonnegative(value) for value in values):
-        raise ValueError(f"{node}: invalid resource reservation")
+        message = f"{node}: invalid resource reservation"
+        raise ValueError(message)
     disk_floor = max(
         reservation["minimumFreeBytes"], math.ceil(observed["diskTotalBytes"] * fraction)
     )
