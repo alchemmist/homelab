@@ -3,13 +3,15 @@
 import importlib.util
 from pathlib import Path
 import struct
+import types
 import unittest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(name):
+def load(name) -> types.ModuleType:
+    """Load an offline netbird runtime module from the scripts directory."""
     spec = importlib.util.spec_from_file_location(
         name.replace("-", "_"), ROOT / "scripts" / (name + ".py")
     )
@@ -24,13 +26,15 @@ probe = load("netbird-stun-check")
 
 
 class HostPeerTest(unittest.TestCase):
-    def groups(self):
-        return [
+    def groups(self) -> list[dict[str, object]]:
+        """Build the reviewed claimable groups for the preflight tests."""
+        result: list[dict[str, object]] = [
             {"id": str(i), "name": n, "issued": "jwt", "peers": [], "resources": []}
             for i, n in enumerate(peer.SOURCES)
         ]
+        return result
 
-    def test_live_gate_no_default_and_real_jwt_only(self):
+    def test_live_gate_no_default_and_real_jwt_only(self) -> None:
         self.assertEqual(peer.preflight([], self.groups(), [], 600 * 1024), ["0", "1"])
         for policies, groups, peers, mem in [
             ([{"name": "Default"}], self.groups(), [], 600 * 1024),
@@ -43,7 +47,7 @@ class HostPeerTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 peer.preflight(policies, groups, peers, mem)
 
-    def test_machine_not_router_no_credentials_or_host_root(self):
+    def test_machine_not_router_no_credentials_or_host_root(self) -> None:
         for host in peer.HOSTS:
             docs = peer.peer(host)
             deployment = docs[1]
@@ -79,7 +83,7 @@ class HostPeerTest(unittest.TestCase):
             ]:
                 self.assertNotIn(forbidden, blob)
 
-    def test_single_use_native_key_body(self):
+    def test_single_use_native_key_body(self) -> None:
         for host in peer.HOSTS:
             key = peer.setup_key_body(host)
             self.assertEqual(key["type"], "one-off")
@@ -89,9 +93,9 @@ class HostPeerTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             peer.setup_key_body("new-vm")
 
-    def test_only_directed_tcp_ports_dedicated_groups(self):
+    def test_only_directed_tcp_ports_dedicated_groups(self) -> None:
         bodies = peer.policies(["jwt-grafana", "jwt-ssh"], ["machine-grafana", "machine-ssh"])
-        for body, port in zip(bodies, ["8443", "2222"]):
+        for body, port in zip(bodies, ["8443", "2222"], strict=True):
             rule = body["rules"][0]
             self.assertEqual(rule["protocol"], "tcp")
             self.assertEqual(rule["ports"], [port])
@@ -100,7 +104,7 @@ class HostPeerTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             peer.policies(["same", "same"], ["d1", "d2"])
 
-    def test_overlay_only_tls_host_sni_verified_upstream(self):
+    def test_overlay_only_tls_host_sni_verified_upstream(self) -> None:
         cfg = peer.frontend_config("100.96.1.2")
         static = yaml.safe_load(cfg["static.yaml"])
         dynamic = yaml.safe_load(cfg["dynamic.yaml"])
@@ -133,7 +137,7 @@ class HostPeerTest(unittest.TestCase):
 
 
 class StunTest(unittest.TestCase):
-    def test_bounded_stun_only_no_service_snat(self):
+    def test_bounded_stun_only_no_service_snat(self) -> None:
         docs = stun.manifests()
         self.assertEqual(len(docs), 1)
         spec = docs[0]["spec"]["template"]["spec"]
@@ -155,17 +159,21 @@ class StunTest(unittest.TestCase):
         self.assertEqual(c["securityContext"]["capabilities"]["add"], ["NET_BIND_SERVICE"])
         self.assertIn("@sha256:", c["image"])
 
-    def binding(self):
-        packet = probe.request(1)
+    def binding(self) -> tuple[bytes, bytes]:
+        """Build a STUN request and its expected binding response."""
+        packet: bytes = probe.request(1)
         port = 12345 ^ 0x2112
         addr = bytes(
-            a ^ b for a, b in zip(bytes([109, 173, 40, 247]), struct.pack("!I", probe.COOKIE))
+            a ^ b
+            for a, b in zip(
+                bytes([109, 173, 40, 247]), struct.pack("!I", probe.COOKIE), strict=True
+            )
         )
         val = b"\x00\x01" + struct.pack("!H", port) + addr
         response = b"\x01\x01\x00\x0c" + packet[4:20] + b"\x00\x20\x00\x08" + val
         return packet, response
 
-    def test_binding_exact_transaction_and_source(self):
+    def test_binding_exact_transaction_and_source(self) -> None:
         packet, response = self.binding()
         self.assertEqual(
             probe.parse_binding(packet, response), {"address": "109.173.40.247", "port": 12345}

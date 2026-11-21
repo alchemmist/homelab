@@ -15,15 +15,24 @@ spec.loader.exec_module(n)
 IMAGE = "netbirdio/netbird:0.82.0@sha256:" + "a" * 64
 
 
-def node(host):
-    return {
+def _mapping(value: object) -> dict[str, object]:
+    """Return the assert-verified mapping view of an untyped fixture value."""
+    assert isinstance(value, dict)
+    mapping: dict[str, object] = value
+    return mapping
+
+
+def node(host) -> dict[str, object]:
+    """Build the canonical cluster node object for the given host."""
+    result: dict[str, object] = {
         "metadata": {"uid": "node-" + host, "name": host},
         "status": {"conditions": [{"type": "Ready", "status": "True"}]},
     }
+    return result
 
 
 class Fake(n.Runtime):
-    def __init__(self, apply=True, existing=True):
+    def __init__(self, apply=True, existing=True) -> None:
         self.apply = apply
         self.config = n.validate_config(
             {
@@ -35,7 +44,7 @@ class Fake(n.Runtime):
         self.state = {"nodes": {}}
         self.changed = False
         self.writes = []
-        self.cluster_node = node("socrat-4")
+        self.cluster_node: object = node("socrat-4")
         self.peer = {
             "id": "peer4",
             "ip": "100.100.1.4",
@@ -48,7 +57,7 @@ class Fake(n.Runtime):
         }
         self.group = {"id": "nodes", "issued": "api", "name": n.DEST, "peers": []}
         self.admin = {"id": "jwt", "issued": "jwt", "name": n.ADMIN}
-        self.resources = []
+        self.resources: list[dict[str, object]] = []
         self.policies = [
             {
                 "enabled": True,
@@ -74,10 +83,11 @@ class Fake(n.Runtime):
         self.enrolled = existing
         self.fail_restart = False
 
-    def save(self):
-        pass
+    def save(self) -> None:
+        """Accept the runtime state save without writing anything."""
 
-    def api(self, method, path, body=None):
+    def api(self, method, path, body=None) -> object:
+        """Serve the reconciler's API calls from in-memory fixtures."""
         if method == "GET":
             if path == "groups":
                 return [self.admin, self.group, {"name": "All", "id": "all", "issued": "api"}]
@@ -120,7 +130,8 @@ class Fake(n.Runtime):
             return result
         raise AssertionError(path)
 
-    def get(self, kind, name, ns=n.NS, optional=False):
+    def get(self, kind, name, ns=n.NS, optional=False) -> object:
+        """Serve the reconciler's object lookups from in-memory fixtures."""
         if kind == "application":
             return {
                 "metadata": {"labels": {"app.kubernetes.io/instance": "root"}},
@@ -145,14 +156,20 @@ class Fake(n.Runtime):
             return {"metadata": {"name": name, "uid": "secret4", "resourceVersion": "1"}}
         raise AssertionError(kind)
 
-    def status(self, host):
-        return {"ip": self.peer["ip"], "key": "fixture-public-key"}
+        raise AssertionError(kind)
 
-    def restart_without_key(self, host, deployment):
+    def status(self, host) -> dict[str, object]:
+        """Return the fixture daemon status for the given host."""
+        result: dict[str, object] = {"ip": self.peer["ip"], "key": "fixture-public-key"}
+        return result
+
+    def restart_without_key(self, host, deployment) -> None:
+        """Simulate a restart failure when the fixture flag is set."""
         if self.fail_restart:
             raise ValueError("simulated restart failure")
 
-    def kub(self, args, obj=None, optional=False, stdin=None):
+    def kub(self, args, obj=None, optional=False, stdin=None) -> bytes:
+        """Serve the reconciler's kubectl calls from in-memory fixtures."""
         if stdin is not None:
             assert args[-4:] == ["netbird", "up", "--setup-key-file", "/dev/stdin"]
             self.enrolled = True
@@ -174,10 +191,12 @@ class Fake(n.Runtime):
 
 
 class ReconcileTest(unittest.TestCase):
-    def seed(self):
-        return {"nodes": {"socrat-4": {"id": "peer4"}}}
+    def seed(self) -> dict[str, object]:
+        """Build the reviewed node seed state used by the reconcile tests."""
+        result: dict[str, object] = {"nodes": {"socrat-4": {"id": "peer4"}}}
+        return result
 
-    def test_kernel_only_daemon_has_no_tun_or_interactive_sso(self):
+    def test_kernel_only_daemon_has_no_tun_or_interactive_sso(self) -> None:
         pvc, deployment = n.manifests("socrat-5", IMAGE, kernel_only=True)
         spec = deployment["spec"]["template"]["spec"]
         self.assertEqual(spec["containers"][0]["command"], ["netbird"])
@@ -186,7 +205,7 @@ class ReconcileTest(unittest.TestCase):
         self.assertEqual([v["name"] for v in spec["containers"][0]["volumeMounts"]], ["state"])
         self.assertNotIn("privileged", spec["containers"][0]["securityContext"])
 
-    def test_inventory_is_generic_but_not_arbitrary_network_access(self):
+    def test_inventory_is_generic_but_not_arbitrary_network_access(self) -> None:
         for values in [
             {"socrat-4": "10.250.0.4"},
             {"other": "10.250.0.9"},
@@ -211,7 +230,7 @@ class ReconcileTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             n.validate_config({"image": "latest", "nodes": {"socrat-4": "10.250.0.9"}})
 
-    def test_render_has_persistent_identity_and_no_human_or_dns_permissions(self):
+    def test_render_has_persistent_identity_and_no_human_or_dns_permissions(self) -> None:
         pvc, deploy = n.manifests("socrat-28", IMAGE)
         pod = deploy["spec"]["template"]["spec"]
         env = {e["name"]: e.get("value") for e in pod["containers"][0]["env"]}
@@ -223,14 +242,14 @@ class ReconcileTest(unittest.TestCase):
         self.assertEqual(pod["nodeSelector"], {"kubernetes.io/hostname": "socrat-28"})
         self.assertFalse(pod["automountServiceAccountToken"])
 
-    def test_adopt_requires_trusted_exact_peer_not_name(self):
+    def test_adopt_requires_trusted_exact_peer_not_name(self) -> None:
         for seed in [None, {"nodes": {"socrat-4": {"id": "wrong"}}}]:
             f = Fake()
             with self.assertRaises(ValueError):
                 f.reconcile("socrat-4", seed)
             self.assertEqual(f.writes, [])
 
-    def test_adopt_and_second_run_are_idempotent(self):
+    def test_adopt_and_second_run_are_idempotent(self) -> None:
         f = Fake()
         self.assertTrue(f.reconcile("socrat-4", self.seed())["changed"])
         self.assertEqual(len(f.resources), 1)
@@ -239,36 +258,36 @@ class ReconcileTest(unittest.TestCase):
         self.assertFalse(f.reconcile("socrat-4")["changed"])
         self.assertEqual(len(f.writes), writes)
 
-    def test_plan_never_enrolls_or_writes(self):
+    def test_plan_never_enrolls_or_writes(self) -> None:
         f = Fake(apply=False, existing=False)
         self.assertEqual(f.reconcile("socrat-4")["status"], "awaiting-argocd-workloads")
         self.assertEqual(f.writes, [])
 
-    def test_missing_git_workloads_are_deferred_without_kubernetes_or_api_writes(self):
+    def test_missing_git_workloads_are_deferred_without_kubernetes_or_api_writes(self) -> None:
         f = Fake(existing=False)
         self.assertEqual(f.reconcile("socrat-4")["status"], "awaiting-argocd-workloads")
         self.assertEqual(f.writes, [])
 
-    def test_fresh_argocd_agent_plan_has_no_setup_key(self):
+    def test_fresh_argocd_agent_plan_has_no_setup_key(self) -> None:
         f = Fake(apply=False)
         f.enrolled = False
         self.assertEqual(f.reconcile("socrat-4")["status"], "would-enroll-and-authorize")
         self.assertEqual(f.writes, [])
 
-    def test_unmanaged_workloads_cannot_be_adopted_by_controller(self):
+    def test_unmanaged_workloads_cannot_be_adopted_by_controller(self) -> None:
         f = Fake()
         f.dep["metadata"].pop("labels")
         with self.assertRaises(ValueError):
             f.reconcile("socrat-4", self.seed())
         self.assertEqual(f.writes, [])
 
-    def test_missing_not_ready_node_is_deferred(self):
+    def test_missing_not_ready_node_is_deferred(self) -> None:
         f = Fake()
         f.cluster_node = None
         self.assertEqual(f.reconcile("socrat-4")["status"], "deferred-node-not-ready")
         self.assertEqual(f.writes, [])
 
-    def test_simulated_new_node_flow_retires_key_and_second_run_no_writes(self):
+    def test_simulated_new_node_flow_retires_key_and_second_run_no_writes(self) -> None:
         f = Fake()
         f.enrolled = False
         self.assertTrue(f.reconcile("socrat-4")["changed"])
@@ -285,7 +304,7 @@ class ReconcileTest(unittest.TestCase):
         self.assertFalse(f.reconcile("socrat-4")["changed"])
         self.assertEqual(len(f.writes), writes)
 
-    def test_failed_enrollment_revokes_known_key_and_never_auto_reissues(self):
+    def test_failed_enrollment_revokes_known_key_and_never_auto_reissues(self) -> None:
         f = Fake()
         f.enrolled = False
         f.fail_restart = True
@@ -298,13 +317,13 @@ class ReconcileTest(unittest.TestCase):
             f.reconcile("socrat-4")
         self.assertEqual(len(f.writes), writes)
 
-    def test_node_uid_pvc_peer_address_and_image_drift_are_not_repaired(self):
+    def test_node_uid_pvc_peer_address_and_image_drift_are_not_repaired(self) -> None:
         for kind in ["node", "pvc", "peer", "address", "image", "key", "deleted-volume"]:
             f = Fake()
             f.reconcile("socrat-4", self.seed())
             before = len(f.writes)
             if kind == "node":
-                f.cluster_node["metadata"]["uid"] = "replacement"
+                _mapping(_mapping(f.cluster_node)["metadata"])["uid"] = "replacement"
             if kind == "pvc":
                 f.pvc["metadata"]["uid"] = "replacement"
             if kind == "peer":
@@ -314,7 +333,7 @@ class ReconcileTest(unittest.TestCase):
             if kind == "image":
                 f.dep["spec"]["template"]["spec"]["containers"][0]["image"] = "latest"
             if kind == "key":
-                f.state["nodes"]["socrat-4"]["public_key"] = "different"
+                _mapping(_mapping(f.state["nodes"])["socrat-4"])["public_key"] = "different"
             if kind == "deleted-volume":
                 f.existing = False
                 f.enrolled = False
@@ -322,7 +341,7 @@ class ReconcileTest(unittest.TestCase):
                 f.reconcile("socrat-4")
             self.assertEqual(len(f.writes), before)
 
-    def test_fake_jwt_broad_acl_or_wrong_router_fail_before_writes(self):
+    def test_fake_jwt_broad_acl_or_wrong_router_fail_before_writes(self) -> None:
         for kind in ["jwt", "input", "member"]:
             f = Fake()
             if kind == "jwt":
@@ -335,7 +354,7 @@ class ReconcileTest(unittest.TestCase):
                 f.reconcile("socrat-4", self.seed())
             self.assertEqual(f.writes, [])
 
-    def test_removed_or_broadened_grants_are_not_resurrected(self):
+    def test_removed_or_broadened_grants_are_not_resurrected(self) -> None:
         for kind in ["resource", "policy", "disabled", "broadened", "membership"]:
             f = Fake()
             f.reconcile("socrat-4", self.seed())
@@ -354,7 +373,7 @@ class ReconcileTest(unittest.TestCase):
                 f.reconcile("socrat-4")
             self.assertEqual(len(f.writes), before)
 
-    def test_uncertain_write_remains_blocking(self):
+    def test_uncertain_write_remains_blocking(self) -> None:
         f = Fake()
         f.state["pending"] = {"method": "POST", "path": "policies"}
         with self.assertRaises(ValueError):

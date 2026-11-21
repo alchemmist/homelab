@@ -16,8 +16,9 @@ ANSIBLE = shutil.which("ansible-playbook")
 @unittest.skipUnless(ANSIBLE, "ansible-playbook is required")
 class WorkerAdmissionSafetyTests(unittest.TestCase):
     def assert_rejected_before_host_changes(
-        self, hostname, os_family="Debian", address="10.250.0.5"
-    ):
+        self, hostname: str, *, os_family: str = "Debian", address: str = "10.250.0.5"
+    ) -> None:
+        """Drive the worker role in check mode and require the rejection message."""
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)
             inventory = directory / "inventory.json"
@@ -58,15 +59,18 @@ class WorkerAdmissionSafetyTests(unittest.TestCase):
             self.assertIn("Assertion failed", output)
             self.assertNotIn("Inspect existing server datastore", output)
 
-    def test_existing_control_planes_remain_rejected_when_worker_name_is_overridden(self):
+    def test_existing_control_planes_remain_rejected_when_worker_name_is_overridden(self) -> None:
+        """Reject every control-plane host name even when the worker is renamed."""
         for hostname in ["socrat-0", "socrat-1", "socrat-2"]:
             with self.subTest(hostname=hostname):
                 self.assert_rejected_before_host_changes(hostname)
 
-    def test_wrong_operating_system_is_rejected_before_package_operations(self):
+    def test_wrong_operating_system_is_rejected_before_package_operations(self) -> None:
+        """Reject a non-Debian host before any package task runs."""
         self.assert_rejected_before_host_changes("socrat-3", os_family="Archlinux")
 
-    def test_management_address_mismatch_is_rejected_before_network_operations(self):
+    def test_management_address_mismatch_is_rejected_before_network_operations(self) -> None:
+        """Reject a worker whose address misses the registered mesh entry."""
         self.assert_rejected_before_host_changes("socrat-3", address="10.250.0.4")
 
 

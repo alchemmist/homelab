@@ -1,6 +1,6 @@
 ---
 wg_socrat_admin_clients: {}
-wg_socrat_peer_endpoints: {}
+wg_socrat_peer_endpoint_overrides: {}
 wg_socrat_extra_allowed_peer_ips:
   socrat-2:
     socrat-0:
