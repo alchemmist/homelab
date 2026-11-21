@@ -67,6 +67,7 @@ spec:
         - name: prompt
           configMap:
             name: blog-updates-prompt
+...
 ---
 apiVersion: v1
 kind: Service
@@ -79,3 +80,4 @@ spec:
   ports:
     - port: 8080
       targetPort: 8080
+...

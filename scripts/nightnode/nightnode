@@ -28,6 +28,11 @@ load_config() {
     # KEY=VALUE lines only; blank and commented lines are skipped.
     while IFS= read -r line || [[ -n "${line}" ]]; do
       [[ -z "${line}" || "${line}" =~ ^[[:space:]]*\# ]] && continue
+      line="${line#"${line%%[![:space:]]*}"}"
+      if [[ "${line}" == export[[:space:]]* ]]; then
+        line="${line#export}"
+        line="${line#"${line%%[![:space:]]*}"}"
+      fi
       key="${line%%=*}"
       value="${line#*=}"
       [[ "${key}" == "${line}" ]] && die "config line is not KEY=VALUE: ${line}"
