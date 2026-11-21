@@ -28,12 +28,14 @@ WORKLOADS = [
 
 
 def run(*args, timeout=45):
+    """Execute the run operation."""
     return subprocess.run(
         args, check=True, capture_output=True, text=True, timeout=timeout
     ).stdout.strip()
 
 
 def copy_directory(source, destination):
+    """Execute the copy_directory operation."""
     source = Path(source)
     if source.is_dir():
         shutil.copytree(source, destination, symlinks=False)
@@ -42,6 +44,7 @@ def copy_directory(source, destination):
 
 
 def backup_database(source, destination):
+    """Execute the backup_database operation."""
     source = Path(source)
     if not source.is_file() or source.stat().st_size == 0:
         raise RuntimeError("Live database is missing or empty")
@@ -53,6 +56,7 @@ def backup_database(source, destination):
 
 
 def launch(unit, properties, executable, *arguments):
+    """Execute the launch operation."""
     command = [
         "systemd-run",
         "--quiet",
@@ -217,6 +221,7 @@ def cleanup(
 
 
 def main(runtime_root=ROOT):
+    """Execute the main operation."""
     runtime_root = Path(runtime_root)
     verify_environment(runtime_root)
     workloads = [

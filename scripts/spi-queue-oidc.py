@@ -68,6 +68,7 @@ class API:
     """SPI queue OIDC provider API client."""
 
     def __init__(self, credentials: Path, *, write: bool = False) -> None:
+        """Initialize the SPI queue API client."""
 
         private(credentials)
         value = json.loads(credentials.read_text())

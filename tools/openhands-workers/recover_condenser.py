@@ -1,4 +1,5 @@
 """Run next to worker-dispatch.py. Recover only a failed legacy mutation condenser.
+
 No new assignment, worktree or git operations. Preserve history and record lineage.
 """
 import fcntl,json,pathlib,runpy,sys,uuid,os

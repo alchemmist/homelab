@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Offline local Argo source/value-file and selected current-document pointers.
+
 No rendering, download, live reconciliation or historical-document rewrites.
 External chart contents, web routes and Markdown fragments are not verified.
 """
@@ -16,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def inside(root, path):
+    """Perform the inside operation."""
     path = path.resolve()
     if not path.is_relative_to(root.resolve()):
         raise ValueError("Source pointer escapes repository")
@@ -125,6 +127,7 @@ def _resolve_value_target(
 
 
 def applications(root, directory, repo):
+    """Perform the applications operation."""
     base = inside(root, root / directory)
     if not base.is_dir():
         raise ValueError("Missing Application directory")
@@ -197,6 +200,7 @@ def _current_values(
 
 
 def check(root=ROOT):
+    """Check the requested inputs."""
     c = json.loads((root / "deploy/contracts/source-pointers.json").read_text())
     if c["schemaVersion"] != 1:
         raise ValueError("Unsupported source pointer schema")

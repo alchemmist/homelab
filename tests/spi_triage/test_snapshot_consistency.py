@@ -3,9 +3,10 @@
 import copy
 import unittest
 from unittest.mock import Mock
+
 import test_triage as f
-from integrations import GitHub, Model
 from core import Failure, digest
+from integrations import GitHub, Model
 
 
 class SnapshotConsistencyTests(unittest.TestCase):
@@ -56,7 +57,8 @@ class SnapshotConsistencyTests(unittest.TestCase):
         assert len(current) == paged_rows
         assert len({x["number"] for x in current}) == unique_rows
         # Execute the exact clean pre-fix matcher, not an approximation.
-        import subprocess, types
+        import subprocess
+        import types
 
         baseline = types.ModuleType("baseline_integrations")
         exec(

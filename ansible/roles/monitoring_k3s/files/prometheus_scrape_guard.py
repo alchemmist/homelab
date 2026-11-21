@@ -3,7 +3,6 @@
 import json
 import sys
 
-
 MEMORY_FACTORS = (
     ("Ti", 1024**4),
     ("Gi", 1024**3),
@@ -18,6 +17,7 @@ MEMORY_FACTORS = (
 
 
 def memory_bytes(value):
+    """Execute the memory_bytes operation."""
     text = str(value).strip()
     for suffix, factor in MEMORY_FACTORS:
         if text.endswith(suffix):
@@ -52,6 +52,7 @@ def _pod_problems(running):
 
 
 def problems(document, pods=None):
+    """Execute the problems operation."""
     if not document:
         return ["Prometheus is not installed"]
     items = (
@@ -77,6 +78,7 @@ def problems(document, pods=None):
 
 
 def main():
+    """Execute the main operation."""
     document = json.load(sys.stdin)
     found = (
         problems(document["prometheus"], document["pods"])

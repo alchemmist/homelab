@@ -1,8 +1,8 @@
 """Offline structural safety gates; not a live Django integration proof."""
 
 import ast
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 

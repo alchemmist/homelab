@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 """Retire exact owned per-domain resolvers/wiki restorer; never modify global DNS/VPN."""
 
-import argparse, datetime, hashlib, json, os, plistlib, shutil, subprocess
+import argparse
+import datetime
+import hashlib
+import json
+import os
+import plistlib
+import shutil
+import subprocess
 from pathlib import Path
 from typing import TypedDict
 
