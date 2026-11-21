@@ -33,7 +33,7 @@ def main():
     if sys.flags.optimize:
         raise RuntimeError("safety checks need standard Python")
     apply = sys.argv[1:] == ["--release-verified-files"]
-    assert apply or sys.argv[1:] == ["--check"]
+    assert apply or sys.argv[1:] in (["--check"], ["--audit-cluster"])
     j = json.loads(output(K + ["get", "job", WATCH, "-o", "json"]))
     assert j["status"].get("succeeded") == 1, "first real shipper upload not verified"
     log = output(K + ["logs", "job/" + WATCH])
@@ -141,6 +141,8 @@ p=Path('/var/lib/socrat-thanos');print(json.dumps([json.loads(f.read_bytes()) fo
         "cold block lacks a live same-resolution successor"
     )
     print("active S3 coverage for", len(old), "original blocks", flush=True)
+    if sys.argv[1:] == ["--audit-cluster"]:
+        return  # Read-only preflight: no release or filesystem changes.
     # Final comparison and unlink happen in the same remote process. Only names from
     # the fully restored archive can be removed; the directory itself is preserved.
     prog = (

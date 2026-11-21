@@ -1,6 +1,6 @@
 """Finish the already approved one-shot cleanup after off-host archive readback."""
 
-import json, sys, time
+import json, sys, time, subprocess
 from retire import D, K, SSH, SPOOL, output
 
 NAME = "raw-packed-copy-20261121"
@@ -37,7 +37,14 @@ else:
     )
     deadline = time.monotonic() + 20 * 3600
     while time.monotonic() < deadline:
-        j = json.loads(output(K + ["get", "job", NAME, "-o", "json"]))
+        try:
+            j = json.loads(
+                output(K + ["--request-timeout=20s", "get", "job", NAME, "-o", "json"])
+            )
+        except subprocess.CalledProcessError:
+            # Status lookup is read-only. Never interpret a lost API connection as success.
+            time.sleep(45)
+            continue
         s = j["status"]
         assert not s.get("failed"), "offload failed; retain local backup"
         if s.get("succeeded") == 1:
