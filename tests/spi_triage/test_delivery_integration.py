@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Protocol
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import test_triage as fixture
 from core import Failure, Store
@@ -181,6 +181,17 @@ class DeliveryIntegrationTests(unittest.TestCase):
                 "SELECT receipt FROM spi_card_receipts WHERE episode=?", (episode,)
             ).fetchone()
             assert json.loads(row[0])["copies"] == [{"chat_id": 1, "message_id": 3}]
+
+    def test_link_edit_has_longer_timeout_than_discovery(self) -> None:
+        """Slow per-copy Telegram edits must not consume the discovery loop's budget."""
+        delivery = Delivery(self.store, "test", enabled=True)
+        with patch("urllib.request.build_opener") as build:
+            response = build.return_value.open.return_value.__enter__.return_value
+            response.status, response.read.return_value = 200, b"{}"
+            delivery.request("POST", "/v1/cards/links", json={})
+            assert build.return_value.open.call_args.kwargs["timeout"] == 180
+            delivery.request("GET", "/v1/cards?status=all")
+            assert build.return_value.open.call_args.kwargs["timeout"] == 30
 
     def test_new_recipient_receipt_requeues_applied_target(self) -> None:
         'Verify a new recipient receipt requeues the applied target.'
