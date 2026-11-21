@@ -23,7 +23,7 @@ def module() -> ModuleType:
 
 
 def test_stale_source_receipt_refuses_candidate_before_cluster_access(
-    tmp_path, monkeypatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """An offline candidate digest is not proof that the runtime may change."""
     helper = module()
