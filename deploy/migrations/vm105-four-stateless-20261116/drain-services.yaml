@@ -1,3 +1,4 @@
+---
 # TEMPORARY, apply only for a guarded idle handoff; NOT an Argo app source.
 # No Pod has this selector. Existing accepted connections can finish.
 # Restore canonical Services from deploy/{blog-updates,wiki-openapi}/worker.yaml
@@ -12,8 +13,9 @@ spec:
     app: blog-updates-worker
     homelab.io/migration-drain: no-serving-pods
   ports:
-  - port: 8080
-    targetPort: 8080
+    - port: 8080
+      targetPort: 8080
+...
 ---
 apiVersion: v1
 kind: Service
@@ -25,5 +27,6 @@ spec:
     app: wiki-openapi-worker
     homelab.io/migration-drain: no-serving-pods
   ports:
-  - port: 8080
-    targetPort: 8080
+    - port: 8080
+      targetPort: 8080
+...

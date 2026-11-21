@@ -127,9 +127,8 @@ def configure(args: argparse.Namespace):
                             "terminal": True,
                             "builtin_tools": True,
                         },
-                        "builtinTools": {
-                            name: False
-                            for name in [
+                        "builtinTools": dict.fromkeys(
+                            [
                                 "skills",
                                 "tasks",
                                 "notes",
@@ -141,8 +140,9 @@ def configure(args: argparse.Namespace):
                                 "chats",
                                 "memory",
                                 "subagents",
-                            ]
-                        },
+                            ],
+                            False,
+                        ),
                     },
                     "params": {},
                     "access_grants": [
@@ -190,7 +190,7 @@ def main():
     except ConfigurationError as error:
         print(str(error), file=sys.stderr)
         return 1
-    except Exception:
+    except (OSError, subprocess.SubprocessError):
         print("Unable to configure Open WebUI model defaults", file=sys.stderr)
         return 1
     print(json.dumps(result))

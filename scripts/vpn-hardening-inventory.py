@@ -11,40 +11,41 @@ import sqlite3
 import stat
 from contextlib import closing
 from pathlib import Path
+from typing import TypedDict
 
 TABLES = ("inbounds", "clients", "client_inbounds", "hosts")
 VOLATILE = {"inbounds": {"up", "down", "last_traffic_reset_time"}}
 
 
-def canonical(value):
+def canonical(value: object):
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
-def digest(value):
+def digest(value: object):
     return hashlib.sha256(canonical(value).encode()).hexdigest()
 
 
-def check_path(path):
-    path = Path(path).absolute()
-    if any(p.is_symlink() for p in (path, *path.parents)):
+def check_path(path: str | Path):
+    resolved = Path(path).absolute()
+    if any(p.is_symlink() for p in (resolved, *resolved.parents)):
         raise ValueError("Symlinks are not allowed")
-    return path
+    return resolved
 
 
-def private_directory(path):
-    path = check_path(path)
-    path.mkdir(mode=0o700, parents=True, exist_ok=True)
-    st = path.stat()
+def private_directory(path: str | Path):
+    directory = check_path(path)
+    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    st = directory.stat()
     if (
         not stat.S_ISDIR(st.st_mode)
         or st.st_uid != os.geteuid()
         or stat.S_IMODE(st.st_mode) != 0o700
     ):
         raise ValueError("State directory must be caller-owned, mode 0700")
-    return path
+    return directory
 
 
-def save(path, value):
+def save(path: str | Path, value: object):
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
     with os.fdopen(fd, "w") as file:
         file.write(canonical(value) + "\n")
@@ -52,7 +53,7 @@ def save(path, value):
         os.fsync(file.fileno())
 
 
-def projection(con):
+def projection(con: sqlite3.Connection):
     con.row_factory = sqlite3.Row
     result = {}
     for table in TABLES:
@@ -66,7 +67,18 @@ def projection(con):
     return result
 
 
-def summarize(config):
+class _InventoryRow(TypedDict, total=False):
+    port: int
+    protocol: str
+    enable: int | bool
+    stream_settings: str
+    id: int
+    inbound_id: int
+    is_disabled: bool
+    client_id: int
+
+
+def summarize(config: dict[str, list[_InventoryRow]]):
     links = config["client_inbounds"]
     result = []
     for row in sorted(config["inbounds"], key=lambda x: x["port"]):
@@ -121,12 +133,12 @@ def summarize(config):
     }
 
 
-def inspect(database, state=None):
-    database = check_path(database)
-    if not database.is_file():
+def inspect(database: str | Path, state: str | Path | None = None):
+    source_db = check_path(database)
+    if not source_db.is_file():
         raise ValueError("Database must be an existing regular file")
     # No immutable=1: include committed WAL state. Copy to one consistent snapshot.
-    with closing(sqlite3.connect(database.as_uri() + "?mode=ro", uri=True)) as source:
+    with closing(sqlite3.connect(source_db.as_uri() + "?mode=ro", uri=True)) as source:
         with closing(sqlite3.connect(":memory:")) as snapshot:
             source.backup(snapshot)
             if snapshot.execute("PRAGMA quick_check").fetchall() != [("ok",)]:

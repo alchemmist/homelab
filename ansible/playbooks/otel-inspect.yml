@@ -23,7 +23,7 @@
 
     - name: Count journal bytes in memory
       ansible.builtin.command:
-        argv: [python3, '-']
+        argv: [python3, "-"]
         stdin: "{{ lookup('ansible.builtin.file', playbook_dir + '/../../scripts/otel-journal-probe.py') }}"
       register: otel_journal_probe
       changed_when: false

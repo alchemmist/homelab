@@ -395,7 +395,13 @@ if __name__ == "__main__":
                 retire_default_admin(a.root)
             else:
                 migrate(a.root, a.action)
-    except Exception as e:
+    except (
+        RuntimeError,
+        OSError,
+        ValueError,
+        KeyError,
+        TypeError,
+    ) as e:
         print(
             "Migration stopped safely ("
             + type(e).__name__

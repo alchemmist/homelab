@@ -9,8 +9,8 @@ INTERFACE = "wg-tim-check"
 ADDRESSES = ["10.250.0.1", "10.250.0.3", "10.250.0.2", "10.250.0.5"]
 
 
-def run(*args: str, input: str | None = None, timeout: int = 30):
-    result = subprocess.run(args, input=input, capture_output=True, text=True, timeout=timeout)
+def run(*args: str, stdin: str | None = None, timeout: int = 30):
+    result = subprocess.run(args, input=stdin, capture_output=True, text=True, timeout=timeout)
     if result.returncode:
         detail = "" if args[0] in ("wg", "wg-quick") else ": " + result.stderr.strip()
         raise RuntimeError(f"{args[0]} failed with status {result.returncode}" + detail)
@@ -55,7 +55,7 @@ def main():
         created_namespace = True
         run("ip", "link", "add", INTERFACE, "type", "wireguard")
         created_interface = True
-        run("wg", "setconf", INTERFACE, "/dev/stdin", input=configuration)
+        run("wg", "setconf", INTERFACE, "/dev/stdin", stdin=configuration)
         run("ip", "link", "set", INTERFACE, "netns", NAMESPACE)
         moved = True
         run("ip", "-n", NAMESPACE, "address", "add", "10.250.0.7/32", "dev", INTERFACE)
