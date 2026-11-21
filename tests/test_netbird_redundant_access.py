@@ -1,9 +1,10 @@
 """Tests for the NetBird redundant access policy scripts."""
 
 import importlib.util
-from pathlib import Path
 import types
 import unittest
+from pathlib import Path
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]

@@ -1,10 +1,11 @@
 """Placement-only boundaries and guarded worker handoff; offline, no credentials."""
 
 import copy
-from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from pathlib import Path
+
 import yaml
 
 R = Path(__file__).resolve().parents[1]
@@ -33,6 +34,7 @@ def values(chart):
 
 
 class PlacementTests(unittest.TestCase):
+    """Tests for PlacementTests."""
     def test_monori_only_frontend_changes(self):
         new = values("monori")
         old = copy.deepcopy(new)

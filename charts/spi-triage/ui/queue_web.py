@@ -1,4 +1,5 @@
 """Private queue BFF; verified SSO cookie + Traefik-only ingress.
+
 Cookies go only to the fixed TLS auth endpoint, never to the queue backend.
 Only two fixed operator routes; no worker token or caller identity is trusted.
 """
@@ -76,7 +77,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "X-Content-Type-Options": "nosniff",
             "Referrer-Policy": "no-referrer",
             "Connection": "close",
-            "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'",
+            "Content-Security-Policy": (
+                "default-src 'none'; script-src 'self'; style-src 'self'; "
+                "connect-src 'self'; base-uri 'none'; form-action 'none'; "
+                "frame-ancestors 'none'; object-src 'none'"
+            ),
         }.items():
             self.send_header(k, v)
         if location:

@@ -1,9 +1,9 @@
 """Tests for the SPI triage Telegram link helpers."""
 
 import importlib.util
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 
 FILES = Path(__file__).resolve().parents[2] / "charts/spi-triage/files"
 

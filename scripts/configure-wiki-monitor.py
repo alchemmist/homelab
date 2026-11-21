@@ -77,6 +77,7 @@ socket.on("connect", async () => {
 
 
 def main():
+    """Run the command-line entry point."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="socrat-3")
     parser.add_argument("--username", default="alchemmist")

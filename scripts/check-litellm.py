@@ -8,6 +8,7 @@ import urllib.request
 
 
 def kubectl(*args):
+    """Perform the kubectl operation."""
     return subprocess.check_output(["kubectl", "-n", "llm", *args], text=True)
 
 
@@ -21,6 +22,7 @@ opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
 def request(path, key=None, data=None):
+    """Perform the HTTP request and return its response."""
     headers = {"Content-Type": "application/json"}
     if key:
         headers["Authorization"] = "Bearer " + key

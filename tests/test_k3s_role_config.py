@@ -2,11 +2,11 @@
 
 import argparse
 import importlib.util
-from pathlib import Path
 import stat
 import tempfile
-from typing import cast, override
 import unittest
+from pathlib import Path
+from typing import cast, override
 
 import yaml
 

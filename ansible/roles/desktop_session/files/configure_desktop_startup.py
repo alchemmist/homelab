@@ -35,6 +35,7 @@ LEGACY_PATHS = {
 
 
 def rewrite_login(text, selected):
+    """Document the rewrite login operation."""
     matches = list(STARTUP_BLOCK.finditer(text))
     if len(matches) > 1:
         raise ValueError("Multiple startup blocks require manual review")
@@ -56,12 +57,14 @@ def rewrite_login(text, selected):
 
 
 def remove_idle_shutdown(text: str) -> str:
+    """Document the remove idle shutdown operation."""
     return IDLE_LISTENER.sub(
         lambda match: "" if IDLE_SHUTDOWN.search(match.group()) else match.group(), text
     )
 
 
 def replace_file(path: Path, content: str, uid: int, gid: int) -> None:
+    """Document the replace file operation."""
     previous = path.stat() if path.exists() else None
     descriptor, name = tempfile.mkstemp(prefix="." + path.name + ".homelab-", dir=path.parent)
     temporary = Path(name)
@@ -190,6 +193,7 @@ def configure(home, username, login_file, cleanup, disable_shutdown, *, check=Fa
 
 
 def main():
+    """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--home", type=Path, required=True)
     parser.add_argument("--user", required=True)

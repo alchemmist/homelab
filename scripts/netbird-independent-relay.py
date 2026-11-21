@@ -23,10 +23,12 @@ HOME_URI = "rels://netbird.socrat.alchemmist.xyz:443"
 def advertised_relays() -> dict[str, object]:
     # Native simplified schema: root relay YAML is intentionally ignored by 0.82.
     # Explicit endpoints suppress the combined relay; deploy both standalone pods.
+    """Return the native simplified-schema relay advertisement configuration."""
     return {"addresses": [URI, HOME_URI], "credentialsTTL": "12h"}
 
 
 def manifests() -> list[dict[str, object]]:
+    """Render the pinned standalone relay Deployment and Service manifests."""
     image = json.loads((ROOT / "deploy/netbird/images.lock.json").read_text())["images"]["relay"]
     reference = image["repository"] + ":" + image["tag"] + "@" + image["digest"]
     labels = {"app": NAME}

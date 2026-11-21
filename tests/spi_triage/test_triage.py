@@ -11,8 +11,8 @@ from unittest.mock import Mock
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "charts/spi-triage/files"))
-from core import digest, Failure, Store, REPORT_SCHEMA, clean, normalize, render, validate
-from integrations import GitHub, Model, Evidence, metric_summary
+from core import REPORT_SCHEMA, Failure, Store, clean, digest, normalize, render, validate
+from integrations import Evidence, GitHub, Model, metric_summary
 from service import Engine
 
 

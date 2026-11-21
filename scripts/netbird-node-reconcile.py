@@ -34,6 +34,7 @@ def require(ok: object, message: str) -> None:
 
 
 def atomic(path, value):
+    """Durably write a JSON value to disk via a temporary file and rename."""
     tmp = path.with_suffix(".tmp")
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
     with os.fdopen(fd, "w") as f:
@@ -44,6 +45,7 @@ def atomic(path, value):
 
 
 def validate_config(c):
+    """Enforce the reviewed image pin and other config invariants."""
     require(
         re.fullmatch(r"netbirdio/netbird:0\.82\.0@sha256:[a-f0-9]{64}", c["image"]),
         "pinned client required",
@@ -74,6 +76,7 @@ def validate_config(c):
 
 
 def manifests(host, image, enrollment=False, kernel_only=False):
+    """Render the node Deployment and Service manifests for a reviewed host."""
     require(re.fullmatch(r"socrat-[0-9]+", host), "invalid node")
     name = "machine-" + host
     labels = {"app": name}
@@ -188,6 +191,7 @@ def manifests(host, image, enrollment=False, kernel_only=False):
 
 
 def policy_body(source, resource):
+    """Build the admin-to-node policy body for one inventory /32 resource."""
     return {
         "name": "admin-wg-" + resource,
         "enabled": True,
@@ -215,12 +219,14 @@ def member_ids(group: object) -> set[object]:
 
 
 def unique(items, key, value):
+    """Return the exactly one item matching key=value, refusing ambiguity."""
     found = [v for v in items if v.get(key) == value]
     require(len(found) == 1, "missing or ambiguous " + key)
     return found[0]
 
 
 def policy_ok(p, admin, resource=None, group=None):
+    """Check that a policy matches the reviewed single-rule admin grant shape."""
     rules = p.get("rules") or []
     if not p.get("enabled") or len(rules) != 1:
         return False
@@ -1067,6 +1073,7 @@ class Runtime:
 
 
 def main():
+    """Verify the pinning config and reconcile the reviewed node state."""
     os.umask(0o077)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state-dir", required=True, type=Path)

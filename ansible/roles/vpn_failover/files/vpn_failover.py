@@ -429,6 +429,7 @@ class Watchdog:
 
 
 def main():
+    """Execute the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("action", choices=["tick", "check", "status", "guard", "failback"])
     parser.add_argument("--config", default=CONFIG_PATH)

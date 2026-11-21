@@ -22,6 +22,7 @@ QUANTITY = re.compile(
 
 
 def quantity(value):
+    """Document the quantity operation."""
     match = QUANTITY.fullmatch(str(value)) if value is not None else None
     if not match:
         raise ValueError("Invalid resource quantity: " + str(value))
@@ -50,6 +51,7 @@ def quantity(value):
 
 
 def positive(value):
+    """Document the positive operation."""
     try:
         return quantity(value) > 0
     except (ValueError, InvalidOperation):
@@ -57,6 +59,7 @@ def positive(value):
 
 
 def validate_node_selector(selector):
+    """Document the validate node selector operation."""
     if not isinstance(selector, dict):
         raise ValueError("nodeSelector must be a string map")
     for key, value in selector.items():
@@ -128,6 +131,7 @@ def _validate_profile(profile: dict[str, object]) -> None:
 
 
 def load_profiles(path):
+    """Document the load profiles operation."""
     with open(path) as source:
         profiles = json.load(source)
     if not isinstance(profiles, list):
@@ -138,6 +142,7 @@ def load_profiles(path):
 
 
 def matching_profile(pod, profiles):
+    """Document the matching profile operation."""
     reference = owner(pod)
     matches = [
         profile
@@ -171,6 +176,7 @@ def _container_mismatches(
 
 
 def profile_mismatches(pod, profile):
+    """Document the profile mismatches operation."""
     if profile is None:
         return []
     mismatches = []
@@ -198,10 +204,12 @@ def profile_mismatches(pod, profile):
 
 
 def needs_reconcile(pod, profiles=()):
+    """Document the needs reconcile operation."""
     return bool(deficits(pod) or profile_mismatches(pod, matching_profile(pod, profiles)))
 
 
 def deficits(pod):
+    """Document the deficits operation."""
     missing = []
     for kind in ("containers", "initContainers"):
         for container in pod.get("spec", {}).get(kind, []):
@@ -214,10 +222,12 @@ def deficits(pod):
 
 
 def active(pod):
+    """Document the active operation."""
     return pod.get("status", {}).get("phase") not in ("Succeeded", "Failed")
 
 
 def owner(pod):
+    """Document the owner operation."""
     return next(
         (item for item in pod["metadata"].get("ownerReferences", []) if item.get("controller")),
         None,
@@ -225,6 +235,7 @@ def owner(pod):
 
 
 def supported(pod):
+    """Document the supported operation."""
     reference = owner(pod)
     return bool(
         reference
@@ -234,6 +245,7 @@ def supported(pod):
 
 
 def ready(pod):
+    """Document the ready operation."""
     return (
         active(pod)
         and not pod["metadata"].get("deletionTimestamp")
@@ -245,6 +257,7 @@ def ready(pod):
 
 
 def same_workload(original, candidate):
+    """Document the same workload operation."""
     original_owner, candidate_owner = owner(original), owner(candidate)
     if not original_owner or not candidate_owner:
         return False
@@ -261,6 +274,7 @@ def same_workload(original, candidate):
 
 
 def eviction_payload(pod):
+    """Document the eviction payload operation."""
     metadata = pod["metadata"]
     return {
         "apiVersion": "policy/v1",
@@ -309,10 +323,12 @@ class Client:
 
 
 def label(pod):
+    """Document the label operation."""
     return pod["metadata"]["namespace"] + "/" + pod["metadata"]["name"]
 
 
 def excluded(pod, nodes):
+    """Document the excluded operation."""
     spec = pod.get("spec", {})
     return (
         spec.get("nodeName") in nodes
@@ -321,6 +337,7 @@ def excluded(pod, nodes):
 
 
 def audit(pods, excluded_nodes=(), profiles=()):
+    """Document the audit operation."""
     active_pods = [pod for pod in pods if active(pod)]
     coverage = [(pod, matching_profile(pod, profiles)) for pod in active_pods]
     deficient = [pod for pod in active_pods if needs_reconcile(pod, profiles)]
@@ -363,6 +380,7 @@ def audit(pods, excluded_nodes=(), profiles=()):
 
 
 def reconcile_one(client, original, timeout, interval, profiles=()):
+    """Document the reconcile one operation."""
     deadline = time.monotonic() + timeout
     before = client.pods()
     current = next(
@@ -407,6 +425,7 @@ def reconcile_one(client, original, timeout, interval, profiles=()):
 
 
 def main():
+    """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--profiles")
