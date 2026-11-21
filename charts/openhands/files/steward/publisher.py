@@ -27,6 +27,7 @@ class NoRedirect(HTTPRedirectHandler):
     """Redirect handler that refuses to follow HTTP redirects."""
 
     def redirect_request(self, *args):
+        'Refuse redirects so credentials are never forwarded.'
         return None
 
 
@@ -513,9 +514,11 @@ class Handler(BaseHTTPRequestHandler):
     """HTTP handler that records published steward updates."""
 
     def log_message(self, *args):
+        'Silence default request-line logging.'
         pass
 
     def send(self, status, obj):
+        'Write a JSON response with explicit content length.'
         raw = json.dumps(obj).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
@@ -525,6 +528,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
     def do_POST(self):
+        'Validate and dispatch a signed steward action to GitHub.'
         try:
             self.connection.settimeout(10)
             check(self.path == "/v1" and not self.headers.get("Transfer-Encoding"))
