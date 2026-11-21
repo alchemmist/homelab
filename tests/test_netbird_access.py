@@ -319,7 +319,9 @@ class AdmissionTests(unittest.TestCase):
         s = self.offboard_state()
         _documents(s["nb_users"])[0]["is_blocked"] = True
         s["nb_peers"] = []
-        _sequence(_mapping(_documents(s["ak_groups"])[0])["users"]).remove(2)
+        users = _sequence(_mapping(_documents(s["ak_groups"])[0])["users"])
+        self.assertIn(2, users)
+        users.remove(2)
         self.assertEqual(M.offboard_plan(s, "new-admin", "exact-reviewed-uuid"), [])
 
     def test_no_password_setup_key_or_kubernetes_mutations(self) -> None:

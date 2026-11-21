@@ -42,9 +42,9 @@ def _mapping_path(document: dict[str, object], *keys: str) -> dict[str, object]:
     return _mapping(value)
 
 
-def _name(document: dict[str, object]) -> object:
+def _name(document: dict[str, object]) -> str:
     """Return the metadata name of a parsed Kubernetes document."""
-    return _mapping(document["metadata"])["name"]
+    return _text(_mapping(document["metadata"])["name"])
 
 
 def _text(value: object) -> str:
