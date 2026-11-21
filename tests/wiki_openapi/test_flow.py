@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts/wiki_openapi"))
-from engine import spec_changed, select_closable, page_ok, UnsafeInput
+from engine import UnsafeInput, page_ok, select_closable, spec_changed
 from stages import stage
 
 SHA = "a" * 40

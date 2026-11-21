@@ -1,7 +1,8 @@
 """Offline contracts for the private wishlist image optimizer."""
 
-from pathlib import Path
 import unittest
+from pathlib import Path
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]

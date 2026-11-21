@@ -1,4 +1,9 @@
-import pathlib, subprocess, tempfile, unittest, yaml
+import pathlib
+import subprocess
+import tempfile
+import unittest
+
+import yaml
 
 R = pathlib.Path(__file__).resolve().parents[1]
 

@@ -1,10 +1,9 @@
 import importlib.util
 import json
-from pathlib import Path
 import subprocess
 import tempfile
 import unittest
-
+from pathlib import Path
 
 SPEC = importlib.util.spec_from_file_location(
     "migration", Path(__file__).resolve().parents[1] / "scripts/migrate-wiki-runtime.py"

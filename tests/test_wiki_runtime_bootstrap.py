@@ -1,9 +1,8 @@
 import importlib.util
 import json
-from pathlib import Path
 import unittest
+from pathlib import Path
 from unittest.mock import Mock
-
 
 SPEC = importlib.util.spec_from_file_location(
     "bootstrap", Path(__file__).resolve().parents[1] / "scripts/bootstrap-wiki-runtime.py"

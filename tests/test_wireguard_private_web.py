@@ -1,13 +1,12 @@
-from pathlib import Path
 import json
 import os
 import shlex
 import subprocess
 import tempfile
 import unittest
+from pathlib import Path
 
 from jinja2 import Environment, StrictUndefined
-
 
 ROLE = Path(__file__).resolve().parents[1] / "ansible/roles/wireguard_private_web"
 TASKS = (ROLE / "tasks/main.yml").read_text()

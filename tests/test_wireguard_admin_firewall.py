@@ -1,10 +1,9 @@
-from pathlib import Path
-import unittest
 import shlex
 import subprocess
+import unittest
+from pathlib import Path
 
 from jinja2 import Environment
-
 
 ROLE = Path(__file__).resolve().parents[1] / "ansible/roles/wireguard_admin_firewall"
 TASKS = (ROLE / "tasks/main.yml").read_text()
