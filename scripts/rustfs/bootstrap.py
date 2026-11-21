@@ -97,6 +97,8 @@ def run(mc: str, config: str, args: list[str], stdin: bytes | None = None):
     text = result.stdout.decode().strip()
     while text:
         row, n = decoder.raw_decode(text)
+        if not isinstance(row, dict):
+            raise ValueError("bootstrap request returned a non-object row")
         rows.append(row)
         text = text[n:].lstrip()
     if any(row.get("status") == "error" for row in rows):

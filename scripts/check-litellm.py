@@ -56,7 +56,7 @@ try:
             "chat_template_kwargs": {"enable_thinking": False},
         },
     )
-    content = result["choices"][0]["message"]["content"]
+    content = result["choices"][0]["message"].get("content") or ""
     assert content.strip() == "4", "Unexpected arithmetic response"
     print("virtual key inference:", content)
 finally:
