@@ -1,3 +1,5 @@
+"""Apply human-readable alert descriptions to Grafana dashboards."""
+
 import json
 from functools import lru_cache
 from pathlib import Path

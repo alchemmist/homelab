@@ -1,3 +1,4 @@
+"""Tests for sandbox archive inspection and fixture verdict checks."""
 import io
 import json
 import tarfile
@@ -22,6 +23,8 @@ def archive(entries):
 
 
 class ArchiveTests(unittest.TestCase):
+    """Tests for inspect_archive archive scanning."""
+
     def test_regular_files(self):
         """Verify regular code and test files pass archive inspection."""
         result = inspect_archive(
@@ -125,6 +128,8 @@ class ArchiveTests(unittest.TestCase):
 
 
 class VerifierTests(unittest.TestCase):
+    """Tests for the regression verifier helpers."""
+
     def test_expected(self):
         """Verify expected-value computation across cases."""
         self.assertEqual(expected("median", [[10, 2, 1]]), {"value": 2})
@@ -238,6 +243,8 @@ SPOOF = (
 
 
 class NodeVerifierTests(unittest.TestCase):
+    """Tests for the node-based source verifier."""
+
     def run_source(self, task, source, seed=7):
         """Run the node verifier on the given source and return its verdict."""
         import pathlib
@@ -328,6 +335,8 @@ process.exit(0);
 
 
 class ControllerTests(unittest.TestCase):
+    """Tests for controller settling and blocking semantics."""
+
     def test_rejection_retries_then_blocks(self):
         """Verify rejection retries a bounded number of times then blocks."""
         from controller import settle_task
@@ -379,6 +388,8 @@ class ControllerTests(unittest.TestCase):
 
 
 class MiniAdapterTests(unittest.TestCase):
+    """Tests for the mini submission adapter."""
+
     def test_completion_uses_executed_output_not_command_spelling(self):
         """Verify completion is judged on executed output, not command text."""
         from attempt import mini_submission

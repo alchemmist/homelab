@@ -2,17 +2,71 @@
 
 import copy
 import unittest
+from typing import Protocol, TypedDict
 from unittest.mock import Mock, patch
+
 import test_triage as f
 from core import Failure, digest
-from integrations import Model, GitHub
+from integrations import GitHub, Model
 
 GOOD = {"issue_number": 0, "reason": "Different problem", "confidence": "low"}
 
 
+class IssueRow(TypedDict):
+    """Fake GitHub issue row served by the issues fixture."""
+
+    number: int
+    updated_at: str
+    title: str
+    body: str
+    recent_comments: list[str]
+
+
+class ReviewItem(TypedDict):
+    """Single LLM review entry stored in a match proof."""
+
+    content: str
+    decision: dict[str, object]
+
+
+class ProofProgress(TypedDict, total=False):
+    """Progress payload captured from the matcher via on_progress."""
+
+    reviews: list[ReviewItem]
+    snapshot: list[dict[str, object]]
+    selection: dict[str, object]
+
+
+class MatchResult(TypedDict, total=False):
+    """Result payload returned by the matcher after analysis."""
+
+    reviewed_numbers: list[int]
+
+
+class PayloadFn(Protocol):
+    """Callable building matcher request payloads."""
+
+    def __call__(self, *args: object, **kwargs: object) -> dict[str, object]:
+        """Return a request payload for the matcher."""
+        ...
+
+
+class PreparedModel(Protocol):
+    """Duck-type of integrations.Model produced by the prepare fixture."""
+
+    call: Mock
+    payload: PayloadFn
+
+    def match(self, event: object, issues: object, *args: object, **kwargs: object) -> MatchResult:
+        """Run the matcher; return its result payload."""
+        ...
+
+
 class ReviewReuseTests(unittest.TestCase):
-    def issues(self):
-        """Build the canonical issue fixture list."""
+    """Tests for review snapshot reuse."""
+
+    def issues(self) -> list[IssueRow]:
+
         return [
             {
                 "number": i,
@@ -24,17 +78,17 @@ class ReviewReuseTests(unittest.TestCase):
             for i in range(1, 62)
         ]
 
-    def prepare(self, issues, event=None):
-        """Set the model snapshot and run one matching step."""
-        m = Model(Mock(), "fake")
+    def prepare(
+        self, issues: list[IssueRow], event: object | None = None
+    ) -> tuple[PreparedModel, ProofProgress]:
+        m: PreparedModel = Model(Mock(), "fake")
         m.call = Mock(return_value=GOOD)
-        saved = []
+        saved: list[ProofProgress] = []
         m.match(event or f.event(), issues, on_progress=lambda p: saved.append(copy.deepcopy(p)))
-        self.assertEqual(m.call.call_count, 6)
+        assert m.call.call_count == 6
         return m, saved[-1]
 
-    def test_four_jobs_exact_partitions_survive_updates_inserts_deletes_reordering(self):
-        """Verify partitions survive updates, inserts, deletes and reordering."""
+    def test_four_jobs_exact_partitions_survive_updates_inserts_deletes_reordering(self) -> None:
         original = self.issues()
         for index in range(4):
             m, proof = self.prepare(original, f.event(start="2026-11-03T13:00:0%dZ" % index))
@@ -42,37 +96,36 @@ class ReviewReuseTests(unittest.TestCase):
             if index == 0:
                 current[15]["recent_comments"].append("bot publication")
             elif index == 1:
-                current.insert(0, dict(current[0], number=99))
+                current.insert(0, {**current[0], "number": 99})
             elif index == 2:
                 current.pop(15)
             else:
                 current.reverse()
             m.call.reset_mock()
-            saved = []
+            saved: list[dict[str, list[object]]] = []
             result = m.match(
                 f.event(start="2026-11-03T13:00:0%dZ" % index),
                 current,
                 proof,
-                lambda p: saved.append(copy.deepcopy(p)),
+                lambda p, saved=saved: saved.append(copy.deepcopy(p)),
             )
             expected = 1 if index != 3 else 0
-            self.assertEqual(m.call.call_count, expected)
-            self.assertEqual(set(result["reviewed_numbers"]), {x["number"] for x in current})
+            assert m.call.call_count == expected
+            assert set(result["reviewed_numbers"]) == {x["number"] for x in current}
             retained = [r for r in proof["reviews"] if r in saved[0]["reviews"]]
-            self.assertEqual(len(retained), 5 if index in (0, 2) else 6)
-            self.assertEqual(proof["snapshot"], original)
+            assert len(retained) == (5 if index in (0, 2) else 6)
+            assert proof["snapshot"] == original
 
-    def test_owner_model_prompt_and_content_proofs_fail_closed(self):
-        """Verify owner, prompt and content proofs fail closed."""
+    def test_owner_model_prompt_and_content_proofs_fail_closed(self) -> None:
         issues = self.issues()
         m, proof = self.prepare(issues)
         m.call.reset_mock()
         m.match(f.event(start="2026-11-03T14:00:00Z"), issues, proof)
-        self.assertEqual(m.call.call_count, 6)
+        assert m.call.call_count == 6
         m.call.reset_mock()
         with patch("integrations.SYSTEM", "new prompt"):
             m.match(f.event(), issues, proof)
-        self.assertEqual(m.call.call_count, 6)
+        assert m.call.call_count == 6
         base_payload = m.payload
         m.payload = lambda *args, **kwargs: dict(
             base_payload(*args, **kwargs), model="different-model"
@@ -97,8 +150,7 @@ class ReviewReuseTests(unittest.TestCase):
                 m.match(f.event(), issues, bad)
             m.call.assert_not_called()
 
-    def test_transfer_persisted_before_admission_and_legacy_never_rebound(self):
-        """Verify transfers persist before admission and never rebind legacy."""
+    def test_transfer_persisted_before_admission_and_legacy_never_rebound(self) -> None:
         issues = self.issues()
         m, proof = self.prepare(issues)
         current = copy.deepcopy(issues)
@@ -107,18 +159,18 @@ class ReviewReuseTests(unittest.TestCase):
         m.call = Mock(side_effect=Failure("LLM_ADMISSION_DEFERRED"))
         with self.assertRaises(Failure):
             m.match(f.event(), current, proof, saved.append)
-        self.assertEqual(len(saved[0]["reviews"]), 5)
+        assert len(saved[0]["reviews"]) == 5
         m.call = Mock(return_value=GOOD)
         m.match(f.event(), current, {"version": 2, **proof, "contract": "unknown"})
-        self.assertEqual(m.call.call_count, 6)
+        assert m.call.call_count == 6
 
-    def test_closed_nominee_is_removed_and_semantic_final_recomputed(self):
-        """Verify closed nominees are removed and semantics recomputed."""
+    def test_closed_nominee_is_removed_and_semantic_final_recomputed(self) -> None:
         issues = self.issues()
         m = Model(Mock(), "fake")
         saved = []
 
-        def choose(task, data, schema, deadline):
+
+        def choose(_task, data, _schema, _deadline) -> dict[str, object]:
             return dict(GOOD, issue_number=data["open_issues"][0]["number"])
 
         m.call = Mock(side_effect=choose)
@@ -126,20 +178,18 @@ class ReviewReuseTests(unittest.TestCase):
         current = issues[1:]
         m.call.reset_mock()
         result = m.match(f.event(), current, saved[-1])
-        self.assertNotIn(1, [x["number"] for x in result["candidates"]])
-        self.assertEqual(len(result["reviewed_numbers"]), 60)
-        self.assertGreater(
-            m.call.call_count, 1
-        )  # invalidated batch plus semantic nominee reduction
+        assert 1 not in [x["number"] for x in result["candidates"]]
+        assert len(result["reviewed_numbers"]) == 60
+        assert m.call.call_count > 1  # invalidated batch plus semantic nominee reduction
 
-    def test_selection_proof_survives_repeated_restart_deferral(self):
-        """Verify selection proofs survive repeated restart deferrals."""
+    def test_selection_proof_survives_repeated_restart_deferral(self) -> None:
         issues = self.issues()
         m = Model(Mock(), "fake")
         saved = []
         calls = [0]
 
-        def choose(task, data, schema, deadline):
+
+        def choose(_task, data, _schema, _deadline) -> dict[str, object]:
             calls[0] += 1
             if calls[0] == 8:
                 raise Failure("LLM_ADMISSION_DEFERRED")
@@ -148,38 +198,36 @@ class ReviewReuseTests(unittest.TestCase):
         m.call = choose
         with self.assertRaises(Failure):
             m.match(f.event(), issues, on_progress=lambda p: saved.append(copy.deepcopy(p)))
-        self.assertEqual(len(saved[-1]["selection"]["comparisons"]), 1)
+        assert len(saved[-1]["selection"]["comparisons"]) == 1
         proof = copy.deepcopy(saved[-1])
         m.call = Mock(side_effect=Failure("LLM_ADMISSION_DEFERRED"))
         with self.assertRaises(Failure):
             m.match(f.event(), issues, proof, lambda p: saved.append(copy.deepcopy(p)))
-        self.assertEqual(saved[-1]["selection"], proof["selection"])
+        assert saved[-1]["selection"] == proof["selection"]
         m.call = Mock(
             side_effect=lambda task, data, *args: dict(
                 GOOD, issue_number=data["open_issues"][0]["number"]
             )
         )
         m.match(f.event(), issues, saved[-1])
-        self.assertEqual(m.call.call_count, 4)
+        assert m.call.call_count == 4
 
-    def test_cheap_signature_same_universe_without_comments(self):
-        """Verify cheap signatures agree without comment data."""
+    def test_cheap_signature_same_universe_without_comments(self) -> None:
         g = GitHub(Mock(), "unused")
         g.issues = Mock(return_value=self.issues())
         g.comments = Mock()
-        self.assertEqual(
-            g.open_signature(), digest([(x["number"], x["updated_at"]) for x in self.issues()])
-        )
-        self.assertEqual(g.issues.call_count, 2)
+        assert g.open_signature() == digest([(x["number"], x["updated_at"]) for x in self.issues()])
+        assert g.issues.call_count == 2
         g.comments.assert_not_called()
 
 
 class EarlyFenceTests(unittest.TestCase):
+    """Tests for the early publication fence."""
+
     setUp = f.EngineTests.setUp
     tearDown = f.EngineTests.tearDown
 
-    def test_twenty_safe_deferrals_zero_analysis_preserve_cache_and_budget(self):
-        """Verify safe deferrals preserve cache and budget at zero analysis."""
+    def test_twenty_safe_deferrals_zero_analysis_preserve_cache_and_budget(self) -> None:
         key = self.store.enqueue(f.event())["job_id"]
         self.store.claim()
         proof = {"private": "fake-proof"}
@@ -193,21 +241,20 @@ class EarlyFenceTests(unittest.TestCase):
             self.github.open_signature.return_value = "new"
             with self.assertRaises(Failure) as e:
                 self.engine.run("analyze", key)
-            self.assertEqual(e.exception.code, "OPEN_SPI_CHANGED")
+            assert e.exception.code == "OPEN_SPI_CHANGED"
             row = self.store.get(key)
-            self.assertEqual(row["stage"], 0)
-            self.assertEqual(row["state"], "retry")
-            self.assertLessEqual(row["available"] - row["updated"], 20)
-            self.assertEqual(row["result"]["match_progress_v3"], proof)
+            assert row["stage"] == 0
+            assert row["state"] == "retry"
+            assert row["available"] - row["updated"] <= 20
+            assert row["result"]["match_progress_v3"] == proof
             with self.store.db() as c:
                 c.execute("update jobs set available=0 where id=?", (key,))
             self.store.claim()
         self.model.analyze.assert_not_called()
         with self.store.db() as c:
-            self.assertEqual(c.execute("select count(*) from job_failure_budget").fetchone()[0], 0)
+            assert c.execute("select count(*) from job_failure_budget").fetchone()[0] == 0
 
-    def test_rollback_result_reset_retains_separate_checkpoint(self):
-        """Verify rollback resets results but retains checkpoints."""
+    def test_rollback_result_reset_retains_separate_checkpoint(self) -> None:
         from core import Store
 
         model = Model(Mock(), "fake")
@@ -218,7 +265,7 @@ class EarlyFenceTests(unittest.TestCase):
         self.store.claim()
         self.engine.run("match", key)
         proof = copy.deepcopy(self.store.match_checkpoint(key))
-        self.assertEqual(len(proof["reviews"]), 6)
+        assert len(proof["reviews"]) == 6
         # Emulate the old reset without executing or deploying an old worker.
         self.store.save(key, 0, {"publication_backend": "s3"}, state="processing")
         self.store = Store(self.store.path)
@@ -226,35 +273,36 @@ class EarlyFenceTests(unittest.TestCase):
         model.call.reset_mock()
         self.engine.run("match", key)
         model.call.assert_not_called()
-        self.assertEqual(self.store.match_checkpoint(key), proof)
+        assert self.store.match_checkpoint(key) == proof
 
-    def test_unsafe_intent_not_cleared_or_patient(self):
-        """Verify unsafe intent is never cleared or made patient."""
+    def test_unsafe_intent_not_cleared_or_patient(self) -> None:
         key = self.store.enqueue(f.event())["job_id"]
         self.store.claim()
         self.store.save(key, 3, {"publication_backend": "legacy"}, intent='{"number":7}')
         job = self.store.get(key)
         with self.assertRaises(Failure) as e:
             self.engine.invalidate_snapshot(key, job["result"], job)
-        self.assertEqual(e.exception.code, "WRITE_NEEDS_REVIEW")
-        self.assertEqual(self.store.get(key)["intent"], job["intent"])
+        assert e.exception.code == "WRITE_NEEDS_REVIEW"
+        assert self.store.get(key)["intent"] == job["intent"]
         for _ in range(8):
             self.store.fail(key, "OPEN_SPI_CHANGED")
-        self.assertEqual(self.store.get(key)["state"], "dead")
+        assert self.store.get(key)["state"] == "dead"
 
 
 class ChurnPublicationTests(unittest.TestCase):
+    """Tests for publication under catalog churn."""
+
     setUp = f.EngineTests.setUp
     tearDown = f.EngineTests.tearDown
 
-    def test_four_prepared_jobs_eventually_publish_after_own_bot_updates(self):
-        """Verify four prepared jobs publish after their own bot updates."""
+    def test_four_prepared_jobs_eventually_publish_after_own_bot_updates(self) -> None:
+        import hashlib
         from types import SimpleNamespace
-        from service import Engine
+
         from core import Store
         from evidence_bundle import prepare_bundle, storage_objects
+        from service import Engine
         from telegram_links import Links
-        import hashlib
 
         now = [1000]
         with patch("core.time.time", side_effect=lambda: now[0]):
@@ -276,7 +324,7 @@ class ChurnPublicationTests(unittest.TestCase):
             evidence = Mock()
             bundle_count = [0]
 
-            def collect(event):
+            def collect(event) -> dict[str, object]:
                 bundle_count[0] += 1
                 return {
                     "bundle": prepare_bundle(
@@ -289,9 +337,9 @@ class ChurnPublicationTests(unittest.TestCase):
             evidence.collect.side_effect = collect
             stored = {}
 
-            def upload(key, raw):
+            def upload(key, raw) -> dict[str, object]:
                 if key in stored:
-                    self.assertEqual(stored[key], raw)
+                    assert stored[key] == raw
                 stored[key] = raw
                 return {
                     "bucket": "spi-evidence",
@@ -319,7 +367,7 @@ class ChurnPublicationTests(unittest.TestCase):
             for index in range(4):
                 event = f.event(start="2026-11-03T13:00:0%dZ" % index)
                 key = self.store.enqueue(event)["job_id"]
-                self.assertEqual(self.store.claim()["job_id"], key)
+                assert self.store.claim()["job_id"] == key
                 engine.run("match", key)
                 engine.run("collect", key)
                 engine.run("analyze", key)
@@ -341,10 +389,10 @@ class ChurnPublicationTests(unittest.TestCase):
                 )
                 jobs.append((key, event))
 
-            def post(method, path, body):
-                self.assertEqual(method, "POST")
-                self.assertEqual(path, "/issues/1/comments")
-                self.assertNotIn("fake ", body["body"])
+            def post(method, path, body) -> dict[str, object]:
+                assert method == "POST"
+                assert path == "/issues/1/comments"
+                assert "fake " not in body["body"]
                 n = 800 + len(publications)
                 url = "https://github.com/alchemmist/homelab/issues/1#issuecomment-" + str(n)
                 publications.append(url)
@@ -357,21 +405,21 @@ class ChurnPublicationTests(unittest.TestCase):
             for index, (key, event) in enumerate(jobs):
                 with self.store.db() as c:
                     c.execute("update jobs set available=? where id=?", (now[0], key))
-                self.assertEqual(self.store.claim()["job_id"], key)
+                assert self.store.claim()["job_id"] == key
                 if index:
                     before = model.call.call_count
                     with self.assertRaisesRegex(Failure, "OPEN_SPI_CHANGED"):
                         engine.run("publish", key)
                     now[0] += 21
-                    self.assertEqual(self.store.claim()["job_id"], key)
+                    assert self.store.claim()["job_id"] == key
                     engine.run("match", key)
-                    self.assertEqual(model.call.call_count - before, 1)
+                    assert model.call.call_count - before == 1
                     engine.run("collect", key)
                     engine.run("analyze", key)
                 engine.run("publish", key)
                 engine.run("publish", key)
-                self.assertEqual(self.store.get(key)["state"], "complete")
-                self.assertEqual(links.snapshot(event["episode"])["url"], publications[-1])
+                assert self.store.get(key)["state"] == "complete"
+                assert links.snapshot(event["episode"])["url"] == publications[-1]
                 links.request = Mock(
                     return_value=(
                         200,
@@ -386,13 +434,13 @@ class ChurnPublicationTests(unittest.TestCase):
                     )
                 )
                 links.once()
-                self.assertEqual(links.snapshot(event["episode"])["state"], "applied")
+                assert links.snapshot(event["episode"])["state"] == "applied"
                 links.request.assert_called_once()
                 for object_key, raw in storage_objects(
                     self.store.get(key)["result"]["evidence"]["bundle"]
                 ):
-                    self.assertEqual(stored[object_key], raw)
+                    assert stored[object_key] == raw
                 self.store = Store(self.store.path)
                 engine.store = self.store
-            self.assertEqual(len(publications), 4)
-            self.assertEqual(issues[1:], original[1:])
+            assert len(publications) == 4
+            assert issues[1:] == original[1:]

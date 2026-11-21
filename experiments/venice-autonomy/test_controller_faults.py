@@ -1,3 +1,4 @@
+"""Tests for controller behavior under faults and interruptions."""
 import json
 import os
 import pathlib
@@ -10,9 +11,43 @@ import time
 import unittest
 
 
+def _fake_attempt_code(behavior: str) -> str:
+    fake = """import argparse,json,pathlib,sys,time
+p=argparse.ArgumentParser();p.add_argument('--directory');p.add_argument('--task',default='');
+a,rest=p.parse_known_args()
+d=pathlib.Path(a.directory);d.mkdir(parents=True)
+"""
+    suffixes = {
+        "restart": "marker=pathlib.Path(__file__).with_name('once');\n"
+        "if not marker.exists():\n"
+        " marker.write_text('started');time.sleep(600)\n"
+        "(d/'summary.json').write_text(json.dumps({'accepted':False,'run_error_type':'APITimeoutError'}))\n",
+        "premature_final": "(d/'summary.json').write_text("
+        "json.dumps({'accepted':False,'exit_status':'stop','actual_commands':0}))\n",
+        "malformed_summary": "(d/'summary.json').write_text('{broken');sys.exit(7)\n",
+        "bad_gateway": "accepted=str(d).endswith('attempt-2')\n"
+        "(d/'summary.json').write_text(json.dumps({'accepted': accepted, "
+        "'run_error_type': 'BadGatewayError'}))\n",
+        "wrapped_cause": "(d/'summary.json').write_text(json.dumps({'accepted': False, "
+        "'run_error_type': 'SDKError', 'cause_type': 'BadGatewayError', "
+        "'run_error': 'SDK wrapped BadGatewayError'}))\n",
+        "string_only_wrapper": "(d/'summary.json').write_text(json.dumps({'accepted': False, "
+        "'run_error_type': 'SDKError', 'run_error': 'SDK wrapped BadGatewayError'}))\n",
+        "context_window": "(d/'summary.json').write_text(json.dumps({'accepted': False, "
+        "'run_error_type': 'ContextWindowExceededError', "
+        "'error_chain': [{'type': 'ContextWindowExceededError'}]}))\n",
+        "bad_request": "(d/'summary.json').write_text(json.dumps({'accepted': False, "
+        "'run_error_type': 'BadRequestError', 'error_chain': [{'type': 'BadRequestError'}]}))\n",
+        "message_context": "(d/'summary.json').write_text(json.dumps({'accepted': False, "
+        "'run_error_type': 'SDKError', 'run_error': 'context_length_exceeded'}))\n",
+    }
+    return fake + suffixes.get(behavior, "")
+
+
 class ControllerFaultTests(unittest.TestCase):
+    """Tests for controller behaviour under injected faults."""
+
     def setup_case(self, directory, behavior):
-        """Create a scratch case directory with the scripted controller behavior."""
         root = pathlib.Path(directory)
         code = root / "code"
         code.mkdir()
@@ -20,32 +55,7 @@ class ControllerFaultTests(unittest.TestCase):
             shutil.copy(pathlib.Path(__file__).with_name(name), code / name)
         for name in ("fixtures.py", "sandbox.py"):
             (code / name).write_text("")
-        fake = """import argparse,json,pathlib,sys,time
-p=argparse.ArgumentParser();p.add_argument('--directory');p.add_argument('--task',default='');
-a,rest=p.parse_known_args()
-d=pathlib.Path(a.directory);d.mkdir(parents=True)
-"""
-        if behavior == "restart":
-            fake += "marker=pathlib.Path(__file__).with_name('once');\nif not marker.exists():\n marker.write_text('started');time.sleep(600)\n"
-            fake += "(d/'summary.json').write_text(json.dumps({'accepted':False,'run_error_type':'APITimeoutError'}))\n"
-        elif behavior == "premature_final":
-            fake += "(d/'summary.json').write_text(json.dumps({'accepted':False,'exit_status':'stop','actual_commands':0}))\n"
-        elif behavior == "malformed_summary":
-            fake += "(d/'summary.json').write_text('{broken');sys.exit(7)\n"
-        elif behavior == "bad_gateway":
-            fake += "accepted=str(d).endswith('attempt-2')\n"
-            fake += "(d/'summary.json').write_text(json.dumps({'accepted': accepted, 'run_error_type': 'BadGatewayError'}))\n"
-        elif behavior == "wrapped_cause":
-            fake += "(d/'summary.json').write_text(json.dumps({'accepted': False, 'run_error_type': 'SDKError', 'cause_type': 'BadGatewayError', 'run_error': 'SDK wrapped BadGatewayError'}))\n"
-        elif behavior == "string_only_wrapper":
-            fake += "(d/'summary.json').write_text(json.dumps({'accepted': False, 'run_error_type': 'SDKError', 'run_error': 'SDK wrapped BadGatewayError'}))\n"
-        elif behavior == "context_window":
-            fake += "(d/'summary.json').write_text(json.dumps({'accepted': False, 'run_error_type': 'ContextWindowExceededError', 'error_chain': [{'type': 'ContextWindowExceededError'}]}))\n"
-        elif behavior == "bad_request":
-            fake += "(d/'summary.json').write_text(json.dumps({'accepted': False, 'run_error_type': 'BadRequestError', 'error_chain': [{'type': 'BadRequestError'}]}))\n"
-        elif behavior == "message_context":
-            fake += "(d/'summary.json').write_text(json.dumps({'accepted': False, 'run_error_type': 'SDKError', 'run_error': 'context_length_exceeded'}))\n"
-        (code / "attempt.py").write_text(fake)
+        (code / "attempt.py").write_text(_fake_attempt_code(behavior))
         result = root / "private-state"
         return result, [
             sys.executable,
@@ -63,7 +73,6 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
         ]
 
     def test_model_final_is_not_verified_success(self):
-        """Verify a premature model final is not counted as verified success."""
         with tempfile.TemporaryDirectory() as directory:
             root, command = self.setup_case(directory, "premature_final")
             subprocess.run(command, stdout=subprocess.DEVNULL, check=True, timeout=15)
@@ -73,7 +82,6 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             self.assertTrue(all(len(task["attempts"]) == 2 for task in state["tasks"]))
 
     def test_malformed_summaries_are_failures(self):
-        """Verify malformed step summaries are treated as failures."""
         with tempfile.TemporaryDirectory() as directory:
             root, command = self.setup_case(directory, "malformed_summary")
             subprocess.run(command, stdout=subprocess.DEVNULL, check=True, timeout=15)
@@ -85,7 +93,6 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             self.assertFalse(any(task["status"] == "accepted" for task in state["tasks"]))
 
     def test_kill_resume_preserves_deadline_and_stops_after_repeated_provider_errors(self):
-        """Verify kill/resume keeps the deadline and stops on repeated provider errors."""
         with tempfile.TemporaryDirectory() as directory:
             root, command = self.setup_case(directory, "restart")
             original = subprocess.Popen(command, stdout=subprocess.DEVNULL)
@@ -134,7 +141,6 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
                         process.wait()
 
     def test_bad_gateway_stops_without_resetting_for_an_accepted_artifact(self):
-        """Verify a bad gateway stops without resetting an accepted artifact."""
         with tempfile.TemporaryDirectory() as directory:
             root, command = self.setup_case(directory, "bad_gateway")
             subprocess.run(command, stdout=subprocess.DEVNULL, check=True, timeout=20)
@@ -155,7 +161,6 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             self.assertEqual(render_report(state), again)
 
     def test_structured_cause_is_provider_and_message_text_is_not(self):
-        """Verify structured causes classify as provider faults but text does not."""
         with tempfile.TemporaryDirectory() as directory:
             root, command = self.setup_case(directory, "wrapped_cause")
             subprocess.run(command, stdout=subprocess.DEVNULL, check=True, timeout=20)
@@ -175,7 +180,6 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             )
 
     def test_context_length_and_client_input_are_not_provider_outages(self):
-        """Verify context-length and client-input errors are not provider outages."""
         from controller import classify_result
 
         self.assertEqual(
@@ -215,7 +219,6 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             self.assertEqual(state["phase"], "unknown_error_type")
 
     def test_null_exit_is_clean_only_from_top_level_submitted_event(self):
-        """Verify a null exit only reads clean from a top-level submitted event."""
         from controller import attempt_facts, render_report
 
         bare = {"accepted": True, "exit_status": None, "actual_commands": 4}
@@ -271,7 +274,6 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             self.assertIn("not counterfactual scores", report)
 
     def test_historical_receipt_report_matches_audited_counts(self):
-        """Verify the historical receipt report reproduces audited counts."""
         receipt = pathlib.Path(
             "/Users/antonmoss/venice-auth/autonomy-comparison-20261117-123339/state.json"
         )
@@ -293,8 +295,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
         self.assertIn("| mini_native | 9 | 0 | 0 | 61 |", report)
 
     def test_exception_chain_records_cause_not_message_text(self):
-        """Verify exception chains record causes, not free-form message text."""
-        from attempt import exception_chain, record_exception
+        from attempt import record_exception
 
         class SDKError(Exception):
             pass
@@ -318,7 +319,6 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
         self.assertNotIn("cause_type", {"run_error_type": "SDKError"})
 
     def test_default_matrix_is_native_and_openhands_until_text_opt_in(self):
-        """Verify the default engine matrix stays native plus OpenHands until opt-in."""
         from controller import DEFAULT_ENGINES, initial_state
 
         state = initial_state(30, 1)
@@ -334,7 +334,6 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
         )
 
     def test_sigkill_rechecks_exact_child_identity(self):
-        """Verify SIGKILL handling re-checks the exact child identity."""
         import controller
 
         calls = []
@@ -379,7 +378,6 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
         self.assertEqual(calls, [signal.SIGTERM])
 
     def test_cleanup_requires_per_run_ownership_and_collects_both_roles(self):
-        """Verify cleanup enforces per-run ownership and collects both roles."""
         import controller
 
         with tempfile.TemporaryDirectory() as directory:
@@ -401,7 +399,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
                 check=False,
                 stdout=None,
                 stderr=None,
-            ):
+            ) -> object:
                 calls.append(list(args))
 
                 class Result:
@@ -475,7 +473,6 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             )
 
     def test_same_child_rejects_directory_prefix(self):
-        """Verify the same child rejects directory-prefix signature matches."""
         import controller
 
         directory = "/tmp/run"
@@ -499,7 +496,6 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             controller.os.getpgid = original_getpgid
 
     def test_pid_kill_requires_recorded_start_signature(self):
-        """Verify a PID kill requires the recorded start signature."""
         import controller
 
         calls = []
@@ -531,7 +527,6 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
         self.assertEqual(calls, [])
 
     def test_cleanup_is_idempotent_for_already_removed_resources(self):
-        """Verify cleanup is idempotent when resources are already removed."""
         import controller
 
         with tempfile.TemporaryDirectory() as directory:
@@ -553,7 +548,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
                 check=False,
                 stdout=None,
                 stderr=None,
-            ):
+            ) -> object:
                 calls.append(list(args))
 
                 class Result:
@@ -636,7 +631,6 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             )
 
     def test_cleanup_does_not_swallow_daemon_errors(self):
-        """Verify cleanup propagates daemon errors instead of swallowing them."""
         import controller
 
         with tempfile.TemporaryDirectory() as directory:
@@ -656,7 +650,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
                 check=False,
                 stdout=None,
                 stderr=None,
-            ):
+            ) -> object:
                 calls.append(list(args))
 
                 class Result:
@@ -691,7 +685,6 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             )
 
     def test_sandbox_close_uses_ownership_validation(self):
-        """Verify sandbox close validates resource ownership."""
         import sandbox
 
         modules = [sandbox]
@@ -715,7 +708,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             check=False,
             stdout=None,
             stderr=None,
-        ):
+        ) -> object:
             calls.append(list(args))
 
             class Result:
@@ -769,7 +762,6 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
         self.assertEqual(box.volume_name, "venice-lab-foreign")
 
     def test_cleanup_exception_final_report_is_not_running(self):
-        """Verify a cleanup exception yields a final report that is not running."""
         import controller
 
         with tempfile.TemporaryDirectory() as directory:
@@ -785,7 +777,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             state["running"] = running
             controller.save_state(root / "state.json", state)
 
-            def boom(record):
+            def boom(record) -> None:
                 raise ValueError("docker daemon refused")
 
             original = controller.cleanup_interrupted
@@ -803,8 +795,9 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
 
 
 class ReportErrorStateTests(unittest.TestCase):
+    """Tests for report error-state classification."""
+
     def test_accepted_artifact_with_any_error_is_not_a_clean_finish(self):
-        """Verify an accepted artifact with any error is not a clean finish."""
         import controller
 
         for field, value in (

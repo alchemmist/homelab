@@ -50,8 +50,10 @@ def admin(method, path, data=None):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *args):
-        """Refuse redirects so credentials are never forwarded."""
+    """Redirect handler that refuses to follow HTTP redirects."""
+
+    def redirect_request(self, *_args):
+
         return None
 
 
@@ -79,7 +81,7 @@ def browser(url, data=None):
             loc = urllib.parse.urlparse(e.headers["Location"])
             q = urllib.parse.parse_qs(loc.query)
             return e.code, e.headers, b""
-        raise RuntimeError("Browser request failed with HTTP " + str(e.code))
+        raise RuntimeError("Browser request failed with HTTP " + str(e.code)) from e
 
 
 username = "identity-smoke-" + uuid.uuid4().hex[:10]

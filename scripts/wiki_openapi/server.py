@@ -14,17 +14,17 @@ PATHS = {"/check", "/render", "/create-pr", "/close-older"}
 
 
 class Handler(BaseHTTPRequestHandler):
-    def log_message(self, *args):
-        """Silence default request-line logging."""
+    """HTTP handler serving the wiki OpenAPI frontend."""
+
+    def log_message(self, *args: object):
+
         pass
 
     def do_GET(self):
-        """Answer liveness probes on /healthz and 404 otherwise."""
         self.send_response(200 if self.path == "/healthz" else 404)
         self.end_headers()
 
     def do_POST(self):
-        """Dispatch an authenticated worker action on the allowed paths."""
         if self.path not in PATHS or not hmac.compare_digest(
             self.headers.get("X-Worker-Token", ""), os.environ["WORKER_TOKEN"]
         ):
@@ -43,7 +43,7 @@ class Handler(BaseHTTPRequestHandler):
                     self.path[1:], payload, write=os.environ.get("WRITE_ENABLED") == "true"
                 )
             code = 200
-        except Exception as exc:
+        except (OSError, ValueError, KeyError, TypeError, UnsafeInput) as exc:
             result = {"status": "error", "type": type(exc).__name__}
             if isinstance(exc, UnsafeInput):
                 result["reason"] = str(exc)

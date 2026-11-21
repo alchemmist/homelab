@@ -103,6 +103,8 @@ def loop():
 
 
 class Handler(BaseHTTPRequestHandler):
+    """HTTP request handler exposing Prometheus metrics."""
+
     def do_GET(self):
         """Serve the current metrics snapshot on /metrics."""
         if self.path != "/metrics":
@@ -136,6 +138,8 @@ class Handler(BaseHTTPRequestHandler):
 
 
 class MetricsServer(ThreadingHTTPServer):
+    """Threaded HTTP server with explicit address binding."""
+
     def server_bind(self):
         """Bind without reverse DNS and pin the server name."""
         # Avoid slow reverse DNS lookups during HTTPServer initialization.

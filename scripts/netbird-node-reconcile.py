@@ -8,6 +8,7 @@ or re-enrollment by friendly name. Uncertain writes stop for operator inspection
 
 import argparse
 import fcntl
+import http.client
 import ipaddress
 import json
 import os
@@ -16,6 +17,7 @@ import subprocess
 import sys
 import urllib.request
 from pathlib import Path
+from typing import NamedTuple, cast
 
 NS = "netbird-host-peers"
 ADMIN = "netbird-internal-admins"
@@ -25,7 +27,8 @@ SERVICE = "homelab-netbird-node-automation"
 BASE = "https://netbird.socrat.alchemmist.xyz/api/"
 
 
-def require(ok, message):
+def require(ok: object, message: str) -> None:
+    """Stop unless the audited invariant holds."""
     if not ok:
         raise ValueError(message)
 
@@ -203,8 +206,12 @@ def policy_body(source, resource):
     }
 
 
-def member_ids(group):
-    return {p["id"] if isinstance(p, dict) else p for p in (group.get("peers") or [])}
+def member_ids(group: object) -> set[object]:
+    """Return the ids of every peer currently recorded in the group."""
+    return {
+        cast("dict[str, object]", p)["id"] if isinstance(p, dict) else p
+        for p in cast("list[object]", cast("dict[str, object]", group).get("peers") or [])
+    }
 
 
 def unique(items, key, value):
@@ -233,14 +240,49 @@ def policy_ok(p, admin, resource=None, group=None):
     )
 
 
+class _PlanInputs(NamedTuple):
+    """Guarded policies and inventory-node context for reconcile."""
+
+    policies: object
+    node: object
+    address: object
+    entry: object
+    seed: object
+    host: object
+
+
+class _ResourceReview(NamedTuple):
+    """Reviewed network resource and its managed admin-policy grants."""
+
+    resources_path: str
+    resource: object
+    matching: object
+
+
+def node_ready(node: object) -> bool:
+    """Report whether the Kubernetes node currently reports a Ready condition."""
+    status = cast("dict[str, object]", cast("dict[str, object]", node).get("status", {}))
+    conditions = cast("list[object]", status.get("conditions", []))
+    return any(
+        cast("dict[str, object]", c)["type"] == "Ready"
+        and cast("dict[str, object]", c)["status"] == "True"
+        for c in conditions
+    )
+
+
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *a, **kw):
-        """Refuse redirects so credentials are never forwarded."""
+    """Redirect handler that refuses to follow HTTP redirects."""
+
+    def redirect_request(self, *_a, **_kw):
+
         return None
 
 
 class Runtime:
-    def __init__(self, folder, config, apply=False):
+    """Runtime wrapper for reconciling NetBird node state."""
+
+    def __init__(self, folder, config, apply=False) -> None:
+
         self.folder, self.config, self.apply = folder, validate_config(config), apply
         self.k = [
             "env",
@@ -266,7 +308,6 @@ class Runtime:
         self.changed = False
 
     def api(self, method, path, body=None):
-        """Call the NetBird management API with the pinned token."""
         req = urllib.request.Request(
             BASE + path,
             method=method,
@@ -281,7 +322,6 @@ class Runtime:
             return json.loads(b) if b else None
 
     def kub(self, args, obj=None, optional=False, stdin=None):
-        """Run a kubectl command with a strict allowlist per operation."""
         args = list(args)
         operation = args[2] if args[:1] == ["-n"] else args[0]
         require(
@@ -321,16 +361,13 @@ class Runtime:
         return p.stdout
 
     def get(self, kind, name, ns=NS, optional=False):
-        """Fetch one object if present, or None when missing."""
         out = self.kub(["-n", ns, "get", kind, name, "-o", "json"], optional=optional)
         return json.loads(out) if out.strip() else None
 
     def save(self):
-        """Persist the reconciler state atomically."""
         atomic(self.state_path, self.state)
 
     def write(self, method, path, body):
-        """Apply an already-verified mutation if planning permits it."""
         require(self.apply, "plan attempted mutation")
         require(not self.state.get("pending"), "uncertain previous write")
         self.state["pending"] = {"method": method, "path": path}
@@ -342,8 +379,7 @@ class Runtime:
         return response
 
     @staticmethod
-    def require_argocd(obj):
-        """Assert the manifest is owned by the Argo CD application."""
+    def require_argocd(obj) -> None:
         meta = obj["metadata"]
         require(
             meta.get("annotations", {})
@@ -354,7 +390,6 @@ class Runtime:
         )
 
     def restart_without_key(self, host, deployment):
-        """Restart the deployment pod so the node key is never persisted."""
         # Operational acceptance restart only: never edit/create a workload spec.
         pods = json.loads(
             self.kub(["-n", NS, "get", "pods", "-l", "app=machine-" + host, "-o", "json"])
@@ -412,7 +447,6 @@ class Runtime:
         )
 
     def enroll_argocd_agent(self, host, node, deployment, pvc):
-        """Enroll the node and record ownership before any restart."""
         self.require_argocd(deployment)
         self.require_argocd(pvc)
         peers = self.api("GET", "peers")
@@ -517,7 +551,6 @@ class Runtime:
         return peer, status
 
     def guard(self):
-        """Validate the Argo CD application and inventory configuration."""
         app = self.get("application", "netbird", ns="argocd")
         source = app["spec"].get("source", {})
         require(
@@ -588,7 +621,6 @@ class Runtime:
         return policies
 
     def status(self, host):
-        """Read the current enrollment status of the host's node."""
         value = json.loads(
             self.kub(
                 [
@@ -607,7 +639,6 @@ class Runtime:
         return {"ip": str(ipaddress.ip_interface(value["netbirdIp"]).ip), "key": value["publicKey"]}
 
     def peer_for_status(self, host):
-        """Return the peer record matching the host's enrolled IP."""
         status = self.status(host)
         p = unique(self.api("GET", "peers"), "ip", status["ip"])
         require(
@@ -622,7 +653,6 @@ class Runtime:
         return p, status
 
     def verify_deployment(self, host, d):
-        """Verify the deployment manifest matches the expected rendering."""
         expected = manifests(
             host, self.config["image"], kernel_only=host in self.config.get("kernel_only_nodes", [])
         )[1]
@@ -646,121 +676,185 @@ class Runtime:
         )
         require(spec["volumes"] == want["volumes"], "persistent identity volumes drift")
 
-    def reconcile(self, host, seed=None):
-        """Reconcile one host end-to-end through verification and reporting."""
-        require(host in self.config["nodes"], "host not enabled in inventory")
+    def _plan_inputs(self, host: object, seed: object) -> _PlanInputs:
+        """Review adoption bindings and collect the inventory-node context."""
+        cfg = cast("dict[str, object]", self.config)
+        inventory = cast("dict[str, object]", cfg["nodes"])
+        require(host in inventory, "host not enabled in inventory")
         policies = self.guard()
-        known = {v["peer_id"] for v in self.state["nodes"].values() if v.get("peer_id")}
-        known |= {v["id"] for v in (seed or {}).get("nodes", {}).values() if v.get("id")}
+        state_nodes = cast("dict[str, object]", cast("dict[str, object]", self.state)["nodes"])
+        known = {
+            cast("dict[str, object]", v)["peer_id"]
+            for v in state_nodes.values()
+            if cast("dict[str, object]", v).get("peer_id")
+        }
+        seed_raw = cast("dict[str, object]", seed) if seed else {}
+        known |= {
+            cast("dict[str, object]", v)["id"]
+            for v in cast("dict[str, object]", seed_raw.get("nodes", {})).values()
+            if cast("dict[str, object]", v).get("id")
+        }
         require(
             member_ids(self.group) <= known,
             "unbound machine-group member: explicit initial adoption required",
         )
         node = self.get("node", host, ns="default", optional=True)
-        if node is None or not any(
-            c["type"] == "Ready" and c["status"] == "True"
-            for c in node.get("status", {}).get("conditions", [])
-        ):
-            return {"changed": False, "status": "deferred-node-not-ready", "node": host}
-        address = self.config["nodes"][host]
-        entry = self.state["nodes"].get(host)
-        if entry:
-            require(
-                entry["phase"] == "ready",
-                "incomplete enrollment: inspect private state, never reissue automatically",
+        if node is None or not node_ready(node):
+            return _PlanInputs(
+                policies=None, node=None, address=None, entry=None, seed=seed, host=host
             )
-            require(
-                entry["node_uid"] == node["metadata"]["uid"] and entry["address"] == address,
-                "node reinstallation/address change requires explicit retirement",
-            )
-        d = self.get("deployment", "machine-" + host, optional=True)
-        pvc = self.get("pvc", "machine-" + host, optional=True)
-        if d or pvc:
-            require(
-                d is not None and pvc is not None,
-                "partial/missing identity storage: refuse replacement",
-            )
-            self.require_argocd(d)
-            self.require_argocd(pvc)
-            self.verify_deployment(host, d)
-            if entry or (seed or {}).get("nodes", {}).get(host):
-                p, status = self.peer_for_status(host)
-                if not entry:
-                    require(
-                        seed["nodes"][host].get("id") == p["id"],
-                        "trusted migration binding mismatch",
-                    )
-            else:
-                enrolled = self.enroll_argocd_agent(host, node, d, pvc)
-                if enrolled is None:
-                    return {"changed": False, "status": "would-enroll-and-authorize", "node": host}
-                p, status = enrolled
-        else:
-            require(
-                entry is None and not (seed or {}).get("nodes", {}).get(host),
-                "lost identity storage: no re-enrollment",
-            )
-            require(
-                not any(
-                    p.get("hostname") == host or p.get("name") == "machine-" + host
-                    for p in self.api("GET", "peers")
-                ),
-                "orphan existing peer: no name adoption",
-            )
-            return {"changed": False, "status": "awaiting-argocd-workloads", "node": host}
-        binding = {
-            "phase": "ready",
-            "node_uid": node["metadata"]["uid"],
-            "address": address,
-            "deployment_uid": d["metadata"]["uid"],
-            "pvc_uid": pvc["metadata"]["uid"],
-            "peer_id": p["id"],
-            "ip": status["ip"],
-            "public_key": status["key"],
-        }
-        require(entry is None or entry == binding, "persistent node/peer identity drift")
+        return _PlanInputs(
+            policies=policies,
+            node=node,
+            address=inventory[host],
+            entry=state_nodes.get(host),
+            seed=seed,
+            host=host,
+        )
+
+    def _verify_ready_entry(self, inputs: _PlanInputs) -> None:
+        """Require a previously enrolled node to keep its recorded identity."""
+        entry = inputs.entry
+        if not entry:
+            return
+        raw_entry = cast("dict[str, object]", entry)
         require(
-            entry is None or p["id"] in member_ids(self.group),
+            raw_entry["phase"] == "ready",
+            "incomplete enrollment: inspect private state, never reissue automatically",
+        )
+        metadata = cast("dict[str, object]", cast("dict[str, object]", inputs.node)["metadata"])
+        require(
+            raw_entry["node_uid"] == metadata["uid"] and raw_entry["address"] == inputs.address,
+            "node reinstallation/address change requires explicit retirement",
+        )
+
+    def _existing_peer(
+        self, inputs: _PlanInputs, d: object, pvc: object
+    ) -> tuple[object, object] | None:
+        """Verify existing identity storage and locate or enroll its agent peer."""
+        host = inputs.host
+        self.require_argocd(d)
+        self.require_argocd(pvc)
+        self.verify_deployment(host, d)
+        seed_raw = cast("dict[str, object]", inputs.seed) if inputs.seed else {}
+        if inputs.entry or cast("dict[str, object]", seed_raw.get("nodes", {})).get(host):
+            p, status = self.peer_for_status(host)
+            if not inputs.entry:
+                require(
+                    cast("dict[str, object]", seed_raw["nodes"][host]).get("id")
+                    == cast("dict[str, object]", p)["id"],
+                    "trusted migration binding mismatch",
+                )
+            return p, status
+        enrolled = self.enroll_argocd_agent(host, inputs.node, d, pvc)
+        return tuple(enrolled) if enrolled is not None else None
+
+    def _require_lost_storage_absent(self, inputs: _PlanInputs) -> None:
+        """Refuse re-enrollment when identity storage was lost."""
+        seed_raw = cast("dict[str, object]", inputs.seed) if inputs.seed else {}
+        require(
+            inputs.entry is None
+            and not cast("dict[str, object]", seed_raw.get("nodes", {})).get(inputs.host),
+            "lost identity storage: no re-enrollment",
+        )
+        peers = cast("list[object]", self.api("GET", "peers"))
+        host = cast("str", inputs.host)
+        require(
+            not any(
+                cast("dict[str, object]", p).get("hostname") == host
+                or cast("dict[str, object]", p).get("name") == "machine-" + host
+                for p in peers
+            ),
+            "orphan existing peer: no name adoption",
+        )
+
+    def _binding(
+        self, inputs: _PlanInputs, d: object, pvc: object, p: object, status: object
+    ) -> dict[str, object]:
+        """Assemble the persistent node/peer identity binding."""
+        return {
+            "phase": "ready",
+            "node_uid": cast("dict[str, dict[str, object]]", inputs.node)["metadata"]["uid"],
+            "address": inputs.address,
+            "deployment_uid": cast("dict[str, dict[str, object]]", d)["metadata"]["uid"],
+            "pvc_uid": cast("dict[str, dict[str, object]]", pvc)["metadata"]["uid"],
+            "peer_id": cast("dict[str, object]", p)["id"],
+            "ip": cast("dict[str, object]", status)["ip"],
+            "public_key": cast("dict[str, object]", status)["key"],
+        }
+
+    def _require_bound_identity(self, inputs: _PlanInputs, binding: object, p: object) -> None:
+        """Require recorded bindings and destination-group membership to hold."""
+        require(
+            inputs.entry is None or inputs.entry == binding,
+            "persistent node/peer identity drift",
+        )
+        require(
+            inputs.entry is None or cast("dict[str, object]", p)["id"] in member_ids(self.group),
             "bound node removed from destination group; no automatic regrant",
         )
-        local = json.loads(
-            self.kub(
-                [
-                    "-n",
-                    NS,
-                    "exec",
-                    "deployment/machine-" + host,
-                    "--",
-                    "ip",
-                    "-j",
-                    "address",
-                    "show",
-                    "dev",
-                    "wg-socrat",
-                ]
-            )
-        )
-        require(
-            any(a.get("local") == address for i in local for a in i.get("addr_info", [])),
-            "inventory WG address is not on the actual node",
-        )
-        # Only Ready targets are required: an offline node is not mistaken for a broken mesh.
-        nodes = json.loads(self.kub(["get", "nodes", "-o", "json"]))["items"]
-        ready = {
-            n["metadata"]["name"]
-            for n in nodes
-            if any(
-                c["type"] == "Ready" and c["status"] == "True" for c in n["status"]["conditions"]
-            )
-        }
-        if p["id"] not in member_ids(self.group):
-            for h in sorted(ready & self.config["nodes"].keys()):
+
+    def _require_local_address(self, host: object, address: object) -> None:
+        """Require the inventory WG address to exist on the actual node."""
+        local = cast(
+            "list[object]",
+            json.loads(
                 self.kub(
                     [
                         "-n",
                         NS,
                         "exec",
-                        "deployment/machine-" + host,
+                        "deployment/machine-" + cast("str", host),
+                        "--",
+                        "ip",
+                        "-j",
+                        "address",
+                        "show",
+                        "dev",
+                        "wg-socrat",
+                    ]
+                )
+            ),
+        )
+        require(
+            any(
+                cast("dict[str, object]", a).get("local") == address
+                for i in local
+                for a in cast("list[object]", cast("dict[str, object]", i).get("addr_info", []))
+            ),
+            "inventory WG address is not on the actual node",
+        )
+
+    def _verify_mesh_ping(self, host: object, p: object) -> None:
+        """Ping every Ready inventory node when this peer is not yet admitted."""
+        nodes = cast(
+            "list[object]",
+            cast("dict[str, object]", json.loads(self.kub(["get", "nodes", "-o", "json"])))[
+                "items"
+            ],
+        )
+        # Only Ready targets are required: an offline node is not mistaken for a broken mesh.
+        ready = {
+            cast("dict[str, dict[str, object]]", cast("dict[str, object]", n)["metadata"])["name"]
+            for n in nodes
+            if any(
+                cast("dict[str, object]", c)["type"] == "Ready"
+                and cast("dict[str, object]", c)["status"] == "True"
+                for c in cast(
+                    "list[object]",
+                    cast("dict[str, dict[str, list[object]]]", n)["status"]["conditions"],
+                )
+            )
+        }
+        if cast("dict[str, object]", p)["id"] not in member_ids(self.group):
+            inventory = cast("dict[str, object]", cast("dict[str, object]", self.config)["nodes"])
+            for h in sorted(ready & inventory.keys()):
+                self.kub(
+                    [
+                        "-n",
+                        NS,
+                        "exec",
+                        "deployment/machine-" + cast("str", host),
                         "--",
                         "ping",
                         "-n",
@@ -768,101 +862,188 @@ class Runtime:
                         "1",
                         "-W",
                         "3",
-                        self.config["nodes"][h],
+                        inventory[h],
                     ]
                 )
+
+    def _reviewed_resource(self, host: object, address: object) -> tuple[str, object | None]:
+        """Locate the existing reviewed /32 resource for this inventory address."""
         resources_path = "networks/" + self.network + "/resources"
-        resources = self.api("GET", resources_path)
-        found = [r for r in resources if r["address"] == address + "/32"]
+        resources = cast("list[object]", self.api("GET", resources_path))
+        found = [
+            r
+            for r in resources
+            if cast("dict[str, object]", r)["address"] == cast("str", address) + "/32"
+        ]
         require(len(found) <= 1, "duplicate WG host resources")
         resource = found[0] if found else None
         if resource:
+            raw_resource = cast("dict[str, object]", resource)
             require(
-                resource["name"] == "wg-" + host
-                and resource["enabled"]
-                and resource["type"] == "host"
-                and not resource.get("groups"),
+                raw_resource["name"] == "wg-" + cast("str", host)
+                and raw_resource["enabled"]
+                and raw_resource["type"] == "host"
+                and not raw_resource.get("groups"),
                 "existing resource scope drift",
             )
-        matching = []
-        if resource:
-            matching = [
-                v
-                for v in policies
-                if any(
-                    (r.get("destinationResource") or {}).get("id") == resource["id"]
-                    for r in v["rules"]
-                )
-                and v["name"].startswith("admin-wg-")
-            ]
-            require(len(matching) <= 1, "duplicate managed resource policies")
-            if matching:
-                require(
-                    policy_ok(matching[0], self.admin["id"], resource=resource["id"]),
-                    "admin resource policy drift",
-                )
-        grant = self.state.get("grants", {}).get(host)
-        if grant:
+        return resources_path, resource
+
+    def _matching_policies(self, policies: object, resource: object) -> list[object]:
+        """Collect and verify the managed admin-policy grant for the resource."""
+        matching: list[object] = []
+        if not resource:
+            return matching
+        raw_resource = cast("dict[str, object]", resource)
+        matching = [
+            v
+            for v in cast("list[object]", policies)
+            if any(
+                cast(
+                    "dict[str, object]",
+                    cast("dict[str, object]", r).get("destinationResource") or {},
+                ).get("id")
+                == raw_resource["id"]
+                for r in cast("list[object]", cast("dict[str, object]", v)["rules"])
+            )
+            and cast("dict[str, object]", v)["name"].startswith("admin-wg-")
+        ]
+        require(len(matching) <= 1, "duplicate managed resource policies")
+        if matching:
             require(
-                resource is not None
-                and resource["id"] == grant["resource_id"]
-                and matching
-                and matching[0]["id"] == grant["policy_id"],
+                policy_ok(matching[0], self.admin["id"], resource=raw_resource["id"]),
+                "admin resource policy drift",
+            )
+        return matching
+
+    def _resource_review(self, inputs: _PlanInputs) -> _ResourceReview:
+        """Assemble the reviewed network resource and its managed admin policy."""
+        resources_path, resource = self._reviewed_resource(inputs.host, inputs.address)
+        matching = self._matching_policies(inputs.policies, resource)
+        return _ResourceReview(resources_path=resources_path, resource=resource, matching=matching)
+
+    def _require_grant_aligned(
+        self, grant: object, inputs: _PlanInputs, p: object, review: _ResourceReview
+    ) -> None:
+        """Require managed grants to be present without silent replacement or loss."""
+        if grant:
+            raw_grant = cast("dict[str, object]", grant)
+            require(
+                review.resource is not None
+                and cast("dict[str, object]", review.resource)["id"] == raw_grant["resource_id"]
+                and review.matching
+                and cast("dict[str, object]", cast("list[object]", review.matching)[0])["id"]
+                == raw_grant["policy_id"],
                 "managed grant removed/replaced: explicit review required, no resurrection",
             )
-        elif entry:
+        elif inputs.entry:
             require(
-                seed is not None
-                and seed["nodes"].get(host, {}).get("id") == p["id"]
-                and resource
-                and matching,
+                inputs.seed is not None
+                and cast(
+                    "dict[str, object]",
+                    cast("dict[str, dict[str, object]]", inputs.seed)["nodes"].get(inputs.host, {}),
+                ).get("id")
+                == cast("dict[str, object]", p)["id"]
+                and review.resource
+                and review.matching,
                 "legacy binding needs explicit grant-ID migration",
             )
-        if self.apply:
-            self.state["nodes"][host] = dict(binding, phase="admitting")
-            self.save()
-            if entry is None or grant is None:
-                self.changed = True
-            if p["id"] not in member_ids(self.group):
-                fresh = self.api("GET", "groups/" + self.group["id"])
-                require(
-                    member_ids(fresh) == member_ids(self.group)
-                    and not fresh.get("resources")
-                    and fresh["issued"] == "api"
-                    and fresh["name"] == DEST,
-                    "concurrent machine-group change",
-                )
+
+    def _apply_admission(
+        self,
+        inputs: _PlanInputs,
+        binding: object,
+        grant: object,
+        p: object,
+        review: _ResourceReview,
+    ) -> _ResourceReview:
+        """Apply phase one: record admission and join the destination group."""
+        state_nodes = cast("dict[str, object]", cast("dict[str, object]", self.state)["nodes"])
+        state_nodes[inputs.host] = dict(cast("dict[str, object]", binding), phase="admitting")
+        self.save()
+        if inputs.entry is None or grant is None:
+            self.changed = True
+        if cast("dict[str, object]", p)["id"] not in member_ids(self.group):
+            fresh = self.api("GET", "groups/" + self.group["id"])
+            require(
+                member_ids(fresh) == member_ids(self.group)
+                and not fresh.get("resources")
+                and fresh.get("issued") == "api"
+                and fresh.get("name") == DEST,
+                "concurrent machine-group change",
+            )
+            self.write(
+                "PUT",
+                "groups/" + self.group["id"],
+                {
+                    "name": DEST,
+                    "resources": [],
+                    "peers": sorted(member_ids(self.group) | {cast("dict[str, object]", p)["id"]}),
+                },
+            )
+        if review.resource is None:
+            created = self.write(
+                "POST",
+                review.resources_path,
+                {
+                    "name": "wg-" + cast("str", inputs.host),
+                    "description": "Inventory WG node; no broader prefix",
+                    "address": cast("str", inputs.address) + "/32",
+                    "enabled": True,
+                },
+            )
+            return review._replace(resource=created)
+        return review
+
+    def _apply_grant(self, inputs: _PlanInputs, binding: object, review: _ResourceReview) -> None:
+        """Apply phase two: ensure the admin policy grant and persist final bindings."""
+        matching = review.matching
+        if not matching:
+            matching = [
                 self.write(
-                    "PUT",
-                    "groups/" + self.group["id"],
-                    {
-                        "name": DEST,
-                        "resources": [],
-                        "peers": sorted(member_ids(self.group) | {p["id"]}),
-                    },
-                )
-            if resource is None:
-                resource = self.write(
                     "POST",
-                    resources_path,
-                    {
-                        "name": "wg-" + host,
-                        "description": "Inventory WG node; no broader prefix",
-                        "address": address + "/32",
-                        "enabled": True,
-                    },
+                    "policies",
+                    policy_body(self.admin["id"], cast("dict[str, object]", review.resource)["id"]),
                 )
+            ]
+        cast("dict[str, object]", cast("dict[str, object]", self.state).setdefault("grants", {}))[
+            cast("str", inputs.host)
+        ] = {
+            "resource_id": cast("dict[str, object]", review.resource)["id"],
+            "policy_id": cast("dict[str, object]", cast("list[object]", matching)[0])["id"],
+        }
+        state_nodes = cast("dict[str, object]", cast("dict[str, object]", self.state)["nodes"])
+        state_nodes[inputs.host] = binding
+        self.save()
+
+    def reconcile(self, host, seed=None):
+        inputs = self._plan_inputs(host, seed)
+        if inputs.node is None:
+            return {"changed": False, "status": "deferred-node-not-ready", "node": host}
+        self._verify_ready_entry(inputs)
+        d = self.get("deployment", "machine-" + host, optional=True)
+        pvc = self.get("pvc", "machine-" + host, optional=True)
+        if d or pvc:
+            require(
+                d is not None and pvc is not None,
+                "partial/missing identity storage: refuse replacement",
+            )
+            existing = self._existing_peer(inputs, d, pvc)
+            if existing is None:
+                return {"changed": False, "status": "would-enroll-and-authorize", "node": host}
+            p, status = existing
+        else:
+            self._require_lost_storage_absent(inputs)
+            return {"changed": False, "status": "awaiting-argocd-workloads", "node": host}
+        binding = self._binding(inputs, d, pvc, p, status)
+        self._require_bound_identity(inputs, binding, p)
+        self._require_local_address(inputs.host, inputs.address)
+        self._verify_mesh_ping(inputs.host, p)
+        review = self._resource_review(inputs)
+        grant = self.state.get("grants", {}).get(host)
+        self._require_grant_aligned(grant, inputs, p, review)
         if self.apply:
-            if not matching:
-                matching = [
-                    self.write("POST", "policies", policy_body(self.admin["id"], resource["id"]))
-                ]
-            self.state.setdefault("grants", {})[host] = {
-                "resource_id": resource["id"],
-                "policy_id": matching[0]["id"],
-            }
-            self.state["nodes"][host] = binding
-            self.save()
+            review = self._apply_admission(inputs, binding, grant, p, review)
+            self._apply_grant(inputs, binding, review)
         return {
             "changed": self.changed,
             "status": "ready" if self.apply else "validated-plan",
@@ -896,7 +1077,15 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception as e:
+    except (
+        ValueError,
+        KeyError,
+        TypeError,
+        RuntimeError,
+        OSError,
+        subprocess.SubprocessError,
+        http.client.HTTPException,
+    ) as e:
         print(
             json.dumps(
                 {

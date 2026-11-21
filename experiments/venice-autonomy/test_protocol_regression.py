@@ -1,3 +1,4 @@
+"""Regression tests for the protocol_regression pilot batch runner."""
 import hashlib
 import json
 import os
@@ -22,6 +23,8 @@ def python_path():
 
 
 class MethodSignatureTests(unittest.TestCase):
+    """Tests that method signature changes are caught."""
+
     baseline = "class BrowserSession:\n    async def _answer(self, page, fallback=None) -> str:\n        return 'answer'\n    async def _generate_on_page(self, page):\n        return page\n"
 
     def test_signature_changes_are_rejected(self):
@@ -56,6 +59,8 @@ class MethodSignatureTests(unittest.TestCase):
 
 
 class TestCompletionTests(unittest.TestCase):
+    """Tests for the test completion flow."""
+
     def grade(self, body):
         """Grade the candidate test body in a scratch checkout."""
         with tempfile.TemporaryDirectory() as temp:
@@ -85,6 +90,8 @@ class TestCompletionTests(unittest.TestCase):
 
 
 class GraderProcessTests(unittest.TestCase):
+    """Tests for bounded grader subprocess output."""
+
     def test_both_output_channels_are_bounded(self):
         """Verify stdout and stderr capture are bounded by the output limit."""
         for channel in (1, 2):
@@ -117,6 +124,8 @@ class GraderProcessTests(unittest.TestCase):
 
 
 class SnapshotTests(unittest.TestCase):
+    """Tests for snapshot artifact persistence."""
+
     def setUp(self):
         """Export a fresh snapshot for each test."""
         self.temp = tempfile.TemporaryDirectory()

@@ -1,3 +1,5 @@
+"""Tests for the SPI triage storage runtime."""
+
 import json
 import os
 from pathlib import Path
@@ -12,20 +14,21 @@ import service
 
 
 class Runtime(unittest.TestCase):
-    def test_off(self):
-        """Verify the default runtime is off."""
-        with patch.dict(os.environ, {}, clear=True):
-            self.assertEqual(runtime.load_storage(), (None, "legacy"))
+    """Tests for the storage runtime configuration."""
 
-    def test_projected_file_and_invalid_inputs(self):
-        """Verify projected files and invalid input handling."""
+    def test_off(self) -> None:
+
+        with patch.dict(os.environ, {}, clear=True):
+            assert runtime.load_storage() == (None, "legacy")
+
+    def test_projected_file_and_invalid_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             target = Path(d) / "real"
             link = Path(d) / "credentials.json"
             link.symlink_to(target)
             real_open = os.open
 
-            def opened(path, flags, *args):
+            def opened(path, flags, *args) -> int:
                 return real_open(
                     link if str(path) == "/s3-writer/credentials.json" else path, flags, *args
                 )
@@ -47,8 +50,8 @@ class Runtime(unittest.TestCase):
                     target.write_text(json.dumps({"access": "writer", "secret": "private"}))
                     target.chmod(0o440)
                     client, flag = runtime.load_storage()
-                    self.assertIsInstance(client, runtime.S3Evidence)
-                    self.assertEqual(flag, backend)
+                    assert isinstance(client, runtime.S3Evidence)
+                    assert flag == backend
                     for content, mode in [
                         ("{}", 0o600),
                         ('{"access":"a","secret":"b","secret":"c"}', 0o600),
@@ -63,8 +66,7 @@ class Runtime(unittest.TestCase):
                         ):
                             runtime.load_storage()
 
-    def test_serve_wires_engine_before_dispatch(self):
-        """Verify serve wires the engine before dispatching."""
+    def test_serve_wires_engine_before_dispatch(self) -> None:
         class Stop(Exception):
             pass
 
@@ -92,8 +94,8 @@ class Runtime(unittest.TestCase):
         ):
             with self.assertRaises(Stop):
                 service.serve()
-            self.assertIs(engine.call_args.kwargs["storage"], storage)
-            self.assertEqual(engine.call_args.kwargs["storage_backend"], "legacy")
+            assert engine.call_args.kwargs["storage"] is storage
+            assert engine.call_args.kwargs["storage_backend"] == "legacy"
         with (
             patch.dict(os.environ, {"SPI_EVIDENCE_BACKEND": "s3"}, clear=True),
             patch.object(service, "Dispatcher") as dispatch,

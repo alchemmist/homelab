@@ -1,4 +1,7 @@
+"""Tests for PR readiness evaluation in the scripts/openhands-pr-ready module."""
+
 import copy
+from typing import cast
 import importlib.util
 from pathlib import Path
 import unittest
@@ -11,8 +14,10 @@ spec.loader.exec_module(m)
 
 
 class ReadyContract(unittest.TestCase):
-    def setUp(self):
-        """Build the canonical PR snapshot fixture."""
+    """Tests for the OpenHands ready-state contract."""
+
+    def setUp(self) -> None:
+
         self.sha = "a" * 40
         self.p = {
             "state": "OPEN",
@@ -53,12 +58,10 @@ class ReadyContract(unittest.TestCase):
             },
         }
 
-    def result(self):
-        """Assess the fixture PR with the canonical reviewer sets."""
-        return m.assess(self.p, {"review-bot"}, {"publisher"})
+    def result(self) -> dict[str, object]:
+        return cast("dict[str, object]", m.assess(self.p, {"review-bot"}, {"publisher"}))
 
-    def remark(self):
-        """Install a resolved-bot-remark thread into the fixture."""
+    def remark(self) -> None:
         self.p["reviewThreads"]["nodes"] = [
             {
                 "id": "thread",
@@ -76,38 +79,31 @@ class ReadyContract(unittest.TestCase):
             }
         ]
 
-    def test_closed_merged_unknown_state_are_not_ready(self):
-        """Verify closed, merged and unknown PR states are not ready."""
+    def test_closed_merged_unknown_state_are_not_ready(self) -> None:
         for state in ("CLOSED", "MERGED", None):
             self.p["state"] = state
-            self.assertFalse(self.result()["ready_to_review"])
+            assert not self.result()["ready_to_review"]
 
-    def test_green_complete(self):
-        """Verify a fully green PR is marked ready to review."""
-        self.assertTrue(self.result()["ready_to_review"])
+    def test_green_complete(self) -> None:
+        assert self.result()["ready_to_review"]
 
-    def test_skipped_failed_and_pending_are_not_green(self):
-        """Verify skipped, failed and pending checks are not green."""
+    def test_skipped_failed_and_pending_are_not_green(self) -> None:
         for conclusion in ("SKIPPED", "NEUTRAL", "FAILURE", None):
             self.p["statusCheckRollup"]["contexts"]["nodes"][0]["conclusion"] = conclusion
-            self.assertFalse(self.result()["ready_to_review"])
+            assert not self.result()["ready_to_review"]
 
-    def test_no_reviewers_is_not_ready(self):
-        """Verify a PR without reviewers is never ready."""
-        self.assertFalse(m.assess(self.p, set(), {"publisher"})["ready_to_review"])
+    def test_no_reviewers_is_not_ready(self) -> None:
+        assert not m.assess(self.p, set(), {"publisher"})["ready_to_review"]
 
-    def test_old_review_is_not_current(self):
-        """Verify reviews must match the head commit to count."""
+    def test_old_review_is_not_current(self) -> None:
         self.p["reviews"]["nodes"][0]["commit"]["oid"] = "b" * 40
-        self.assertFalse(self.result()["ready_to_review"])
+        assert not self.result()["ready_to_review"]
 
-    def test_resolved_without_reply_is_not_enough(self):
-        """Verify a resolved thread without a reply is not enough."""
+    def test_resolved_without_reply_is_not_enough(self) -> None:
         self.remark()
-        self.assertFalse(self.result()["ready_to_review"])
+        assert not self.result()["ready_to_review"]
 
-    def test_fix_requires_link_and_commit_membership(self):
-        """Verify a fix remark must link a commit in the PR."""
+    def test_fix_requires_link_and_commit_membership(self) -> None:
         self.remark()
         reply = {
             "id": "reply",
@@ -117,14 +113,13 @@ class ReadyContract(unittest.TestCase):
             + '"} -->',
         }
         self.p["comments"]["nodes"] = [reply]
-        self.assertFalse(self.result()["ready_to_review"])
+        assert not self.result()["ready_to_review"]
         reply["body"] += "\nFixed: https://github.com/o/r/commit/" + self.sha
-        self.assertTrue(self.result()["ready_to_review"])
+        assert self.result()["ready_to_review"]
         self.p["commits"]["nodes"] = []
-        self.assertFalse(self.result()["ready_to_review"])
+        assert not self.result()["ready_to_review"]
 
-    def test_rejection_requires_reason_then_resolve(self):
-        """Verify rejections state a reason before being resolved."""
+    def test_rejection_requires_reason_then_resolve(self) -> None:
         self.remark()
         self.p["comments"]["nodes"] = [
             {
@@ -133,19 +128,17 @@ class ReadyContract(unittest.TestCase):
                 "body": '<!-- rtr:{"comment":"remark","decision":"irrelevant","reason":"The proposed behavior conflicts with the documented local-only API contract; test X covers it."} -->',
             }
         ]
-        self.assertTrue(self.result()["ready_to_review"])
+        assert self.result()["ready_to_review"]
         self.p["reviewThreads"]["nodes"][0]["isResolved"] = False
-        self.assertFalse(self.result()["ready_to_review"])
+        assert not self.result()["ready_to_review"]
 
-    def test_untrusted_actor_cannot_supply_disposition(self):
-        """Verify untrusted actors cannot resolve a remark."""
+    def test_untrusted_actor_cannot_supply_disposition(self) -> None:
         self.test_rejection_requires_reason_then_resolve()
         self.p["reviewThreads"]["nodes"][0]["isResolved"] = True
         self.p["comments"]["nodes"][0]["author"]["login"] = "someone-else"
-        self.assertFalse(self.result()["ready_to_review"])
+        assert not self.result()["ready_to_review"]
 
-    def test_conflict_draft_missing_checks_pagination(self):
-        """Verify conflicting remarks, drafts and pagination fail safely."""
+    def test_conflict_draft_missing_checks_pagination(self) -> None:
         original = copy.deepcopy(self.p)
         for field, value in [
             ("mergeable", "CONFLICTING"),
@@ -154,10 +147,10 @@ class ReadyContract(unittest.TestCase):
         ]:
             self.p = copy.deepcopy(original)
             self.p[field] = value
-            self.assertFalse(self.result()["ready_to_review"])
+            assert not self.result()["ready_to_review"]
         self.p = original
         self.p["reviewThreads"]["pageInfo"] = {"hasNextPage": True}
-        self.assertFalse(self.result()["ready_to_review"])
+        assert not self.result()["ready_to_review"]
 
 
 if __name__ == "__main__":

@@ -54,7 +54,7 @@ def save_json(path, value):
     tmp.replace(path)
 
 
-def _limits():
+def _limits() -> None:
     resource.setrlimit(resource.RLIMIT_CPU, (2, 2))
     resource.setrlimit(resource.RLIMIT_AS, (256 * 1024 * 1024, 256 * 1024 * 1024))
     resource.setrlimit(resource.RLIMIT_NOFILE, (32, 32))
@@ -86,10 +86,10 @@ def run_python(source, stdin):
 
 
 class ModelBusy(Exception):
-    pass
+    """Exception raised when the upstream model is saturated."""
 
 
-def _wait_budget(detail):
+def _wait_budget(detail) -> None:
     match = re.search(r"resets at: ([0-9-]{10} [0-9:]{8}) UTC", detail)
     delay = 20
     if match:
@@ -129,7 +129,7 @@ def llm(role, prompt):
                 _wait_budget(detail)
                 continue
             if exc.code in {408, 409, 429, 500, 502, 503, 504}:
-                raise ModelBusy(str(exc.code))
+                raise ModelBusy(str(exc.code)) from exc
             raise
     with response:
         payload = json.load(response)
@@ -146,7 +146,7 @@ def others_waiting():
     try:
         with urllib.request.urlopen(url, timeout=5) as response:
             payload = json.load(response)
-    except Exception:
+    except (OSError, ValueError):
         return False
     waiting = 0
     for row in payload.get("data", {}).get("result", []):
@@ -167,7 +167,7 @@ def run_loop(task_id, statement):
     try:
         state = load_json(ROOT / "state.json", {"tasks": {}})
 
-        def hook(record):
+        def hook(record) -> None:
             current = load_json(ROOT / "state.json", {"tasks": {}})
             current["tasks"][task_id] = record
             save_json(ROOT / "state.json", current)
@@ -203,7 +203,7 @@ def run_loop(task_id, statement):
         )
     except ModelBusy as exc:
         log("paused", task=task_id, status=str(exc))
-    except Exception as exc:
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
         log("error", task=task_id, kind=type(exc).__name__)
     finally:
         LOCK.unlink(missing_ok=True)
@@ -226,15 +226,15 @@ def step():
 
 
 class Handler(BaseHTTPRequestHandler):
+    """HTTP handler exposing the lms-certify service."""
+
     def do_GET(self):
-        """Answer liveness probes on /healthz only."""
         if self.path != "/healthz":
             self.send_error(404)
             return
         self._send({"ok": True, "running": LOCK.exists()})
 
     def do_POST(self):
-        """Process one /step certificate request if the worker token matches."""
         if self.path != "/step" or self.headers.get("X-Worker-Token") != TOKEN:
             self.send_error(404)
             return
@@ -243,11 +243,11 @@ class Handler(BaseHTTPRequestHandler):
             self.rfile.read(min(length, 1024))
         try:
             self._send(step())
-        except Exception as exc:
+        except (OSError, ValueError, RuntimeError) as exc:
             log("error", kind=type(exc).__name__)
             self._send({"action": "error", "kind": type(exc).__name__}, 500)
 
-    def _send(self, payload, status=200):
+    def _send(self, payload, status=200) -> None:
         raw = json.dumps(payload).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
@@ -255,8 +255,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(raw)
 
-    def log_message(self, fmt, *args):
-        """Suppress default request logging entirely."""
+    def log_message(self, _fmt, *_args):
         return
 
 
