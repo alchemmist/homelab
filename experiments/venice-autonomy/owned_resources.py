@@ -84,13 +84,13 @@ def cleanup_role(root):
     if container_file.is_file() and not container_file.is_symlink():
         try:
             remove_container(container_file.read_text().strip(), expected)
-        except Exception as error:
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
             errors.append(str(error))
     volume_file = root / "volume-name"
     if volume_file.is_file() and not volume_file.is_symlink():
         try:
             remove_volume(volume_file.read_text().strip(), expected)
-        except Exception as error:
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
             errors.append(str(error))
     if errors:
         raise ValueError("; ".join(errors))

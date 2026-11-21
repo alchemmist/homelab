@@ -46,7 +46,7 @@ def test_native_panel_and_vpn_transports_keep_exact_backends() -> None:
     assert isinstance(rules, list)
     paths = rules[0]["http"]["paths"]
     assert len(paths) == len(values["routes"])
-    for p, v in zip(paths, values["routes"]):
+    for p, v in zip(paths, values["routes"], strict=True):
         assert p["path"] == v["path"] and p["pathType"] == v["pathType"]
         assert p["backend"]["service"] == {
             "name": "traefik-edge-" + v["name"],

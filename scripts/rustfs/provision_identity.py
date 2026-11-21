@@ -266,7 +266,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
+    except (ImportError, OSError, RuntimeError, ValueError):
         raise SystemExit(
             "Identity provisioning stopped; private state may be partial. No automatic rollback or existing identity edits."
-        )
+        ) from None

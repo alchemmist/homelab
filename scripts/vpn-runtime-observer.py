@@ -296,7 +296,7 @@ if __name__ == "__main__":
             print(json.dumps(audit(host, profile, args.expected_image), sort_keys=True))
         else:
             write_metrics(OUTPUT, str(profile["component"]), observe(profile))
-    except Exception:
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
         if not args.audit:
             write_metrics(
                 OUTPUT,

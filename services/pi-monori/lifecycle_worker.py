@@ -95,6 +95,10 @@ if __name__=='__main__':
   try:
    for item in queue('read'):
     try:audit(item)
-    except Exception as e:print('Audit deferred',item['pr'],type(e).__name__,str(e)[:180],flush=True)
-  except Exception as e:print('Queue wait',type(e).__name__,flush=True)
+    except (OSError,ValueError,KeyError,RuntimeError,sqlite3.Error,subprocess.SubprocessError) as e:
+     if isinstance(e, KeyError):
+      queue('ack',pr=item['pr'],dirty=item['dirty'],state='blocked',head='',note='Audit response missing field: '+str(e)[:180])
+     print('Audit deferred',item['pr'],type(e).__name__,str(e)[:180],flush=True)
+  except (OSError,ValueError,RuntimeError,sqlite3.Error,subprocess.SubprocessError) as e:
+   print('Queue wait',type(e).__name__,flush=True)
   time.sleep(30)

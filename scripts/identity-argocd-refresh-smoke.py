@@ -82,7 +82,7 @@ import time
 import urllib.parse
 import uuid
 
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import Error as PlaywrightError, sync_playwright
 
 provider = next(
     x
@@ -209,7 +209,7 @@ try:
                             "Callback exception types:",
                             re.findall(r"\b[A-Z][A-Za-z]+(?:Error|Exception)\b", err),
                         )
-                    except Exception:
+                    except (ValueError, TypeError, IndexError, KeyError, AttributeError, PlaywrightError):
                         pass
             if "/api/v3/flows/executor/" in response.url and response.status in [200, 400]:
                 try:
@@ -229,7 +229,7 @@ try:
                     if data.get("component") == "ak-stage-authenticator-totp":
                         totp_challenge.clear()
                         totp_challenge.update(data)
-                except Exception:
+                except (ValueError, TypeError, IndexError, KeyError, AttributeError, PlaywrightError):
                     pass
 
         page.on("response", observe)

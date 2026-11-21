@@ -498,7 +498,7 @@ if __name__ == "__main__":
     os.umask(0o077)
     try:
         print(json.dumps(run(parser.parse_args())))
-    except Exception as error:
+    except (OSError, RuntimeError, subprocess.SubprocessError, ValueError) as error:
         print(
             json.dumps(
                 {
@@ -508,4 +508,4 @@ if __name__ == "__main__":
                 }
             )
         )
-        raise SystemExit(1)
+        raise SystemExit(1) from error
