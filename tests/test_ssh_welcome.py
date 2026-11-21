@@ -35,77 +35,77 @@ class WelcomeTests(unittest.TestCase):
 
     def test_etcd_is_not_reported_as_worker(self) -> None:
         """Verify etcd and control-plane labels are not collapsed into worker."""
-        self.assertEqual(WELCOME.role({"node-role.kubernetes.io/etcd": "true"}), "etcd")
-        self.assertEqual(
+        assert WELCOME.role({"node-role.kubernetes.io/etcd": "true"}) == "etcd"
+        assert (
             WELCOME.role(
                 {"node-role.kubernetes.io/control-plane": "", "node-role.kubernetes.io/etcd": ""}
-            ),
-            "master + etcd",
+            )
+            == "master + etcd"
         )
-        self.assertEqual(WELCOME.role({}), "worker")
+        assert WELCOME.role({}) == "worker"
 
     def test_links_target_current_node(self) -> None:
         """Verify monitoring and Rancher links select this node's address."""
         monitoring, rancher = WELCOME.urls(self.config, "10.250.0.5")
-        self.assertEqual(parse_qs(urlsplit(monitoring).query)["var-instance"], ["10.250.0.5:9796"])
-        self.assertTrue(rancher.endswith("/node/socrat-3"))
+        assert parse_qs(urlsplit(monitoring).query)["var-instance"] == ["10.250.0.5:9796"]
+        assert rancher.endswith("/node/socrat-3")
 
     def test_description_cannot_inject_terminal_commands(self) -> None:
         """Verify description control characters are removed before display."""
         self.config["description"] = "MSI\x1b]52;clipboard\x07\nnext"
         result = WELCOME.render(self.config, self.portraits, [], 100, False, False)
-        self.assertNotIn("\x1b", result)
-        self.assertNotIn("\x07", result)
-        self.assertIn("MSI", result)
+        assert "\x1b" not in result
+        assert "\x07" not in result
+        assert "MSI" in result
 
     def test_small_terminal_stacks_information(self) -> None:
         """Verify a narrow terminal stacks identity text inside its width."""
         result = WELCOME.render(self.config, self.portraits, [], 50, False, True)
-        self.assertIn("Internal IP: 10.250.0.5", result)
-        self.assertIn("Description: Old MSI", result)
-        self.assertIn("This node is managed by the root user alchemmist.", " ".join(result.split()))
-        self.assertIn("anton.ingrish@gmail.com", result)
-        self.assertIn("@alchemmist", result)
-        self.assertTrue(all(len(line) <= 50 for line in result.splitlines() if "\x1b" not in line))
+        assert "Internal IP: 10.250.0.5" in result
+        assert "Description: Old MSI" in result
+        assert "This node is managed by the root user alchemmist." in " ".join(result.split())
+        assert "anton.ingrish@gmail.com" in result
+        assert "@alchemmist" in result
+        assert all(len(line) <= 50 for line in result.splitlines() if "\x1b" not in line)
 
     def test_default_terminal_output_has_visible_urls_without_osc8(self) -> None:
         """Verify default color output shows both URLs without OSC 8 links."""
         result = WELCOME.render(self.config, self.portraits, [])
         monitoring, rancher = WELCOME.urls(self.config, "10.250.0.5")
-        self.assertIn("\033[1mMonitoring:\033[0m", result)
-        self.assertIn("\033[1mRancher:\033[0m", result)
+        assert "\x1b[1mMonitoring:\x1b[0m" in result
+        assert "\x1b[1mRancher:\x1b[0m" in result
         plain = re.sub(r"\x1b\[[0-9;]*m", "", result)
         logo_width = max(len(line.rstrip()) for line in self.portraits["variants"][0]["lines"])
         column = [line[logo_width + 4 :] for line in plain.splitlines() if line.startswith("  ")]
         joined = "".join(line.strip() for line in column)
-        self.assertIn(monitoring, joined.replace("Monitoring: ", ""))
-        self.assertIn(rancher, joined.replace("Rancher: ", ""))
-        self.assertLess(plain.index("Description:"), plain.index("Monitoring:"))
-        self.assertLess(plain.index("Monitoring:"), plain.index("Rancher:"))
-        self.assertLess(plain.index("Rancher:"), plain.index("This node is managed"))
-        self.assertTrue(all(len(line) <= 100 for line in plain.splitlines()))
-        self.assertNotIn("\033]8;", result)
-        self.assertNotIn("Admin:", result)
-        self.assertNotIn("see link below", result)
+        assert monitoring in joined.replace("Monitoring: ", "")
+        assert rancher in joined.replace("Rancher: ", "")
+        assert plain.index("Description:") < plain.index("Monitoring:")
+        assert plain.index("Monitoring:") < plain.index("Rancher:")
+        assert plain.index("Rancher:") < plain.index("This node is managed")
+        assert all(len(line) <= 100 for line in plain.splitlines())
+        assert "\x1b]8;" not in result
+        assert "Admin:" not in result
+        assert "see link below" not in result
 
     def test_admin_note_is_compact_on_wide_terminal(self) -> None:
         """Verify the admin note stays inside its wrap width on a wide terminal."""
         result = WELCOME.render(self.config, self.portraits, [], 180, False, False)
         note = result[result.index("This node is managed") :].strip()
-        self.assertTrue(all(len(line) <= 76 for line in note.splitlines()))
-        self.assertIn(
-            "More info about cluster on https://wiki.socrat.alchemmist.xyz/", " ".join(note.split())
+        assert all(len(line) <= 76 for line in note.splitlines())
+        assert "More info about cluster on https://wiki.socrat.alchemmist.xyz/" in " ".join(
+            note.split()
         )
-        self.assertIn("https://wiki.socrat.alchemmist.xyz/", note)
+        assert "https://wiki.socrat.alchemmist.xyz/" in note
 
     def test_plain_output_retains_full_urls(self) -> None:
         """Verify plain output keeps resource stats and full monitoring URLs."""
         result = WELCOME.render(
             self.config, self.portraits, [("RAM", "13 / 32 GiB used")], 110, False, False
         )
-        self.assertIn("RAM: 13 / 32 GiB used", result)
-        self.assertIn("Monitoring: https://", result)
-        self.assertNotIn("\x1b", result)
+        assert "RAM: 13 / 32 GiB used" in result
+        assert "Monitoring: https://" in result
+        assert "\x1b" not in result
 
 
 if __name__ == "__main__":

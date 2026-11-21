@@ -12,6 +12,11 @@ spec = importlib.util.spec_from_file_location(
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 
+ELIGIBLE_JOB_COUNT = 2
+CHANGED_JOB_COUNT = 2
+AUDIT_ROW_COUNT = 2
+OLD_WRITER_LEASE = 999
+
 
 class RetryTests(unittest.TestCase):
     def setUp(self):
@@ -145,30 +150,32 @@ class RetryTests(unittest.TestCase):
         before = self.rows()
         with self.assertRaises((ValueError, sqlite3.DatabaseError)):
             m.retry(self.path, self.auth, True, self.manifest)
-        self.assertEqual(before, self.rows())
+        assert before == self.rows()
 
     def test_dry_run(self):
         before = self.rows()
-        self.assertEqual(m.retry(self.path, self.auth, manifest=self.manifest)["eligible"], 2)
-        self.assertEqual(before, self.rows())
+        assert (
+            m.retry(self.path, self.auth, manifest=self.manifest)["eligible"] == ELIGIBLE_JOB_COUNT
+        )
+        assert before == self.rows()
 
     def test_execute_preserves_counters_and_other_tables(self):
         with sqlite3.connect(self.path) as c:
             c.row_factory = sqlite3.Row
             before = m.table_hashes(c)
-        self.assertEqual(m.retry(self.path, self.auth, True, self.manifest)["changed"], 2)
+        assert m.retry(self.path, self.auth, True, self.manifest)["changed"] == CHANGED_JOB_COUNT
         with sqlite3.connect(self.path) as c:
             c.row_factory = sqlite3.Row
             after = m.table_hashes(c)
             for key in before:
                 if key != "jobs":
-                    self.assertEqual(before[key], after[key])
-            self.assertEqual(
-                [tuple(x) for x in c.execute("SELECT state,attempts,created,result FROM jobs")],
-                [("retry", 7, 0.0, '{"history":"retained"}')] * 2,
-            )
-            self.assertEqual(
-                c.execute("SELECT count(*) FROM operator_retry_audit").fetchone()[0], 2
+                    assert before[key] == after[key]
+            assert [
+                tuple(x) for x in c.execute("SELECT state,attempts,created,result FROM jobs")
+            ] == [("retry", 7, 0.0, '{"history":"retained"}')] * 2
+            assert (
+                c.execute("SELECT count(*) FROM operator_retry_audit").fetchone()[0]
+                == AUDIT_ROW_COUNT
             )
             with self.assertRaises(sqlite3.DatabaseError):
                 c.execute("DELETE FROM operator_retry_audit")
@@ -311,11 +318,12 @@ class ProductionStoreTests(unittest.TestCase):
             original = audit()
             for _ in range(3):
                 Store(path)
-            self.assertEqual(audit(), original)
+            assert audit() == original
             # Old writer touching its own leased row cannot erase audit history.
             with sqlite3.connect(path) as c:
-                self.assertEqual(
-                    c.execute("SELECT lease FROM jobs WHERE id='old'").fetchone()[0], 999
+                assert (
+                    c.execute("SELECT lease FROM jobs WHERE id='old'").fetchone()[0]
+                    == OLD_WRITER_LEASE
                 )
                 c.execute("UPDATE jobs SET result='old writer',lease=0 WHERE id='old'")
-            self.assertEqual(audit(), original)
+            assert audit() == original
