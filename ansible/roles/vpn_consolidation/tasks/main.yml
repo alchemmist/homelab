@@ -199,7 +199,8 @@
       delegate_to: socrat-0
       become: false
       register: vpn_consolidation_stop_new
-      failed_when: vpn_consolidation_stop_new.rc != 0 and 'NotFound' not in vpn_consolidation_stop_new.stderr
+      failed_when: vpn_consolidation_stop_new.rc != 0
+                   and 'NotFound' not in vpn_consolidation_stop_new.stderr
       when:
         - vpn_consolidation_cutover | default(false)
         - vpn_consolidation_previous | length > 0
@@ -261,7 +262,9 @@
 
     - name: Report consolidation failure
       ansible.builtin.fail:
-        msg: VPN consolidation failed. Previous workload settings were restored; inspect the private snapshot and service health.
+        msg: >-
+          VPN consolidation failed. Previous workload settings were restored; inspect the
+          private snapshot and service health.
 
   always:
     - name: Remove this migration's maintenance hold
@@ -286,7 +289,8 @@
 
 - name: Remove obsolete namespaces without touching host data
   ansible.builtin.command: >-
-    /usr/local/bin/k3s kubectl delete namespace {{ item }} --ignore-not-found --wait=true --timeout=90s
+    /usr/local/bin/k3s kubectl delete namespace {{ item }} --ignore-not-found
+    --wait=true --timeout=90s
   loop: [x-ui-lab, x-ui-legacy]
   delegate_to: socrat-0
   become: false

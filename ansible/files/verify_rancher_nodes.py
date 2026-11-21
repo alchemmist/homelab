@@ -39,7 +39,7 @@ def verify():
                 timeout=30,
                 context=ssl.create_default_context(),
             )
-            connection._create_connection = lambda target, timeout, source_address=None: (
+            connection._create_connection = lambda _target, timeout, _source_address=None: (
                 socket.create_connection(
                     (endpoint, 443),
                     timeout,
