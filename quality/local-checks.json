@@ -41,10 +41,6 @@
       "junit": "reports/tests-fast.xml"
     }
   },
-  "ownership": {
-    "title": "Ownership contracts",
-    "run": "uv run python scripts/check_infrastructure_contracts.py\nuv run python scripts/check_source_pointers.py\nuv run python scripts/check_operational_entrypoints.py\nuv run python scripts/check_vendor_contracts.py\nuv run python scripts/alert_graphs.py --check\nuv run python scripts/n8n/check_failure_alerts.py"
-  },
   "manifests": {
     "title": "Manifest validation",
     "run": "uv run python scripts/quality/charts.py",

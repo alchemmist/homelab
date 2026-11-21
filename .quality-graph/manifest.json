@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "0ab20bc72b813ebaa3dc2265fd2cc27ab104e3ab64a6131412e3bf3880ea1d8b",
+  "graphDigest": "1906984676d64ade0033fac57089b793f05068442b136149a7d5dd5350e25190",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -93,6 +93,33 @@
       },
       "timeoutMinutes": 5,
       "title": "JavaScript syntax"
+    },
+    {
+      "env": {},
+      "id": "ownership",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-helm",
+      "result": {
+        "adapter": "exit-code"
+      },
+      "step": {
+        "run": "uv run python scripts/check_infrastructure_contracts.py\nuv run python scripts/check_source_pointers.py\nuv run python scripts/check_operational_entrypoints.py\nuv run python scripts/check_vendor_contracts.py\nuv run python scripts/alert_graphs.py --check\nuv run python scripts/n8n/check_failure_alerts.py"
+      },
+      "timeoutMinutes": 10,
+      "title": "Ownership contracts"
     }
   ],
   "profiles": {

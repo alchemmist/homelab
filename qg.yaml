@@ -116,4 +116,17 @@ nodes:
     - graph
     results:
       native: reports/javascript.json
+  ownership:
+    title: Ownership contracts
+    profile: quality-helm
+    needs:
+    - graph
+    policy: *id001
+    run: |-
+      uv run python scripts/check_infrastructure_contracts.py
+      uv run python scripts/check_source_pointers.py
+      uv run python scripts/check_operational_entrypoints.py
+      uv run python scripts/check_vendor_contracts.py
+      uv run python scripts/alert_graphs.py --check
+      uv run python scripts/n8n/check_failure_alerts.py
 ...
