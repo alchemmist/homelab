@@ -55,14 +55,72 @@ class _HandoffResource(TypedDict):
     spec: NotRequired[_DeploymentSpec]
 
 
+def _project_field(
+    document: object, path: tuple[str | int, ...], current: str, original: str
+) -> None:
+    """Only project the approved value at its exact location; all neighbors stay hashed."""
+    for key in path[:-1]:
+        if isinstance(key, int):
+            assert isinstance(document, list)
+            document = document[key]
+        else:
+            assert isinstance(document, dict)
+            document = document[key]
+    assert isinstance(document, dict)
+    assert document[path[-1]] == current, "Live status proxy boundary differs from its owner"
+    document[path[-1]] = original
+
+
+def _status_handoff(resource: _HandoffResource) -> _HandoffResource:
+    """Project only the Gatus compatibility fields that changed in the Kuma retirement."""
+    result = copy.deepcopy(resource)
+    identity = (resource["kind"], resource["metadata"]["name"])
+    if identity == ("Ingress", "kuma-admin-browser"):
+        _project_field(
+            result,
+            ("spec", "rules", 0, "http", "paths", 0, "backend", "service", "name"),
+            "public-web-kuma-proxy",
+            "uptime-kuma",
+        )
+    elif identity in {
+        ("ConfigMap", "public-web-kuma-policy"),
+        ("Deployment", "public-web-kuma-proxy"),
+    }:
+        current = (ROOT / "charts/uptime-kuma/files/kuma-policy.conf").read_bytes()
+        original = (
+            ROOT / "tests/fixtures/public-entry-handoff-inputs/kuma-policy.conf.txt"
+        ).read_bytes()
+        assert subprocess.check_output(
+            ["git", "hash-object", "--stdin"], input=original
+        ).decode().strip() == ("40a9cac2fe30cf52ad89785f940c73cc49f5655c")
+        if resource["kind"] == "ConfigMap":
+            _project_field(result, ("data", "nginx.conf"), current.decode(), original.decode())
+        else:
+            _project_field(
+                result,
+                ("spec", "template", "metadata", "annotations", "checksum/config"),
+                hashlib.sha256(current).hexdigest(),
+                hashlib.sha256(original).hexdigest(),
+            )
+            _project_field(
+                result,
+                ("spec", "template", "spec", "containers", 0, "readinessProbe", "httpGet", "path"),
+                "/api/v1/config",
+                "/api/status-page/socrat",
+            )
+    return result
+
+
 def migration_payload(resource: _HandoffResource) -> _HandoffResource:
     """Keep immutable handoff hashes; supply later source payloads independently.
 
-    Validate the Rancher recovery wave and current Grafana inputs before
+    Validate the Rancher recovery wave, Gatus transition and Grafana inputs before
     projecting those fields back to the original reviewed handoff. All other
     fields still participate unchanged in the immutable fixture comparison.
     """
     name = resource["metadata"]["name"]
+    if resource["metadata"]["namespace"] == "uptime-kuma":
+        return _status_handoff(resource)
     if (resource["kind"], resource["metadata"]["namespace"], name) == (
         "Deployment",
         "cattle-system",
