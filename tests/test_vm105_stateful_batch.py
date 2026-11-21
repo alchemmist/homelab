@@ -111,7 +111,8 @@ class StatefulBoundaries(unittest.TestCase):
         if chart == "charts/spi-triage":
             # Do not freeze the SPI application version at the migration
             # date or revert a subsequent canonical release from main.
-            assert values is not None
+            if values is None:
+                raise AssertionError(f"{chart} requires a values file")
             image: dict[str, str] = yaml.safe_load((R / values).read_text())["image"]
             self.assertEqual(set(image), {"repository", "tag", "digest"})
             self.assertTrue(all(isinstance(value, str) for value in image.values()))
@@ -120,7 +121,8 @@ class StatefulBoundaries(unittest.TestCase):
             # The owner release is independent of the placement handoff.
             # Inject only before-render inputs; retain all current-render
             # image/strategy/PVC/identity and full payload comparisons.
-            assert values is not None
+            if values is None:
+                raise AssertionError(f"{chart} requires a values file")
             images: dict[str, dict[str, str]] = yaml.safe_load((R / values).read_text())["images"]
             self.assertEqual(set(images), {"front", "back", "sync"})
             for fields in images.values():
