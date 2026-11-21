@@ -6,6 +6,7 @@ import json
 import shlex
 import subprocess
 import time
+from typing import cast
 
 
 def converged(deployment, pods, node, replicas=1):
@@ -46,7 +47,7 @@ def owned_by_current_revision(deployment, replica_sets, pods):
     if not uid or not revision or not pods:
         return False
 
-    def controller(obj, kind, expected):
+    def controller(obj, kind, expected) -> bool:
         owners = [o for o in obj["metadata"].get("ownerReferences", []) if o.get("controller")]
         return (
             len(owners) == 1 and owners[0].get("kind") == kind and owners[0].get("uid") in expected
@@ -81,7 +82,7 @@ def main():
         p.error("timeout must be 1..1800 seconds")
     deadline = time.monotonic() + args.timeout
 
-    def get(kind, *extra):
+    def get(kind, *extra) -> dict[str, object]:
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise TimeoutError("Placement did not converge before deadline")
@@ -117,14 +118,17 @@ def main():
             raise RuntimeError(
                 "Read-only Kubernetes inspection failed; inspect transport privately"
             )
-        return json.loads(result.stdout)
+        return cast("dict[str, object]", json.loads(result.stdout))
 
     while time.monotonic() < deadline:
         d = get("deployment", args.deployment)
-        selector = d["spec"]["selector"]
+        spec = cast("dict[str, object]", d["spec"])
+        selector = cast("dict[str, object]", spec["selector"])
         if selector.get("matchExpressions"):
             raise ValueError("Complex selector unsupported; refusing partial ownership check")
-        labels = ",".join(k + "=" + v for k, v in sorted(selector["matchLabels"].items()))
+        labels = ",".join(
+            k + "=" + v for k, v in sorted(cast("dict[str, str]", selector["matchLabels"]).items())
+        )
         pods = get("pods", "-l", labels)["items"]
         if converged(d, pods, args.node):
             # Validate ownership as well as labels. A manually labelled Pod is not proof.

@@ -7,6 +7,7 @@ Never create/modify a human, emit a token, or keep the bootstrap credential.
 
 import argparse
 import datetime as dt
+import http.client
 import fcntl
 import importlib.util
 import json
@@ -122,7 +123,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception as e:
+    except (ValueError, KeyError, TypeError, RuntimeError, OSError, http.client.HTTPException) as e:
         print(
             json.dumps(
                 {

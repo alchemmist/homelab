@@ -55,13 +55,13 @@ def rewrite_login(text, selected):
     )
 
 
-def remove_idle_shutdown(text):
+def remove_idle_shutdown(text: str) -> str:
     return IDLE_LISTENER.sub(
         lambda match: "" if IDLE_SHUTDOWN.search(match.group()) else match.group(), text
     )
 
 
-def replace_file(path, content, uid, gid):
+def replace_file(path: Path, content: str, uid: int, gid: int) -> None:
     previous = path.stat() if path.exists() else None
     descriptor, name = tempfile.mkstemp(prefix="." + path.name + ".homelab-", dir=path.parent)
     temporary = Path(name)
@@ -81,16 +81,21 @@ def replace_file(path, content, uid, gid):
         temporary.unlink(missing_ok=True)
 
 
-def configure(home, username, login_file, cleanup, disable_shutdown, check=False):
+def _validated_account(username: str, home: Path, login_file: str) -> pwd.struct_passwd:
+    """Validate shell, home and login file; return the matched passwd entry."""
     user = pwd.getpwnam(username)
     if not user.pw_shell.endswith("/zsh"):
         raise ValueError("This setup requires the existing zsh login shell")
-    home = home.resolve()
-    if home != Path(user.pw_dir).resolve():
+    if home.resolve() != Path(user.pw_dir).resolve():
         raise ValueError("Home directory does not match the account")
     if login_file not in [".zprofile", ".zshrc"]:
         raise ValueError("Unsupported login file")
-    edits = []
+    return user
+
+
+def _planned_login_edits(home: Path, login_file: str) -> list[tuple[str, Path, str]]:
+    """Plan verified zsh profile edits that keep one reviewed startup block."""
+    edits: list[tuple[str, Path, str]] = []
     for filename in [".zprofile", ".zshrc", ".zlogin"]:
         path = (home / filename).resolve()
         if not path.is_relative_to(home):
@@ -107,15 +112,24 @@ def configure(home, username, login_file, cleanup, disable_shutdown, check=False
                 if result.returncode:
                     raise ValueError("Invalid zsh syntax in " + filename)
             edits.append((filename, path, new))
-    if disable_shutdown:
-        path = (home / ".config/hypr/hypridle.conf").resolve()
-        if not path.is_relative_to(home):
-            raise ValueError("Idle configuration resolves outside the user home")
-        if path.exists():
-            old = path.read_text()
-            new = remove_idle_shutdown(old)
-            if new != old:
-                edits.append(("hypridle.conf", path, new))
+    return edits
+
+
+def _planned_idle_edit(home: Path) -> list[tuple[str, Path, str]]:
+    """Plan the hypridle edit that removes the reviewed shutdown listener."""
+    path = (home / ".config/hypr/hypridle.conf").resolve()
+    if not path.is_relative_to(home):
+        raise ValueError("Idle configuration resolves outside the user home")
+    if path.exists():
+        old = path.read_text()
+        new = remove_idle_shutdown(old)
+        if new != old:
+            return [("hypridle.conf", path, new)]
+    return []
+
+
+def _obsolete_files(home: Path, cleanup: object) -> list[tuple[Path, str]]:
+    """List legacy configuration paths that the cleanup flag would archive."""
     obsolete = [
         (home / name, label)
         for name, label in LEGACY_PATHS.items()
@@ -123,14 +137,16 @@ def configure(home, username, login_file, cleanup, disable_shutdown, check=False
     ]
     if any(not path.parent.resolve().is_relative_to(home) for path, _ in obsolete):
         raise ValueError("Legacy configuration parent resolves outside the user home")
-    if not edits and not obsolete:
-        return {"changed": False, "profiles": [], "archived": []}
-    if check:
-        return {
-            "changed": True,
-            "profiles": [label for label, _, _ in edits],
-            "archived": [label for _, label in obsolete],
-        }
+    return obsolete
+
+
+def _apply_changes(
+    home: Path,
+    user: pwd.struct_passwd,
+    edits: list[tuple[str, Path, str]],
+    obsolete: list[tuple[Path, str]],
+) -> dict[str, object]:
+    """Apply planned edits, archiving originals under a fresh private backup."""
     backup = (
         home
         / ".local/state/homelab/desktop-backups"
@@ -152,6 +168,25 @@ def configure(home, username, login_file, cleanup, disable_shutdown, check=False
         "archived": [label for _, label in obsolete],
         "backup": str(backup),
     }
+
+
+def configure(home, username, login_file, cleanup, disable_shutdown, *, check=False):
+    """Plan and optionally apply reviewed desktop startup profile changes."""
+    user = _validated_account(username, home, login_file)
+    home = home.resolve()
+    edits = _planned_login_edits(home, login_file)
+    if disable_shutdown:
+        edits.extend(_planned_idle_edit(home))
+    obsolete = _obsolete_files(home, cleanup)
+    if not edits and not obsolete:
+        return {"changed": False, "profiles": [], "archived": []}
+    if check:
+        return {
+            "changed": True,
+            "profiles": [label for label, _, _ in edits],
+            "archived": [label for _, label in obsolete],
+        }
+    return _apply_changes(home, user, edits, obsolete)
 
 
 def main():
