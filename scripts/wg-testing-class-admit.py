@@ -10,17 +10,17 @@ IP = "10.250.0.41/32"
 EXPECTED = "ea9e5dc22fabfe13af8e65fae5944846f8ac11d1d69eb62dc6b301cfbde3d503"
 
 
-def run(*args: str):
+def run(*args: str) -> str:
     return subprocess.check_output(args, text=True).strip()
 
 
-def peers():
+def peers() -> dict[str, str]:
     return dict(
         x.split("\t", 1) for x in run("wg", "show", "wg-socrat", "allowed-ips").splitlines()
     )
 
 
-def main():
+def main() -> None:
     os.umask(0o077)
     assert run("hostname") == "socrat-4"
     assert (
