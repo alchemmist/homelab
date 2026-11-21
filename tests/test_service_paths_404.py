@@ -16,6 +16,7 @@ spec.loader.exec_module(probe)
 
 def test_snapshot_turnover_and_failures():
     a, b = ("a", [("192.0.2.1", 8082)]), ("b", [("192.0.2.2", 8082)])
+    many = ("many", [(f"192.0.2.{n}", 8082) for n in range(1, 10)])
     for snapshots, results, expected in [
         ([a, a], ["ok", "ok"], "ok"),
         ([("empty", [])], [], "no_endpoint"),
@@ -23,6 +24,7 @@ def test_snapshot_turnover_and_failures():
         ([a, a], ["dns", "ok"], "service_dns"),
         ([a, a], ["failed", "failed"], "endpoint_failed"),
         ([a, a], ["failed", "ok"], "service_only_failed"),
+        ([many, many], ["ok"] * 10, "ok"),
     ]:
         with (
             patch.dict(probe.os.environ, {"BOT_SERVICE_VIP": "10.43.167.29"}),

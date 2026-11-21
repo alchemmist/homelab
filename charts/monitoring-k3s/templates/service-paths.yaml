@@ -105,7 +105,12 @@ spec:
       ports: [{port: 8082, protocol: TCP}]
     - to: [{ipBlock: {cidr: {{ printf "%s/32" $botVIP | quote }}}}]
       ports: [{port: 8080, protocol: TCP}]
-    - to: [{ipBlock: {cidr: 10.43.0.1/32}}]
+    - to:
+        - ipBlock: {cidr: 10.43.0.1/32}
+        - ipBlock: {cidr: 10.250.0.1/32}
+        - ipBlock: {cidr: 10.250.0.3/32}
+        - ipBlock: {cidr: 10.250.0.41/32}
+        - ipBlock: {cidr: 192.168.0.23/32}
       ports: [{port: 443, protocol: TCP}]
     - to:
         - ipBlock: {cidr: 10.250.0.1/32}
