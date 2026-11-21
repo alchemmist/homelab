@@ -1,6 +1,6 @@
 # PostgreSQL Socrat: рабочая карта
 
-Срез после переключений 20 ноября 2026. Описание для пользователей — [страница wiki](https://wiki.socrat.alchemmist.xyz/platform/postgresql/), эксплуатация и ротация CA — [runbook](../docs/postgres-platform.md). Владелец конфигурации — `charts/postgres-platform`, Argo Application `postgres-platform`, namespace `postgres`.
+Актуально на 21 ноября 2026, после переноса базы генератора заданий LMS. Описание для пользователей — [страница wiki](https://wiki.socrat.alchemmist.xyz/platform/postgresql/), эксплуатация и ротация CA — [runbook](../docs/postgres-platform.md). Владелец конфигурации — `charts/postgres-platform`, Argo Application `postgres-platform`, namespace `postgres`.
 
 | Адрес записи внутри кластера | БД → сервис | Контракт |
 |---|---|---|
