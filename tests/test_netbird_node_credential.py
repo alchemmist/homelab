@@ -15,7 +15,7 @@ spec.loader.exec_module(c)
 
 
 class CredentialTest(unittest.TestCase):
-    def setup_runtime(self, folder, days):
+    def setup_runtime(self, folder: Path, days: int):
         old = {
             "user_id": "service-id",
             "token_id": "old-id",
@@ -37,10 +37,10 @@ class CredentialTest(unittest.TestCase):
         ]
 
         class Runtime:
-            def __init__(self, root, config):
+            def __init__(self, root: Path, config: dict[str, object]):
                 self.auth = dict(old)
 
-            def api(self, method, path, body=None):
+            def api(self, method: str, path: str, body: dict[str, object] | None = None):
                 calls.append((method, path))
                 if method == "GET":
                     return users

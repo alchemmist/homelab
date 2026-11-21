@@ -2,6 +2,7 @@ import argparse
 import json
 import subprocess
 from pathlib import Path
+from typing import TypedDict
 
 ROOT = Path(__file__).resolve().parents[1]
 REMOTE_AUDIT = """
@@ -22,8 +23,15 @@ print(json.dumps(dashboards))
 """
 
 
-def panel_descriptions(dashboard) -> dict[str, object]:
-    result: dict[str, object] = {}
+class _DashboardPanel(TypedDict, total=False):
+    type: str
+    id: int | str
+    description: str
+    panels: list["_DashboardPanel"]
+
+
+def panel_descriptions(dashboard: _DashboardPanel):
+    result = {}
     for panel in dashboard.get("panels", []):
         if panel.get("type") not in {"row", "text"}:
             result[str(panel["id"])] = panel.get("description", "")
@@ -31,7 +39,7 @@ def panel_descriptions(dashboard) -> dict[str, object]:
     return result
 
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--ssh-host", default="socrat-0")
     args = parser.parse_args()

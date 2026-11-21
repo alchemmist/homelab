@@ -41,7 +41,7 @@ LOGIN_REDIRECTS = {
 }
 
 
-def redirect_matches(host, headers) -> bool:
+def redirect_matches(host: str, headers: str):
     if host not in LOGIN_REDIRECTS:
         return True
     locations = [
@@ -59,7 +59,7 @@ def redirect_matches(host, headers) -> bool:
     )
 
 
-def check_endpoint(item) -> tuple[str, str, bool]:
+def check_endpoint(item: tuple[str, str]):
     host, address = item
     path, expected, marker = PROBES.get(host, ("/", 200, None))
     with tempfile.TemporaryDirectory(prefix="public-ingress-check-") as directory:
@@ -107,7 +107,7 @@ def check_endpoint(item) -> tuple[str, str, bool]:
     return host, code, valid
 
 
-def check_dns(host) -> bool:
+def check_dns(host: str):
     valid = True
     for authority in ADDRESSES:
         result = subprocess.run(
@@ -125,7 +125,7 @@ def check_dns(host) -> bool:
     return valid
 
 
-def main() -> int:
+def main():
     parser = argparse.ArgumentParser(
         description="Check both public HTTPS entrances without depending on DNS propagation."
     )

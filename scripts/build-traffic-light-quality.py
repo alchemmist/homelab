@@ -2,8 +2,9 @@
 
 import copy
 import json
+from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import cast
+from typing import Protocol
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "charts/monitoring-k3s/dashboards/traffic-light.json"
@@ -11,19 +12,36 @@ DS = {"type": "prometheus", "uid": "prometheus"}
 IDS = {930, 931, 932, 933, 934, 935, 936}
 
 
-def fresh_job(job) -> str:
+class _PanelId(Protocol):
+    def __getitem__(self, key: str) -> int: ...
+
+
+class _Dashboard(Protocol):
+    def __getitem__(self, key: str) -> Sequence[_PanelId]: ...
+
+
+def fresh_job(job: str):
     return (
         f'(max(up{{job="{job}"}}) == 1) and on() (time() - max(timestamp(up{{job="{job}"}})) < 90)'
     )
 
 
-def fresh_metric(metric) -> str:
+def fresh_metric(metric: str):
     return f"(time() - max(timestamp({metric})) < 90)"
 
 
 def stat(
-    pid, name, grid, expr, unit, description, trend=False, bands=None, decimals=0
-) -> dict[str, object]:
+    pid: int,
+    name: str,
+    grid: Mapping[str, int],
+    expr: str,
+    unit: str,
+    description: str,
+    *,
+    trend: bool = False,
+    bands: Sequence[Mapping[str, int | str | None]] | None = None,
+    decimals: int = 0,
+):
     mappings = {
         "-2": {"text": "No telemetry", "color": "#808080"},
         "-1": {"text": "Never succeeded", "color": "#808080"},
@@ -73,7 +91,7 @@ def stat(
     }
 
 
-def traffic(pid, name, namespace, pod, color) -> dict[str, object]:
+def traffic(pid: int, name: str, namespace: str, pod: str, color: str):
     # cAdvisor exports pod network once on the sandbox (no container label here).
     # Byte rates include protocol/probe traffic: NEVER call these object/OCI counts.
     labels = f'namespace="{namespace}",pod=~"{pod}",interface="eth0",job="kubelet"'
@@ -148,7 +166,7 @@ def traffic(pid, name, namespace, pod, color) -> dict[str, object]:
     }
 
 
-def ai_quality() -> dict[str, object]:
+def ai_quality():
     wait = 'vllm:num_requests_waiting{job="vllm"}'
     count = 'vllm:time_to_first_token_seconds_count{job="vllm"}'
     bucket = 'vllm:time_to_first_token_seconds_bucket{job="vllm"}'
@@ -216,13 +234,13 @@ def ai_quality() -> dict[str, object]:
     }
 
 
-def cascade_summary() -> dict[str, object]:
+def cascade_summary():
     selector = 'namespace="cattle-monitoring-system",cronjob="thanos-cascade"'
     success = f"kube_cronjob_status_last_successful_time{{{selector}}}"
     age = f"((time()-max({success}>0)) and on() {fresh_metric(success)} and on() ({fresh_job('kube-state-metrics')})) or vector(-2)"
     pod_re = "thanos-compactor(-5m|-1h)?-[0-9a-f]+-.+"
 
-    def live(metric):
+    def live(metric: str):
         return f'({metric} and (time()-timestamp({metric})<90) and on(instance) (up{{job="cattle-monitoring-system/thanos"}}==1))'
 
     todo = 'thanos_compact_todo_downsample_blocks{job="cattle-monitoring-system/thanos",pod=~"thanos-compactor-[0-9a-f]+-.+"}'
@@ -321,7 +339,7 @@ def cascade_summary() -> dict[str, object]:
     }
 
 
-def panels() -> list[dict[str, object]]:
+def panels():
     result = [
         traffic(931, "RustFS", "rustfs", "rustfs-.*", "#B877D9"),
         traffic(932, "Harbor", "harbor", "harbor-registry-.*", "#2EBFA5"),
@@ -329,6 +347,7 @@ def panels() -> list[dict[str, object]]:
         cascade_summary(),
     ]
     for pid, namespace, job, label, warning, limit in [
+
         (935, "automation", "n8n-backup", "n8n backup", 24 * 3600, 26 * 3600),
     ]:
         selector = f'namespace="{namespace}",cronjob="{job}"'
@@ -355,57 +374,43 @@ def panels() -> list[dict[str, object]]:
                 ],
             )
         )
-    streaming = (
-        'cnpg_pg_replication_streaming_replicas{job="postgres-platform",pg_cluster="pg-common"}'
-    )
-    result.append(
-        stat(
-            934,
-            "PG replicas",
-            {"x": 4, "y": 12, "w": 2, "h": 2},
-            f"max({streaming} and (time() - timestamp({streaming}) < 90)) or vector(-2)",
-            "short",
-            "Streaming standby count reported by the pg-common primary. Expected 1. No fresh primary telemetry is unknown, not zero. Replication is not a backup.",
-            bands=[{"color": "#F2495C", "value": None}, {"color": "#26783D", "value": 1}],
-        )
-    )
+    streaming = 'cnpg_pg_replication_streaming_replicas{job="postgres-platform",pg_cluster="pg-common"}'
+    result.append(stat(934, "PG replicas", {"x": 4, "y": 12, "w": 2, "h": 2},
+                       f"max({streaming} and (time() - timestamp({streaming}) < 90)) or vector(-2)",
+                       "short", "Streaming standby count reported by the pg-common primary. Expected 1. No fresh primary telemetry is unknown, not zero. Replication is not a backup.",
+                       bands=[{"color": "#F2495C", "value": None}, {"color": "#26783D", "value": 1}]))
     for p in result:
         if p["id"] in (934, 935):
-            options = cast("dict[str, object]", p["options"])
-            options["text"] = {"titleSize": 11, "valueSize": 20}
-            field_config = cast("dict[str, object]", p["fieldConfig"])
-            defaults = cast("dict[str, object]", field_config["defaults"])
-            defaults["noValue"] = "No data"
-            mappings = cast("list[dict[str, object]]", defaults["mappings"])
-            states = cast("dict[str, object]", mappings[0]["options"])
+            p["options"]["text"] = {"titleSize": 11, "valueSize": 20}
+            p["fieldConfig"]["defaults"]["noValue"] = "No data"
+            states = p["fieldConfig"]["defaults"]["mappings"][0]["options"]
             for code, label in [("-2", "No data"), ("-1", "Never"), ("-3", "Missing")]:
-                cast("dict[str, object]", states[code])["text"] = label
+                states[code]["text"] = label
     return result
 
 
-def build(source=None) -> dict[str, object]:
-    d: dict[str, object] = copy.deepcopy(
-        source if source is not None else json.loads(SOURCE.read_text())
-    )
-    panels_json = cast("list[dict[str, object]]", d["panels"])
-    existing_owner = {p["id"]: p for p in panels_json}
+def build(source: dict[str, object] | None = None):
+    if source is None:
+        d = copy.deepcopy(json.loads(SOURCE.read_text()))
+    else:
+        copied = copy.deepcopy(source)
+        d = copied
+    existing = {p["id"]: p for p in d["panels"]}
     # Owner deletions are authoritative; never resurrect retired/removed widgets.
-    additions = [
-        copy.deepcopy(existing_owner[p["id"]]) for p in panels() if p["id"] in existing_owner
-    ]
+    additions = [copy.deepcopy(existing[p["id"]]) for p in panels() if p["id"] in existing]
     occupied = set()
-    for p in cast("list[dict[str, object]]", d["panels"]):
+    for p in d["panels"]:
         if p["id"] not in IDS:
-            g = cast("dict[str, int]", p["gridPos"])
+            g = p["gridPos"]
             occupied.update(
                 (x, y)
                 for x in range(g["x"], g["x"] + g["w"])
                 for y in range(g["y"], g["y"] + g["h"])
             )
     for p in additions:
-        if p["id"] in existing_owner:
-            p["gridPos"] = copy.deepcopy(existing_owner[p["id"]]["gridPos"])
-        g = cast("dict[str, int]", p["gridPos"])
+        if p["id"] in existing:
+            p["gridPos"] = copy.deepcopy(existing[p["id"]]["gridPos"])
+        g = p["gridPos"]
         for x in range(g["x"], g["x"] + g["w"]):
             for y in range(g["y"], g["y"] + g["h"]):
                 if (x, y) in occupied or not (0 <= x < 24 and 0 <= y < 20):
@@ -414,13 +419,11 @@ def build(source=None) -> dict[str, object]:
                     )
                 occupied.add((x, y))
     replacements = {p["id"]: p for p in additions}
-    d["panels"] = [
-        replacements.get(p["id"], p) for p in cast("list[dict[str, object]]", d["panels"])
-    ]
+    d["panels"] = [replacements.get(p["id"], p) for p in d["panels"]]
     return d
 
 
-def write(d) -> None:
+def write(d: _Dashboard):
     # Compact generated widgets only; keep original owner panels byte-formatted.
     # This reduces actual ConfigMap/annotation bytes without relaxing the size guard.
     text = json.dumps(d, ensure_ascii=False, indent=2)

@@ -12,7 +12,9 @@ import json
 import os
 import socket
 import subprocess
+from collections.abc import Sequence
 from pathlib import Path
+from typing import TypedDict, Unpack
 
 spec = importlib.util.spec_from_file_location(
     "vpn_inventory", Path(__file__).with_name("vpn-hardening-inventory.py")
@@ -69,7 +71,11 @@ def stable(value):
     return value
 
 
-def run(args, **kwargs):
+class _RunKeywords(TypedDict, total=False):
+    input: str
+
+
+def run(args: Sequence[str], **kwargs: Unpack[_RunKeywords]) -> str:
     result = subprocess.run(args, capture_output=True, text=True, timeout=20, **kwargs)
     if result.returncode:
         raise RuntimeError("nft operation failed; inspect private state")

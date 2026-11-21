@@ -6,12 +6,11 @@ import subprocess
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import cast
 
 URL = "https://grafana-mcp.socrat.alchemmist.xyz/mcp"
 
 
-def load_token(ssh_host) -> str:
+def load_token(ssh_host: str):
     result = subprocess.run(
         [
             "ssh",
@@ -29,7 +28,7 @@ def load_token(ssh_host) -> str:
 
 
 class Client:
-    def __init__(self, url, token):
+    def __init__(self, url: str, token: str):
         self.url = url
         self.headers = {
             "Authorization": "Bearer " + token,
@@ -39,7 +38,7 @@ class Client:
         self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         self.sequence = 0
 
-    def request(self, method, params, notify=False) -> object:
+    def request(self, method: str, params: object, *, notify: bool = False):
         self.sequence += 1
         body = {"jsonrpc": "2.0", "method": method, "params": params}
         if not notify:
@@ -54,7 +53,7 @@ class Client:
         if notify:
             return None
         if raw.lstrip().startswith("{"):
-            result: object = json.loads(raw)
+            result = json.loads(raw)
         else:
             messages = [
                 json.loads(line[5:].strip())
@@ -62,23 +61,18 @@ class Client:
                 if line.startswith("data:")
             ]
             result = next(message for message in messages if message.get("id") == self.sequence)
-        result_map = cast("dict[str, object]", result)
-        if "error" in result_map:
+        if "error" in result:
             raise RuntimeError("MCP protocol error")
-        return result_map["result"]
+        return result["result"]
 
-    def tool(self, name, arguments) -> str:
-        result = cast(
-            "dict[str, object]",
-            self.request("tools/call", {"name": name, "arguments": arguments}),
-        )
+    def tool(self, name: str, arguments: object):
+        result = self.request("tools/call", {"name": name, "arguments": arguments})
         if result.get("isError"):
             raise RuntimeError("MCP tool failed: " + name)
-        blocks = cast("list[dict[str, str]]", result.get("content", []))
-        return "\n".join(block.get("text", "") for block in blocks)
+        return "\n".join(block.get("text", "") for block in result.get("content", []))
 
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", default=URL)
     parser.add_argument("--ssh-host", default="socrat-0")
@@ -114,18 +108,10 @@ def main() -> None:
             "clientInfo": {"name": "homelab-check", "version": "1"},
         },
     )
-    client.headers["MCP-Protocol-Version"] = cast(
-        "str", cast("dict[str, object]", initialized)["protocolVersion"]
-    )
+    client.headers["MCP-Protocol-Version"] = initialized["protocolVersion"]
     client.request("notifications/initialized", {}, notify=True)
-    tools = cast(
-        "list[dict[str, object]]",
-        cast("dict[str, object]", client.request("tools/list", {}))["tools"],
-    )
-    if not tools or any(
-        not cast("dict[str, object]", tool.get("annotations", {})).get("readOnlyHint")
-        for tool in tools
-    ):
+    tools = client.request("tools/list", {})["tools"]
+    if not tools or any(not tool.get("annotations", {}).get("readOnlyHint") for tool in tools):
         raise RuntimeError("Unexpected non-read-only tool")
     print(f"PASS: MCP initialized with {len(tools)} read-only tools")
     result = client.tool("search_dashboards", {"query": "Overview"})

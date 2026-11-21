@@ -1,6 +1,7 @@
 import asyncio
 import json
 import uuid
+from typing import cast
 
 from open_webui.utils.homelab_tool_guard import REPEAT_STOP_MESSAGE, guard_stopped
 from open_webui.utils.middleware import build_terminal_file_tool_result, execute_tool_call
@@ -56,10 +57,10 @@ async def main() -> None:
             server_data=server,
         )
 
-    async def replace(**params):
+    async def replace(**params: object) -> object:
         nonlocal dispatches
         dispatches += 1
-        return await raw("replace_file_content", params)
+        return cast("object", await raw("replace_file_content", params))
 
     metadata = {
         "message_id": str(uuid.uuid4()),
@@ -124,8 +125,8 @@ async def main() -> None:
         metadata["tools"]["read_file"] = {"type": "terminal", "spec": specs["read_file"]}
 
         async def read(params):
-            async def dispatch(**kwargs):
-                return await raw("read_file", params)
+            async def dispatch(**kwargs: object) -> object:
+                return cast("object", await raw("read_file", params))
 
             metadata["tools"]["read_file"]["callable"] = dispatch
             return await execute_tool_call(

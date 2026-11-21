@@ -4,6 +4,7 @@ import shlex
 import subprocess
 import time
 import urllib.parse
+from collections.abc import Sequence
 from pathlib import Path
 from typing import cast
 
@@ -11,7 +12,7 @@ NAMESPACE = "cattle-monitoring-system"
 PROMETHEUS_SERVICE = "kube-prometheus-stack-prometheus:9090"
 
 
-def kubectl(host, *args) -> dict[str, object]:
+def kubectl(host: str, *args: str):
     result = subprocess.run(
         ["ssh", "-o", "BatchMode=yes", host, shlex.join(["kubectl", *args])],
         capture_output=True,
@@ -20,11 +21,10 @@ def kubectl(host, *args) -> dict[str, object]:
     )
     if result.returncode:
         raise RuntimeError("kubectl failed: " + result.stderr[-1000:])
-    document: dict[str, object] = json.loads(result.stdout)
-    return document
+    return json.loads(result.stdout)
 
 
-def prometheus(host, endpoint, params=None) -> object:
+def prometheus(host: str, endpoint: str, params: dict[str, object] | None = None):
     path = (
         f"/api/v1/namespaces/{NAMESPACE}/services/http:{PROMETHEUS_SERVICE}/proxy/api/v1/{endpoint}"
     )
@@ -36,31 +36,39 @@ def prometheus(host, endpoint, params=None) -> object:
     return result["data"]
 
 
-def query(host, expression, timestamp=None) -> object:
-    params = {"query": expression}
+def query(host: str, expression: str, timestamp: int | None = None):
+    params: dict[str, object] = {"query": expression}
     if timestamp is not None:
         params["time"] = timestamp
-    return cast("dict[str, object]", prometheus(host, "query", params))["result"]
+    return prometheus(host, "query", params)["result"]
 
 
-def require(condition, description) -> None:
+def require(condition: object, description: str):
     if not condition:
         raise RuntimeError(description)
     print("PASS:", description)
 
 
-def target_summary(targets) -> dict[str, dict[str, int]]:
+def target_summary(targets: Sequence[object]):
     summary: dict[str, dict[str, int]] = {}
     for target in targets:
-        job = target.get("labels", {}).get("job", "<unknown>")
+        entry = cast("dict[str, object]", target)
+        labels = cast("dict[str, object]", entry.get("labels", {}))
+        job = cast("str", labels.get("job", "<unknown>"))
         counts = summary.setdefault(job, {"up": 0, "down": 0})
-        counts["up" if target.get("health") == "up" else "down"] += 1
+        counts["up" if cast("str", entry.get("health")) == "up" else "down"] += 1
     return summary
 
 
 def remote_http_status(
-    host, url, resolve_address=None, forwarded_for=None, interface=None, public_absence=False
-) -> int:
+    host: str,
+    url: str,
+    resolve_address: str | None = None,
+    forwarded_for: str | None = None,
+    interface: str | None = None,
+    *,
+    public_absence: bool = False,
+):
     command = [
         "curl",
         "--silent",
@@ -103,7 +111,7 @@ def remote_http_status(
     return int(status)
 
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--ssh-host", default="socrat-0")
     parser.add_argument("--grafana-url", default="https://grafana.socrat.alchemmist.xyz")
@@ -115,23 +123,15 @@ def main() -> None:
     parser.add_argument("--compare", type=Path)
     parser.add_argument("--wait-seconds", type=int, default=120)
     args = parser.parse_args()
-    nodes = cast(
-        "list[dict[str, object]]", kubectl(args.ssh_host, "get", "nodes", "-o", "json")["items"]
-    )
-    names = {cast("dict[str, object]", node["metadata"])["name"] for node in nodes}
+    nodes = kubectl(args.ssh_host, "get", "nodes", "-o", "json")["items"]
+    names = {node["metadata"]["name"] for node in nodes}
     etcd_count = sum(
-        "node-role.kubernetes.io/etcd"
-        in cast("dict[str, object]", cast("dict[str, object]", node["metadata"]).get("labels", {}))
-        for node in nodes
+        "node-role.kubernetes.io/etcd" in node["metadata"].get("labels", {}) for node in nodes
     )
     require(
         all(
             any(
-                c["type"] == "Ready" and c["status"] == "True"
-                for c in cast(
-                    "list[dict[str, object]]",
-                    cast("dict[str, object]", node["status"])["conditions"],
-                )
+                c["type"] == "Ready" and c["status"] == "True" for c in node["status"]["conditions"]
             )
             for node in nodes
         ),
@@ -139,10 +139,7 @@ def main() -> None:
     )
     deadline = time.monotonic() + max(0, args.wait_seconds)
     while True:
-        targets = cast(
-            "list[dict[str, object]]",
-            cast("dict[str, object]", prometheus(args.ssh_host, "targets"))["activeTargets"],
-        )
+        targets = prometheus(args.ssh_host, "targets")["activeTargets"]
         if targets and all(target.get("health") == "up" for target in targets):
             break
         if time.monotonic() >= deadline:
@@ -168,15 +165,12 @@ def main() -> None:
         ),
     ]
     for expression, expected, label in checks:
-        values = cast("list[dict[str, object]]", query(args.ssh_host, expression))
-        sample = values[0]
-        sample_value = cast("list[object]", sample["value"])
+        values = query(args.ssh_host, expression)
         require(
-            len(values) == 1 and float(cast("str", sample_value[1])) == expected,
+            len(values) == 1 and float(values[0]["value"][1]) == expected,
             f"{label}: expected {expected}",
         )
-    samples = cast("list[dict[str, object]]", query(args.ssh_host, "kube_node_info"))
-    reported = {cast("dict[str, object]", item["metric"]).get("node") for item in samples}
+    reported = {item["metric"].get("node") for item in query(args.ssh_host, "kube_node_info")}
     require(reported == names, "kube-state-metrics covers current node names")
     for metric in [
         "node_memory_MemAvailable_bytes",
@@ -188,30 +182,22 @@ def main() -> None:
         "workqueue_depth",
     ]:
         require(bool(query(args.ssh_host, metric)), metric + " present")
-    pvcs = cast(
-        "list[dict[str, object]]",
-        kubectl(args.ssh_host, "-n", NAMESPACE, "get", "pvc", "-o", "json")["items"],
-    )
+    pvcs = kubectl(args.ssh_host, "-n", NAMESPACE, "get", "pvc", "-o", "json")["items"]
     require(len(pvcs) >= 3, "Prometheus, Grafana and Alertmanager persistent claims exist")
     volumes = {
-        cast("dict[str, object]", volume["metadata"])["name"]: volume
-        for volume in cast(
-            "list[dict[str, object]]", kubectl(args.ssh_host, "get", "pv", "-o", "json")["items"]
-        )
+        volume["metadata"]["name"]: volume
+        for volume in kubectl(args.ssh_host, "get", "pv", "-o", "json")["items"]
     }
     for pvc in pvcs:
-        name = cast("str", cast("dict[str, object]", pvc["metadata"])["name"])
-        pvc_status = cast("dict[str, object]", pvc["status"])
-        pvc_spec = cast("dict[str, object]", pvc["spec"])
+        name = pvc["metadata"]["name"]
         require(
-            pvc_status["phase"] == "Bound" and pvc_spec["storageClassName"] == "local-path",
+            pvc["status"]["phase"] == "Bound" and pvc["spec"]["storageClassName"] == "local-path",
             name + " bound to local-path",
         )
-        volume = volumes[pvc_spec["volumeName"]]
-        volume_spec = cast("dict[str, object]", volume["spec"])
-        node_affinity = cast("dict[str, object]", volume_spec.get("nodeAffinity", {}))
-        node_selector = cast("dict[str, object]", node_affinity.get("required", {}))
-        terms = cast("list[dict[str, object]]", node_selector.get("nodeSelectorTerms", []))
+        volume = volumes[pvc["spec"]["volumeName"]]
+        terms = (
+            volume["spec"].get("nodeAffinity", {}).get("required", {}).get("nodeSelectorTerms", [])
+        )
         expected = "socrat-0" if name.startswith("prometheus-") else "socrat-1"
         require(
             bool(terms)
@@ -220,35 +206,29 @@ def main() -> None:
                     e["key"] == "kubernetes.io/hostname"
                     and e["operator"] == "In"
                     and e["values"] == [expected]
-                    for e in cast("list[dict[str, object]]", term.get("matchExpressions", []))
+                    for e in term.get("matchExpressions", [])
                 )
                 for term in terms
             ),
-            name + " pinned to " + str(expected),
+            name + " pinned to " + expected,
         )
-    pods = cast(
-        "list[dict[str, object]]",
-        kubectl(args.ssh_host, "-n", NAMESPACE, "get", "pods", "-o", "json")["items"],
-    )
+    pods = kubectl(args.ssh_host, "-n", NAMESPACE, "get", "pods", "-o", "json")["items"]
     for pod in pods:
-        pod_status = cast("dict[str, object]", pod["status"])
-        if pod_status.get("phase") in ["Succeeded", "Failed"]:
+        if pod["status"].get("phase") in ["Succeeded", "Failed"]:
             continue
-        pod_name = cast("str", cast("dict[str, object]", pod["metadata"])["name"])
         require(
             any(
                 condition["type"] == "Ready" and condition["status"] == "True"
-                for condition in cast("list[dict[str, object]]", pod_status.get("conditions", []))
+                for condition in pod["status"].get("conditions", [])
             ),
-            pod_name + " Ready",
+            pod["metadata"]["name"] + " Ready",
         )
-        pod_spec = cast("dict[str, object]", pod["spec"])
-        for container in cast("list[dict[str, object]]", pod_spec["containers"]):
-            resources = cast("dict[str, object]", container.get("resources", {}))
+        for container in pod["spec"]["containers"]:
+            resources = container.get("resources", {})
             require(
-                bool(cast("dict[str, object]", resources.get("requests", {})).get("memory"))
-                and bool(cast("dict[str, object]", resources.get("limits", {})).get("memory")),
-                pod_name + "/" + cast("str", container["name"]) + " has memory request and limit",
+                bool(resources.get("requests", {}).get("memory"))
+                and bool(resources.get("limits", {}).get("memory")),
+                pod["metadata"]["name"] + "/" + container["name"] + " has memory request and limit",
             )
     dashboard = kubectl(
         args.ssh_host,
@@ -257,20 +237,15 @@ def main() -> None:
         f"/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/dashboards/uid/socrat-overview",
     )
     require(
-        cast("dict[str, object]", dashboard.get("dashboard", {})).get("title") == "Overview",
+        dashboard.get("dashboard", {}).get("title") == "Overview",
         "Overview dashboard provisioned in Grafana",
     )
-    dash_doc = cast("dict[str, object]", dashboard["dashboard"])
-    health = next(
-        panel for panel in cast("list[dict[str, object]]", dash_doc["panels"]) if panel["id"] == 5
-    )
-    health_target = cast("list[dict[str, object]]", health["targets"])[0]
-    health_expr = cast("str", health_target["expr"])
+    health = next(panel for panel in dashboard["dashboard"]["panels"] if panel["id"] == 5)
     require(
         health["type"] == "stat"
-        and "ALERTS{" in health_expr
-        and "KubePodNotReady" in health_expr
-        and cast("dict[str, object]", health["options"])["colorMode"] == "background_solid",
+        and "ALERTS{" in health["targets"][0]["expr"]
+        and "KubePodNotReady" in health["targets"][0]["expr"]
+        and health["options"]["colorMode"] == "background_solid",
         "Cluster health shows alert counts in colored cards",
     )
     rules = kubectl(
@@ -280,11 +255,10 @@ def main() -> None:
         f"/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/prometheus/prometheus/api/v1/rules",
     )
     require(rules.get("status") == "success", "Grafana can read Prometheus alert rules")
-    rules_data = cast("dict[str, object]", rules["data"])
     alert_rules = {
         rule["name"]: rule
-        for group in cast("list[dict[str, object]]", rules_data["groups"])
-        for rule in cast("list[dict[str, object]]", group["rules"])
+        for group in rules["data"]["groups"]
+        for rule in group["rules"]
         if rule.get("type") == "alerting"
     }
     for name, resource in [
@@ -293,9 +267,7 @@ def main() -> None:
         ("KubeNodeNotReady", "node"),
         ("KubeNodeUnreachable", "node"),
     ]:
-        url = cast("dict[str, object]", alert_rules[name].get("annotations", {})).get(
-            "rancher_url", ""
-        )
+        url = alert_rules[name].get("annotations", {}).get("rancher_url", "")
         suffix = (
             "{{ $labels.namespace }}/{{ $labels.pod }}"
             if resource == "pod"
@@ -309,30 +281,22 @@ def main() -> None:
         )
     for name in ["KubePodNotReady", "KubeNodeNotReady"]:
         require(
-            "becomes Firing after"
-            in cast(
-                "str", cast("dict[str, object]", alert_rules[name]["annotations"])["description"]
-            ),
+            "becomes Firing after" in alert_rules[name]["annotations"]["description"],
             f"{name} description is accurate during Pending",
         )
     for name in ["KubeMemoryOvercommit", "KubeCPUOvercommit"]:
         require(
-            cast("dict[str, object]", alert_rules[name]["annotations"]).get("rancher_url")
+            alert_rules[name]["annotations"].get("rancher_url")
             == "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer",
             f"{name} links to the Rancher cluster",
         )
-    catalog = cast(
-        "object",
-        kubectl(
-            args.ssh_host,
-            "get",
-            "--raw",
-            f"/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/search?limit=1000",
-        ),
+    catalog = kubectl(
+        args.ssh_host,
+        "get",
+        "--raw",
+        f"/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/search?limit=1000",
     )
-    dashboards = [
-        item for item in cast("list[dict[str, object]]", catalog) if item.get("type") == "dash-db"
-    ]
+    dashboards = [item for item in catalog if item.get("type") == "dash-db"]
     primary = {item["uid"]: item["title"] for item in dashboards if not item.get("folderUid")}
     require(
         primary
@@ -350,10 +314,7 @@ def main() -> None:
     embedded = [item for item in dashboards if item.get("folderTitle") == "Rancher"]
     require(
         len(embedded) == 12
-        and all(
-            not cast("str", item["title"]).startswith(("[Rancher] ", "Rancher / "))
-            for item in embedded
-        ),
+        and all(not item["title"].startswith(("[Rancher] ", "Rancher / ")) for item in embedded),
         "Embedded Rancher dashboards are grouped without title prefixes",
     )
     require(
@@ -364,54 +325,33 @@ def main() -> None:
         "Only primary and embedded Rancher dashboards are installed",
     )
     for uid in ["rancher-node-1", "rancher-node-detail-1"]:
-        node_dashboard_raw = kubectl(
+        node_dashboard = kubectl(
             args.ssh_host,
             "get",
             "--raw",
             f"/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/dashboards/uid/{uid}",
         )["dashboard"]
-        node_dashboard = cast("dict[str, object]", node_dashboard_raw)
         resolver = next(
-            v
-            for v in cast(
-                "list[dict[str, object]]",
-                cast("dict[str, object]", node_dashboard["templating"])["list"],
-            )
-            if v["name"] == "exporter_instance"
+            v for v in node_dashboard["templating"]["list"] if v["name"] == "exporter_instance"
         )
-        expression = cast("str", resolver["definition"]).removeprefix("query_result(")[:-1]
-        cpu = cast(
-            "str",
-            next(
-                t["expr"]
-                for p in cast("list[dict[str, object]]", node_dashboard["panels"])
-                if p.get("title") == "CPU Utilization"
-                for t in cast("list[dict[str, object]]", p["targets"])
-            ),
+        expression = resolver["definition"].removeprefix("query_result(")[:-1]
+        cpu = next(
+            t["expr"]
+            for p in node_dashboard["panels"]
+            if p.get("title") == "CPU Utilization"
+            for t in p["targets"]
         )
         for node in nodes:
-            name = cast("str", cast("dict[str, object]", node["metadata"])["name"])
-            address = cast(
-                "str",
-                next(
-                    a["address"]
-                    for a in cast(
-                        "list[dict[str, object]]",
-                        cast("dict[str, object]", node["status"])["addresses"],
-                    )
-                    if a["type"] == "InternalIP"
-                ),
+            name = node["metadata"]["name"]
+            address = next(
+                a["address"] for a in node["status"]["addresses"] if a["type"] == "InternalIP"
             )
-            resolved = cast(
-                "list[dict[str, object]]",
-                query(args.ssh_host, expression.replace("$instance", address + ":9796")),
-            )
-            resolved_metric = cast("dict[str, object]", resolved[0]["metric"])
+            resolved = query(args.ssh_host, expression.replace("$instance", address + ":9796"))
             require(
-                len(resolved) == 1 and resolved_metric.get("nodename") == name,
+                len(resolved) == 1 and resolved[0]["metric"].get("nodename") == name,
                 f"{uid} resolves Rancher instance for {name}",
             )
-            actual = cast("str", resolved_metric["instance"])
+            actual = resolved[0]["metric"]["instance"]
             require(
                 bool(
                     query(
@@ -431,30 +371,22 @@ def main() -> None:
         "WireGuard Grafana API works without credentials",
     )
     hostname = urllib.parse.urlsplit(args.grafana_url).hostname
-    ingresses = cast(
-        "list[dict[str, object]]",
-        kubectl(args.ssh_host, "get", "ingress", "-A", "-o", "json")["items"],
-    )
+    ingresses = kubectl(args.ssh_host, "get", "ingress", "-A", "-o", "json")["items"]
     for ingress in ingresses:
-        ingress_spec = cast("dict[str, object]", ingress.get("spec", {}))
-        ingress_metadata = cast("dict[str, object]", ingress["metadata"])
-        for rule in cast("list[dict[str, object]]", ingress_spec.get("rules", [])):
+        for rule in ingress.get("spec", {}).get("rules", []):
             if rule.get("host") != hostname:
                 continue
-            paths = cast(
-                "list[dict[str, object]]",
-                cast("dict[str, object]", rule.get("http", {})).get("paths", []),
-            )
-            labels = cast("dict[str, object]", ingress_metadata.get("labels", {}))
+            paths = rule.get("http", {}).get("paths", [])
+            labels = ingress["metadata"].get("labels", {})
             solver = labels.get("acme.cert-manager.io/http01-solver") == "true"
             require(
                 solver
                 and bool(paths)
                 and all(
-                    cast("str", path.get("path", "")).startswith("/.well-known/acme-challenge/")
+                    path.get("path", "").startswith("/.well-known/acme-challenge/")
                     for path in paths
                 ),
-                "no permanent public Grafana Ingress: " + cast("str", ingress_metadata["name"]),
+                "no permanent public Grafana Ingress: " + ingress["metadata"]["name"],
             )
     print("PASS: no permanent public Grafana Ingress exists")
     require(
@@ -475,14 +407,11 @@ def main() -> None:
             "external public address has no Grafana route"
             + (f" with spoofed X-Forwarded-For: {forwarded_for}" if forwarded_for else ""),
         )
-    search = cast(
-        "object",
-        kubectl(
-            args.ssh_host,
-            "get",
-            "--raw",
-            f"/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/search",
-        ),
+    search = kubectl(
+        args.ssh_host,
+        "get",
+        "--raw",
+        f"/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/search",
     )
     require(
         isinstance(search, list) and any(item.get("uid") == "socrat-overview" for item in search),
@@ -492,12 +421,7 @@ def main() -> None:
     snapshot = {
         "timestamp": timestamp,
         "samples": query(args.ssh_host, "node_uname_info", timestamp),
-        "pvc_uids": {
-            cast("dict[str, object]", pvc["metadata"])["name"]: cast(
-                "str", cast("dict[str, object]", pvc["metadata"])["uid"]
-            )
-            for pvc in pvcs
-        },
+        "pvc_uids": {pvc["metadata"]["name"]: pvc["metadata"]["uid"] for pvc in pvcs},
     }
     if args.snapshot:
         require(bool(snapshot["samples"]), "historical samples available for persistence baseline")
@@ -513,10 +437,7 @@ def main() -> None:
             baseline["samples"], key=lambda item: json.dumps(item["metric"], sort_keys=True)
         )
         current = sorted(
-            cast(
-                "list[dict[str, object]]",
-                query(args.ssh_host, "node_uname_info", baseline["timestamp"]),
-            ),
+            query(args.ssh_host, "node_uname_info", baseline["timestamp"]),
             key=lambda item: json.dumps(item["metric"], sort_keys=True),
         )
         require(

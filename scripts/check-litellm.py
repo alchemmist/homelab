@@ -4,10 +4,9 @@ import os
 import subprocess
 import urllib.error
 import urllib.request
-from typing import cast
 
 
-def kubectl(*args) -> str:
+def kubectl(*args: str) -> str:
     return subprocess.check_output(["kubectl", "-n", "llm", *args], text=True)
 
 
@@ -20,7 +19,7 @@ base = "http://" + ip + ":4000"
 opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
-def request(path, key=None, data=None) -> dict[str, object]:
+def request(path: str, key: str | None = None, data: object = None):
     headers = {"Content-Type": "application/json"}
     if key:
         headers["Authorization"] = "Bearer " + key
@@ -28,8 +27,7 @@ def request(path, key=None, data=None) -> dict[str, object]:
         base + path, headers=headers, data=None if data is None else json.dumps(data).encode()
     )
     with opener.open(req, timeout=180) as response:
-        document: dict[str, object] = json.load(response)
-    return document
+        return json.load(response)
 
 
 try:
@@ -46,7 +44,7 @@ result = request(
 key = result["key"]
 try:
     models = request("/v1/models", key)
-    assert any(m["id"] == MODEL for m in cast("list[dict[str, object]]", models["data"]))
+    assert any(m["id"] == MODEL for m in models["data"])
     result = request(
         "/v1/chat/completions",
         key,
@@ -58,13 +56,7 @@ try:
             "chat_template_kwargs": {"enable_thinking": False},
         },
     )
-    content = cast(
-        "str",
-        cast(
-            "dict[str, object]",
-            cast("list[dict[str, object]]", result["choices"])[0]["message"],
-        )["content"] or "",
-    )
+    content = result["choices"][0]["message"].get("content") or ""
     assert content.strip() == "4", "Unexpected arithmetic response"
     print("virtual key inference:", content)
 finally:

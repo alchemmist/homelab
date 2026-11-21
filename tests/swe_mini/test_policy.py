@@ -12,7 +12,12 @@ spec.loader.exec_module(p)
 
 
 class PublicationPolicy(unittest.TestCase):
-    def item(self, path="server/app/test.py", mode="100644", content=b"hello\n"):
+    def item(
+        self,
+        path: str = "server/app/test.py",
+        mode: str = "100644",
+        content: bytes = b"hello\n",
+    ):
         return {"path": path, "mode": mode, "content": base64.b64encode(content).decode()}
 
     def test_safe_patch(self):

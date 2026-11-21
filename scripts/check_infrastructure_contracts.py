@@ -9,58 +9,54 @@ import configparser
 import ipaddress
 import json
 from pathlib import Path
-from typing import cast
+from typing import Protocol, cast
 
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(path) -> object:
-    return cast("object", yaml.safe_load(path.read_text()))
+class _YamlScalar(Protocol):
+    value: object
 
 
-def scalar_node(node, key) -> object:
+class _YamlNode(Protocol):
+    value: list[tuple[_YamlScalar, object]]
+
+
+def load(path: Path):
+    return yaml.safe_load(path.read_text())
+
+
+def scalar_node(node: _YamlNode, key: str):
     for k, value in node.value:
         if k.value == key:
-            return cast("object", value)
+            return value
     raise ValueError("Missing registered YAML field: " + key)
 
 
-def check(root=ROOT, write=False) -> int:
+def check(root: Path = ROOT, *, write: bool = False):
     c = json.loads((root / "deploy/contracts/infrastructure.json").read_text())
     if c["schemaVersion"] != 1:
         raise ValueError("Unsupported contract schema")
-    mesh = cast(
-        "dict[str, object]",
-        cast("dict[str, object]", load(root / c["meshRegistry"]))["wg_socrat_nodes"],
-    )
-    mesh_nodes = mesh
-    inventory = cast("dict[str, object]", load(root / c["ansibleInventory"]))
-    inventory_all = cast("dict[str, object]", inventory["all"])
-    inventory_children = cast("dict[str, object]", inventory_all["children"])
-    inventory_socrat = cast("dict[str, object]", inventory_children["Socrat"])
-    hosts = cast("dict[str, object]", inventory_socrat["hosts"])
-    if set(mesh_nodes) != set(hosts):
+    mesh = load(root / c["meshRegistry"])["wg_socrat_nodes"]
+    hosts = load(root / c["ansibleInventory"])["all"]["children"]["Socrat"]["hosts"]
+    if set(mesh) != set(hosts):
         raise ValueError("Inventory/mesh node membership drift")
-    addresses = [
-        str(ipaddress.ip_address(cast("str", cast("dict[str, object]", n)["address"])))
-        for n in mesh_nodes.values()
-    ]
+    addresses = [str(ipaddress.ip_address(n["address"])) for n in mesh.values()]
     if len(set(addresses)) != len(addresses):
         raise ValueError("Duplicate node mesh addresses")
-    for name, node in mesh_nodes.items():
-        node_dict = cast("dict[str, object]", node)
+    for name, node in mesh.items():
         expected = (
-            cast("str", node_dict["endpoint"]).rsplit(":", 1)[0]
+            node["endpoint"].rsplit(":", 1)[0]
             if name in c["sshEndpointFromPublicPeer"]
-            else node_dict["address"]
+            else node["address"]
         )
-        if cast("dict[str, object]", hosts[name])["ansible_host"] != expected:
+        if hosts[name]["ansible_host"] != expected:
             raise ValueError("Inventory endpoint drift: " + name)
     relay = c["relayContract"]
 
-    def literals(path):
+    def literals(path: str):
         result = {}
         for statement in ast.parse((root / path).read_text()).body:
             if (
@@ -76,30 +72,20 @@ def check(root=ROOT, write=False) -> int:
 
     r = literals(relay["relayScript"])
     e = literals(relay["endpointScript"])
-    lan = cast("dict[str, object]", load(root / relay["frontHostVars"]))["homelab_ssh_private_host"]
-    target_lan = cast("dict[str, object]", load(root / relay["targetHostVars"]))[
-        "homelab_ssh_private_host"
-    ]
-    target_ip, target_port = cast(
-        "str", cast("dict[str, object]", mesh[relay["targetNode"]])["endpoint"]
-    ).rsplit(":", 1)
+    lan = load(root / relay["frontHostVars"])["homelab_ssh_private_host"]
+    target_lan = load(root / relay["targetHostVars"])["homelab_ssh_private_host"]
+    target_ip, target_port = mesh[relay["targetNode"]]["endpoint"].rsplit(":", 1)
     expected = {
-        "FRONT": (
-            cast("dict[str, object]", mesh[relay["frontNode"]])["address"],
-            relay["frontPort"],
-        ),
-        "CLIENT": (
-            cast("dict[str, object]", mesh[relay["clientNode"]])["address"],
-            relay["clientPort"],
-        ),
+        "FRONT": (mesh[relay["frontNode"]]["address"], relay["frontPort"]),
+        "CLIENT": (mesh[relay["clientNode"]]["address"], relay["clientPort"]),
         "BACK": (lan, relay["backendPort"]),
         "TARGET": (target_ip, int(target_port)),
     }
     if target_lan != target_ip or any(r.get(k) != v for k, v in expected.items()):
         raise ValueError("Fixed relay topology drift; requires reviewed network change")
     if (
-        e.get("RELAY") != cast("str", expected["FRONT"][0]) + ":" + str(relay["frontPort"])
-        or e.get("PEER") != cast("dict[str, object]", mesh[relay["targetNode"]])["public_key"]
+        e.get("RELAY") != expected["FRONT"][0] + ":" + str(relay["frontPort"])
+        or e.get("PEER") != mesh[relay["targetNode"]]["public_key"]
         or e.get("DIRECT") != relay["directRecoveryEndpoint"]
     ):
         raise ValueError("Relay updater endpoint/peer identity drift")
@@ -107,7 +93,7 @@ def check(root=ROOT, write=False) -> int:
     unit.read_string((root / relay["serviceFile"]).read_text())
     service = unit["Service"]
     allow = service["IPAddressAllow"].split()
-    required = {cast("str", expected["CLIENT"][0]) + "/32", target_ip + "/32"}
+    required = {expected["CLIENT"][0] + "/32", target_ip + "/32"}
     if len(allow) != len(required) or set(allow) != required or service["IPAddressDeny"] != "any":
         raise ValueError("Relay sandbox endpoint scope drift; no automatic network regeneration")
     for key, value in {
@@ -118,16 +104,14 @@ def check(root=ROOT, write=False) -> int:
     }.items():
         if service.get(key) != value:
             raise ValueError("Relay sandbox privilege drift: " + key)
-    playbook = cast("list[dict[str, object]]", load(root / relay["installPlaybook"]))
-    tasks = cast("list[dict[str, object]]", playbook[0]["tasks"])
+    playbook = load(root / relay["installPlaybook"])
     assertion = next(
-        cast("list[object]", cast("dict[str, object]", t["ansible.builtin.assert"])["that"])
-        for t in tasks
+        t["ansible.builtin.assert"]["that"]
+        for t in playbook[0]["tasks"]
         if t.get("name") == "Validate relay mesh identity without reading WG keys"
     )
     if not any(
-        "wg_socrat_nodes['" + relay["frontNode"] + "']['address']" in cast("str", line)
-        for line in assertion
+        "wg_socrat_nodes['" + relay["frontNode"] + "']['address']" in line for line in assertion
     ):
         raise ValueError("Relay preflight must derive the address from the mesh registry")
     route = c["issuerTransport"]
@@ -144,9 +128,11 @@ def check(root=ROOT, write=False) -> int:
         if not target.resolve().is_relative_to(root.resolve()):
             raise ValueError("Consumer escapes repository")
         text = target.read_text()
-        value, tree = yaml.safe_load(text), yaml.compose(text)
+        value = yaml.safe_load(text)
+        tree = cast("_YamlNode", yaml.compose(text))
         for key in consumer["path"]:
-            value, tree = value[key], cast("yaml.Node", scalar_node(tree, key))
+            value = value[key]
+            tree = cast("_YamlNode", scalar_node(tree, key))
         matches = [
             (entry, node)
             for entry, node in zip(value, tree.value)
@@ -162,7 +148,7 @@ def check(root=ROOT, write=False) -> int:
         if entry["ip"] != route["ip"]:
             if not write:
                 raise ValueError("Issuer IP drift: " + file)
-            scalar = cast("yaml.ScalarNode", scalar_node(node, "ip"))
+            scalar = scalar_node(node, "ip")
             original, edits = pending.setdefault(target, (text, []))
             if original != text:
                 raise ValueError("Consumer changed during validation: " + file)
@@ -189,7 +175,7 @@ def check(root=ROOT, write=False) -> int:
     return len(seen)
 
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--write",

@@ -4,7 +4,6 @@
 import copy
 import json
 from pathlib import Path
-from typing import cast
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "charts/monitoring-k3s/dashboards/traffic-light.json"
@@ -20,19 +19,19 @@ STATES = [
 ]
 
 
-def queries(include_root=False) -> tuple[str, list[tuple[str, str, str]], str]:
+def queries(*, include_root: bool = False):
     selector = 'job="socrat-argocd"' + ("" if include_root else ',name!="root"')
     raw = f"argocd_app_info{{{selector}}}"
     newest = f"max by(name) (timestamp({raw}))"
 
-    def latest(extra=""):
+    def latest(extra: str = ""):
         metric = f"argocd_app_info{{{selector}{',' + extra if extra else ''}}}"
         # Discard old label sets lingering after a state change in OTLP storage.
         return f"({metric} and (time() - timestamp({metric}) < 90) and (timestamp({metric}) == on(name) group_left {newest}))"
 
     apps = f"max by(name) ({latest()})"
 
-    def state(code, extra):
+    def state(code: int, extra: str):
         return f"({code} * max by(name) ({latest(extra)}))"
 
     # Union is left-biased after aggregation by name: exactly one code per app.
@@ -75,7 +74,7 @@ def queries(include_root=False) -> tuple[str, list[tuple[str, str, str]], str]:
     return state_expr, result, full_query
 
 
-def application_query() -> str:
+def application_query():
     """One positive status code per fresh Application; NOT a percentage/count."""
     raw = 'argocd_app_info{job="socrat-argocd"}'
     fresh = f"({raw} and (time() - timestamp({raw}) < 90))"
@@ -87,17 +86,13 @@ def application_query() -> str:
     return f"(({queries(include_root=True)[0]} + 1) and on() {gate}) and on() {complete}"
 
 
-def build() -> dict[str, object]:
-    d: dict[str, object] = copy.deepcopy(json.loads(SOURCE.read_text()))
-    panels = cast("list[dict[str, object]]", d["panels"])
-    panel = next(p for p in panels if p["id"] == 909)
-    had_overrides = "overrides" in cast("dict[str, object]", panel.get("fieldConfig", {}))
+def build():
+    d = copy.deepcopy(json.loads(SOURCE.read_text()))
+    panel = next(p for p in d["panels"] if p["id"] == 909)
+    had_overrides = "overrides" in panel.get("fieldConfig", {})
     grid = copy.deepcopy(panel["gridPos"])  # Owner geometry is authoritative.
     plugin_version = panel.get("pluginVersion")
-    defaults = cast(
-        "dict[str, object]", cast("dict[str, object]", panel["fieldConfig"])["defaults"]
-    )
-    thresholds = copy.deepcopy(defaults.get("thresholds"))
+    thresholds = copy.deepcopy(panel["fieldConfig"]["defaults"].get("thresholds"))
     panel.clear()
     panel.update(
         {
@@ -192,11 +187,10 @@ def build() -> dict[str, object]:
     )
     if plugin_version is not None:
         panel["pluginVersion"] = plugin_version
-    field_config = cast("dict[str, object]", panel["fieldConfig"])
     if thresholds is not None:
-        cast("dict[str, object]", field_config["defaults"])["thresholds"] = thresholds
-    if not had_overrides and not field_config.get("overrides"):
-        field_config.pop("overrides", None)
+        panel["fieldConfig"]["defaults"]["thresholds"] = thresholds
+    if not had_overrides and not panel["fieldConfig"].get("overrides"):
+        panel["fieldConfig"].pop("overrides", None)
     return d
 
 

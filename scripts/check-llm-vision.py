@@ -8,7 +8,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from typing import cast
+from collections.abc import Mapping, Sequence
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -40,11 +40,11 @@ CODE_WORDS = (
 )
 
 
-def make_code() -> str:
+def make_code():
     return secrets.choice(CODE_WORDS)
 
 
-def make_image(code, large=False) -> dict[str, object]:
+def make_image(code: str, *, large: bool = False):
     if large:
         image = Image.frombytes("RGB", (1280, 1024), os.urandom(1280 * 1024 * 3))
     else:
@@ -60,7 +60,12 @@ def make_image(code, large=False) -> dict[str, object]:
     return {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{encoded}"}}
 
 
-def complete(name, messages, expected, minimum_request_bytes=0) -> dict[str, object]:
+def complete(
+    name: str,
+    messages: Sequence[Mapping[str, object]],
+    expected: Sequence[str],
+    minimum_request_bytes: int = 0,
+):
     started = time.monotonic()
     payload = {
         "model": MODEL,
@@ -80,14 +85,13 @@ def complete(name, messages, expected, minimum_request_bytes=0) -> dict[str, obj
         f"{BASE_URL}/chat/completions", data=encoded_payload, headers=headers
     )
     with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
-        result: dict[str, object] = json.load(response)
-    choice = cast("list[dict[str, object]]", result["choices"])[0]
-    message = cast("dict[str, object]", choice["message"])
-    content = cast("str", message.get("content") or "")
+        result = json.load(response)
+    choice = result["choices"][0]
+    content = choice["message"].get("content") or ""
     normalized = "".join(content.upper().split())
     if choice.get("finish_reason") == "length" or not all(code in normalized for code in expected):
         raise ValueError(f"{name}: expected synthetic codes {expected}, received {content[:160]!r}")
-    usage = cast("dict[str, object]", result.get("usage") or {})
+    usage = result.get("usage") or {}
     print(
         f"PASS {name}: {time.monotonic() - started:.2f}s; "
         f"tokens in={usage.get('prompt_tokens', '?')} out={usage.get('completion_tokens', '?')}",
@@ -96,7 +100,7 @@ def complete(name, messages, expected, minimum_request_bytes=0) -> dict[str, obj
     return {"role": "assistant", "content": content}
 
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--large", action="store_true", help="Also test nine images in a request exceeding 4 MiB"
@@ -107,7 +111,7 @@ def main() -> None:
     codes = [make_code() for _ in range(2)]
     while codes[0] == codes[1]:
         codes[1] = make_code()
-    messages: list[dict[str, object]] = [
+    messages = [
         {
             "role": "user",
             "content": [
@@ -157,7 +161,7 @@ def main() -> None:
     complete("two-image tool result continuation", messages, codes)
     if args.large:
         large_messages = []
-        history_codes: list[str] = []
+        history_codes = []
         while len(history_codes) < 9:
             code = make_code()
             if code not in history_codes:

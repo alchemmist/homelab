@@ -90,7 +90,7 @@ class AlxTxGuardTests(unittest.TestCase):
             timeout=30,
         )
 
-    def run_cleanup(self, hardware_index, software_index, occupied):
+    def run_cleanup(self, hardware_index: int, software_index: int, occupied: int):
         result = subprocess.run(
             [str(self.binary), str(hardware_index), str(software_index), str(occupied)],
             check=True,
