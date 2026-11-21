@@ -19,7 +19,9 @@
 - name: Require support for kubelet configuration drop-ins
   ansible.builtin.assert:
     that:
-      - (homelab_shutdown_k3s_version.stdout | regex_search('[0-9]+\.[0-9]+\.[0-9]+')) is version('1.32.0', '>=')
+      - >-
+        (homelab_shutdown_k3s_version.stdout | regex_search('[0-9]+\.[0-9]+\.[0-9]+'))
+        is version('1.32.0', '>=')
     fail_msg: Graceful shutdown configuration requires k3s 1.32 or newer.
     quiet: true
 

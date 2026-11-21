@@ -12,7 +12,8 @@
 - name: Collect home node routes
   ansible.builtin.set_fact:
     k3s_ha_routes_config: >-
-      {{ k3s_ha_routes_config + [{'public_key': wg_socrat_nodes[item].public_key, 'network': hostvars[item].homelab_ssh_private_host + '/32'}] }}
+      {{ k3s_ha_routes_config + [{'public_key': wg_socrat_nodes[item].public_key,
+      'network': hostvars[item].homelab_ssh_private_host + '/32'}] }}
   loop: "{{ k3s_ha_routes_peers }}"
 
 - name: Ensure helper directory exists
