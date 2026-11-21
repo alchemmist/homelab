@@ -9,6 +9,8 @@ The operator changed the integration scope: PR182 sets up CI and integrates revi
 ## Active CI scope
 
 CI runs `graph`, followed by `secrets`, `javascript` and `ownership`.
+Ownership runs six offline checks plus their regression suites; the Ansible
+entrypoint scan covers both `.yml` and `.yaml`.
 The other eleven checks remain runnable by name; `make check` and its alias
 `make check-all` still attempt all fifteen. Restore a
 check to `qg.yaml` and remove its local-only entry once it is verified green.

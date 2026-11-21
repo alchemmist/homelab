@@ -40,7 +40,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 1906984676d64ade0033fac57089b793f05068442b136149a7d5dd5350e25190
+          graph-digest: 3bd03eaded11dfc674e0707a0633e3cc6604faafa5dff3e26956323729efc72b
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -86,7 +86,7 @@ jobs:
           adapter: native
           report-path: reports/secrets.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 1906984676d64ade0033fac57089b793f05068442b136149a7d5dd5350e25190
+          graph-digest: 3bd03eaded11dfc674e0707a0633e3cc6604faafa5dff3e26956323729efc72b
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -136,7 +136,7 @@ jobs:
           adapter: native
           report-path: reports/javascript.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 1906984676d64ade0033fac57089b793f05068442b136149a7d5dd5350e25190
+          graph-digest: 3bd03eaded11dfc674e0707a0633e3cc6604faafa5dff3e26956323729efc72b
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -172,17 +172,7 @@ jobs:
       - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e
         with:
           version: v3.19.0
-      - run: 'uv run python scripts/check_infrastructure_contracts.py
-
-          uv run python scripts/check_source_pointers.py
-
-          uv run python scripts/check_operational_entrypoints.py
-
-          uv run python scripts/check_vendor_contracts.py
-
-          uv run python scripts/alert_graphs.py --check
-
-          uv run python scripts/n8n/check_failure_alerts.py'
+      - run: "set -euo pipefail\nuv run python scripts/check_infrastructure_contracts.py\nuv run python scripts/check_source_pointers.py\nuv run python scripts/check_operational_entrypoints.py\nuv run python scripts/check_vendor_contracts.py\nuv run python scripts/alert_graphs.py --check\nuv run python scripts/n8n/check_failure_alerts.py\nuv run python -m pytest -q \\\n  tests/test_alert_graph_inventory.py \\\n  tests/test_alert_graph_panel_ids.py \\\n  tests/test_alert_graphs_chart.py \\\n  tests/test_infrastructure_contracts.py \\\n  tests/test_n8n_failure_alert_policy.py \\\n  tests/test_n8n_failure_alerts.py \\\n  tests/test_operational_entrypoints.py \\\n  tests/test_source_pointers.py \\\n  tests/test_vendor_contracts.py"
         name: Run Ownership contracts
         id: quality-command
         continue-on-error: true
@@ -197,7 +187,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 1906984676d64ade0033fac57089b793f05068442b136149a7d5dd5350e25190
+          graph-digest: 3bd03eaded11dfc674e0707a0633e3cc6604faafa5dff3e26956323729efc72b
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'

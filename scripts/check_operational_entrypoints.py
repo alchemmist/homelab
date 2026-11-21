@@ -74,7 +74,9 @@ def _validate_retired(root: Path, entry: _Entrypoint) -> None:
 def _helm_holders(root: Path) -> set[str]:
     """Scan the Ansible tree for literal Helm entrypoint usage."""
     found = set()
-    for p in (root / "ansible").rglob("*.yml"):
+    for p in (root / "ansible").rglob("*.y*ml"):
+        if p.suffix not in {".yml", ".yaml"}:
+            continue
         if not p.resolve().is_relative_to(root.resolve()):
             raise ValueError("Operational scan symlink escapes repository")
         if HELM.search(p.read_text()):

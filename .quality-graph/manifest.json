@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "1906984676d64ade0033fac57089b793f05068442b136149a7d5dd5350e25190",
+  "graphDigest": "3bd03eaded11dfc674e0707a0633e3cc6604faafa5dff3e26956323729efc72b",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -116,7 +116,7 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "uv run python scripts/check_infrastructure_contracts.py\nuv run python scripts/check_source_pointers.py\nuv run python scripts/check_operational_entrypoints.py\nuv run python scripts/check_vendor_contracts.py\nuv run python scripts/alert_graphs.py --check\nuv run python scripts/n8n/check_failure_alerts.py"
+        "run": "set -euo pipefail\nuv run python scripts/check_infrastructure_contracts.py\nuv run python scripts/check_source_pointers.py\nuv run python scripts/check_operational_entrypoints.py\nuv run python scripts/check_vendor_contracts.py\nuv run python scripts/alert_graphs.py --check\nuv run python scripts/n8n/check_failure_alerts.py\nuv run python -m pytest -q \\\n  tests/test_alert_graph_inventory.py \\\n  tests/test_alert_graph_panel_ids.py \\\n  tests/test_alert_graphs_chart.py \\\n  tests/test_infrastructure_contracts.py \\\n  tests/test_n8n_failure_alert_policy.py \\\n  tests/test_n8n_failure_alerts.py \\\n  tests/test_operational_entrypoints.py \\\n  tests/test_source_pointers.py \\\n  tests/test_vendor_contracts.py"
       },
       "timeoutMinutes": 10,
       "title": "Ownership contracts"
