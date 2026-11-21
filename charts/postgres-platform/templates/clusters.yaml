@@ -1,0 +1,49 @@
+{{- if .Values.enabled }}
+{{- if not (regexMatch `^ghcr\.io/cloudnative-pg/postgresql:18\.[0-9]+-system-trixie@sha256:[a-f0-9]{64}$` .Values.imageName) }}
+{{- fail "postgres-platform requires a verified stable PostgreSQL 18.x image pinned by digest" }}
+{{- end }}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: pg-local-retain
+provisioner: rancher.io/local-path
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+{{- range $tier := list "common" "critical" }}
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg-{{ $tier }}
+spec:
+  instances: {{ ternary 3 2 (eq $tier "critical") }}
+  imageName: {{ $.Values.imageName | quote }}
+  enableSuperuserAccess: false
+  storage:
+    size: {{ ternary "5Gi" "20Gi" (eq $tier "critical") }}
+    storageClass: {{ ternary "pg-local-retain" "pg-common-local" (eq $tier "critical") }}
+  affinity:
+    enablePodAntiAffinity: true
+    podAntiAffinityType: required
+    topologyKey: kubernetes.io/hostname
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values: {{ ternary (list "socrat-0" "socrat-1" "socrat-5") (list "socrat-0" "socrat-5") (eq $tier "critical") | toJson }}
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+  {{- if eq $tier "critical" }}
+  postgresql:
+    parameters:
+      synchronous_commit: "on"
+    synchronous:
+      method: any
+      number: 1
+      dataDurability: required
+      failoverQuorum: true
+  {{- end }}
+{{- end }}
+{{- end }}

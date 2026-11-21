@@ -199,6 +199,7 @@ class Provisioning(unittest.TestCase):
         tables["core/groups/"] = [
             {"pk": "owner", "name": "homelab-owner"},
             {"pk": "platform", "name": "homelab-platform-operator"},
+            {"pk": "reader", "name": "rustfs-console-readers"},
         ]
         tables["flows/instances/"] = [
             {"pk": s, "slug": s}
@@ -294,7 +295,7 @@ class Provisioning(unittest.TestCase):
                 contextlib.redirect_stdout(io.StringIO()),
             ):
                 m.main()
-            self.assertEqual(len(tables["policies/bindings/"]), 2)
+            self.assertEqual(len(tables["policies/bindings/"]), 3)
             self.assertEqual(len(tables["providers/oauth2/"]), 1)
             self.assertEqual(tables["providers/proxy/"], [])
             self.assertEqual(len(tables["core/applications/"]), 1)

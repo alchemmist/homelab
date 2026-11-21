@@ -1,0 +1,43 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: socrat-storage
+  labels:
+    release: {{ .Values.prometheusRelease }}
+spec:
+  groups:
+    - name: socrat.storage
+      rules:
+        - alert: SocratRequiredHddMountUnobserved
+          expr: absent_over_time(node_filesystem_size_bytes{job="node-exporter",node="socrat-5",mountpoint="/mnt/files",device="/dev/sdb1",fstype="ext4"}[5m])
+          for: 2m
+          labels:
+            severity: critical
+            node: socrat-5
+          annotations:
+            summary: socrat-5 HDD mount telemetry is missing or has changed identity.
+            description: Verify /mnt/files is mounted from the expected HDD. Missing exporter or collector telemetry is also possible; do not assume disk loss or write into the underlying root directory.
+            runbook_url: https://github.com/alchemmist/homelab/blob/main/docs/storage-tiers.md
+        - alert: SocratStorageSpaceLow
+          expr: |
+            (node_filesystem_avail_bytes{job="node-exporter",node="socrat-5",mountpoint=~"/|/mnt/files"}
+            / node_filesystem_size_bytes{job="node-exporter",node="socrat-5",mountpoint=~"/|/mnt/files"} < 0.15)
+            and (node_filesystem_readonly{job="node-exporter",node="socrat-5",mountpoint=~"/|/mnt/files"} == 0)
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: socrat-5 filesystem has less than 15 percent available.
+            description: Check the mountpoint independently; HDD free space cannot rescue a full root SSD. Do not delete PVCs or retained datasets.
+            runbook_url: https://github.com/alchemmist/homelab/blob/main/docs/storage-tiers.md
+        - alert: SocratStorageInodesLow
+          expr: |
+            node_filesystem_files_free{job="node-exporter",node="socrat-5",mountpoint=~"/|/mnt/files"}
+            / node_filesystem_files{job="node-exporter",node="socrat-5",mountpoint=~"/|/mnt/files"} < 0.10
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: socrat-5 filesystem has less than 10 percent free inodes.
+            description: Inspect small-file growth on this mountpoint without deleting application data.
+            runbook_url: https://github.com/alchemmist/homelab/blob/main/docs/storage-tiers.md
