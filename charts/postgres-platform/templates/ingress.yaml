@@ -17,6 +17,7 @@ spec:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: cattle-monitoring-system}}
           podSelector: {matchLabels: {prometheus: kube-prometheus-stack-prometheus}}
       ports: [{port: 9187}]
+    {{- if or (eq $tier "critical") (eq $tier "common") }}
     - from:
         {{- if eq $tier "critical" }}
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: identity}}
@@ -34,5 +35,6 @@ spec:
         - ipBlock: {cidr: 10.42.0.1/32}
         {{- end }}
       ports: [{port: 5432}]
+    {{- end }}
 {{- end }}
 {{- end }}

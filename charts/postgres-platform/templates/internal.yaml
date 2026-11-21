@@ -1,0 +1,23 @@
+{{- if .Values.enabled }}
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg-internal
+spec:
+  instances: 1
+  imageName: {{ .Values.imageName | quote }}
+  enableSuperuserAccess: false
+  bootstrap:
+    initdb:
+      # Use the maintenance database instead of creating CNPG's default app DB.
+      database: postgres
+      owner: postgres
+  storage:
+    size: 5Gi
+    storageClass: pg-local-retain
+  affinity:
+    nodeSelector:
+      kubernetes.io/hostname: socrat-5
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+{{- end }}
