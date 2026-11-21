@@ -126,9 +126,14 @@ grafana:
     GF_AUTH_LOGIN_MAXIMUM_INACTIVE_LIFETIME_DURATION: 8h
     GF_AUTH_ANONYMOUS_ENABLED: "false"
     GF_AUTH_GENERIC_OAUTH_AUTO_LOGIN: "true"
-    GF_AUTH_GENERIC_OAUTH_ALLOWED_GROUPS: homelab-owner homelab-observer homelab-platform-operator homelab-project-maintainer
+    GF_AUTH_GENERIC_OAUTH_ALLOWED_GROUPS: >-
+      homelab-owner homelab-observer homelab-platform-operator homelab-project-maintainer
       app-grafana-viewer app-grafana-editor
-    GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: contains(groups[*], 'homelab-owner') && 'GrafanaAdmin' || contains(groups[*], 'app-grafana-editor') && 'Editor' || (contains(groups[*], 'homelab-observer') || contains(groups[*], 'homelab-platform-operator') || contains(groups[*], 'homelab-project-maintainer') || contains(groups[*], 'app-grafana-viewer')) && 'Viewer' || ''
+    GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: >-
+      contains(groups[*], 'homelab-owner') && 'GrafanaAdmin' || contains(groups[*],
+      'app-grafana-editor') && 'Editor' || (contains(groups[*], 'homelab-observer') ||
+      contains(groups[*], 'homelab-platform-operator') || contains(groups[*],
+      'homelab-project-maintainer') || contains(groups[*], 'app-grafana-viewer')) && 'Viewer' || ''
   grafana.ini:
     analytics:
       check_for_updates: false

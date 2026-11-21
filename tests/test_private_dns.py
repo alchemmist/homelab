@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from pathlib import Path
 import json
 import os
@@ -112,7 +113,7 @@ class PrivateDnsRoleTests(unittest.TestCase):
         )
         self.assertNotEqual(result.returncode, 0)
 
-    def run_validation(self, variables):
+    def run_validation(self, variables: Mapping[str, object]):
         playbook = """
 - hosts: localhost
   connection: local

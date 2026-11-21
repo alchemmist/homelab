@@ -29,7 +29,8 @@
       - item.tcp_ports | map('int') | min >= 1
       - item.tcp_ports | map('int') | max <= 65535
       - item.tcp_ports | select('integer') | list | length == item.tcp_ports | length
-    fail_msg: Administrative forwarding requires registered endpoints and explicit integer TCP ports.
+    fail_msg: >-
+      Administrative forwarding requires registered endpoints and explicit integer TCP ports.
   loop: "{{ wg_socrat_admin_forward_rules }}"
 
 - name: Install WireGuard administrative firewall script

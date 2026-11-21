@@ -13,7 +13,7 @@ SCRIPT = Path(__file__).resolve().parents[1] / "scripts/reconcile-active-logging
 class ReconciliationTests(unittest.TestCase):
     """Snapshot reconciliation stays local to fixture files and fails closed."""
 
-    def run_case(self, names, counts, aligned=True):
+    def run_case(self, names: list[tuple[str, str]], counts: list[int], *, aligned: bool = True):
         with tempfile.TemporaryDirectory() as d:
             p = Path(d)
             pods = {

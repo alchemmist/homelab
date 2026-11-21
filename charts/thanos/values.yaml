@@ -7,8 +7,10 @@ images:
 rawDirectory: /var/lib/socrat-thanos
 workHostPath: /var/lib/socrat-thanos-work
 objstoreSecretRaw: thanos-objstore-raw
-sidecarService: kube-prometheus-stack-thanos-discovery.cattle-monitoring-system.svc.cluster.local:10901
-prometheusURL: http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090
+sidecarService: >-
+  kube-prometheus-stack-thanos-discovery.cattle-monitoring-system.svc.cluster.local:10901
+prometheusURL: >-
+  http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090
 components:
   thanos-query:
     spreadQuery: true

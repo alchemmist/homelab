@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 
-def load(relative):
+def load(relative: str):
     source = Path(__file__).resolve().parents[1] / relative
     spec = importlib.util.spec_from_file_location(source.stem, source)
     module = importlib.util.module_from_spec(spec)
@@ -16,7 +16,7 @@ RELOCATE = load("ansible/roles/monitoring_stack/files/prometheus_relocate.py")
 GUARD = load("ansible/roles/monitoring_k3s/files/prometheus_scrape_guard.py")
 
 
-def pod(node):
+def pod(node: str):
     return {
         "metadata": {"name": "prometheus-kube-prometheus-stack-prometheus-0"},
         "spec": {"nodeName": node},
@@ -24,8 +24,11 @@ def pod(node):
 
 
 def volume(
-    node,
-    claim="prometheus-kube-prometheus-stack-prometheus-db-prometheus-kube-prometheus-stack-prometheus-0",
+    node: str,
+    claim: str = (
+        "prometheus-kube-prometheus-stack-prometheus-db-"
+        "prometheus-kube-prometheus-stack-prometheus-0"
+    ),
 ):
     return {
         "spec": {
@@ -115,7 +118,7 @@ if __name__ == "__main__":
 
 
 class EffectiveMemoryGuardTests(unittest.TestCase):
-    def documents(self, spec_limit="8Gi", runtime_limit="8Gi"):
+    def documents(self, spec_limit: str = "8Gi", runtime_limit: str = "8Gi"):
         cr = {
             "items": [
                 {"spec": {"scrapeInterval": "5s", "resources": {"limits": {"memory": "8Gi"}}}}

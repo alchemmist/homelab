@@ -7,7 +7,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def module(name, path):
+def module(name: str, path: str):
     spec = importlib.util.spec_from_file_location(name, ROOT / path)
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)

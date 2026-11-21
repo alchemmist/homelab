@@ -21,7 +21,7 @@ def fixtures():
     calls = []
 
     class Native:
-        def __init__(self, app, db_engine):
+        def __init__(self, app: str, db_engine: str):
             self.app = app
             self.db_engine = db_engine
 
@@ -38,7 +38,7 @@ def fixtures():
             calls.append(kwargs)
 
         @staticmethod
-        def uninstrument_app(app):
+        def uninstrument_app(app: str):
             calls.append("fastapi-stop")
 
     native = SimpleNamespace(

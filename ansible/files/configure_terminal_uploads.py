@@ -4,10 +4,11 @@ import copy
 import json
 import sqlite3
 import urllib.request
+from collections.abc import Mapping
 from datetime import timedelta
 
 
-def configure(terminal_id):
+def configure(terminal_id: str):
     from open_webui.utils.auth import create_token
     from open_webui.utils.mfa import get_auth, get_mfa_config, is_mfa_required
 
@@ -32,7 +33,7 @@ def configure(terminal_id):
     )
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
-    def request(path, payload=None):
+    def request(path: str, payload: Mapping[str, object] | None = None):
         req = urllib.request.Request(
             "http://127.0.0.1:8080" + path,
             headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
