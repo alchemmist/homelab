@@ -22,7 +22,7 @@ HELM = os.environ.get("HELM_BIN") or shutil.which("helm")
 class SyncthingSchedulingTests(unittest.TestCase):
     """Render the local chart and keep node eligibility tied to sidecar config."""
 
-    def render(self, overrides):
+    def render(self, overrides) -> subprocess.CompletedProcess[str]:
         with tempfile.TemporaryDirectory() as directory:
             values = Path(directory) / "values.json"
             values.write_text(
@@ -45,7 +45,7 @@ class SyncthingSchedulingTests(unittest.TestCase):
                 timeout=30,
             )
 
-    def resources(self, overrides):
+    def resources(self, overrides) -> list[dict[str, object]]:
         result = self.render(overrides)
         self.assertEqual(result.returncode, 0, result.stderr)
         return [item for item in yaml.safe_load_all(result.stdout) if item]

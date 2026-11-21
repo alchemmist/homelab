@@ -109,8 +109,9 @@ ORACLE_JS += r'''
 '''
 
 _fb_value="'FizzBuzz' if i%15==0 else 'Fizz' if i%3==0 else 'Buzz' if i%5==0 else i"
-def _fb_loop(bounds, value):
- return 'a=int(input()); b=int(input())\nfor i in range('+bounds+'):\n print('+value+')'
+def _fb_loop(bounds, value) -> str:
+ program: str = 'a=int(input()); b=int(input())\nfor i in range('+bounds+'):\n print('+value+')'
+ return program
 SPECS['break-continue/fizzbuzz']=('fizzbuzz','','',[
  ('skip right endpoint',_fb_loop('a,b',_fb_value)),
  ('miss common multiple',_fb_loop('a,b+1',"'Fizz' if i%3==0 else 'Buzz' if i%5==0 else i")),
