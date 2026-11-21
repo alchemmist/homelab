@@ -14,13 +14,13 @@ from open_webui.utils.tools import (
 )
 
 
-def serialize(result):
+def serialize(result) -> str:
     if isinstance(result, tuple):
         result = result[0]
     return result if isinstance(result, str) else json.dumps(result)
 
 
-async def main():
+async def main() -> None:
     connections = await Config.get("terminal_server.connections", [])
     connection = next(
         c for c in connections if c.get("id") == "socrat-terminal" and c.get("enabled", True)

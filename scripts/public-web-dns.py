@@ -20,8 +20,10 @@ def require(message: str, *, ok: bool):
         raise RuntimeError(message)
 
 
-def load(path: Path, name: str):
+def load(path: Path, name: str) -> ModuleType:
     s = importlib.util.spec_from_file_location(name, path)
+    if s is None or s.loader is None:
+        raise RuntimeError("cannot load module: " + str(path))
     m = importlib.util.module_from_spec(s)
     s.loader.exec_module(m)
     return m
