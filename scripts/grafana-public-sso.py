@@ -20,7 +20,7 @@ DESIRED = {
 }
 
 
-def require(ok: object, message: str):
+def require(ok: object, message: str) -> None:
     if not ok:
         raise RuntimeError(message)
 
@@ -29,15 +29,15 @@ def kube(*args: str) -> str:
     return subprocess.check_output(["kubectl", "-n", NS, *args], text=True)
 
 
-def env_plan(d: dict[str, object]):
+def env_plan(d: dict[str, object]) -> tuple[int, list[str], list[dict[str, object]]]:
     spec = cast("dict[str, object]", d["spec"])
     template = cast("dict[str, object]", spec["template"])
-    pod_spec = cast("dict[str, object]", template["spec"])
-    containers = cast("list[dict[str, object]]", pod_spec["containers"])
+    template_spec = cast("dict[str, object]", template["spec"])
+    containers = cast("list[dict[str, object]]", template_spec["containers"])
     index = next(i for i, c in enumerate(containers) if c["name"] == "grafana")
     env = cast("list[dict[str, object]]", containers[index].get("env", []))
     require(len({e["name"] for e in env}) == len(env), "Duplicate env entries")
-    lookup = {cast("str", e["name"]): e for e in env}
+    lookup = {e["name"]: e for e in env}
     require(
         lookup["GF_AUTH_GENERIC_OAUTH_ENABLED"]["value"] == "true",
         "Native OIDC must already be activated",
@@ -46,11 +46,10 @@ def env_plan(d: dict[str, object]):
         lookup["GF_AUTH_GENERIC_OAUTH_CLIENT_ID"]["value"] == "socrat-grafana",
         "Precondition failed; stop and inspect privately",
     )
+    client_secret = lookup["GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET"]
+    value_from = cast("dict[str, object]", client_secret["valueFrom"])
     require(
-        cast("dict[str, object]", lookup["GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET"]["valueFrom"])[
-            "secretKeyRef"
-        ]
-        == {"name": "socrat-authentik-grafana", "key": "client-secret"},
+        value_from["secretKeyRef"] == {"name": "socrat-authentik-grafana", "key": "client-secret"},
         "Precondition failed; stop and inspect privately",
     )
     require(
@@ -87,7 +86,7 @@ def env_plan(d: dict[str, object]):
     return index, updates, result
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")

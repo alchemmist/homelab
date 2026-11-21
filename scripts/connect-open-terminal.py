@@ -4,7 +4,7 @@ import getpass
 import json
 import subprocess
 import urllib.request
-from collections.abc import Mapping
+from typing import cast
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--admin-email", required=True)
@@ -21,7 +21,9 @@ base = "http://" + ip + ":8080"
 opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
-def request(path: str, data: Mapping[str, object] | None = None, token: str | None = None):
+def request(
+    path: str, data: dict[str, object] | None = None, token: str | None = None
+) -> dict[str, object]:
     headers = {"Content-Type": "application/json"}
     if token:
         headers["Authorization"] = "Bearer " + token
@@ -29,13 +31,13 @@ def request(path: str, data: Mapping[str, object] | None = None, token: str | No
         base + path, headers=headers, data=None if data is None else json.dumps(data).encode()
     )
     with opener.open(req, timeout=60) as response:
-        return json.load(response)
+        return cast("dict[str, object]", json.load(response))
 
 
 session = request("/api/v1/auths/signin", {"email": args.admin_email, "password": password})
 secret = json.loads(kubectl("get", "secret", "open-terminal-api", "-o", "json"))
 key = base64.b64decode(secret["data"]["api-key"]).decode()
-connection = {
+connection: dict[str, object] = {
     "id": "socrat-terminal",
     "name": "Socrat Terminal",
     "url": "http://open-terminal.llm.svc.cluster.local:8000",
@@ -46,23 +48,37 @@ connection = {
     "server_type": "terminal",
     "config": {"access_grants": [], "chat_uploads": "filesystem"},
 }
-config = request("/api/v1/configs/terminal_servers", token=session["token"])
+config = request("/api/v1/configs/terminal_servers", token=cast("str", session["token"]))
 existing = next(
-    (c for c in config["TERMINAL_SERVER_CONNECTIONS"] if c.get("id") == connection["id"]), None
+    (
+        c
+        for c in cast("list[dict[str, object]]", config["TERMINAL_SERVER_CONNECTIONS"])
+        if c.get("id") == connection["id"]
+    ),
+    None,
 )
 if existing is not None:
     connection = {**existing, "url": connection["url"], "key": key}
-    connection["config"] = {**(connection.get("config") or {}), "chat_uploads": "filesystem"}
-verified = request("/api/v1/configs/terminal_servers/verify", connection, session["token"])
+    raw_config = cast("dict[str, object]", connection.get("config") or {})
+    connection["config"] = {**raw_config, "chat_uploads": "filesystem"}
+verified = request(
+    "/api/v1/configs/terminal_servers/verify", connection, cast("str", session["token"])
+)
 assert verified["status"], "Terminal verification failed"
-config = request("/api/v1/configs/terminal_servers", token=session["token"])
-connections = [c for c in config["TERMINAL_SERVER_CONNECTIONS"] if c.get("id") != connection["id"]]
+config = request("/api/v1/configs/terminal_servers", token=cast("str", session["token"]))
+connections = [
+    c
+    for c in cast("list[dict[str, object]]", config["TERMINAL_SERVER_CONNECTIONS"])
+    if c.get("id") != connection["id"]
+]
 connections.append(connection)
 request(
     "/api/v1/configs/terminal_servers",
     {"TERMINAL_SERVER_CONNECTIONS": connections},
-    session["token"],
+    cast("str", session["token"]),
 )
-visible = request("/api/v1/terminals/", token=session["token"])
+visible = cast(
+    "list[dict[str, object]]", request("/api/v1/terminals/", token=cast("str", session["token"]))
+)
 assert any(c["id"] == connection["id"] for c in visible)
 print("Open Terminal connected; existing access settings and other connections preserved.")

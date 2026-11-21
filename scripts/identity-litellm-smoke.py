@@ -5,7 +5,6 @@ Requires Playwright + Chromium. Run from the owner Mac with --run.
 """
 
 import argparse
-from typing import Literal, TypedDict, Unpack, cast
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
@@ -28,72 +27,11 @@ BASE = "https://auth.socrat.alchemmist.xyz"
 import socket
 
 _original_getaddrinfo = socket.getaddrinfo
-
-
-class _AddrKeywords(TypedDict, total=False):
-    port: bytes | str | int | None
-    family: int
-    type: int
-    proto: int
-    flags: int
-
-
-def _install[T](replacement: object, current: T) -> T:
-    chosen = current if replacement is current else replacement
-    return cast("T", chosen)
-
-
-def _addr_port(
-    params: tuple[bytes | str | int | None, ...], kwargs: _AddrKeywords
-) -> bytes | str | int | None:
-    if "port" in kwargs:
-        return kwargs["port"]
-    if params:
-        return params[0]
-    return None
-
-
-def _addr_int(
-    params: tuple[bytes | str | int | None, ...],
-    kwargs: _AddrKeywords,
-    name: Literal["family", "type", "proto", "flags"],
-    index: int,
-) -> int:
-    if name in kwargs:
-        return kwargs[name]
-    if len(params) > index:
-        value = params[index]
-        if isinstance(value, int):
-            return value
-        raise TypeError(value)
-    return 0
-
-
-def public_auth(
-    host: bytes | str | None,
-    *params: bytes | str | int | None,
-    **kwargs: Unpack[_AddrKeywords],
-) -> list[
-    tuple[Literal[socket.AddressFamily.AF_INET], socket.SocketKind, int, str, tuple[str, int]]
-    | tuple[
-        Literal[socket.AddressFamily.AF_INET6],
-        socket.SocketKind,
-        int,
-        str,
-        tuple[str, int, int, int] | tuple[int, bytes],
-    ]
-]:
-    return _original_getaddrinfo(
-        args.public_edge if host in ["auth.socrat.alchemmist.xyz", "llm.alchemmist.xyz"] else host,
-        _addr_port(params, kwargs),
-        _addr_int(params, kwargs, "family", 1),
-        _addr_int(params, kwargs, "type", 2),
-        _addr_int(params, kwargs, "proto", 3),
-        _addr_int(params, kwargs, "flags", 4),
-    )
-
-
-socket.getaddrinfo = _install(public_auth, _original_getaddrinfo)
+socket.getaddrinfo = lambda host, *pos, **kw: _original_getaddrinfo(
+    args.public_edge if host in ["auth.socrat.alchemmist.xyz", "llm.alchemmist.xyz"] else host,
+    *pos,
+    **kw,
+)
 SSH = [
     "ssh",
     "-o",
@@ -109,7 +47,7 @@ credential = json.loads(
 )
 
 
-def api(method, path, data=None):
+def api(method: str, path: str, data: dict[str, object] | None = None) -> dict[str, object]:
     req = urllib.request.Request(
         BASE + "/api/v3/" + path,
         method=method,
@@ -121,7 +59,7 @@ def api(method, path, data=None):
     )
     with urllib.request.urlopen(req, timeout=45) as r:
         b = r.read()
-        return json.loads(b) if b else None
+        return cast("dict[str, object]", json.loads(b) if b else None)
 
 
 import base64
@@ -132,14 +70,29 @@ import struct
 import time
 import urllib.parse
 import uuid
+from typing import cast
+
+
+class _PageResponse:
+    """Structural stand-in for module-mocked Playwright response events."""
+
+    url: str
+    status: int
+    headers: dict[str, str]
+
+    def json(self) -> dict[str, object]:
+        """Return the decoded response payload."""
+        return {}
+
 
 from playwright.sync_api import sync_playwright
 
 username = "litellm-smoke-" + uuid.uuid4().hex[:10]
 password = secrets.token_urlsafe(32)
+groups_page = api("GET", "core/groups/?name=homelab-observer")
 group = next(
     x
-    for x in api("GET", "core/groups/?name=homelab-observer")["results"]
+    for x in cast("list[dict[str, object]]", groups_page["results"])
     if x["name"] == "homelab-observer"
 )
 user = api(
@@ -154,12 +107,11 @@ user = api(
     },
 )
 binding = None
-fixture_id = "authentik:" + user["uuid"]
+fixture_id = "authentik:" + cast("str", user["uuid"])
 try:
+    apps_page = api("GET", "core/applications/?superuser_full_list=true&page_size=100")
     app = next(
-        a
-        for a in api("GET", "core/applications/?superuser_full_list=true&page_size=100")["results"]
-        if a["slug"] == "litellm"
+        a for a in cast("list[dict[str, object]]", apps_page["results"]) if a["slug"] == "litellm"
     )
     binding = api(
         "POST",
@@ -188,7 +140,7 @@ try:
         components = []
         errors = []
 
-        def observe(response):
+        def observe(response: _PageResponse) -> None:
             if (
                 urllib.parse.urlparse(response.url).hostname == "llm.alchemmist.xyz"
                 and "/sso/callback" in response.url
@@ -340,7 +292,7 @@ try:
 finally:
     try:
         if binding:
-            api("DELETE", "policies/bindings/" + binding["pk"] + "/")
+            api("DELETE", "policies/bindings/" + cast("str", binding["pk"]) + "/")
         api("DELETE", "core/users/" + str(user["pk"]) + "/")
     finally:
         cleanup = Path(__file__).with_name("identity-litellm-cleanup.py").read_text()

@@ -8,7 +8,6 @@ Requires Playwright + Chromium. Run from the owner Mac with --run.
 """
 
 import argparse
-from typing import Literal, TypedDict, Unpack, cast
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
@@ -28,76 +27,29 @@ import urllib.request
 BASE = "https://auth.socrat.alchemmist.xyz"
 # Process-local public-edge resolution; keep verified TLS/SNI, no system DNS changes.
 import socket
+from typing import TypedDict, cast
+
+
+class _PageResponse:
+    """Structural stand-in for module-mocked Playwright response events."""
+
+    url: str
+    status: int
+    headers: dict[str, str]
+
+    def json(self) -> dict[str, object]:
+        """Return the decoded response payload."""
+        return {}
+
 
 _original_getaddrinfo = socket.getaddrinfo
-
-
-class _AddrKeywords(TypedDict, total=False):
-    port: bytes | str | int | None
-    family: int
-    type: int
-    proto: int
-    flags: int
-
-
-def _install[T](replacement: object, current: T) -> T:
-    chosen = current if replacement is current else replacement
-    return cast("T", chosen)
-
-
-def _addr_port(
-    params: tuple[bytes | str | int | None, ...], kwargs: _AddrKeywords
-) -> bytes | str | int | None:
-    if "port" in kwargs:
-        return kwargs["port"]
-    if params:
-        return params[0]
-    return None
-
-
-def _addr_int(
-    params: tuple[bytes | str | int | None, ...],
-    kwargs: _AddrKeywords,
-    name: Literal["family", "type", "proto", "flags"],
-    index: int,
-) -> int:
-    if name in kwargs:
-        return kwargs[name]
-    if len(params) > index:
-        value = params[index]
-        if isinstance(value, int):
-            return value
-        raise TypeError(value)
-    return 0
-
-
-def public_auth(
-    host: bytes | str | None,
-    *params: bytes | str | int | None,
-    **kwargs: Unpack[_AddrKeywords],
-) -> list[
-    tuple[Literal[socket.AddressFamily.AF_INET], socket.SocketKind, int, str, tuple[str, int]]
-    | tuple[
-        Literal[socket.AddressFamily.AF_INET6],
-        socket.SocketKind,
-        int,
-        str,
-        tuple[str, int, int, int] | tuple[int, bytes],
-    ]
-]:
-    return _original_getaddrinfo(
-        args.public_edge
-        if host in ["auth.socrat.alchemmist.xyz", "argocd.socrat.alchemmist.xyz"]
-        else host,
-        _addr_port(params, kwargs),
-        _addr_int(params, kwargs, "family", 1),
-        _addr_int(params, kwargs, "type", 2),
-        _addr_int(params, kwargs, "proto", 3),
-        _addr_int(params, kwargs, "flags", 4),
-    )
-
-
-socket.getaddrinfo = _install(public_auth, _original_getaddrinfo)
+socket.getaddrinfo = lambda host, *pos, **kw: _original_getaddrinfo(
+    args.public_edge
+    if host in ["auth.socrat.alchemmist.xyz", "argocd.socrat.alchemmist.xyz"]
+    else host,
+    *pos,
+    **kw,
+)
 SSH = [
     "ssh",
     "-o",
@@ -113,7 +65,7 @@ credential = json.loads(
 )
 
 
-def api(method, path, data=None):
+def api(method: str, path: str, data: dict[str, object] | None = None) -> dict[str, object]:
     req = urllib.request.Request(
         BASE + "/api/v3/" + path,
         method=method,
@@ -125,7 +77,7 @@ def api(method, path, data=None):
     )
     with urllib.request.urlopen(req, timeout=45) as r:
         b = r.read()
-        return json.loads(b) if b else None
+        return cast("dict[str, object]", json.loads(b) if b else None)
 
 
 import base64
@@ -139,23 +91,26 @@ import uuid
 
 from playwright.sync_api import sync_playwright
 
+providers_page = api("GET", "providers/oauth2/?page_size=100")
 provider = next(
     x
-    for x in api("GET", "providers/oauth2/?page_size=100")["results"]
+    for x in cast("list[dict[str, object]]", providers_page["results"])
     if x["name"] == "homelab-argocd"
 )
+mappings_page = api("GET", "propertymappings/provider/scope/?page_size=100")
 offline = [
     x
-    for x in api("GET", "propertymappings/provider/scope/?page_size=100")["results"]
+    for x in cast("list[dict[str, object]]", mappings_page["results"])
     if x["scope_name"] == "offline_access"
 ]
-if len(offline) != 1 or offline[0]["pk"] not in provider["property_mappings"]:
+if len(offline) != 1 or offline[0]["pk"] not in cast("list[str]", provider["property_mappings"]):
     raise SystemExit("Refresh deployment not activated; no fixtures created")
 username = "argocd-refresh-smoke-" + uuid.uuid4().hex[:10]
 password = secrets.token_urlsafe(32)
+groups_page = api("GET", "core/groups/?name=homelab-observer")
 group = next(
     x
-    for x in api("GET", "core/groups/?name=homelab-observer")["results"]
+    for x in cast("list[dict[str, object]]", groups_page["results"])
     if x["name"] == "homelab-observer"
 )
 user = api(
@@ -172,10 +127,9 @@ user = api(
 binding = None
 fixture_id = user["uuid"]
 try:
+    apps_page = api("GET", "core/applications/?superuser_full_list=true&page_size=100")
     app = next(
-        a
-        for a in api("GET", "core/applications/?superuser_full_list=true&page_size=100")["results"]
-        if a["slug"] == "argocd"
+        a for a in cast("list[dict[str, object]]", apps_page["results"]) if a["slug"] == "argocd"
     )
     binding = api(
         "POST",
@@ -204,7 +158,7 @@ try:
         components = []
         errors = []
 
-        def observe(response):
+        def observe(response: _PageResponse) -> None:
             if (
                 urllib.parse.urlparse(response.url).hostname == "argocd.socrat.alchemmist.xyz"
                 and urllib.parse.urlparse(response.url).path == "/auth/login"
@@ -329,7 +283,14 @@ try:
             ):
                 context = page.context
 
-                def claims():
+                class Claims(TypedDict, total=False):
+                    """JWT claims used by the read-only session checks."""
+
+                    exp: float
+                    sub: str
+                    groups: list[str]
+
+                def claims() -> Claims:
                     c = next(
                         c
                         for c in context.cookies("https://argocd.socrat.alchemmist.xyz")
@@ -337,7 +298,10 @@ try:
                     )
                     assert c["secure"]
                     raw = c["value"].split(".")[1]
-                    return json.loads(base64.urlsafe_b64decode(raw + "=" * ((-len(raw)) % 4)))
+                    return cast(
+                        "Claims",
+                        json.loads(base64.urlsafe_b64decode(raw + "=" * ((-len(raw)) % 4))),
+                    )
 
                 old = claims()
                 assert "homelab-observer" in old["groups"] and not set(old["groups"]) & {
@@ -345,10 +309,10 @@ try:
                     "homelab-platform-operator",
                 }
 
-                def api_page(path):
+                def api_page(path: str) -> dict[str, object]:
                     response = page.goto("https://argocd.socrat.alchemmist.xyz" + path)
                     assert response.status == 200
-                    return response.json()
+                    return cast("dict[str, object]", response.json())
 
                 info = api_page("/api/v1/session/userinfo")
                 assert info.get("loggedIn") is True, "Initial native session must be authenticated"
@@ -425,7 +389,7 @@ try:
 finally:
     try:
         if binding:
-            api("DELETE", "policies/bindings/" + binding["pk"] + "/")
+            api("DELETE", "policies/bindings/" + cast("str", binding["pk"]) + "/")
     finally:
         api("DELETE", "core/users/" + str(user["pk"]) + "/")
     print("Temporary Argo CD admission binding and Authentik identity removed", flush=True)
