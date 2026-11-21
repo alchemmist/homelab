@@ -21,6 +21,7 @@ class Release(TypedDict):
 
 
 def load_module() -> ModuleType:
+    """Document this test or helper."""
     """Load the actual module without claiming unverified callable signatures."""
     spec = importlib.util.spec_from_file_location("update_watch", MODULE)
     if spec is None or spec.loader is None:
@@ -32,6 +33,7 @@ def load_module() -> ModuleType:
 
 
 def test_open_webui_style_gap_is_an_update() -> None:
+    """Document this test or helper."""
     """Treat the newest stable tag as newer than an older slim build."""
     watch = load_module()
     releases: list[Release] = [
@@ -45,10 +47,12 @@ def test_open_webui_style_gap_is_an_update() -> None:
 
 
 def test_equal_version_is_not_an_update() -> None:
+    """Document this test or helper."""
     """Report no update and a successful lookup when versions match."""
     watch = load_module()
 
     def fetch(_repo: str, _timeout: int) -> list[Release]:
+        """Document this test or helper."""
         return [{"tag_name": "v1.2.3", "draft": False, "prerelease": False}]
 
     samples = watch.evaluate(
@@ -64,10 +68,12 @@ def test_equal_version_is_not_an_update() -> None:
 
 
 def test_failed_lookup_does_not_claim_an_update() -> None:
+    """Document this test or helper."""
     """Keep the update gauge at zero when the lookup raises OSError."""
     watch = load_module()
 
     def fetch(_repo: str, _timeout: int) -> NoReturn:
+        """Document this test or helper."""
         message = "github unavailable"
         raise OSError(message)
 
@@ -81,6 +87,7 @@ def test_failed_lookup_does_not_claim_an_update() -> None:
 
 
 def test_catalog_lists_open_webui() -> None:
+    """Document this test or helper."""
     """Require the Open WebUI catalog pin recorded in the chart values."""
     text = Path("charts/monitoring-k3s/values.yaml").read_text()
     assert "github: open-webui/open-webui" in text
@@ -89,6 +96,7 @@ def test_catalog_lists_open_webui() -> None:
 
 @pytest.mark.parametrize("spec", [None, ModuleSpec("update_watch", loader=None)])
 def test_loader_refuses_missing_spec_or_loader(spec: ModuleSpec | None) -> None:
+    """Document this test or helper."""
     """Refuse incomplete loader metadata before constructing or executing a module."""
     with (
         patch("importlib.util.spec_from_file_location", return_value=spec),
@@ -100,6 +108,7 @@ def test_loader_refuses_missing_spec_or_loader(spec: ModuleSpec | None) -> None:
 
 
 def test_import_and_fixture_evaluation_do_not_start_external_work() -> None:
+    """Document this test or helper."""
     """Trap network, poller and HTTP-server entrypoints throughout the original cases."""
     with (
         patch("urllib.request.urlopen", side_effect=AssertionError("network forbidden")) as network,
@@ -118,6 +127,7 @@ def test_import_and_fixture_evaluation_do_not_start_external_work() -> None:
 
 
 def test_statefulset_target_and_ambiguous_workload():
+    """Document this test or helper."""
     import pytest
 
     watch = load_module()
@@ -128,6 +138,7 @@ def test_statefulset_target_and_ambiguous_workload():
 
 
 def test_openhands_uses_running_canvas_tag_not_sdk_version():
+    """Document this test or helper."""
     import yaml
 
     watch = load_module()

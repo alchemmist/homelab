@@ -5,6 +5,7 @@ from pathlib import Path
 
 
 def load(relative):
+    """Document this test or helper."""
     source = Path(__file__).resolve().parents[1] / relative
     spec = importlib.util.spec_from_file_location(source.stem, source)
     module = importlib.util.module_from_spec(spec)
@@ -17,6 +18,7 @@ GUARD = load("ansible/roles/monitoring_k3s/files/prometheus_scrape_guard.py")
 
 
 def pod(node):
+    """Document this test or helper."""
     return {
         "metadata": {"name": "prometheus-kube-prometheus-stack-prometheus-0"},
         "spec": {"nodeName": node},
@@ -27,6 +29,7 @@ def volume(
     node,
     claim="prometheus-kube-prometheus-stack-prometheus-db-prometheus-kube-prometheus-stack-prometheus-0",
 ):
+    """Document this test or helper."""
     return {
         "spec": {
             "claimRef": {"name": claim},
@@ -51,12 +54,14 @@ def volume(
 
 class RelocateTests(unittest.TestCase):
     def test_same_node_proceeds_without_the_flag(self):
+        """Document this test or helper."""
         decision = RELOCATE.evaluate(
             {"desired": "socrat-0", "relocate": False, "pods": [pod("socrat-0")], "volumes": []}
         )
         self.assertEqual(decision["action"], "proceed")
 
     def test_socrat_1_volume_is_refused_even_with_the_legacy_flag(self):
+        """Document this test or helper."""
         payload = {
             "desired": "socrat-0",
             "relocate": False,
@@ -72,6 +77,7 @@ class RelocateTests(unittest.TestCase):
         )
 
     def test_monitoring_roles_do_not_delete_history(self):
+        """Document this test or helper."""
         root = Path(__file__).resolve().parents[1]
         stack = (root / "ansible/roles/monitoring_stack/tasks/main.yml").read_text()
         thanos = (root / "ansible/roles/monitoring_thanos/tasks/main.yml").read_text()
@@ -81,6 +87,7 @@ class RelocateTests(unittest.TestCase):
         self.assertNotIn("      - delete", thanos)
 
     def test_grafana_volume_is_not_selected(self):
+        """Document this test or helper."""
         grafana = volume("socrat-1", claim="kube-prometheus-stack-grafana")
         decision = RELOCATE.evaluate(
             {"desired": "socrat-0", "relocate": True, "pods": [], "volumes": [grafana]}
@@ -91,6 +98,7 @@ class RelocateTests(unittest.TestCase):
 
 class ScrapeGuardTests(unittest.TestCase):
     def test_five_second_scrape_and_eight_gib_limit_pass(self):
+        """Document this test or helper."""
         document = {
             "items": [
                 {"spec": {"scrapeInterval": "5s", "resources": {"limits": {"memory": "8Gi"}}}}
@@ -99,6 +107,7 @@ class ScrapeGuardTests(unittest.TestCase):
         self.assertEqual(GUARD.problems(document), [])
 
     def test_old_prometheus_is_rejected(self):
+        """Document this test or helper."""
         document = {
             "items": [
                 {"spec": {"scrapeInterval": "30s", "resources": {"limits": {"memory": "3Gi"}}}}
@@ -107,6 +116,7 @@ class ScrapeGuardTests(unittest.TestCase):
         self.assertEqual(len(GUARD.problems(document)), 2)
 
     def test_missing_prometheus_is_rejected(self):
+        """Document this test or helper."""
         self.assertEqual(GUARD.problems({"items": []}), ["Prometheus is not installed"])
 
 
@@ -116,6 +126,7 @@ if __name__ == "__main__":
 
 class EffectiveMemoryGuardTests(unittest.TestCase):
     def documents(self, spec_limit="8Gi", runtime_limit="8Gi"):
+        """Document this test or helper."""
         cr = {
             "items": [
                 {"spec": {"scrapeInterval": "5s", "resources": {"limits": {"memory": "8Gi"}}}}
@@ -145,14 +156,18 @@ class EffectiveMemoryGuardTests(unittest.TestCase):
         return cr, pods
 
     def test_eight_gib_cr_cannot_hide_three_gib_admission(self):
+        """Document this test or helper."""
         self.assertTrue(GUARD.problems(*self.documents("3Gi", "3Gi")))
 
     def test_resize_spec_without_effective_runtime_is_not_acceptance(self):
+        """Document this test or helper."""
         self.assertTrue(GUARD.problems(*self.documents("8Gi", "3Gi")))
 
     def test_eight_gib_effective_runtime_passes(self):
+        """Document this test or helper."""
         self.assertEqual(GUARD.problems(*self.documents()), [])
 
     def test_missing_runtime_does_not_pass(self):
+        """Document this test or helper."""
         cr, _ = self.documents()
         self.assertTrue(GUARD.problems(cr, {"items": []}))

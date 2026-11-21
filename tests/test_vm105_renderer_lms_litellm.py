@@ -8,10 +8,12 @@ R = Path(__file__).resolve().parents[1]
 
 
 def load(p):
+    """Document this test or helper."""
     return yaml.safe_load((R / p).read_text())
 
 
 def render(chart, values, release, ns):
+    """Document this test or helper."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as f:
         yaml.safe_dump(values, f)
         f.flush()
@@ -36,6 +38,7 @@ def render(chart, values, release, ns):
 
 class MigrationTests(unittest.TestCase):
     def test_renderer_retry_after_transport_repair_preserves_grafana_and_adapter_placement(self):
+        """Document this test or helper."""
         v = load("charts/grafana/alert-graphs.runtime.values.yaml")
         self.assertEqual(
             v["grafana"]["imageRenderer"]["nodeSelector"], {"kubernetes.io/hostname": "socrat-5"}
@@ -44,6 +47,7 @@ class MigrationTests(unittest.TestCase):
         self.assertEqual(v["grafana"]["imageRenderer"]["existingSecret"], "socrat-grafana-renderer")
 
     def test_lms_single_worker_and_original_database_and_identity(self):
+        """Document this test or helper."""
         v = load("charts/lms/values.yaml")
         v.update(load("deploy/lms/values.yaml"))
         docs = render("charts/lms", v, "lms", "lms")
@@ -74,6 +78,7 @@ class MigrationTests(unittest.TestCase):
         )
 
     def test_vendor_preserves_every_upstream_file_except_two_minimal_extensions(self):
+        """Document this test or helper."""
         root = R / "charts/litellm"
         manifest = json.loads((root / "upstream-file-sha256.json").read_text())
         for name, digest in manifest.items():
@@ -88,6 +93,7 @@ class MigrationTests(unittest.TestCase):
             self.assertEqual(hashlib.sha256(s).hexdigest(), digest, name)
 
     def test_litellm_only_deployment_changes_no_migration_job_or_config_or_secrets(self):
+        """Document this test or helper."""
         v = load("deploy/platform/litellm/values.yaml")
         after = render("charts/litellm", v, "litellm", "llm")
         old = dict(v)
@@ -121,6 +127,7 @@ class MigrationTests(unittest.TestCase):
         self.assertEqual(v["masterkeySecretName"], "litellm-env")
 
     def test_app_source_keeps_version_and_selective_sync_safety(self):
+        """Document this test or helper."""
         a = load("deploy/argocd/apps/litellm.yaml")["spec"]
         self.assertEqual(a["sources"][0]["path"], "charts/litellm")
         self.assertFalse(a["syncPolicy"]["automated"]["prune"])
@@ -128,6 +135,7 @@ class MigrationTests(unittest.TestCase):
         self.assertEqual(load("charts/litellm/Chart.yaml")["version"], "1.105.1")
 
     def test_ansible_cannot_silently_revert_to_old_node_or_oci_chart(self):
+        """Document this test or helper."""
         s = (R / "ansible/playbooks/litellm.yml").read_text()
         p = yaml.safe_load(s)
         self.assertEqual(len(p), 1)

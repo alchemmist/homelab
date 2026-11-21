@@ -11,6 +11,7 @@ R = Path(__file__).resolve().parents[1]
 
 
 def render(chart, values, namespace):
+    """Document this test or helper."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as f:
         yaml.safe_dump(values, f)
         f.flush()
@@ -22,6 +23,7 @@ def render(chart, values, namespace):
 
 
 def values(chart):
+    """Document this test or helper."""
     v = yaml.safe_load((R / "charts" / chart / "values.yaml").read_text())
     # Production overrides here are top-level keys; maintain explicit queue map.
     for k, x in yaml.safe_load((R / "deploy" / chart / "values.yaml").read_text()).items():
@@ -34,6 +36,7 @@ def values(chart):
 
 class PlacementTests(unittest.TestCase):
     def test_monori_only_frontend_changes(self):
+        """Document this test or helper."""
         new = values("monori")
         old = copy.deepcopy(new)
         old["frontNodeName"] = "socrat-0"
@@ -49,6 +52,7 @@ class PlacementTests(unittest.TestCase):
         self.assertNotIn("volumes", pod)
 
     def test_spi_only_queue_ui_changes_not_backend_jobs_rbac_or_network_policy(self):
+        """Document this test or helper."""
         new = values("spi-triage")
         old = copy.deepcopy(new)
         old["queueUI"]["nodeName"] = "socrat-3"
@@ -64,6 +68,7 @@ class PlacementTests(unittest.TestCase):
         self.assertFalse(pod["automountServiceAccountToken"])
 
     def test_worker_single_recreate_no_pvc_auth_and_write_modes_preserved(self):
+        """Document this test or helper."""
         for folder, expected in [("blog-updates", "false"), ("wiki-openapi", "true")]:
             docs = list(yaml.safe_load_all((R / "deploy" / folder / "worker.yaml").read_text()))
             d = next(x for x in docs if x and x["kind"] == "Deployment")
@@ -85,6 +90,7 @@ class PlacementTests(unittest.TestCase):
                 )
 
     def test_endpoint_slice_null_is_a_valid_empty_drain(self):
+        """Document this test or helper."""
         import importlib.util
 
         spec = importlib.util.spec_from_file_location(
@@ -118,6 +124,7 @@ class PlacementTests(unittest.TestCase):
         )
 
     def test_drain_is_two_exact_services_only_and_finally_restores(self):
+        """Document this test or helper."""
         p = R / "deploy/migrations/vm105-four-stateless-20261116/drain-services.yaml"
         docs = [x for x in yaml.safe_load_all(p.read_text()) if x]
         self.assertEqual(

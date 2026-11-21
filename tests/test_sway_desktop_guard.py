@@ -7,6 +7,7 @@ from pathlib import Path
 
 
 def load(name, path):
+    """Document this test or helper."""
     loader = importlib.machinery.SourceFileLoader(name, str(path))
     spec = importlib.util.spec_from_loader(name, loader)
     module = importlib.util.module_from_spec(spec)
@@ -21,6 +22,7 @@ graphics = load("homelab_graphics", ROOT / "homelab-graphics")
 
 class LaunchGuard(unittest.TestCase):
     def setUp(self):
+        """Document this test or helper."""
         self.runtime = Path(self.id().replace(".", "_"))
         self.runtime.mkdir(exist_ok=True)
         app.RUNTIME = self.runtime
@@ -29,33 +31,39 @@ class LaunchGuard(unittest.TestCase):
         self.spawned = []
 
     def spawn(self, command):
+        """Document this test or helper."""
         self.spawned.append(command)
         return type("Process", (), {"pid": 4000 + len(self.spawned)})()
 
     def test_second_click_while_the_first_process_lives_does_not_spawn(self):
+        """Document this test or helper."""
         app.open_shortcut("max", now=1000, spawn=self.spawn)
         app.pid_alive = lambda pid: pid == 4001
         app.open_shortcut("max", now=1005, spawn=self.spawn)
         self.assertEqual(len(self.spawned), 1)
 
     def test_click_during_cooldown_does_not_spawn_even_if_the_process_exited(self):
+        """Document this test or helper."""
         app.open_shortcut("browser", now=1000, spawn=self.spawn)
         app.pid_alive = lambda pid: False
         app.open_shortcut("browser", now=1009, spawn=self.spawn)
         self.assertEqual(len(self.spawned), 1)
 
     def test_running_firefox_is_reused_for_another_shortcut(self):
+        """Document this test or helper."""
         app.pids_named = lambda executable: [77] if executable == "firefox-esr" else []
         app.open_shortcut("gmail", now=2000, spawn=self.spawn)
         self.assertEqual(self.spawned[0][:2], ["/usr/bin/firefox-esr", "--new-window"])
         self.assertTrue(self.spawned[0][-1].endswith("mail.google.com/"))
 
     def test_files_do_not_open_twice_while_thunar_is_running(self):
+        """Document this test or helper."""
         app.pids_named = lambda executable: [9] if executable == "thunar" else []
         self.assertIsNone(app.open_shortcut("files", now=3000, spawn=self.spawn))
         self.assertEqual(self.spawned, [])
 
     def test_stamp_records_the_spawned_pid(self):
+        """Document this test or helper."""
         app.open_shortcut("telegram", now=4000, spawn=self.spawn)
         stamp = json.loads((self.runtime / "telegram.json").read_text())
         self.assertEqual(stamp["pids"], [4001])
@@ -63,12 +71,14 @@ class LaunchGuard(unittest.TestCase):
 
 class GraphicsWake(unittest.TestCase):
     def setUp(self):
+        """Document this test or helper."""
         self.directory = Path(self.id().replace(".", "_"))
         self.directory.mkdir(exist_ok=True)
         graphics.runtime_dir = lambda: self.directory
         os.environ.pop("SWAYSOCK", None)
 
     def test_space_event_is_recognized_only_on_press(self):
+        """Document this test or helper."""
         press = struct.pack("llHHi", 1, 0, graphics.EV_KEY, graphics.KEY_SPACE, 1)
         release = struct.pack("llHHi", 1, 0, graphics.EV_KEY, graphics.KEY_SPACE, 0)
         letter = struct.pack("llHHi", 1, 0, graphics.EV_KEY, 30, 1)
@@ -77,6 +87,7 @@ class GraphicsWake(unittest.TestCase):
         self.assertFalse(graphics.space_pressed(letter))
 
     def test_space_brings_graphics_up_once(self):
+        """Document this test or helper."""
         calls = []
         spawned = []
         graphics.command_running = lambda command: False
@@ -95,14 +106,17 @@ class GraphicsWake(unittest.TestCase):
         self.assertEqual(len(spawned), 3)
 
     def test_watch_ignores_space_after_graphics_are_up(self):
+        """Document this test or helper."""
         graphics.write_state(True)
         payload = struct.pack("llHHi", 1, 0, graphics.EV_KEY, graphics.KEY_SPACE, 1)
 
         class Device:
             def read(self, _size):
+                """Document this test or helper."""
                 return payload
 
             def close(self):
+                """Document this test or helper."""
                 pass
 
         spawned = []
@@ -110,17 +124,21 @@ class GraphicsWake(unittest.TestCase):
         graphics.graphics_down = lambda: None
 
         def stop_after_one_read():
+            """Document this test or helper."""
             watch_once(Device())
 
         def watch_once(device):
+            """Document this test or helper."""
             original = graphics.watch
 
             def open_devices():
+                """Document this test or helper."""
                 return [device]
 
             readable = []
 
             def fake_select(devices, _write, _error, _timeout):
+                """Document this test or helper."""
                 if readable:
                     raise SystemExit
                 readable.append(devices[0])

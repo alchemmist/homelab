@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def load(name, relative):
+    """Document this test or helper."""
     source = ROOT / relative
     spec = importlib.util.spec_from_file_location(name, source)
     module = importlib.util.module_from_spec(spec)
@@ -27,6 +28,7 @@ class ShelfTransferTest(unittest.TestCase):
     """Upload, list, and mark one shelf block without leaving the temp root."""
 
     def test_upload_lists_and_marks_without_path_escape(self) -> None:
+        """Document this test or helper."""
         """Store one block, mark it deleted, and reject a path escape."""
         with tempfile.TemporaryDirectory() as tmp:
             source = Path(tmp) / "raw" / ULID

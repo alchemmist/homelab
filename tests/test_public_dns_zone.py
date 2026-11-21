@@ -10,6 +10,7 @@ spec.loader.exec_module(zone)
 
 
 def test_both_entrances_stay_published_while_both_are_healthy():
+    """Document this test or helper."""
     text = zone.render(1, True, True)
     assert text.count("chat IN A %s" % zone.HOME) == 1
     assert text.count("chat IN A %s" % zone.VPS) == 1
@@ -18,6 +19,7 @@ def test_both_entrances_stay_published_while_both_are_healthy():
 
 
 def test_home_failure_leaves_only_the_vps_on_failover_names():
+    """Document this test or helper."""
     text = zone.render(2, False, True)
     assert "llm IN A %s" % zone.VPS in text
     assert "llm IN A %s" % zone.HOME not in text
@@ -26,6 +28,7 @@ def test_home_failure_leaves_only_the_vps_on_failover_names():
 
 
 def test_netbird_and_existing_bot_survive_renderer_deploys_and_follow_health():
+    """Document this test or helper."""
     for home_up, vps_up in [(True, True), (False, True), (True, False), (False, False)]:
         text = zone.render(3, home_up, vps_up)
         expected = zone.healthy_addresses(home_up, vps_up)
@@ -36,6 +39,7 @@ def test_netbird_and_existing_bot_survive_renderer_deploys_and_follow_health():
 
 
 def test_independent_vps_relay_never_points_to_home():
+    """Document this test or helper."""
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
         text = zone.render(4, home, vps)
         assert f"netbird-relay-vps.socrat IN A {zone.VPS}" in text
@@ -43,10 +47,12 @@ def test_independent_vps_relay_never_points_to_home():
 
 
 def test_total_probe_failure_keeps_both_addresses():
+    """Document this test or helper."""
     assert zone.healthy_addresses(False, False) == [zone.HOME, zone.VPS]
 
 
 def _reviewed_openhands_addition(lines: list[str], addresses: list[str]) -> list[str]:
+    """Document this test or helper."""
     """Validate the entire reviewed additive delta, retaining all unrelated lines."""
     prefix = "openhands.socrat IN A "
     assert [line for line in lines if line.startswith(prefix)] == [
@@ -60,6 +66,7 @@ def _reviewed_openhands_addition(lines: list[str], addresses: list[str]) -> list
     [[], ["192.0.2.1"], ["192.0.2.1", "203.0.113.1"], ["192.0.2.1", "192.0.2.2", "192.0.2.2"]],
 )
 def test_reviewed_addition_refuses_missing_wrong_or_duplicate_records(records: list[str]) -> None:
+    """Document this test or helper."""
     """The new name cannot be excluded from history until its exact full delta passes."""
     lines = ["openhands.socrat IN A " + address for address in records]
     with pytest.raises(AssertionError):
@@ -67,6 +74,7 @@ def test_reviewed_addition_refuses_missing_wrong_or_duplicate_records(records: l
 
 
 def test_rustfs_names_additive_without_changes_to_existing_records():
+    """Document this test or helper."""
     import subprocess
 
     original = subprocess.check_output(
@@ -108,10 +116,12 @@ def test_rustfs_names_additive_without_changes_to_existing_records():
 
 
 def test_current_vps_address_after_provider_migration():
+    """Document this test or helper."""
     assert zone.VPS == "109.120.141.60"
 
 
 def test_kuma_administration_name_follows_both_reviewed_entrances():
+    """Document this test or helper."""
     for home, vps in [(True, True), (False, True), (True, False), (False, False)]:
         text = zone.render(7, home, vps)
         for ip in [zone.HOME, zone.VPS]:
@@ -119,11 +129,13 @@ def test_kuma_administration_name_follows_both_reviewed_entrances():
 
 
 def test_retired_tv_alias_is_not_rendered():
+    """Document this test or helper."""
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
         assert "tv IN A " not in zone.render(8, home, vps)
 
 
 def test_vpn_has_only_moscow_even_when_original_entrances_fail():
+    """Document this test or helper."""
     assert "vpn" not in zone.FAILOVER
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
         lines = zone.render(123, home, vps).splitlines()

@@ -16,6 +16,7 @@ FLOOR = CASCADE.DISK_FLOOR_BYTES
 
 
 def block(ulid, start, end, resolution=0, deletion=False, size=None):
+    """Document this test or helper."""
     item = {
         "ulid": ulid,
         "minTime": start,
@@ -29,16 +30,19 @@ def block(ulid, start, end, resolution=0, deletion=False, size=None):
 
 
 def call(raw, five=None, hour=None, now=100 * DAY, disk=None, five_up=True, hour_up=True):
+    """Document this test or helper."""
     return CASCADE.plan(raw, five or [], hour or [], now, disk, five_up, hour_up)
 
 
 class CascadePlanTests(unittest.TestCase):
     def test_raw_is_not_marked_without_five_minute_coverage(self):
+        """Document this test or helper."""
         raw = [block("raw-old", 0, 2 * DAY)]
         result = call(raw, now=10 * DAY)
         self.assertEqual(result["markRaw"], [])
 
     def test_raw_older_than_five_days_is_marked_when_covered(self):
+        """Document this test or helper."""
         raw = [
             block("raw-old", 0, 2 * DAY),
             block("five", 0, 2 * DAY, FIVE),
@@ -47,6 +51,7 @@ class CascadePlanTests(unittest.TestCase):
         self.assertEqual(result["markRaw"], ["raw-old"])
 
     def test_raw_younger_than_five_days_is_not_marked(self):
+        """Document this test or helper."""
         raw = [
             block("raw-new", 6 * DAY, 8 * DAY),
             block("five", 6 * DAY, 8 * DAY, FIVE),
@@ -55,12 +60,14 @@ class CascadePlanTests(unittest.TestCase):
         self.assertEqual(result["markRaw"], [])
 
     def test_five_minute_blocks_wait_for_an_hourly_block(self):
+        """Document this test or helper."""
         raw = [block("five", 0, DAY, FIVE)]
         result = call(raw)
         self.assertEqual(result["copyFive"], [])
         self.assertEqual(result["markFiveSource"], [])
 
     def test_covered_five_minute_block_is_copied_when_the_shelf_does_not_have_it(self):
+        """Document this test or helper."""
         raw = [
             block("five", 0, DAY, FIVE),
             block("hour", 0, DAY, HOUR),
@@ -70,6 +77,7 @@ class CascadePlanTests(unittest.TestCase):
         self.assertEqual(result["markFiveSource"], [])
 
     def test_second_plan_marks_the_source_after_the_shelf_has_the_block(self):
+        """Document this test or helper."""
         raw = [
             block("five", 0, DAY, FIVE),
             block("hour", 0, DAY, HOUR),
@@ -80,6 +88,7 @@ class CascadePlanTests(unittest.TestCase):
         self.assertEqual(result["markFiveSource"], ["five"])
 
     def test_marked_source_is_not_marked_again(self):
+        """Document this test or helper."""
         raw = [
             block("five", 0, DAY, FIVE, deletion=True),
             block("hour", 0, DAY, HOUR),
@@ -90,11 +99,13 @@ class CascadePlanTests(unittest.TestCase):
         self.assertEqual(result["markFiveSource"], [])
 
     def test_shelf_five_minute_block_is_kept_without_an_hour_on_the_hour_shelf(self):
+        """Document this test or helper."""
         shelf = [block("five", 0, DAY, FIVE)]
         result = call([], shelf, [], now=40 * DAY)
         self.assertEqual(result["markFiveShelf"], [])
 
     def test_old_shelf_block_is_marked_only_when_its_hour_is_present(self):
+        """Document this test or helper."""
         shelf = [block("five", 0, DAY, FIVE)]
         hours = [block("hour", 0, DAY, HOUR)]
         missing = call([], shelf, [], now=40 * DAY)
@@ -103,6 +114,7 @@ class CascadePlanTests(unittest.TestCase):
         self.assertEqual(present["markFiveShelf"], ["five"])
 
     def test_unreachable_hour_shelf_copies_and_marks_nothing_hourly(self):
+        """Document this test or helper."""
         raw = [block("hour", 0, DAY, HOUR)]
         shelf = [block("five", 0, DAY, FIVE)]
         hours = [block("hour", 0, DAY, HOUR)]
@@ -112,6 +124,7 @@ class CascadePlanTests(unittest.TestCase):
         self.assertEqual(result["markFiveShelf"], [])
 
     def test_unreachable_five_shelf_does_not_copy_or_mark_sources(self):
+        """Document this test or helper."""
         raw = [
             block("five", 0, DAY, FIVE),
             block("hour", 0, DAY, HOUR),
@@ -121,12 +134,14 @@ class CascadePlanTests(unittest.TestCase):
         self.assertEqual(result["markFiveSource"], [])
 
     def test_unknown_disk_does_not_mark_young_shelf_blocks(self):
+        """Document this test or helper."""
         shelf = [block("five", 20 * DAY, 21 * DAY, FIVE, size=1024)]
         hours = [block("hour", 20 * DAY, 21 * DAY, HOUR)]
         result = call([], shelf, hours, now=25 * DAY, disk=None)
         self.assertEqual(result["markFiveShelf"], [])
 
     def test_low_disk_marks_oldest_covered_blocks_until_the_deficit_is_covered(self):
+        """Document this test or helper."""
         shelf = [
             block("young", 20 * DAY, 21 * DAY, FIVE, size=100),
             block("older", 10 * DAY, 11 * DAY, FIVE, size=70),
@@ -141,11 +156,13 @@ class CascadePlanTests(unittest.TestCase):
         self.assertEqual(result["markFiveShelf"], ["older", "oldest"])
 
     def test_disk_pressure_never_marks_an_uncovered_shelf_block(self):
+        """Document this test or helper."""
         shelf = [block("open", 1 * DAY, 2 * DAY, FIVE, size=10**12)]
         result = call([], shelf, [], now=3 * DAY, disk=0)
         self.assertEqual(result["markFiveShelf"], [])
 
     def test_hourly_shelf_blocks_are_never_deleted_by_the_planner(self):
+        """Document this test or helper."""
         hours = [block("hour", 0, DAY, HOUR)]
         result = call([], [], hours, now=800 * DAY, disk=0)
         self.assertEqual(result["markFiveShelf"], [])
@@ -153,6 +170,7 @@ class CascadePlanTests(unittest.TestCase):
         self.assertNotIn("hour", result["markRaw"])
 
     def test_hour_is_copied_then_marked_on_the_source(self):
+        """Document this test or helper."""
         raw = [block("hour", 0, DAY, HOUR)]
         first = call(raw, hour=[])
         second = call(raw, hour=[block("hour", 0, DAY, HOUR)])
@@ -161,6 +179,7 @@ class CascadePlanTests(unittest.TestCase):
         self.assertEqual(second["markHourSource"], ["hour"])
 
     def test_partial_cover_does_not_count(self):
+        """Document this test or helper."""
         raw = [
             block("raw", 0, 2 * DAY),
             block("five", 0, DAY, FIVE),
@@ -169,6 +188,7 @@ class CascadePlanTests(unittest.TestCase):
         self.assertEqual(result["markRaw"], [])
 
     def test_adjacent_covers_count(self):
+        """Document this test or helper."""
         raw = [
             block("raw", 0, 2 * DAY),
             block("a", 0, DAY, FIVE),
@@ -180,6 +200,7 @@ class CascadePlanTests(unittest.TestCase):
 
 class ParseTests(unittest.TestCase):
     def test_parse_ls_reads_concatenated_meta_and_resolutions(self):
+        """Document this test or helper."""
         text = json.dumps(
             {
                 "ulid": "A",

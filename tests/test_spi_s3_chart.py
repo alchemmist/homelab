@@ -9,6 +9,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 def render(chart, *values):
+    """Document this test or helper."""
     cmd = ["helm", "template", "test", str(ROOT / "charts" / chart)]
     for value in values:
         cmd += ["--set", value]
@@ -16,6 +17,7 @@ def render(chart, *values):
 
 
 def resource(docs, kind, name):
+    """Document this test or helper."""
     return next(d for d in docs if d and d["kind"] == kind and d["metadata"]["name"] == name)
 
 
@@ -23,6 +25,7 @@ class Chart(unittest.TestCase):
     """Render SPI and RustFS charts without a cluster."""
 
     def test_default_no_new_secret_write_unchanged(self) -> None:
+        """Document this test or helper."""
         """Keep the default triage pod on the legacy backend without an S3 volume."""
         pod = resource(render("spi-triage"), "Deployment", "spi-triage")["spec"]["template"]["spec"]
         self.assertNotIn("s3-writer", [v["name"] for v in pod["volumes"]])
@@ -31,6 +34,7 @@ class Chart(unittest.TestCase):
         self.assertEqual(env["WRITE_ENABLED"], "true")
 
     def test_activation_and_rollback_mount_and_network(self) -> None:
+        """Document this test or helper."""
         """Mount the writer secret only for the enabled backend and keep rollback legacy."""
         for toggle, backend in [("enabled", "s3"), ("retainCredentials", "legacy")]:
             docs = render(
@@ -62,6 +66,7 @@ class Chart(unittest.TestCase):
             )
 
     def test_fail_closed_secret(self) -> None:
+        """Document this test or helper."""
         """Reject writer secret names that are empty or belong to another principal."""
         for name in ["", "rustfs-root", "rustfs-reader", "spi-triage"]:
             result = subprocess.run(
@@ -80,6 +85,7 @@ class Chart(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
 
     def test_root_exact_spi_peer(self) -> None:
+        """Document this test or helper."""
         """Admit only the SPI triage peer, and no peers when the writer is off."""
         docs = render("rustfs", "enabled=true", "spiWriter.enabled=true")
         policy = resource(docs, "NetworkPolicy", "rustfs-isolation")["spec"]
@@ -107,6 +113,7 @@ class Chart(unittest.TestCase):
         )
 
     def test_cats_media_is_a_separate_peer(self) -> None:
+        """Document this test or helper."""
         """Keep the cats peer distinct from SPI, and absent when both writers are off."""
         docs = render("rustfs", "enabled=true", "catsMedia.enabled=true", "spiWriter.enabled=true")
         policy = resource(docs, "NetworkPolicy", "rustfs-isolation")["spec"]

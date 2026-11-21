@@ -32,6 +32,7 @@ from strict_report import (
 def test_strict_report_cannot_exit_success_for_dirty_or_incomplete_audit(
     configuration_ready: bool, source_clean: bool, expected: int
 ) -> None:
+    """Document this test or helper."""
     """Keep configuration completeness separate from actual source acceptance."""
     assert (
         audit_exit_code(configuration_ready=configuration_ready, source_clean=source_clean)
@@ -40,6 +41,7 @@ def test_strict_report_cannot_exit_success_for_dirty_or_incomplete_audit(
 
 
 def test_semantic_ids_survive_line_movement_and_do_not_store_source():
+    """Document this test or helper."""
     a = finding("RULE", "tests/test_quality_system.py", 1, "message", "same semantic context")
     b = finding("RULE", "tests/test_quality_system.py", 2, "message", "same semantic context")
     assert a["id"] == b["id"]
@@ -48,11 +50,13 @@ def test_semantic_ids_survive_line_movement_and_do_not_store_source():
 
 
 def test_escaping_finding_rejected():
+    """Document this test or helper."""
     with pytest.raises(ValueError):
         finding("RULE", "../private", 1, "message", "context")
 
 
 def test_failed_tools_are_not_quality_approvals(tmp_path):
+    """Document this test or helper."""
     out = tmp_path / "result.json"
     failure(out, RuntimeError("DO NOT ECHO SECRET PAYLOAD"))
     value = json.loads(out.read_text())
@@ -61,6 +65,7 @@ def test_failed_tools_are_not_quality_approvals(tmp_path):
 
 
 def test_ci_cannot_automatically_record_debt(tmp_path, monkeypatch):
+    """Document this test or helper."""
     monkeypatch.setenv("CI", "true")
     with pytest.raises(ValueError):
         report(
@@ -76,6 +81,7 @@ def test_ci_cannot_automatically_record_debt(tmp_path, monkeypatch):
 def test_native_command_preserves_checked_capture_and_explicit_test_directory(
     tmp_path: Path, *, explicit_cwd: bool
 ) -> None:
+    """Document this test or helper."""
     """Test-directory support must retain the existing bounded checked transport."""
     result = subprocess.CompletedProcess(["native-fixture"], 0, stdout="", stderr="")
     selected = tmp_path if explicit_cwd else None
@@ -94,6 +100,7 @@ def test_native_command_preserves_checked_capture_and_explicit_test_directory(
 
 
 def test_native_command_test_directory_does_not_accept_failed_processes(tmp_path: Path) -> None:
+    """Document this test or helper."""
     """Nonzero native exits still fail without disclosing captured source output."""
     payload = "private-native-fixture-payload"
     result = subprocess.CompletedProcess(["native-fixture"], 1, stdout=payload, stderr=payload)
@@ -107,6 +114,7 @@ def test_native_command_test_directory_does_not_accept_failed_processes(tmp_path
 
 
 def test_new_findings_fail_and_resolved_debt_does_not_hide_them(tmp_path):
+    """Document this test or helper."""
     f = finding("RULE", "tests/test_quality_system.py", 1, "message", "new context")
     with patch("common.ROOT", tmp_path):
         assert report("test", [f], 1, tmp_path / "out.json")
@@ -114,6 +122,7 @@ def test_new_findings_fail_and_resolved_debt_does_not_hide_them(tmp_path):
 
 
 def test_recorded_debt_identity_cannot_mark_a_finding_passed(tmp_path):
+    """Document this test or helper."""
     f = finding("RULE", "tests/test_quality_system.py", 1, "message", "visible context")
     debt = tmp_path / "quality/debt"
     debt.mkdir(parents=True)
@@ -141,6 +150,7 @@ def test_recorded_debt_identity_cannot_mark_a_finding_passed(tmp_path):
 
 
 def test_unmarked_debt_file_cannot_act_as_a_baseline(tmp_path):
+    """Document this test or helper."""
     debt = tmp_path / "quality/debt"
     debt.mkdir(parents=True)
     (debt / "python.json").write_text(
@@ -152,6 +162,7 @@ def test_unmarked_debt_file_cannot_act_as_a_baseline(tmp_path):
 
 
 def test_suppression_guard_matches_markers_and_not_its_own_source():
+    """Document this test or helper."""
     import strict_guard
 
     assert strict_guard.line_is_suppression("value  # " + "noqa: S101")
@@ -162,6 +173,7 @@ def test_suppression_guard_matches_markers_and_not_its_own_source():
 
 
 def test_chart_registry_covers_all_local_roots_and_consumed_values():
+    """Document this test or helper."""
     values = charts.targets()
     assert len(values) >= 58
     assert len({v["id"] for v in values}) == len(values)
@@ -173,11 +185,13 @@ def test_chart_registry_covers_all_local_roots_and_consumed_values():
 
 
 def test_unknown_helm_override_cannot_silently_disappear():
+    """Document this test or helper."""
     with pytest.raises(ValueError):
         charts.local_path("../outside-repo")
 
 
 def test_resource_security_rules_do_not_mutate_intent():
+    """Document this test or helper."""
     workload = {
         "kind": "Deployment",
         "spec": {
@@ -211,10 +225,12 @@ def test_resource_security_rules_do_not_mutate_intent():
 
 
 def test_real_quality_integrity():
+    """Document this test or helper."""
     contracts.check()
 
 
 def test_duplicate_rendered_keys_are_rejected():
+    """Document this test or helper."""
     import yaml
 
     with pytest.raises(yaml.YAMLError):
@@ -222,12 +238,14 @@ def test_duplicate_rendered_keys_are_rejected():
 
 
 def test_scalar_equals_is_valid_kubernetes_yaml():
+    """Document this test or helper."""
     import yaml
 
     assert yaml.load("expr: =", Loader=charts.ManifestLoader) == {"expr": "="}
 
 
 def test_installer_rejects_escaping_binary_name(tmp_path):
+    """Document this test or helper."""
     import install_tools
 
     with pytest.raises(ValueError):
@@ -235,6 +253,7 @@ def test_installer_rejects_escaping_binary_name(tmp_path):
 
 
 def test_native_producer_payload_matches_released_quality_graph_schema(tmp_path):
+    """Document this test or helper."""
     import jsonschema
     from common import command
 
@@ -247,12 +266,14 @@ def test_native_producer_payload_matches_released_quality_graph_schema(tmp_path)
 
 
 def test_manifest_validation_is_not_artificially_sharded():
+    """Document this test or helper."""
     import inspect
 
     assert list(inspect.signature(charts.check).parameters) == ["validate"]
 
 
 def test_helm_parameters_cannot_inject_a_post_renderer():
+    """Document this test or helper."""
     target = {
         "release": "safe-release",
         "namespace": "default",
@@ -264,6 +285,7 @@ def test_helm_parameters_cannot_inject_a_post_renderer():
 
 
 def test_network_namespace_preserves_locked_tool_path(tmp_path, monkeypatch):
+    """Document this test or helper."""
     import importlib.util
     from types import SimpleNamespace
 
@@ -299,6 +321,7 @@ def test_network_namespace_preserves_locked_tool_path(tmp_path, monkeypatch):
     "image", ["example:latest", "example@sha256:short", "example@sha256:not-a-digest"]
 )
 def test_image_digest_must_be_real_sha256_shape(image):
+    """Document this test or helper."""
     resource = {"kind": "Pod", "spec": {"containers": [{"name": "test", "image": image}]}}
     assert any(rule == "image-digest" for rule, _ in charts.policies(resource))
     resource["spec"]["containers"][0]["image"] = "example@sha256:" + "a" * 64
@@ -306,6 +329,7 @@ def test_image_digest_must_be_real_sha256_shape(image):
 
 
 def test_dependency_audit_uses_installed_environment_and_deduplicates(monkeypatch):
+    """Document this test or helper."""
     from types import SimpleNamespace
     import lint
 
@@ -313,6 +337,7 @@ def test_dependency_audit_uses_installed_environment_and_deduplicates(monkeypatc
     item = {"name": "fixture", "version": "1", "vulns": [{"id": "CVE-2026-1234"}]}
 
     def run(argv, **kwargs):
+        """Document this test or helper."""
         calls.append(argv)
         return SimpleNamespace(returncode=1, stdout=json.dumps({"dependencies": [item, item]}))
 
@@ -330,6 +355,7 @@ def test_dependency_audit_uses_installed_environment_and_deduplicates(monkeypatc
 
 
 def test_nonsecret_tokenizer_exception_cannot_hide_other_values(tmp_path, monkeypatch):
+    """Document this test or helper."""
     import lint
 
     p = tmp_path / "services/spi-tokenizer/Dockerfile"
@@ -343,6 +369,7 @@ def test_nonsecret_tokenizer_exception_cannot_hide_other_values(tmp_path, monkey
 
 
 def test_graph_is_cost_layered_and_titles_are_semantic():
+    """Document this test or helper."""
     import yaml
 
     graph = yaml.safe_load((ROOT / "qg.yaml").read_text())["nodes"]
@@ -363,6 +390,7 @@ def test_graph_is_cost_layered_and_titles_are_semantic():
 
 
 def _load_checker(name):
+    """Document this test or helper."""
     path = ROOT / "scripts" / name
     spec = importlib.util.spec_from_file_location(name.removesuffix(".py"), path)
     module = importlib.util.module_from_spec(spec)
@@ -371,6 +399,7 @@ def _load_checker(name):
 
 
 def _infra_files():
+    """Document this test or helper."""
     contract = json.loads((ROOT / "deploy/contracts/infrastructure.json").read_text())
     names = [
         "deploy/contracts/infrastructure.json",
@@ -393,6 +422,7 @@ def _infra_files():
 
 
 def _copy_rels(tmp_path, names):
+    """Document this test or helper."""
     for name in names:
         target = tmp_path / name
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -400,6 +430,7 @@ def _copy_rels(tmp_path, names):
 
 
 def test_new_issuer_alias_is_invisible_to_the_registered_list(tmp_path):
+    """Document this test or helper."""
     """A new alias must fail even when every previously registered consumer still matches."""
     import boundaries
 
@@ -416,6 +447,7 @@ def test_new_issuer_alias_is_invisible_to_the_registered_list(tmp_path):
 
 
 def test_mesh_address_drift_fails_the_inventory_contract(tmp_path):
+    """Document this test or helper."""
     """Changing a mesh address without the inventory is a boundary failure."""
     import yaml
 
@@ -440,6 +472,7 @@ def test_mesh_address_drift_fails_the_inventory_contract(tmp_path):
 
 
 def test_relay_lan_target_drift_fails(tmp_path):
+    """Document this test or helper."""
     """The relay target must stay on the canonical mesh address, not a substituted LAN value."""
     import yaml
 
@@ -456,6 +489,7 @@ def test_relay_lan_target_drift_fails(tmp_path):
 
 
 def test_duplicate_issuer_alias_fails(tmp_path):
+    """Document this test or helper."""
     """A second issuer alias inside a registered consumer is still a scope failure."""
     import yaml
 
@@ -470,6 +504,7 @@ def test_duplicate_issuer_alias_fails(tmp_path):
 
 
 def _pointer_fixture(tmp_path, document):
+    """Document this test or helper."""
     import yaml
 
     chart = tmp_path / "charts/demo"
@@ -526,6 +561,7 @@ def _pointer_fixture(tmp_path, document):
 
 
 def test_duplicate_application_owner_fails(tmp_path):
+    """Document this test or helper."""
     """Two Application manifests with one identity are competing deployment owners."""
     import yaml
 
@@ -538,6 +574,7 @@ def test_duplicate_application_owner_fails(tmp_path):
 
 
 def test_authoritative_claim_drift_fails(tmp_path):
+    """Document this test or helper."""
     """Documentation that drops the current value is not an authoritative claim."""
     pointers = _load_checker("check_source_pointers.py")
     _pointer_fixture(tmp_path, "Current image is `demo-image-1`.\n")
@@ -548,6 +585,7 @@ def test_authoritative_claim_drift_fails(tmp_path):
 
 
 def _retired_play():
+    """Document this test or helper."""
     return [
         {
             "name": "Refuse competing provisioning",
@@ -567,6 +605,7 @@ def _retired_play():
 
 
 def _entrypoint_fixture(tmp_path):
+    """Document this test or helper."""
     import yaml
 
     app = tmp_path / "deploy/argocd/apps/demo.yaml"
@@ -591,6 +630,7 @@ def _entrypoint_fixture(tmp_path):
 
 
 def test_unclassified_helm_provisioning_fails(tmp_path):
+    """Document this test or helper."""
     """A new literal Helm entrypoint is competing provisioning until it is classified."""
     ops = _load_checker("check_operational_entrypoints.py")
     _entrypoint_fixture(tmp_path)
@@ -603,6 +643,7 @@ def test_unclassified_helm_provisioning_fails(tmp_path):
 
 
 def test_retired_entrypoint_must_keep_refusing(tmp_path):
+    """Document this test or helper."""
     """Removing the refusal task re-opens a retired provisioning path."""
     import yaml
 
@@ -616,6 +657,7 @@ def test_retired_entrypoint_must_keep_refusing(tmp_path):
 
 
 def test_vendor_byte_drift_fails(tmp_path):
+    """Document this test or helper."""
     """A changed vendored byte is drift, not a silent member of the trusted set."""
     vendor = _load_checker("check_vendor_contracts.py")
     tree = tmp_path / "vendor/demo"
@@ -645,6 +687,7 @@ def test_vendor_byte_drift_fails(tmp_path):
 
 
 def test_mypy_syntax_error_does_not_hide_another_file(tmp_path, monkeypatch):
+    """Document this test or helper."""
     """A syntax fatal must not erase type findings from the other owned file."""
     import common
     import lint
@@ -668,6 +711,7 @@ def test_mypy_syntax_error_does_not_hide_another_file(tmp_path, monkeypatch):
 
 
 def test_generated_publisher_findings_are_not_waived():
+    """Document this test or helper."""
     """Auditor findings on the generated publisher stay visible and untrusted."""
     from common import command, use_project_tools
 
@@ -698,6 +742,7 @@ def test_generated_publisher_findings_are_not_waived():
 
 
 def test_new_suppression_marker_is_reported(tmp_path, monkeypatch):
+    """Document this test or helper."""
     """A newly added suppression marker is a finding, not configuration success."""
     import strict_guard
 
@@ -708,6 +753,7 @@ def test_new_suppression_marker_is_reported(tmp_path, monkeypatch):
 
 
 def test_strict_configuration_contract_holds():
+    """Document this test or helper."""
     """The live policy, generated publisher surface, and tool pins still match."""
     import strict_guard
 
@@ -715,6 +761,7 @@ def test_strict_configuration_contract_holds():
 
 
 def _frozen_fixture(root: Path) -> Path:
+    """Document this test or helper."""
     """Copy only repository source/provenance needed for isolated ownership tests."""
     policy = json.loads((ROOT / "quality/strict-policy.json").read_text())
     record = policy["frozenCompatibility"]
@@ -729,6 +776,7 @@ def _frozen_fixture(root: Path) -> Path:
 
 
 def test_frozen_scope_excludes_exact_existing_files_not_new_neighbours(tmp_path: Path) -> None:
+    """Document this test or helper."""
     """A new neighbouring file remains owned; no whole-directory exemption exists."""
     import common
 
@@ -748,6 +796,7 @@ def test_frozen_scope_excludes_exact_existing_files_not_new_neighbours(tmp_path:
 def test_frozen_provenance_mutations_fail_before_ownership_exclusion(
     tmp_path: Path, mutation: str
 ) -> None:
+    """Document this test or helper."""
     """Never make drift disappear from lint by calling it third-party source."""
     import common
 
@@ -776,6 +825,7 @@ def test_frozen_provenance_mutations_fail_before_ownership_exclusion(
 
 
 def test_frozen_path_escape_rejected_even_with_updated_fixture_digest(tmp_path: Path) -> None:
+    """Document this test or helper."""
     """A reviewed manifest digest is not permission to escape the owned tree."""
     import common
 
@@ -806,6 +856,7 @@ def test_frozen_path_escape_rejected_even_with_updated_fixture_digest(tmp_path: 
 def test_audit_snapshot_requires_same_clean_source_at_both_boundaries(
     first_clean: bool, last_clean: bool, same_head: bool, expected: bool
 ) -> None:
+    """Document this test or helper."""
     """Reject dirty inputs or a commit race even when all collectors pass."""
     head = "a" * 40
     last_head = head if same_head else "b" * 40
@@ -813,6 +864,7 @@ def test_audit_snapshot_requires_same_clean_source_at_both_boundaries(
 
 
 def test_private_evidence_reruns_are_separate_and_restricted(tmp_path: Path) -> None:
+    """Document this test or helper."""
     """Keep previous run bytes instead of silently replacing evidence at one path."""
     base = tmp_path / "private"
     first = create_evidence_directory(base, "a" * 40)
@@ -833,6 +885,7 @@ def test_private_evidence_reruns_are_separate_and_restricted(tmp_path: Path) -> 
 def test_evidence_invalid_commit_rejected_before_directory_creation(
     tmp_path: Path, head: str
 ) -> None:
+    """Document this test or helper."""
     """Never derive an evidence path from an unvalidated source identifier."""
     base = tmp_path / "private"
     with pytest.raises(ValueError, match="Invalid source commit"):
@@ -844,6 +897,7 @@ def test_evidence_invalid_commit_rejected_before_directory_creation(
 def test_private_evidence_symlink_refuses_without_touching_target(
     tmp_path: Path, kind: str
 ) -> None:
+    """Document this test or helper."""
     """Refuse redirection of evidence into another path before any file write."""
     outside = tmp_path / "outside"
     outside.mkdir()
@@ -868,6 +922,7 @@ def test_private_evidence_symlink_refuses_without_touching_target(
 def test_full_audit_preserves_tool_failures_and_unstable_snapshot_as_incomplete(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fault: str, caplog: pytest.LogCaptureFixture
 ) -> None:
+    """Document this test or helper."""
     """Use isolated fake collectors, never actual hosts, credentials or lint runs."""
     module = sys.modules["strict_report"]
     root = tmp_path / "repo"
@@ -883,24 +938,29 @@ def test_full_audit_preserves_tool_failures_and_unstable_snapshot_as_incomplete(
     calls: list[str] = []
 
     def fake_tool(name: str) -> dict[str, object]:
+        """Document this test or helper."""
         calls.append(name)
         if fault == "interrupt":
             raise KeyboardInterrupt
         return {"reportVersion": 0, "status": "passed", "findings": [], "metrics": []}
 
     def fake_manifests() -> dict[str, object]:
+        """Document this test or helper."""
         return fake_tool("manifests")
 
     def fake_failure(path: Path, _error: Exception) -> None:
+        """Document this test or helper."""
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps({"failureKind": "command", "findings": []}))
 
     def fake_configuration() -> None:
+        """Document this test or helper."""
         if fault == "configuration":
             message = "Synthetic private configuration diagnostics"
             raise ValueError(message)
 
     def fake_owned(names: list[str]) -> list[str]:
+        """Document this test or helper."""
         if fault == "suppressions":
             message = "Synthetic frozen-provenance failure"
             raise ValueError(message)
@@ -953,6 +1013,7 @@ def test_full_audit_preserves_tool_failures_and_unstable_snapshot_as_incomplete(
 
 
 def test_yaml_empty_and_quote_rules_do_not_confuse_maps_or_typed_values() -> None:
+    """Document this test or helper."""
     """Check the real pinned tool, not the previous incorrect disable rationale."""
     argv = ["yamllint", "--format", "parsable", "--config-file", "quality/yamllint.yaml", "-"]
     valid = '---\npermissions: {}\nflag: true\ncount: 1\nintentionalNull: null\nstringBoolean: "yes"\n...\n'
@@ -969,6 +1030,7 @@ def test_yaml_empty_and_quote_rules_do_not_confuse_maps_or_typed_values() -> Non
 def test_evidence_directory_symlinks_are_rejected_before_target_mutation(
     tmp_path: Path, link_at: str
 ) -> None:
+    """Document this test or helper."""
     """Do not chmod or populate a symlinked private evidence directory."""
     outside = tmp_path / "outside"
     outside.mkdir()
@@ -990,6 +1052,7 @@ def test_evidence_directory_symlinks_are_rejected_before_target_mutation(
 
 @pytest.mark.parametrize("omitted", sorted(contracts.RETAINED_PUSH_TESTS))
 def test_existing_main_push_regression_cannot_be_deferred(omitted: str) -> None:
+    """Document this test or helper."""
     """A complete classification is insufficient when it drops an existing gate."""
     complete = set(contracts.RETAINED_PUSH_TESTS)
     contracts.require_retained_push_tests(complete)

@@ -10,6 +10,7 @@ ROOT = Path(__file__).parents[1]
 
 
 def load(name, file):
+    """Document this test or helper."""
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / file)
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
@@ -22,6 +23,7 @@ REQUIRED = {"home": ["external-a", "external-b"], "vps": ["home-isp", "external-
 
 
 def batch(n, home=True, vps=True, now=None):
+    """Document this test or helper."""
     return {
         "round": n,
         "observations": [
@@ -39,6 +41,7 @@ def batch(n, home=True, vps=True, now=None):
 
 
 def test_three_failures_withdraw_and_three_passes_restore():
+    """Document this test or helper."""
     s = p.initial(["home", "vps"])
     for n in [1, 2]:
         r = p.plan(s, batch(n, vps=False), REQUIRED, n * 30)
@@ -56,6 +59,7 @@ def test_three_failures_withdraw_and_three_passes_restore():
 
 
 def test_partition_never_silently_means_healthy_or_global_down():
+    """Document this test or helper."""
     s = p.initial(["home", "vps"])
     b = batch(1)
     b["observations"][-1]["backend_ok"] = False
@@ -74,6 +78,7 @@ def test_partition_never_silently_means_healthy_or_global_down():
     ],
 )
 def test_missing_local_stale_future_hold(change):
+    """Document this test or helper."""
     b = batch(1)
     change(b)
     r = p.plan(p.initial(["home", "vps"]), b, REQUIRED, 30)
@@ -81,6 +86,7 @@ def test_missing_local_stale_future_hold(change):
 
 
 def test_both_down_never_publish_empty():
+    """Document this test or helper."""
     s = p.initial(["home", "vps"])
     for n in [1, 2, 3]:
         r = p.plan(s, batch(n, False, False), REQUIRED, n * 30)
@@ -91,6 +97,7 @@ def test_both_down_never_publish_empty():
 
 
 def test_duplicate_idempotence_and_no_reused_sample_streak():
+    """Document this test or helper."""
     b = batch(1, vps=False)
     s = p.plan(p.initial(["home", "vps"]), b, REQUIRED, 30)["state"]
     assert p.plan(s, b, REQUIRED, 30)["state"] == s
@@ -108,6 +115,7 @@ def test_duplicate_idempotence_and_no_reused_sample_streak():
 
 
 def test_authorities_with_same_shared_evidence_cannot_disagree():
+    """Document this test or helper."""
     s = p.initial(["home", "vps"])
     b = batch(1)
     assert p.plan(s, b, REQUIRED, 30) == p.plan(
@@ -117,6 +125,7 @@ def test_authorities_with_same_shared_evidence_cannot_disagree():
 
 
 def test_single_vantage_and_duplicate_row_rejected():
+    """Document this test or helper."""
     with pytest.raises(ValueError):
         p.plan(p.initial(["home"]), batch(1), {"home": ["one"], "vps": ["one"]}, 30)
     b = batch(1)
@@ -126,6 +135,7 @@ def test_single_vantage_and_duplicate_row_rejected():
 
 
 def discovery():
+    """Document this test or helper."""
     return {
         "issuer": h.ISSUER,
         "authorization_endpoint": "https://" + h.HOST + "/authorize",
@@ -135,6 +145,7 @@ def discovery():
 
 
 def test_backend_discovery_not_just_listening_port():
+    """Document this test or helper."""
     assert h.valid_discovery(discovery())
     assert not h.valid_discovery({"status": "ok"})
     for value in [
@@ -148,6 +159,7 @@ def test_backend_discovery_not_just_listening_port():
 
 
 def test_certificate_failure_never_counts_as_backend_up():
+    """Document this test or helper."""
     with (
         patch.object(h.socket, "create_connection", return_value=Mock()),
         patch.object(h.ssl, "create_default_context") as ctx,
@@ -159,6 +171,7 @@ def test_certificate_failure_never_counts_as_backend_up():
 
 
 def test_success_preserves_sni_host_and_marks_self_probe_local_only():
+    """Document this test or helper."""
     response = Mock()
     response.status = 200
     response.read.return_value = json.dumps(discovery()).encode()

@@ -10,6 +10,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 def render(enabled):
+    """Document this test or helper."""
     raw = subprocess.check_output(
         [
             "helm",
@@ -34,6 +35,7 @@ def render(enabled):
 
 class AuthNetworkTests(unittest.TestCase):
     def test_only_two_policies_change_no_pod_or_stateful_resource(self):
+        """Document this test or helper."""
         before, after = render(False), render(True)
         self.assertEqual(set(before), set(after))
         changed = {k for k in before if before[k] != after[k]}
@@ -46,6 +48,7 @@ class AuthNetworkTests(unittest.TestCase):
         )
 
     def test_both_real_https_dnat_hops_are_narrowly_selected(self):
+        """Document this test or helper."""
         for key, obj in render(True).items():
             if key[0] != "NetworkPolicy" or key[2] not in (
                 "rustfs-isolation",

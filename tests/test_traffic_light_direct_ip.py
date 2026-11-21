@@ -13,10 +13,12 @@ DASH = json.loads((ROOT / "charts/monitoring-k3s/dashboards/traffic-light.json")
 
 
 def panel(n):
+    """Document this test or helper."""
     return next(p for p in DASH["panels"] if p["id"] == n)
 
 
 def series(name, value, labels='job="node-exporter",node="socrat-4"', samples=20):
+    """Document this test or helper."""
     return {
         "series": name + "{" + labels + "}",
         "values": str(value) + ("x" + str(samples) if samples else ""),
@@ -25,6 +27,7 @@ def series(name, value, labels='job="node-exporter",node="socrat-4"', samples=20
 
 class DirectIpTest(unittest.TestCase):
     def test_rendered_probe_and_existing_authenticated_pipeline(self):
+        """Document this test or helper."""
         rendered = subprocess.check_output(
             [
                 "helm",
@@ -39,6 +42,7 @@ class DirectIpTest(unittest.TestCase):
         docs = [d for d in yaml.safe_load_all(rendered) if d]
 
         def obj(kind, name):
+            """Document this test or helper."""
             return next(d for d in docs if d["kind"] == kind and d["metadata"]["name"] == name)
 
         pod = obj("Deployment", "socrat-public-ip-probes")["spec"]["template"]["spec"]
@@ -77,6 +81,7 @@ class DirectIpTest(unittest.TestCase):
         )
 
     def test_host4_is_a_real_kubernetes_worker_again(self):
+        """Document this test or helper."""
         e = panel(926)["targets"][0]["expr"]
         self.assertIn("kube_node_status_condition", e)
         self.assertIn('node="socrat-4"', e)
@@ -85,9 +90,11 @@ class DirectIpTest(unittest.TestCase):
 
     @unittest.skipUnless(shutil.which("promtool"), "promtool required")
     def test_actual_panel_expressions_down_pressure_stale_and_no_vpn_coupling(self):
+        """Document this test or helper."""
         cases = []
 
         def add(expr, data, value, when="3m"):
+            """Document this test or helper."""
             cases.append(
                 {
                     "interval": "15s",
@@ -162,9 +169,11 @@ class DirectIpTest(unittest.TestCase):
 
     @unittest.skipUnless(shutil.which("promtool"), "promtool required")
     def test_mode_missing_is_not_off(self):
+        """Document this test or helper."""
         e = panel(9)["targets"][0]["expr"]
 
         def case(data, value):
+            """Document this test or helper."""
             return {
                 "interval": "15s",
                 "input_series": data,

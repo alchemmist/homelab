@@ -16,6 +16,7 @@ def render(
     release_image: dict[str, str] | None = None,
     monori_images: dict[str, dict[str, str]] | None = None,
 ):
+    """Document this test or helper."""
     cmd = ["helm", "template", release, str(root / chart), "-n", ns]
     if values:
         cmd += ["-f", str(root / values)]
@@ -36,6 +37,7 @@ def render(
 
 
 def assert_monori_release_images(documents, images):
+    """Document this test or helper."""
     """Check actual current images independently from before-render CLI overrides."""
     for component in ("front", "back", "sync"):
         matches = [
@@ -55,6 +57,7 @@ def assert_monori_release_images(documents, images):
 class StatefulBoundaries(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        """Document this test or helper."""
         cls.tmp = tempfile.TemporaryDirectory()
         cls.old = pathlib.Path(cls.tmp.name)
         archive = subprocess.check_output(
@@ -75,9 +78,11 @@ class StatefulBoundaries(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        """Document this test or helper."""
         cls.tmp.cleanup()
 
     def test_only_intended_deployments_and_retention_annotation_change(self):
+        """Document this test or helper."""
         cases = [
             (
                 "deploy/wiki-runtime/chart",
@@ -180,6 +185,7 @@ class StatefulBoundaries(unittest.TestCase):
                     self.assertEqual(x, y)
 
     def test_all_new_claims_are_prebound_local_retained_and_node5_only(self):
+        """Document this test or helper."""
         count = 0
         for file in [
             "wishlist",
@@ -207,6 +213,7 @@ class StatefulBoundaries(unittest.TestCase):
         self.assertEqual(count, 9)
 
     def test_no_paused_ingress_or_zero_replica_left_in_final_sources(self):
+        """Document this test or helper."""
         spi = yaml.safe_load((R / "deploy/spi-triage/values.yaml").read_text())
         self.assertFalse(spi["maintenanceIngressPaused"])
         self.assertEqual(spi["workerReplicas"], 1)
@@ -222,6 +229,7 @@ class StatefulBoundaries(unittest.TestCase):
         self.assertIn("argocd.argoproj.io/refresh=hard", legacy)
 
     def test_idle_controller_never_runs_or_cancels_a_business_job(self):
+        """Document this test or helper."""
         s = (R / "scripts/vm105-spi-idle-handoff.py").read_text()
         for word in [
             "/claim",
@@ -248,6 +256,7 @@ if __name__ == "__main__":
 
 class CurrentMonoriRelease(unittest.TestCase):
     def test_current_image_mutation_is_not_hidden_by_historical_input(self):
+        """Document this test or helper."""
         images = yaml.safe_load((R / "deploy/monori/values.yaml").read_text())["images"]
         documents = render(R, "charts/monori", "deploy/monori/values.yaml", "monori", "monori")
         assert_monori_release_images(documents, images)

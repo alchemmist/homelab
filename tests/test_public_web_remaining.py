@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def module(name):
+    """Document this test or helper."""
     s = importlib.util.spec_from_file_location(name, ROOT / "scripts" / f"{name}.py")
     m = importlib.util.module_from_spec(s)
     s.loader.exec_module(m)
@@ -14,6 +15,7 @@ def module(name):
 
 
 def test_scoped_web_groups_create_no_users():
+    """Document this test or helper."""
     m = module("public-web-role-groups")
     ops = m.plan([])
     assert {x["name"] for x in ops} == {"syncthing-web-admins", "uptime-kuma-web-admins"}
@@ -36,6 +38,7 @@ def test_scoped_web_groups_create_no_users():
     ],
 )
 def test_reject_foreign_or_privileged_web_group(field, value):
+    """Document this test or helper."""
     m = module("public-web-role-groups")
     ops = m.plan([])
     ops[0][field] = value
@@ -44,6 +47,7 @@ def test_reject_foreign_or_privileged_web_group(field, value):
 
 
 def grafana():
+    """Document this test or helper."""
     e = {
         "GF_AUTH_GENERIC_OAUTH_ENABLED": "true",
         "GF_AUTH_GENERIC_OAUTH_CLIENT_ID": "socrat-grafana",
@@ -72,6 +76,7 @@ def grafana():
 
 
 def test_grafana_only_reviewed_env_changes():
+    """Document this test or helper."""
     m = module("grafana-public-sso")
     d = grafana()
     before = copy.deepcopy(d)
@@ -96,6 +101,7 @@ def test_grafana_only_reviewed_env_changes():
     ],
 )
 def test_grafana_drift_stops(key, value):
+    """Document this test or helper."""
     m = module("grafana-public-sso")
     d = grafana()
     next(e for e in d["spec"]["template"]["spec"]["containers"][1]["env"] if e["name"] == key)[
@@ -106,6 +112,7 @@ def test_grafana_drift_stops(key, value):
 
 
 def test_public_policies_keep_machine_auth_and_block_human_fallbacks():
+    """Document this test or helper."""
     gf = (ROOT / "deploy/platform/grafana/public-entry/files/grafana-policy.conf").read_text()
     assert "~*^Basic 1" in gf and "~^POST:/login/?$ 1" in gf
     assert (
@@ -124,6 +131,7 @@ def test_public_policies_keep_machine_auth_and_block_human_fallbacks():
 
 
 def test_kuma_no_gitops_random_secret_by_default():
+    """Document this test or helper."""
     docs = [
         x
         for x in yaml.safe_load_all(
@@ -147,6 +155,7 @@ def test_kuma_no_gitops_random_secret_by_default():
 
 
 def test_schema_recovery_never_resets_existing_passwords_or_restarts_database():
+    """Document this test or helper."""
     text = ast.unparse(ast.parse((ROOT / "scripts/kuma-db-account-recovery.py").read_text()))
     assert "CREATE USER" in text and "ALTER USER" not in text and "DROP USER" not in text
     assert "rollout restart" not in text and "secret['metadata']['resourceVersion']" in text
@@ -155,6 +164,7 @@ def test_schema_recovery_never_resets_existing_passwords_or_restarts_database():
 
 
 def test_fresh_bootstrap_rejects_mismatched_application_identity():
+    """Document this test or helper."""
     r = subprocess.run(
         [
             "helm",
@@ -171,6 +181,7 @@ def test_fresh_bootstrap_rejects_mismatched_application_identity():
 
 
 def test_dns_cleanup_only_owned_files_and_no_global_flush_or_vpn_commands():
+    """Document this test or helper."""
     text = (ROOT / "scripts/macos-public-dns-cleanup.py").read_text()
     m = module("macos-public-dns-cleanup")
     assert len(m.DOMAINS) == 12 and all(x.endswith(".alchemmist.xyz") for x in m.DOMAINS)
@@ -191,6 +202,7 @@ def test_dns_cleanup_only_owned_files_and_no_global_flush_or_vpn_commands():
 
 
 def test_new_clients_do_not_reinstall_private_dns_by_default():
+    """Document this test or helper."""
     defaults = yaml.safe_load(
         (ROOT / "ansible/roles/wireguard_admin_client/defaults/main.yml").read_text()
     )
