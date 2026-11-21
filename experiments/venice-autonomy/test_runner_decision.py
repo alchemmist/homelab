@@ -69,7 +69,7 @@ class FinalDecisionTests(unittest.TestCase):
                     raise RuntimeError("cleanup failed")
                 super().close()
 
-        def invoke(*args, **kwargs):
+        def invoke(*args: object, **kwargs: object) -> dict[str, str]:
             if not clean:
                 raise RuntimeError("provider failed")
             return {"exit_status": "ConversationExecutionStatus.FINISHED"}

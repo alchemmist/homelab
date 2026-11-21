@@ -24,7 +24,7 @@ TOKEN = ""
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *args, **kwargs):
+    def redirect_request(self, *args: object, **kwargs: object) -> None:
         return None
 
 
@@ -39,7 +39,7 @@ def expire(sock):
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
-    def log_message(self, *args):
+    def log_message(self, *args: object) -> None:
         pass
 
     def handle(self):
@@ -201,9 +201,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
 class Server(http.server.ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, *args):
+    def __init__(self, address: tuple[str, int], handler: type[Handler]) -> None:
         self.slots = threading.BoundedSemaphore(8)
-        super().__init__(*args)
+        super().__init__(address, handler)
 
     def process_request(self, request, client_address):
         if not self.slots.acquire(False):

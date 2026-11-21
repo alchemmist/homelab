@@ -14,7 +14,7 @@ class Kubernetes:
     def __init__(self, command):
         self.command = command
 
-    def run(self, *args, payload=None):
+    def run(self, *args: str, payload: dict[str, object] | None = None) -> str:
         result = subprocess.run(
             self.command + list(args),
             input=json.dumps(payload) if payload else None,

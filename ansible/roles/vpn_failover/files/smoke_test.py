@@ -26,7 +26,7 @@ WORKLOADS = [
 ]
 
 
-def run(*args, timeout=45):
+def run(*args: str, timeout: int = 45) -> str:
     return subprocess.run(
         args, check=True, capture_output=True, text=True, timeout=timeout
     ).stdout.strip()
@@ -51,7 +51,7 @@ def backup_database(source, destination):
                 raise RuntimeError("Smoke database integrity check failed")
 
 
-def launch(unit, properties, executable, *arguments):
+def launch(unit: str, properties: list[str], executable: str, *arguments: str) -> None:
     command = [
         "systemd-run",
         "--quiet",

@@ -504,7 +504,7 @@ def main(argv=None):
         }
     environment = None
 
-    def deadline(*_):
+    def deadline(*_: object) -> None:
         raise TimeoutError("external end-to-end deadline exceeded")
 
     signal.signal(signal.SIGALRM, deadline)

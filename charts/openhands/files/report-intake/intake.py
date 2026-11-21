@@ -61,5 +61,5 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError,KeyError,TypeError,AssertionError):code,out=400,{}
         except Exception:code,out=503,{}
         self.send_response(code);self.send_header('Content-Type','application/json');self.end_headers();self.wfile.write(json.dumps(out).encode())
-    def log_message(self,*args):pass
+    def log_message(self,*args: object) -> None:pass
 if __name__=='__main__': HTTPServer(('',8091),Handler).serve_forever()
