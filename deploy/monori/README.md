@@ -11,7 +11,9 @@ stays enabled. No ingress auth proxy, PVC modification or sync-service change.
    `homelab-monori` provider, binds `homelab-owner` before attaching it to
    the app, and writes `monori/monori-oidc` without displaying credentials.
    Keep the private `monori-client-secret` in the identity backup; never rotate
-   automatically to repair a missing file. The playbook can be safely retried.
+   automatically to repair a missing file. A replay must be able to read and
+   match the provider secret; on drift or a masked value it stops before writing
+   the Kubernetes Secret. The playbook can be safely retried.
 2. Merge the chart configuration and let Argo reconcile. If the Secret was
    absent when the backend pod started, SSO stays disabled: after provisioning,
    arrange a targeted backend rollout through GitOps so it reads the Secret.

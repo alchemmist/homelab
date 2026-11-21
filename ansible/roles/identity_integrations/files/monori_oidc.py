@@ -75,6 +75,9 @@ def configure_monori(root, api):
         "grant_types": ["authorization_code"],
     }
     if provider:
+        retained = provider.get("client_secret")
+        if not isinstance(retained, str) or not secrets.compare_digest(retained.encode(), secret.encode()):
+            raise RuntimeError("Cannot verify retained Monori secret against provider; refusing reconciliation")
         for k, value in config.items():
             current = provider.get(k)
             if k == "property_mappings":

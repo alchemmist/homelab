@@ -293,7 +293,18 @@ class IdentityTests(unittest.TestCase):
             (root / "monori-services.json").write_bytes(
                 (ROOT / "deploy/identity/services.json").read_bytes()
             )
-            secret = configure_monori(root, api)
+            def interrupted(method, path, payload=None):
+                if method == "PATCH" and path == "core/applications/monori/":
+                    raise RuntimeError("simulated interruption")
+                return api(method, path, payload)
+
+            with self.assertRaisesRegex(RuntimeError, "simulated interruption"):
+                configure_monori(root, interrupted)
+            secret_path = root / "monori-client-secret"
+            secret = secret_path.read_text()
+            self.assertEqual(secret_path.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(fake.data["providers/oauth2/"][0]["client_secret"], secret)
+            self.assertEqual(configure_monori(root, api), secret)
             self.assertEqual(configure_monori(root, api), secret)
             writes = [
                 (method, path)
@@ -309,12 +320,34 @@ class IdentityTests(unittest.TestCase):
                     ("PATCH", "core/applications/monori/"),
                 ],
             )
+            secret_path.write_text("x" * 64)
+            with self.assertRaisesRegex(RuntimeError, "Cannot verify retained Monori secret"):
+                configure_monori(root, api)
+            secret_path.write_text(secret)
             fake.data["policies/bindings/"][0]["group"] = "other"
             with self.assertRaisesRegex(RuntimeError, "binding drift"):
                 configure_monori(root, api)
             (root / "monori-client-secret").unlink()
             with self.assertRaisesRegex(RuntimeError, "Restore retained credentials"):
                 configure_monori(root, api)
+
+    def test_scoped_monori_secret_apply_needs_no_shared_registry(self) -> None:
+        """Exercise the entrypoint in an empty directory, without cluster access."""
+        import subprocess
+
+        scripts = ROOT / "ansible/roles/identity_integrations/files"
+        with tempfile.TemporaryDirectory() as directory, patch.dict(sys.modules):
+            with patch.object(sys, "path", [str(scripts), *sys.path]), patch(
+                "monori_oidc.configure_monori", return_value="test-value"
+            ), patch.object(sys, "argv", ["integrate.py", directory, "monori"]), patch(
+                "subprocess.run", return_value=subprocess.CompletedProcess([], 0, stdout="")
+            ) as command, contextlib.redirect_stdout(io.StringIO()):
+                runpy.run_path(str(scripts / "integrate.py"), run_name="__main__")
+            args, kwargs = command.call_args
+            self.assertIn("--server-side", args[0])
+            self.assertIn("--field-manager=monori-oidc", args[0])
+            self.assertNotIn("--force-conflicts", args[0])
+            self.assertEqual(json.loads(kwargs["input"])["metadata"], {"name": "monori-oidc", "namespace": "monori"})
 
     def test_existing_litellm_custom_scope_survives_foundation_replay(self) -> None:
         """Preserve the custom litellm scope across replays."""
