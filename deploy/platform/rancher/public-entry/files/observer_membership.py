@@ -18,9 +18,6 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, TypedDict, cast
 
-if TYPE_CHECKING:
-    import types
-
 ORIGIN = "https://auth.socrat.alchemmist.xyz/api/v3/"
 PRINCIPAL = "genericoidc_group://homelab-observer"
 PREFIX = "genericoidc_user://"
@@ -106,109 +103,11 @@ class MembershipReader:
         )
 
 
-class AuthPolicy(TypedDict):
-    """Rancher authconfig plus the derived admission policy for one principal."""
-
-    protected: set[str]
-    authconfig: dict[str, object]
-    admitted: Callable[[str, set[str]], bool]
-
-
-def plan_attribute(
-    meta: dict[str, object],
-    user: dict[str, object],
-    attr: dict[str, object],
-    policy: AuthPolicy,
-) -> list[dict[str, object]] | None:
-    """Compute the patch for one attribute; None means nothing to do."""
-    protected = policy["protected"]
-    authconfig = policy["authconfig"]
-    admitted = policy["admitted"]
-    external = [
-        p[len(PREFIX) :]
-        for p in cast("list[str]", user.get("principalIds", []))
-        if p.startswith(PREFIX)
-    ]
-    if len(external) != 1 or external[0] in protected:
-        return None
-    subject = external[0]
-    cache = cast("dict[str, object]", attr.get("GroupPrincipals", {})).get("genericoidc")
-    if cast(
-        "dict[str, object]",
-        cast("dict[str, object]", attr.get("ExtraByProvider", {})).get("genericoidc", {}),
-    ).get("principalid") != [PREFIX + subject]:
-        # Historical orphan identities can have no live provider cache. They
-        # are not ours to adopt/repair. Never let one block unrelated viewers;
-        # a mismatched cache carrying our grant remains a fail-closed error.
-        items = cache.get("Items") if isinstance(cache, dict) else None
-        if not items or (
-            isinstance(items, list)
-            and all(
-                isinstance(p, dict)
-                and cast("dict[str, object]", cast("dict[str, object]", p).get("metadata", {})).get(
-                    "name"
-                )
-                != PRINCIPAL
-                for p in cast("list[object]", items)
-            )
-        ):
-            return None
-        raise RuntimeError("Native cache identity mismatch")
-    if not isinstance(cache, dict) or not isinstance(cache.get("Items"), (list, type(None))):
-        raise RuntimeError("Malformed generic OIDC cache")
-    old = cast("list[object]", cache["Items"] or [])
-    if any(
-        not isinstance(p, dict)
-        or not isinstance(
-            cast("dict[str, object]", cast("dict[str, object]", p).get("metadata", {})).get("name"),
-            str,
-        )
-        for p in old
-    ):
-        raise RuntimeError("Malformed cached group principal")
-    matching = [
-        p
-        for p in old
-        if cast("dict[str, object]", cast("dict[str, object]", p)["metadata"])["name"] == PRINCIPAL
-    ]
-    if len(matching) > 1:
-        raise RuntimeError("Duplicate cached observer principal")
-    wanted = PRINCIPAL in cast("list[str]", authconfig["allowedPrincipalIds"]) and admitted(
-        subject, {"homelab-observer"}
-    )
-    if bool(matching) == wanted:
-        return None
-    new = [
-        p
-        for p in old
-        if cast("dict[str, object]", cast("dict[str, object]", p)["metadata"])["name"] != PRINCIPAL
-    ]
-    if wanted:
-        new.append(
-            {
-                "metadata": {"name": PRINCIPAL},
-                "displayName": "homelab-observer",
-                "provider": "genericoidc",
-                "principalType": "group",
-                "memberOf": True,
-            }
-        )
-    return [
-        {"op": "test", "path": "/metadata/uid", "value": meta["uid"]},
-        {"op": "test", "path": "/metadata/resourceVersion", "value": meta["resourceVersion"]},
-        {
-            "op": "test",
-            "path": "/ExtraByProvider/genericoidc/principalid",
-            "value": [PREFIX + subject],
-        },
-        {"op": "test", "path": "/GroupPrincipals/genericoidc/Items", "value": cache["Items"]},
-        {"op": "replace", "path": "/GroupPrincipals/genericoidc/Items", "value": new},
-    ]
-
-
 def rancher_plan(users, attributes, authconfig, admitted):
     protected = {OWNER} | {
-        p[len(PREFIX) :] for p in authconfig["allowedPrincipalIds"] if p.startswith(PREFIX)
+        p[len(PREFIX) :]
+        for p in authconfig["allowedPrincipalIds"]
+        if p.startswith(PREFIX)
     }
     by_name = {u["metadata"]["name"]: u for u in users}
     operations = []
@@ -217,14 +116,86 @@ def rancher_plan(users, attributes, authconfig, admitted):
         user = by_name.get(meta["name"])
         if not user:
             continue
-        policy: AuthPolicy = {
-            "protected": protected,
-            "authconfig": cast("dict[str, object]", authconfig),
-            "admitted": cast("Callable[[str, set[str]], bool]", admitted),
-        }
-        patch = plan_attribute(meta, user, attr, policy)
-        if patch is not None:
-            operations.append((meta["name"], patch))
+        external = [
+            p[len(PREFIX) :]
+            for p in user.get("principalIds", [])
+            if p.startswith(PREFIX)
+        ]
+        if len(external) != 1 or external[0] in protected:
+            continue
+        subject = external[0]
+        cache = attr.get("GroupPrincipals", {}).get("genericoidc")
+        if attr.get("ExtraByProvider", {}).get("genericoidc", {}).get(
+            "principalid"
+        ) != [PREFIX + subject]:
+            # Historical orphan identities can have no live provider cache. They
+            # are not ours to adopt/repair. Never let one block unrelated viewers;
+            # a mismatched cache carrying our grant remains a fail-closed error.
+            items = cache.get("Items") if isinstance(cache, dict) else None
+            if not items or (
+                isinstance(items, list)
+                and all(
+                    isinstance(p, dict)
+                    and p.get("metadata", {}).get("name") != PRINCIPAL
+                    for p in items
+                )
+            ):
+                continue
+            raise RuntimeError("Native cache identity mismatch")
+        if not isinstance(cache, dict) or not isinstance(
+            cache.get("Items"), (list, type(None))
+        ):
+            raise RuntimeError("Malformed generic OIDC cache")
+        old = cache["Items"] or []
+        if any(
+            not isinstance(p, dict)
+            or not isinstance(p.get("metadata", {}).get("name"), str)
+            for p in old
+        ):
+            raise RuntimeError("Malformed cached group principal")
+        matching = [p for p in old if p["metadata"]["name"] == PRINCIPAL]
+        if len(matching) > 1:
+            raise RuntimeError("Duplicate cached observer principal")
+        wanted = PRINCIPAL in authconfig["allowedPrincipalIds"] and admitted(
+            subject, {"homelab-observer"}
+        )
+        if bool(matching) == wanted:
+            continue
+        new = [p for p in old if p["metadata"]["name"] != PRINCIPAL]
+        if wanted:
+            new.append(
+                {
+                    "metadata": {"name": PRINCIPAL},
+                    "displayName": "homelab-observer",
+                    "provider": "genericoidc",
+                    "principalType": "group",
+                    "memberOf": True,
+                }
+            )
+        patch = [
+            {"op": "test", "path": "/metadata/uid", "value": meta["uid"]},
+            {
+                "op": "test",
+                "path": "/metadata/resourceVersion",
+                "value": meta["resourceVersion"],
+            },
+            {
+                "op": "test",
+                "path": "/ExtraByProvider/genericoidc/principalid",
+                "value": [PREFIX + subject],
+            },
+            {
+                "op": "test",
+                "path": "/GroupPrincipals/genericoidc/Items",
+                "value": cache["Items"],
+            },
+            {
+                "op": "replace",
+                "path": "/GroupPrincipals/genericoidc/Items",
+                "value": new,
+            },
+        ]
+        operations.append((meta["name"], patch))
     return operations
 
 
@@ -274,7 +245,9 @@ def reconcile_rancher():
         + os.getenv("KUBERNETES_SERVICE_PORT_HTTPS", "443")
     )
     ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-    token = Path("/var/run/secrets/kubernetes.io/serviceaccount/token").read_text().strip()
+    token = (
+        Path("/var/run/secrets/kubernetes.io/serviceaccount/token").read_text().strip()
+    )
     http = opener(ssl.create_default_context(cafile=ca))
     prefix = "/apis/management.cattle.io/v3/"
 
@@ -301,7 +274,9 @@ def reconcile_rancher():
                 "GET",
                 path
                 + "?limit=100"
-                + ("&continue=" + urllib.parse.quote(cursor, safe="") if cursor else ""),
+                + (
+                    "&continue=" + urllib.parse.quote(cursor, safe="") if cursor else ""
+                ),
             )
             result.extend(data["items"])
             cursor = data["metadata"].get("continue", "")
@@ -309,10 +284,9 @@ def reconcile_rancher():
                 return result
         raise RuntimeError("Incomplete native cache pagination")
 
-    listed = cast("types.FunctionType", items)
     operations = rancher_plan(
-        listed("users"),
-        listed("userattributes"),
+        items("users"),
+        items("userattributes"),
         call("GET", "authconfigs/genericoidc"),
         reader.admitted,
     )
@@ -320,7 +294,11 @@ def reconcile_rancher():
         call("PATCH", "userattributes/" + urllib.parse.quote(name, safe=""), patch)
     print(
         json.dumps(
-            {"observer_cache_updates": len(operations), "users_created": 0, "roles_modified": 0}
+            {
+                "observer_cache_updates": len(operations),
+                "users_created": 0,
+                "roles_modified": 0,
+            }
         )
     )
 
@@ -329,4 +307,6 @@ if __name__ == "__main__":
     try:
         reconcile_rancher()
     except Exception:
-        raise SystemExit("Observer membership reconciliation failed safely; inspect native state")
+        raise SystemExit(
+            "Observer membership reconciliation failed safely; inspect native state"
+        )

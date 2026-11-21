@@ -19,6 +19,10 @@ REPO = "alchemmist/monori"
 PREFIX = "openhands/issue-509/"
 
 
+REPO = "alchemmist/monori"
+PREFIX = "openhands/issue-509/"
+
+
 class NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, *args):
         return None
@@ -39,12 +43,12 @@ def api(path, data=None, method=None):
             "User-Agent": "openhands-scoped-publisher",
         },
     )
-    with build_opener(NoRedirect).open(req, timeout=20) as response:
-        raw = response.read()
+    with build_opener(NoRedirect).open(req, timeout=20) as resp:
+        raw = resp.read()
         return json.loads(raw) if raw else {}
 
 
-def check(condition: object) -> None:
+def check(condition):
     if not condition:
         raise ValueError("Invalid or disallowed operation")
 
@@ -65,101 +69,26 @@ def mutation_target(issue):
     return issue
 
 
-def clean_text(t: object, lo: int, hi: int) -> str:
+def clean_text(t, lo, hi):
     check(
-        isinstance(t, str) and lo <= len(t) <= hi and all(c.isprintable() or c == "\n" for c in t)
+        isinstance(t, str)
+        and lo <= len(t) <= hi
+        and all(c.isprintable() or c == "\n" for c in t)
     )
-    text = cast("str", t)
     check(
         not re.search(
             r"@|https?://|[<>]|github_pat_|gh[pousr]_|Bearer\s|sk-[A-Za-z0-9]{16}|-----BEGIN",
-            text,
-            re.IGNORECASE,
+            t,
+            re.I,
         )
     )
-    return text
-
-
-def decode_images(encoded_pngs: list[object]) -> list[bytes]:
-    """Decode and bound-check the reviewed inline PNG evidence."""
-    import io
-
-    from PIL import Image
-
-    images = []
-    for encoded in encoded_pngs:
-        check(isinstance(encoded, str) and len(encoded) <= 1100000)
-        raw = base64.b64decode(cast("str", encoded), validate=True)
-        with Image.open(io.BytesIO(raw), formats=["PNG"]) as im:
-            check(im.width * im.height <= 3000000 and im.n_frames == 1)
-            rgb = im.convert("RGB")
-            rgb.info.clear()
-            out = io.BytesIO()
-            rgb.save(out, "PNG")
-            images.append(out.getvalue())
-    return images
-
-
-def encode_frames(x: dict[str, object]) -> object:
-    """Encode posted frames into the reviewed MP4 via the qa_video module."""
-    import sys
-
-    if "/code" not in sys.path:
-        sys.path.insert(0, "/code")
-    from qa_video import encode
-
-    return encode(x["frames"])
-
-
-def existing_qa_issue(marker: str) -> dict[str, object] | None:
-    """Return a prior QA issue carrying this marker, scanning open and closed."""
-    for page in range(1, 21):
-        items = api(f"issues?state=all&sort=created&direction=desc&per_page=100&page={page}")
-        for item in items:
-            if (
-                "pull_request" not in item
-                and item["user"]["login"] == "alchemmist"
-                and marker in (item["body"] or "")
-            ):
-                return {"issue": item["number"], "url": item["html_url"], "existing": True}
-        if len(items) < 100:
-            break
-    else:
-        raise ValueError("Incomplete duplicate scan")
-    return None
-
-
-def evidence_branch(
-    key: str, digest: str, images: list[bytes], video: bytes | None
-) -> tuple[str, str]:
-    """Create (or find) the synthetic evidence branch; return (oid, branch)."""
-    branch = "openhands/qa-evidence/" + key + "-" + digest
-    try:
-        return api("git/ref/heads/" + branch)["object"]["sha"], branch
-    except HTTPError as exc:
-        if exc.code != 404:
-            raise
-    entries: list[dict[str, object]] = []
-    for i, image in enumerate(images, 1):
-        blob = api(
-            "git/blobs", {"content": base64.b64encode(image).decode(), "encoding": "base64"}
-        )
-        entries.append({"path": f"{i}.png", "mode": "100644", "type": "blob", "sha": blob["sha"]})
-    if video:
-        blob = api(
-            "git/blobs", {"content": base64.b64encode(video).decode(), "encoding": "base64"}
-        )
-        entries.append({"path": "repro.mp4", "mode": "100644", "type": "blob", "sha": blob["sha"]})
-    tree = api("git/trees", {"tree": entries})
-    oid = api(
-        "git/commits",
-        {"message": "QA synthetic screenshot evidence", "tree": tree["sha"], "parents": []},
-    )["sha"]
-    api("git/refs", {"ref": "refs/heads/" + branch, "sha": oid})
-    return oid, branch
+    return t
 
 
 def qa_issue(x):
+    import io, hashlib
+    from PIL import Image
+
     check(
         set(x) - {"frames"}
         == {
@@ -185,29 +114,101 @@ def qa_issue(x):
     check(isinstance(sha, str) and re.fullmatch("[a-f0-9]{40}", sha))
     fields = [clean_text(x[k], 6, 3500) for k in ("steps", "expected", "actual")]
     check(isinstance(x["pngs"], list) and 1 <= len(x["pngs"]) <= 4)
-    images = decode_images(cast("list[object]", x["pngs"]))
-    video = encode_frames(x) if "frames" in x else None
-    existing = existing_qa_issue(marker)
-    if existing:
-        return existing
+    images = []
+    for encoded in x["pngs"]:
+        check(isinstance(encoded, str) and len(encoded) <= 1100000)
+        raw = base64.b64decode(encoded, validate=True)
+        with Image.open(io.BytesIO(raw), formats=["PNG"]) as im:
+            check(im.width * im.height <= 3000000 and im.n_frames == 1)
+            rgb = im.convert("RGB")
+            rgb.info.clear()
+            out = io.BytesIO()
+            rgb.save(out, "PNG")
+            images.append(out.getvalue())
+    video = None
+    if "frames" in x:
+        import sys
+
+        if "/code" not in sys.path:
+            sys.path.insert(0, "/code")
+        from qa_video import encode
+
+        video = encode(x["frames"])
+    # Stable marker; check open AND closed issues before writing. Fail closed on pagination ceiling.
+    for page in range(1, 21):
+        items = api(
+            f"issues?state=all&sort=created&direction=desc&per_page=100&page={page}"
+        )
+        for item in items:
+            if (
+                "pull_request" not in item
+                and item["user"]["login"] == "alchemmist"
+                and marker in (item["body"] or "")
+            ):
+                return {
+                    "issue": item["number"],
+                    "url": item["html_url"],
+                    "existing": True,
+                }
+        if len(items) < 100:
+            break
+    else:
+        raise ValueError("Incomplete duplicate scan")
     check(api("git/commits/" + sha)["sha"] == sha)
-    digest = hashlib.sha256(b"".join(images) + (cast("bytes | None", video) or b"")).hexdigest()[
-        :24
-    ]
-    oid, _ = evidence_branch(key, digest, images, cast("bytes | None", video))
+    digest = hashlib.sha256(b"".join(images) + (video or b"")).hexdigest()[:24]
+    branch = "openhands/qa-evidence/" + key + "-" + digest
+    try:
+        oid = api("git/ref/heads/" + branch)["object"]["sha"]
+    except HTTPError as exc:
+        if exc.code != 404:
+            raise
+        entries = []
+        for i, image in enumerate(images, 1):
+            blob = api(
+                "git/blobs",
+                {"content": base64.b64encode(image).decode(), "encoding": "base64"},
+            )
+            entries.append(
+                {
+                    "path": f"{i}.png",
+                    "mode": "100644",
+                    "type": "blob",
+                    "sha": blob["sha"],
+                }
+            )
+        if video:
+            blob = api(
+                "git/blobs",
+                {"content": base64.b64encode(video).decode(), "encoding": "base64"},
+            )
+            entries.append(
+                {
+                    "path": "repro.mp4",
+                    "mode": "100644",
+                    "type": "blob",
+                    "sha": blob["sha"],
+                }
+            )
+        tree = api("git/trees", {"tree": entries})
+        oid = api(
+            "git/commits",
+            {
+                "message": "QA synthetic screenshot evidence",
+                "tree": tree["sha"],
+                "parents": [],
+            },
+        )["sha"]
+        api("git/refs", {"ref": "refs/heads/" + branch, "sha": oid})
     links = [
-        f"https://raw.githubusercontent.com/{REPO}/{oid}/{i}.png" for i in range(1, len(images) + 1)
+        f"https://raw.githubusercontent.com/{REPO}/{oid}/{i}.png"
+        for i in range(1, len(images) + 1)
     ]
     body = (
-        f"{marker}\nTested revision: `{sha}` (local synthetic data).\n\n## Steps\n{fields[0]}\n\n"
-        f"## Expected\n{fields[1]}\n\n## Actual\n{fields[2]}\n\n## Evidence\n"
+        f"{marker}\nTested revision: `{sha}` (local synthetic data).\n\n## Steps\n{fields[0]}\n\n## Expected\n{fields[1]}\n\n## Actual\n{fields[2]}\n\n## Evidence\n"
         + "\n".join(f"![Reproduction step {i}]({u})" for i, u in enumerate(links, 1))
     )
     if video:
-        body += (
-            f"\n\n[Play the browser recording (MP4)](https://github.com/{REPO}/blob/{oid}/repro.mp4)"
-            f" · [Download MP4](https://raw.githubusercontent.com/{REPO}/{oid}/repro.mp4)"
-        )
+        body += f"\n\n[Play the browser recording (MP4)](https://github.com/{REPO}/blob/{oid}/repro.mp4) · [Download MP4](https://raw.githubusercontent.com/{REPO}/{oid}/repro.mp4)"
     issue = api("issues", {"title": "[QA " + x["kind"] + "] " + title, "body": body})
     return {"issue": issue["number"], "url": issue["html_url"], "evidence": links}
 
@@ -218,8 +219,13 @@ def changes(files, qa=False, pi_ci=False):
     for p, value in files.items():
         check(
             (
-                re.fullmatch(r"server/(?:tests|app)/(?:[A-Za-z0-9_]+/)*[A-Za-z0-9_]+\.py", p)
-                or (pi_ci and re.fullmatch(r"ci/tests/test_mutation_[0-9a-f]{12}\.py", p))
+                re.fullmatch(
+                    r"server/(?:tests|app)/(?:[A-Za-z0-9_]+/)*[A-Za-z0-9_]+\.py", p
+                )
+                or (
+                    pi_ci
+                    and re.fullmatch(r"ci/tests/test_mutation_[0-9a-f]{12}\.py", p)
+                )
                 or (
                     qa
                     and re.fullmatch(
@@ -231,12 +237,19 @@ def changes(files, qa=False, pi_ci=False):
             and isinstance(value, str)
             and "\x00" not in value
         )
-        result.append({"path": p, "contents": base64.b64encode(value.encode()).decode()})
+        result.append(
+            {"path": p, "contents": base64.b64encode(value.encode()).decode()}
+        )
     return result
 
 
 def owned_pr(n, sha):
-    check(type(n) is int and n > 0 and isinstance(sha, str) and re.fullmatch("[a-f0-9]{40}", sha))
+    check(
+        type(n) is int
+        and n > 0
+        and isinstance(sha, str)
+        and re.fullmatch("[a-f0-9]{40}", sha)
+    )
     p = api("pulls/" + str(n))
     check(
         p["state"] == "open"
@@ -244,7 +257,8 @@ def owned_pr(n, sha):
         and p["head"]["repo"]["full_name"] == REPO
         and p["user"]["login"] == "alchemmist"
         and re.fullmatch(
-            "(?:" + MUT + "[1-9][0-9]*/|" + QA + "[0-9]+/)[a-f0-9]{32}", p["head"]["ref"]
+            "(?:" + MUT + "[1-9][0-9]*/|" + QA + "[0-9]+/)[a-f0-9]{32}",
+            p["head"]["ref"],
         )
         and p["head"]["sha"] == sha
     )
@@ -257,16 +271,13 @@ def review(x):
     sha = x["head"]
     if a == "threads":
         check(set(x) == {"action", "pr", "head"})
-        q = (
-            'query($n:Int!,$c:String){repository(owner:"alchemmist",name:"monori")'
-            "{pullRequest(number:$n){reviewThreads(first:50,after:$c)"
-            "{pageInfo{hasNextPage endCursor} nodes{id isResolved path line "
-            "comments(first:1){nodes{body author{login} url}}}}}}}"
-        )
+        q = 'query($n:Int!,$c:String){repository(owner:"alchemmist",name:"monori"){pullRequest(number:$n){reviewThreads(first:50,after:$c){pageInfo{hasNextPage endCursor} nodes{id isResolved path line comments(first:1){nodes{body author{login} url}}}}}}}'
         rows = []
         cursor = None
         for _ in range(10):
-            data = api("graphql", {"query": q, "variables": {"n": x["pr"], "c": cursor}})
+            data = api(
+                "graphql", {"query": q, "variables": {"n": x["pr"], "c": cursor}}
+            )
             check(not data.get("errors"))
             page = data["data"]["repository"]["pullRequest"]["reviewThreads"]
             rows.extend(page["nodes"])
@@ -282,10 +293,7 @@ def review(x):
         res = api(
             f"issues/{target}/comments",
             {
-                "body": (
-                    f"OpenHands: mutation coverage PR #{p['number']}, head `{sha}`. "
-                    "Review/CI status is tracked on the PR."
-                )
+                "body": f"OpenHands: mutation coverage PR #{p['number']}, head `{sha}`. Review/CI status is tracked on the PR."
             },
         )
         return {"url": res["html_url"]}
@@ -311,7 +319,11 @@ def review(x):
         "query($t:ID!){node(id:$t){... on PullRequestReviewThread{isResolved pullRequest{id}}}}",
         {"t": t},
     )["node"]
-    check(thread and not thread["isResolved"] and thread["pullRequest"]["id"] == p["node_id"])
+    check(
+        thread
+        and not thread["isResolved"]
+        and thread["pullRequest"]["id"] == p["node_id"]
+    )
     body = f"{x['decision']} at {sha}: {reason}"
     reply = gql(
         "mutation($t:ID!,$b:String!){addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:$t,body:$b}){comment{id}}}",
@@ -320,181 +332,11 @@ def review(x):
     check(reply["addPullRequestReviewThreadReply"]["comment"]["id"])
     owned_pr(x["pr"], sha)
     resolved = gql(
-        "mutation($t:ID!){resolveReviewThread(input:{threadId:$t}){thread{isResolved}}}", {"t": t}
+        "mutation($t:ID!){resolveReviewThread(input:{threadId:$t}){thread{isResolved}}}",
+        {"t": t},
     )
     check(resolved["resolveReviewThread"]["thread"]["isResolved"])
     return {"resolved": True, "head": sha}
-
-
-def verify_signature(
-    x: dict[str, object], *, signed_create: bool, signed_update: bool, life: bool
-) -> None:
-    """Require a valid HMAC proof for any privileged create/update/life action."""
-    if signed_create or signed_update or life:
-        signature = x.pop("proof", "")
-        check(
-            isinstance(signature, str)
-            and hmac.compare_digest(
-                signature,
-                hmac.new(
-                    Path("/proof/key").read_bytes(),
-                    json.dumps(x, sort_keys=True).encode(),
-                    "sha256",
-                ).hexdigest(),
-            )
-        )
-
-
-def enrolled(p: dict[str, object]) -> bool:
-    """Report the logged-in enrollment of the PR author."""
-    head = cast("dict[str, object]", p["head"])
-    user = cast("dict[str, object]", p["user"])
-    base = cast("dict[str, object]", p["base"])
-    repo = cast("dict[str, object]", head["repo"])
-    return (
-        p["state"] == "open"
-        and repo["full_name"] == REPO
-        and user["login"] == "alchemmist"
-        and base["ref"] == "main"
-        and re.fullmatch(MUT + r"[1-9][0-9]*/[a-f0-9]{32}", cast("str", head["ref"])) is not None
-        and any(
-            cast("dict[str, object]", l)["name"] == "mutation-pr"
-            for l in cast("list[object]", p["labels"])
-        )
-    )
-
-
-def life_dispatch(x: dict[str, object], action: str) -> object:
-    """Run lifecycle queries against the steward-ci helper script."""
-    import runpy
-
-    if action == "life_head":
-        n = x["pr"]
-        check(type(n) is int and n > 0)
-        p = api("pulls/" + str(n))
-        return {"head": p["head"]["sha"], "enrolled": enrolled(p)}
-    if action == "life_ci":
-        p = owned_pr(x["pr"], x["head"])
-        check(
-            p["head"]["ref"].startswith(MUT)
-            and any(l["name"] == "mutation-pr" for l in p["labels"])
-        )
-        return runpy.run_path(str(Path(__file__).with_name("ci_excerpt.py")))["extract"](
-            x["pr"], x["head"], api, NoRedirect, check
-        )
-    return runpy.run_path(str(Path(__file__).with_name("pr_lifecycle.py")))["lifecycle"](
-        x, api, owned_pr, check
-    )
-
-
-def publish_target(x: dict[str, object], action: str, *, signed_create: bool) -> tuple[object, str]:
-    """Return (issue number, branch prefix) for a file publish."""
-    target: object = 509
-    prefix = PREFIX
-    if signed_create and "issue" in x:
-        target = mutation_target(x["issue"])
-        prefix = MUT + str(target) + "/"
-    if action == "qa_create":
-        target = x["issue"]
-        check(type(target) is int and target > 0)
-        issue = api("issues/" + str(target))
-        check(
-            "pull_request" not in issue
-            and issue["state"] == "open"
-            and issue["user"]["login"] == "alchemmist"
-            and re.match(r"<!-- socrat-qa:[a-z0-9-]+ -->", issue.get("body") or "")
-        )
-        prefix = QA + str(target) + "/"
-    return target, prefix
-
-
-def create_refs(
-    x: dict[str, object], action: str, *, signed_create: bool, prefix: str
-) -> tuple[str, list[dict[str, object]]]:
-    """Push a new mutation branch for a create action."""
-    files = changes(x["files"], action == "qa_create", signed_create)
-    check(api("git/ref/heads/main")["object"]["sha"] == x["head"])
-    # cap outstanding work; use a bounded list fail-closed if incomplete.
-    prs = api("pulls?state=open&per_page=100")
-    check(len(prs) < 100 and sum(p["head"]["ref"].startswith(MUT) for p in prs) < 5)
-    check(action != "qa_create" or not any(p["head"]["ref"].startswith(prefix) for p in prs))
-    check(sum(p["head"]["ref"].startswith(QA) for p in prs) < 5)
-    branch = prefix + uuid.uuid4().hex
-    api("git/refs", {"ref": "refs/heads/" + branch, "sha": x["head"]})
-    return branch, files
-
-
-def update_refs(
-    x: dict[str, object], sha: str, *, signed_update: bool
-) -> tuple[dict[str, object], str, list[dict[str, object]]]:
-    """Resolve the owned PR and refresh its file list for an update."""
-    p = owned_pr(x["pr"], sha)
-    branch = p["head"]["ref"]
-    check(not branch.startswith(MUT) or branch.startswith(PREFIX) or signed_update)
-    files = changes(x["files"], branch.startswith(QA), signed_update and branch.startswith(MUT))
-    return p, branch, files
-
-
-def create_or_update(
-    x: dict[str, object], action: str, *, signed_create: bool, signed_update: bool
-) -> dict[str, object]:
-    """Publish a new branch/issue or update an already owned PR."""
-    required = {"action", "head", "files", "title"} | (
-        {"pr"}
-        if action == "update"
-        else {"issue"}
-        if action == "qa_create" or (signed_create and "issue" in x)
-        else set()
-    )
-    sha = x["head"]
-    check(set(x) == required and isinstance(sha, str) and re.fullmatch("[a-f0-9]{40}", sha))
-    title = x["title"]
-    check(
-        isinstance(title, str)
-        and 4 <= len(title) <= 110
-        and all(c.isprintable() for c in title)
-        and "@" not in title
-    )
-    target, prefix = publish_target(x, action, signed_create=signed_create)
-    if action == "update":
-        p, branch, files = update_refs(x, cast("str", sha), signed_update=signed_update)
-    else:
-        branch, files = create_refs(x, action, signed_create=signed_create, prefix=prefix)
-    mutation = (
-        "mutation($i:CreateCommitOnBranchInput!){createCommitOnBranch(input:$i){commit{oid}}}"
-    )
-    res = api(
-        "graphql",
-        {
-            "query": mutation,
-            "variables": {
-                "i": {
-                    "branch": {"repositoryNameWithOwner": REPO, "branchName": branch},
-                    "expectedHeadOid": sha,
-                    "message": {"headline": title},
-                    "fileChanges": {"additions": files},
-                }
-            },
-        },
-    )
-    oid = res["data"]["createCommitOnBranch"]["commit"]["oid"]
-    if action != "update":
-        p = api(
-            "pulls",
-            {
-                "head": branch,
-                "base": "main",
-                "draft": False,
-                "title": title,
-                "body": (
-                    f"Follow-up for #{target}. Published via the scoped OpenHands publisher. "
-                    "Human review and merge required."
-                ),
-            },
-        )
-    if signed_create:
-        api("issues/" + str(p["number"]) + "/labels", {"labels": ["mutation-pr"]})
-    return {"pr": p["number"], "head": oid, "url": p["html_url"]}
 
 
 def dispatch(x):
@@ -511,9 +353,48 @@ def dispatch(x):
         "life_request",
     )
     check(not life or Path("/proof").is_dir())
-    verify_signature(x, signed_create=signed_create, signed_update=signed_update, life=life)
+    if signed_create or signed_update or life:
+        signature = x.pop("proof", "")
+        check(
+            isinstance(signature, str)
+            and hmac.compare_digest(
+                signature,
+                hmac.new(
+                    Path("/proof/key").read_bytes(),
+                    json.dumps(x, sort_keys=True).encode(),
+                    "sha256",
+                ).hexdigest(),
+            )
+        )
     if life:
-        return life_dispatch(x, action)
+        import runpy
+
+        if action == "life_head":
+            n = x["pr"]
+            check(type(n) is int and n > 0)
+            p = api("pulls/" + str(n))
+            return {
+                "head": p["head"]["sha"],
+                "enrolled": p["state"] == "open"
+                and p["head"]["repo"]["full_name"] == REPO
+                and p["user"]["login"] == "alchemmist"
+                and p["base"]["ref"] == "main"
+                and re.fullmatch(MUT + r"[1-9][0-9]*/[a-f0-9]{32}", p["head"]["ref"])
+                is not None
+                and any(l["name"] == "mutation-pr" for l in p["labels"]),
+            }
+        if action == "life_ci":
+            p = owned_pr(x["pr"], x["head"])
+            check(
+                p["head"]["ref"].startswith(MUT)
+                and any(l["name"] == "mutation-pr" for l in p["labels"])
+            )
+            return runpy.run_path(str(Path(__file__).with_name("ci_excerpt.py")))[
+                "extract"
+            ](x["pr"], x["head"], api, NoRedirect, check)
+        return runpy.run_path(str(Path(__file__).with_name("pr_lifecycle.py")))[
+            "lifecycle"
+        ](x, api, owned_pr, check)
     if action == "qa_issue":
         return qa_issue(x)
     if action == "qa_capabilities":
@@ -540,7 +421,89 @@ def dispatch(x):
     if action in ("report", "threads", "reply_then_resolve"):
         return review(x)
     check(action in ("create", "qa_create", "update"))
-    return create_or_update(x, action, signed_create=signed_create, signed_update=signed_update)
+    required = {"action", "head", "files", "title"} | (
+        {"pr"}
+        if action == "update"
+        else {"issue"}
+        if action == "qa_create" or signed_create and "issue" in x
+        else set()
+    )
+    check(set(x) == required)
+    sha = x["head"]
+    check(isinstance(sha, str) and re.fullmatch("[a-f0-9]{40}", sha))
+    title = x["title"]
+    check(
+        isinstance(title, str)
+        and 4 <= len(title) <= 110
+        and all(c.isprintable() for c in title)
+        and "@" not in title
+    )
+    target = 509
+    prefix = PREFIX
+    if signed_create and "issue" in x:
+        target = mutation_target(x["issue"])
+        prefix = MUT + str(target) + "/"
+    if action == "qa_create":
+        target = x["issue"]
+        check(type(target) is int and target > 0)
+        issue = api("issues/" + str(target))
+        check(
+            "pull_request" not in issue
+            and issue["state"] == "open"
+            and issue["user"]["login"] == "alchemmist"
+            and re.match(r"<!-- socrat-qa:[a-z0-9-]+ -->", issue.get("body") or "")
+        )
+        prefix = QA + str(target) + "/"
+    if action != "update":
+        files = changes(x["files"], action == "qa_create", signed_create)
+        check(api("git/ref/heads/main")["object"]["sha"] == sha)
+        # cap outstanding work; use a bounded list fail-closed if incomplete.
+        prs = api("pulls?state=open&per_page=100")
+        check(len(prs) < 100 and sum(p["head"]["ref"].startswith(MUT) for p in prs) < 5)
+        check(
+            action != "qa_create"
+            or not any(p["head"]["ref"].startswith(prefix) for p in prs)
+        )
+        check(sum(p["head"]["ref"].startswith(QA) for p in prs) < 5)
+        branch = prefix + uuid.uuid4().hex
+        api("git/refs", {"ref": "refs/heads/" + branch, "sha": sha})
+    else:
+        p = owned_pr(x["pr"], sha)
+        branch = p["head"]["ref"]
+        check(not branch.startswith(MUT) or branch.startswith(PREFIX) or signed_update)
+        files = changes(
+            x["files"], branch.startswith(QA), signed_update and branch.startswith(MUT)
+        )
+    mutation = "mutation($i:CreateCommitOnBranchInput!){createCommitOnBranch(input:$i){commit{oid}}}"
+    res = api(
+        "graphql",
+        {
+            "query": mutation,
+            "variables": {
+                "i": {
+                    "branch": {"repositoryNameWithOwner": REPO, "branchName": branch},
+                    "expectedHeadOid": sha,
+                    "message": {"headline": title},
+                    "fileChanges": {"additions": files},
+                }
+            },
+        },
+    )
+    oid = res["data"]["createCommitOnBranch"]["commit"]["oid"]
+    if action != "update":
+        p = api(
+            "pulls",
+            {
+                "head": branch,
+                "base": "main",
+                "draft": False,
+                "title": title,
+                "body": f"Follow-up for #{target}. Published via the scoped OpenHands publisher. Human review and merge required.",
+            },
+        )
+    if signed_create:
+        api("issues/" + str(p["number"]) + "/labels", {"labels": ["mutation-pr"]})
+    return {"pr": p["number"], "head": oid, "url": p["html_url"]}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -567,12 +530,20 @@ class Handler(BaseHTTPRequestHandler):
         except HTTPError as e:
             self.send(
                 502,
-                {"github_status": e.code, "retry": "Inspect existing branch/PR before retrying"},
+                {
+                    "github_status": e.code,
+                    "retry": "Inspect existing branch/PR before retrying",
+                },
             )
         except (ValueError, TypeError):
-            self.send(400, {"error": "Invalid request, stale head or operation outside policy"})
+            self.send(
+                400,
+                {"error": "Invalid request, stale head or operation outside policy"},
+            )
         except Exception:
-            self.send(503, {"error": "Publisher unavailable; inspect GitHub before retrying"})
+            self.send(
+                503, {"error": "Publisher unavailable; inspect GitHub before retrying"}
+            )
 
 
 if __name__ == "__main__":
