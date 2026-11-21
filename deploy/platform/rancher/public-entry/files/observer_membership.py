@@ -207,7 +207,7 @@ def install_wiki_guard(store: _WikiStore) -> None:
     store.token_session = wrap(store.token_session)
 
 
-def reconcile_rancher():
+def reconcile_rancher() -> None:
     reader = MembershipReader(os.environ['OBSERVER_IDP_READ_TOKEN_FILE'])
     reader.refresh()  # Complete, validated identity snapshot BEFORE any writes.
     base = 'https://' + os.environ['KUBERNETES_SERVICE_HOST'] + ':' + os.getenv('KUBERNETES_SERVICE_PORT_HTTPS', '443')

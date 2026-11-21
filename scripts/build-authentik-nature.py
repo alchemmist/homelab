@@ -17,7 +17,7 @@ from PIL import Image, ImageOps, features
 from PIL import __version__ as pillow_version
 
 
-def build(source: Path, output: Path):
+def build(source: Path, output: Path) -> None:
     folder = source / "wallpapers/nature/images"
     files = sorted(
         p for p in folder.iterdir() if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}

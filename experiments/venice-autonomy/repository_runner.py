@@ -311,7 +311,7 @@ class RepositoryEnvironment:
             stream.write(json.dumps(self.events[-1]) + "\n")
         return result
 
-    def snapshot(self, destination: pathlib.Path):
+    def snapshot(self, destination: pathlib.Path) -> None:
         subprocess.run(
             ["docker", "pause", self.container_id], check=True, capture_output=True, timeout=15
         )
@@ -340,7 +340,7 @@ class RepositoryEnvironment:
         for name, data in files.items():
             (destination / name).write_bytes(data)
 
-    def close(self):
+    def close(self) -> None:
         if self.container_id:
             info = json.loads(
                 subprocess.check_output(["docker", "inspect", self.container_id], timeout=15)
@@ -382,7 +382,7 @@ def comment_delta(snapshot: pathlib.Path, candidate: pathlib.Path):
     return comments(candidate / "main.py") - comments(snapshot / "agent" / "main.py")
 
 
-def artifact_accepted(verdict: object, snapshot: pathlib.Path, candidate: pathlib.Path):
+def artifact_accepted(verdict: object, snapshot: pathlib.Path, candidate: pathlib.Path) -> bool:
     if not isinstance(verdict, dict) or verdict.get("passed") is not True:
         return False
     if verdict.get("agent_protocol_unchanged") is not True:
@@ -544,7 +544,7 @@ def task_prompt():
     return prompt
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check-wiring", action="store_true")
     args = parser.parse_args(argv)

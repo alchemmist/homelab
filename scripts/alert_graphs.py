@@ -452,7 +452,7 @@ def outputs(rules: Sequence[_AlertRule]):
     return result, mappings
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()

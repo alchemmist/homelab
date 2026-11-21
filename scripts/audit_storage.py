@@ -50,7 +50,7 @@ def inventory(pvs: list[dict[str, object]], pods: list[dict[str, object]]):
     return rows
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(__doc__)
     parser.add_argument('--node', default='socrat-5', choices=[f'socrat-{i}' for i in range(6)])
     args = parser.parse_args()

@@ -10,12 +10,12 @@ class Conversation:
         self.runs = 0
         self.messages: list[str] = []
 
-    def run(self):
+    def run(self) -> None:
         self.runs += 1
         if self.runs <= self.failures:
             raise RuntimeError("provider failed")
 
-    def send_message(self, message: str):
+    def send_message(self, message: str) -> None:
         self.messages.append(message)
 
 
@@ -31,19 +31,19 @@ def facts(continue_value: object):
 
 
 class ContinueOpenHandsTests(unittest.TestCase):
-    def test_acceptance_none_runs_once_without_messages(self):
+    def test_acceptance_none_runs_once_without_messages(self) -> None:
         conversation = Conversation()
         continue_openhands(conversation, None, None, None)
         self.assertEqual(conversation.runs, 1)
         self.assertEqual(conversation.messages, [])
 
-    def test_continue_false_stops_without_follow_up(self):
+    def test_continue_false_stops_without_follow_up(self) -> None:
         conversation = Conversation()
         self.assertEqual(continue_openhands(conversation, None, None, facts(False)), "stopped")
         self.assertEqual(conversation.runs, 1)
         self.assertEqual(conversation.messages, [])
 
-    def test_reject_then_accept_runs_twice_with_one_follow_up(self):
+    def test_reject_then_accept_runs_twice_with_one_follow_up(self) -> None:
         conversation = Conversation()
         decisions = iter([True, False])
 
@@ -56,7 +56,7 @@ class ContinueOpenHandsTests(unittest.TestCase):
         self.assertIn("Continue in this same conversation", conversation.messages[0])
         self.assertIn("No transport request is replayed", conversation.messages[0])
 
-    def test_persistent_rejection_stops_at_three_and_states_exhaustion(self):
+    def test_persistent_rejection_stops_at_three_and_states_exhaustion(self) -> None:
         conversation = Conversation()
         outcome = continue_openhands(conversation, None, None, facts(True))
         self.assertEqual(outcome, "exhausted")
@@ -74,14 +74,14 @@ class ContinueOpenHandsTests(unittest.TestCase):
             )
         )
 
-    def test_provider_exception_is_not_replayed(self):
+    def test_provider_exception_is_not_replayed(self) -> None:
         conversation = Conversation(failures=1)
         with self.assertRaises(RuntimeError):
             continue_openhands(conversation, None, None, facts(True))
         self.assertEqual(conversation.runs, 1)
         self.assertEqual(conversation.messages, [])
 
-    def test_non_boolean_continue_does_not_authorize_another_run(self):
+    def test_non_boolean_continue_does_not_authorize_another_run(self) -> None:
         conversation = Conversation()
         continue_openhands(conversation, None, None, facts("true"))
         continue_openhands(conversation, None, None, facts(1))
@@ -90,7 +90,7 @@ class ContinueOpenHandsTests(unittest.TestCase):
 
 
 class ContinuationPolicyTests(unittest.TestCase):
-    def test_real_rejection_continues_until_two_unchanged_rounds(self):
+    def test_real_rejection_continues_until_two_unchanged_rounds(self) -> None:
         first = apply_continuation_policy({"accepted": False, "consecutive_no_progress": 0}, 0)
         second = apply_continuation_policy({"accepted": False, "consecutive_no_progress": 1}, 1)
         third = apply_continuation_policy({"accepted": False, "consecutive_no_progress": 2}, 2)
@@ -99,7 +99,7 @@ class ContinuationPolicyTests(unittest.TestCase):
         self.assertFalse(third["continue"])
         self.assertFalse(first["real_accepted"])
 
-    def test_force_once_rejects_only_the_first_round(self):
+    def test_force_once_rejects_only_the_first_round(self) -> None:
         forced = apply_continuation_policy(
             {"accepted": True, "consecutive_no_progress": 0}, 0, force_once=True
         )
