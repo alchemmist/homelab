@@ -1,12 +1,12 @@
 descheduler:
   fullnameOverride: descheduler
   schedule: '*/5 * * * *'
-  suspend: true
+  suspend: false
   startingDeadlineSeconds: 45
   activeDeadlineSeconds: 90
   successfulJobsHistoryLimit: 12
   failedJobsHistoryLimit: 3
-  cmdOptions: {v: 3, dry-run: true}
+  cmdOptions: {v: 3}
   priorityClassName: ''
   resources:
     requests: {cpu: 50m, memory: 96Mi}
