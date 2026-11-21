@@ -57,11 +57,19 @@ class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
         async def spawn(
             program: str,
             *args: str,
-            stdin: int | None = None,
-            stdout: int | None = None,
-            stderr: int | None = None,
+            stdin: object = None,
+            stdout: object = None,
+            stderr: object = None,
+            **kwargs: object,
         ) -> asyncio.subprocess.Process:
-            process = await original(program, *args, stdin=stdin, stdout=stdout, stderr=stderr)
+            process = await original(
+                program,
+                *args,
+                stdin=stdin,
+                stdout=stdout,
+                stderr=stderr,
+                **kwargs,
+            )
             processes.append(process)
             started.set()
             return process
