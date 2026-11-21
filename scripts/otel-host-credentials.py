@@ -244,4 +244,4 @@ if __name__ == "__main__":
     except Exception as error:
         # Do not include HTTP response bodies, private key material, or bearer tokens.
         print(json.dumps({"credentialRefreshSucceeded": False, "errorType": type(error).__name__}))
-        raise SystemExit(1)
+        raise SystemExit(1) from error
