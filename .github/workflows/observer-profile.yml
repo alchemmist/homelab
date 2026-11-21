@@ -28,6 +28,10 @@ on:
       - deploy/wiki-runtime/**
       - tests/test_observer_membership.py
       - tests/test_observer_access.py
+      - tests/test_identity.py
+      - tests/test_app_iam.py
+      - tests/test_browser_auth_policy.py
+      - tests/test_native_browser_auth.py
 permissions:
   contents: read
 concurrency:
