@@ -195,61 +195,88 @@ def nonnegative(value):
     )
 
 
+def require(expected: object, message: str) -> None:
+    """Enforce an invariant, failing with the given message."""
+    if not expected:
+        raise ValueError(message)
+
+
+def node_errors(node, reservation, inventory, capacity, now, maximum_age, fraction):
+    """Validate one node's observation and reservation; return error strings."""
+    errors = []
+    observed = inventory.get("nodes", {}).get(node)
+    if observed is None:
+        errors.append(f"{node}: missing capacity observation")
+        return errors
+    keys = ("observedAt", "diskTotalBytes", "diskAvailableBytes", "memoryAvailableBytes")
+    if any(not nonnegative(observed.get(key)) for key in keys):
+        errors.append(f"{node}: invalid capacity observation")
+        return errors
+    if observed["hostname"] != node:
+        errors.append(f"{node}: SSH alias resolved to a different hostname")
+    age = now - observed["observedAt"]
+    if age < -60 or age > maximum_age:
+        errors.append(f"{node}: stale or future capacity observation")
+    components = reservation["components"]
+    values = [
+        reservation[key]
+        for key in (
+            "minimumFreeBytes",
+            "projectedAdditionalDiskBytes",
+            "minimumAvailableMemoryBytes",
+        )
+    ] + list(components.values())
+    if not components or any(not nonnegative(value) for value in values):
+        raise ValueError(f"{node}: invalid resource reservation")
+    disk_floor = max(
+        reservation["minimumFreeBytes"], math.ceil(observed["diskTotalBytes"] * fraction)
+    )
+    disk_after = observed["diskAvailableBytes"] - reservation["projectedAdditionalDiskBytes"]
+    required_memory = sum(components.values()) + reservation["minimumAvailableMemoryBytes"]
+    capacity_line = {
+        "diskAfterPeakBytes": disk_after,
+        "diskFloorBytes": disk_floor,
+        "memoryAvailableBytes": observed["memoryAvailableBytes"],
+        "memoryRequiredBytes": required_memory,
+        "additionalComponentMemoryBytes": sum(components.values()),
+    }
+    capacity[node] = capacity_line
+    if disk_after < disk_floor:
+        errors.append(f"{node}: projected disk space violates the reserve")
+    if observed["memoryAvailableBytes"] < required_memory:
+        errors.append(
+            f"{node}: insufficient available memory for bounded component budgets and reserve"
+        )
+    return errors
+
+
 def evaluate(policy, inventory, now=None):
     now = time.time() if now is None else now
-    errors = []
-    capacity = {}
-    if policy.get("schemaVersion") != 1 or inventory.get("schemaVersion") != 1:
-        raise ValueError("Unsupported migration policy or inventory version")
+    errors: list[object] = []
+    capacity: dict[object, object] = {}
+    require(
+        all(
+            [
+                policy.get("schemaVersion") == 1,
+                inventory.get("schemaVersion") == 1,
+            ]
+        ),
+        "Unsupported migration policy or inventory version",
+    )
     fraction = policy["minimumFreeFraction"]
-    if not nonnegative(fraction) or fraction < 0.2 or fraction >= 1:
-        raise ValueError("Free-space fraction must be at least 0.2 and less than 1")
+    require(
+        nonnegative(fraction) and fraction >= 0.2 and fraction < 1,
+        "Free-space fraction must be at least 0.2 and less than 1",
+    )
     maximum_age = policy["maximumObservationAgeSeconds"]
-    if not nonnegative(maximum_age) or not 0 < maximum_age <= 900:
-        raise ValueError("Observation lifetime must be at most 900 seconds")
+    require(
+        nonnegative(maximum_age) and 0 < maximum_age <= 900,
+        "Observation lifetime must be at most 900 seconds",
+    )
     for node, reservation in policy["nodes"].items():
-        observed = inventory.get("nodes", {}).get(node)
-        if observed is None:
-            errors.append(f"{node}: missing capacity observation")
-            continue
-        keys = ("observedAt", "diskTotalBytes", "diskAvailableBytes", "memoryAvailableBytes")
-        if any(not nonnegative(observed.get(key)) for key in keys):
-            errors.append(f"{node}: invalid capacity observation")
-            continue
-        if observed["hostname"] != node:
-            errors.append(f"{node}: SSH alias resolved to a different hostname")
-        age = now - observed["observedAt"]
-        if age < -60 or age > maximum_age:
-            errors.append(f"{node}: stale or future capacity observation")
-        components = reservation["components"]
-        values = [
-            reservation[key]
-            for key in (
-                "minimumFreeBytes",
-                "projectedAdditionalDiskBytes",
-                "minimumAvailableMemoryBytes",
-            )
-        ] + list(components.values())
-        if not components or any(not nonnegative(value) for value in values):
-            raise ValueError(f"{node}: invalid resource reservation")
-        disk_floor = max(
-            reservation["minimumFreeBytes"], math.ceil(observed["diskTotalBytes"] * fraction)
+        errors.extend(
+            node_errors(node, reservation, inventory, capacity, now, maximum_age, fraction)
         )
-        disk_after = observed["diskAvailableBytes"] - reservation["projectedAdditionalDiskBytes"]
-        required_memory = sum(components.values()) + reservation["minimumAvailableMemoryBytes"]
-        capacity[node] = {
-            "diskAfterPeakBytes": disk_after,
-            "diskFloorBytes": disk_floor,
-            "memoryAvailableBytes": observed["memoryAvailableBytes"],
-            "memoryRequiredBytes": required_memory,
-            "additionalComponentMemoryBytes": sum(components.values()),
-        }
-        if disk_after < disk_floor:
-            errors.append(f"{node}: projected disk space violates the reserve")
-        if observed["memoryAvailableBytes"] < required_memory:
-            errors.append(
-                f"{node}: insufficient available memory for bounded component budgets and reserve"
-            )
     targets = inventory.get("targets", [])
     if not targets:
         errors.append("No live scrape targets were inventoried")
