@@ -20,6 +20,7 @@ def module():
 
 def document():
     """Test behavior for document."""
+
     def resource(service, span):
         return {
             "resource": {

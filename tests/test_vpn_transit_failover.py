@@ -329,7 +329,7 @@ def test_probe_failure_records_stage_not_private_path(ctl, monkeypatch):
 
 
 def test_boot_grace_never_refreshes_old_green_health_or_carries_failure_count(ctl, monkeypatch):
-    """Test behavior for test_boot_grace_never_refreshes_old_green_health_or_carries_failure_count."""
+    """Test boot grace resets stale health."""
     m, c = ctl
     c.save(mode="kubernetes", healthy=True, failures=3, boot_id="old")
     monkeypatch.setattr(m, "boot_id", lambda: "new")
@@ -342,7 +342,7 @@ def test_boot_grace_never_refreshes_old_green_health_or_carries_failure_count(ct
 
 
 def test_failed_websocket_diagnostic_does_not_store_private_path(ctl, monkeypatch):
-    """Test behavior for test_failed_websocket_diagnostic_does_not_store_private_path."""
+    """Test failed websocket diagnostics avoid private paths."""
     m, c = ctl
 
     class Connection:

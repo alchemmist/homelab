@@ -34,7 +34,7 @@ def test_fixed_destinations_and_public_backend_protection():
 
 
 def test_transport_never_advertises_a_default_route_or_mutates_old_interface():
-    """Test behavior for test_transport_never_advertises_a_default_route_or_mutates_old_interface."""
+    """Test transport route safeguards."""
     template = (ROOT / "ansible/roles/vpn_transit/templates/wg-vpn-transit.conf.j2").read_text()
     assert "0.0.0.0/0" not in template
     assert "::/0" not in template
@@ -107,7 +107,7 @@ def test_exit_fence_never_blocks_shared_https_or_dns():
 
 
 def test_private_authoritative_listener_and_tcp_certificate_identity_preserved():
-    """Test behavior for test_private_authoritative_listener_and_tcp_certificate_identity_preserved."""
+    """Test private listener and certificate identity."""
     values = yaml.safe_load((ROOT / "ansible/inventory/host_vars/socrat-2.yml").read_text())
     assert values["public_dns_extra_listen"] == ["10.250.0.2@5354"]
     assert values["public_dns_transit_listener_enabled"] is True
@@ -118,7 +118,7 @@ def test_private_authoritative_listener_and_tcp_certificate_identity_preserved()
 
 
 def test_native_recovery_gate_keeps_real_loopback_health_and_subscription_routes():
-    """Test behavior for test_native_recovery_gate_keeps_real_loopback_health_and_subscription_routes."""
+    """Test native recovery health and subscription routes."""
     from jinja2 import Environment
 
     edge = yaml.safe_load((ROOT / "charts/traefik-edge/values.yaml").read_text())
