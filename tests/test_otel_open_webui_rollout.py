@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def module() -> ModuleType:
+    """Test behavior for module."""
     spec = importlib.util.spec_from_file_location(
         "webui_rollout", ROOT / "scripts/otel-open-webui-sdk-rollout.py"
     )

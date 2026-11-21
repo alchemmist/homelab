@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def module(name: str, filename: str) -> types.ModuleType:
+    """Test behavior for module."""
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / filename)
     result = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(result)
@@ -26,10 +27,12 @@ BINARIES = module("validation_binaries", "otel-validation-binaries.py")
 
 
 def digest(body: bytes) -> str:
+    """Test behavior for digest."""
     return "sha256:" + hashlib.sha256(body).hexdigest()
 
 
 def response(body: bytes, headers: dict[str, str] | None = None) -> io.BytesIO:
+    """Test behavior for response."""
     result = io.BytesIO(body)
     result.headers = headers or {}
     return result

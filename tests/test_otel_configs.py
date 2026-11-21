@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1] / "deploy/monitoring/otel"
 
 
 def config(name: str) -> dict[str, object]:
+    """Test behavior for config."""
     document: object = yaml.safe_load((ROOT / (name + ".yaml")).read_text())
     assert isinstance(document, dict)
     return document

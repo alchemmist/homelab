@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def module() -> ModuleType:
+    """Test behavior for module."""
     spec = importlib.util.spec_from_file_location(
         "webui_profile", ROOT / "scripts/otel-open-webui-source-profile.py"
     )
@@ -25,6 +26,7 @@ def fixtures() -> tuple[
     ModuleType,
     dict[str, ModuleType],
 ]:
+    """Test behavior for fixtures."""
     calls: list[str | dict[str, object]] = []
 
     class Native:

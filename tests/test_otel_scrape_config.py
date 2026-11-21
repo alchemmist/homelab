@@ -41,6 +41,7 @@ class _Targets(TypedDict):
 
 
 def fixtures() -> tuple[_Source, _Targets]:
+    """Test behavior for fixtures."""
     cluster: _ScrapeJob = {
         "job_name": "serviceMonitor/llm/vllm/0",
         "scrape_interval": "30s",

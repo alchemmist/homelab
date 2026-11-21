@@ -45,6 +45,7 @@ class _Inventory(TypedDict):
 
 
 def fixtures() -> tuple[_Policy, _Inventory]:
+    """Test behavior for fixtures."""
     policy = json.loads((POLICY_FIXTURE).read_text())
     for key in (
         "diskProjectionVerified",

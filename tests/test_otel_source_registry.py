@@ -68,6 +68,7 @@ def fixtures() -> tuple[
     _Rules,
     _Dashboards,
 ]:
+    """Test behavior for fixtures."""
     monitor: _MonitorItem = {
         "kind": "ServiceMonitor",
         "metadata": {

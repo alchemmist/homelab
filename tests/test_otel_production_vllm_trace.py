@@ -40,6 +40,7 @@ class _Document(TypedDict):
 
 
 def module() -> ModuleType:
+    """Test behavior for module."""
     spec = importlib.util.spec_from_file_location(
         "trace_verify", ROOT / "scripts/otel-application-trace-verify.py"
     )
@@ -49,6 +50,7 @@ def module() -> ModuleType:
 
 
 def document() -> _Document:
+    """Test behavior for document."""
     def resource(service, span) -> _ResourceSpan:
         return {
             "resource": {

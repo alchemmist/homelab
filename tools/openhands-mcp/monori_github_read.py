@@ -9,6 +9,7 @@ class NoRedirect(HTTPRedirectHandler):
 
 
 def read(path: str):
+    """Test behavior for read."""
     req = Request("https://api.github.com/repos/alchemmist/monori/" + path,
                   headers={"User-Agent":"socrat-monori-review","Accept":"application/vnd.github+json"})
     with build_opener(ProxyHandler({}), NoRedirect()).open(req, timeout=12) as r:
@@ -18,6 +19,7 @@ def read(path: str):
 
 
 def positive(n: object) -> int:
+    """Test behavior for positive."""
     if type(n) is not int or not 1<=n<=1_000_000_000: raise ValueError("Positive ID/page required")
     return n
 

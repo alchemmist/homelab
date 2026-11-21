@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_fixed_destinations_and_public_backend_protection() -> None:
+    """Test behavior for test_fixed_destinations_and_public_backend_protection."""
     config = json.loads((ROOT / "deploy/vpn-hardening/moscow-transit.json").read_text())
     management = json.loads((ROOT / "deploy/vpn-hardening/moscow-management.json").read_text())
     assert config["outbounds"] == [
@@ -33,6 +34,7 @@ def test_fixed_destinations_and_public_backend_protection() -> None:
 
 
 def test_transport_never_advertises_a_default_route_or_mutates_old_interface() -> None:
+    """Test transport route safeguards."""
     template = (ROOT / "ansible/roles/vpn_transit/templates/wg-vpn-transit.conf.j2").read_text()
     assert "0.0.0.0/0" not in template
     assert "::/0" not in template
@@ -45,6 +47,7 @@ def test_transport_never_advertises_a_default_route_or_mutates_old_interface() -
 
 
 def test_small_worker_keeps_admission_and_has_no_control_plane_role() -> None:
+    """Test behavior for test_small_worker_keeps_admission_and_has_no_control_plane_role."""
     values = yaml.safe_load((ROOT / "ansible/inventory/host_vars/socrat-4.yml").read_text())
     assert values["k3s_worker_profile"] == "transit-worker"
     assert values["k3s_worker_bootstrap_taint"].endswith(":NoSchedule")
@@ -54,6 +57,7 @@ def test_small_worker_keeps_admission_and_has_no_control_plane_role() -> None:
 
 
 def test_public_key_inventory_has_no_private_material() -> None:
+    """Test behavior for test_public_key_inventory_has_no_private_material."""
     values = yaml.safe_load((ROOT / "ansible/vars/vpn-transit.yml").read_text())
     assert len(values["vpn_transit_public_keys"]) == 5
     assert all(
@@ -65,6 +69,7 @@ def test_public_key_inventory_has_no_private_material() -> None:
 
 
 def test_home_egress_has_only_known_exact_destination_and_no_default_route() -> None:
+    """Test behavior for test_home_egress_has_only_known_exact_destination_and_no_default_route."""
     import importlib.util
 
     path = ROOT / "scripts/vpn-home-transit-egress.py"
@@ -88,6 +93,7 @@ def test_home_egress_has_only_known_exact_destination_and_no_default_route() -> 
 
 
 def test_exit_fence_never_blocks_shared_https_or_dns() -> None:
+    """Test behavior for test_exit_fence_never_blocks_shared_https_or_dns."""
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
@@ -103,6 +109,7 @@ def test_exit_fence_never_blocks_shared_https_or_dns() -> None:
 
 
 def test_private_authoritative_listener_and_tcp_certificate_identity_preserved() -> None:
+    """Test private listener and certificate identity."""
     values = yaml.safe_load((ROOT / "ansible/inventory/host_vars/socrat-2.yml").read_text())
     assert values["public_dns_extra_listen"] == ["10.250.0.2@5354"]
     assert values["public_dns_transit_listener_enabled"] is True
@@ -113,6 +120,7 @@ def test_private_authoritative_listener_and_tcp_certificate_identity_preserved()
 
 
 def test_native_recovery_gate_keeps_real_loopback_health_and_subscription_routes() -> None:
+    """Test native recovery health and subscription routes."""
     from jinja2 import Environment
 
     edge = yaml.safe_load((ROOT / "charts/traefik-edge/values.yaml").read_text())
