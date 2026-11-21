@@ -8,20 +8,22 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
-import urllib.parse
+from typing import cast
 import urllib.error
+import urllib.parse
+import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def module(name):
+def module(name: str):
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts/rustfs" / f"{name}.py")
     obj = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(obj)
     return obj
 
 
-def put(path, data):
+def put(path: Path, data: object):
     path.write_text(json.dumps(data))
     path.chmod(0o600)
 
@@ -75,7 +77,7 @@ class Provisioning(unittest.TestCase):
         buckets = []
         calls = []
 
-        def fake(mc, config, args, stdin=None):
+        def fake(mc: str, config: str, args: list[str], stdin: bytes | None = None):
             calls.append(args)
             if args[:3] == ["admin", "user", "list"]:
                 return [{"accessKey": k} for k in users]
@@ -97,7 +99,7 @@ class Provisioning(unittest.TestCase):
                 policies[args[4]] = json.loads(Path(args[5]).read_text())
                 return []
             if args[:3] == ["admin", "user", "add"]:
-                access, secret = stdin.decode().splitlines()
+                access, secret = cast("bytes", stdin).decode().splitlines()
                 self.assertNotIn(secret, " ".join(args))
                 users[access] = {"userStatus": "enabled", "policyName": ""}
                 return []
@@ -224,7 +226,7 @@ class Provisioning(unittest.TestCase):
         ]
 
         class Response:
-            def __init__(self, data):
+            def __init__(self, data: object):
                 self.data = data
 
             def __enter__(self):
@@ -237,7 +239,7 @@ class Provisioning(unittest.TestCase):
                 return json.dumps(self.data).encode()
 
         class HTTP:
-            def open(self, request, timeout):
+            def open(self, request: urllib.request.Request, timeout: float):
                 path = urllib.parse.urlsplit(request.full_url).path.removeprefix("/api/v3/")
                 method = request.get_method()
                 if method == "GET":
@@ -260,7 +262,7 @@ class Provisioning(unittest.TestCase):
                             "pagination": {"next": None},
                         }
                     )
-                data = json.loads(request.data)
+                data = json.loads(cast("bytes", request.data))
                 writes.append((method, path, data))
                 if method == "PATCH":
                     self_outer.assertEqual(path, "outposts/instances/outpost/")
@@ -347,7 +349,11 @@ class Provisioning(unittest.TestCase):
         expression = module("provision_identity").EXPRESSION
 
         def claim(
-            pk=5, uuid="9e33877a-3eaa-4541-98eb-8cdc10088ef6", username="alchemmist", member=False
+            pk: int = 5,
+            uuid: str = "9e33877a-3eaa-4541-98eb-8cdc10088ef6",
+            username: str = "alchemmist",
+            *,
+            member: bool = False,
         ):
             user = SimpleNamespace(pk=pk, uuid=uuid, username=username)
             return eval(
