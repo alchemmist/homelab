@@ -74,8 +74,8 @@ class RebalanceTest(unittest.TestCase):
         self.assertEqual(
             client.calls,
             [
-                (["move-leader", "1"], MODULE.ENDPOINTS["socrat-1"]),
-                (["member", "remove", "2"], None),
+                (["move-leader", "1"], MODULE.ENDPOINTS["socrat-1"], False),
+                (["member", "remove", "2"], None, False),
             ],
         )
 
