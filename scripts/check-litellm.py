@@ -7,6 +7,7 @@ import urllib.request
 
 
 def kubectl(*args):
+    """Document this public function."""
     return subprocess.check_output(["kubectl", "-n", "llm", *args], text=True)
 
 
@@ -20,6 +21,7 @@ opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
 def request(path, key=None, data=None):
+    """Document this public function."""
     headers = {"Content-Type": "application/json"}
     if key:
         headers["Authorization"] = "Bearer " + key

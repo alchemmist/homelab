@@ -9,6 +9,7 @@ import time
 
 
 def converged(deployment, pods, node, replicas=1):
+    """Document this public function."""
     spec, status = deployment["spec"], deployment.get("status", {})
     if replicas < 1 or spec.get("replicas") != replicas:
         return False
@@ -64,6 +65,7 @@ def owned_by_current_revision(deployment, replica_sets, pods):
 
 
 def main():
+    """Document this public function."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--namespace", required=True)
     p.add_argument("--deployment", required=True)

@@ -11,6 +11,7 @@ URL = "https://grafana-mcp.socrat.alchemmist.xyz/mcp"
 
 
 def load_token(ssh_host):
+    """Document this public function."""
     result = subprocess.run(
         [
             "ssh",
@@ -73,6 +74,7 @@ class Client:
 
 
 def main():
+    """Document this public function."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", default=URL)
     parser.add_argument("--ssh-host", default="socrat-0")

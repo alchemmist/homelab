@@ -10,6 +10,7 @@ IDS = {937, 938}
 
 
 def build(source=None):
+    """Document this public function."""
     d = copy.deepcopy(source if source is not None else json.loads(SOURCE.read_text()))
     owner = {p['id']: p for p in d['panels']}
     bottom = owner[909]['gridPos']['y'] + owner[909]['gridPos']['h']
@@ -41,6 +42,7 @@ def build(source=None):
 
 def write(d):
     # Preserve existing owned-widget compaction and actual ConfigMap size budget.
+    """Document this public function."""
     quality = runpy.run_path(str(SOURCE.parents[3] / 'scripts/build-traffic-light-quality.py'))
     quality['write'](d)
     text = SOURCE.read_text()

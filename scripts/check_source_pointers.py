@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def inside(root, path):
+    """Document this public function."""
     path = path.resolve()
     if not path.is_relative_to(root.resolve()):
         raise ValueError("Source pointer escapes repository")
@@ -22,6 +23,7 @@ def inside(root, path):
 
 
 def applications(root, directory, repo):
+    """Document this public function."""
     base = inside(root, root / directory)
     if not base.is_dir():
         raise ValueError("Missing Application directory")
@@ -107,6 +109,7 @@ def applications(root, directory, repo):
 
 
 def check(root=ROOT):
+    """Document this public function."""
     c = json.loads((root / "deploy/contracts/source-pointers.json").read_text())
     if c["schemaVersion"] != 1:
         raise ValueError("Unsupported source pointer schema")

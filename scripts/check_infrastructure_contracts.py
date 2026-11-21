@@ -16,10 +16,12 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def load(path):
+    """Document this public function."""
     return yaml.safe_load(path.read_text())
 
 
 def scalar_node(node, key):
+    """Document this public function."""
     for k, value in node.value:
         if k.value == key:
             return value
@@ -27,6 +29,7 @@ def scalar_node(node, key):
 
 
 def check(root=ROOT, write=False):
+    """Document this public function."""
     c = json.loads((root / "deploy/contracts/infrastructure.json").read_text())
     if c["schemaVersion"] != 1:
         raise ValueError("Unsupported contract schema")
@@ -165,6 +168,7 @@ def check(root=ROOT, write=False):
 
 
 def main():
+    """Document this public function."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--write",

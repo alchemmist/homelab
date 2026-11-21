@@ -11,6 +11,7 @@ PROMETHEUS_SERVICE = "kube-prometheus-stack-prometheus:9090"
 
 
 def kubectl(host, *args):
+    """Document this public function."""
     result = subprocess.run(
         ["ssh", "-o", "BatchMode=yes", host, shlex.join(["kubectl", *args])],
         capture_output=True,
@@ -23,6 +24,7 @@ def kubectl(host, *args):
 
 
 def prometheus(host, endpoint, params=None):
+    """Document this public function."""
     path = (
         f"/api/v1/namespaces/{NAMESPACE}/services/http:{PROMETHEUS_SERVICE}/proxy/api/v1/{endpoint}"
     )
@@ -35,6 +37,7 @@ def prometheus(host, endpoint, params=None):
 
 
 def query(host, expression, timestamp=None):
+    """Document this public function."""
     params = {"query": expression}
     if timestamp is not None:
         params["time"] = timestamp
@@ -42,12 +45,14 @@ def query(host, expression, timestamp=None):
 
 
 def require(condition, description):
+    """Document this public function."""
     if not condition:
         raise RuntimeError(description)
     print("PASS:", description)
 
 
 def target_summary(targets):
+    """Document this public function."""
     summary = {}
     for target in targets:
         job = target.get("labels", {}).get("job", "<unknown>")
@@ -59,6 +64,7 @@ def target_summary(targets):
 def remote_http_status(
     host, url, resolve_address=None, forwarded_for=None, interface=None, public_absence=False
 ):
+    """Document this public function."""
     command = [
         "curl",
         "--silent",
@@ -102,6 +108,7 @@ def remote_http_status(
 
 
 def main():
+    """Document this public function."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--ssh-host", default="socrat-0")
     parser.add_argument("--grafana-url", default="https://grafana.socrat.alchemmist.xyz")

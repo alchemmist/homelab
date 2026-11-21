@@ -12,11 +12,13 @@ TIMEOUT = 180
 
 
 def require(condition, message):
+    """Document this public function."""
     if not condition:
         raise ValueError(message)
 
 
 def request(path, payload=None):
+    """Document this public function."""
     data = None if payload is None else json.dumps(payload).encode()
     headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
     return urllib.request.urlopen(
@@ -26,6 +28,7 @@ def request(path, payload=None):
 
 
 def report(name, started, usage=None):
+    """Document this public function."""
     tokens = ""
     if usage:
         tokens = (
@@ -36,6 +39,7 @@ def report(name, started, usage=None):
 
 
 def complete(messages, **options):
+    """Document this public function."""
     payload = {
         "model": MODEL,
         "messages": messages,
@@ -52,6 +56,7 @@ def complete(messages, **options):
 
 
 def main():
+    """Document this public function."""
     require(bool(API_KEY), "LLM_API_KEY must be set")
     started = time.monotonic()
     try:

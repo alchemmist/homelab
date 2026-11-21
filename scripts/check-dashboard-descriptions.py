@@ -23,6 +23,7 @@ print(json.dumps(dashboards))
 
 
 def panel_descriptions(dashboard):
+    """Document this public function."""
     result = {}
     for panel in dashboard.get("panels", []):
         if panel.get("type") not in {"row", "text"}:
@@ -32,6 +33,7 @@ def panel_descriptions(dashboard):
 
 
 def main():
+    """Document this public function."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--ssh-host", default="socrat-0")
     args = parser.parse_args()

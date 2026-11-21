@@ -10,6 +10,7 @@ QUANTITY = re.compile(r"^([+-]?(?:\d+(?:\.\d*)?|\.\d+))([eE][+-]?\d+|[numkKMGTPE
 
 
 def quantity(value):
+    """Document this public function."""
     match = QUANTITY.fullmatch(str(value))
     if not match:
         raise ValueError("Invalid resource quantity: " + str(value))
@@ -43,18 +44,22 @@ def quantity(value):
 
 
 def vector(values=None):
+    """Document this public function."""
     return {name: quantity((values or {}).get(name, 0)) for name in RESOURCES}
 
 
 def add(left, right):
+    """Document this public function."""
     return {name: left[name] + right[name] for name in RESOURCES}
 
 
 def maximum(left, right):
+    """Document this public function."""
     return {name: max(left[name], right[name]) for name in RESOURCES}
 
 
 def effective_requests(pod):
+    """Document this public function."""
     spec = pod.get("spec", {})
     total, sidecars, init_peak = vector(), vector(), vector()
     for container in spec.get("containers", []):
@@ -74,6 +79,7 @@ def effective_requests(pod):
 
 
 def proposed_pod(pod, profiles):
+    """Document this public function."""
     label = pod["metadata"].get("namespace", "default") + "/" + pod["metadata"]["name"]
     owner = next(
         (value for value in pod["metadata"].get("ownerReferences", []) if value.get("controller")),
@@ -112,10 +118,12 @@ def proposed_pod(pod, profiles):
 
 
 def items(value):
+    """Document this public function."""
     return value["items"] if isinstance(value, dict) else value
 
 
 def validate_profiles(profiles):
+    """Document this public function."""
     if not isinstance(profiles, list):
         raise ValueError("Profiles must be a JSON list")
     for profile in profiles:
@@ -140,6 +148,7 @@ def validate_profiles(profiles):
 
 
 def budget(pods, nodes, profiles):
+    """Document this public function."""
     validate_profiles(profiles)
     report = {
         "scope": "Current placement only; not a scheduler simulation or an N-1, rollout, peak-use or memory-safety guarantee. Requests are not actual usage. Unassigned pods are not charged to any node.",
@@ -192,6 +201,7 @@ def budget(pods, nodes, profiles):
 
 
 def main():
+    """Document this public function."""
     parser = argparse.ArgumentParser(
         description="Read-only current-placement request budget comparison"
     )

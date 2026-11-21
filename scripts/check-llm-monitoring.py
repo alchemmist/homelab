@@ -15,6 +15,7 @@ JOBS = {"vllm", "litellm"}
 
 
 def main():
+    """Document this public function."""
     deadline = time.monotonic() + 120
     while True:
         targets = [

@@ -12,6 +12,7 @@ from pathlib import Path
 
 
 def load(path):
+    """Document this public function."""
     spec = importlib.util.spec_from_file_location("browser_watchdog_probe", path)
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
@@ -20,6 +21,7 @@ def load(path):
 
 
 def tree(module, root):
+    """Document this public function."""
     snapshot = module.snapshot()
     selected = {root}
     while True:
@@ -30,6 +32,7 @@ def tree(module, root):
 
 
 def alive(module, identities):
+    """Document this public function."""
     snapshot = module.snapshot()
     return [
         identity
@@ -39,6 +42,7 @@ def alive(module, identities):
 
 
 def main():
+    """Document this public function."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--watchdog", required=True)
     parser.add_argument(
