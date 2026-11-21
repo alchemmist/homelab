@@ -144,11 +144,13 @@ processors:
       error_mode: silent
       statements:
       - >-
-        set(body, ParseJSON(body)) where IsString(body) and IsMatch(body, "^[ \\t]*(\\{|\\[[ \\t]*(\\{|\\[|\"))")
+        set(body, ParseJSON(body)) where IsString(body) and IsMatch(body, "^[ \\t]*(\\{|\\[[
+        \\t]*(\\{|\\[|\"))")
     - context: log
       statements:
       - >-
-        set(body, "<redacted-invalid-json>") where IsString(body) and IsMatch(body, "^[ \\t]*(\\{|\\[[ \\t]*(\\{|\\[|\"))")
+      - set(body, "<redacted-invalid-json>") where IsString(body) and IsMatch(body, "^[ \\t]*(\\{|\\[[ \\t]*(\\{|\\[|\"))")
+      - set(body, "<redacted-unstructured-array>") where IsList(body)
       - flatten(body, resolveConflicts=true) where IsMap(body)
       - >-
         delete_matching_keys(body,
@@ -161,12 +163,15 @@ processors:
         "(?i).*(authorization|password|secret|token|api[._-]?key|cookie|headers?|prompt|completion|request[._-]?body|response[._-]?body).*")
       # Free-form labeled sensitive payloads: retain prefix, redact rest of line.
       - >-
+      - >-
         replace_pattern(body, "(?is)(prompt|completion|request[._ -]?body|response[._-]?body|cookie|headers?)[ \t:=]+.*", "sensitive-payload=<redacted>") where IsString(body)
       - >-
         replace_pattern(body, "(?i)Bearer[ \\t]+[A-Za-z0-9._~+/=-]+", "Bearer <redacted>") where
         IsString(body)
       - >-
+      - >-
         replace_pattern(body, "(?i)(password|secret|token|api[_-]?key|authorization)[\"' \t:=]+[^ \t,;\"']+", "credential=<redacted>") where IsString(body)
+      - >-
         replace_pattern(body, "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}", "<redacted-email>")
         where IsString(body)
       - replace_pattern(body, "\\?[^ \\t\\\"]+", "?<redacted-query>") where IsString(body)
