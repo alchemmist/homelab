@@ -16,6 +16,8 @@ from urllib.parse import urlparse
 
 import yaml
 
+type _Json = None | bool | int | float | str | list[_Json] | dict[str, _Json]
+
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
     "production_bootstrap", Path(__file__).with_name("otel-production-bootstrap.py")
@@ -43,7 +45,7 @@ def state():
         return obj["data"]
 
 
-def configure(bundle, cutover):
+def configure(bundle: Path, *, cutover: bool):
     config = yaml.safe_load((ROOT / "deploy/monitoring/otel/cluster.yaml").read_text())
     config["exporters"]["otlp_http/metrics"]["endpoint"] = "http://127.0.0.1:9090/api/v1/otlp"
     config["exporters"]["otlp_http/metrics"]["tls"] = {"insecure": True}
@@ -56,7 +58,7 @@ def configure(bundle, cutover):
         for index, ref in enumerate(contract["requiredSecretKeys"])
     }
 
-    def rewrite(value):
+    def rewrite(value: _Json):
         if isinstance(value, dict):
             return {key: rewrite(item) for key, item in value.items()}
         if isinstance(value, list):
@@ -110,7 +112,7 @@ def configure(bundle, cutover):
     return contract
 
 
-def run(bundle, output, cutover):
+def run(bundle: Path, output: Path, *, cutover: bool):
     os.umask(0o077)
     output.mkdir(mode=0o700, exist_ok=True)
     current = kube("-n", NS, "get", "prometheus", PROM, "-o", "json")
@@ -118,7 +120,7 @@ def run(bundle, output, cutover):
     if not before.exists():
         before.write_text(json.dumps(current))
     boundary = state()["logIngestionStartNs"]
-    contract = configure(bundle, cutover)
+    contract = configure(bundle, cutover=cutover)
     pod = json.loads((output / "pod-before.json").read_text())
     volume = next(
         mount
@@ -301,4 +303,4 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--cutover", action="store_true")
     args = parser.parse_args()
-    run(args.bundle, args.output, args.cutover)
+    run(args.bundle, args.output, cutover=args.cutover)

@@ -10,8 +10,8 @@ import os
 import re
 import sys
 import urllib.request
-from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import TypedDict, Unpack
 
 import yaml
 
@@ -58,43 +58,18 @@ STUN_PORT = 3478
 HEALTH_PORT = 9000
 
 
-def require(ok: object, message: str) -> None:
+def require(ok, message):
     if not ok:
         raise ValueError(message)
 
 
-def as_record(value: object) -> dict[str, object]:
-    """Return a mapping-shaped JSON value, failing loudly on malformed structure."""
-    if not isinstance(value, dict):
-        error = "structured JSON record required"
-        raise TypeError(error)
-    return value
-
-
-def as_list(value: object) -> list[object]:
-    """Return a list-shaped JSON value, failing loudly on malformed structure."""
-    if not isinstance(value, list):
-        error = "structured JSON array required"
-        raise TypeError(error)
-    return value
-
-
-def as_str(value: object) -> str:
-    """Return a string JSON value, failing loudly on malformed structure."""
-    if not isinstance(value, str):
-        error = "string JSON value required"
-        raise TypeError(error)
-    return value
-
-
-def text(value: object) -> bool:
+def text(value):
     return isinstance(value, str) and bool(value.strip())
 
 
-def hostname(value: object) -> bool:
+def hostname(value):
     return (
-        isinstance(value, str)
-        and text(value)
+        text(value)
         and len(value) < 254
         and "." in value
         and all(re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", x) for x in value.split("."))
@@ -102,13 +77,13 @@ def hostname(value: object) -> bool:
     )
 
 
-def identifier(value: object) -> bool:
-    return isinstance(value, str) and re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", value) is not None
+def identifier(value):
+    return text(value) and re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", value)
 
 
-def existing_node_host(value: object) -> bool:
+def existing_node_host(value):
     """True for an existing socrat node name. This is not a placement approval."""
-    if not (isinstance(value, str) and text(value)):
+    if not text(value):
         return False
     if re.fullmatch(r"socrat-[0-3]", value):
         return True
@@ -118,7 +93,7 @@ def existing_node_host(value: object) -> bool:
     return len(labels) > 1 and labels[0] in {"0", "1", "2", "3"} and labels[1] == "socrat"
 
 
-def validate(c: Mapping[str, object]) -> Mapping[str, object]:
+def validate(c):
     expected = {
         "schema_version",
         "management_fqdn",
@@ -135,18 +110,18 @@ def validate(c: Mapping[str, object]) -> Mapping[str, object]:
         "resources",
         "review",
     }
-    require(set(c) == expected, "unexpected/missing input keys")
-    version = c["schema_version"]
-    require(type(version) is int and version == 1, "unsupported schema_version")
+    require(isinstance(c, dict) and set(c) == expected, "unexpected/missing input keys")
+    require(
+        type(c["schema_version"]) is int and c["schema_version"] == 1, "unsupported schema_version"
+    )
     require(hostname(c["management_fqdn"]), "management_fqdn: approved public FQDN required")
     for key in ["management_node", "tls_secret_name", "storage_class", "ingress_class"]:
         require(identifier(c[key]), key + ": reviewed Kubernetes identifier required")
-    stun = c["stun_node_port"]
     require(
-        type(stun) is int and 30000 <= stun <= 32767,
+        type(c["stun_node_port"]) is int and 30000 <= c["stun_node_port"] <= 32767,
         "stun_node_port: reviewed free UDP NodePort required",
     )
-    overlay = ipaddress.ip_network(as_str(c["overlay_cidr"]), strict=True)
+    overlay = ipaddress.ip_network(c["overlay_cidr"], strict=True)
     require(
         overlay.version == 4 and 16 <= overlay.prefixlen <= 24,
         "overlay_cidr: dedicated IPv4 /16 through /24 required",
@@ -164,18 +139,15 @@ def validate(c: Mapping[str, object]) -> Mapping[str, object]:
             "overlay overlaps existing transport",
         )
     require(
-        isinstance(overlay, ipaddress.IPv4Network)
-        and any(
-            overlay.subnet_of(ipaddress.IPv4Network(x))
+        any(
+            overlay.subnet_of(ipaddress.ip_network(x))
             for x in ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "100.64.0.0/10"]
         ),
         "overlay must use RFC1918 or CGNAT address space",
     )
     issuer = c["authentik_issuer"]
     require(
-        text(issuer)
-        and re.fullmatch(r"https://[a-z0-9.-]+/application/o/[a-z0-9-]+/", as_str(issuer))
-        is not None,
+        text(issuer) and re.fullmatch(r"https://[a-z0-9.-]+/application/o/[a-z0-9-]+/", issuer),
         "authentik_issuer: exact HTTPS application issuer required",
     )
     require(text(c["oidc_client_id"]), "oidc_client_id required (not a secret)")
@@ -184,50 +156,46 @@ def validate(c: Mapping[str, object]) -> Mapping[str, object]:
         isinstance(c["review"], dict) and set(c["review"]) == REVIEWS,
         "review gates must match the compiler schema",
     )
-    for key, value in as_record(c["review"]).items():
+    for key, value in c["review"].items():
         if key == "existing_node_router_mode_reviewed":
             require(type(value) is bool, "existing-node router review must be explicit")
             continue
         require(value is True, "review gate must explicitly be true: " + key)
-    peers = as_list(c["routing_peers"])
+    peers = c["routing_peers"]
     require(
-        len(peers) == 1,
+        isinstance(peers, list) and len(peers) == 1,
         "exactly one SSH routing peer; a second peer would claim route HA",
     )
-    for p in [as_record(x) for x in peers]:
+    for p in peers:
         require(set(p) == {"name", "host", "failure_domain", "metric"}, "routing peer keys invalid")
         require(identifier(p["name"]), "routing peer name required")
         require(
-            hostname(p["host"]) or re.fullmatch(r"socrat-[0-3]", as_str(p["host"])) is not None,
+            hostname(p["host"]) or re.fullmatch(r"socrat-[0-3]", p["host"]) is not None,
             "routing peer host required",
         )
         if existing_node_host(p["host"]):
             require(
-                as_record(c["review"])["existing_node_router_mode_reviewed"] is True,
+                c["review"]["existing_node_router_mode_reviewed"] is True,
                 "existing-node router mode requires explicit review",
             )
         require(text(p["failure_domain"]), "routing peer failure_domain required")
-        metric = p["metric"]
-        require(type(metric) is int and 1 <= metric <= 9999, "router metric invalid")
-    resources = as_list(c["resources"])
-    require(bool(resources), "explicit resource allowlist required")
-    require(
-        len({as_record(r)["name"] for r in resources}) == len(resources), "duplicate resource names"
-    )
-    seen: set[tuple[object, tuple[object, ...]]] = set()
-    for r in [as_record(x) for x in resources]:
+        require(type(p["metric"]) is int and 1 <= p["metric"] <= 9999, "router metric invalid")
+    resources = c["resources"]
+    require(isinstance(resources, list) and bool(resources), "explicit resource allowlist required")
+    require(len({r["name"] for r in resources}) == len(resources), "duplicate resource names")
+    seen = set()
+    for r in resources:
         require(
             set(r) == {"name", "kind", "address", "ports", "source_group", "dns_name"},
             "resource keys invalid",
         )
         require(identifier(r["name"]), "resource name invalid")
-        ip = ipaddress.ip_network(as_str(r["address"]), strict=True)
+        ip = ipaddress.ip_network(r["address"], strict=True)
         require(
-            isinstance(ip, ipaddress.IPv4Network)
+            ip.version == 4
             and ip.prefixlen == 32
-            and isinstance(overlay, ipaddress.IPv4Network)
             and any(
-                ip.subnet_of(ipaddress.IPv4Network(x))
+                ip.subnet_of(ipaddress.ip_network(x))
                 for x in ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
             )
             and not ip.overlaps(overlay),
@@ -238,11 +206,11 @@ def validate(c: Mapping[str, object]) -> Mapping[str, object]:
             "pod/service CIDRs are not pilot endpoints",
         )
         require(r["kind"] in ["web", "ssh"], "only web/ssh resources allowed")
-        ports = as_list(r["ports"])
         require(
-            bool(ports)
-            and all(type(p) is int and 1 <= p <= 65535 for p in ports)
-            and len(set(ports)) == len(ports),
+            isinstance(r["ports"], list)
+            and r["ports"]
+            and all(type(p) is int and 1 <= p <= 65535 for p in r["ports"])
+            and len(set(r["ports"])) == len(r["ports"]),
             "explicit unique TCP ports required",
         )
         require(r["kind"] != "ssh" or r["ports"] == [2222], "existing SSH must stay TCP 2222")
@@ -256,34 +224,29 @@ def validate(c: Mapping[str, object]) -> Mapping[str, object]:
             r["kind"] != "ssh" or r["dns_name"] is None or hostname(r["dns_name"]),
             "SSH DNS invalid",
         )
-        require((r["address"], tuple(ports)) not in seen, "duplicate IP/port resource")
-        seen.add((r["address"], tuple(ports)))
+        require((r["address"], tuple(r["ports"])) not in seen, "duplicate IP/port resource")
+        seen.add((r["address"], tuple(r["ports"])))
     return c
 
 
-def image(name: str) -> str:
-    images = as_record(as_record(json.loads(LOCK.read_text()))["images"])
-    item = as_record(images[name])
-    reference = item.get("reference")
-    if reference:
-        return as_str(reference)
-    return as_str(item["repository"]) + ":" + as_str(item["tag"]) + "@" + as_str(item["digest"])
+def image(name):
+    item = json.loads(LOCK.read_text())["images"][name]
+    if item.get("reference"):
+        return item["reference"]
+    return item["repository"] + ":" + item["tag"] + "@" + item["digest"]
 
 
-def witness_ready(path: Path) -> None:
+def witness_ready(path):
     """Proof that Dex already has an external connector. localAuthDisabled fails closed without one."""
-    data = as_record(json.loads(path.read_text()))
+    data = json.loads(path.read_text())
     require(set(data) == {"external_connectors"}, "witness must contain only external_connectors")
-    count = data["external_connectors"]
     require(
-        type(count) is int and count >= 1,
+        type(data["external_connectors"]) is int and data["external_connectors"] >= 1,
         "external IdP connector required before local authentication can be disabled",
     )
 
 
-def server_config(
-    c: Mapping[str, object], secrets: Mapping[str, str], auth_mode: str = "bootstrap"
-) -> dict[str, object]:
+def server_config(c, secrets, auth_mode="bootstrap"):
     """Runtime config for v0.82.0 combined server.
 
     Simplified YAML only exposes `server`. Management.DisableDefaultPolicy is not
@@ -295,10 +258,10 @@ def server_config(
     unless a non-local connector already exists.
     """
     require(auth_mode in ("bootstrap", "idp-only"), "auth mode invalid")
-    config: dict[str, object] = {
+    config = {
         "server": {
             "listenAddress": ":80",
-            "exposedAddress": "https://" + as_str(c["management_fqdn"]) + ":443",
+            "exposedAddress": "https://" + c["management_fqdn"] + ":443",
             "stunPorts": [STUN_PORT],
             "metricsPort": 9090,
             "healthcheckAddress": ":9000",
@@ -309,13 +272,12 @@ def server_config(
             "disableGeoliteUpdate": True,
             "authSecret": secrets["NB_RELAY_SECRET"],
             "auth": {
-                "issuer": "https://" + as_str(c["management_fqdn"]) + "/oauth2",
+                "issuer": "https://" + c["management_fqdn"] + "/oauth2",
                 "localAuthDisabled": auth_mode == "idp-only",
                 "signKeyRefreshEnabled": True,
                 "sessionCookieEncryptionKey": secrets["NB_COOKIE_KEY"],
                 "dashboardRedirectURIs": [
-                    "https://" + as_str(c["management_fqdn"]) + x
-                    for x in ["/nb-auth", "/nb-silent-auth"]
+                    "https://" + c["management_fqdn"] + x for x in ["/nb-auth", "/nb-silent-auth"]
                 ],
                 "cliRedirectURIs": ["http://localhost:53000/"],
             },
@@ -325,15 +287,15 @@ def server_config(
         }
     }
     require(
-        "owner" not in as_record(as_record(config["server"])["auth"]),
+        "owner" not in config["server"]["auth"],
         "local owner credentials are not part of runtime config",
     )
     return config
 
 
-def account_settings(c: Mapping[str, object]) -> dict[str, object]:
+def account_settings(c):
     require(
-        as_record(c["review"]).get("authentik_groups_claim_verified") is True,
+        c["review"].get("authentik_groups_claim_verified") is True,
         "Authentik groups claim is not verified",
     )
     return {
@@ -356,13 +318,12 @@ def account_settings(c: Mapping[str, object]) -> dict[str, object]:
     }
 
 
-def port_forward_sources(cidrs: object) -> list[str]:
+def port_forward_sources(cidrs):
     """Node and CNI-bridge addresses that may open a port-forward. Not pod or Service CIDRs."""
-    sources = as_list(cidrs)
-    require(1 <= len(sources) <= 8, "port-forward sources required")
-    cleaned: list[str] = []
-    for cidr in sources:
-        network = ipaddress.ip_network(as_str(cidr), strict=True)
+    require(isinstance(cidrs, list) and 1 <= len(cidrs) <= 8, "port-forward sources required")
+    cleaned = []
+    for cidr in cidrs:
+        network = ipaddress.ip_network(cidr, strict=True)
         require(
             network.version == 4 and network.prefixlen == 32,
             "port-forward source must be an IPv4 /32",
@@ -376,43 +337,46 @@ def port_forward_sources(cidrs: object) -> list[str]:
     return cleaned
 
 
-def ingress_allowed(
-    policy: Mapping[str, object], source: str, port: int, protocol: str = "TCP"
-) -> bool:
+def ingress_allowed(policy, source, port, protocol="TCP"):
     """True when one ingress rule matches. An empty ingress list denies every source."""
     source_ip = ipaddress.ip_address(source)
-    for rule in [as_record(x) for x in as_list(as_record(policy["spec"]).get("ingress")) or []]:
-        port_rules = as_list(rule.get("ports")) if rule.get("ports") is not None else None
-        if port_rules and not any(
-            as_record(item).get("port") == port
-            and as_record(item).get("protocol", "TCP") == protocol
-            for item in port_rules
+    for rule in policy["spec"].get("ingress") or []:
+        ports = rule.get("ports")
+        if ports and not any(
+            item.get("port") == port and item.get("protocol", "TCP") == protocol for item in ports
         ):
             continue
-        peers = as_list(rule.get("from")) if rule.get("from") is not None else None
-        if peers is None or not peers:
+        peers = rule.get("from")
+        if not peers:
             return True
-        for peer in [as_record(x) for x in peers]:
-            block = as_record(peer.get("ipBlock")) if peer.get("ipBlock") is not None else {}
+        for peer in peers:
+            block = peer.get("ipBlock") or {}
             if "cidr" not in block:
                 continue
-            network = ipaddress.ip_network(as_str(block["cidr"]), strict=False)
+            network = ipaddress.ip_network(block["cidr"], strict=False)
             if source_ip not in network:
                 continue
             if any(
-                source_ip in ipaddress.ip_network(as_str(item), strict=False)
-                for item in as_list(block.get("except")) or []
+                source_ip in ipaddress.ip_network(item, strict=False)
+                for item in block.get("except") or []
             ):
                 continue
             return True
     return False
 
 
-def manifests(
-    c: Mapping[str, object],
-    publication: str = "internal",
-    port_forward_cidrs: object = None,
-) -> list[dict[str, object]]:
+class _ManifestFields(TypedDict, total=False):
+    spec: object
+    data: object
+
+
+class _Manifest(_ManifestFields):
+    apiVersion: str
+    kind: str
+    metadata: dict[str, object]
+
+
+def manifests(c, publication="internal", port_forward_cidrs=None):
     """Control plane only. No router, Secret, or Argo Application.
 
     Internal publication is the first apply: namespace, data PVC, server and
@@ -426,8 +390,12 @@ def manifests(
     require(publication in ("internal", "edge"), "publication invalid")
 
     def obj(
-        kind: str, name: str, namespace: str | None, api: str = "v1", **fields: object
-    ) -> dict[str, object]:
+        kind: str,
+        name: str,
+        namespace: str | None,
+        api: str = "v1",
+        **fields: Unpack[_ManifestFields],
+    ) -> _Manifest:
         meta: dict[str, object] = {"name": name}
         if namespace:
             meta["namespace"] = namespace
@@ -437,7 +405,7 @@ def manifests(
     if publication == "edge":
         result.append(obj("Namespace", EDGE, None))
     for item in result:
-        as_record(item["metadata"])["labels"] = {"homelab.alchemmist.xyz/netbird": "control-plane"}
+        item["metadata"]["labels"] = {"homelab.alchemmist.xyz/netbird": "control-plane"}
     result.append(
         obj(
             "PersistentVolumeClaim",
@@ -450,7 +418,7 @@ def manifests(
             },
         )
     )
-    base = "https://" + as_str(c["management_fqdn"])
+    base = "https://" + c["management_fqdn"]
     env = {
         "NETBIRD_MGMT_API_ENDPOINT": base,
         "NETBIRD_MGMT_GRPC_API_ENDPOINT": base,
@@ -503,7 +471,7 @@ def manifests(
                     "periodSeconds": 20,
                 },
             )
-            container["ports"] = [as_record(x) for x in as_list(container["ports"])] + [
+            container["ports"] += [
                 {"name": "stun", "containerPort": STUN_PORT, "protocol": "UDP"},
                 {"name": "health", "containerPort": HEALTH_PORT},
                 {"name": "metrics", "containerPort": 9090},
@@ -595,7 +563,7 @@ def manifests(
     return result
 
 
-def forwarder_files(c: Mapping[str, object]) -> dict[str, str]:
+def forwarder_files(c):
     """In-namespace proxy. ipAllowList uses the socket address, not X-Forwarded-For."""
     server = "server." + NS + ".svc.cluster.local:80"
     dashboard = "dashboard." + NS + ".svc.cluster.local:80"
@@ -707,7 +675,7 @@ def forwarder_files(c: Mapping[str, object]) -> dict[str, str]:
     }
 
 
-def edge_manifests(c: Mapping[str, object]) -> list[dict[str, object]]:
+def edge_manifests(c):
     files = forwarder_files(c)
     labels = {"app": "netbird-edge-forwarder"}
     docs = [obj_edge("ConfigMap", "edge-forwarder", data=files)]
@@ -776,7 +744,7 @@ def edge_manifests(c: Mapping[str, object]) -> list[dict[str, object]]:
         "edge-forwarder-grpc",
         spec={"selector": labels, "ports": [{"name": "h2c", "port": 8082, "targetPort": "h2c"}]},
     )
-    as_record(grpc_service["metadata"])["annotations"] = {
+    grpc_service["metadata"]["annotations"] = {
         "traefik.ingress.kubernetes.io/service.serversscheme": "h2c"
     }
     docs.append(grpc_service)
@@ -790,27 +758,16 @@ def edge_manifests(c: Mapping[str, object]) -> list[dict[str, object]]:
     return docs
 
 
-def obj_edge(kind: str, name: str, api: str = "v1", **fields: object) -> dict[str, object]:
-    return {
-        "apiVersion": api,
-        "kind": kind,
-        "metadata": {
-            "name": name,
-            "namespace": EDGE,
-            "labels": {"homelab.alchemmist.xyz/netbird": "control-plane"},
-        },
-        **fields,
+def obj_edge(kind: str, name: str, api: str = "v1", **fields: Unpack[_ManifestFields]) -> _Manifest:
+    metadata: dict[str, object] = {
+        "name": name,
+        "namespace": EDGE,
+        "labels": {"homelab.alchemmist.xyz/netbird": "control-plane"},
     }
+    return {"apiVersion": api, "kind": kind, "metadata": metadata, **fields}
 
 
-def ingress(
-    c: Mapping[str, object],
-    name: str,
-    paths: Sequence[str],
-    port: int,
-    scheme: str | None,
-    priority: str,
-) -> dict[str, object]:
+def ingress(c, name, paths, port, scheme, priority):
     annotations = {
         "traefik.ingress.kubernetes.io/router.entrypoints": "websecure",
         "traefik.ingress.kubernetes.io/router.priority": priority,
@@ -841,40 +798,41 @@ def ingress(
             ],
         },
     )
-    as_record(body["metadata"])["annotations"] = annotations
+    body["metadata"]["annotations"] = annotations
     return body
 
 
-def validate_internal(c: Mapping[str, object]) -> Mapping[str, object]:
+def validate_internal(c):
     """First-stage inputs. DNS, STUN, and Ingress reviews belong to edge publication."""
-    require(c.get("schema_version") == 1, "unsupported schema_version")
+    require(isinstance(c, dict) and c.get("schema_version") == 1, "unsupported schema_version")
     require(hostname(c.get("management_fqdn")), "management_fqdn: approved public FQDN required")
     for key in ["management_node", "storage_class"]:
         require(identifier(c.get(key)), key + ": reviewed Kubernetes identifier required")
-    reviews = as_record(c.get("review"))
+    reviews = c.get("review")
+    require(isinstance(reviews, dict), "review gates required")
     for key in INTERNAL_REVIEWS:
         require(reviews.get(key) is True, "internal review not explicitly true: " + key)
     return c
 
 
-def validate_control_plane(c: Mapping[str, object]) -> Mapping[str, object]:
+def validate_control_plane(c):
     """Edge publication inputs. Router placement and resource grants are not required."""
-    require(c.get("schema_version") == 1, "unsupported schema_version")
+    require(isinstance(c, dict) and c.get("schema_version") == 1, "unsupported schema_version")
     require(hostname(c.get("management_fqdn")), "management_fqdn: approved public FQDN required")
     for key in ["management_node", "tls_secret_name", "storage_class", "ingress_class"]:
         require(identifier(c.get(key)), key + ": reviewed Kubernetes identifier required")
-    stun = c.get("stun_node_port")
     require(
-        type(stun) is int and 30000 <= stun <= 32767,
+        type(c.get("stun_node_port")) is int and 30000 <= c["stun_node_port"] <= 32767,
         "stun_node_port: reviewed free UDP NodePort required",
     )
-    reviews = as_record(c.get("review"))
+    reviews = c.get("review")
+    require(isinstance(reviews, dict), "review gates required")
     for key in CONTROL_REVIEWS:
         require(reviews.get(key) is True, "control-plane review not explicitly true: " + key)
     return c
 
 
-def router_compose(c: Mapping[str, object], peer: Mapping[str, object]) -> dict[str, object]:
+def router_compose(c, peer):
     return {
         "services": {
             "routing-peer": {
@@ -884,7 +842,7 @@ def router_compose(c: Mapping[str, object], peer: Mapping[str, object]) -> dict[
                 "cap_add": ["NET_ADMIN", "SYS_ADMIN", "SYS_RESOURCE"],
                 "devices": ["/dev/net/tun:/dev/net/tun"],
                 "environment": {
-                    "NB_MANAGEMENT_URL": "https://" + as_str(c["management_fqdn"]),
+                    "NB_MANAGEMENT_URL": "https://" + c["management_fqdn"],
                     "NB_SETUP_KEY_FILE": "/run/secrets/setup_key",
                     "NB_HOSTNAME": peer["name"],
                     "NB_INTERFACE_NAME": "nb-pilot0",
@@ -907,9 +865,7 @@ def router_compose(c: Mapping[str, object], peer: Mapping[str, object]) -> dict[
     }
 
 
-def access_requests(
-    c: Mapping[str, object], bindings: Mapping[str, object], snapshot: Mapping[str, object]
-) -> list[dict[str, object]]:
+def access_requests(c, bindings, snapshot):
     """Compile only against reviewed IDs from an EMPTY, dedicated pilot account/network."""
     require(
         set(snapshot) == {"policies", "routes", "groups", "peers", "networks"},
@@ -923,36 +879,31 @@ def access_requests(
         set(bindings) == {"network_id", "source_groups", "resource_groups", "peer_ids"},
         "binding keys invalid",
     )
-    resources = [as_record(x) for x in as_list(c["resources"])]
-    routing_peers = [as_record(x) for x in as_list(c["routing_peers"])]
-    groups = sorted({as_str(r["source_group"]) for r in resources})
+    groups = sorted({r["source_group"] for r in c["resources"]})
+    require(set(bindings["source_groups"]) == set(groups), "exact source group bindings required")
     require(
-        set(as_list(bindings["source_groups"])) == set(groups),
-        "exact source group bindings required",
-    )
-    require(
-        set(as_list(bindings["resource_groups"])) == {r["name"] for r in resources},
+        set(bindings["resource_groups"]) == {r["name"] for r in c["resources"]},
         "exact resource group bindings required",
     )
     require(
-        set(as_list(bindings["peer_ids"])) == {p["name"] for p in routing_peers},
+        set(bindings["peer_ids"]) == {p["name"] for p in c["routing_peers"]},
         "exact one SSH routing peer ID binding required",
     )
-    values: list[object] = [bindings["network_id"]] + [
+    values = [bindings["network_id"]] + [
         v
         for key in ["source_groups", "resource_groups", "peer_ids"]
-        for v in as_list(bindings[key])
+        for v in bindings[key].values()
     ]
     require(
-        all(text(v) and re.fullmatch(r"[a-z0-9]{10,64}", as_str(v)) is not None for v in values),
+        all(text(v) and re.fullmatch(r"[a-z0-9]{10,64}", v) for v in values),
         "real API IDs required, no placeholders",
     )
     require(
         len(values) == len(set(values)),
         "IDs must be distinct; never bind All/shared resource groups",
     )
-    require(len(as_list(snapshot["networks"])) == 1, "dedicated empty pilot Network required")
-    pilot = as_record(as_list(snapshot["networks"])[0])
+    require(len(snapshot["networks"]) == 1, "dedicated empty pilot Network required")
+    pilot = snapshot["networks"][0]
     require(
         pilot.get("id") == bindings["network_id"]
         and pilot.get("name") == "netbird-pilot"
@@ -966,23 +917,16 @@ def access_requests(
     )
     for key, names in [
         ("source_groups", groups),
-        ("resource_groups", [as_str(r["name"]) for r in resources]),
+        ("resource_groups", [r["name"] for r in c["resources"]]),
     ]:
         for name in names:
-            found = [
-                as_record(g)
-                for g in as_list(snapshot["groups"])
-                if as_record(g)["id"] == as_record(bindings[key])[name]
-            ]
+            found = [g for g in snapshot["groups"] if g["id"] == bindings[key][name]]
             expected = name if key == "source_groups" else "pilot-resource-" + name
             require(
                 len(found) == 1
                 and found[0]["name"] == expected
                 and expected != "All"
-                and len(
-                    [x for x in as_list(snapshot["groups"]) if as_record(x).get("name") == expected]
-                )
-                == 1,
+                and len([g for g in snapshot["groups"] if g.get("name") == expected]) == 1,
                 "group ID/name mismatch; All/shared groups forbidden",
             )
             if key == "source_groups":
@@ -999,32 +943,28 @@ def access_requests(
                     ),
                     "destination groups must be complete, API-issued empty dedicated resource groups",
                 )
-    for peer in routing_peers:
-        found = [
-            as_record(x)
-            for x in as_list(snapshot["peers"])
-            if as_record(x)["id"] == as_record(bindings["peer_ids"])[as_str(peer["name"])]
-        ]
+    for peer in c["routing_peers"]:
+        found = [p for p in snapshot["peers"] if p["id"] == bindings["peer_ids"][peer["name"]]]
         require(
             len(found) == 1 and found[0]["name"] == peer["name"], "routing peer ID/name mismatch"
         )
-    network = "/api/networks/" + as_str(bindings["network_id"])
-    requests: list[dict[str, object]] = []
-    for p in routing_peers:
+    network = "/api/networks/" + bindings["network_id"]
+    requests = []
+    for p in c["routing_peers"]:
         requests.append(
             {
                 "method": "POST",
                 "path": network + "/routers",
                 "body": {
-                    "peer": as_record(bindings["peer_ids"])[as_str(p["name"])],
+                    "peer": bindings["peer_ids"][p["name"]],
                     "metric": p["metric"],
                     "masquerade": True,
                     "enabled": True,
                 },
             }
         )
-    for r in resources:
-        group = as_record(bindings["resource_groups"])[as_str(r["name"])]
+    for r in c["resources"]:
+        group = bindings["resource_groups"][r["name"]]
         requests.append(
             {
                 "method": "POST",
@@ -1042,7 +982,7 @@ def access_requests(
                 "method": "POST",
                 "path": "/api/policies",
                 "body": {
-                    "name": "pilot-" + as_str(r["name"]),
+                    "name": "pilot-" + r["name"],
                     "enabled": True,
                     "rules": [
                         {
@@ -1051,10 +991,8 @@ def access_requests(
                             "action": "accept",
                             "bidirectional": False,
                             "protocol": "tcp",
-                            "ports": [str(p) for p in as_list(r["ports"])],
-                            "sources": [
-                                as_record(bindings["source_groups"])[as_str(r["source_group"])]
-                            ],
+                            "ports": [str(p) for p in r["ports"]],
+                            "sources": [bindings["source_groups"][r["source_group"]]],
                             "destinations": [group],
                         }
                     ],
@@ -1064,7 +1002,7 @@ def access_requests(
     return requests
 
 
-def dump(path: Path, value: object, *, yaml_format: bool = False, private: bool = False) -> None:
+def dump(path, value, yaml_format=False, private=False):
     # No overwrites or symlink following; runtime output must be on a protected local tmpfs.
     flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY
     fd = os.open(path, flags, 0o600 if private else 0o644)
@@ -1076,7 +1014,7 @@ def dump(path: Path, value: object, *, yaml_format: bool = False, private: bool 
         )
 
 
-def render_control_plane(c: Mapping[str, object], out: Path, port_forward_cidrs: object) -> None:
+def render_control_plane(c, out, port_forward_cidrs):
     """Write the internal-only manifests. Does not write Services, Ingress, or routers."""
     validate_internal(c)
     out.mkdir(mode=0o700, parents=True, exist_ok=False)
@@ -1084,10 +1022,10 @@ def render_control_plane(c: Mapping[str, object], out: Path, port_forward_cidrs:
         yaml.safe_dump_all(manifests(c, "internal", port_forward_cidrs), f, sort_keys=False)
 
 
-def render(c: Mapping[str, object], out: Path) -> None:
+def render(c, out):
     # Host-router generation is a separate artifact. router_compose stays the old interface.
     require(
-        not any(existing_node_host(as_record(p)["host"]) for p in as_list(c["routing_peers"])),
+        not any(existing_node_host(p["host"]) for p in c["routing_peers"]),
         "existing-node router artifacts are generated separately; this compiler does not write them",
     )
     out.mkdir(mode=0o700, parents=True, exist_ok=False)
@@ -1096,11 +1034,7 @@ def render(c: Mapping[str, object], out: Path) -> None:
     dump(out / "account-settings.merge.json", account_settings(c))
     dump(
         out / "access-intent.json",
-        {
-            "network": "netbird-pilot",
-            "routers": as_list(c["routing_peers"]),
-            "resources": as_list(c["resources"]),
-        },
+        {"network": "netbird-pilot", "routers": c["routing_peers"], "resources": c["resources"]},
     )
     dump(
         out / "oidc-public.json",
@@ -1111,11 +1045,11 @@ def render(c: Mapping[str, object], out: Path) -> None:
             "client_id": c["oidc_client_id"],
         },
     )
-    for p in [as_record(x) for x in as_list(c["routing_peers"])]:
-        dump(out / (as_str(p["name"]) + ".compose.yaml"), router_compose(c, p), yaml_format=True)
+    for p in c["routing_peers"]:
+        dump(out / (p["name"] + ".compose.yaml"), router_compose(c, p), yaml_format=True)
 
 
-def verify_images() -> None:
+def verify_images():
     for name, item in json.loads(LOCK.read_text())["images"].items():
         if item.get("skip_registry_verify"):
             require(
@@ -1160,7 +1094,7 @@ def verify_images() -> None:
         print(name + ": verified registry index and Linux amd64/arm64 pins")
 
 
-def main() -> None:
+def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
         "command",

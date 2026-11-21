@@ -12,10 +12,16 @@ import hashlib
 import importlib.util
 import json
 import os
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 import secrets
 import subprocess
 from datetime import datetime, timezone
+from typing import Protocol, cast
+
+
+class _Api(Protocol):
+    def rows(self, path: str) -> Sequence[Mapping[str, object]]: ...
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('iam', ROOT / 'scripts/spi-queue-oidc.py')
@@ -33,19 +39,19 @@ PROVIDER = {'name':'homelab-openhands', 'client_id':CLIENT, 'client_type':'confi
             'redirect_uris':[{'matching_mode':'strict','url':'https://' + HOST + '/oauth2/callback'}]}
 
 
-def encode_cookie_secret(raw):
+def encode_cookie_secret(raw: bytes):
     iam.require(len(raw) == 32, 'Cookie key must contain exactly32 bytes')
     # oauth2-proxy SecretBytes uses Go RawURLEncoding, not standard base64.
     return base64.urlsafe_b64encode(raw).decode()
 
 
-def write_private(path, data):
+def write_private(path: Path, data: object):
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, 'w') as f:
         json.dump(data, f); f.flush(); os.fsync(f.fileno())
 
 
-def inspect(api):
+def inspect(api: _Api):
     owner = iam.one(api, 'core/groups/', 'name', 'homelab-owner')
     iam.require(owner is not None, 'Existing owner group missing')
     flows = {key:iam.one(api,'flows/instances/','slug',value) for key,value in iam.FLOWS.items()}
@@ -69,15 +75,37 @@ def inspect(api):
     return owner, settings, provider, app
 
 
-def validate(api, owner, settings, provider, app, journal):
-    iam.require(provider and app and journal and journal.get('status') == 'active', 'Partial identity or missing private journal; no adoption/reset')
+def validate(
+    api: _Api,
+    owner: Mapping[str, object],
+    settings: Mapping[str, object],
+    provider: Mapping[str, object],
+    app: Mapping[str, object],
+    journal: Mapping[str, object] | None,
+):
+    iam.require(
+        provider and app and journal is not None and journal.get("status") == "active",
+        "Partial identity or missing private journal; no adoption/reset",
+    )
+    record = cast("Mapping[str, object]", journal)
     for key,value in settings.items():
         actual = provider.get(key)
-        if key in ['property_mappings','grant_types']: actual,value = sorted(actual or []),sorted(value)
+        if key in ['property_mappings','grant_types']:
+            actual = sorted(cast("list[str]", actual or []))
+            value = sorted(cast("list[str]", value))
         if key == 'redirect_uris': actual,value = iam.canonical_redirects(actual),iam.canonical_redirects(value)
         iam.require(actual == value, 'OIDC provider drift: ' + key)
-    iam.require(provider['pk'] == journal['provider_pk'] and str(app['pk']) == str(journal['app_pk']), 'Identity ownership drift')
-    iam.require(secrets.compare_digest(provider.get('client_secret',''),journal['client_secret']), 'Client-secret drift; no rotation')
+    iam.require(
+        provider["pk"] == record["provider_pk"] and str(app["pk"]) == str(record["app_pk"]),
+        "Identity ownership drift",
+    )
+    iam.require(
+        secrets.compare_digest(
+            cast("str", provider.get("client_secret", "")),
+            cast("str", record["client_secret"]),
+        ),
+        "Client-secret drift; no rotation",
+    )
     iam.require(app.get('provider') == provider['pk'] and all(app.get(k) == v for k,v in APP.items()), 'Application drift')
     bindings = api.rows('policies/bindings/?target=' + str(app['pk']))
     iam.require(len(bindings) == 1, 'Unexpected application bindings')

@@ -127,7 +127,7 @@ def harbor_authorization(credentials: Mapping[str, object]) -> tuple[str, str]:
 class Client:
     def __init__(self, credentials: Mapping[str, object]) -> None:
         class NoRedirect(urllib.request.HTTPRedirectHandler):
-            def redirect_request(self, *args, **kwargs):
+            def redirect_request(self, *args: object, **kwargs: object) -> None:
                 return None
 
         context = ssl.create_default_context(cafile="/var/lib/rancher/k3s/server/tls/server-ca.crt")

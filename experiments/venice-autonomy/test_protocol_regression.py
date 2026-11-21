@@ -53,7 +53,7 @@ class MethodSignatureTests(unittest.TestCase):
 
 
 class TestCompletionTests(unittest.TestCase):
-    def grade(self, body):
+    def grade(self, body: str):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             grader = root / "grader"
