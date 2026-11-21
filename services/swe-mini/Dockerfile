@@ -1,5 +1,7 @@
 FROM node:22-bookworm-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee AS node
 FROM python:3.12-slim-bookworm@sha256:935c3c5b12357a7e10caa9c1e6ca5692344d97cf229832ef584be2cec9fc03df
+# On a base digest bump or Bookworm repository rotation, recheck all six pins
+# together (apt-get update, then apt-get -s install) and rebuild the image.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git=1:2.39.5-0+deb12u3 \
     curl=7.88.1-10+deb12u15 \
