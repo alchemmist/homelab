@@ -11,6 +11,7 @@ import subprocess
 import urllib.request
 import uuid
 from pathlib import Path
+from typing import Protocol, cast
 
 HOST = "auth.socrat.alchemmist.xyz"
 BASE = "https://" + HOST
