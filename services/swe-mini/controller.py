@@ -243,7 +243,7 @@ def publish(run, result, review):
         if current["tree"]["sha"] != tree["sha"] or [p["sha"] for p in current["parents"]] != [
             run["revision"]
         ]:
-            raise ValueError("Existing candidate branch differs; refusing publication")
+            raise ValueError("Existing candidate branch differs; refusing publication") from exc
     body = (
         "Automated by mini-swe-agent v2.4.6; owner approval required. No production access or merge.\n\n"
         + result["report"][:16000]
