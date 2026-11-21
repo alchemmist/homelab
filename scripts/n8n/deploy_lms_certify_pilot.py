@@ -35,7 +35,7 @@ for name in (db,runner):
 wid='UUj3hoNCdbWGY4m7'; w=api('GET','workflows/'+wid)
 if w['active']:raise SystemExit('refusing to update active workflow')
 lite=base64.b64decode(k("get secret lms-certify -o jsonpath='{.data.LITELLM_KEY}'")).decode()
-roles={'CERTIFICATION_DB':('postgres',dict(host=db+'.automation.svc.cluster.local',port=5432,database='certification',user='certification',password=keys['POSTGRES_PASSWORD'],ssl='disable',sshTunnel=False)), 'SANDBOX':('httpHeaderAuth',dict(name='X-Certification-Key',value=keys['RUNNER'])),'LITELLM':('httpHeaderAuth',dict(name='Authorization',value='Bearer '+lite))}
+roles={'CERTIFICATION_DB':('postgres',{'host': db+'.automation.svc.cluster.local','port': 5432,'database': 'certification','user': 'certification','password': keys['POSTGRES_PASSWORD'],'ssl': 'disable','sshTunnel': False}), 'SANDBOX':('httpHeaderAuth',{'name': 'X-Certification-Key','value': keys['RUNNER']}),'LITELLM':('httpHeaderAuth',{'name': 'Authorization','value': 'Bearer '+lite})}
 path=CONFIG/'lms-certification-pilot-credential-ids.json'; mapping=json.loads(path.read_text()) if path.exists() else {}
 for role,(typ,data) in roles.items():
  if role not in mapping:

@@ -28,11 +28,11 @@ def link(a, b, port=0) -> None:
     branches: list[list[dict[str, object]]] = edges.setdefault(a, {'main': []})['main']
     while len(branches) <= port:
         branches.append([])
-    branches[port].append(dict(node=b, type='main', index=0))
+    branches[port].append({'node': b, 'type': 'main', 'index': 0})
 
 
 def chain(*names) -> None:
-    for a, b in zip(names, names[1:]):
+    for a, b in zip(names, names[1:], strict=False):
         link(a, b)
 
 
@@ -413,9 +413,9 @@ return {{json: {{phase:next,data}}}};'''
 link(previous, terminal, 1)
 
 assert len({n['name'] for n in nodes}) == len(nodes) == len({n['id'] for n in nodes}), 'Duplicate node names or IDs'
-workflow = dict(name='LMS certification — reviewed queue', nodes=nodes, connections=edges,
-                settings=dict(errorWorkflow='iZn7biFh6321a1w8', executionOrder='v1', timezone='Europe/Moscow',
-                              executionTimeout=720, saveDataSuccessExecution='none', saveDataErrorExecution='all',
-                              saveExecutionProgress=False, saveManualExecutions=False))
+workflow = {'name': 'LMS certification — reviewed queue', 'nodes': nodes, 'connections': edges,
+                'settings': {'errorWorkflow': 'iZn7biFh6321a1w8', 'executionOrder': 'v1', 'timezone': 'Europe/Moscow',
+                              'executionTimeout': 720, 'saveDataSuccessExecution': 'none', 'saveDataErrorExecution': 'all',
+                              'saveExecutionProgress': False, 'saveManualExecutions': False}}
 if __name__ == '__main__':
     (ROOT / 'workflow.json').write_text(json.dumps(workflow, ensure_ascii=False, indent=2)+'\n')

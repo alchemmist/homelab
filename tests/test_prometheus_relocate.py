@@ -2,9 +2,10 @@ import importlib.util
 import json
 import unittest
 from pathlib import Path
+from types import ModuleType
 
 
-def load(relative):
+def load(relative: str) -> ModuleType:
     source = Path(__file__).resolve().parents[1] / relative
     spec = importlib.util.spec_from_file_location(source.stem, source)
     module = importlib.util.module_from_spec(spec)
@@ -16,7 +17,7 @@ RELOCATE = load("ansible/roles/monitoring_stack/files/prometheus_relocate.py")
 GUARD = load("ansible/roles/monitoring_k3s/files/prometheus_scrape_guard.py")
 
 
-def pod(node):
+def pod(node: str) -> dict[str, object]:
     return {
         "metadata": {"name": "prometheus-kube-prometheus-stack-prometheus-0"},
         "spec": {"nodeName": node},
@@ -26,7 +27,7 @@ def pod(node):
 def volume(
     node,
     claim="prometheus-kube-prometheus-stack-prometheus-db-prometheus-kube-prometheus-stack-prometheus-0",
-):
+) -> dict[str, object]:
     return {
         "spec": {
             "claimRef": {"name": claim},
@@ -50,13 +51,13 @@ def volume(
 
 
 class RelocateTests(unittest.TestCase):
-    def test_same_node_proceeds_without_the_flag(self):
+    def test_same_node_proceeds_without_the_flag(self) -> None:
         decision = RELOCATE.evaluate(
             {"desired": "socrat-0", "relocate": False, "pods": [pod("socrat-0")], "volumes": []}
         )
         self.assertEqual(decision["action"], "proceed")
 
-    def test_socrat_1_volume_is_refused_even_with_the_legacy_flag(self):
+    def test_socrat_1_volume_is_refused_even_with_the_legacy_flag(self) -> None:
         payload = {
             "desired": "socrat-0",
             "relocate": False,
@@ -71,7 +72,7 @@ class RelocateTests(unittest.TestCase):
             decision["claim"].startswith("prometheus-kube-prometheus-stack-prometheus-db")
         )
 
-    def test_monitoring_roles_do_not_delete_history(self):
+    def test_monitoring_roles_do_not_delete_history(self) -> None:
         root = Path(__file__).resolve().parents[1]
         stack = (root / "ansible/roles/monitoring_stack/tasks/main.yml").read_text()
         thanos = (root / "ansible/roles/monitoring_thanos/tasks/main.yml").read_text()
@@ -80,7 +81,7 @@ class RelocateTests(unittest.TestCase):
         self.assertNotIn("state: absent", thanos)
         self.assertNotIn("      - delete", thanos)
 
-    def test_grafana_volume_is_not_selected(self):
+    def test_grafana_volume_is_not_selected(self) -> None:
         grafana = volume("socrat-1", claim="kube-prometheus-stack-grafana")
         decision = RELOCATE.evaluate(
             {"desired": "socrat-0", "relocate": True, "pods": [], "volumes": [grafana]}
@@ -90,7 +91,7 @@ class RelocateTests(unittest.TestCase):
 
 
 class ScrapeGuardTests(unittest.TestCase):
-    def test_five_second_scrape_and_eight_gib_limit_pass(self):
+    def test_five_second_scrape_and_eight_gib_limit_pass(self) -> None:
         document = {
             "items": [
                 {"spec": {"scrapeInterval": "5s", "resources": {"limits": {"memory": "8Gi"}}}}
@@ -98,7 +99,7 @@ class ScrapeGuardTests(unittest.TestCase):
         }
         self.assertEqual(GUARD.problems(document), [])
 
-    def test_old_prometheus_is_rejected(self):
+    def test_old_prometheus_is_rejected(self) -> None:
         document = {
             "items": [
                 {"spec": {"scrapeInterval": "30s", "resources": {"limits": {"memory": "3Gi"}}}}
@@ -106,7 +107,7 @@ class ScrapeGuardTests(unittest.TestCase):
         }
         self.assertEqual(len(GUARD.problems(document)), 2)
 
-    def test_missing_prometheus_is_rejected(self):
+    def test_missing_prometheus_is_rejected(self) -> None:
         self.assertEqual(GUARD.problems({"items": []}), ["Prometheus is not installed"])
 
 
@@ -115,13 +116,15 @@ if __name__ == "__main__":
 
 
 class EffectiveMemoryGuardTests(unittest.TestCase):
-    def documents(self, spec_limit="8Gi", runtime_limit="8Gi"):
-        cr = {
+    def documents(
+        self, spec_limit="8Gi", runtime_limit="8Gi"
+    ) -> tuple[dict[str, object], dict[str, object]]:
+        cr: dict[str, object] = {
             "items": [
                 {"spec": {"scrapeInterval": "5s", "resources": {"limits": {"memory": "8Gi"}}}}
             ]
         }
-        pods = {
+        pods: dict[str, object] = {
             "items": [
                 {
                     "spec": {
@@ -144,15 +147,15 @@ class EffectiveMemoryGuardTests(unittest.TestCase):
         }
         return cr, pods
 
-    def test_eight_gib_cr_cannot_hide_three_gib_admission(self):
+    def test_eight_gib_cr_cannot_hide_three_gib_admission(self) -> None:
         self.assertTrue(GUARD.problems(*self.documents("3Gi", "3Gi")))
 
-    def test_resize_spec_without_effective_runtime_is_not_acceptance(self):
+    def test_resize_spec_without_effective_runtime_is_not_acceptance(self) -> None:
         self.assertTrue(GUARD.problems(*self.documents("8Gi", "3Gi")))
 
-    def test_eight_gib_effective_runtime_passes(self):
+    def test_eight_gib_effective_runtime_passes(self) -> None:
         self.assertEqual(GUARD.problems(*self.documents()), [])
 
-    def test_missing_runtime_does_not_pass(self):
+    def test_missing_runtime_does_not_pass(self) -> None:
         cr, _ = self.documents()
         self.assertTrue(GUARD.problems(cr, {"items": []}))

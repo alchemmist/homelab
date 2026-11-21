@@ -4,6 +4,7 @@ Does not mutate the cluster, query log bodies, or assert infinite reliability.
 """
 
 import argparse
+import http.client
 import json
 import time
 from pathlib import Path
@@ -55,7 +56,7 @@ def main() -> None:
         while True:
             try:
                 row = sample(args.prometheus)
-            except Exception as error:
+            except (OSError, ValueError, KeyError, TypeError, http.client.HTTPException) as error:
                 row = {
                     "observedAtUnix": time.time(),
                     "errorType": type(error).__name__,

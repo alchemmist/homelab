@@ -90,7 +90,8 @@ def kubepython(code) -> dict[str, object]:
         )
         if result.returncode:
             raise RuntimeError("Canary pod discovery failed; sensitive output suppressed")
-        return cast("dict[str, object]", json.loads(result.stdout))
+        payload: dict[str, object] = json.loads(result.stdout)
+        return cast("dict[str, object]", payload)
 
     # exec deploy/lms can select a stale Ready/Terminating pod on a lost node.
     pod = ready_canary_pod(
