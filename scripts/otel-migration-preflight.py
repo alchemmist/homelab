@@ -75,10 +75,10 @@ def kube(host, namespace, *arguments) -> object:
 
 def prometheus(host, namespace, endpoint) -> object:
     path = f"/api/v1/namespaces/{namespace}/services/http:kube-prometheus-stack-prometheus:9090/proxy/api/v1/{endpoint}"
-    payload = kube(host, namespace, "get", "--raw", path)
-    if not isinstance(payload, dict) or payload.get("status") != "success":
+    payload = _mapping(kube(host, namespace, "get", "--raw", path))
+    if payload.get("status") != "success":
         raise RuntimeError("Prometheus read-only API failed")
-    return payload["data"]
+    return _mapping(payload["data"])
 
 
 def monitor_summary(document) -> list[dict[str, object]]:

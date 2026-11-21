@@ -454,10 +454,11 @@ def run(root, phase) -> dict[str, object]:
         restarts = json.loads((root / "restarts.json").read_text())
         points = query(root, 'up[10m]')
         by_identity = {identity(point["metric"]): point for point in points}
+        stops = float(stops)
         counts = {}
         for node, labels in request["expectedLabels"].items():
             series = by_identity[identity({**labels, "__name__": "up"})]
-            restart = restarts[node]["restartStartedAt"]
+            restart = float(restarts[node]["restartStartedAt"])
             count = sum(
                 stops < float(timestamp) < restart and value == "1"
                 for timestamp, value in _range_values(series)
