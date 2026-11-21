@@ -56,6 +56,7 @@ CPU_TEMPERATURE_QUERY = (
 
 
 def add_cpu_temperature(dashboard):
+    """Execute the add_cpu_temperature operation."""
     existing = next((p for p in dashboard["panels"] if p["id"] == CPU_TEMPERATURE_PANEL_ID), None)
     position = (
         existing["gridPos"]
@@ -112,6 +113,7 @@ def add_cpu_temperature(dashboard):
 
 
 def resolve_node_exporter(dashboard):
+    """Execute the resolve_node_exporter operation."""
     variables = dashboard.setdefault("templating", {}).setdefault("list", [])
     instance = next(variable for variable in variables if variable.get("name") == "instance")
     instance.update(
@@ -152,12 +154,14 @@ def resolve_node_exporter(dashboard):
 
 
 def panels(dashboard):
+    """Execute the panels operation."""
     for panel in dashboard.get("panels", []):
         yield panel
         yield from panels(panel)
 
 
 def main():
+    """Execute the main operation."""
     manifests = list(yaml.safe_load_all(sys.stdin))
     found = set()
     retained = []

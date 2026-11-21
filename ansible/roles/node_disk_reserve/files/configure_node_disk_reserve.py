@@ -17,6 +17,7 @@ RESULT = Path("/var/lib/homelab/node-disk-reserve-result.json")
 
 
 def atomic_write(path, content, mode):
+    """Execute the atomic_write operation."""
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + ".homelab-tmp")
     descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode)
@@ -31,6 +32,7 @@ def atomic_write(path, content, mode):
 
 
 def pause_folder(config_path, folder_id):
+    """Execute the pause_folder operation."""
     tree = ET.fromstring(config_path.read_bytes())
     folder = next((f for f in tree.findall("folder") if f.get("id") == folder_id), None)
     if folder is None:
@@ -69,6 +71,7 @@ def pause_folder(config_path, folder_id):
 
 
 def apply(policy):
+    """Execute the apply operation."""
     if os.geteuid() != 0:
         raise RuntimeError("Root authentication is required")
     if socket.gethostname().split(".")[0] != policy["node"]:
@@ -120,6 +123,7 @@ def apply(policy):
 
 
 def main():
+    """Execute the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--policy", type=Path, required=True)
     args = parser.parse_args()

@@ -16,6 +16,7 @@ MEMORY_FACTORS = (
 
 
 def memory_bytes(value):
+    """Execute the memory_bytes operation."""
     text = str(value).strip()
     for suffix, factor in MEMORY_FACTORS:
         if text.endswith(suffix):
@@ -24,6 +25,7 @@ def memory_bytes(value):
 
 
 def problems(document, pods=None):
+    """Execute the problems operation."""
     if not document:
         return ["Prometheus is not installed"]
     items = (
@@ -70,6 +72,7 @@ def problems(document, pods=None):
 
 
 def main():
+    """Execute the main operation."""
     document = json.load(sys.stdin)
     found = (
         problems(document["prometheus"], document["pods"])

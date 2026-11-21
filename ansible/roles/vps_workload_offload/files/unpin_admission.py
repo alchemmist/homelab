@@ -9,6 +9,7 @@ PATTERNS = (r'^local\-path\-provisioner-[a-z0-9]+$', r'^metrics\-server-[a-z0-9]
 
 
 def patch_for(obj):
+    """Execute the patch_for operation."""
     variables = obj['spec']['variables']
     idx, = [i for i, v in enumerate(variables) if v['name'] == 'profiles']
     old = variables[idx]['expression']

@@ -13,12 +13,14 @@ ROOT = Path("/etc/homelab-welcome")
 
 
 def clean(value):
+    """Execute the clean operation."""
     return "".join(
         c if not unicodedata.category(c).startswith("C") else " " for c in str(value)
     ).strip()
 
 
 def role(labels):
+    """Execute the role operation."""
     roles = []
     if any(f"node-role.kubernetes.io/{key}" in labels for key in ("control-plane", "master")):
         roles.append("master")
@@ -28,6 +30,7 @@ def role(labels):
 
 
 def urls(config, ip):
+    """Execute the urls operation."""
     base = config["rancher_url"].rstrip("/")
     parsed = urlsplit(base)
     if parsed.scheme != "https" or not parsed.netloc or any(ord(c) < 32 for c in base):
@@ -57,6 +60,7 @@ def urls(config, ip):
 
 
 def metrics(disk):
+    """Execute the metrics operation."""
     os_name = platform.freedesktop_os_release().get("PRETTY_NAME", platform.system())
     memory = {}
     for line in Path("/proc/meminfo").read_text().splitlines():
@@ -86,6 +90,7 @@ def metrics(disk):
 
 
 def render(config, portraits, stats, width=100, color=True, hyperlinks=False, logo_frame=None):
+    """Execute the render operation."""
     logo = next(v["lines"] for v in portraits["variants"] if v["id"] == config["logo"])
     logo = [line.rstrip() for line in logo]
     ip = next((a["address"] for a in config["addresses"] if a["type"] == "InternalIP"), "unknown")
@@ -151,6 +156,7 @@ def render(config, portraits, stats, width=100, color=True, hyperlinks=False, lo
 
 
 def main():
+    """Execute the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, default=ROOT / "config.json")
     parser.add_argument("--portraits", type=Path, default=ROOT / "portraits.json")

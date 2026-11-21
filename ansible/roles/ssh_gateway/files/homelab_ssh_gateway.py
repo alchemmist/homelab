@@ -15,6 +15,7 @@ STATE = Path.home() / ".local/state/homelab/ssh-mappings.json"
 
 
 def load_config(path):
+    """Execute the load_config operation."""
     config = json.loads(path.read_text())
     ports = set()
     for node in config["nodes"]:
@@ -31,6 +32,7 @@ def load_config(path):
 
 
 def ssh_port(node):
+    """Execute the ssh_port operation."""
     for port in node["ports"]:
         try:
             with socket.create_connection((node["address"], port), timeout=3) as peer:
@@ -43,6 +45,7 @@ def ssh_port(node):
 
 
 def reconcile(config):
+    """Execute the reconcile operation."""
     prefix = ["upnpc", "-u", config["router_description"]]
     listing = subprocess.run(prefix + ["-l"], capture_output=True, text=True, timeout=15)
     if (
@@ -139,6 +142,7 @@ def reconcile(config):
 
 
 def relay(config, name):
+    """Execute the relay operation."""
     node = next(node for node in config["nodes"] if node["name"] == name and node.get("relay"))
     port = ssh_port(node)
     os.execv(
@@ -147,6 +151,7 @@ def relay(config, name):
 
 
 def main():
+    """Execute the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, default=CONFIG)
     parser.add_argument("action", choices=["reconcile", "relay"])

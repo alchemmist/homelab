@@ -15,15 +15,18 @@ import urllib.request
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
+        """Execute the redirect_request operation."""
         return None  # Never forward an authorization header to a redirected host.
 
 
 def verify(args, runner=None, opener=None):
+    """Execute the verify operation."""
     runner = runner or subprocess.run
     opener = opener or urllib.request.build_opener(NoRedirect()).open
     kubectl = ["k3s", "kubectl", "--kubeconfig", args.kubeconfig, "--request-timeout=15s"]
 
     def get(namespace, kind, name):
+        """Execute the get operation."""
         result = runner(
             kubectl + ["-n", namespace, "get", kind, name, "-o", "json"],
             capture_output=True,
@@ -89,6 +92,7 @@ def verify(args, runner=None, opener=None):
         raise RuntimeError("Empty existing key; refusing repair")
 
     def request(path, credential=None, read_json=False):
+        """Execute the request operation."""
         headers = {} if credential is None else {"Authorization": "Bearer " + credential}
         req = urllib.request.Request(base + path, headers=headers, method="GET")
         try:
@@ -117,6 +121,7 @@ def verify(args, runner=None, opener=None):
 
 
 def main():
+    """Execute the main operation."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--namespace", required=True)
     parser.add_argument("--release", required=True)

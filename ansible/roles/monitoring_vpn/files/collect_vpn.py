@@ -121,6 +121,7 @@ def active_users(counters, state, now, window):
 
 
 def write_state(path, state):
+    """Execute the write_state operation."""
     handle, name = tempfile.mkstemp(dir=os.path.dirname(path) or ".", prefix=".vpn-state-")
     try:
         with os.fdopen(handle, "w") as stream:
@@ -143,6 +144,7 @@ def write_metrics(
     registered=0,
     fallback_marker="/var/lib/homelab-vpn-failover/active",
 ):
+    """Execute the write_metrics operation."""
     timestamp = time.time()
     lines = [
         "# HELP socrat_vpn_fallback_active Whether native VPN fallback mode is latched on this VPS.",
@@ -188,6 +190,7 @@ def write_metrics(
 
 
 def try_load_state(path):
+    """Execute the try_load_state operation."""
     try:
         with open(path) as stream:
             data = json.load(stream)
@@ -201,6 +204,7 @@ def try_load_state(path):
 def collect(
     ports, metrics_url, metrics_timeout, window, output, state_path, xui_db="/etc/x-ui/x-ui.db"
 ):
+    """Execute the collect operation."""
     try:
         streams = observe_streams(ports)
         counters = read_xray_user_counters(metrics_url, metrics_timeout)
@@ -218,6 +222,7 @@ def collect(
 
 
 def _ports(raw):
+    """Execute the _ports operation."""
     ports = []
     for item in raw.split(","):
         item = item.strip()
@@ -229,6 +234,7 @@ def _ports(raw):
 
 
 def main():
+    """Execute the main operation."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--ports", type=_ports, required=True, help="comma-separated local VPN entrypoint TCP ports"

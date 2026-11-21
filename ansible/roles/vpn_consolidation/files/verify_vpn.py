@@ -32,14 +32,17 @@ RUNTIME_COLUMNS = {
 
 
 def canonical(value):
+    """Execute the canonical operation."""
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
 def digest(value):
+    """Execute the digest operation."""
     return hashlib.sha256(canonical(value).encode()).hexdigest()
 
 
 def configuration(connection):
+    """Execute the configuration operation."""
     connection.row_factory = sqlite3.Row
     result = {}
     for table in TABLES:
@@ -54,6 +57,7 @@ def configuration(connection):
 
 
 def normalize_subscription(body):
+    """Execute the normalize_subscription operation."""
     text = body.decode("utf-8").strip()
     if "://" not in text:
         text = base64.b64decode(text + "=" * (-len(text) % 4), validate=True).decode("utf-8")
@@ -77,6 +81,7 @@ def normalize_subscription(body):
 
 
 def subscriptions(connection):
+    """Execute the subscriptions operation."""
     settings = dict(connection.execute("SELECT key, value FROM settings"))
     if settings.get("subCertFile") or settings.get("subKeyFile"):
         raise ValueError("Local TLS subscription endpoint is unsupported")
@@ -122,10 +127,12 @@ def subscriptions(connection):
 
 
 def connect(path):
+    """Execute the connect operation."""
     return sqlite3.connect(Path(path).resolve().as_uri() + "?mode=ro", uri=True)
 
 
 def inspect(connection):
+    """Execute the inspect operation."""
     if connection.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
         raise ValueError("SQLite integrity check failed")
     config = configuration(connection)
@@ -136,6 +143,7 @@ def inspect(connection):
 
 
 def run(mode, directory):
+    """Execute the run operation."""
     if os.geteuid() != 0:
         raise ValueError("Run as root")
     os.umask(0o077)
@@ -179,6 +187,7 @@ def run(mode, directory):
 
 
 def main():
+    """Execute the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("mode", choices=("snapshot", "verify"))
     parser.add_argument("--directory", required=True)
