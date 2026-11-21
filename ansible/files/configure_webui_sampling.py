@@ -32,17 +32,21 @@ def configure():
     )
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
-    def request(path, payload=None) -> dict[str, object]:
+    def request(path, payload=None) -> object:
         req = urllib.request.Request(
             "http://127.0.0.1:8080" + path,
             headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
             data=None if payload is None else json.dumps(payload).encode(),
         )
         with opener.open(req, timeout=60) as response:
-            document: dict[str, object] = json.load(response)
-            return document
+            return json.load(response)
 
-    known = cast("list[dict[str, object]]", request("/api/v1/models/all"))
+    known_document = request("/api/v1/models/all")
+    if not isinstance(known_document, list) or not all(
+        isinstance(model, dict) for model in known_document
+    ):
+        raise RuntimeError("Unexpected models response shape")
+    known = cast("list[dict[str, object]]", known_document)
     if not any(model.get("id") == "qwen3.8-27b" for model in known):
         return {
             "changed": False,
@@ -50,7 +54,10 @@ def configure():
             "reason": "Qwen workspace model is not configured",
         }
     path = "/api/v1/models/model?id=qwen3.8-27b"
-    before = request(path)
+    before_document = request(path)
+    if not isinstance(before_document, dict):
+        raise RuntimeError("Unexpected model response shape")
+    before = cast("dict[str, object]", before_document)
     fields = ("id", "base_model_id", "name", "meta", "params", "access_grants", "is_active")
     desired = {key: copy.deepcopy(before[key]) for key in fields if key in before}
 
@@ -62,7 +69,7 @@ def configure():
         "presence_penalty": 1.5,
         "repetition_penalty": 1.0,
     }
-    params = cast("dict[str, object]", desired.get("params") or {})
+    params = cast("dict[str, object]", dict(desired.get("params") or {}))
     params.update(sampling)
     desired["params"] = params
     if isinstance(params.get("custom_params"), dict):
@@ -72,7 +79,10 @@ def configure():
     changed = desired["params"] != before.get("params")
     if changed:
         request("/api/v1/models/model/update", desired)
-    after = request(path)
+    after_document = request(path)
+    if not isinstance(after_document, dict):
+        raise RuntimeError("Unexpected model readback shape")
+    after = cast("dict[str, object]", after_document)
     if after["params"] != desired["params"]:
         raise RuntimeError("Qwen sampling settings failed readback validation")
     for key in ("id", "user_id", "base_model_id", "name", "meta", "is_active"):
