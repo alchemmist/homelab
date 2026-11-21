@@ -8,15 +8,42 @@ gateway:
 
 # Accepted cold restore required; never initialize an empty replacement database.
 grafana:
-  replicas: 0
+  replicas: 1
+  env:
+    GF_DATABASE_TYPE: postgres
+    GF_DATABASE_HOST: pg-common-rw.postgres.svc.cluster.local:5432
+    GF_DATABASE_NAME: grafana
+    GF_DATABASE_USER: grafana
+    GF_DATABASE_SSL_MODE: verify-full
+    GF_DATABASE_CA_CERT_PATH: /etc/grafana/pg-ca/ca.crt
+  envValueFrom:
+    GF_DATABASE_PASSWORD:
+      secretKeyRef: {name: grafana-postgres, key: password}
+  extraVolumes:
+    - name: pg-common-ca
+      configMap: {name: pg-common-ca}
+  extraVolumeMounts:
+    - {name: pg-common-ca, mountPath: /etc/grafana/pg-ca, readOnly: true}
   hostAliases:
     - ip: 10.43.218.222
       hostnames: [auth.socrat.alchemmist.xyz]
   extraInitContainers:
-    - name: require-existing-grafana-data
-      image: docker.io/library/busybox:1.38.0
+    - name: require-imported-grafana-db
+      image: ghcr.io/cloudnative-pg/postgresql:18.7-system-trixie@sha256:13f5dc1b42c5d96233724be976740df031136ca013f98a56a2877a62b362b453
       imagePullPolicy: IfNotPresent
-      command: [sh, -ec, 'test -s /var/lib/grafana/grafana.db']
+      command: [sh, -ec]
+      args:
+        - |
+          test "$(psql -XAtq -v ON_ERROR_STOP=1 -c "select exists(select 1 from resource where resource='dashboards') and exists(select 1 from org_user)")" = t
+      env:
+        - {name: PGHOST, value: pg-common-rw.postgres.svc.cluster.local}
+        - {name: PGDATABASE, value: grafana}
+        - {name: PGUSER, value: grafana}
+        - {name: PGSSLMODE, value: verify-full}
+        - {name: PGSSLROOTCERT, value: /etc/grafana/pg-ca/ca.crt}
+        - {name: PGCONNECT_TIMEOUT, value: '5'}
+        - name: PGPASSWORD
+          valueFrom: {secretKeyRef: {name: grafana-postgres, key: password}}
       securityContext:
         runAsUser: 472
         runAsGroup: 472
@@ -26,9 +53,9 @@ grafana:
         capabilities: {drop: [ALL]}
       resources:
         requests: {cpu: 5m, memory: 8Mi}
-        limits: {memory: 16Mi}
+        limits: {memory: 64Mi}
       volumeMounts:
-        - name: storage
-          mountPath: /var/lib/grafana
+        - name: pg-common-ca
+          mountPath: /etc/grafana/pg-ca
           readOnly: true
 ...
