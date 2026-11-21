@@ -1,3 +1,5 @@
+"""Tests for the NetBird gitops node sync script."""
+
 import copy
 import importlib.util
 import json
@@ -54,15 +56,13 @@ class GitOpsTests(unittest.TestCase):
     def test_root_discovers_default_project_application_without_new_bootstrap(self) -> None:
         root = yaml.safe_load((ROOT / "deploy/argocd/root.yaml").read_text())
         app = yaml.safe_load((ROOT / "deploy/argocd/apps/netbird.yaml").read_text())
-        self.assertEqual(root["spec"]["source"]["path"], "deploy/argocd/apps")
-        self.assertEqual(app["spec"]["project"], "default")
-        self.assertEqual(app["spec"]["source"]["targetRevision"], "main")
-        self.assertEqual(app["spec"]["source"]["path"], "charts/netbird")
-        self.assertEqual(app["spec"]["source"]["helm"]["parameters"], [])
-        self.assertEqual(
-            app["spec"]["source"]["helm"]["valueFiles"], ["../../deploy/netbird/values.yaml"]
-        )
-        self.assertEqual(app["spec"]["syncPolicy"]["automated"], {"prune": False, "selfHeal": True})
+        assert root["spec"]["source"]["path"] == "deploy/argocd/apps"
+        assert app["spec"]["project"] == "default"
+        assert app["spec"]["source"]["targetRevision"] == "main"
+        assert app["spec"]["source"]["path"] == "charts/netbird"
+        assert app["spec"]["source"]["helm"]["parameters"] == []
+        assert app["spec"]["source"]["helm"]["valueFiles"] == ["../../deploy/netbird/values.yaml"]
+        assert app["spec"]["syncPolicy"]["automated"] == {"prune": False, "selfHeal": True}
 
     def test_real_helm_render_includes_complete_stack_without_secret_values(self) -> None:
         docs = list(
@@ -80,44 +80,26 @@ class GitOpsTests(unittest.TestCase):
                 )
             )
         )
-        self.assertEqual(len(docs), len(_documents(self.values()["resources"])))
+        assert len(docs) == len(_documents(self.values()["resources"]))
         deployments = [d for d in docs if d["kind"] == "Deployment"]
-        self.assertEqual(len(deployments), 6 + len(_mapping(self.values()["nodes"])))
+        assert len(deployments) == 6 + len(_mapping(self.values()["nodes"]))
         names = {d["metadata"]["name"] for d in deployments}
-        self.assertTrue(
-            {
-                "dashboard",
-                "server",
-                "stun",
-                "netbird-edge-forwarder",
-                "netbird-relay-home",
-                "netbird-relay-vps",
-            }
-            <= names
-        )
-        self.assertFalse(
-            any(d["kind"] in ["Secret", "Job", "ApplicationSet", "AppProject"] for d in docs)
-        )
+        assert {"dashboard", "server", "stun", "netbird-edge-forwarder", "netbird-relay-home", "netbird-relay-vps"} <= names
+        assert not any(d["kind"] in ["Secret", "Job", "ApplicationSet", "AppProject"] for d in docs)
         for d in docs:
             if d["kind"] in ["Namespace", "PersistentVolumeClaim"]:
-                self.assertEqual(
-                    d["metadata"]["annotations"]["argocd.argoproj.io/sync-options"],
-                    "Prune=false,Delete=false",
-                )
+                assert d["metadata"]["annotations"]["argocd.argoproj.io/sync-options"] == "Prune=false,Delete=false"
             if d["kind"] != "Deployment":
                 continue
             for c in d["spec"]["template"]["spec"]["containers"]:
-                self.assertIn("@sha256:", c["image"])
+                assert "@sha256:" in c["image"]
                 for env in c.get("env", []):
-                    self.assertNotEqual(env["name"], "NB_SETUP_KEY")
+                    assert env["name"] != "NB_SETUP_KEY"
                     if any(v in env["name"] for v in ["SECRET", "TOKEN", "PASSWORD"]):
-                        self.assertNotIn("value", env)
+                        assert "value" not in env
         dashboard = next(d for d in deployments if d["metadata"]["name"] == "dashboard")
         image = _mapping(self.values()["image"])
-        self.assertEqual(
-            dashboard["spec"]["template"]["spec"]["containers"][0]["image"],
-            _text(image["repository"]) + "@" + _text(image["digest"]),
-        )
+        assert dashboard["spec"]["template"]["spec"]["containers"][0]["image"] == _text(image["repository"]) + "@" + _text(image["digest"])
 
     def test_home_relay_admits_exact_vps_flannel_source_without_weakening_health(self) -> None:
         resources = _documents(self.values()["resources"])
@@ -133,9 +115,9 @@ class GitOpsTests(unittest.TestCase):
             for source in _documents(_mapping(rule)["from"])
             if "ipBlock" in _mapping(source)
         }
-        self.assertIn("10.42.0.0/32", cidrs)
-        self.assertTrue(all(cidr.endswith("/32") for cidr in cidrs))
-        self.assertEqual(_mapping(rule)["ports"], [{"port": 33080, "protocol": "TCP"}])
+        assert "10.42.0.0/32" in cidrs
+        assert all(cidr.endswith("/32") for cidr in cidrs)
+        assert _mapping(rule)["ports"] == [{"port": 33080, "protocol": "TCP"}]
         deployment = next(
             r
             for r in resources
@@ -144,24 +126,14 @@ class GitOpsTests(unittest.TestCase):
         container = _documents(
             _mapping_path(deployment, "spec", "template", "spec")["containers"]
         )[0]
-        self.assertEqual(
-            _text(_mapping(_mapping(_mapping(container)["readinessProbe"])["httpGet"])["path"]),
-            "/health",
-        )
-        self.assertEqual(
-            _mapping(_mapping(_mapping(container)["readinessProbe"])["httpGet"])["port"], 9000
-        )
+        assert _text(_mapping(_mapping(_mapping(container)["readinessProbe"])["httpGet"])["path"]) == "/health"
+        assert _mapping(_mapping(_mapping(container)["readinessProbe"])["httpGet"])["port"] == 9000
         env = {
             _text(_mapping(e)["name"]): e
             for e in _documents(_mapping(container)["env"])
         }
-        self.assertIn(
-            "secretKeyRef", _mapping(_mapping(env["NB_AUTH_SECRET"])["valueFrom"])
-        )
-        self.assertEqual(
-            _mapping(env["NB_EXPOSED_ADDRESS"])["value"],
-            "rels://netbird.socrat.alchemmist.xyz:443",
-        )
+        assert "secretKeyRef" in _mapping(_mapping(env["NB_AUTH_SECRET"])["valueFrom"])
+        assert _mapping(env["NB_EXPOSED_ADDRESS"])["value"] == "rels://netbird.socrat.alchemmist.xyz:443"
 
     def inventory(self, address="10.250.0.9") -> dict[str, object]:
         """Build the inventory payload used by the offline gitops node tests."""
@@ -181,19 +153,12 @@ class GitOpsTests(unittest.TestCase):
         values = self.values()
         original = copy.deepcopy(_documents(values["resources"]))
         image = "netbirdio/netbird:0.82.0@sha256:" + "a" * 64
-        self.assertEqual(gitops.desired(values, self.inventory(), image), ["socrat-4"])
-        self.assertEqual(_documents(values["resources"])[: len(original)], original)
-        self.assertEqual(_mapping(values["nodes"])["socrat-4"], "10.250.0.9")
-        self.assertEqual(len(_documents(values["resources"])), len(original) + 2)
-        self.assertEqual(gitops.desired(values, self.inventory(), image), [])
-        self.assertEqual(
-            gitops.desired(
-                values,
-                {"Socrat": {"hosts": ["socrat-4"]}, "_meta": _mapping(self.inventory())["_meta"]},
-                image,
-            ),
-            [],
-        )
+        assert gitops.desired(values, self.inventory(), image) == ["socrat-4"]
+        assert _documents(values["resources"])[:len(original)] == original
+        assert _mapping(values["nodes"])["socrat-4"] == "10.250.0.9"
+        assert len(_documents(values["resources"])) == len(original) + 2
+        assert gitops.desired(values, self.inventory(), image) == []
+        assert gitops.desired(values, {"Socrat": {"hosts": ["socrat-4"]}, "_meta": _mapping(self.inventory())["_meta"]}, image) == []
         with self.assertRaises(ValueError):
             gitops.desired(values, self.inventory("10.250.0.10"), image)
         _documents(values["resources"]).pop()
@@ -219,5 +184,5 @@ class GitOpsTests(unittest.TestCase):
             capture_output=True,
             text=True,
         )
-        self.assertNotEqual(p.returncode, 0)
-        self.assertIn("exclusively managed by root -> netbird", p.stderr)
+        assert p.returncode != 0
+        assert "exclusively managed by root -> netbird" in p.stderr

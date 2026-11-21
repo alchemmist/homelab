@@ -1,3 +1,5 @@
+"""Tests for the guarded Wi-Fi loader."""
+
 import contextlib
 import gzip
 import importlib.util

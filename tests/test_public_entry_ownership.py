@@ -118,34 +118,34 @@ class OwnershipTests(unittest.TestCase):
                         resource["metadata"]["name"],
                     ]
                 )
-                self.assertNotIn(key, actual, "Multiple application owners: " + key)
+                assert key not in actual, "Multiple application owners: " + key
                 digest = hashlib.sha256(
                     json.dumps(
                         migration_payload(resource), sort_keys=True, separators=(",", ":")
                     ).encode()
                 ).hexdigest()
                 actual[key] = {"owner": owner, "sha256": digest}
-        self.assertEqual(actual, fixture)
+        assert actual == fixture
 
     def test_platform_extensions_belong_to_the_existing_application(self) -> None:
         for owner, chart in CHARTS.items():
             app = yaml.safe_load((ROOT / f"deploy/argocd/apps/{owner}.yaml").read_text())
-            self.assertEqual(app["spec"]["project"], "default")
+            assert app["spec"]["project"] == "default"
             sources = app["spec"].get("sources", [app["spec"].get("source", {})])
-            self.assertEqual(len([s for s in sources if s.get("path") == chart]), 1)
-            self.assertFalse(app["spec"]["syncPolicy"]["automated"]["prune"])
-            self.assertTrue(app["spec"]["syncPolicy"]["automated"]["selfHeal"])
+            assert len([s for s in sources if s.get("path") == chart]) == 1
+            assert not app["spec"]["syncPolicy"]["automated"]["prune"]
+            assert app["spec"]["syncPolicy"]["automated"]["selfHeal"]
 
     def test_aggregate_chart_and_application_are_gone(self) -> None:
-        self.assertFalse((ROOT / "charts/public-web-entry").exists())
-        self.assertFalse((ROOT / "deploy/argocd/apps/public-web-entry.yaml").exists())
+        assert not (ROOT / "charts/public-web-entry").exists()
+        assert not (ROOT / "deploy/argocd/apps/public-web-entry.yaml").exists()
         for path in (ROOT / "deploy/argocd/apps").glob("*.yaml"):
             app = yaml.safe_load(path.read_text())
-            self.assertNotEqual(app["metadata"]["name"], "public-web-entry")
+            assert app["metadata"]["name"] != "public-web-entry"
             sources = app["spec"].get("sources", [app["spec"].get("source", {})])
-            self.assertFalse(any(s.get("path") == "charts/public-web-entry" for s in sources))
+            assert not any(s.get("path") == "charts/public-web-entry" for s in sources)
         litellm = yaml.safe_load((ROOT / "deploy/argocd/apps/litellm.yaml").read_text())
-        self.assertIsNot(litellm["spec"]["syncPolicy"]["automated"].get("enabled"), False)
+        assert litellm["spec"]["syncPolicy"]["automated"].get("enabled") is not False
 
 
 @pytest.mark.parametrize("violation", ["payload", "checksum", "token", "image"])

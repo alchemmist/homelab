@@ -1,3 +1,5 @@
+"""Tests for OpenTelemetry read boundaries and PKI wiring."""
+
 import importlib.util
 from pathlib import Path
 from types import ModuleType
@@ -21,7 +23,7 @@ class ReadBoundaryTests(unittest.TestCase):
     def test_only_known_read_limit_can_be_removed(self) -> None:
         repair = load("otel-store-read-boundary")
         arguments = ["store", "--max-time=-12h", "--consistency-delay=30m"]
-        self.assertEqual(repair.unclamped(arguments), ["store", "--consistency-delay=30m"])
+        assert repair.unclamped(arguments) == ["store", "--consistency-delay=30m"]
         with self.assertRaises(ValueError):
             repair.unclamped(["store", "--max-time=-1d"])
 
@@ -29,24 +31,19 @@ class ReadBoundaryTests(unittest.TestCase):
         pki = load("otel-application-pki")
         resources = pki.resources()
         certificates = [item for item in resources if item["kind"] == "Certificate"]
-        self.assertEqual(
-            {c["spec"]["commonName"] for c in certificates},
-            {
-                "otel-app-" + app
-                for app in ("harbor", "litellm", "vllm", "open-webui", "lms", "wishlist")
-            },
-        )
+        assert {c["spec"]["commonName"] for c in certificates} == {
+            "otel-app-" + app
+            for app in ("harbor", "litellm", "vllm", "open-webui", "lms", "wishlist")
+        }
         for certificate in certificates:
-            self.assertEqual(certificate["spec"]["usages"], ["digital signature", "client auth"])
-            self.assertEqual(certificate["spec"]["privateKey"]["rotationPolicy"], "Always")
+            assert certificate["spec"]["usages"] == ["digital signature", "client auth"]
+            assert certificate["spec"]["privateKey"]["rotationPolicy"] == "Always"
         role = next(item for item in resources if item["kind"] == "Role")
         rule = role["rules"][0]
-        self.assertEqual(rule["verbs"], ["get"])
-        self.assertNotIn("otel-root-ca", rule["resourceNames"])
-        self.assertNotIn("otel-tls-socrat-0", rule["resourceNames"])
-        self.assertEqual(
-            set(rule["resourceNames"]), {c["spec"]["secretName"] for c in certificates}
-        )
+        assert rule["verbs"] == ["get"]
+        assert "otel-root-ca" not in rule["resourceNames"]
+        assert "otel-tls-socrat-0" not in rule["resourceNames"]
+        assert set(rule["resourceNames"]) == {c["spec"]["secretName"] for c in certificates}
 
     def test_rbac_evaluation_error_is_not_certified_as_denial(self) -> None:
         pki = load("otel-application-pki")

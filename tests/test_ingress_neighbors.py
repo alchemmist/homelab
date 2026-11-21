@@ -1,3 +1,5 @@
+"""Tests for the ingress neighbor discovery script."""
+
 import importlib.util
 import json
 from pathlib import Path

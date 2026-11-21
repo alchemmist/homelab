@@ -1,3 +1,5 @@
+"""Tests for the blog updates GitHub client module."""
+
 import sys
 from pathlib import Path
 from typing import cast

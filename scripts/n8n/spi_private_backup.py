@@ -132,7 +132,7 @@ def _deadline_check(start: float, deadline_seconds: float) -> Callable[[], None]
     return check
 
 
-def backup(source, directory, max_bytes=512 * 1024 * 1024, deadline_seconds=60):
+def backup(source, directory, max_bytes=512 * 1024 * 1024, deadline_seconds=60) -> None:
     if deadline_seconds <= 0 or max_bytes <= 0:
         raise ValueError("invalid bounds")
     start = time.monotonic()
@@ -192,7 +192,7 @@ def backup(source, directory, max_bytes=512 * 1024 * 1024, deadline_seconds=60):
             raise errors[0]
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--source", default="/data/spi.sqlite")
     p.add_argument("--private-pvc-directory", required=True)

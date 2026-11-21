@@ -3,12 +3,13 @@
 import importlib.util
 import unittest
 from pathlib import Path
-from types import ModuleType
 
 ROOT = Path(__file__).resolve().parents[1]
 
+PUBLIC_FILE_MODE = 0o755
 
-def load(path, name) -> ModuleType:
+
+def load(path, name):
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -16,7 +17,7 @@ def load(path, name) -> ModuleType:
 
 
 class SPIOnlyDNSTests(unittest.TestCase):
-    def test_only_spi_changes_for_all_four_health_states(self) -> None:
+    def test_only_spi_changes_for_all_four_health_states(self):
         new = load(ROOT / "scripts/public_dns_zone.py", "spi_zone")
         old = load(ROOT / "scripts/public_dns_zone.py", "previous_zone")
         old.FAILOVER.remove("spi.socrat")
@@ -26,19 +27,18 @@ class SPIOnlyDNSTests(unittest.TestCase):
             with self.subTest(home=home, vps=vps):
                 before = old.render(123, home, vps).splitlines()
                 after = new.render(123, home, vps).splitlines()
-                self.assertEqual([r for r in after if not r.startswith("spi.socrat IN A ")], before)
-                self.assertEqual(
-                    [r for r in after if r.startswith("spi.socrat IN A ")],
-                    ["spi.socrat IN A " + a for a in old.healthy_addresses(home, vps)],
-                )
-                self.assertNotIn("*.socrat", "\n".join(after))
+                assert [r for r in after if not r.startswith("spi.socrat IN A ")] == before
+                assert [r for r in after if r.startswith("spi.socrat IN A ")] == [
+                    "spi.socrat IN A " + a for a in old.healthy_addresses(home, vps)
+                ]
+                assert "*.socrat" not in "\n".join(after)
         new.TTL += 1
         with self.assertRaisesRegex(RuntimeError, "Unrelated DNS record change"):
             guard.delta(old, new)
 
 
 class DNSPreflightSafetyTests(unittest.TestCase):
-    def test_loader_rejects_directories_and_symlinks(self) -> None:
+    def test_loader_rejects_directories_and_symlinks(self):
         import tempfile
 
         guard = load(ROOT / "scripts/spi-public-dns.py", "safe_loader")
@@ -55,7 +55,7 @@ class DNSPreflightSafetyTests(unittest.TestCase):
                 ):
                     guard.load(path, "invalid")
 
-    def test_malformed_renderer_has_controlled_error(self) -> None:
+    def test_malformed_renderer_has_controlled_error(self):
         import tempfile
 
         guard = load(ROOT / "scripts/spi-public-dns.py", "syntax_guard")
@@ -69,7 +69,7 @@ class DNSPreflightSafetyTests(unittest.TestCase):
                 ):
                     guard.load(path, "malformed")
 
-    def test_uncertain_marker_is_checked_after_lock_acquisition(self) -> None:
+    def test_uncertain_marker_is_checked_after_lock_acquisition(self):
         import tempfile
         from unittest.mock import Mock, patch
 
@@ -89,8 +89,8 @@ class DNSPreflightSafetyTests(unittest.TestCase):
             current.write_text("VALUE = 1\n")
             (base / "proposed.py").write_text("VALUE = 2\n")
 
-            def acquired(_fd, operation):
-                self.assertEqual(operation, guard.fcntl.LOCK_EX)
+            def acquired(fd, operation):
+                assert operation == guard.fcntl.LOCK_EX
                 # Simulate a prior writer leaving an uncertain marker before releasing its lock.
                 (base / "uncertain.json").write_text("{}")
 
@@ -106,10 +106,10 @@ class DNSPreflightSafetyTests(unittest.TestCase):
             ):
                 guard.main()
             loader.assert_not_called()
-            self.assertFalse((base / "before.py").exists())
-            self.assertEqual(current.read_text(), "VALUE = 1\n")
+            assert not (base / "before.py").exists()
+            assert current.read_text() == "VALUE = 1\n"
 
-    def test_missing_state_directory_has_controlled_stop(self) -> None:
+    def test_missing_state_directory_has_controlled_stop(self):
         import tempfile
         from unittest.mock import patch
 
@@ -124,11 +124,11 @@ class DNSPreflightSafetyTests(unittest.TestCase):
                 self.assertRaisesRegex(RuntimeError, "Unsafe state directory"),
             ):
                 guard.main()
-            self.assertFalse(missing.exists())
+            assert not missing.exists()
 
 
 class ExclusiveRendererTests(unittest.TestCase):
-    def test_existing_regular_file_is_not_overwritten(self) -> None:
+    def test_existing_regular_file_is_not_overwritten(self):
         import tempfile
 
         guard = load(ROOT / "scripts/spi-public-dns.py", "exclusive_file_guard")
@@ -137,9 +137,9 @@ class ExclusiveRendererTests(unittest.TestCase):
             path.write_bytes(b"original")
             with self.assertRaisesRegex(RuntimeError, "Unexpected temporary renderer"):
                 guard.stage_renderer(path, b"replacement")
-            self.assertEqual(path.read_bytes(), b"original")
+            assert path.read_bytes() == b"original"
 
-    def test_existing_and_dangling_symlinks_are_not_followed(self) -> None:
+    def test_existing_and_dangling_symlinks_are_not_followed(self):
         import tempfile
 
         guard = load(ROOT / "scripts/spi-public-dns.py", "exclusive_link_guard")
@@ -156,13 +156,13 @@ class ExclusiveRendererTests(unittest.TestCase):
                     self.assertRaisesRegex(RuntimeError, "Unexpected temporary renderer"),
                 ):
                     guard.stage_renderer(link, b"replacement")
-                self.assertTrue(link.is_symlink())
+                assert link.is_symlink()
                 if existing:
-                    self.assertEqual(target.read_bytes(), b"original")
+                    assert target.read_bytes() == b"original"
                 else:
-                    self.assertFalse(target.exists())
+                    assert not target.exists()
 
-    def test_new_inode_has_expected_public_renderer_mode_and_contents(self) -> None:
+    def test_new_inode_has_expected_public_renderer_mode_and_contents(self):
         import stat
         import tempfile
 
@@ -170,5 +170,5 @@ class ExclusiveRendererTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "stage.tmp"
             guard.stage_renderer(path, b"VALUE = 1\n")
-            self.assertEqual(path.read_bytes(), b"VALUE = 1\n")
-            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o755)
+            assert path.read_bytes() == b"VALUE = 1\n"
+            assert stat.S_IMODE(path.stat().st_mode) == PUBLIC_FILE_MODE

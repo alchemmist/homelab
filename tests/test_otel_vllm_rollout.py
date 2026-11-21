@@ -1,3 +1,5 @@
+"""Tests for the OpenTelemetry vLLM rollout."""
+
 import importlib.util
 import os
 from pathlib import Path
@@ -25,9 +27,10 @@ class VllmRolloutTests(unittest.TestCase):
         helper = module()
         original = ["model", "--max-model-len", "114688", "--gpu-memory-utilization", ".95"]
         updated = helper.trace_arguments(original)
-        self.assertEqual(updated[:-2], original)
-        self.assertEqual(helper.trace_arguments(updated), updated)
-        self.assertEqual(len(original), 5)
+        assert updated[:-2] == original
+        assert helper.trace_arguments(updated) == updated
+        expected_arg_count = 5
+        assert len(original) == expected_arg_count
         for args in [
             ["model", "--otlp-traces-endpoint=http://public"],
             ["model", "--otlp-traces-endpoint", "grpc://insecure"],
@@ -37,20 +40,20 @@ class VllmRolloutTests(unittest.TestCase):
 
     def test_exact_mtls_protocol_always_on_no_duplicate_signals(self) -> None:
         env = module().sdk_environment()
-        self.assertEqual(env["OTEL_EXPORTER_OTLP_TRACES_PROTOCOL"], "http/protobuf")
-        self.assertEqual(env["OTEL_EXPORTER_OTLP_INSECURE"], "false")
-        self.assertEqual(env["OTEL_TRACES_SAMPLER"], "always_on")
-        self.assertEqual(env["OTEL_METRICS_EXPORTER"], "none")
-        self.assertEqual(env["OTEL_LOGS_EXPORTER"], "none")
-        self.assertEqual(env["OTEL_EXPORTER_OTLP_HEADERS"], "Connection=close")
+        assert env["OTEL_EXPORTER_OTLP_TRACES_PROTOCOL"] == "http/protobuf"
+        assert env["OTEL_EXPORTER_OTLP_INSECURE"] == "false"
+        assert env["OTEL_TRACES_SAMPLER"] == "always_on"
+        assert env["OTEL_METRICS_EXPORTER"] == "none"
+        assert env["OTEL_LOGS_EXPORTER"] == "none"
+        assert env["OTEL_EXPORTER_OTLP_HEADERS"] == "Connection=close"
 
     def test_maintained_overlay_matches_exact_guard_sources_and_environment(self) -> None:
         helper = module()
         overlay = yaml.safe_load(
             (ROOT / "deploy/monitoring/otel-vllm-sdk-values.yaml").read_text()
         )["otel"]
-        self.assertEqual(overlay["sourceConfigMap"], helper.source_configmap_name())
-        self.assertEqual(overlay["environment"], helper.sdk_environment())
+        assert overlay["sourceConfigMap"] == helper.source_configmap_name()
+        assert overlay["environment"] == helper.sdk_environment()
 
     def test_sitecustomize_refuses_startup_without_dumping_failure_payload(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -69,6 +72,7 @@ class VllmRolloutTests(unittest.TestCase):
                 capture_output=True,
                 timeout=10,
             )
-            self.assertEqual(result.returncode, 78)
-            self.assertNotIn("synthetic-private-credential", result.stderr)
-            self.assertNotIn("UNSAFE_APPLICATION_STARTED", result.stdout)
+            config_error_exit = 78
+            assert result.returncode == config_error_exit
+            assert "synthetic-private-credential" not in result.stderr
+            assert "UNSAFE_APPLICATION_STARTED" not in result.stdout

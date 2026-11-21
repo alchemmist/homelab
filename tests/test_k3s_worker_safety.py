@@ -1,3 +1,5 @@
+"""Safety tests for the k3s worker deployment playbooks."""
+
 import json
 import os
 from pathlib import Path

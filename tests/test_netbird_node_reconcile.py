@@ -1,3 +1,5 @@
+"""Tests for the NetBird node reconcile script."""
+
 import copy
 import importlib.util
 import json
@@ -197,11 +199,11 @@ class ReconcileTest(unittest.TestCase):
     def test_kernel_only_daemon_has_no_tun_or_interactive_sso(self) -> None:
         pvc, deployment = n.manifests("socrat-5", IMAGE, kernel_only=True)
         spec = deployment["spec"]["template"]["spec"]
-        self.assertEqual(spec["containers"][0]["command"], ["netbird"])
-        self.assertEqual(spec["containers"][0]["args"], ["service", "run"])
-        self.assertEqual([v["name"] for v in spec["volumes"]], ["state"])
-        self.assertEqual([v["name"] for v in spec["containers"][0]["volumeMounts"]], ["state"])
-        self.assertNotIn("privileged", spec["containers"][0]["securityContext"])
+        assert spec["containers"][0]["command"] == ["netbird"]
+        assert spec["containers"][0]["args"] == ["service", "run"]
+        assert [v["name"] for v in spec["volumes"]] == ["state"]
+        assert [v["name"] for v in spec["containers"][0]["volumeMounts"]] == ["state"]
+        assert "privileged" not in spec["containers"][0]["securityContext"]
 
     def test_inventory_is_generic_but_not_arbitrary_network_access(self) -> None:
         for values in [
@@ -232,75 +234,73 @@ class ReconcileTest(unittest.TestCase):
         pvc, deploy = n.manifests("socrat-28", IMAGE)
         pod = deploy["spec"]["template"]["spec"]
         env = {e["name"]: e.get("value") for e in pod["containers"][0]["env"]}
-        self.assertNotIn("NB_SETUP_KEY", env)
-        self.assertEqual(env["NB_DISABLE_DNS"], "true")
-        self.assertEqual(env["NB_DISABLE_CLIENT_ROUTES"], "true")
-        self.assertEqual(env["NB_DISABLE_SERVER_ROUTES"], "false")
-        self.assertEqual(env["NB_ALLOW_SERVER_SSH"], "false")
-        self.assertEqual(pod["nodeSelector"], {"kubernetes.io/hostname": "socrat-28"})
-        self.assertFalse(pod["automountServiceAccountToken"])
+        assert "NB_SETUP_KEY" not in env
+        assert env["NB_DISABLE_DNS"] == "true"
+        assert env["NB_DISABLE_CLIENT_ROUTES"] == "true"
+        assert env["NB_DISABLE_SERVER_ROUTES"] == "false"
+        assert env["NB_ALLOW_SERVER_SSH"] == "false"
+        assert pod["nodeSelector"] == {"kubernetes.io/hostname": "socrat-28"}
+        assert not pod["automountServiceAccountToken"]
 
     def test_adopt_requires_trusted_exact_peer_not_name(self) -> None:
         for seed in [None, {"nodes": {"socrat-4": {"id": "wrong"}}}]:
             f = Fake()
             with self.assertRaises(ValueError):
                 f.reconcile("socrat-4", seed)
-            self.assertEqual(f.writes, [])
+            assert f.writes == []
 
     def test_adopt_and_second_run_are_idempotent(self) -> None:
         f = Fake()
-        self.assertTrue(f.reconcile("socrat-4", self.seed())["changed"])
-        self.assertEqual(len(f.resources), 1)
+        assert f.reconcile("socrat-4", self.seed())["changed"]
+        assert len(f.resources) == 1
         writes = len(f.writes)
         f.changed = False
-        self.assertFalse(f.reconcile("socrat-4")["changed"])
-        self.assertEqual(len(f.writes), writes)
+        assert not f.reconcile("socrat-4")["changed"]
+        assert len(f.writes) == writes
 
     def test_plan_never_enrolls_or_writes(self) -> None:
         f = Fake(apply=False, existing=False)
-        self.assertEqual(f.reconcile("socrat-4")["status"], "awaiting-argocd-workloads")
-        self.assertEqual(f.writes, [])
+        assert f.reconcile("socrat-4")["status"] == "awaiting-argocd-workloads"
+        assert f.writes == []
 
     def test_missing_git_workloads_are_deferred_without_kubernetes_or_api_writes(self) -> None:
         f = Fake(existing=False)
-        self.assertEqual(f.reconcile("socrat-4")["status"], "awaiting-argocd-workloads")
-        self.assertEqual(f.writes, [])
+        assert f.reconcile("socrat-4")["status"] == "awaiting-argocd-workloads"
+        assert f.writes == []
 
     def test_fresh_argocd_agent_plan_has_no_setup_key(self) -> None:
         f = Fake(apply=False)
         f.enrolled = False
-        self.assertEqual(f.reconcile("socrat-4")["status"], "would-enroll-and-authorize")
-        self.assertEqual(f.writes, [])
+        assert f.reconcile("socrat-4")["status"] == "would-enroll-and-authorize"
+        assert f.writes == []
 
     def test_unmanaged_workloads_cannot_be_adopted_by_controller(self) -> None:
         f = Fake()
         f.dep["metadata"].pop("labels")
         with self.assertRaises(ValueError):
             f.reconcile("socrat-4", self.seed())
-        self.assertEqual(f.writes, [])
+        assert f.writes == []
 
     def test_missing_not_ready_node_is_deferred(self) -> None:
         f = Fake()
         f.cluster_node = None
-        self.assertEqual(f.reconcile("socrat-4")["status"], "deferred-node-not-ready")
-        self.assertEqual(f.writes, [])
+        assert f.reconcile("socrat-4")["status"] == "deferred-node-not-ready"
+        assert f.writes == []
 
     def test_simulated_new_node_flow_retires_key_and_second_run_no_writes(self) -> None:
         f = Fake()
         f.enrolled = False
-        self.assertTrue(f.reconcile("socrat-4")["changed"])
-        self.assertEqual(f.state["cleanup"]["revoked"], True)
-        self.assertEqual(f.state["nodes"]["socrat-4"]["phase"], "ready")
-        self.assertFalse(
-            any(
-                e["name"] == "NB_SETUP_KEY"
-                for e in f.dep["spec"]["template"]["spec"]["containers"][0]["env"]
-            )
+        assert f.reconcile("socrat-4")["changed"]
+        assert f.state["cleanup"]["revoked"] is True
+        assert f.state["nodes"]["socrat-4"]["phase"] == "ready"
+        assert not any(
+            e["name"] == "NB_SETUP_KEY"
+            for e in f.dep["spec"]["template"]["spec"]["containers"][0]["env"]
         )
         writes = len(f.writes)
         f.changed = False
-        self.assertFalse(f.reconcile("socrat-4")["changed"])
-        self.assertEqual(len(f.writes), writes)
+        assert not f.reconcile("socrat-4")["changed"]
+        assert len(f.writes) == writes
 
     def test_failed_enrollment_revokes_known_key_and_never_auto_reissues(self) -> None:
         f = Fake()
@@ -308,12 +308,12 @@ class ReconcileTest(unittest.TestCase):
         f.fail_restart = True
         with self.assertRaises(ValueError):
             f.reconcile("socrat-4")
-        self.assertTrue(f.state["cleanup"]["revoked"])
-        self.assertNotEqual(f.state["nodes"]["socrat-4"]["phase"], "ready")
+        assert f.state["cleanup"]["revoked"]
+        assert f.state["nodes"]["socrat-4"]["phase"] != "ready"
         writes = len(f.writes)
         with self.assertRaises(ValueError):
             f.reconcile("socrat-4")
-        self.assertEqual(len(f.writes), writes)
+        assert len(f.writes) == writes
 
     def test_node_uid_pvc_peer_address_and_image_drift_are_not_repaired(self) -> None:
         for kind in ["node", "pvc", "peer", "address", "image", "key", "deleted-volume"]:
@@ -337,7 +337,7 @@ class ReconcileTest(unittest.TestCase):
                 f.enrolled = False
             with self.subTest(kind=kind), self.assertRaises(ValueError):
                 f.reconcile("socrat-4")
-            self.assertEqual(len(f.writes), before)
+            assert len(f.writes) == before
 
     def test_fake_jwt_broad_acl_or_wrong_router_fail_before_writes(self) -> None:
         for kind in ["jwt", "input", "member"]:
@@ -350,7 +350,7 @@ class ReconcileTest(unittest.TestCase):
                 f.group["peers"] = [{"id": "human-device"}]
             with self.assertRaises(ValueError):
                 f.reconcile("socrat-4", self.seed())
-            self.assertEqual(f.writes, [])
+            assert f.writes == []
 
     def test_removed_or_broadened_grants_are_not_resurrected(self) -> None:
         for kind in ["resource", "policy", "disabled", "broadened", "membership"]:
@@ -369,11 +369,11 @@ class ReconcileTest(unittest.TestCase):
                 f.policies[-1]["rules"][0]["sources"] = [{"id": "All"}]
             with self.subTest(kind=kind), self.assertRaises(ValueError):
                 f.reconcile("socrat-4")
-            self.assertEqual(len(f.writes), before)
+            assert len(f.writes) == before
 
     def test_uncertain_write_remains_blocking(self) -> None:
         f = Fake()
         f.state["pending"] = {"method": "POST", "path": "policies"}
         with self.assertRaises(ValueError):
             f.write("POST", "policies", {})
-        self.assertEqual(f.writes, [])
+        assert f.writes == []

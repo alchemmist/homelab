@@ -1,3 +1,5 @@
+"""Materialize the production Traefik TLS resources from credentials."""
+
 import argparse
 import importlib.util
 import json

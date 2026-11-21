@@ -1,3 +1,5 @@
+"""Tests for the LMS database high-availability Helm rendering."""
+
 import json
 from pathlib import Path
 import subprocess
@@ -308,7 +310,7 @@ def test_copy_refuses_live_ha_or_unknown_endpoint_before_creating_job(monkeypatc
         calls = []
 
 
-        def kube(*args, **_kwargs) -> str:
+        def kube(*args, data=data, calls=calls, **_kwargs) -> str:
             calls.append(args)
             assert args == ("-n", "lms", "get", "secret", "lms-db", "-o", "json")
             return json.dumps({"data": data})

@@ -1,3 +1,5 @@
+"""Tests for the OpenTelemetry scrape configuration generator."""
+
 import copy
 import importlib.util
 import json
@@ -101,16 +103,16 @@ class ScrapeConfigTests(unittest.TestCase):
         original = {"scrape_configs": [job, other]}
         before = copy.deepcopy(original)
         result = SCRAPE.refresh_public_edge_probe(original)
-        self.assertEqual(original, before)
-        self.assertEqual(result["scrape_configs"][0]["params"]["target"], ["109.120.141.60:443"])
-        self.assertEqual(result["scrape_configs"][1], other)
-        self.assertEqual(len(result["scrape_configs"]), 3)
-        self.assertEqual(result["scrape_configs"][2]["params"]["target"], ["91.189.82.238:443"])
-        self.assertIn(
-            {"target_label": "service_id", "replacement": "edge-moscow"},
-            result["scrape_configs"][2]["relabel_configs"],
-        )
-        self.assertEqual(SCRAPE.refresh_public_edge_probe(result), result)
+        assert original == before
+        assert result["scrape_configs"][0]["params"]["target"] == ["109.120.141.60:443"]
+        assert result["scrape_configs"][1] == other
+        expected_scrape_configs = 3
+        assert len(result["scrape_configs"]) == expected_scrape_configs
+        assert result["scrape_configs"][2]["params"]["target"] == ["91.189.82.238:443"]
+        assert {"target_label": "service_id", "replacement": "edge-moscow"} in result[
+            "scrape_configs"
+        ][2]["relabel_configs"]
+        assert SCRAPE.refresh_public_edge_probe(result) == result
 
     def test_moscow_job_does_not_reuse_frozen_numeric_endpoint_indices(self) -> None:
         targets = yaml.safe_load((SCRAPE.ROOT / "charts/monitoring-k3s/values.yaml").read_text())[
@@ -126,38 +128,39 @@ class ScrapeConfigTests(unittest.TestCase):
         }
         original = {"scrape_configs": [vps, old]}
         result = SCRAPE.add_moscow_edge_probe(original)
-        self.assertEqual(result["scrape_configs"][:2], original["scrape_configs"])
-        self.assertEqual(result["scrape_configs"][2]["job_name"], prefix + "edge-moscow")
-        self.assertEqual(SCRAPE.add_moscow_edge_probe(result), result)
+        assert result["scrape_configs"][:2] == original["scrape_configs"]
+        assert result["scrape_configs"][2]["job_name"] == prefix + "edge-moscow"
+        assert SCRAPE.add_moscow_edge_probe(result) == result
 
     def test_ownership_discovery_labels_and_relabeling_are_preserved(self) -> None:
         source, targets = fixtures()
         before = copy.deepcopy(source)
         outputs, contract = SCRAPE.compile_config(source, targets)
         cluster = outputs["cluster"]["scrape_configs"][0]
-        self.assertEqual(
-            cluster["kubernetes_sd_configs"], before["scrape_configs"][0]["kubernetes_sd_configs"]
+        assert (
+            cluster["kubernetes_sd_configs"] == before["scrape_configs"][0]["kubernetes_sd_configs"]
         )
-        self.assertEqual(
-            cluster["metric_relabel_configs"], before["scrape_configs"][0]["metric_relabel_configs"]
+        assert (
+            cluster["metric_relabel_configs"]
+            == before["scrape_configs"][0]["metric_relabel_configs"]
         )
-        self.assertEqual(cluster["relabel_configs"][0]["replacement"], "$$1")
-        self.assertEqual(cluster["relabel_configs"][0]["regex"], "(vllm)$$")
-        self.assertEqual(cluster["scrape_interval"], "5s")
-        self.assertEqual(cluster["scrape_timeout"], "4s")
-        self.assertNotIn("external_labels", outputs["cluster"]["global"])
-        self.assertEqual(source, before)
+        assert cluster["relabel_configs"][0]["replacement"] == "$$1"
+        assert cluster["relabel_configs"][0]["regex"] == "(vllm)$$"
+        assert cluster["scrape_interval"] == "5s"
+        assert cluster["scrape_timeout"] == "4s"
+        assert "external_labels" not in outputs["cluster"]["global"]
+        assert source == before
         for index, node in enumerate(SCRAPE.NODES):
             job = outputs[node]["scrape_configs"][0]
-            self.assertNotIn("kubernetes_sd_configs", job)
-            self.assertNotIn("relabel_configs", job)
-            self.assertEqual(job["static_configs"][0]["targets"], ["127.0.0.1:19100"])
-            self.assertEqual(
-                job["static_configs"][0]["labels"], targets["activeTargets"][index + 1]["labels"]
+            assert "kubernetes_sd_configs" not in job
+            assert "relabel_configs" not in job
+            assert job["static_configs"][0]["targets"] == ["127.0.0.1:19100"]
+            assert (
+                job["static_configs"][0]["labels"] == targets["activeTargets"][index + 1]["labels"]
             )
-        self.assertEqual(contract["excludedEmptyPools"], ["empty-pool"])
-        self.assertTrue(contract["legacyTargetIdentityAliasesRequireAcceptance"])
-        self.assertFalse(contract["readyForCutover"])
+        assert contract["excludedEmptyPools"] == ["empty-pool"]
+        assert contract["legacyTargetIdentityAliasesRequireAcceptance"]
+        assert not contract["readyForCutover"]
 
     def test_secret_selector_becomes_a_file_not_a_masked_credential(self) -> None:
         source, targets = fixtures()
@@ -179,16 +182,14 @@ class ScrapeConfigTests(unittest.TestCase):
         }
         outputs, contract = SCRAPE.compile_config(source, targets, monitors)
         authorization = outputs["cluster"]["scrape_configs"][0]["authorization"]
-        self.assertEqual(
-            authorization,
-            {
-                "type": "Bearer",
-                "credentials_file": "/etc/otel/source-auth/llm/metrics-auth/api-key",
-            },
-        )
-        self.assertNotIn("<secret>", json.dumps(outputs))
-        self.assertEqual(contract["requiredSecretKeys"][0]["secret"], "metrics-auth")
-        self.assertFalse(contract["secretAssetSynchronizationRuntimeVerified"])
+        assert authorization == {
+            "type": "Bearer",
+            "credentials_file": "/etc/otel/source-auth/llm/metrics-auth/api-key",
+        }
+        assert "<secret>" not in json.dumps(outputs)
+        required_key = contract["requiredSecretKeys"][0]["secret"]
+        assert required_key == "metrics-auth"
+        assert not contract["secretAssetSynchronizationRuntimeVerified"]
 
     def test_unattributed_inline_secret_is_rejected(self) -> None:
         source, targets = fixtures()
@@ -214,12 +215,12 @@ class ScrapeConfigTests(unittest.TestCase):
         }
         before = copy.deepcopy(document)
         result = SCRAPE.validation_config(document)
-        self.assertEqual(
-            result["authorization"]["credentials_file"], "${env:OTEL_VALIDATION_ASSET_DIR}/token"
+        assert (
+            result["authorization"]["credentials_file"] == "${env:OTEL_VALIDATION_ASSET_DIR}/token"
         )
-        self.assertEqual(result["tls_config"]["ca_file"], "${env:OTEL_TLS_DIR}/ca.crt")
-        self.assertEqual(result["replacement"], "$$1")
-        self.assertEqual(document, before)
+        assert result["tls_config"]["ca_file"] == "${env:OTEL_TLS_DIR}/ca.crt"
+        assert result["replacement"] == "$$1"
+        assert document == before
 
     def test_unsafe_file_dependency_is_rejected(self) -> None:
         with self.assertRaises(ValueError):

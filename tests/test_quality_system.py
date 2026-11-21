@@ -8,6 +8,11 @@ import shutil
 import stat
 import subprocess
 import sys
+from typing import TYPE_CHECKING, cast
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+    from types import ModuleType
 from unittest.mock import patch
 
 import pytest
@@ -862,17 +867,17 @@ def test_private_evidence_symlink_refuses_without_touching_target(
     assert list(outside.iterdir()) == [victim]
 
 
-@pytest.mark.parametrize(
-    "fault", ["none", "suppressions", "configuration", "dirty", "head-change", "interrupt"]
-)
-def test_full_audit_preserves_tool_failures_and_unstable_snapshot_as_incomplete(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fault: str, caplog: pytest.LogCaptureFixture
-) -> None:
-    """Use isolated fake collectors, never actual hosts, credentials or lint runs."""
-    module = sys.modules["strict_report"]
-    root = tmp_path / "repo"
-    root.mkdir()
-    base = tmp_path / "private"
+def _audit_fake_collectors(
+    fault: str, calls: list[str]
+) -> tuple[
+    object,
+    object,
+    object,
+    object,
+    object,
+    object,
+]:
+    """Build the isolated fake collectors used by the audit fault-injection test."""
     head = "a" * 40
     snapshots = iter(
         [
@@ -880,7 +885,6 @@ def test_full_audit_preserves_tool_failures_and_unstable_snapshot_as_incomplete(
             ("b" * 40 if fault == "head-change" else head, True),
         ]
     )
-    calls: list[str] = []
 
     def fake_tool(name: str) -> dict[str, object]:
         calls.append(name)
@@ -906,30 +910,53 @@ def test_full_audit_preserves_tool_failures_and_unstable_snapshot_as_incomplete(
             raise ValueError(message)
         return names
 
+    return snapshots, fake_tool, fake_manifests, fake_failure, fake_configuration, fake_owned
+
+
+def _assert_interrupted_audit(module: "ModuleType", base: Path, head: str) -> None:
+    with pytest.raises(KeyboardInterrupt):
+        module.main()
+    interrupted = json.loads((base / "summary.json").read_text())
+    assert interrupted["head"] == head
+    assert interrupted["sourceClean"] is False
+    assert interrupted["configurationReady"] is False
+    assert interrupted["collectionFinished"] is False
+
+
+@pytest.mark.parametrize(
+    "fault", ["none", "suppressions", "configuration", "dirty", "head-change", "interrupt"]
+)
+def test_full_audit_preserves_tool_failures_and_unstable_snapshot_as_incomplete(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fault: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Use isolated fake collectors, never actual hosts, credentials or lint runs."""
+    module = sys.modules["strict_report"]
+    root = tmp_path / "repo"
+    root.mkdir()
+    base = tmp_path / "private"
+    head = "a" * 40
+    calls: list[str] = []
+    snapshots, tool, manifests, failure, configuration, owned = _audit_fake_collectors(fault, calls)
     monkeypatch.setattr(module, "PRIVATE", base)
     monkeypatch.setattr(module, "ROOT", root)
     monkeypatch.setattr(module, "use_project_tools", lambda: None)
-    monkeypatch.setattr(module, "verify_configuration", fake_configuration)
-    monkeypatch.setattr(module, "source_snapshot", lambda: next(snapshots))
+    monkeypatch.setattr(module, "verify_configuration", configuration)
+    monkeypatch.setattr(
+        module, "source_snapshot", lambda: next(cast("Iterator[object]", snapshots))
+    )
     monkeypatch.setattr(
         module, "command", lambda argv: subprocess.CompletedProcess(argv, 0, "test\n", "")
     )
     monkeypatch.setattr(module, "tracked", list)
-    monkeypatch.setattr(module, "owned", fake_owned)
+    monkeypatch.setattr(module, "owned", owned)
     monkeypatch.setattr(module, "suppression_hits", lambda _names: [])
-    monkeypatch.setattr(module, "run_tool", fake_tool)
-    monkeypatch.setattr(module, "run_manifests", fake_manifests)
-    monkeypatch.setattr(module, "failure", fake_failure)
+    monkeypatch.setattr(module, "run_tool", tool)
+    monkeypatch.setattr(module, "run_manifests", manifests)
+    monkeypatch.setattr(module, "failure", failure)
     base.mkdir(mode=0o700)
     write_private(base / "summary.json", json.dumps({"head": "previous", "sourceClean": True}))
     if fault == "interrupt":
-        with pytest.raises(KeyboardInterrupt):
-            module.main()
-        interrupted = json.loads((base / "summary.json").read_text())
-        assert interrupted["head"] == head
-        assert interrupted["sourceClean"] is False
-        assert interrupted["configurationReady"] is False
-        assert interrupted["collectionFinished"] is False
+        _assert_interrupted_audit(module, base, head)
         return
     expected = 0 if fault == "none" else 2
     assert module.main() == expected

@@ -1,3 +1,4 @@
+"""Check Prometheus scrape targets and alert rules via kubectl on a remote host."""
 import argparse
 import json
 import shlex

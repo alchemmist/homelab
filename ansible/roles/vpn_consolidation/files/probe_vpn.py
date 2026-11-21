@@ -1,3 +1,5 @@
+"""Probe VPN client state from the x-ui database."""
+
 import json
 from pathlib import Path
 import socket

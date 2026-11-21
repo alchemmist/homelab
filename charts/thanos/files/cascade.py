@@ -1,3 +1,4 @@
+"""Plan and apply Thanos block cascades through the compactor."""
 import json
 import os
 import signal

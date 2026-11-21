@@ -1,3 +1,5 @@
+"""Tests for SPI triage card correlation logic."""
+
 import json
 import subprocess
 import sys

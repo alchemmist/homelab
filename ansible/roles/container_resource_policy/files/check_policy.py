@@ -1,3 +1,5 @@
+"""Check that pods in a namespace comply with container resource limits."""
+
 import argparse
 import json
 import os

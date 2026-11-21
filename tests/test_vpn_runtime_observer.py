@@ -1,3 +1,5 @@
+"""Tests for scripts/vpn-runtime-observer.py."""
+
 import importlib.util
 import json
 from pathlib import Path

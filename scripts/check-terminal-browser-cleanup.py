@@ -1,3 +1,4 @@
+"""Check that the terminal browser watchdog cleans up browser artifacts."""
 import argparse
 import ctypes
 import importlib.util

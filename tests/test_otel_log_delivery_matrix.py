@@ -23,8 +23,8 @@ class LogDeliveryMatrixTests(unittest.TestCase):
     def test_only_bounded_native_count_queries_and_metadata(self) -> None:
         """Accept only one-hour count queries and return their vector rows."""
         helper = module()
-        self.assertTrue(
-            all("count_over_time" in query and "[1h]" in query for query in helper.QUERIES.values())
+        assert all(
+            "count_over_time" in query and "[1h]" in query for query in helper.QUERIES.values()
         )
         document = {
             "status": "success",
@@ -42,7 +42,7 @@ class LogDeliveryMatrixTests(unittest.TestCase):
                 ],
             },
         }
-        self.assertEqual(helper.select_counts(document), document["data"]["result"])
+        assert helper.select_counts(document) == document["data"]["result"]
 
     def test_partial_results_and_non_finite_counts_rejected(self) -> None:
         """Reject partial responses and non-finite or negative counts."""

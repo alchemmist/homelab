@@ -1,3 +1,4 @@
+"""Tests for OpenHands demo loop invariants: pinning, policy, and scheduling."""
 import importlib.util
 import json
 from pathlib import Path
