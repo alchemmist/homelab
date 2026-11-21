@@ -78,12 +78,10 @@ class ReconciliationTests(unittest.TestCase):
     def test_silent_window_is_explicit_not_loss(self) -> None:
         """Verify a zero stdout window is unobserved rather than recorded as loss."""
         result, report = self.run_case([("app", "app")], [0])
-        self.assertEqual(result.returncode, 0)
-        self.assertEqual(
-            report["sources"][0]["cause"], "no-heartbeat-exclusion-no-stdout-in-window"
-        )
-        self.assertEqual(report["sources"][0]["normalization"], "unobserved")
-        self.assertIsNone(report["sources"][0]["emits"])
+        assert result.returncode == 0
+        assert report["sources"][0]["cause"] == "no-heartbeat-exclusion-no-stdout-in-window"
+        assert report["sources"][0]["normalization"] == "unobserved"
+        assert report["sources"][0]["emits"] is None
 
     def test_only_actual_collector_excluded_not_backends(self) -> None:
         """Verify only the collector container is excluded, not Loki or Tempo."""
@@ -95,17 +93,15 @@ class ReconciliationTests(unittest.TestCase):
             ],
             [3, 3, 3],
         )
-        self.assertEqual(report["sources"][0]["cause"], "agent-self-logs-explicitly-excluded")
-        self.assertTrue(
-            all(
-                r["cause"] == "stdout-emission-without-receipt-investigate"
-                for r in report["sources"][1:]
-            )
+        assert report["sources"][0]["cause"] == "agent-self-logs-explicitly-excluded"
+        assert all(
+            r["cause"] == "stdout-emission-without-receipt-investigate"
+            for r in report["sources"][1:]
         )
 
     def test_unaligned_windows_fail_closed(self) -> None:
         """Verify an unaligned source window is rejected and produces no report."""
         result, report = self.run_case([("app", "app")], [0], aligned=False)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("not aligned", result.stderr)
-        self.assertIsNone(report)
+        assert result.returncode != 0
+        assert "not aligned" in result.stderr
+        assert report is None

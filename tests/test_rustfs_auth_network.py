@@ -35,15 +35,12 @@ def render(enabled):
 class AuthNetworkTests(unittest.TestCase):
     def test_only_two_policies_change_no_pod_or_stateful_resource(self):
         before, after = render(False), render(True)
-        self.assertEqual(set(before), set(after))
+        assert set(before) == set(after)
         changed = {k for k in before if before[k] != after[k]}
-        self.assertEqual(
-            changed,
-            {
-                ("NetworkPolicy", "rustfs", "rustfs-isolation"),
-                ("NetworkPolicy", "identity", "rustfs-gateway-isolation"),
-            },
-        )
+        assert changed == {
+            ("NetworkPolicy", "rustfs", "rustfs-isolation"),
+            ("NetworkPolicy", "identity", "rustfs-gateway-isolation"),
+        }
 
     def test_both_real_https_dnat_hops_are_narrowly_selected(self):
         for key, obj in render(True).items():
@@ -62,8 +59,8 @@ class AuthNetworkTests(unittest.TestCase):
                     for p in r.get("to", [])
                 )
             ]
-            self.assertEqual(len(peers), 1)
-            self.assertEqual(peers[0]["ports"], [{"port": 8443, "protocol": "TCP"}])
+            assert len(peers) == 1
+            assert peers[0]["ports"] == [{"port": 8443, "protocol": "TCP"}]
             lbs = [
                 r
                 for r in rows
@@ -75,11 +72,10 @@ class AuthNetworkTests(unittest.TestCase):
                     for p in r.get("to", [])
                 )
             ]
-            self.assertEqual(len(lbs), 1)
-            self.assertEqual(lbs[0]["ports"], [{"port": 443, "protocol": "TCP"}])
+            assert len(lbs) == 1
+            assert lbs[0]["ports"] == [{"port": 443, "protocol": "TCP"}]
             for row in peers + lbs:
-                self.assertEqual(
-                    row["to"][0]["namespaceSelector"]["matchLabels"],
-                    {"kubernetes.io/metadata.name": "kube-system"},
-                )
-            self.assertNotIn("0.0.0.0/0", str(rows))
+                assert row["to"][0]["namespaceSelector"]["matchLabels"] == {
+                    "kubernetes.io/metadata.name": "kube-system"
+                }
+            assert "0.0.0.0/0" not in str(rows)

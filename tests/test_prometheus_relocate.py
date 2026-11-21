@@ -54,7 +54,7 @@ class RelocateTests(unittest.TestCase):
         decision = RELOCATE.evaluate(
             {"desired": "socrat-0", "relocate": False, "pods": [pod("socrat-0")], "volumes": []}
         )
-        self.assertEqual(decision["action"], "proceed")
+        assert decision["action"] == "proceed"
 
     def test_socrat_1_volume_is_refused_even_with_the_legacy_flag(self):
         payload = {
@@ -63,30 +63,28 @@ class RelocateTests(unittest.TestCase):
             "pods": [],
             "volumes": [volume("socrat-1")],
         }
-        self.assertEqual(RELOCATE.evaluate(payload)["action"], "refuse")
+        assert RELOCATE.evaluate(payload)["action"] == "refuse"
         payload["relocate"] = True
         decision = RELOCATE.evaluate(payload)
-        self.assertEqual(decision["action"], "refuse")
-        self.assertTrue(
-            decision["claim"].startswith("prometheus-kube-prometheus-stack-prometheus-db")
-        )
+        assert decision["action"] == "refuse"
+        assert decision["claim"].startswith("prometheus-kube-prometheus-stack-prometheus-db")
 
     def test_monitoring_roles_do_not_delete_history(self):
         root = Path(__file__).resolve().parents[1]
         stack = (root / "ansible/roles/monitoring_stack/tasks/main.yml").read_text()
         thanos = (root / "ansible/roles/monitoring_thanos/tasks/main.yml").read_text()
-        self.assertNotIn("delete, pvc", stack)
-        self.assertNotIn("delete, pod", stack)
-        self.assertNotIn("state: absent", thanos)
-        self.assertNotIn("      - delete", thanos)
+        assert "delete, pvc" not in stack
+        assert "delete, pod" not in stack
+        assert "state: absent" not in thanos
+        assert "      - delete" not in thanos
 
     def test_grafana_volume_is_not_selected(self):
         grafana = volume("socrat-1", claim="kube-prometheus-stack-grafana")
         decision = RELOCATE.evaluate(
             {"desired": "socrat-0", "relocate": True, "pods": [], "volumes": [grafana]}
         )
-        self.assertEqual(decision["action"], "proceed")
-        self.assertIsNone(decision["claim"])
+        assert decision["action"] == "proceed"
+        assert decision["claim"] is None
 
 
 class ScrapeGuardTests(unittest.TestCase):
@@ -96,7 +94,7 @@ class ScrapeGuardTests(unittest.TestCase):
                 {"spec": {"scrapeInterval": "5s", "resources": {"limits": {"memory": "8Gi"}}}}
             ]
         }
-        self.assertEqual(GUARD.problems(document), [])
+        assert GUARD.problems(document) == []
 
     def test_old_prometheus_is_rejected(self):
         document = {
@@ -104,10 +102,11 @@ class ScrapeGuardTests(unittest.TestCase):
                 {"spec": {"scrapeInterval": "30s", "resources": {"limits": {"memory": "3Gi"}}}}
             ]
         }
-        self.assertEqual(len(GUARD.problems(document)), 2)
+        expected_problems = 2
+        assert len(GUARD.problems(document)) == expected_problems
 
     def test_missing_prometheus_is_rejected(self):
-        self.assertEqual(GUARD.problems({"items": []}), ["Prometheus is not installed"])
+        assert GUARD.problems({"items": []}) == ["Prometheus is not installed"]
 
 
 if __name__ == "__main__":
@@ -145,14 +144,14 @@ class EffectiveMemoryGuardTests(unittest.TestCase):
         return cr, pods
 
     def test_eight_gib_cr_cannot_hide_three_gib_admission(self):
-        self.assertTrue(GUARD.problems(*self.documents("3Gi", "3Gi")))
+        assert GUARD.problems(*self.documents("3Gi", "3Gi"))
 
     def test_resize_spec_without_effective_runtime_is_not_acceptance(self):
-        self.assertTrue(GUARD.problems(*self.documents("8Gi", "3Gi")))
+        assert GUARD.problems(*self.documents("8Gi", "3Gi"))
 
     def test_eight_gib_effective_runtime_passes(self):
-        self.assertEqual(GUARD.problems(*self.documents()), [])
+        assert GUARD.problems(*self.documents()) == []
 
     def test_missing_runtime_does_not_pass(self):
         cr, _ = self.documents()
-        self.assertTrue(GUARD.problems(cr, {"items": []}))
+        assert GUARD.problems(cr, {"items": []})
