@@ -734,7 +734,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             state["running"] = running
             controller.save_state(root / "state.json", state)
 
-            def boom(_record):
+            def boom(record) -> None:
                 raise ValueError("docker daemon refused")
 
             original = controller.cleanup_interrupted

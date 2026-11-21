@@ -30,20 +30,20 @@ spec.loader.exec_module(m)
         (urllib.error.URLError(TimeoutError("SECRET")), "timeout"),
     ],
 )
-def test_classify_without_exception_strings(error, kind):
+def test_classify_without_exception_strings(error: BaseException, kind: str) -> None:
     result = m.classify(error)
     assert result["kind"] == kind
     assert "SECRET" not in json.dumps(result)
 
 
-def test_http_status_never_leaks_url_headers_body():
+def test_http_status_never_leaks_url_headers_body() -> None:
     error = urllib.error.HTTPError(
         "https://SECRET/", 403, "SECRET", {"Authorization": "SECRET"}, io.BytesIO(b"SECRET")
     )
     assert m.classify(error) == {"kind": "http_status", "http_status": 403}
 
 
-def test_patch_failure_is_uncertain_and_not_repeated():
+def test_patch_failure_is_uncertain_and_not_repeated() -> None:
     inner = Mock()
     inner.open.side_effect = TimeoutError("SECRET")
     req = urllib.request.Request(
@@ -61,7 +61,7 @@ def test_patch_failure_is_uncertain_and_not_repeated():
     assert "SECRET" not in json.dumps(caught.value.event)
 
 
-def test_body_read_failure_and_context_survives_safe_controller_wrap():
+def test_body_read_failure_and_context_survives_safe_controller_wrap() -> None:
     response = Mock()
     response.read.side_effect = TimeoutError("SECRET")
     inner = Mock()
@@ -80,7 +80,7 @@ def test_body_read_failure_and_context_survives_safe_controller_wrap():
     response.close.assert_called_once()
 
 
-def test_runner_preserves_one_execution_and_restores_opener():
+def test_runner_preserves_one_execution_and_restores_opener() -> None:
     original = Mock()
     ctrl = types.SimpleNamespace(
         opener=original, reconcile_rancher=Mock(side_effect=RuntimeError("SECRET"))
@@ -93,7 +93,7 @@ def test_runner_preserves_one_execution_and_restores_opener():
     assert "SECRET" not in output.getvalue()
 
 
-def test_success_no_policy_change_and_shared_wiki_module_untouched():
+def test_success_no_policy_change_and_shared_wiki_module_untouched() -> None:
     ctrl = types.SimpleNamespace(opener=Mock(), reconcile_rancher=Mock())
     with contextlib.redirect_stdout(io.StringIO()):
         assert m.run(ctrl) == 0

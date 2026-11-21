@@ -117,7 +117,7 @@ def test_import_and_fixture_evaluation_do_not_start_external_work() -> None:
     server.assert_not_called()
 
 
-def test_statefulset_target_and_ambiguous_workload():
+def test_statefulset_target_and_ambiguous_workload() -> None:
     import pytest
 
     watch = load_module()
@@ -127,7 +127,7 @@ def test_statefulset_target_and_ambiguous_workload():
         watch.workload_ref({"deployment": "a", "statefulset": "b"})
 
 
-def test_openhands_uses_running_canvas_tag_not_sdk_version():
+def test_openhands_uses_running_canvas_tag_not_sdk_version() -> None:
     import yaml
 
     watch = load_module()
