@@ -62,7 +62,13 @@ spec:
           image: {{ $.Values.images.thanos }}
           imagePullPolicy: IfNotPresent
           args:
-            {{- toYaml $component.args | nindent 12 }}
+            {{- range $arg := $component.args }}
+            {{- if and $.Values.warmCascade (eq $name "thanos-compactor") (hasPrefix "--delete-delay=" $arg) }}
+            - {{ printf "--delete-delay=%s" $.Values.warmWorkshopDeleteDelay | quote }}
+            {{- else }}
+            - {{ $arg | quote }}
+            {{- end }}
+            {{- end }}
           ports:
             - name: http
               containerPort: 10902

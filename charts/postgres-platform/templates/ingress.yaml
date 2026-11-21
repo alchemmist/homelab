@@ -30,6 +30,8 @@ spec:
         {{- end }}
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: harbor}}
           podSelector: {matchLabels: {app: harbor}, matchExpressions: [{key: component, operator: In, values: [core, jobservice, exporter]}]}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: cattle-monitoring-system}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: grafana, app.kubernetes.io/instance: kube-prometheus-stack}}
         # The bot is hostNetwork on socrat-2. CNI can present its host or flannel address.
         - ipBlock: {cidr: 10.250.0.2/32}
         - ipBlock: {cidr: 10.42.0.0/32}

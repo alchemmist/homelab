@@ -21,6 +21,10 @@
         ]
       },
       {
+        "file": "deploy/monori/values.yaml",
+        "path": ["oidc", "hostAliases"]
+      },
+      {
         "file": "deploy/lms/values.yaml",
         "path": [
           "hostAliases"

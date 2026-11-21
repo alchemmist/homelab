@@ -670,5 +670,9 @@
   "PORTAL_RUSTFS": {
     "path": "service-icons/rustfs.svg",
     "sha256": "a708327b4d7cf213c11dada32a810686d0b0243ffa56906b8d17762e84c7fb8a"
+  },
+  "PORTAL_MONORI": {
+    "path": "service-icons/monori.svg",
+    "sha256": "d2ecda88620eb0783f6d70abe58fe4d129a582c152b1d6835098d5bf13b4c94e"
   }
 }

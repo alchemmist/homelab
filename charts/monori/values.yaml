@@ -5,6 +5,8 @@ tlsSecret: monori-tls
 clusterIssuer: letsencrypt-http01
 hostPath: /srv/monori
 secretName: monori-env
+oidc:
+  enabled: false
 images:
   front:
     repository: harbor.socrat.alchemmist.xyz/homelab/monori
@@ -13,8 +15,8 @@ images:
     fallback: ghcr.io/alchemmist/homelab-monori-front:latest
   back:
     repository: harbor.socrat.alchemmist.xyz/homelab/monori
-    tag: 4576a41a4477b804dc4631de0a93a1fd9f5774fd
-    digest: sha256:917a172353efea4e63bd6651854958d00ea419ed7349fb07cb51e982ca4372e0
+    tag: 2c9d0dda76a57999f31bbed367de6e5e35a586e7
+    digest: sha256:25876f04e9f5f24ad578e39678357e9ebbaf6a8e307a8a31b54e4098a7b96ad2
     fallback: ghcr.io/alchemmist/homelab-monori-back:latest
   sync:
     repository: harbor.socrat.alchemmist.xyz/homelab/monori

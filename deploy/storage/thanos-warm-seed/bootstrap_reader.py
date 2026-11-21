@@ -27,10 +27,17 @@ POLICY = {
 
 def main():
     fixture = sys.argv[1:] == ["--run", "--synthetic-hour"]
-    role = sys.argv[2] if len(sys.argv)==3 and sys.argv[1]=="--run" and sys.argv[2] in ("shipper", "compactor") else None
+    role = (
+        sys.argv[2]
+        if len(sys.argv) == 3
+        and sys.argv[1] == "--run"
+        and sys.argv[2] in ("shipper", "compactor")
+        else None
+    )
     assert role or fixture or sys.argv[1:] == ["--run"]
     name = "thanos-hour-fixture-reader" if fixture else NAME
-    if role: name = "thanos-warm-" + role
+    if role:
+        name = "thanos-warm-" + role
     bucket = "thanos-hour-fixture" if fixture else "thanos-workshop"
     access = "store" + secrets.token_hex(10)
     secret = secrets.token_hex(32)
@@ -102,12 +109,22 @@ echo 'workshop read-only policy attached'
         ],
     }
     if role:
-        policy=json.loads(json.dumps(POLICY))
-        policy['Statement'][0]['Action'].append('s3:ListBucketMultipartUploads')
-        policy['Statement'][1]['Action'] += ['s3:PutObject','s3:AbortMultipartUpload','s3:ListMultipartUploadParts']
-        if role=='compactor':policy['Statement'][1]['Action'].append('s3:DeleteObject')
-        c['env'][-1]['value']=json.dumps(policy)
-        c['command'][2]=script.replace('thanos-workshop-read','thanos-workshop-'+role).replace('workshop read-only policy attached','bucket-scoped '+role+' policy attached')
+        policy = json.loads(json.dumps(POLICY))
+        policy["Statement"][0]["Action"].append("s3:ListBucketMultipartUploads")
+        policy["Statement"][1]["Action"] += [
+            "s3:PutObject",
+            "s3:AbortMultipartUpload",
+            "s3:ListMultipartUploadParts",
+        ]
+        if role == "compactor":
+            policy["Statement"][1]["Action"].append("s3:DeleteObject")
+        c["env"][-1]["value"] = json.dumps(policy)
+        c["command"][2] = script.replace(
+            "thanos-workshop-read", "thanos-workshop-" + role
+        ).replace(
+            "workshop read-only policy attached",
+            "bucket-scoped " + role + " policy attached",
+        )
     extra = []
     if fixture:
         # Only synthetic files from the previous 28-day block drill, never a live shelf.

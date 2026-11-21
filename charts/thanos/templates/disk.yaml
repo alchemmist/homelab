@@ -59,6 +59,10 @@ spec:
             - name: SKIP_OLD_FIVE
               value: "1"
             {{- end }}
+            {{- if .Values.warmCascade }}
+            - name: WARM_WORKSHOP
+              value: "1"
+            {{- end }}
             - name: HOST_VAR_LIB
               value: /host/var/lib
             - name: OUTPUT
