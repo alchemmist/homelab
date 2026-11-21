@@ -20,6 +20,12 @@ DESTINATIONS = {'harbor': 'harbor', 'litellm': 'llm', 'vllm': 'llm', 'open-webui
 OBSERVED_PHASE = {'stage': 'bootstrap', 'application': None}
 
 
+def require(expected: object, message: str) -> None:
+    """Enforce an invariant, failing with the given message."""
+    if not expected:
+        raise ValueError(message)
+
+
 def validate_destination(entry):
     app = entry['application']
     if app not in DESTINATIONS or entry['namespace'] != DESTINATIONS[app] or entry['secret'] != 'otel-app-tls-' + app:
@@ -36,8 +42,9 @@ def run():
     context = ssl.create_default_context(cafile=str(token_root / 'ca.crt'))
     endpoint = 'https://' + os.environ['KUBERNETES_SERVICE_HOST'] + ':' + os.environ.get('KUBERNETES_SERVICE_PORT_HTTPS', '443')
     entries = json.loads(Path('/etc/otel-applications/destinations.json').read_text())
-    if len(entries) != len(DESTINATIONS) or {entry['application'] for entry in entries} != set(DESTINATIONS):
-        raise ValueError('Exactly the registered dedicated application client leaves required')
+    require(len(entries) == len(DESTINATIONS)
+            and {entry['application'] for entry in entries} == set(DESTINATIONS),
+           'Exactly the registered dedicated application client leaves required')
 
     def api(namespace, resource, name, patch=None):
         path = '/api/v1/namespaces/' if resource == 'secrets' else '/apis/apps/v1/namespaces/'

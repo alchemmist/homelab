@@ -88,27 +88,28 @@ def summarize(
     return report
 
 
+def walk_litellm_records(value, trace_id, records, service=None):
+    """Accumulate spans of one trace, tagging the enclosing resource service."""
+    if isinstance(value, dict):
+        resource = value.get("resource", {})
+        for attribute in resource.get("attributes", []):
+            if attribute.get("key") == "service.name":
+                service = attribute.get("value", {}).get("stringValue")
+        if (
+            all(key in value for key in ["traceId", "spanId", "name"])
+            and identifier(value["traceId"]) == trace_id
+        ):
+            records.append((value, service))
+        for child in value.values():
+            walk_litellm_records(child, trace_id, records, service)
+    elif isinstance(value, list):
+        for child in value:
+            walk_litellm_records(child, trace_id, records, service)
+
+
 def summarize_production_litellm(document, trace_id, parent_id, inference=False):
     records = []
-
-    def walk(value, service=None):
-        if isinstance(value, dict):
-            resource = value.get("resource", {})
-            for attribute in resource.get("attributes", []):
-                if attribute.get("key") == "service.name":
-                    service = attribute.get("value", {}).get("stringValue")
-            if (
-                all(key in value for key in ["traceId", "spanId", "name"])
-                and identifier(value["traceId"]) == trace_id
-            ):
-                records.append((value, service))
-            for child in value.values():
-                walk(child, service)
-        elif isinstance(value, list):
-            for child in value:
-                walk(child, service)
-
-    walk(document)
+    walk_litellm_records(document, trace_id, records)
     by_id = {identifier(span["spanId"]): span for span, _ in records}
     roots = [
         span

@@ -33,10 +33,18 @@ def record(value):
     temporary.replace(PROGRESS)
 
 
+def require(expected: object, message: str) -> None:
+    """Enforce an invariant, failing with the given message."""
+    if not expected:
+        raise ValueError(message)
+
+
 def run():
     logging.disable(logging.CRITICAL)
-    if os.environ.get("OTEL_EXPORTER_OTLP_HEADERS", "").lower() != "connection=close":
-        raise ValueError("Fresh native HTTP client handshakes required for leaf reload proof")
+    require(
+        os.environ.get("OTEL_EXPORTER_OTLP_HEADERS", "").lower() == "connection=close",
+        "Fresh native HTTP client handshakes required for leaf reload proof",
+    )
     loaded = []
     original_loader = ssl.SSLContext.load_cert_chain
 
@@ -57,8 +65,10 @@ def run():
         litellm.turn_off_message_logging = True
         litellm.set_verbose = False
         handler = OpenTelemetry()
-        if handler.config.enable_metrics or handler.config.enable_events:
-            raise ValueError("SDK metrics/events must remain disabled")
+        require(
+            not handler.config.enable_metrics and not handler.config.enable_events,
+            "SDK metrics/events must remain disabled",
+        )
         audit = {"endedSpans": 0, "sensitiveSyntheticContentFoundAtSource": False}
 
         class PrivacyAudit(SpanProcessor):
@@ -98,14 +108,15 @@ def run():
                     metadata={"litellm_parent_otel_span": parent},
                 )
                 time.sleep(3)
-            if not provider.force_flush(timeout_millis=10000):
-                raise ValueError("Native SDK flush did not complete")
+            require(
+                provider.force_flush(timeout_millis=10000),
+                "Native SDK flush did not complete",
+            )
             traces.append(entry)
 
         old = certificate_hash()
         completion()
-        if old not in loaded:
-            raise ValueError("Initial native SDK handshake did not load the mounted leaf")
+        require(old in loaded, "Initial native SDK handshake did not load the mounted leaf")
         record({"phase": "await-new-projected-leaf", "oldCertificateSHA256": old, "traces": traces})
         deadline = time.monotonic() + 300
         while time.monotonic() < deadline:
@@ -117,13 +128,13 @@ def run():
             raise ValueError("Projected mirror leaf did not change before deadline")
         # The provider/exporter/session was not recreated between batches.
         completion()
-        if (
-            new not in loaded
-            or handler._tracer_provider is not provider
-            or audit["sensitiveSyntheticContentFoundAtSource"]
-            or audit["endedSpans"] < 4
-        ):
-            raise ValueError("Same-instance native SDK credential reload/source privacy failed")
+        require(
+            new in loaded
+            and handler._tracer_provider is provider
+            and not audit["sensitiveSyntheticContentFoundAtSource"]
+            and audit["endedSpans"] >= 4,
+            "Same-instance native SDK credential reload/source privacy failed",
+        )
     ssl.SSLContext.load_cert_chain = original_loader
     result = {
         "success": True,

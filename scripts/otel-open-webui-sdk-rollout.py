@@ -77,15 +77,23 @@ def environment_matches(entry, name, value):
     return entry == {"name": name, "value": value} or (value == "" and entry == {"name": name})
 
 
+def require(expected: object, message: str) -> None:
+    """Enforce an invariant, failing with the given message."""
+    if not expected:
+        raise ValueError(message)
+
+
 def run(output, apply):
     os.umask(0o077)
     controller = Path.home() / "Library/Application Support/homelab/otel-controller"
-    if not output.resolve().is_relative_to(controller.resolve()):
-        raise ValueError("Private preimages must remain in durable controller root")
+    require(
+        output.resolve().is_relative_to(controller.resolve()),
+        "Private preimages must remain in durable controller root",
+    )
     evidence = ROOT / "deploy/monitoring/migration-evidence"
     bootstrap = json.loads((evidence / "open-webui-sdk-early-bootstrap-20261101.json").read_text())
     renewal = json.loads((evidence / "open-webui-sdk-leaf-renewal-20261101.json").read_text())
-    if not (
+    require(
         bootstrap["sourceConfigMapData"] == source_data()
         and bootstrap["source"]["success"]
         and bootstrap["source"]["earlyBootstrapRequiredWithoutManualFallback"]
@@ -96,28 +104,30 @@ def run(output, apply):
         and renewal["rotation"]["clientKeypairRotationVerified"]
         and len(renewal["backend"]) == 2
         and all(x["success"] for x in renewal["backend"])
-        and all(bootstrap["source"]["unsafeAndDuplicateInstrumentorsDisabled"].values())
-    ):
-        raise ValueError(
-            "Exact source/profile/bootstrap/renewal/backend gates must pass before enablement"
-        )
+        and all(bootstrap["source"]["unsafeAndDuplicateInstrumentorsDisabled"].values()),
+        "Exact source/profile/bootstrap/renewal/backend gates must pass before enablement",
+    )
     kube = BOOTSTRAP.kube
     deployment = kube("-n", "llm", "get", "deployment", "open-webui", "-o", "json")
     template = deployment["spec"]["template"]
     pod = template["spec"]
     container = next(c for c in pod["containers"] if c["name"] == "open-webui")
-    if container["image"].split("@")[-1] != bootstrap["testedImage"].split("@")[-1]:
-        raise ValueError("Production image differs from tested pinned runtime")
-    if (
-        deployment["spec"].get("replicas", 1) != 1
-        or deployment["spec"].get("strategy", {}).get("type") != "Recreate"
-        or deployment.get("status", {}).get("availableReplicas") != 1
-    ):
-        raise ValueError("Require healthy single SQLite-safe Recreate deployment")
+    require(
+        container["image"].split("@")[-1] == bootstrap["testedImage"].split("@")[-1],
+        "Production image differs from tested pinned runtime",
+    )
+    require(
+        deployment["spec"].get("replicas", 1) == 1
+        and deployment["spec"].get("strategy", {}).get("type") == "Recreate"
+        and deployment.get("status", {}).get("availableReplicas") == 1,
+        "Require healthy single SQLite-safe Recreate deployment",
+    )
     current = {e["name"]: e for e in container.get("env", [])}
     for name, value in sdk_environment().items():
-        if name in current and not environment_matches(current[name], name, value):
-            raise ValueError("Unreviewed conflicting SDK/drain environment")
+        require(
+            name not in current or environment_matches(current[name], name, value),
+            "Unreviewed conflicting SDK/drain environment",
+        )
     cm_name = source_configmap_name()
     volumes = [
         {"name": "otel-source", "configMap": {"name": cm_name, "defaultMode": 420}},
@@ -134,10 +144,13 @@ def run(output, apply):
         (volumes, pod.get("volumes", [])),
         (mounts, container.get("volumeMounts", [])),
     ]:
-        if any(
-            any(old["name"] == item["name"] and old != item for old in existing) for item in desired
-        ):
-            raise ValueError("Conflicting credential/bootstrap volume or mount")
+        require(
+            not any(
+                any(old["name"] == item["name"] and old != item for old in existing)
+                for item in desired
+            ),
+            "Conflicting credential/bootstrap volume or mount",
+        )
     fingerprint = hashlib.sha256(
         json.dumps({"env": sdk_environment(), "source": source_data()}, sort_keys=True).encode()
     ).hexdigest()
@@ -162,8 +175,10 @@ def run(output, apply):
         return
     cm = kube("-n", "llm", "get", "configmap", cm_name, "--ignore-not-found", "-o", "json")
     if cm:
-        if cm.get("data") != source_data() or not cm.get("immutable"):
-            raise ValueError("Immutable source bootstrap mismatch")
+        require(
+            cm.get("data") == source_data() and cm.get("immutable"),
+            "Immutable source bootstrap mismatch",
+        )
     else:
         kube(
             "create",
