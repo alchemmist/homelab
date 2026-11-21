@@ -4,13 +4,13 @@ import hashlib
 import importlib.util
 import json
 import os
-from pathlib import Path
 import subprocess
 import tempfile
 import threading
 import unittest
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "ansible/roles/identity_integrations/files/netbird_oidc.py"
@@ -355,8 +355,8 @@ class NetBirdOIDCTests(unittest.TestCase):
         self.tmp.cleanup()
 
     def run_tool(self, *args):
-        from io import StringIO
         import contextlib
+        from io import StringIO
 
         stdout, stderr = StringIO(), StringIO()
         with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):

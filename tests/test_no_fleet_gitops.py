@@ -3,7 +3,6 @@
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 BOOTSTRAP_FILES = (
     ROOT / "ansible/playbooks/wiki.yml",

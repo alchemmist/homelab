@@ -1,14 +1,13 @@
 """Check node disk-reserve refusal and pause behavior with local fixtures."""
 
 import importlib.util
-from pathlib import Path
 import stat
 import subprocess
 import tempfile
 import unittest
-from unittest.mock import patch
 import xml.etree.ElementTree as ET
-
+from pathlib import Path
+from unittest.mock import patch
 
 SOURCE = (
     Path(__file__).resolve().parents[1]
