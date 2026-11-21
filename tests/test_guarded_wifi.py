@@ -59,7 +59,7 @@ class GuardedWifiTests(unittest.TestCase):
             patcher.start()
             self.addCleanup(patcher.stop)
 
-    def run_command(self, command):
+    def run_command(self, command: list[str]) -> bytes:
         self.calls.append(command)
         if command[0] == "dkms":
             return self.status
@@ -169,7 +169,7 @@ class ModuleNoteTests(unittest.TestCase):
                 encoded = encode(b"elf-module")
                 source.write_bytes(encoded)
 
-                def objcopy(command):
+                def objcopy(command: list[str]) -> bytes:
                     self.assertEqual(command[:2], ["objcopy", "--dump-section"])
                     self.assertEqual(Path(command[3]).read_bytes(), b"elf-module")
                     self.assertNotEqual(command[3], command[4])
