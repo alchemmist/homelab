@@ -56,9 +56,9 @@ def parse_metrics(output):
         row = [value.strip() for value in row]
         if not row[0].startswith("GPU-"):
             raise ValueError("Invalid NVIDIA GPU identity")
-        labels = dict(zip(("uuid", "name", "index"), row[:3]))
+        labels = dict(zip(("uuid", "name", "index"), row[:3], strict=True))
         count += 1
-        for (_, metric, factor), raw in zip(FIELDS, row[3:]):
+        for (_, metric, factor), raw in zip(FIELDS, row[3:], strict=False):
             if metric == "performance_state" and raw.startswith("P"):
                 raw = raw[1:]
             try:
@@ -67,7 +67,7 @@ def parse_metrics(output):
                 continue
             if math.isfinite(value):
                 metrics.append(sample("socrat_gpu_" + metric, labels, value))
-        for reason, raw in zip(REASONS, row[3 + len(FIELDS) :]):
+        for reason, raw in zip(REASONS, row[3 + len(FIELDS) :], strict=True):
             if raw in ("Active", "Not Active"):
                 metrics.append(
                     sample(

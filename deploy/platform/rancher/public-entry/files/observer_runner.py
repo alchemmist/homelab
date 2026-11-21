@@ -10,7 +10,7 @@ import urllib.parse
 
 
 class DiagnosticFailure(RuntimeError):
-    def __init__(self, event):
+    def __init__(self, event) -> None:
         super().__init__("Observer dependency operation failed")
         self.event = event
 
@@ -70,7 +70,7 @@ def stage(request):
 
 
 class ObservedHTTP:
-    def __init__(self, inner):
+    def __init__(self, inner) -> None:
         self.inner = inner
 
     @contextlib.contextmanager
@@ -121,7 +121,7 @@ def failure_event(error):
 def run(controller):
     original = controller.opener
 
-    def observed(*args, **kwargs):
+    def observed(*args: object, **kwargs: object) -> ObservedHTTP:
         return ObservedHTTP(original(*args, **kwargs))
 
     controller.opener = observed

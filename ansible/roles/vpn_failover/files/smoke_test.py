@@ -266,4 +266,4 @@ if __name__ == "__main__":
         main(parser.parse_args().runtime_root)
     except Exception as error:
         print(json.dumps({"error": str(error)}))
-        raise SystemExit(1)
+        raise SystemExit(1) from error

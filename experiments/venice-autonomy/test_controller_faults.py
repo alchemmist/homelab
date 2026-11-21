@@ -396,7 +396,7 @@ class ControllerFaultTests(unittest.TestCase):
                 check=False,
                 stdout=None,
                 stderr=None,
-            ):
+            ) -> object:
                 calls.append(list(args))
 
                 class Result:
@@ -545,7 +545,7 @@ class ControllerFaultTests(unittest.TestCase):
                 check=False,
                 stdout=None,
                 stderr=None,
-            ):
+            ) -> object:
                 calls.append(list(args))
 
                 class Result:
@@ -647,7 +647,7 @@ class ControllerFaultTests(unittest.TestCase):
                 check=False,
                 stdout=None,
                 stderr=None,
-            ):
+            ) -> object:
                 calls.append(list(args))
 
                 class Result:
@@ -705,7 +705,7 @@ class ControllerFaultTests(unittest.TestCase):
             check=False,
             stdout=None,
             stderr=None,
-        ):
+        ) -> object:
             calls.append(list(args))
 
             class Result:
@@ -774,7 +774,7 @@ class ControllerFaultTests(unittest.TestCase):
             state["running"] = running
             controller.save_state(root / "state.json", state)
 
-            def boom(record):
+            def boom(record) -> None:
                 raise ValueError("docker daemon refused")
 
             original = controller.cleanup_interrupted

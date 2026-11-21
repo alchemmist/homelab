@@ -58,7 +58,7 @@ def bootstrap_is_migration_aware(source: str) -> bool:
         isinstance(key, ast.Constant)
         and key.value == "stringData"
         and expression_matches(value, "runtime_values")
-        for key, value in zip(manifest.keys, manifest.values)
+        for key, value in zip(manifest.keys, manifest.values, strict=True)
     ):
         return False
     for index, conditional in enumerate(tree.body):

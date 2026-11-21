@@ -28,6 +28,7 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+from typing import cast
 
 import yaml
 
@@ -136,15 +137,16 @@ def authentik_issuer():
     return "https://" + AUTHENTIK_HOST + "/application/o/" + APP_SLUG + "/"
 
 
-def _seal(body):
+def _seal(body) -> dict[str, object]:
     encoded = json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
     if "client_secret" in encoded or "AUTHENTIK_BOOTSTRAP" in encoded:
         raise RuntimeError("Refusing to seal a plan that contains a secret")
-    body["sha256"] = hashlib.sha256(encoded.encode()).hexdigest()
-    return body
+    sealed: dict[str, object] = body
+    sealed["sha256"] = hashlib.sha256(encoded.encode()).hexdigest()
+    return sealed
 
 
-def _private_write(path, value):
+def _private_write(path, value) -> None:
     path = Path(path)
     if path.is_symlink():
         raise RuntimeError("Refusing to follow a private-file symlink")
@@ -158,22 +160,23 @@ def _private_write(path, value):
     os.chmod(path, 0o600)
 
 
-def _private_read(path):
+def _private_read(path) -> dict[str, object] | None:
     path = Path(path)
     if not path.exists():
         return None
     if path.is_symlink():
         raise RuntimeError("Refusing to follow a private-file symlink")
-    return json.loads(path.read_text())
+    document: dict[str, object] | None = json.loads(path.read_text())
+    return document
 
 
 class Authentik:
-    def __init__(self, base, token, get_only):
+    def __init__(self, base, token, get_only) -> None:
         self.base = base.rstrip("/")
         self.token = token
         self.get_only = get_only
 
-    def __call__(self, method, path, payload=None):
+    def __call__(self, method, path, payload=None) -> object:
         if self.get_only and method != "GET":
             raise RuntimeError("GET-only action refused an Authentik write")
         target = path if path.startswith("http") else self.base + "/api/v3/" + path.lstrip("/")
@@ -216,18 +219,20 @@ class Authentik:
         return rows
 
 
-def _one(rows, field, value):
+def _one(rows, field, value) -> dict[str, object] | None:
     found = [row for row in rows if row.get(field) == value]
     if len(found) > 1:
         raise RuntimeError("Ambiguous Authentik object")
-    return found[0] if found else None
+    match: dict[str, object] | None = found[0] if found else None
+    return match
 
 
-def _managed(rows, managed):
+def _managed(rows, managed) -> dict[str, object]:
     found = [row for row in rows if row.get("managed") == managed]
     if len(found) != 1:
         raise RuntimeError("Reviewed Authentik scope mapping is missing")
-    return found[0]
+    match: dict[str, object] = found[0]
+    return match
 
 
 def load_inventory(api):
@@ -248,7 +253,7 @@ def load_inventory(api):
     }
 
 
-def _pilot_snapshot(inventory):
+def _pilot_snapshot(inventory) -> list[dict[str, object]]:
     superuser_groups = {row["pk"] for row in inventory["groups"] if row.get("is_superuser") is True}
     users = []
     for wanted in PILOT:
@@ -294,33 +299,36 @@ def _pilot_snapshot(inventory):
                 "legacy_groups": legacy,
             }
         )
-    return users
+    snapshot: list[dict[str, object]] = users
+    return snapshot
 
 
-def _group_owned(group, journal):
+def _group_owned(group, journal) -> bool:
     recorded = (journal or {}).get("groups", {}).get(group["name"]) if group else None
     attributes = (group or {}).get("attributes") or {}
-    return bool(
+    owned: bool = bool(
         recorded
         and group
         and group.get("pk") == recorded.get("pk")
         and attributes.get(MARKER_ATTRIBUTE) == (journal or {}).get("marker")
     )
+    return owned
 
 
-def _redirect(url):
+def _redirect(url) -> list[dict[str, object]]:
     return [{"matching_mode": "strict", "url": url, "redirect_uri_type": "authorization"}]
 
 
-def _same_redirect(actual, expected):
+def _same_redirect(actual, expected) -> bool:
     if not isinstance(actual, list) or len(actual) != 1 or not isinstance(actual[0], dict):
         return False
     row = actual[0]
-    return (
+    same: bool = (
         row.get("matching_mode") == "strict"
         and row.get("url") == expected
         and row.get("redirect_uri_type") == "authorization"
     )
+    return same
 
 
 def build_plan(inventory, issuer, journal):
@@ -328,7 +336,8 @@ def build_plan(inventory, issuer, journal):
     openid = _managed(inventory["scopes"], OPENID_MANAGED)
     email = _managed(inventory["scopes"], EMAIL_MANAGED)
     profile = _managed(inventory["scopes"], PROFILE_MANAGED)
-    if "groups" not in (profile.get("expression") or "") or profile.get("scope_name") != "profile":
+    profile_text = cast("str", profile.get("expression") or "")
+    if "groups" not in profile_text or profile.get("scope_name") != "profile":
         raise RuntimeError("Reviewed default profile mapping changed")
     expression = profile_expression()
     if "ak_groups" not in expression or "request.user.email" in expression or '"sub"' in expression:
@@ -384,9 +393,9 @@ def build_plan(inventory, issuer, journal):
             blockers.append("NetBird admission group is privileged or inherited")
     if provider and provider.get("pk") in outpost["providers"]:
         blockers.append("NetBird OIDC provider must stay off the embedded outpost")
-    operations = []
+    operations: list[dict[str, object]] = []
     if not blockers:
-        for name, group in zip(GROUP_NAMES, groups):
+        for name, group in zip(GROUP_NAMES, groups, strict=True):
             if group is None:
                 operations.append({"action": "create", "kind": "group", "name": name})
         if mapping is None:
@@ -425,7 +434,9 @@ def build_plan(inventory, issuer, journal):
                     {"action": "update", "kind": "application", "pk": application["pk"]}
                 )
         admission = next(
-            group for name, group in zip(GROUP_NAMES, groups) if name == ADMISSION_GROUP
+            group
+            for name, group in zip(GROUP_NAMES, groups, strict=True)
+            if name == ADMISSION_GROUP
         )
         app_bindings = []
         if application is not None:
@@ -461,7 +472,7 @@ def build_plan(inventory, issuer, journal):
             operations.append({"action": "create", "kind": "binding"})
         if not blockers:
             users_by_pk = {user["pk"]: user for user in users}
-            for name, group in zip(GROUP_NAMES, groups):
+            for name, group in zip(GROUP_NAMES, groups, strict=True):
                 if group is None:
                     for user in users:
                         operations.append(
@@ -527,7 +538,7 @@ def build_plan(inventory, issuer, journal):
     return _seal(body)
 
 
-def _application_fields():
+def _application_fields() -> dict[str, object]:
     return {
         "name": APP_NAME,
         "slug": APP_SLUG,
@@ -538,9 +549,9 @@ def _application_fields():
     }
 
 
-def _provider_matches(provider, mappings, callback, flows, certificate, stock_profile):
+def _provider_matches(provider, mappings, callback, flows, certificate, stock_profile) -> bool:
     current = provider.get("property_mappings") or []
-    return (
+    matches: bool = (
         provider.get("client_type") == "confidential"
         and provider.get("client_id") == CLIENT_ID
         and provider.get("sub_mode") == "user_uuid"
@@ -560,9 +571,10 @@ def _provider_matches(provider, mappings, callback, flows, certificate, stock_pr
         and "password" not in (provider.get("grant_types") or [])
         and "client_credentials" not in (provider.get("grant_types") or [])
     )
+    return matches
 
 
-def _group_body(name, marker):
+def _group_body(name, marker) -> dict[str, object]:
     return {
         "name": name,
         "is_superuser": False,
@@ -574,7 +586,7 @@ def _group_body(name, marker):
     }
 
 
-def _provider_body(mappings, callback, flows, certificate, secret):
+def _provider_body(mappings, callback, flows, certificate, secret) -> dict[str, object]:
     return {
         "name": PROVIDER_NAME,
         "client_type": "confidential",
@@ -595,10 +607,10 @@ def _provider_body(mappings, callback, flows, certificate, secret):
     }
 
 
-def _load_secret(path, journal, create):
+def _load_secret(path, journal, create) -> str | None:
     current = _private_read(path)
     if current is not None:
-        secret = current.get("client_secret") if isinstance(current, dict) else None
+        secret = current.get("client_secret")
         if not isinstance(secret, str) or current.get("client_id") != CLIENT_ID or len(secret) < 32:
             raise RuntimeError("Runtime client file is incomplete")
         digest = hashlib.sha256(secret.encode()).hexdigest()
@@ -617,7 +629,7 @@ def _load_secret(path, journal, create):
     return secret
 
 
-def _legacy_preserved(before, after):
+def _legacy_preserved(before, after) -> None:
     previous = {row["username"]: set(row["legacy_groups"]) for row in before}
     for row in after:
         if previous[row["username"]] - set(row["legacy_groups"]):
@@ -653,10 +665,12 @@ def execute_apply(api, root, issuer, approved):
         }
         _private_write(journal_path, journal)
     for row in plan["pilot_users"]:
-        recorded = (journal.get("pilot_users") or {}).get(row["username"])
+        recorded = cast(
+            "dict[str, object]", journal.get("pilot_users") or {}
+        ).get(row["username"])
         if recorded != {"pk": row["pk"], "uuid": row["uuid"]}:
             raise RuntimeError("Journal pilot UUID/PK does not match the live user")
-    secret = _load_secret(runtime_path, journal, create=True)
+    secret = cast("str", _load_secret(runtime_path, journal, create=True))
     journal["client_secret_sha256"] = hashlib.sha256(secret.encode()).hexdigest()
     journal["issuer"] = issuer
     journal["callback"] = plan["callback"]
@@ -670,7 +684,8 @@ def execute_apply(api, root, issuer, approved):
     for operation in plan["operations"]:
         if operation["action"] == "create" and operation.get("kind") == "group":
             created = api("POST", "core/groups/", _group_body(operation["name"], journal["marker"]))
-            journal.setdefault("groups", {})[operation["name"]] = {
+            recorded_groups = cast("dict[str, object]", journal.setdefault("groups", {}))
+            recorded_groups[operation["name"]] = {
                 "pk": created["pk"],
                 "num_pk": created.get("num_pk"),
             }
@@ -703,9 +718,8 @@ def execute_apply(api, root, issuer, approved):
                 row["pk"] for row in inventory["scopes"] if row.get("scope_name") == "groups"
             }
             group_scopes.discard(mapping_pk)
-            if stock_profile in body["property_mappings"] or group_scopes.intersection(
-                body["property_mappings"]
-            ):
+            mappings = cast("list[object]", body["property_mappings"])
+            if stock_profile in mappings or group_scopes.intersection(mappings):
                 raise RuntimeError(
                     "Refusing to attach an unrestricted or unrequested groups mapping"
                 )
@@ -729,7 +743,13 @@ def execute_apply(api, root, issuer, approved):
                     raise RuntimeError("Application PK does not match the journal")
                 api("PATCH", "core/applications/" + APP_SLUG + "/", fields)
         elif operation.get("kind") == "binding" and operation["action"] == "create":
-            group_pk = (journal.get("groups") or {}).get(ADMISSION_GROUP, {}).get("pk")
+            group_pk = (
+                cast(
+                    "dict[str, object]",
+                    cast("dict[str, object]", journal.get("groups") or {}).get(ADMISSION_GROUP, {}),
+                )
+                .get("pk")
+            )
             if not isinstance(journal.get("application_pk"), str) or not isinstance(group_pk, str):
                 raise RuntimeError("Binding requires journaled application and admission group PKs")
             created = api(
@@ -746,7 +766,15 @@ def execute_apply(api, root, issuer, approved):
             )
             journal["binding_pk"] = created["pk"]
         elif operation["action"] == "add_user":
-            group_pk = (journal.get("groups") or {}).get(operation["group"], {}).get("pk")
+            group_pk = (
+                cast(
+                    "dict[str, object]",
+                    cast("dict[str, object]", journal.get("groups") or {}).get(
+                        operation["group"], {}
+                    ),
+                )
+                .get("pk")
+            )
             if not isinstance(group_pk, str) or operation["user_pk"] != next(
                 row["pk"] for row in plan["pilot_users"] if row["username"] == operation["username"]
             ):
@@ -772,7 +800,7 @@ def execute_apply(api, root, issuer, approved):
     return confirmed["sha256"]
 
 
-def _mappings_agree(path):
+def _mappings_agree(path) -> None:
     loaded = json.loads(Path(path).read_text())
     for wanted in PILOT:
         row = loaded.get(wanted["username"]) if isinstance(loaded, dict) else None
