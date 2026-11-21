@@ -66,12 +66,14 @@ class FinalDecisionTests(unittest.TestCase):
         class Environment(FakeEnvironment):
             def close(self):
                 if cleanup_error:
-                    raise RuntimeError("cleanup failed")
+                    msg = "cleanup failed"
+                    raise RuntimeError(msg)
                 super().close()
 
         def invoke(*args, **kwargs):
             if not clean:
-                raise RuntimeError("provider failed")
+                msg = "provider failed"
+                raise RuntimeError(msg)
             return {"exit_status": "ConversationExecutionStatus.FINISHED"}
 
         with mock.patch.dict(os.environ, env, clear=False):

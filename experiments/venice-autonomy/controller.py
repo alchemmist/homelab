@@ -247,9 +247,11 @@ def save_state(path, state):
 def initial_state(duration, rounds, engines=DEFAULT_ENGINES):
     selected = tuple(engines)
     if not selected or any(engine not in ENGINES for engine in selected):
-        raise ValueError("unknown engine selection")
+        msg = "unknown engine selection"
+        raise ValueError(msg)
     if not 1 <= duration <= 7200 or not 1 <= rounds <= 10:
-        raise ValueError("experiment must have 1..7200 seconds and 1..10 rounds")
+        msg = "experiment must have 1..7200 seconds and 1..10 rounds"
+        raise ValueError(msg)
     now = time.time()
     tasks = [
         {
@@ -494,7 +496,8 @@ def run(root, mini_python, openhands_python, duration, rounds, include_text=Fals
     root = pathlib.Path(root)
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
     if root.is_symlink() or root.stat().st_mode & 0o077:
-        raise ValueError("controller root must be a private real directory")
+        msg = "controller root must be a private real directory"
+        raise ValueError(msg)
     with (root / "controller.lock").open("w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         path = root / "state.json"
@@ -523,7 +526,8 @@ def run(root, mini_python, openhands_python, duration, rounds, include_text=Fals
             )
         }
         if state.get("source_hashes", source_hashes) != source_hashes:
-            raise ValueError("runner source changed; refusing an incomparable resume")
+            msg = "runner source changed; refusing an incomparable resume"
+            raise ValueError(msg)
         state["source_hashes"] = source_hashes
         save_state(path, state)
         try:
@@ -590,7 +594,8 @@ def run(root, mini_python, openhands_python, duration, rounds, include_text=Fals
                 try:
                     result = json.loads(summary_path.read_text())
                     if not isinstance(result, dict) or type(result.get("accepted")) is not bool:
-                        raise ValueError("invalid summary")
+                        msg = "invalid summary"
+                        raise ValueError(msg)
                 except (OSError, ValueError):
                     result = {
                         "accepted": False,

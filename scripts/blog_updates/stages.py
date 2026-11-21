@@ -81,7 +81,8 @@ def checked_model(call_model, prompt, data, context):
             return validate_decision(call_model(prompt, data), context)
         except (UnsafeInput, json.JSONDecodeError):
             if attempt:
-                raise UnsafeInput("Model response failed validation after two attempts") from None
+                msg = "Model response failed validation after two attempts"
+                raise UnsafeInput(msg) from None
             prompt += "\nPrevious response failed validation. Return only the exact JSON schema, plain text without URLs or Markdown, and supplied changed file paths."
 
 
@@ -109,16 +110,19 @@ def stage(name, payload, github=None, call_model=None, write=False):
         )
         allowed = {p for e in selection["entries"] for p in e["source_paths"]}
         if any(p not in allowed for e in decision["entries"] for p in e["source_paths"]):
-            raise UnsafeInput("Generation introduced an unselected source")
+            msg = "Generation introduced an unselected source"
+            raise UnsafeInput(msg)
         return [{"event": event, "decision": decision}] if decision["should_update"] else []
     if name != "create-pr":
-        raise UnsafeInput("Unknown stage")
+        msg = "Unknown stage"
+        raise UnsafeInput(msg)
     decision = validate_decision(payload["decision"], context)
     if not decision["should_update"]:
         return []
     head = next((c for c in comparison["commits"] if c["sha"] == event["after"]), None)
     if not head:
-        raise UnsafeInput("Missing head commit")
+        msg = "Missing head commit"
+        raise UnsafeInput(msg)
     content = render(updates, decision["entries"], head["commit"]["committer"]["date"])
     if content == updates:
         return [{"status": "no_change"}]

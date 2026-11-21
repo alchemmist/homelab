@@ -22,9 +22,8 @@ class Kubernetes:
             text=True,
         )
         if result.returncode:
-            raise BootstrapError(
-                "kubectl failed; inspect resource permissions and availability without logging secret payloads"
-            )
+            msg = "kubectl failed; inspect resource permissions and availability without logging secret payloads"
+            raise BootstrapError(msg)
         return result.stdout
 
     def get(self, kind, name, namespace):
@@ -43,7 +42,8 @@ def decoded(value):
     try:
         return base64.b64decode(value, validate=True).decode()
     except (ValueError, UnicodeError, TypeError):
-        raise BootstrapError("Invalid encoded credential in source Secret") from None
+        msg = "Invalid encoded credential in source Secret"
+        raise BootstrapError(msg) from None
 
 
 def resource(kind, name, namespace, **fields):
@@ -58,7 +58,8 @@ def resource(kind, name, namespace, **fields):
 def required_data(item, key):
     value = (item or {}).get("data", {}).get(key)
     if not isinstance(value, str) or not value:
-        raise BootstrapError("Required credential/configuration field is missing")
+        msg = "Required credential/configuration field is missing"
+        raise BootstrapError(msg)
     return value
 
 
@@ -90,14 +91,12 @@ def bootstrap(kube, skip_legacy_git=False):
         if spec.get("storageClassName") != "local-path" or spec.get("accessModes") != [
             "ReadWriteOnce"
         ]:
-            raise BootstrapError(
-                "Existing wiki-runtime-data PVC has unexpected storage configuration"
-            )
+            msg = "Existing wiki-runtime-data PVC has unexpected storage configuration"
+            raise BootstrapError(msg)
     if existing[1]:
         if len(decoded(required_data(existing[1], "token"))) < 32:
-            raise BootstrapError(
-                "Existing bootstrap Secret token is unexpectedly short; not overwriting it"
-            )
+            msg = "Existing bootstrap Secret token is unexpectedly short; not overwriting it"
+            raise BootstrapError(msg)
     if existing[2]:
         for key in ("id_ed25519", "known_hosts"):
             required_data(existing[2], key)
@@ -158,7 +157,8 @@ def main():
     try:
         command = shlex.split(args.kubectl)
         if not command:
-            raise BootstrapError("kubectl command must not be empty")
+            msg = "kubectl command must not be empty"
+            raise BootstrapError(msg)
         for line in bootstrap(Kubernetes(command), args.skip_legacy_git):
             print(line)
     except (BootstrapError, OSError, json.JSONDecodeError):

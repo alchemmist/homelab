@@ -364,7 +364,8 @@ def outputs(rules):
     registry_path = ROOT / "deploy/monitoring/alert-graph-panel-ids.json"
     registry = json.loads(registry_path.read_text())
     if registry["schemaVersion"] != 1:
-        raise ValueError("Unsupported panel ID registry schema")
+        msg = "Unsupported panel ID registry schema"
+        raise ValueError(msg)
     dashboards, mappings, rows = build(rules, registry["dashboards"])
     result = {registry_path: json.dumps(registry, indent=2, sort_keys=True) + "\n"}
     for uid, dashboard in dashboards.items():

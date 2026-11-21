@@ -13,7 +13,8 @@ class Conversation:
     def run(self):
         self.runs += 1
         if self.runs <= self.failures:
-            raise RuntimeError("provider failed")
+            msg = "provider failed"
+            raise RuntimeError(msg)
 
     def send_message(self, message):
         self.messages.append(message)

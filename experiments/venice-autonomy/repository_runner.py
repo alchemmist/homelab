@@ -167,13 +167,15 @@ class RepositoryEnvironment:
             )[0]
             host = info["HostConfig"]
             if host["NetworkMode"] != "none" or host["ReadonlyRootfs"] is not True:
-                raise RuntimeError("worker isolation check failed")
+                msg = "worker isolation check failed"
+                raise RuntimeError(msg)
             if (
                 host["Memory"] != 512 * 1024 * 1024
                 or host["PidsLimit"] != 128
                 or info["Config"]["User"] != "nobody"
             ):
-                raise RuntimeError("worker limit check failed")
+                msg = "worker limit check failed"
+                raise RuntimeError(msg)
             self.security = {
                 "user": info["Config"]["User"],
                 "network": host["NetworkMode"],
@@ -188,7 +190,8 @@ class RepositoryEnvironment:
                 }
             )
             if result["returncode"] != 0 or "WORKER_READY" not in result["output"]:
-                raise RuntimeError("worker preflight failed")
+                msg = "worker preflight failed"
+                raise RuntimeError(msg)
         except BaseException:
             self.close()
             raise
@@ -196,7 +199,8 @@ class RepositoryEnvironment:
     def execute(self, action, **kwargs):
         command = action.get("command") if isinstance(action, dict) else None
         if not isinstance(command, str) or len(command.encode()) > 12000:
-            raise ValueError("invalid or oversized command")
+            msg = "invalid or oversized command"
+            raise ValueError(msg)
         started = time.monotonic()
         try:
             wrapped = (
@@ -235,7 +239,8 @@ class RepositoryEnvironment:
             ["docker", "cp", self.container_id + ":/workspace/.", "-"], 512 * 1024, 30
         )
         if code:
-            raise RuntimeError("candidate archive failed")
+            msg = "candidate archive failed"
+            raise RuntimeError(msg)
         files = {}
         with tarfile.open(fileobj=io.BytesIO(data)) as archive:
             for member in archive:
@@ -251,7 +256,8 @@ class RepositoryEnvironment:
                     raise CandidateRejected("unexpected candidate member: " + repr(name)[:160])
                 files[name] = archive.extractfile(member).read()
         if set(files) != set(self.protocol.WHITELIST):
-            raise CandidateRejected("incomplete candidate")
+            msg = "incomplete candidate"
+            raise CandidateRejected(msg)
         destination.mkdir()
         for name, data in files.items():
             (destination / name).write_bytes(data)
@@ -262,7 +268,8 @@ class RepositoryEnvironment:
                 subprocess.check_output(["docker", "inspect", self.container_id], timeout=15)
             )[0]
             if info["Config"]["Labels"].get("venice-e2e-run") != self.nonce:
-                raise ValueError("refusing foreign cleanup")
+                msg = "refusing foreign cleanup"
+                raise ValueError(msg)
             subprocess.run(
                 ["docker", "rm", "-f", self.container_id],
                 check=True,
@@ -277,7 +284,8 @@ class RepositoryEnvironment:
                 )
             )[0]
             if info["Labels"].get("venice-e2e-run") != self.nonce:
-                raise ValueError("refusing foreign volume cleanup")
+                msg = "refusing foreign volume cleanup"
+                raise ValueError(msg)
             subprocess.run(
                 ["docker", "volume", "rm", self.volume_name],
                 check=True,
@@ -466,19 +474,23 @@ def main(argv=None):
         attempt = load_local("attempt")
         source = inspect.getsource(invoke_openhands)
         if "exec(" in source or "acceptance=acceptance" not in source:
-            raise SystemExit("openhands adapter is not wired to continue_openhands")
+            msg = "openhands adapter is not wired to continue_openhands"
+            raise SystemExit(msg)
         if "continue_openhands" not in inspect.getsource(attempt.run_openhands):
-            raise SystemExit("run_openhands does not call continue_openhands")
+            msg = "run_openhands does not call continue_openhands"
+            raise SystemExit(msg)
         print("wiring-ok")
         return 0
     if os.getenv("AUTONOMY_EXTERNAL_WATCHDOG") != "1":
-        raise RuntimeError("external process watchdog is required")
+        msg = "external process watchdog is required"
+        raise RuntimeError(msg)
     protocol = load_protocol()
     output_root = require_path("AUTONOMY_OUTPUT_ROOT")
     snapshot = require_path("AUTONOMY_SNAPSHOT")
     image = os.environ.get("AUTONOMY_WORKER_IMAGE", "").strip()
     if not image:
-        raise RuntimeError("AUTONOMY_WORKER_IMAGE is required")
+        msg = "AUTONOMY_WORKER_IMAGE is required"
+        raise RuntimeError(msg)
     protocol.PILOT_LABEL = "venice-e2e-run=" + os.environ["AUTONOMY_RUN_NONCE"]
     protocol.verify_snapshot(snapshot)
     attempt = load_local("attempt")
@@ -505,12 +517,14 @@ def main(argv=None):
     environment = None
 
     def deadline(*_):
-        raise TimeoutError("external end-to-end deadline exceeded")
+        msg = "external end-to-end deadline exceeded"
+        raise TimeoutError(msg)
 
     signal.signal(signal.SIGALRM, deadline)
     remaining = float(os.environ["AUTONOMY_DEADLINE"]) - time.time()
     if remaining <= 0:
-        raise TimeoutError("deadline already passed")
+        msg = "deadline already passed"
+        raise TimeoutError(msg)
     signal.alarm(int(remaining))
     try:
         environment = RepositoryEnvironment(snapshot, directory / "agent", image, protocol)
@@ -525,7 +539,8 @@ def main(argv=None):
                 }
             )
             if check["returncode"] != 0 or not check["output"].startswith(expected):
-                raise RuntimeError("visible reproduction check failed")
+                msg = "visible reproduction check failed"
+                raise RuntimeError(msg)
             summary["visible_reproducer_sha256"] = expected
         try:
             result = invoke_openhands(

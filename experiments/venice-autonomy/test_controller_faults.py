@@ -294,9 +294,11 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
 
         try:
             try:
-                raise BadGatewayError("502")
+                msg = "502"
+                raise BadGatewayError(msg)
             except BadGatewayError as inner:
-                raise SDKError("wrapper text mentions InternalServerError") from inner
+                msg = "wrapper text mentions InternalServerError"
+                raise SDKError(msg) from inner
         except SDKError as error:
             summary = {}
             record_exception(summary, error, "", "run_error")
@@ -767,7 +769,8 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             controller.save_state(root / "state.json", state)
 
             def boom(record):
-                raise ValueError("docker daemon refused")
+                msg = "docker daemon refused"
+                raise ValueError(msg)
 
             original = controller.cleanup_interrupted
             controller.cleanup_interrupted = boom

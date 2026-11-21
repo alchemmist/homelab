@@ -326,7 +326,6 @@ def panels():
         cascade_summary(),
     ]
     for pid, namespace, job, label, warning, limit in [
-
         (935, "automation", "n8n-backup", "n8n backup", 24 * 3600, 26 * 3600),
     ]:
         selector = f'namespace="{namespace}",cronjob="{job}"'
@@ -353,11 +352,20 @@ def panels():
                 ],
             )
         )
-    streaming = 'cnpg_pg_replication_streaming_replicas{job="postgres-platform",pg_cluster="pg-common"}'
-    result.append(stat(934, "PG replicas", {"x": 4, "y": 12, "w": 2, "h": 2},
-                       f"max({streaming} and (time() - timestamp({streaming}) < 90)) or vector(-2)",
-                       "short", "Streaming standby count reported by the pg-common primary. Expected 1. No fresh primary telemetry is unknown, not zero. Replication is not a backup.",
-                       bands=[{"color": "#F2495C", "value": None}, {"color": "#26783D", "value": 1}]))
+    streaming = (
+        'cnpg_pg_replication_streaming_replicas{job="postgres-platform",pg_cluster="pg-common"}'
+    )
+    result.append(
+        stat(
+            934,
+            "PG replicas",
+            {"x": 4, "y": 12, "w": 2, "h": 2},
+            f"max({streaming} and (time() - timestamp({streaming}) < 90)) or vector(-2)",
+            "short",
+            "Streaming standby count reported by the pg-common primary. Expected 1. No fresh primary telemetry is unknown, not zero. Replication is not a backup.",
+            bands=[{"color": "#F2495C", "value": None}, {"color": "#26783D", "value": 1}],
+        )
+    )
     for p in result:
         if p["id"] in (934, 935):
             p["options"]["text"] = {"titleSize": 11, "valueSize": 20}
@@ -389,9 +397,8 @@ def build(source=None):
         for x in range(g["x"], g["x"] + g["w"]):
             for y in range(g["y"], g["y"] + g["h"]):
                 if (x, y) in occupied or not (0 <= x < 24 and 0 <= y < 20):
-                    raise ValueError(
-                        "Quality panel overlaps owner layout; stop rather than move panels"
-                    )
+                    msg = "Quality panel overlaps owner layout; stop rather than move panels"
+                    raise ValueError(msg)
                 occupied.add((x, y))
     replacements = {p["id"]: p for p in additions}
     d["panels"] = [replacements.get(p["id"], p) for p in d["panels"]]

@@ -22,7 +22,8 @@ def build(source, output):
         p for p in folder.iterdir() if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}
     )
     if not files:
-        raise ValueError("No Nature images found")
+        msg = "No Nature images found"
+        raise ValueError(msg)
     manifest = json.loads((output / "assets.json").read_text())
     manifest = {k: v for k, v in manifest.items() if not k.startswith("NATURE_")}
     revision = subprocess.check_output(
@@ -45,12 +46,14 @@ def build(source, output):
         raw = path.read_bytes()
         source_hash = hashlib.sha256(raw).hexdigest()
         if source_hash in seen:
-            raise ValueError("Duplicate source image: review selection weights")
+            msg = "Duplicate source image: review selection weights"
+            raise ValueError(msg)
         seen.add(source_hash)
         ident = source_hash[:12]
         with Image.open(io.BytesIO(raw)) as image:
             if getattr(image, "n_frames", 1) != 1:
-                raise ValueError("Animated images are not allowed")
+                msg = "Animated images are not allowed"
+                raise ValueError(msg)
             image = ImageOps.exif_transpose(image).convert("RGB")
             # AVIF inherits ICC from im.info by default; WebP does not. Strip all
             # metadata explicitly so both formats/preview share the same RGB data.
@@ -91,10 +94,12 @@ def build(source, output):
                     if len(avif_content) <= (220000 if label == "desktop" else 100000):
                         break
                 else:
-                    raise ValueError("AVIF derivative exceeds transfer budget")
+                    msg = "AVIF derivative exceeds transfer budget"
+                    raise ValueError(msg)
                 with Image.open(io.BytesIO(avif_content)) as decoded:
                     if any(decoded.info.get(k) for k in ["exif", "xmp", "icc_profile"]):
-                        raise ValueError("AVIF output must not inherit source metadata")
+                        msg = "AVIF output must not inherit source metadata"
+                        raise ValueError(msg)
                 avif_name = f"nature-{ident}-{width}.avif"
                 (dest / avif_name).write_bytes(avif_content)
                 avif_key = key + "_AVIF"

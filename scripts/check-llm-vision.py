@@ -101,7 +101,8 @@ def main():
     )
     args = parser.parse_args()
     if not API_KEY:
-        raise ValueError("LLM_API_KEY must be set")
+        msg = "LLM_API_KEY must be set"
+        raise ValueError(msg)
     codes = [make_code() for _ in range(2)]
     while codes[0] == codes[1]:
         codes[1] = make_code()

@@ -56,7 +56,8 @@ def main():
     started = time.monotonic()
     try:
         with urllib.request.urlopen(f"{BASE_URL}/models", timeout=TIMEOUT):
-            raise ValueError("API accepted a request without its bearer key")
+            msg = "API accepted a request without its bearer key"
+            raise ValueError(msg)
     except urllib.error.HTTPError as error:
         require(error.code == 401, f"Expected unauthenticated HTTP 401, received {error.code}")
     report("API authentication", started)

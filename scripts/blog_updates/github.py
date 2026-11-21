@@ -35,16 +35,20 @@ class GitHub:
     def compare(self, before, after):
         for sha in (before, after):
             if not re.fullmatch("[a-f0-9]{40}", sha):
-                raise UnsafeInput("Full SHA required")
+                msg = "Full SHA required"
+                raise UnsafeInput(msg)
         result = self.api("GET", f"compare/{before}...{after}?per_page=100&page=1")
         if result.get("status") not in ("ahead", "identical"):
-            raise UnsafeInput("Non-forward push requires manual review")
+            msg = "Non-forward push requires manual review"
+            raise UnsafeInput(msg)
         # Files are returned on page one only; reject ambiguous/truncated compares.
         if len(result.get("files", [])) >= 300:
-            raise UnsafeInput("Compare file limit exceeded")
+            msg = "Compare file limit exceeded"
+            raise UnsafeInput(msg)
         total = result.get("total_commits", 0)
         if total > 1000:
-            raise UnsafeInput("Commit range too large")
+            msg = "Commit range too large"
+            raise UnsafeInput(msg)
         commits = result.get("commits", [])
         page = 2
         while len(commits) < total:
@@ -52,7 +56,8 @@ class GitHub:
                 "commits", []
             )
             if not extra:
-                raise UnsafeInput("Incomplete commit pagination")
+                msg = "Incomplete commit pagination"
+                raise UnsafeInput(msg)
             commits.extend(extra)
             page += 1
         result["commits"] = commits
@@ -61,12 +66,14 @@ class GitHub:
     def read_updates(self, ref):
         f = self.api("GET", f"contents/{UPDATES}?ref={ref}")
         if f.get("encoding") != "base64":
-            raise UnsafeInput("Unexpected GitHub content encoding")
+            msg = "Unexpected GitHub content encoding"
+            raise UnsafeInput(msg)
         return base64.b64decode(f["content"]).decode(), f["sha"]
 
     def propose(self, after, content, reason, draft=False):
         if not re.fullmatch("[a-f0-9]{40}", after):
-            raise UnsafeInput("Full SHA required")
+            msg = "Full SHA required"
+            raise UnsafeInput(msg)
         branch = "automation/blog-updates-" + after + ("-test" if draft else "")
         # Include closed PRs: closing a proposal is an editorial decision, not a retry.
         existing = self.api("GET", f"pulls?state=all&head=alchemmist:{branch}&per_page=100")
@@ -75,7 +82,8 @@ class GitHub:
         # Pin proposal to the analyzed commit. A later main change cannot be silently overwritten.
         main = self.api("GET", "git/ref/heads/main")["object"]["sha"]
         if main != after:
-            raise UnsafeInput("main advanced; reanalysis required")
+            msg = "main advanced; reanalysis required"
+            raise UnsafeInput(msg)
         original, _ = self.read_updates(after)
         if content == original:
             return {"status": "no_change"}

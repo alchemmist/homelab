@@ -32,7 +32,8 @@ def request(path, key=None, data=None):
 
 try:
     request("/v1/models")
-    raise AssertionError("Unauthenticated API request succeeded")
+    msg = "Unauthenticated API request succeeded"
+    raise AssertionError(msg)
 except urllib.error.HTTPError as exc:
     assert exc.code == 401, exc.code
 print("unauthenticated API: 401")

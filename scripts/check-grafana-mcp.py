@@ -62,7 +62,8 @@ class Client:
             ]
             result = next(message for message in messages if message.get("id") == self.sequence)
         if "error" in result:
-            raise RuntimeError("MCP protocol error")
+            msg = "MCP protocol error"
+            raise RuntimeError(msg)
         return result["result"]
 
     def tool(self, name, arguments):
@@ -96,9 +97,11 @@ def main():
             client.opener.open(urllib.request.Request(args.url, headers=headers), timeout=15)
         except urllib.error.HTTPError as error:
             if error.code != 401:
-                raise RuntimeError("Unexpected unauthenticated response") from None
+                msg = "Unexpected unauthenticated response"
+                raise RuntimeError(msg) from None
         else:
-            raise RuntimeError("MCP accepted invalid authentication")
+            msg = "MCP accepted invalid authentication"
+            raise RuntimeError(msg)
     print("PASS: trusted HTTPS and both authentication rejection checks")
     initialized = client.request(
         "initialize",
@@ -112,14 +115,17 @@ def main():
     client.request("notifications/initialized", {}, notify=True)
     tools = client.request("tools/list", {})["tools"]
     if not tools or any(not tool.get("annotations", {}).get("readOnlyHint") for tool in tools):
-        raise RuntimeError("Unexpected non-read-only tool")
+        msg = "Unexpected non-read-only tool"
+        raise RuntimeError(msg)
     print(f"PASS: MCP initialized with {len(tools)} read-only tools")
     result = client.tool("search_dashboards", {"query": "Overview"})
     if "socrat-overview" not in result:
-        raise RuntimeError("Overview was not found")
+        msg = "Overview was not found"
+        raise RuntimeError(msg)
     result = client.tool("get_dashboard_by_uid", {"uid": "socrat-overview"})
     if "Cluster health" not in result:
-        raise RuntimeError("Overview panels were not returned")
+        msg = "Overview panels were not returned"
+        raise RuntimeError(msg)
     print("PASS: dashboard search and full dashboard read")
     result = client.tool(
         "query_prometheus",
@@ -133,7 +139,8 @@ def main():
     parsed = json.loads(result)
     samples = parsed.get("data", [])
     if len(samples) != 1 or float(samples[0]["value"][1]) <= 0:
-        raise RuntimeError("Prometheus returned no data")
+        msg = "Prometheus returned no data"
+        raise RuntimeError(msg)
     print("PASS: live Prometheus query returned data")
 
 

@@ -19,12 +19,14 @@ def configure_store(store):
     if not store.oidc_enabled:
         return
     if not store.local_owners:
-        raise RuntimeError("OIDC requires explicit local emergency owner IDs")
+        msg = "OIDC requires explicit local emergency owner IDs"
+        raise RuntimeError(msg)
     with store.connect() as db:
         for user_id in store.local_owners:
             row = db.execute("SELECT role,disabled FROM users WHERE id=?", (user_id,)).fetchone()
             if not row or row["role"] != "admin" or row["disabled"]:
-                raise RuntimeError("Emergency owner must be an existing active administrator")
+                msg = "Emergency owner must be an existing active administrator"
+                raise RuntimeError(msg)
         db.executescript("""
             CREATE TABLE IF NOT EXISTS oidc_accounts (
                 issuer TEXT NOT NULL, subject TEXT NOT NULL,
@@ -94,15 +96,18 @@ def install_oidc(app, store, origin, prefix, cookie_path, session_seconds):
 
     issuer = os.environ["WIKI_OIDC_ISSUER"]
     if not issuer.startswith("https://") or "?" in issuer or "#" in issuer:
-        raise RuntimeError("OIDC issuer must be a fixed HTTPS URL")
+        msg = "OIDC issuer must be a fixed HTTPS URL"
+        raise RuntimeError(msg)
     secret = os.environ["WIKI_OIDC_SESSION_SECRET"]
     if len(secret) < 32:
-        raise RuntimeError("OIDC state signing key is too short")
+        msg = "OIDC state signing key is too short"
+        raise RuntimeError(msg)
     groups = json.loads(os.environ["WIKI_OIDC_GROUP_ROLES"])
     links = json.loads(os.getenv("WIKI_OIDC_LINKS", "{}"))
     overrides = json.loads(os.getenv("WIKI_OIDC_SUBJECT_ROLES", "{}"))
     if any(r not in ("reader", "editor", "admin") for r in [*groups.values(), *overrides.values()]):
-        raise RuntimeError("Unsupported OIDC role")
+        msg = "Unsupported OIDC role"
+        raise RuntimeError(msg)
     oauth = OAuth()
     client = oauth.register(
         "wiki",
@@ -136,10 +141,12 @@ def install_oidc(app, store, origin, prefix, cookie_path, session_seconds):
             claims = token.get("userinfo")
             # Authlib validates signature, exp, aud and nonce; still pin issuer.
             if not claims or claims.get("iss") != issuer or not claims.get("sub"):
-                raise ValueError("Invalid ID token")
+                msg = "Invalid ID token"
+                raise ValueError(msg)
             membership = claims.get("groups", [])
             if not isinstance(membership, list) or not all(isinstance(g, str) for g in membership):
-                raise ValueError("Invalid groups claim")
+                msg = "Invalid groups claim"
+                raise ValueError(msg)
             admitted = [groups[g] for g in membership if g in groups]
             if not admitted:
                 raise HTTPException(403, "Application membership required")
