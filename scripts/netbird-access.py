@@ -17,7 +17,9 @@ import sys
 import urllib.parse
 import urllib.request
 import uuid
+from collections.abc import Mapping
 from pathlib import Path
+from typing import TypedDict
 
 ADMIN = "netbird-internal-admins"
 LEGACY_LOGIN = "netbird-pilot-login"
@@ -26,18 +28,151 @@ PROFILE_MAPPING = "homelab-netbird-profile-groups"
 EXPRESSION = 'return {"groups": [group.name for group in request.user.ak_groups.all()]}'
 
 
-def require(value, message):
+class _AccountSettings(TypedDict, total=False):
+    local_auth_disabled: bool
+    jwt_groups_enabled: bool
+    groups_propagation_enabled: bool
+    jwt_groups_claim_name: str
+    jwt_allow_groups: list[str]
+    extra: dict[str, object]
+
+
+class _Account(TypedDict):
+    id: str
+    settings: _AccountSettings
+
+
+class _AkGroup(TypedDict, total=False):
+    pk: str
+    name: str
+    users: list[str]
+    is_superuser: bool
+    parents: list[object]
+    roles: list[object]
+
+
+class _NbGroup(TypedDict, total=False):
+    id: str
+    name: str
+    issued: str
+
+
+class _AkApp(TypedDict, total=False):
+    pk: str
+    slug: str
+    provider: str
+    policy_engine_mode: str
+
+
+class _AkProvider(TypedDict, total=False):
+    pk: str
+    authentication_flow: str
+    authorization_flow: str
+    client_id: str
+    property_mappings: list[str]
+
+
+class _AkFlowBinding(TypedDict, total=False):
+    stage: object
+
+
+class _AkMfaStage(TypedDict, total=False):
+    pk: str
+    not_configured_action: str
+
+
+class _AkScope(TypedDict, total=False):
+    pk: str
+    name: str
+    scope_name: str
+    expression: str
+
+
+class _AkUser(TypedDict, total=False):
+    pk: str
+    username: str
+    uuid: str
+    is_active: bool
+    is_superuser: bool
+    type: str
+
+
+class _AkBinding(TypedDict, total=False):
+    group: str
+    user: str
+    policy: str
+    enabled: bool
+    negate: bool
+    failure_result: bool
+    order: int
+
+
+class _NbPolicyRule(TypedDict, total=False):
+    enabled: bool
+    sources: list[object]
+    destinations: list[object]
+
+
+class _NbPolicy(TypedDict, total=False):
+    enabled: bool
+    rules: list[_NbPolicyRule]
+
+
+class _NbUser(TypedDict, total=False):
+    id: str
+    idp_id: str
+    role: str
+    is_service_user: bool
+    is_blocked: bool
+    auto_groups: list[object]
+
+
+class _NbPeer(TypedDict, total=False):
+    id: str
+    user_id: str
+
+
+class _NbIdp(TypedDict, total=False):
+    id: str
+    type: str
+    issuer: str
+    client_id: str
+
+
+class _NbDns(TypedDict, total=False):
+    disabled_management_groups: list[str]
+
+
+class _Snapshot(TypedDict):
+    nb_accounts: list[_Account]
+    nb_groups: list[_NbGroup]
+    nb_users: list[_NbUser]
+    nb_peers: list[_NbPeer]
+    nb_policies: list[_NbPolicy]
+    nb_idps: list[_NbIdp]
+    nb_dns: _NbDns
+    ak_groups: list[_AkGroup]
+    ak_apps: list[_AkApp]
+    ak_providers: list[_AkProvider]
+    ak_scopes: list[_AkScope]
+    ak_users: list[_AkUser]
+    ak_mfa: list[_AkMfaStage]
+    ak_flow_bindings: list[_AkFlowBinding]
+    ak_bindings: list[_AkBinding]
+
+
+def require(value: object, message: str):
     if not value:
         raise ValueError(message)
 
 
-def unique(items, key, value):
+def unique[GroupT: Mapping[str, object]](items: list[GroupT], key: str, value: object) -> GroupT:
     matches = [x for x in items if x.get(key) == value]
     require(len(matches) == 1, "Missing or ambiguous reviewed object")
     return matches[0]
 
 
-def safe_group(group):
+def safe_group(group: Mapping[str, object]):
     require(
         group.get("is_superuser") is False
         and group.get("parents") == []
@@ -46,7 +181,13 @@ def safe_group(group):
     )
 
 
-def reconcile_plan(s):
+def flow_stage_id(binding: _AkFlowBinding) -> object:
+    """Extract the reviewed MFA stage identity from a flow binding."""
+    stage = binding.get("stage")
+    return stage.get("pk") if isinstance(stage, dict) else stage
+
+
+def reconcile_plan(s: _Snapshot):
     accounts = s["nb_accounts"]
     require(len(accounts) == 1, "Exactly one reviewed NetBird account required")
     account = accounts[0]
@@ -69,10 +210,7 @@ def reconcile_plan(s):
         and provider.get("authorization_flow"),
         "Stable UUID subject and authentication flows required",
     )
-    stage_ids = {
-        b["stage"].get("pk") if isinstance(b.get("stage"), dict) else b.get("stage")
-        for b in s["ak_flow_bindings"]
-    }
+    stage_ids = {flow_stage_id(b) for b in s["ak_flow_bindings"]}
     validators = [stage for stage in s["ak_mfa"] if stage["pk"] in stage_ids]
     require(
         validators
@@ -212,7 +350,9 @@ def reconcile_plan(s):
     return operations
 
 
-def membership_plan(s, username, expected_uuid, revoke=False):
+def membership_plan(
+    s: _Snapshot, username: str | None, expected_uuid: str | None, *, revoke: bool = False
+):
     require(
         username and expected_uuid,
         "Explicit username and independently reviewed Authentik UUID required",
@@ -248,7 +388,7 @@ def membership_plan(s, username, expected_uuid, revoke=False):
     ]
 
 
-def subject_identity(value):
+def subject_identity(value: str):
     """Decode Dex's exact protobuf (subject, connector); never match by email."""
     raw = base64.b64decode(value + "=" * (-len(value) % 4), validate=True)
     offset = 0
@@ -273,8 +413,8 @@ def subject_identity(value):
     return tuple(fields)
 
 
-def offboard_plan(s, username, expected_uuid):
-    membership = membership_plan(s, username, expected_uuid, True)
+def offboard_plan(s: _Snapshot, username: str | None, expected_uuid: str | None):
+    membership = membership_plan(s, username, expected_uuid, revoke=True)
     app = unique(s["ak_apps"], "slug", APP)
     provider = unique(s["ak_providers"], "pk", app["provider"])
     idp = unique(
@@ -335,7 +475,7 @@ def offboard_plan(s, username, expected_uuid):
 
 
 class API:
-    def __init__(self, nb_credentials, ak_credentials):
+    def __init__(self, nb_credentials: str, ak_credentials: str):
         self.nb = json.loads(Path(nb_credentials).read_text())["token"]
         self.ak = json.loads(Path(ak_credentials).read_text())["AUTHENTIK_BOOTSTRAP_TOKEN"]
 
@@ -345,7 +485,7 @@ class API:
 
         self.opener = urllib.request.build_opener(NoRedirect)
 
-    def call(self, system, method, path, body=None):
+    def call(self, system: str, method: str, path: str, body: object | None = None):
         require(
             system in ("ak", "nb") and not path.startswith("/") and "://" not in path,
             "Invalid owned API path",
@@ -369,8 +509,8 @@ class API:
             content = response.read()
             return json.loads(content) if content else None
 
-    def rows(self, path):
-        result = []
+    def rows(self, path: str):
+        result: list[object] = []
         for page in range(1, 1001):
             data = self.call(
                 "ak",
@@ -407,7 +547,7 @@ class API:
         return state
 
 
-def atomic(path, value):
+def atomic(path: Path, value: object):
     temp = path.with_suffix(".tmp")
     fd = os.open(temp, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
     with os.fdopen(fd, "w") as f:
@@ -417,7 +557,7 @@ def atomic(path, value):
     os.replace(temp, path)
 
 
-def check_state_folder(folder):
+def check_state_folder(folder: Path):
     require(
         folder.is_absolute() and not folder.is_symlink(),
         "Absolute private state directory required",
@@ -435,7 +575,12 @@ def check_state_folder(folder):
             )
 
 
-def build_plan(state, action, username=None, expected_uuid=None):
+def build_plan(
+    state: _Snapshot,
+    action: str,
+    username: str | None = None,
+    expected_uuid: str | None = None,
+):
     infrastructure = reconcile_plan(state)
     if action == "reconcile":
         return infrastructure
@@ -443,7 +588,9 @@ def build_plan(state, action, username=None, expected_uuid=None):
     return (
         offboard_plan(state, username, expected_uuid)
         if action == "offboard"
-        else membership_plan(state, username, expected_uuid, action == "revoke")
+        else membership_plan(
+            state, username, expected_uuid, revoke=(action == "revoke")
+        )
     )
 
 
