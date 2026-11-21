@@ -1,4 +1,4 @@
-"""Copy confirmed hourly S3 blocks to the local 1h shelf. Never mutate the source."""
+"""Publish verified hourly S3 blocks; tier.py separately handles retention markers."""
 
 import datetime
 import hashlib
@@ -26,7 +26,9 @@ class Bucket:
             cafile=cfg["http_config"]["tls_config"]["ca_file"]
         )
 
-    def read(self, key="", query=None, *, sink=None, method="GET", absent=False):
+    def read(
+        self, key="", query=None, *, sink=None, method="GET", absent=False, payload=None
+    ):
         c = self.cfg
         now = datetime.datetime.now(datetime.timezone.utc)
         stamp = now.strftime("%Y%m%dT%H%M%SZ")
@@ -34,7 +36,7 @@ class Bucket:
         host = c["endpoint"]
         path = "/" + c["bucket"] + "/" + quote(key, safe="/")
         q = urlencode(sorted((query or {}).items()), quote_via=quote)
-        digest = hashlib.sha256(b"").hexdigest()
+        digest = hashlib.sha256(payload or b"").hexdigest()
         hdrs = {"host": host, "x-amz-content-sha256": digest, "x-amz-date": stamp}
         names = ";".join(hdrs)
         canon = "\n".join(
@@ -65,7 +67,9 @@ class Bucket:
         )
         conn = http.client.HTTPSConnection(host, context=self.ctx, timeout=120)
         try:
-            conn.request(method, path + ("?" + q if q else ""), headers=hdrs)
+            conn.request(
+                method, path + ("?" + q if q else ""), body=payload, headers=hdrs
+            )
             res = conn.getresponse()
             if absent and res.status == 404:
                 return None
@@ -134,7 +138,7 @@ def hashes(root):
 def run(bucket, dest):
     if not dest.is_dir():
         raise ValueError("destination not mounted")
-    confirmed = 0
+    confirmed = set()
     for prefix in sorted(bucket.listing(groups=True)):
         uid = prefix.rstrip("/")
         if not ULID.fullmatch(uid):
@@ -222,9 +226,30 @@ def run(bucket, dest):
                 fd = os.open(dest, os.O_DIRECTORY)
                 os.fsync(fd)
                 os.close(fd)
-            confirmed += 1
+            # Retain proof even when the local compactor replaces this exact block.
+            receipts = dest / ".tier-receipts"
+            receipts.mkdir(exist_ok=True)
+            receipt = receipts / uid
+            body = json.dumps(
+                {"meta_sha256": hashlib.sha256(meta).hexdigest(), "files": expected},
+                sort_keys=True,
+            ).encode()
+            if receipt.exists():
+                if receipt.read_bytes() != body:
+                    raise IOError("conflicting copy receipt")
+            else:
+                with tempfile.NamedTemporaryFile(dir=receipts) as f:
+                    f.write(body)
+                    f.flush()
+                    os.fsync(f.fileno())
+                    os.link(f.name, receipt)
+                fd = os.open(receipts, os.O_DIRECTORY)
+                os.fsync(fd)
+                os.close(fd)
+            confirmed.add(uid)
             print("confirmed hour", uid, "files", len(rel), flush=True)
-    print("hourly blocks confirmed", confirmed, "no source mutation", flush=True)
+    print("hourly blocks confirmed", len(confirmed), flush=True)
+    return confirmed
 
 
 if __name__ == "__main__":
