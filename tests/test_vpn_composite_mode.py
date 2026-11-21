@@ -1,11 +1,11 @@
 """Tests for VPN composite mode configuration."""
 
 import json
-from pathlib import Path
 import shutil
 import subprocess
 import tempfile
 import unittest
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 P = next(
