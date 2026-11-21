@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from typing import cast
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
@@ -135,16 +136,16 @@ class TrafficLightArgoTest(unittest.TestCase):
 
     @unittest.skipUnless(shutil.which("promtool"), "promtool needed for PromQL semantics")
     def test_promql_partition_latest_labels_and_telemetry_gaps(self):
-        def series(name, values="1+0x120"):
+        def series(name, values="1+0x120") -> dict[str, str]:
             return {"series": name, "values": values}
 
-        def app(name, health="Healthy", sync="Synced", values="1+0x120"):
+        def app(name, health="Healthy", sync="Synced", values="1+0x120") -> dict[str, str]:
             return series(
                 f'argocd_app_info{{job="socrat-argocd",name="{name}",health_status="{health}",sync_status="{sync}"}}',
                 values,
             )
 
-        def checks(counts, when="30m"):
+        def checks(counts, when="30m") -> list[dict[str, object]]:
             if len(counts) == 5:
                 counts = counts + [None if counts[0] is None else 0]
             return [
@@ -214,7 +215,7 @@ class TrafficLightArgoTest(unittest.TestCase):
             },
         ]
 
-        def app_check(values, when="30m"):
+        def app_check(values, when="30m") -> dict[str, object]:
             return {
                 "expr": lab.application_query(),
                 "eval_time": when,
@@ -223,18 +224,18 @@ class TrafficLightArgoTest(unittest.TestCase):
                 ],
             }
 
-        cases[0]["promql_expr_test"].append(
+        cast("list[object]", cases[0]["promql_expr_test"]).append(
             app_check(
                 [("a", 5), ("b", 4), ("c", 3), ("d", 6), ("e", 1), ("f", 2), ("g", 2), ("root", 1)]
             )
         )
-        cases[1]["promql_expr_test"].append(app_check([("a", 5)]))
+        cast("list[object]", cases[1]["promql_expr_test"]).append(app_check([("a", 5)]))
         for case in cases[2:6]:
-            case["promql_expr_test"].append(app_check([], case["promql_expr_test"][0]["eval_time"]))
+            expr_tests = cast("list[dict[str, object]]", case["promql_expr_test"])
+            expr_tests.append(app_check([], expr_tests[0]["eval_time"]))
         for case in cases[6:]:
-            case["promql_expr_test"].append(
-                app_check([("a", 1)], case["promql_expr_test"][0]["eval_time"])
-            )
+            expr_tests = cast("list[dict[str, object]]", case["promql_expr_test"])
+            expr_tests.append(app_check([("a", 1)], expr_tests[0]["eval_time"]))
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "queries.yaml"
             path.write_text(

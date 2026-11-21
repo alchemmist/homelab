@@ -14,7 +14,7 @@ spec.loader.exec_module(m)
 def test_relay_latch_is_not_sufficient_and_split_brain_unknown():
     p = m.PROFILES["socrat-4"]
 
-    def state(mode, agent, native, marker):
+    def state(mode, agent, native, marker) -> dict[str, object]:
         return {
             "mode": mode,
             "agent_active": agent,
@@ -98,7 +98,7 @@ def test_moscow_reuses_actual_watchdog_observation_without_more_tls_or_lock(tmp_
         (net / name).write_text("header\n")
     (net / "tcp").write_text("header\n0: 00000000:01BB 00000000:0000 0A\n")
 
-    def run(args, timeout=30):
+    def run(args, timeout=30) -> object:
         assert args[:2] == ["systemctl", "show"]
         return SimpleNamespace(
             returncode=0,

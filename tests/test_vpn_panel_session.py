@@ -65,7 +65,7 @@ class SessionTests(unittest.TestCase):
             calls = []
             values = {"bootstrap": "B" * 48, "cleanup": "C" * 48, "worker": "W" * 48}
 
-            def insert(kind, scope, expires=0):
+            def insert(kind, scope, expires=0) -> dict[str, object]:
                 row = {
                     "id": max([x["id"] for x in rows] + [0]) + 1,
                     "name": s.names[kind],
@@ -84,7 +84,7 @@ class SessionTests(unittest.TestCase):
                     "token": values[kind],
                 }
 
-            def cli(args, **kwargs):
+            def cli(args, **kwargs) -> object:
                 self.assertIn("-tokenName", args)
                 self.assertIn(s.names["bootstrap"], args)
                 self.assertNotIn("existing", args)
@@ -92,7 +92,7 @@ class SessionTests(unittest.TestCase):
                 kwargs["stdout"].write("apiToken: " + values["bootstrap"] + "\n")
                 return type("Result", (), {"returncode": 0})()
 
-            def api(base, token, method, path, body=None):
+            def api(base, token, method, path, body=None) -> object:
                 calls.append((token, method, path, body))
                 if path.endswith("/create"):
                     kind = next(k for k in values if s.names[k] == body["name"])
@@ -107,7 +107,7 @@ class SessionTests(unittest.TestCase):
                 self.assertEqual(token, values["worker"])
                 return []
 
-            def directory(path):
+            def directory(path: Path) -> Path:
                 path.mkdir(mode=0o700)
                 return path
 
@@ -160,7 +160,7 @@ class SessionTests(unittest.TestCase):
             state = Path(tmp).resolve() / "vpn83-20261108-approval"
             s = m.NativeSession(state)
 
-            def directory(path):
+            def directory(path: Path) -> Path:
                 path.mkdir(mode=0o700)
                 return path
 

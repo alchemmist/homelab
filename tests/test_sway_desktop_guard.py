@@ -99,28 +99,30 @@ class GraphicsWake(unittest.TestCase):
         payload = struct.pack("llHHi", 1, 0, graphics.EV_KEY, graphics.KEY_SPACE, 1)
 
         class Device:
-            def read(self, _size):
+            def read(self, _size) -> bytes:
                 return payload
 
-            def close(self):
+            def close(self) -> None:
                 pass
 
         spawned = []
         graphics.graphics_up = lambda **_kwargs: spawned.append("up")
         graphics.graphics_down = lambda: None
 
-        def stop_after_one_read():
+        def stop_after_one_read() -> None:
             watch_once(Device())
 
-        def watch_once(device):
+        def watch_once(device) -> None:
             original = graphics.watch
 
-            def open_devices():
+            def open_devices() -> list[object]:
                 return [device]
 
             readable = []
 
-            def fake_select(devices, _write, _error, _timeout):
+            def fake_select(
+                devices, _write, _error, _timeout
+            ) -> tuple[list[object], list[object], list[object]]:
                 if readable:
                     raise SystemExit
                 readable.append(devices[0])

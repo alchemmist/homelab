@@ -35,7 +35,7 @@ class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn("error", await GUARD.bounded_fetch({"url": "https://example.com"}))
 
     async def test_upstream_refusal_does_not_start_fetch(self):
-        async def original(form_data, metadata, event_caller, call):
+        async def original(form_data, metadata, event_caller, call) -> object:
             return {"error": "Tool call was not approved"}
 
         execute = GUARD.guarded_execute(original)
@@ -54,7 +54,7 @@ class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
         processes = []
         started = asyncio.Event()
 
-        async def spawn(*args, **kwargs):
+        async def spawn(*args, **kwargs) -> asyncio.subprocess.Process:
             process = await original(*args, **kwargs)
             processes.append(process)
             started.set()
@@ -85,7 +85,7 @@ class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
         await self.check_termination(True)
 
     async def test_only_builtin_fetch_is_intercepted(self):
-        async def original(form_data, metadata, event_caller, call):
+        async def original(form_data, metadata, event_caller, call) -> object:
             tool = metadata["tools"]["fetch_url"]
             result = await tool["callable"](**json.loads(call["function"]["arguments"]))
             return result
