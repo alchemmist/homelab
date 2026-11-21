@@ -18,7 +18,7 @@ class Deploy(unittest.TestCase):
             tracked = chart / "values.yaml"
             tracked.write_text("enabled: false\n")
 
-            def git(*args):
+            def git(*args: str) -> str:
                 return (
                     subprocess.check_output(["git", "-C", tmp, *args], stderr=subprocess.DEVNULL)
                     .decode()
@@ -47,7 +47,7 @@ class Deploy(unittest.TestCase):
             helm.chmod(0o755)
             env = dict(os.environ, PATH=str(binpath) + os.pathsep + os.environ["PATH"])
 
-            def run(revision):
+            def run(revision: str):
                 return subprocess.run(
                     ["bash", str(script), "--apply", revision, str(values)],
                     cwd="/",

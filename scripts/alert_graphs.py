@@ -11,8 +11,9 @@ import json
 import re
 import subprocess
 from collections import defaultdict
+from collections.abc import Sequence
 from pathlib import Path
-from typing import cast
+from typing import NotRequired, TypedDict
 
 import yaml
 
@@ -30,7 +31,20 @@ OWNERS = [
 ]
 
 
-def unparen(expr) -> str:
+class _AlertBody(TypedDict):
+    alert: str
+    expr: str
+
+
+class _AlertRule(TypedDict):
+    owner: str
+    group: str
+    resource: str
+    rule: _AlertBody
+    uid: NotRequired[str]
+
+
+def unparen(expr: str):
     expr = expr.strip()
     while expr.startswith("(") and expr.endswith(")"):
         depth, quote, escaped, closes = 0, None, False, None
@@ -55,11 +69,10 @@ def unparen(expr) -> str:
         if closes != len(expr) - 1:
             break
         expr = expr[1:-1].strip()
-    expression: str = expr
-    return expression
+    return expr
 
 
-def diagnostic(expr) -> tuple[str, float | None, str]:
+def diagnostic(expr: str):
     """Remove only a root numeric comparison; never rewrite inner PromQL logic."""
     expr = unparen(expr)
     depth, quote, escaped = 0, None, False
@@ -96,7 +109,7 @@ def diagnostic(expr) -> tuple[str, float | None, str]:
     )
 
 
-def operands(expr) -> list[tuple[str, float | None, str]]:
+def operands(expr: str):
     """Expose logical/comparison inputs without mutating the actual alert rule."""
     expr = unparen(expr)
     depth, quote, escaped = 0, None, False
@@ -129,7 +142,7 @@ def operands(expr) -> list[tuple[str, float | None, str]]:
     return [(value, None, reason)]
 
 
-def render_owner(owner) -> list[dict[str, object]]:
+def render_owner(owner: str):
     app = yaml.safe_load((ROOT / "deploy/argocd/apps" / f"{owner}.yaml").read_text())
     source = app["spec"].get("source")
     if source is None:
@@ -155,19 +168,17 @@ def render_owner(owner) -> list[dict[str, object]]:
     ]
 
 
-def inventory() -> list[dict[str, object]]:
+def inventory():
     rules = []
     for owner in OWNERS:
         for resource in render_owner(owner):
-            for group in cast(
-                "list[dict[str, object]]", cast("dict[str, object]", resource["spec"])["groups"]
-            ):
-                for rule in cast("list[dict[str, object]]", group["rules"]):
+            for group in resource["spec"]["groups"]:
+                for rule in group["rules"]:
                     if "alert" in rule:
                         rules.append(
                             {
                                 "owner": owner,
-                                "resource": cast("dict[str, object]", resource["metadata"])["name"],
+                                "resource": resource["metadata"]["name"],
                                 "group": group["name"],
                                 "rule": rule,
                             }
@@ -179,14 +190,13 @@ def inventory() -> list[dict[str, object]]:
     )
     for resource in yaml.safe_load_all(rendered):
         if isinstance(resource, dict) and resource.get("kind") == "PrometheusRule":
-            spec = cast("dict[str, object]", resource["spec"])
-            for group in cast("list[dict[str, object]]", spec["groups"]):
-                for rule in cast("list[dict[str, object]]", group["rules"]):
+            for group in resource["spec"]["groups"]:
+                for rule in group["rules"]:
                     if "alert" in rule:
                         rules.append(
                             {
                                 "owner": "rancher",
-                                "resource": cast("dict[str, object]", resource["metadata"])["name"],
+                                "resource": resource["metadata"]["name"],
                                 "group": group["name"],
                                 "rule": rule,
                             }
@@ -209,8 +219,9 @@ def inventory() -> list[dict[str, object]]:
 
 
 def build(
-    rules, panel_ids=None
-) -> tuple[dict[str, object], dict[str, dict[str, object]], list[dict[str, object]]]:
+    rules: Sequence[_AlertRule],
+    panel_ids: dict[str, dict[str, int]] | None = None,
+):
     # Append-only IDs preserve historical graph URLs when sorted rule names grow.
     panel_ids = {} if panel_ids is None else panel_ids
     for uid, names in panel_ids.items():
@@ -222,34 +233,27 @@ def build(
     grouped = defaultdict(list)
     for item in rules:
         grouped[(item["owner"], item["rule"]["alert"])].append(item)
-    dashboards: dict[str, object] = {}
-    mappings: defaultdict[str, dict[str, object]] = defaultdict(dict)
-    rows: list[dict[str, object]] = []
+    dashboards, mappings, rows = {}, defaultdict(dict), []
     for (owner, name), variants in sorted(grouped.items()):
-        group = cast("str", variants[0]["group"])
+        group = variants[0]["group"]
         uid = "alerts-" + hashlib.sha256((owner + "/" + group).encode()).hexdigest()[:16]
-        dashboard = cast(
-            "dict[str, object]",
-            dashboards.setdefault(
-                uid,
-                {
-                    "uid": uid,
-                    "title": "Alerts / " + owner + " / " + group,
-                    "schemaVersion": 39,
-                    "version": 1,
-                    "editable": False,
-                    "timezone": "utc",
-                    "tags": ["socrat", "alert-diagnostics"],
-                    "refresh": "1m",
-                    "time": {"from": "now-1h", "to": "now"},
-                    "templating": {"list": []},
-                    "panels": [],
-                },
-            ),
+        dashboard = dashboards.setdefault(
+            uid,
+            {
+                "uid": uid,
+                "title": "Alerts / " + owner + " / " + group,
+                "schemaVersion": 39,
+                "version": 1,
+                "editable": False,
+                "timezone": "utc",
+                "tags": ["socrat", "alert-diagnostics"],
+                "refresh": "1m",
+                "time": {"from": "now-1h", "to": "now"},
+                "templating": {"list": []},
+                "panels": [],
+            },
         )
-        targets: list[dict[str, object]] = []
-        reasons: list[str] = []
-        thresholds: list[float] = []
+        targets, reasons, thresholds = [], [], []
         for index, item in enumerate(variants):
             for expr, threshold, reason in operands(str(item["rule"]["expr"])):
                 if expr in ("vector(0)", "vector(1)") and len(variants) > 1:
@@ -297,7 +301,7 @@ def build(
                 "legend": {"displayMode": "table", "placement": "bottom"},
             },
         }
-        cast("list[dict[str, object]]", dashboard["panels"]).append(panel)
+        dashboard["panels"].append(panel)
         state = {
             **panel,
             "id": base + 1,
@@ -335,7 +339,7 @@ def build(
                 },
                 "overrides": [],
             }
-        cast("list[dict[str, object]]", dashboard["panels"]).append(state)
+        dashboard["panels"].append(state)
         spec = {
             "version": 1,
             "graphs": [
@@ -375,7 +379,7 @@ def build(
     return dashboards, dict(mappings), rows
 
 
-def outputs(rules) -> tuple[dict[Path, str], dict[str, dict[str, object]]]:
+def outputs(rules: Sequence[_AlertRule]):
     registry_path = ROOT / "deploy/monitoring/alert-graph-panel-ids.json"
     registry = json.loads(registry_path.read_text())
     if registry["schemaVersion"] != 1:
@@ -387,10 +391,10 @@ def outputs(rules) -> tuple[dict[Path, str], dict[str, dict[str, object]]]:
             json.dumps(dashboard, indent=2) + "\n"
         )
     result[ROOT / "docs/monitoring/alert-graphs.inventory.json"] = json.dumps(rows, indent=2) + "\n"
-    policy: dict[str, list[str]] = {
+    policy = {
         uid + ":" + str(panel["id"]): []
         for uid, dashboard in dashboards.items()
-        for panel in cast("list[dict[str, object]]", cast("dict[str, object]", dashboard)["panels"])
+        for panel in dashboard["panels"]
     }
     result[ROOT / "charts/grafana/alert-graphs.policy.values.yaml"] = yaml.safe_dump(
         {"alertGraphs": {"panels": policy}}, sort_keys=True, explicit_start=True, explicit_end=True
@@ -405,7 +409,7 @@ def outputs(rules) -> tuple[dict[Path, str], dict[str, dict[str, object]]]:
             "node-exporter",
             "kube-state-metrics",
         ):
-            value: dict[str, object] = {
+            value = {
                 "kube-prometheus-stack": {
                     "defaultRules": {
                         "additionalRuleAnnotations": {
@@ -429,8 +433,7 @@ def outputs(rules) -> tuple[dict[Path, str], dict[str, dict[str, object]]]:
                                 rule.setdefault("annotations", {})["spi_graphs"] = json.dumps(
                                     mapping[rule["alert"]], separators=(",", ":")
                                 )
-                stack = cast("dict[str, object]", value["kube-prometheus-stack"])
-                stack["additionalPrometheusRulesMap"] = extra
+                value["kube-prometheus-stack"]["additionalPrometheusRulesMap"] = extra
         else:
             value = {
                 "alertGraphAnnotations": {
@@ -469,13 +472,12 @@ def main() -> None:
             path = ROOT / relative
             obj = json.loads(path.read_text())
             for rule in obj["rules"]:
-                spec = cast("dict[str, object]", mappings["grafana-managed"][rule["title"]])
+                spec = mappings["grafana-managed"][rule["title"]]
                 rule.setdefault("annotations", {})["spi_graphs"] = json.dumps(
                     spec, separators=(",", ":")
                 )
-                graphs = cast("list[dict[str, object]]", spec["graphs"])
-                rule["annotations"]["__dashboardUid__"] = graphs[0]["dashboard_uid"]
-                rule["annotations"]["__panelId__"] = str(graphs[0]["panel_id"])
+                rule["annotations"]["__dashboardUid__"] = spec["graphs"][0]["dashboard_uid"]
+                rule["annotations"]["__panelId__"] = str(spec["graphs"][0]["panel_id"])
             path.write_text(json.dumps(obj, indent=2) + "\n")
     print(
         "Rules:",

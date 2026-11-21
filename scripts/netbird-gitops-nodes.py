@@ -11,6 +11,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from typing import TypedDict
 
 import yaml
 
@@ -22,19 +23,45 @@ node = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(node)
 
 
-def desired(values, inventory, image):
-    hosts = set()
+class _ResourceMeta(TypedDict, total=False):
+    namespace: str
+    name: str
 
-    def visit(group):
+
+class _Resource(TypedDict):
+    kind: str
+    metadata: _ResourceMeta
+
+
+class _Values(TypedDict):
+    nodes: dict[str, str]
+    resources: list[_Resource]
+
+
+def desired(values: _Values, inventory: dict[str, object], image: str):
+    hosts: set[str] = set()
+
+    def visit(group: str):
         entry = inventory.get(group, {})
+        if not isinstance(entry, dict):
+            message = "inventory group entries must be mappings"
+            raise TypeError(message)
         hosts.update(entry.get("hosts", []))
         for child in entry.get("children", []):
             visit(child)
 
     visit("Socrat")
-    hostvars = inventory["_meta"]["hostvars"]
+    meta = inventory.get("_meta", {})
+    if not isinstance(meta, dict):
+        message = "inventory _meta entry must be a mapping"
+        raise TypeError(message)
+    hostvars = meta.get("hostvars", {})
+    if not isinstance(hostvars, dict):
+        message = "inventory _meta.hostvars entry must be a mapping"
+        raise TypeError(message)
     node.require(hosts, "explicit Socrat inventory required")
-    addresses, reserved = {}, set()
+    addresses: dict[str, str] = {}
+    reserved: set[str] = set()
     for host in sorted(hosts):
         variables = hostvars[host]
         reserved.update(v["address"] for v in variables["wg_socrat_admin_clients"].values())

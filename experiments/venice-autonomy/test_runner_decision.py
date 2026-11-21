@@ -4,28 +4,33 @@ import pathlib
 import shutil
 import tempfile
 import unittest
-from typing import cast
 from unittest import mock
 
-import attempt
 import repository_runner
+import attempt
 
 
 class FakeEnvironment:
-    def __init__(self, snapshot, directory, image, protocol):
+    def __init__(
+        self,
+        snapshot: pathlib.Path,
+        directory: pathlib.Path,
+        image: str,
+        protocol: object,
+    ):
         self.container_id = "fake"
-        self.events = []
+        self.events: list[object] = []
         self.protocol = protocol
         directory.mkdir()
 
-    def snapshot(self, destination) -> None:
+    def snapshot(self, destination: pathlib.Path) -> None:
         shutil.copytree(os.environ["DECISION_CANDIDATE"], destination)
 
     def close(self) -> None:
         self.container_id = None
 
 
-def passing_verdict() -> dict[str, object]:
+def passing_verdict():
     return {
         "passed": True,
         "agent_protocol_unchanged": True,
@@ -37,8 +42,13 @@ def passing_verdict() -> dict[str, object]:
 
 class FinalDecisionTests(unittest.TestCase):
     def run_main(
-        self, verdict, candidate_main, clean=True, cleanup_error=False
-    ) -> tuple[int, dict[str, object]]:
+        self,
+        verdict: object,
+        candidate_main: str,
+        *,
+        clean: bool = True,
+        cleanup_error: bool = False,
+    ):
         root = tempfile.TemporaryDirectory()
         self.addCleanup(root.cleanup)
         base = pathlib.Path(root.name)
@@ -72,7 +82,7 @@ class FinalDecisionTests(unittest.TestCase):
                     raise RuntimeError("cleanup failed")
                 super().close()
 
-        def invoke(*args, **kwargs):
+        def invoke(*args: object, **kwargs: object) -> dict[str, str]:
             if not clean:
                 raise RuntimeError("provider failed")
             return {"exit_status": "ConversationExecutionStatus.FINISHED"}
@@ -103,7 +113,7 @@ class FinalDecisionTests(unittest.TestCase):
             ):
                 code = repository_runner.main([])
         summary_path = next((base / "out").glob("live-*/summary.json"))
-        return code, cast("dict[str, object]", json.loads(summary_path.read_text()))
+        return code, json.loads(summary_path.read_text())
 
     def test_clean_valid_candidate_is_overall_success(self) -> None:
         source = "class BrowserSession:\n    async def _answer(self):\n        return 1\n"
@@ -211,10 +221,8 @@ class AcceptanceFeedbackTests(unittest.TestCase):
             ):
                 facts = repository_runner.sdk_acceptance(environment, root, 0)
             self.assertFalse(facts["accepted"])
-            verification = cast("dict[str, object]", facts["verification"])
-            self.assertEqual(verification["allowed_edits"], verdict["allowed_edits"])
-            tests = cast("list[dict[str, object]]", verification["tests"])
-            receipt = cast("str", tests[0]["stderr_tail"])
+            self.assertEqual(facts["verification"]["allowed_edits"], verdict["allowed_edits"])
+            receipt = facts["verification"]["tests"][0]["stderr_tail"]
             self.assertIn("Model returned no assistant content", receipt)
             self.assertLessEqual(len(receipt), 1600)
 
@@ -253,6 +261,5 @@ class SnapshotRejectionTests(unittest.TestCase):
                 facts = repository_runner.sdk_acceptance(environment, pathlib.Path(temp), 0)
             self.assertFalse(facts["accepted"])
             self.assertTrue(facts["continue"])
-            verification = cast("dict[str, object]", facts["verification"])
-            self.assertIn("debug", cast("str", verification["snapshot_error"]))
+            self.assertIn("debug", facts["verification"]["snapshot_error"])
             environment.protocol.grade_candidate_container.assert_not_called()

@@ -1,15 +1,13 @@
 import io
 import json
-import subprocess
 import tarfile
 import unittest
-from typing import cast
 
 from fixtures import cases_for, check_verdict, expected
 from sandbox import inspect_archive
 
 
-def archive(entries) -> bytes:
+def archive(entries: list[tuple[str, bytes, bytes]]):
     buffer = io.BytesIO()
     with tarfile.open(fileobj=buffer, mode="w") as stream:
         for name, content, kind in entries:
@@ -221,10 +219,9 @@ SPOOF = (
 
 
 class NodeVerifierTests(unittest.TestCase):
-    def run_source(
-        self, task, source, seed=7
-    ) -> "tuple[dict[str, object], subprocess.CompletedProcess[str]]":
+    def run_source(self, task: str, source: str, seed: int = 7):
         import pathlib
+        import subprocess
         import tempfile
         from fixtures import verifier_command, seal_execution
 
@@ -329,15 +326,13 @@ class ControllerTests(unittest.TestCase):
 
         state = initial_state(120, 1)
         deadline = state["deadline"]
-        tasks = cast("list[dict[str, object]]", state["tasks"])
-        task = tasks[0]
+        task = state["tasks"][0]
         state["running"] = {"task_id": task["id"], "directory": "/private/test"}
         recover_interrupted(state)
         self.assertEqual(state["deadline"], deadline)
         self.assertEqual(task["status"], "pending")
-        attempts = cast("list[dict[str, object]]", task["attempts"])
-        self.assertFalse(attempts[0]["accepted"])
-        self.assertEqual(attempts[0]["controller_error"], "interrupted_attempt")
+        self.assertFalse(task["attempts"][0]["accepted"])
+        self.assertEqual(task["attempts"][0]["controller_error"], "interrupted_attempt")
         self.assertIsNone(state["running"])
 
     def test_atomic_checkpoint(self) -> None:

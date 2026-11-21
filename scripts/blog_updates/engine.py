@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime as dt
 import json
 import re
-from typing import cast
+from typing import NotRequired, TypedDict
 
 REPO = "alchemmist/blog"
 UPDATES = "site/content/updates.md"
@@ -18,20 +18,65 @@ class UnsafeInput(ValueError):
     pass
 
 
-def validate_event(event) -> bool:
+class _PushRepository(TypedDict, total=False):
+    full_name: str
+
+
+class _PushEvent(TypedDict, total=False):
+    repository: _PushRepository
+    ref: str
+    deleted: bool
+    before: str
+    after: str
+
+
+class _CompareFile(TypedDict):
+    filename: str
+    status: NotRequired[str]
+    changes: NotRequired[int]
+    patch: NotRequired[str]
+    previous_filename: NotRequired[str]
+    additions: NotRequired[int]
+    deletions: NotRequired[int]
+
+
+class _CommitDetails(TypedDict, total=False):
+    message: str
+    committer: dict[str, str]
+
+
+class _CompareCommit(TypedDict):
+    sha: str
+    commit: NotRequired[_CommitDetails]
+
+
+class _ComparePayload(TypedDict, total=False):
+    files: list[_CompareFile]
+    commits: list[_CompareCommit]
+
+
+class _DecisionFile(TypedDict):
+    filename: str
+
+
+class _DecisionContext(TypedDict):
+    files: list[_DecisionFile]
+
+
+def validate_event(event: _PushEvent) -> bool:
     if event.get("repository", {}).get("full_name") != REPO:
         raise UnsafeInput("Unexpected repository")
     if event.get("ref") != "refs/heads/main" or event.get("deleted"):
         return False
-    for key in ("before", "after"):
-        if not re.fullmatch(r"[0-9a-f]{40}", event.get(key, "")):
+    for sha in (event.get("before", ""), event.get("after", "")):
+        if not re.fullmatch(r"[0-9a-f]{40}", sha):
             raise UnsafeInput("Invalid commit SHA")
-        if event[key] == "0" * 40:
+        if sha == "0" * 40:
             raise UnsafeInput("Branch creation/deletion needs manual review")
     return True
 
 
-def prepare(compare, updates) -> dict[str, object] | None:
+def prepare(compare: _ComparePayload, updates: str):
     files = compare.get("files", [])
     if not files or len(files) > MAX_FILES:
         raise UnsafeInput("Missing or oversized file list; do not silently truncate")
@@ -43,7 +88,7 @@ def prepare(compare, updates) -> dict[str, object] | None:
     ]
     if not relevant:
         return None
-    candidates = []
+    candidates: list[dict[str, object]] = []
     for f in relevant:
         name = f["filename"]
         if f.get("status") in ("removed", "renamed"):
@@ -57,20 +102,18 @@ def prepare(compare, updates) -> dict[str, object] | None:
         if binary_asset:
             candidates.append({"filename": name, "status": f.get("status"), "binary_asset": True})
             continue
-        candidates.append(
-            {
-                k: f[k]
-                for k in (
-                    "filename",
-                    "previous_filename",
-                    "status",
-                    "additions",
-                    "deletions",
-                    "patch",
-                )
-                if k in f
-            }
-        )
+        selected: dict[str, object] = {}
+        for field in (
+            "filename",
+            "previous_filename",
+            "status",
+            "additions",
+            "deletions",
+            "patch",
+        ):
+            if field in f:
+                selected[field] = f[field]
+        candidates.append(selected)
     context = {
         "files": candidates,
         "recent_updates": updates,
@@ -84,7 +127,7 @@ def prepare(compare, updates) -> dict[str, object] | None:
     return context
 
 
-def validate_decision(raw, context) -> dict[str, object]:
+def validate_decision(raw: object, context: _DecisionContext):
     """Model chooses a description, never a path to write or arbitrary Markdown."""
     if not isinstance(raw, dict) or set(raw) != {"should_update", "reason", "entries"}:
         raise UnsafeInput("Unexpected model schema")
@@ -112,11 +155,10 @@ def validate_decision(raw, context) -> dict[str, object]:
             or not all(isinstance(p, str) and p in paths for p in sources)
         ):
             raise UnsafeInput("Unsubstantiated entry")
-    validated: dict[str, object] = raw
-    return validated
+    return raw
 
 
-def render(updates, entries, timestamp) -> str:
+def render(updates: str, entries: list[dict[str, str]], timestamp: str):
     if not updates.startswith("---\n"):
         raise UnsafeInput("Missing front matter")
     end = updates.find("\n---\n", 4)
@@ -133,7 +175,6 @@ def render(updates, entries, timestamp) -> str:
     }
     lines = [l for l, e in zip(lines, entries) if e["text"].strip() not in existing]
     if not lines:
-        return cast("str", updates)
+        return updates
     offset = end + len("\n---\n")
-    content: str = updates[:offset] + "\n".join(lines) + "\n" + updates[offset:]
-    return content
+    return updates[:offset] + "\n".join(lines) + "\n" + updates[offset:]

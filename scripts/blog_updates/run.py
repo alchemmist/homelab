@@ -6,13 +6,46 @@ import json
 import os
 import urllib.request
 from pathlib import Path
-from typing import cast
+from typing import Protocol, TypedDict
 
 from engine import prepare, render, validate_decision, validate_event
 from github import GitHub
 
 
-def run(event, github, llm_url, llm_key, write=False) -> dict[str, object]:
+class _CommitDetails(TypedDict, total=False):
+    committer: dict[str, str]
+
+
+class _Commit(TypedDict, total=False):
+    sha: str
+    commit: _CommitDetails
+
+
+class _Compare(TypedDict, total=False):
+    commits: list[_Commit]
+
+
+class _PushEvent(TypedDict, total=False):
+    before: str
+    after: str
+
+
+class _GitHub(Protocol):
+    def compare(self, before: str, after: str) -> _Compare: ...
+
+    def read_updates(self, ref: str) -> tuple[str, str]: ...
+
+    def propose(self, after: str, content: str, reason: str) -> object: ...
+
+
+def run(
+    event: _PushEvent,
+    github: _GitHub,
+    llm_url: str,
+    llm_key: str,
+    *,
+    write: bool = False,
+):
     if not validate_event(event):
         return {"status": "ignored"}
     compare = github.compare(event["before"], event["after"])
@@ -48,17 +81,14 @@ def run(event, github, llm_url, llm_key, write=False) -> dict[str, object]:
     if not decision["should_update"]:
         return {"status": "skipped", "decision": decision}
     # Use the analyzed head commit's timestamp, never the model's invented date.
-    commits = cast("list[dict[str, object]]", compare.get("commits", []))
+    commits = compare.get("commits", [])
     head = next((c for c in commits if c["sha"] == event["after"]), None)
     if not head:
         raise ValueError("Missing head commit metadata")
-    commit = cast("dict[str, object]", head["commit"])
-    committer = cast("dict[str, object]", commit["committer"])
-    content = render(updates, decision["entries"], cast("str", committer["date"]))
+    content = render(updates, decision["entries"], head["commit"]["committer"]["date"])
     if not write:
         return {"status": "dry_run", "decision": decision, "proposed_updates": content}
-    outcome: dict[str, object] = github.propose(event["after"], content, decision["reason"])
-    return outcome
+    return github.propose(event["after"], content, decision["reason"])
 
 
 if __name__ == "__main__":
@@ -76,7 +106,7 @@ if __name__ == "__main__":
                 GitHub(a.github_key.read_text().strip()),
                 a.llm_url,
                 a.llm_key.read_text().strip(),
-                a.write,
+                write=a.write,
             ),
             ensure_ascii=False,
             indent=2,

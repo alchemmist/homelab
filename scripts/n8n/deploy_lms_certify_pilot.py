@@ -10,7 +10,7 @@ if api('GET','workflows/'+wid)['active']:
 def k(args, body=None):
  p=subprocess.run(['ssh','-o','BatchMode=yes','socrat-0','kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml -n automation '+args],input=body,text=True,capture_output=True);p.check_returncode();return p.stdout
 
-def put(kind,name,**body):
+def put(kind: str, name: str, **body: object) -> None:
  v={'Deployment':'apps/v1','NetworkPolicy':'networking.k8s.io/v1'}.get(kind,'v1'); version={'apiVersion':v,'kind':kind,'metadata':{'name':name,'namespace':ns},**body}; k('apply -f -',json.dumps(version))
 runner='lms-certification-runner'; db='lms-certification-db'; secret='lms-certification-pilot'
 if k('get secret certification-pg-common --ignore-not-found -o name').strip():
@@ -18,7 +18,7 @@ if k('get secret certification-pg-common --ignore-not-found -o name').strip():
 prior=k(f'get secret {secret} --ignore-not-found -o json'); keys={x:base64.b64decode(y).decode() for x,y in json.loads(prior)['data'].items()} if prior.strip() else {i:secrets.token_urlsafe(32) for i in ('RUNNER','JUDGE','POSTGRES_PASSWORD')}
 if not prior.strip(): put('Secret',secret,stringData=keys)
 def env(name,key):return dict(name=name,valueFrom={'secretKeyRef':{'name':secret,'key':key}})
-def deploy(name,container,volumes,**pod):
+def deploy(name: str, container: object, volumes: object, **pod: object) -> None:
  labels={'app':name}; put('Deployment',name,spec={'replicas':1,'strategy':{'type':'Recreate'},'selector':{'matchLabels':labels},'template':{'metadata':{'labels':labels},'spec':{'automountServiceAccountToken':False,'containers':[container],'volumes':volumes,**pod}}})
 def access(name,port):
  put('Service',name,spec={'selector':{'app':name},'ports':[{'port':port,'targetPort':port}]});put('NetworkPolicy',name,spec={'podSelector':{'matchLabels':{'app':name}},'policyTypes':['Ingress'],'ingress':[{'from':[{'podSelector':{'matchLabels':{'app':'n8n'}}}],'ports':[{'protocol':'TCP','port':port}]}]})

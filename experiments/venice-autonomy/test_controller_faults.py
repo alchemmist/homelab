@@ -8,11 +8,11 @@ import sys
 import tempfile
 import time
 import unittest
-from typing import cast
+from collections.abc import Mapping, Sequence
 
 
 class ControllerFaultTests(unittest.TestCase):
-    def setup_case(self, directory, behavior) -> tuple[pathlib.Path, list[str]]:
+    def setup_case(self, directory: str, behavior: str):
         root = pathlib.Path(directory)
         code = root / "code"
         code.mkdir()
@@ -313,13 +313,13 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
 
         state = initial_state(30, 1)
         self.assertEqual(DEFAULT_ENGINES, ("mini_native", "openhands"))
-        tasks = cast("list[dict[str, str]]", state["tasks"])
-        self.assertEqual([task["engine"] for task in tasks[:2]], ["mini_native", "openhands"])
-        self.assertNotIn("mini_text", {task["engine"] for task in tasks})
-        included = initial_state(30, 1, ("mini_native", "openhands", "mini_text"))
-        included_tasks = cast("list[dict[str, str]]", included["tasks"])
         self.assertEqual(
-            [task["engine"] for task in included_tasks[:3]],
+            [task["engine"] for task in state["tasks"][:2]], ["mini_native", "openhands"]
+        )
+        self.assertNotIn("mini_text", {task["engine"] for task in state["tasks"]})
+        included = initial_state(30, 1, ("mini_native", "openhands", "mini_text"))
+        self.assertEqual(
+            [task["engine"] for task in included["tasks"][:3]],
             ["mini_native", "openhands", "mini_text"],
         )
 
@@ -382,13 +382,14 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             calls = []
 
             def fake_run(
-                args,
-                capture_output=None,
-                text=None,
-                timeout=None,
-                check=False,
-                stdout=None,
-                stderr=None,
+                args: Sequence[str],
+                *,
+                capture_output: bool | None = None,
+                text: bool | None = None,
+                timeout: float | None = None,
+                check: bool = False,
+                stdout: int | str | None = None,
+                stderr: int | str | None = None,
             ):
                 calls.append(list(args))
 
@@ -531,13 +532,14 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             calls = []
 
             def fake_run(
-                args,
-                capture_output=None,
-                text=None,
-                timeout=None,
-                check=False,
-                stdout=None,
-                stderr=None,
+                args: Sequence[str],
+                *,
+                capture_output: bool | None = None,
+                text: bool | None = None,
+                timeout: float | None = None,
+                check: bool = False,
+                stdout: int | str | None = None,
+                stderr: int | str | None = None,
             ):
                 calls.append(list(args))
 
@@ -633,13 +635,14 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             calls = []
 
             def fake_run(
-                args,
-                capture_output=None,
-                text=None,
-                timeout=None,
-                check=False,
-                stdout=None,
-                stderr=None,
+                args: Sequence[str],
+                *,
+                capture_output: bool | None = None,
+                text: bool | None = None,
+                timeout: float | None = None,
+                check: bool = False,
+                stdout: int | str | None = None,
+                stderr: int | str | None = None,
             ):
                 calls.append(list(args))
 
@@ -691,13 +694,14 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
         calls = []
 
         def fake_run(
-            args,
-            capture_output=None,
-            text=None,
-            timeout=None,
-            check=False,
-            stdout=None,
-            stderr=None,
+            args: Sequence[str],
+            *,
+            capture_output: bool | None = None,
+            text: bool | None = None,
+            timeout: float | None = None,
+            check: bool = False,
+            stdout: int | str | None = None,
+            stderr: int | str | None = None,
         ):
             calls.append(list(args))
 
@@ -767,7 +771,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             state["running"] = running
             controller.save_state(root / "state.json", state)
 
-            def boom(record):
+            def boom(record: Mapping[str, object]):
                 raise ValueError("docker daemon refused")
 
             original = controller.cleanup_interrupted

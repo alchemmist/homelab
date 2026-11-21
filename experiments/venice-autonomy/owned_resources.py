@@ -1,13 +1,15 @@
+from __future__ import annotations
+
 import json
 import pathlib
 import subprocess
 
 
-def _result_text(result):
+def _result_text(result: subprocess.CompletedProcess[str]) -> str:
     return f"{result.stderr or ''}\n{result.stdout or ''}"
 
 
-def _daemon_or_auth(text):
+def _daemon_or_auth(text: str) -> bool:
     lowered = text.lower()
     markers = (
         "cannot connect",
@@ -19,7 +21,7 @@ def _daemon_or_auth(text):
     return any(marker in lowered for marker in markers)
 
 
-def _already_gone(result):
+def _already_gone(result: subprocess.CompletedProcess[str]) -> bool:
     if result.returncode == 0:
         return False
     text = _result_text(result)
@@ -29,11 +31,11 @@ def _already_gone(result):
     return "no such" in lowered or "not found" in lowered
 
 
-def _run(args, timeout):
+def _run(args: list[str], timeout: int) -> subprocess.CompletedProcess[str]:
     return subprocess.run(args, capture_output=True, text=True, timeout=timeout)
 
 
-def remove_container(container_id, expected) -> None:
+def remove_container(container_id: str, expected: str) -> None:
     if not container_id or any(part in container_id for part in ("/", "..", " ")):
         raise ValueError("refusing to clean an unsafe container id")
     inspection = _run(["docker", "inspect", container_id], 15)
@@ -57,7 +59,7 @@ def remove_container(container_id, expected) -> None:
         raise ValueError("container removal failed: " + detail)
 
 
-def remove_volume(volume, expected) -> None:
+def remove_volume(volume: str, expected: str) -> None:
     if not volume.startswith("venice-lab-") or any(part in volume for part in ("/", " ")):
         raise ValueError("refusing to clean an unrelated volume")
     inspection = _run(["docker", "volume", "inspect", volume], 15)
@@ -76,7 +78,7 @@ def remove_volume(volume, expected) -> None:
         raise ValueError("volume removal failed: " + detail)
 
 
-def cleanup_role(root) -> None:
+def cleanup_role(root: pathlib.Path | str) -> None:
     root = pathlib.Path(root)
     expected = str(root.resolve())
     errors = []

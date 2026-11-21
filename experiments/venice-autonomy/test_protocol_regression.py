@@ -6,17 +6,17 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from pathlib import Path
 from unittest import mock
+from pathlib import Path
 
 import protocol_regression as pilot
 
 
-def repo_path() -> Path:
+def repo_path():
     return Path(os.environ["PROTOCOL_REGRESSION_REPO"])
 
 
-def python_path() -> Path:
+def python_path():
     raw = os.environ.get("PROTOCOL_REGRESSION_PYTHON")
     return Path(raw) if raw else Path(sys.executable)
 
@@ -53,7 +53,7 @@ class MethodSignatureTests(unittest.TestCase):
 
 
 class TestCompletionTests(unittest.TestCase):
-    def grade(self, body) -> dict[str, object]:
+    def grade(self, body: str):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             grader = root / "grader"

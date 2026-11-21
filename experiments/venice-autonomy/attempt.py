@@ -5,12 +5,13 @@ import os
 import pathlib
 import signal
 import time
+from typing import cast
 
-from fixtures import check_verdict, fixture_files, seal_execution, task_prompt, verifier_command
+from fixtures import check_verdict, fixture_files, task_prompt, verifier_command, seal_execution
 from sandbox import Sandbox
 
 
-def exception_chain(error) -> list[dict[str, str]]:
+def exception_chain(error):
     chain = []
     seen = set()
     current = error
@@ -30,7 +31,7 @@ def exception_chain(error) -> list[dict[str, str]]:
     return chain
 
 
-def record_exception(summary, error, key, prefix) -> list[dict[str, str]]:
+def record_exception(summary, error, key, prefix):
     chain = exception_chain(error)
     redacted = []
     for item in chain:
@@ -48,7 +49,7 @@ def record_exception(summary, error, key, prefix) -> list[dict[str, str]]:
     return redacted
 
 
-def resolved_mini_exit(result, directory) -> tuple[str | None, str]:
+def resolved_mini_exit(result, directory):
     status = result.get("exit_status") if isinstance(result, dict) else None
     if isinstance(status, str) and status:
         return status, "agent_result.exit_status"
@@ -57,11 +58,10 @@ def resolved_mini_exit(result, directory) -> tuple[str | None, str]:
         return None, "unknown"
     from controller import resolve_mini_exit
 
-    exit_state: tuple[str | None, str] = resolve_mini_exit(json.loads(path.read_text()))
-    return exit_state
+    return resolve_mini_exit(json.loads(path.read_text()))
 
 
-def provider_settings() -> tuple[str, str]:
+def provider_settings():
     source = pathlib.Path(
         os.environ.get("LAB_PI_MODELS", str(pathlib.Path.home() / ".pi/agent/models.json"))
     )
@@ -72,11 +72,10 @@ def provider_settings() -> tuple[str, str]:
     key = os.environ.get(reference.lstrip("$").strip("{}"), "").strip()
     if not key or "\r" in key or "\n" in key:
         raise ValueError("missing or unsafe API key")
-    base_url: str = provider["baseUrl"]
-    return base_url, key
+    return provider["baseUrl"], key
 
 
-def mini_submission(result) -> bool:
+def mini_submission(result):
     lines = result.get("output", "").lstrip().splitlines()
     return (
         result.get("returncode") == 0
@@ -85,7 +84,7 @@ def mini_submission(result) -> bool:
     )
 
 
-def run_mini(engine, sandbox, directory, prompt, base_url, key) -> dict[str, object]:
+def run_mini(engine, sandbox, directory, prompt, base_url, key):
     os.environ["MSWEA_GLOBAL_CONFIG_DIR"] = str(directory / "mini-config")
     os.environ["MSWEA_SILENT_STARTUP"] = "1"
     os.environ["MSWEA_MODEL_RETRY_STOP_AFTER_ATTEMPT"] = "1"
@@ -109,7 +108,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key) -> dict[str, obj
     query = model._query
     calls = []
 
-    def observed_query(messages, **kwargs):
+    def observed_query(messages: object, **kwargs: object) -> object:
         record = {"attempt": len(calls) + 1, "started": time.time()}
         calls.append(record)
         try:
@@ -123,7 +122,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key) -> dict[str, obj
                     "finish_reason": response.choices[0].finish_reason,
                 }
             )
-            return response
+            return cast("object", response)
         except Exception as error:
             record["error_type"] = type(error).__name__
             raise
@@ -134,7 +133,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key) -> dict[str, obj
     model._query = observed_query
     execute = sandbox.execute
 
-    def execute_with_submission(action, **kwargs):
+    def execute_with_submission(action: object, **kwargs: object) -> object:
         result = execute(action, **kwargs)
         if mini_submission(result):
             raise Submitted(
@@ -144,7 +143,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key) -> dict[str, obj
                     "extra": {"exit_status": "Submitted", "submission": result["output"]},
                 }
             )
-        return result
+        return cast("object", result)
 
     sandbox.execute = execute_with_submission
     system = "You are a coding agent in an isolated offline Linux workspace. "
@@ -200,23 +199,16 @@ def continue_openhands(conversation, sandbox, directory, acceptance=None) -> str
 
 
 def run_openhands(
-    sandbox,
-    directory,
-    prompt,
-    base_url,
-    key,
-    acceptance=None,
-    max_iterations=18,
-    language="Node",
-) -> dict[str, object]:
+    sandbox, directory, prompt, base_url, key, acceptance=None, max_iterations=18, language="Node"
+):
     for name in list(os.environ):
         if name.startswith(("LMNR_", "OTEL_", "OPENHANDS_")):
             os.environ.pop(name)
     os.environ["OH_PERSISTENCE_DIR"] = str(directory / "openhands-home")
     os.environ["OTEL_SDK_DISABLED"] = "true"
-    from openhands.sdk import LLM, Agent, Conversation, Tool
-    from openhands.sdk.tool import Action, Observation, ToolDefinition, ToolExecutor, register_tool
     from pydantic import Field, SecretStr
+    from openhands.sdk import Agent, Conversation, LLM, Tool
+    from openhands.sdk.tool import Action, Observation, ToolDefinition, ToolExecutor, register_tool
 
     class BashAction(Action):
         command: str = Field(
@@ -235,7 +227,7 @@ def run_openhands(
         name = "bash"
 
         @classmethod
-        def create(cls, conv_state=None, **kwargs):
+        def create(cls, conv_state: object = None, **kwargs: object) -> list[object]:
             return [
                 cls(
                     description="Execute bash inside the isolated offline coding workspace. "
@@ -292,7 +284,7 @@ def run_openhands(
     }
 
 
-def attempt(engine, task, directory, seed, feedback="") -> dict[str, object]:
+def attempt(engine, task, directory, seed, feedback=""):
     os.umask(0o077)
     directory = pathlib.Path(directory)
     directory.mkdir(parents=True, exist_ok=False)

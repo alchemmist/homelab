@@ -9,8 +9,8 @@ import json
 import os
 import re
 import selectors
-import shutil
 import signal
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -18,7 +18,6 @@ import tempfile
 import time
 import uuid
 from pathlib import Path
-from typing import cast
 
 SOURCE_COMMIT = "d2b324b30a0c11fe7599368bc11269b53dd34484"
 GRADER_COMMIT = "85437b7ab921b8f2a099bed6e648ccec9ab2d35e"
@@ -127,7 +126,7 @@ def mask_allowed_methods(source: str) -> str:
 def allowed_edit_report(baseline: str, candidate: str) -> dict:
     try:
 
-        def signatures(source):
+        def signatures(source: str) -> dict[str, tuple[str, str | None, tuple[str, ...], str | None]]:
             tree = ast.parse(source)
             return {
                 child.name: (
@@ -227,7 +226,7 @@ def export_snapshot(repo: Path, dest: Path) -> dict:
 
 
 def load_manifest(snapshot: Path) -> dict:
-    return cast(dict, json.loads((snapshot / "manifest.json").read_text(encoding="utf-8")))
+    return json.loads((snapshot / "manifest.json").read_text(encoding="utf-8"))
 
 
 def verify_snapshot(snapshot: Path) -> dict:
@@ -272,7 +271,11 @@ def clean_env(agent: Path, home: Path, rejection: Path) -> dict[str, str]:
 
 
 def bounded_test_process(
-    args, cwd=None, env=None, timeout=120, limit=131072
+    args: list[str],
+    cwd: str | os.PathLike[str] | None = None,
+    env: dict[str, str] | None = None,
+    timeout: float = 120,
+    limit: int = 131072,
 ) -> subprocess.CompletedProcess[str]:
     process = subprocess.Popen(
         args,
@@ -318,7 +321,7 @@ def bounded_test_process(
         process.stderr.close()
 
 
-def test_completed(exit_code, stderr) -> bool:
+def test_completed(exit_code: int, stderr: str) -> bool:
     return (
         exit_code == 0
         and re.search(r"(?m)^Ran 1 test in [0-9.]+s$", stderr) is not None

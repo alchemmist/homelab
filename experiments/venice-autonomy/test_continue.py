@@ -1,27 +1,26 @@
 import unittest
-from collections.abc import Callable
 
 from attempt import continue_openhands
 from repository_runner import apply_continuation_policy
 
 
 class Conversation:
-    def __init__(self, failures=0):
+    def __init__(self, failures: int = 0):
         self.failures = failures
         self.runs = 0
-        self.messages = []
+        self.messages: list[str] = []
 
     def run(self) -> None:
         self.runs += 1
         if self.runs <= self.failures:
             raise RuntimeError("provider failed")
 
-    def send_message(self, message) -> None:
+    def send_message(self, message: str) -> None:
         self.messages.append(message)
 
 
-def facts(continue_value) -> Callable[[object, object, object], dict[str, object]]:
-    def acceptance(sandbox, directory, round_number) -> dict[str, object]:
+def facts(continue_value: object):
+    def acceptance(sandbox: object, directory: object, round_number: int):
         return {
             "round": round_number,
             "continue": continue_value,
@@ -48,7 +47,7 @@ class ContinueOpenHandsTests(unittest.TestCase):
         conversation = Conversation()
         decisions = iter([True, False])
 
-        def acceptance(sandbox, directory, round_number) -> dict[str, object]:
+        def acceptance(sandbox: object, directory: object, round_number: int):
             return {"round": round_number, "continue": next(decisions)}
 
         continue_openhands(conversation, None, None, acceptance)
@@ -102,9 +101,11 @@ class ContinuationPolicyTests(unittest.TestCase):
 
     def test_force_once_rejects_only_the_first_round(self) -> None:
         forced = apply_continuation_policy(
-            {"accepted": True, "consecutive_no_progress": 0}, 0, True
+            {"accepted": True, "consecutive_no_progress": 0}, 0, force_once=True
         )
-        later = apply_continuation_policy({"accepted": True, "consecutive_no_progress": 0}, 1, True)
+        later = apply_continuation_policy(
+            {"accepted": True, "consecutive_no_progress": 0}, 1, force_once=True
+        )
         self.assertTrue(forced["real_accepted"])
         self.assertFalse(forced["accepted"])
         self.assertTrue(forced["continue"])

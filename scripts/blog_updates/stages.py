@@ -3,14 +3,45 @@
 import json
 import os
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
-from typing import cast
+from typing import Protocol, TypedDict, cast
 
 from engine import UnsafeInput, prepare, render, validate_decision, validate_event
 from github import GitHub
 
 
-def context_for(event, github) -> tuple[dict[str, object], dict[str, object], str] | None:
+class _PushEvent(TypedDict, total=False):
+    before: str
+    after: str
+
+
+class _DecisionContext(TypedDict):
+    files: list[dict[str, str]]
+
+
+class _CommitDetails(TypedDict, total=False):
+    committer: dict[str, str]
+
+
+class _Commit(TypedDict):
+    sha: str
+    commit: _CommitDetails
+
+
+class _Compare(TypedDict):
+    commits: list[_Commit]
+
+
+class _GitHub(Protocol):
+    def compare(self, before: str, after: str) -> _Compare: ...
+
+    def read_updates(self, ref: str) -> tuple[str, str]: ...
+
+    def propose(self, after: str, content: str, reason: str) -> object: ...
+
+
+def context_for(event: _PushEvent, github: _GitHub):
     if not validate_event(event):
         return None
     comparison = github.compare(event["before"], event["after"])
@@ -19,7 +50,7 @@ def context_for(event, github) -> tuple[dict[str, object], dict[str, object], st
     return (context, comparison, updates) if context else None
 
 
-def model(system, data) -> object:
+def model(system: str, data: object):
     req = urllib.request.Request(
         "http://litellm.llm.svc.cluster.local:4000/v1/chat/completions",
         data=json.dumps(
@@ -73,27 +104,35 @@ def model(system, data) -> object:
         },
     )
     with urllib.request.urlopen(req, timeout=360) as r:
-        return cast(
-            "dict[str, object]",
-            json.loads(json.load(r)["choices"][0]["message"]["content"]),
-        )
+        return json.loads(json.load(r)["choices"][0]["message"]["content"])
 
 
-def checked_model(call_model, prompt, data, context) -> dict[str, object]:
+def checked_model(
+    call_model: Callable[[str, object], object],
+    prompt: str,
+    data: object,
+    context: _DecisionContext,
+):
     for attempt in range(2):
         try:
-            return cast("dict[str, object]", validate_decision(call_model(prompt, data), context))
+            return validate_decision(call_model(prompt, data), context)
         except (UnsafeInput, json.JSONDecodeError):
             if attempt:
                 raise UnsafeInput("Model response failed validation after two attempts") from None
             prompt += "\nPrevious response failed validation. Return only the exact JSON schema, plain text without URLs or Markdown, and supplied changed file paths."
-    raise UnsafeInput("Model response failed validation after two attempts") from None
 
 
-def stage(name, payload, github=None, call_model=None, write=False) -> list[dict[str, object]]:
+def stage(
+    name: str,
+    payload: dict[str, object],
+    github: _GitHub | None = None,
+    call_model: Callable[[str, object], object] | None = None,
+    *,
+    write: bool = False,
+):
     github = github or GitHub(os.environ["GITHUB_TOKEN"])
     call_model = call_model or model
-    event = payload if name == "validate" else payload["event"]
+    event = cast("_PushEvent", payload if name == "validate" else payload["event"])
     snapshot = context_for(event, github)
     if snapshot is None:
         return []
@@ -112,10 +151,8 @@ def stage(name, payload, github=None, call_model=None, write=False) -> list[dict
         decision = checked_model(
             call_model, prompt, {"context": context, "selected": selection}, context
         )
-        selected = cast("list[dict[str, object]]", selection["entries"])
-        generated = cast("list[dict[str, object]]", decision["entries"])
-        allowed = {p for e in selected for p in cast("list[str]", e["source_paths"])}
-        if any(p not in allowed for e in generated for p in cast("list[str]", e["source_paths"])):
+        allowed = {p for e in selection["entries"] for p in e["source_paths"]}
+        if any(p not in allowed for e in decision["entries"] for p in e["source_paths"]):
             raise UnsafeInput("Generation introduced an unselected source")
         return [{"event": event, "decision": decision}] if decision["should_update"] else []
     if name != "create-pr":
@@ -123,19 +160,10 @@ def stage(name, payload, github=None, call_model=None, write=False) -> list[dict
     decision = validate_decision(payload["decision"], context)
     if not decision["should_update"]:
         return []
-    head = next(
-        (
-            c
-            for c in cast("list[dict[str, object]]", comparison["commits"])
-            if c["sha"] == event["after"]
-        ),
-        None,
-    )
+    head = next((c for c in comparison["commits"] if c["sha"] == event["after"]), None)
     if not head:
         raise UnsafeInput("Missing head commit")
-    commit = cast("dict[str, object]", head["commit"])
-    committer = cast("dict[str, object]", commit["committer"])
-    content = render(updates, decision["entries"], cast("str", committer["date"]))
+    content = render(updates, decision["entries"], head["commit"]["committer"]["date"])
     if content == updates:
         return [{"status": "no_change"}]
     if not write:

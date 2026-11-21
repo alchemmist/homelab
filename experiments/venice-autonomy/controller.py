@@ -3,15 +3,14 @@ import fcntl
 import hashlib
 import json
 import os
+import owned_resources
 import pathlib
 import shlex
 import signal
 import subprocess
 import sys
 import time
-from typing import cast
-
-import owned_resources
+from typing import TypedDict, cast
 
 DEFAULT_ENGINES = ("mini_native", "openhands")
 ENGINES = DEFAULT_ENGINES + ("mini_text",)
@@ -45,10 +44,62 @@ CLEAN_EXIT_STATUSES = ("Submitted", "finished", "ConversationExecutionStatus.FIN
 WRAPPER_ERROR_TYPES = ("ConversationRunError", "SDKError")
 
 
-def exception_types(result) -> list[str]:
+class _Attempt(TypedDict, total=False):
+    accepted: bool
+    controller_error: str
+    run_error_type: str
+    run_error: str
+    cause_type: str
+    error_chain: list[dict[str, str]]
+    infrastructure_error_type: str
+    infrastructure_error_chain: list[dict[str, str]]
+    cleanup_error_type: str
+    cleanup_error: str
+    exit_status: str
+    exit_provenance: str
+    actual_commands: int
+    directory: str
+    verdict: dict[str, object]
+    process_exit: int
+
+
+class _Task(TypedDict, total=False):
+    id: str
+    engine: str
+    task: str
+    seed: int
+    status: str
+    attempts: list[_Attempt]
+
+
+class _State(TypedDict, total=False):
+    schema: int
+    created_at: float
+    updated_at: float
+    deadline: float
+    phase: str
+    tasks: list[_Task]
+    running: dict[str, object] | None
+    consecutive_provider_failures: int
+    controller_restarts: int
+    source_hashes: dict[str, str]
+    termination_error: str
+
+
+class _Facts(TypedDict):
+    artifact: bool
+    clean: bool
+    provider: list[str]
+    provider_provenance: str
+    exit_status: str | None
+    exit_provenance: str
+    commands: int
+
+
+def exception_types(result: _Attempt) -> list[str]:
     names: list[str] = []
 
-    def add(value):
+    def add(value: object) -> None:
         if isinstance(value, str) and value and value not in names:
             names.append(value)
 
@@ -68,11 +119,11 @@ def exception_types(result) -> list[str]:
     return names
 
 
-def structured_provider_errors(result) -> list[str]:
+def structured_provider_errors(result: _Attempt) -> list[str]:
     return [name for name in exception_types(result) if name in PROVIDER_ERRORS]
 
 
-def unstructured_provider_errors(result) -> list[str]:
+def unstructured_provider_errors(result: _Attempt) -> list[str]:
     if (
         result.get("cause_type")
         or result.get("error_chain")
@@ -84,10 +135,12 @@ def unstructured_provider_errors(result) -> list[str]:
     text = result.get("run_error")
     if not isinstance(text, str):
         return []
-    return [name for name in PROVIDER_ERRORS if f".{name}" in text or text.startswith(name)]
+    return [
+        name for name in PROVIDER_ERRORS if f".{name}" in text or text.startswith(name)
+    ]
 
 
-def classify_result(result) -> str:
+def classify_result(result: _Attempt) -> str:
     if result.get("controller_error"):
         return "runner"
     if (
@@ -103,7 +156,9 @@ def classify_result(result) -> str:
     if any(name in CLIENT_INPUT_ERRORS for name in names):
         return "client_input"
     if result.get("infrastructure_error_type"):
-        raise ValueError("unknown error type: " + str(result.get("infrastructure_error_type")))
+        raise ValueError(
+            "unknown error type: " + str(result.get("infrastructure_error_type"))
+        )
     if not names:
         return "none"
     if any(name in RUNNER_ERRORS for name in names):
@@ -111,7 +166,7 @@ def classify_result(result) -> str:
     raise ValueError("unknown error type: " + names[0])
 
 
-def resolve_mini_exit(trajectory) -> tuple[str | None, str]:
+def resolve_mini_exit(trajectory: object) -> tuple[str | None, str]:
     if not isinstance(trajectory, dict):
         return None, "absent"
     messages = trajectory.get("messages")
@@ -123,31 +178,24 @@ def resolve_mini_exit(trajectory) -> tuple[str | None, str]:
             if isinstance(status, str) and status:
                 return status, "trajectory.messages.exit.exit_status"
             extra = message.get("extra")
-            if (
-                isinstance(extra, dict)
-                and isinstance(extra.get("exit_status"), str)
-                and extra.get("exit_status")
-            ):
-                return extra["exit_status"], "trajectory.messages.exit.extra.exit_status"
+            if isinstance(extra, dict):
+                status = extra.get("exit_status")
+                if isinstance(status, str) and status:
+                    return status, "trajectory.messages.exit.extra.exit_status"
             break
     info = trajectory.get("info")
-    if (
-        isinstance(info, dict)
-        and isinstance(info.get("exit_status"), str)
-        and info.get("exit_status")
-    ):
-        return info["exit_status"], "trajectory.info.exit_status"
+    if isinstance(info, dict):
+        status = info.get("exit_status")
+        if isinstance(status, str) and status:
+            return status, "trajectory.info.exit_status"
     return None, "unknown"
 
 
-def resolve_attempt_exit(attempt) -> tuple[str | None, str]:
+def resolve_attempt_exit(attempt: _Attempt) -> tuple[str | None, str]:
     status = attempt.get("exit_status")
     if isinstance(status, str) and status:
-        provenance = (
-            attempt.get("exit_provenance")
-            if isinstance(attempt.get("exit_provenance"), str)
-            else "summary.exit_status"
-        )
+        stored = attempt.get("exit_provenance")
+        provenance = stored if isinstance(stored, str) else "summary.exit_status"
         return status, provenance
     directory = attempt.get("directory")
     if isinstance(directory, str) and directory:
@@ -163,7 +211,7 @@ def resolve_attempt_exit(attempt) -> tuple[str | None, str]:
     return None, "unknown"
 
 
-def attempt_facts(attempt) -> dict[str, object]:
+def attempt_facts(attempt: _Attempt) -> _Facts:
     provider = structured_provider_errors(attempt)
     provider_provenance = "structured" if provider else ""
     if not provider:
@@ -200,7 +248,7 @@ def attempt_facts(attempt) -> dict[str, object]:
     }
 
 
-def task_outcome(task) -> tuple[str, list[dict[str, object]]]:
+def task_outcome(task: _Task) -> tuple[str, list[_Facts]]:
     facts = [attempt_facts(attempt) for attempt in task.get("attempts", [])]
     if not facts:
         return "pending", facts
@@ -215,7 +263,10 @@ def task_outcome(task) -> tuple[str, list[dict[str, object]]]:
         if last["clean"]:
             return "artifact_and_clean_finish", facts
         return "unknown", facts
-    if all(item["exit_status"] == "RepeatedFormatError" and not item["provider"] for item in facts):
+    if all(
+        item["exit_status"] == "RepeatedFormatError" and not item["provider"]
+        for item in facts
+    ):
         return "blocked_both_format_error", facts
     if (
         len(facts) >= 2
@@ -231,7 +282,7 @@ def task_outcome(task) -> tuple[str, list[dict[str, object]]]:
     return "unknown", facts
 
 
-def save_state(path, state) -> None:
+def save_state(path: pathlib.Path, state: _State) -> None:
     state["updated_at"] = time.time()
     temporary = path.with_suffix(".new")
     with temporary.open("w") as stream:
@@ -246,14 +297,16 @@ def save_state(path, state) -> None:
         os.close(directory)
 
 
-def initial_state(duration, rounds, engines=DEFAULT_ENGINES) -> dict[str, object]:
+def initial_state(
+    duration: int, rounds: int, engines: tuple[str, ...] = DEFAULT_ENGINES
+) -> _State:
     selected = tuple(engines)
     if not selected or any(engine not in ENGINES for engine in selected):
         raise ValueError("unknown engine selection")
     if not 1 <= duration <= 7200 or not 1 <= rounds <= 10:
         raise ValueError("experiment must have 1..7200 seconds and 1..10 rounds")
     now = time.time()
-    tasks = [
+    tasks: list[_Task] = [
         {
             "id": f"{round_number}-{engine}-{task}",
             "engine": engine,
@@ -278,7 +331,7 @@ def initial_state(duration, rounds, engines=DEFAULT_ENGINES) -> dict[str, object
     }
 
 
-def settle_task(task, result, max_attempts=2) -> object:
+def settle_task(task: _Task, result: _Attempt, max_attempts: int = 2) -> str:
     task["attempts"].append(result)
     task["status"] = (
         "accepted"
@@ -290,29 +343,36 @@ def settle_task(task, result, max_attempts=2) -> object:
     return task["status"]
 
 
-def recover_interrupted(state) -> None:
+def recover_interrupted(state: _State) -> None:
     running = state.get("running")
     if running:
         task = next(task for task in state["tasks"] if task["id"] == running["task_id"])
         settle_task(
             task,
-            {
-                "accepted": False,
-                "controller_error": "interrupted_attempt",
-                "directory": running["directory"],
-            },
+            cast(
+                "_Attempt",
+                {
+                    "accepted": False,
+                    "controller_error": "interrupted_attempt",
+                    "directory": running["directory"],
+                },
+            ),
         )
         state["running"] = None
     state["controller_restarts"] += 1
 
 
-def process_signature(pid) -> tuple[str, str]:
-    started = subprocess.check_output(["ps", "-p", str(pid), "-o", "lstart="], text=True).strip()
-    command = subprocess.check_output(["ps", "-p", str(pid), "-o", "args="], text=True).strip()
+def process_signature(pid: int) -> tuple[str, str]:
+    started = subprocess.check_output(
+        ["ps", "-p", str(pid), "-o", "lstart="], text=True
+    ).strip()
+    command = subprocess.check_output(
+        ["ps", "-p", str(pid), "-o", "args="], text=True
+    ).strip()
     return started, command
 
 
-def same_child(pid, directory, signature) -> bool:
+def same_child(pid: int, directory: str, signature: tuple[str, str]) -> bool:
     expected_script = str(pathlib.Path(__file__).with_name("attempt.py"))
     started, command = process_signature(pid)
     if signature != (started, command) or os.getpgid(pid) != pid:
@@ -331,11 +391,11 @@ def same_child(pid, directory, signature) -> bool:
     return process_signature(pid) == (started, command)
 
 
-def cleanup_role(root) -> None:
+def cleanup_role(root: pathlib.Path | str) -> None:
     owned_resources.cleanup_role(root)
 
 
-def cleanup_interrupted(running) -> None:
+def cleanup_interrupted(running: dict[str, object]) -> None:
     directory = str(running["directory"])
     recorded = running.get("signature")
     if (
@@ -343,7 +403,7 @@ def cleanup_interrupted(running) -> None:
         and len(recorded) == 2
         and all(isinstance(part, str) for part in recorded)
     ):
-        pid = int(running["pid"])
+        pid = int(cast("int", running["pid"]))
         signature = (recorded[0], recorded[1])
         try:
             if same_child(pid, directory, signature):
@@ -351,7 +411,12 @@ def cleanup_interrupted(running) -> None:
                 time.sleep(3)
                 if same_child(pid, directory, signature):
                     os.killpg(pid, signal.SIGKILL)
-        except (ProcessLookupError, subprocess.CalledProcessError, PermissionError, OSError):
+        except (
+            ProcessLookupError,
+            subprocess.CalledProcessError,
+            PermissionError,
+            OSError,
+        ):
             pass
     errors = []
     for role in ("agent", "verifier"):
@@ -363,12 +428,14 @@ def cleanup_interrupted(running) -> None:
         raise ValueError("cleanup errors: " + "; ".join(errors))
 
 
-def render_report(state) -> str:
+def render_report(state: _State) -> str:
     rows = ["# Controlled autonomy experiment", "", f"Phase: `{state.get('phase')}`"]
     if "deadline" in state:
         rows.append(f"Deadline: {state['deadline']!r}")
     rows.append(f"Controller restarts: {state.get('controller_restarts', 0)}")
-    rows.append(f"Consecutive provider failures: {state.get('consecutive_provider_failures', 0)}")
+    rows.append(
+        f"Consecutive provider failures: {state.get('consecutive_provider_failures', 0)}"
+    )
     if state.get("termination_error"):
         rows.append(f"Termination error: `{state['termination_error']}`")
     rows += [
@@ -389,7 +456,9 @@ def render_report(state) -> str:
             for task in engine_tasks
             for attempt in task.get("attempts", [])
         )
-        rows.append(f"| {engine} | {counts[0]} | {counts[1]} | {counts[2]} | {commands} |")
+        rows.append(
+            f"| {engine} | {counts[0]} | {counts[1]} | {counts[2]} | {commands} |"
+        )
     labels = (
         "artifact_and_clean_finish",
         "artifact_and_limits_exceeded",
@@ -408,14 +477,21 @@ def render_report(state) -> str:
     ]
     for engine in ENGINES:
         selected = [
-            (outcome, facts) for task, outcome, facts in unpacked if task.get("engine") == engine
+            (outcome, facts)
+            for task, outcome, facts in unpacked
+            if task.get("engine") == engine
         ]
-        tally = {label: sum(outcome == label for outcome, facts in selected) for label in labels}
+        tally = {
+            label: sum(outcome == label for outcome, facts in selected)
+            for label in labels
+        }
         attempts = sum(len(facts) for outcome, facts in selected)
         provider_attempts = sum(
             bool(item["provider"]) for outcome, facts in selected for item in facts
         )
-        commands = sum(item["commands"] for outcome, facts in selected for item in facts)
+        commands = sum(
+            item["commands"] for outcome, facts in selected for item in facts
+        )
         rows.append(
             f"| {engine} | {tally['artifact_and_clean_finish']} | {tally['artifact_and_limits_exceeded']} | "
             f"{tally['artifact_and_provider_error']} | {tally['artifact_and_repeated_format_error']} | "
@@ -433,9 +509,13 @@ def render_report(state) -> str:
         artifact = any(item["artifact"] for item in facts)
         clean = any(item["clean"] for item in facts)
         last = facts[-1] if facts else None
-        resolved = "null" if last is None or last["exit_status"] is None else last["exit_status"]
+        resolved = (
+            "null"
+            if last is None or last["exit_status"] is None
+            else last["exit_status"]
+        )
         exit_provenance = "none" if last is None else last["exit_provenance"]
-        provider = [] if last is None else cast("list[str]", last["provider"])
+        provider = [] if last is None else last["provider"]
         provider_provenance = "" if last is None else last["provider_provenance"]
         commands = sum(item["commands"] for item in facts)
         rows.append(
@@ -460,8 +540,7 @@ def render_report(state) -> str:
             resolved = "null" if item["exit_status"] is None else item["exit_status"]
             rows.append(
                 f"| {task.get('id')} | {index} | {stored_exit_text} | {attempt.get('run_error_type') or ''} | "
-                f"{attempt.get('cause_type') or ''} | {resolved} | {item['exit_provenance']} | "
-                f"{','.join(cast('list[str]', item['provider']))} | "
+                f"{attempt.get('cause_type') or ''} | {resolved} | {item['exit_provenance']} | {','.join(item['provider'])} | "
                 f"{item['provider_provenance']} | {str(item['artifact']).lower()} | {str(item['clean']).lower()} | {item['commands']} |"
             )
             if item["exit_provenance"] == "unknown" or (
@@ -488,11 +567,19 @@ def render_report(state) -> str:
     return "\n".join(rows) + "\n"
 
 
-def write_report(root, state) -> None:
+def write_report(root: pathlib.Path, state: _State) -> None:
     (root / "REPORT.md").write_text(render_report(state))
 
 
-def run(root, mini_python, openhands_python, duration, rounds, include_text=False) -> None:
+def run(
+    root: str | pathlib.Path,
+    mini_python: str,
+    openhands_python: str,
+    duration: int,
+    rounds: int,
+    *,
+    include_text: bool = False,
+) -> None:
     os.umask(0o077)
     root = pathlib.Path(root)
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -514,9 +601,13 @@ def run(root, mini_python, openhands_python, duration, rounds, include_text=Fals
                     raise
             recover_interrupted(state)
         else:
-            state = initial_state(duration, rounds, ENGINES if include_text else DEFAULT_ENGINES)
+            state = initial_state(
+                duration, rounds, ENGINES if include_text else DEFAULT_ENGINES
+            )
         source_hashes = {
-            name: hashlib.sha256(pathlib.Path(__file__).with_name(name).read_bytes()).hexdigest()
+            name: hashlib.sha256(
+                pathlib.Path(__file__).with_name(name).read_bytes()
+            ).hexdigest()
             for name in (
                 "attempt.py",
                 "sandbox.py",
@@ -531,15 +622,24 @@ def run(root, mini_python, openhands_python, duration, rounds, include_text=Fals
         save_state(path, state)
         try:
             while time.time() < state["deadline"] and state["phase"] == "running":
-                task = next((task for task in state["tasks"] if task["status"] == "pending"), None)
+                task = next(
+                    (task for task in state["tasks"] if task["status"] == "pending"),
+                    None,
+                )
                 if task is None:
                     state["phase"] = "queue_finished"
                     break
                 directory = (
-                    root / "runs" / (task["id"] + "-attempt-" + str(len(task["attempts"]) + 1))
+                    root
+                    / "runs"
+                    / (task["id"] + "-attempt-" + str(len(task["attempts"]) + 1))
                 )
                 directory.parent.mkdir(exist_ok=True)
-                python = mini_python if task["engine"].startswith("mini_") else openhands_python
+                python = (
+                    mini_python
+                    if task["engine"].startswith("mini_")
+                    else openhands_python
+                )
                 command = [
                     python,
                     "-u",
@@ -556,13 +656,18 @@ def run(root, mini_python, openhands_python, duration, rounds, include_text=Fals
                 if task["attempts"]:
                     command += [
                         "--feedback",
-                        json.dumps(task["attempts"][-1].get("verdict", {"accepted": False}))[:1800],
+                        json.dumps(
+                            task["attempts"][-1].get("verdict", {"accepted": False})
+                        )[:1800],
                     ]
-                with (root / (task["id"] + "-" + str(len(task["attempts"]) + 1) + ".log")).open(
-                    "w"
-                ) as log:
+                with (
+                    root / (task["id"] + "-" + str(len(task["attempts"]) + 1) + ".log")
+                ).open("w") as log:
                     process = subprocess.Popen(
-                        command, stdout=log, stderr=subprocess.STDOUT, start_new_session=True
+                        command,
+                        stdout=log,
+                        stderr=subprocess.STDOUT,
+                        start_new_session=True,
                     )
                     try:
                         signature = list(process_signature(process.pid))
@@ -580,7 +685,9 @@ def run(root, mini_python, openhands_python, duration, rounds, include_text=Fals
                     state["running"] = running
                     save_state(path, state)
                     try:
-                        process.wait(timeout=max(1, min(900, state["deadline"] - time.time())))
+                        process.wait(
+                            timeout=max(1, min(900, state["deadline"] - time.time()))
+                        )
                     except subprocess.TimeoutExpired:
                         try:
                             cleanup_interrupted(running)
@@ -592,7 +699,10 @@ def run(root, mini_python, openhands_python, duration, rounds, include_text=Fals
                 summary_path = directory / "summary.json"
                 try:
                     result = json.loads(summary_path.read_text())
-                    if not isinstance(result, dict) or type(result.get("accepted")) is not bool:
+                    if (
+                        not isinstance(result, dict)
+                        or type(result.get("accepted")) is not bool
+                    ):
                         raise ValueError("invalid summary")
                 except (OSError, ValueError):
                     result = {
@@ -601,9 +711,9 @@ def run(root, mini_python, openhands_python, duration, rounds, include_text=Fals
                         "process_exit": process.returncode,
                     }
                 result["directory"] = str(directory)
-                settle_task(task, result)
+                settle_task(task, cast("_Attempt", result))
                 try:
-                    kind = classify_result(result)
+                    kind = classify_result(cast("_Attempt", result))
                 except ValueError as error:
                     if not str(error).startswith("unknown error type:"):
                         raise
@@ -620,7 +730,10 @@ def run(root, mini_python, openhands_python, duration, rounds, include_text=Fals
                     state["phase"] = "client_input_rejected"
                 elif kind == "none":
                     state["consecutive_provider_failures"] = 0
-                if state["consecutive_provider_failures"] >= 2 and state["phase"] == "running":
+                if (
+                    state["consecutive_provider_failures"] >= 2
+                    and state["phase"] == "running"
+                ):
                     state["phase"] = "repeated_provider_failures"
                 state["running"] = None
                 save_state(path, state)
@@ -672,5 +785,5 @@ if __name__ == "__main__":
         args.openhands_python,
         args.duration_seconds,
         args.rounds,
-        args.include_text,
+        include_text=args.include_text,
     )

@@ -1,9 +1,11 @@
 import hashlib
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
 import tempfile
+from typing import TypedDict, Unpack
 import unittest
 from unittest.mock import patch
 
@@ -13,6 +15,15 @@ spec = importlib.util.spec_from_file_location(
 )
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
+
+
+class CliKwargs(TypedDict, total=False):
+    """Keyword form of the subprocess.run() call patched in SessionTests."""
+
+    stdout: io.TextIOBase
+    stderr: int
+    text: bool
+    timeout: int
 
 
 class SessionTests(unittest.TestCase):
@@ -84,7 +95,7 @@ class SessionTests(unittest.TestCase):
                     "token": values[kind],
                 }
 
-            def cli(args, **kwargs):
+            def cli(args, **kwargs: Unpack[CliKwargs]) -> object:
                 self.assertIn("-tokenName", args)
                 self.assertIn(s.names["bootstrap"], args)
                 self.assertNotIn("existing", args)

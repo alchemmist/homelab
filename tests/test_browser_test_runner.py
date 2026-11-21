@@ -33,7 +33,7 @@ class BrowserTestRunnerTests(unittest.TestCase):
                 pass
         self.directory.cleanup()
 
-    def launch(self, body, timeout=5):
+    def launch(self, body: str, timeout: float = 5):
         process = subprocess.Popen(
             [
                 sys.executable,
@@ -52,7 +52,7 @@ class BrowserTestRunnerTests(unittest.TestCase):
     def child_code(self):
         return f'import os,signal,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); open({str(self.pidfile)!r}, "w").write(str(os.getpid())); time.sleep(60)'
 
-    def parent_code(self, tail):
+    def parent_code(self, tail: str):
         return (
             "import subprocess,sys,time,pathlib; "
             f'subprocess.Popen([sys.executable,"-c",{self.child_code()!r}],start_new_session=True); '

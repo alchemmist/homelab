@@ -12,7 +12,7 @@ from stages import stage
 
 
 class Handler(BaseHTTPRequestHandler):
-    def log_message(self, *args) -> None:
+    def log_message(self, *args: object) -> None:
         pass  # no request bodies, credentials or content in logs
 
     def do_GET(self) -> None:
@@ -34,15 +34,14 @@ class Handler(BaseHTTPRequestHandler):
         try:
             event = json.loads(self.rfile.read(length))
             with EXECUTION_LOCK:
-                result: list[dict[str, object]] | dict[str, object] = stage(
+                result = stage(
                     self.path[1:], event, write=os.environ.get("WRITE_ENABLED") == "true"
                 )
             self.send_response(200)
         except Exception as exc:
-            failure: dict[str, object] = {"status": "error", "type": type(exc).__name__}
+            result = {"status": "error", "type": type(exc).__name__}
             if isinstance(exc, UnsafeInput):
-                failure["reason"] = str(exc)
-            result = failure
+                result["reason"] = str(exc)
             self.send_response(422)
         self.send_header("Content-Type", "application/json")
         self.end_headers()
