@@ -1,3 +1,5 @@
+"""Tests for the wireguard_tcp_transport role files."""
+
 import importlib.util
 from pathlib import Path
 import unittest
@@ -21,12 +23,12 @@ CONFIG = "[Interface]\nPrivateKey = secret\n\n[Peer]\nPublicKey = first\nAllowed
 class TransportTests(unittest.TestCase):
     def test_preserves_secrets_other_peer_and_routes(self):
         expected = CONFIG.replace("Endpoint = old:123", "Endpoint = 127.0.0.1:51840")
-        self.assertEqual(ENDPOINT.update_config(CONFIG, "first", "127.0.0.1:51840"), expected)
-        self.assertEqual(ENDPOINT.update_config(expected, "first", "127.0.0.1:51840"), expected)
+        assert ENDPOINT.update_config(CONFIG, "first", "127.0.0.1:51840") == expected
+        assert ENDPOINT.update_config(expected, "first", "127.0.0.1:51840") == expected
 
     def test_server_removes_only_client_endpoint(self):
-        self.assertEqual(
-            ENDPOINT.update_config(CONFIG, "first", ""), CONFIG.replace("Endpoint = old:123\n", "")
+        assert ENDPOINT.update_config(CONFIG, "first", "") == CONFIG.replace(
+            "Endpoint = old:123\n", ""
         )
 
     def test_missing_and_duplicate_peers_fail_closed(self):
@@ -47,21 +49,21 @@ class TransportTests(unittest.TestCase):
         state = {}
         for now in (60, 75):
             state, restart = HEALTH.next_state(state, now, False)
-            self.assertFalse(restart)
+            assert not restart
         state, restart = HEALTH.next_state(state, 90, False)
-        self.assertTrue(restart)
+        assert restart
         for now in (105, 120, 135):
             state, restart = HEALTH.next_state(state, now, False)
-            self.assertFalse(restart)
+            assert not restart
         state, restart = HEALTH.next_state(state, 150, False)
-        self.assertTrue(restart)
+        assert restart
 
     def test_success_and_boot_grace(self):
         state, restart = HEALTH.next_state({"failures": 10}, 59, False)
-        self.assertFalse(restart)
+        assert not restart
         state, restart = HEALTH.next_state(state, 70, True)
-        self.assertEqual(state["failures"], 0)
-        self.assertFalse(restart)
+        assert state["failures"] == 0
+        assert not restart
 
 
 if __name__ == "__main__":

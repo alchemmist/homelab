@@ -1,8 +1,11 @@
+"""Tests for the private Uptime Kuma monitoring configuration script."""
+
 from contextlib import closing
 import importlib.util
 from pathlib import Path
 import sqlite3
 import tempfile
+from typing import cast, override
 import unittest
 
 
@@ -16,7 +19,9 @@ SPEC.loader.exec_module(MODULE)
 
 
 class KumaPrivateMonitorTests(unittest.TestCase):
-    def setUp(self):
+    @override
+    def setUp(self) -> None:
+        """Seed a copied kuma.db with one control-plane monitor and history."""
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.path = Path(self.temp.name) / "kuma.db"
@@ -40,14 +45,19 @@ class KumaPrivateMonitorTests(unittest.TestCase):
             db.execute("INSERT INTO heartbeat VALUES (7, 0)")
             db.execute("INSERT INTO monitor_group VALUES (7, 4)")
 
-    def snapshot(self, path=None):
+    def snapshot(self, path: Path | None = None) -> dict[str, list[sqlite3.Row]]:
+        """Materialise every surviving row grouped per table."""
         with closing(sqlite3.connect(path or self.path)) as db, db:
-            return {
-                table: db.execute(f"SELECT * FROM {table}").fetchall()
-                for table in ("monitor", "heartbeat", "monitor_group")
-            }
+            return cast(
+                "dict[str, list[sqlite3.Row]]",
+                {
+                    table: db.execute(f"SELECT * FROM {table}").fetchall()
+                    for table in ("monitor", "heartbeat", "monitor_group")
+                },
+            )
 
-    def test_migration_preserves_history_groups_identity_and_unrelated_fields(self):
+    def test_migration_preserves_history_groups_identity_and_unrelated_fields(self) -> None:
+        """Rewrite identity while preserving history, groups, and layout."""
         before = self.snapshot()
         result = MODULE.configure(self.path)
         self.assertEqual(result["monitor_id"], 7)
@@ -62,12 +72,14 @@ class KumaPrivateMonitorTests(unittest.TestCase):
         with closing(sqlite3.connect(self.path)) as db, db:
             db.row_factory = sqlite3.Row
             row = db.execute("SELECT * FROM monitor WHERE id = 7").fetchone()
+            assert row is not None
             self.assertEqual({key: row[key] for key in MODULE.DESIRED}, MODULE.DESIRED)
         backup = Path(result["backup"])
         self.assertEqual(backup.stat().st_mode & 0o777, 0o600)
         self.assertEqual(backup.parent.stat().st_mode & 0o777, 0o700)
 
-    def test_check_is_read_only_and_apply_is_idempotent(self):
+    def test_check_is_read_only_and_apply_is_idempotent(self) -> None:
+        """Keep check mode read-only and apply idempotently once."""
         before = self.path.read_bytes()
         self.assertEqual(
             MODULE.configure(self.path, check=True), {"changed": True, "monitor_id": 7}
@@ -80,7 +92,8 @@ class KumaPrivateMonitorTests(unittest.TestCase):
         self.assertEqual(MODULE.configure(self.path, check=True), expected)
         self.assertEqual(len(list((self.path.parent / "backups").iterdir())), 1)
 
-    def test_ambiguous_monitor_is_refused_without_writes(self):
+    def test_ambiguous_monitor_is_refused_without_writes(self) -> None:
+        """Refuse ambiguous matches without leaving any database writes."""
         with closing(sqlite3.connect(self.path)) as db, db:
             db.execute(
                 "UPDATE monitor SET url = ? WHERE id = 8", (f"https://{MODULE.HOSTNAME}/ping",)
@@ -92,7 +105,8 @@ class KumaPrivateMonitorTests(unittest.TestCase):
         self.assertEqual(self.path.read_bytes(), before)
         self.assertFalse((self.path.parent / "backups").exists())
 
-    def test_missing_monitor_and_database_are_not_created(self):
+    def test_missing_monitor_and_database_are_not_created(self) -> None:
+        """Fail closed for absent monitors and never create a database."""
         with closing(sqlite3.connect(self.path)) as db, db:
             db.execute("DELETE FROM monitor WHERE id = 7")
         with self.assertRaisesRegex(ValueError, "found 0"):

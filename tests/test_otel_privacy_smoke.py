@@ -1,3 +1,5 @@
+"""Privacy smoke tests for the OpenTelemetry pipeline."""
+
 import importlib.util
 import io
 import json
@@ -15,7 +17,7 @@ SPEC.loader.exec_module(SMOKE)
 
 
 class PrivacySmokeTests(unittest.TestCase):
-    def test_smoke_configuration_cannot_read_production_sources(self):
+    def test_smoke_configuration_cannot_read_production_sources(self) -> None:
         source = {
             "receivers": {
                 "prometheus": {"config": "production"},
@@ -46,24 +48,22 @@ class PrivacySmokeTests(unittest.TestCase):
         }
         before = json.dumps(source, sort_keys=True)
         result = SMOKE.isolated_config(source, Path("/private/synthetic.json"))
-        self.assertEqual(set(result["receivers"]), {"otlp"})
-        self.assertEqual(set(result["service"]["pipelines"]), {"logs"})
-        self.assertEqual(set(result["exporters"]), {"file"})
-        self.assertEqual(
-            result["receivers"]["otlp"]["protocols"]["http"]["endpoint"], "127.0.0.1:14318"
+        assert set(result["receivers"]) == {"otlp"}
+        assert set(result["service"]["pipelines"]) == {"logs"}
+        assert set(result["exporters"]) == {"file"}
+        assert result["receivers"]["otlp"]["protocols"]["http"]["endpoint"] == "127.0.0.1:14318"
+        assert (
+            result["receivers"]["otlp"]["protocols"]["http"]["tls"]["client_ca_file"]
+            == "validation-ca"
         )
-        self.assertEqual(
-            result["receivers"]["otlp"]["protocols"]["http"]["tls"]["client_ca_file"],
-            "validation-ca",
-        )
-        self.assertEqual(json.dumps(source, sort_keys=True), before)
+        assert json.dumps(source, sort_keys=True) == before
 
-    def test_host_network_namespace_is_rejected_before_startup(self):
+    def test_host_network_namespace_is_rejected_before_startup(self) -> None:
         with patch.object(SMOKE.os, "readlink", return_value="net:[same]"):
             with self.assertRaisesRegex(ValueError, "separate network namespace"):
                 SMOKE.run(Path("/unused"), Path("/unused"), Path("/unused"), Path("/unused"))
 
-    def test_otlp_partial_rejection_is_a_failure(self):
+    def test_otlp_partial_rejection_is_a_failure(self) -> None:
         with patch.object(
             SMOKE.urllib.request,
             "urlopen",

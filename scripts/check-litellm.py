@@ -1,3 +1,4 @@
+"""Smoke-check the LiteLLM proxy service running in the llm namespace."""
 import base64
 import json
 import os

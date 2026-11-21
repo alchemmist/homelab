@@ -9,7 +9,7 @@ SDK source privacy guard must already be active before this module installs.
 import sys
 
 
-def activate():
+def activate() -> None:
     from opentelemetry.sdk.trace import TracerProvider
     if not getattr(TracerProvider, "_homelab_source_privacy", False):
         raise ValueError("Early before-export source guard must be active first")
@@ -20,7 +20,7 @@ def activate():
         return
     class SourceSafeHttpInstrumentor(native.Instrumentor):
         _homelab_http_only_profile = True
-        def _instrument(self, **kwargs):
+        def _instrument(self, **kwargs) -> None:
             self.instrumentors = []
             native.FastAPIInstrumentor.instrument_app(app=self.app,
                 http_capture_headers_server_request=[], http_capture_headers_server_response=[])
@@ -28,7 +28,7 @@ def activate():
                 instrumentor = cls()
                 instrumentor.instrument()
                 self.instrumentors.append(instrumentor)
-        def _uninstrument(self, **kwargs):
+        def _uninstrument(self, **kwargs) -> None:
             native.FastAPIInstrumentor.uninstrument_app(self.app)
             for instrumentor in getattr(self, "instrumentors", []):
                 instrumentor.uninstrument()

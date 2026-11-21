@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Run a bounded browser test and clean up all of its child processes."""
 import argparse
 import ctypes
 import math
