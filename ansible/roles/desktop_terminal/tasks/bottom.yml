@@ -55,12 +55,12 @@
     - {section: disk, option: sort_order, value: Descending}
   notify: Restart running desktop monitors
 
-- name: Draw socrat-1 monitor graphs with separate dots rather than braille cells
+- name: Use the full-resolution braille graphs on socrat-1
   community.general.ini_file:
     path: "{{ homelab_bottom_config.stdout }}"
     section: flags
     option: dot_marker
-    value: "true"
+    value: "false"
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
     mode: "0644"
