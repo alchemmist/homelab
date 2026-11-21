@@ -17,7 +17,7 @@ spec:
             {{- end }}
             summary: 'pg-common has no streaming standby; new writes are unprotected.'
         - alert: SocratPgCommonReplicaLag
-          expr: cnpg_pg_stat_replication_replay_lag_seconds{pg_cluster="pg-common"} > 60 or cnpg_pg_replication_slots_pg_wal_lsn_diff{pg_cluster="pg-common"} > 268435456
+          expr: cnpg_pg_stat_replication_replay_lag_seconds{pg_cluster="pg-common",application_name=~"pg-common-[0-9]+"} > 60 or cnpg_pg_replication_slots_pg_wal_lsn_diff{pg_cluster="pg-common"} > 268435456
           for: 5m
           labels: {severity: warning}
           annotations:
