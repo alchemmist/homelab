@@ -4,6 +4,7 @@ import copy
 import shutil
 import subprocess
 from pathlib import Path
+
 import pytest
 import yaml
 
@@ -13,7 +14,8 @@ ROOT = Path(__file__).resolve().parents[1]
 @pytest.mark.skipif(
     not shutil.which("helm") or not shutil.which("promtool"), reason="Native Helm/promtool required"
 )
-def test_power_and_quorum_with_native_promtool(tmp_path):
+def test_power_and_quorum_with_native_promtool(tmp_path: Path) -> None:
+    """Prove power warnings precede sleep and missing voters stay visible."""
     rendered = subprocess.check_output(
         ["helm", "template", "monitoring", str(ROOT / "charts/monitoring-k3s")], text=True
     )
@@ -31,8 +33,18 @@ def test_power_and_quorum_with_native_promtool(tmp_path):
     assert rules["SocratEtcdQuorumHealthUnproven"]["for"] == "30s"
     (tmp_path / "rules.yaml").write_text(yaml.safe_dump({"groups": [group]}))
 
-    def fixture(name, online=1, capacity=88, voters=3, fire=(), missing=False, stale=False):
-        series = (
+    def fixture(
+        name: str,
+        *,
+        online: int = 1,
+        capacity: int = 88,
+        voters: int = 3,
+        fire: tuple[str, ...] = (),
+        missing: bool = False,
+        stale: bool = False,
+    ) -> dict[str, object]:
+        """Build one promtool unit test around the rendered rules."""
+        series: list[dict[str, str]] = (
             []
             if missing
             else [
@@ -57,7 +69,8 @@ def test_power_and_quorum_with_native_promtool(tmp_path):
                     "values": "1x20" if not stale or n != 2 else "1 1 1 1 1 _ _ _ _ _ _",
                 }
             )
-        checks = []
+        checks: list[dict[str, object]] = []
+        expected: list[dict[str, object]] = []
         for alert, rule in rules.items():
             expected = []
             if alert in fire:
@@ -101,7 +114,8 @@ def test_power_and_quorum_with_native_promtool(tmp_path):
     assert run.returncode == 0, run.stdout + run.stderr
 
 
-def test_agent_native_compaction_keeps_durable_barrier():
+def test_agent_native_compaction_keeps_durable_barrier() -> None:
+    """Keep fsync and durable storage queueing in the native agent config."""
     agent = yaml.safe_load((ROOT / "deploy/monitoring/otel/agent.yaml").read_text())
     storage = agent["extensions"]["file_storage"]
     assert storage["fsync"] is True

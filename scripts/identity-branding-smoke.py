@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Explicit live branding acceptance: temporary observer, real MFA/OIDC, cleanup.
+
 No real owner password/MFA is read or reset. No QR/secret/session traces are saved.
 Requires Playwright + Chromium. Run from the owner Mac with --run.
 """
@@ -75,7 +76,7 @@ import time
 import urllib.parse
 import uuid
 
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import Error as PlaywrightError, sync_playwright
 
 username = "theme-smoke-" + uuid.uuid4().hex[:10]
 password = secrets.token_urlsafe(32)
@@ -126,7 +127,7 @@ try:
                     if data.get("component") == "ak-stage-authenticator-totp":
                         totp_challenge.clear()
                         totp_challenge.update(data)
-                except Exception:
+                except (ValueError, TypeError, IndexError, KeyError, AttributeError, PlaywrightError):
                     pass
 
         page.on("response", observe)

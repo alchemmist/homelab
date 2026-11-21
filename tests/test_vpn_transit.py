@@ -2,19 +2,20 @@
 
 import json
 from pathlib import Path
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_fixed_destinations_and_public_backend_protection():
+def test_fixed_destinations_and_public_backend_protection() -> None:
     config = json.loads((ROOT / "deploy/vpn-hardening/moscow-transit.json").read_text())
     management = json.loads((ROOT / "deploy/vpn-hardening/moscow-management.json").read_text())
     assert config["outbounds"] == [
         {"tag": "fixed-destination", "protocol": "freedom", "sendThrough": "10.250.0.40"}
     ]
     assert "sendThrough" not in management["outbounds"][0]
-    ports = set()
+    ports: set[int] = set()
     for inbound in config["inbounds"] + management["inbounds"]:
         assert inbound["protocol"] == "tunnel"
         assert inbound["settings"]["followRedirect"] is False
@@ -32,7 +33,7 @@ def test_fixed_destinations_and_public_backend_protection():
     assert ports == {80, 443, 32053, 32083, 32084, 32085, 32086, 51832, 51840}
 
 
-def test_transport_never_advertises_a_default_route_or_mutates_old_interface():
+def test_transport_never_advertises_a_default_route_or_mutates_old_interface() -> None:
     template = (ROOT / "ansible/roles/vpn_transit/templates/wg-vpn-transit.conf.j2").read_text()
     assert "0.0.0.0/0" not in template
     assert "::/0" not in template
@@ -44,7 +45,7 @@ def test_transport_never_advertises_a_default_route_or_mutates_old_interface():
     assert "wg-quick@wg-vpn-transit" in tasks
 
 
-def test_small_worker_keeps_admission_and_has_no_control_plane_role():
+def test_small_worker_keeps_admission_and_has_no_control_plane_role() -> None:
     values = yaml.safe_load((ROOT / "ansible/inventory/host_vars/socrat-4.yml").read_text())
     assert values["k3s_worker_profile"] == "transit-worker"
     assert values["k3s_worker_bootstrap_taint"].endswith(":NoSchedule")
@@ -53,7 +54,7 @@ def test_small_worker_keeps_admission_and_has_no_control_plane_role():
     assert play[0]["roles"] == ["k3s_worker"]
 
 
-def test_public_key_inventory_has_no_private_material():
+def test_public_key_inventory_has_no_private_material() -> None:
     values = yaml.safe_load((ROOT / "ansible/vars/vpn-transit.yml").read_text())
     assert len(values["vpn_transit_public_keys"]) == 5
     assert all(
@@ -64,11 +65,12 @@ def test_public_key_inventory_has_no_private_material():
     assert len(values["vpn_transit_xray_sha256"]) == 64
 
 
-def test_home_egress_has_only_known_exact_destination_and_no_default_route():
+def test_home_egress_has_only_known_exact_destination_and_no_default_route() -> None:
     import importlib.util
 
     path = ROOT / "scripts/vpn-home-transit-egress.py"
     spec = importlib.util.spec_from_file_location("home_egress", path)
+    assert spec is not None and spec.loader is not None
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     rules = mod.rules()
@@ -86,12 +88,13 @@ def test_home_egress_has_only_known_exact_destination_and_no_default_route():
     assert "'default_routes_unchanged': True" in source
 
 
-def test_exit_fence_never_blocks_shared_https_or_dns():
+def test_exit_fence_never_blocks_shared_https_or_dns() -> None:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(
         "exit_fence", ROOT / "scripts/vpn-exit-transit-fence.py"
     )
+    assert spec is not None and spec.loader is not None
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     assert "{ 32053, 32083, 32084 }" in mod.RULES
@@ -100,7 +103,7 @@ def test_exit_fence_never_blocks_shared_https_or_dns():
     assert 'iifname "eth0"' in mod.RULES
 
 
-def test_private_authoritative_listener_and_tcp_certificate_identity_preserved():
+def test_private_authoritative_listener_and_tcp_certificate_identity_preserved() -> None:
     values = yaml.safe_load((ROOT / "ansible/inventory/host_vars/socrat-2.yml").read_text())
     assert values["public_dns_extra_listen"] == ["10.250.0.2@5354"]
     assert values["public_dns_transit_listener_enabled"] is True
@@ -110,7 +113,7 @@ def test_private_authoritative_listener_and_tcp_certificate_identity_preserved()
     assert "secure: true" in client
 
 
-def test_native_recovery_gate_keeps_real_loopback_health_and_subscription_routes():
+def test_native_recovery_gate_keeps_real_loopback_health_and_subscription_routes() -> None:
     from jinja2 import Environment
 
     edge = yaml.safe_load((ROOT / "charts/traefik-edge/values.yaml").read_text())

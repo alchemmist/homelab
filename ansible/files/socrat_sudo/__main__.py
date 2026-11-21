@@ -22,11 +22,13 @@ WAIT_SECONDS = 300
 
 
 def fail(message: str) -> None:
+    """Fail."""
     sys.stderr.write(f"socrat-sudo: {message}\n")
     raise SystemExit(1)
 
 
 def load_env(path: str = ENV_PATH) -> dict[str, str]:
+    """Load env."""
     try:
         info = os.stat(path)
     except FileNotFoundError:
@@ -54,6 +56,7 @@ def load_env(path: str = ENV_PATH) -> dict[str, str]:
 
 
 def call(method: str, url: str, token: str, body: dict | None = None) -> dict:
+    """Call."""
     data = None if body is None else json.dumps(body).encode()
     request = urllib.request.Request(url, data=data, method=method)
     request.add_header("X-Internal-Token", token)
@@ -74,6 +77,7 @@ def call(method: str, url: str, token: str, body: dict | None = None) -> dict:
 
 
 def main(argv: list[str] | None = None) -> None:
+    """Main."""
     args = list(sys.argv[1:] if argv is None else argv)
     if not args or args[0] in {"-h", "--help"}:
         sys.stderr.write("usage: socrat-sudo <command> [args...]\n")

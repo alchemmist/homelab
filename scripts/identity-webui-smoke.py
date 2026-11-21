@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Explicit acceptance test: temporary observer, real MFA/OIDC, then fixture cleanup.
+
 Run from the owner Mac with private DNS/WireGuard. Never tests as the real owner.
 """
 
@@ -50,7 +51,11 @@ def admin(method, path, data=None):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *args):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
+    def redirect_request(self, *_args):
+
+        'Refuse redirects so credentials are never forwarded.'
         return None
 
 
@@ -83,7 +88,7 @@ def browser(url, data=None):
             + str(e.code)
             + " at "
             + urllib.parse.urlsplit(url).path
-        )
+        ) from e
 
 
 username = "identity-smoke-" + uuid.uuid4().hex[:10]

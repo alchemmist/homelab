@@ -1,10 +1,11 @@
 """Offline chart rendering and real nginx parser tests; no cluster access."""
 
-from pathlib import Path
 import re
 import shutil
 import subprocess
 import unittest
+from pathlib import Path
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -12,7 +13,10 @@ CHARTS = ("private-gateway", "syncthing", "img-proxy", "litellm-infra", "socrat-
 
 
 class SafeNginxLoggingTests(unittest.TestCase):
-    def render(self, chart):
+    """Verify nginx access logging renders with sensitive data stripped."""
+    def render(self, chart: str) -> list[dict[str, object]]:
+        """Render a chart and return its documents."""
+
         return list(
             yaml.safe_load_all(
                 subprocess.check_output(
@@ -23,20 +27,27 @@ class SafeNginxLoggingTests(unittest.TestCase):
             )
         )
 
-    def test_render_and_safe_contract(self):
+    def test_render_and_safe_contract(self) -> None:
+        """Every chart renders the safe logging contract."""
+
         for chart in CHARTS:
             with self.subTest(chart=chart):
                 docs = self.render(chart)
-                configs = [
-                    v
-                    for d in docs
-                    if d and d["kind"] == "ConfigMap"
-                    for v in d.get("data", {}).values()
-                    if "log_format safe_json" in v
-                ]
-                self.assertTrue(configs)
+                configs: list[str] = []
+                for doc in docs:
+                    if not doc or doc["kind"] != "ConfigMap":
+                        continue
+                    data = doc.get("data", {})
+                    assert isinstance(data, dict)
+                    for entry in data.values():
+                        assert isinstance(entry, str)
+                        if "log_format safe_json" in entry:
+                            configs.append(entry)
+                assert configs
                 for config in configs:
-                    fmt = re.search(r"log_format safe_json escape=json '([^']+)';", config).group(1)
+                    fmt_match = re.search(r"log_format safe_json escape=json '([^']+)';", config)
+                    assert fmt_match is not None
+                    fmt = fmt_match.group(1)
                     for forbidden in (
                         "$request_uri",
                         '$request"',
@@ -45,29 +56,36 @@ class SafeNginxLoggingTests(unittest.TestCase):
                         "$remote_addr",
                         "$cookie_",
                     ):
-                        self.assertNotIn(forbidden, fmt)
-                    self.assertIn('"path":"$uri"', fmt)
-                    self.assertIn('"timestamp":"$time_iso8601"', fmt)
-                    self.assertIn("~^4 warn;", config)
-                    self.assertIn("~^5 error;", config)
-                    self.assertIn("access_log /dev/stdout safe_json;", config)
+                        assert forbidden not in fmt
+                    assert '"path":"$uri"' in fmt
+                    assert '"timestamp":"$time_iso8601"' in fmt
+                    assert "~^4 warn;" in config
+                    assert "~^5 error;" in config
+                    assert "access_log /dev/stdout safe_json;" in config
 
     @unittest.skipUnless(shutil.which("docker"), "docker required for nginx syntax validation")
-    def test_real_nginx_http_syntax(self):
+    def test_real_nginx_http_syntax(self) -> None:
+        """The rendered logging directives pass real nginx syntax checks."""
+
         # Extract exact rendered logging directives; TLS/listen/upstream resources
         # in full gateway configs depend on deployment-only IPs and secrets.
         for chart in CHARTS:
-            configs = [
-                v
-                for d in self.render(chart)
-                if d and d["kind"] == "ConfigMap"
-                for v in d.get("data", {}).values()
-                if "log_format safe_json" in v
-            ]
+            configs: list[str] = []
+            for doc in self.render(chart):
+                if not doc or doc["kind"] != "ConfigMap":
+                    continue
+                data = doc.get("data", {})
+                assert isinstance(data, dict)
+                for entry in data.values():
+                    assert isinstance(entry, str)
+                    if "log_format safe_json" in entry:
+                        configs.append(entry)
             for config in configs:
-                block = re.search(
+                block_match = re.search(
                     r"map \$status.*?access_log /dev/stdout safe_json;", config, re.S
-                ).group()
+                )
+                assert block_match is not None
+                block = block_match.group()
                 candidate = (
                     "events {}\nhttp {\n" + block + "\nserver { listen 8080; return 204; }\n}\n"
                 )
@@ -88,9 +106,11 @@ class SafeNginxLoggingTests(unittest.TestCase):
                     text=True,
                     capture_output=True,
                 )
-                self.assertEqual(result.returncode, 0, f"{chart}: nginx syntax rejected")
+                assert result.returncode == 0, f"{chart}: nginx syntax rejected"
 
-    def test_socrat_mount_without_homepage(self):
+    def test_socrat_mount_without_homepage(self) -> None:
+        """The socrat-home chart mounts access logging without the homepage."""
+
         output = subprocess.check_output(
             [
                 "helm",
@@ -104,9 +124,6 @@ class SafeNginxLoggingTests(unittest.TestCase):
         )
         deployment = next(d for d in yaml.safe_load_all(output) if d and d["kind"] == "Deployment")
         pod = deployment["spec"]["template"]
-        self.assertIn("checksum/access-logging", pod["metadata"]["annotations"])
-        self.assertEqual(pod["spec"]["volumes"][0]["name"], "access-logging")
-        self.assertIn(
-            "/etc/nginx/conf.d/00-access-logging.conf",
-            [m["mountPath"] for m in pod["spec"]["containers"][0]["volumeMounts"]],
-        )
+        assert "checksum/access-logging" in pod["metadata"]["annotations"]
+        assert pod["spec"]["volumes"][0]["name"] == "access-logging"
+        assert "/etc/nginx/conf.d/00-access-logging.conf" in [m["mountPath"] for m in pod["spec"]["containers"][0]["volumeMounts"]]

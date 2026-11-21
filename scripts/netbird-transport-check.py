@@ -26,7 +26,10 @@ ENTRANCES = ["109.173.40.247", "109.120.141.60"]
 
 
 class WS:
-    def __init__(self, address):
+    """Client for the NetBird WebSocket management API."""
+
+    def __init__(self, address) -> None:
+
         self.s = ssl.create_default_context().wrap_socket(
             socket.create_connection((address, 443), timeout=10), server_hostname=HOST
         )
@@ -60,6 +63,7 @@ class WS:
             raise ValueError("wrong WS accept")
 
     def send(self, data, opcode=2):
+        """Send a masked WebSocket frame on the raw socket."""
         n = len(data)
         mask = os.urandom(4)
         head = (
@@ -70,6 +74,7 @@ class WS:
         self.s.sendall(head + mask + bytes(b ^ mask[i % 4] for i, b in enumerate(data)))
 
     def read(self, n):
+        """Buffer exactly n bytes from the socket."""
         while len(self.buffer) < n:
             data = self.s.recv(4096)
             if not data:
@@ -79,6 +84,7 @@ class WS:
         return data
 
     def receive(self):
+        """Read one WebSocket frame, unmasking its payload."""
         for _ in range(8):
             head = self.read(2)
             opcode = head[0] & 15
@@ -99,6 +105,7 @@ class WS:
         raise ValueError("no relay payload")
 
     def close(self):
+        """Send a close frame and shut the socket down."""
         try:
             self.send(b"", 8)
         finally:
@@ -117,7 +124,7 @@ def main():
     sessions = []
     result = {"management_enrollment": False, "trusted_TLS": True, "relay": {}, "stun": {}}
     try:
-        for address, identity in zip(ENTRANCES, ids):
+        for address, identity in zip(ENTRANCES, ids, strict=True):
             ws = WS(address)
             sessions.append(ws)
             ws.send(b"\x01\x06\x21\x12\xa4\x42" + identity + token)
@@ -165,10 +172,10 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception as exc:
+    except (ValueError, KeyError, TypeError, RuntimeError, OSError, yaml.YAMLError) as exc:
         print(
             "BLOCKED: transport check stopped: "
             + type(exc).__name__
             + "; inspect implementation, never blindly retry"
         )
-        raise SystemExit(2)
+        raise SystemExit(2) from exc

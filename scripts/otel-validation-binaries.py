@@ -1,3 +1,5 @@
+"""Extract and verify telemetry validation binaries from pinned images."""
+
 import argparse
 import hashlib
 import json
@@ -43,6 +45,38 @@ def request(repository, reference, token, kind):
     )
 
 
+def download_layer(repository, layer, token, stream):
+    """Download one layer blob into stream, verifying its size and digest."""
+    digest = hashlib.sha256()
+    size = 0
+    with urllib.request.urlopen(
+        request(repository, layer["digest"], token, "blobs"), timeout=120
+    ) as response:
+        while data := response.read(4 * 1024**2):
+            size += len(data)
+            if size > MAX_LAYER_BYTES:
+                raise ValueError("Image layer exceeds the inspection budget")
+            digest.update(data)
+            stream.write(data)
+    if size != layer["size"] or "sha256:" + digest.hexdigest() != layer["digest"]:
+        raise ValueError("Image layer checksum mismatch")
+    stream.seek(0)
+
+
+def write_member(archive, member, target):
+    """Copy one archive member to target with O_EXCL, after sanity checks."""
+    if not member.isfile() or member.size > MAX_BINARY_BYTES:
+        raise ValueError("Unexpected image binary member")
+    descriptor = os.open(target, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o700)
+    with (
+        os.fdopen(descriptor, "wb") as destination,
+        archive.extractfile(member) as source,
+    ):
+        shutil.copyfileobj(source, destination, 4 * 1024**2)
+    if target.stat().st_size != member.size:
+        raise ValueError("Truncated image binary")
+
+
 def extract(image, name, output):
     repository = image["repository"].removeprefix("docker.io/")
     token = token_for(repository)
@@ -60,34 +94,12 @@ def extract(image, name, output):
         if layer["size"] > MAX_LAYER_BYTES:
             raise ValueError("Image layer exceeds the inspection budget")
         with tempfile.TemporaryFile(dir=output) as stream:
-            digest = hashlib.sha256()
-            size = 0
-            with urllib.request.urlopen(
-                request(repository, layer["digest"], token, "blobs"), timeout=120
-            ) as response:
-                while data := response.read(4 * 1024**2):
-                    size += len(data)
-                    if size > MAX_LAYER_BYTES:
-                        raise ValueError("Image layer exceeds the inspection budget")
-                    digest.update(data)
-                    stream.write(data)
-            if size != layer["size"] or "sha256:" + digest.hexdigest() != layer["digest"]:
-                raise ValueError("Image layer checksum mismatch")
-            stream.seek(0)
+            download_layer(repository, layer, token, stream)
             with tarfile.open(fileobj=stream, mode="r:*") as archive:
                 for member in archive:
                     if member.name.removeprefix("./").lstrip("/") != IMAGE_PATHS[name]:
                         continue
-                    if not member.isfile() or member.size > MAX_BINARY_BYTES:
-                        raise ValueError("Unexpected image binary member")
-                    descriptor = os.open(target, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o700)
-                    with (
-                        os.fdopen(descriptor, "wb") as destination,
-                        archive.extractfile(member) as source,
-                    ):
-                        shutil.copyfileobj(source, destination, 4 * 1024**2)
-                    if target.stat().st_size != member.size:
-                        raise ValueError("Truncated image binary")
+                    write_member(archive, member, target)
     if not target.exists():
         raise ValueError("Expected validation binary was not found in the pinned image")
     with target.open("rb") as stream:

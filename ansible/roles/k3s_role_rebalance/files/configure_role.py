@@ -1,3 +1,5 @@
+"""Apply the rebalanced k3s role to a node's config file."""
+
 import argparse
 import json
 import os
@@ -53,6 +55,12 @@ def configure(args):
     if not changed or args.check:
         return result
     encoded = yaml.safe_dump(desired, sort_keys=False).encode()
+    result["backup"] = _write_desired(path, original, encoded, exists)
+    return result
+
+
+def _write_desired(path, original, encoded, exists):
+    """Atomically install the new config; return the backup file name, if any."""
     backup = None
     if exists:
         fd, backup = tempfile.mkstemp(prefix=path.name + ".backup-", dir=path.parent)
@@ -75,8 +83,7 @@ def configure(args):
     finally:
         if os.path.exists(temporary):
             os.unlink(temporary)
-    result["backup"] = Path(backup).name if backup else None
-    return result
+    return Path(backup).name if backup else None
 
 
 def main():
