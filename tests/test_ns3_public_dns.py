@@ -7,7 +7,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(path, name):
+def load(path: Path, name: str):
     s = importlib.util.spec_from_file_location(name, path)
     m = importlib.util.module_from_spec(s)
     s.loader.exec_module(m)
