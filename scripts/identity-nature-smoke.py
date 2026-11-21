@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Anonymous, read-only Nature performance/branding checks. No login/owner factors.
+
 No screenshots, private HTML, traces or cookies are persisted. --run required.
 """
 
@@ -38,9 +39,9 @@ with sync_playwright() as p:
             responses = []
             errors = []
             page.on(
-                "response", lambda r: responses.append(r) if "/-/quiet-mono/v1/" in r.url else None
+                "response", lambda r, responses=responses: responses.append(r) if "/-/quiet-mono/v1/" in r.url else None
             )
-            page.on("pageerror", lambda e: errors.append(True))
+            page.on("pageerror", lambda e, errors=errors: errors.append(True))
             page.goto(BASE + "/if/flow/default-authentication-flow/")
             page.locator("input[name=uidField]").wait_for()
             page.wait_for_timeout(600)
@@ -101,7 +102,7 @@ with sync_playwright() as p:
                 + "/if/flow/default-authentication-flow/?next=%2Fapplication%2Fo%2Fauthorize%2F%3Fclient_id%3Dlayout-only%26state%3Dread-only-journey"
             )
 
-            def current_scene():
+            def current_scene(page=page):
                 page.wait_for_function(
                     "getComputedStyle(document.body,'::before').getPropertyValue('--qm-scene').trim().length===12"
                 )
@@ -231,7 +232,7 @@ if args.delay_hq:
                     release = asyncio.Event()
                     pending = []
 
-                    async def hold(route):
+                    async def hold(route, pending=pending, release=release) -> None:
                         pending.append(True)
                         await release.wait()
                         await route.continue_()

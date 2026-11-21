@@ -1,5 +1,7 @@
 # PostgreSQL Socrat: рабочая карта
 
+[Отчёт: внезапная потеря `socrat-1`, 21 ноября 2026](socrat-1-loss-20261121.md): проверенный failover `pg-critical` с `1` на `5`, возврат бывшего primary через `pg_rewind`. Другие кластеры этим не проверены.
+
 Срез после переключений 20 ноября 2026. Описание для пользователей — [страница wiki](https://wiki.socrat.alchemmist.xyz/platform/postgresql/), эксплуатация и ротация CA — [runbook](../docs/postgres-platform.md). Владелец конфигурации — `charts/postgres-platform`, Argo Application `postgres-platform`, namespace `postgres`.
 
 | Адрес записи внутри кластера | БД → сервис | Контракт |

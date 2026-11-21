@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Pure target-only migration plan; no panel authentication, DB writes or Xray reload.
+
 The policy is intent, not a claim of deployed state. A native API executor and
 client acceptance must be reviewed before applying this plan.
 """
@@ -15,11 +16,31 @@ from pathlib import Path
 spec = importlib.util.spec_from_file_location(
     "inventory", Path(__file__).with_name("vpn-hardening-inventory.py")
 )
+if spec is None or spec.loader is None or not spec.has_location:
+    reason = "Cannot load inventory helper"
+    raise ValueError(reason)
 inventory = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(inventory)
 
 
-def build(config, policy):
+def _inbounds(config: dict[str, object]) -> list[object]:
+    value = config["inbounds"]
+    return value if isinstance(value, list) else []
+
+
+def _retarget(replacement: dict[str, object], key: str, new_target: object) -> None:
+    reality = replacement["realitySettings"]
+    if isinstance(reality, dict):
+        reality[key] = new_target
+
+
+def _restream(config: dict[str, object], row_id: object, canonical: object) -> None:
+    for item in _inbounds(config):
+        if isinstance(item, dict) and item["id"] == row_id:
+            item["stream_settings"] = canonical
+
+
+def build(config: dict[str, object], policy: dict[str, object]) -> dict[str, object]:
     if (
         policy.get("version") != 1
         or policy.get("newVpsOrPublicIp") is not False
@@ -27,16 +48,19 @@ def build(config, policy):
     ):
         raise ValueError("Unsupported scope")
     desired = policy["realityCorrection"]
+    if not isinstance(desired, dict):
+        reason = "Explicit apply policy required"
+        raise TypeError(reason)
     if (
         not isinstance(desired.get("apiApplyEnabled"), bool)
         or desired.get("preserveClientMaterial") is not True
     ):
         raise ValueError("Explicit apply policy and preserved client material required")
-    matches = [x for x in config["inbounds"] if x["port"] == desired["port"]]
+    matches = [x for x in _inbounds(config) if isinstance(x, dict) and x["port"] == desired["port"]]
     if len(matches) != 1:
         raise ValueError("Expected exactly one target inbound")
     row = matches[0]
-    stream = json.loads(row["stream_settings"])
+    stream: dict[str, object] = json.loads(str(row["stream_settings"]))
     if not row["enable"] or any(
         (
             row["protocol"] != desired["protocol"],
@@ -46,6 +70,9 @@ def build(config, policy):
     ):
         raise ValueError("Unexpected transport or disabled inbound")
     reality = stream["realitySettings"]
+    if not isinstance(reality, dict):
+        reason = "Expected REALITY settings"
+        raise TypeError(reason)
     if reality["serverNames"] != desired["serverNames"]:
         raise ValueError("Unexpected client-visible SNI; do not migrate it implicitly")
     keys = [key for key in ("target", "dest") if key in reality]
@@ -56,13 +83,11 @@ def build(config, policy):
     if current not in (desired["oldTarget"], desired["newTarget"]):
         raise ValueError("Target drift; stop")
     after = copy.deepcopy(config)
-    operations = []
+    operations: list[dict[str, object]] = []
     if current != desired["newTarget"]:
         replacement = copy.deepcopy(stream)
-        replacement["realitySettings"][key] = desired["newTarget"]
-        for item in after["inbounds"]:
-            if item["id"] == row["id"]:
-                item["stream_settings"] = inventory.canonical(replacement)
+        _retarget(replacement, key, desired["newTarget"])
+        _restream(after, row["id"], inventory.canonical(replacement))
         operations.append(
             {
                 "port": row["port"],
@@ -80,10 +105,11 @@ def build(config, policy):
         "client_material_preserved": True,
         "requires_native_api_and_authenticated_client_acceptance": True,
     }
-    return {**result, "plan_sha256": inventory.digest(result)}
+    plan: dict[str, object] = {**result, "plan_sha256": inventory.digest(result)}
+    return plan
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database", type=Path, default=Path("/srv/x-ui-lab/db/x-ui.db"))
     parser.add_argument("--policy", type=Path, required=True)
@@ -101,7 +127,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
+    except (OSError, ValueError, RuntimeError, ImportError, sqlite3.Error):
         raise SystemExit(
             "Target preview stopped on unsupported state; no writes performed"
         ) from None

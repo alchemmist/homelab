@@ -13,6 +13,8 @@
     - name: Validate the scoped owner bootstrap
       ansible.builtin.assert:
         that:
+          - homelab_owner_account.name == 'alchemmist'
+          - homelab_owner_account.sudo is true
           - inventory_hostname == 'socrat-4'
           - ansible_facts.os_family == 'Debian'
           - edge_owner_password_hash is defined
@@ -45,23 +47,23 @@
         state: present
     - name: Create the explicitly approved owner with the preserved standard password
       ansible.builtin.user:
-        name: alchemmist
+        name: "{{ homelab_owner_account.name }}"
         create_home: true
-        shell: /usr/bin/zsh
+        shell: "{{ homelab_owner_account.shell }}"
         groups: sudo
         append: true
         password: '{{ edge_owner_password_hash }}'
       no_log: true
     - name: Create the owner SSH directory
       ansible.builtin.file:
-        path: /home/alchemmist/.ssh
+        path: "/home/{{ homelab_owner_account.name }}/.ssh"
         state: directory
-        owner: alchemmist
-        group: alchemmist
+        owner: "{{ homelab_owner_account.name }}"
+        group: "{{ homelab_owner_account.name }}"
         mode: '0700'
     - name: Add the standard public owner keys without removing other keys
       ansible.posix.authorized_key:
-        user: alchemmist
+        user: "{{ homelab_owner_account.name }}"
         key: '{{ edge_owner_public_keys }}'
         exclusive: false
       no_log: true

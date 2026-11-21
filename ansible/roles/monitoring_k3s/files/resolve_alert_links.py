@@ -1,3 +1,5 @@
+"""Resolve alert annotations into direct Grafana alert links."""
+
 import argparse
 import json
 import os
@@ -15,7 +17,10 @@ RULE_RESOURCES_PATH = (
     "/apis/monitoring.coreos.com/v1/namespaces/cattle-monitoring-system/prometheusrules"
 )
 FORMAT_QUERY_PATH = PROMETHEUS_PATH.rsplit("/", 1)[0] + "/format_query"
-GRAFANA_PATH = "/api/v1/namespaces/cattle-monitoring-system/services/http:kube-prometheus-stack-grafana:80/proxy/api/frontend/settings"
+GRAFANA_PATH = (
+    "/api/v1/namespaces/cattle-monitoring-system/services/http:"
+    "kube-prometheus-stack-grafana:80/proxy/api/frontend/settings"
+)
 
 
 def compact(value):

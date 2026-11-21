@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "meshRegistry": "ansible/inventory/group_vars/Socrat.yml",
+  "meshRegistry": "ansible/inventory/group_vars/Socrat/cluster.yml",
   "ansibleInventory": "ansible/inventory/hosts.yml",
   "sshEndpointFromPublicPeer": [
     "socrat-4"

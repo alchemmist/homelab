@@ -1,3 +1,4 @@
+"""Check an LLM vision model by having it read code words from an image."""
 import argparse
 import base64
 import io
@@ -145,7 +146,10 @@ def main():
                 "content": [
                     {
                         "type": "text",
-                        "text": "This is the read_file image result. Return the codes from both images in chronological order, separated by a space.",
+                        "text": (
+                            "This is the read_file image result. Return the codes from both "
+                            "images in chronological order, separated by a space."
+                        ),
                     },
                     make_image(codes[1]),
                 ],
@@ -167,7 +171,9 @@ def main():
                     "content": [
                         {
                             "type": "text",
-                            "text": "Read only the code in this latest image. Return only the code.",
+                            "text": (
+                                "Read only the code in this latest image. Return only the code."
+                            ),
                         },
                         make_image(code, large=index == 0),
                     ],
@@ -189,6 +195,6 @@ if __name__ == "__main__":
     except urllib.error.HTTPError as error:
         print(f"FAIL HTTP {error.code}", file=sys.stderr)
         sys.exit(1)
-    except Exception as error:
+    except (ValueError, KeyError, TypeError, OSError) as error:
         print(f"FAIL {type(error).__name__}: {error}", file=sys.stderr)
         sys.exit(1)

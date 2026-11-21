@@ -29,12 +29,12 @@ class ActivityTest(unittest.TestCase):
             {"id": "4", "startedAt": "2026-11-07T09:59:00Z", "status": "waiting"},
         ]
         counts = observer.summarize(rows, now)
-        self.assertEqual(counts["success", 300], 1)
-        self.assertEqual(counts["success", 3600], 1)
-        self.assertEqual(counts["error", 300], 0)
-        self.assertEqual(counts["error", 3600], 1)
-        self.assertEqual(counts["running", 300], 0)
-        self.assertEqual(counts["waiting", 300], 1)
+        assert counts["success", 300] == 1
+        assert counts["success", 3600] == 1
+        assert counts["error", 300] == 0
+        assert counts["error", 3600] == 1
+        assert counts["running", 300] == 0
+        assert counts["waiting", 300] == 1
 
     def test_running_is_fetched_separately_and_old_runs_still_count(self) -> None:
         """Count an old running row fetched by the explicit running query."""
@@ -46,7 +46,7 @@ class ActivityTest(unittest.TestCase):
             "nextCursor": None,
         }
         try:
-            self.assertEqual(observer.collect()["running", 0], 1)
+            assert observer.collect()["running", 0] == 1
         finally:
             observer.get_page = old
 
@@ -63,6 +63,6 @@ class ActivityTest(unittest.TestCase):
     def test_read_only_and_no_execution_payloads(self) -> None:
         """Require the exporter source to stay read-only and free of payload prints."""
         source = PATH.read_text()
-        self.assertIn("'includeData': 'false'", source)
-        self.assertNotIn("method=", source)
-        self.assertNotIn("print(", source)
+        assert "'includeData': 'false'" in source
+        assert "method=" not in source
+        assert "print(" not in source

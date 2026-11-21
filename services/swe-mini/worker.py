@@ -24,10 +24,12 @@ RESULT_KEY = os.environ.pop("RESULT_KEY", "")
 
 
 def signed_result(result):
+    """Run signed result."""
     return encode_result(result, RESULT_KEY)
 
 
 def command(args, *, cwd=ROOT, timeout=900):
+    """Run command."""
     with open(ART / "commands.log", "a") as log:
         log.write("\nCOMMAND " + repr(args) + "\n")
         log.flush()
@@ -41,6 +43,7 @@ def command(args, *, cwd=ROOT, timeout=900):
 
 
 def checks():
+    """Run checks."""
     return {
         "backend": command(
             [
@@ -64,6 +67,7 @@ def checks():
 
 
 def agent_main():
+    """Run agent main."""
     import yaml
     from minisweagent import package_dir
     from minisweagent.agents.default import DefaultAgent
@@ -81,12 +85,12 @@ def agent_main():
         max_tokens=4096,
     )
     smoke = os.getenv("LANE") == "smoke"
-    cfg = config["agent"] | dict(
-        step_limit=8 if smoke else 100,
-        cost_limit=0,
-        wall_time_limit_seconds=600 if smoke else 4500,
-        output_path=ART / "trajectory.json",
-    )
+    cfg = config["agent"] | {
+        "step_limit": 8 if smoke else 100,
+        "cost_limit": 0,
+        "wall_time_limit_seconds": 600 if smoke else 4500,
+        "output_path": ART / "trajectory.json",
+    }
     agent = DefaultAgent(
         LitellmTextbasedModel(**model_config), LocalEnvironment(cwd=str(ROOT), timeout=180), **cfg
     )
@@ -96,6 +100,7 @@ def agent_main():
 
 
 def harden_parent():
+    """Run harden parent."""
     import ctypes
 
     # Deny same-UID children /proc/<parent>/{environ,mem,fd}, including Pod stdout.
@@ -106,6 +111,7 @@ def harden_parent():
 
 
 def main():
+    """Run main."""
     harden_parent()
     ART.mkdir(parents=True, exist_ok=True)
     Path("/workspace/tmp").mkdir(exist_ok=True)
@@ -127,20 +133,20 @@ def main():
         valid = marker.exists() and marker.read_text().strip() == "swe-mini-autonomy-ok"
         print(
             signed_result(
-                dict(
-                    lane=lane,
-                    phase=phase,
-                    revision=revision,
-                    agent_rc=rc,
-                    agent_status=status,
-                    baseline={"isolated_shell": 0},
-                    checks={
+                {
+                    "lane": lane,
+                    "phase": phase,
+                    "revision": revision,
+                    "agent_rc": rc,
+                    "agent_status": status,
+                    "baseline": {"isolated_shell": 0},
+                    "checks": {
                         "marker": 0 if valid else 1,
                         "multiple_calls": 0 if exit_result.get("n_calls", 0) >= 2 else 1,
                     },
-                    changes=[],
-                    report="Native mini-swe-agent + configured DeepSeek: isolated shell execution and explicit submission acceptance. Next real task must start automatically.",
-                )
+                    "changes": [],
+                    "report": "Native mini-swe-agent + configured DeepSeek: isolated shell execution and explicit submission acceptance. Next real task must start automatically.",
+                }
             ),
             flush=True,
         )
@@ -243,18 +249,18 @@ This narrow bootstrap exception overrides the general ban on dependency manifest
     if bootstrap:
         command(["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], cwd=ROOT / "web")
     after = checks()
-    result = dict(
-        lane=lane,
-        phase=phase,
-        revision=revision,
-        baseline=baseline,
-        checks=after,
-        setup=setup,
-        agent_rc=rc,
-        started=int(time.time()),
-        changes=[],
-        report="",
-    )
+    result = {
+        "lane": lane,
+        "phase": phase,
+        "revision": revision,
+        "baseline": baseline,
+        "checks": after,
+        "setup": setup,
+        "agent_rc": rc,
+        "started": int(time.time()),
+        "changes": [],
+        "report": "",
+    }
     exit_file = ART / "agent-exit.json"
     result["agent_status"] = (
         json.loads(exit_file.read_text()).get("exit_status")

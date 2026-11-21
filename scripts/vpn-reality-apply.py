@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """One explicit native API target correction with a synthetic VLESS acceptance client.
+
 No listener retirement/firewall update/SQL mutation or human credential use.
 Preview is read-only. Apply requires both fresh hashes and private node state.
 """
@@ -43,7 +44,7 @@ def configuration(database):
 
 
 def semantic(config):
-    def normalize(value):
+    def normalize(value) -> object:
         if isinstance(value, str) and value.lstrip().startswith(("{", "[")):
             try:
                 return normalize(json.loads(value))
@@ -336,9 +337,9 @@ def apply(state, policy, session_hash, target_hash):
                         if tls.version() != "TLSv1.3" or tls.selected_alpn_protocol() != "h2":
                             raise ValueError("Fallback TLS/H2 failed")
                 break
-            except (OSError, ssl.SSLError):
+            except (OSError, ssl.SSLError) as exc:
                 if attempt == 39:
-                    raise RuntimeError("Fallback never converged")
+                    raise RuntimeError("Fallback never converged") from exc
                 time.sleep(0.5)
         after = transfer(port, s.state, "after")
         h.save(
@@ -435,7 +436,14 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
+    except (
+        OSError,
+        ValueError,
+        RuntimeError,
+        ImportError,
+        sqlite3.Error,
+        subprocess.SubprocessError,
+    ):
         raise SystemExit(
             "Target operation stopped; inspect private receipts before retrying. No automatic replay."
         ) from None
