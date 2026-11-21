@@ -12,13 +12,13 @@ class JsonFormatter(logging.Formatter):
     def format(self, record):
         # Do not render exception text/tracebacks: they can contain process arguments.
         event = getattr(record, "event", "watchdog_error")
-        result = dict(
-            ts=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-            level={10: "debug", 20: "info", 30: "warn"}.get(record.levelno, "error"),
-            service="open-terminal-browser-watchdog",
-            msg=event,
-            event=event,
-        )
+        result = {
+            "ts": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "level": {10: "debug", 20: "info", 30: "warn"}.get(record.levelno, "error"),
+            "service": "open-terminal-browser-watchdog",
+            "msg": event,
+            "event": event,
+        }
         for key in ("pid", "age_seconds", "processes", "signal"):
             value = getattr(record, key, None)
             if isinstance(value, (int, float)):
