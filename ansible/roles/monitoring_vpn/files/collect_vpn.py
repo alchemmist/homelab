@@ -26,7 +26,7 @@ import time
 import urllib.request
 
 
-def peer_host(line):
+def peer_host(line: str) -> str | None:
     """Extract the peer host from an ss line, mapping IPv4-in-IPv6 to dotted form."""
     tokens = [t for t in line.split() if ":" in t]
     if not tokens:
@@ -41,7 +41,7 @@ def peer_host(line):
     return host
 
 
-def is_private(host):
+def is_private(host) -> bool:
     """True for loopback, link-local and RFC1918 ranges the collector ignores."""
     if ":" in host:
         return True
@@ -56,7 +56,7 @@ def is_private(host):
     return False
 
 
-def observe_streams(ports):
+def observe_streams(ports) -> int:
     """Return established TCP stream count on the given local ports."""
     filters = " or ".join(f"sport = :{port}" for port in ports)
     result = subprocess.run(
@@ -69,7 +69,7 @@ def observe_streams(ports):
     return len([line for line in result.stdout.splitlines() if line.strip()])
 
 
-def read_xray_user_counters(url, timeout):
+def read_xray_user_counters(url, timeout) -> dict[str, int]:
     """Read cumulative per-user traffic counters from the xray expvar endpoint."""
     with urllib.request.urlopen(url, timeout=timeout) as response:
         payload = json.load(response)
@@ -80,7 +80,7 @@ def read_xray_user_counters(url, timeout):
     return counters
 
 
-def read_registered_clients(db_path):
+def read_registered_clients(db_path) -> int | None:
     """Count unique enabled client emails across all 3x-ui inbounds."""
     try:
         connection = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=5)
@@ -104,7 +104,7 @@ def read_registered_clients(db_path):
         connection.close()
 
 
-def active_users(counters, state, now, window):
+def active_users(counters, state, now, window) -> list[str]:
     """Merge new counters into the state, refresh per-user last-activity
     timestamps, and return accounts that transferred traffic within the window."""
     last_active = state.setdefault("last_active", {})
@@ -120,7 +120,7 @@ def active_users(counters, state, now, window):
     return sorted(email for email, when in last_active.items() if now - when <= window)
 
 
-def write_state(path, state):
+def write_state(path, state) -> None:
     handle, name = tempfile.mkstemp(dir=os.path.dirname(path) or ".", prefix=".vpn-state-")
     try:
         with os.fdopen(handle, "w") as stream:
@@ -142,7 +142,7 @@ def write_metrics(
     success,
     registered=0,
     fallback_marker="/var/lib/homelab-vpn-failover/active",
-):
+) -> None:
     timestamp = time.time()
     lines = [
         "# HELP socrat_vpn_fallback_active Whether native VPN fallback mode is latched on this VPS.",
@@ -187,7 +187,7 @@ def write_metrics(
         raise
 
 
-def try_load_state(path):
+def try_load_state(path) -> dict[str, object]:
     try:
         with open(path) as stream:
             data = json.load(stream)
@@ -200,7 +200,7 @@ def try_load_state(path):
 
 def collect(
     ports, metrics_url, metrics_timeout, window, output, state_path, xui_db="/etc/x-ui/x-ui.db"
-):
+) -> int:
     try:
         streams = observe_streams(ports)
         counters = read_xray_user_counters(metrics_url, metrics_timeout)
@@ -228,7 +228,7 @@ def _ports(raw):
     return ports
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--ports", type=_ports, required=True, help="comma-separated local VPN entrypoint TCP ports"

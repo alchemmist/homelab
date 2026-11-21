@@ -5,7 +5,7 @@ import subprocess
 import sys
 
 
-def kubectl(binary, kubeconfig, namespace, args, payload=None):
+def kubectl(binary, kubeconfig, namespace, args, payload: str | None = None) -> str:
     command = [binary, "kubectl", "--kubeconfig", kubeconfig, "-n", namespace, *args]
     result = subprocess.run(command, input=payload, text=True, capture_output=True)
     if result.returncode != 0:
@@ -14,7 +14,7 @@ def kubectl(binary, kubeconfig, namespace, args, payload=None):
     return result.stdout
 
 
-def exists(binary, kubeconfig, namespace, name):
+def exists(binary, kubeconfig, namespace, name) -> bool:
     result = subprocess.run(
         [binary, "kubectl", "--kubeconfig", kubeconfig, "-n", namespace, "get", "secret", name],
         text=True,
@@ -23,13 +23,13 @@ def exists(binary, kubeconfig, namespace, name):
     return result.returncode == 0
 
 
-def read_secret(binary, kubeconfig, namespace, name):
+def read_secret(binary, kubeconfig, namespace, name) -> dict[str, str]:
     raw = kubectl(binary, kubeconfig, namespace, ["get", "secret", name, "-o", "json"])
     data = json.loads(raw)["data"]
     return {key: base64.b64decode(value).decode() for key, value in data.items()}
 
 
-def apply_secret(binary, kubeconfig, namespace, name, data):
+def apply_secret(binary, kubeconfig, namespace, name, data) -> None:
     body = {
         "apiVersion": "v1",
         "kind": "Secret",
@@ -40,11 +40,11 @@ def apply_secret(binary, kubeconfig, namespace, name, data):
     kubectl(binary, kubeconfig, namespace, ["apply", "-f", "-"], json.dumps(body))
 
 
-def filesystem_config(directory):
+def filesystem_config(directory: str) -> str:
     return "type: FILESYSTEM\nconfig:\n  directory: " + directory + "\n"
 
 
-def ensure(binary, kubeconfig, namespace):
+def ensure(binary, kubeconfig, namespace) -> list[str]:
     created = []
     if not exists(binary, kubeconfig, namespace, "thanos-objstore-raw"):
         apply_secret(
@@ -72,7 +72,7 @@ def ensure(binary, kubeconfig, namespace):
     return created
 
 
-def main():
+def main() -> int:
     binary, kubeconfig, namespace = sys.argv[1:4]
     ensure(binary, kubeconfig, namespace)
     return 0

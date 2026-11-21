@@ -6,12 +6,12 @@ DURATION = 2.2
 FRAME_INTERVAL = 0.05
 
 
-def smooth(value):
+def smooth(value: float) -> float:
     value = min(1.0, max(0.0, value))
     return value * value * (3 - 2 * value)
 
 
-def portrait_frame(sample, colors, seconds):
+def portrait_frame(sample, colors, seconds) -> list[str]:
     height = sample["rows"]
     width = sample["columns"]
     t = seconds * (5.2 / DURATION)
@@ -57,7 +57,7 @@ def portrait_frame(sample, colors, seconds):
     return lines
 
 
-def play(initial, final, sample, colors, geometry, output):
+def play(initial, final, sample, colors, geometry, output) -> bool:
     height = sample["rows"]
     resized = False
 

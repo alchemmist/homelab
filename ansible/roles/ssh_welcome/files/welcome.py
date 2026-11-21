@@ -12,13 +12,13 @@ from urllib.parse import quote, urlencode, urlsplit
 ROOT = Path("/etc/homelab-welcome")
 
 
-def clean(value):
+def clean(value) -> str:
     return "".join(
         c if not unicodedata.category(c).startswith("C") else " " for c in str(value)
     ).strip()
 
 
-def role(labels):
+def role(labels) -> str:
     roles = []
     if any(f"node-role.kubernetes.io/{key}" in labels for key in ("control-plane", "master")):
         roles.append("master")
@@ -27,7 +27,7 @@ def role(labels):
     return " + ".join(roles) or "worker"
 
 
-def urls(config, ip):
+def urls(config, ip) -> tuple[str, str]:
     base = config["rancher_url"].rstrip("/")
     parsed = urlsplit(base)
     if parsed.scheme != "https" or not parsed.netloc or any(ord(c) < 32 for c in base):
@@ -56,7 +56,7 @@ def urls(config, ip):
     )
 
 
-def metrics(disk):
+def metrics(disk) -> list[tuple[str, str]]:
     os_name = platform.freedesktop_os_release().get("PRETTY_NAME", platform.system())
     memory = {}
     for line in Path("/proc/meminfo").read_text().splitlines():
@@ -85,7 +85,9 @@ def metrics(disk):
     ]
 
 
-def render(config, portraits, stats, width=100, color=True, hyperlinks=False, logo_frame=None):
+def render(
+    config, portraits, stats, width=100, color=True, hyperlinks=False, logo_frame=None
+) -> str:
     logo = next(v["lines"] for v in portraits["variants"] if v["id"] == config["logo"])
     logo = [line.rstrip() for line in logo]
     ip = next((a["address"] for a in config["addresses"] if a["type"] == "InternalIP"), "unknown")
@@ -150,7 +152,7 @@ def render(config, portraits, stats, width=100, color=True, hyperlinks=False, lo
     return "\n".join(lines)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, default=ROOT / "config.json")
     parser.add_argument("--portraits", type=Path, default=ROOT / "portraits.json")

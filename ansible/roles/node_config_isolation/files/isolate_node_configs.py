@@ -30,14 +30,14 @@ CONFIG_FILES = (
 )
 
 
-def inside(path, home):
+def inside(path: Path, home: Path) -> Path:
     resolved = path.resolve(strict=True)
     if resolved != home and home not in resolved.parents:
         raise ValueError(f"Configuration target is outside account home: {path}")
     return resolved
 
 
-def inspect_tree(path, home, ancestors=()):
+def inspect_tree(path: Path, home: Path, ancestors: tuple[Path, ...] = ()) -> bool:
     resolved = inside(path, home)
     mode = resolved.stat().st_mode
     if stat.S_ISREG(mode):
@@ -52,7 +52,7 @@ def inspect_tree(path, home, ancestors=()):
     return linked
 
 
-def check_parents(path, home):
+def check_parents(path, home) -> None:
     for parent in path.parents:
         if parent == home:
             return
@@ -61,7 +61,7 @@ def check_parents(path, home):
     raise ValueError(f"Configuration path is outside account home: {path}")
 
 
-def isolate(home, check=False):
+def isolate(home, check=False) -> dict[str, object]:
     home = Path(home).resolve(strict=True)
     paths = list(CONFIG_DIRECTORIES) + list(CONFIG_FILES)
     if (home / "scripts").is_symlink():
@@ -111,7 +111,7 @@ def isolate(home, check=False):
     return result
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--home", required=True)
     parser.add_argument("--user", required=True)

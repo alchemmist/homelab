@@ -14,11 +14,11 @@ import urllib.request
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
+    def redirect_request(self, req, fp, code, msg, headers, newurl) -> None:
         return None  # Never forward an authorization header to a redirected host.
 
 
-def verify(args, runner=None, opener=None):
+def verify(args, runner=None, opener=None) -> bool:
     runner = runner or subprocess.run
     opener = opener or urllib.request.build_opener(NoRedirect()).open
     kubectl = ["k3s", "kubectl", "--kubeconfig", args.kubeconfig, "--request-timeout=15s"]
@@ -116,7 +116,7 @@ def verify(args, runner=None, opener=None):
     return False
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--namespace", required=True)
     parser.add_argument("--release", required=True)

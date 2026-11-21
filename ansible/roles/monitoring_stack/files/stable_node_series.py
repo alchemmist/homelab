@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import sys
+from typing import cast
 
 import yaml
 
@@ -17,7 +18,7 @@ DASHBOARD_UIDS = {
 AGGREGATION = "avg without (pod, namespace, container, endpoint, service)"
 
 
-def rewrite_panels(panels):
+def rewrite_panels(panels) -> None:
     for panel in panels:
         for target in panel.get("targets", []):
             expression = target.get("expr", "")
@@ -26,7 +27,7 @@ def rewrite_panels(panels):
         rewrite_panels(panel.get("panels", []))
 
 
-def render(resources):
+def render(resources) -> list[object]:
     for resource in resources:
         apply_alert_descriptions(resource)
         if isinstance(resource, dict) and resource.get("kind") == "PrometheusRule":
@@ -46,10 +47,10 @@ def render(resources):
                     rewrite_panels(dashboard.get("panels", []))
                 apply_descriptions(dashboard)
                 resource["data"][key] = json.dumps(dashboard, separators=(",", ":"))
-    return resources
+    return cast("list[object]", resources)
 
 
-def main():
+def main() -> None:
     resources = list(yaml.safe_load_all(sys.stdin))
     yaml.safe_dump_all(render(resources), sys.stdout, sort_keys=False)
 

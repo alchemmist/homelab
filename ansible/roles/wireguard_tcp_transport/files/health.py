@@ -7,7 +7,7 @@ from pathlib import Path
 STATE = Path("/run/wireguard-tcp-transport-health/state.json")
 
 
-def next_state(state, now, healthy):
+def next_state(state, now, healthy) -> tuple[dict[str, object], bool]:
     if healthy:
         return {"failures": 0, "restarted": state.get("restarted", 0)}, False
     failures = state.get("failures", 0) + 1
@@ -19,7 +19,7 @@ def next_state(state, now, healthy):
     }, restart
 
 
-def main():
+def main() -> None:
     now = time.clock_gettime(time.CLOCK_BOOTTIME)
     state = json.loads(STATE.read_text()) if STATE.exists() else {}
     try:

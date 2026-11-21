@@ -8,13 +8,14 @@ import re
 import socket
 import subprocess
 import sys
+from typing import cast
 
 
 CONFIG = Path.home() / ".config/homelab/ssh-gateway.json"
 STATE = Path.home() / ".local/state/homelab/ssh-mappings.json"
 
 
-def load_config(path):
+def load_config(path) -> dict[str, object]:
     config = json.loads(path.read_text())
     ports = set()
     for node in config["nodes"]:
@@ -27,22 +28,22 @@ def load_config(path):
         if not node["ports"] or any(not 1 <= port <= 65535 for port in node["ports"]):
             raise ValueError("Invalid server ports")
     ipaddress.IPv4Address(config["gateway_address"])
-    return config
+    return cast("dict[str, object]", config)
 
 
-def ssh_port(node):
+def ssh_port(node) -> int:
     for port in node["ports"]:
         try:
             with socket.create_connection((node["address"], port), timeout=3) as peer:
                 peer.settimeout(3)
                 if peer.recv(256).startswith(b"SSH-"):
-                    return port
+                    return cast("int", port)
         except OSError:
             continue
     raise RuntimeError(f"No SSH listener on {node['name']} ({node['address']})")
 
 
-def reconcile(config):
+def reconcile(config) -> None:
     prefix = ["upnpc", "-u", config["router_description"]]
     listing = subprocess.run(prefix + ["-l"], capture_output=True, text=True, timeout=15)
     if (
@@ -138,7 +139,7 @@ def reconcile(config):
         raise RuntimeError("\n".join(errors))
 
 
-def relay(config, name):
+def relay(config, name) -> None:
     node = next(node for node in config["nodes"] if node["name"] == name and node.get("relay"))
     port = ssh_port(node)
     os.execv(
@@ -146,7 +147,7 @@ def relay(config, name):
     )
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, default=CONFIG)
     parser.add_argument("action", choices=["reconcile", "relay"])

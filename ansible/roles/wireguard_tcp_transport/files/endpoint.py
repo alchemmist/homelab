@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 
 
-def update_config(original, public_key, endpoint):
+def update_config(original, public_key, endpoint) -> str:
     if re.search(r"^\s*SaveConfig\s*=\s*true\s*$", original, re.M | re.I):
         raise ValueError("SaveConfig must be disabled")
     blocks = re.split(r"(?=^\s*\[Peer\]\s*$)", original, flags=re.M)
@@ -34,7 +34,7 @@ def update_config(original, public_key, endpoint):
     return "".join(blocks)
 
 
-def main():
+def main() -> None:
     interface, public_key, endpoint = sys.argv[1:]
     if not re.fullmatch(r"[a-zA-Z0-9_=+.-]{1,15}", interface):
         raise ValueError("Invalid interface")
