@@ -92,7 +92,7 @@ class MembershipReader:
         membership = user.get('groups') if isinstance(user, dict) else None
         if not isinstance(user, dict) or not isinstance(membership, list):
             return False
-        return bool(user['is_active'] and set(groups) & {self.groups.get(g) for g in membership})
+        return bool(user.get('is_active') and set(groups) & {self.groups.get(g) for g in membership})
 
 
 def rancher_plan(users, attributes, authconfig, admitted):

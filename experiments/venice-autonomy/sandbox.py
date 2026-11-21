@@ -295,7 +295,7 @@ class Sandbox:
         return result
 
     def execute(
-        self, action: dict[str, str], input_bytes: bytes | None = None, **kwargs: object
+        self, action: dict[str, object], input_bytes: bytes | None = None, **kwargs: object
     ) -> dict[str, object]:
         command = action["command"]
         wrapped = (
