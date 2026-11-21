@@ -50,7 +50,8 @@ def fields(obj: object, expected: list[str]) -> None:
 
 
 def canonical_uuid(value: object) -> str:
-    text = cast("str", value)
+    require(isinstance(value, str), "Canonical UUID required")
+    text = value
     try:
         require(str(uuid.UUID(text)) == text, "Canonical UUID required")
         require(uuid.UUID(text).int != 0, "Nonzero UUID required")
@@ -84,11 +85,15 @@ def bindings_map(document: object) -> dict[str, str]:
     result: dict[str, str] = {}
     for entry in cast("list[dict[str, object]]", ledger["bindings"]):
         fields(entry, ["uuid", "name"])
-        ident, name = canonical_uuid(entry["uuid"]), cast("str", entry["name"])
+        ident = canonical_uuid(entry["uuid"])
+        raw_name = entry["name"]
         require(
-            re.fullmatch(r"[a-z_][a-z0-9_-]{0,30}", name) and name not in EXCLUDED,
+            isinstance(raw_name, str)
+            and re.fullmatch(r"[a-z_][a-z0-9_-]{0,30}", raw_name)
+            and raw_name not in EXCLUDED,
             "Restricted Linux username required",
         )
+        name = cast("str", raw_name)
         require(
             ident not in result and name not in result.values(), "Duplicate UUID or Linux username"
         )
@@ -134,7 +139,10 @@ def host_list(value: object) -> list[str]:
     require(isinstance(value, list), "Explicit inventory hosts required")
     entries = cast("list[str]", value)
     require(
-        all(re.fullmatch(r"[a-z0-9][a-z0-9.-]{0,62}", h) for h in entries),
+        all(
+            isinstance(h, str) and re.fullmatch(r"[a-z0-9][a-z0-9.-]{0,62}", h)
+            for h in entries
+        ),
         "Explicit inventory hosts required",
     )
     require(len(set(entries)) == len(entries), "Duplicate host assignment")
@@ -226,7 +234,9 @@ def public_keys(value: object) -> tuple[list[str], list[str]]:
     fingerprints: list[str] = []
     for line in entries:
         require(
-            len(line) <= 16384 and not any(ord(c) < 32 or ord(c) == 127 for c in line),
+            isinstance(line, str)
+            and len(line) <= 16384
+            and not any(ord(c) < 32 or ord(c) == 127 for c in line),
             "Invalid public key line",
         )
         parts = line.split()
