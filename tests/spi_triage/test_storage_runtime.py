@@ -13,10 +13,12 @@ import service
 
 class Runtime(unittest.TestCase):
     def test_off(self):
+        """Verify the default runtime is off."""
         with patch.dict(os.environ, {}, clear=True):
             self.assertEqual(runtime.load_storage(), (None, "legacy"))
 
     def test_projected_file_and_invalid_inputs(self):
+        """Verify projected files and invalid input handling."""
         with tempfile.TemporaryDirectory() as d:
             target = Path(d) / "real"
             link = Path(d) / "credentials.json"
@@ -62,6 +64,7 @@ class Runtime(unittest.TestCase):
                             runtime.load_storage()
 
     def test_serve_wires_engine_before_dispatch(self):
+        """Verify serve wires the engine before dispatching."""
         class Stop(Exception):
             pass
 

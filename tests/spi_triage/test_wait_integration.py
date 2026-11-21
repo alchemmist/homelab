@@ -14,6 +14,7 @@ from service import Engine
 
 class IntegrationTests(unittest.TestCase):
     def setUp(self):
+        """Create the wait integration fixture."""
         self.now = 1000
         self.clock = patch("time.time", lambda: self.now)
         self.clock.start()
@@ -34,10 +35,12 @@ class IntegrationTests(unittest.TestCase):
         self.data = self.engine.claim(self.identity)
 
     def tearDown(self):
+        """Stop the wait integration clock."""
         self.clock.stop()
         self.tmp.cleanup()
 
     def test_consecutive_deferrals_same_execution_then_published(self):
+        """Verify repeated deferrals still publish under the same execution."""
         self.model.match.side_effect = [
             Failure("LLM_ADMISSION_DEFERRED", 61),
             Failure("LLM_ADMISSION_DEFERRED", 180),
@@ -76,6 +79,7 @@ class IntegrationTests(unittest.TestCase):
             self.engine.run_v1("match", original)
 
     def test_finite_reference_error_retained_no_rewait(self):
+        """Verify finite reference errors are retained without re-waiting."""
         self.data = self.engine.run_v1("match", self.data)
         self.data = self.engine.run_v1("collect", self.data)
         self.model.analyze.side_effect = Failure("LLM_INVALID_EVIDENCE_REFERENCE")
@@ -91,6 +95,7 @@ class IntegrationTests(unittest.TestCase):
         self.github.request.assert_not_called()
 
     def test_early_wrong_stale_resume_and_legacy_cannot_bypass(self):
+        """Verify early, wrong, stale resumes and legacy paths cannot bypass."""
         self.model.match.side_effect = Failure("LLM_ADMISSION_DEFERRED", 61)
         waiting = self.engine.run_v1("match", self.data)
         for bad in (
@@ -109,6 +114,7 @@ class IntegrationTests(unittest.TestCase):
                 self.engine.claim({**self.identity, "execution_id": bad})
 
     def test_cancelled_wait_expiry_reclaims_progress_fences_old_execution(self):
+        """Verify wait expiry reclaims progress and fences old executions."""
         self.data = self.engine.run_v1("match", self.data)
         self.data = self.engine.run_v1("collect", self.data)
         self.model.analyze.side_effect = Failure("LLM_ADMISSION_DEFERRED", 61)
@@ -124,6 +130,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertIn("evidence", self.store.get(self.key)["result"])
 
     def test_owned_completion_priority_analysis_due_and_publish_ready(self):
+        """Verify owned completion priority, due analysis and publishing."""
         a = self.engine.run_v1("match", self.data)
         a = self.engine.run_v1("collect", a)
         # A pre-upgrade cohort can contain multiple owners. Seed B explicitly;
@@ -176,6 +183,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(self.model.match.call_count, 2)
 
     def test_priority_hold_is_bounded_and_rejects_invalid_higher_owner(self):
+        """Verify priority holds stay bounded and reject invalid owners."""
         a = self.engine.run_v1("match", self.data)
         a = self.engine.run_v1("collect", a)
         self.model.analyze.side_effect = Failure("LLM_ADMISSION_DEFERRED", 180)
@@ -201,6 +209,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(self.store.get(self.key)["state"], "retry")
 
     def test_fresh_queued_match_waits_for_short_owned_analysis_slot(self):
+        """Verify fresh matches wait for a short owned analysis slot."""
         a = self.engine.run_v1("match", self.data)
         a = self.engine.run_v1("collect", a)
         self.model.analyze.side_effect = Failure("LLM_ADMISSION_DEFERRED", 61)
@@ -218,6 +227,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(next_job["stage"], "analyze")
 
     def test_fresh_v1_claim_acks_dispatch_replay_does_not_erase_new_wake(self):
+        """Verify dispatch replay does not erase a new wake."""
         data = self.data
         for stage in ("match", "collect", "analyze", "publish"):
             data = self.engine.run_v1(stage, data)
@@ -254,6 +264,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(self.store.dispatch_status()["attempts"], 1)
 
     def test_busy_worker_30min_renews_wait_without_http_queue(self):
+        """Verify a 30-minute busy worker renews waits without HTTP queueing."""
         reservation = self.store.reserve_llm(1, timeout=1800, now=self.now)
         self.engine.lock.acquire()
         try:
@@ -281,6 +292,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(result["stage"], "collect")
 
     def test_concurrent_same_claim_and_duplicate_stage_do_not_double_pay(self):
+        """Verify duplicate concurrent claims never double-pay."""
         import concurrent.futures, threading
 
         with concurrent.futures.ThreadPoolExecutor(2) as pool:
@@ -313,6 +325,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(self.engine.run_v1("match", self.data), result)
 
     def test_running_crash_no_blind_model_replay(self):
+        """Verify running crashes never trigger blind model replays."""
         _, owner = self.store.owners.begin("match", self.data, self.now)
         restored = Store(self.store.path)
         self.assertEqual(restored.recover_on_start(), 0)
@@ -322,6 +335,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(restored.get(self.key)["error"], "WRITE_NEEDS_REVIEW")
 
     def test_wait_releases_http_lock_but_retains_logical_owner(self):
+        """Verify waits release the HTTP lock but keep the logical owner."""
         self.model.match.side_effect = Failure("LLM_ADMISSION_DEFERRED", 61)
         self.engine.run_v1("match", self.data)
         other = self.store.enqueue(f.event(start="2026-11-03T14:00:00Z"))["job_id"]
@@ -335,6 +349,7 @@ class IntegrationTests(unittest.TestCase):
 class ModelTimerTests(unittest.TestCase):
     @patch.dict("os.environ", {"SPI_TOKEN_ACCOUNTING_MODE": "byte-bound-v1"})
     def test_active_reservation_survives_old_661_second_expiry(self):
+        """Verify active reservations survive the old 661-second expiry."""
         with tempfile.TemporaryDirectory() as tmp:
             store = Store(tmp + "/db", minute_token_limit=60000)
             http = Mock()

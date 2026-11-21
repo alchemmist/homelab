@@ -11,6 +11,7 @@ from service import Engine
 
 class OwnerAdmissionTests(unittest.TestCase):
     def setUp(self):
+        """Create the wait scheduling fixture."""
         self.now = 1000
         self.clock = patch("time.time", lambda: self.now)
         self.clock.start()
@@ -26,14 +27,17 @@ class OwnerAdmissionTests(unittest.TestCase):
         self.data = self.engine.claim(self.identity("100"))
 
     def tearDown(self):
+        """Stop the wait scheduling clock."""
         self.clock.stop()
         self.tmp.cleanup()
 
     @staticmethod
     def identity(execution):
+        """Build a wait identity for the given execution."""
         return {"execution_id": execution, "workflow_revision": "durable-v1"}
 
     def waiting(self):
+        """Hold the engine lock to simulate a waiting owner."""
         self.engine.lock.acquire()
         try:
             return self.engine.run_v1("match", self.data)
@@ -41,9 +45,11 @@ class OwnerAdmissionTests(unittest.TestCase):
             self.engine.lock.release()
 
     def queued(self):
+        """Enqueue a fresh event and return its job key."""
         return self.store.enqueue(f.event(start="2026-11-03T14:00:00Z"))["job_id"]
 
     def test_wait_is_not_a_free_slot_for_another_claim(self):
+        """Verify a waiting owner's slot is not stolen by new claims."""
         waiting = self.waiting()
         key = self.queued()
         with self.store.db() as c:
@@ -58,6 +64,7 @@ class OwnerAdmissionTests(unittest.TestCase):
         self.model.match.assert_not_called()
 
     def test_dispatch_does_not_launch_empty_callbacks_while_owner_waits(self):
+        """Verify dispatch launches no empty callbacks during owner waits."""
         waiting = self.waiting()
         self.queued()
         token, due = self.store.reserve_dispatch(self.now)
@@ -65,6 +72,7 @@ class OwnerAdmissionTests(unittest.TestCase):
         self.assertEqual(due, waiting["due_at"] + 180)
 
     def test_concurrent_new_claims_cannot_fill_owner_wait_queue(self):
+        """Verify concurrent claims cannot fill an owner wait queue."""
         self.waiting()
         key = self.queued()
         with concurrent.futures.ThreadPoolExecutor(2) as pool:
@@ -84,6 +92,7 @@ class OwnerAdmissionTests(unittest.TestCase):
             )
 
     def test_existing_older_match_owner_wins_even_just_before_wake(self):
+        """Verify the older match owner wins even right before wake."""
         # Seed a valid pre-upgrade cohort, not a new claim permitted by policy.
         older = self.waiting()
         key = self.queued()

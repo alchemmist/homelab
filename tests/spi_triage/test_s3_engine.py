@@ -15,6 +15,7 @@ from s3_evidence import StorageTransient
 
 class EngineStorageTests(unittest.TestCase):
     def setUp(self):
+        """Set up the engine with a patched S3 origin."""
         origin = patch.dict(
             "os.environ", {"SPI_EVIDENCE_PUBLIC_ORIGIN": "https://rustfs.socrat.alchemmist.xyz"}
         )
@@ -45,6 +46,7 @@ class EngineStorageTests(unittest.TestCase):
         )
 
     def verify(self, key, raw):
+        """Assert the published object content matches the raw bytes."""
         self.assertEqual(self.store.get(self.key)["result"]["publication_backend"], "s3")
         self.g.request.assert_not_called()
         return {
@@ -56,6 +58,7 @@ class EngineStorageTests(unittest.TestCase):
         }
 
     def assert_public_links(self, body, objects):
+        """Assert the body links exactly the given objects."""
         spec = importlib.util.spec_from_file_location(
             "public_link_gateway",
             Path(__file__).resolve().parents[2] / "services/rustfs_gateway/gateway.py",
@@ -81,6 +84,7 @@ class EngineStorageTests(unittest.TestCase):
             self.assertIsNone(gateway.KEY.fullmatch("/spi-evidence/" + key))
 
     def test_renderer_all_objects_match_actual_gateway(self):
+        """Verify the renderer output matches the actual gateway links."""
         bundle = prepare_bundle(
             event(),
             {},
@@ -100,6 +104,7 @@ class EngineStorageTests(unittest.TestCase):
         self.assertEqual(storage_markdown([]), "")
 
     def test_verified_before_single_primary(self):
+        """Verify objects are verified before the single primary comment."""
         self.engine.run("publish", self.key)
         self.assertEqual(self.s.ensure_object.call_count, 2)
         self.assertEqual(self.g.request.call_count, 1)
@@ -109,6 +114,7 @@ class EngineStorageTests(unittest.TestCase):
         self.assert_public_links(body, storage_objects(self.bundle))
 
     def test_per_file_checkpoint_restart_toggle(self):
+        """Verify per-file checkpoints survive restart and toggles."""
         n = [0]
 
         def upload(k, b):
@@ -131,6 +137,7 @@ class EngineStorageTests(unittest.TestCase):
         self.assertEqual(self.g.request.call_count, 1)
 
     def test_patient_budgets_independent(self):
+        """Verify patience budgets are independent per error class."""
         for code, count in [("LLM_HTTP_429", 20), ("STORAGE_TRANSIENT", 12)]:
             for _ in range(count):
                 self.store.fail(self.key, code, 2)
@@ -142,6 +149,7 @@ class EngineStorageTests(unittest.TestCase):
         self.assertEqual(self.g.request.call_count, 1)
 
     def test_postupload_invalidation_keeps_original_audit_not_new_bundle_binding(self):
+        """Verify post-upload invalidation keeps the original audit binding."""
         import copy
 
         self.g.snapshot.side_effect = [[], [{"number": 3, "updated_at": "new"}]]
@@ -178,6 +186,7 @@ class EngineStorageTests(unittest.TestCase):
         self.g.request.assert_called_once()
 
     def test_twenty_late_churns_are_durably_bounded(self):
+        """Verify twenty late churns remain durably bounded."""
         import copy
 
         original = copy.deepcopy(self.bundle)
@@ -217,6 +226,7 @@ class EngineStorageTests(unittest.TestCase):
         self.g.request.assert_not_called()
 
     def test_real_stage_route_bounds_analysis_and_uploads(self):
+        """Verify the real stage route bounds analysis and uploads."""
         self.store.save(self.key, 0, {}, state="processing")
         self.engine.model.match.return_value = {"candidates": []}
         self.engine.model.analyze.return_value = report()
@@ -249,6 +259,7 @@ class EngineStorageTests(unittest.TestCase):
         self.g.request.assert_not_called()
 
     def test_replacement_transaction_rollback_and_stage_zero_replay(self):
+        """Verify replacement rollback replays cleanly from stage zero."""
         self.g.snapshot.return_value = [{"number": 3, "updated_at": "new"}]
         with self.store.db() as c:
             c.execute(
@@ -269,6 +280,7 @@ class EngineStorageTests(unittest.TestCase):
             self.assertEqual(c.execute("SELECT replacements FROM snapshot_budget").fetchone()[0], 1)
 
     def test_late_preupload_bound_survives_restart(self):
+        """Verify the late pre-upload bound survives restarts."""
         for cycle in range(3):
             self.store = Store(self.store.path)
             self.engine.store = self.store
@@ -290,6 +302,7 @@ class EngineStorageTests(unittest.TestCase):
         self.g.request.assert_not_called()
 
     def test_old_result_reset_fails_closed_with_independent_retention(self):
+        """Verify old result resets fail closed with independent retention."""
         self.g.snapshot.side_effect = [[], [{"number": 3, "updated_at": "new"}]]
         with self.assertRaises(Failure):
             self.engine.run("publish", self.key)
@@ -307,6 +320,7 @@ class EngineStorageTests(unittest.TestCase):
         self.engine.model.match.assert_not_called()
 
     def test_unknown_overbound_audit_retained(self):
+        """Verify unknown overbound entries stay in the audit."""
         self.r["snapshot_audit"] = [{"unknown": n} for n in range(4)]
         self.store.save(self.key, 3, self.r)
         with self.assertRaisesRegex(Failure, "WRITE_NEEDS_REVIEW"):
@@ -315,6 +329,7 @@ class EngineStorageTests(unittest.TestCase):
         self.s.ensure_object.assert_not_called()
 
     def test_changed_snapshot_preserves_lock(self):
+        """Verify a changed snapshot still preserves the lock."""
         self.g.snapshot.side_effect = [[], [{"number": 3, "updated_at": "new"}]]
         with self.assertRaisesRegex(Failure, "OPEN_SPI_CHANGED"):
             self.engine.run("publish", self.key)
@@ -330,6 +345,7 @@ class EngineStorageTests(unittest.TestCase):
         )
 
     def test_checkpoint_tampering_rejected(self):
+        """Verify tampered checkpoints are rejected."""
         self.r["publication_backend"] = "s3"
         self.r["storage_publication"] = {"binding": [], "verified": []}
         self.store.save(self.key, 3, self.r)
@@ -339,6 +355,7 @@ class EngineStorageTests(unittest.TestCase):
         self.s.ensure_object.assert_not_called()
 
     def test_empty_bundle(self):
+        """Verify an empty bundle fails closed."""
         self.r["evidence"] = {}
         self.store.save(self.key, 3, self.r)
         self.engine.run("publish", self.key)
@@ -346,6 +363,7 @@ class EngineStorageTests(unittest.TestCase):
         self.assertEqual(self.g.request.call_count, 1)
 
     def test_new_legacy_lock_survives_toggle_after_rejection(self):
+        """Verify new legacy locks survive toggles after rejection."""
         self.engine.storage_backend = "legacy"
         self.g.comments.return_value = []
         self.g.request.side_effect = Failure("HTTP_429")
@@ -360,6 +378,7 @@ class EngineStorageTests(unittest.TestCase):
         self.s.ensure_object.assert_not_called()
 
     def test_legacy_orphan_checkpoints_preserved(self):
+        """Verify legacy orphan checkpoints are preserved."""
         import copy
 
         for progress in (
@@ -383,6 +402,7 @@ class EngineStorageTests(unittest.TestCase):
         self.s.ensure_object.assert_not_called()
 
     def test_completed_legacy_orphan_is_noop(self):
+        """Verify completed legacy orphans are no-ops."""
         self.r["artifact_publication"] = {"index_pending": True}
         self.store.save(self.key, 4, self.r, state="complete")
         self.engine.run("publish", self.key)
@@ -392,6 +412,7 @@ class EngineStorageTests(unittest.TestCase):
         self.s.ensure_object.assert_not_called()
 
     def test_legacy_intent_reconciles_before_snapshot_each_checkpoint(self):
+        """Verify legacy intent reconciles before snapshots at every checkpoint."""
         import copy, json
 
         for field in ("pending", "done", "index_pending", "index_done"):
@@ -441,12 +462,14 @@ class EngineStorageTests(unittest.TestCase):
         self.s.ensure_object.assert_not_called()
 
     def resolved_job(self):
+        """Enqueue a resolution event and return its job id."""
         key = self.store.enqueue(event("resolved"))["job_id"]
         r = {"resolved_issue": 9, "evidence": {"bundle": self.bundle}}
         self.store.save(key, 3, r, state="processing")
         return key
 
     def test_resolved_closes_during_upload(self):
+        """Verify resolution closes the issue during upload."""
         key = self.resolved_job()
         self.g.request.side_effect = [{"state": "open"}, {"state": "closed"}]
 
@@ -466,6 +489,7 @@ class EngineStorageTests(unittest.TestCase):
         self.assertEqual(self.s.ensure_object.call_count, 2)
 
     def test_resolved_intent_not_abandoned_when_closed(self):
+        """Verify resolved intent is not abandoned when the issue is closed."""
         import json
 
         key = self.resolved_job()
@@ -486,6 +510,7 @@ class EngineStorageTests(unittest.TestCase):
         self.assertEqual(self.store.get(key)["state"], "complete")
 
     def test_storage_conflict_never_falls_back(self):
+        """Verify storage conflicts never fall back to another backend."""
         from s3_evidence import StorageConflict
 
         self.s.ensure_object.side_effect = StorageConflict()
@@ -497,6 +522,7 @@ class EngineStorageTests(unittest.TestCase):
         self.assertEqual(self.store.get(self.key)["result"]["publication_backend"], "s3")
 
     def test_ambiguous_storage_then_github_one_primary(self):
+        """Verify ambiguous storage still yields one primary."""
         # An accepted PUT can lose its response. The next ensure reconciles it;
         # an accepted primary can likewise lose its response, never POST twice.
         stored = {}
@@ -543,6 +569,7 @@ class EngineStorageTests(unittest.TestCase):
         )
 
     def test_patient_engine_failures_then_github_recovery(self):
+        """Verify patient engine failures recover through GitHub."""
         for _ in range(20):
             self.store.fail(self.key, "LLM_HTTP_429", 1)
         self.s.ensure_object.side_effect = StorageTransient(1)

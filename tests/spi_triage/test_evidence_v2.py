@@ -22,6 +22,7 @@ from test_triage import event
 
 class ArtifactTests(unittest.TestCase):
     def bundle(self, text="diagnostic"):
+        """Prepare a fresh evidence bundle with the given text."""
         return prepare_bundle(
             event(),
             {"window": {"start": 1, "end": 2}},
@@ -29,6 +30,7 @@ class ArtifactTests(unittest.TestCase):
         )
 
     def test_recursive_redaction_keeps_topology(self):
+        """Verify recursive redaction preserves structure while hiding values."""
         raw = {
             "password": "very confidential",
             "token": "abcdef",
@@ -46,25 +48,30 @@ class ArtifactTests(unittest.TestCase):
         self.assertNotIn("BEGIN RSA", value)
 
     def test_known_exact_secret(self):
+        """Verify exact known secrets are replaced deterministically."""
         self.assertEqual(redact("a super-secret-value b", ["super-secret-value"]), "a [REDACTED] b")
 
     def test_deterministic_and_manifest(self):
+        """Verify bundle preparation is deterministic and ships a manifest."""
         a = self.bundle()
         self.assertEqual(a, self.bundle())
         self.assertIn("sha256", a["manifest"]["artifacts"][0])
         self.assertEqual(a["parts"][0]["id"], "MANIFEST")
 
     def test_explicit_truncation_and_parts(self):
+        """Verify oversized payloads truncate into explicit parts."""
         b = self.bundle("x" * 100000)
         self.assertTrue(b["manifest"]["artifacts"][0]["truncated"])
         self.assertTrue(all(len(x["text"]) <= PART_SIZE for x in b["parts"]))
 
     def test_no_arbitrary_links(self):
+        """Verify bundles cannot smuggle arbitrary external links."""
         b = self.bundle()
         b["manifest"]["links"] = [{"title": "evil", "url": "https://evil.example"}]
         self.assertNotIn("evil", index_markdown(b))
 
     def test_idempotent_parts(self):
+        """Verify part uploads re-run without duplicating artifacts."""
         g = Mock()
         g.comments.return_value = []
         g.request.return_value = {"html_url": "https://github.com/a/b/issues/1#issuecomment-1"}
@@ -77,6 +84,7 @@ class ArtifactTests(unittest.TestCase):
         self.assertEqual(g.request.call_count, n)
 
     def test_lost_response_reconciles(self):
+        """Verify a lost upload response reconciles safely."""
         g = Mock()
         g.comments.return_value = []
         g.request.side_effect = Failure("UPSTREAM_TIMEOUT")
@@ -101,6 +109,7 @@ class ArtifactTests(unittest.TestCase):
         self.assertEqual(g.request.call_count, len(b["parts"]) + 1)
 
     def test_ambiguous_not_blindly_retried(self):
+        """Verify ambiguous outcomes are not blindly retried."""
         g = Mock()
         g.comments.return_value = []
         g.request.side_effect = Failure("HTTP_500")
@@ -114,6 +123,7 @@ class ArtifactTests(unittest.TestCase):
         self.assertEqual(g.request.call_count, 1)
 
     def test_index_ambiguous_reconciles(self):
+        """Verify ambiguous index uploads reconcile to one index."""
         b = self.bundle()
         state = {"done": {p["marker"]: "url" for p in b["parts"]}, "index_pending": True}
         g = Mock()
@@ -128,6 +138,7 @@ class ArtifactTests(unittest.TestCase):
         g.request.assert_not_called()
 
     def test_rate_limit_is_retryable_without_ambiguous_intent(self):
+        """Verify rate limits retry without double-declaring intent."""
         g = Mock()
         g.comments.return_value = []
         g.request.side_effect = Failure("HTTP_429")
@@ -137,6 +148,7 @@ class ArtifactTests(unittest.TestCase):
         self.assertNotIn("pending", progress)
 
     def test_untrusted_marker_cannot_hide_missing_artifact(self):
+        """Verify untrusted markers cannot mask missing artifacts."""
         b = self.bundle()
         g = Mock()
         g.comments.return_value = [{"body": b["parts"][0]["marker"], "user": {"login": "unknown"}}]
@@ -145,6 +157,7 @@ class ArtifactTests(unittest.TestCase):
         self.assertEqual(g.request.call_count, len(b["parts"]) + 1)
 
     def test_fence_injection_remains_data(self):
+        """Verify injected code fences stay inert data."""
         b = self.bundle("```\nmalicious\n````")
         g = Mock()
         g.comments.return_value = []
@@ -156,6 +169,7 @@ class ArtifactTests(unittest.TestCase):
 
 class TelemetryTests(unittest.TestCase):
     def response(self, method, url, *args, **kw):
+        """Script the Grafana API responses and record calls."""
         if "/api/search?" in url:
             return {"traces": [{"traceID": "a" * 32}]}
         if "/api/traces/" in url:
@@ -193,6 +207,7 @@ class TelemetryTests(unittest.TestCase):
         return {"data": {"result": []}}
 
     def collect(self, labels=None):
+        """Run discovery with the given labels and return host and result."""
         h = Mock()
         h.request.side_effect = self.response
         e = event()
@@ -202,17 +217,20 @@ class TelemetryTests(unittest.TestCase):
         return h, r
 
     def test_log_trace_discovery_and_bounds(self):
+        """Verify log and trace discovery stays within bounds."""
         h, r = self.collect({"pod": "test-pod", "service": "test"})
         self.assertTrue(any("tempo-trace" in a["name"] for a in r["artifacts"]))
         self.assertLessEqual(h.request.call_count, 10)
         self.assertTrue(r["links"])
 
     def test_unsafe_pod_does_not_widen(self):
+        """Verify unsafe label values cannot widen discovery."""
         h, r = self.collect({"pod": 'bad"} |= "secret'})
         self.assertFalse(any("/query_range?" in x.args[1] for x in h.request.call_args_list))
         self.assertTrue(any(x["reason"] == "UNSAFE_LABEL" for x in r["missing"]))
 
     def test_links_absolute_decodable(self):
+        """Verify generated links are absolute and round-trip decodable."""
         url = grafana_explore_url(
             "https://grafana.socrat.alchemmist.xyz", "prometheus", 'up{job="x"}', 10, 20, "expr"
         )
@@ -222,11 +240,13 @@ class TelemetryTests(unittest.TestCase):
         self.assertEqual(pane["queries"][0]["expr"], 'up{job="x"}')
 
     def test_window_capping(self):
+        """Verify the absolute time window is capped at the maximum."""
         w = absolute_window("2026-11-03T00:00:00Z", None, 1793711400)
         self.assertLessEqual(w["end"] - w["start"], 3600)
         self.assertTrue(w["span_capped"])
 
     def test_failed_source_not_empty_success(self):
+        """Verify a failed source is reported, not treated as success."""
         h = Mock()
         h.request.side_effect = Failure("HTTP_403")
         with patch("telemetry.time.time", return_value=1793711400):
@@ -234,6 +254,7 @@ class TelemetryTests(unittest.TestCase):
         self.assertTrue(any(x["reason"] == "HTTP_403" for x in r["missing"]))
 
     def test_trace_exception_events_and_resource_version(self):
+        """Verify trace projection events and resource versions."""
         from telemetry import _project_trace
 
         raw = {
@@ -277,6 +298,7 @@ class TelemetryTests(unittest.TestCase):
         self.assertNotIn("hidden", json.dumps(value))
 
     def test_no_data_explicit(self):
+        """Verify absent telemetry is reported explicitly."""
         h = Mock()
         h.request.return_value = {
             "status": "success",
@@ -289,6 +311,7 @@ class TelemetryTests(unittest.TestCase):
 
 class ProvenanceTests(unittest.TestCase):
     def test_project_does_not_export_env_or_secret(self):
+        """Verify the projection exports no environment or secret values."""
         obj = {
             "kind": "Pod",
             "metadata": {"name": "test", "annotations": {"secret": "hidden"}},
@@ -316,6 +339,7 @@ class ProvenanceTests(unittest.TestCase):
         self.assertIn("imageID", json.dumps(data))
 
     def test_owner_chain_and_digest(self):
+        """Verify owner chains and digests are computed correctly."""
         reader = Mock()
         reader.side_effect = [
             {
@@ -349,6 +373,7 @@ class ProvenanceTests(unittest.TestCase):
         self.assertEqual(len(r["artifacts"][0]["content"]["workloads"][0]["owner_chain"]), 2)
 
     def test_invalid_scope_no_read(self):
+        """Verify invalid scopes never issue reads."""
         reader = Mock()
         e = event()
         e["labels"]["namespace"] = "../secrets"
@@ -357,6 +382,7 @@ class ProvenanceTests(unittest.TestCase):
         self.assertEqual(r["missing"][0]["reason"], "INVALID_WORKLOAD_SCOPE")
 
     def test_systemd_not_exporter_pod(self):
+        """Verify systemd units are never misread as exporter pods."""
         reader = Mock()
         e = event()
         e["labels"]["name"] = "otel.service"
@@ -364,6 +390,7 @@ class ProvenanceTests(unittest.TestCase):
         reader.assert_not_called()
 
     def test_immutable_gitops_digest_mapping(self):
+        """Verify the gitops digest mapping is immutable."""
         import base64
 
         digest = "sha256:" + "b" * 64
@@ -399,6 +426,7 @@ class ProvenanceTests(unittest.TestCase):
         self.assertIn(ref, r["content"]["release_manifest_url"])
 
     def test_different_digest_cannot_claim_main_is_deployed(self):
+        """Verify a differing digest cannot claim main is deployed."""
         import base64
 
         text = (
@@ -426,6 +454,7 @@ class ProvenanceTests(unittest.TestCase):
         h.request.assert_not_called()
 
     def test_source_excerpt_is_pinned_and_traversal_rejected(self):
+        """Verify source excerpts are pinned and traversals are rejected."""
         import base64
 
         ref = "c" * 40
@@ -460,6 +489,7 @@ class ProvenanceTests(unittest.TestCase):
         self.assertIn("line two", r["artifacts"][0]["content"]["excerpt"])
 
     def test_absent_identity_explicit(self):
+        """Verify absent identities are reported explicitly."""
         e = event()
         e["labels"]["pod"] = "app"
         with patch("provenance.ROOT", Path("/nonexistent")):
@@ -469,6 +499,7 @@ class ProvenanceTests(unittest.TestCase):
 
 class EngineArtifactTests(unittest.TestCase):
     def test_primary_is_not_repeated_after_artifact_timeout(self):
+        """Verify primaries are not repeated after an artifact timeout."""
         import tempfile
         from core import Store
         from service import Engine
@@ -521,6 +552,7 @@ class EngineArtifactTests(unittest.TestCase):
 
 class DownloadTests(unittest.TestCase):
     def test_roundtrip_and_checksum(self):
+        """Verify content round-trips with a matching checksum."""
         import importlib.util
 
         path = Path(__file__).resolve().parents[2] / "scripts/n8n/download_spi_evidence.py"
@@ -550,6 +582,7 @@ class DownloadTests(unittest.TestCase):
             module.reconstruct(comments, e["event_key"])
 
     def test_primary_and_all_parts_have_bounded_bodies(self):
+        """Verify primaries and parts keep bounded bodies."""
         bundle = prepare_bundle(event(), {}, [{"name": "test.json", "content": "`" * 100000}])
         g = Mock()
         g.comments.return_value = []
@@ -560,6 +593,7 @@ class DownloadTests(unittest.TestCase):
 
 class ModelEvidenceTests(unittest.TestCase):
     def test_facts_require_valid_existing_evidence_ids(self):
+        """Verify facts must reference valid existing evidence ids."""
         from integrations import Model
         from core import REPORT_SCHEMA
         from test_triage import report
@@ -586,6 +620,7 @@ class ModelEvidenceTests(unittest.TestCase):
 
 class PrimaryReconciliationTests(unittest.TestCase):
     def test_issue_without_app_metadata_uses_immutable_bot_id(self):
+        """Verify issues lacking app metadata fall back to the bot id."""
         from evidence_bundle import trusted_comment
 
         self.assertTrue(
@@ -596,6 +631,7 @@ class PrimaryReconciliationTests(unittest.TestCase):
         )
 
     def test_primary_marker_requires_actual_app_author(self):
+        """Verify primary markers require the actual app author."""
         from integrations import GitHub
 
         g = GitHub(Mock(), "/unused")
@@ -609,6 +645,7 @@ class PrimaryReconciliationTests(unittest.TestCase):
 
 class SQLiteTempStoreTests(unittest.TestCase):
     def test_all_connections_use_memory_temp_store(self):
+        """Verify every connection uses an in-memory temp store."""
         import tempfile
         from core import Store
 
@@ -628,6 +665,7 @@ if __name__ == "__main__":
 
 class GrafanaLoginLinkTests(unittest.TestCase):
     def test_generator_requests_native_login_and_keeps_absolute_state(self):
+        """Verify the login generator keeps absolute state per identity."""
         for uid, field, query in [
             ("prometheus", "expr", 'up{job="x"}'),
             ("loki", "expr", '{unit="a.service"} |= "error"'),
@@ -644,6 +682,7 @@ class GrafanaLoginLinkTests(unittest.TestCase):
             self.assertEqual(pane["range"], {"from": "10000", "to": "20000"})
 
     def test_cached_manifest_is_not_mutated(self):
+        """Verify cached manifests are never mutated."""
         b = ArtifactTests().bundle()
         old = grafana_explore_url(
             "https://grafana.socrat.alchemmist.xyz", "tempo", "a" * 32, 10, 20, "query"
@@ -656,6 +695,7 @@ class GrafanaLoginLinkTests(unittest.TestCase):
         self.assertEqual(b, snapshot)
 
     def test_repair_is_idempotent_and_does_not_touch_artifact_json(self):
+        """Verify link repair is idempotent and leaves artifact JSON alone."""
         from grafana_links import repair_markdown_links
 
         url = grafana_explore_url(
@@ -668,6 +708,7 @@ class GrafanaLoginLinkTests(unittest.TestCase):
         self.assertIn("[Logs](" + url + "&forceLogin=true)", repaired)
 
     def test_external_origin_unchanged_and_duplicate_flags_removed(self):
+        """Verify external origins stay unchanged and duplicate flags drop."""
         from grafana_links import require_explore_login
 
         evil = "https://grafana.socrat.alchemmist.xyz.evil.example/explore?forceLogin=false"

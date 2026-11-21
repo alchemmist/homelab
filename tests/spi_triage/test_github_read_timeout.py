@@ -12,6 +12,7 @@ from integrations import GitHub
 
 class GitHubReadTimeoutTests(unittest.TestCase):
     def test_only_known_semantic_get_timeout(self):
+        """Verify only known semantic GETs get read timeouts."""
         with tempfile.TemporaryDirectory() as tmp:
             token = Path(tmp) / "token"
             token.write_text("test-only")
@@ -45,6 +46,7 @@ class GitHubReadTimeoutTests(unittest.TestCase):
                 github.request("GET", "/issues")
 
     def test_durable_patient_restart_and_later_snapshot(self):
+        """Verify patient restarts stay durable and re-snapshot later."""
         with tempfile.TemporaryDirectory() as tmp:
             store = Store(Path(tmp) / "jobs.sqlite")
             key = store.enqueue(f.event())["job_id"]
@@ -100,6 +102,7 @@ class GitHubReadTimeoutTests(unittest.TestCase):
             self.assertEqual(preserved(), before)
 
     def test_write_timeout_is_finite_and_intent_preserved(self):
+        """Verify write timeouts are finite and preserve intent."""
         with tempfile.TemporaryDirectory() as tmp:
             store = Store(Path(tmp) / "jobs.sqlite")
             key = store.enqueue(f.event())["job_id"]
@@ -118,6 +121,7 @@ class EngineReadRecoveryTests(unittest.TestCase):
     tearDown = f.EngineTests.tearDown
 
     def test_actual_analyze_resumes_after_read_deadline(self):
+        """Verify analysis resumes after a read deadline."""
         from integrations import REQUEST_DEADLINE
         import time
 
