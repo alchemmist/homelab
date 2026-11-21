@@ -374,7 +374,9 @@ class Sandbox:
             raise ValueError("; ".join(errors))
 
     def __enter__(self):
+        """Return this sandbox as the active context manager resource."""
         return self
 
     def __exit__(self, *args):
+        """Close the sandbox when leaving its context manager block."""
         self.close()
