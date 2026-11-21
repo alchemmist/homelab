@@ -8,8 +8,8 @@ grafana:
       registry: docker.io
       repository: grafana/grafana-image-renderer
       tag: v5.12.10
-      sha: a7970b826f6e477461e02bf5463d92634e9ad27d525e4e50296978a2e592d2d7
-    #1↔5 encrypted relay passed loss/bulk acceptance; move only the renderer.
+      sha: "a7970b826f6e477461e02bf5463d92634e9ad27d525e4e50296978a2e592d2d7"
+    # 1↔5 encrypted relay passed loss/bulk acceptance; move only the renderer.
     nodeSelector:
       kubernetes.io/hostname: socrat-5
     securityContext:
@@ -23,20 +23,20 @@ grafana:
         cpu: 500m
         memory: 512Mi
       limits:
-        cpu: "4"
+        cpu: '4'
         memory: 2Gi
     env:
-      HTTP_HOST: 0.0.0.0
+      HTTP_HOST: '0.0.0.0'
       # Upstream request logger otherwise includes ephemeral Grafana renderKey.
-      API_SILENCE_REQUEST_LOG_PATH: /render,/healthz
+      API_SILENCE_REQUEST_LOG_PATH: '/render,/healthz'
       LOG_LEVEL: error
       XDG_CONFIG_HOME: /tmp/.chromium
       XDG_CACHE_HOME: /tmp/.chromium
-      RATE_LIMIT_MIN_LIMIT: "1"
-      RATE_LIMIT_MAX_LIMIT: "2"
-      RATE_LIMIT_MAX_AVAILABLE: "2147483648"
-      RATE_LIMIT_HEADROOM: "268435456"
-      BROWSER_READINESS_PRIOR_WAIT: 0s
+      RATE_LIMIT_MIN_LIMIT: '1'
+      RATE_LIMIT_MAX_LIMIT: '2'
+      RATE_LIMIT_MAX_AVAILABLE: '2147483648'
+      RATE_LIMIT_HEADROOM: '268435456'
+      BROWSER_READINESS_PRIOR_WAIT: '0s'
 
 alertGraphs:
   enabled: true
