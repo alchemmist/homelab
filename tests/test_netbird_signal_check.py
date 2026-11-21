@@ -17,7 +17,7 @@ class ProbeTests(unittest.TestCase):
             def code(self):
                 return SimpleNamespace(name="DEADLINE_EXCEEDED")
 
-        state = {"closed": False, "cancelled": False}
+        state: dict[str, object] = {"closed": False, "cancelled": False}
 
         def metadata():
             if fail:
@@ -30,7 +30,7 @@ class ProbeTests(unittest.TestCase):
             cancel=lambda: state.update(cancelled=True),
         )
 
-        def invoke(requests, **kwargs):
+        def invoke(requests, **kwargs: object):
             state.update(requests=requests, **kwargs)
             return call
 

@@ -302,7 +302,7 @@ def test_upstream_failure_never_fences_worker_or_releases_marker(ctl, monkeypatc
 def test_probe_failure_records_stage_not_private_path(ctl, monkeypatch):
     m, c = ctl
 
-    def fail(*a, **kw):
+    def fail(*a, **kw: object):
         raise TimeoutError()
 
     monkeypatch.setattr(m.socket, "create_connection", fail)
