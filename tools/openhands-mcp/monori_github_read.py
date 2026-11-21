@@ -1,10 +1,12 @@
 """Credential-free GitHub REST reader for one public repo; MCP SDK from Canvas image."""
 import json
-from urllib.request import Request, build_opener, HTTPRedirectHandler, ProxyHandler
+from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
+
 from mcp.server.mcpserver import MCPServer
 
 mcp = MCPServer("monori-github-read")
 class NoRedirect(HTTPRedirectHandler):
+    """HTTP redirect handler that disables redirects."""
     def redirect_request(self, *args): return None
 
 

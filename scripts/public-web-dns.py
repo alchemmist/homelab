@@ -15,11 +15,13 @@ ROOT = Path("/var/lib/homelab-public-web-dns")
 
 
 def require(ok, message):
+    """Execute require."""
     if not ok:
         raise RuntimeError(message)
 
 
 def load(path, name):
+    """Execute load."""
     s = importlib.util.spec_from_file_location(name, path)
     m = importlib.util.module_from_spec(s)
     s.loader.exec_module(m)
@@ -27,6 +29,7 @@ def load(path, name):
 
 
 def delta(old, new):
+    """Execute delta."""
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
         before = old.render(123, home, vps).splitlines()
         after = new.render(123, home, vps).splitlines()
@@ -43,6 +46,7 @@ def delta(old, new):
 
 
 def main():
+    """Execute main."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")

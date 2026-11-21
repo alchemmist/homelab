@@ -4,13 +4,13 @@
 import argparse
 import json
 import os
-from pathlib import Path
 import socket
 import subprocess
 import tempfile
 import urllib.request
-from urllib.parse import quote
+from pathlib import Path
 from typing import cast
+from urllib.parse import quote
 
 SLUG = "socrat-change-password"
 HOST = "auth.socrat.alchemmist.xyz"
@@ -18,6 +18,7 @@ HOST = "auth.socrat.alchemmist.xyz"
 
 def route():
     # Constant destination: user-supplied next/username cannot select another account.
+    """Document the route operation."""
     flow = (
         "/if/flow/"
         + SLUG
@@ -249,6 +250,7 @@ def _apply_route(resources: list[dict[str, object]]) -> None:
 
 
 def main():
+    """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("root", type=Path)
     parser.add_argument("--apply", action="store_true")

@@ -6,15 +6,16 @@ import argparse
 import getpass
 import json
 import os
-from pathlib import Path
 import platform
 import subprocess
 import sys
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 def main():
+    """Execute main."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("suite")
     parser.add_argument("--isolate-network", action="store_true")
@@ -47,9 +48,15 @@ def main():
         "--junitxml=" + str(output),
         *paths,
     ]
-    if args.isolate_network:
-        if platform.system() != "Linux":
-            raise ValueError("Network namespace isolation requires Linux; never silently fall back")
+    if args.isolate_network and platform.system() == "Darwin":
+        # Apply to pytest and every child; only allow IP sockets on loopback.
+        policy = (
+            '(version 1)(allow default)(deny network*)'
+            '(allow network-outbound (remote ip "localhost:*"))'
+            '(allow network-bind network-inbound (local ip "localhost:*"))'
+        )
+        argv = ["/usr/bin/sandbox-exec", "-p", policy, *argv]
+    elif args.isolate_network and platform.system() == "Linux":
         # No external interfaces/routes. This prevents accidents, not hostile code with runner sudo.
         argv = [
             "sudo",
@@ -69,6 +76,8 @@ def main():
             "PATH=" + env["PATH"],
             *argv,
         ]
+    elif args.isolate_network:
+        raise ValueError("No loopback-only isolation available for this platform")
     return subprocess.run(
         argv, cwd=ROOT, env=env, check=False, timeout=840 if args.suite == "cluster" else 240
     ).returncode

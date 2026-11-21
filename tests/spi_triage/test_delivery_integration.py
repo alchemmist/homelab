@@ -158,6 +158,8 @@ class DeliveryIntegrationTests(unittest.TestCase):
                 "html_url": "https://github.com/alchemmist/homelab/issues/7",
             },
         )
+        # Ingress can attest the episode before Telegram reports its copies.
+        delivery.receipt(e, {"key": key, "episode": episode, "immutable_key": True, "copies": []})
         delivery.request = Mock(
             return_value=(
                 200,
@@ -175,9 +177,10 @@ class DeliveryIntegrationTests(unittest.TestCase):
         )
         delivery.discover()
         with self.store.db() as c:
-            assert c.execute(
+            row = c.execute(
                 "SELECT receipt FROM spi_card_receipts WHERE episode=?", (episode,)
             ).fetchone()
+            assert json.loads(row[0])["copies"] == [{"chat_id": 1, "message_id": 3}]
 
     def test_new_recipient_receipt_requeues_applied_target(self) -> None:
         'Verify a new recipient receipt requeues the applied target.'

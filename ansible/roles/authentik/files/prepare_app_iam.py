@@ -5,19 +5,18 @@ Not a foundation reconciler, lifecycle controller, or native integration rollout
 """
 
 import argparse
-from contextlib import contextmanager
 import fcntl
 import hashlib
 import json
 import os
-from pathlib import Path
 import re
 import stat
 import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import cast
+from contextlib import contextmanager
+from pathlib import Path
 from uuid import uuid4
 
 BASE = "https://auth.socrat.alchemmist.xyz/api/v3/"
@@ -56,23 +55,28 @@ COLLECTIONS = (
 
 
 def require(condition: object, message: str) -> None:
+    """Document the require operation."""
     if not condition:
         raise RuntimeError(message)
 
 
 def encoded(value):
+    """Document the encoded operation."""
     return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
 
 
 def digest(value):
+    """Document the digest operation."""
     return hashlib.sha256(encoded(value)).hexdigest()
 
 
 def tool_hash():
+    """Document the tool hash operation."""
     return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 
 
 def private(path, directory=False):
+    """Document the private operation."""
     s = path.lstat()
     require(
         not stat.S_ISLNK(s.st_mode)
@@ -91,10 +95,12 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         'Refuse redirects by closing the body and raising instead.'
         if fp is not None:
             fp.close()
-        raise RuntimeError("API redirect refused")
+        msg = "API redirect refused"
+        raise RuntimeError(msg)
 
 
 def api_for(root):
+    """Document the api for operation."""
     private(root, directory=True)
     path = root / "credentials.json"
     private(path)
@@ -133,15 +139,18 @@ def api_for(root):
             # Close without reading/logging: unclosed HTTPError ResourceWarnings can
             # echo an untrusted server reason phrase during garbage collection.
             error.close()
-            raise RuntimeError("API request failed; outcome may be uncertain") from None
+            msg = "API request failed; outcome may be uncertain"
+            raise RuntimeError(msg) from None
         except (urllib.error.URLError, OSError, ValueError):
             # Never include response bodies, URLs, credentials or server errors.
-            raise RuntimeError("API request failed; outcome may be uncertain") from None
+            msg = "API request failed; outcome may be uncertain"
+            raise RuntimeError(msg) from None
 
     return api
 
 
 def rows(api, path):
+    """Document the rows operation."""
     result = []
     for page in range(1, 1001):
         query = {"page_size": 100, "page": page}
@@ -163,10 +172,12 @@ def rows(api, path):
         )
         if nxt is None or nxt == 0:
             return result
-    raise RuntimeError("Pagination limit exceeded")
+    msg = "Pagination limit exceeded"
+    raise RuntimeError(msg)
 
 
 def unique(items, key):
+    """Document the unique operation."""
     result = {}
     for item in items:
         require(
@@ -181,6 +192,7 @@ def unique(items, key):
 
 
 def snapshot(api):
+    """Document the snapshot operation."""
     state = {}
     for path in COLLECTIONS:
         items = rows(api, path)
@@ -190,10 +202,12 @@ def snapshot(api):
 
 
 def hashes(state):
+    """Document the hashes operation."""
     return {path: digest(items) for path, items in state.items()}
 
 
 def empty_group(group):
+    """Document the empty group operation."""
     require(
         group.get("is_superuser") is False
         and all(
@@ -409,7 +423,8 @@ def locked(root):
         try:
             fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
-            raise RuntimeError("Another preparation invocation holds the lock") from None
+            msg = "Another preparation invocation holds the lock"
+            raise RuntimeError(msg) from None
         yield
     finally:
         os.close(fd)  # never unlink a lock inode another invocation may hold
@@ -547,6 +562,7 @@ if __name__ == "__main__":
         raise SystemExit(main())
     except (RuntimeError, OSError, KeyError, ValueError, TypeError, AttributeError):
         # Sanitized fixed text also covers malformed/untrusted API/input values.
+        msg = "Preparation stopped: private input/API/schema/drift/approval or journal failure; inspect locally, never replay configure.py"
         raise SystemExit(
-            "Preparation stopped: private input/API/schema/drift/approval or journal failure; inspect locally, never replay configure.py"
+            msg
         ) from None

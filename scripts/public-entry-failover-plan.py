@@ -17,8 +17,10 @@ ENTRIES = ("home", "vps")
 
 
 def initial(published):
+    """Execute initial."""
     if not published or not set(published) <= set(ENTRIES):
-        raise ValueError("Nonempty known publication required")
+        msg = "Nonempty known publication required"
+        raise ValueError(msg)
     return {
         "published": sorted(set(published)),
         "last_round": -1,
@@ -31,23 +33,28 @@ def initial(published):
 def require_valid_policy(now, max_age, threshold) -> None:
     """Fail on malformed clocks or out-of-range freshness/streak policy."""
     if type(now) is not int or threshold < 2 or max_age < 1:
-        raise ValueError("Invalid policy")
+        msg = "Invalid policy"
+        raise ValueError(msg)
 
 
 def require_valid_inputs(state, required) -> None:
     """Fail unless the publication state and required vantage registry are sane."""
     if set(required) != set(ENTRIES):
-        raise ValueError("Complete entry policy required")
+        msg = "Complete entry policy required"
+        raise ValueError(msg)
     if not state.get("published") or not set(state["published"]) <= set(ENTRIES):
-        raise ValueError("Invalid previous publication")
+        msg = "Invalid previous publication"
+        raise ValueError(msg)
     for entry in ENTRIES:
         if not isinstance(required[entry], list) or not all(
             isinstance(v, str) and 0 < len(v) <= 64 for v in required[entry]
         ):
-            raise ValueError("Invalid vantage registry")
+            msg = "Invalid vantage registry"
+            raise ValueError(msg)
         if len(set(required[entry])) < 2:
+            msg_0 = "Two distinct configured vantage IDs required; independence must be attested separately"
             raise ValueError(
-                "Two distinct configured vantage IDs required; independence must be attested separately"
+                msg_0
             )
 
 
@@ -56,16 +63,19 @@ def collect_rows(observations) -> dict:
     rows = {}
     for o in observations:
         if o.get("entry") not in ENTRIES or not isinstance(o.get("vantage"), str):
-            raise ValueError("Unknown observation")
+            msg = "Unknown observation"
+            raise ValueError(msg)
         key = (o["entry"], o["vantage"])
         if key in rows:
-            raise ValueError("Duplicate vantage for entry")
+            msg = "Duplicate vantage for entry"
+            raise ValueError(msg)
         if (
             type(o.get("checked_at")) is not int
             or type(o.get("backend_ok")) is not bool
             or type(o.get("local_only")) is not bool
         ):
-            raise ValueError("Malformed evidence")
+            msg = "Malformed evidence"
+            raise ValueError(msg)
         rows[key] = o
     return rows
 
@@ -134,18 +144,22 @@ def decision_of(hold: bool, nxt, state) -> str:
 def plan(state, batch, required, now, max_age=90, threshold=3):
     # The exact same accepted result must be distributed to ALL authorities;
     # neither local loopback nor independent per-authority rendering is consensus.
+    """Execute plan."""
     require_valid_policy(now, max_age, threshold)
     require_valid_inputs(state, required)
     if type(batch.get("round")) is not int or len(batch.get("observations", [])) > 32:
-        raise ValueError("Invalid bounded round")
+        msg = "Invalid bounded round"
+        raise ValueError(msg)
     fingerprint = hashlib.sha256(
         json.dumps(batch, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
     if batch["round"] < state["last_round"]:
-        raise ValueError("Out-of-order round")
+        msg = "Out-of-order round"
+        raise ValueError(msg)
     if batch["round"] == state["last_round"]:
         if fingerprint != state["last_fingerprint"]:
-            raise ValueError("Same round changed payload")
+            msg = "Same round changed payload"
+            raise ValueError(msg)
         return {
             "state": copy.deepcopy(state),
             "writes": False,
@@ -182,6 +196,7 @@ def plan(state, batch, required, now, max_age=90, threshold=3):
 
 
 def main():
+    """Execute main."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("input", type=Path)
     args = p.parse_args()

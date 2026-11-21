@@ -3,15 +3,14 @@
 """Audit that per-node home config files stay isolated per node."""
 
 import argparse
-from datetime import datetime, timezone
 import json
 import os
-from pathlib import Path
 import pwd
 import shutil
 import stat
 import tempfile
-
+from datetime import datetime, timezone
+from pathlib import Path
 
 CONFIG_DIRECTORIES = (".config/hypr", ".config/waybar", ".config/alacritty")
 SCRIPT_NAMES = (
@@ -34,6 +33,7 @@ CONFIG_FILES = (
 
 
 def inside(path, home):
+    """Execute the inside operation."""
     resolved = path.resolve(strict=True)
     if resolved != home and home not in resolved.parents:
         raise ValueError(f"Configuration target is outside account home: {path}")
@@ -41,6 +41,7 @@ def inside(path, home):
 
 
 def inspect_tree(path, home, ancestors=()):
+    """Execute the inspect_tree operation."""
     resolved = inside(path, home)
     mode = resolved.stat().st_mode
     if stat.S_ISREG(mode):
@@ -56,6 +57,7 @@ def inspect_tree(path, home, ancestors=()):
 
 
 def check_parents(path, home):
+    """Execute the check_parents operation."""
     for parent in path.parents:
         if parent == home:
             return
@@ -65,6 +67,7 @@ def check_parents(path, home):
 
 
 def isolate(home, check=False):
+    """Execute the isolate operation."""
     home = Path(home).resolve(strict=True)
     paths = list(CONFIG_DIRECTORIES) + list(CONFIG_FILES)
     if (home / "scripts").is_symlink():
@@ -115,6 +118,7 @@ def isolate(home, check=False):
 
 
 def main():
+    """Execute the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--home", required=True)
     parser.add_argument("--user", required=True)
@@ -125,7 +129,8 @@ def main():
         account.pw_uid != os.geteuid()
         or Path(account.pw_dir).resolve() != Path(args.home).resolve()
     ):
-        raise ValueError("Run as the configured account with its actual home directory")
+        msg = "Run as the configured account with its actual home directory"
+        raise ValueError(msg)
     print(json.dumps(isolate(args.home, args.check)))
 
 

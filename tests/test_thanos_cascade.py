@@ -6,7 +6,6 @@ import unittest
 from pathlib import Path
 from typing import TypedDict
 
-
 SOURCE = Path(__file__).resolve().parents[1] / "charts/thanos/files/cascade.py"
 SPEC = importlib.util.spec_from_file_location("cascade", SOURCE)
 CASCADE = importlib.util.module_from_spec(SPEC)
@@ -48,6 +47,7 @@ def call(raw, five=None, hour=None, now=100 * DAY, disk=None, five_up=True, hour
 
 
 class CascadePlanTests(unittest.TestCase):
+    """Tests for CascadePlanTests."""
     def test_raw_is_not_marked_without_five_minute_coverage(self) -> None:
         raw = [block("raw-old", 0, 2 * DAY)]
         result = call(raw, now=10 * DAY)
@@ -194,6 +194,7 @@ class CascadePlanTests(unittest.TestCase):
 
 
 class ParseTests(unittest.TestCase):
+    """Tests for ParseTests."""
     def test_parse_ls_reads_concatenated_meta_and_resolutions(self) -> None:
         text = json.dumps(
             {

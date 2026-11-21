@@ -6,34 +6,38 @@ import argparse
 import ipaddress
 import json
 import os
-from pathlib import Path
 import re
 import socket
 import subprocess
 import sys
-
+from pathlib import Path
 
 CONFIG = Path.home() / ".config/homelab/ssh-gateway.json"
 STATE = Path.home() / ".local/state/homelab/ssh-mappings.json"
 
 
 def load_config(path):
+    """Execute the load_config operation."""
     config = json.loads(path.read_text())
     ports = set()
     for node in config["nodes"]:
         if not re.fullmatch(r"socrat-\d+", node["name"]):
-            raise ValueError("Invalid node name")
+            msg = "Invalid node name"
+            raise ValueError(msg)
         ipaddress.IPv4Address(node["address"])
         if not 1024 <= node["external_port"] <= 65535 or node["external_port"] in ports:
-            raise ValueError("Invalid or duplicate external port")
+            msg = "Invalid or duplicate external port"
+            raise ValueError(msg)
         ports.add(node["external_port"])
         if not node["ports"] or any(not 1 <= port <= 65535 for port in node["ports"]):
-            raise ValueError("Invalid server ports")
+            msg = "Invalid server ports"
+            raise ValueError(msg)
     ipaddress.IPv4Address(config["gateway_address"])
     return config
 
 
 def ssh_port(node):
+    """Execute the ssh_port operation."""
     for port in node["ports"]:
         try:
             with socket.create_connection((node["address"], port), timeout=3) as peer:
@@ -65,7 +69,8 @@ def _reconcile_node(config, prefix, mappings, owned, node):
         if existing[2] != description and owned.get(str(node["external_port"])) != list(
             existing[:2]
         ):
-            raise RuntimeError("External port is occupied by an unmanaged mapping")
+            msg = "External port is occupied by an unmanaged mapping"
+            raise RuntimeError(msg)
         subprocess.run(
             prefix + ["-d", str(node["external_port"]), "TCP"],
             capture_output=True,
@@ -118,6 +123,7 @@ def _reconcile_node(config, prefix, mappings, owned, node):
 
 
 def reconcile(config):
+    """Execute the reconcile operation."""
     prefix = ["upnpc", "-u", config["router_description"]]
     listing = subprocess.run(prefix + ["-l"], capture_output=True, text=True, timeout=15)
     if (
@@ -147,6 +153,7 @@ def reconcile(config):
 
 
 def relay(config, name):
+    """Execute the relay operation."""
     node = next(node for node in config["nodes"] if node["name"] == name and node.get("relay"))
     port = ssh_port(node)
     os.execv(
@@ -155,6 +162,7 @@ def relay(config, name):
 
 
 def main():
+    """Execute the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, default=CONFIG)
     parser.add_argument("action", choices=["reconcile", "relay"])

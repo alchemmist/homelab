@@ -1,9 +1,8 @@
 """Tests for the wireguard_tcp_transport role files."""
 
 import importlib.util
-from pathlib import Path
 import unittest
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1] / "ansible/roles/wireguard_tcp_transport/files"
 
@@ -21,6 +20,7 @@ CONFIG = "[Interface]\nPrivateKey = secret\n\n[Peer]\nPublicKey = first\nAllowed
 
 
 class TransportTests(unittest.TestCase):
+    """Tests or helper for TransportTests."""
     def test_preserves_secrets_other_peer_and_routes(self):
         expected = CONFIG.replace("Endpoint = old:123", "Endpoint = 127.0.0.1:51840")
         assert ENDPOINT.update_config(CONFIG, "first", "127.0.0.1:51840") == expected

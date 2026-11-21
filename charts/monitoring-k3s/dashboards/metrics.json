@@ -1125,7 +1125,7 @@
       "id": 16,
       "title": "Allowance",
       "type": "table",
-      "description": "Soft allowance for cascade data: 22 GiB on socrat-0, 7 GiB on socrat-1, 29 GiB on socrat-3. These are the steady sizes from the cascade plan, not hard quotas. The bar is current metrics bytes divided by that allowance. Green is under 80%, orange from 80%, red at or above the allowance. Data keeps being written past the allowance until the cascade job moves or deletes a block that already has a coarser copy. Left is allowance minus current metrics and can be negative. Disk free is the whole root filesystem. An empty shelf is only the directory itself. Bytes grow when blocks arrive.",
+      "description": "Soft allowance for cascade data: 29 GiB on socrat-0 (22 GiB local plus 7 GiB for the NFS-backed 5m shelf), 29 GiB on socrat-3. These are the steady sizes from the cascade plan, not hard quotas. The bar is current metrics bytes divided by that allowance. Green is under 80%, orange from 80%, red at or above the allowance. Data keeps being written past the allowance until the cascade job moves or deletes a block that already has a coarser copy. Left is allowance minus current metrics and can be negative. Disk free is the whole root filesystem. An empty shelf is only the directory itself. Bytes grow when blocks arrive.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1145,25 +1145,25 @@
         },
         {
           "refId": "B",
-          "expr": "(22 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-0\", \"\", \"\")\nor (7 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-1\", \"\", \"\")\nor (29 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-3\", \"\", \"\")",
+          "expr": "(29 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-0\", \"\", \"\")\nor (29 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-3\", \"\", \"\")",
           "instant": true,
           "format": "table"
         },
         {
           "refId": "C",
-          "expr": "((22 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-0\", \"\", \"\")\nor (7 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-1\", \"\", \"\")\nor (29 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-3\", \"\", \"\")) - on(node) sum by (node) (socrat_metrics_directory_bytes)",
+          "expr": "((29 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-0\", \"\", \"\")\nor (29 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-3\", \"\", \"\")) - on(node) sum by (node) (socrat_metrics_directory_bytes)",
           "instant": true,
           "format": "table"
         },
         {
           "refId": "D",
-          "expr": "100 * sum by (node) (socrat_metrics_directory_bytes) / on(node) group_left() ((22 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-0\", \"\", \"\")\nor (7 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-1\", \"\", \"\")\nor (29 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-3\", \"\", \"\"))",
+          "expr": "100 * sum by (node) (socrat_metrics_directory_bytes) / on(node) group_left() ((29 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-0\", \"\", \"\")\nor (29 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-3\", \"\", \"\"))",
           "instant": true,
           "format": "table"
         },
         {
           "refId": "E",
-          "expr": "sum by (node) (label_replace(node_filesystem_avail_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype=~\"ext4|xfs\"} * on(instance) group_left(nodename) node_uname_info{job=\"node-exporter\",nodename=~\"socrat-0|socrat-1|socrat-3\"}, \"node\", \"$1\", \"nodename\", \"(.+)\"))",
+          "expr": "sum by (node) (label_replace(node_filesystem_avail_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype=~\"ext4|xfs\"} * on(instance) group_left(nodename) node_uname_info{job=\"node-exporter\",nodename=~\"socrat-0|socrat-3\"}, \"node\", \"$1\", \"nodename\", \"(.+)\"))",
           "instant": true,
           "format": "table"
         }
@@ -1388,7 +1388,7 @@
       "id": 19,
       "title": "Metrics bytes",
       "type": "timeseries",
-      "description": "Allocated bytes of metrics data on each cascade node. socrat-0 includes the Prometheus TSDB plus raw and work directories. socrat-1 and socrat-3 are the block directories. The directory split is in the table below.",
+      "description": "Allocated bytes of metrics data on each cascade node. socrat-0 includes the Prometheus TSDB plus raw and work directories. The 5m shelf runs on socrat-1 but its bytes are stored on socrat-0 via NFS. The hourly shelf is local to socrat-3. The directory split is in the table below.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1847,7 +1847,7 @@
       "id": 27,
       "title": "Sidecar uploads",
       "type": "timeseries",
-      "description": "Increase over one hour of block uploads from the Prometheus sidecar into the raw directory, and of upload failures. This is the sidecar shipper, not the hourly copy onto socrat-1 and socrat-3. Flat zero is expected until the first block closes.",
+      "description": "Increase over one hour of block uploads from the Prometheus sidecar into the raw directory, and of upload failures. This is the sidecar shipper, not the hourly copy to the 5m and hourly shelves. Flat zero is expected until the first block closes.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1922,7 +1922,7 @@
       "id": 34,
       "title": "Directories",
       "type": "table",
-      "description": "Each metrics directory the disk collector can see, with the allocated bytes on that directory. prometheus is the local Prometheus volume. raw and work stay on socrat-0. shelf is the block directory on socrat-1 or socrat-3.",
+      "description": "Each metrics directory the disk collector can see, with the allocated bytes on that directory. prometheus is the local Prometheus volume. raw and work stay on socrat-0. Shelf bytes are attributed to the storage host: socrat-0 for 5m (NFS), socrat-3 for 1h.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"

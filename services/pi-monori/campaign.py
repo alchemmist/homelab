@@ -1,5 +1,18 @@
 """Full report campaign. Trusted scheduler on socrat-0; no agent or pytest on host."""
-import ast,collections,contextlib,difflib,fcntl,gzip,hashlib,json,os,re,sqlite3,subprocess,sys,time
+import ast
+import collections
+import contextlib
+import difflib
+import fcntl
+import gzip
+import hashlib
+import json
+import os
+import re
+import sqlite3
+import subprocess
+import sys
+import time
 from collections.abc import Sequence
 from pathlib import Path
 from typing import TypedDict
@@ -198,7 +211,7 @@ def try_pi(
   feedback='Repair this existing PR test in place, retain the behavioral assertion and remove all lint suppressions. Red current-head checks: '+', '.join(repair['fails'])
  try:
   for attempt in range(1,4):
-   prompt=f'''Take one atomic item from alchemmist/monori#{ISSUE}: {t['category']}, {mid}, base {sha}. Work directly in this worktree. Keep this atomic: prefer one direct assertion or a small parametrized test of the assigned symbol, not separate caller/integration tests. Import from monori.{src[:-3].replace(chr(47),chr(46))} or pytest. Write an actual English annotated regression test to {dest} and no other tracked file. Original/mutant diff:\n{detail[:7800]}\nExisting tests {oldtests} passed on both. Read source/dependencies and existing tests, use actual /scratch/monori/.venv/bin/python with PYTHONPATH set to worktree parent, check actual output before proposing. Follow existing formatting and annotation gates: no type: ignore/noqa, no object/Any parameter annotations, prefer the project type alias. No external systems, networking, credentials, exploits, PoCs, bypasses, live banking, gh, merge or dummy PR. Only ordinary offline behavior on fixtures. The independent judge runs your file on original and mutant. If not distinguishable write OUTCOME.md with concrete evidence; not a fictional test. Plans do not count: write your file with tools. Feedback: {feedback[:750]}''';
+   prompt=f"""Take one atomic item from alchemmist/monori#{ISSUE}: {t['category']}, {mid}, base {sha}. Work directly in this worktree. Keep this atomic: prefer one direct assertion or a small parametrized test of the assigned symbol, not separate caller/integration tests. Import from monori.{src[:-3].replace(chr(47),chr(46))} or pytest. Write an actual English annotated regression test to {dest} and no other tracked file. Original/mutant diff:\n{detail[:7800]}\nExisting tests {oldtests} passed on both. Read source/dependencies and existing tests, use actual /scratch/monori/.venv/bin/python with PYTHONPATH set to worktree parent, check actual output before proposing. Follow existing formatting and annotation gates: no type: ignore/noqa, no object/Any parameter annotations, prefer the project type alias. No external systems, networking, credentials, exploits, PoCs, bypasses, live banking, gh, merge or dummy PR. Only ordinary offline behavior on fixtures. The independent judge runs your file on original and mutant. If not distinguishable write OUTCOME.md with concrete evidence; not a fictional test. Plans do not count: write your file with tools. Feedback: {feedback[:750]}""";
    (folder/'prompt.md').write_text(prompt);
    mark(t,'authoring',f'attempt {attempt}',sha)
    # Print-mode agents sometimes end with plans. The alternate protocol exchanges a typed

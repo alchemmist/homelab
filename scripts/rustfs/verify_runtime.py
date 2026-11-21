@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Explicit isolated real S3 fixture gate; no incidents, publishing or root keys.
+
 Never invoked by tests/deploy. Requires local operator port-forward and private
 machine-only credentials JSON. Leaves fixture intentionally (no Delete grants).
 """
@@ -18,6 +19,7 @@ Request = Callable[[str, str, str, bytes], tuple[int, bytes]]
 
 
 def load(path, name):
+    """Execute load."""
     spec = importlib.util.spec_from_file_location(name, path)
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
@@ -25,6 +27,7 @@ def load(path, name):
 
 
 def main():
+    """Execute main."""
     p = argparse.ArgumentParser()
     p.add_argument("--machine-credentials", type=Path, required=True)
     p.add_argument("--apply-fixture", action="store_true")

@@ -19,6 +19,7 @@ UNIT = (ROLE / "templates/wireguard-private-web.service.j2").read_text()
 
 
 class WireGuardPrivateWebTests(unittest.TestCase):
+    """Tests for WireGuardPrivateWebTests."""
     def test_defaults_are_disabled_and_use_nftables(self):
         assert "wireguard_private_web_enabled: false" in DEFAULTS
         assert "Debian: nftables" in DEFAULTS

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Preview/install an ACCEPT-only nft counter table for two raw VPN backends.
+
 No reject/drop/NAT, no packet logging, no panel/SSH/WG/443 changes. Not a firewall
 hardening completion receipt: client inventory is required before enforcing anything.
 """

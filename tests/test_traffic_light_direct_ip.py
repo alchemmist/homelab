@@ -1,11 +1,12 @@
 """Live source expressions, stock exporter isolation, and gray-vs-down contracts."""
 
 import json
-from pathlib import Path
 import shutil
 import subprocess
 import tempfile
 import unittest
+from pathlib import Path
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,6 +28,7 @@ def series(name, value, labels='job="node-exporter",node="socrat-4"', samples=20
 
 
 class DirectIpTest(unittest.TestCase):
+    """Tests for DirectIpTest."""
     def test_rendered_probe_and_existing_authenticated_pipeline(self) -> None:
         rendered = subprocess.check_output(
             [

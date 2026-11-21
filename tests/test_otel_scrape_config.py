@@ -3,11 +3,11 @@
 import copy
 import importlib.util
 import json
+import unittest
 from pathlib import Path
 from typing import NotRequired, TypedDict
-import unittest
-import yaml
 
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(

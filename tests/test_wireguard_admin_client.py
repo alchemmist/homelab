@@ -1,8 +1,7 @@
 """Source contracts for the WireGuard admin client role."""
 
-from pathlib import Path
 import unittest
-
+from pathlib import Path
 
 ROLE = Path(__file__).resolve().parents[1] / "ansible/roles/wireguard_admin_client"
 TASKS = (ROLE / "tasks/main.yml").read_text()

@@ -1,11 +1,12 @@
 """Tests for the ssh_user role manual check helper."""
 
 import importlib.util
-from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]

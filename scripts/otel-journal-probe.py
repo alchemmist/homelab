@@ -27,7 +27,8 @@ def collect():
             try:
                 event = json.loads(line)
                 if not isinstance(event, dict):
-                    raise ValueError("Journal record is not an object")
+                    msg = "Journal record is not an object"
+                    raise ValueError(msg)
                 message = event.get("MESSAGE", "")
                 if isinstance(message, str):
                     message_bytes += len(message.encode())

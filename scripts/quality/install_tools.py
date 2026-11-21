@@ -5,15 +5,16 @@ import hashlib
 import io
 import json
 import os
-from pathlib import Path
 import platform
-import tarfile
 import subprocess
+import tarfile
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 def install(record, destination):
+    """Execute install."""
     if record["name"] not in {
         "promtool",
         "kubectl",
@@ -39,14 +40,16 @@ def install(record, destination):
             "--silent",
             "--show-error",
             "--location",
+            "--retry",
+            "2",
             "--connect-timeout",
             "10",
             "--max-time",
-            "45",
+            "600",
             record["url"],
         ],
         capture_output=True,
-        timeout=50,
+        timeout=1820,
         check=True,
     )
     data = process.stdout
@@ -66,6 +69,7 @@ def install(record, destination):
 
 
 def main():
+    """Execute main."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--tools", nargs="+")
     args = parser.parse_args()
