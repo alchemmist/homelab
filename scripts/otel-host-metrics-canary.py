@@ -2,12 +2,16 @@
 
 import argparse
 import copy
-from datetime import datetime, timezone
 import hashlib
 import ipaddress
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import TYPE_CHECKING, cast
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 import socket
 import ssl
 import subprocess
@@ -237,284 +241,376 @@ def validate_contract(root, request, now=None):
         raise ValueError("Frozen native host source config changed after compilation")
 
 
-def run(root, phase):
-    if (
-        os.geteuid() != 0
-        or root.is_symlink()
-        or root.parent != Path("/var/tmp")
-        or not root.name.startswith("otel-host-metrics-canary-")
-    ):
-        raise ValueError("Explicit private native canary workspace required")
-    stat = root.lstat()
-    if stat.st_uid != 0 or stat.st_mode & 0o077:
-        raise ValueError("Canary workspace must be root-only")
-    request = json.loads((root / "request.json").read_text())
-    if not ipaddress.ip_address(request["backendIP"]) in ipaddress.ip_network("10.250.0.0/24"):
-        raise ValueError("Backend must bind only the existing private WireGuard range")
-    result = {"phase": phase, "hostname": socket.gethostname(), "productionIngestionChanged": False}
-    if phase == "prepare":
-        validate_contract(root, request)
-        available = (
-            int(
-                dict(line.split(":", 1) for line in Path("/proc/meminfo").read_text().splitlines())[
-                    "MemAvailable"
-                ].split()[0]
-            )
-            * 1024
+def require(expected: object, message: str) -> None:
+    """Enforce an invariant, failing with the given message."""
+    if not expected:
+        raise ValueError(message)
+
+
+def prepare_phase(root, request, result):
+    """Validate the contract and write validated agent/gateway configurations."""
+    validate_contract(root, request)
+    available = (
+        int(
+            dict(line.split(":", 1) for line in Path("/proc/meminfo").read_text().splitlines())[
+                "MemAvailable"
+            ].split()[0]
         )
-        minimum = request["minimumAvailableMemoryBytes"][socket.gethostname()]
-        if available < minimum:
-            raise ValueError("Native canary would breach preserved memory reserve")
-        verify(root / "otelcol-contrib", request["collectorSHA256"])
-        verify(Path(request["exporterPath"]), request["exporterSHA256"])
-        agent, gateway = configs(root, request)
-        for name, value in [("agent.json", agent), ("gateway.json", gateway)]:
-            (root / name).write_text(json.dumps(value))
-            completed = subprocess.run(
-                [str(root / "otelcol-contrib"), "validate", "--config=" + str(root / name)],
-                env={**os.environ, **environment(root, request)},
-                capture_output=True,
-                timeout=60,
-            )
-            if completed.returncode:
-                raise ValueError(
-                    "Pinned Collector rejected native canary configuration; inspect private config"
-                )
-        result["availableMemoryBytes"] = available
-    elif phase == "backend-start":
-        verify(root / "prometheus", request["prometheusSHA256"])
-        for port in (19099, 43170, 18889):
-            with socket.socket() as handle:
-                handle.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                handle.bind((request["backendIP"] if port == 43170 else "127.0.0.1", port))
-        tls = {
-            "cert_file": str(root / "tls/server.crt"),
-            "key_file": str(root / "tls/server.key"),
-            "client_ca_file": str(root / "tls/ca.crt"),
-            "client_auth_type": "RequireAndVerifyClientCert",
-        }
-        (root / "web.json").write_text(json.dumps({"tls_server_config": tls}))
-        (root / "prometheus.json").write_text(
-            json.dumps(
-                {
-                    "global": {"evaluation_interval": "5s"},
-                    "scrape_configs": [],
-                    "storage": {"tsdb": {"out_of_order_time_window": "30m"}},
-                    "otlp": {
-                        "translation_strategy": "NoTranslation",
-                        "promote_scope_metadata": False,
-                    },
-                }
-            )
+        * 1024
+    )
+    minimum = request["minimumAvailableMemoryBytes"][socket.gethostname()]
+    require(
+        available >= minimum,
+        "Native canary would breach preserved memory reserve",
+    )
+    verify(root / "otelcol-contrib", request["collectorSHA256"])
+    verify(Path(request["exporterPath"]), request["exporterSHA256"])
+    agent, gateway = configs(root, request)
+    for name, value in [("agent.json", agent), ("gateway.json", gateway)]:
+        (root / name).write_text(json.dumps(value))
+        completed = subprocess.run(
+            [str(root / "otelcol-contrib"), "validate", "--config=" + str(root / name)],
+            env={**os.environ, **environment(root, request)},
+            capture_output=True,
+            timeout=60,
         )
-        start(
-            root,
-            "prometheus",
-            root / "prometheus",
-            [
-                "--config.file=" + str(root / "prometheus.json"),
-                "--storage.tsdb.path=" + str(root / "tsdb"),
-                "--storage.tsdb.retention.time=2h",
-                "--web.listen-address=127.0.0.1:19099",
-                "--web.config.file=" + str(root / "web.json"),
-                "--web.enable-otlp-receiver",
-            ],
-            512 * 2**20,
-            {"GOMEMLIMIT": "384MiB", "GOMAXPROCS": "2"},
+        require(
+            not completed.returncode,
+            "Pinned Collector rejected native canary configuration; inspect private config",
         )
-        env = {**environment(root, request), "GOMEMLIMIT": "768MiB"}
-        start(
-            root,
-            "gateway",
-            root / "otelcol-contrib",
-            ["--config=" + str(root / "gateway.json")],
-            2**30,
-            env,
-        )
-        wait_port("127.0.0.1", 19099)
-        wait_port(request["backendIP"], 43170)
-    elif phase == "agents-start":
-        for port in (19100, 18888):
-            with socket.socket() as handle:
-                handle.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                handle.bind(("127.0.0.1", port))
-        start(
-            root,
-            "exporter",
-            Path(request["exporterPath"]),
-            [
-                "--web.listen-address=127.0.0.1:19100",
-                "--path.procfs=/proc",
-                "--path.sysfs=/sys",
-                "--path.rootfs=/",
-                "--path.udev.data=/run/udev/data",
-                "--collector.textfile.directory=/host/root/var/lib/node_exporter/textfile_collector",
-                "--collector.systemd",
-                "--collector.systemd.enable-restarts-metrics",
-            ],
-            64 * 2**20,
-            {"TZ": "UTC", "DBUS_SYSTEM_BUS_ADDRESS": "unix:path=/run/dbus/system_bus_socket"},
-            [
-                "User=65534",
-                "Group=65534",
-                "NoNewPrivileges=yes",
-                "BindReadOnlyPaths=/var/lib/node_exporter/textfile_collector:/host/root/var/lib/node_exporter/textfile_collector",
-            ],
-        )
-        wait_port("127.0.0.1", 19100)
-        start(
-            root,
-            "agent",
-            root / "otelcol-contrib",
-            ["--config=" + str(root / "agent.json")],
-            256 * 2**20,
-            environment(root, request),
-        )
-        wait_port("127.0.0.1", 18888)
-    elif phase == "probe":
-        expected = {
-            identity({**labels, "__name__": "up"}) for labels in request["expectedLabels"].values()
-        }
-        consecutive = 0
-        deadline = time.monotonic() + 120
-        while time.monotonic() < deadline:
-            actual = query(root, "up")
-            ages = query(root, "time() - timestamp(up)")
-            if (
-                {identity(point["metric"]) for point in actual} == expected
-                and all(point["value"][1] == "1" for point in actual)
-                and len(ages) == 4
-                and all(0 <= float(point["value"][1]) < 15 for point in ages)
-            ):
-                consecutive += 1
-                if consecutive >= 3:
-                    break
-            else:
-                consecutive = 0
-            time.sleep(5)
-        if consecutive < 3:
-            raise ValueError(
-                "Four native agents did not preserve all target labels and fresh up values"
-            )
-        result.update(
+    result["availableMemoryBytes"] = available
+
+
+def backend_start_phase(root, request, _result):
+    """Start the private Prometheus OTLP backend and the gateway collector."""
+    verify(root / "prometheus", request["prometheusSHA256"])
+    for port in (19099, 43170, 18889):
+        with socket.socket() as handle:
+            handle.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            handle.bind((request["backendIP"] if port == 43170 else "127.0.0.1", port))
+    tls = {
+        "cert_file": str(root / "tls/server.crt"),
+        "key_file": str(root / "tls/server.key"),
+        "client_ca_file": str(root / "tls/ca.crt"),
+        "client_auth_type": "RequireAndVerifyClientCert",
+    }
+    (root / "web.json").write_text(json.dumps({"tls_server_config": tls}))
+    (root / "prometheus.json").write_text(
+        json.dumps(
             {
-                "healthyTargetCount": 4,
-                "allTargetLabelsEquivalent": True,
-                "maximumUpAgeSeconds": max(float(p["value"][1]) for p in ages),
+                "global": {"evaluation_interval": "5s"},
+                "scrape_configs": [],
+                "storage": {"tsdb": {"out_of_order_time_window": "30m"}},
+                "otlp": {
+                    "translation_strategy": "NoTranslation",
+                    "promote_scope_metadata": False,
+                },
             }
         )
-    elif phase in ("await-queued", "await-drained"):
-        started = time.monotonic()
-        while time.monotonic() - started < 60:
-            current = telemetry(root)
-            size = sum(value for name, value in current.items() if "queue_size" in name)
-            if (phase == "await-queued" and size > 0 and time.monotonic() - started >= 12) or (
-                phase == "await-drained" and size == 0
-            ):
-                result["exporterTelemetry"] = current
-                break
-            time.sleep(1)
-        else:
-            raise ValueError("Persistent exporter queue did not reach expected bounded state")
-    elif phase == "outage-proof":
-        stops = json.loads((root / "gateway-stop-result.json").read_text())["timeUnixSeconds"]
-        restarts = json.loads((root / "restarts.json").read_text())
-        points = query(root, "up[10m]")
-        by_identity = {identity(point["metric"]): point for point in points}
-        counts = {}
-        for node, labels in request["expectedLabels"].items():
-            series = by_identity[identity({**labels, "__name__": "up"})]
-            restart = restarts[node]["restartStartedAt"]
-            count = sum(
-                stops < float(timestamp) < restart and value == "1"
-                for timestamp, value in series["values"]
-            )
-            if count < 1:
-                raise ValueError("No pre-restart outage samples survived durable queue on one host")
-            counts[node] = count
-        result["preRestartOutageSamplesRecovered"] = counts
-        result["allFourPersistentQueuesSurvivedAgentRestart"] = True
-    elif phase == "telemetry":
-        result["exporterTelemetry"] = telemetry(root)
-        result["agentCgroup"] = command(
-            ["systemctl", "show", unit(root, "agent"), "-p", "ControlGroup", "--value"]
-        ).strip()
-        peak = Path("/sys/fs/cgroup") / result["agentCgroup"].lstrip("/") / "memory.peak"
-        result["agentMemoryPeakBytes"] = int(peak.read_text()) if peak.is_file() else None
-    elif phase == "gateway-stop":
-        stop(root, ["gateway"])
-    elif phase == "gateway-start":
-        start(
-            root,
-            "gateway",
-            root / "otelcol-contrib",
-            ["--config=" + str(root / "gateway.json")],
-            2**30,
-            {**environment(root, request), "GOMEMLIMIT": "768MiB"},
-        )
-        wait_port(request["backendIP"], 43170)
-    elif phase == "agent-restart":
-        result["restartStartedAt"] = time.time()
-        result["telemetryBeforeRestart"] = telemetry(root)
-        command(["systemctl", "restart", unit(root, "agent")])
-        wait_port("127.0.0.1", 18888)
-    elif phase == "drain-start":
-        agent = json.loads((root / "agent.json").read_text())
-        agent["receivers"] = {"otlp": {"protocols": {"grpc": {"endpoint": "127.0.0.1:18887"}}}}
-        agent["service"]["pipelines"]["metrics"]["receivers"] = ["otlp"]
-        (root / "agent-drain.json").write_text(json.dumps(agent))
-        start(
-            root,
-            "agent",
-            root / "otelcol-contrib",
-            ["--config=" + str(root / "agent-drain.json")],
-            256 * 2**20,
-            environment(root, request),
-        )
-        wait_port("127.0.0.1", 18888)
-    elif phase in ("agents-cleanup", "backend-cleanup"):
-        labels = ["agent", "exporter"] if phase == "agents-cleanup" else ["gateway", "prometheus"]
-        stop(root, labels)
-        if any(
-            command(["systemctl", "show", unit(root, name), "-p", "MainPID", "--value"]).strip()
-            != "0"
-            for name in labels
+    )
+    start(
+        root,
+        "prometheus",
+        root / "prometheus",
+        [
+            "--config.file=" + str(root / "prometheus.json"),
+            "--storage.tsdb.path=" + str(root / "tsdb"),
+            "--storage.tsdb.retention.time=2h",
+            "--web.listen-address=127.0.0.1:19099",
+            "--web.config.file=" + str(root / "web.json"),
+            "--web.enable-otlp-receiver",
+        ],
+        512 * 2**20,
+        {"GOMEMLIMIT": "384MiB", "GOMAXPROCS": "2"},
+    )
+    env = {**environment(root, request), "GOMEMLIMIT": "768MiB"}
+    start(
+        root,
+        "gateway",
+        root / "otelcol-contrib",
+        ["--config=" + str(root / "gateway.json")],
+        2**30,
+        env,
+    )
+    wait_port("127.0.0.1", 19099)
+    wait_port(request["backendIP"], 43170)
+
+
+def agents_start_phase(root, request, _result):
+    """Start the node exporter and its private agent collector."""
+    for port in (19100, 18888):
+        with socket.socket() as handle:
+            handle.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            handle.bind(("127.0.0.1", port))
+    start(
+        root,
+        "exporter",
+        Path(request["exporterPath"]),
+        [
+            "--web.listen-address=127.0.0.1:19100",
+            "--path.procfs=/proc",
+            "--path.sysfs=/sys",
+            "--path.rootfs=/",
+            "--path.udev.data=/run/udev/data",
+            "--collector.textfile.directory=/host/root/var/lib/node_exporter/textfile_collector",
+            "--collector.systemd",
+            "--collector.systemd.enable-restarts-metrics",
+        ],
+        64 * 2**20,
+        {"TZ": "UTC", "DBUS_SYSTEM_BUS_ADDRESS": "unix:path=/run/dbus/system_bus_socket"},
+        [
+            "User=65534",
+            "Group=65534",
+            "NoNewPrivileges=yes",
+            "BindReadOnlyPaths=/var/lib/node_exporter/textfile_collector:/host/root/var/lib/node_exporter/textfile_collector",
+        ],
+    )
+    wait_port("127.0.0.1", 19100)
+    start(
+        root,
+        "agent",
+        root / "otelcol-contrib",
+        ["--config=" + str(root / "agent.json")],
+        256 * 2**20,
+        environment(root, request),
+    )
+    wait_port("127.0.0.1", 18888)
+
+
+def probe_phase(root, request, result):
+    """Poll until all four agents report equivalent fresh targets."""
+    expected = {
+        identity({**labels, "__name__": "up"}) for labels in request["expectedLabels"].values()
+    }
+    consecutive = 0
+    deadline = time.monotonic() + 120
+    while time.monotonic() < deadline:
+        actual = query(root, "up")
+        ages = query(root, "time() - timestamp(up)")
+        if (
+            {identity(point["metric"]) for point in actual} == expected
+            and all(point["value"][1] == "1" for point in actual)
+            and len(ages) == 4
+            and all(0 <= float(point["value"][1]) < 15 for point in ages)
         ):
-            raise ValueError("Owned native service did not stop")
-        result["allSelectedProcessesStopped"] = True
-    elif phase == "journal-evidence":
-        text = command(["journalctl", "--no-pager", "-o", "cat", "-u", unit(root, "agent")])
-        markers = {
-            "droppedExportBatches": "Exporting failed. Dropping data.",
-            "memoryRefusals": "Refusing data.",
-            "failedScrapeCommits": "Scrape commit failed",
+            consecutive += 1
+            if consecutive >= 3:
+                break
+        else:
+            consecutive = 0
+        time.sleep(5)
+    require(
+        consecutive >= 3,
+        "Four native agents did not preserve all target labels and fresh up values",
+    )
+    result.update(
+        {
+            "healthyTargetCount": 4,
+            "allTargetLabelsEquivalent": True,
+            "maximumUpAgeSeconds": max(float(point["value"][1]) for point in ages),
         }
-        result["rejections"] = {key: text.count(marker) for key, marker in markers.items()}
-        files = [p for p in (root / "queues").rglob("*") if p.is_file() and not p.is_symlink()]
-        result["queueLogicalBytesAfterDrain"] = sum(p.stat().st_size for p in files)
-        result["queueAllocatedBytesAfterDrain"] = sum(p.stat().st_blocks * 512 for p in files)
-        result["queueSaturationOrFullHighWaterVerified"] = False
-        result["strictUnclassifiedLogGatePassed"] = not any(result["rejections"].values())
-        result["shutdownReplay"] = classify_shutdown_replay(text)
-    elif phase == "cleanup":
-        labels = ["agent", "exporter"] + (
-            ["gateway", "prometheus"] if socket.gethostname() == "socrat-1" else []
+    )
+
+
+def outage_proof_phase(root, request, result):
+    """Prove pre-restart outage samples survived the durable queues."""
+    stops = json.loads((root / "gateway-stop-result.json").read_text())["timeUnixSeconds"]
+    restarts = json.loads((root / "restarts.json").read_text())
+    points = query(root, "up[10m]")
+    by_identity = {identity(point["metric"]): point for point in points}
+    counts = {}
+    for node, labels in request["expectedLabels"].items():
+        series = by_identity[identity({**labels, "__name__": "up"})]
+        restart = restarts[node]["restartStartedAt"]
+        count = sum(
+            stops < float(timestamp) < restart and value == "1"
+            for timestamp, value in series["values"]
         )
-        # Cleanup credentials only after an explicit all-agent barrier and backend-last stop.
-        states = [
-            command(["systemctl", "show", unit(root, name), "-p", "MainPID", "--value"]).strip()
-            for name in labels
-        ]
-        if any(state != "0" for state in states):
-            raise ValueError("Owned native canary process did not stop")
-        for path in (root / "tls").iterdir():
-            if path.is_symlink() or not path.is_file():
-                raise ValueError("Unexpected canary credential file")
-            path.unlink()
-        result["allOwnedProcessesStopped"] = True
-        result["temporaryTLSRemoved"] = True
+        require(
+            count >= 1,
+            "No pre-restart outage samples survived durable queue on one host",
+        )
+        counts[node] = count
+    result["preRestartOutageSamplesRecovered"] = counts
+    result["allFourPersistentQueuesSurvivedAgentRestart"] = True
+
+
+def cleanup_phase(root, _request, result):
+    """Stop every owned service and remove the temporary credentials."""
+    labels = ["agent", "exporter"] + (
+        ["gateway", "prometheus"] if socket.gethostname() == "socrat-1" else []
+    )
+    # Cleanup credentials only after an explicit all-agent barrier and backend-last stop.
+    states = [
+        command(["systemctl", "show", unit(root, name), "-p", "MainPID", "--value"]).strip()
+        for name in labels
+    ]
+    require(
+        all(state == "0" for state in states),
+        "Owned native canary process did not stop",
+    )
+    for path in (root / "tls").iterdir():
+        require(
+            all([not path.is_symlink(), path.is_file()]),
+            "Unexpected canary credential file",
+        )
+        path.unlink()
+    result["allOwnedProcessesStopped"] = True
+    result["temporaryTLSRemoved"] = True
+
+
+def await_queue_phase(root, _request, result):
+    """Await the durable exporter queue reaching its expected bounded state."""
+    phase = result["phase"]
+    started = time.monotonic()
+    while time.monotonic() - started < 60:
+        current = telemetry(root)
+        size = sum(value for name, value in current.items() if "queue_size" in name)
+        if phase == "await-queued":
+            converged = size > 0 and time.monotonic() - started >= 12
+        else:
+            converged = size == 0
+        if converged:
+            result["exporterTelemetry"] = current
+            break
+        time.sleep(1)
     else:
-        raise ValueError("Unknown explicit canary phase")
+        raise ValueError("Persistent exporter queue did not reach expected bounded state")
+
+
+def drain_start_phase(root, request, _result):
+    """Start the agent collector with its OTLP drain receiver configuration."""
+    agent = json.loads((root / "agent.json").read_text())
+    agent["receivers"] = {"otlp": {"protocols": {"grpc": {"endpoint": "127.0.0.1:18887"}}}}
+    agent["service"]["pipelines"]["metrics"]["receivers"] = ["otlp"]
+    (root / "agent-drain.json").write_text(json.dumps(agent))
+    start(
+        root,
+        "agent",
+        root / "otelcol-contrib",
+        ["--config=" + str(root / "agent-drain.json")],
+        256 * 2**20,
+        environment(root, request),
+    )
+    wait_port("127.0.0.1", 18888)
+
+
+def selected_cleanup_phase(root, _request, result):
+    """Stop the phase's selected services and require them to be gone."""
+    phase = result["phase"]
+    labels = ["agent", "exporter"] if phase == "agents-cleanup" else ["gateway", "prometheus"]
+    stop(root, labels)
+    require(
+        all(
+            command(["systemctl", "show", unit(root, name), "-p", "MainPID", "--value"]).strip()
+            == "0"
+            for name in labels
+        ),
+        "Owned native service did not stop",
+    )
+    result["allSelectedProcessesStopped"] = True
+
+
+def journal_phase(root, _request, result):
+    """Record rejection counts and queue evidence from the agent journal."""
+    text = command(["journalctl", "--no-pager", "-o", "cat", "-u", unit(root, "agent")])
+    markers = {
+        "droppedExportBatches": "Exporting failed. Dropping data.",
+        "memoryRefusals": "Refusing data.",
+        "failedScrapeCommits": "Scrape commit failed",
+    }
+    result["rejections"] = {key: text.count(marker) for key, marker in markers.items()}
+    files = [p for p in (root / "queues").rglob("*") if p.is_file() and not p.is_symlink()]
+    result["queueLogicalBytesAfterDrain"] = sum(p.stat().st_size for p in files)
+    result["queueAllocatedBytesAfterDrain"] = sum(p.stat().st_blocks * 512 for p in files)
+    result["queueSaturationOrFullHighWaterVerified"] = False
+    result["strictUnclassifiedLogGatePassed"] = not any(result["rejections"].values())
+    result["shutdownReplay"] = classify_shutdown_replay(text)
+
+
+def telemetry_phase(root, _request, result):
+    """Record current exporter telemetry and the agent cgroup memory peak."""
+    result["exporterTelemetry"] = telemetry(root)
+    result["agentCgroup"] = command(
+        ["systemctl", "show", unit(root, "agent"), "-p", "ControlGroup", "--value"]
+    ).strip()
+    peak = Path("/sys/fs/cgroup") / result["agentCgroup"].lstrip("/") / "memory.peak"
+    result["agentMemoryPeakBytes"] = int(peak.read_text()) if peak.is_file() else None
+
+
+def gateway_start_phase(root, request, _result):
+    """Start the gateway collector against the private OTLP backend."""
+    start(
+        root,
+        "gateway",
+        root / "otelcol-contrib",
+        ["--config=" + str(root / "gateway.json")],
+        2**30,
+        {**environment(root, request), "GOMEMLIMIT": "768MiB"},
+    )
+    wait_port(request["backendIP"], 43170)
+
+
+def agent_restart_phase(root, _request, result):
+    """Restart the agent collector and record the restart instant."""
+    result["restartStartedAt"] = time.time()
+    result["telemetryBeforeRestart"] = telemetry(root)
+    command(["systemctl", "restart", unit(root, "agent")])
+    wait_port("127.0.0.1", 18888)
+
+
+def gateway_stop_phase(root, _request, _result):
+    """Stop the gateway collector."""
+    stop(root, ["gateway"])
+
+
+DISPATCH: "dict[str, Callable[[object, object, object], None]]" = {
+    "prepare": prepare_phase,
+    "backend-start": backend_start_phase,
+    "agents-start": agents_start_phase,
+    "probe": probe_phase,
+    "await-queued": await_queue_phase,
+    "await-drained": await_queue_phase,
+    "outage-proof": outage_proof_phase,
+    "telemetry": telemetry_phase,
+    "gateway-stop": gateway_stop_phase,
+    "gateway-start": gateway_start_phase,
+    "agent-restart": agent_restart_phase,
+    "drain-start": drain_start_phase,
+    "agents-cleanup": selected_cleanup_phase,
+    "backend-cleanup": selected_cleanup_phase,
+    "journal-evidence": journal_phase,
+    "cleanup": cleanup_phase,
+}
+
+
+def run(root, phase):
+    require(
+        all(
+            [
+                os.geteuid() == 0,
+                not root.is_symlink(),
+                root.parent == Path("/var/tmp"),
+                root.name.startswith("otel-host-metrics-canary-"),
+            ]
+        ),
+        "Explicit private native canary workspace required",
+    )
+    stat = root.lstat()
+    require(
+        all([stat.st_uid == 0, not stat.st_mode & 0o077]),
+        "Canary workspace must be root-only",
+    )
+    request = json.loads((root / "request.json").read_text())
+    require(
+        ipaddress.ip_address(request["backendIP"]) in ipaddress.ip_network("10.250.0.0/24"),
+        "Backend must bind only the existing private WireGuard range",
+    )
+    result = {"phase": phase, "hostname": socket.gethostname(), "productionIngestionChanged": False}
+    dispatch = DISPATCH.get(phase)
+    require(dispatch is not None, "Unknown explicit canary phase")
+    handler = cast("Callable[[object, object, object], None]", dispatch)
+    handler(root, request, result)
     result["timeUnixSeconds"] = time.time()
     (root / (phase + "-result.json")).write_text(json.dumps(result, indent=2) + "\n")
     return result

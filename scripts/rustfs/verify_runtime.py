@@ -11,7 +11,10 @@ import json
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
+from collections.abc import Callable
 from pathlib import Path
+
+Request = Callable[[str, str, str, bytes], tuple[int, bytes]]
 
 
 def load(path, name):
@@ -40,7 +43,7 @@ def main():
         return
     origin = "http://127.0.0.1:19000"
 
-    def request(role, method, path, payload=b""):
+    def request(role, method, path, payload=b"") -> tuple[int, bytes]:
         url = origin + path
         headers = g.sign(method, url, c[role]["access"], c[role]["secret"], payload=payload)
         req = urllib.request.Request(
@@ -76,20 +79,7 @@ def main():
         sort_keys=True,
     ).encode("ascii")
     prefix = "/spi-evidence/spi/v1/" + event + "/" + hashlib.sha256(manifest).hexdigest() + "/"
-    for filename, content in [("E001-fixture.json", body), ("manifest.json", manifest)]:
-        path = prefix + filename
-        status, old = request("writer", "GET", path)
-        if status == 200:
-            if old != content:
-                raise ValueError("existing deterministic fixture mismatch; no overwrite")
-        elif status == 404:
-            if request("writer", "PUT", path, content)[0] != 200:
-                raise ValueError("fixture PUT failed; inspect privately, no blind retry")
-        else:
-            raise ValueError("cannot verify fixture absence; no PUT")
-        status, received = request("reader", "GET", path)
-        if status != 200 or received != content:
-            raise ValueError("reader bytes mismatch")
+    ensure_fixture(request, prefix, body, manifest)
     cases = [
         ("reader", "PUT", prefix + "E001-fixture.json"),
         ("reader", "DELETE", prefix + "E001-fixture.json"),
@@ -100,8 +90,35 @@ def main():
         ("writer", "GET", "/rustfs/admin/v3/info"),
         ("reader", "GET", "/rustfs/admin/v3/info"),
     ]
+    verify_denial_gates(request, cases)
+    print(
+        "S3 fixture byte checks and eight explicit denial gates passed. Human SSO/download gates remain separate."
+    )
+    print("Fixture browser path: " + prefix.removeprefix("/spi-evidence") + "manifest.json")
+
+
+def ensure_fixture(request: Request, prefix: str, body: bytes, manifest: bytes) -> None:
+    """Store the deterministic fixture pieces and verify reader-visible bytes."""
+    for filename, content in (("E001-fixture.json", body), ("manifest.json", manifest)):
+        path = prefix + filename
+        status, old = request("writer", "GET", path, b"")
+        if status == 200:
+            if old != content:
+                raise ValueError("existing deterministic fixture mismatch; no overwrite")
+        elif status == 404:
+            if request("writer", "PUT", path, content)[0] != 200:
+                raise ValueError("fixture PUT failed; inspect privately, no blind retry")
+        else:
+            raise ValueError("cannot verify fixture absence; no PUT")
+        status, received = request("reader", "GET", path, b"")
+        if status != 200 or received != content:
+            raise ValueError("reader bytes mismatch")
+
+
+def verify_denial_gates(request: Request, cases: list[tuple[str, str, str]]) -> None:
+    """Require an explicit 403 denial for every negative IAM gate case."""
     for role, method, path in cases:
-        status, data = request(role, method, path)
+        status, data = request(role, method, path, b"")
         if status != 403:
             raise ValueError(
                 "negative IAM gate failed; require explicit deny, not 404 or transport failure"
@@ -111,16 +128,12 @@ def main():
         code = next((e.text for e in doc.iter() if e.tag.rsplit("}", 1)[-1] == "Code"), None)
         if code not in ("AccessDenied", "AllAccessDisabled"):
             raise ValueError("unexpected denial response")
-    print(
-        "S3 fixture byte checks and eight explicit denial gates passed. Human SSO/download gates remain separate."
-    )
-    print("Fixture browser path: " + prefix.removeprefix("/spi-evidence") + "manifest.json")
 
 
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
+    except (OSError, ValueError, SyntaxError, ImportError, RuntimeError):
         raise SystemExit(
             "Runtime gate failed; no secret/response body printed. Inspect private state; do not activate SPI."
-        )
+        ) from None

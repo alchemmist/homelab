@@ -3,6 +3,7 @@
 
 import argparse, base64, fcntl, hashlib, json, os, subprocess, urllib.request, urllib.error
 from pathlib import Path
+from typing import cast
 
 UID = "socrat-traffic-light"
 STATE = Path("/var/lib/homelab-grafana-tv-public")
@@ -46,7 +47,7 @@ def main():
             + base64.b64decode(secret["admin-password"])
         ).decode()
 
-        def api(method, path, data=None):
+        def api(method, path, data=None) -> tuple[int, dict[str, object]]:
             req = urllib.request.Request(
                 "http://" + ip + path,
                 method=method,
@@ -55,17 +56,19 @@ def main():
             )
             try:
                 with urllib.request.urlopen(req, timeout=20) as r:
-                    return r.status, json.load(r)
+                    return r.status, cast("dict[str, object]", json.load(r))
             except urllib.error.HTTPError as e:
-                return e.code, json.load(e)
+                return e.code, cast("dict[str, object]", json.load(e))
 
         code, settings = api("GET", "/api/admin/settings")
+        anonymous = cast("dict[str, object]", settings.get("auth.anonymous", {}))
         need(
-            code == 200 and settings.get("auth.anonymous", {}).get("enabled") in [False, "false"],
+            code == 200 and anonymous.get("enabled") in [False, "false"],
             "Organization anonymous access drift; refuse publication",
         )
         code, dashboard = api("GET", "/api/dashboards/uid/" + UID)
-        need(code == 200 and dashboard["dashboard"]["uid"] == UID, "Unexpected dashboard")
+        dash = cast("dict[str, object]", dashboard["dashboard"])
+        need(code == 200 and dash["uid"] == UID, "Unexpected dashboard")
         endpoint = "/api/dashboards/uid/" + UID + "/public-dashboards"
         code, before = api("GET", endpoint)
         desired = {
@@ -110,7 +113,7 @@ def main():
                 "Dashboard content changed during publication",
             )
             (STATE / "after.json").write_text(json.dumps(verify))
-            token = verify["accessToken"]
+            token = cast("str", verify["accessToken"])
             need(
                 len(token) == 32 and all(c in "0123456789abcdef" for c in token),
                 "Unexpected public URL identifier",
