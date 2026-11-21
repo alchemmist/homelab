@@ -24,8 +24,8 @@ def run():
         if not getattr(TracerProvider, "_homelab_source_privacy", False) or not getattr(
             instrumentors.Instrumentor, "_homelab_http_only_profile", False
         ):
-            message = "Early source-safe bootstrap absent"
-            raise ValueError(message)
+            msg = "Early source-safe bootstrap absent"
+            raise ValueError(msg)
         provider = TracerProvider(
             resource=Resource.create({"service.name": "homelab-live-open-webui-probe"})
         )

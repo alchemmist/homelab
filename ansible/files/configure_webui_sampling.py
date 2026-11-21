@@ -16,12 +16,14 @@ def _create_admin_token() -> str:
     with sqlite3.connect("file:/app/backend/data/webui.db?mode=ro", uri=True) as db:
         admins = db.execute("SELECT id FROM user WHERE role = 'admin'").fetchall()
     if len(admins) != 1:
-        raise RuntimeError("Expected one administrator for local configuration")
+        message = "Expected one administrator for local configuration"
+        raise RuntimeError(message)
     admin_id = admins[0][0]
     auth = asyncio.run(get_auth(admin_id))
     mfa_config = asyncio.run(get_mfa_config())
     if (auth.mfa and auth.mfa.secret) or is_mfa_required("password", mfa_config):
-        raise RuntimeError("An authenticated administrator session is required with MFA")
+        message = "An authenticated administrator session is required with MFA"
+        raise RuntimeError(message)
     return str(
         create_token(
             {
@@ -60,10 +62,12 @@ def _verify_readback(
     before: dict[str, object], after: dict[str, object], desired: dict[str, object]
 ) -> None:
     if after["params"] != desired["params"]:
-        raise RuntimeError("Qwen sampling settings failed readback validation")
+        message = "Qwen sampling settings failed readback validation"
+        raise RuntimeError(message)
     for key in ("id", "user_id", "base_model_id", "name", "meta", "is_active"):
         if after.get(key) != before.get(key):
-            raise RuntimeError("Unrelated model settings changed")
+            message = "Unrelated model settings changed"
+            raise RuntimeError(message)
 
     def grants(model: dict[str, object]) -> list[tuple[object, object, object]]:
         return sorted(
@@ -72,7 +76,8 @@ def _verify_readback(
         )
 
     if grants(after) != grants(before):
-        raise RuntimeError("Model access grants changed")
+        message = "Model access grants changed"
+        raise RuntimeError(message)
 
 
 def configure():

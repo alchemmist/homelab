@@ -3,12 +3,12 @@
 import argparse
 import json
 import os
-from pathlib import Path
 import platform
 import shutil
 import sys
 import textwrap
 import unicodedata
+from pathlib import Path
 from urllib.parse import quote, urlencode, urlsplit
 
 ROOT = Path("/etc/homelab-welcome")
@@ -36,7 +36,8 @@ def urls(config, ip):
     base = config["rancher_url"].rstrip("/")
     parsed = urlsplit(base)
     if parsed.scheme != "https" or not parsed.netloc or any(ord(c) < 32 for c in base):
-        raise ValueError("Rancher must have an HTTPS URL")
+        msg = "Rancher must have an HTTPS URL"
+        raise ValueError(msg)
     cluster = quote(config["cluster"], safe="")
     node = quote(config["node"], safe="")
     address = f"[{ip}]" if ":" in ip else ip

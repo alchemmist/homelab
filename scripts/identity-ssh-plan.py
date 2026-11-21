@@ -268,6 +268,7 @@ class Authentik:
     """Authentik HTTP API client used for SSH identity planning."""
 
     def __init__(self, url, token, ca_file=None) -> None:
+        """Initialize the Authentik client."""
 
         parsed = urllib.parse.urlsplit(url)
         require(

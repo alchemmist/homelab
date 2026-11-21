@@ -1,6 +1,6 @@
 """Independent durable-link retry loop; only the native internal bot API is called."""
 import json,threading,time,urllib.request,urllib.error
-from telegram_links import Links
+from telegram_links import Links, LINK_POST_TIMEOUT
 
 BASE='http://socrat-bot.socrat-bot.svc:8080'
 class Delivery:
@@ -21,7 +21,7 @@ class Delivery:
             def redirect_request(self,*a,**kw):return None
         req=urllib.request.Request(BASE+path,data=body,method=method,headers={'X-Internal-Token':self.token,'Content-Type':'application/json'})
         try:
-            with urllib.request.build_opener(NoRedirect()).open(req,timeout=30)as r:
+            with urllib.request.build_opener(NoRedirect()).open(req,timeout=LINK_POST_TIMEOUT if method=='POST' and path=='/v1/cards/links' else 30)as r:
                 raw=r.read(2_000_001)
                 if len(raw)>2_000_000:raise ValueError('BOT_RESPONSE_LIMIT')
                 return r.status,codec.loads(raw)
@@ -34,7 +34,7 @@ class Delivery:
     def discover(self):
         # Separate loop, per-episode persisted backoff, at most one request/tick.
         with self.store.db()as c:
-            row=c.execute("SELECT l.episode,coalesce(d.attempts,0) attempts FROM (SELECT episode FROM spi_links UNION SELECT episode FROM jobs WHERE state='complete' AND issue>0) l LEFT JOIN spi_card_receipts r ON r.episode=l.episode LEFT JOIN spi_card_discovery d ON d.episode=l.episode WHERE r.episode IS NULL AND coalesce(d.available,0)<=? ORDER BY coalesce(d.available,0),l.episode LIMIT 1",(time.time(),)).fetchone()
+            row=c.execute("SELECT l.episode,coalesce(d.attempts,0) attempts FROM (SELECT episode FROM spi_links UNION SELECT episode FROM jobs WHERE state='complete' AND issue>0) l LEFT JOIN spi_card_receipts r ON r.episode=l.episode LEFT JOIN spi_card_discovery d ON d.episode=l.episode WHERE (r.episode IS NULL OR (json_extract(r.receipt,'$.immutable_key')=1 AND json_extract(r.receipt,'$.episode')=l.episode AND json_array_length(r.receipt,'$.copies')=0)) AND coalesce(d.available,0)<=? ORDER BY coalesce(d.available,0),l.episode LIMIT 1",(time.time(),)).fetchone()
         if row is None:return False
         episode=row['episode'];found=False
         try:

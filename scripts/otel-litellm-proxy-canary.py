@@ -39,8 +39,8 @@ async def run():
         litellm.turn_off_message_logging = True
         handler = OpenTelemetry()
         if handler.config.enable_metrics or handler.config.enable_events:
-            message = "Duplicate metrics or message events must remain disabled"
-            raise ValueError(message)
+            msg = "Duplicate metrics or message events must remain disabled"
+            raise ValueError(msg)
         audit = {"endedSpans": 0, "sensitiveSyntheticContentFoundAtSource": False}
 
         class PrivacyAudit(SpanProcessor):

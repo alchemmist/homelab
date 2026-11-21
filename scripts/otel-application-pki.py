@@ -101,16 +101,16 @@ def assess(resource, verb, name=None, group="", namespace=NS):
     }
     result = BOOTSTRAP.kube("create", "-f", "-", "-o", "json", document=document)["status"]
     if result.get("evaluationError"):
-        message = "RBAC evaluation failed; denial is not certified"
-        raise ValueError(message)
+        msg = "RBAC evaluation failed; denial is not certified"
+        raise ValueError(msg)
     return result.get("allowed") is True
 
 
 def run(output):
     os.umask(0o077)
     if output.exists():
-        message = "Preserve existing application PKI observations"
-        raise ValueError(message)
+        msg = "Preserve existing application PKI observations"
+        raise ValueError(msg)
     desired = resources()
     existing = BOOTSTRAP.kube("-n", NS, "get", "certificates", "-o", "json")["items"]
     specs = {item["metadata"]["name"]: item["spec"] for item in existing}
@@ -118,8 +118,8 @@ def run(output):
         if item["kind"] == "Certificate" and item["metadata"]["name"] in specs:
             actual = specs[item["metadata"]["name"]]
             if any(actual.get(key) != value for key, value in item["spec"].items()):
-                message = "Existing certificate identity differs; do not overwrite"
-                raise ValueError(message)
+                msg = "Existing certificate identity differs; do not overwrite"
+                raise ValueError(msg)
     BOOTSTRAP.kube(
         "apply",
         "-f",
@@ -148,8 +148,8 @@ def run(output):
         "deploymentPatch": assess("deployments", "patch", "litellm", group="apps", namespace="llm"),
     }
     if not all(read_allowed.values()) or any(forbidden.values()):
-        message = "Dedicated application reader is missing or overprivileged"
-        raise ValueError(message)
+        msg = "Dedicated application reader is missing or overprivileged"
+        raise ValueError(msg)
     observed = BOOTSTRAP.kube(
         "-n", NS, "get", "certificates", "-l", "homelab-otel-role=application-client", "-o", "json"
     )["items"]
@@ -182,8 +182,8 @@ def run(output):
         ],
     }
     if report["dedicatedClientCertificatesReady"] is not True:
-        message = "Not all dedicated application leaves are ready"
-        raise ValueError(message)
+        msg = "Not all dedicated application leaves are ready"
+        raise ValueError(msg)
     with open(output, "x", opener=lambda path, flags: os.open(path, flags, 0o600)) as stream:
         json.dump(report, stream, indent=2)
         stream.write("\n")

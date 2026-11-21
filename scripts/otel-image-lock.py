@@ -36,8 +36,8 @@ def resolve(repository, version):
         body = response.read()
         digest = response.headers["Docker-Content-Digest"]
     if digest != "sha256:" + hashlib.sha256(body).hexdigest():
-        message = "Registry manifest digest mismatch"
-        raise ValueError(message)
+        msg = "Registry manifest digest mismatch"
+        raise ValueError(msg)
     manifest = json.loads(body)
     platform = [
         entry
@@ -46,8 +46,8 @@ def resolve(repository, version):
         and entry.get("platform", {}).get("architecture") == "amd64"
     ]
     if len(platform) != 1:
-        message = "Expected one linux/amd64 manifest"
-        raise ValueError(message)
+        msg = "Expected one linux/amd64 manifest"
+        raise ValueError(msg)
     return {
         "repository": "docker.io/" + repository,
         "version": version,

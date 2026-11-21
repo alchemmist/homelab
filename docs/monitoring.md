@@ -24,12 +24,12 @@ Grafana and Alertmanager stay on socrat-1 and explicitly select `local-path`, be
 | --- | --- | --- |
 | Prometheus | socrat-0, 10 GiB local-path PVC | 12 hours of 5-second samples, no size quota, compaction disabled |
 | Thanos raw | socrat-0, `/var/lib/socrat-thanos` | 5 days of raw blocks, plus the 5-minute blocks still needed to build the hour |
-| Thanos 5-minute shelf | socrat-1, `/var/lib/socrat-thanos-5m` | 5-minute blocks for 30 days |
+| Thanos 5-minute shelf | workload on socrat-1, shared NFS storage on socrat-0 | 5-minute blocks for 30 days |
 | Thanos hourly shelf | socrat-3, `/var/lib/socrat-thanos-1h` | hourly blocks for 730 days |
 | Grafana | socrat-1, 1 GiB | Persistent database and settings |
 | Alertmanager | socrat-1, 1 GiB | Persistent silences and notification state |
 
-Local-path PVC sizes do not enforce filesystem quotas. At about 150 thousand series the steady cascade is about 22 GiB on socrat-0, about 7 GiB of 5-minute blocks on socrat-1, and about 29 GiB of hourly blocks on socrat-3 after two years. Those are estimates, not quotas. Low disk raises a warning. Raw and 5-minute blocks are removed only after the next coarser copy has been checked. Hourly blocks older than 730 days are deleted on socrat-3.
+Local-path PVC sizes do not enforce filesystem quotas. At about 150 thousand series the steady cascade is about 22 GiB on socrat-0, about 7 GiB more for the NFS-backed 5-minute shelf on the same storage host, and about 29 GiB of hourly blocks on socrat-3 after two years. Those are estimates, not quotas. Low disk raises a warning. Raw and 5-minute blocks are removed only after the next coarser copy has been checked. Hourly blocks older than 730 days are deleted on socrat-3.
 
 The Grafana datasource uid `prometheus` points at Thanos Query on socrat-1. Dashboard JSON is not rewritten. Alerts are evaluated by Prometheus on socrat-0 and sent to Alertmanager on socrat-1. If socrat-0 is down, fresh samples and alert evaluation stop with it; Grafana stays up. If socrat-3 is offline, graphs lose only hourly blocks that have already moved there. Alertmanager's receiver discards notifications intentionally; delivery is not configured yet.
 

@@ -18,16 +18,19 @@ def _collect_assets(root: Path) -> tuple[dict[str, str], dict[str, str]]:
     for key, asset in assets.items():
         path = root / asset["path"]
         if path.suffix not in {".woff2", ".webp", ".avif", ".svg", ".css"}:
-            raise ValueError("Only reviewed font/image/scene CSS assets may be served")
+            message = "Only reviewed font/image/scene CSS assets may be served"
+            raise ValueError(message)
         content = path.read_bytes()
         digest = hashlib.sha256(content).hexdigest()
         if digest != asset["sha256"]:
-            raise ValueError("Asset checksum mismatch")
+            message = "Asset checksum mismatch"
+            raise ValueError(message)
         name = digest[:12] + "-" + path.name
         binary[name] = base64.b64encode(content).decode()
         names[key] = name
     if sum(len(base64.b64decode(value)) for value in binary.values()) > 16_000_000:
-        raise ValueError("Static bundle exceeds reviewed total budget")
+        message = "Static bundle exceeds reviewed total budget"
+        raise ValueError(message)
     return binary, names
 
 
@@ -39,7 +42,8 @@ def _shard_binary(binary: dict[str, str]) -> list[dict[str, str]]:
     for key, value in sorted(binary.items()):
         length = len(base64.b64decode(value))
         if length > 650_000:
-            raise ValueError("Individual asset exceeds ConfigMap shard budget")
+            message = "Individual asset exceeds ConfigMap shard budget"
+            raise ValueError(message)
         if size + length > 650_000:
             chunks.append(chunk)
             chunk, size = {}, 0
@@ -59,11 +63,14 @@ def _nature_config(root: Path, names: dict[str, str]) -> tuple[str, str]:
         return random_config, random_locations
     photos = cast("list[dict[str, str]]", json.loads(nature_file.read_text())["photos"])
     if not 2 <= len(photos) <= 100:
-        raise ValueError("Nature collection must have 2..100 reviewed photos")
+        message = "Nature collection must have 2..100 reviewed photos"
+        raise ValueError(message)
     if len({p["id"] for p in photos}) != len(photos):
-        raise ValueError("Duplicate Nature ID")
+        message = "Duplicate Nature ID"
+        raise ValueError(message)
     if any(not re.fullmatch("[0-9a-f]{12}", p["id"]) for p in photos):
-        raise ValueError("Invalid Nature ID")
+        message = "Invalid Nature ID"
+        raise ValueError(message)
     # Equal weights to two decimal places, final bucket receives rounding remainder.
     base, remainder = divmod(10000, len(photos))
     weights = [
@@ -198,7 +205,8 @@ http {
         cast("dict[str, object]", json.loads((root / "static-image.json").read_text()))["image"],
     )
     if "@sha256:" not in image:
-        raise ValueError("Static image must be pinned by registry digest")
+        message = "Static image must be pinned by registry digest"
+        raise ValueError(message)
     shards: list[dict[str, object]] = []
     shard_names: list[str] = []
     for chunk in chunks:

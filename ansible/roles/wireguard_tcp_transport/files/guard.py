@@ -9,13 +9,16 @@ import sys
 def main():
     interface, address, port = sys.argv[1:]
     if not re.fullmatch(r"[a-zA-Z0-9_.:-]{1,15}", interface):
-        raise ValueError("Invalid interface")
+        message = "Invalid interface"
+        raise ValueError(message)
     ipaddress.IPv4Address(address)
     if not 0 < int(port) < 65536:
-        raise ValueError("Invalid UDP port")
+        message = "Invalid UDP port"
+        raise ValueError(message)
     binary = shutil.which("iptables")
     if not binary:
-        raise RuntimeError("iptables is required")
+        message = "iptables is required"
+        raise RuntimeError(message)
     rule = [
         "-i",
         interface,
@@ -38,7 +41,8 @@ def main():
     if result.returncode == 1:
         subprocess.run([binary, "-w", "10", "-I", "INPUT", "1", *rule], check=True)
     elif result.returncode != 0:
-        raise RuntimeError("Unable to inspect the WireGuard direct transport guard")
+        message = "Unable to inspect the WireGuard direct transport guard"
+        raise RuntimeError(message)
 
 
 if __name__ == "__main__":

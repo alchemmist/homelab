@@ -279,8 +279,8 @@ def run(
         or not re.fullmatch("[0-9a-f]{32}", trace_id)
         or not re.fullmatch("[0-9a-f]{16}", parent_id)
     ):
-        message = "Protected valid SDK canary identity required"
-        raise ValueError(message)
+        msg = "Protected valid SDK canary identity required"
+        raise ValueError(msg)
     output.mkdir(mode=0o700)
     tls = Path("/var/lib/homelab-otel/tls")
     context = ssl.create_default_context(cafile=str(tls / "ca.crt"))
@@ -291,8 +291,8 @@ def run(
     with urllib.request.urlopen(request, context=context, timeout=20) as response:
         body = response.read(8 * 1024**2 + 1)
     if len(body) > 8 * 1024**2:
-        message = "SDK canary trace exceeds bounded inspection budget"
-        raise ValueError(message)
+        msg = "SDK canary trace exceeds bounded inspection budget"
+        raise ValueError(msg)
     document = json.loads(body)
     (output / "trace-private.json").write_text(json.dumps(document))
     if production_litellm_inference:
@@ -337,8 +337,8 @@ def run(
     (output / "result.json").write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report))
     if not report["success"]:
-        message = "Internal SDK child or negative privacy proof did not pass"
-        raise ValueError(message)
+        msg = "Internal SDK child or negative privacy proof did not pass"
+        raise ValueError(msg)
 
 
 if __name__ == "__main__":

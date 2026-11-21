@@ -6,8 +6,8 @@ scripts/audit disabled into the existing PVC. Native API stores settings/profile
 Does not overwrite demo code/results, create schedules or launch model calls.
 """
 import json
-from pathlib import Path
 import subprocess
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DEST = "/home/openhands/.openhands/tools/filesystem"

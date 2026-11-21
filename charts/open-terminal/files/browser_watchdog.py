@@ -1,11 +1,11 @@
 """Watchdog that monitors open-terminal browser processes and reaps stale sessions."""
 import json
-from datetime import datetime, timezone
 import logging
 import os
 import signal
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -122,6 +122,7 @@ class Watchdog:
     """Watchdog that supervises and restarts browser processes."""
 
     def __init__(self, lifetime=900, grace=5, ticks=None, send=signal_process) -> None:
+        """Initialize watchdog timing and process handling."""
 
         self.lifetime = lifetime
         self.grace = grace
@@ -177,7 +178,8 @@ class Watchdog:
 def positive_setting(name, default):
     value = float(os.environ.get(name, default))
     if not 0 < value < float("inf"):
-        raise ValueError(f"{name} must be finite and positive")
+        message = f"{name} must be finite and positive"
+        raise ValueError(message)
     return value
 
 

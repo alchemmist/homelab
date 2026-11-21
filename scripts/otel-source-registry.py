@@ -96,7 +96,8 @@ def selected(selector, attributes):
         if operation == "DoesNotExist" and key in attributes:
             return False
         if operation not in ("In", "NotIn", "Exists", "DoesNotExist"):
-            raise ValueError("Unsupported label selector operator")
+            msg = "Unsupported label selector operator"
+            raise ValueError(msg)
     return True
 
 
@@ -147,7 +148,8 @@ def target_summary(target):
     pool = target["scrapePool"]
     parts = pool.split("/")
     if len(parts) < 4 or not parts[-1].isdigit():
-        raise ValueError("Unsupported scrape-pool identity")
+        msg = "Unsupported scrape-pool identity"
+        raise ValueError(msg)
     job = labels.get("job", "")
     owner = (
         "node-systemd-agent"
@@ -188,7 +190,8 @@ def consumers(rule_document, configmaps):
         for rule in group.get("rules", []):
             expression = rule.get("query")
             if not isinstance(expression, str) or not expression:
-                raise ValueError("Rule without a PromQL expression")
+                msg = "Rule without a PromQL expression"
+                raise ValueError(msg)
             rules.append(
                 {
                     "group": group["name"],
@@ -207,9 +210,11 @@ def consumers(rule_document, configmaps):
             document = json.loads(content)
             uid = document.get("uid")
             if not uid:
-                raise ValueError("Dashboard has no stable UID")
+                msg = "Dashboard has no stable UID"
+                raise ValueError(msg)
             if uid in uids:
-                raise ValueError("Dashboard UID is provisioned more than once")
+                msg = "Dashboard UID is provisioned more than once"
+                raise ValueError(msg)
             uids.add(uid)
             queries = [
                 {
@@ -429,7 +434,8 @@ def main():
         targets = PREFLIGHT.prometheus(host, NAMESPACE, "targets")
         prom = PREFLIGHT.kube(host, NAMESPACE, "get", "prometheus", "-o", "json")["items"]
         if len(prom) != 1:
-            raise ValueError("Expected exactly one Prometheus resource")
+            msg = "Expected exactly one Prometheus resource"
+            raise ValueError(msg)
         namespaces = PREFLIGHT.kube(host, NAMESPACE, "get", "namespaces", "-o", "json")
         rules = PREFLIGHT.prometheus(host, NAMESPACE, "rules")
         configmaps = PREFLIGHT.kube(

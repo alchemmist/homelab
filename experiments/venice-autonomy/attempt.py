@@ -8,7 +8,13 @@ import signal
 import time
 from typing import cast
 
-from fixtures import check_verdict, fixture_files, task_prompt, verifier_command, seal_execution
+from fixtures import (
+    check_verdict,
+    fixture_files,
+    seal_execution,
+    task_prompt,
+    verifier_command,
+)
 from sandbox import Sandbox
 
 
@@ -69,10 +75,12 @@ def provider_settings():
     provider = json.loads(source.read_text())["providers"]["litellm"]
     reference = provider["apiKey"]
     if not reference.startswith("$"):
-        raise ValueError("only an environment-backed API key is supported")
+        msg = "only an environment-backed API key is supported"
+        raise ValueError(msg)
     key = os.environ.get(reference.lstrip("$").strip("{}"), "").strip()
     if not key or "\r" in key or "\n" in key:
-        raise ValueError("missing or unsafe API key")
+        msg = "missing or unsafe API key"
+        raise ValueError(msg)
     return provider["baseUrl"], key
 
 
@@ -207,9 +215,15 @@ def run_openhands(
             os.environ.pop(name)
     os.environ["OH_PERSISTENCE_DIR"] = str(directory / "openhands-home")
     os.environ["OTEL_SDK_DISABLED"] = "true"
+    from openhands.sdk import LLM, Agent, Conversation, Tool
+    from openhands.sdk.tool import (
+        Action,
+        Observation,
+        ToolDefinition,
+        ToolExecutor,
+        register_tool,
+    )
     from pydantic import Field, SecretStr
-    from openhands.sdk import Agent, Conversation, LLM, Tool
-    from openhands.sdk.tool import Action, Observation, ToolDefinition, ToolExecutor, register_tool
 
     class BashAction(Action):
         command: str = Field(

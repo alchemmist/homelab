@@ -35,7 +35,8 @@ def kube(*arguments, document=None):
         timeout=45,
     )
     if result.returncode:
-        raise RuntimeError("Canary Kubernetes operation failed; response bodies are not logged")
+        msg = "Canary Kubernetes operation failed; response bodies are not logged"
+        raise RuntimeError(msg)
     return result.stdout
 
 
@@ -50,7 +51,8 @@ def prometheus(endpoint):
     )
     data = json.loads(kube("get", "--raw", path))
     if data.get("status") != "success":
-        raise ValueError("Production read-only Prometheus inventory failed")
+        msg = "Production read-only Prometheus inventory failed"
+        raise ValueError(msg)
     return data["data"]
 
 
@@ -69,7 +71,8 @@ def rewrite_assets(value, paths, kubeconfig):
                 or discovery.get("kubeconfig_file")
                 or discovery.get("authorization")
             ):
-                raise ValueError("Unexpected discovery authentication requires explicit review")
+                msg = "Unexpected discovery authentication requires explicit review"
+                raise ValueError(msg)
             discovery["kubeconfig_file"] = str(kubeconfig)
         return result
     if isinstance(value, list):
@@ -80,10 +83,12 @@ def rewrite_assets(value, paths, kubeconfig):
 def expected_targets(targets, pools):
     selected = [target for target in targets["activeTargets"] if target["scrapePool"] in pools]
     if not selected or any(target["health"] != "up" for target in selected):
-        raise ValueError("Selected sources must be healthy before canary collection")
+        msg = "Selected sources must be healthy before canary collection"
+        raise ValueError(msg)
     identities = [fingerprint({**target["labels"], "__name__": "up"}) for target in selected]
     if len(set(identities)) != len(identities):
-        raise ValueError("Duplicate source target label sets")
+        msg = "Duplicate source target label sets"
+        raise ValueError(msg)
     return set(identities)
 
 
@@ -160,7 +165,8 @@ def cleanup_workspace(workspace):
                 )
                 path.unlink()
     if failed:
-        raise RuntimeError("Temporary discovery RBAC cleanup incomplete")
+        msg = "Temporary discovery RBAC cleanup incomplete"
+        raise RuntimeError(msg)
 
 
 def teardown_canary(children, logs, created, name, credentials):
@@ -502,8 +508,9 @@ def run(args):
         }
         if any(rejected.values()):
             (args.workspace / "failure-summary.json").write_text(json.dumps(rejected))
+            msg = "Source canary observed refused or dropped data; capacity is not accepted"
             raise RuntimeError(
-                "Source canary observed refused or dropped data; capacity is not accepted"
+                msg
             )
         cgroup = next(
             line[3:]
@@ -562,11 +569,13 @@ def main():
             cleanup_workspace(args.cleanup_workspace)
             return
         if any(getattr(args, name) is None for name in names):
-            raise ValueError("Explicit canary artifacts are required")
+            msg = "Explicit canary artifacts are required"
+            raise ValueError(msg)
         print(json.dumps(run(args), indent=2))
     except (OSError, RuntimeError, subprocess.SubprocessError, ValueError):
+        msg_0 = "Real-source canary failed; sensitive responses are not printed. Inspect the private root-owned run artifacts."
         raise SystemExit(
-            "Real-source canary failed; sensitive responses are not printed. Inspect the private root-owned run artifacts."
+            msg_0
         ) from None
 
 

@@ -4,16 +4,16 @@ import base64
 import json
 import logging
 import os
-from pathlib import Path
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 from policy import (
     LANES,
+    dependency_repair,
     encode_result,
     validate_changes,
-    dependency_repair,
     validate_dependency_update,
 )
 

@@ -10,7 +10,11 @@
       "COM812"
     ],
     "perFileIgnores": {
+      "**/test/**": [
+        "D102"
+      ],
       "**/tests/**": [
+        "D102",
         "S101"
       ]
     },
@@ -19,7 +23,8 @@
       "D213": "Unsatisfiable with D212. PEP 257 keeps the summary on the first docstring line, so D212 stays.",
       "ISC001": "Unsatisfiable with the Ruff formatter, which can introduce single-line implicit concatenations. ruff format --check stays mandatory.",
       "COM812": "Redundant with the Ruff formatter, which owns trailing commas. ruff format --check reports the same defect.",
-      "S101": "Pytest rewrites assert. This is the only test-framework exception; no other test rule is ignored."
+      "D102": "Test methods need no mandatory docstring in test/ or tests/ trees.",
+      "S101": "Pytest rewrites assert in tests/ trees."
     }
   },
   "mypy": {
@@ -251,7 +256,7 @@
   "reviewedExceptionDigest": "f0adf5e9ed7cbb4c0315d51c014aa019e7ff9320e9d7bf4ae8ef01ef6058c1fd",
   "frozenCompatibility": {
     "manifest": "charts/spi-triage/LEGACY-SOURCE-MANIFEST.json",
-    "sha256": "914d01d41c891823fafc9f911183fc5ec2c9fc1e509e42cb9245300d26ea8847",
+    "sha256": "55bf4133d94553e8076ce83010ab979fbf4968910ef063a28d73bbcfda7f45f9",
     "canonicalRepository": "https://github.com/alchemmist/spi-triage",
     "directory": "charts/spi-triage/files",
     "count": 17
