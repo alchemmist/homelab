@@ -23,7 +23,7 @@ def targets() -> dict[str, str]:
     """Test behavior for targets."""
     result: dict[str, str] = {}
     for filename, source in MANIFEST["files"].items():
-        name = "service-icons/" + Path(filename).stem + "-" + source["sha256"][:12] + ".svg"
+        name = f"https://auth.socrat.alchemmist.xyz/-/quiet-mono/v1/{source['sha256'][:12]}-{filename}"
         for slug in source.get("applications", [Path(filename).stem]):
             assert slug not in result
             result[slug] = name
@@ -155,6 +155,7 @@ def test_updates_only_icons_and_keeps_unmanaged_app(tmp_path) -> None:
     before = copy.deepcopy(api.apps)
     run(tmp_path, api, list(before.values()))
     assert sorted(api.patches) == sorted(REVIEWED_APPS)
+    assert {slug: api.apps[slug]["meta_icon"] for slug in REVIEWED_APPS} == targets()
     for slug, app in api.apps.items():
         assert {k: v for k, v in app.items() if k != "meta_icon"} == {
             k: v for k, v in before[slug].items() if k != "meta_icon"
