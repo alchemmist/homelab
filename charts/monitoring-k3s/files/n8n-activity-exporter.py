@@ -9,17 +9,43 @@ import time
 import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from typing import TypedDict, cast
 
 BASE = os.environ.get("N8N_URL", "http://n8n.automation.svc.cluster.local")
 LOCK = threading.Lock()
 STATE = {"ok": 0, "at": 0, "counts": {}}
 
 
-def timestamp(value):
+class Execution(TypedDict, total=False):
+    """A single execution record."""
+
+    startedAt: str
+
+
+class ExecutionRecord(Execution):
+    """An execution row from the activity API."""
+
+    id: str
+    status: str
+
+
+class _ExecutionPageOptional(TypedDict, total=False):
+    """Optional pagination fields."""
+
+    nextCursor: str
+
+
+class ExecutionPage(_ExecutionPageOptional):
+    """A page of activity executions."""
+
+    data: list[ExecutionRecord]
+
+
+def timestamp(value: str) -> float:
     return dt.datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
 
 
-def summarize(rows, now):
+def summarize(rows: list[ExecutionRecord], now: float) -> dict[tuple[str, int], int]:
     counts = {
         (status, window): 0
         for status in ("success", "error", "running", "waiting", "other")
@@ -44,7 +70,7 @@ def summarize(rows, now):
     return counts
 
 
-def get_page(cursor=None, status=None):
+def get_page(cursor: str | None = None, status: str | None = None) -> ExecutionPage:
     params = {"limit": 100, "includeData": "false"}
     if cursor:
         params["cursor"] = cursor
@@ -56,7 +82,7 @@ def get_page(cursor=None, status=None):
         headers={"X-N8N-API-KEY": key},
     )
     with urllib.request.urlopen(request, timeout=8) as response:
-        return json.load(response)
+        return cast("ExecutionPage", json.load(response))
 
 
 def collect():
@@ -129,7 +155,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
 
-    def log_message(self, *_):
+    def log_message(self, *_: object) -> None:
         pass
 
 

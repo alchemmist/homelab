@@ -5,12 +5,13 @@ import argparse
 import hashlib
 import json
 import os
-from pathlib import Path
 import secrets
 import socket
 import subprocess
 import urllib.request
 import uuid
+from collections.abc import Iterable
+from pathlib import Path
 
 HOST = "auth.socrat.alchemmist.xyz"
 BASE = "https://" + HOST
@@ -18,7 +19,9 @@ OWNER_ID = "socrat-admin"
 MAPPING = "homelab-litellm-reviewed-identity"
 
 
-def identity_expression(owner_uid, owner_email, user_uuids=(), user_group=None):
+def identity_expression(
+    owner_uid: str, owner_email: str, user_uuids: Iterable[str] = (), user_group: str | None = None
+):
     # Identities/roles are selected by reviewed immutable subject, never email.
     return (
         "uid = str(request.user.uuid)\n"
@@ -59,7 +62,7 @@ def main():
     kube = ["kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml", "-n", "llm"]
     credentials = json.loads((args.root / "credentials.json").read_text())
 
-    def api(method, path, payload=None):
+    def api(method: str, path: str, payload: object | None = None):
         req = urllib.request.Request(
             BASE + "/api/v3/" + path,
             method=method,
@@ -73,7 +76,7 @@ def main():
             body = r.read()
             return json.loads(body) if body else None
 
-    def kubectl(arguments, data=None):
+    def kubectl(arguments: list[str], data: bytes | None = None):
         r = subprocess.run(kube + arguments, input=data, capture_output=True, timeout=90)
         if r.returncode:
             raise RuntimeError(
@@ -81,14 +84,14 @@ def main():
             )
         return r.stdout
 
-    def private(path, data, overwrite=False):
+    def private(path: Path, data: object, *, overwrite: bool = False):
         if path.exists() and not overwrite:
             return
         with open(path, "w", opener=lambda p, f: os.open(p, f, 0o600)) as out:
             json.dump(data, out, indent=2)
         path.chmod(0o600)
 
-    def one(path, field, value):
+    def one(path: str, field: str, value: object):
         rows = api(
             "GET",
             path
@@ -269,7 +272,7 @@ asyncio.run(main())
     bindings = api("GET", "policies/bindings/?target=" + app["pk"] + "&page_size=100")["results"]
     approved_pks = {u["pk"] for u in granted_users}
 
-    def accepted_binding(b):
+    def accepted_binding(b: dict[str, object]):
         target_ok = (
             b.get("group") in {group["pk"], access_group["pk"]} and b.get("user") is None
         ) or (b.get("group") is None and b.get("user") in approved_pks)

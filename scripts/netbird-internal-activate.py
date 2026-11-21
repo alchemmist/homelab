@@ -37,12 +37,12 @@ def main():
         raise ValueError("enrollment keys and Secrets must be retired first")
 
     class NoRedirect(urllib.request.HTTPRedirectHandler):
-        def redirect_request(self, *a, **kw):
+        def redirect_request(self, *a: object, **kw: object) -> None:
             return None
 
     opener = urllib.request.build_opener(NoRedirect)
 
-    def api(method, endpoint, body=None):
+    def api(method: str, endpoint: str, body: object | None = None):
         req = urllib.request.Request(
             BASE + endpoint,
             method=method,

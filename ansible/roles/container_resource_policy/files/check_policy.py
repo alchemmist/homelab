@@ -8,7 +8,7 @@ import sys
 RESOURCE_NAMES = ("cpu", "memory", "ephemeral-storage")
 
 
-def check(namespace, kubectl, kubeconfig):
+def check(namespace: str, kubectl: str, kubeconfig: str):
     command = [kubectl, "--kubeconfig", kubeconfig, "--request-timeout=30s"]
     cases = [
         ("empty", {}),

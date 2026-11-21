@@ -5,7 +5,29 @@ import re
 import subprocess
 import sys
 import time
+from collections.abc import Iterable, Mapping, Sequence
 from decimal import Decimal, InvalidOperation
+
+
+def _mapping(value: object) -> Mapping[str, object]:
+    if isinstance(value, dict):
+        return value
+    malformed = "Malformed JSON object"
+    raise TypeError(malformed)
+
+
+def _str(value: object) -> str:
+    if isinstance(value, str):
+        return value
+    malformed = "Malformed JSON string"
+    raise TypeError(malformed)
+
+
+def _entries(value: object) -> Sequence[object]:
+    if isinstance(value, list):
+        return value
+    malformed = "Malformed JSON list"
+    raise TypeError(malformed)
 
 
 RESOURCE_NAMES = ("cpu", "memory", "ephemeral-storage")
@@ -18,7 +40,7 @@ QUANTITY = re.compile(
 )
 
 
-def quantity(value):
+def quantity(value: object):
     match = QUANTITY.fullmatch(str(value)) if value is not None else None
     if not match:
         raise ValueError("Invalid resource quantity: " + str(value))
@@ -46,14 +68,14 @@ def quantity(value):
     return number * Decimal(10) ** powers[suffix]
 
 
-def positive(value):
+def positive(value: object):
     try:
         return quantity(value) > 0
     except (ValueError, InvalidOperation):
         return False
 
 
-def validate_node_selector(selector):
+def validate_node_selector(selector: object):
     if not isinstance(selector, dict):
         raise ValueError("nodeSelector must be a string map")
     for key, value in selector.items():
@@ -78,7 +100,7 @@ def validate_node_selector(selector):
             raise ValueError("Invalid nodeSelector label value: " + value)
 
 
-def load_profiles(path):
+def load_profiles(path: str):
     with open(path) as source:
         profiles = json.load(source)
     if not isinstance(profiles, list):
@@ -118,120 +140,138 @@ def load_profiles(path):
     return profiles
 
 
-def matching_profile(pod, profiles):
+def matching_profile(pod: dict[str, object], profiles: Sequence[Mapping[str, object]]):
     reference = owner(pod)
+    metadata = _mapping(pod["metadata"])
     matches = [
         profile
         for profile in profiles
         if reference
-        and profile["namespace"] == pod["metadata"]["namespace"]
+        and profile["namespace"] == metadata.get("namespace")
         and profile["ownerKind"] == reference["kind"]
-        and re.fullmatch(profile["ownerPattern"], reference.get("name", ""))
+        and re.fullmatch(_str(profile["ownerPattern"]), reference.get("name", ""))
     ]
     if len(matches) > 1:
         raise RuntimeError("Ambiguous resource profiles for " + label(pod))
     return matches[0] if matches else None
 
 
-def profile_mismatches(pod, profile):
+def profile_mismatches(pod: dict[str, object], profile: Mapping[str, object] | None):
     if profile is None:
         return []
     mismatches = []
-    spec = pod.get("spec", {})
-    for key, desired in profile.get("nodeSelector", {}).items():
-        if spec.get("nodeSelector", {}).get(key) != desired:
+    spec = _mapping(pod.get("spec", {}))
+    for key, desired in _mapping(profile.get("nodeSelector", {})).items():
+        if _mapping(spec.get("nodeSelector", {})).get(key) != desired:
             mismatches.append("nodeSelector/" + key)
-    hostname = profile.get("nodeSelector", {}).get("kubernetes.io/hostname")
-    if hostname and spec.get("nodeName") and spec["nodeName"] != hostname:
+    hostname = _mapping(profile.get("nodeSelector", {})).get("kubernetes.io/hostname")
+    if hostname and spec.get("nodeName") and spec.get("nodeName") != hostname:
         mismatches.append("nodeName")
     present = set()
+    containers = _mapping(profile["containers"])
     for kind in ("containers", "initContainers"):
-        for container in pod.get("spec", {}).get(kind, []):
-            name = container["name"]
+        for raw_container in _entries(spec.get(kind, [])):
+            container = _mapping(raw_container)
+            name = _str(container["name"])
             present.add(name)
-            if name not in profile["containers"]:
+            if name not in containers:
                 mismatches.append(kind + "/" + name + "/missing-profile")
                 continue
-            expected = profile["containers"][name]
+            expected = _mapping(containers[name])
+            container_resources = _mapping(container.get("resources", {}))
             for mode in ("requests", "limits"):
-                for resource, desired in expected[mode].items():
-                    actual = container.get("resources", {}).get(mode, {}).get(resource)
+                for resource, desired in _mapping(expected[mode]).items():
+                    actual = _mapping(container_resources.get(mode, {})).get(resource)
                     if not positive(actual) or quantity(actual) != quantity(desired):
                         mismatches.append(kind + "/" + name + "/" + mode + "/" + resource)
-            if expected.get("removeCpuLimit") and "cpu" in container.get("resources", {}).get(
-                "limits", {}
+            if expected.get("removeCpuLimit") and "cpu" in _mapping(
+                container_resources.get("limits", {})
             ):
                 mismatches.append(kind + "/" + name + "/limits/cpu-present")
-    for name in profile["containers"].keys() - present:
+    for name in containers.keys() - present:
         mismatches.append(name + "/missing-container")
     return mismatches
 
 
-def needs_reconcile(pod, profiles=()):
+def needs_reconcile(pod: dict[str, object], profiles: Sequence[Mapping[str, object]] = ()):
     return bool(deficits(pod) or profile_mismatches(pod, matching_profile(pod, profiles)))
 
 
-def deficits(pod):
+def deficits(pod: dict[str, object]):
     missing = []
+    spec = _mapping(pod.get("spec", {}))
     for kind in ("containers", "initContainers"):
-        for container in pod.get("spec", {}).get(kind, []):
-            resources = container.get("resources", {})
+        for raw_container in _entries(spec.get(kind, [])):
+            container = _mapping(raw_container)
+            resources = _mapping(container.get("resources", {}))
             for mode, required in (("requests", RESOURCE_NAMES), ("limits", LIMIT_RESOURCE_NAMES)):
                 for resource in required:
-                    if not positive(resources.get(mode, {}).get(resource)):
-                        missing.append(kind + "/" + container["name"] + "/" + mode + "/" + resource)
+                    if not positive(_mapping(resources.get(mode, {})).get(resource)):
+                        missing.append(
+                            kind + "/" + _str(container["name"]) + "/" + mode + "/" + resource
+                        )
     return missing
 
 
-def active(pod):
-    return pod.get("status", {}).get("phase") not in ("Succeeded", "Failed")
+def active(pod: dict[str, object]):
+    return _mapping(pod.get("status", {})).get("phase") not in ("Succeeded", "Failed")
 
 
-def owner(pod):
+def owner(pod: dict[str, object]) -> Mapping[str, object] | None:
     return next(
-        (item for item in pod["metadata"].get("ownerReferences", []) if item.get("controller")),
+        (
+            item
+            for item in _entries(_mapping(pod["metadata"]).get("ownerReferences", []))
+            if _mapping(item).get("controller")
+        ),
         None,
     )
 
 
-def supported(pod):
+def supported(pod: dict[str, object]):
     reference = owner(pod)
     return bool(
         reference
         and reference["kind"] in SUPPORTED_OWNERS
-        and not pod["metadata"].get("annotations", {}).get("kubernetes.io/config.mirror")
-    )
-
-
-def ready(pod):
-    return (
-        active(pod)
-        and not pod["metadata"].get("deletionTimestamp")
-        and any(
-            item.get("type") == "Ready" and item.get("status") == "True"
-            for item in pod.get("status", {}).get("conditions", [])
+        and not _mapping(_mapping(pod["metadata"]).get("annotations", {})).get(
+            "kubernetes.io/config.mirror"
         )
     )
 
 
-def same_workload(original, candidate):
+def ready(pod: dict[str, object]):
+    return (
+        active(pod)
+        and not _mapping(pod["metadata"]).get("deletionTimestamp")
+        and any(
+            _mapping(item).get("type") == "Ready" and _mapping(item).get("status") == "True"
+            for item in _entries(_mapping(pod.get("status", {})).get("conditions", []))
+        )
+    )
+
+
+def same_workload(original: dict[str, object], candidate: dict[str, object]):
     original_owner, candidate_owner = owner(original), owner(candidate)
     if not original_owner or not candidate_owner:
         return False
+    original_metadata = _mapping(original["metadata"])
+    candidate_metadata = _mapping(candidate["metadata"])
     if (
-        original["metadata"]["namespace"] != candidate["metadata"]["namespace"]
+        original_metadata.get("namespace") != candidate_metadata.get("namespace")
         or original_owner["uid"] != candidate_owner["uid"]
     ):
         return False
+    original_spec = _mapping(original.get("spec", {}))
+    candidate_spec = _mapping(candidate.get("spec", {}))
     if original_owner["kind"] == "DaemonSet":
-        return original.get("spec", {}).get("nodeName") == candidate.get("spec", {}).get("nodeName")
+        return original_spec.get("nodeName") == candidate_spec.get("nodeName")
     if original_owner["kind"] == "StatefulSet":
-        return original["metadata"]["name"] == candidate["metadata"]["name"]
+        return original_metadata.get("name") == candidate_metadata.get("name")
     return True
 
 
-def eviction_payload(pod):
-    metadata = pod["metadata"]
+def eviction_payload(pod: dict[str, object]):
+    metadata = _mapping(pod["metadata"])
     return {
         "apiVersion": "policy/v1",
         "kind": "Eviction",
@@ -241,7 +281,7 @@ def eviction_payload(pod):
 
 
 class Client:
-    def __init__(self, kubectl, kubeconfig):
+    def __init__(self, kubectl: str, kubeconfig: str):
         self.command = [kubectl, "--kubeconfig", kubeconfig, "--request-timeout=30s"]
 
     def pods(self):
@@ -254,13 +294,13 @@ class Client:
         )
         return json.loads(result.stdout)["items"]
 
-    def evict(self, pod):
-        metadata = pod["metadata"]
+    def evict(self, pod: dict[str, object]):
+        metadata = _mapping(pod["metadata"])
         endpoint = (
             "/api/v1/namespaces/"
-            + metadata["namespace"]
+            + _str(metadata["namespace"])
             + "/pods/"
-            + metadata["name"]
+            + _str(metadata["name"])
             + "/eviction"
         )
         return subprocess.run(
@@ -272,19 +312,25 @@ class Client:
         )
 
 
-def label(pod):
-    return pod["metadata"]["namespace"] + "/" + pod["metadata"]["name"]
+def label(pod: dict[str, object]):
+    metadata = _mapping(pod["metadata"])
+    return _str(metadata.get("namespace")) + "/" + _str(metadata.get("name"))
 
 
-def excluded(pod, nodes):
-    spec = pod.get("spec", {})
-    return (
-        spec.get("nodeName") in nodes
-        or spec.get("nodeSelector", {}).get("kubernetes.io/hostname") in nodes
+def excluded(pod: dict[str, object], nodes: Iterable[str]):
+    spec = _mapping(pod.get("spec") or {})
+    node_name = spec.get("nodeName")
+    host_name = _mapping(spec.get("nodeSelector") or {}).get("kubernetes.io/hostname")
+    return ((node_name in nodes) if isinstance(node_name, str) else False) or (
+        (host_name in nodes) if isinstance(host_name, str) else False
     )
 
 
-def audit(pods, excluded_nodes=(), profiles=()):
+def audit(
+    pods: Iterable[dict[str, object]],
+    excluded_nodes: Iterable[str] = (),
+    profiles: Sequence[Mapping[str, object]] = (),
+):
     active_pods = [pod for pod in pods if active(pod)]
     coverage = [(pod, matching_profile(pod, profiles)) for pod in active_pods]
     deficient = [pod for pod in active_pods if needs_reconcile(pod, profiles)]
@@ -300,11 +346,11 @@ def audit(pods, excluded_nodes=(), profiles=()):
             json.dumps(
                 {
                     "pod": label(pod),
-                    "uid": pod["metadata"]["uid"],
+                    "uid": _mapping(pod["metadata"]).get("uid"),
                     "owner": owner(pod),
                     "supported": supported(pod),
                     "excluded": excluded(pod, excluded_nodes),
-                    "node": pod.get("spec", {}).get("nodeName"),
+                    "node": _mapping(pod.get("spec", {})).get("nodeName"),
                     "missing_resources": deficits(pod),
                     "profile_mismatches": profile_mismatches(pod, matching_profile(pod, profiles)),
                 }
@@ -326,12 +372,17 @@ def audit(pods, excluded_nodes=(), profiles=()):
     return actionable
 
 
-def reconcile_one(client, original, timeout, interval, profiles=()):
+def reconcile_one(
+    client: Client,
+    original: dict[str, object],
+    timeout: float,
+    interval: float,
+    profiles: Sequence[Mapping[str, object]] = (),
+):
     deadline = time.monotonic() + timeout
     before = client.pods()
-    current = next(
-        (pod for pod in before if pod["metadata"]["uid"] == original["metadata"]["uid"]), None
-    )
+    original_uid = _mapping(original["metadata"]).get("uid")
+    current = next((pod for pod in before if pod["metadata"]["uid"] == original_uid), None)
     if current is None or not active(current) or not needs_reconcile(current, profiles):
         print("Already replaced or compliant: " + label(original), flush=True)
         return
@@ -354,7 +405,7 @@ def reconcile_one(client, original, timeout, interval, profiles=()):
         raise TimeoutError("Disruption budget timeout: " + label(original))
     while time.monotonic() < deadline:
         pods = client.pods()
-        old_present = any(pod["metadata"]["uid"] == original["metadata"]["uid"] for pod in pods)
+        old_present = any(pod["metadata"]["uid"] == original_uid for pod in pods)
         replacements = [
             pod
             for pod in pods

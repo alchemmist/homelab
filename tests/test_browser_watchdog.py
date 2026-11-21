@@ -4,6 +4,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Protocol
 from unittest.mock import patch
 
 
@@ -14,6 +15,12 @@ SPEC = importlib.util.spec_from_file_location(
 MODULE = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = MODULE
 SPEC.loader.exec_module(MODULE)
+
+
+class _Pid(Protocol):
+    @property
+    def pid(self) -> int:
+        """Numeric process id used to index a scan."""
 
 
 def process(pid=10, ppid=1, start=100, executable="chrome", args=None):
@@ -37,7 +44,7 @@ class BrowserWatchdogTests(unittest.TestCase):
             send=lambda identity, sig: self.sent.append((identity, sig)),
         )
 
-    def step(self, now, *items):
+    def step(self, now: float, *items: _Pid) -> None:
         self.guard.step({p.pid: p for p in items}, now)
 
     def test_only_specific_headless_playwright_roots_match(self):

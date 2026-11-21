@@ -3,16 +3,19 @@ import hashlib
 import json
 import math
 import re
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 
 import yaml
 
+type _Json = None | bool | int | float | str | list[_Json] | dict[str, _Json]
+
 SELECTOR = re.compile(r'(?<![A-Za-z0-9_])(le|quantile)\s*(=~|!~|!=|=)\s*("(?:\\.|[^"\\])*")')
 
 
-def otlp_number(value):
+def otlp_number(value: str):
     number = float(value)
     if math.isnan(number):
         raise ValueError("NaN is not a valid numeric dimension")
@@ -22,7 +25,7 @@ def otlp_number(value):
     return text.rstrip("0").rstrip(".") if "." in text else text
 
 
-def compatible_numeric_regex(value):
+def compatible_numeric_regex(value: str):
     match = re.fullmatch(r"([+-]?[0-9]+)\(\\\.0\)\?", value)
     if match is None:
         return False
@@ -36,7 +39,7 @@ def compatible_numeric_regex(value):
         return False
 
 
-def audit_expression(expression):
+def audit_expression(expression: str):
     findings = []
     selectors = dynamic = 0
     for match in SELECTOR.finditer(expression):
@@ -77,7 +80,7 @@ def audit_expression(expression):
     return {"selectorCount": selectors, "dynamicSelectorCount": dynamic, "findings": findings}
 
 
-def expressions(value, path=()):
+def expressions(value: _Json, path: tuple[str, ...] = ()):
     if isinstance(value, dict):
         for key, item in value.items():
             if key in ("expr", "query", "definition") and isinstance(item, str):
@@ -95,7 +98,7 @@ def expressions(value, path=()):
             yield from expressions(item, path + (str(index),))
 
 
-def audit_files(paths):
+def audit_files(paths: Sequence[Path]):
     records = []
     expression_count = selector_count = dynamic_count = 0
     for path in paths:

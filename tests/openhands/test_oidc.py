@@ -62,7 +62,7 @@ class NativeOIDC(unittest.TestCase):
 
 
 class OIDCRender(unittest.TestCase):
-    def helm(self,*args):
+    def helm(self, *args: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(['helm','template','openhands',str(ROOT/'charts/openhands'),'-n','openhands','-f',str(ROOT/'deploy/openhands/values.yaml'),*args],text=True,capture_output=True)
 
     def objects(self):

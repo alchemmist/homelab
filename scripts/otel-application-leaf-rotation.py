@@ -15,6 +15,12 @@ import subprocess
 import time
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Protocol
+
+
+class _Kube(Protocol):
+    def __call__(self, *args: str) -> object: ...
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
@@ -26,13 +32,15 @@ NS = "cattle-monitoring-system"
 APPLICATIONS = ("litellm", "vllm", "open-webui")
 
 
-def leaf_name(application):
+def leaf_name(application: str) -> str:
     if application not in APPLICATIONS:
         raise ValueError("Only explicitly allowed application client leaves may be renewed")
     return "otel-app-tls-" + application
 
 
-def renewal_conditions(certificate, application="litellm"):
+def renewal_conditions(certificate: object, application: str = "litellm"):
+    if not isinstance(certificate, dict):
+        raise TypeError
     if (
         certificate["metadata"]["name"] != leaf_name(application)
         or certificate["metadata"]["namespace"] != NS
@@ -57,12 +65,14 @@ def renewal_conditions(certificate, application="litellm"):
     return result
 
 
-def public_certificate_identity(kube, namespace, application="litellm"):
+def public_certificate_identity(kube: _Kube, namespace: str, application: str = "litellm"):
     # kubectl emits only the public certificate field, never tls.key or the Secret.
     template = '{{printf "{\\"certificatePemBase64\\":%q}" (index .data "tls.crt")}}'
     selected = kube(
         "-n", namespace, "get", "secret", leaf_name(application), "-o", "go-template=" + template
     )
+    if not isinstance(selected, dict):
+        raise TypeError
     data = base64.b64decode(selected["certificatePemBase64"], validate=True)
     if b"-----BEGIN CERTIFICATE-----" not in data or b"PRIVATE KEY" in data:
         raise ValueError("Expected only public certificate PEM")
@@ -81,11 +91,11 @@ def public_certificate_identity(kube, namespace, application="litellm"):
     }
 
 
-def public_certificate_hash(kube, namespace, application="litellm"):
+def public_certificate_hash(kube: _Kube, namespace: str, application: str = "litellm"):
     return public_certificate_identity(kube, namespace, application)["certificateSHA256"]
 
 
-def run(output, application="litellm"):
+def run(output: Path, application: str = "litellm") -> None:
     leaf_name(application)
     os.umask(0o077)
     controller = Path.home() / "Library/Application Support/homelab/otel-controller"

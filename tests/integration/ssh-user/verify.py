@@ -7,30 +7,24 @@ Private test keys and containers are removed in finally/TemporaryDirectory.
 """
 
 import json
-from collections.abc import Sequence
 from pathlib import Path
 import re
 import subprocess
 import tempfile
 import time
+from typing import TYPE_CHECKING
 import uuid
+
+if TYPE_CHECKING:
+    from _typeshed import Incomplete
 
 ROOT = Path(__file__).resolve().parents[3]
 IMAGE = "homelab-ssh-user-fixture:local"
 USER = "ssh_fixture"
 
 
-def run(
-    args: Sequence[str],
-    expected: int = 0,
-    *,
-    timeout: float = 180,
-    stdin_text: str | None = None,
-    cwd: Path | None = None,
-) -> str:
-    p = subprocess.run(
-        args, capture_output=True, text=True, timeout=timeout, input=stdin_text, cwd=cwd
-    )
+def run(args, expected=0, **kw):
+    p = subprocess.run(args, capture_output=True, text=True, timeout=kw.pop("timeout", 180), **kw)
     if p.returncode != expected:
         # Fixture output contains public data only, but keep it private to avoid
         # copying verbose Ansible/module output into unrelated transcripts.
@@ -83,16 +77,10 @@ def main():
             inventory = d / "inventory.json"
             inventory.write_text(json.dumps({"all": {"children": {"Socrat": {"hosts": hosts}}}}))
 
-            def execute(container: str, *args: str) -> str:
+            def execute(container: str, *args: str) -> "Incomplete":
                 return run(["docker", "exec", container, *args])
 
-            def play(
-                *,
-                key: int = 1,
-                check: bool = False,
-                expected: int = 0,
-                name: str = USER,
-            ) -> str:
+            def play(key=1, check=False, expected=0, name=USER):
                 return run(
                     [
                         "ansible-playbook",
@@ -132,7 +120,7 @@ def main():
                 assert p.returncode != 0, "check mode created an account"
             play()
 
-            def login(container: str, key: int) -> None:
+            def login(container, key):
                 execute(container, "mkdir", "-p", "/tmp/ssh-fixture")
                 run(
                     [
@@ -155,7 +143,7 @@ def main():
                         "-c",
                         "cat > /tmp/ssh-fixture/known_hosts",
                     ],
-                    stdin_text=known,
+                    input=known,
                 )
                 result = execute(
                     container,
@@ -216,7 +204,7 @@ def main():
                     "-c",
                     "cat > /home/" + USER + "/.ssh/authorized_keys",
                 ],
-                stdin_text=restricted,
+                input=restricted,
             )
             play()
             assert execute(
@@ -262,7 +250,7 @@ def main():
                 execute(container, "useradd", "-m", "direct_priv_fixture")
             run(
                 ["docker", "exec", "-i", containers[0], "sh", "-c", "cat > /etc/sudoers.d/fixture"],
-                stdin_text="direct_priv_fixture ALL=(root) NOPASSWD: /usr/bin/true\n",
+                input="direct_priv_fixture ALL=(root) NOPASSWD: /usr/bin/true\n",
             )
             play(expected=2, name="direct_priv_fixture")
             for container in containers:

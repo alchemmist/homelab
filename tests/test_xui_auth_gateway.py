@@ -8,7 +8,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def render(*args):
+def render(*args: str):
     return [
         d
         for d in yaml.safe_load_all(
