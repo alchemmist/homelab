@@ -60,10 +60,12 @@ def positive(value):
 def validate_node_selector(selector):
     """Document the validate node selector operation."""
     if not isinstance(selector, dict):
-        raise ValueError("nodeSelector must be a string map")
+        msg = "nodeSelector must be a string map"
+        raise ValueError(msg)
     for key, value in selector.items():
         if not isinstance(key, str) or not isinstance(value, str):
-            raise ValueError("nodeSelector must be a string map")
+            msg = "nodeSelector must be a string map"
+            raise ValueError(msg)
         parts = key.split("/")
         name = parts[-1]
         if len(parts) > 2 or not 1 <= len(name) <= 63 or not LABEL_NAME.fullmatch(name):
@@ -86,13 +88,16 @@ def validate_node_selector(selector):
 def _validate_container_resources(resources: dict[str, object]) -> None:
     """Validate one profiled container's requests/limits, including CPU handling."""
     if not isinstance(resources.get("removeCpuLimit", False), bool):
-        raise ValueError("removeCpuLimit must be boolean")
+        msg = "removeCpuLimit must be boolean"
+        raise ValueError(msg)
     requests = cast("dict[str, object]", resources.get("requests", {}))
     limits = cast("dict[str, object]", resources.get("limits", {}))
     if resources.get("removeCpuLimit") and "cpu" in limits:
-        raise ValueError("Cannot remove and set CPU limit together")
+        msg = "Cannot remove and set CPU limit together"
+        raise ValueError(msg)
     if not resources.get("removeCpuLimit") and "cpu" not in limits:
-        raise ValueError("Profile must set CPU limit or explicitly remove it")
+        msg = "Profile must set CPU limit or explicitly remove it"
+        raise ValueError(msg)
     for resource in RESOURCE_NAMES:
         if not positive(requests.get(resource)):
             raise ValueError("Profile must specify positive requests/" + resource)
@@ -117,14 +122,17 @@ def _validate_profile(profile: dict[str, object]) -> None:
         isinstance(profile.get(key), str) and profile[key]
         for key in ("namespace", "ownerKind", "ownerPattern")
     ):
-        raise ValueError("Profile requires namespace, ownerKind, and ownerPattern")
+        msg = "Profile requires namespace, ownerKind, and ownerPattern"
+        raise ValueError(msg)
     validate_node_selector(cast("dict[str, object]", profile.get("nodeSelector", {})))
     pattern = cast("str", profile["ownerPattern"])
     if not pattern.startswith("^") or not pattern.endswith("$"):
-        raise ValueError("Profile ownerPattern must be anchored with ^ and $")
+        msg = "Profile ownerPattern must be anchored with ^ and $"
+        raise ValueError(msg)
     re.compile(pattern)
     if not isinstance(profile.get("containers"), dict) or not profile["containers"]:
-        raise ValueError("Profile requires a nonempty containers map")
+        msg = "Profile requires a nonempty containers map"
+        raise ValueError(msg)
     for resources in cast("dict[str, dict[str, object]]", profile["containers"]).values():
         _validate_container_resources(resources)
 
@@ -134,7 +142,8 @@ def load_profiles(path):
     with open(path) as source:
         profiles = json.load(source)
     if not isinstance(profiles, list):
-        raise ValueError("Profiles must be a JSON list")
+        msg = "Profiles must be a JSON list"
+        raise ValueError(msg)
     for profile in cast("list[dict[str, object]]", profiles):
         _validate_profile(profile)
     return profiles
@@ -452,8 +461,9 @@ def main():
         reconcile_one(client, pod, args.timeout, args.poll_interval, profiles)
     remaining = audit(client.pods(), set(args.exclude_node), profiles)
     if remaining:
+        msg = "Some active pods still lack required resources or differ from their profile"
         raise RuntimeError(
-            "Some active pods still lack required resources or differ from their profile"
+            msg
         )
 
 
