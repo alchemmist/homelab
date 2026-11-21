@@ -11,6 +11,7 @@ import re
 import sys
 import urllib.request
 from pathlib import Path
+from typing import cast
 
 import yaml
 
@@ -81,7 +82,7 @@ def identifier(value):
 
 
 def existing_node_host(value):
-    """Return whether the value names an existing socrat node."""
+    """Return whether value names an existing socrat node, not placement approval."""
     if not text(value):
         return False
     if re.fullmatch(r"socrat-[0-3]", value):
@@ -337,7 +338,7 @@ def port_forward_sources(cidrs):
 
 
 def ingress_allowed(policy, source, port, protocol="TCP"):
-    """Return whether one ingress rule matches the source."""
+    """True when one ingress rule matches. An empty ingress list denies every source."""
     source_ip = ipaddress.ip_address(source)
     for rule in policy["spec"].get("ingress") or []:
         ports = rule.get("ports")
@@ -377,7 +378,7 @@ def manifests(c, publication="internal", port_forward_cidrs=None):
     """
     require(publication in ("internal", "edge"), "publication invalid")
 
-    def obj(kind, name, namespace, api="v1", **fields):
+    def obj(kind, name, namespace, api="v1", **fields) -> dict[str, object]:
         meta = {"name": name}
         if namespace:
             meta["namespace"] = namespace
@@ -387,7 +388,9 @@ def manifests(c, publication="internal", port_forward_cidrs=None):
     if publication == "edge":
         result.append(obj("Namespace", EDGE, None))
     for item in result:
-        item["metadata"]["labels"] = {"homelab.alchemmist.xyz/netbird": "control-plane"}
+        cast("dict[str, object]", item["metadata"])["labels"] = {
+            "homelab.alchemmist.xyz/netbird": "control-plane"
+        }
     result.append(
         obj(
             "PersistentVolumeClaim",
