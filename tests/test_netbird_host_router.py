@@ -26,7 +26,7 @@ def ready():
     return facts
 
 
-def load_frontend(source):
+def load_frontend(source: str):
     namespace = {}
     exec(source, namespace)
     return namespace

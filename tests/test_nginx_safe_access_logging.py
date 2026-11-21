@@ -12,7 +12,7 @@ CHARTS = ("private-gateway", "syncthing", "img-proxy", "litellm-infra", "socrat-
 
 
 class SafeNginxLoggingTests(unittest.TestCase):
-    def render(self, chart):
+    def render(self, chart: str):
         return list(
             yaml.safe_load_all(
                 subprocess.check_output(
