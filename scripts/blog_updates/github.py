@@ -13,6 +13,7 @@ class GitHub:
     """GitHub REST API client for blog updates."""
 
     def __init__(self, token) -> None:
+        """Initialize the GitHub client."""
 
         self.token = token
 

@@ -23,6 +23,7 @@ class Watchdog:
     """Watchdog that monitors link health and triggers VPN failover."""
 
     def __init__(self, config) -> None:
+        """Initialize the failover watchdog."""
 
         self.config = config
         self.state = Path(config.get("state_dir", STATE_DIR))

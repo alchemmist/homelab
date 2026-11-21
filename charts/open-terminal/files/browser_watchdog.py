@@ -122,6 +122,7 @@ class Watchdog:
     """Watchdog that supervises and restarts browser processes."""
 
     def __init__(self, lifetime=900, grace=5, ticks=None, send=signal_process) -> None:
+        """Initialize watchdog timing and process handling."""
 
         self.lifetime = lifetime
         self.grace = grace

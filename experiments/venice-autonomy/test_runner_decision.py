@@ -15,6 +15,7 @@ class FakeEnvironment:
     """Fake repository environment for deterministic tests."""
 
     def __init__(self, _snapshot, directory, _image, protocol) -> None:
+        """Initialize the fake environment."""
 
         self.container_id = "fake"
         self.events: list[dict[str, object]] = []
