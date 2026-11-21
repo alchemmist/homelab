@@ -10,7 +10,7 @@
     dest: /usr/local/sbin/homelab-k3s-backup
     owner: root
     group: root
-    mode: '0700'
+    mode: "0700"
 
 - name: Convert the existing SQLite datastore
   when: not k3s_ha_etcd.stat.exists

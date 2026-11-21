@@ -10,6 +10,9 @@ spec:
   policyTypes: [Ingress]
   ingress:
     - from:
+        - podSelector: {matchLabels: {pg-wal-receiver: pg-{{ $tier }}}}
+      ports: [{port: 5432}]
+    - from:
         - podSelector: {matchLabels: {cnpg.io/cluster: pg-{{ $tier }}}}
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: cnpg-system}}
       ports: [{port: 5432}, {port: 8000}]

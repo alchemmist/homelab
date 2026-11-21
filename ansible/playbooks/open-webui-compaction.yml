@@ -10,8 +10,8 @@
     - name: Copy the context compaction configuration helper
       ansible.builtin.copy:
         src: ../files/configure_webui_compaction.py
-        dest: '{{ homelab_user_home }}/tmp-charts/configure-webui-compaction.py'
-        mode: '0600'
+        dest: "{{ homelab_user_home }}/tmp-charts/configure-webui-compaction.py"
+        mode: "0600"
     - name: Locate the running Open WebUI pod
       ansible.builtin.command: >-
         kubectl -n llm get pod -l app=open-webui

@@ -8,6 +8,7 @@ import shutil
 import stat
 import subprocess
 import sys
+from types import ModuleType
 from unittest.mock import patch
 
 import pytest
@@ -312,7 +313,7 @@ def test_dependency_audit_uses_installed_environment_and_deduplicates(monkeypatc
     calls = []
     item = {"name": "fixture", "version": "1", "vulns": [{"id": "CVE-2026-1234"}]}
 
-    def run(argv, **kwargs):
+    def run(argv, **kwargs) -> SimpleNamespace:
         calls.append(argv)
         return SimpleNamespace(returncode=1, stdout=json.dumps({"dependencies": [item, item]}))
 
@@ -362,7 +363,7 @@ def test_graph_is_cost_layered_and_titles_are_semantic():
     assert not any("shard" in n for n in graph)
 
 
-def _load_checker(name):
+def _load_checker(name) -> ModuleType:
     path = ROOT / "scripts" / name
     spec = importlib.util.spec_from_file_location(name.removesuffix(".py"), path)
     module = importlib.util.module_from_spec(spec)
@@ -370,7 +371,7 @@ def _load_checker(name):
     return module
 
 
-def _infra_files():
+def _infra_files() -> list[str]:
     contract = json.loads((ROOT / "deploy/contracts/infrastructure.json").read_text())
     names = [
         "deploy/contracts/infrastructure.json",
@@ -392,7 +393,7 @@ def _infra_files():
     return names
 
 
-def _copy_rels(tmp_path, names):
+def _copy_rels(tmp_path, names) -> None:
     for name in names:
         target = tmp_path / name
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -469,7 +470,7 @@ def test_duplicate_issuer_alias_fails(tmp_path):
         infra.check(tmp_path)
 
 
-def _pointer_fixture(tmp_path, document):
+def _pointer_fixture(tmp_path, document) -> None:
     import yaml
 
     chart = tmp_path / "charts/demo"
@@ -547,7 +548,7 @@ def test_authoritative_claim_drift_fails(tmp_path):
         pointers.check(tmp_path)
 
 
-def _retired_play():
+def _retired_play() -> list[dict[str, object]]:
     return [
         {
             "name": "Refuse competing provisioning",
@@ -566,7 +567,7 @@ def _retired_play():
     ]
 
 
-def _entrypoint_fixture(tmp_path):
+def _entrypoint_fixture(tmp_path) -> None:
     import yaml
 
     app = tmp_path / "deploy/argocd/apps/demo.yaml"

@@ -6,7 +6,7 @@
   tasks:
     - name: Read the CPU model
       ansible.builtin.command:
-        argv: [awk, "-F:", '/^model name/{print $2; exit}', /proc/cpuinfo]
+        argv: [awk, "-F:", "/^model name/{print $2; exit}", /proc/cpuinfo]
       register: host_cpu_model
       changed_when: false
 
@@ -27,7 +27,7 @@
         dest: /usr/local/sbin/homelab-disable-c2
         owner: root
         group: root
-        mode: '0755'
+        mode: "0755"
         content: |
           #!/bin/sh
           set -eu
@@ -56,7 +56,7 @@
         dest: /etc/systemd/system/homelab-disable-c2.service
         owner: root
         group: root
-        mode: '0644'
+        mode: "0644"
         content: |
           [Unit]
           Description=Keep Kabini CPUs out of C2 idle
@@ -115,14 +115,14 @@
         state: directory
         owner: root
         group: root
-        mode: '0755'
+        mode: "0755"
 
     - name: Arm the existing hardware watchdog for a 60s runtime hang
       ansible.builtin.copy:
         dest: /etc/systemd/system.conf.d/homelab-watchdog.conf
         owner: root
         group: root
-        mode: '0644'
+        mode: "0644"
         content: |
           [Manager]
           RuntimeWatchdogSec=60s
