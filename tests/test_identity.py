@@ -293,6 +293,15 @@ class IdentityTests(unittest.TestCase):
             (root / "monori-services.json").write_bytes(
                 (ROOT / "deploy/identity/services.json").read_bytes()
             )
+            def malformed(method, path, payload=None):
+                if path.startswith("providers/oauth2/?"):
+                    return {"results": ["invalid row"]}
+                return api(method, path, payload)
+
+            with self.assertRaisesRegex(RuntimeError, "Malformed identity lookup"):
+                configure_monori(root, malformed)
+            self.assertFalse((root / "monori-client-secret").exists())
+
             def interrupted(method, path, payload=None):
                 if method == "PATCH" and path == "core/applications/monori/":
                     raise RuntimeError("simulated interruption")
@@ -300,6 +309,8 @@ class IdentityTests(unittest.TestCase):
 
             with self.assertRaisesRegex(RuntimeError, "simulated interruption"):
                 configure_monori(root, interrupted)
+            redirect = fake.data["providers/oauth2/"][0]["redirect_uris"][0]
+            redirect.setdefault("redirect_uri_type", "authorization")
             secret_path = root / "monori-client-secret"
             secret = secret_path.read_text()
             self.assertEqual(secret_path.stat().st_mode & 0o777, 0o600)

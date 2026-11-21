@@ -18,9 +18,10 @@ def configure_monori(root, api):
         query = {field: value}
         if path == "core/applications/":
             query["superuser_full_list"] = "true"
-        found = [
-            r for r in rows(api, path + "?" + urlencode(query)) if r[field] == value
-        ]
+        records = rows(api, path + "?" + urlencode(query))
+        if any(not isinstance(r, dict) or field not in r or "pk" not in r for r in records):
+            raise RuntimeError("Malformed identity lookup: " + path)
+        found = [r for r in records if r[field] == value]
         if len(found) > 1 or (required and not found):
             raise RuntimeError("Missing or ambiguous identity configuration: " + value)
         return found[0] if found else None
@@ -68,7 +69,9 @@ def configure_monori(root, api):
         "property_mappings": standard_scope_ids(
             rows(api, "propertymappings/provider/scope/")
         ),
-        "redirect_uris": [{"matching_mode": "strict", "url": service["redirect"]}],
+        "redirect_uris": [
+            {"matching_mode": "strict", "url": service["redirect"], "redirect_uri_type": "authorization"}
+        ],
         "sub_mode": "hashed_user_id",
         "issuer_mode": "per_provider",
         "include_claims_in_id_token": True,
