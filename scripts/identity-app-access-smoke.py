@@ -210,7 +210,7 @@ def _delete_fixture(context: _FixtureContext) -> None:
 
 
 def main():
-    """Document this public function."""
+    """Run the command-line entry point."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("root", type=Path)
     p.add_argument("--run", action="store_true")

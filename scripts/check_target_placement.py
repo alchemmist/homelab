@@ -58,7 +58,7 @@ def _pod_ready(pod: _Pod, node: str) -> bool:
 
 
 def converged(deployment, pods, node, replicas=1):
-    """Document this public function."""
+    """Perform the converged operation."""
     spec, status = deployment["spec"], deployment.get("status", {})
     if replicas < 1 or spec.get("replicas") != replicas:
         return False
@@ -102,7 +102,7 @@ def owned_by_current_revision(deployment, replica_sets, pods):
 
 
 def main():
-    """Document this public function."""
+    """Run the command-line entry point."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--namespace", required=True)
     p.add_argument("--deployment", required=True)

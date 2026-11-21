@@ -12,7 +12,7 @@ from pathlib import Path
 
 
 def addresses(explicit=None):
-    """Document this public function."""
+    """Perform the addresses operation."""
     if explicit:
         values = explicit
     else:
@@ -38,7 +38,7 @@ def addresses(explicit=None):
 
 
 def probe(case):
-    """Document this public function."""
+    """Perform the probe operation."""
     host, ip, path, expected = case[:4]
     method = case[4] if len(case) > 4 else "GET"
     auth = case[5] if len(case) > 5 else "Bearer intentionally-invalid"
@@ -123,7 +123,7 @@ def probe(case):
 
 
 def main():
-    """Document this public function."""
+    """Run the command-line entry point."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--address", action="append", help="Repeat twice when running outside the repository"

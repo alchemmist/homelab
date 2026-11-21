@@ -13,7 +13,7 @@ password = getpass.getpass("Open WebUI password: ")
 
 
 def kubectl(*argv):
-    """Document this public function."""
+    """Perform the kubectl operation."""
     return subprocess.check_output(["kubectl", "-n", "llm", *argv], text=True)
 
 
@@ -23,7 +23,7 @@ opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
 def request(path, data=None, token=None):
-    """Document this public function."""
+    """Perform the HTTP request and return its response."""
     headers = {"Content-Type": "application/json"}
     if token:
         headers["Authorization"] = "Bearer " + token

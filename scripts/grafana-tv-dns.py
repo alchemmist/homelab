@@ -15,13 +15,13 @@ ROOT = Path("/var/lib/homelab-grafana-tv-dns-retirement")
 
 
 def require(ok, message):
-    """Document this public function."""
+    """Raise an error when a required condition is not met."""
     if not ok:
         raise RuntimeError(message)
 
 
 def load(path, name):
-    """Document this public function."""
+    """Load a Python module from the supplied path."""
     s = importlib.util.spec_from_file_location(name, path)
     m = importlib.util.module_from_spec(s)
     s.loader.exec_module(m)
@@ -29,7 +29,7 @@ def load(path, name):
 
 
 def delta(old, new):
-    """Document this public function."""
+    """Perform the delta operation."""
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
         before = old.render(123, home, vps).splitlines()
         after = new.render(123, home, vps).splitlines()
@@ -45,7 +45,7 @@ def delta(old, new):
 
 
 def main():
-    """Document this public function."""
+    """Run the command-line entry point."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")

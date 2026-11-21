@@ -15,7 +15,7 @@ OWNER = "homelab:k3s-overlay-marks:v1"
 
 
 def run(*args, input=None, ok=(0,)):
-    """Document this public function."""
+    """Run the requested subprocess operation."""
     p = subprocess.run(args, input=input, text=True, capture_output=True, check=False)
     if p.returncode not in ok:
         raise RuntimeError(p.stderr.strip())
@@ -23,7 +23,7 @@ def run(*args, input=None, ok=(0,)):
 
 
 def rules(interface, cidr, exists):
-    """Document this public function."""
+    """Perform the rules operation."""
     net = ipaddress.ip_network(cidr, strict=True)
     if net.version != 4 or not net.is_private or net.prefixlen < 16:
         raise ValueError("Require a narrow private IPv4 pod network")
@@ -44,7 +44,7 @@ def rules(interface, cidr, exists):
 
 
 def desired(interface, cidr):
-    """Document this public function."""
+    """Perform the desired operation."""
     net = ipaddress.ip_network(cidr)
 
     def match(left, right, op="==") -> dict[str, object]:
@@ -85,7 +85,7 @@ def desired(interface, cidr):
 
 
 def owned(doc, text=""):
-    """Document this public function."""
+    """Perform the owned operation."""
     table: dict[str, object] = next((x["table"] for x in doc["nftables"] if "table" in x), {})
     if "comment" in table:
         return table["comment"] == OWNER
@@ -95,7 +95,7 @@ def owned(doc, text=""):
 
 
 def normalize(doc):
-    """Document this public function."""
+    """Perform the normalize operation."""
     def clean(x) -> object:
         if isinstance(x, list):
             return [clean(v) for v in x]
@@ -111,7 +111,7 @@ def normalize(doc):
 
 
 def main():
-    """Document this public function."""
+    """Run the command-line entry point."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--interface", default="flannel.1")
     p.add_argument("--pod-cidr", default="10.42.0.0/16")

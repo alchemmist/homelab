@@ -24,7 +24,7 @@ FORBIDDEN = {
 
 
 async def main():
-    """Document this public function."""
+    """Run the command-line entry point."""
     for name in ("argocd", "metrics"):
         params = StdioServerParameters(
             command=sys.executable,

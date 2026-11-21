@@ -10,7 +10,7 @@ from urllib.parse import urlsplit
 
 
 def main():
-    """Document this public function."""
+    """Run the command-line entry point."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
         "--url-file", required=True, help="Private fetched fully-url.json; token is not logged"

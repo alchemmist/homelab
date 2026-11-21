@@ -16,7 +16,7 @@ JOBS = {"vllm", "litellm"}
 
 
 def main():
-    """Document this public function."""
+    """Run the command-line entry point."""
     deadline = time.monotonic() + 120
     while True:
         targets = [

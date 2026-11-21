@@ -12,7 +12,7 @@ URL = "https://grafana-mcp.socrat.alchemmist.xyz/mcp"
 
 
 def load_token(ssh_host):
-    """Document this public function."""
+    """Perform the load token operation."""
     result = subprocess.run(
         [
             "ssh",
@@ -126,7 +126,7 @@ def _check_prometheus(client: Client) -> None:
 
 
 def main():
-    """Document this public function."""
+    """Run the command-line entry point."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", default=URL)
     parser.add_argument("--ssh-host", default="socrat-0")

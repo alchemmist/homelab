@@ -30,7 +30,7 @@ _original_getaddrinfo = socket.getaddrinfo
 
 
 def public_auth(host, *params, **kwargs):
-    """Document this public function."""
+    """Perform the public auth operation."""
     return _original_getaddrinfo(
         args.public_edge if host in ["auth.socrat.alchemmist.xyz", "llm.alchemmist.xyz"] else host,
         *params,
@@ -55,7 +55,7 @@ credential = json.loads(
 
 
 def api(method, path, data=None):
-    """Document this public function."""
+    """Perform the HTTP request and return its response."""
     req = urllib.request.Request(
         BASE + "/api/v3/" + path,
         method=method,
@@ -135,7 +135,7 @@ try:
         errors = []
 
         def observe(response):
-            """Document this public function."""
+            """Perform the observe operation."""
             if (
                 urllib.parse.urlparse(response.url).hostname == "llm.alchemmist.xyz"
                 and "/sso/callback" in response.url

@@ -10,13 +10,13 @@ STATE = Path.home() / ".local/state/homelab-grafana-llm-public"
 
 
 def need(ok, msg):
-    """Document this public function."""
+    """Raise an error when a required condition is not met."""
     if not ok:
         raise RuntimeError(msg)
 
 
 def main():
-    """Document this public function."""
+    """Run the command-line entry point."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")
