@@ -32,9 +32,12 @@ load_config() {
       value="${line#*=}"
       [[ "${key}" == "${line}" ]] && die "config line is not KEY=VALUE: ${line}"
       [[ "${key}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || die "config key is invalid: ${key}"
-      # Keep normal shell assignment semantics (quotes and ${VAR} expansion)
-      # while validating the assignment name before evaluating its value.
-      eval "export ${key}=${value}"
+      if [[ "${value}" == \"* || "${value}" == \'* ]]; then
+        local quote="${value:0:1}"
+        [[ ${#value} -ge 2 && "${value: -1}" == "${quote}" ]] || die "config value has an unmatched quote: ${key}"
+        value="${value:1:${#value}-2}"
+      fi
+      export "${key}=${value}"
     done < "${CONFIG_FILE}"
   fi
 }

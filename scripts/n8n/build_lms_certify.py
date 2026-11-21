@@ -33,7 +33,7 @@ def link(a: str, b: str, port: int = 0):
     branches[port].append(dict(node=b, type='main', index=0))
 
 
-def chain(*names):
+def chain(*names: str) -> None:
     for a, b in zip(names, names[1:]):
         link(a, b)
 
