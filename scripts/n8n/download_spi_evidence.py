@@ -10,8 +10,8 @@ import subprocess
 from pathlib import Path
 
 
-def reconstruct(comments, event_key):
-    grouped = {}
+def reconstruct(comments, event_key) -> dict[str, bytes]:
+    grouped: dict[tuple[str, str, str, int], dict[int, str]] = {}
     for comment in comments:
         actor = comment.get("user", {})
         app = comment.get("performed_via_github_app") or {}
@@ -60,7 +60,7 @@ def reconstruct(comments, event_key):
     return output
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--issue", type=int, required=True)
     p.add_argument("--event", required=True)

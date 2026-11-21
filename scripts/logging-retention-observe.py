@@ -23,8 +23,13 @@ QUERIES = {
 }
 
 
-def sample(base):
-    result = {"observedAtUnix": time.time(), "metadataOnly": True, "metrics": {}}
+def sample(base) -> dict[str, object]:
+    metrics: dict[str, list[object]] = {}
+    result: dict[str, object] = {
+        "observedAtUnix": time.time(),
+        "metadataOnly": True,
+        "metrics": metrics,
+    }
     for name, query in QUERIES.items():
         with urlopen(
             base.rstrip("/") + "/api/v1/query?" + urlencode({"query": query}), timeout=10
@@ -32,11 +37,11 @@ def sample(base):
             value = json.load(response)
         if value.get("status") != "success":
             raise ValueError("Prometheus query unsuccessful")
-        result["metrics"][name] = [row["value"] for row in value["data"]["result"]]
+        metrics[name] = [row["value"] for row in value["data"]["result"]]
     return result
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--prometheus", default="http://127.0.0.1:18099")
     p.add_argument("--duration-seconds", type=int, default=86400)

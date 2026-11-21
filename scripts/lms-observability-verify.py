@@ -17,11 +17,40 @@ import urllib.request
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TypedDict, cast
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def ready_canary_pod(pods, nodes):
+class Span(TypedDict):
+    """Flattened Pyroscope span record written to the verification report."""
+
+    name: str
+    id: str
+    parent: str | None
+    durationMs: float
+
+
+class LokiQueryResponse(TypedDict):
+    """Minimal shape of a Loki query_range response used here."""
+
+    data: dict[str, list[dict[str, list[list[str]]]]]
+
+
+class DashboardResponse(TypedDict):
+    """Minimal shape of a Grafana dashboard lookup response used here."""
+
+    dashboard: dict[str, object]
+    meta: dict[str, str]
+
+
+class LokiDatasource(TypedDict):
+    """Minimal shape of a Loki datasource record used here."""
+
+    jsonData: dict[str, object]
+
+
+def ready_canary_pod(pods, nodes) -> str:
     ready_nodes = {
         node["metadata"]["name"]
         for node in nodes["items"]
@@ -43,13 +72,16 @@ def ready_canary_pod(pods, nodes):
     ]
     if not candidates:
         raise RuntimeError("No active ready LMS pod available for canary")
-    return max(candidates, key=lambda pod: pod["metadata"].get("creationTimestamp", ""))[
-        "metadata"
-    ]["name"]
+    return cast(
+        "str",
+        max(candidates, key=lambda pod: pod["metadata"].get("creationTimestamp", ""))["metadata"][
+            "name"
+        ],
+    )
 
 
-def kubepython(code):
-    def inspect(command):
+def kubepython(code) -> dict[str, object]:
+    def inspect(command: str) -> dict[str, object]:
         result = subprocess.run(
             ["ssh", "-o", "BatchMode=yes", "socrat-0", command],
             text=True,
@@ -58,7 +90,7 @@ def kubepython(code):
         )
         if result.returncode:
             raise RuntimeError("Canary pod discovery failed; sensitive output suppressed")
-        return json.loads(result.stdout)
+        return cast("dict[str, object]", json.loads(result.stdout))
 
     # exec deploy/lms can select a stale Ready/Terminating pod on a lost node.
     pod = ready_canary_pod(
@@ -75,23 +107,23 @@ def kubepython(code):
     result = subprocess.run(command, input=code, text=True, capture_output=True, timeout=60)
     if result.returncode:
         raise RuntimeError("LMS canary operation failed; sensitive output suppressed")
-    return json.loads(result.stdout)
+    return cast("dict[str, object]", json.loads(result.stdout))
 
 
-def get_json(url):
+def get_json(url) -> dict[str, object]:
     request = urllib.request.Request(url, headers={"Accept": "application/json"})
     with urllib.request.urlopen(request, timeout=30) as response:
-        return json.load(response)
+        return cast("dict[str, object]", json.load(response))
 
 
-def hex_id(value):
+def hex_id(value: str) -> str:
     if len(value) in (16, 32) and all(c in "0123456789abcdef" for c in value):
         return value
     return base64.b64decode(value).hex()
 
 
-def summarize_trace(document):
-    records = []
+def summarize_trace(document) -> list[Span]:
+    records: list[Span] = []
     for batch in document.get("batches", document.get("resourceSpans", [])):
         for scope in batch.get("scopeSpans", batch.get("instrumentationLibrarySpans", [])):
             for span in scope.get("spans", []):
@@ -111,7 +143,7 @@ def summarize_trace(document):
     return records
 
 
-def run(args):
+def run(args) -> None:
     if not args.create_canary_session:
         raise ValueError(
             "Explicit --create-canary-session required; temporary privileged test identity will be deleted"
@@ -187,15 +219,19 @@ print(json.dumps(dict(cookie=cookie)))
         if not {"content.read_render", "db.connect", "db.transaction"} <= names:
             raise ValueError("Real backend operation spans missing")
         query = '{k8s_namespace_name="lms"} |= "' + trace_id + '"'
-        logs = get_json(
+        logs = cast(
+            "LokiQueryResponse",
             args.grafana_url
             + "/api/datasources/proxy/uid/loki/loki/api/v1/query_range?"
-            + urllib.parse.urlencode({"query": query, "limit": 20, "since": "15m"})
+            + urllib.parse.urlencode({"query": query, "limit": 20, "since": "15m"}),
         )
         count = sum(len(stream["values"]) for stream in logs["data"]["result"])
         if count < 2:
             raise ValueError("Correlated real LMS Loki log lines missing")
-        dashboard = get_json(args.grafana_url + "/api/dashboards/uid/lms-performance")
+        dashboard = cast(
+            "DashboardResponse",
+            get_json(args.grafana_url + "/api/dashboards/uid/lms-performance"),
+        )
         if dashboard["dashboard"]["uid"] != "lms-performance":
             raise ValueError("Dashboard not provisioned")
         dashboard_url = args.grafana_url + dashboard["meta"]["url"] + "?var-trace_id=" + trace_id
@@ -216,8 +252,8 @@ print(json.dumps(dict(cookie=cookie)))
         if ui.returncode:
             raise RuntimeError("Live Grafana browser verification failed: " + ui.stderr[-2500:])
         ui_proof = json.loads(ui.stdout)
-        loki = get_json(args.grafana_url + "/api/datasources/uid/loki")
-        derived = loki.get("jsonData", {}).get("derivedFields", [])
+        loki = cast("LokiDatasource", get_json(args.grafana_url + "/api/datasources/uid/loki"))
+        derived = cast("list[dict[str, str]]", loki["jsonData"].get("derivedFields", []))
         link_verified = any(
             field.get("name") == "TraceID"
             and field.get("datasourceUid") == "tempo"
