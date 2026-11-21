@@ -40,14 +40,16 @@ def install(record, destination):
             "--silent",
             "--show-error",
             "--location",
+            "--retry",
+            "2",
             "--connect-timeout",
             "10",
             "--max-time",
-            "45",
+            "600",
             record["url"],
         ],
         capture_output=True,
-        timeout=50,
+        timeout=1820,
         check=True,
     )
     data = process.stdout

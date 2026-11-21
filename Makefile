@@ -11,7 +11,12 @@ export UV_LOCKED := 1
 # Imports during local checks must not add bytecode to vendored Helm charts.
 export PYTHONDONTWRITEBYTECODE := 1
 
-.PHONY: help check $(NODES)
+.PHONY: setup help check $(NODES)
+setup:
+	uv sync --locked
+	uv run python scripts/quality/install_tools.py
+	uv run python scripts/quality/install_collections.py
+
 help:
 	@echo 'make check runs all checks; make <node> runs one:'
 	@jq -r '.nodes[] | "  \(.id)\t\(.title)"' $(MANIFEST)
