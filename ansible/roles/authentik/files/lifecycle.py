@@ -12,6 +12,7 @@ import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import Protocol, cast
 from uuid import UUID
 
 from app_iam import (
