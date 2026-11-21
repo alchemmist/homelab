@@ -1,3 +1,4 @@
+"""Verify TLS and authentication behavior of the WireGuard transport endpoint."""
 import socket
 import ssl
 import struct

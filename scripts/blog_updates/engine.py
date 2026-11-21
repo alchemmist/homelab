@@ -14,7 +14,7 @@ MAX_ENTRIES = 5
 
 
 class UnsafeInput(ValueError):
-    pass
+    """Value error raised on unsafe blog update input."""
 
 
 def validate_event(event):
@@ -145,7 +145,7 @@ def render(updates, entries, timestamp):
     existing = {
         re.sub(r"^- \[[ x]\] \*\\\[.*?\\\]\*\s*", "", l).strip() for l in updates.splitlines()
     }
-    lines = [l for l, e in zip(lines, entries) if e["text"].strip() not in existing]
+    lines = [l for l, e in zip(lines, entries, strict=True) if e["text"].strip() not in existing]
     if not lines:
         return updates
     offset = end + len("\n---\n")

@@ -1,3 +1,5 @@
+"""Serve synthetic OpenMetrics endpoints and verify collector/scrape ingestion."""
+
 import argparse
 import copy
 import json
@@ -12,6 +14,7 @@ import urllib.request
 from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import IO
 
 
 def literal(value):
@@ -49,8 +52,7 @@ def query(port, context, expression='{__name__=~"smoke_.+|up"}'):
     ) as response:
         document = json.load(response)
     if document.get("status") != "success":
-        msg = "Synthetic PromQL query failed"
-        raise ValueError(msg)
+        raise ValueError("Synthetic PromQL query failed")
     return {
         tuple(sorted(item["metric"].items())): item["value"][1]
         for item in document["data"]["result"]
@@ -62,18 +64,16 @@ def semantic_series_view(series):
     for key, value in series.items():
         attributes = dict(key)
         numeric_label = {"smoke_duration_seconds_bucket": "le", "smoke_summary": "quantile"}.get(
-            attributes.get("__name__")
+            str(attributes.get("__name__") or "")
         )
         if numeric_label in attributes:
             value_float = float(attributes[numeric_label])
             if math.isnan(value_float):
-                msg = "Numeric histogram/summary labels cannot be NaN"
-                raise ValueError(msg)
+                raise ValueError("Numeric histogram/summary labels cannot be NaN")
             attributes[numeric_label] = value_float.hex()
         normalized = tuple(sorted(attributes.items()))
         if normalized in result:
-            msg = "OTLP semantic comparison would merge distinct series"
-            raise ValueError(msg)
+            raise ValueError("OTLP semantic comparison would merge distinct series")
         result[normalized] = value
     return result
 
@@ -112,15 +112,90 @@ def promql_checks(context, reset):
     return len(pairs)
 
 
+def require(expected: object, message: str) -> None:
+    """Enforce an invariant, failing with the given message."""
+    if not expected:
+        raise ValueError(message)
+
+
+def fail(message: str) -> None:
+    """Abort the synthetic smoke run with RuntimeError."""
+    raise RuntimeError(message)
+
+
+def spawn_source_collectors(
+    args: argparse.Namespace,
+    source: dict[str, object],
+    environment: dict[str, str],
+    logs: list[object],
+    children: list[subprocess.Popen[bytes]],
+) -> list[subprocess.Popen[bytes]]:
+    """Launch the legacy and shadow Prometheus collectors; return Popen handles."""
+    for name, port in [("legacy", 19090), ("shadow", 29090)]:
+        document = (
+            copy.deepcopy(source)
+            if name == "legacy"
+            else {
+                "global": {"scrape_interval": "5s"},
+                "scrape_configs": [],
+                "storage": {"tsdb": {"out_of_order_time_window": "30m"}},
+                "otlp": {
+                    "translation_strategy": "NoTranslation",
+                    "promote_scope_metadata": False,
+                },
+            }
+        )
+        path = args.workspace / (name + ".json")
+        path.write_text(json.dumps(document))
+        binary = (
+            args.legacy_prometheus
+            if name == "legacy" and args.legacy_prometheus
+            else args.prometheus
+        )
+        command = [
+            str(binary),
+            "--config.file=" + str(path),
+            "--storage.tsdb.path=" + str(args.workspace / name),
+            "--web.listen-address=127.0.0.1:" + str(port),
+            "--web.config.file=" + str(args.workspace / "web.json"),
+        ]
+        if name == "shadow":
+            command.append("--web.enable-otlp-receiver")
+        log = (args.workspace / (name + ".log")).open("x")
+        logs.append(log)
+        children.append(
+            subprocess.Popen(
+                command,
+                env=environment,
+                stdin=subprocess.DEVNULL,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+            )
+        )
+    return children
+
+
+def terminate_children(children: list[subprocess.Popen[bytes]]) -> None:
+    """Terminate every synthetic collector, escalating after the grace period."""
+    for process in reversed(children):
+        process.terminate()
+        try:
+            process.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=5)
+
+
 def run(args):
-    if os.readlink("/proc/self/ns/net") == os.readlink("/proc/1/ns/net"):
-        msg = "A separate network namespace is mandatory"
-        raise ValueError(msg)
+    require(
+        os.readlink("/proc/self/ns/net") != os.readlink("/proc/1/ns/net"),
+        "A separate network namespace is mandatory",
+    )
     args.workspace.mkdir(mode=0o700, exist_ok=False)
     state = {"counter": 17, "gauge": True}
 
     class Handler(BaseHTTPRequestHandler):
-        def do_GET(self):
+        def do_GET(self) -> None:
             body = metrics(state["counter"], state["gauge"]).encode()
             self.send_response(200)
             self.send_header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
@@ -128,13 +203,13 @@ def run(args):
             self.end_headers()
             self.wfile.write(body)
 
-        def log_message(self, *unused):
+        def log_message(self, *unused) -> None:
             pass
 
     server = ThreadingHTTPServer(("127.0.0.1", 19100), Handler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
-    source = {
+    source: dict[str, object] = {
         "global": {"scrape_interval": "5s", "scrape_timeout": "4s"},
         "scrape_configs": [
             {
@@ -178,51 +253,11 @@ def run(args):
         "OTEL_BIND_IP": "127.0.0.1",
         "OTEL_METRICS_ENDPOINT": "https://127.0.0.1:29090/api/v1/otlp",
     }
-    children = []
-    logs = []
+    logs: list[IO[str]] = []
     phases = []
+    children: list[subprocess.Popen[bytes]] = []
     try:
-        for name, port in [("legacy", 19090), ("shadow", 29090)]:
-            document = (
-                copy.deepcopy(source)
-                if name == "legacy"
-                else {
-                    "global": {"scrape_interval": "5s"},
-                    "scrape_configs": [],
-                    "storage": {"tsdb": {"out_of_order_time_window": "30m"}},
-                    "otlp": {
-                        "translation_strategy": "NoTranslation",
-                        "promote_scope_metadata": False,
-                    },
-                }
-            )
-            path = args.workspace / (name + ".json")
-            path.write_text(json.dumps(document))
-            binary = (
-                args.legacy_prometheus
-                if name == "legacy" and args.legacy_prometheus
-                else args.prometheus
-            )
-            command = [
-                str(binary),
-                "--config.file=" + str(path),
-                "--storage.tsdb.path=" + str(args.workspace / name),
-                "--web.listen-address=127.0.0.1:" + str(port),
-                "--web.config.file=" + str(args.workspace / "web.json"),
-            ]
-            if name == "shadow":
-                command.append("--web.enable-otlp-receiver")
-            log = (args.workspace / (name + ".log")).open("x")
-            logs.append(log)
-            children.append(
-                subprocess.Popen(
-                    command,
-                    env=environment,
-                    stdin=subprocess.DEVNULL,
-                    stdout=log,
-                    stderr=subprocess.STDOUT,
-                )
-            )
+        spawn_source_collectors(args, source, environment, logs, children)
         collector = json.loads(args.config.read_text())
         collector["receivers"] = {
             "prometheus": {"config": literal(source), "trim_metric_suffixes": False}
@@ -264,8 +299,7 @@ def run(args):
             legacy = shadow = {}
             while True:
                 if any(process.poll() is not None for process in children):
-                    msg = "Synthetic service stopped; inspect private smoke logs"
-                    raise RuntimeError(msg)
+                    fail("Synthetic service stopped; inspect private smoke logs")
                 try:
                     legacy, shadow = query(19090, context), query(29090, context)
                     names = {dict(key)["__name__"] for key in shadow}
@@ -278,22 +312,24 @@ def run(args):
                         value for key, value in shadow.items() if dict(key)["__name__"] == "up"
                     ]
                     equivalent = equivalent_series(legacy, shadow)
-                    if (
-                        equivalent
-                        and availability == ["1"]
-                        and counters == [str(counter)]
-                        and ("smoke_value" in names) == gauge
-                        and {
-                            "smoke_duration_seconds_bucket",
-                            "smoke_duration_seconds_sum",
-                            "smoke_duration_seconds_count",
-                            "smoke_summary",
-                            "smoke_summary_sum",
-                            "smoke_summary_count",
-                            "up",
-                        }
-                        <= names
-                        and all(dict(key).get("fixture_port") == "19100" for key in shadow)
+                    if all(
+                        [
+                            equivalent,
+                            availability == ["1"],
+                            counters == [str(counter)],
+                            ("smoke_value" in names) == gauge,
+                            {
+                                "smoke_duration_seconds_bucket",
+                                "smoke_duration_seconds_sum",
+                                "smoke_duration_seconds_count",
+                                "smoke_summary",
+                                "smoke_summary_sum",
+                                "smoke_summary_count",
+                                "up",
+                            }
+                            <= names,
+                            all(dict(key).get("fixture_port") == "19100" for key in shadow),
+                        ]
                     ):
                         checked_queries = promql_checks(context, phase != "initial")
                         phases.append(
@@ -321,17 +357,13 @@ def run(args):
                             indent=2,
                         )
                     )
-                    msg = "Synthetic metric equivalence or freshness check failed; inspect private workspace"
-                    raise RuntimeError(msg)
+                    fail(
+                        "Synthetic metric equivalence or freshness check failed;"
+                        " inspect private workspace"
+                    )
                 time.sleep(0.2)
     finally:
-        for process in reversed(children):
-            process.terminate()
-            try:
-                process.wait(timeout=30)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait(timeout=5)
+        terminate_children(children)
         for log in logs:
             log.close()
         server.shutdown()

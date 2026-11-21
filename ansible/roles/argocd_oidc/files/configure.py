@@ -9,11 +9,11 @@ from __future__ import annotations
 import base64
 import json
 import os
-from pathlib import Path
 import secrets
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 ROOT = Path.home() / ".cache/homelab-authentik"
 CLIENTS_PATH = ROOT / "oidc-clients.json"
@@ -128,14 +128,17 @@ print(json.dumps({"ok":True,"changed":changed}))"""
 
 
 def run(args: list[str], *, input_text: str | None = None, check: bool = True) -> str:
+    """Run."""
     result = subprocess.run(args, input=input_text, text=True, capture_output=True)
     if check and result.returncode:
         # Never include subprocess output: it may contain authentication material.
-        raise RuntimeError("secure OIDC reconciliation command failed")
+        msg = "secure OIDC reconciliation command failed"
+        raise RuntimeError(msg)
     return result.stdout.strip()
 
 
 def exec_authentik(code: str, input_text: str | None = None) -> dict:
+    """Exec authentik."""
     args = KUBECTL + ["-n", "identity", "exec"]
     if input_text is not None:
         args.append("-i")
@@ -144,10 +147,12 @@ def exec_authentik(code: str, input_text: str | None = None) -> dict:
     try:
         return json.loads(raw)
     except (TypeError, json.JSONDecodeError) as exc:
-        raise RuntimeError("Authentik returned an unexpected response") from exc
+        msg = "Authentik returned an unexpected response"
+        raise RuntimeError(msg) from exc
 
 
 def persist_clients(clients: dict) -> None:
+    """Persist clients."""
     ROOT.mkdir(mode=0o700, parents=True, exist_ok=True)
     fd, name = tempfile.mkstemp(prefix=".oidc-clients-", dir=ROOT)
     try:
@@ -164,25 +169,29 @@ def persist_clients(clients: dict) -> None:
 
 
 def main() -> None:
+    """Main."""
     global STAGE
     STAGE = "read-private-credential-journal"
     if not (ROOT / "credentials.json").is_file():
-        raise RuntimeError("Authentik runtime credential file is missing")
+        msg = "Authentik runtime credential file is missing"
+        raise RuntimeError(msg)
     clients = json.loads(CLIENTS_PATH.read_text()) if CLIENTS_PATH.exists() else {}
     entry = clients.get("argocd")
     STAGE = "Authentik-preflight"
     state = exec_authentik(PROBE_CODE)
     if entry is None:
         if state["provider_exists"]:
+            msg_0 = "Existing provider has no local credential journal; refusing rotation"
             raise RuntimeError(
-                "Existing provider has no local credential journal; refusing rotation"
+                msg_0
             )
         entry = {"client_id": "socrat-argocd", "client_secret": secrets.token_urlsafe(48)}
         clients["argocd"] = entry
         STAGE = "persist-client-credential-journal"
         persist_clients(clients)
     if not entry.get("client_id") or not entry.get("client_secret"):
-        raise RuntimeError("Argo CD OAuth credential journal is incomplete")
+        msg = "Argo CD OAuth credential journal is incomplete"
+        raise RuntimeError(msg)
     STAGE = "reconcile-Authentik-provider-and-access-bindings"
     result = exec_authentik(RECONCILE_CODE, json.dumps(entry))
     if result.get("ok") is not True:
@@ -196,7 +205,8 @@ def main() -> None:
             + ":"
             + str(error_type)
         )
-        raise RuntimeError("Authentik did not confirm the Argo CD client")
+        msg = "Authentik did not confirm the Argo CD client"
+        raise RuntimeError(msg)
 
     desired = base64.b64encode(entry["client_secret"].encode()).decode()
     STAGE = "read-Argo-CD-runtime-secret"
@@ -243,7 +253,8 @@ if __name__ == "__main__":
         if sys.argv[1:] == ["--check"]:
             STAGE = "preflight"
             if not (ROOT / "credentials.json").is_file():
-                raise RuntimeError("Authentik runtime credential file is missing")
+                msg = "Authentik runtime credential file is missing"
+                raise RuntimeError(msg)
             state = exec_authentik(PROBE_CODE)
             print(
                 "preflight=ok provider_exists="
@@ -254,7 +265,8 @@ if __name__ == "__main__":
         elif not sys.argv[1:]:
             main()
         else:
-            raise RuntimeError("unsupported option")
+            msg = "unsupported option"
+            raise RuntimeError(msg)
     except Exception as exc:
         print(
             "Argo CD Authentik OIDC setup failed at "
@@ -264,4 +276,4 @@ if __name__ == "__main__":
             + "); sensitive output suppressed",
             file=sys.stderr,
         )
-        raise SystemExit(1)
+        raise SystemExit(1) from exc

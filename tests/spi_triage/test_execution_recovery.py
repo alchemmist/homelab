@@ -5,35 +5,44 @@ import tempfile
 import time
 import unittest
 from unittest.mock import Mock, patch
+
 import test_triage as f
-from core import Store, Failure, OWNER_CONTEXT, REPORT_SCHEMA
+from core import OWNER_CONTEXT, REPORT_SCHEMA, Failure, Store
 from integrations import Model
 from test_wait_integration import IntegrationTests
 
 
 class ReadWaitTests(IntegrationTests):
-    def test_read_timeout_replays_receipt_then_resumes_after_restart(self):
+    """Tests for read-timeout recovery after restart."""
+
+    def test_read_timeout_replays_receipt_then_resumes_after_restart(self) -> None:
+
+        'Verify read timeouts replay receipts and resume after restart.'
         self.github.snapshot.side_effect = [Failure("GITHUB_READ_TIMEOUT", 60), []]
         sent = self.data
         response = self.engine.run_v1("match", sent)
-        self.assertEqual(response["code"], "GITHUB_READ_TIMEOUT")
-        self.assertEqual(response["status"], "deferred")
-        self.assertEqual(response["deadline"], sent["deadline"])
-        self.assertEqual(self.engine.run_v1("match", sent), response)
-        self.assertEqual(self.github.snapshot.call_count, 1)
+        assert response["code"] == "GITHUB_READ_TIMEOUT"
+        assert response["status"] == "deferred"
+        assert response["deadline"] == sent["deadline"]
+        assert self.engine.run_v1("match", sent) == response
+        assert self.github.snapshot.call_count == 1
         self.engine.store = Store(self.store.path)
         self.engine.store.recover_on_start()
         self.now = response["due_at"]
         result = self.engine.run_v1("match", response)
-        self.assertEqual(result["stage"], "collect")
-        self.assertEqual(self.store.get(self.key)["attempts"], 1)
+        assert result["stage"] == "collect"
+        assert self.store.get(self.key)["attempts"] == 1
         with self.store.db() as c:
-            self.assertEqual(c.execute("SELECT count(*) FROM job_failure_budget").fetchone()[0], 0)
+            assert c.execute("SELECT count(*) FROM job_failure_budget").fetchone()[0] == 0
 
 
 @patch.dict("os.environ", {"SPI_TOKEN_ACCOUNTING_MODE": "byte-bound-v1"})
 class RepairTests(unittest.TestCase):
-    def test_repair_budget_survives_admission_and_restart(self):
+    """Tests for repair budget survival across restarts."""
+
+    def test_repair_budget_survives_admission_and_restart(self) -> None:
+
+        'Verify the repair budget survives admission and restart.'
         with tempfile.TemporaryDirectory() as tmp:
             store = Store(tmp + "/db")
             key = store.enqueue(f.event())["job_id"]
@@ -56,11 +65,11 @@ class RepairTests(unittest.TestCase):
                         Model(http, "fake", store=store).call(
                             "analysis", data, REPORT_SCHEMA, time.monotonic() + 20
                         )
-                self.assertEqual(http.request.call_count, 1)
+                assert http.request.call_count == 1
                 store = Store(store.path)
                 with store.db() as c:
-                    self.assertEqual(
-                        c.execute("SELECT failures FROM analysis_output_budget").fetchone()[0], 1
+                    assert (
+                        c.execute("SELECT failures FROM analysis_output_budget").fetchone()[0] == 1
                     )
                 http.request.return_value = {
                     "choices": [{"message": {"content": json.dumps(good)}}]
@@ -69,15 +78,15 @@ class RepairTests(unittest.TestCase):
                     patch.object(store, "reserve_llm", return_value=2),
                     patch.object(store, "finish_llm"),
                 ):
-                    self.assertEqual(
+                    assert (
                         Model(http, "fake", store=store).call(
                             "analysis", data, REPORT_SCHEMA, time.monotonic() + 20
-                        ),
-                        good,
+                        )
+                        == good
                     )
-                self.assertIn(
-                    "Previous output failed",
-                    http.request.call_args.args[3]["messages"][1]["content"],
+                assert (
+                    "Previous output failed"
+                    in http.request.call_args.args[3]["messages"][1]["content"]
                 )
                 # Conservative crash recovery: consumed repair cannot be repeated,
                 # even if its valid answer was lost before the report checkpoint.
@@ -86,6 +95,8 @@ class RepairTests(unittest.TestCase):
                     Model(http, "fake", store=store).call(
                         "analysis", data, REPORT_SCHEMA, time.monotonic() + 20
                     )
-                self.assertEqual(http.request.call_count, 2)
+                # The failed attempt is retried exactly once more.
+                attempts_taken = 2
+                assert http.request.call_count == attempts_taken
             finally:
                 del OWNER_CONTEXT.binding

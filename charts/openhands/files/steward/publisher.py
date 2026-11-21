@@ -1,18 +1,33 @@
 """Closed set of GitHub actions. Never execute candidate code or accept URLs/refs."""
 
+import base64
+import hashlib
 import hmac
-import base64, json, re, uuid
+import json
+import re
+import uuid
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from urllib.request import Request, build_opener, HTTPRedirectHandler
+from typing import TYPE_CHECKING, cast
 from urllib.error import HTTPError
+from urllib.request import HTTPRedirectHandler, Request, build_opener
+
+if TYPE_CHECKING:
+    import types
+
+REPO = "alchemmist/monori"
+PREFIX = "openhands/issue-509/"
+
 
 REPO = "alchemmist/monori"
 PREFIX = "openhands/issue-509/"
 
 
 class NoRedirect(HTTPRedirectHandler):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
     def redirect_request(self, *args):
+        'Refuse redirects so credentials are never forwarded.'
         return None
 
 
@@ -36,10 +51,10 @@ def api(path, data=None, method=None):
         return json.loads(raw) if raw else {}
 
 
+
 def check(condition):
     if not condition:
-        msg = "Invalid or disallowed operation"
-        raise ValueError(msg)
+        raise ValueError("Invalid or disallowed operation")
 
 
 QA = "openhands/qa-issue-"
@@ -60,7 +75,9 @@ def mutation_target(issue):
 
 def clean_text(t, lo, hi):
     check(
-        isinstance(t, str) and lo <= len(t) <= hi and all(c.isprintable() or c == "\n" for c in t)
+        isinstance(t, str)
+        and lo <= len(t) <= hi
+        and all(c.isprintable() or c == "\n" for c in t)
     )
     check(
         not re.search(
@@ -73,7 +90,9 @@ def clean_text(t, lo, hi):
 
 
 def qa_issue(x):
-    import io, hashlib
+    import hashlib
+    import io
+
     from PIL import Image
 
     check(
@@ -123,19 +142,24 @@ def qa_issue(x):
         video = encode(x["frames"])
     # Stable marker; check open AND closed issues before writing. Fail closed on pagination ceiling.
     for page in range(1, 21):
-        items = api(f"issues?state=all&sort=created&direction=desc&per_page=100&page={page}")
+        items = api(
+            f"issues?state=all&sort=created&direction=desc&per_page=100&page={page}"
+        )
         for item in items:
             if (
                 "pull_request" not in item
                 and item["user"]["login"] == "alchemmist"
                 and marker in (item["body"] or "")
             ):
-                return {"issue": item["number"], "url": item["html_url"], "existing": True}
+                return {
+                    "issue": item["number"],
+                    "url": item["html_url"],
+                    "existing": True,
+                }
         if len(items) < 100:
             break
     else:
-        msg = "Incomplete duplicate scan"
-        raise ValueError(msg)
+        raise ValueError("Incomplete duplicate scan")
     check(api("git/commits/" + sha)["sha"] == sha)
     digest = hashlib.sha256(b"".join(images) + (video or b"")).hexdigest()[:24]
     branch = "openhands/qa-evidence/" + key + "-" + digest
@@ -147,26 +171,43 @@ def qa_issue(x):
         entries = []
         for i, image in enumerate(images, 1):
             blob = api(
-                "git/blobs", {"content": base64.b64encode(image).decode(), "encoding": "base64"}
+                "git/blobs",
+                {"content": base64.b64encode(image).decode(), "encoding": "base64"},
             )
             entries.append(
-                {"path": f"{i}.png", "mode": "100644", "type": "blob", "sha": blob["sha"]}
+                {
+                    "path": f"{i}.png",
+                    "mode": "100644",
+                    "type": "blob",
+                    "sha": blob["sha"],
+                }
             )
         if video:
             blob = api(
-                "git/blobs", {"content": base64.b64encode(video).decode(), "encoding": "base64"}
+                "git/blobs",
+                {"content": base64.b64encode(video).decode(), "encoding": "base64"},
             )
             entries.append(
-                {"path": "repro.mp4", "mode": "100644", "type": "blob", "sha": blob["sha"]}
+                {
+                    "path": "repro.mp4",
+                    "mode": "100644",
+                    "type": "blob",
+                    "sha": blob["sha"],
+                }
             )
         tree = api("git/trees", {"tree": entries})
         oid = api(
             "git/commits",
-            {"message": "QA synthetic screenshot evidence", "tree": tree["sha"], "parents": []},
+            {
+                "message": "QA synthetic screenshot evidence",
+                "tree": tree["sha"],
+                "parents": [],
+            },
         )["sha"]
         api("git/refs", {"ref": "refs/heads/" + branch, "sha": oid})
     links = [
-        f"https://raw.githubusercontent.com/{REPO}/{oid}/{i}.png" for i in range(1, len(images) + 1)
+        f"https://raw.githubusercontent.com/{REPO}/{oid}/{i}.png"
+        for i in range(1, len(images) + 1)
     ]
     body = (
         f"{marker}\nTested revision: `{sha}` (local synthetic data).\n\n## Steps\n{fields[0]}\n\n## Expected\n{fields[1]}\n\n## Actual\n{fields[2]}\n\n## Evidence\n"
@@ -184,8 +225,13 @@ def changes(files, qa=False, pi_ci=False):
     for p, value in files.items():
         check(
             (
-                re.fullmatch(r"server/(?:tests|app)/(?:[A-Za-z0-9_]+/)*[A-Za-z0-9_]+\.py", p)
-                or (pi_ci and re.fullmatch(r"ci/tests/test_mutation_[0-9a-f]{12}\.py", p))
+                re.fullmatch(
+                    r"server/(?:tests|app)/(?:[A-Za-z0-9_]+/)*[A-Za-z0-9_]+\.py", p
+                )
+                or (
+                    pi_ci
+                    and re.fullmatch(r"ci/tests/test_mutation_[0-9a-f]{12}\.py", p)
+                )
                 or (
                     qa
                     and re.fullmatch(
@@ -197,12 +243,19 @@ def changes(files, qa=False, pi_ci=False):
             and isinstance(value, str)
             and "\x00" not in value
         )
-        result.append({"path": p, "contents": base64.b64encode(value.encode()).decode()})
+        result.append(
+            {"path": p, "contents": base64.b64encode(value.encode()).decode()}
+        )
     return result
 
 
 def owned_pr(n, sha):
-    check(type(n) is int and n > 0 and isinstance(sha, str) and re.fullmatch("[a-f0-9]{40}", sha))
+    check(
+        type(n) is int
+        and n > 0
+        and isinstance(sha, str)
+        and re.fullmatch("[a-f0-9]{40}", sha)
+    )
     p = api("pulls/" + str(n))
     check(
         p["state"] == "open"
@@ -210,7 +263,8 @@ def owned_pr(n, sha):
         and p["head"]["repo"]["full_name"] == REPO
         and p["user"]["login"] == "alchemmist"
         and re.fullmatch(
-            "(?:" + MUT + "[1-9][0-9]*/|" + QA + "[0-9]+/)[a-f0-9]{32}", p["head"]["ref"]
+            "(?:" + MUT + "[1-9][0-9]*/|" + QA + "[0-9]+/)[a-f0-9]{32}",
+            p["head"]["ref"],
         )
         and p["head"]["sha"] == sha
     )
@@ -227,7 +281,9 @@ def review(x):
         rows = []
         cursor = None
         for _ in range(10):
-            data = api("graphql", {"query": q, "variables": {"n": x["pr"], "c": cursor}})
+            data = api(
+                "graphql", {"query": q, "variables": {"n": x["pr"], "c": cursor}}
+            )
             check(not data.get("errors"))
             page = data["data"]["repository"]["pullRequest"]["reviewThreads"]
             rows.extend(page["nodes"])
@@ -235,8 +291,7 @@ def review(x):
                 return {"threads": rows, "head": sha}
             cursor = page["pageInfo"]["endCursor"]
             check(cursor)
-        msg = "Incomplete pagination"
-        raise ValueError(msg)
+        raise ValueError("Incomplete pagination")
     if a == "report":
         check(set(x) == {"action", "pr", "head"})
         ref = p["head"]["ref"]
@@ -270,7 +325,11 @@ def review(x):
         "query($t:ID!){node(id:$t){... on PullRequestReviewThread{isResolved pullRequest{id}}}}",
         {"t": t},
     )["node"]
-    check(thread and not thread["isResolved"] and thread["pullRequest"]["id"] == p["node_id"])
+    check(
+        thread
+        and not thread["isResolved"]
+        and thread["pullRequest"]["id"] == p["node_id"]
+    )
     body = f"{x['decision']} at {sha}: {reason}"
     reply = gql(
         "mutation($t:ID!,$b:String!){addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:$t,body:$b}){comment{id}}}",
@@ -279,7 +338,8 @@ def review(x):
     check(reply["addPullRequestReviewThreadReply"]["comment"]["id"])
     owned_pr(x["pr"], sha)
     resolved = gql(
-        "mutation($t:ID!){resolveReviewThread(input:{threadId:$t}){thread{isResolved}}}", {"t": t}
+        "mutation($t:ID!){resolveReviewThread(input:{threadId:$t}){thread{isResolved}}}",
+        {"t": t},
     )
     check(resolved["resolveReviewThread"]["thread"]["isResolved"])
     return {"resolved": True, "head": sha}
@@ -325,7 +385,8 @@ def dispatch(x):
                 and p["head"]["repo"]["full_name"] == REPO
                 and p["user"]["login"] == "alchemmist"
                 and p["base"]["ref"] == "main"
-                and re.fullmatch(MUT + r"[1-9][0-9]*/[a-f0-9]{32}", p["head"]["ref"]) is not None
+                and re.fullmatch(MUT + r"[1-9][0-9]*/[a-f0-9]{32}", p["head"]["ref"])
+                is not None
                 and any(l["name"] == "mutation-pr" for l in p["labels"]),
             }
         if action == "life_ci":
@@ -334,12 +395,12 @@ def dispatch(x):
                 p["head"]["ref"].startswith(MUT)
                 and any(l["name"] == "mutation-pr" for l in p["labels"])
             )
-            return runpy.run_path(str(Path(__file__).with_name("ci_excerpt.py")))["extract"](
-                x["pr"], x["head"], api, NoRedirect, check
-            )
-        return runpy.run_path(str(Path(__file__).with_name("pr_lifecycle.py")))["lifecycle"](
-            x, api, owned_pr, check
-        )
+            return runpy.run_path(str(Path(__file__).with_name("ci_excerpt.py")))[
+                "extract"
+            ](x["pr"], x["head"], api, NoRedirect, check)
+        return runpy.run_path(str(Path(__file__).with_name("pr_lifecycle.py")))[
+            "lifecycle"
+        ](x, api, owned_pr, check)
     if action == "qa_issue":
         return qa_issue(x)
     if action == "qa_capabilities":
@@ -405,7 +466,10 @@ def dispatch(x):
         # cap outstanding work; use a bounded list fail-closed if incomplete.
         prs = api("pulls?state=open&per_page=100")
         check(len(prs) < 100 and sum(p["head"]["ref"].startswith(MUT) for p in prs) < 5)
-        check(action != "qa_create" or not any(p["head"]["ref"].startswith(prefix) for p in prs))
+        check(
+            action != "qa_create"
+            or not any(p["head"]["ref"].startswith(prefix) for p in prs)
+        )
         check(sum(p["head"]["ref"].startswith(QA) for p in prs) < 5)
         branch = prefix + uuid.uuid4().hex
         api("git/refs", {"ref": "refs/heads/" + branch, "sha": sha})
@@ -413,10 +477,10 @@ def dispatch(x):
         p = owned_pr(x["pr"], sha)
         branch = p["head"]["ref"]
         check(not branch.startswith(MUT) or branch.startswith(PREFIX) or signed_update)
-        files = changes(x["files"], branch.startswith(QA), signed_update and branch.startswith(MUT))
-    mutation = (
-        "mutation($i:CreateCommitOnBranchInput!){createCommitOnBranch(input:$i){commit{oid}}}"
-    )
+        files = changes(
+            x["files"], branch.startswith(QA), signed_update and branch.startswith(MUT)
+        )
+    mutation = "mutation($i:CreateCommitOnBranchInput!){createCommitOnBranch(input:$i){commit{oid}}}"
     res = api(
         "graphql",
         {
@@ -449,10 +513,14 @@ def dispatch(x):
 
 
 class Handler(BaseHTTPRequestHandler):
+    """HTTP handler that records published steward updates."""
+
     def log_message(self, *args):
+        'Silence default request-line logging.'
         pass
 
     def send(self, status, obj):
+        'Write a JSON response with explicit content length.'
         raw = json.dumps(obj).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
@@ -460,7 +528,9 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(raw)
 
+
     def do_POST(self):
+        'Validate and dispatch a signed steward action to GitHub.'
         try:
             self.connection.settimeout(10)
             check(self.path == "/v1" and not self.headers.get("Transfer-Encoding"))
@@ -472,12 +542,20 @@ class Handler(BaseHTTPRequestHandler):
         except HTTPError as e:
             self.send(
                 502,
-                {"github_status": e.code, "retry": "Inspect existing branch/PR before retrying"},
+                {
+                    "github_status": e.code,
+                    "retry": "Inspect existing branch/PR before retrying",
+                },
             )
         except (ValueError, TypeError):
-            self.send(400, {"error": "Invalid request, stale head or operation outside policy"})
+            self.send(
+                400,
+                {"error": "Invalid request, stale head or operation outside policy"},
+            )
         except Exception:
-            self.send(503, {"error": "Publisher unavailable; inspect GitHub before retrying"})
+            self.send(
+                503, {"error": "Publisher unavailable; inspect GitHub before retrying"}
+            )
 
 
 if __name__ == "__main__":

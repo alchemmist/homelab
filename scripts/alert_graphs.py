@@ -6,12 +6,14 @@ not changed. Requires Helm and PyYAML, like the repository's chart contract test
 """
 
 import argparse
-from collections import defaultdict
 import hashlib
 import json
-from pathlib import Path
 import re
 import subprocess
+from collections import defaultdict
+from collections.abc import Iterator
+from pathlib import Path
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,38 +30,9 @@ OWNERS = [
 ]
 
 
-def unparen(expr):
-    expr = expr.strip()
-    while expr.startswith("(") and expr.endswith(")"):
-        depth, quote, escaped, closes = 0, None, False, None
-        for i, char in enumerate(expr):
-            if quote:
-                if escaped:
-                    escaped = False
-                elif char == "\\":
-                    escaped = True
-                elif char == quote:
-                    quote = None
-                continue
-            if char in ('"', "'", "`"):
-                quote = char
-            elif char == "(":
-                depth += 1
-            elif char == ")":
-                depth -= 1
-                if depth == 0:
-                    closes = i
-                    break
-        if closes != len(expr) - 1:
-            break
-        expr = expr[1:-1].strip()
-    return expr
-
-
-def diagnostic(expr):
-    """Remove only a root numeric comparison; never rewrite inner PromQL logic."""
-    expr = unparen(expr)
-    depth, quote, escaped = 0, None, False
+def _quote_scan(expr: str) -> Iterator[tuple[int, str]]:
+    """Yield (index, char) pairs, skipping characters inside string literals."""
+    quote, escaped = None, False
     for i, char in enumerate(expr):
         if quote:
             if escaped:
@@ -68,14 +41,53 @@ def diagnostic(expr):
                 escaped = True
             elif char == quote:
                 quote = None
-            continue
-        if char in ('"', "'", "`"):
+        elif char in ('"', "'", "`"):
             quote = char
-        elif char in "({[":
+        else:
+            yield i, char
+
+
+def _root_close(expr: str) -> int | None:
+    """Return the index closing a leading top-level parenthesis, if balanced."""
+    depth, close = 0, None
+    for i, char in _quote_scan(expr):
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                close = i
+                break
+    return close
+
+
+def unparen(expr: str) -> str:
+    """Strip redundant outer parentheses that wrap the whole expression."""
+    expr = expr.strip()
+    while expr.startswith("(") and expr.endswith(")"):
+        if _root_close(expr) != len(expr) - 1:
+            break
+        expr = expr[1:-1].strip()
+    return expr
+
+
+def _top_level(expr: str) -> Iterator[int]:
+    """Yield indices of characters outside brackets and string literals."""
+    depth = 0
+    for i, char in _quote_scan(expr):
+        if char in "({[":
             depth += 1
         elif char in ")}]":
             depth -= 1
-        elif depth == 0 and char in "<>!=":
+        elif depth == 0:
+            yield i
+
+
+def diagnostic(expr: str) -> tuple[str, float | None, str]:
+    """Remove only a root numeric comparison; never rewrite inner PromQL logic."""
+    expr = unparen(expr)
+    for i in _top_level(expr):
+        if expr[i] in "<>!=":
             match = re.fullmatch(
                 r"(?:==|!=|>=|<=|>|<)\s*(?:bool\s+)?(-?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)",
                 expr[i:].strip(),
@@ -93,31 +105,15 @@ def diagnostic(expr):
     )
 
 
-def operands(expr):
+def operands(expr: str) -> list[tuple[str, float | None, str]]:
     """Expose logical/comparison inputs without mutating the actual alert rule."""
     expr = unparen(expr)
-    depth, quote, escaped = 0, None, False
-    for i, char in enumerate(expr):
-        if quote:
-            if escaped:
-                escaped = False
-            elif char == "\\":
-                escaped = True
-            elif char == quote:
-                quote = None
-            continue
-        if char in ('"', "'", "`"):
-            quote = char
-        elif char in "({[":
-            depth += 1
-        elif char in ")}]":
-            depth -= 1
-        elif depth == 0:
-            match = re.match(r"\s+(?:and|or|unless)\s+", expr[i:])
-            if match:
-                right = expr[i + match.end() :].strip()
-                right = re.sub(r"^(?:on|ignoring)\s*\([^)]*\)\s*", "", right)
-                return operands(expr[:i]) + operands(right)
+    for i in _top_level(expr):
+        match = re.match(r"\s+(?:and|or|unless)\s+", expr[i:])
+        if match:
+            right = expr[i + match.end() :].strip()
+            right = re.sub(r"^(?:on|ignoring)\s*\([^)]*\)\s*", "", right)
+            return operands(expr[:i]) + operands(right)
     value, threshold, reason = diagnostic(expr)
     if threshold is not None:
         return [(value, threshold, reason)]
@@ -152,21 +148,42 @@ def render_owner(owner):
     ]
 
 
+def _rule_entries(resource: str, owner: str, resource_name: str) -> list[dict]:
+    """Flatten a rendered PrometheusRule into one entry per alert rule."""
+    entries = []
+    for group in resource["spec"]["groups"]:
+        for rule in group["rules"]:
+            if "alert" in rule:
+                entries.append(
+                    {
+                        "owner": owner,
+                        "resource": resource_name,
+                        "group": group["name"],
+                        "rule": rule,
+                    }
+                )
+    return entries
+
+
+def _grafana_entry(path: Path, rule: dict) -> dict:
+    """Build an inventory entry for one Grafana-managed alert rule."""
+    queries = [q["model"]["expr"] for q in rule["data"] if q.get("model", {}).get("expr")]
+    if not queries:
+        raise ValueError("Grafana rule missing real metric query: " + rule["uid"])
+    return {
+        "owner": "grafana-managed",
+        "resource": str(path.relative_to(ROOT)),
+        "group": rule["ruleGroup"],
+        "uid": rule["uid"],
+        "rule": {"alert": rule["title"], "expr": queries[0], "labels": rule["labels"]},
+    }
+
+
 def inventory():
     rules = []
     for owner in OWNERS:
         for resource in render_owner(owner):
-            for group in resource["spec"]["groups"]:
-                for rule in group["rules"]:
-                    if "alert" in rule:
-                        rules.append(
-                            {
-                                "owner": owner,
-                                "resource": resource["metadata"]["name"],
-                                "group": group["name"],
-                                "rule": rule,
-                            }
-                        )
+            rules += _rule_entries(resource, owner, resource["metadata"]["name"])
     observer = ROOT / "deploy/platform/rancher/public-entry"
     rendered = subprocess.check_output(
         ["helm", "template", "rancher-public-entry", str(observer), "--namespace", "cattle-system"],
@@ -174,43 +191,73 @@ def inventory():
     )
     for resource in yaml.safe_load_all(rendered):
         if isinstance(resource, dict) and resource.get("kind") == "PrometheusRule":
-            for group in resource["spec"]["groups"]:
-                for rule in group["rules"]:
-                    if "alert" in rule:
-                        rules.append(
-                            {
-                                "owner": "rancher",
-                                "resource": resource["metadata"]["name"],
-                                "group": group["name"],
-                                "rule": rule,
-                            }
-                        )
+            rules += _rule_entries(resource, "rancher", resource["metadata"]["name"])
     for path in [ROOT / "docs/n8n/spi/alerts.json", ROOT / "docs/n8n/yandex-session-alerts.json"]:
         for rule in json.loads(path.read_text())["rules"]:
-            queries = [q["model"]["expr"] for q in rule["data"] if q.get("model", {}).get("expr")]
-            if not queries:
-                raise ValueError("Grafana rule missing real metric query: " + rule["uid"])
-            rules.append(
-                {
-                    "owner": "grafana-managed",
-                    "resource": str(path.relative_to(ROOT)),
-                    "group": rule["ruleGroup"],
-                    "uid": rule["uid"],
-                    "rule": {"alert": rule["title"], "expr": queries[0], "labels": rule["labels"]},
-                }
-            )
+            rules.append(_grafana_entry(path, rule))
     return rules
+
+
+def _validate_panel_ids(panel_ids: dict[str, dict[str, int]]) -> None:
+    """Fail loudly on invalid or duplicate persistent panel IDs."""
+    for uid, names in panel_ids.items():
+        values = list(names.values())
+        duplicated = len(set(values)) != len(values)
+        malformed = any(type(v) is not int or v < 1 or v % 2 != 1 for v in values)
+        if duplicated or malformed:
+            raise ValueError("Invalid or duplicate persistent panel IDs: " + uid)
+
+
+def _variant_targets(variants: list[dict]) -> tuple[list[dict], list[str], list[float]]:
+    """Collect condition-input targets, reasons, and thresholds for alert variants."""
+    targets, reasons, thresholds = [], [], []
+    for item in variants:
+        for expr, threshold, reason in operands(str(item["rule"]["expr"])):
+            if expr in ("vector(0)", "vector(1)") and len(variants) > 1:
+                continue
+            if expr not in {t["expr"] for t in targets}:
+                targets.append(
+                    {
+                        "refId": str(len(targets) + 1),
+                        "expr": expr,
+                        "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    }
+                )
+            reasons.append(reason)
+            if threshold is not None:
+                thresholds.append(threshold)
+    return targets, reasons, thresholds
+
+
+def _apply_update_override(panel: dict) -> None:
+    """Replace the update-available panel with one line per application identity."""
+    # The alert has a single cluster identity; the diagnostic keeps stable app identities.
+    panel["targets"] = [
+        {
+            "refId": "1",
+            "datasource": panel["datasource"],
+            "legendFormat": "{{app}}",
+            "expr": 'max by (app) (socrat_software_update_available{job="monitoring-update-watch",latest!=""})',
+        }
+    ]
+    panel["description"] = (
+        "One line per application: 0 = up to date, 1 = newer stable release. Failed checks leave gaps."
+    )
+    panel["fieldConfig"] = {
+        "defaults": {
+            "min": 0,
+            "max": 1,
+            "decimals": 0,
+            "custom": {"lineInterpolation": "stepAfter", "spanNulls": False},
+        },
+        "overrides": [],
+    }
 
 
 def build(rules, panel_ids=None):
     # Append-only IDs preserve historical graph URLs when sorted rule names grow.
     panel_ids = {} if panel_ids is None else panel_ids
-    for uid, names in panel_ids.items():
-        values = list(names.values())
-        if any(type(v) is not int or v < 1 or v % 2 != 1 for v in values) or len(
-            set(values)
-        ) != len(values):
-            raise ValueError("Invalid or duplicate persistent panel IDs: " + uid)
+    _validate_panel_ids(panel_ids)
     grouped = defaultdict(list)
     for item in rules:
         grouped[(item["owner"], item["rule"]["alert"])].append(item)
@@ -234,22 +281,7 @@ def build(rules, panel_ids=None):
                 "panels": [],
             },
         )
-        targets, reasons, thresholds = [], [], []
-        for index, item in enumerate(variants):
-            for expr, threshold, reason in operands(str(item["rule"]["expr"])):
-                if expr in ("vector(0)", "vector(1)") and len(variants) > 1:
-                    continue
-                if expr not in {t["expr"] for t in targets}:
-                    targets.append(
-                        {
-                            "refId": str(len(targets) + 1),
-                            "expr": expr,
-                            "datasource": {"type": "prometheus", "uid": "prometheus"},
-                        }
-                    )
-                reasons.append(reason)
-                if threshold is not None:
-                    thresholds.append(threshold)
+        targets, reasons, thresholds = _variant_targets(variants)
         known = panel_ids.setdefault(uid, {})
         if name not in known:
             known[name] = max(known.values(), default=-1) + 2
@@ -299,27 +331,7 @@ def build(rules, panel_ids=None):
             ],
         }
         if (owner, name) == ("monitoring-k3s", "SocratSoftwareUpdateAvailable"):
-            # The alert has a single cluster identity; the diagnostic keeps stable app identities.
-            panel["targets"] = [
-                {
-                    "refId": "1",
-                    "datasource": panel["datasource"],
-                    "legendFormat": "{{app}}",
-                    "expr": 'max by (app) (socrat_software_update_available{job="monitoring-update-watch",latest!=""})',
-                }
-            ]
-            panel["description"] = (
-                "One line per application: 0 = up to date, 1 = newer stable release. Failed checks leave gaps."
-            )
-            panel["fieldConfig"] = {
-                "defaults": {
-                    "min": 0,
-                    "max": 1,
-                    "decimals": 0,
-                    "custom": {"lineInterpolation": "stepAfter", "spanNulls": False},
-                },
-                "overrides": [],
-            }
+            _apply_update_override(panel)
         dashboard["panels"].append(state)
         spec = {
             "version": 1,
@@ -360,6 +372,45 @@ def build(rules, panel_ids=None):
     return dashboards, dict(mappings), rows
 
 
+KUBE_PROMETHEUS_OWNERS = (
+    "prometheus",
+    "alertmanager",
+    "prometheus-operator",
+    "node-exporter",
+    "kube-state-metrics",
+)
+
+
+def _kube_prometheus_value(owner: str, mapping: dict) -> dict:
+    """Render annotation overrides layered on kube-prometheus-stack defaults."""
+    value = {
+        "kube-prometheus-stack": {
+            "defaultRules": {
+                "additionalRuleAnnotations": {
+                    name: {"spi_graphs": json.dumps(spec, separators=(",", ":"))}
+                    for name, spec in mapping.items()
+                }
+            }
+        }
+    }
+    defaults = yaml.safe_load((ROOT / "charts" / owner / "values.yaml").read_text())[
+        "kube-prometheus-stack"
+    ]
+    extra = defaults.get("additionalPrometheusRulesMap")
+    if extra:
+        # Helm replaces lists: retain every original field/group/recording
+        # rule, changing annotations only, and verify exact rendered rules.
+        for resource in extra.values():
+            for group in resource.get("groups", []):
+                for rule in group.get("rules", []):
+                    if rule.get("alert") in mapping:
+                        rule.setdefault("annotations", {})["spi_graphs"] = json.dumps(
+                            mapping[rule["alert"]], separators=(",", ":")
+                        )
+        value["kube-prometheus-stack"]["additionalPrometheusRulesMap"] = extra
+    return value
+
+
 def outputs(rules):
     registry_path = ROOT / "deploy/monitoring/alert-graph-panel-ids.json"
     registry = json.loads(registry_path.read_text())
@@ -384,38 +435,8 @@ def outputs(rules):
     for owner, mapping in mappings.items():
         if owner == "grafana-managed":
             continue
-        if owner in (
-            "prometheus",
-            "alertmanager",
-            "prometheus-operator",
-            "node-exporter",
-            "kube-state-metrics",
-        ):
-            value = {
-                "kube-prometheus-stack": {
-                    "defaultRules": {
-                        "additionalRuleAnnotations": {
-                            name: {"spi_graphs": json.dumps(spec, separators=(",", ":"))}
-                            for name, spec in mapping.items()
-                        }
-                    }
-                }
-            }
-            defaults = yaml.safe_load((ROOT / "charts" / owner / "values.yaml").read_text())[
-                "kube-prometheus-stack"
-            ]
-            extra = defaults.get("additionalPrometheusRulesMap")
-            if extra:
-                # Helm replaces lists: retain every original field/group/recording
-                # rule, changing annotations only, and verify exact rendered rules.
-                for resource in extra.values():
-                    for group in resource.get("groups", []):
-                        for rule in group.get("rules", []):
-                            if rule.get("alert") in mapping:
-                                rule.setdefault("annotations", {})["spi_graphs"] = json.dumps(
-                                    mapping[rule["alert"]], separators=(",", ":")
-                                )
-                value["kube-prometheus-stack"]["additionalPrometheusRulesMap"] = extra
+        if owner in KUBE_PROMETHEUS_OWNERS:
+            value = _kube_prometheus_value(owner, mapping)
         else:
             value = {
                 "alertGraphAnnotations": {

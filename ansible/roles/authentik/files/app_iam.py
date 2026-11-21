@@ -15,6 +15,7 @@ LEGACY_GROUPS = [
 
 
 def app_groups(services):
+    """App groups."""
     return {
         f"app-{slug}-{role}": {
             **settings,
@@ -27,6 +28,7 @@ def app_groups(services):
 
 
 def admission_groups(slug, service):
+    """Admission groups."""
     # Legacy membership remains valid; this is admission, NOT native RBAC.
     return service.get("groups", ["homelab-owner"]) + [
         f"app-{slug}-{role}"
@@ -50,13 +52,15 @@ def rows(api, path):
             return result
         page += 1
         if page > 1000:
-            raise RuntimeError("Pagination limit exceeded")
+            msg = "Pagination limit exceeded"
+            raise RuntimeError(msg)
 
 
 GROUP_MARKER = {"homelab_app_iam": 1}
 
 
 def validate_group(group):
+    """Validate group."""
     # Authentik 2026.8.5 uses plural parents (M2M), not legacy parent.
     # Missing/null/reduced responses are not evidence of absence of privilege.
     if (
@@ -88,7 +92,8 @@ def validate_bindings(bindings, allowed):
             or binding.get("negate", False)
             or binding.get("failure_result", False)
         ):
-            raise RuntimeError("Application binding drift; review UI policy before reconciliation")
+            msg = "Application binding drift; review UI policy before reconciliation"
+            raise RuntimeError(msg)
         seen.add(group)
     return seen
 

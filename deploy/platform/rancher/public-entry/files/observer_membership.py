@@ -8,13 +8,15 @@ checks, keeping owner, editor and unlinked machine credentials untouched.
 
 import json
 import os
-from pathlib import Path
 import ssl
 import threading
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Callable
+from pathlib import Path
+from typing import TYPE_CHECKING, TypedDict, cast
 
 ORIGIN = "https://auth.socrat.alchemmist.xyz/api/v3/"
 PRINCIPAL = "genericoidc_group://homelab-observer"
@@ -23,7 +25,10 @@ OWNER = "9e33877a-3eaa-4541-98eb-8cdc10088ef6"
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
     def redirect_request(self, *args, **kwargs):
+        """Refuse redirects so credentials are never forwarded."""
         return None
 
 
@@ -36,13 +41,17 @@ def opener(context=None):
 
 
 class MembershipReader:
+    """Cached reader for the observer membership token file."""
+
     def __init__(self, token_file, ttl=60):
+        """Initialize membership cache state."""
         self.token_file, self.ttl = Path(token_file), ttl
         self.lock, self.expires = threading.Lock(), 0
         self.users, self.groups = {}, {}
         self.http = opener()
 
     def rows(self, path):
+        """Fetch all paginated rows from the Authentik API path."""
         token = self.token_file.read_text().strip()
         result = []
         for page in range(1, 201):
@@ -54,19 +63,19 @@ class MembershipReader:
                 with self.http.open(request, timeout=5) as response:
                     raw = response.read(8 * 1024 * 1024 + 1)
                     if len(raw) > 8 * 1024 * 1024:
-                        msg = "Membership response bound exceeded"
-                        raise RuntimeError(msg)
+                        raise RuntimeError("Membership response bound exceeded")
                     data = json.loads(raw)
             except Exception:
-                msg = "Membership read unavailable; no stale-access extension"
-                raise RuntimeError(msg) from None
+                raise RuntimeError(
+                    "Membership read unavailable; no stale-access extension"
+                ) from None
             result.extend(data["results"])
             if not data.get("pagination", {}).get("next"):
                 return result
-        msg = "Incomplete membership pagination"
-        raise RuntimeError(msg)
+        raise RuntimeError("Incomplete membership pagination")
 
     def refresh(self):
+        """Reload the cached user/group inventory once it expires."""
         with self.lock:
             if time.monotonic() < self.expires:
                 return
@@ -76,26 +85,24 @@ class MembershipReader:
                 not isinstance(g.get("pk"), str) or not isinstance(g.get("name"), str)
                 for g in groups
             ):
-                msg = "Malformed group snapshot"
-                raise RuntimeError(msg)
+                raise RuntimeError("Malformed group snapshot")
             if any(
                 not isinstance(u.get("uuid"), str)
                 or type(u.get("is_active")) is not bool
                 or not isinstance(u.get("groups"), list)
                 for u in users
             ):
-                msg = "Malformed user snapshot"
-                raise RuntimeError(msg)
+                raise RuntimeError("Malformed user snapshot")
             if len({u["uuid"] for u in users}) != len(users) or len(
                 {g["pk"] for g in groups}
             ) != len(groups):
-                msg = "Ambiguous membership snapshot"
-                raise RuntimeError(msg)
+                raise RuntimeError("Ambiguous membership snapshot")
             self.groups = {g["pk"]: g["name"] for g in groups}
             self.users = {u["uuid"]: u for u in users}
             self.expires = time.monotonic() + self.ttl
 
     def admitted(self, subject, groups):
+        """Check whether an active user holds one of the claim's groups."""
         self.refresh()
         user = self.users.get(subject)
         return bool(
@@ -107,7 +114,9 @@ class MembershipReader:
 
 def rancher_plan(users, attributes, authconfig, admitted):
     protected = {OWNER} | {
-        p[len(PREFIX) :] for p in authconfig["allowedPrincipalIds"] if p.startswith(PREFIX)
+        p[len(PREFIX) :]
+        for p in authconfig["allowedPrincipalIds"]
+        if p.startswith(PREFIX)
     }
     by_name = {u["metadata"]["name"]: u for u in users}
     operations = []
@@ -116,14 +125,18 @@ def rancher_plan(users, attributes, authconfig, admitted):
         user = by_name.get(meta["name"])
         if not user:
             continue
-        external = [p[len(PREFIX) :] for p in user.get("principalIds", []) if p.startswith(PREFIX)]
+        external = [
+            p[len(PREFIX) :]
+            for p in user.get("principalIds", [])
+            if p.startswith(PREFIX)
+        ]
         if len(external) != 1 or external[0] in protected:
             continue
         subject = external[0]
         cache = attr.get("GroupPrincipals", {}).get("genericoidc")
-        if attr.get("ExtraByProvider", {}).get("genericoidc", {}).get("principalid") != [
-            PREFIX + subject
-        ]:
+        if attr.get("ExtraByProvider", {}).get("genericoidc", {}).get(
+            "principalid"
+        ) != [PREFIX + subject]:
             # Historical orphan identities can have no live provider cache. They
             # are not ours to adopt/repair. Never let one block unrelated viewers;
             # a mismatched cache carrying our grant remains a fail-closed error.
@@ -131,27 +144,27 @@ def rancher_plan(users, attributes, authconfig, admitted):
             if not items or (
                 isinstance(items, list)
                 and all(
-                    isinstance(p, dict) and p.get("metadata", {}).get("name") != PRINCIPAL
+                    isinstance(p, dict)
+                    and p.get("metadata", {}).get("name") != PRINCIPAL
                     for p in items
                 )
             ):
                 continue
-            msg = "Native cache identity mismatch"
-            raise RuntimeError(msg)
-        if not isinstance(cache, dict) or not isinstance(cache.get("Items"), (list, type(None))):
-            msg = "Malformed generic OIDC cache"
-            raise RuntimeError(msg)
+            raise RuntimeError("Native cache identity mismatch")
+        if not isinstance(cache, dict) or not isinstance(
+            cache.get("Items"), (list, type(None))
+        ):
+            raise RuntimeError("Malformed generic OIDC cache")
         old = cache["Items"] or []
         if any(
-            not isinstance(p, dict) or not isinstance(p.get("metadata", {}).get("name"), str)
+            not isinstance(p, dict)
+            or not isinstance(p.get("metadata", {}).get("name"), str)
             for p in old
         ):
-            msg = "Malformed cached group principal"
-            raise RuntimeError(msg)
+            raise RuntimeError("Malformed cached group principal")
         matching = [p for p in old if p["metadata"]["name"] == PRINCIPAL]
         if len(matching) > 1:
-            msg = "Duplicate cached observer principal"
-            raise RuntimeError(msg)
+            raise RuntimeError("Duplicate cached observer principal")
         wanted = PRINCIPAL in authconfig["allowedPrincipalIds"] and admitted(
             subject, {"homelab-observer"}
         )
@@ -170,14 +183,26 @@ def rancher_plan(users, attributes, authconfig, admitted):
             )
         patch = [
             {"op": "test", "path": "/metadata/uid", "value": meta["uid"]},
-            {"op": "test", "path": "/metadata/resourceVersion", "value": meta["resourceVersion"]},
+            {
+                "op": "test",
+                "path": "/metadata/resourceVersion",
+                "value": meta["resourceVersion"],
+            },
             {
                 "op": "test",
                 "path": "/ExtraByProvider/genericoidc/principalid",
                 "value": [PREFIX + subject],
             },
-            {"op": "test", "path": "/GroupPrincipals/genericoidc/Items", "value": cache["Items"]},
-            {"op": "replace", "path": "/GroupPrincipals/genericoidc/Items", "value": new},
+            {
+                "op": "test",
+                "path": "/GroupPrincipals/genericoidc/Items",
+                "value": cache["Items"],
+            },
+            {
+                "op": "replace",
+                "path": "/GroupPrincipals/genericoidc/Items",
+                "value": new,
+            },
         ]
         operations.append((meta["name"], patch))
     return operations
@@ -229,7 +254,9 @@ def reconcile_rancher():
         + os.getenv("KUBERNETES_SERVICE_PORT_HTTPS", "443")
     )
     ca = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-    token = Path("/var/run/secrets/kubernetes.io/serviceaccount/token").read_text().strip()
+    token = (
+        Path("/var/run/secrets/kubernetes.io/serviceaccount/token").read_text().strip()
+    )
     http = opener(ssl.create_default_context(cafile=ca))
     prefix = "/apis/management.cattle.io/v3/"
 
@@ -247,8 +274,7 @@ def reconcile_rancher():
             with http.open(request, timeout=5) as response:
                 return json.load(response)
         except Exception:
-            msg = "Native cache API failed; no blind retry"
-            raise RuntimeError(msg) from None
+            raise RuntimeError("Native cache API failed; no blind retry") from None
 
     def items(path):
         result, cursor = [], ""
@@ -257,14 +283,15 @@ def reconcile_rancher():
                 "GET",
                 path
                 + "?limit=100"
-                + ("&continue=" + urllib.parse.quote(cursor, safe="") if cursor else ""),
+                + (
+                    "&continue=" + urllib.parse.quote(cursor, safe="") if cursor else ""
+                ),
             )
             result.extend(data["items"])
             cursor = data["metadata"].get("continue", "")
             if not cursor:
                 return result
-        msg = "Incomplete native cache pagination"
-        raise RuntimeError(msg)
+        raise RuntimeError("Incomplete native cache pagination")
 
     operations = rancher_plan(
         items("users"),
@@ -276,7 +303,11 @@ def reconcile_rancher():
         call("PATCH", "userattributes/" + urllib.parse.quote(name, safe=""), patch)
     print(
         json.dumps(
-            {"observer_cache_updates": len(operations), "users_created": 0, "roles_modified": 0}
+            {
+                "observer_cache_updates": len(operations),
+                "users_created": 0,
+                "roles_modified": 0,
+            }
         )
     )
 
@@ -285,5 +316,6 @@ if __name__ == "__main__":
     try:
         reconcile_rancher()
     except Exception:
-        msg = "Observer membership reconciliation failed safely; inspect native state"
-        raise SystemExit(msg)
+        raise SystemExit(
+            "Observer membership reconciliation failed safely; inspect native state"
+        )

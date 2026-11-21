@@ -102,9 +102,16 @@
     cache_valid_time: 3600
   tags: utilities
 
+- name: Require the protected owner before granting sudo
+  ansible.builtin.assert:
+    that:
+      - homelab_owner_account.name == 'alchemmist'
+      - homelab_owner_account.sudo is true
+  tags: utilities
+
 - name: Grant the administrator sudo group membership
   ansible.builtin.user:
-    name: alchemmist
+    name: "{{ homelab_owner_account.name }}"
     groups: sudo
     append: true
   tags: utilities

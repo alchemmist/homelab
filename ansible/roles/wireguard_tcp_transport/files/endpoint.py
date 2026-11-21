@@ -1,3 +1,4 @@
+"""Rewrite the WireGuard config with the current TCP transport endpoint."""
 import json
 import os
 import re
@@ -10,6 +11,7 @@ from pathlib import Path
 
 
 def update_config(original, public_key, endpoint):
+    """Execute the update_config operation."""
     if re.search(r"^\s*SaveConfig\s*=\s*true\s*$", original, re.M | re.I):
         msg = "SaveConfig must be disabled"
         raise ValueError(msg)
@@ -38,6 +40,7 @@ def update_config(original, public_key, endpoint):
 
 
 def main():
+    """Execute the main operation."""
     interface, public_key, endpoint = sys.argv[1:]
     if not re.fullmatch(r"[a-zA-Z0-9_=+.-]{1,15}", interface):
         msg = "Invalid interface"

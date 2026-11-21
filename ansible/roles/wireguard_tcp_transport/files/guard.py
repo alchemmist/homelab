@@ -1,3 +1,4 @@
+"""Install and verify the iptables UDP rule for the WireGuard transport peer."""
 import ipaddress
 import re
 import shutil

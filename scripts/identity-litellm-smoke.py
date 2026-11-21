@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Explicit LiteLLM native OIDC acceptance with a temporary read-only observer.
+
 No real owner password/MFA is read or reset. No QR/secret/session traces are saved.
 Requires Playwright + Chromium. Run from the owner Mac with --run.
 """
@@ -30,6 +31,7 @@ _original_getaddrinfo = socket.getaddrinfo
 
 
 def public_auth(host, *params, **kwargs):
+    """Perform the public auth operation."""
     return _original_getaddrinfo(
         args.public_edge if host in ["auth.socrat.alchemmist.xyz", "llm.alchemmist.xyz"] else host,
         *params,
@@ -54,6 +56,7 @@ credential = json.loads(
 
 
 def api(method, path, data=None):
+    """Perform the HTTP request and return its response."""
     req = urllib.request.Request(
         BASE + "/api/v3/" + path,
         method=method,
@@ -133,6 +136,7 @@ try:
         errors = []
 
         def observe(response):
+            """Perform the observe operation."""
             if (
                 urllib.parse.urlparse(response.url).hostname == "llm.alchemmist.xyz"
                 and "/sso/callback" in response.url
@@ -173,7 +177,7 @@ try:
                             "Callback exception types:",
                             re.findall(r"\b[A-Z][A-Za-z]+(?:Error|Exception)\b", err),
                         )
-                    except Exception:
+                    except (ValueError, TypeError, IndexError, KeyError, AttributeError):
                         pass
             if "/api/v3/flows/executor/" in response.url and response.status in [200, 400]:
                 try:
@@ -193,7 +197,7 @@ try:
                     if data.get("component") == "ak-stage-authenticator-totp":
                         totp_challenge.clear()
                         totp_challenge.update(data)
-                except Exception:
+                except (ValueError, TypeError, IndexError, KeyError, AttributeError):
                     pass
 
         page.on("response", observe)

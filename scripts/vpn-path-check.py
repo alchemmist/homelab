@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """One bounded unauthenticated HTTPS check. No retries, proxy changes or tunnel claims.
+
 Run manually from approved Russian fixed/mobile and external vantage points.
 Use public URLs only: NEVER supply subscription, share, API or credential URLs.
 """
@@ -23,8 +24,8 @@ CONTROL_ADDRESSES = ("109.120.141.60", "109.173.40.247")
 MAX_BYTES = 2 * 1024 * 1024
 
 
-def endpoint(url):
-    parsed = urllib.parse.urlsplit(url)
+def endpoint(url) -> "urllib.parse.SplitResult":
+    parsed: urllib.parse.SplitResult = urllib.parse.urlsplit(url)
     if (
         parsed.scheme != "https"
         or parsed.hostname not in ALLOWED_HOSTS
@@ -43,15 +44,19 @@ def endpoint(url):
     return parsed
 
 
-def check(url, vantage, family=4, control_address=None):
+def check(url, vantage, family=4, control_address=None) -> "dict[str, object]":
     parsed = endpoint(url)
+    host = parsed.hostname
+    if host is None:
+        reason = "Approved hostname required"
+        raise ValueError(reason)
     if control_address is not None and (control_address not in CONTROL_ADDRESSES or family != 4):
         raise ValueError("Explicit controls are limited to the two approved IPv4 ingress addresses")
     result = {
         "utc": datetime.datetime.now(datetime.UTC).isoformat(),
         "vantage_label": vantage,
         "family": family,
-        "host": parsed.hostname,
+        "host": host,
         "path_sha256": hashlib.sha256((parsed.path or "/").encode()).hexdigest(),
         "native_tunnel_test": False,
         "automatic_recovery": False,
@@ -61,7 +66,7 @@ def check(url, vantage, family=4, control_address=None):
     start = time.monotonic()
     try:
         address = socket.getaddrinfo(
-            parsed.hostname,
+            host,
             443,
             socket.AF_INET if family == 4 else socket.AF_INET6,
             socket.SOCK_STREAM,
@@ -79,7 +84,7 @@ def check(url, vantage, family=4, control_address=None):
             stage = "tls"
             context = ssl.create_default_context()
             context.set_alpn_protocols(["http/1.1"])
-            with context.wrap_socket(raw, server_hostname=parsed.hostname) as tls:
+            with context.wrap_socket(raw, server_hostname=host) as tls:
                 result.update(
                     tls_verified=True, tls_version=tls.version(), alpn=tls.selected_alpn_protocol()
                 )
@@ -88,7 +93,7 @@ def check(url, vantage, family=4, control_address=None):
                     "GET "
                     + (parsed.path or "/")
                     + " HTTP/1.1\r\nHost: "
-                    + parsed.hostname
+                    + host
                     + "\r\nConnection: close\r\nUser-Agent: homelab-bounded-path-check/1\r\n\r\n"
                 )
                 tls.sendall(request.encode("ascii"))
@@ -110,14 +115,14 @@ def check(url, vantage, family=4, control_address=None):
             if result.get("complete") and result.get("http_status") == 200
             else "https_transfer"
         )
-    except Exception as error:
+    except (OSError, ValueError, http.client.HTTPException) as error:
         result["error_type"] = type(error).__name__  # No raw response, URL or credentials.
     result["first_failed_stage"] = stage
     result["elapsed_seconds"] = round(time.monotonic() - start, 3)
     return result
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", default="https://wiki.socrat.alchemmist.xyz/")
     parser.add_argument(

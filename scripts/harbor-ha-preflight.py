@@ -22,6 +22,7 @@ print(json.dumps({'availableMemoryBytes':int(m['MemAvailable'].split()[0])*1024,
 
 
 def quantity(value):
+    """Perform the quantity operation."""
     value = str(value)
     for suffix, factor in [
         ("Ki", 1024),
@@ -42,6 +43,7 @@ def quantity(value):
 def requested_memory(pod):
     # Intentionally conservative: sum all init containers, including restartable
     # sidecars, instead of underestimating their maximum concurrent startup usage.
+    """Perform the requested memory operation."""
     spec = pod["spec"]
     total = sum(
         quantity(c.get("resources", {}).get("requests", {}).get("memory", 0))
@@ -52,6 +54,7 @@ def requested_memory(pod):
 
 
 def ssh(policy, node, command):
+    """Perform the ssh operation."""
     return subprocess.check_output(
         [
             "ssh",
@@ -68,6 +71,7 @@ def ssh(policy, node, command):
 
 
 def collect(policy):
+    """Perform the collect operation."""
     import shlex
 
     hosts = {
@@ -110,6 +114,7 @@ def collect(policy):
 
 
 def check(policy, observation, otel, now=None):
+    """Check the requested inputs."""
     now = now or datetime.now(UTC)
     age = (now - datetime.fromisoformat(observation["collectedAt"])).total_seconds()
     if age < 0 or age > policy["maximumObservationAgeSeconds"]:
@@ -160,6 +165,7 @@ def check(policy, observation, otel, now=None):
 
 
 def save_exclusive(path, obj):
+    """Write the save exclusive output."""
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as f:
         json.dump(obj, f, indent=2)
@@ -167,6 +173,7 @@ def save_exclusive(path, obj):
 
 
 def main():
+    """Run the command-line entry point."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=["collect", "check"])
     parser.add_argument("--policy", type=Path, default=ROOT / "deploy/harbor/ha-policy.json")

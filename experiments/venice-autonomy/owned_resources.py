@@ -1,13 +1,14 @@
+"""Helpers to find and clean up resources owned by benchmark attempts."""
 import json
 import pathlib
 import subprocess
 
 
-def _result_text(result):
+def _result_text(result) -> str:
     return f"{result.stderr or ''}\n{result.stdout or ''}"
 
 
-def _daemon_or_auth(text):
+def _daemon_or_auth(text) -> bool:
     lowered = text.lower()
     markers = (
         "cannot connect",
@@ -19,7 +20,7 @@ def _daemon_or_auth(text):
     return any(marker in lowered for marker in markers)
 
 
-def _already_gone(result):
+def _already_gone(result) -> bool:
     if result.returncode == 0:
         return False
     text = _result_text(result)
@@ -29,7 +30,7 @@ def _already_gone(result):
     return "no such" in lowered or "not found" in lowered
 
 
-def _run(args, timeout):
+def _run(args, timeout) -> subprocess.CompletedProcess[str]:
     return subprocess.run(args, capture_output=True, text=True, timeout=timeout)
 
 
@@ -88,13 +89,13 @@ def cleanup_role(root):
     if container_file.is_file() and not container_file.is_symlink():
         try:
             remove_container(container_file.read_text().strip(), expected)
-        except Exception as error:
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
             errors.append(str(error))
     volume_file = root / "volume-name"
     if volume_file.is_file() and not volume_file.is_symlink():
         try:
             remove_volume(volume_file.read_text().strip(), expected)
-        except Exception as error:
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
             errors.append(str(error))
     if errors:
         raise ValueError("; ".join(errors))

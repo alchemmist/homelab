@@ -23,13 +23,17 @@ DESTINATIONS = ("netbird-machine-grafana", "netbird-machine-ssh-socrat-2")
 GRAFANA = "grafana.socrat.alchemmist.xyz"
 
 
-def require(ok, message):
+def require(ok, message) -> None:
+    """Fail with the given message unless the constraint holds."""
     if not ok:
         raise ValueError(message)
 
 
-def image(name):
-    lock = json.loads((ROOT / "deploy/netbird/images.lock.json").read_text())["images"][name]
+def image(name) -> str:
+    """Return the digest-pinned image reference from the images lock."""
+    lock: dict[str, str] = json.loads((ROOT / "deploy/netbird/images.lock.json").read_text())[
+        "images"
+    ][name]
     if name == "edge_forwarder":
         return lock["reference"]
     require(
@@ -40,7 +44,7 @@ def image(name):
     return lock["repository"] + ":" + lock["tag"] + "@" + lock["digest"]
 
 
-def preflight(policies, groups, peers, mem_available_kib):
+def preflight(policies, groups, peers, mem_available_kib) -> list[str]:
     """Validate live reads; never synthesise JWT-issued groups using the API."""
     require(policies == [], "policies must be empty before first machine enrollment")
     require(peers == [], "expected no preexisting peers; inspect before any replay")
@@ -65,7 +69,8 @@ def preflight(policies, groups, peers, mem_available_kib):
     return result
 
 
-def setup_key_body(host):
+def setup_key_body(host) -> dict[str, object]:
+    """Build the constrained one-off setup-key request body for an approved host."""
     require(host in HOSTS, "unapproved host")
     return {
         "name": "machine-" + host,
@@ -78,7 +83,8 @@ def setup_key_body(host):
     }
 
 
-def policies(source_ids, destination_ids):
+def policies(source_ids, destination_ids) -> list[dict[str, object]]:
+    """Build the reviewed two-ways group policies over four dedicated IDs."""
     require(
         len(source_ids) == len(destination_ids) == 2
         and len(set(source_ids + destination_ids)) == 4
@@ -104,12 +110,17 @@ def policies(source_ids, destination_ids):
             ],
         }
         for name, src, dst, port in zip(
-            ("pilot-grafana", "pilot-ssh-socrat-2"), source_ids, destination_ids, (8443, 2222)
+            ("pilot-grafana", "pilot-ssh-socrat-2"),
+            source_ids,
+            destination_ids,
+            (8443, 2222),
+            strict=True,
         )
     ]
 
 
-def peer(host, *, admin_mesh=False):
+def peer(host, *, admin_mesh=False) -> list[dict[str, object]]:
+    """Render peer manifests for the host, restricted to the reviewed laptop set."""
     reviewed = ("socrat-0", "socrat-1", "socrat-2", "socrat-3") if admin_mesh else HOSTS
     require(host in reviewed, "unapproved host")
     name = "machine-" + host
@@ -205,7 +216,8 @@ def peer(host, *, admin_mesh=False):
     ]
 
 
-def overlay_ip(value):
+def overlay_ip(value) -> str:
+    """Require a CGNAT-range IPv4 address and return its normalized text form."""
     ip = ipaddress.ip_address(value)
     require(
         ip.version == 4 and ip in ipaddress.ip_network("100.64.0.0/10"),
@@ -214,7 +226,8 @@ def overlay_ip(value):
     return str(ip)
 
 
-def frontend_config(address):
+def frontend_config(address) -> dict[str, str]:
+    """Render the static frontend configuration pointing at the given overlay IP."""
     address = overlay_ip(address)
     return {
         "static.yaml": yaml.safe_dump(
@@ -265,7 +278,8 @@ def frontend_config(address):
     }
 
 
-def frontend(host, address):
+def frontend(host, address) -> list[dict[str, object]]:
+    """Render the frontend deployment and service manifests for one host."""
     require(host in HOSTS, "unapproved host")
     name = "grafana-" + host
     labels = {"app": name}
@@ -327,8 +341,9 @@ def frontend(host, address):
     ]
 
 
-def frontend_guard():
+def frontend_guard() -> str:
     # A DROP only; no global SSH accept/drop, forward hooks, NAT or sysctl changes.
+    """Return the nftables frontend guard that DROPs non-NetBird traffic to 8443."""
     return (
         "table inet netbird_peer_frontend {\n"
         " chain input { type filter hook input priority -10; policy accept;\n"
@@ -337,7 +352,8 @@ def frontend_guard():
     )
 
 
-def main():
+def main() -> None:
+    """Render the requested peer, frontend, or guard artifacts."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--frontend-host", choices=HOSTS)
     p.add_argument("--overlay-ip")
@@ -350,7 +366,9 @@ def main():
         bool(a.frontend_host) == bool(a.overlay_ip),
         "frontend host and actual overlay IP are required together",
     )
-    docs = [{"apiVersion": "v1", "kind": "Namespace", "metadata": {"name": NS}}]
+    docs: list[dict[str, object]] = [
+        {"apiVersion": "v1", "kind": "Namespace", "metadata": {"name": NS}}
+    ]
     for host in HOSTS:
         docs.extend(peer(host))
     if a.frontend_host:

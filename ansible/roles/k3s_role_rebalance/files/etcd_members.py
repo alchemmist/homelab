@@ -1,3 +1,5 @@
+"""Reconcile k3s HA etcd membership across the cluster nodes."""
+
 import argparse
 import json
 import subprocess
@@ -16,7 +18,10 @@ TLS = "/var/lib/rancher/k3s/server/tls/etcd/"
 
 
 class Etcd:
+    """etcd member client that shells out to etcdctl."""
+
     def call(self, args, endpoint="https://127.0.0.1:2379", structured=True):
+        """Run an authenticated etcdctl command and return its output."""
         command = [
             "etcdctl",
             "--endpoints=" + endpoint,
@@ -34,6 +39,7 @@ class Etcd:
         return json.loads(result.stdout) if structured else result.stdout
 
     def members(self):
+        """Map etcd member names to their cluster identifiers."""
         result = {}
         for member in self.call(["member", "list"])["members"]:
             matches = [
@@ -43,7 +49,8 @@ class Etcd:
                 and (member.get("name") == name or member.get("name", "").startswith(name + "-"))
             ]
             if len(matches) != 1 or matches[0] in result:
-                raise RuntimeError("Unknown or duplicate etcd member; refusing reconfiguration")
+                msg = "Unknown or duplicate etcd member; refusing reconfiguration"
+                raise RuntimeError(msg)
             result[matches[0]] = {
                 "id": int(member["ID"]),
                 "id_hex": format(int(member["ID"]), "x"),
@@ -53,11 +60,13 @@ class Etcd:
         return result
 
     def health(self, name):
+        """Assert linearizable health of the named member endpoint."""
         result = self.call(["endpoint", "health"], ENDPOINTS[name])
         if len(result) != 1 or result[0].get("health") is not True:
             raise RuntimeError("Linearizable health check failed for " + name)
 
     def status(self, name):
+        """Return the status header of the named member endpoint."""
         result = self.call(["endpoint", "status"], ENDPOINTS[name])
         if len(result) != 1 or result[0].get("Error"):
             raise RuntimeError("Endpoint status failed for " + name)
@@ -65,11 +74,14 @@ class Etcd:
 
 
 def require_members(members, names):
+    """Document the require members operation."""
     if set(members) != set(names) or any(item["learner"] for item in members.values()):
-        raise RuntimeError("Unexpected voting membership; refusing reconfiguration")
+        msg = "Unexpected voting membership; refusing reconfiguration"
+        raise RuntimeError(msg)
 
 
 def verify_final(client):
+    """Document the verify final operation."""
     members = client.members()
     require_members(members, FINAL)
     for name in ("socrat-0", "socrat-3"):
@@ -78,6 +90,7 @@ def verify_final(client):
 
 
 def remove_socrat_1(client):
+    """Document the remove socrat 1 operation."""
     members = client.members()
     if set(members) == FINAL:
         return {"changed": False, "members": verify_final(client)}
@@ -97,22 +110,26 @@ def remove_socrat_1(client):
                 break
             time.sleep(0.5)
         else:
-            raise RuntimeError("Leadership transfer did not converge")
+            msg = "Leadership transfer did not converge"
+            raise RuntimeError(msg)
     current = client.members()
     if current != members:
-        raise RuntimeError("Membership changed during preflight; refusing removal")
+        msg = "Membership changed during preflight; refusing removal"
+        raise RuntimeError(msg)
     try:
         client.call(["member", "remove", members["socrat-1"]["id_hex"]], structured=False)
     except (RuntimeError, subprocess.TimeoutExpired):
         current = client.members()
         if "socrat-1" in current:
+            msg_0 = "Removal failed and socrat-1 remains a member; restore its staged configuration"
             raise RuntimeError(
-                "Removal failed and socrat-1 remains a member; restore its staged configuration"
+                msg_0
             ) from None
     return {"changed": True, "members": verify_final(client)}
 
 
 def inspect(client):
+    """Document the inspect operation."""
     members = client.members()
     endpoints = {}
     for name in members:
@@ -135,6 +152,7 @@ def inspect(client):
 
 
 def main():
+    """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("action", choices=["inspect", "remove-socrat-1", "verify-final"])
     args = parser.parse_args()

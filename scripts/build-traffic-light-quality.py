@@ -11,16 +11,19 @@ IDS = {930, 931, 932, 933, 934, 935, 936}
 
 
 def fresh_job(job):
+    """Perform the fresh job operation."""
     return (
         f'(max(up{{job="{job}"}}) == 1) and on() (time() - max(timestamp(up{{job="{job}"}})) < 90)'
     )
 
 
 def fresh_metric(metric):
+    """Perform the fresh metric operation."""
     return f"(time() - max(timestamp({metric})) < 90)"
 
 
 def stat(pid, name, grid, expr, unit, description, trend=False, bands=None, decimals=0):
+    """Perform the stat operation."""
     mappings = {
         "-2": {"text": "No telemetry", "color": "#808080"},
         "-1": {"text": "Never succeeded", "color": "#808080"},
@@ -73,6 +76,7 @@ def stat(pid, name, grid, expr, unit, description, trend=False, bands=None, deci
 def traffic(pid, name, namespace, pod, color):
     # cAdvisor exports pod network once on the sandbox (no container label here).
     # Byte rates include protocol/probe traffic: NEVER call these object/OCI counts.
+    """Perform the traffic operation."""
     labels = f'namespace="{namespace}",pod=~"{pod}",interface="eth0",job="kubelet"'
     metric = '{__name__=~"container_network_(receive|transmit)_bytes_total",' + labels + "}"
     metric = f'label_join({metric}, "d", "", "__name__")'
@@ -146,6 +150,7 @@ def traffic(pid, name, namespace, pod, color):
 
 
 def ai_quality():
+    """Perform the ai quality operation."""
     wait = 'vllm:num_requests_waiting{job="vllm"}'
     count = 'vllm:time_to_first_token_seconds_count{job="vllm"}'
     bucket = 'vllm:time_to_first_token_seconds_bucket{job="vllm"}'
@@ -214,12 +219,13 @@ def ai_quality():
 
 
 def cascade_summary():
+    """Perform the cascade summary operation."""
     selector = 'namespace="cattle-monitoring-system",cronjob="thanos-cascade"'
     success = f"kube_cronjob_status_last_successful_time{{{selector}}}"
     age = f"((time()-max({success}>0)) and on() {fresh_metric(success)} and on() ({fresh_job('kube-state-metrics')})) or vector(-2)"
     pod_re = "thanos-compactor(-5m|-1h)?-[0-9a-f]+-.+"
 
-    def live(metric):
+    def live(metric) -> str:
         return f'({metric} and (time()-timestamp({metric})<90) and on(instance) (up{{job="cattle-monitoring-system/thanos"}}==1))'
 
     todo = 'thanos_compact_todo_downsample_blocks{job="cattle-monitoring-system/thanos",pod=~"thanos-compactor-[0-9a-f]+-.+"}'
@@ -319,6 +325,7 @@ def cascade_summary():
 
 
 def panels():
+    """Perform the panels operation."""
     result = [
         traffic(931, "RustFS", "rustfs", "rustfs-.*", "#B877D9"),
         traffic(932, "Harbor", "harbor", "harbor-registry-.*", "#2EBFA5"),
@@ -377,6 +384,7 @@ def panels():
 
 
 def build(source=None):
+    """Build the requested result."""
     d = copy.deepcopy(source if source is not None else json.loads(SOURCE.read_text()))
     existing = {p["id"]: p for p in d["panels"]}
     # Owner deletions are authoritative; never resurrect retired/removed widgets.
@@ -408,6 +416,7 @@ def build(source=None):
 def write(d):
     # Compact generated widgets only; keep original owner panels byte-formatted.
     # This reduces actual ConfigMap/annotation bytes without relaxing the size guard.
+    """Write the write output."""
     text = json.dumps(d, ensure_ascii=False, indent=2)
     for p in d["panels"]:
         if p["id"] not in IDS:

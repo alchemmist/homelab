@@ -1,3 +1,4 @@
+"""Run a single Venice autonomy benchmark attempt in a sandbox."""
 import argparse
 import importlib.metadata
 import json
@@ -5,8 +6,15 @@ import os
 import pathlib
 import signal
 import time
+from typing import cast
 
-from fixtures import check_verdict, fixture_files, task_prompt, verifier_command, seal_execution
+from fixtures import (
+    check_verdict,
+    fixture_files,
+    seal_execution,
+    task_prompt,
+    verifier_command,
+)
 from sandbox import Sandbox
 
 
@@ -109,7 +117,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
     query = model._query
     calls = []
 
-    def observed_query(messages, **kwargs):
+    def observed_query(messages, **kwargs) -> object:
         record = {"attempt": len(calls) + 1, "started": time.time()}
         calls.append(record)
         try:
@@ -123,7 +131,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
                     "finish_reason": response.choices[0].finish_reason,
                 }
             )
-            return response
+            return cast("object", response)
         except Exception as error:
             record["error_type"] = type(error).__name__
             raise
@@ -134,7 +142,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
     model._query = observed_query
     execute = sandbox.execute
 
-    def execute_with_submission(action, **kwargs):
+    def execute_with_submission(action, **kwargs) -> object:
         result = execute(action, **kwargs)
         if mini_submission(result):
             raise Submitted(
@@ -144,7 +152,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
                     "extra": {"exit_status": "Submitted", "submission": result["output"]},
                 }
             )
-        return result
+        return cast("object", result)
 
     sandbox.execute = execute_with_submission
     system = "You are a coding agent in an isolated offline Linux workspace. "
@@ -207,9 +215,15 @@ def run_openhands(
             os.environ.pop(name)
     os.environ["OH_PERSISTENCE_DIR"] = str(directory / "openhands-home")
     os.environ["OTEL_SDK_DISABLED"] = "true"
+    from openhands.sdk import LLM, Agent, Conversation, Tool
+    from openhands.sdk.tool import (
+        Action,
+        Observation,
+        ToolDefinition,
+        ToolExecutor,
+        register_tool,
+    )
     from pydantic import Field, SecretStr
-    from openhands.sdk import Agent, Conversation, LLM, Tool
-    from openhands.sdk.tool import Action, Observation, ToolDefinition, ToolExecutor, register_tool
 
     class BashAction(Action):
         command: str = Field(
@@ -220,15 +234,18 @@ def run_openhands(
         pass
 
     class BashExecutor(ToolExecutor):
-        def __call__(self, action, conversation=None):
+        def __call__(self, action, _conversation=None) -> BashObservation:
             result = sandbox.execute({"command": action.command})
-            return BashObservation.from_text(json.dumps(result), is_error=result["returncode"] != 0)
+            return cast(
+                "BashObservation",
+                BashObservation.from_text(json.dumps(result), is_error=result["returncode"] != 0),
+            )
 
     class BashTool(ToolDefinition[BashAction, BashObservation]):
         name = "bash"
 
         @classmethod
-        def create(cls, conv_state=None, **kwargs):
+        def create(cls, **_kwargs):
             return [
                 cls(
                     description="Execute bash inside the isolated offline coding workspace. "
@@ -257,7 +274,7 @@ def run_openhands(
     workspace = directory / "controller-workspace"
     workspace.mkdir()
 
-    def observe(event):
+    def observe(event) -> None:
         with (directory / "openhands-events.jsonl").open("a") as stream:
             stream.write(json.dumps(event.model_dump(mode="json")) + "\n")
 
@@ -307,7 +324,7 @@ def attempt(engine, task, directory, seed, feedback=""):
                 else:
                     result = run_openhands(sandbox, directory, prompt, base_url, key)
                 summary.update(result)
-            except (Exception, KeyboardInterrupt) as error:
+            except (Exception, KeyboardInterrupt) as error:  # noqa: BLE001
                 record_exception(summary, error, key, "run_error")
             summary["actual_commands"] = len(sandbox.events)
             snapshot = sandbox.snapshot()
@@ -321,7 +338,7 @@ def attempt(engine, task, directory, seed, feedback=""):
             verdict = check_verdict(task, nonce, cases, seal_execution(nonce, execution))
             summary["verdict"] = verdict
             summary["accepted"] = verdict["accepted"] and summary["test_unchanged"]
-    except (Exception, KeyboardInterrupt) as error:
+    except (Exception, KeyboardInterrupt, SystemExit) as error:  # noqa: BLE001
         record_exception(summary, error, key, "infrastructure_error")
     summary["elapsed_seconds"] = round(time.time() - started, 3)
     (directory / "summary.json").write_text(json.dumps(summary, indent=2))

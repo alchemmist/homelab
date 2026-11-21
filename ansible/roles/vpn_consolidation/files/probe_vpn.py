@@ -1,13 +1,16 @@
+"""Probe VPN client state from the x-ui database."""
+
 import json
-from pathlib import Path
 import socket
 import sqlite3
 import subprocess
 import tempfile
 import time
+from pathlib import Path
 
 
 def main():
+    """Execute the main operation."""
     with sqlite3.connect("file:/srv/x-ui-lab/db/x-ui.db?mode=ro", uri=True) as database:
         clients = []
         for row in database.execute(
@@ -76,15 +79,13 @@ def main():
             deadline = time.monotonic() + 10
             while True:
                 if process.poll() is not None:
-                    msg = "VPN probe client exited before readiness"
-                    raise RuntimeError(msg)
+                    raise RuntimeError("VPN probe client exited before readiness")
                 try:
                     with socket.create_connection(("127.0.0.1", port), 0.5):
                         break
-                except OSError:
+                except OSError as exc:
                     if time.monotonic() > deadline:
-                        msg = "VPN probe client did not become ready"
-                        raise RuntimeError(msg)
+                        raise RuntimeError("VPN probe client did not become ready") from exc
                     time.sleep(0.1)
             result = subprocess.run(
                 [
@@ -108,8 +109,7 @@ def main():
                 timeout=30,
             )
             if result.returncode != 0 or result.stdout != "200":
-                msg = "Authenticated public Trojan HTTPS probe failed"
-                raise RuntimeError(msg)
+                raise RuntimeError("Authenticated public Trojan HTTPS probe failed")
             print("Authenticated public Trojan TLS/WebSocket tunnel: HTTPS 200")
         finally:
             process.terminate()

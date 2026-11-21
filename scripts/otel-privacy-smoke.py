@@ -1,3 +1,5 @@
+"""Privacy smoke test for the telemetry stack run in an isolated workspace."""
+
 import argparse
 import json
 import os
@@ -9,6 +11,31 @@ import urllib.error
 import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
+
+
+def require(expected: object, message: str) -> None:
+    """Enforce an invariant, failing with the given message."""
+    if not expected:
+        raise ValueError(message)
+
+
+def fail(message: str) -> None:
+    """Abort the smoke run with RuntimeError."""
+    raise RuntimeError(message)
+
+
+def await_sanitized_export(process: subprocess.Popen[bytes], output: Path, deadline: float) -> str:
+    """Wait until the collector exports every sanitized fixture record."""
+    while True:
+        text = output.read_text() if output.exists() else ""
+        if all(
+            sentinel in text
+            for sentinel in ["plain-sentinel", "structured-sentinel", "json-sentinel"]
+        ):
+            return text
+        if process.poll() is not None or time.monotonic() >= deadline:
+            fail("Expected sanitized fixture records were not exported")
+        time.sleep(0.1)
 
 
 def isolated_config(source, output):
@@ -42,12 +69,15 @@ def send(context, payload):
     with urllib.request.urlopen(request, context=context, timeout=10) as response:
         result = json.load(response)
     if int(result.get("partialSuccess", {}).get("rejectedLogRecords", 0)):
-        raise ValueError("Synthetic logs were rejected")
+        msg = "Synthetic logs were rejected"
+        raise ValueError(msg)
 
 
 def run(binary, config, tls, workspace):
-    if os.readlink("/proc/self/ns/net") == os.readlink("/proc/1/ns/net"):
-        raise ValueError("A separate network namespace is mandatory")
+    require(
+        os.readlink("/proc/self/ns/net") != os.readlink("/proc/1/ns/net"),
+        "A separate network namespace is mandatory",
+    )
     workspace.mkdir(mode=0o700, exist_ok=False)
     output = workspace / "sanitized.json"
     prepared = isolated_config(json.loads(config.read_text()), output)
@@ -121,13 +151,13 @@ def run(binary, config, tls, workspace):
         deadline = time.monotonic() + 30
         while True:
             if process.poll() is not None:
-                raise RuntimeError("Collector stopped; inspect the private smoke workspace")
+                fail("Collector stopped; inspect the private smoke workspace")
             try:
                 with socket.create_connection(("127.0.0.1", 14318), timeout=1):
                     break
-            except OSError:
+            except OSError as exc:
                 if time.monotonic() >= deadline:
-                    raise RuntimeError("Synthetic receiver startup timed out")
+                    fail("Synthetic receiver startup timed out")
                 time.sleep(0.1)
         send(context, payload)
         anonymous = ssl.create_default_context(cafile=str(tls / "ca.crt"))
@@ -139,17 +169,9 @@ def run(binary, config, tls, workspace):
         except (ssl.SSLError, ConnectionResetError, BrokenPipeError):
             pass
         else:
-            raise ValueError("Receiver accepted a request without a client certificate")
-        while True:
-            text = output.read_text() if output.exists() else ""
-            if all(
-                sentinel in text
-                for sentinel in ["plain-sentinel", "structured-sentinel", "json-sentinel"]
-            ):
-                break
-            if process.poll() is not None or time.monotonic() >= deadline:
-                raise RuntimeError("Expected sanitized fixture records were not exported")
-            time.sleep(0.1)
+            msg = "Receiver accepted a request without a client certificate"
+            raise ValueError(msg)
+        text = await_sanitized_export(process, output, deadline)
         forbidden = [
             "FIXTURE_PASSWORD",
             "FIXTURE_TOKEN",
@@ -162,8 +184,10 @@ def run(binary, config, tls, workspace):
             "HISTORICAL_DO_NOT_IMPORT",
             "UNKNOWN_TIMESTAMP_DO_NOT_IMPORT",
         ]
-        if any(value in text for value in forbidden):
-            raise ValueError("Privacy or historical-cut fixture leaked into synthetic output")
+        require(
+            not any(value in text for value in forbidden),
+            "Privacy or historical-cut fixture leaked into synthetic output",
+        )
     finally:
         process.terminate()
         try:

@@ -48,57 +48,74 @@ def configuration(original):
     settings = result.setdefault("litellm_settings", {})
     callbacks = settings.get("callbacks", [])
     if not isinstance(callbacks, list) or "prometheus" not in callbacks:
-        msg = "Existing authenticated Prometheus callback must be preserved"
-        raise ValueError(msg)
+        raise ValueError("Existing authenticated Prometheus callback must be preserved")
     if "otel" not in callbacks:
         callbacks.append("otel")
     settings["turn_off_message_logging"] = True
     return result
 
 
+def require(expected: object, message: str) -> None:
+    """Enforce an invariant, failing with the given message."""
+    if not expected:
+        raise ValueError(message)
+
+
 def run(output, apply):
     os.umask(0o077)
     parent = Path.home() / "Library/Application Support/homelab/otel-controller"
-    if not output.resolve().is_relative_to(parent.resolve()):
-        msg = "Private rollout evidence must remain in the durable controller root"
-        raise ValueError(msg)
+    require(
+        output.resolve().is_relative_to(parent.resolve()),
+        "Private rollout evidence must remain in the durable controller root",
+    )
     scope = json.loads((ROOT / "deploy/monitoring/otel-application-scope.json").read_text())
-    if apply and "litellm" not in scope.get("dedicatedClientCertificates", {}).get(
-        "sdkReloadVerifiedForApplications", []
-    ):
-        msg = "Production apply blocked until least-privilege renewable SDK credential reload is independently verified"
-        raise ValueError(msg)
+    require(
+        not apply
+        or "litellm"
+        in scope.get("dedicatedClientCertificates", {}).get(
+            "sdkReloadVerifiedForApplications", []
+        ),
+        "Production apply blocked until least-privilege renewable SDK credential"
+        " reload is independently verified",
+    )
     proxy = json.loads(
         (
             ROOT / "deploy/monitoring/migration-evidence/litellm-proxy-sdk-canary-20261101.json"
         ).read_text()
     )
-    if not (
-        proxy["source"]["success"]
-        and proxy["source"]["httpStatus"] == 200
-        and proxy["source"]["sourcePrivacyAudit"]["endedSpans"] >= 2
-        and not proxy["source"]["sourcePrivacyAudit"]["sensitiveSyntheticContentFoundAtSource"]
-        and proxy["backend"]["success"]
-    ):
-        msg = "Native proxy route, internal child and source privacy gates must pass"
-        raise ValueError(msg)
+    require(
+        all(
+            [
+                proxy["source"]["success"],
+                proxy["source"]["httpStatus"] == 200,
+                proxy["source"]["sourcePrivacyAudit"]["endedSpans"] >= 2,
+                not proxy["source"]["sourcePrivacyAudit"]["sensitiveSyntheticContentFoundAtSource"],
+                proxy["backend"]["success"],
+            ]
+        ),
+        "Native proxy route, internal child and source privacy gates must pass",
+    )
     if apply:
         renewal = json.loads(
             (
                 ROOT / "deploy/monitoring/migration-evidence/litellm-sdk-leaf-renewal-20261101.json"
             ).read_text()
         )
-        if not (
-            renewal["source"]["success"]
-            and renewal["source"]["sameNativeSdkProviderAndExporterInstance"]
-            and renewal["source"]["connectionCloseEnabled"]
-            and renewal["source"]["oldAndNewLeafLoadedByNativeTlsStack"]
-            and renewal["rotation"]["clientKeypairRotationVerified"]
-            and len(renewal["backend"]) == 2
-            and all(proof["success"] for proof in renewal["backend"])
-        ):
-            msg = "Native same-instance SDK renewal and both backend traces must be independently verified"
-            raise ValueError(msg)
+        require(
+            all(
+                [
+                    renewal["source"]["success"],
+                    renewal["source"]["sameNativeSdkProviderAndExporterInstance"],
+                    renewal["source"]["connectionCloseEnabled"],
+                    renewal["source"]["oldAndNewLeafLoadedByNativeTlsStack"],
+                    renewal["rotation"]["clientKeypairRotationVerified"],
+                    len(renewal["backend"]) == 2,
+                    all(proof["success"] for proof in renewal["backend"]),
+                ]
+            ),
+            "Native same-instance SDK renewal and both backend traces must be"
+            " independently verified",
+        )
     output.mkdir(mode=0o700)
     kube = BOOTSTRAP.kube
     deployment = kube("-n", "llm", "get", "deployment", "litellm", "-o", "json")
@@ -112,22 +129,25 @@ def run(output, apply):
     container = next(value for value in pod["containers"] if value["name"] == "litellm")
     current = {entry["name"]: entry for entry in container.get("env", [])}
     for name, value in sdk_environment().items():
-        if name in current and current[name] != {"name": name, "value": value}:
-            msg = "Unreviewed conflicting SDK environment; refuse overwrite"
-            raise ValueError(msg)
+        require(
+            name not in current or current[name] == {"name": name, "value": value},
+            "Unreviewed conflicting SDK environment; refuse overwrite",
+        )
     volume = {
         "name": "otel-client",
         "secret": {"secretName": "otel-app-tls-litellm", "defaultMode": 256},
     }
     mount = {"name": "otel-client", "mountPath": "/etc/otel-client", "readOnly": True}
     for existing in pod.get("volumes", []):
-        if existing["name"] == "otel-client" and existing != volume:
-            msg = "Unexpected existing credential volume"
-            raise ValueError(msg)
+        require(
+            existing["name"] != "otel-client" or existing == volume,
+            "Unexpected existing credential volume",
+        )
     for existing in container.get("volumeMounts", []):
-        if existing["name"] == "otel-client" and existing != mount:
-            msg = "Unexpected existing credential mount"
-            raise ValueError(msg)
+        require(
+            existing["name"] != "otel-client" or existing == mount,
+            "Unexpected existing credential mount",
+        )
     fingerprint = hashlib.sha256(
         json.dumps({"sdk": sdk_environment(), "config": changed}, sort_keys=True).encode()
     ).hexdigest()
@@ -271,9 +291,10 @@ def run(output, apply):
         else:
             receipt["newSdkPodReady"] = False
         (output / "result.json").write_text(json.dumps(receipt, indent=2) + "\n")
-        if not receipt.get("newSdkPodReady"):
-            msg = "SDK candidate did not become ready; private preimages retained; never force kill"
-            raise ValueError(msg)
+        require(
+            receipt.get("newSdkPodReady"),
+            "SDK candidate did not become ready; private preimages retained; never force kill",
+        )
     else:
         (output / "result.json").write_text(json.dumps(receipt, indent=2) + "\n")
     print(json.dumps(receipt))

@@ -6,13 +6,13 @@ import fcntl
 import hashlib
 import json
 import os
-from pathlib import Path
 import re
 import socket
 import urllib.parse
 import urllib.request
 import uuid
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("root", type=Path)
@@ -30,13 +30,15 @@ lock = open(root / "portal-icons.lock", "a", opener=lambda p, f: os.open(p, f, 0
 fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
 uncertain = root / "portal-icons-uncertain.json"
 if uncertain.exists():
-    raise RuntimeError("Prior icon operation requires explicit receipt/state review")
+    msg = "Prior icon operation requires explicit receipt/state review"
+    raise RuntimeError(msg)
 credentials = json.loads((root / "credentials.json").read_text())
 headers = {"Authorization": "Bearer " + credentials["AUTHENTIK_BOOTSTRAP_TOKEN"]}
 base = "https://auth.socrat.alchemmist.xyz/api/v3/"
 
 
 def api(method, path, payload=None):
+    """Api."""
     req = urllib.request.Request(
         base + path,
         method=method,
@@ -49,11 +51,13 @@ def api(method, path, payload=None):
 
 
 def private_json(path, value):
+    """Private json."""
     with open(path, "x", opener=lambda p, f: os.open(p, f, 0o600)) as out:
         json.dump(value, out)
 
 
 def normalize(value, key=""):
+    """Normalize."""
     if isinstance(value, dict):
         return {k: normalize(v, k) for k, v in value.items()}
     if isinstance(value, list):
@@ -69,6 +73,7 @@ def normalize(value, key=""):
 
 
 def stable(app):
+    """Stable."""
     # These three fields are the icon and its derived, possibly signed URLs.
     return normalize(
         {
@@ -81,23 +86,27 @@ def stable(app):
 
 inventory = api("GET", "core/applications/?superuser_full_list=true&page_size=100")
 if inventory["pagination"]["total_pages"] != 1:
-    raise RuntimeError("Incomplete application inventory; no changes made")
+    msg = "Incomplete application inventory; no changes made"
+    raise RuntimeError(msg)
 applications = {a["slug"]: a for a in inventory["results"]}
 if len(applications) != len(inventory["results"]):
-    raise RuntimeError("Duplicate application slug")
+    msg = "Duplicate application slug"
+    raise RuntimeError(msg)
 if args.expected_inventory:
     expected = {a["slug"]: a for a in json.loads(args.expected_inventory.read_text())}
     if set(expected) != set(applications) or any(
         stable(expected[s]) != stable(a) or expected[s]["meta_icon"] != a["meta_icon"]
         for s, a in applications.items()
     ):
-        raise RuntimeError("Application inventory differs from reviewed audit; no changes made")
+        msg = "Application inventory differs from reviewed audit; no changes made"
+        raise RuntimeError(msg)
 
 plan = []
 seen = set()
 for filename, source in json.loads((assets / "sources.json").read_text())["files"].items():
     if Path(filename).name != filename or not filename.endswith(".svg"):
-        raise RuntimeError("Invalid asset name")
+        msg = "Invalid asset name"
+        raise RuntimeError(msg)
     content = (assets / filename).read_bytes()
     digest = hashlib.sha256(content).hexdigest()
     if digest != source["sha256"]:
@@ -114,11 +123,13 @@ for filename, source in json.loads((assets / "sources.json").read_text())["files
                 raise RuntimeError("External SVG resource: " + filename)
     targets = source.get("applications", [Path(filename).stem])
     if not isinstance(targets, list):
-        raise RuntimeError("Invalid icon application targets")
+        msg = "Invalid icon application targets"
+        raise RuntimeError(msg)
     name = "service-icons/" + Path(filename).stem + "-" + digest[:12] + ".svg"
     for slug in targets:
         if not re.fullmatch(r"[a-z0-9-]+", slug) or slug in seen:
-            raise RuntimeError("Invalid or duplicate application target")
+            msg = "Invalid or duplicate application target"
+            raise RuntimeError(msg)
         seen.add(slug)
     if targets:
         plan.append((filename, content, digest, name, targets))
@@ -159,7 +170,8 @@ for filename, content, digest, name, targets in plan:
     url = files[name]["url"]
     parsed = urllib.parse.urlsplit(url)
     if parsed.scheme != "https" or parsed.netloc != "auth.socrat.alchemmist.xyz":
-        raise RuntimeError("Unexpected media origin; no credential forwarding")
+        msg = "Unexpected media origin; no credential forwarding"
+        raise RuntimeError(msg)
     # Media fetch carries no API credential, and signed URLs are never logged.
     with urllib.request.urlopen(url, timeout=60) as response:
         fetched = response.read()

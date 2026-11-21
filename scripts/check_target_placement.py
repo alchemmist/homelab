@@ -6,9 +6,59 @@ import json
 import shlex
 import subprocess
 import time
+from typing import TypedDict
+
+
+class _ContainerStatus(TypedDict):
+    ready: bool
+
+
+class _PodStatus(TypedDict):
+    phase: str
+
+
+class _OptionalPodStatus(_PodStatus, total=False):
+    conditions: list[dict[str, object]]
+    containerStatuses: list[_ContainerStatus]
+
+
+class _PodSpec(TypedDict):
+    containers: list[object]
+
+
+class _OptionalPodSpec(_PodSpec, total=False):
+    nodeName: str
+
+
+class _PodMetadata(TypedDict):
+    deletionTimestamp: str
+
+
+class _OptionalPodMetadata(_PodMetadata, total=False):
+    namespace: str
+
+
+class _Pod(TypedDict):
+    metadata: _OptionalPodMetadata
+    spec: _OptionalPodSpec
+    status: _OptionalPodStatus
+
+
+def _pod_ready(pod: _Pod, node: str) -> bool:
+    """Report whether one Pod is Running, Ready and pinned to the target node."""
+    if pod["metadata"].get("deletionTimestamp") or pod["spec"].get("nodeName") != node:
+        return False
+    state = pod["status"]
+    if state.get("phase") != "Running" or not any(
+        c.get("type") == "Ready" and c.get("status") == "True" for c in state.get("conditions", [])
+    ):
+        return False
+    states = state.get("containerStatuses", [])
+    return len(states) == len(pod["spec"]["containers"]) and all(c.get("ready") for c in states)
 
 
 def converged(deployment, pods, node, replicas=1):
+    """Perform the converged operation."""
     spec, status = deployment["spec"], deployment.get("status", {})
     if replicas < 1 or spec.get("replicas") != replicas:
         return False
@@ -22,19 +72,7 @@ def converged(deployment, pods, node, replicas=1):
         return False
     if len(pods) != replicas:
         return False
-    for pod in pods:
-        if pod["metadata"].get("deletionTimestamp") or pod["spec"].get("nodeName") != node:
-            return False
-        state = pod.get("status", {})
-        if state.get("phase") != "Running" or not any(
-            c.get("type") == "Ready" and c.get("status") == "True"
-            for c in state.get("conditions", [])
-        ):
-            return False
-        states = state.get("containerStatuses", [])
-        if len(states) != len(pod["spec"]["containers"]) or not all(c.get("ready") for c in states):
-            return False
-    return True
+    return all(_pod_ready(pod, node) for pod in pods)
 
 
 def owned_by_current_revision(deployment, replica_sets, pods):
@@ -64,6 +102,7 @@ def owned_by_current_revision(deployment, replica_sets, pods):
 
 
 def main():
+    """Run the command-line entry point."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--namespace", required=True)
     p.add_argument("--deployment", required=True)

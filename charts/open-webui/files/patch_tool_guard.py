@@ -1,3 +1,4 @@
+"""Patch the Open WebUI tool-call source with homelab tool guard hooks."""
 import ast
 import pathlib
 import sys

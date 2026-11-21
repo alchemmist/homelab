@@ -10,10 +10,15 @@ from engine import REPO, UPDATES, UnsafeInput
 
 
 class GitHub:
-    def __init__(self, token):
+    """GitHub REST API client for blog updates."""
+
+    def __init__(self, token) -> None:
+        """Initialize the GitHub client."""
+
         self.token = token
 
     def api(self, method, path, body=None):
+        """Call the fixed GitHub API destination with the configured token."""
         # All destinations are fixed; model input never controls API paths.
         request = urllib.request.Request(
             "https://api.github.com/repos/" + REPO + "/" + path,
@@ -33,6 +38,7 @@ class GitHub:
             raise RuntimeError(f"GitHub {method} failed (HTTP {exc.code})") from None
 
     def compare(self, before, after):
+        """Validate both commit SHAs before any comparison is attempted."""
         for sha in (before, after):
             if not re.fullmatch("[a-f0-9]{40}", sha):
                 msg = "Full SHA required"
@@ -64,6 +70,7 @@ class GitHub:
         return result
 
     def read_updates(self, ref):
+        """Read and decode the updates file at the given ref."""
         f = self.api("GET", f"contents/{UPDATES}?ref={ref}")
         if f.get("encoding") != "base64":
             msg = "Unexpected GitHub content encoding"
@@ -71,6 +78,7 @@ class GitHub:
         return base64.b64decode(f["content"]).decode(), f["sha"]
 
     def propose(self, after, content, reason, draft=False):
+        """Open a pull request carrying the reviewed update content."""
         if not re.fullmatch("[a-f0-9]{40}", after):
             msg = "Full SHA required"
             raise UnsafeInput(msg)

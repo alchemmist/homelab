@@ -5,7 +5,6 @@ import argparse
 import grp
 import json
 import os
-from pathlib import Path
 import pwd
 import re
 import shutil
@@ -13,6 +12,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 PROTECTED = {"root", "alchemmist", "ghactions", "nobody"}
 PRIVILEGED = {
@@ -38,11 +38,13 @@ KEY = re.compile(
 
 
 def require(ok, message):
+    """Execute the require operation."""
     if not ok:
         raise ValueError(message)
 
 
 def username(name):
+    """Execute the username operation."""
     require(
         bool(re.fullmatch(r"[a-z_][a-z0-9_-]{0,30}", name)) and name not in PROTECTED,
         "Invalid or protected Linux username",
@@ -50,6 +52,7 @@ def username(name):
 
 
 def fingerprint(line):
+    """Execute the fingerprint operation."""
     with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8") as f:
         f.write(line + "\n")
         f.flush()
@@ -66,6 +69,7 @@ def fingerprint(line):
 
 
 def validate(name, text):
+    """Execute the validate operation."""
     username(name)
     require(isinstance(text, str) and len(text) <= 16384, "Supply one OpenSSH public key")
     # Strip a normal public-file line ending, not arbitrary embedded controls.
@@ -84,6 +88,7 @@ def validate(name, text):
 
 
 def safe_paths(name, account):
+    """Execute the safe_paths operation."""
     home = Path("/home") / name
     require(
         account is None or account.pw_dir == str(home), "Nonstandard home requires separate review"
@@ -120,6 +125,7 @@ def safe_paths(name, account):
 
 
 def ssh_policy(name):
+    """Execute the ssh_policy operation."""
     daemon = shutil.which("sshd") or "/usr/sbin/sshd"
     r = subprocess.run(
         [daemon, "-T", "-C", "user=" + name + ",host=socrat,addr=100.100.240.102"],
@@ -143,7 +149,30 @@ def ssh_policy(name):
     )
 
 
+def enforce_account_state(
+    home: Path, keys: Path, account: pwd.struct_passwd, *, present: bool, locked: bool
+) -> None:
+    """Verify the post-apply invariants for a managed SSH account."""
+    require(present and locked, "Requested key/password lock missing after apply")
+    require(
+        stat.S_IMODE((home / ".ssh").stat().st_mode) == 0o700
+        and stat.S_IMODE(keys.stat().st_mode) == 0o600
+        and (home / ".ssh").stat().st_uid == keys.stat().st_uid == account.pw_uid,
+        "SSH file permissions/ownership incorrect after apply",
+    )
+
+
+def login_defs_uid_min() -> int:
+    """Return the configured minimum UID for regular accounts."""
+    uid_min = 1000
+    for line in Path("/etc/login.defs").read_text().splitlines():
+        if re.match(r"^\s*UID_MIN\s+\d+", line):
+            uid_min = int(line.split()[1])
+    return uid_min
+
+
 def inspect(name, expected=None, enforce=False):
+    """Execute the inspect operation."""
     username(name)
     require(os.geteuid() == 0, "Account verification requires root")
     require(
@@ -159,11 +188,10 @@ def inspect(name, expected=None, enforce=False):
     if account is None:
         require(not enforce, "Account missing after apply")
         return {"username": name, "exists": False, "has_requested_key": False}
-    uid_min = 1000
-    for line in Path("/etc/login.defs").read_text().splitlines():
-        if re.match(r"^\s*UID_MIN\s+\d+", line):
-            uid_min = int(line.split()[1])
-    require(account.pw_uid >= uid_min and account.pw_gid != 0, "System/root account is protected")
+    require(
+        account.pw_uid >= login_defs_uid_min() and account.pw_gid != 0,
+        "System/root account is protected",
+    )
     require(
         any(line.startswith(name + ":") for line in Path("/etc/passwd").read_text().splitlines()),
         "Non-local account requires a separate identity provider procedure",
@@ -212,13 +240,7 @@ def inspect(name, expected=None, enforce=False):
             locked = fields[1].startswith(("!", "*"))
             break
     if enforce:
-        require(present and locked, "Requested key/password lock missing after apply")
-        require(
-            stat.S_IMODE((home / ".ssh").stat().st_mode) == 0o700
-            and stat.S_IMODE(keys.stat().st_mode) == 0o600
-            and (home / ".ssh").stat().st_uid == keys.stat().st_uid == account.pw_uid,
-            "SSH file permissions/ownership incorrect after apply",
-        )
+        enforce_account_state(home, keys, account, present=present, locked=locked)
     return {
         "username": name,
         "exists": True,
@@ -232,6 +254,7 @@ def inspect(name, expected=None, enforce=False):
 
 
 def main():
+    """Execute the main operation."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("mode", choices=["validate", "inspect", "as-user"])
     p.add_argument("--username", required=True)

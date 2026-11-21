@@ -1,3 +1,5 @@
+"""Configure LiteLLM branding (logo/favicon URLs) via its admin API."""
+
 import base64
 import json
 import subprocess
@@ -5,6 +7,7 @@ import urllib.request
 
 
 def kubectl(*args):
+    """Kubectl."""
     return subprocess.check_output(["kubectl", "-n", "llm", *args], text=True)
 
 
@@ -21,6 +24,7 @@ urls = {
 
 
 def request(path, payload=None, method=None):
+    """Request."""
     req = urllib.request.Request(
         base + path,
         headers=headers,
@@ -36,7 +40,8 @@ for url in set(urls.values()):
         if response.headers.get_content_type() != (
             "image/svg+xml" if url.endswith(".svg") else "image/png"
         ):
-            raise RuntimeError("Brand asset returned an unexpected content type")
+            msg = "Brand asset returned an unexpected content type"
+            raise RuntimeError(msg)
 current = request("/get/ui_theme_settings")["values"]
 if any(current.get(name) != url for name, url in urls.items()):
     request("/config/update", {"general_settings": {"store_model_in_db": True}}, method="POST")
@@ -46,5 +51,6 @@ else:
     print("branding unchanged")
 actual = request("/get/ui_theme_settings")["values"]
 if any(actual.get(name) != url for name, url in urls.items()):
-    raise RuntimeError("Branding readback failed")
+    msg = "Branding readback failed"
+    raise RuntimeError(msg)
 print("branding verified")

@@ -38,15 +38,18 @@ class Refused(ValueError):
 
 
 def require(ok, message):
+    """Raise an error when a required condition is not met."""
     if not ok:
         raise Refused(message)
 
 
 def fields(obj, expected):
+    """Perform the fields operation."""
     require(isinstance(obj, dict) and set(obj) == set(expected), "Unexpected document fields")
 
 
 def canonical_uuid(value):
+    """Perform the canonical uuid operation."""
     try:
         require(
             isinstance(value, str) and str(uuid.UUID(value)) == value, "Canonical UUID required"
@@ -59,7 +62,8 @@ def canonical_uuid(value):
 
 def read_json(path):
     # Do not include decoder errors: they can contain supplied private material.
-    def unique_pairs(pairs):
+    """Perform the read json operation."""
+    def unique_pairs(pairs) -> dict[str, object]:
         result = {}
         for key, value in pairs:
             require(key not in result, "Duplicate JSON field")
@@ -73,6 +77,7 @@ def read_json(path):
 
 
 def bindings_map(document):
+    """Perform the bindings map operation."""
     fields(document, ["version", "bindings"])
     require(
         document["version"] == 1 and isinstance(document["bindings"], list),
@@ -96,6 +101,7 @@ def bindings_map(document):
 
 
 def validate_history(current, histories):
+    """Perform the validate history operation."""
     for old in histories:
         for ident, name in bindings_map(old).items():
             require(
@@ -107,7 +113,7 @@ def validate_history(current, histories):
 def binding_history():
     """Fail closed without full Git history. A binding is never reused, even after revoke."""
 
-    def git(*args):
+    def git(*args) -> str:
         try:
             return subprocess.run(
                 ["git", "-C", str(ROOT), *args], check=True, capture_output=True, text=True
@@ -130,6 +136,7 @@ def binding_history():
 
 
 def host_list(value):
+    """Perform the host list operation."""
     require(
         isinstance(value, list)
         and all(isinstance(h, str) and re.fullmatch(r"[a-z0-9][a-z0-9.-]{0,62}", h) for h in value),
@@ -140,6 +147,7 @@ def host_list(value):
 
 
 def validate_policy(policy, bindings):
+    """Perform the validate policy operation."""
     fields(policy, ["version", "public_key_attribute", "assignments"])
     require(policy["version"] == 1, "Unsupported policy version")
     require(
@@ -179,6 +187,7 @@ def validate_transition(policy, histories):
 
 def policy_history():
     # Same full-checkout trust boundary as bindings. Only this fixed path is read.
+    """Perform the policy history operation."""
     path = str(POLICY.relative_to(ROOT))
     try:
         revisions = subprocess.run(
@@ -203,6 +212,7 @@ def policy_history():
 
 
 def public_keys(value):
+    """Perform the public keys operation."""
     require(
         isinstance(value, list) and 0 < len(value) <= 32,
         "Active assignment needs a public key list",
@@ -246,12 +256,20 @@ def public_keys(value):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
+    def redirect_request(self, _req, _fp, _code, _msg, _headers, _newurl):
+
+        'Refuse Authentik redirects instead of following them.'
         raise Refused("Authentik redirect refused")
 
 
 class Authentik:
-    def __init__(self, url, token, ca_file=None):
+    """Authentik HTTP API client used for SSH identity planning."""
+
+    def __init__(self, url, token, ca_file=None) -> None:
+        """Initialize the Authentik client."""
+
         parsed = urllib.parse.urlsplit(url)
         require(
             parsed.scheme == "https"
@@ -276,6 +294,7 @@ class Authentik:
         )
 
     def user(self, ident):
+        'Fetch the unique user record for a canonical UUID.'
         canonical_uuid(ident)
         query = urllib.parse.urlencode({"uuid": ident, "page_size": 100})
         request = urllib.request.Request(
@@ -311,10 +330,12 @@ class Authentik:
 
 
 def digest(value):
+    """Perform the digest operation."""
     return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=True).encode()).hexdigest()
 
 
 def build_plan(bindings, policy, get_user):
+    """Build the plan."""
     validate_policy(policy, bindings)
     by_host, summary = {}, []
     for row in policy["assignments"]:
@@ -369,6 +390,7 @@ def build_plan(bindings, policy, get_user):
 
 
 def export(path, payload, approval):
+    """Write the export output."""
     require(bool(payload["required_hosts"]), "Empty integration cannot be exported")
     review = digest(payload)
     require(approval == review, "Export requires --approve-plan with the current review SHA256")
@@ -388,6 +410,7 @@ def export(path, payload, approval):
 
 
 def main(argv=None):
+    """Run the command-line entry point."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--authentik-url", help="HTTPS origin, no API path; token from AUTHENTIK_SSH_TOKEN"
@@ -413,7 +436,7 @@ def main(argv=None):
             users = read_json(args.snapshot)
             require(isinstance(users, list), "Snapshot must be a public-only API user list")
 
-            def get_user(ident):
+            def get_user(ident) -> dict[str, object] | None:
                 rows = [u for u in users if isinstance(u, dict) and u.get("uuid") == ident]
                 require(len(rows) == 1, "Snapshot UUID missing or duplicated")
                 return rows[0]

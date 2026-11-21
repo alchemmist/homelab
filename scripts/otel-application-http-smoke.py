@@ -21,7 +21,7 @@ def run(output):
     positive.load_cert_chain(str(root / "client.crt"), str(root / "client.key"))
     negative = ssl.create_default_context(cafile=str(root / "ca.crt"))
 
-    def send(path, context):
+    def send(path, context) -> int:
         request = urllib.request.Request(
             "https://10.250.0.3:44318" + path,
             data=b"",
@@ -29,7 +29,8 @@ def run(output):
             method="POST",
         )
         with urllib.request.urlopen(request, context=context, timeout=10) as response:
-            return response.status
+            status: int = response.status
+            return status
 
     if send("/v1/traces", positive) != 200:
         msg = "Authenticated native trace route is not ready"

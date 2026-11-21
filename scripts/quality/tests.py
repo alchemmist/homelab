@@ -6,15 +6,16 @@ import argparse
 import getpass
 import json
 import os
-from pathlib import Path
 import platform
 import subprocess
 import sys
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 def main():
+    """Execute main."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("suite")
     parser.add_argument("--isolate-network", action="store_true")

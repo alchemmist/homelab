@@ -1,3 +1,4 @@
+"""Pin Rancher Fleet controller pods to specific nodes for OTEL capacity."""
 import argparse
 import copy
 import json
@@ -18,35 +19,29 @@ NODES = ["socrat-0", "socrat-1"]
 def placement(document):
     metadata, spec = document["metadata"], document["spec"]
     if (metadata["namespace"], metadata["name"]) not in TARGETS:
-        msg = "Deployment outside the explicit stateless-controller allowlist"
-        raise ValueError(msg)
+        raise ValueError("Deployment outside the explicit stateless-controller allowlist")
     if (
         spec.get("paused")
         or spec.get("strategy", {}).get("type", "RollingUpdate") != "RollingUpdate"
     ):
-        msg = "Paused or non-rolling deployment needs separate handling"
-        raise ValueError(msg)
+        raise ValueError("Paused or non-rolling deployment needs separate handling")
     desired = spec.get("replicas", 1)
     if desired < 1 or document.get("status", {}).get("readyReplicas", 0) < desired:
-        msg = "Controller is not healthy before capacity placement"
-        raise ValueError(msg)
+        raise ValueError("Controller is not healthy before capacity placement")
     pod = spec["template"]["spec"]
     if any(
         any(key in volume for key in ("persistentVolumeClaim", "hostPath", "nfs"))
         for volume in pod.get("volumes", [])
     ):
-        msg = "Refusing to relocate a controller with persistent/local data"
-        raise ValueError(msg)
+        raise ValueError("Refusing to relocate a controller with persistent/local data")
     if any(
         c.get("imagePullPolicy", "IfNotPresent") != "IfNotPresent"
         for c in pod["containers"] + pod.get("initContainers", [])
     ):
-        msg = "Warm-image-only rollout requires IfNotPresent"
-        raise ValueError(msg)
+        raise ValueError("Warm-image-only rollout requires IfNotPresent")
     pin = pod.get("nodeSelector", {}).get("kubernetes.io/hostname")
     if pin is not None and pin not in NODES:
-        msg = "Existing hostname pin conflicts with the large-node placement"
-        raise ValueError(msg)
+        raise ValueError("Existing hostname pin conflicts with the large-node placement")
     original = copy.deepcopy(pod.get("affinity"))
     affinity = copy.deepcopy(original or {})
     required = {
@@ -61,8 +56,7 @@ def placement(document):
         }
     }
     if affinity.get("nodeAffinity") not in (None, required):
-        msg = "Existing node affinity requires explicit reconciliation"
-        raise ValueError(msg)
+        raise ValueError("Existing node affinity requires explicit reconciliation")
     affinity["nodeAffinity"] = required
     if original == affinity:
         return None, None
@@ -89,7 +83,7 @@ def run(kubeconfig, state_directory):
     state_directory.mkdir(mode=0o700, parents=True, exist_ok=False)
     base = ["k3s", "kubectl", "--kubeconfig", kubeconfig]
 
-    def command(arguments):
+    def command(arguments) -> str:
         return subprocess.check_output(base + arguments, text=True, timeout=200)
 
     nodes = json.loads(command(["get", "nodes", "-o", "json"]))
@@ -100,8 +94,7 @@ def run(kubeconfig, state_directory):
         and any(c["type"] == "Ready" and c["status"] == "True" for c in n["status"]["conditions"])
     }
     if not set(NODES) <= ready:
-        msg = "Both large nodes must be Ready and schedulable"
-        raise ValueError(msg)
+        raise ValueError("Both large nodes must be Ready and schedulable")
     result = []
     for namespace, name in TARGETS:
         get = ["-n", namespace, "get", "deployment", name, "-o", "json"]
@@ -145,8 +138,7 @@ def run(kubeconfig, state_directory):
                 and any(o["uid"] in owners for o in p["metadata"].get("ownerReferences", []))
             ]
             if not active or any(p["spec"].get("nodeName") not in NODES for p in active):
-                msg = "Controller has not moved entirely to the large nodes"
-                raise ValueError(msg)
+                raise ValueError("Controller has not moved entirely to the large nodes")
             result.append(
                 {
                     "namespace": namespace,
@@ -155,14 +147,13 @@ def run(kubeconfig, state_directory):
                     "nodes": sorted({p["spec"]["nodeName"] for p in active}),
                 }
             )
-        except Exception:
+        except Exception as exc:
             live = json.loads(command(get))
             if (
                 live["metadata"]["uid"] != rollback["uid"]
                 or live["spec"]["template"]["spec"].get("affinity") != rollback["appliedAffinity"]
             ):
-                msg = "Concurrent placement change: manual rollback required"
-                raise RuntimeError(msg)
+                raise RuntimeError("Concurrent placement change: manual rollback required") from exc
             restore = {
                 "metadata": {"resourceVersion": live["metadata"]["resourceVersion"]},
                 "spec": {

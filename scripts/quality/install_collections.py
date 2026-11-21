@@ -4,14 +4,15 @@ import hashlib
 import json
 import re
 import shutil
-from pathlib import Path
 import subprocess
 import tempfile
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 def main():
+    """Execute main."""
     records = json.loads((ROOT / "quality/collections.lock.json").read_text())["collections"]
     executable = shutil.which("ansible-galaxy")
     if executable is None:

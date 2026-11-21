@@ -15,27 +15,32 @@ COPIES = [ROOT / p for p in ("deploy/monitoring/otel/loki.yaml", "charts/loki/fi
 LEVELS = {"trace", "debug", "info", "warn", "error", "fatal", "unknown"}
 
 
+def require(expected: object, message: str) -> None:
+    """Enforce an invariant, failing with the given message."""
+    if not expected:
+        raise ValueError(message)
+
+
 def rules(policy):
     if policy.get("schemaVersion") != 1:
-        msg = "Unsupported policy schema"
-        raise ValueError(msg)
+        raise ValueError("Unsupported policy schema")
     fallback = policy["fallbackHours"]
 
     def hours(value, level):
-        if type(value) is not int or not 24 <= value <= 8760:
-            msg = "Retention must be integer hours between 24h and 365d"
-            raise ValueError(msg)
-        if level == "unknown" and value != 336:
-            msg = "Unknown and fallback must preserve legacy 14d"
-            raise ValueError(msg)
+        require(
+            type(value) is int and 24 <= value <= 8760,
+            "Retention must be integer hours between 24h and 365d",
+        )
+        require(level != "unknown" or value == 336, "Unknown and fallback must preserve legacy 14d")
         if value > 336:
             approval = policy.get("capacityApproval") or {}
-            if not all(
-                isinstance(approval.get(k), str) and approval[k].strip()
-                for k in ("measuredAt", "evidence", "approvedBy")
-            ):
-                msg = "Any extension beyond 14d requires measured capacity approval"
-                raise ValueError(msg)
+            require(
+                all(
+                    isinstance(approval.get(k), str) and approval[k].strip()
+                    for k in ("measuredAt", "evidence", "approvedBy")
+                ),
+                "Any extension beyond 14d requires measured capacity approval",
+            )
             fields = (
                 "budgetBytes",
                 "projectedBytes",
@@ -47,9 +52,10 @@ def rules(policy):
                 "dailyGrowthUpperBytes",
                 "sampleSeconds",
             )
-            if any(type(approval.get(k)) is not int or approval[k] <= 0 for k in fields):
-                msg = "Capacity measurements and reserves must be positive integers"
-                raise ValueError(msg)
+            require(
+                not any(type(approval.get(k)) is not int or approval[k] <= 0 for k in fields),
+                "Capacity measurements and reserves must be positive integers",
+            )
             # No severity discount without representative per-level measurements:
             # charge all observed growth at the longest requested retention.
             longest = max(
@@ -74,37 +80,41 @@ def rules(policy):
                 - (approval["filesystemCapacityBytes"] + 4) // 5
                 - approval["otherWorkloadsReserveBytes"]
             )
-            if (
-                approval["sampleSeconds"] < 604800
-                or approval["filesystemAvailableBytes"] > approval["filesystemCapacityBytes"]
-                or not minimum <= approval["projectedBytes"] <= approval["budgetBytes"] <= headroom
-            ):
-                msg = "Need representative 7d evidence, conservative projection and 20% filesystem reserve"
-                raise ValueError(msg)
+            require(
+                approval["sampleSeconds"] >= 604800
+                and approval["filesystemAvailableBytes"] <= approval["filesystemCapacityBytes"]
+                and minimum <= approval["projectedBytes"] <= approval["budgetBytes"] <= headroom,
+                "Need representative 7d evidence, conservative projection "
+                "and 20% filesystem reserve",
+            )
         return value
 
-    if set(policy["severityHours"]) != LEVELS:
-        msg = "All seven normalized severity policies are required"
-        raise ValueError(msg)
+    require(
+        set(policy["severityHours"]) == LEVELS,
+        "All seven normalized severity policies are required",
+    )
     candidates = [
         fallback,
         *policy["severityHours"].values(),
         *(h for overrides in policy.get("services", {}).values() for h in overrides.values()),
     ]
-    if any(type(h) is not int or not 24 <= h <= 8760 for h in candidates):
-        msg = "Retention must be integer hours between 24h and 365d"
-        raise ValueError(msg)
+    require(
+        not any(type(h) is not int or not 24 <= h <= 8760 for h in candidates),
+        "Retention must be integer hours between 24h and 365d",
+    )
     hours(fallback, "unknown")
     result = []
     for level, value in sorted(policy["severityHours"].items()):
         result.append((10, "{severity=" + json.dumps(level) + "}", hours(value, level)))
     for service, overrides in sorted(policy.get("services", {}).items()):
-        if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_.:/-]{0,199}", service):
-            msg = "Unsafe or empty service name"
-            raise ValueError(msg)
-        if not overrides or not set(overrides) <= LEVELS:
-            msg = "Service overrides must map normalized severity to hours"
-            raise ValueError(msg)
+        require(
+            re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_.:/-]{0,199}", service),
+            "Unsafe or empty service name",
+        )
+        require(
+            overrides and set(overrides) <= LEVELS,
+            "Service overrides must map normalized severity to hours",
+        )
         for level, value in sorted(overrides.items()):
             selector = (
                 "{service_name=" + json.dumps(service) + ",severity=" + json.dumps(level) + "}"
@@ -125,8 +135,7 @@ def render(text, policy):
         r"  retention_period:.*?\n(?=  allow_structured_metadata:)", block, text, flags=re.DOTALL
     )
     if count != 1:
-        msg = "Expected one bounded limits retention stanza"
-        raise ValueError(msg)
+        raise ValueError("Expected one bounded limits retention stanza")
     return text
 
 

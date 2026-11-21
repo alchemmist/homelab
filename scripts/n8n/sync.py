@@ -7,13 +7,15 @@ import os
 import re
 import subprocess
 from pathlib import Path
+from typing import cast
 from urllib.parse import urlsplit
 
 BASE = Path(__file__).resolve().parents[2]
 CONFIG = Path.home() / ".config/n8n"
 
 
-def api(method, path, body=None):
+def api(method, path, body=None) -> dict[str, object]:
+    """Call the private n8n REST API via curl and return parsed JSON."""
     cmd = [
         "curl",
         "--fail-with-body",
@@ -35,33 +37,41 @@ def api(method, path, body=None):
     if body is not None:
         cmd += ["--data-binary", "@-"]
     r = subprocess.run(
-        cmd, input=json.dumps(body, ensure_ascii=False, separators=(",", ":")) if body is not None else None, text=True, capture_output=True
+        cmd,
+        input=json.dumps(body, ensure_ascii=False, separators=(",", ":"))
+        if body is not None
+        else None,
+        text=True,
+        capture_output=True,
     )
     if r.returncode:
         raise RuntimeError("API request failed: " + method + " " + path)
-    return json.loads(r.stdout) if r.stdout else {}
+    payload: dict[str, object] = json.loads(r.stdout) if r.stdout else {}
+    return payload
 
 
-def render_workflow(template, creds, calendar, cloud=None):
+def render_workflow(template, creds, calendar, cloud=None) -> dict[str, object]:
+    """Materialize credentials and calendar selection into a workflow copy."""
     for kind in {k for n in template["nodes"] for k in n.get("credentials", {})}:
         if not creds.get(kind, {}).get("id"):
             raise RuntimeError("Missing credential mapping: " + kind)
     ids = calendar.get("calendar_ids", ["primary"])
     if not isinstance(ids, list) or not ids or not all(isinstance(x, str) and x for x in ids):
         raise RuntimeError("calendar_ids must be a nonempty list of calendar IDs")
-    w = copy.deepcopy(template)
-    for n in w["nodes"]:
+    w: dict[str, object] = copy.deepcopy(template)
+    for n in cast("list[dict[str, object]]", w["nodes"]):
         if n["name"] == "Select Calendars":
-            n["parameters"]["jsCode"] = (
+            cast("dict[str, object]", n["parameters"])["jsCode"] = (
                 "return " + json.dumps(ids) + ".map(calendarId => ({ json: { calendarId } }));"
             )
-        for kind in n.get("credentials", {}):
-            n["credentials"][kind] = creds[kind]
+        for kind in cast("dict[str, object]", n.get("credentials", {})):
+            cast("dict[str, object]", n["credentials"])[kind] = creds[kind]
     require_yandex_policy(w)
     return w
 
 
-def require_yandex_policy(workflow):
+def require_yandex_policy(workflow) -> None:
+    """Enforce that Yandex nodes only perform reviewed, token-authenticated actions."""
     for node in workflow["nodes"]:
         if node["type"] == "CUSTOM.yandexStation":
             if set(node.get("credentials", {})) != {"yandexStationApi"}:
@@ -84,7 +94,8 @@ def require_yandex_policy(workflow):
             )
 
 
-def main():
+def main() -> None:
+    """Upsert the inactive calendar workflow from the reviewed local template."""
     mapping = CONFIG / "calendar-credentials.json"
     if not mapping.exists():
         raise RuntimeError(
@@ -97,14 +108,15 @@ def main():
     require_yandex_policy(template)
     w = render_workflow(template, creds, calendar)
     body = {k: w[k] for k in ["name", "nodes", "connections", "settings"]}
-    existing = [x for x in api("GET", "workflows?limit=250")["data"] if x["name"] == w["name"]]
+    data = cast("list[dict[str, object]]", api("GET", "workflows?limit=250")["data"])
+    existing = [x for x in data if x["name"] == w["name"]]
     if len(existing) > 1:
         raise RuntimeError("Duplicate workflow names; refusing to update")
     if existing and existing[0]["active"]:
         raise RuntimeError("Workflow is active; deactivate explicitly before sync")
     result = api(
         "PUT" if existing else "POST",
-        "workflows/" + existing[0]["id"] if existing else "workflows",
+        "workflows/" + cast("str", existing[0]["id"]) if existing else "workflows",
         body,
     )
     print("Workflow:", result["id"], "active:", result.get("active", False))

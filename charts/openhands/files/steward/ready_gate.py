@@ -35,59 +35,9 @@ def _complete_connection(value: object, direction: str) -> bool:
     )
 
 
-def assess(pr, reviewers, handlers):
-    blockers = []
-    if pr.get("state") != "OPEN":
-        blockers.append("PR is not open")
-    head = pr.get("headRefOid")
-    if not isinstance(head, str) or not re.fullmatch("[0-9a-f]{40}", head):
-        blockers.append("Missing or invalid current head identity")
-    if not reviewers or not handlers:
-        blockers.append("Required reviewer and trusted handler identities must be configured")
-    if pr.get("mergeable") != "MERGEABLE":
-        blockers.append("PR conflicts or mergeability unknown")
-    if pr.get("isDraft"):
-        blockers.append("PR is still draft")
-    checks = (pr.get("statusCheckRollup") or {}).get("contexts", {})
-    if not checks.get("nodes"):
-        blockers.append("No remote CI evidence")
-    for check in checks.get("nodes", []):
-        ok = (
-            check.get("__typename") == "CheckRun"
-            and check.get("status") == "COMPLETED"
-            and check.get("conclusion") == "SUCCESS"
-        ) or (check.get("__typename") == "StatusContext" and check.get("state") == "SUCCESS")
-        if not ok:
-            blockers.append("CI not green: " + str(check.get("name") or check.get("context")))
-    sections = [
-        (pr.get(k, {}), "hasNextPage") for k in ("reviews", "comments", "reviewThreads")
-    ] + [(pr.get("commits", {}), "hasPreviousPage"), (checks, "hasNextPage")]
-    threads = pr.get("reviewThreads", {}).get("nodes", [])
-    sections += [(t.get("comments", {}), "hasNextPage") for t in threads]
-    if not all(_complete_connection(section, direction) for section, direction in sections):
-        blockers.append("Incomplete pagination; cannot authorize handoff")
-    reviews = pr.get("reviews", {}).get("nodes", [])
-    observed_bots = {
-        (r.get("author") or {}).get("login")
-        for r in reviews
-        if (r.get("author") or {}).get("__typename") == "Bot"
-    }
-    for actor in set(reviewers) | (observed_bots - {None}):
-        current = [
-            r
-            for r in reviews
-            if (r.get("author") or {}).get("login") == actor
-            and (r.get("commit") or {}).get("oid") == pr.get("headRefOid")
-        ]
-        if not current or current[-1].get("state") not in ("APPROVED", "COMMENTED"):
-            blockers.append("Bot review incomplete on current head: " + actor)
-    if any(r.get("state") == "PENDING" for r in reviews):
-        blockers.append("Pending review")
-    general = pr.get("comments", {}).get("nodes", [])
-    comments = general + [c for t in threads for c in t.get("comments", {}).get("nodes", [])]
-    # Review summaries are remarks too; general PR replies can account for them.
-    remarks = comments + [r for r in reviews if r.get("body")]
-    evidence = {}
+def collect_protocol_evidence(comments, handlers):
+    """Index protocol handoff records found in trusted handler replies."""
+    evidence: dict[object, list[object]] = {}
     for reply in comments:
         if (reply.get("author") or {}).get("login") not in handlers:
             continue
@@ -97,8 +47,11 @@ def assess(pr, reviewers, handlers):
                 evidence.setdefault(item["comment"], []).append((item, reply))
             except (ValueError, KeyError, TypeError):
                 pass
-    commits = {n["commit"]["oid"] for n in pr.get("commits", {}).get("nodes", [])}
-    repo_url = pr.get("url", "").split("/pull/")[0]
+    return evidence
+
+
+def remark_blockers(remarks, evidence, commits, repo_url, handlers, reviewers, threads, blockers):
+    """Append a blocker for every bot remark lacking an evidenced disposition."""
     for remark in remarks:
         author = remark.get("author") or {}
         is_bot = author.get("__typename") == "Bot" or author.get("login") in reviewers
@@ -130,6 +83,75 @@ def assess(pr, reviewers, handlers):
         )
         if bot_thread and not thread.get("isResolved"):
             blockers.append("Unresolved bot thread: " + thread["id"])
+
+
+def base_blockers(pr, reviewers, handlers):
+    """Collect the non-CI readiness blockers for a pull request."""
+    blockers = []
+    if pr.get("state") != "OPEN":
+        blockers.append("PR is not open")
+    head = pr.get("headRefOid")
+    if not isinstance(head, str) or not re.fullmatch("[0-9a-f]{40}", head):
+        blockers.append("Missing or invalid current head identity")
+    if not reviewers or not handlers:
+        blockers.append("Required reviewer and trusted handler identities must be configured")
+    if pr.get("mergeable") != "MERGEABLE":
+        blockers.append("PR conflicts or mergeability unknown")
+    if pr.get("isDraft"):
+        blockers.append("PR is still draft")
+    return blockers
+
+
+def ci_blockers(checks, blockers):
+    """Append a blocker for every CI context that is not a successful completed run."""
+    if not checks.get("nodes"):
+        blockers.append("No remote CI evidence")
+    for check in checks.get("nodes", []):
+        ok = (
+            check.get("__typename") == "CheckRun"
+            and check.get("status") == "COMPLETED"
+            and check.get("conclusion") == "SUCCESS"
+        ) or (check.get("__typename") == "StatusContext" and check.get("state") == "SUCCESS")
+        if not ok:
+            blockers.append("CI not green: " + str(check.get("name") or check.get("context")))
+
+
+def assess(pr, reviewers, handlers):
+    blockers = base_blockers(pr, reviewers, handlers)
+    checks = (pr.get("statusCheckRollup") or {}).get("contexts", {})
+    ci_blockers(checks, blockers)
+    sections = [
+        (pr.get(k, {}), "hasNextPage") for k in ("reviews", "comments", "reviewThreads")
+    ] + [(pr.get("commits", {}), "hasPreviousPage"), (checks, "hasNextPage")]
+    threads = pr.get("reviewThreads", {}).get("nodes", [])
+    sections += [(t.get("comments", {}), "hasNextPage") for t in threads]
+    if not all(_complete_connection(section, direction) for section, direction in sections):
+        blockers.append("Incomplete pagination; cannot authorize handoff")
+    reviews = pr.get("reviews", {}).get("nodes", [])
+    observed_bots = {
+        (r.get("author") or {}).get("login")
+        for r in reviews
+        if (r.get("author") or {}).get("__typename") == "Bot"
+    }
+    for actor in set(reviewers) | (observed_bots - {None}):
+        current = [
+            r
+            for r in reviews
+            if (r.get("author") or {}).get("login") == actor
+            and (r.get("commit") or {}).get("oid") == pr.get("headRefOid")
+        ]
+        if not current or current[-1].get("state") not in ("APPROVED", "COMMENTED"):
+            blockers.append("Bot review incomplete on current head: " + actor)
+    if any(r.get("state") == "PENDING" for r in reviews):
+        blockers.append("Pending review")
+    general = pr.get("comments", {}).get("nodes", [])
+    comments = general + [c for t in threads for c in t.get("comments", {}).get("nodes", [])]
+    # Review summaries are remarks too; general PR replies can account for them.
+    remarks = comments + [r for r in reviews if r.get("body")]
+    commits = {n["commit"]["oid"] for n in pr.get("commits", {}).get("nodes", [])}
+    repo_url = pr.get("url", "").split("/pull/")[0]
+    evidence = collect_protocol_evidence(comments, handlers)
+    remark_blockers(remarks, evidence, commits, repo_url, handlers, reviewers, threads, blockers)
     return {
         "ready_to_review": not blockers,
         "head": pr.get("headRefOid"),
@@ -202,7 +224,15 @@ def main():
         report["checked_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0 if report["ready_to_review"] else 1
-    except Exception as exc:
+    except (
+        ValueError,
+        KeyError,
+        TypeError,
+        RuntimeError,
+        OSError,
+        subprocess.SubprocessError,
+        IndexError,
+    ) as exc:
         return _error_report(type(exc).__name__)
 
 

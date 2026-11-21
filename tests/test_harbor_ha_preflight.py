@@ -1,14 +1,46 @@
 """Exercise the Harbor staging gate with in-memory observations only."""
 
 import copy
-from datetime import datetime, timezone, timedelta
 import importlib.util
 import json
-from pathlib import Path
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import TypedDict, cast, override
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+class CheckResult(TypedDict):
+    """Preflight outcome consumed by the tests below."""
+
+    passed: bool
+    cutoverAuthorized: bool
+    nodes: dict[str, dict[str, list[str]]]
+
+
+class NodeObservation(TypedDict):
+    """Per-node capacity and health telemetry collected upstream."""
+
+    availableMemoryBytes: int
+    diskAvailableBytes: int
+    diskTotalBytes: int
+    ready: bool
+    pressures: list[str]
+    unschedulable: bool
+    taints: list[dict[str, str]]
+    allocatableMemoryBytes: int
+    requestedMemoryBytes: int
+
+
+class Observation(TypedDict):
+    """Stamped snapshot of the observed cluster state."""
+
+    collectedAt: str
+    nodes: dict[str, NodeObservation]
+
+
 spec = importlib.util.spec_from_file_location(
     "harbor_ha_preflight", ROOT / "scripts/harbor-ha-preflight.py"
 )
@@ -19,14 +51,16 @@ spec.loader.exec_module(module)
 class HarborHAPreflightTests(unittest.TestCase):
     """Reject cutover when capacity, health, age, or disk reserve fails."""
 
-    def setUp(self):
+    @override
+    def setUp(self) -> None:
+        """Load the committed policy and build a healthy shared observation."""
         self.policy = json.loads((ROOT / "deploy/harbor/ha-policy.json").read_text())
-        self.otel = {"nodes": {}}  # committed floor works without the in-progress OTel files
+        self.otel: dict[str, object] = {"nodes": {}}  # floor works without in-progress OTel files
         self.now = datetime.now(timezone.utc)
-        self.observation = {
+        self.observation: Observation = {
             "collectedAt": self.now.isoformat(),
             "nodes": {
-                name: {
+                cast("str", name): {
                     "availableMemoryBytes": 16 * module.GIB,
                     "diskAvailableBytes": 400 * module.GIB,
                     "diskTotalBytes": 500 * module.GIB,
@@ -41,8 +75,10 @@ class HarborHAPreflightTests(unittest.TestCase):
             },
         }
 
-    def check(self):
-        return module.check(self.policy, self.observation, self.otel, self.now)
+    def check(self) -> CheckResult:
+        """Run the preflight against the current shared observation."""
+        result: CheckResult = module.check(self.policy, self.observation, self.otel, self.now)
+        return result
 
     def test_capacity_is_not_cutover_permission(self) -> None:
         """Allow a passing capacity report while cutover stays unauthorized."""
@@ -97,7 +133,7 @@ class HarborHAPreflightTests(unittest.TestCase):
             ("taints", [{"effect": "NoSchedule"}]),
         ]:
             baseline = copy.deepcopy(self.observation)
-            self.observation["nodes"]["socrat-3"][key] = value
+            cast("dict[str, object]", self.observation["nodes"]["socrat-3"])[key] = value
             self.assertFalse(self.check()["passed"])
             self.observation = baseline
 

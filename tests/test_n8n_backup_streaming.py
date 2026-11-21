@@ -2,8 +2,8 @@
 
 import hashlib
 import json
-from pathlib import Path
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -25,7 +25,8 @@ sha256File(process.argv[2]).then(digest => {
 """
 
 
-def run_hash(path):
+def run_hash(path) -> subprocess.CompletedProcess[str]:
+    """Run the offline streaming hash helper against a snapshot file."""
     return subprocess.run(
         ["node", "--max-old-space-size=32", "-e", RUNNER, str(SCRIPT), str(path)],
         capture_output=True,
@@ -34,16 +35,22 @@ def run_hash(path):
     )
 
 
+def _text(value: str | None) -> str:
+    """Return the assert-verified non-null captured output stream."""
+    assert isinstance(value, str)
+    return value
+
+
 @pytest.mark.parametrize("content", [b"", b"abc", bytes(range(256)) * 1024])
-def test_stream_digest_matches_sha256(tmp_path, content):
+def test_stream_digest_matches_sha256(tmp_path, content) -> None:
     file = tmp_path / "snapshot"
     file.write_bytes(content)
     result = run_hash(file)
     assert result.returncode == 0, result.stderr
-    assert json.loads(result.stdout)["digest"] == hashlib.sha256(content).hexdigest()
+    assert json.loads(_text(result.stdout))["digest"] == hashlib.sha256(content).hexdigest()
 
 
-def test_snapshot_larger_than_container_limit(tmp_path):
+def test_snapshot_larger_than_container_limit(tmp_path) -> None:
     file = tmp_path / "snapshot"
     # Sparse synthetic fixture, not a production DB or archive.
     with file.open("wb") as out:
@@ -61,14 +68,14 @@ def test_snapshot_larger_than_container_limit(tmp_path):
     assert actual["maxRssKiB"] < 160 * 1024
 
 
-def test_missing_snapshot_is_failure_not_success_digest(tmp_path):
+def test_missing_snapshot_is_failure_not_success_digest(tmp_path) -> None:
     result = run_hash(tmp_path / "missing")
     assert result.returncode != 0
-    assert "ENOENT" in result.stderr
+    assert "ENOENT" in _text(result.stderr)
     assert not result.stdout
 
 
-def test_backup_calls_stream_helper_and_preserves_safety_contract():
+def test_backup_calls_stream_helper_and_preserves_safety_contract() -> None:
     source = SCRIPT.read_text()
     assert "databaseSha256: await sha256File(path.join(data, 'database.sqlite'))" in source
     assert "readFileSync" not in source

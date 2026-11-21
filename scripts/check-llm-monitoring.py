@@ -1,3 +1,4 @@
+"""Check Prometheus scrape targets and metrics for the LLM stack."""
 import importlib.util
 import json
 import math
@@ -15,6 +16,7 @@ JOBS = {"vllm", "litellm"}
 
 
 def main():
+    """Run the command-line entry point."""
     deadline = time.monotonic() + 120
     while True:
         targets = [

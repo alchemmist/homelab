@@ -5,10 +5,10 @@ opened/synchronize, so a timed-out delivery drops the review. Failed deliveries
 that share a guid are retried until one of them succeeds, at most three times.
 """
 
+import http.client
 import json
 import os
 import time
-import http.client
 from datetime import UTC, datetime
 
 import jwt

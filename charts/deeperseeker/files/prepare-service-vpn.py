@@ -1,48 +1,60 @@
-import json, os, urllib.request
+import json
+import os
+import urllib.request
 from urllib.parse import urlparse
 
 ENDPOINT = os.environ["VPN_ENDPOINT"]
 PORT = int(os.environ["VPN_PORT"])
 
 
-def prepare(value):
-    profiles = value if isinstance(value, list) else [value]
-    outbounds = []
+def vless_outbounds(profiles: list[object]) -> list[dict[str, object]]:
+    """Collect every VLESS outbound from the parsed service profiles."""
+    outbounds: list[dict[str, object]] = []
     for profile in profiles:
         if isinstance(profile, dict):
             outbounds.extend(
                 [item for item in profile.get("outbounds") or [] if item.get("protocol") == "vless"]
             )
-    if len(outbounds) != 1:
-        msg = "PROFILE_COUNT"
-        raise SystemExit(msg)
-    outbound = json.loads(json.dumps(outbounds[0]))
-    settings = outbound.get("settings") or {}
+    return outbounds
+
+
+def reject_unsafe_tls(node: object) -> None:
+    """Reject any insecure TLS setting (e.g. allowInsecure) in the config."""
+    if isinstance(node, dict):
+        for key, item in node.items():
+            if key == "allowInsecure" and item is not False:
+                raise SystemExit("TLS_POLICY")
+            reject_unsafe_tls(item)
+    elif isinstance(node, list):
+        for item in node:
+            reject_unsafe_tls(item)
+
+
+def validate_profile(outbound: dict[str, object]) -> None:
+    """Enforce the pinned endpoint and Reality policy on one outbound."""
+    settings_value = outbound.get("settings")
+    settings = settings_value if isinstance(settings_value, dict) else {}
     endpoint = (settings.get("vnext") or [{}])[0] or settings
-    stream = outbound.get("streamSettings") or {}
+    stream_value = outbound.get("streamSettings")
+    stream = stream_value if isinstance(stream_value, dict) else {}
     if (
         endpoint.get("address") != ENDPOINT
         or endpoint.get("port") != PORT
         or stream.get("security") != "reality"
     ):
-        msg = "PROFILE_POLICY"
-        raise SystemExit(msg)
-
-    def check(node):
-        if isinstance(node, dict):
-            for key, item in node.items():
-                if key == "allowInsecure" and item is not False:
-                    msg = "TLS_POLICY"
-                    raise SystemExit(msg)
-                check(item)
-        elif isinstance(node, list):
-            for item in node:
-                check(item)
-
-    check(outbound)
+        raise SystemExit("PROFILE_POLICY")
+    reject_unsafe_tls(outbound)
     if not isinstance((stream.get("realitySettings") or {}).get("publicKey"), str):
-        msg = "REALITY_IDENTITY"
-        raise SystemExit(msg)
+        raise SystemExit("REALITY_IDENTITY")
+
+
+def prepare(value):
+    profiles = value if isinstance(value, list) else [value]
+    outbounds = vless_outbounds(profiles)
+    if len(outbounds) != 1:
+        raise SystemExit("PROFILE_COUNT")
+    outbound = json.loads(json.dumps(outbounds[0]))
+    validate_profile(outbound)
     outbound["tag"] = "service-vpn"
     return {
         "log": {"loglevel": "none"},
@@ -71,17 +83,14 @@ def main():
         or url.query
         or url.fragment
     ):
-        msg = "SUBSCRIPTION_POLICY"
-        raise SystemExit(msg)
+        raise SystemExit("SUBSCRIPTION_POLICY")
     req = urllib.request.Request(raw, method="GET")
     with urllib.request.urlopen(req, timeout=8) as response:
         if response.status != 200:
-            msg = "SUBSCRIPTION_HTTP"
-            raise SystemExit(msg)
+            raise SystemExit("SUBSCRIPTION_HTTP")
         body = response.read(262145)
     if len(body) > 262144:
-        msg = "SUBSCRIPTION_SIZE"
-        raise SystemExit(msg)
+        raise SystemExit("SUBSCRIPTION_SIZE")
     config = prepare(json.loads(body.decode()))
     tmp = "/vpn-runtime/client.json.tmp"
     fd = os.open(tmp, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)

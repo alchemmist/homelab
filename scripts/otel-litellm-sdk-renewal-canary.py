@@ -33,21 +33,31 @@ def record(value):
     temporary.replace(PROGRESS)
 
 
+def require(expected: object, message: str) -> None:
+    """Enforce an invariant, failing with the given message."""
+    if not expected:
+        raise ValueError(message)
+
+
 def run():
     logging.disable(logging.CRITICAL)
-    if os.environ.get("OTEL_EXPORTER_OTLP_HEADERS", "").lower() != "connection=close":
-        msg = "Fresh native HTTP client handshakes required for leaf reload proof"
-        raise ValueError(msg)
+    require(
+        os.environ.get("OTEL_EXPORTER_OTLP_HEADERS", "").lower() == "connection=close",
+        "Fresh native HTTP client handshakes required for leaf reload proof",
+    )
     loaded = []
     original_loader = ssl.SSLContext.load_cert_chain
 
-    def observe_loader(context, certfile, keyfile=None, password=None):
+    def observe_loader(context, certfile, keyfile=None, password=None) -> None:
         public_hash = hashlib.sha256(Path(certfile).read_bytes()).hexdigest()
         result = original_loader(context, certfile, keyfile, password)
         loaded.append(public_hash)
         return result
 
-    ssl.SSLContext.load_cert_chain = observe_loader
+    def wrapped_loader(*args: object, **kwargs: object) -> None:
+        observe_loader(*args, **kwargs)
+
+    ssl.SSLContext.load_cert_chain = wrapped_loader
     with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
         import litellm
         from litellm.integrations.opentelemetry import OpenTelemetry
@@ -58,24 +68,25 @@ def run():
         litellm.turn_off_message_logging = True
         litellm.set_verbose = False
         handler = OpenTelemetry()
-        if handler.config.enable_metrics or handler.config.enable_events:
-            msg = "SDK metrics/events must remain disabled"
-            raise ValueError(msg)
+        require(
+            not handler.config.enable_metrics and not handler.config.enable_events,
+            "SDK metrics/events must remain disabled",
+        )
         audit = {"endedSpans": 0, "sensitiveSyntheticContentFoundAtSource": False}
 
         class PrivacyAudit(SpanProcessor):
-            def on_start(self, span, parent_context=None):
+            def on_start(self, span, parent_context=None) -> None:
                 pass
 
-            def on_end(self, span):
+            def on_end(self, span) -> None:
                 audit["endedSpans"] += 1
                 if any(marker in span.to_json() for marker in MARKERS):
                     audit["sensitiveSyntheticContentFoundAtSource"] = True
 
-            def shutdown(self):
+            def shutdown(self) -> None:
                 pass
 
-            def force_flush(self, timeout_millis=30000):
+            def force_flush(self, timeout_millis=30000) -> bool:
                 return True
 
         provider = handler._tracer_provider
@@ -84,7 +95,7 @@ def run():
         tracer = trace.get_tracer("homelab.synthetic.sdk-leaf-renewal")
         traces = []
 
-        def completion():
+        def completion() -> None:
             with tracer.start_as_current_span("homelab.synthetic.litellm-sdk-validation") as parent:
                 parent.set_attribute("homelab.synthetic", True)
                 parent.set_status(Status(StatusCode.ERROR, "synthetic mandatory-sampling canary"))
@@ -100,16 +111,15 @@ def run():
                     metadata={"litellm_parent_otel_span": parent},
                 )
                 time.sleep(3)
-            if not provider.force_flush(timeout_millis=10000):
-                msg = "Native SDK flush did not complete"
-                raise ValueError(msg)
+            require(
+                provider.force_flush(timeout_millis=10000),
+                "Native SDK flush did not complete",
+            )
             traces.append(entry)
 
         old = certificate_hash()
         completion()
-        if old not in loaded:
-            msg = "Initial native SDK handshake did not load the mounted leaf"
-            raise ValueError(msg)
+        require(old in loaded, "Initial native SDK handshake did not load the mounted leaf")
         record({"phase": "await-new-projected-leaf", "oldCertificateSHA256": old, "traces": traces})
         deadline = time.monotonic() + 300
         while time.monotonic() < deadline:
@@ -118,18 +128,16 @@ def run():
                 break
             time.sleep(2)
         else:
-            msg = "Projected mirror leaf did not change before deadline"
-            raise ValueError(msg)
+            raise ValueError("Projected mirror leaf did not change before deadline")
         # The provider/exporter/session was not recreated between batches.
         completion()
-        if (
-            new not in loaded
-            or handler._tracer_provider is not provider
-            or audit["sensitiveSyntheticContentFoundAtSource"]
-            or audit["endedSpans"] < 4
-        ):
-            msg = "Same-instance native SDK credential reload/source privacy failed"
-            raise ValueError(msg)
+        require(
+            new in loaded
+            and handler._tracer_provider is provider
+            and not audit["sensitiveSyntheticContentFoundAtSource"]
+            and audit["endedSpans"] >= 4,
+            "Same-instance native SDK credential reload/source privacy failed",
+        )
     ssl.SSLContext.load_cert_chain = original_loader
     result = {
         "success": True,
@@ -153,7 +161,7 @@ def run():
 if __name__ == "__main__":
     try:
         run()
-    except Exception as error:
+    except (ImportError, OSError, RuntimeError, ValueError) as error:
         result = {
             "success": False,
             "errorType": type(error).__name__,
@@ -162,4 +170,4 @@ if __name__ == "__main__":
         }
         record(result)
         print(json.dumps(result))
-        raise SystemExit(1)
+        raise SystemExit(1) from error

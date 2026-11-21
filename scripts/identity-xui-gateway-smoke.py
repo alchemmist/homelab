@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Live MFA gateway acceptance, NOT a 3x-ui login or native SSO test.
+
 Explicit temporary observer/admission writes; never reads/resets owner factors or
 native panel passwords. No screenshots, traces, HTML, cookies or OTPs are saved.
 """
@@ -32,7 +33,7 @@ import urllib.parse
 import urllib.request
 import uuid
 
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import Error as PlaywrightError, sync_playwright
 
 BASE = "https://auth.socrat.alchemmist.xyz"
 original = socket.getaddrinfo
@@ -59,6 +60,7 @@ credential = json.loads(
 
 
 def api(method, path, data=None):
+    """Perform the HTTP request and return its response."""
     req = urllib.request.Request(
         BASE + "/api/v3/" + path,
         method=method,
@@ -124,6 +126,7 @@ try:
         authorization_scopes = []
 
         def observe(response):
+            """Perform the observe operation."""
             parsed = urllib.parse.urlparse(response.url)
             if (
                 parsed.hostname == "auth.socrat.alchemmist.xyz"
@@ -149,7 +152,7 @@ try:
                 if component == "ak-stage-authenticator-totp":
                     challenge.clear()
                     challenge.update(data)
-            except Exception:
+            except (ValueError, TypeError, IndexError, KeyError, AttributeError):
                 pass
 
         page.on("response", observe)
@@ -394,9 +397,21 @@ try:
         print("PASS: forged identity headers do not bypass gateway authentication")
         assert not errors, "Authentik JS error observed"
         browser.close()
-except Exception as error:
+except (
+    AssertionError,
+    AttributeError,
+    ImportError,
+    IndexError,
+    KeyError,
+    OSError,
+    PlaywrightError,
+    RuntimeError,
+    TypeError,
+    ValueError,
+    subprocess.SubprocessError,
+) as error:
     print("Acceptance failed (sanitized):", type(error).__name__, flush=True)
-    raise SystemExit(1)
+    raise SystemExit(1) from error
 finally:
     try:
         if binding:

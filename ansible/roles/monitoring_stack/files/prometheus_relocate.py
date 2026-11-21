@@ -1,12 +1,14 @@
+"""Check that the Prometheus data volume claim matches the live pod's node."""
+
 import json
 import sys
-
 
 CLAIM_PREFIX = "prometheus-kube-prometheus-stack-prometheus-db"
 POD_PREFIX = "prometheus-kube-prometheus-stack-prometheus-"
 
 
 def live_node(pods, volumes):
+    """Execute the live_node operation."""
     for pod in pods:
         name = pod.get("metadata", {}).get("name", "")
         if not name.startswith(POD_PREFIX):
@@ -32,6 +34,7 @@ def live_node(pods, volumes):
 
 
 def claim_name(volumes):
+    """Execute the claim_name operation."""
     for volume in volumes:
         claim = volume.get("spec", {}).get("claimRef") or {}
         name = str(claim.get("name", ""))
@@ -41,12 +44,14 @@ def claim_name(volumes):
 
 
 def decide(desired_node, current_node, relocate):
+    """Execute the decide operation."""
     if current_node in (None, "", desired_node):
         return "proceed"
     return "refuse"
 
 
 def evaluate(payload):
+    """Execute the evaluate operation."""
     pods = payload.get("pods") or []
     volumes = payload.get("volumes") or []
     current = live_node(pods, volumes)
@@ -55,6 +60,7 @@ def evaluate(payload):
 
 
 def main():
+    """Execute the main operation."""
     json.dump(evaluate(json.load(sys.stdin)), sys.stdout)
     sys.stdout.write("\n")
     return 0

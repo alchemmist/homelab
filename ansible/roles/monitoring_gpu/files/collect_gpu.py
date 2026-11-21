@@ -1,14 +1,15 @@
+"""Collect GPU metrics via nvidia-smi for Prometheus text exposition."""
+
 import argparse
 import csv
 import io
 import json
 import math
 import os
-from pathlib import Path
 import subprocess
 import tempfile
 import time
-
+from pathlib import Path
 
 FIELDS = (
     ("temperature.gpu", "temperature_celsius", 1),
@@ -37,6 +38,7 @@ QUERY = (
 
 
 def sample(name, labels, value):
+    """Execute the sample operation."""
     suffix = (
         "{" + ",".join(key + "=" + json.dumps(value) for key, value in labels.items()) + "}"
         if labels
@@ -45,43 +47,55 @@ def sample(name, labels, value):
     return name + suffix + " " + format(value, ".15g") + "\n"
 
 
+def _metric_lines(labels, row):
+    """Convert one GPU query row into its numeric metric lines."""
+    metrics = []
+    for (_, metric, factor), raw in zip(FIELDS, row[3:]):
+        if metric == "performance_state" and raw.startswith("P"):
+            raw = raw[1:]
+        try:
+            value = float(raw) * factor
+        except ValueError:
+            continue
+        if math.isfinite(value):
+            metrics.append(sample("socrat_gpu_" + metric, labels, value))
+    for reason, raw in zip(REASONS, row[3 + len(FIELDS) :]):
+        if raw in ("Active", "Not Active"):
+            metrics.append(
+                sample(
+                    "socrat_gpu_throttle_active",
+                    {**labels, "reason": reason},
+                    float(raw == "Active"),
+                )
+            )
+    return metrics
+
+
 def parse_metrics(output):
+    """Execute the parse_metrics operation."""
     metrics = []
     count = 0
     for row in csv.reader(io.StringIO(output), skipinitialspace=True):
         if not row:
             continue
         if len(row) != len(QUERY):
-            raise ValueError("Unexpected NVIDIA query column count")
+            msg = "Unexpected NVIDIA query column count"
+            raise ValueError(msg)
         row = [value.strip() for value in row]
         if not row[0].startswith("GPU-"):
-            raise ValueError("Invalid NVIDIA GPU identity")
+            msg = "Invalid NVIDIA GPU identity"
+            raise ValueError(msg)
         labels = dict(zip(("uuid", "name", "index"), row[:3]))
         count += 1
-        for (_, metric, factor), raw in zip(FIELDS, row[3:]):
-            if metric == "performance_state" and raw.startswith("P"):
-                raw = raw[1:]
-            try:
-                value = float(raw) * factor
-            except ValueError:
-                continue
-            if math.isfinite(value):
-                metrics.append(sample("socrat_gpu_" + metric, labels, value))
-        for reason, raw in zip(REASONS, row[3 + len(FIELDS) :]):
-            if raw in ("Active", "Not Active"):
-                metrics.append(
-                    sample(
-                        "socrat_gpu_throttle_active",
-                        {**labels, "reason": reason},
-                        float(raw == "Active"),
-                    )
-                )
+        metrics.extend(_metric_lines(labels, row))
     if not count:
-        raise ValueError("No NVIDIA GPU returned")
+        msg = "No NVIDIA GPU returned"
+        raise ValueError(msg)
     return "".join(metrics)
 
 
 def atomic_write(destination, content):
+    """Execute the atomic_write operation."""
     destination = Path(destination)
     descriptor, temporary = tempfile.mkstemp(prefix=".nvidia-", dir=destination.parent)
     try:
@@ -97,6 +111,7 @@ def atomic_write(destination, content):
 
 
 def collect(binary, destination):
+    """Execute the collect operation."""
     success = 0
     metrics = ""
     try:
@@ -119,6 +134,7 @@ def collect(binary, destination):
 
 
 def main():
+    """Execute the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--binary", default="/usr/bin/nvidia-smi")
     parser.add_argument("--output", required=True)

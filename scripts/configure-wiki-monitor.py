@@ -1,3 +1,4 @@
+"""Configure wiki uptime monitoring monitors via the Kuma socket.io API."""
 import argparse
 import getpass
 import json
@@ -76,6 +77,7 @@ socket.on("connect", async () => {
 
 
 def main():
+    """Run the command-line entry point."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="socrat-3")
     parser.add_argument("--username", default="alchemmist")

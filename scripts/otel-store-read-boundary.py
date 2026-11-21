@@ -25,7 +25,8 @@ NS = "cattle-monitoring-system"
 def unclamped(arguments):
     limits = [value for value in arguments if value.startswith("--max-time")]
     if limits not in [[], ["--max-time=-12h"]]:
-        raise ValueError("Unexpected raw Store limit; manual review required")
+        msg = "Unexpected raw Store limit; manual review required"
+        raise ValueError(msg)
     return [value for value in arguments if value != "--max-time=-12h"]
 
 
@@ -48,8 +49,40 @@ def query(stamp, dedup):
         + params,
     )
     if result.get("status") != "success" or result.get("warnings"):
-        raise ValueError("Native query failed or was partial")
+        msg = "Native query failed or was partial"
+        raise ValueError(msg)
     return result["data"]["result"]
+
+
+def await_rollout(deadline: float) -> None:
+    """Block until the patched Store deployment reports exactly one ready replica."""
+    while True:
+        current = BOOTSTRAP.kube("-n", NS, "get", "deployment", "thanos-store", "-o", "json")
+        state = current.get("status", {})
+        if (
+            state.get("observedGeneration", 0) >= current["metadata"]["generation"]
+            and state.get("updatedReplicas") == 1
+            and state.get("availableReplicas") == 1
+            and state.get("replicas") == 1
+            and not state.get("unavailableReplicas", 0)
+        ):
+            return
+        if time.monotonic() >= deadline:
+            msg = "Native raw Store rollout deadline exceeded"
+            raise TimeoutError(msg)
+        time.sleep(3)
+
+
+def await_recovery(stamp: str, deadline: float) -> None:
+    """Block until the native query again reports the captured series count."""
+    while True:
+        restored = query(stamp, True)
+        if restored and float(restored[0]["value"][1]) == 78:
+            return
+        if time.monotonic() >= deadline:
+            msg = "Native raw query did not recover captured historical interval"
+            raise TimeoutError(msg)
+        time.sleep(3)
 
 
 def run(output):
@@ -96,27 +129,8 @@ def run(output):
                 "json",
             )
         deadline = time.monotonic() + 240
-        while True:
-            current = BOOTSTRAP.kube("-n", NS, "get", "deployment", "thanos-store", "-o", "json")
-            state = current.get("status", {})
-            if (
-                state.get("observedGeneration", 0) >= current["metadata"]["generation"]
-                and state.get("updatedReplicas") == 1
-                and state.get("availableReplicas") == 1
-                and state.get("replicas") == 1
-                and not state.get("unavailableReplicas", 0)
-            ):
-                break
-            if time.monotonic() >= deadline:
-                raise TimeoutError("Native raw Store rollout deadline exceeded")
-            time.sleep(3)
-        while True:
-            restored = query(stamps[1], True)
-            if restored and float(restored[0]["value"][1]) == 78:
-                break
-            if time.monotonic() >= deadline:
-                raise TimeoutError("Native raw query did not recover captured historical interval")
-            time.sleep(3)
+        await_rollout(deadline)
+        await_recovery(stamps[1], deadline)
         after = {
             stamp: {"dedupTrue": query(stamp, True), "dedupFalse": query(stamp, False)}
             for stamp in stamps
@@ -124,7 +138,8 @@ def run(output):
         for stamp, result in after.items():
             for rows in result.values():
                 if len(rows) != 1 or float(rows[0]["value"][1]) != 78:
-                    raise ValueError("Native historical series count changed or was doubled")
+                    msg = "Native historical series count changed or was doubled"
+                    raise ValueError(msg)
         status.update(
             success=True,
             removedFlag="--max-time=-12h",

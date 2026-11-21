@@ -18,14 +18,17 @@ ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
     "node_controller", ROOT / "scripts/netbird-node-reconcile.py"
 )
+if spec is None or spec.loader is None:
+    raise RuntimeError("netbird-node-reconcile module missing or unloadable")
 node = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(node)
 
 
-def desired(values, inventory, image):
+def desired(values, inventory, image) -> list[str]:
+    """Reconcile desired node resources for every Git-managed host in the inventory."""
     hosts = set()
 
-    def visit(group):
+    def visit(group) -> None:
         entry = inventory.get(group, {})
         hosts.update(entry.get("hosts", []))
         for child in entry.get("children", []):
@@ -34,7 +37,8 @@ def desired(values, inventory, image):
     visit("Socrat")
     hostvars = inventory["_meta"]["hostvars"]
     node.require(hosts, "explicit Socrat inventory required")
-    addresses, reserved = {}, set()
+    addresses: dict[str, str] = {}
+    reserved: set[str] = set()
     for host in sorted(hosts):
         variables = hostvars[host]
         reserved.update(v["address"] for v in variables["wg_socrat_admin_clients"].values())
@@ -77,7 +81,8 @@ def desired(values, inventory, image):
     return additions
 
 
-def main():
+def main() -> int:
+    """Render the Ansible inventory and apply or check desired node state."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--check", action="store_true")
     args = p.parse_args()
@@ -115,7 +120,7 @@ def main():
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except Exception:
+    except (ValueError, KeyError, TypeError, RuntimeError, OSError, subprocess.SubprocessError):
         print(
             "Blocked: inspect inventory/bindings; no cluster writes were attempted", file=sys.stderr
         )
