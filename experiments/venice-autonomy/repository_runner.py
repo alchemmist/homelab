@@ -23,6 +23,12 @@ if TYPE_CHECKING:
     import types
 
 
+_EXTERNAL_WATCHDOG_REQUIRED = "external process watchdog is required"
+_WORKER_IMAGE_REQUIRED = "AUTONOMY_WORKER_IMAGE is required"
+_EXTERNAL_DEADLINE_EXCEEDED = "external end-to-end deadline exceeded"
+_DEADLINE_ALREADY_PASSED = "deadline already passed"
+
+
 def require_path(name):
     value = os.environ.get(name, "").strip()
     if not value:
@@ -571,16 +577,14 @@ def main(argv=None):
     if args.check_wiring:
         return _check_wiring()
     if os.getenv("AUTONOMY_EXTERNAL_WATCHDOG") != "1":
-        message = "external process watchdog is required"
-        raise RuntimeError(message)
+        raise RuntimeError(_EXTERNAL_WATCHDOG_REQUIRED)
     protocol = load_protocol()
     output_root, snapshot = (
         require_path("AUTONOMY_OUTPUT_ROOT"),
         require_path("AUTONOMY_SNAPSHOT"),
     )
     if not (image := os.environ.get("AUTONOMY_WORKER_IMAGE", "").strip()):
-        message = "AUTONOMY_WORKER_IMAGE is required"
-        raise RuntimeError(message)
+        raise RuntimeError(_WORKER_IMAGE_REQUIRED)
     protocol.PILOT_LABEL = "venice-e2e-run=" + os.environ["AUTONOMY_RUN_NONCE"]
     protocol.verify_snapshot(snapshot)
     attempt = load_local("attempt")
@@ -591,13 +595,11 @@ def main(argv=None):
     environment = None
 
     def deadline(*_):
-        message = "external end-to-end deadline exceeded"
-        raise TimeoutError(message)
+        raise TimeoutError(_EXTERNAL_DEADLINE_EXCEEDED)
 
     signal.signal(signal.SIGALRM, deadline)
     if (remaining := float(os.environ["AUTONOMY_DEADLINE"]) - time.time()) <= 0:
-        message = "deadline already passed"
-        raise TimeoutError(message)
+        raise TimeoutError(_DEADLINE_ALREADY_PASSED)
     signal.alarm(int(remaining))
     try:
         environment = RepositoryEnvironment(snapshot, directory / "agent", image, protocol)
