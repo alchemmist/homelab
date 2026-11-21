@@ -8,7 +8,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 class Foundation(unittest.TestCase):
-    def render(self, *args):
+    def render(self, *args: str) -> str:
         return subprocess.check_output(
             ["helm", "template", "rustfs", str(ROOT / "charts/rustfs"), *args], text=True
         )

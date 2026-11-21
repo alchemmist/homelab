@@ -3,12 +3,25 @@
 
 import copy
 import json
+from typing import TypedDict
 from urllib.parse import urlencode
 
 from sync import BASE, CONFIG, api
 
 
-def render(template, mapping):
+class _Node(TypedDict, total=False):
+    name: str
+    credentials: dict[str, dict[str, str]]
+
+
+class _Workflow(TypedDict):
+    name: str
+    nodes: list[_Node]
+    connections: object
+    settings: object
+
+
+def render(template: _Workflow, mapping: dict[str, dict[str, str]]):
     w = copy.deepcopy(template)
     aliases = {
         "SPI_WORKER_CREDENTIAL_ID": "worker",
@@ -24,7 +37,7 @@ def render(template, mapping):
     return w
 
 
-def sync(relative):
+def sync(relative: str):
     mapping = json.loads((CONFIG / "spi-credentials.json").read_text())
     template = json.loads((BASE / relative).read_text())
     w = render(template, mapping)

@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 import subprocess
+from collections.abc import Mapping
 from pathlib import Path
 
 HOST = "auth.socrat.alchemmist.xyz"
@@ -18,7 +19,15 @@ KEY = "authentik-internal.server"
 INTERNAL_VIP = "192.168.0.250"
 
 
-def zone(address) -> str:
+def as_dict(value: object) -> dict[str, object]:
+    """Return a Kubernetes JSON object, stopping on unexpected structure."""
+    if not isinstance(value, dict):
+        error = "Expected a Kubernetes JSON object"
+        raise TypeError(error)
+    return value
+
+
+def zone(address: str) -> str:
     import ipaddress
 
     if not ipaddress.ip_address(address).is_private or ":" in address:
@@ -37,40 +46,43 @@ def zone(address) -> str:
 """
 
 
-def desired(before, address, owned_value=None) -> dict[str, str]:
+def desired(
+    before: Mapping[str, object], address: str, owned_value: str | None = None
+) -> dict[str, object]:
     value = zone(address)
-    old = before.get("data", {}).get(KEY)
+    existing = as_dict(before.get("data", {}))
+    old = existing.get(KEY)
     if old is not None and old != value and old != owned_value:
         raise RuntimeError("Owned DNS key collision; inspect before changing")
-    data = dict(before.get("data", {}))
+    data = {**existing}
     data[KEY] = value
     return data
 
 
-def patch(before, data) -> list[dict[str, object]]:
+def patch(before: Mapping[str, object], data: Mapping[str, object]) -> list[dict[str, object]]:
+    metadata = as_dict(before["metadata"])
     return [
-        {"op": "test", "path": "/metadata/uid", "value": before["metadata"]["uid"]},
+        {"op": "test", "path": "/metadata/uid", "value": metadata["uid"]},
         {
             "op": "test",
             "path": "/metadata/resourceVersion",
-            "value": before["metadata"]["resourceVersion"],
+            "value": metadata["resourceVersion"],
         },
-        {"op": "test", "path": "/data", "value": before["data"]},
-        {"op": "add", "path": "/data/" + KEY, "value": data[KEY]},
+        *([{"op": "test", "path": "/data", "value": before["data"]}] if "data" in before else []),
+        {"op": "add", "path": "/data", "value": data} if "data" not in before else {"op": "add", "path": "/data/" + KEY, "value": data[KEY]},
     ]
 
 
-def kubectl(*args, payload=None) -> object:
+def kubectl(*args: str, payload: str | None = None):
     r = subprocess.run(
         ["k3s", "kubectl", *args], input=payload, capture_output=True, text=True, timeout=30
     )
     if r.returncode:
         raise RuntimeError("Kubernetes operation failed; inspect private state, no blind retry")
-    decoded: object = json.loads(r.stdout)
-    return decoded
+    return json.loads(r.stdout)
 
 
-def main() -> None:
+def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--state", type=Path)
@@ -82,23 +94,14 @@ def main() -> None:
     )
     a = p.parse_args()
     service = kubectl("-n", "kube-system", "get", "svc", "traefik", "-o", "json")
-    if not isinstance(service, dict):
-        reason = "Kubernetes returned a non-object service payload"
-        raise TypeError(reason)
     assert any(x["port"] == 443 for x in service["spec"]["ports"])
     cert = kubectl("-n", "cert-manager", "get", "deployment", "cert-manager", "-o", "json")
-    if not isinstance(cert, dict):
-        reason = "Kubernetes returned a non-object deployment payload"
-        raise TypeError(reason)
     assert any(
         x == "--acme-http01-solver-nameservers=1.1.1.1:53,9.9.9.9:53"
         for c in cert["spec"]["template"]["spec"]["containers"]
         for x in c.get("args", [])
     ), "Public ACME resolver precondition missing"
     before = kubectl("-n", "kube-system", "get", "configmap", "coredns-custom", "-o", "json")
-    if not isinstance(before, dict):
-        reason = "Kubernetes returned a non-object configmap payload"
-        raise TypeError(reason)
     assert before.get("data") and not before.get("immutable", False)
     address = INTERNAL_VIP
     owned_value = None
@@ -142,7 +145,7 @@ def main() -> None:
     os.umask(0o077)
     a.state.mkdir(mode=0o700, parents=False)
 
-    def save(name, obj):
+    def save(name: str, obj: object) -> None:
         (a.state / name).write_text(json.dumps(obj, sort_keys=True))
 
     save("before.json", before)
@@ -163,44 +166,25 @@ def main() -> None:
             "json",
         )
         save("write-response.json", result)
-    verify_readback(before, data, service, digest, a.state)
-
-
-def verify_readback(
-    before: dict[str, object],
-    data: dict[str, str],
-    service: dict[str, object],
-    digest: str,
-    state: Path,
-) -> None:
-    """Re-read exact ConfigMap and Service state and persist the accepted receipt."""
     after = kubectl("-n", "kube-system", "get", "configmap", "coredns-custom", "-o", "json")
-    if not isinstance(after, dict):
-        reason = "Kubernetes returned a non-object configmap readback"
-        raise TypeError(reason)
     assert after["metadata"]["uid"] == before["metadata"]["uid"] and after["data"] == data
     current = kubectl("-n", "kube-system", "get", "svc", "traefik", "-o", "json")
-    if not isinstance(current, dict):
-        reason = "Kubernetes returned a non-object service readback"
-        raise TypeError(reason)
     assert (
         current["metadata"]["uid"] == service["metadata"]["uid"]
         and current["spec"]["clusterIP"] == service["spec"]["clusterIP"]
     )
-    (state / "after.json").write_text(json.dumps(after, sort_keys=True))
-    (state / "receipt.json").write_text(
-        json.dumps(
-            {
-                "state": "exact-readback-accepted",
-                "approval_sha256": digest,
-                "only_changed_key": KEY,
-                "runtime_acceptance": "pending",
-                "other_data_preserved": True,
-            },
-            sort_keys=True,
-        )
+    save("after.json", after)
+    save(
+        "receipt.json",
+        {
+            "state": "exact-readback-accepted",
+            "approval_sha256": digest,
+            "only_changed_key": KEY,
+            "runtime_acceptance": "pending",
+            "other_data_preserved": True,
+        },
     )
-    marker = state / "uncertain.json"
+    marker = a.state / "uncertain.json"
     if marker.exists():
         marker.unlink()
     print(

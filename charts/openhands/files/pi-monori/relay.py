@@ -4,7 +4,7 @@ from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from pathlib import Path
 slot=threading.BoundedSemaphore(1)
 class Handler(BaseHTTPRequestHandler):
- def log_message(self,*a):pass
+ def log_message(self,*a: object) -> None:pass
  def do_POST(self):
   if self.path!='/v1/chat/completions' or self.headers.get('Transfer-Encoding'):self.send_error(404);return
   n=int(self.headers.get('Content-Length',0));self.connection.settimeout(650)

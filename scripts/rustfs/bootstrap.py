@@ -17,7 +17,7 @@ import tempfile
 from pathlib import Path
 
 
-def policy(actions):
+def policy(actions: list[str]):
     return {
         "Version": "2012-10-17",
         "Statement": [
@@ -37,7 +37,7 @@ POLICIES = {
 }
 
 
-def canonical_policy(document):
+def canonical_policy(document: object):
     if not isinstance(document, dict) or set(document) - {"Version", "Statement", "Id"}:
         raise ValueError("unexpected policy fields")
     statements = document.get("Statement")
@@ -69,19 +69,19 @@ def canonical_policy(document):
     }
 
 
-def private_directory(path):
+def private_directory(path: Path):
     s = path.lstat()
     if not stat.S_ISDIR(s.st_mode) or s.st_uid != os.getuid() or s.st_mode & 0o077:
         raise ValueError("private owned directory required")
 
 
-def private(path):
+def private(path: Path):
     s = path.lstat()
     if not stat.S_ISREG(s.st_mode) or s.st_uid != os.getuid() or s.st_mode & 0o077:
         raise ValueError("private owned regular credentials file required")
 
 
-def run(mc, config, args, stdin=None):
+def run(mc: str, config: str, args: list[str], stdin: bytes | None = None):
     result = subprocess.run(
         [mc, "--config-dir", config, "--json", *args],
         input=stdin,
@@ -163,7 +163,7 @@ def main():
             )
         )
 
-        def mc(*a, stdin=None):
+        def mc(*a: str, stdin: bytes | None = None):
             return run(args.mc, tmp, list(a), stdin)
 
         # Inventories must succeed before any mutation. No failure means 'absent'.

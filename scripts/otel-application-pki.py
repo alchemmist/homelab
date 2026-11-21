@@ -11,7 +11,6 @@ import json
 import os
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import cast
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
@@ -24,7 +23,7 @@ SA = "otel-application-credentials"
 APPS = ["harbor", "litellm", "vllm", "open-webui", "lms", "wishlist"]
 
 
-def resources() -> list[dict[str, object]]:
+def resources():
     labels = {
         "app.kubernetes.io/part-of": "homelab-otel",
         "homelab-otel-role": "application-client",
@@ -80,10 +79,16 @@ def resources() -> list[dict[str, object]]:
             "subjects": [{"kind": "ServiceAccount", "name": SA, "namespace": NS}],
         }
     )
-    return cast("list[dict[str, object]]", objects)
+    return objects
 
 
-def assess(resource, verb, name=None, group="", namespace=NS) -> bool:
+def assess(
+    resource: str,
+    verb: str,
+    name: str | None = None,
+    group: str = "",
+    namespace: str = NS,
+) -> bool:
     attributes = {"namespace": namespace, "verb": verb, "group": group, "resource": resource}
     if name is not None:
         attributes["name"] = name
@@ -106,7 +111,7 @@ def assess(resource, verb, name=None, group="", namespace=NS) -> bool:
     return result.get("allowed") is True
 
 
-def run(output) -> None:
+def run(output: Path) -> None:
     os.umask(0o077)
     if output.exists():
         raise ValueError("Preserve existing application PKI observations")
@@ -114,17 +119,9 @@ def run(output) -> None:
     existing = BOOTSTRAP.kube("-n", NS, "get", "certificates", "-o", "json")["items"]
     specs = {item["metadata"]["name"]: item["spec"] for item in existing}
     for item in desired:
-        kind_field = item["kind"]
-        metadata = item["metadata"]
-        spec_field = item["spec"]
-        if (
-            kind_field == "Certificate"
-            and isinstance(metadata, dict)
-            and isinstance(spec_field, dict)
-            and metadata["name"] in specs
-        ):
-            actual = specs[metadata["name"]]
-            if any(actual.get(key) != value for key, value in spec_field.items()):
+        if item["kind"] == "Certificate" and item["metadata"]["name"] in specs:
+            actual = specs[item["metadata"]["name"]]
+            if any(actual.get(key) != value for key, value in item["spec"].items()):
                 raise ValueError("Existing certificate identity differs; do not overwrite")
     BOOTSTRAP.kube(
         "apply",

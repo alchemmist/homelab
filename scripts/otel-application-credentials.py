@@ -20,7 +20,9 @@ DESTINATIONS = {'harbor': 'harbor', 'litellm': 'llm', 'vllm': 'llm', 'open-webui
 OBSERVED_PHASE = {'stage': 'bootstrap', 'application': None}
 
 
-def validate_destination(entry) -> None:
+def validate_destination(entry: object) -> None:
+    if not isinstance(entry, dict):
+        raise TypeError
     app = entry['application']
     if app not in DESTINATIONS or entry['namespace'] != DESTINATIONS[app] or entry['secret'] != 'otel-app-tls-' + app:
         raise ValueError('Unexpected application leaf destination')
@@ -30,7 +32,7 @@ def validate_destination(entry) -> None:
         raise ValueError('Unexpected application reload target')
 
 
-def run() -> None:
+def run():
     token_root = Path('/var/run/secrets/kubernetes.io/serviceaccount')
     token = (token_root / 'token').read_text().strip()
     context = ssl.create_default_context(cafile=str(token_root / 'ca.crt'))
@@ -39,7 +41,7 @@ def run() -> None:
     if len(entries) != len(DESTINATIONS) or {entry['application'] for entry in entries} != set(DESTINATIONS):
         raise ValueError('Exactly the registered dedicated application client leaves required')
 
-    def api(namespace, resource, name, patch=None):
+    def api(namespace: str, resource: str, name: str, patch: object | None = None):
         path = '/api/v1/namespaces/' if resource == 'secrets' else '/apis/apps/v1/namespaces/'
         path += urllib.parse.quote(namespace, safe='') + '/' + resource + '/' + urllib.parse.quote(name, safe='')
         request = urllib.request.Request(endpoint + path, data=json.dumps(patch).encode() if patch is not None else None,

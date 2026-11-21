@@ -26,7 +26,7 @@ ENTRANCES = ["109.173.40.247", "109.120.141.60"]
 
 
 class WS:
-    def __init__(self, address):
+    def __init__(self, address: str) -> None:
         self.s = ssl.create_default_context().wrap_socket(
             socket.create_connection((address, 443), timeout=10), server_hostname=HOST
         )
@@ -59,7 +59,7 @@ class WS:
         if expected.lower() not in headers.lower():
             raise ValueError("wrong WS accept")
 
-    def send(self, data, opcode=2) -> None:
+    def send(self, data: bytes, opcode: int = 2) -> None:
         n = len(data)
         mask = os.urandom(4)
         head = (
@@ -69,7 +69,7 @@ class WS:
         )
         self.s.sendall(head + mask + bytes(b ^ mask[i % 4] for i, b in enumerate(data)))
 
-    def read(self, n) -> bytes:
+    def read(self, n: int) -> bytes:
         while len(self.buffer) < n:
             data = self.s.recv(4096)
             if not data:
@@ -105,7 +105,7 @@ class WS:
             self.s.close()
 
 
-def main() -> None:
+def main():
     os.umask(0o077)
     config = yaml.safe_load(
         (Path.home() / ".local/state/netbird-internal-stage/config.yaml").read_text()

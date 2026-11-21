@@ -10,7 +10,9 @@ import json
 import os
 import socket
 import subprocess
+from collections.abc import Sequence
 from pathlib import Path
+from typing import TypedDict, Unpack
 
 spec = importlib.util.spec_from_file_location(
     "inventory", Path(__file__).with_name("vpn-hardening-inventory.py")
@@ -21,7 +23,11 @@ TABLE = "homelab_xui_backend_guard"
 OWNER = "homelab issue83 public backend guard v1"
 
 
-def run(args, **kwargs):
+class _RunKeywords(TypedDict, total=False):
+    input: str
+
+
+def run(args: Sequence[str], **kwargs: Unpack[_RunKeywords]) -> str:
     r = subprocess.run(args, capture_output=True, text=True, timeout=20, **kwargs)
     if r.returncode:
         raise RuntimeError("Backend guard operation failed; inspect private receipts")

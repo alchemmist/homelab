@@ -9,7 +9,13 @@ import json
 import os
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import cast
+
+
+def _as_kind[T](value: object, kind: type[T]) -> T:
+    if not isinstance(value, kind):
+        raise TypeError
+    return value
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
@@ -21,8 +27,16 @@ PREFIXES = ("OTEL_", "ENABLE_OTEL", "LITELLM_OTEL", "JAEGER_", "ZIPKIN_", "TRACI
 
 
 def container_record(
-    namespace, workload, kind, template, container, init=False
-) -> dict[str, object]:
+    namespace: str,
+    workload: str,
+    kind: str,
+    template: object,
+    container: object,
+    *,
+    init: bool = False,
+):
+    if not isinstance(template, dict) or not isinstance(container, dict):
+        raise TypeError
     names = sorted(
         {
             entry["name"]
@@ -65,7 +79,8 @@ def container_record(
     }
 
 
-def summarize(objects) -> dict[str, object]:
+def summarize(objects: object):
+    objects = _as_kind(objects, list)
     records = []
     incarnations = []
     for obj in objects:
@@ -110,18 +125,15 @@ def summarize(objects) -> dict[str, object]:
                         kind,
                         template,
                         container,
-                        key == "initContainers",
+                        init=key == "initContainers",
                     )
                 )
     records.sort(
-        key=lambda record: cast(
-            "tuple[str, str, str, str]",
-            (
-                record["namespace"],
-                record["kind"],
-                record["workload"],
-                record["container"],
-            ),
+        key=lambda record: (
+            record["namespace"],
+            record["kind"],
+            record["workload"],
+            record["container"],
         )
     )
     return {
@@ -131,25 +143,19 @@ def summarize(objects) -> dict[str, object]:
         "environmentValuesSaved": False,
         "logBodiesRead": False,
         "sourceCount": len(records),
-        "configurationHintCount": sum(
-            bool(record["configurationHintPresent"]) for record in records
-        ),
+        "configurationHintCount": sum(record["configurationHintPresent"] for record in records),
         "internalSdkCoverageComplete": False,
         "hostServiceRegistryStillRequired": True,
         "managedPodIncarnationDeliveryStillRequiresSeparateEvidence": True,
         "configurationIsNotDeliveryEvidence": True,
         "sources": records,
         "podIncarnations": sorted(
-            incarnations,
-            key=lambda row: cast(
-                "tuple[str, str, str]",
-                (row["namespace"], row["pod"], row["container"]),
-            ),
+            incarnations, key=lambda row: (row["namespace"], row["pod"], row["container"])
         ),
     }
 
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()

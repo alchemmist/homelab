@@ -5,6 +5,7 @@ import json
 import re
 import time
 import unittest
+from typing import cast
 from unittest.mock import Mock, patch
 import test_triage as f
 from core import REPORT_SCHEMA, Failure
@@ -19,7 +20,9 @@ class ReferenceContractTests(unittest.TestCase):
         return Model(Mock(), "test-only", store=Mock())
 
     @staticmethod
-    def data(ids=("E002", "E007")):
+    def data(
+        ids: tuple[str, ...] = ("E002", "E007"),
+    ) -> dict[str, dict[str, dict[str, list[dict[str, str]]]]]:
         return {"evidence": {"artifact_context": {"index": [{"id": x} for x in ids]}}}
 
     def test_guided_schema_requires_an_actual_id_without_mutating_global(self) -> None:
@@ -81,9 +84,9 @@ class ReferenceContractTests(unittest.TestCase):
         m = self.model()
         captured = {}
 
-        def call(task, data, schema, deadline):
+        def call(task: str, data: object, schema: object, deadline: float) -> dict[str, object]:
             captured["task"] = task
-            return f.report()
+            return cast("dict[str, object]", f.report())
 
         m.call = call
         evidence = {"bundle": {"model_context": self.data()["evidence"]["artifact_context"]}}

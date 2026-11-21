@@ -13,6 +13,7 @@ import socket
 import ssl
 import sys
 import time
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -23,7 +24,46 @@ nb = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(nb)
 
 
-def probe(ip, port, dns_name=None, tls=False, timeout=4) -> dict[str, object]:
+def as_record(value: object) -> dict[str, object]:
+    """Return a JSON object record, failing loudly on malformed structure."""
+    if not isinstance(value, dict):
+        error = "structured JSON record required"
+        raise TypeError(error)
+    return value
+
+
+def as_list(value: object) -> list[object]:
+    """Return a JSON array, failing loudly on malformed structure."""
+    if not isinstance(value, list):
+        error = "structured JSON array required"
+        raise TypeError(error)
+    return value
+
+
+def as_str(value: object) -> str:
+    """Return a string JSON value, failing loudly on malformed structure."""
+    if not isinstance(value, str):
+        error = "string JSON value required"
+        raise TypeError(error)
+    return value
+
+
+def as_int(value: object) -> int:
+    """Return an integer JSON value, failing loudly on malformed structure."""
+    if not isinstance(value, int):
+        error = "integer JSON value required"
+        raise TypeError(error)
+    return value
+
+
+def probe(
+    ip: str,
+    port: int,
+    dns_name: str | None = None,
+    *,
+    tls: bool = False,
+    timeout: float = 4,
+) -> dict[str, object]:
     started = time.monotonic()
     result = {"ip": ip, "port": port, "tcp_connected": False, "tls_verified": False}
     try:
@@ -40,21 +80,37 @@ def probe(ip, port, dns_name=None, tls=False, timeout=4) -> dict[str, object]:
     return result
 
 
-def run(c, expect, phase, attempts=1, interval=2, negative=None) -> list[dict[str, object]]:
-    results = []
+def run(
+    c: Mapping[str, object],
+    expect: str,
+    phase: str,
+    attempts: int = 1,
+    interval: float = 2,
+    negative: Mapping[str, object] | None = None,
+) -> list[dict[str, object]]:
+    results: list[dict[str, object]] = []
     for attempt in range(attempts):
-        for r in c["resources"] if negative is None else [negative]:
-            ip = str(ipaddress.ip_network(r["address"]).network_address)
+        source = [as_record(x) for x in as_list(c["resources"])] if negative is None else [negative]
+        for r in source:
+            ip = str(ipaddress.ip_network(as_str(r["address"])).network_address)
             dns_ok = True
+            dns_name = r.get("dns_name")
             # Do not let DNS failure turn an expected denial into a pass.
-            if r.get("dns_name") and expect == "allow":
+            if bool(dns_name) and expect == "allow":
                 try:
-                    resolved = {x[4][0] for x in socket.getaddrinfo(r["dns_name"], None)}
-                    dns_ok = resolved == {ip}
+                    resolved = {x[4][0] for x in socket.getaddrinfo(as_str(dns_name), None)}
+                    dns_ok = bool(resolved == {ip})
                 except OSError:
                     dns_ok = False
-            for port in r["ports"]:
-                result = dict(probe(ip, port, r.get("dns_name"), tls=r["kind"] == "web"))
+            for port in [as_int(p) for p in as_list(r["ports"])]:
+                result = dict(
+                    probe(
+                        ip,
+                        port,
+                        as_str(dns_name) if dns_name is not None else None,
+                        tls=r["kind"] == "web",
+                    )
+                )
                 result.update(
                     phase=phase,
                     resource=r["name"],
@@ -118,7 +174,7 @@ def main() -> int:
             indent=2,
         )
     )
-    return 0 if all(x["passed"] for x in results) else 1
+    return 0 if all(bool(x["passed"]) for x in results) else 1
 
 
 if __name__ == "__main__":

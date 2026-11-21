@@ -20,6 +20,7 @@ import ssl
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Mapping
 from pathlib import Path
 
 SPEC = importlib.util.spec_from_file_location(
@@ -29,7 +30,31 @@ planner = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(planner)
 
 
-def private(path, directory=False, owner_uid=None) -> None:
+def as_dict(value: object) -> dict[str, object]:
+    """Return a JSON object, stopping on unexpected structure."""
+    if not isinstance(value, dict):
+        error = "Expected a JSON object"
+        raise TypeError(error)
+    return value
+
+
+def as_list(value: object) -> list[object]:
+    """Return a JSON array, stopping on unexpected structure."""
+    if not isinstance(value, list):
+        error = "Expected a JSON list"
+        raise TypeError(error)
+    return value
+
+
+def as_str(value: object) -> str:
+    """Return a JSON string, stopping on unexpected structure."""
+    if not isinstance(value, str):
+        error = "Expected a JSON string"
+        raise TypeError(error)
+    return value
+
+
+def private(path: Path, *, directory: bool = False, owner_uid: int | None = None) -> None:
     expected_uid = os.geteuid() if owner_uid is None else owner_uid
     planner.require(
         not path.is_symlink()
@@ -41,7 +66,7 @@ def private(path, directory=False, owner_uid=None) -> None:
     )
 
 
-def readiness_directory(path) -> None:
+def readiness_directory(path: Path) -> None:
     # Foundation is deployed into the existing alchemmist-owned 0700 cache.
     # Keep strict caller ownership everywhere else; do not chown that directory.
     owner_uid = None
@@ -50,10 +75,9 @@ def readiness_directory(path) -> None:
     private(path, directory=True, owner_uid=owner_uid)
 
 
-def validate_path(system, path) -> None:
+def validate_path(system: str, path: str) -> None:
     planner.require(
-        isinstance(path, str)
-        and path
+        path
         and not any(c.isspace() for c in path)
         and not any(c in path for c in ["\\", "#"])
         and "://" not in path
@@ -81,21 +105,18 @@ def validate_path(system, path) -> None:
     )
 
 
-def harbor_authorization(credentials) -> tuple[str, str]:
+def harbor_authorization(credentials: Mapping[str, object]) -> tuple[str, str]:
     if "harborJobserviceSecret" in credentials:
-        secret = credentials["harborJobserviceSecret"]
+        secret = as_str(credentials["harborJobserviceSecret"])
         planner.require(
-            isinstance(secret, str) and secret and not any(c.isspace() for c in secret),
+            secret and not any(c.isspace() for c in secret),
             "Invalid native Harbor machine credential",
         )
         return "Harbor-Secret " + secret, "/api/v2.0/internalconfig"
-    username, password = credentials["harborUsername"], credentials["harborPassword"]
+    username = as_str(credentials["harborUsername"])
+    password = as_str(credentials["harborPassword"])
     planner.require(
-        isinstance(username, str)
-        and username
-        and ":" not in username
-        and isinstance(password, str)
-        and password,
+        username and ":" not in username and password,
         "Invalid Harbor admin credential",
     )
     return "Basic " + base64.b64encode(
@@ -104,9 +125,9 @@ def harbor_authorization(credentials) -> tuple[str, str]:
 
 
 class Client:
-    def __init__(self, credentials):
+    def __init__(self, credentials: Mapping[str, object]) -> None:
         class NoRedirect(urllib.request.HTTPRedirectHandler):
-            def redirect_request(self, *args, **kwargs):
+            def redirect_request(self, *args: object, **kwargs: object) -> None:
                 return None
 
         context = ssl.create_default_context(cafile="/var/lib/rancher/k3s/server/tls/server-ca.crt")
@@ -131,11 +152,11 @@ class Client:
         }
         harbor_header, self.harbor_config_path = harbor_authorization(credentials)
         self.auth = {
-            "authentik": "Bearer " + credentials["authentikToken"],
+            "authentik": "Bearer " + as_str(credentials["authentikToken"]),
             "harbor": harbor_header,
         }
 
-    def call(self, system, method, path, body=None) -> object | None:
+    def call(self, system: str, method: str, path: str, body: object | None = None):
         validate_path(system, path)
         headers = {
             "Content-Type": "application/json-patch+json"
@@ -154,8 +175,7 @@ class Client:
             with self.openers[system].open(request, timeout=30) as response:
                 data = response.read(8 * 1024 * 1024 + 1)
                 planner.require(len(data) <= 8 * 1024 * 1024, "API response bound exceeded")
-                payload: object = json.loads(data) if data else None
-                return payload
+                return json.loads(data) if data else None
         except urllib.error.HTTPError as error:
             status = error.code
             error.close()
@@ -163,7 +183,7 @@ class Client:
                 "Native API request failed or write uncertain: " + system + " HTTP " + str(status)
             ) from None
 
-    def rows(self, path) -> list[object]:
+    def rows(self, path: str):
         result = []
         for page in range(1, 101):
             data = self.call(
@@ -171,15 +191,12 @@ class Client:
                 "GET",
                 path + ("&" if "?" in path else "?") + "page_size=100&page=" + str(page),
             )
-            if not isinstance(data, dict):
-                reason = "IdP pagination returned a non-object page"
-                raise TypeError(reason)
             result.extend(data["results"])
             if not data["pagination"].get("next"):
                 return result
         raise RuntimeError("Incomplete IdP pagination")
 
-    def harbor_members(self, project) -> list[object]:
+    def harbor_members(self, project: str):
         result = []
         for page in range(1, 101):
             data = self.call(
@@ -187,15 +204,12 @@ class Client:
                 "GET",
                 "/api/v2.0/projects/" + project + "/members?page_size=100&page=" + str(page),
             )
-            if not isinstance(data, list):
-                reason = "Harbor members returned a non-list page"
-                raise TypeError(reason)
             result.extend(data)
             if len(data) < 100:
                 return result
         raise RuntimeError("Incomplete Harbor pagination")
 
-    def harbor_groups(self) -> list[object]:
+    def harbor_groups(self):
         result = []
         for page in range(1, 101):
             data = self.call(
@@ -203,20 +217,18 @@ class Client:
                 "GET",
                 "/api/v2.0/usergroups?group_name=homelab-observer&page_size=100&page=" + str(page),
             )
-            if not isinstance(data, list):
-                reason = "Harbor groups returned a non-list page"
-                raise TypeError(reason)
             result.extend(g for g in data if g.get("group_name") == "homelab-observer")
             if len(data) < 100:
                 return result
         raise RuntimeError("Incomplete Harbor group pagination")
 
 
-def snapshot(client, policy) -> dict[str, object]:
+def snapshot(client: Client, policy: Mapping[str, object]):
     kbase = "/apis/management.cattle.io/v3/"
     get = lambda path: client.call("kubernetes", "GET", kbase + path)
     globals_ = get("globalroles")["items"]
-    cluster = policy["rancher"]["cluster"]
+    rancher = as_dict(policy["rancher"])
+    cluster = as_str(rancher["cluster"])
     config = client.call("harbor", "GET", client.harbor_config_path)
     value = lambda key: config[key]["value"]
     apps = client.rows("core/applications/?superuser_full_list=true")
@@ -227,9 +239,9 @@ def snapshot(client, policy) -> dict[str, object]:
         "bindings": client.rows("policies/bindings/"),
         "globalRoles": globals_,
         "rancherLoginRole": next(
-            r for r in globals_ if r["metadata"]["name"] == policy["rancher"]["globalRole"]
+            r for r in globals_ if r["metadata"]["name"] == rancher["globalRole"]
         ),
-        "rancherClusterRole": get("roletemplates/" + policy["rancher"]["clusterRole"]),
+        "rancherClusterRole": get("roletemplates/" + as_str(rancher["clusterRole"])),
         "rancherGroupBinding": get(
             "namespaces/" + cluster + "/clusterroletemplatebindings/homelab-observer-group"
         ),
@@ -241,23 +253,23 @@ def snapshot(client, policy) -> dict[str, object]:
             "oidcAdminGroup": value("oidc_admin_group"),
             "projectCreationRestriction": value("project_creation_restriction"),
             "projects": {
-                name: client.harbor_members(name) for name in policy["harbor"]["projects"]
+                name: client.harbor_members(name)
+                for name in [as_str(x) for x in as_list(as_dict(policy["harbor"])["projects"])]
             },
         },
     }
 
 
-def normalized(value) -> object:
+def normalized(value: object) -> object:
     if isinstance(value, dict):
         # Computed signed media URLs do not define group membership or access.
         return {k: normalized(v) for k, v in value.items() if k != "meta_icon_url"}
     if isinstance(value, list):
         return [normalized(v) for v in value]
-    leaf: object = value
-    return leaf
+    return value
 
 
-def digest(state, policy, operations) -> str:
+def digest(state: object, policy: object, operations: object) -> str:
     return hashlib.sha256(
         json.dumps(
             {"snapshot": normalized(state), "policy": policy, "operations": operations},
@@ -267,13 +279,13 @@ def digest(state, policy, operations) -> str:
     ).hexdigest()
 
 
-def save(path, value) -> None:
+def save(path: Path, value: object) -> None:
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as stream:
         json.dump(value, stream)
 
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--credentials", required=True, type=Path)
     parser.add_argument("--state", type=Path, default=Path("/var/lib/homelab-observer-bootstrap"))
