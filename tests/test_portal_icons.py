@@ -51,9 +51,11 @@ class Response:
         self.body = body if isinstance(body, bytes) else json.dumps(body).encode()
 
     def __enter__(self):
+        """Return this response as the active context manager resource."""
         return self
 
     def __exit__(self, *args):
+        """Leave the response context without suppressing exceptions."""
         return False
 
     def read(self):
