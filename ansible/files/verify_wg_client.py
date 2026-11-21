@@ -32,7 +32,8 @@ def _require_clean_namespace() -> None:
         or Path("/sys/class/net/" + INTERFACE).exists()
         or resolver_dir.exists()
     ):
-        raise RuntimeError("Verification namespace or interface already exists")
+        message = "Verification namespace or interface already exists"
+        raise RuntimeError(message)
 
 
 def _translated_endpoints(profile: str) -> str:

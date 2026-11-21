@@ -22,7 +22,8 @@ with tempfile.TemporaryDirectory(dir=root) as work:
         text=True,
     ).strip()
     if not primary.startswith("pg-critical-") or not primary.removeprefix("pg-critical-").isdigit():
-        raise RuntimeError("Cannot resolve pg-critical primary")
+        message = "Cannot resolve pg-critical primary"
+        raise RuntimeError(message)
     with (p / "database.dump").open("wb") as f:
         subprocess.run(
             pg

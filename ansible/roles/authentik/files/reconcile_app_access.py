@@ -389,11 +389,11 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
     """Redirect handler that refuses to follow HTTP redirects."""
 
     def redirect_request(self, _req, fp, _code, _msg, _headers, _newurl):
-
-        'Refuse redirects by closing the body and raising instead.'
+        "Refuse redirects by closing the body and raising instead."
         if fp:
             fp.close()
-        raise RuntimeError("API redirect refused")
+        message = "API redirect refused"
+        raise RuntimeError(message)
 
 
 def api_for(root):
@@ -442,9 +442,8 @@ def api_for(root):
                 "API HTTP " + str(status) + "; stop and inspect receipt, no retry"
             ) from None
         except (OSError, ValueError, urllib.error.URLError):
-            raise RuntimeError(
-                "API outcome uncertain; stop and inspect receipt, no retry"
-            ) from None
+            message = "API outcome uncertain; stop and inspect receipt, no retry"
+            raise RuntimeError(message) from None
 
     return api
 

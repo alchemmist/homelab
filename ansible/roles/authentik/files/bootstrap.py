@@ -18,16 +18,18 @@ if not path.exists():
         check=True,
     )
     if check.stdout.strip():
-        raise SystemExit(
+        message = (
             "Runtime Secret exists but credential file is missing; refusing implicit rotation"
         )
+        raise SystemExit(message)
     claims = subprocess.run(
         kube + ["get", "pvc", "-o", "name"], capture_output=True, text=True, check=True
     )
     if claims.stdout.strip():
-        raise SystemExit(
+        message = (
             "Identity PVCs already exist without credential file; restore credentials before deployment"
         )
+        raise SystemExit(message)
     values = {
         "AUTHENTIK_SECRET_KEY": secrets.token_urlsafe(64),
         "AUTHENTIK_POSTGRESQL__HOST": "authentik-postgres",
@@ -55,7 +57,8 @@ if automation_path.exists():
         automation.get("status") != "active"
         or automation.get("token") != values["AUTHENTIK_BOOTSTRAP_TOKEN"]
     ):
-        raise SystemExit("Incomplete automation migration; refusing runtime credential update")
+        message = "Incomplete automation migration; refusing runtime credential update"
+        raise SystemExit(message)
     for key in ["AUTHENTIK_BOOTSTRAP_TOKEN", "AUTHENTIK_BOOTSTRAP_PASSWORD"]:
         runtime_values.pop(key, None)
 manifest = {
