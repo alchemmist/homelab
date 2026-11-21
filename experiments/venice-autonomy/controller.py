@@ -13,8 +13,6 @@ from typing import TypedDict, cast
 
 import owned_resources
 
-import owned_resources
-
 DEFAULT_ENGINES = ("mini_native", "openhands")
 ENGINES = DEFAULT_ENGINES + ("mini_text",)
 TASKS = ("median", "clamp", "escape_html")

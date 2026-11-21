@@ -8,7 +8,13 @@ import signal
 import time
 from typing import cast
 
-from fixtures import check_verdict, fixture_files, seal_execution, task_prompt, verifier_command
+from fixtures import (
+    check_verdict,
+    fixture_files,
+    seal_execution,
+    task_prompt,
+    verifier_command,
+)
 from sandbox import Sandbox
 
 
@@ -208,7 +214,13 @@ def run_openhands(
     os.environ["OH_PERSISTENCE_DIR"] = str(directory / "openhands-home")
     os.environ["OTEL_SDK_DISABLED"] = "true"
     from openhands.sdk import LLM, Agent, Conversation, Tool
-    from openhands.sdk.tool import Action, Observation, ToolDefinition, ToolExecutor, register_tool
+    from openhands.sdk.tool import (
+        Action,
+        Observation,
+        ToolDefinition,
+        ToolExecutor,
+        register_tool,
+    )
     from pydantic import Field, SecretStr
 
     class BashAction(Action):

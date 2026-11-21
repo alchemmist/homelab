@@ -5,8 +5,8 @@ public registry. Its isolated Go TLS setting is configured by the workflow.
 """
 
 import argparse
-import http.client
 import base64
+import http.client
 import json
 import os
 import re
