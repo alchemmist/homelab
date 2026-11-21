@@ -5,7 +5,7 @@ from urllib.error import HTTPError
 from urllib.parse import urlparse
 from urllib.request import Request,build_opener
 
-def extract(n,head,api,no_redirect,check):
+def extract(n,head,api,no_redirect,check) -> dict[str, list[str]]:
  files=api(f'pulls/{n}/files?per_page=20');check(len(files)==1 and files[0]['status']=='added');dest=files[0]['filename'];check(re.fullmatch(r'(ci/tests|server/tests/unit)/test_[\w]+\.py',dest));runs=api('commits/'+head+'/check-runs?per_page=100');out=[];summaries=[]
  for r in runs['check_runs']:
   if r.get('conclusion')!='failure':continue

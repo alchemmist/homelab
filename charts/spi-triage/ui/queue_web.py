@@ -24,14 +24,14 @@ TOKEN = ""
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *args, **kwargs):
+    def redirect_request(self, *args, **kwargs) -> None:
         return None
 
 
 AUTH = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
 
-def expire(sock):
+def expire(sock)->None:
     try:
         sock.shutdown(socket.SHUT_RDWR)
     except OSError:
@@ -39,10 +39,10 @@ def expire(sock):
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
-    def log_message(self, *args):
+    def log_message(self, *args) -> None:
         pass
 
-    def handle(self):
+    def handle(self) -> None:
         timer = threading.Timer(20, expire, (self.request,))
         timer.daemon = True
         timer.start()
@@ -52,10 +52,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         finally:
             timer.cancel()
 
-    def send_error(self, code, message=None, explain=None):
+    def send_error(self, code, message=None, explain=None) -> None:
         self.send(400, b"", "text/plain")
 
-    def send(self, status, body, mime="application/json; charset=utf-8", location=None):
+    def send(self, status, body, mime="application/json; charset=utf-8", location=None) -> None:
         self.close_connection = True
         self.send_response(status)
         for k, v in {
@@ -76,10 +76,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError):
             pass
 
-    def valid_host(self):
+    def valid_host(self) -> bool:
         return self.headers.get_all("Host", []) == ["rustfs.socrat.alchemmist.xyz"]
 
-    def authorization(self):
+    def authorization(self) -> int:
         # Same trusted auth/nginx endpoint as the private evidence Reader.
         # Never trust caller identity headers or forward cookies to the backend.
         cookies = self.headers.get_all("Cookie", [])
@@ -114,7 +114,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return code if code in (401, 403) else 503
             return 503
 
-    def do_GET(self):
+    def do_GET(self) -> None:
         if not self.valid_host():
             return self.send(400, b"{}")
         auth = self.authorization()
@@ -135,7 +135,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.send(404, b"{}")
         self.send(200, Path(__file__).with_name(asset[0]).read_bytes(), asset[1])
 
-    def do_POST(self):
+    def do_POST(self) -> None:
         if not self.valid_host():
             return self.send(400, b"{}")
         auth = self.authorization()
@@ -194,18 +194,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if connection:
                 connection.close()
 
-    def do_OPTIONS(self):
+    def do_OPTIONS(self) -> None:
         self.send(405, b"{}")
 
 
 class Server(http.server.ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, *args):
+    def __init__(self, *args) -> None:
         self.slots = threading.BoundedSemaphore(8)
         super().__init__(*args)
 
-    def process_request(self, request, client_address):
+    def process_request(self, request, client_address) -> None:
         if not self.slots.acquire(False):
             return self.shutdown_request(request)
         try:
@@ -214,13 +214,13 @@ class Server(http.server.ThreadingHTTPServer):
             self.slots.release()
             raise
 
-    def process_request_thread(self, request, client_address):
+    def process_request_thread(self, request, client_address) -> None:
         try:
             super().process_request_thread(request, client_address)
         finally:
             self.slots.release()
 
-    def handle_error(self, request, client_address):
+    def handle_error(self, request, client_address) -> None:
         pass
 
 

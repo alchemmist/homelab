@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 ENDPOINT = os.environ["VPN_ENDPOINT"]
 PORT = int(os.environ["VPN_PORT"])
 
-def prepare(value):
+def prepare(value) -> dict[str, object]:
     profiles = value if isinstance(value, list) else [value]
     outbounds = []
     for profile in profiles:
@@ -43,7 +43,7 @@ def prepare(value):
         "outbounds": [outbound],
     }
 
-def main():
+def main() -> None:
     raw = open("/vpn-identity/subscription-url", encoding="utf8").read().strip()
     url = urlparse(raw)
     if url.scheme != "https" or url.hostname != "vpn.alchemmist.xyz" or url.port or url.username or url.password or url.query or url.fragment:

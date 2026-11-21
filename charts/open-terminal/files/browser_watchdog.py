@@ -9,10 +9,10 @@ from pathlib import Path
 
 
 class JsonFormatter(logging.Formatter):
-    def format(self, record):
+    def format(self, record) -> str:
         # Do not render exception text/tracebacks: they can contain process arguments.
         event = getattr(record, "event", "watchdog_error")
-        result = dict(
+        result: dict[str, object] = dict(
             ts=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             level={10: "debug", 20: "info", 30: "warn"}.get(record.levelno, "error"),
             service="open-terminal-browser-watchdog",
@@ -35,11 +35,11 @@ class Process:
     args: tuple[str, ...]
 
     @property
-    def identity(self):
+    def identity(self) -> tuple[int, int]:
         return self.pid, self.start
 
 
-def read_process(pid, proc=Path("/proc")):
+def read_process(pid, proc=Path("/proc")) -> Process | None:
     try:
         directory = proc / str(pid)
         stat = (directory / "stat").read_text()
@@ -55,7 +55,7 @@ def read_process(pid, proc=Path("/proc")):
         return None
 
 
-def snapshot(proc=Path("/proc")):
+def snapshot(proc=Path("/proc")) -> dict[int, Process]:
     result = {}
     for directory in proc.iterdir():
         if directory.name.isdigit():
@@ -65,7 +65,7 @@ def snapshot(proc=Path("/proc")):
     return result
 
 
-def is_test_browser(process):
+def is_test_browser(process) -> bool:
     return (
         process.executable in {"chrome", "chromium", "headless_shell", "chrome-headless-shell"}
         and any(arg == "--headless" or arg.startswith("--headless=") for arg in process.args)
@@ -75,7 +75,7 @@ def is_test_browser(process):
     )
 
 
-def signal_process(identity, sig):
+def signal_process(identity, sig) -> bool:
     pid, start = identity
     try:
         fd = os.pidfd_open(pid)
@@ -117,7 +117,7 @@ class Watchdog:
         self.send = send
         self.browsers = {}
 
-    def step(self, processes, now):
+    def step(self, processes, now) -> None:
         for process in processes.values():
             if is_test_browser(process) and process.identity not in self.browsers:
                 self.browsers[process.identity] = Browser(
@@ -161,14 +161,14 @@ class Watchdog:
                 self.send(identity, sig)
 
 
-def positive_setting(name, default):
+def positive_setting(name, default) -> float:
     value = float(os.environ.get(name, default))
     if not 0 < value < float("inf"):
         raise ValueError(f"{name} must be finite and positive")
     return value
 
 
-def main():
+def main() -> None:
     handler = logging.StreamHandler()
     handler.setFormatter(JsonFormatter())
     logging.basicConfig(level=logging.INFO, handlers=[handler])

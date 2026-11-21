@@ -6,11 +6,11 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 ROOT=pathlib.Path('/backup'); SRC=pathlib.Path('/source'); TMP=pathlib.Path('/tmp'); NAME='canvas-cold-20261119'; AAD=b'openhands-full-claim-v2'; CHUNK=1024*1024
 DB='openhands/automation/automations.db'; CONV='openhands/agent-canvas/conversations/'; IDS=('1ab3985a219341778dd28ec7d54dbfeb','51a35822a87043cca775fd5e662f0039'); HAND='workspace/the-loop-demo/HANDOFF.md'
-def b64(b):return base64.b64encode(b).decode('ascii')
-def file_digest(p):
+def b64(b)->str:return base64.b64encode(b).decode('ascii')
+def file_digest(p)->str:
     with p.open('rb') as f:return hashlib.file_digest(f,'sha256').hexdigest()
 
-def main():
+def main()->None:
     os.umask(0o077);enc=ROOT/(NAME+'.gcm');receipt=ROOT/(NAME+'.json');part=ROOT/(NAME+'.partial');assert not any(p.exists() for p in (enc,receipt,part));assert all((SRC/k).is_dir() for k in ('openhands','workspace'))
     key=os.urandom(32);iv=os.urandom(12);crypt=Cipher(algorithms.AES(key),modes.GCM(iv)).encryptor();crypt.authenticate_additional_data(AAD)
     digest=hashlib.sha256();n=0

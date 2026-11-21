@@ -1,5 +1,6 @@
 import os
 import time
+from typing import cast
 
 PROMETHEUS_MARKER = "prometheus-kube-prometheus-stack-prometheus-db"
 ROLES = (
@@ -10,15 +11,15 @@ ROLES = (
 )
 
 
-def allocated(path):
+def allocated(path) -> int:
     stat = os.lstat(path)
     blocks = getattr(stat, "st_blocks", None)
     if blocks is None:
         return stat.st_size
-    return blocks * 512
+    return cast("int", blocks * 512)
 
 
-def directory_bytes(path):
+def directory_bytes(path) -> int:
     total = allocated(path)
     for root, dirs, files in os.walk(path, followlinks=False):
         for name in dirs:
@@ -28,14 +29,14 @@ def directory_bytes(path):
     return total
 
 
-def host_path(path, host_root):
+def host_path(path, host_root) -> str:
     prefix = host_root.rstrip("/")
     if path == prefix or path.startswith(prefix + "/"):
-        return "/var/lib" + path[len(prefix) :]
-    return path
+        return cast("str", "/var/lib" + path[len(prefix) :])
+    return cast("str", path)
 
 
-def rows(host_root):
+def rows(host_root) -> "list[tuple[str, str, int]]":
     found = []
     storage = os.path.join(host_root, "rancher/k3s/storage")
     if os.path.isdir(storage):
@@ -52,7 +53,7 @@ def rows(host_root):
     return found
 
 
-def render(node, entries):
+def render(node, entries) -> str:
     lines = [
         "# HELP socrat_metrics_directory_bytes Allocated bytes in one metrics cascade directory.",
         "# TYPE socrat_metrics_directory_bytes gauge",
@@ -65,14 +66,14 @@ def render(node, entries):
     return "\n".join(lines) + "\n"
 
 
-def write(path, body):
+def write(path, body) -> None:
     temporary = path + ".tmp"
     with open(temporary, "w", encoding="utf-8") as handle:
         handle.write(body)
     os.replace(temporary, path)
 
 
-def main():
+def main() -> None:
     node = os.environ["NODE_NAME"]
     host_root = os.environ.get("HOST_VAR_LIB", "/host/var/lib")
     output = os.environ.get("OUTPUT", "/textfile/socrat-metrics-disk.prom")

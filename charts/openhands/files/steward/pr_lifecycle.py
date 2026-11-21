@@ -3,7 +3,7 @@ import hashlib,json,re,runpy
 from pathlib import Path
 G=runpy.run_path(str(Path(__file__).with_name('ready_gate.py')));REVIEWERS={'socrat-steward','coderabbitai'};HANDLERS={'alchemmist'}
 
-def lifecycle(x,api,owned,check):
+def lifecycle(x,api,owned,check) -> dict[str, object]:
  n=x['pr'];head=x['head'];p=owned(n,head);check(p['head']['ref'].startswith('openhands/issue-') and 'mutation-pr' in {l['name'] for l in p['labels']});mode=x['action'];issue=f'issues/{n}'
  def snap():
   q=api('graphql',{'query':G['QUERY'].replace('reviewThreads(first:100){nodes{id isResolved comments(first:100){nodes{id author','reviewThreads(first:100){nodes{id isResolved comments(first:100){nodes{id originalCommit{oid} author'),'variables':{'owner':'alchemmist','repo':'monori','number':n}});check(not q.get('errors'));v=q['data']['repository']['pullRequest'];check(v['headRefOid']==head);v['statusCheckRollup']=(v['tip']['nodes'][-1]['commit']['statusCheckRollup'] or {});a=G['assess'](v,REVIEWERS,HANDLERS);ctx=v['statusCheckRollup'].get('contexts',{}).get('nodes',[])

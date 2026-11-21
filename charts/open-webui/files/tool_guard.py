@@ -5,6 +5,7 @@ import hashlib
 import json
 import sys
 from itertools import islice
+from typing import cast
 
 from jsonschema import Draft202012Validator
 
@@ -33,7 +34,7 @@ print(json.dumps(result))
 """
 
 
-async def bounded_fetch(params):
+async def bounded_fetch(params) -> str | dict[str, str]:
     try:
         process = await asyncio.create_subprocess_exec(
             sys.executable,
@@ -73,7 +74,7 @@ async def bounded_fetch(params):
         await process.wait()
 
 
-def validation_problem(params, schema):
+def validation_problem(params, schema) -> str | None:
     try:
         errors = list(islice(Draft202012Validator(schema).iter_errors(params), 4))
     except Exception:
@@ -94,18 +95,18 @@ def validation_problem(params, schema):
     return "; ".join(problems)
 
 
-def repeated_period(fingerprints, periods=REPEAT_PERIODS, cycles=REPEAT_CYCLES):
+def repeated_period(fingerprints, periods=REPEAT_PERIODS, cycles=REPEAT_CYCLES) -> int | None:
     for period in periods:
         need = period * cycles
         if len(fingerprints) >= need and fingerprints[-need:] == fingerprints[-period:] * cycles:
-            return period
+            return cast("int", period)
     return None
 
 
-def record_failure(metadata, name, arguments, problem):
+def record_failure(metadata, name, arguments, problem) -> dict[str, str]:
     state = guard_state(metadata)
     fingerprint = hashlib.sha256((name + "\n" + arguments).encode()).hexdigest()
-    failures = state["failures"]
+    failures = cast("dict[str, int]", state["failures"])
     if len(failures) >= 128 and fingerprint not in failures:
         failures.pop(next(iter(failures)))
     count = failures.get(fingerprint, 0) + 1
@@ -124,9 +125,9 @@ def record_failure(metadata, name, arguments, problem):
     }
 
 
-def guard_state(metadata):
+def guard_state(metadata) -> dict[str, object]:
     generation = metadata.get("message_id") or metadata.get("assistant_message_id")
-    state = metadata.get(STATE_KEY)
+    state: dict[str, object] | None = metadata.get(STATE_KEY)
     if not isinstance(state, dict) or state.get("generation") != generation:
         state = {
             "generation": generation,
@@ -140,15 +141,15 @@ def guard_state(metadata):
     return state
 
 
-def guard_stopped(metadata):
-    return guard_state(metadata)["stopped"]
+def guard_stopped(metadata) -> bool:
+    return cast("bool", guard_state(metadata)["stopped"])
 
 
-def guard_stop_message(metadata):
-    return guard_state(metadata).get("stop_message") or STOP_MESSAGE
+def guard_stop_message(metadata) -> str:
+    return cast("str", guard_state(metadata).get("stop_message") or STOP_MESSAGE)
 
 
-def record_no_progress_round(metadata, output):
+def record_no_progress_round(metadata, output) -> None:
     """Track rounds whose every tool call failed before execution.
 
     Calls that resolve_tool_call rejects never reach guarded_execute, so the
@@ -162,7 +163,7 @@ def record_no_progress_round(metadata, output):
     state = guard_state(metadata)
     if not isinstance(output, list):
         return
-    seen = state.get("no_progress_seen") or 0
+    seen = cast("int", state.get("no_progress_seen") or 0)
     if id(output) != state.get("no_progress_output_id"):
         # The loop rebinds output to a fresh list for every generated response.
         seen = 0
@@ -178,7 +179,7 @@ def record_no_progress_round(metadata, output):
     ]
     if not outputs:
         return
-    history = state.setdefault("no_progress", [])
+    history = cast("list[str]", state.setdefault("no_progress", []))
     if not all(item.get("status") == "failed" for item in outputs):
         history.clear()
         return
@@ -198,7 +199,7 @@ def record_no_progress_round(metadata, output):
         state["stop_message"] = NO_PROGRESS_STOP_MESSAGE
 
 
-def backend_validation_problem(result):
+def backend_validation_problem(result) -> str | None:
     value = result
     if isinstance(value, tuple) and value:
         value = value[0]
@@ -210,7 +211,7 @@ def backend_validation_problem(result):
     return "terminal rejected the arguments with HTTP 422; recheck required fields and types in its schema"
 
 
-def guarded_execute(function):
+def guarded_execute(function) -> object:
     @functools.wraps(function)
     async def wrapped(form_data, metadata, event_caller, tool_call):
         resolver = function.__globals__.get("resolve_tool_call")
@@ -243,7 +244,7 @@ def guarded_execute(function):
         except (ValueError, TypeError, SyntaxError):
             params = {}
             canonical = str(arguments)
-            problem = "arguments must be a complete JSON object"
+            problem: str | None = "arguments must be a complete JSON object"
         else:
             problem = (
                 "arguments must be a JSON object"
@@ -255,7 +256,7 @@ def guarded_execute(function):
             return params if isinstance(params, dict) else {}, result, tool, "terminal", direct
         fingerprint = hashlib.sha256((name + "\n" + canonical).encode()).hexdigest()
         state = guard_state(metadata)
-        recent = state.setdefault("recent", [])
+        recent = cast("list[str]", state.setdefault("recent", []))
         projected = recent[-(REPEAT_HISTORY - 1) :] + [fingerprint]
         period = repeated_period(projected)
         if period:
@@ -283,7 +284,7 @@ def guarded_execute(function):
         if isinstance(value, tuple) and value:
             value = value[0]
         if value is not None and not (isinstance(value, dict) and value.get("error")):
-            guard_state(metadata)["failures"].pop(fingerprint, None)
+            cast("dict[str, int]", guard_state(metadata)["failures"]).pop(fingerprint, None)
         return response
 
     return wrapped

@@ -1,12 +1,14 @@
 """Authenticated report admission only. No GitHub/model/cluster credential or egress."""
 import time, base64, hashlib, hmac, json, re, sqlite3
+from collections.abc import Iterator
 from contextlib import closing
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+from typing import cast
 
 SECTIONS = {'Survivors by area', 'No coverage by area', 'Timeouts'}
 
-def families(body):
+def families(body) -> Iterator[tuple[str, str, int]]:
     section = None
     for line in body.splitlines():
         if line.startswith('#'):
@@ -15,9 +17,9 @@ def families(body):
             continue
         hit = re.fullmatch(r'(?:(\d{1,6}) )?([\wǁ]+(?:\.[\wǁ]+)+)', line.strip())
         if hit and (hit[1] or section == 'Timeouts' and re.search(r'__mutmut_\d+$', hit[2])):
-            yield section, hit[2], int(hit[1] or 1)
+            yield cast("str", section), hit[2], int(hit[1] or 1)
 
-def ingest(envelope, registry, secret, db):
+def ingest(envelope, registry, secret, db) -> dict[str, object]:
     raw = base64.b64decode(envelope['raw'], validate=True)
     sig = 'sha256=' + hmac.new(secret, raw, hashlib.sha256).hexdigest()
     if not hmac.compare_digest(sig, envelope['signature']):
@@ -37,7 +39,7 @@ def ingest(envelope, registry, secret, db):
         if prior:return {'status':'duplicate' if prior==(digest,) else 'changed_report_requires_review'}
         status='queued' if rows else 'unsupported_report';c.execute('insert into reports values(?,?,?,?)',(rid,num,digest,status));c.executemany('insert into cards values(?,?,?,?,?,\'queued\')',[(rid,num,*row) for row in rows]);return {'status':status,'cards':len(rows),'issue':num}
 
-def lifecycle(path,x,db,secret,registry):
+def lifecycle(path,x,db,secret,registry) -> dict[str, object]:
     ids=None; event='reconcile'
     if path=='/review':
         raw=base64.b64decode(x['raw'],validate=True)
@@ -54,12 +56,12 @@ def lifecycle(path,x,db,secret,registry):
         return {'event':event,'enrolled':sorted(targets)}
 
 class Handler(BaseHTTPRequestHandler):
-    def do_POST(self):
+    def do_POST(self) -> None:
         try:
             n=int(self.headers.get('Content-Length',0));assert self.path in ('/intake','/review','/review-tick') and 0<n<300000 and not self.headers.get('Transfer-Encoding');x=json.loads(self.rfile.read(n));registry=json.loads(Path('/code/repos.json').read_text());db='/state/reports.db';out=ingest(x,registry,Path('/auth/key').read_bytes(),db) if self.path=='/intake' else lifecycle(self.path,x,db,Path('/review-auth/key').read_bytes(),registry);code=200
         except PermissionError:code,out=403,{}
         except (ValueError,KeyError,TypeError,AssertionError):code,out=400,{}
         except Exception:code,out=503,{}
         self.send_response(code);self.send_header('Content-Type','application/json');self.end_headers();self.wfile.write(json.dumps(out).encode())
-    def log_message(self,*args):pass
+    def log_message(self,*args) -> None:pass
 if __name__=='__main__': HTTPServer(('',8091),Handler).serve_forever()

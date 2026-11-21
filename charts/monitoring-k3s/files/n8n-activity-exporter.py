@@ -9,17 +9,18 @@ import time
 import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from typing import cast
 
 BASE = os.environ.get("N8N_URL", "http://n8n.automation.svc.cluster.local")
 LOCK = threading.Lock()
 STATE = {"ok": 0, "at": 0, "counts": {}}
 
 
-def timestamp(value):
+def timestamp(value) -> float:
     return dt.datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
 
 
-def summarize(rows, now):
+def summarize(rows, now) -> dict[tuple[str, int], int]:
     counts = {
         (status, window): 0
         for status in ("success", "error", "running", "waiting", "other")
@@ -44,7 +45,7 @@ def summarize(rows, now):
     return counts
 
 
-def get_page(cursor=None, status=None):
+def get_page(cursor=None, status=None) -> dict[str, object]:
     params = {"limit": 100, "includeData": "false"}
     if cursor:
         params["cursor"] = cursor
@@ -56,19 +57,20 @@ def get_page(cursor=None, status=None):
         headers={"X-N8N-API-KEY": key},
     )
     with urllib.request.urlopen(request, timeout=8) as response:
-        return json.load(response)
+        return cast("dict[str, object]", json.load(response))
 
 
-def collect():
+def collect() -> dict[tuple[str, int], int]:
     # History is sorted by descending execution ID. Count recent starts by
     # current outcome, not recent completions of arbitrarily old executions.
     now = time.time()
     rows, cursor = [], None
     for _ in range(40):
         page = get_page(cursor)
-        rows.extend(page["data"])
-        cursor = page.get("nextCursor")
-        dates = [timestamp(r["startedAt"]) for r in page["data"] if r.get("startedAt")]
+        data = cast("list[dict[str, object]]", page["data"])
+        rows.extend(data)
+        cursor = cast("str | None", page.get("nextCursor"))
+        dates = [timestamp(r["startedAt"]) for r in data if r.get("startedAt")]
         if not cursor or (dates and max(dates) < now - 3600):
             break
     else:
@@ -78,18 +80,19 @@ def collect():
     active, cursor = [], None
     for _ in range(10):
         page = get_page(cursor, "running")
-        active.extend(page["data"])
-        cursor = page.get("nextCursor")
+        active.extend(cast("list[dict[str, object]]", page["data"]))
+        cursor = cast("str | None", page.get("nextCursor"))
         if not cursor:
             break
     else:
         raise RuntimeError("running scan incomplete")
     result = summarize(rows + active, now)
-    result["running", 0] = len({r["id"] for r in active if r.get("status") == "running"})
+    running = {r["id"] for r in active if r.get("status") == "running"}
+    result["running", 0] = len(running)
     return result
 
 
-def loop():
+def loop() -> None:
     while True:
         try:
             counts = collect()
@@ -103,7 +106,7 @@ def loop():
 
 
 class Handler(BaseHTTPRequestHandler):
-    def do_GET(self):
+    def do_GET(self) -> None:
         if self.path != "/metrics":
             self.send_error(404)
             return
@@ -129,12 +132,12 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
 
-    def log_message(self, *_):
+    def log_message(self, *_) -> None:
         pass
 
 
 class MetricsServer(ThreadingHTTPServer):
-    def server_bind(self):
+    def server_bind(self) -> None:
         # Avoid slow reverse DNS lookups during HTTPServer initialization.
         socketserver.TCPServer.server_bind(self)
         self.server_name = "n8n-observer"

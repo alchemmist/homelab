@@ -4,13 +4,14 @@ import struct
 import sys
 
 
-def connect(host, port, context, name):
-    return context.wrap_socket(
+def connect(host, port, context, name) -> ssl.SSLSocket:
+    wrapped: ssl.SSLSocket = context.wrap_socket(
         socket.create_connection((host, port), timeout=5), server_hostname=name
     )
+    return wrapped
 
 
-def require_rejection(host, port, context, name):
+def require_rejection(host, port, context, name) -> None:
     try:
         with connect(host, port, context, name):
             raise RuntimeError("Untrusted TLS connection unexpectedly succeeded")
@@ -18,7 +19,7 @@ def require_rejection(host, port, context, name):
         pass
 
 
-def main():
+def main() -> None:
     host, port, certificate, username = sys.argv[1:]
     port = int(port)
     name = "wg-transport.socrat.internal"

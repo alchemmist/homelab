@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 
-def processes():
+def processes() -> dict[int, tuple[int, int]]:
     result = {}
     for directory in Path("/proc").iterdir():
         if not directory.name.isdigit():
@@ -24,7 +24,7 @@ def processes():
     return result
 
 
-def descendants():
+def descendants() -> set[tuple[int, int]]:
     current = processes()
     parents = {os.getpid()}
     owned = set()
@@ -37,7 +37,7 @@ def descendants():
         parents.update(pid for pid, start in additions)
 
 
-def send(identity, sig):
+def send(identity, sig) -> None:
     pid, start = identity
     try:
         descriptor = os.pidfd_open(pid)
@@ -54,7 +54,7 @@ def send(identity, sig):
         os.close(descriptor)
 
 
-def reap():
+def reap() -> None:
     while True:
         try:
             pid, status = os.waitpid(-1, os.WNOHANG)
@@ -64,7 +64,7 @@ def reap():
             return
 
 
-def cleanup(owned, grace):
+def cleanup(owned, grace) -> None:
     deadline = time.monotonic() + grace
     while True:
         owned.update(descendants())
@@ -85,7 +85,7 @@ def cleanup(owned, grace):
         time.sleep(0.05)
 
 
-def run(command, timeout=180, grace=2):
+def run(command, timeout=180, grace=2) -> int:
     if sys.platform != "linux":
         raise RuntimeError("homelab-browser-test requires Linux")
     libc = ctypes.CDLL(None, use_errno=True)
@@ -125,14 +125,14 @@ def run(command, timeout=180, grace=2):
                 signal.signal(sig, handler)
 
 
-def positive(value):
+def positive(value) -> float:
     number = float(value)
     if not math.isfinite(number) or number <= 0:
         raise argparse.ArgumentTypeError("timeout must be finite and positive")
     return number
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(
         description="Run a bounded browser test and clean up all its child processes"
     )

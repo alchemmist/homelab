@@ -4,29 +4,30 @@ import re
 import shutil
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from typing import cast
 
 
 ULID = re.compile(r"^[0-9A-Z]{26}$")
 
 
-def safe_relative(path):
+def safe_relative(path) -> list[str]:
     if not path or path.startswith("/") or "\\" in path:
         raise ValueError("bad path")
     parts = path.split("/")
     if any(part in ("", ".", "..") for part in parts):
         raise ValueError("bad path")
-    return parts
+    return cast("list[str]", parts)
 
 
-def staging_path(directory, ulid):
-    return os.path.join(directory, "." + ulid + ".incoming")
+def staging_path(directory, ulid) -> str:
+    return cast("str", os.path.join(directory, "." + ulid + ".incoming"))
 
 
-def block_path(directory, ulid):
-    return os.path.join(directory, ulid)
+def block_path(directory, ulid) -> str:
+    return cast("str", os.path.join(directory, ulid))
 
 
-def read_block(directory, ulid):
+def read_block(directory, ulid) -> dict[str, object]:
     meta_path = os.path.join(block_path(directory, ulid), "meta.json")
     with open(meta_path, encoding="utf-8") as handle:
         meta = json.load(handle)
@@ -42,7 +43,7 @@ def read_block(directory, ulid):
     }
 
 
-def list_blocks(directory):
+def list_blocks(directory) -> list[dict[str, object]]:
     if not os.path.isdir(directory):
         return []
     blocks = []
@@ -56,7 +57,7 @@ def list_blocks(directory):
     return blocks
 
 
-def begin(directory, ulid):
+def begin(directory, ulid) -> None:
     if not ULID.match(ulid):
         raise ValueError("bad ulid")
     path = staging_path(directory, ulid)
@@ -65,7 +66,7 @@ def begin(directory, ulid):
     os.makedirs(path, mode=0o775)
 
 
-def write_file(directory, ulid, relative, chunks):
+def write_file(directory, ulid, relative, chunks) -> None:
     if not ULID.match(ulid):
         raise ValueError("bad ulid")
     parts = safe_relative(relative)
@@ -81,7 +82,7 @@ def write_file(directory, ulid, relative, chunks):
     os.replace(temporary, destination)
 
 
-def commit(directory, ulid):
+def commit(directory, ulid) -> None:
     if not ULID.match(ulid):
         raise ValueError("bad ulid")
     staged = staging_path(directory, ulid)
@@ -101,7 +102,7 @@ def commit(directory, ulid):
     os.rename(staged, final)
 
 
-def mark_deleted(directory, ulid, details="cascade"):
+def mark_deleted(directory, ulid, details="cascade") -> None:
     if not ULID.match(ulid):
         raise ValueError("bad ulid")
     root = block_path(directory, ulid)
@@ -122,7 +123,7 @@ def mark_deleted(directory, ulid, details="cascade"):
     os.replace(temporary, target)
 
 
-def handler(directory, token):
+def handler(directory, token) -> "type[BaseHTTPRequestHandler]":
     class ShelfHandler(BaseHTTPRequestHandler):
         def log_message(self, fmt, *args):
             return
@@ -216,12 +217,12 @@ def handler(directory, token):
     return ShelfHandler
 
 
-def serve(directory, token, port=8080):
+def serve(directory, token, port=8080) -> None:
     server = ThreadingHTTPServer(("0.0.0.0", port), handler(directory, token))
     server.serve_forever()
 
 
-def main():
+def main() -> None:
     directory = os.environ["SHELF_DIRECTORY"]
     token = os.environ.get("SHELF_TOKEN")
     if not token:

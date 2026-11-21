@@ -1,5 +1,6 @@
 """Trusted operator backup, never a coding-agent tool. No network or SA token."""
 import base64, hashlib, io, json, os, pathlib, sqlite3, tarfile, time
+from typing import cast
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -10,17 +11,17 @@ assert not receipt.exists() and not encrypted.exists(), 'Never overwrite a previ
 source=sqlite3.connect('file:/source/openhands/automation/automations.db?mode=ro',uri=True)
 snapshot=sqlite3.connect('/tmp/snapshot.db');deadline=time.monotonic()+90
 
-def progress(status,left,total):
+def progress(status,left,total)->None:
     if time.monotonic()>deadline:raise RuntimeError('SQLite snapshot deadline')
 
 source.backup(snapshot,pages=64,progress=progress)
 assert snapshot.execute('pragma integrity_check').fetchone()[0]=='ok'
 snapshot.close();source.close()
 
-def filt(info):
+def filt(info)->tarfile.TarInfo|None:
     if info.name.startswith('.openhands/automation/automations.db'):return None
     if info.name.startswith('.openhands/workspaces/automation-runs/') and '.venv' in pathlib.Path(info.name).parts:return None
-    return info
+    return cast("tarfile.TarInfo", info)
 
 buf=io.BytesIO()
 with tarfile.open(fileobj=buf,mode='w:gz') as tar:
