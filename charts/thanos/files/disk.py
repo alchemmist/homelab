@@ -1,3 +1,4 @@
+"""Report Prometheus data disk allocation per Thanos block directory."""
 import os
 import time
 from typing import cast
