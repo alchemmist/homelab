@@ -93,7 +93,7 @@ def github(
     return cast("dict[str, object]", response.json() if response.content else {})
 
 
-def save(run_id: int | str, **fields: object) -> None
+def save(run_id: int | str, **fields: object) -> None:
     DB.execute(
         "UPDATE runs SET " + ",".join(key + "=?" for key in fields) + " WHERE id=?",
         [*fields.values(), run_id],
