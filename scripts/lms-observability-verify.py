@@ -17,6 +17,7 @@ import urllib.request
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TypedDict, cast
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -111,13 +112,142 @@ def summarize_trace(document):
     return records
 
 
+class _BrowserObservation(TypedDict):
+    pageTrace: str
+    apiContext: str
+
+
+def _run_browser_canary(args: argparse.Namespace, cookie: str) -> tuple[_BrowserObservation, str]:
+    """Drive the browser canary and return its observation and trace id."""
+    env = {
+        **os.environ,
+        "LMS_CHECKOUT": str(args.lms_checkout.resolve()),
+        "LMS_CANARY_URL": args.lms_url.rstrip("/"),
+        "LMS_CANARY_SESSION": cookie,
+    }
+    browser = subprocess.run(
+        ["node", str(ROOT / "scripts/lms-browser-trace-canary.mjs")],
+        env=env,
+        text=True,
+        capture_output=True,
+        timeout=100,
+    )
+    if browser.returncode:
+        raise RuntimeError("Browser canary failed: " + browser.stderr[-2500:])
+    observation = cast("_BrowserObservation", json.loads(browser.stdout))
+    trace_id = observation["pageTrace"].split("-")[1]
+    if observation["apiContext"].split("-")[1] != trace_id:
+        raise ValueError("Browser and backend trace IDs differ")
+    return observation, trace_id
+
+
+def _await_trace(grafana_url: object, trace_id: str) -> object:
+    """Poll production Tempo until the browser canary trace is visible."""
+    trace = None
+    # Existing tail sampler waits 30 seconds; backend visibility is eventual.
+    for attempt in range(36):
+        try:
+            trace = get_json(
+                str(grafana_url) + "/api/datasources/proxy/uid/tempo/api/traces/" + trace_id
+            )
+            if summarize_trace(trace):
+                break
+        except urllib.error.HTTPError as error:
+            if error.code != 404:
+                raise
+        time.sleep(5)
+    if trace is None:
+        raise ValueError("Production Tempo did not receive the browser trace")
+    return trace
+
+
+def _verify_waterfall(
+    records: list[dict[str, object]], observation: _BrowserObservation
+) -> tuple[set[str], list[str]]:
+    """Verify the chain of parent spans and name the intermediate proxies."""
+    page = next(s for s in records if s["name"] == "browser.page")
+    api_id = observation["apiContext"].split("-")[2]
+    api = next(s for s in records if s["id"] == api_id)
+    # Production Traefik adds GET + ReverseProxy between browser and LMS.
+    # Verify the ancestry rather than incorrectly requiring a direct edge.
+    by_id = {s["id"]: s for s in records}
+    seen = set()
+    proxy_names = []
+    while api["name"] != "browser.api":
+        if api["id"] in seen or api["parent"] not in by_id:
+            raise ValueError("Waterfall parent relationships are broken")
+        seen.add(api["id"])
+        api = by_id[api["parent"]]
+        if api["name"] != "browser.api":
+            proxy_names.append(cast("str", api["name"]))
+    if api["parent"] != page["id"]:
+        raise ValueError("Browser API span is not a child of the page")
+    names = {cast("str", s["name"]) for s in records}
+    if not {"content.read_render", "db.connect", "db.transaction"} <= names:
+        raise ValueError("Real backend operation spans missing")
+    return names, proxy_names
+
+
+def _verify_loki_correlation(grafana_url: object, trace_id: str) -> int:
+    """Require the trace id to appear in correlated real LMS Loki logs."""
+    query = '{k8s_namespace_name="lms"} |= "' + trace_id + '"'
+    logs = get_json(
+        str(grafana_url)
+        + "/api/datasources/proxy/uid/loki/loki/api/v1/query_range?"
+        + urllib.parse.urlencode({"query": query, "limit": 20, "since": "15m"})
+    )
+    count = sum(len(stream["values"]) for stream in logs["data"]["result"])
+    if count < 2:
+        raise ValueError("Correlated real LMS Loki log lines missing")
+    return count
+
+
+def _verify_dashboard(
+    args: argparse.Namespace, trace_id: str, span_count: int
+) -> tuple[str, object, bool]:
+    """Verify the live dashboard in a browser and the Loki-to-Tempo link."""
+    dashboard = get_json(args.grafana_url + "/api/dashboards/uid/lms-performance")
+    if dashboard["dashboard"]["uid"] != "lms-performance":
+        raise ValueError("Dashboard not provisioned")
+    dashboard_url = cast(
+        "str", args.grafana_url + dashboard["meta"]["url"] + "?var-trace_id=" + trace_id
+    )
+    ui_env = {
+        **os.environ,
+        "LMS_CHECKOUT": str(args.lms_checkout.resolve()),
+        "LMS_DASHBOARD_URL": dashboard_url,
+        "LMS_TRACE_ID": trace_id,
+        "LMS_SPAN_COUNT": str(span_count),
+    }
+    ui = subprocess.run(
+        ["node", str(ROOT / "scripts/lms-grafana-canary.mjs")],
+        env=ui_env,
+        text=True,
+        capture_output=True,
+        timeout=150,
+    )
+    if ui.returncode:
+        raise RuntimeError("Live Grafana browser verification failed: " + ui.stderr[-2500:])
+    ui_proof = json.loads(ui.stdout)
+    loki = get_json(args.grafana_url + "/api/datasources/uid/loki")
+    derived = loki.get("jsonData", {}).get("derivedFields", [])
+    link_verified = any(
+        field.get("name") == "TraceID"
+        and field.get("datasourceUid") == "tempo"
+        and field.get("url") == "${__value.raw}"
+        for field in derived
+    )
+    if not link_verified:
+        raise ValueError("Loki-to-Tempo derived link not provisioned")
+    return dashboard_url, ui_proof, link_verified
+
+
 def run(args):
     if not args.create_canary_session:
         raise ValueError(
             "Explicit --create-canary-session required; temporary privileged test identity will be deleted"
         )
     issuer, subject = "urn:homelab:lms-telemetry-canary", str(uuid.uuid4())
-    cookie = None
     try:
         result = kubepython(f"""
 from app.config import Settings
@@ -130,102 +260,12 @@ with store.connect() as db:
 print(json.dumps(dict(cookie=cookie)))
 """)
         cookie = result["cookie"]
-        env = {
-            **os.environ,
-            "LMS_CHECKOUT": str(args.lms_checkout.resolve()),
-            "LMS_CANARY_URL": args.lms_url.rstrip("/"),
-            "LMS_CANARY_SESSION": cookie,
-        }
-        browser = subprocess.run(
-            ["node", str(ROOT / "scripts/lms-browser-trace-canary.mjs")],
-            env=env,
-            text=True,
-            capture_output=True,
-            timeout=100,
-        )
-        if browser.returncode:
-            raise RuntimeError("Browser canary failed: " + browser.stderr[-2500:])
-        observation = json.loads(browser.stdout)
-        trace_id = observation["pageTrace"].split("-")[1]
-        if observation["apiContext"].split("-")[1] != trace_id:
-            raise ValueError("Browser and backend trace IDs differ")
-        trace = None
-        # Existing tail sampler waits 30 seconds; backend visibility is eventual.
-        for attempt in range(36):
-            try:
-                trace = get_json(
-                    args.grafana_url + "/api/datasources/proxy/uid/tempo/api/traces/" + trace_id
-                )
-                if summarize_trace(trace):
-                    break
-            except urllib.error.HTTPError as error:
-                if error.code != 404:
-                    raise
-            time.sleep(5)
-        if trace is None:
-            raise ValueError("Production Tempo did not receive the browser trace")
+        observation, trace_id = _run_browser_canary(args, cookie)
+        trace = _await_trace(args.grafana_url, trace_id)
         records = summarize_trace(trace)
-        page = next(s for s in records if s["name"] == "browser.page")
-        api_id = observation["apiContext"].split("-")[2]
-        server = next(s for s in records if s["id"] == api_id)
-        # Production Traefik adds GET + ReverseProxy between browser and LMS.
-        # Verify the ancestry rather than incorrectly requiring a direct edge.
-        by_id = {s["id"]: s for s in records}
-        api = server
-        seen = set()
-        proxy_names = []
-        while api["name"] != "browser.api":
-            if api["id"] in seen or api["parent"] not in by_id:
-                raise ValueError("Waterfall parent relationships are broken")
-            seen.add(api["id"])
-            api = by_id[api["parent"]]
-            if api["name"] != "browser.api":
-                proxy_names.append(api["name"])
-        if api["parent"] != page["id"]:
-            raise ValueError("Browser API span is not a child of the page")
-        names = {s["name"] for s in records}
-        if not {"content.read_render", "db.connect", "db.transaction"} <= names:
-            raise ValueError("Real backend operation spans missing")
-        query = '{k8s_namespace_name="lms"} |= "' + trace_id + '"'
-        logs = get_json(
-            args.grafana_url
-            + "/api/datasources/proxy/uid/loki/loki/api/v1/query_range?"
-            + urllib.parse.urlencode({"query": query, "limit": 20, "since": "15m"})
-        )
-        count = sum(len(stream["values"]) for stream in logs["data"]["result"])
-        if count < 2:
-            raise ValueError("Correlated real LMS Loki log lines missing")
-        dashboard = get_json(args.grafana_url + "/api/dashboards/uid/lms-performance")
-        if dashboard["dashboard"]["uid"] != "lms-performance":
-            raise ValueError("Dashboard not provisioned")
-        dashboard_url = args.grafana_url + dashboard["meta"]["url"] + "?var-trace_id=" + trace_id
-        ui_env = {
-            **os.environ,
-            "LMS_CHECKOUT": str(args.lms_checkout.resolve()),
-            "LMS_DASHBOARD_URL": dashboard_url,
-            "LMS_TRACE_ID": trace_id,
-            "LMS_SPAN_COUNT": str(len(records)),
-        }
-        ui = subprocess.run(
-            ["node", str(ROOT / "scripts/lms-grafana-canary.mjs")],
-            env=ui_env,
-            text=True,
-            capture_output=True,
-            timeout=150,
-        )
-        if ui.returncode:
-            raise RuntimeError("Live Grafana browser verification failed: " + ui.stderr[-2500:])
-        ui_proof = json.loads(ui.stdout)
-        loki = get_json(args.grafana_url + "/api/datasources/uid/loki")
-        derived = loki.get("jsonData", {}).get("derivedFields", [])
-        link_verified = any(
-            field.get("name") == "TraceID"
-            and field.get("datasourceUid") == "tempo"
-            and field.get("url") == "${__value.raw}"
-            for field in derived
-        )
-        if not link_verified:
-            raise ValueError("Loki-to-Tempo derived link not provisioned")
+        names, proxy_names = _verify_waterfall(records, observation)
+        count = _verify_loki_correlation(args.grafana_url, trace_id)
+        dashboard_url, ui_proof, link_verified = _verify_dashboard(args, trace_id, len(records))
         report = {
             "verifiedAt": datetime.now(UTC).isoformat(),
             "success": True,
