@@ -234,7 +234,7 @@ def test_nightnode_config_loads_values_without_executing_them() -> None:
                 (
                     "  # ignored=not-a-setting",
                     " NIGHTNODE_ALLOW_JOIN = 1 ",
-                    "K3S_URL = https://k3s.example.invalid:6443?x=a=b ",
+                    'K3S_URL = "https://k3s.example.invalid:6443?x=a=b" ',
                     f"NIGHTNODE_UNSAFE = $(touch {marker})",
                     "",
                 )
@@ -258,6 +258,11 @@ fi
         _assert_ok(result)
         assert "join: allowed (https://k3s.example.invalid:6443?x=a=b)" in result.stdout
         assert not marker.exists()
+
+        (config_dir / "config.env").write_text("NIGHTNODE_ALLOW_JOIN=1\nK3S_URL = \"mixed'\n", encoding="utf-8")
+        result = _run([*_widget(NIGHTNODE), "status"], env=env, cwd=ROOT)
+        _assert_ok(result)
+        assert 'join: allowed ("mixed\')' in result.stdout
 
 
 def test_nightnode_config_rejects_malformed_or_invalid_keys() -> None:

@@ -1,3 +1,4 @@
+---
 # Default values for agent-canvas.
 # This chart deploys the all-in-one agent-canvas image (frontend +
 # agent-server + automation) as a single-replica StatefulSet with a

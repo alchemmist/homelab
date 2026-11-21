@@ -1,3 +1,4 @@
+---
 # HISTORICAL LXC boundary, retired after native VM NFS acceptance on2026-11-15.
 # Do not apply to NFS-enabled VM105. Guard playbook explicitly refuses recreation.
 # Kept for historical recovery/source contract tests, not an active GitOps object.

@@ -1,3 +1,4 @@
+---
 # TEMPORARY, apply only for a guarded idle handoff; NOT an Argo app source.
 # No Pod has this selector. Existing accepted connections can finish.
 # Restore canonical Services from deploy/{blog-updates,wiki-openapi}/worker.yaml

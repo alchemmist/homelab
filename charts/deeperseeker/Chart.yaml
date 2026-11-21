@@ -1,3 +1,4 @@
+---
 apiVersion: v2
 name: deeperseeker
 description: DeepSeek web-session bridge (artyom08-dev/deeperseeker) with a per-service 3x-ui SOCKS sidecar

@@ -1,3 +1,4 @@
+---
 image:
   # Built from artyom08-dev/deeperseeker 1b1148e plus local proxy wiring
   # (DEEPSEEKER_BROWSER_PROXY / DEEPSEEKER_UPSTREAM_PROXY / DEEPSEEKER_TOKEN_CONCURRENCY).

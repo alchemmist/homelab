@@ -1,3 +1,4 @@
+---
 worker:
   name: venice-agent-worker
   image: docker.io/library/node@sha256:1f70dfa8d7be2321da1247e671217c11a555cd005edf4ccb014af28c9e8f78ca
