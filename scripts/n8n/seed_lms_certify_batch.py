@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Emit SQL statements seeding the LMS certification batch from reviewed contracts."""
 import json
 from pathlib import Path
 import yaml
