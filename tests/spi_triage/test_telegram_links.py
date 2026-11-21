@@ -9,6 +9,7 @@ FILES = Path(__file__).resolve().parents[2] / "charts/spi-triage/files"
 
 
 def load(name):
+    """Run load."""
     spec = importlib.util.spec_from_file_location(name, FILES / (name + ".py"))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
