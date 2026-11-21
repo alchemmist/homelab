@@ -1,3 +1,5 @@
+"""Safety checks for the production OpenTelemetry deployment."""
+
 import importlib.util
 import json
 from pathlib import Path

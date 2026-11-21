@@ -1,3 +1,5 @@
+"""Tests for the OpenTelemetry vLLM rollout."""
+
 import importlib.util
 import os
 from pathlib import Path

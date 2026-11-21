@@ -1,3 +1,4 @@
+"""Run a single Venice autonomy benchmark attempt in a sandbox."""
 import argparse
 import importlib.metadata
 import json
