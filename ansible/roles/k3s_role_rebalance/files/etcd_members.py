@@ -1,3 +1,5 @@
+"""Reconcile k3s HA etcd membership across the cluster nodes."""
+
 import argparse
 import json
 import subprocess

@@ -1,0 +1,64 @@
+descheduler:
+  fullnameOverride: descheduler
+  schedule: '*/5 * * * *'
+  suspend: false
+  startingDeadlineSeconds: 45
+  activeDeadlineSeconds: 90
+  successfulJobsHistoryLimit: 12
+  failedJobsHistoryLimit: 3
+  cmdOptions: {v: 3}
+  priorityClassName: ''
+  resources:
+    requests: {cpu: 50m, memory: 96Mi}
+    limits: {cpu: 500m, memory: 256Mi}
+  deschedulerPolicy:
+    maxNoOfPodsToEvictTotal: 1
+    profiles:
+      - name: stateless-preference
+        plugins: &preferredOnly
+          deschedule:
+            enabled: [RemovePodsViolatingNodeAffinity]
+        pluginConfig:
+          - name: DefaultEvictor
+            args:
+              nodeFit: true
+              minPodAge: 15m
+              podProtections:
+                extraEnabled: [PodsWithPVC]
+          - name: RemovePodsViolatingNodeAffinity
+            args:
+              nodeAffinityType: [preferredDuringSchedulingIgnoredDuringExecution]
+              namespaces:
+                exclude: [postgres, cnpg-system, storage, kube-system, argocd]
+              labelSelector:
+                matchExpressions:
+                  - {key: pod-template-hash, operator: Exists}
+                  - {key: cnpg.io/cluster, operator: DoesNotExist}
+      # Only these shared-volume deployments have reviewed disposable scratch.
+      - name: shared-monitoring
+        plugins: *preferredOnly
+        pluginConfig:
+          - &nfsEvictor
+            name: DefaultEvictor
+            args:
+              nodeFit: true
+              minPodAge: 15m
+              podProtections:
+                defaultDisabled: [PodsWithLocalStorage]
+          - name: RemovePodsViolatingNodeAffinity
+            args:
+              nodeAffinityType: [preferredDuringSchedulingIgnoredDuringExecution]
+              namespaces: {include: [cattle-monitoring-system]}
+              labelSelector:
+                matchExpressions:
+                  - {key: app, operator: In, values: [otel-tempo, otel-loki, thanos-shelf-5m, thanos-store-5m, thanos-compactor-5m]}
+      - name: shared-pyroscope
+        plugins: *preferredOnly
+        pluginConfig:
+          - *nfsEvictor
+          - name: RemovePodsViolatingNodeAffinity
+            args:
+              nodeAffinityType: [preferredDuringSchedulingIgnoredDuringExecution]
+              namespaces: {include: [cattle-monitoring-system]}
+              labelSelector:
+                matchLabels: {app.kubernetes.io/name: pyroscope}

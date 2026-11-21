@@ -10,10 +10,11 @@ PROM = 'http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.clu
 MODEL = 'qwen3.8-27b'
 RUNNER = 'http://REPLACE_RUNNER:9000/certification/check-suite'
 LLM = 'http://litellm.llm.svc.cluster.local:4000/v1/chat/completions'
-nodes, edges = [], {}
+nodes: list[dict[str, object]] = []
+edges: dict[str, dict[str, list[list[dict[str, object]]]]] = {}
 
 
-def node(name, kind, version, params, x, y, credential=None):
+def node(name: str, kind, version, params, x, y, credential=None) -> str:
     out = dict(id=str(uuid5(NAMESPACE_URL, 'lms-certification/' + name)), name=name,
                type='n8n-nodes-base.' + kind, typeVersion=version, position=[x, y], parameters=params)
     if credential:
@@ -23,30 +24,30 @@ def node(name, kind, version, params, x, y, credential=None):
     return name
 
 
-def link(a, b, port=0):
-    branches = edges.setdefault(a, {'main': []})['main']
+def link(a, b, port=0) -> None:
+    branches: list[list[dict[str, object]]] = edges.setdefault(a, {'main': []})['main']
     while len(branches) <= port:
         branches.append([])
-    branches[port].append(dict(node=b, type='main', index=0))
+    branches[port].append({'node': b, 'type': 'main', 'index': 0})
 
 
-def chain(*names):
-    for a, b in zip(names, names[1:]):
+def chain(*names) -> None:
+    for a, b in zip(names, names[1:], strict=False):
         link(a, b)
 
 
-def code(name, js, x, y):
+def code(name, js, x, y) -> str:
     return node(name, 'code', 2, {'jsCode': js}, x, y)
 
 
-def check(name, expr, x, y):
+def check(name, expr, x, y) -> str:
     return node(name, 'if', 2.2, {'conditions': {'options': {'version': 2, 'typeValidation': 'strict'},
                 'conditions': [{'id': 'yes', 'leftValue': '={{ ' + expr + ' }}', 'rightValue': '',
                                 'operator': {'type': 'boolean', 'operation': 'true', 'singleValue': True}}],
                 'combinator': 'and'}}, x, y)
 
 
-def http(name, url, x, y, *, body=None, role=None, query=None):
+def http(name, url, x, y, *, body=None, role=None, query=None) -> str:
     params = {'url': url, 'options': {'timeout': 180000 if role=='LITELLM' else 90000 if body else 8000,
               'response': {'response': {'fullResponse': True, 'neverError': True, 'responseFormat': 'json'}}}}
     credential = None
@@ -61,12 +62,12 @@ def http(name, url, x, y, *, body=None, role=None, query=None):
     return result
 
 
-def pg(name, sql, args, x, y):
+def pg(name, sql, args, x, y) -> str:
     return node(name, 'postgres', 2.6, {'operation': 'executeQuery', 'query': sql,
                 'options': {'queryReplacement': '={{ ' + args + ' }}'}}, x, y, ('postgres', 'CERTIFICATION_DB'))
 
 
-def idle(prefix, x, y):
+def idle(prefix, x, y) -> tuple[str, str]:
     # Timestamp the original samples, not the Prometheus query evaluation.
     selector = '{__name__=~"vllm:num_requests_(running|waiting)",model_name="' + MODEL + '"}'
     values = http(prefix + ' queue depth', PROM, x, y, query=selector)
@@ -222,11 +223,11 @@ terminal = pg('Private outcome recorded', '''SELECT phase, count(*)::int AS task
 
 
 
-def ref(name):
+def ref(name) -> str:
     return '$(' + json.dumps(name) + ').item.json'
 
 
-def reducer(name, route, js, x, y):
+def reducer(name, route, js, x, y) -> str:
     n = code(name, f'''const {{phase,data}} = {ref(route)};
 const status = $json.statusCode;
 if ($json.error || status === 429 || status >= 500) return {{json: {{pause:true,reason:$json.error?'transport':'http_'+status}}}};
@@ -412,9 +413,9 @@ return {{json: {{phase:next,data}}}};'''
 link(previous, terminal, 1)
 
 assert len({n['name'] for n in nodes}) == len(nodes) == len({n['id'] for n in nodes}), 'Duplicate node names or IDs'
-workflow = dict(name='LMS certification — reviewed queue', nodes=nodes, connections=edges,
-                settings=dict(errorWorkflow='iZn7biFh6321a1w8', executionOrder='v1', timezone='Europe/Moscow',
-                              executionTimeout=720, saveDataSuccessExecution='none', saveDataErrorExecution='all',
-                              saveExecutionProgress=False, saveManualExecutions=False))
+workflow = {'name': 'LMS certification — reviewed queue', 'nodes': nodes, 'connections': edges,
+                'settings': {'errorWorkflow': 'iZn7biFh6321a1w8', 'executionOrder': 'v1', 'timezone': 'Europe/Moscow',
+                              'executionTimeout': 720, 'saveDataSuccessExecution': 'none', 'saveDataErrorExecution': 'all',
+                              'saveExecutionProgress': False, 'saveManualExecutions': False}}
 if __name__ == '__main__':
     (ROOT / 'workflow.json').write_text(json.dumps(workflow, ensure_ascii=False, indent=2)+'\n')
