@@ -1,13 +1,15 @@
 #!/usr/bin/python3
+"""Validate and load the guarded ALX Wi-Fi kernel module safely."""
+
 import argparse
 import gzip
 import lzma
 import os
-from pathlib import Path
 import platform
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 DKMS_NAME = "homelab-alx"
 DKMS_VERSION = "6.12.111-1"
@@ -17,10 +19,12 @@ WIFI_PARAMETERS = Path("/sys/module/rtl8723ae/parameters")
 
 
 def run(arguments):
+    """Document the run operation."""
     return subprocess.run(arguments, check=True, capture_output=True, timeout=30).stdout
 
 
 def module_note(path):
+    """Document the module note operation."""
     data = path.read_bytes()
     if path.suffix == ".xz":
         data = lzma.decompress(data)
@@ -50,6 +54,7 @@ def module_note(path):
 
 
 def validate():
+    """Document the validate operation."""
     if os.geteuid() != 0:
         msg = "This guard must run as root"
         raise RuntimeError(msg)
@@ -75,13 +80,14 @@ def validate():
     expected_note = module_note(path)
     run(["modprobe", "alx"])
     if LOADED_NOTE.read_bytes() != expected_note:
-        msg = "Loaded ALX build-id differs from the guarded DKMS module; reboot required"
+        msg_0 = "Loaded ALX build-id differs from the guarded DKMS module; reboot required"
         raise RuntimeError(
-            msg
+            msg_0
         )
 
 
 def main():
+    """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
     arguments = parser.parse_args()

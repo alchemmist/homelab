@@ -12,6 +12,7 @@ import json
 import os
 import time
 from pathlib import Path
+from typing import cast
 from urllib.parse import urlparse
 
 import yaml
@@ -56,17 +57,21 @@ def configure(bundle, cutover):
         for index, ref in enumerate(contract["requiredSecretKeys"])
     }
 
-    def rewrite(value):
+    def rewrite(value) -> object:
         if isinstance(value, dict):
             return {key: rewrite(item) for key, item in value.items()}
         if isinstance(value, list):
             return [rewrite(item) for item in value]
-        return replacements.get(value, value) if isinstance(value, str) else value
+        if isinstance(value, str):
+            return replacements.get(value, value)
+        result: object = value
+        return result
 
-    scrape = rewrite(scrape)
+    scrape = cast("dict[str, object]", rewrite(scrape))
     # The native HTTP receiver will bind only loopback; preserve original self-target labels.
     targets = json.loads((bundle / "original-targets.json").read_text())["activeTargets"]
-    for index, job in enumerate(scrape["scrape_configs"]):
+    scrape_configs = cast("list[dict[str, object]]", scrape["scrape_configs"])
+    for index, job in enumerate(scrape_configs):
         self_targets = [
             target
             for target in targets
@@ -78,7 +83,7 @@ def configure(bundle, cutover):
             if len(self_targets) != 1:
                 msg = "Exactly one native Prometheus self target required"
                 raise ValueError(msg)
-            scrape["scrape_configs"][index] = {
+            scrape_configs[index] = {
                 "job_name": job["job_name"],
                 "scrape_interval": "5s",
                 "scrape_timeout": "4s",

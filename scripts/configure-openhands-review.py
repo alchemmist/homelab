@@ -1,10 +1,16 @@
 """Run from operator checkout. Install read-only MCP and a non-active review profile."""
-import subprocess,json,hashlib,pathlib
+import hashlib
+import json
+import pathlib
+import subprocess
+
 root=pathlib.Path(__file__).resolve().parents[1]
-source=(root/'tools/openhands-mcp/monori_github_read.py').read_bytes();digest=hashlib.sha256(source).hexdigest()
-path='/home/openhands/.openhands/tools/monori-review/'+digest+'.py'
-cmd=['kubectl','-n','openhands','exec','-i','openhands-0','--','python','-Ic'];subprocess.run(cmd+['import sys,pathlib,hashlib;p=pathlib.Path(sys.argv[1]);b=sys.stdin.buffer.read();p.parent.mkdir(parents=True,exist_ok=True);assert not p.is_symlink();assert not p.exists() or p.read_bytes()==b;\nif not p.exists():p.open("xb").write(b)\nassert hashlib.sha256(p.read_bytes()).hexdigest()==p.stem',path],input=source,check=True)
-code='''import json,sys,pathlib,urllib.request
+source=(root/"tools/openhands-mcp/monori_github_read.py").read_bytes();
+digest=hashlib.sha256(source).hexdigest()
+path="/home/openhands/.openhands/tools/monori-review/"+digest+".py"
+cmd=["kubectl","-n","openhands","exec","-i","openhands-0","--","python","-Ic"];
+subprocess.run(cmd+['import sys,pathlib,hashlib;p=pathlib.Path(sys.argv[1]);b=sys.stdin.buffer.read();p.parent.mkdir(parents=True,exist_ok=True);assert not p.is_symlink();assert not p.exists() or p.read_bytes()==b;\nif not p.exists():p.open("xb").write(b)\nassert hashlib.sha256(p.read_bytes()).hexdigest()==p.stem',path],input=source,check=True)
+code="""import json,sys,pathlib,urllib.request
 key=pathlib.Path.home().joinpath('.openhands/agent-canvas/api-key.txt').read_text().strip()
 def api(p,b=None,method=None):
  r=urllib.request.Request('http://127.0.0.1:8000/api/'+p,headers={'X-Session-API-Key':key,'Content-Type':'application/json'},data=None if b is None else json.dumps(b).encode(),method=method)
@@ -21,5 +27,5 @@ body={'agent_kind':'openhands','llm_profile_ref':'v-deepseek-uc','tools':[],'mcp
 if not any(p['name']==profile for p in api('agent-profiles')['profiles']):api('agent-profiles/'+profile,body)
 p=api('agent-profiles/'+profile)['profile'];assert p['tools']==[] and p['mcp_server_refs']==[name] and not p.get('secret_refs') and p['llm_profile_ref']==body['llm_profile_ref'];assert api('agent-profiles')['active_agent_profile_id']==before
 print('Verified two tools; issue #509; PR #502; invalid ID rejected; active profile unchanged. Review profile:',p['id'])
-'''
+"""
 subprocess.run(cmd+[code,path],check=True)

@@ -29,13 +29,18 @@ NODE_NAMES = {
 }
 
 
-def peers():
+def peers() -> list[dict[str, object]]:
+    """Build the staged peer manifests with server routes re-enabled."""
     spec = importlib.util.spec_from_file_location(
         "machine_peers", ROOT / "scripts/netbird-host-peer.py"
     )
+    if spec is None or spec.loader is None:
+        raise RuntimeError("netbird-host-peer module missing or unloadable")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    docs = [{"apiVersion": "v1", "kind": "Namespace", "metadata": {"name": NS}}]
+    docs: list[dict[str, object]] = [
+        {"apiVersion": "v1", "kind": "Namespace", "metadata": {"name": NS}}
+    ]
     for host in NETWORKS:
         objects = mod.peer(host)
         deployment = objects[1]
@@ -48,13 +53,15 @@ def peers():
     return docs
 
 
-def router_body(peer_id):
+def router_body(peer_id) -> dict[str, object]:
+    """Build the network router enablement body for the exact enrolled peer."""
     if not isinstance(peer_id, str) or not peer_id:
         raise ValueError("exact enrolled router peer ID required")
     return {"peer": peer_id, "enabled": True, "masquerade": True, "metric": 100}
 
 
-def resource_body(host, address, *, local_input_authorized=False):
+def resource_body(host, address, *, local_input_authorized=False) -> dict[str, object]:
+    """Build a reviewed /32 node resource body, guarding the gateway's own address."""
     if host not in NETWORKS or address not in NETWORKS[host][1]:
         raise ValueError("only reviewed WG node /32 destinations allowed")
     if address == "10.250.0.1/32" and not local_input_authorized:
@@ -70,7 +77,8 @@ def resource_body(host, address, *, local_input_authorized=False):
     }
 
 
-def policy_body(source_group, resource_id):
+def policy_body(source_group, resource_id) -> dict[str, object]:
+    """Build the admin-to-node policy body binding distinct source group and resource."""
     if not source_group or not resource_id or source_group == resource_id:
         raise ValueError("distinct genuine admin JWT group and resource required")
     return {
@@ -91,7 +99,8 @@ def policy_body(source_group, resource_id):
     }
 
 
-def gateway_input_policy(source_group, gateway_destination_group):
+def gateway_input_policy(source_group, gateway_destination_group) -> dict[str, object]:
+    """Build the native gateway local INPUT ACL policy body for genuine admins."""
     if (
         not source_group
         or not gateway_destination_group
@@ -116,7 +125,8 @@ def gateway_input_policy(source_group, gateway_destination_group):
     }
 
 
-def genuine_admin_group(groups):
+def genuine_admin_group(groups) -> str:
+    """Resolve the single authentic, resource-free admin JWT group from the listing."""
     candidates = [g for g in groups if g.get("name") == ADMIN_GROUP]
     if len(candidates) != 1 or candidates[0].get("issued") != "jwt":
         raise ValueError(
@@ -124,7 +134,8 @@ def genuine_admin_group(groups):
         )
     if candidates[0].get("resources"):
         raise ValueError("admin source must not contain network resources")
-    return candidates[0]["id"]
+    admin_id: str = candidates[0]["id"]
+    return admin_id
 
 
 if __name__ == "__main__":

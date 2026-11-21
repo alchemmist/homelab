@@ -1,12 +1,13 @@
 """Conservative gate for a single-node IdP; reserves existing OTel plan headroom."""
 
-from decimal import Decimal
 import json
 import os
 import subprocess
+from decimal import Decimal
 
 
 def quantity(x):
+    """Quantity."""
     for unit, mul in [
         ("Ki", 1024),
         ("Mi", 1024**2),

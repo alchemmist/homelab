@@ -8,7 +8,6 @@ import argparse
 import glob
 import json
 import os
-from pathlib import Path
 import pwd
 import re
 import shutil
@@ -16,12 +15,13 @@ import stat
 import subprocess
 import tempfile
 import uuid
+from pathlib import Path
 
 DIRECTORY = Path("/var/lib/homelab-authentik-ssh-bindings")
 CONFIG = Path("/etc/ssh/sshd_config")
 
 
-def reject_contextual_config(path=CONFIG, seen=None):
+def reject_contextual_config(path: Path = CONFIG, seen: set[Path] | None = None) -> None:
     """We cannot prove all Match contexts via one sshd -T -C probe. Reject them.
 
     Follow OpenSSH Include globs, including inside included files. This deliberately
@@ -48,23 +48,27 @@ def reject_contextual_config(path=CONFIG, seen=None):
             msg = "Contextual SSH configuration unsupported"
             raise ValueError(msg)
         if keyword.lower() == "include":
-            # No quotes, escapes, hash, tilde, percent expansions or comments.
-            # Administrators may use those with sshd, but this importer refuses
-            # them instead of possibly checking a different effective key file.
-            patterns = arguments.split()
-            if not patterns or any(
-                not re.fullmatch(r"[A-Za-z0-9_./*?\[\]-]+", p) for p in patterns
-            ):
-                msg = "Unsupported SSH Include syntax"
-                raise ValueError(msg)
-            for pattern in patterns:
-                if not pattern.startswith("/"):
-                    pattern = "/etc/ssh/" + pattern
-                for included in sorted(glob.glob(pattern)):
-                    reject_contextual_config(Path(included), seen)
+            _reject_included_files(arguments, seen)
+
+
+def _reject_included_files(arguments: str, seen: set[Path]) -> None:
+    """Reject quoted/escaped Include syntax and recurse into pattern matches."""
+    # No quotes, escapes, hash, tilde, percent expansions or comments.
+    # Administrators may use those with sshd, but this importer refuses
+    # them instead of possibly checking a different effective key file.
+    patterns = arguments.split()
+    if not patterns or any(not re.fullmatch(r"[A-Za-z0-9_./*?\[\]-]+", p) for p in patterns):
+        msg = "Unsupported SSH Include syntax"
+        raise ValueError(msg)
+    for pattern in patterns:
+        if not pattern.startswith("/"):
+            pattern = "/etc/ssh/" + pattern
+        for included in sorted(glob.glob(pattern)):
+            reject_contextual_config(Path(included), seen)
 
 
 def verify_key_location(name, config=CONFIG):
+    'Verify key location.'
     reject_contextual_config(config)
     parsed = subprocess.run(
         [shutil.which("sshd") or "/usr/sbin/sshd", "-T"], text=True, capture_output=True, check=True
@@ -106,7 +110,7 @@ def verify_key_location(name, config=CONFIG):
     return Path("/home") / name / ".ssh/authorized_keys"
 
 
-def verify(name, ident, directory=DIRECTORY):
+def _reject_bad_username(name: str) -> None:
     if not re.fullmatch(r"[a-z_][a-z0-9_-]{0,30}", name) or name in {
         "root",
         "alchemmist",
@@ -114,21 +118,23 @@ def verify(name, ident, directory=DIRECTORY):
     }:
         msg = "Restricted username required"
         raise ValueError(msg)
+
+
+def _reject_bad_ident(ident: str) -> None:
     if str(uuid.UUID(ident)) != ident or uuid.UUID(ident).int == 0:
         msg = "Canonical UUID required"
         raise ValueError(msg)
-    try:
-        account = pwd.getpwnam(name)
-        exists = True
-    except KeyError:
-        account = None
-        exists = False
-    marker = directory / (name + ".json")
+
+
+def _reject_unsafe_directory(directory: Path) -> None:
     if os.path.lexists(directory):
         info = directory.lstat()
         if not stat.S_ISDIR(info.st_mode) or info.st_uid != 0 or info.st_mode & 0o077:
             msg = "Enrollment directory must be root-owned and private"
             raise ValueError(msg)
+
+
+def _reject_marker_mismatch(marker: Path, name: str, ident: str) -> None:
     if os.path.lexists(marker):
         info = marker.lstat()
         if (
@@ -142,10 +148,25 @@ def verify(name, ident, directory=DIRECTORY):
         if json.loads(marker.read_text()) != {"name": name, "uuid": ident}:
             msg = "Immutable host binding mismatch"
             raise ValueError(msg)
-    elif exists:
+
+
+def verify(name, ident, directory=DIRECTORY):
+    'Verify.'
+    _reject_bad_username(name)
+    _reject_bad_ident(ident)
+    try:
+        account = pwd.getpwnam(name)
+        exists = True
+    except KeyError:
+        account = None
+        exists = False
+    marker = directory / (name + ".json")
+    _reject_unsafe_directory(directory)
+    _reject_marker_mismatch(marker, name, ident)
+    if not os.path.lexists(marker) and exists:
         msg = "Existing unbound Linux account: stop for separately reviewed migration"
         raise ValueError(msg)
-    if exists and account.pw_dir != "/home/" + name:
+    if account is not None and account.pw_dir != "/home/" + name:
         msg = "Nonstandard passwd home unsupported"
         raise ValueError(msg)
     verify_key_location(name)
@@ -182,6 +203,7 @@ def fingerprints(path):
 
 
 def verify_keys(name, ident, state, expected, directory=DIRECTORY):
+    'Verify keys.'
     if (
         state not in {"present", "disabled"}
         or not isinstance(expected, list)
@@ -223,9 +245,9 @@ if __name__ == "__main__":
         else:
             result = verify(args.name, args.uuid)
         print(json.dumps(result))
-    except (ValueError, OSError, TypeError, subprocess.SubprocessError):
+    except (ValueError, OSError, TypeError, subprocess.SubprocessError) as exc:
         # Never print raw files/exception text from a host.
         msg = "SSH binding/key verification refused; inspect supported host policy and root enrollment marker"
         raise SystemExit(
             msg
-        )
+        ) from exc

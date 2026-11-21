@@ -1,3 +1,4 @@
+"""Check that the Rancher UI stays reachable only from the private network."""
 import argparse
 import shlex
 import subprocess
@@ -99,6 +100,7 @@ except Exception as error:
 
 
 def main():
+    """Run the command-line entry point."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--ssh-host", default="socrat-0")
     parser.add_argument("--external-ssh-host", default="socrat-2-direct")

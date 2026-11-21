@@ -1,3 +1,5 @@
+"""Announce a virtual IP to neighbor hosts via ARP for ingress HA."""
+
 import argparse
 import ipaddress
 import json
@@ -6,11 +8,11 @@ import socket
 import struct
 import subprocess
 
-
 ETH_P_ARP = 0x0806
 
 
 def ipv4(value):
+    """Document the ipv4 operation."""
     if not isinstance(value, str):
         msg = "Expected an IPv4 address string"
         raise ValueError(msg)
@@ -27,6 +29,7 @@ def ipv4(value):
 
 
 def mac_bytes(value):
+    """Document the mac bytes operation."""
     if not isinstance(value, str) or not re.fullmatch(
         r"(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}", value
     ):
@@ -40,6 +43,7 @@ def mac_bytes(value):
 
 
 def validate_config(config):
+    """Document the validate config operation."""
     if not isinstance(config, dict) or set(config) != {"interface", "address", "vip", "neighbors"}:
         msg = "Invalid configuration fields"
         raise ValueError(msg)
@@ -75,6 +79,7 @@ def validate_config(config):
 
 
 def read_interface(interface):
+    """Document the read interface operation."""
     output = subprocess.run(
         ["ip", "-j", "address", "show", "dev", interface],
         check=True,
@@ -90,6 +95,7 @@ def read_interface(interface):
 
 
 def arp_request(source_mac, source_address, target_mac, target_address):
+    """Document the arp request operation."""
     sender = mac_bytes(source_mac)
     target = mac_bytes(target_mac)
     return (
@@ -105,6 +111,7 @@ def arp_request(source_mac, source_address, target_mac, target_address):
 
 
 def frames_for_interface(config, state):
+    """Document the frames for interface operation."""
     config = validate_config(config)
     if state.get("ifname") != config["interface"]:
         msg = "Interface does not match configuration"
@@ -129,6 +136,7 @@ def frames_for_interface(config, state):
 
 
 def announce(config):
+    """Document the announce operation."""
     config = validate_config(config)
     frames = frames_for_interface(config, read_interface(config["interface"]))
     with socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.htons(ETH_P_ARP)) as connection:
@@ -142,6 +150,7 @@ def announce(config):
 
 
 def main():
+    """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
     args = parser.parse_args()

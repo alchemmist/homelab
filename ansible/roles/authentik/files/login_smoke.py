@@ -1,4 +1,6 @@
-import http.cookiejar, json, urllib.request
+import http.cookiejar
+import json
+import urllib.request
 from pathlib import Path
 
 root = Path.home() / ".cache/homelab-authentik"
@@ -10,6 +12,7 @@ endpoint = base + "/api/v3/flows/executor/default-authentication-flow/"
 
 
 def call(data=None):
+    """Document the call operation."""
     headers = {
         "Content-Type": "application/json",
         "Referer": base + "/if/flow/default-authentication-flow/",

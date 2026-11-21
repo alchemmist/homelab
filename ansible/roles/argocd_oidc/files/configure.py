@@ -9,11 +9,11 @@ from __future__ import annotations
 import base64
 import json
 import os
-from pathlib import Path
 import secrets
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 ROOT = Path.home() / ".cache/homelab-authentik"
 CLIENTS_PATH = ROOT / "oidc-clients.json"
@@ -128,6 +128,7 @@ print(json.dumps({"ok":True,"changed":changed}))"""
 
 
 def run(args: list[str], *, input_text: str | None = None, check: bool = True) -> str:
+    """Run."""
     result = subprocess.run(args, input=input_text, text=True, capture_output=True)
     if check and result.returncode:
         # Never include subprocess output: it may contain authentication material.
@@ -137,6 +138,7 @@ def run(args: list[str], *, input_text: str | None = None, check: bool = True) -
 
 
 def exec_authentik(code: str, input_text: str | None = None) -> dict:
+    """Exec authentik."""
     args = KUBECTL + ["-n", "identity", "exec"]
     if input_text is not None:
         args.append("-i")
@@ -150,6 +152,7 @@ def exec_authentik(code: str, input_text: str | None = None) -> dict:
 
 
 def persist_clients(clients: dict) -> None:
+    """Persist clients."""
     ROOT.mkdir(mode=0o700, parents=True, exist_ok=True)
     fd, name = tempfile.mkstemp(prefix=".oidc-clients-", dir=ROOT)
     try:
@@ -166,6 +169,7 @@ def persist_clients(clients: dict) -> None:
 
 
 def main() -> None:
+    """Main."""
     global STAGE
     STAGE = "read-private-credential-journal"
     if not (ROOT / "credentials.json").is_file():
@@ -177,9 +181,9 @@ def main() -> None:
     state = exec_authentik(PROBE_CODE)
     if entry is None:
         if state["provider_exists"]:
-            msg = "Existing provider has no local credential journal; refusing rotation"
+            msg_0 = "Existing provider has no local credential journal; refusing rotation"
             raise RuntimeError(
-                msg
+                msg_0
             )
         entry = {"client_id": "socrat-argocd", "client_secret": secrets.token_urlsafe(48)}
         clients["argocd"] = entry
@@ -272,4 +276,4 @@ if __name__ == "__main__":
             + "); sensitive output suppressed",
             file=sys.stderr,
         )
-        raise SystemExit(1)
+        raise SystemExit(1) from exc

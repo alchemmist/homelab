@@ -1,3 +1,5 @@
+"""Configure file-upload settings for a terminal user in Open WebUI."""
+
 import argparse
 import asyncio
 import copy
@@ -5,9 +7,11 @@ import json
 import sqlite3
 import urllib.request
 from datetime import timedelta
+from typing import cast
 
 
 def configure(terminal_id):
+    """Configure."""
     from open_webui.utils.auth import create_token
     from open_webui.utils.mfa import get_auth, get_mfa_config, is_mfa_required
 
@@ -34,38 +38,45 @@ def configure(terminal_id):
     )
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
-    def request(path, payload=None):
+    def request(path, payload=None) -> dict[str, object]:
         req = urllib.request.Request(
             "http://127.0.0.1:8080" + path,
             headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
             data=None if payload is None else json.dumps(payload).encode(),
         )
         with opener.open(req, timeout=60) as response:
-            return json.load(response)
+            document: dict[str, object] = json.load(response)
+            return document
 
     path = "/api/v1/configs/terminal_servers"
     before = request(path)
     desired = copy.deepcopy(before)
-    matches = [c for c in desired["TERMINAL_SERVER_CONNECTIONS"] if c.get("id") == terminal_id]
+    connections = cast("list[dict[str, object]]", desired["TERMINAL_SERVER_CONNECTIONS"])
+    matches = [c for c in connections if c.get("id") == terminal_id]
     if len(matches) != 1 or not matches[0].get("enabled", True):
         msg = "Expected one enabled terminal connection"
         raise RuntimeError(msg)
     connection = matches[0]
-    connection["config"] = {**(connection.get("config") or {}), "chat_uploads": "filesystem"}
+    config = cast("dict[str, object]", connection.get("config") or {})
+    connection["config"] = {**config, "chat_uploads": "filesystem"}
     changed = desired != before
     if changed:
         request(path, desired)
     after = request(path)
-    for expected in desired["TERMINAL_SERVER_CONNECTIONS"]:
+    for expected in connections:
         actual = next(
-            c for c in after["TERMINAL_SERVER_CONNECTIONS"] if c.get("id") == expected.get("id")
+            c
+            for c in cast("list[dict[str, object]]", after["TERMINAL_SERVER_CONNECTIONS"])
+            if c.get("id") == expected.get("id")
         )
         if any(actual.get(key) != value for key, value in expected.items()):
             msg = "Terminal settings failed readback validation"
             raise RuntimeError(msg)
     visible = request("/api/v1/terminals/")
     if not any(
-        c["id"] == terminal_id and c["config"]["chat_uploads"] == "filesystem" for c in visible
+        c["id"] == terminal_id
+        and cast("dict[str, object]", c["config"])["chat_uploads"] == "filesystem"
+        for c in cast("list[dict[str, object]]", visible)
     ):
         msg = "Filesystem upload mode is not visible to clients"
         raise RuntimeError(msg)

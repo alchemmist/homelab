@@ -3,10 +3,10 @@
 import base64
 import json
 import os
-from pathlib import Path
 import subprocess
 import sys
 import urllib.request
+from pathlib import Path
 
 root = Path(sys.argv[1])
 service = sys.argv[2]
@@ -15,6 +15,7 @@ clients = json.loads((root / "oidc-clients.json").read_text())
 
 
 def private_save(path, data):
+    """Document the private save operation."""
     if path.exists():
         return
     fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
@@ -23,6 +24,7 @@ def private_save(path, data):
 
 
 def kubectl(args, body=None):
+    """Document the kubectl operation."""
     result = subprocess.run(
         kube + args,
         input=json.dumps(body) if body is not None else None,
@@ -30,14 +32,15 @@ def kubectl(args, body=None):
         capture_output=True,
     )
     if result.returncode:
-        msg = "Kubernetes operation failed; details suppressed to protect configuration"
+        msg_0 = "Kubernetes operation failed; details suppressed to protect configuration"
         raise RuntimeError(
-            msg
+            msg_0
         )
     return result.stdout
 
 
 def idp(method, path, payload=None):
+    """Document the idp operation."""
     runtime = json.loads((root / "credentials.json").read_text())
     request = urllib.request.Request(
         "https://auth.socrat.alchemmist.xyz/api/v3/" + path,
@@ -54,6 +57,7 @@ def idp(method, path, payload=None):
 
 
 def reviewed_user(username, account):
+    """Document the reviewed user operation."""
     from urllib.parse import urlencode
 
     users = idp("GET", "core/users/?" + urlencode({"username": username}))["results"]
@@ -288,7 +292,7 @@ asyncio.run(main())"""
         "Open WebUI native OIDC configured; exact UUID links preserve users/chats; no email-based merging"
     )
 elif service == "rancher":
-    from observer_admission import retain_observer, authconfig_patch
+    from observer_admission import authconfig_patch, retain_observer
 
     accounts = json.loads((root / "account-mappings.json").read_text())
     original = json.loads(

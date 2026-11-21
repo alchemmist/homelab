@@ -1,7 +1,8 @@
+"""Render a Helm release manifest and report whether it changed."""
+
 import argparse
 import json
 import subprocess
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--release", required=True)

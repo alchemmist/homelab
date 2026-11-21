@@ -1,3 +1,5 @@
+"""Inventory telemetry signals across cluster monitors and container journals."""
+
 import argparse
 import importlib.util
 import json
@@ -126,9 +128,9 @@ def privileged_journals(directory, now=None):
             or report.get("rawLogBodiesPersisted") is not False
             or report.get("productionModified") is not False
         ):
-            msg = "Journal evidence does not establish a complete privileged read-only measurement"
+            msg_0 = "Journal evidence does not establish a complete privileged read-only measurement"
             raise ValueError(
-                msg
+                msg_0
             )
         reports[node] = {
             "systemJournalAccessVerified": True,

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Explicit Argo CD native OIDC refresh acceptance with a temporary read-only observer.
+
 Requires a reviewed refresh + end-to-end TLS deployment; fails closed before
 creating fixtures when offline_access is absent. Expects renewed cookies to retain
 Secure; Argo CD 3.5.6 server.insecure=true fails this check.
@@ -8,6 +9,7 @@ Requires Playwright + Chromium. Run from the owner Mac with --run.
 """
 
 import argparse
+from typing import TypedDict
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
@@ -32,6 +34,7 @@ _original_getaddrinfo = socket.getaddrinfo
 
 
 def public_auth(host, *params, **kwargs):
+    """Perform the public auth operation."""
     return _original_getaddrinfo(
         args.public_edge
         if host in ["auth.socrat.alchemmist.xyz", "argocd.socrat.alchemmist.xyz"]
@@ -58,6 +61,7 @@ credential = json.loads(
 
 
 def api(method, path, data=None):
+    """Perform the HTTP request and return its response."""
     req = urllib.request.Request(
         BASE + "/api/v3/" + path,
         method=method,
@@ -81,7 +85,7 @@ import time
 import urllib.parse
 import uuid
 
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import Error as PlaywrightError, sync_playwright
 
 provider = next(
     x
@@ -133,6 +137,14 @@ try:
         },
     )
     api("POST", "core/users/" + str(user["pk"]) + "/set_password/", {"password": password})
+
+    class Claims(TypedDict):
+        """JWT payload fields asserted by this smoke test."""
+
+        groups: list[str]
+        exp: float
+        sub: str
+
     with sync_playwright() as p:
         browser = p.chromium.launch(
             args=[
@@ -149,6 +161,7 @@ try:
         errors = []
 
         def observe(response):
+            """Perform the observe operation."""
             if (
                 urllib.parse.urlparse(response.url).hostname == "argocd.socrat.alchemmist.xyz"
                 and urllib.parse.urlparse(response.url).path == "/auth/login"
@@ -200,7 +213,7 @@ try:
                             "Callback exception types:",
                             re.findall(r"\b[A-Z][A-Za-z]+(?:Error|Exception)\b", err),
                         )
-                    except Exception:
+                    except (ValueError, TypeError, IndexError, KeyError, AttributeError, PlaywrightError):
                         pass
             if "/api/v3/flows/executor/" in response.url and response.status in [200, 400]:
                 try:
@@ -220,7 +233,7 @@ try:
                     if data.get("component") == "ak-stage-authenticator-totp":
                         totp_challenge.clear()
                         totp_challenge.update(data)
-                except Exception:
+                except (ValueError, TypeError, IndexError, KeyError, AttributeError, PlaywrightError):
                     pass
 
         page.on("response", observe)
@@ -271,17 +284,20 @@ try:
                 urllib.parse.urlparse(page.url).hostname == "argocd.socrat.alchemmist.xyz"
                 and "/applications" in urllib.parse.urlparse(page.url).path
             ):
-                context = page.context
 
-                def claims():
+                def claims() -> Claims:
+                    """Perform the claims operation."""
                     c = next(
                         c
-                        for c in context.cookies("https://argocd.socrat.alchemmist.xyz")
+                        for c in page.context.cookies("https://argocd.socrat.alchemmist.xyz")
                         if c["name"] == "argocd.token"
                     )
                     assert c["secure"]
                     raw = c["value"].split(".")[1]
-                    return json.loads(base64.urlsafe_b64decode(raw + "=" * ((-len(raw)) % 4)))
+                    payload: Claims = json.loads(
+                        base64.urlsafe_b64decode(raw + "=" * ((-len(raw)) % 4))
+                    )
+                    return payload
 
                 old = claims()
                 assert "homelab-observer" in old["groups"] and not set(old["groups"]) & {
@@ -290,6 +306,7 @@ try:
                 }
 
                 def api_page(path):
+                    """Perform the api page operation."""
                     response = page.goto("https://argocd.socrat.alchemmist.xyz" + path)
                     assert response.status == 200
                     return response.json()
@@ -310,10 +327,10 @@ try:
                     flush=True,
                 )
                 page.wait_for_timeout(delay * 1000)
-                auth_navigations = []
+                auth_navigations: list[bool] = []
                 page.on(
                     "request",
-                    lambda req: (
+                    lambda req, auth_navigations=auth_navigations: (
                         auth_navigations.append(True)
                         if req.is_navigation_request()
                         and urllib.parse.urlparse(req.url).hostname == "auth.socrat.alchemmist.xyz"

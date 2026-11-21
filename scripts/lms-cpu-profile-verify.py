@@ -13,6 +13,16 @@ import urllib.request
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TypedDict, cast
+
+
+class Flamegraph(TypedDict, total=False):
+    """Pyroscope flamegraph response fields used by this verification."""
+
+    names: list[str]
+    total: int
+    levels: list[list[int]]
+
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
@@ -23,7 +33,7 @@ spec.loader.exec_module(helper)
 PROFILE = "process_cpu:cpu:nanoseconds:cpu:nanoseconds"
 
 
-def post(grafana, method, body):
+def post(grafana, method, body) -> dict[str, object]:
     req = urllib.request.Request(
         grafana.rstrip("/")
         + "/api/datasources/proxy/uid/pyroscope/querier.v1.QuerierService/"
@@ -32,10 +42,10 @@ def post(grafana, method, body):
         headers={"Content-Type": "application/json"},
     )
     with urllib.request.urlopen(req, timeout=30) as response:
-        return json.load(response)
+        return cast("dict[str, object]", json.load(response))
 
 
-def run(args):
+def run(args) -> None:
     if not args.create_canary_session:
         raise ValueError("Explicit --create-canary-session is required")
     issuer, subject = "urn:homelab:lms-cpu-canary", str(uuid.uuid4())
@@ -86,7 +96,7 @@ print(json.dumps(dict(cookie=cookie)))
                     "maxNodes": 8192,
                 },
             )
-            graph = data.get("flamegraph", {})
+            graph = cast("Flamegraph", data.get("flamegraph", {}))
             names = graph.get("names", [])
             application = [
                 n

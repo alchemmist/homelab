@@ -15,6 +15,7 @@ OWNER = "homelab:k3s-overlay-marks:v1"
 
 
 def run(*args, input=None, ok=(0,)):
+    """Run the requested subprocess operation."""
     p = subprocess.run(args, input=input, text=True, capture_output=True, check=False)
     if p.returncode not in ok:
         raise RuntimeError(p.stderr.strip())
@@ -22,6 +23,7 @@ def run(*args, input=None, ok=(0,)):
 
 
 def rules(interface, cidr, exists):
+    """Perform the rules operation."""
     net = ipaddress.ip_network(cidr, strict=True)
     if net.version != 4 or not net.is_private or net.prefixlen < 16:
         raise ValueError("Require a narrow private IPv4 pod network")
@@ -42,9 +44,10 @@ def rules(interface, cidr, exists):
 
 
 def desired(interface, cidr):
+    """Perform the desired operation."""
     net = ipaddress.ip_network(cidr)
 
-    def match(left, right, op="=="):
+    def match(left, right, op="==") -> dict[str, object]:
         return {"match": {"op": op, "left": left, "right": right}}
 
     prefix = {"prefix": {"addr": str(net.network_address), "len": net.prefixlen}}
@@ -82,7 +85,8 @@ def desired(interface, cidr):
 
 
 def owned(doc, text=""):
-    table = next((x["table"] for x in doc["nftables"] if "table" in x), {})
+    """Perform the owned operation."""
+    table: dict[str, object] = next((x["table"] for x in doc["nftables"] if "table" in x), {})
     if "comment" in table:
         return table["comment"] == OWNER
     # nft 1.0.6 omits table comments from JSON, but preserves them in text.
@@ -91,21 +95,23 @@ def owned(doc, text=""):
 
 
 def normalize(doc):
-    def clean(x):
+    """Perform the normalize operation."""
+    def clean(x) -> object:
         if isinstance(x, list):
             return [clean(v) for v in x]
         if isinstance(x, dict):
             return {k: ({} if k == "counter" else clean(v)) for k, v in x.items() if k != "handle"}
         return x
 
-    result = [clean(x) for x in doc.get("nftables", []) if "metainfo" not in x]
+    result: list[object] = [clean(x) for x in doc.get("nftables", []) if "metainfo" not in x]
     for item in result:
-        if "table" in item:
+        if isinstance(item, dict) and "table" in item:
             item["table"].pop("comment", None)  # ownership is verified separately
     return result
 
 
 def main():
+    """Run the command-line entry point."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--interface", default="flannel.1")
     p.add_argument("--pod-cidr", default="10.42.0.0/16")

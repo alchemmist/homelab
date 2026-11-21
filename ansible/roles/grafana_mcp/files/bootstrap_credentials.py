@@ -1,8 +1,11 @@
+"""Bootstrap the Grafana MCP credentials secret in the cluster."""
+
 import base64
 import json
 import os
 import secrets
 import subprocess
+from typing import cast
 import sys
 import urllib.error
 import urllib.request
@@ -14,10 +17,11 @@ KUBECTL = ["k3s", "kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml"]
 
 
 class BootstrapError(Exception):
-    pass
+    """Exception raised when Grafana credential bootstrap fails."""
 
 
-def kubectl(arguments, payload=None):
+def kubectl(arguments: list[str], payload: object | None = None) -> dict[str, object] | None:
+    """Document the kubectl operation."""
     result = subprocess.run(
         KUBECTL + arguments,
         input=json.dumps(payload) if payload is not None else None,
@@ -29,16 +33,27 @@ def kubectl(arguments, payload=None):
     if result.returncode:
         msg = "Kubernetes operation failed"
         raise BootstrapError(msg)
-    return json.loads(result.stdout) if result.stdout.strip() else None
+    return cast("dict[str, object]", json.loads(result.stdout)) if result.stdout.strip() else None
 
 
 class Grafana:
-    def __init__(self, url, username, password):
+    """Minimal Grafana HTTP API client."""
+
+    def __init__(self, url: str, username: str, password: str) -> None:
+        """Initialize the Grafana client."""
+
         self.url = url
         encoded = base64.b64encode((username + ":" + password).encode()).decode()
         self.authorization = "Basic " + encoded
 
-    def request(self, method, path, payload=None, token=None):
+    def request(
+        self,
+        method: str,
+        path: str,
+        payload: object | None = None,
+        token: str | None = None,
+    ) -> dict[str, object]:
+        'Issue a Grafana HTTP request and return the decoded JSON response.'
         request = urllib.request.Request(
             self.url + path,
             data=json.dumps(payload).encode() if payload is not None else None,
@@ -50,7 +65,7 @@ class Grafana:
         )
         try:
             with urllib.request.urlopen(request, timeout=20) as response:
-                return json.load(response)
+                return cast("dict[str, object]", json.load(response))
         except urllib.error.HTTPError as error:
             raise BootstrapError("Grafana returned HTTP " + str(error.code)) from None
         except (urllib.error.URLError, TimeoutError, ValueError):
@@ -58,17 +73,20 @@ class Grafana:
             raise BootstrapError(msg) from None
 
 
-def decode_secret(secret):
+def decode_secret(secret: object) -> dict[str, str]:
+    """Document the decode secret operation."""
     try:
+        data = cast("dict[str, object]", secret).get("data", {}) if secret else {}
         return {
             key: base64.b64decode(value, validate=True).decode()
-            for key, value in (secret or {}).get("data", {}).items()
+            for key, value in cast("dict[str, str]", data).items()
         }
     except (ValueError, UnicodeError):
         return {}
 
 
 def bootstrap(grafana, existing_secret, persist, has_admin=True):
+    """Document the bootstrap operation."""
     values = decode_secret(existing_secret)
     if not has_admin:
         if not all(
@@ -115,6 +133,11 @@ def bootstrap(grafana, existing_secret, persist, has_admin=True):
             return {"changed": changed}
         except BootstrapError:
             pass
+    return {"changed": _issue_credentials(grafana, account_id, values, persist)}
+
+
+def _issue_credentials(grafana, account_id, values, persist):
+    """Create a fresh Grafana token, persist the Secret, and revoke on failure."""
     token = grafana.request(
         "POST",
         "/api/serviceaccounts/" + account_id + "/tokens",
@@ -147,18 +170,22 @@ def bootstrap(grafana, existing_secret, persist, has_admin=True):
             ) from None
         msg = "Credential persistence failed; newly created token revoked"
         raise BootstrapError(msg) from None
-    return {"changed": True}
+    return True
 
 
 def main():
+    """Document the main operation."""
     try:
         credentials = json.load(sys.stdin)
         service = kubectl(
             ["-n", NAMESPACE, "get", "service", "kube-prometheus-stack-grafana", "-o", "json"]
         )
-        address = service["spec"]["clusterIP"]
+        spec = cast("dict[str, object]", service["spec"]) if service else {}
+        address = cast("str", spec["clusterIP"])
         port = next(
-            port["port"] for port in service["spec"]["ports"] if port.get("name") == "http-web"
+            cast("dict[str, object]", entry)["port"]
+            for entry in cast("list[object]", spec["ports"])
+            if cast("dict[str, object]", entry).get("name") == "http-web"
         )
         grafana = Grafana(
             "http://" + address + ":" + str(port),

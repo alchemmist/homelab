@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """Render isolated same-origin branding assets; no credentials or application JS."""
 
+import base64
 import hashlib
 import json
-from pathlib import Path
 import sys
+from pathlib import Path
 
 
-def render(root):
-    assets = json.loads((root / "assets.json").read_text())
-    binary = {}
-    names = {}
-    import base64
-
+def _collect_assets(root: Path) -> tuple[dict[str, str], dict[str, str]]:
+    """Verify each reviewed asset; return base64 payload by hashed name and key map."""
+    assets = cast("dict[str, dict[str, str]]", json.loads((root / "assets.json").read_text()))
+    binary: dict[str, str] = {}
+    names: dict[str, str] = {}
     for key, asset in assets.items():
         path = root / asset["path"]
         if path.suffix not in {".woff2", ".webp", ".avif", ".svg", ".css"}:
@@ -29,8 +29,12 @@ def render(root):
     if sum(len(base64.b64decode(value)) for value in binary.values()) > 16_000_000:
         msg = "Static bundle exceeds reviewed total budget"
         raise ValueError(msg)
-    # Each immutable shard stays below the API object's serialized size limit.
-    chunks = []
+    return binary, names
+
+
+def _shard_binary(binary: dict[str, str]) -> list[dict[str, str]]:
+    """Split the payload into immutable shards under the ConfigMap size limit."""
+    chunks: list[dict[str, str]] = []
     chunk = {}
     size = 0
     for key, value in sorted(binary.items()):
@@ -45,35 +49,39 @@ def render(root):
         size += length
     if chunk:
         chunks.append(chunk)
+    return chunks
+
+
+def _nature_config(root: Path, names: dict[str, str]) -> tuple[str, str]:
+    """Return nginx config and locations implementing the randomized Nature photo scene."""
     random_config = ""
     random_locations = ""
     nature_file = root / "nature.json"
-    if nature_file.exists():
-        photos = json.loads(nature_file.read_text())["photos"]
-        if not 2 <= len(photos) <= 100:
-            msg = "Nature collection must have 2..100 reviewed photos"
-            raise ValueError(msg)
-        if len({p["id"] for p in photos}) != len(photos):
-            msg = "Duplicate Nature ID"
-            raise ValueError(msg)
-        import re
-
-        if any(not re.fullmatch("[0-9a-f]{12}", p["id"]) for p in photos):
-            msg = "Invalid Nature ID"
-            raise ValueError(msg)
-        # Equal weights to two decimal places, final bucket receives rounding remainder.
-        base, remainder = divmod(10000, len(photos))
-        weights = [
-            f" {(base + (i < remainder)) / 100:.2f}% {p['id']};" for i, p in enumerate(photos[:-1])
-        ]
-        weights.append(f" * {photos[-1]['id']};")
-        # A document/request is NOT an authorization journey. Native full-page
-        # redirects import CSS again. OIDC's unchanged encoded next (with state)
-        # identifies that journey, without storing/logging/echoing its contents.
-        # For native/error pages without next, reuse only an allowlisted cosmetic
-        # photo ID. This cookie is unrelated to authentik_session and grants no
-        # identity/access. No IP/UA/session-token hashing or application JS.
-        random_config = r"""map $http_referer $nature_next {
+    if not nature_file.exists():
+        return random_config, random_locations
+    photos = cast("list[dict[str, str]]", json.loads(nature_file.read_text())["photos"])
+    if not 2 <= len(photos) <= 100:
+        msg = "Nature collection must have 2..100 reviewed photos"
+        raise ValueError(msg)
+    if len({p["id"] for p in photos}) != len(photos):
+        msg = "Duplicate Nature ID"
+        raise ValueError(msg)
+    if any(not re.fullmatch("[0-9a-f]{12}", p["id"]) for p in photos):
+        msg = "Invalid Nature ID"
+        raise ValueError(msg)
+    # Equal weights to two decimal places, final bucket receives rounding remainder.
+    base, remainder = divmod(10000, len(photos))
+    weights = [
+        f" {(base + (i < remainder)) / 100:.2f}% {p['id']};" for i, p in enumerate(photos[:-1])
+    ]
+    weights.append(f" * {photos[-1]['id']};")
+    # A document/request is NOT an authorization journey. Native full-page
+    # redirects import CSS again. OIDC's unchanged encoded next (with state)
+    # identifies that journey, without storing/logging/echoing its contents.
+    # For native/error pages without next, reuse only an allowlisted cosmetic
+    # photo ID. This cookie is unrelated to authentik_session and grants no
+    # identity/access. No IP/UA/session-token hashing or application JS.
+    random_config = r"""map $http_referer $nature_next {
  default "";
  ~^https://auth[.]socrat[.]alchemmist[.]xyz/if/flow/[^?]+[?](?:[^\s]*&)?next=(?<qm_next>[^&]+) $qm_next;
 }
@@ -86,18 +94,14 @@ map $nature_flow_seed $nature_seed {
  default $nature_flow_seed;
 }
 """
-        random_config += (
-            'split_clients "$nature_seed" $nature_draw {\n' + "\n".join(weights) + "\n}\n"
-        )
-        cookie_ids = "|".join(p["id"] for p in photos)
-        # $cookie_* does not normalize hyphens in cookie names like $http_*.
-        random_config += (
-            'map $http_cookie $nature_previous {\n default "";\n'
-            ' "~(?:^|;[ ]*)__Secure-qm_nature=(?<qm_cookie>'
-            + cookie_ids
-            + ')(?:;|$)" $qm_cookie;\n}\n'
-        )
-        random_config += """map $nature_previous $nature_fallback {
+    random_config += 'split_clients "$nature_seed" $nature_draw {\n' + "\n".join(weights) + "\n}\n"
+    cookie_ids = "|".join(p["id"] for p in photos)
+    # $cookie_* does not normalize hyphens in cookie names like $http_*.
+    random_config += (
+        'map $http_cookie $nature_previous {\n default "";\n'
+        ' "~(?:^|;[ ]*)__Secure-qm_nature=(?<qm_cookie>' + cookie_ids + ')(?:;|$)" $qm_cookie;\n}\n'
+    )
+    random_config += """map $nature_previous $nature_fallback {
  "" $nature_draw;
  default $nature_previous;
 }
@@ -106,9 +110,9 @@ map $nature_flow_seed $nature_scene {
  default $nature_draw;
 }
 """
-        css_rows = [f" {p['id']} {names[p['sceneCss']]};" for p in photos]
-        random_config += "map $nature_scene $nature_css {\n" + "\n".join(css_rows) + "\n}\n"
-        random_locations += """
+    css_rows = [f" {p['id']} {names[p['sceneCss']]};" for p in photos]
+    random_config += "map $nature_scene $nature_css {\n" + "\n".join(css_rows) + "\n}\n"
+    random_locations += """
   location = /-/quiet-mono/v1/nature/scene.css {
    alias /assets/$nature_css;
    default_type text/css;
@@ -120,16 +124,14 @@ map $nature_flow_seed $nature_scene {
    limit_except GET HEAD { deny all; }
   }
 """
-        random_config += "map $http_accept $nature_format { default webp; ~*image/avif avif; }\n"
-        for variant in ["desktop", "mobile"]:
-            rows = [f" {p['id']}:webp {names[p[variant]]};" for p in photos]
-            rows += [f" {p['id']}:avif {names[p[variant + 'Avif']]};" for p in photos]
-            random_config += (
-                f'map "$nature_scene:$nature_format" $nature_{variant} {{\n'
-                + "\n".join(rows)
-                + "\n}\n"
-            )
-            random_locations += f"""
+    random_config += "map $http_accept $nature_format { default webp; ~*image/avif avif; }\n"
+    for variant in ["desktop", "mobile"]:
+        rows = [f" {p['id']}:webp {names[p[variant]]};" for p in photos]
+        rows += [f" {p['id']}:avif {names[p[variant + 'Avif']]};" for p in photos]
+        random_config += (
+            f'map "$nature_scene:$nature_format" $nature_{variant} {{\n' + "\n".join(rows) + "\n}\n"
+        )
+        random_locations += f"""
   location = /-/quiet-mono/v1/nature/{variant} {{
    if ($request_method !~ ^(GET|HEAD)$) {{ return 403; }}
    absolute_redirect off;
@@ -142,6 +144,14 @@ map $nature_flow_seed $nature_scene {
    limit_except GET HEAD {{ deny all; }}
   }}
 """
+    return random_config, random_locations
+
+
+def render(root: Path) -> dict[str, object]:
+    """Render the theme ConfigMaps, Deployment, Service and Ingress manifests."""
+    binary, names = _collect_assets(root)
+    chunks = _shard_binary(binary)
+    random_config, random_locations = _nature_config(root, names)
     config = """worker_processes 1;
 pid /tmp/nginx.pid;
 error_log /dev/stderr warn;
@@ -183,18 +193,27 @@ http {
     config_name = name + "-" + digest
     labels = {"app.kubernetes.io/name": name}
     namespace = "identity"
-    meta = lambda resource: {"name": resource, "namespace": namespace, "labels": labels}
-    image = json.loads((root / "static-image.json").read_text())["image"]
+
+    def meta(resource: str) -> dict[str, object]:
+        """Build the shared object metadata for a rendered resource."""
+        return {"name": resource, "namespace": namespace, "labels": labels}
+
+    image = cast(
+        "str",
+        cast("dict[str, object]", json.loads((root / "static-image.json").read_text()))["image"],
+    )
     if "@sha256:" not in image:
         msg = "Static image must be pinned by registry digest"
         raise ValueError(msg)
-    shards = []
+    shards: list[dict[str, object]] = []
+    shard_names: list[str] = []
     for chunk in chunks:
         shard_name = (
             name
             + "-assets-"
             + hashlib.sha256(json.dumps(chunk, sort_keys=True).encode()).hexdigest()[:12]
         )
+        shard_names.append(shard_name)
         shards.append(
             {
                 "apiVersion": "v1",
@@ -204,7 +223,7 @@ http {
                 "binaryData": chunk,
             }
         )
-    items = [
+    items: list[dict[str, object]] = [
         {
             "apiVersion": "v1",
             "kind": "ConfigMap",
@@ -295,14 +314,16 @@ http {
                                     "sources": [
                                         {
                                             "configMap": {
-                                                "name": shard["metadata"]["name"],
+                                                "name": shard_name,
                                                 "items": [
                                                     {"key": key, "path": key}
-                                                    for key in sorted(shard["binaryData"])
+                                                    for key in sorted(chunk)
                                                 ],
                                             }
                                         }
-                                        for shard in shards
+                                        for shard_name, chunk in zip(
+                                            shard_names, chunks, strict=True
+                                        )
                                     ]
                                 },
                             },
@@ -354,6 +375,6 @@ http {
 if __name__ == "__main__":
     # JSON documents are valid YAML. Separate resources avoid kubectl's List-kind
     # OpenAPI-v2 fallback; each built-in resource keeps Strict v3 validation.
-    for item in render(Path(sys.argv[1]))["items"]:
+    for item in cast("list[dict[str, object]]", render(Path(sys.argv[1]))["items"]):
         print("---")
         print(json.dumps(item))

@@ -10,7 +10,7 @@ import json
 import logging
 
 
-def run():
+def run() -> None:
     logging.disable(logging.CRITICAL)
     with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
         from opentelemetry import trace
@@ -25,9 +25,12 @@ def run():
         trace.set_tracer_provider(provider)
         marker = "OTEL_SYNTHETIC_EXCEPTION_CONTENT_MUST_NOT_BE_CAPTURED"
 
-        @instrument(span_name="homelab.synthetic.vllm-exception-validation")
-        def synthetic_failure():
+        def synthetic_failure() -> None:
             raise ValueError(marker)
+
+        synthetic_failure = instrument(span_name="homelab.synthetic.vllm-exception-validation")(
+            synthetic_failure
+        )
 
         try:
             synthetic_failure()
@@ -67,7 +70,7 @@ def run():
 if __name__ == "__main__":
     try:
         run()
-    except Exception as error:
+    except (ImportError, OSError, RuntimeError, ValueError) as error:
         print(
             json.dumps(
                 {
@@ -77,4 +80,4 @@ if __name__ == "__main__":
                 }
             )
         )
-        raise SystemExit(1)
+        raise SystemExit(1) from error

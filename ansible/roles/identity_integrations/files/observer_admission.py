@@ -4,6 +4,7 @@ PRINCIPAL = "genericoidc_group://homelab-observer"
 
 
 def retain_observer(original, allowed, roles, ttl):
+    """Document the retain observer operation."""
     result = list(allowed)
     if PRINCIPAL not in original.get("allowedPrincipalIds", []):
         return result
@@ -20,9 +21,8 @@ def retain_observer(original, allowed, roles, ttl):
         and (ttl.get("value") or ttl.get("default")) == "60"
     )
     if not ready:
-        msg = "Observer defaults drifted; do not silently rewrite active group admission"
         raise RuntimeError(
-            msg
+            "Observer defaults drifted; do not silently rewrite active group admission"
         )
     if PRINCIPAL not in result:
         result.append(PRINCIPAL)

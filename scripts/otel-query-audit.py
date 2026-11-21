@@ -1,3 +1,5 @@
+"""Audit query files for expressions that require manual review."""
+
 import argparse
 import hashlib
 import json

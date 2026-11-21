@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Offline local Argo source/value-file and selected current-document pointers.
+
 No rendering, download, live reconciliation or historical-document rewrites.
 External chart contents, web routes and Markdown fragments are not verified.
 """
@@ -8,6 +9,7 @@ import json
 import re
 import urllib.parse
 from pathlib import Path
+from typing import NamedTuple, TypedDict, cast
 
 import yaml
 
@@ -15,13 +17,117 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def inside(root, path):
+    """Perform the inside operation."""
     path = path.resolve()
     if not path.is_relative_to(root.resolve()):
         raise ValueError("Source pointer escapes repository")
     return path
 
 
+def _gather_refs(name: str, sources: list[dict[str, object]]) -> dict[str, dict[str, object]]:
+    """Collect and validate the file-scoped ref names declared by the sources."""
+    refs: dict[str, dict[str, object]] = {}
+    for source in sources:
+        if "ref" in source:
+            ref = cast("str", source["ref"])
+            if not re.fullmatch(r"[A-Za-z0-9_-]+", ref) or ref in refs:
+                raise ValueError("Duplicate/invalid source ref: " + name)
+            refs[ref] = source
+    return refs
+
+
+class _ScanContext(NamedTuple):
+    """File-scoped state shared by the per-source pointer validators."""
+
+    root: Path
+    repo: str
+    name: str
+    refs: dict[str, dict[str, object]]
+    active_values: set[Path]
+
+
+def _local_chart_targets(context: _ScanContext, source: dict[str, object], path: str) -> int:
+    """Validate one local source directory's chart and default values pointers."""
+    root, _, name, _, active_values = context
+    if Path(path).is_absolute():
+        raise ValueError("Argo source path must be repository-relative: " + name)
+    target = inside(root, root / path)
+    if not target.is_dir():
+        raise ValueError("Missing local source directory: " + name)
+    chart = inside(root, target / "Chart.yaml")
+    defaults = inside(root, target / "values.yaml")
+    if chart.is_file() and defaults.is_file():
+        active_values.add(defaults)
+    if "helm" in source and not chart.is_file():
+        raise ValueError("Missing Helm Chart.yaml: " + name)
+    return 1
+
+
+def _local_source_targets(context: _ScanContext, source: dict[str, object], path: object) -> int:
+    """Validate a local source's chart directory or required ref form."""
+    local = source["repoURL"] == context.repo
+    if local:
+        if source.get("targetRevision") != "main":
+            raise ValueError(
+                "Cannot verify non-main local source against current checkout: " + context.name
+            )
+        if path:
+            return _local_chart_targets(context, source, cast("str", path))
+        if not source.get("ref"):
+            raise ValueError("Local source requires path or ref: " + context.name)
+    return 0
+
+
+def _ref_value_target(context: _ScanContext, value: str) -> Path:
+    """Resolve a $ref-scoped value file to its registered and local path."""
+    root, repo, name, refs, _ = context
+    match = re.fullmatch(r"\$([^/]+)/(.+)", value)
+    if not match or match[1] not in refs:
+        raise ValueError("Undefined value-file ref: " + name)
+    if Path(match[2]).is_absolute():
+        raise ValueError("Ref values must be repository-relative: " + name)
+    ref = refs[match[1]]
+    if ref["repoURL"] != repo or ref.get("targetRevision") != "main":
+        raise ValueError("Cannot verify nonlocal/non-main value-file ref: " + name)
+    return inside(root, root / match[2])
+
+
+def _value_targets(
+    context: _ScanContext,
+    source: dict[str, object],
+    *,
+    local: bool,
+    path: object,
+) -> int:
+    """Validate every Helm value file of one source against repository relative paths."""
+    pointers = 0
+    for value in source.get("helm", {}).get("valueFiles", []):
+        target = _resolve_value_target(context, value, local=local, path=path)
+        # Deliberately strict even with ignoreMissingValueFiles. Optional
+        # values need a separately reviewed contract, not silently skipping.
+        if not target.is_file():
+            raise ValueError("Missing local values file: " + context.name)
+        pointers += 1
+        context.active_values.add(target)
+    return pointers
+
+
+def _resolve_value_target(
+    context: _ScanContext, value: object, *, local: bool, path: object
+) -> Path:
+    """Resolve one value-file entry to a local path using its declared scope."""
+    if isinstance(value, str) and value.startswith("$"):
+        return _ref_value_target(context, value)
+    if local and path:
+        text = cast("str", value)
+        if Path(text).is_absolute():
+            raise ValueError("Helm values must be repository-relative: " + context.name)
+        return inside(context.root, context.root / cast("str", path) / text)
+    raise ValueError("Cannot verify external relative values offline: " + context.name)
+
+
 def applications(root, directory, repo):
+    """Perform the applications operation."""
     base = inside(root, root / directory)
     if not base.is_dir():
         raise ValueError("Missing Application directory")
@@ -46,67 +152,55 @@ def applications(root, directory, repo):
         sources = spec.get("sources", [spec.get("source")])
         if not sources:
             raise ValueError("Empty Application sources: " + file.name)
-        refs = {}
+        refs = _gather_refs(file.name, sources)
+        context = _ScanContext(root, repo, file.name, refs, active_values)
         for source in sources:
-            if "ref" in source:
-                ref = source["ref"]
-                if not re.fullmatch(r"[A-Za-z0-9_-]+", ref) or ref in refs:
-                    raise ValueError("Duplicate/invalid source ref: " + file.name)
-                refs[ref] = source
-        for source in sources:
-            local = source["repoURL"] == repo
             path = source.get("path")
-            if local:
-                if source.get("targetRevision") != "main":
-                    raise ValueError(
-                        "Cannot verify non-main local source against current checkout: " + file.name
-                    )
-                if path:
-                    if Path(path).is_absolute():
-                        raise ValueError(
-                            "Argo source path must be repository-relative: " + file.name
-                        )
-                    target = inside(root, root / path)
-                    if not target.is_dir():
-                        raise ValueError("Missing local source directory: " + file.name)
-                    pointers += 1
-                    chart = inside(root, target / "Chart.yaml")
-                    defaults = inside(root, target / "values.yaml")
-                    if chart.is_file() and defaults.is_file():
-                        active_values.add(defaults)
-                    if "helm" in source and not chart.is_file():
-                        raise ValueError("Missing Helm Chart.yaml: " + file.name)
-                elif not source.get("ref"):
-                    raise ValueError("Local source requires path or ref: " + file.name)
-            for value in source.get("helm", {}).get("valueFiles", []):
-                if value.startswith("$"):
-                    match = re.fullmatch(r"\$([^/]+)/(.+)", value)
-                    if not match or match[1] not in refs:
-                        raise ValueError("Undefined value-file ref: " + file.name)
-                    if Path(match[2]).is_absolute():
-                        raise ValueError("Ref values must be repository-relative: " + file.name)
-                    ref = refs[match[1]]
-                    if ref["repoURL"] != repo or ref.get("targetRevision") != "main":
-                        raise ValueError(
-                            "Cannot verify nonlocal/non-main value-file ref: " + file.name
-                        )
-                    target = inside(root, root / match[2])
-                elif local and path:
-                    if Path(value).is_absolute():
-                        raise ValueError("Helm values must be repository-relative: " + file.name)
-                    target = inside(root, root / path / value)
-                else:
-                    raise ValueError("Cannot verify external relative values offline: " + file.name)
-                # Deliberately strict even with ignoreMissingValueFiles. Optional
-                # values need a separately reviewed contract, not silently skipping.
-                if not target.is_file():
-                    raise ValueError("Missing local values file: " + file.name)
-                pointers += 1
-                active_values.add(target)
+            pointers += _local_source_targets(context, source, path)
+            pointers += _value_targets(context, source, local=source["repoURL"] == repo, path=path)
     return len(names), pointers, values_by_owner
 
 
+class _CurrentValuesBinding(TypedDict):
+    source: str
+    application: str
+    path: list[str]
+    documents: list[str]
+
+
+def _document_links(root: Path, name: str) -> None:
+    """Verify every relative link in a registered document resolves locally."""
+    file = inside(root, root / name)
+    text = file.read_text()
+    for link in re.findall(r"\]\(([^\s)]+)", text):
+        url = urllib.parse.urlsplit(link)
+        if url.scheme or url.netloc or not url.path or url.path.startswith("/"):
+            continue
+        target = inside(root, file.parent / urllib.parse.unquote(url.path))
+        if not target.exists():
+            raise ValueError("Broken local document link: " + name)
+
+
+def _current_values(
+    root: Path, binding: _CurrentValuesBinding, active_values: dict[tuple[str, str], set[Path]]
+) -> None:
+    """Verify a documented current value is live and quoted in its documents."""
+    source = inside(root, root / binding["source"])
+    owner = ("argocd", binding["application"])
+    if source not in active_values.get(owner, set()):
+        raise ValueError("Documented values are not consumed by their registered Application")
+    value = yaml.safe_load(source.read_text())
+    for key in binding["path"]:
+        value = value[key]
+    if not isinstance(value, str) or not value:
+        raise ValueError("Expected nonempty current-value pointer")
+    for name in binding["documents"]:
+        if "`" + value + "`" not in inside(root, root / name).read_text():
+            raise ValueError("Current documentation value drift: " + name)
+
+
 def check(root=ROOT):
+    """Check the requested inputs."""
     c = json.loads((root / "deploy/contracts/source-pointers.json").read_text())
     if c["schemaVersion"] != 1:
         raise ValueError("Unsupported source pointer schema")
@@ -119,28 +213,9 @@ def check(root=ROOT):
         raise ValueError("Root Application no longer owns the checked source directory")
     count, pointers, active_values = applications(root, c["applicationDirectory"], c["repoURL"])
     for name in c["documents"]:
-        file = inside(root, root / name)
-        text = file.read_text()
-        for link in re.findall(r"\]\(([^\s)]+)", text):
-            url = urllib.parse.urlsplit(link)
-            if url.scheme or url.netloc or not url.path or url.path.startswith("/"):
-                continue
-            target = inside(root, file.parent / urllib.parse.unquote(url.path))
-            if not target.exists():
-                raise ValueError("Broken local document link: " + name)
+        _document_links(root, name)
     for binding in c["currentValues"]:
-        source = inside(root, root / binding["source"])
-        owner = ("argocd", binding["application"])
-        if source not in active_values.get(owner, set()):
-            raise ValueError("Documented values are not consumed by their registered Application")
-        value = yaml.safe_load(source.read_text())
-        for key in binding["path"]:
-            value = value[key]
-        if not isinstance(value, str) or not value:
-            raise ValueError("Expected nonempty current-value pointer")
-        for name in binding["documents"]:
-            if "`" + value + "`" not in inside(root, root / name).read_text():
-                raise ValueError("Current documentation value drift: " + name)
+        _current_values(root, binding, active_values)
     return count, pointers
 
 

@@ -15,7 +15,8 @@ HOST = "n8n.socrat.alchemmist.xyz"
 BODY = b"# Public n8n HTTPS must not depend on private VPN DNS. Authentik remains required.\nnameserver 1.1.1.1\nnameserver 9.9.9.9\ntimeout 2\noptions attempts:2\n"
 
 
-def apply():
+def apply() -> None:
+    """Install the reviewed public n8n resolver file after backing up any previous one."""
     if sys.platform != "darwin" or os.geteuid() != 0:
         raise RuntimeError("Native macOS administrator authorization required")
     folder = Path("/etc/resolver")

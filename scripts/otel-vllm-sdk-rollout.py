@@ -71,6 +71,141 @@ def trace_arguments(original):
     return list(original) + ["--otlp-traces-endpoint", ENDPOINT]
 
 
+def renewal_gate_passed(renewal) -> bool:
+    """Return True only when the pinned same-instance leaf renewal receipts passed."""
+    return (
+        renewal["sameInstanceSameExporterNativeLeafRenewalVerified"]
+        and len(renewal["backend"]) == 2
+        and all(x["success"] for x in renewal["backend"])
+    )
+
+
+def source_gate_passed(security, bootstrap) -> bool:
+    """Return True only when the pinned privacy-guard and early-bootstrap gates passed."""
+    return (
+        security["guardSourceSHA256"]
+        == hashlib.sha256(source_data()["source_privacy.py"].encode()).hexdigest()
+        and bootstrap["source"]["success"]
+        and bootstrap["source"]["sourceGuardFactoryActive"]
+        and bootstrap["backend"]["success"]
+        and bootstrap["sourceConfigMapData"] == source_data()
+    )
+
+
+def require_healthy_baseline(deployment, container, security) -> None:
+    """Fail unless the live vLLM runtime is the pinned single healthy replica."""
+    if container["image"].split("@")[-1] != security["installedRuntime"]["image"].split("@")[-1]:
+        msg = "Pinned runtime image differs from tested SDK image"
+        raise ValueError(msg)
+    if (
+        deployment["spec"].get("replicas", 1) != 1
+        or deployment.get("status", {}).get("availableReplicas") != 1
+    ):
+        msg = "Expected one healthy original GPU replica"
+        raise ValueError(msg)
+
+
+def require_no_env_conflicts(container, environment) -> None:
+    """Fail if an existing env entry would conflict with the SDK settings."""
+    current_env = {e["name"]: e for e in container.get("env", [])}
+    for name, value in environment.items():
+        if name in current_env and current_env[name] != {"name": name, "value": value}:
+            msg = "Conflicting SDK environment; never overwrite unreviewed settings"
+            raise ValueError(msg)
+
+
+def require_no_volume_conflicts(deployment, container, desired) -> None:
+    """Fail if an existing volume or mount would conflict with the SDK additions."""
+    for desired_entries, current in [
+        (desired[0], deployment["spec"]["template"]["spec"].get("volumes", [])),
+        (desired[1], container.get("volumeMounts", [])),
+    ]:
+        for entry in desired_entries:
+            if any(v["name"] == entry["name"] and v != entry for v in current):
+                msg = "Conflicting existing SDK volume or mount"
+                raise ValueError(msg)
+
+
+def reconciled_state(template, container, args, volumes, mounts, environment, fingerprint) -> bool:
+    """Return True if the live deployment already matches this SDK configuration."""
+    current_env = {e["name"]: e for e in container.get("env", [])}
+    return bool(
+        template.get("metadata", {})
+        .get("annotations", {})
+        .get("homelab.alchemmist.xyz/sdk-configuration-sha256")
+        == fingerprint
+        and container["args"] == args
+        and all(
+            current_env.get(name) == {"name": name, "value": value}
+            for name, value in environment.items()
+        )
+        and all(entry in template["spec"].get("volumes", []) for entry in volumes)
+        and all(entry in container.get("volumeMounts", []) for entry in mounts)
+        and template["spec"].get("terminationGracePeriodSeconds", 0) >= 7200
+    )
+
+
+def observe_idle(kube, receipt, record) -> None:
+    """Sample native running/waiting gauges three times, refusing active traffic."""
+    # Read only numeric native running/waiting gauges, never prompts or keys.
+    code = """import urllib.request,re,json
+text=urllib.request.urlopen('http://127.0.0.1:8000/metrics',timeout=4).read(8388609)
+if len(text)>8388608:raise ValueError('Metric budget exceeded')
+result={}
+for kind in ['running','waiting']:
+ values=re.findall(r'^vllm:num_requests_'+kind+r'(?:\\{[^\\n]*\\})?\\s+([0-9.eE+-]+)\\s*$',text.decode(),re.M)
+ if not values:raise ValueError('Required idle gauge absent')
+ result[kind]=sum(float(value)for value in values)
+print(json.dumps(result))"""
+    receipt["idleObservations"] = []
+    for _ in range(3):
+        observed = kube("-n", "llm", "exec", "deploy/vllm", "--", "python3", "-c", code)
+        receipt["idleObservations"].append(observed)
+        record()
+        if observed != {"running": 0.0, "waiting": 0.0}:
+            msg = "Active or queued inference; do not restart or force drain"
+            raise ValueError(msg)
+        time.sleep(5)
+
+
+def ready_sdk_pods(pods, fingerprint) -> list:
+    """Return the running pods already carrying this SDK configuration fingerprint."""
+    return [
+        p
+        for p in pods
+        if p["metadata"]
+        .get("annotations", {})
+        .get("homelab.alchemmist.xyz/sdk-configuration-sha256")
+        == fingerprint
+        and any(
+            c["type"] == "Ready" and c["status"] == "True"
+            for c in p.get("status", {}).get("conditions", [])
+        )
+    ]
+
+
+def rollout_settled(live, matching) -> bool:
+    """Return True once the rollout generation is observed with a ready SDK pod."""
+    return bool(
+        live.get("status", {}).get("observedGeneration", 0) >= live["metadata"]["generation"]
+        and matching
+    )
+
+
+def wait_sdk_rollout(kube, receipt, fingerprint) -> bool:
+    """Poll until the new SDK pod is ready; return True on success, False on timeout."""
+    deadline = time.monotonic() + 600
+    while time.monotonic() < deadline:
+        live = kube("-n", "llm", "get", "deployment", "vllm", "-o", "json")
+        pods = kube("-n", "llm", "get", "pods", "-l", "app=vllm", "-o", "json")["items"]
+        matching = ready_sdk_pods(pods, fingerprint)
+        if rollout_settled(live, matching):
+            receipt.update(newSdkPodReady=True, sdkPods=[p["metadata"]["name"] for p in matching])
+            return True
+        time.sleep(5)
+    return False
+
+
 def run(output, apply, switcher_receipt=None):
     os.umask(0o077)
     controller = Path.home() / "Library/Application Support/homelab/otel-controller"
@@ -83,17 +218,7 @@ def run(output, apply, switcher_receipt=None):
     )
     renewal = json.loads((evidence / "vllm-sdk-leaf-renewal-20261101.json").read_text())
     bootstrap = json.loads((evidence / "vllm-sdk-early-bootstrap-20261101.json").read_text())
-    if not (
-        security["guardSourceSHA256"]
-        == hashlib.sha256(source_data()["source_privacy.py"].encode()).hexdigest()
-        and renewal["sameInstanceSameExporterNativeLeafRenewalVerified"]
-        and len(renewal["backend"]) == 2
-        and all(x["success"] for x in renewal["backend"])
-        and bootstrap["source"]["success"]
-        and bootstrap["source"]["sourceGuardFactoryActive"]
-        and bootstrap["backend"]["success"]
-        and bootstrap["sourceConfigMapData"] == source_data()
-    ):
+    if not (renewal_gate_passed(renewal) and source_gate_passed(security, bootstrap)):
         msg = "Pinned source privacy/bootstrap/renewal/backend gates have not passed"
         raise ValueError(msg)
     kube = BOOTSTRAP.kube
@@ -101,21 +226,10 @@ def run(output, apply, switcher_receipt=None):
     container = next(
         c for c in deployment["spec"]["template"]["spec"]["containers"] if c["name"] == "vllm"
     )
-    if container["image"].split("@")[-1] != security["installedRuntime"]["image"].split("@")[-1]:
-        msg = "Pinned runtime image differs from tested SDK image"
-        raise ValueError(msg)
-    if (
-        deployment["spec"].get("replicas", 1) != 1
-        or deployment.get("status", {}).get("availableReplicas") != 1
-    ):
-        msg = "Expected one healthy original GPU replica"
-        raise ValueError(msg)
+    require_healthy_baseline(deployment, container, security)
+    environment = sdk_environment()
     args = trace_arguments(container["args"])
-    current_env = {e["name"]: e for e in container.get("env", [])}
-    for name, value in sdk_environment().items():
-        if name in current_env and current_env[name] != {"name": name, "value": value}:
-            msg = "Conflicting SDK environment; never overwrite unreviewed settings"
-            raise ValueError(msg)
+    require_no_env_conflicts(container, environment)
     cm_name = source_configmap_name()
     volumes = [
         {"name": "otel-source", "configMap": {"name": cm_name, "defaultMode": 420}},
@@ -125,17 +239,10 @@ def run(output, apply, switcher_receipt=None):
         {"name": "otel-source", "mountPath": "/etc/otel-source", "readOnly": True},
         {"name": "otel-client", "mountPath": "/etc/otel-client", "readOnly": True},
     ]
-    for desired, current in [
-        (volumes, deployment["spec"]["template"]["spec"].get("volumes", [])),
-        (mounts, container.get("volumeMounts", [])),
-    ]:
-        for entry in desired:
-            if any(v["name"] == entry["name"] and v != entry for v in current):
-                msg = "Conflicting existing SDK volume or mount"
-                raise ValueError(msg)
+    require_no_volume_conflicts(deployment, container, (volumes, mounts))
     fingerprint = hashlib.sha256(
         json.dumps(
-            {"env": sdk_environment(), "source": source_data(), "endpoint": ENDPOINT},
+            {"env": environment, "source": source_data(), "endpoint": ENDPOINT},
             sort_keys=True,
         ).encode()
     ).hexdigest()
@@ -160,7 +267,7 @@ def run(output, apply, switcher_receipt=None):
                             "args": args,
                             "env": [
                                 {"name": name, "value": value}
-                                for name, value in sdk_environment().items()
+                                for name, value in environment.items()
                             ],
                             "volumeMounts": mounts,
                         }
@@ -180,7 +287,7 @@ def run(output, apply, switcher_receipt=None):
         "productionSdkCoverageVerified": False,
     }
 
-    def record():
+    def record() -> None:
         (output / "result.json").write_text(json.dumps(receipt, indent=2) + "\n")
 
     record()
@@ -208,44 +315,12 @@ def run(output, apply, switcher_receipt=None):
             },
         )
     template = deployment["spec"]["template"]
-    already_reconciled = (
-        template.get("metadata", {})
-        .get("annotations", {})
-        .get("homelab.alchemmist.xyz/sdk-configuration-sha256")
-        == fingerprint
-        and container["args"] == args
-        and all(
-            current_env.get(name) == {"name": name, "value": value}
-            for name, value in sdk_environment().items()
-        )
-        and all(entry in template["spec"].get("volumes", []) for entry in volumes)
-        and all(entry in container.get("volumeMounts", []) for entry in mounts)
-        and template["spec"].get("terminationGracePeriodSeconds", 0) >= 7200
-    )
-    if already_reconciled:
+    if reconciled_state(template, container, args, volumes, mounts, environment, fingerprint):
         receipt.update(alreadyReconciled=True, newSdkPodReady=True)
         record()
         print(json.dumps(receipt))
         return
-    # Read only numeric native running/waiting gauges, never prompts or keys.
-    code = """import urllib.request,re,json
-text=urllib.request.urlopen('http://127.0.0.1:8000/metrics',timeout=4).read(8388609)
-if len(text)>8388608:raise ValueError('Metric budget exceeded')
-result={}
-for kind in ['running','waiting']:
- values=re.findall(r'^vllm:num_requests_'+kind+r'(?:\\{[^\\n]*\\})?\\s+([0-9.eE+-]+)\\s*$',text.decode(),re.M)
- if not values:raise ValueError('Required idle gauge absent')
- result[kind]=sum(float(value)for value in values)
-print(json.dumps(result))"""
-    receipt["idleObservations"] = []
-    for _ in range(3):
-        observed = kube("-n", "llm", "exec", "deploy/vllm", "--", "python3", "-c", code)
-        receipt["idleObservations"].append(observed)
-        record()
-        if observed != {"running": 0.0, "waiting": 0.0}:
-            msg = "Active or queued inference; do not restart or force drain"
-            raise ValueError(msg)
-        time.sleep(5)
+    observe_idle(kube, receipt, record)
     kube(
         "-n",
         "llm",
@@ -273,34 +348,13 @@ print(json.dumps(result))"""
     )
     receipt["applied"] = True
     record()
-    deadline = time.monotonic() + 600
-    while time.monotonic() < deadline:
-        live = kube("-n", "llm", "get", "deployment", "vllm", "-o", "json")
-        pods = kube("-n", "llm", "get", "pods", "-l", "app=vllm", "-o", "json")["items"]
-        matching = [
-            p
-            for p in pods
-            if p["metadata"]
-            .get("annotations", {})
-            .get("homelab.alchemmist.xyz/sdk-configuration-sha256")
-            == fingerprint
-            and any(
-                c["type"] == "Ready" and c["status"] == "True"
-                for c in p.get("status", {}).get("conditions", [])
-            )
-        ]
-        if (
-            live.get("status", {}).get("observedGeneration", 0) >= live["metadata"]["generation"]
-            and matching
-        ):
-            receipt.update(newSdkPodReady=True, sdkPods=[p["metadata"]["name"] for p in matching])
-            record()
-            print(json.dumps(receipt))
-            return
-        time.sleep(5)
-    msg = "Candidate readiness/drain pending; preimages retained, no force kill or destructive automatic rollback"
+    if wait_sdk_rollout(kube, receipt, fingerprint):
+        record()
+        print(json.dumps(receipt))
+        return
+    msg_0 = "Candidate readiness/drain pending; preimages retained, no force kill or destructive automatic rollback"
     raise ValueError(
-        msg
+        msg_0
     )
 
 

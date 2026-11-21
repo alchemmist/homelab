@@ -3,34 +3,37 @@
 
 import copy
 import json
+from typing import cast
 from urllib.parse import urlencode
 
 from sync import BASE, CONFIG, api
 
 
-def render(template, mapping):
-    w = copy.deepcopy(template)
+def render(template, mapping) -> dict[str, object]:
+    """Bind private SPI credentials from the mapping into a workflow copy."""
+    w: dict[str, object] = copy.deepcopy(template)
     aliases = {
         "SPI_WORKER_CREDENTIAL_ID": "worker",
         "ALERT_INGRESS_CREDENTIAL_ID": "ingress",
         "SOCRAT_BOT_CREDENTIAL_ID": "bot",
     }
-    for n in w["nodes"]:
-        for kind, c in list(n.get("credentials", {}).items()):
-            alias = aliases[c["id"]]
+    for n in cast("list[dict[str, object]]", w["nodes"]):
+        for kind, c in list(cast("dict[str, object]", n.get("credentials", {})).items()):
+            alias = aliases[cast("str", cast("dict[str, object]", c)["id"])]
             if not mapping.get(alias, {}).get("id"):
                 raise RuntimeError("Missing private SPI credential mapping: " + alias)
-            n["credentials"][kind] = mapping[alias]
+            cast("dict[str, object]", n["credentials"])[kind] = mapping[alias]
     return w
 
 
-def sync(relative):
+def sync(relative) -> dict[str, object]:
+    """Upsert the reviewed workflow inactive, refusing ambiguous or active matches."""
     mapping = json.loads((CONFIG / "spi-credentials.json").read_text())
     template = json.loads((BASE / relative).read_text())
     w = render(template, mapping)
     # Search every page before resolving identity. SPI triage must never be
     # recreated when its original workflow is missing or renamed.
-    matches = []
+    matches: list[dict[str, object]] = []
     cursor = None
     seen = set()
     while True:
@@ -38,7 +41,9 @@ def sync(relative):
         if cursor:
             query["cursor"] = cursor
         page = api("GET", "workflows?" + urlencode(query))
-        matches.extend(x for x in page["data"] if x["name"] == w["name"])
+        matches.extend(
+            x for x in cast("list[dict[str, object]]", page["data"]) if x["name"] == w["name"]
+        )
         cursor = page.get("nextCursor")
         if not cursor:
             break
@@ -51,9 +56,9 @@ def sync(relative):
         raise RuntimeError("Existing SPI triage workflow not found; refusing creation")
     if matches and matches[0]["active"]:
         raise RuntimeError("Deactivate explicitly before syncing")
-    result = api(
+    result: dict[str, object] = api(
         "PUT" if matches else "POST",
-        "workflows/" + matches[0]["id"] if matches else "workflows",
+        "workflows/" + cast("str", matches[0]["id"]) if matches else "workflows",
         {k: w[k] for k in ["name", "nodes", "connections", "settings"]},
     )
     print("Workflow synced inactive:", result["id"], result["name"])

@@ -1,12 +1,16 @@
+"""Tests for the OpenTelemetry Open WebUI rollout."""
+
 import importlib.util
-from pathlib import Path
 import unittest
+from pathlib import Path
+from types import ModuleType
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def module():
+def module() -> ModuleType:
     spec = importlib.util.spec_from_file_location(
         "webui_rollout", ROOT / "scripts/otel-open-webui-sdk-rollout.py"
     )
@@ -16,39 +20,45 @@ def module():
 
 
 class OpenWebuiRolloutTests(unittest.TestCase):
-    def test_sdk_environment_trace_only_private_mtls_and_long_request_drain(self):
+    """Validate the Open WebUI rollout's SDK tracing environment."""
+    def test_sdk_environment_trace_only_private_mtls_and_long_request_drain(self) -> None:
+        """Sdk environment trace only private mtls and long request drain."""
+
         env = module().sdk_environment()
-        self.assertEqual(env["OTEL_OTLP_SPAN_EXPORTER"], "http")
-        self.assertEqual(env["OTEL_EXPORTER_OTLP_ENDPOINT"], "https://10.250.0.3:44318/v1/traces")
-        self.assertEqual(env["OTEL_EXPORTER_OTLP_INSECURE"], "false")
-        self.assertEqual(env["ENABLE_OTEL_METRICS"], "false")
-        self.assertEqual(env["OTEL_METRICS_EXPORTER"], "none")
-        self.assertEqual(env["OTEL_LOGS_EXPORTER"], "none")
-        self.assertEqual(env["OTEL_TRACES_SAMPLER"], "always_on")
-        self.assertEqual(env["UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN"], "7200")
-        self.assertIn("/app/backend", env["PYTHONPATH"].split(":"))
+        assert env["OTEL_OTLP_SPAN_EXPORTER"] == "http"
+        assert env["OTEL_EXPORTER_OTLP_ENDPOINT"] == "https://10.250.0.3:44318/v1/traces"
+        assert env["OTEL_EXPORTER_OTLP_INSECURE"] == "false"
+        assert env["ENABLE_OTEL_METRICS"] == "false"
+        assert env["OTEL_METRICS_EXPORTER"] == "none"
+        assert env["OTEL_LOGS_EXPORTER"] == "none"
+        assert env["OTEL_TRACES_SAMPLER"] == "always_on"
+        assert env["UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN"] == "7200"
+        assert "/app/backend" in env["PYTHONPATH"].split(":")
 
-    def test_only_kubernetes_empty_env_default_is_normalized(self):
+    def test_only_kubernetes_empty_env_default_is_normalized(self) -> None:
+        """Only kubernetes empty env default is normalized."""
+
         helper = module()
-        self.assertTrue(helper.environment_matches({"name": "EMPTY"}, "EMPTY", ""))
-        self.assertTrue(helper.environment_matches({"name": "EMPTY", "value": ""}, "EMPTY", ""))
-        self.assertFalse(
-            helper.environment_matches(
-                {"name": "EMPTY", "valueFrom": {"secretKeyRef": {}}}, "EMPTY", ""
-            )
+        assert helper.environment_matches({"name": "EMPTY"}, "EMPTY", "")
+        assert helper.environment_matches({"name": "EMPTY", "value": ""}, "EMPTY", "")
+        assert not helper.environment_matches(
+            {"name": "EMPTY", "valueFrom": {"secretKeyRef": {}}}, "EMPTY", ""
         )
-        self.assertFalse(helper.environment_matches({"name": "EMPTY"}, "EMPTY", "true"))
-        self.assertFalse(helper.environment_matches(None, "EMPTY", ""))
+        assert not helper.environment_matches({"name": "EMPTY"}, "EMPTY", "true")
+        assert not helper.environment_matches(None, "EMPTY", "")
 
-    def test_maintained_overlay_matches_exact_three_source_files_and_env(self):
+    def test_maintained_overlay_matches_exact_three_source_files_and_env(self) -> None:
+        """Maintained overlay matches exact three source files and env."""
+
         helper = module()
         overlay = yaml.safe_load(
             (ROOT / "deploy/monitoring/otel-open-webui-sdk-values.yaml").read_text()
         )["otel"]
-        self.assertEqual(overlay["sourceConfigMap"], helper.source_configmap_name())
-        self.assertEqual(overlay["environment"], helper.sdk_environment())
-        self.assertEqual(
-            set(helper.source_data()),
-            {"source_privacy.py", "sitecustomize.py", "open_webui_source_profile.py"},
-        )
-        self.assertIn("os._exit(78)", helper.source_data()["sitecustomize.py"])
+        assert overlay["sourceConfigMap"] == helper.source_configmap_name()
+        assert overlay["environment"] == helper.sdk_environment()
+        assert set(helper.source_data()) == {
+            "source_privacy.py",
+            "sitecustomize.py",
+            "open_webui_source_profile.py",
+        }
+        assert "os._exit(78)" in helper.source_data()["sitecustomize.py"]

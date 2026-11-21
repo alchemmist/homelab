@@ -1,14 +1,15 @@
+"""Configure the private-monitor entry in the Uptime Kuma database."""
+
 import argparse
-from contextlib import closing
-from datetime import datetime, timezone
 import json
 import os
-from pathlib import Path
 import sqlite3
 import sys
 import tempfile
+from contextlib import closing
+from datetime import datetime, timezone
+from pathlib import Path
 from urllib.parse import urlsplit
-
 
 HOSTNAME = "rancher.socrat.alchemmist.xyz"
 DESIRED = {
@@ -25,6 +26,7 @@ DESIRED = {
 
 
 def configure(db_path, check=False):
+    """Execute the configure operation."""
     db_path = Path(db_path).resolve()
     mode = "ro" if check else "rw"
     with closing(sqlite3.connect(f"{db_path.as_uri()}?mode={mode}", uri=True)) as connection:
@@ -78,6 +80,7 @@ def configure(db_path, check=False):
 
 
 def main():
+    """Execute the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--db", required=True)
     parser.add_argument("--check", action="store_true")

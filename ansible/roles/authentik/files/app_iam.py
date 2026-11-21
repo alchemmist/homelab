@@ -15,6 +15,7 @@ LEGACY_GROUPS = [
 
 
 def app_groups(services):
+    """App groups."""
     return {
         f"app-{slug}-{role}": {
             **settings,
@@ -27,6 +28,7 @@ def app_groups(services):
 
 
 def admission_groups(slug, service):
+    """Admission groups."""
     # Legacy membership remains valid; this is admission, NOT native RBAC.
     return service.get("groups", ["homelab-owner"]) + [
         f"app-{slug}-{role}"
@@ -58,6 +60,7 @@ GROUP_MARKER = {"homelab_app_iam": 1}
 
 
 def validate_group(group):
+    """Validate group."""
     # Authentik 2026.8.5 uses plural parents (M2M), not legacy parent.
     # Missing/null/reduced responses are not evidence of absence of privilege.
     if (

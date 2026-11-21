@@ -1,3 +1,4 @@
+"""Smoke-check an OpenAI-compatible LLM inference endpoint."""
 import json
 import os
 import sys
@@ -12,11 +13,13 @@ TIMEOUT = 180
 
 
 def require(condition, message):
+    """Raise an error when a required condition is not met."""
     if not condition:
         raise ValueError(message)
 
 
 def request(path, payload=None):
+    """Perform the HTTP request and return its response."""
     data = None if payload is None else json.dumps(payload).encode()
     headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
     return urllib.request.urlopen(
@@ -26,6 +29,7 @@ def request(path, payload=None):
 
 
 def report(name, started, usage=None):
+    """Perform the report operation."""
     tokens = ""
     if usage:
         tokens = (
@@ -36,6 +40,7 @@ def report(name, started, usage=None):
 
 
 def complete(messages, **options):
+    """Perform the complete operation."""
     payload = {
         "model": MODEL,
         "messages": messages,
@@ -52,6 +57,7 @@ def complete(messages, **options):
 
 
 def main():
+    """Run the command-line entry point."""
     require(bool(API_KEY), "LLM_API_KEY must be set")
     started = time.monotonic()
     try:

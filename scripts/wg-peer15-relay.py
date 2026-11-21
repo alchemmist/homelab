@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Keyless, fixed-endpoint WG ciphertext relay; no general UDP forwarding.
+
 Only node5 inside authenticated WG can send; only node1 fixed UDP can reply.
 Never inspect/log/store payload, and never possess either peer's WG private key.
 """
@@ -16,10 +17,10 @@ BACK = ("192.168.0.23", 51836)
 TARGET = ("192.168.0.24", 51830)
 
 
-def main():
+def main() -> None:
     alive = True
 
-    def stop(_signum, _frame):
+    def stop(_signum, _frame) -> None:
         nonlocal alive
         alive = False
 

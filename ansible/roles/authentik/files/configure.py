@@ -1,18 +1,19 @@
 """Create role groups without granting access or importing human identities."""
 
 import json
-from pathlib import Path
 import sys
 import urllib.request
+from pathlib import Path
+
 from app_iam import (
-    LEGACY_GROUPS,
     GROUP_MARKER,
-    app_groups,
+    LEGACY_GROUPS,
     admission_groups,
+    app_groups,
     rows,
-    validate_group,
-    validate_bindings,
     standard_scope_ids,
+    validate_bindings,
+    validate_group,
 )
 
 root = Path(sys.argv[1])
@@ -21,6 +22,7 @@ base = "https://auth.socrat.alchemmist.xyz/api/v3/"
 
 
 def api(method, path, payload=None):
+    """Api."""
     req = urllib.request.Request(
         base + path,
         method=method,
@@ -40,6 +42,7 @@ import secrets
 
 
 def unique(path, field, value):
+    """Unique."""
     from urllib.parse import urlencode
 
     query = {field: value}
@@ -105,9 +108,9 @@ owner_path = root / "owner-login.json"
 owner = unique("core/users/", "username", "alchemmist")
 if not owner_path.exists():
     if owner:
-        msg = "Owner username already exists without bootstrap journal; review identity manually"
+        msg_0 = "Owner username already exists without bootstrap journal; review identity manually"
         raise RuntimeError(
-            msg
+            msg_0
         )
     fd = os.open(owner_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     with os.fdopen(fd, "w") as f:
@@ -138,7 +141,7 @@ if not owner_login["initialized"]:
     owner_path.chmod(0o600)
 # Only the declared owner may inherit this group's superuser rights.
 owner_group = unique("core/groups/", "name", "homelab-owner")
-if set(owner_group.get("users", [])) - set([owner["pk"]]):
+if set(owner_group.get("users", [])) - {owner["pk"]}:
     msg = "Unexpected owner group membership; review before granting superuser"
     raise RuntimeError(msg)
 api("PATCH", "core/groups/" + groups["homelab-owner"] + "/", {"is_superuser": True})
@@ -263,9 +266,9 @@ for slug, service in services.items():
         provider = unique("providers/oauth2/", "name", "homelab-" + slug)
         if slug not in clients:
             if provider:
-                msg = "Provider exists without local client credentials; refusing rotation"
+                msg_0 = "Provider exists without local client credentials; refusing rotation"
                 raise RuntimeError(
-                    msg
+                    msg_0
                 )
             clients[slug] = {
                 "client_id": "socrat-" + slug,

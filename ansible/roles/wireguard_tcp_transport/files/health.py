@@ -1,8 +1,8 @@
+"""WireGuard TCP transport health probe with restart bookkeeping."""
 import json
 import subprocess
 import time
 from pathlib import Path
-
 
 STATE = Path("/run/wireguard-tcp-transport-health/state.json")
 
