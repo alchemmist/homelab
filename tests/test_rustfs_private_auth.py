@@ -13,7 +13,7 @@ class PrivateAuth(unittest.TestCase):
         reader.auth = g.ORIGIN + "/outpost.goauthentik.io/auth/nginx"
 
         class HTTP:
-            def open(self, *args, **kwargs):
+            def open(self, *args: object, **kwargs: object) -> None:
                 raise self.error
 
         reader.http = HTTP()

@@ -53,7 +53,7 @@ class Response:
     def __enter__(self):
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, *args: object):
         return False
 
     def read(self):

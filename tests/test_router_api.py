@@ -104,7 +104,7 @@ class SimulatedRouter(ROUTER.Router):
 
 
 class RouterApiTests(unittest.TestCase):
-    def run_main(self, router, *arguments):
+    def run_main(self, router: object, *arguments: str):
         output = io.StringIO()
         with (
             patch.object(ROUTER, "Router", return_value=router),

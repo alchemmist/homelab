@@ -54,8 +54,14 @@ class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
         processes = []
         started = asyncio.Event()
 
-        async def spawn(*args, **kwargs):
-            process = await original(*args, **kwargs)
+        async def spawn(
+            program: str,
+            *args: str,
+            stdin: int | None = None,
+            stdout: int | None = None,
+            stderr: int | None = None,
+        ) -> asyncio.subprocess.Process:
+            process = await original(program, *args, stdin=stdin, stdout=stdout, stderr=stderr)
             processes.append(process)
             started.set()
             return process

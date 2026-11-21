@@ -8,7 +8,7 @@ import yaml
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
-def render(chart, *values):
+def render(chart: str, *values: str):
     cmd = ["helm", "template", "test", str(ROOT / "charts" / chart)]
     for value in values:
         cmd += ["--set", value]

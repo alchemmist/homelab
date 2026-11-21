@@ -23,10 +23,12 @@ def test_exact_addition_and_idempotent_delta() -> None:
         """Drop the additive ns3 records from an otherwise identical zone."""
 
         @staticmethod
-        def render(*args):
-            return (
-                "\n".join(x for x in zone.render(*args).splitlines() if x not in guard.ADDED) + "\n"
-            )
+        def render(*args: object) -> str:
+            rendered = zone.render(*args)
+            if not isinstance(rendered, str):
+                raise TypeError
+            kept = [line for line in rendered.splitlines() if line not in guard.ADDED]
+            return "\n".join(kept) + "\n"
 
     guard.delta(Old, zone)
     guard.delta(zone, zone)
@@ -46,8 +48,11 @@ def test_guard_rejects_unrelated_records_and_missing_ns3() -> None:
         """Append one address that is outside the ns3 addition."""
 
         @staticmethod
-        def render(*args):
-            return zone.render(*args) + "unexpected IN A 192.0.2.1\n"
+        def render(*args: object) -> str:
+            rendered = zone.render(*args)
+            if not isinstance(rendered, str):
+                raise TypeError
+            return rendered + "unexpected IN A 192.0.2.1\n"
 
     with pytest.raises(RuntimeError):
         guard.delta(zone, Bad)
@@ -56,8 +61,11 @@ def test_guard_rejects_unrelated_records_and_missing_ns3() -> None:
         """Remove the ns3 glue address from the current zone."""
 
         @staticmethod
-        def render(*args):
-            return zone.render(*args).replace("ns3 IN A 91.189.82.238\n", "")
+        def render(*args: object) -> str:
+            rendered = zone.render(*args)
+            if not isinstance(rendered, str):
+                raise TypeError
+            return rendered.replace("ns3 IN A 91.189.82.238\n", "")
 
     with pytest.raises(RuntimeError):
         guard.delta(zone, Missing)

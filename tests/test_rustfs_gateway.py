@@ -225,7 +225,7 @@ class Integrity(unittest.TestCase):
             def __enter__(self):
                 return self
 
-            def __exit__(self, *args):
+            def __exit__(self, *args: object) -> None:
                 pass
 
         class HTTP:
