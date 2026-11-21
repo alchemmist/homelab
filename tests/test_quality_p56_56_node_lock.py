@@ -843,7 +843,11 @@ def test_docker_selector_proof_preserves_surrounding_body(
     assert source.count(original) == 1
     destination = tmp_path / "scripts/quality/lint.py"
     destination.parent.mkdir(parents=True)
-    destination.write_text(source.replace(original, replacement))
+    assert replacement not in source
+    destination.write_text(source.replace(original, replacement, 1))
+    rewritten = destination.read_text()
+    assert rewritten.count(replacement) == 1
+    assert original not in rewritten
     monkeypatch.setattr(sys.modules[__name__], "_REPO", tmp_path)
     assert _digest(name) != _UNCHANGED_FUNCTION_DIGESTS[name]
 
