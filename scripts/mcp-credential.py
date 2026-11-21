@@ -15,7 +15,7 @@ FILES = {
 }
 
 
-def read_private(path):
+def read_private(path) -> str:
     # O_NOFOLLOW + fstat avoids a symlink/permission race for the secret file.
     fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
     with os.fdopen(fd) as stream:
@@ -28,7 +28,7 @@ def read_private(path):
     return value
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("name", choices=FILES)
     p.add_argument("--raw", action="store_true")
