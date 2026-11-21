@@ -11,8 +11,9 @@ import pytest
 ROOT = Path(__file__).parents[1]
 
 
-def load(name, file) -> ModuleType:
+def load(name: str, file: str) -> ModuleType:
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / file)
+    assert spec is not None
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
     return m

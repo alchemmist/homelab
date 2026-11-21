@@ -1,4 +1,5 @@
 import copy, importlib.util, json
+from collections.abc import Callable
 from pathlib import Path
 import pytest
 from tests.public_entry_contract import CHARTS, render, values as entry_values
@@ -7,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
     "public_web_access", ROOT / "scripts/public-web-access.py"
 )
+assert spec is not None
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 
@@ -69,7 +71,7 @@ def test_legacy_proxy_creation_is_retired_without_mutation() -> None:
         lambda s: s["apps"][0].update(policy_engine_mode="all"),
     ],
 )
-def test_reject_unsafe_baseline(change) -> None:
+def test_reject_unsafe_baseline(change: Callable[[dict[str, object]], None]) -> None:
     s = state()
     change(s)
     with pytest.raises(ValueError):

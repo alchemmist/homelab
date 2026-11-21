@@ -8,8 +8,9 @@ import pytest, yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def module(name) -> ModuleType:
+def module(name: str) -> ModuleType:
     s = importlib.util.spec_from_file_location(name, ROOT / "scripts" / f"{name}.py")
+    assert s is not None
     m = importlib.util.module_from_spec(s)
     s.loader.exec_module(m)
     return m

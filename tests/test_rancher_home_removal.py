@@ -14,11 +14,13 @@ ROOT = Path(__file__).resolve().parents[1]
 DESCRIPTION_SPEC = importlib.util.spec_from_file_location(
     "dashboard_descriptions", ROOT / "ansible/files/dashboard_descriptions.py"
 )
+assert DESCRIPTION_SPEC is not None
 DESCRIPTIONS = importlib.util.module_from_spec(DESCRIPTION_SPEC)
 DESCRIPTION_SPEC.loader.exec_module(DESCRIPTIONS)
 SPEC = importlib.util.spec_from_file_location(
     "rancher_renderer", ROOT / "ansible/roles/monitoring_rancher/files/name_node_series.py"
 )
+assert SPEC is not None
 RENDERER = importlib.util.module_from_spec(SPEC)
 with patch.dict(sys.modules, {"dashboard_descriptions": DESCRIPTIONS}):
     SPEC.loader.exec_module(RENDERER)
@@ -43,6 +45,14 @@ class _Document(TypedDict):
     kind: str
     metadata: _DocumentMetadata
     data: NotRequired[dict[str, str]]
+
+
+class _HomeDocument(TypedDict):
+    """Dashboard ConfigMap fixture, which always has mutable data."""
+
+    kind: str
+    metadata: _DocumentMetadata
+    data: dict[str, str]
     binaryData: NotRequired[dict[str, str]]
 
 
@@ -58,7 +68,7 @@ class RancherDashboardFilteringTest(unittest.TestCase):
             RENDERER.main()
         return list(yaml.safe_load_all(output.getvalue())), describe
 
-    def home(self) -> _Document:
+    def home(self) -> _HomeDocument:
         return {
             "kind": "ConfigMap",
             "metadata": {"name": "home"},

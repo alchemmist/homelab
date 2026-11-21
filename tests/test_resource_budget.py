@@ -3,12 +3,13 @@
 import copy
 import importlib.util
 from pathlib import Path
-from typing import NotRequired, TypedDict
+from typing import NotRequired, TypedDict, cast
 import unittest
 
 
 PATH = Path(__file__).resolve().parents[1] / "scripts/check-resource-budget.py"
 SPEC = importlib.util.spec_from_file_location("resource_budget", PATH)
+assert SPEC is not None
 BUDGET = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(BUDGET)
 
@@ -67,8 +68,7 @@ def container(name="app", cpu="100m", memory="128Mi", **kwargs) -> _Container:
         "name": name,
         "resources": {"requests": {"cpu": cpu, "memory": memory}},
     }
-    if "restartPolicy" in kwargs:
-        value["restartPolicy"] = str(kwargs["restartPolicy"])
+    value.update(cast(_Container, kwargs))
     return value
 
 

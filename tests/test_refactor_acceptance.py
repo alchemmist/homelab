@@ -2,15 +2,16 @@ import copy
 import importlib.util
 from pathlib import Path
 from types import ModuleType
-from typing import TypedDict
+from typing import TypedDict, cast
 import unittest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def module(name, path) -> ModuleType:
+def module(name: str, path: str) -> ModuleType:
     spec = importlib.util.spec_from_file_location(name, ROOT / path)
+    assert spec is not None
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
     return m
@@ -24,6 +25,24 @@ class _PodSpec(TypedDict):
 
     nodeName: str
     containers: list[dict[str, object]]
+
+
+class _DeploymentStatus(TypedDict):
+    """Deployment status fields used by convergence checks."""
+
+    observedGeneration: int
+    updatedReplicas: int
+    readyReplicas: int
+    replicas: int
+    availableReplicas: int
+
+
+class _Deployment(TypedDict):
+    """Deployment fields used by convergence checks."""
+
+    metadata: dict[str, int]
+    spec: dict[str, int]
+    status: _DeploymentStatus
 
 
 class _PodStatus(TypedDict):
@@ -43,7 +62,7 @@ class _Pod(TypedDict):
 
 
 class Convergence(unittest.TestCase):
-    def fixture(self) -> tuple[dict[str, dict[str, int]], list[_Pod]]:
+    def fixture(self) -> tuple[_Deployment, list[_Pod]]:
         d = {
             "metadata": {"generation": 2},
             "spec": {"replicas": 1},
@@ -64,7 +83,7 @@ class Convergence(unittest.TestCase):
                 "containerStatuses": [{"name": "grafana", "ready": True}],
             },
         }
-        return d, [p]
+        return cast(_Deployment, d), [p]
 
     def test_ready_desired_node(self) -> None:
         d, p = self.fixture()

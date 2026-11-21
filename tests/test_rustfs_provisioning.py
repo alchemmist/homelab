@@ -15,8 +15,9 @@ import urllib.error
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def module(name) -> ModuleType:
+def module(name: str) -> ModuleType:
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts/rustfs" / f"{name}.py")
+    assert spec is not None
     obj = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(obj)
     return obj
