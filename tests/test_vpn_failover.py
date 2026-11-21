@@ -1,3 +1,5 @@
+"""Tests for the vpn_failover role's embedded failover script."""
+
 import importlib.util
 import json
 from pathlib import Path

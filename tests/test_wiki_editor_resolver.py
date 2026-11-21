@@ -1,3 +1,5 @@
+"""Tests for the wiki editor resolver script."""
+
 import os
 from pathlib import Path
 import shlex

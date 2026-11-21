@@ -1,3 +1,5 @@
+"""Tests for the VPS workload offload templates."""
+
 from pathlib import Path
 import unittest
 

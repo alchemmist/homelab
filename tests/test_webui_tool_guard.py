@@ -1,3 +1,5 @@
+"""Tests for the WebUI tool guard restrictions."""
+
 import importlib.util
 import json
 import pathlib
