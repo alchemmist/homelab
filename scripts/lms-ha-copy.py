@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def kube(*args, document=None):
+def kube(*args, document=None) -> str:
     r = subprocess.run(
         ["ssh", "-o", "BatchMode=yes", "socrat-0", shlex.join(["kubectl", *args])],
         input=json.dumps(document) if document else None,
@@ -166,7 +166,7 @@ def _await_job_completion(name: str) -> None:
                 print(line)
 
 
-def run(args):
+def run(args) -> None:
     _verified_database_host()
     if not args.rehearsal and not args.confirm_web_stopped:
         raise ValueError("Final copy requires --confirm-web-stopped")

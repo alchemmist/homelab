@@ -187,7 +187,7 @@ def build(source, output):
                 item = manifest[key]
                 return "/-/quiet-mono/v1/" + item["sha256"][:12] + "-" + Path(item["path"]).name
 
-            def layer(label):
+            def layer(label, record=record, tiny=tiny) -> str:
                 return (
                     "background-image:url('"
                     + url(record[label])
