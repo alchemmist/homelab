@@ -66,12 +66,12 @@ otel:
 publicEntry:
   issuer: letsencrypt-http01
   routes:
-  - name: webui-alias
-    host: llm.socrat.alchemmist.xyz
-    namespace: llm
-    service: open-webui
-    port: 8080
-    authorization: native-oidc
+    - name: webui-alias
+      host: llm.socrat.alchemmist.xyz
+      namespace: llm
+      service: open-webui
+      port: 8080
+      authorization: native-oidc
 
 # New VM data is separate from the retained, never-deleted legacy claim.
 migrationStorage:
