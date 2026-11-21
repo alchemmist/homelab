@@ -27,6 +27,14 @@ def module(name: str) -> ModuleType:
     return value
 
 
+class RequestException(Exception):
+    """Offline stand-in for a requests transport failure."""
+
+
+class ApiException(Exception):
+    """Offline stand-in for a Kubernetes API failure."""
+
+
 policy = module("policy")
 with (
     patch.dict(
@@ -34,8 +42,8 @@ with (
         {
             "policy": policy,
             "jwt": MagicMock(),
-            "requests": MagicMock(),
-            "kubernetes": MagicMock(),
+            "requests": MagicMock(RequestException=RequestException),
+            "kubernetes": MagicMock(client=MagicMock(ApiException=ApiException)),
         },
     ),
     patch.dict(os.environ, {"STATE_PATH": ":memory:"}),
@@ -184,10 +192,9 @@ class QueueTransitions(unittest.TestCase):
     def test_expired_job_fails_and_next_task_is_admitted(self) -> None:
         """A vanished job fails and the next queued task is admitted."""
 
-        class NotFound(Exception):
+        class NotFound(ApiException):
             status = 404
 
-        c.client.ApiException = NotFound
         c.BATCH.read_namespaced_job.side_effect = NotFound()
         c.tick()
         assert self.state() == "failed"
@@ -246,10 +253,10 @@ class QueueTransitions(unittest.TestCase):
     def test_backoff_preserves_dependency_error_and_heartbeat(self) -> None:
         """Backoff keeps the last error visible while heartbeats continue."""
         c.save("test", state="failed")
-        with patch.object(c, "github", side_effect=RuntimeError("external API unavailable")):
+        with patch.object(c, "github", side_effect=RequestException("external API unavailable")):
             c.run_once()
             c.run_once()
-        assert c.STATUS["error"] == "RuntimeError"
+        assert c.STATUS["error"] == "RequestException"
         assert c.STATUS["last_tick"] > 0
         c.NEXT_IDLE_CHECK = 0
         with patch.object(c, "github", side_effect=[[], {"sha": "b" * 40}]):
