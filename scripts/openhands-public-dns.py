@@ -46,8 +46,8 @@ def stage_renderer(path, content):
 
 def delta(old, new):
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
-        before = old.render(123, home, vps).splitlines()
-        after = new.render(123, home, vps).splitlines()
+        before = old.render(123, home_up=home, vps_up=vps).splitlines()
+        after = new.render(123, home_up=home, vps_up=vps).splitlines()
         require(
             [x for x in after if not x.startswith("openhands.socrat IN A ")]
             == [x for x in before if not x.startswith("openhands.socrat IN A ")],
@@ -55,7 +55,10 @@ def delta(old, new):
         )
         require(
             [x for x in after if x.startswith("openhands.socrat IN A ")]
-            == ["openhands.socrat IN A " + a for a in old.healthy_addresses(home, vps)],
+            == [
+                "openhands.socrat IN A " + a
+                for a in old.healthy_addresses(home_up=home, vps_up=vps)
+            ],
             "Wrong new record",
         )
 

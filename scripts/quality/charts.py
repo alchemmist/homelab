@@ -5,16 +5,32 @@ from __future__ import annotations
 import argparse
 import json
 import re
-from pathlib import Path
 import sys
+from pathlib import Path
+from typing import TYPE_CHECKING, TypedDict, cast
 
 import yaml
+
+if TYPE_CHECKING:
+    from yaml.nodes import MappingNode
 
 from common import ROOT, command, digest, failure, finding, report, tracked
 
 
+class Target(TypedDict):
+    """One offline-renderable Helm release with consumed values."""
+
+    id: str
+    source: str
+    chart: Path
+    namespace: str
+    release: str
+    values: list[Path]
+    parameters: list[dict[str, object]]
+
+
 class ManifestLoader(yaml.SafeLoader):
-    def construct_mapping(self, node, deep=False):
+    def construct_mapping(self, node: MappingNode, deep=False):
         seen = set()
         for key, _value in node.value:
             if key.tag == "tag:yaml.org,2002:merge":
@@ -37,15 +53,15 @@ API_VERSIONS = [
 ]
 
 
-def local_path(value):
-    path = (ROOT / value).resolve()
+def local_path(value: str) -> Path:
+    path = cast("Path", (ROOT / value).resolve())
     if not path.is_relative_to(ROOT) or not path.exists():
         raise ValueError("Missing or escaping chart/value path")
     return path
 
 
-def targets():
-    result = []
+def targets() -> list[Target]:
+    result: list[Target] = []
     consumed = set()
     for path in sorted((ROOT / "deploy/argocd/apps").glob("*.yaml")):
         app = yaml.safe_load(path.read_text())
@@ -62,7 +78,7 @@ def targets():
             helm = source.get("helm", {})
             if set(helm) - {"releaseName", "valueFiles", "parameters"}:
                 raise ValueError("Unsupported Helm override: extend the renderer explicitly")
-            values = []
+            values: list[Path] = []
             for value in helm.get("valueFiles", []):
                 if value.startswith("$"):
                     ref, relative = value[1:].split("/", 1)
@@ -102,7 +118,7 @@ def targets():
     return sorted(result, key=lambda target: target["id"])
 
 
-def arguments(target):
+def arguments(target: Target):
     if not re.fullmatch(r"[a-z0-9][a-z0-9.-]{0,52}", target["release"]):
         raise ValueError("Invalid Helm release name")
     args = ["--kube-version", KUBE_VERSION, "--namespace", target["namespace"]]
@@ -111,14 +127,15 @@ def arguments(target):
     for parameter in target["parameters"]:
         if set(parameter) - {"name", "value", "forceString"}:
             raise ValueError("Unsupported Helm parameter")
-        if not re.fullmatch(r"[a-zA-Z0-9_][a-zA-Z0-9_.\[\]\\/-]*", parameter["name"]):
+        name = cast("str", parameter["name"])
+        if not re.fullmatch(r"[a-zA-Z0-9_][a-zA-Z0-9_.\[\]\\/-]*", name):
             raise ValueError("Unsafe Helm parameter name")
         flag = "--set-string" if parameter.get("forceString") else "--set"
-        args += [flag + "=" + parameter["name"] + "=" + str(parameter["value"])]
+        args += [flag + "=" + name + "=" + str(parameter["value"])]
     return args
 
 
-def render(target):
+def render(target: Target):
     args = [
         "helm",
         "template",
@@ -138,35 +155,43 @@ def render(target):
         return None  # Invalid rendered YAML is a quality failure, not a successful empty render.
 
 
-def schema_name(resource):
-    api = resource["apiVersion"].split("/")
+def schema_name(resource: dict[str, object]):
+    api = cast("str", resource["apiVersion"]).split("/")
     version = (api[0].split(".")[0] + "-" + api[1]) if len(api) == 2 else api[0]
-    return resource["kind"].lower() + "-" + version + ".json"
+    return cast("str", resource["kind"]).lower() + "-" + version + ".json"
 
 
-def policies(resource):
+def policies(resource: dict[str, object]):
     # Generic Kubernetes best practices belong to kube-linter, not a parallel implementation.
     # These are additional Homelab ownership/data/image contracts.
     kind = resource.get("kind")
-    spec = resource.get("spec", {})
-    pod = None
+    spec = cast("dict[str, object]", resource.get("spec", {}))
+    pod: dict[str, object] | None = None
     if kind in {"Deployment", "DaemonSet", "StatefulSet", "Job", "ReplicaSet"}:
-        pod = spec.get("template", {}).get("spec", {})
+        template = cast("dict[str, object]", spec.get("template", {}))
+        pod = cast("dict[str, object]", template.get("spec", {}))
     elif kind == "CronJob":
-        pod = spec.get("jobTemplate", {}).get("spec", {}).get("template", {}).get("spec", {})
+        job_template = cast("dict[str, object]", spec.get("jobTemplate", {}))
+        job_spec = cast("dict[str, object]", job_template.get("spec", {}))
+        job_body = cast("dict[str, object]", job_spec.get("template", {}))
+        pod = cast("dict[str, object]", job_body.get("spec", {}))
     elif kind == "Pod":
         pod = spec
     errors = []
     if pod is not None:
-        for container in pod.get("containers", []) + pod.get("initContainers", []):
-            if not re.fullmatch(r".+@sha256:[0-9a-f]{64}", container.get("image", "")):
+        containers = cast("list[dict[str, object]]", pod.get("containers", []))
+        init_containers = cast("list[dict[str, object]]", pod.get("initContainers", []))
+        for container in containers + init_containers:
+            if not re.fullmatch(r".+@sha256:[0-9a-f]{64}", cast("str", container.get("image", ""))):
                 errors.append(
                     (
                         "image-digest",
-                        container["name"] + ": immutable image digest is missing",
+                        cast("str", container["name"]) + ": immutable image digest is missing",
                     )
                 )
-    if kind == "ClusterRoleBinding" and resource.get("roleRef", {}).get("name") == "cluster-admin":
+    if kind == "ClusterRoleBinding" and (
+        cast("dict[str, object]", resource.get("roleRef", {})).get("name") == "cluster-admin"
+    ):
         errors.append(
             (
                 "cluster-admin-binding",
@@ -178,7 +203,7 @@ def policies(resource):
     return errors
 
 
-def kube_lint(target, resources):
+def kube_lint(target: Target, resources: list[dict[str, object]]):
     data = command(
         [
             "kube-linter",
@@ -218,7 +243,7 @@ def kube_lint(target, resources):
     return result
 
 
-def contract_hash(target):
+def contract_hash(target: Target):
     # A previously broken render is accepted ONLY while its entire source stays identical.
     parts = [target["id"], json.dumps(target["parameters"], sort_keys=True)]
     for path in sorted(target["chart"].rglob("*")):
@@ -231,7 +256,7 @@ def contract_hash(target):
     return digest("\0".join(parts))
 
 
-def check(*, validate=True):
+def check(*, validate: bool = True):
     selected = targets()
     if not selected:
         raise ValueError("No local chart targets")

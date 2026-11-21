@@ -34,7 +34,7 @@ PROVIDER = {'name':'homelab-openhands', 'client_id':CLIENT, 'client_type':'confi
 
 
 def encode_cookie_secret(raw):
-    iam.require(len(raw) == 32, 'Cookie key must contain exactly32 bytes')
+    iam.require('Cookie key must contain exactly32 bytes', ok=len(raw) == 32)
     # oauth2-proxy SecretBytes uses Go RawURLEncoding, not standard base64.
     return base64.urlsafe_b64encode(raw).decode()
 
@@ -47,42 +47,42 @@ def write_private(path, data):
 
 def inspect(api):
     owner = iam.one(api, 'core/groups/', 'name', 'homelab-owner')
-    iam.require(owner is not None, 'Existing owner group missing')
+    iam.require('Existing owner group missing', ok=owner is not None)
     flows = {key:iam.one(api,'flows/instances/','slug',value) for key,value in iam.FLOWS.items()}
-    iam.require(all(flows.values()), 'Existing authentication/consent/invalidation flow missing')
+    iam.require('Existing authentication/consent/invalidation flow missing', ok=all(flows.values()))
     signing = iam.one(api,'crypto/certificatekeypairs/','name','authentik Self-signed Certificate')
-    iam.require(signing is not None, 'Existing signing key missing')
+    iam.require('Existing signing key missing', ok=signing is not None)
     mappings = api.rows('propertymappings/provider/scope/')
     selected = []
     for scope in ['openid','profile','email','offline_access']:
         found = [v for v in mappings if v.get('managed') == 'goauthentik.io/providers/oauth2/scope-' + scope]
-        iam.require(len(found) == 1, 'Missing/ambiguous standard scope: ' + scope)
+        iam.require('Missing/ambiguous standard scope: ' + scope, ok=len(found) == 1)
         selected.append(found[0]['pk'])
     groups = [v for v in mappings if v.get('name') == 'homelab-groups' and v.get('scope_name') == 'groups']
-    iam.require(len(groups) == 1 and groups[0].get('expression') == 'return {"groups": [group.name for group in request.user.ak_groups.all()]}', 'Groups mapping drift')
+    iam.require('Groups mapping drift', ok=len(groups) == 1 and groups[0].get('expression') == 'return {"groups": [group.name for group in request.user.ak_groups.all()]}')
     settings = {**PROVIDER,'signing_key':signing['pk'],'property_mappings':selected + [groups[0]['pk']],
                 **{key:value['pk'] for key,value in flows.items()}}
     provider = iam.one(api,'providers/oauth2/','name',PROVIDER['name'])
     by_client = iam.one(api,'providers/oauth2/','client_id',CLIENT)
-    iam.require((provider or {}).get('pk') == (by_client or {}).get('pk'), 'Client-id collision')
+    iam.require('Client-id collision', ok=(provider or {}).get('pk') == (by_client or {}).get('pk'))
     app = iam.one(api,'core/applications/','slug',APP['slug'])
     return owner, settings, provider, app
 
 
 def validate(api, owner, settings, provider, app, journal):
-    iam.require(provider and app and journal and journal.get('status') == 'active', 'Partial identity or missing private journal; no adoption/reset')
+    iam.require('Partial identity or missing private journal; no adoption/reset', ok=provider and app and journal and (journal.get('status') == 'active'))
     for key,value in settings.items():
         actual = provider.get(key)
         if key in ['property_mappings','grant_types']: actual,value = sorted(actual or []),sorted(value)
         if key == 'redirect_uris': actual,value = iam.canonical_redirects(actual),iam.canonical_redirects(value)
-        iam.require(actual == value, 'OIDC provider drift: ' + key)
-    iam.require(provider['pk'] == journal['provider_pk'] and str(app['pk']) == str(journal['app_pk']), 'Identity ownership drift')
-    iam.require(secrets.compare_digest(provider.get('client_secret',''),journal['client_secret']), 'Client-secret drift; no rotation')
-    iam.require(app.get('provider') == provider['pk'] and all(app.get(k) == v for k,v in APP.items()), 'Application drift')
+        iam.require('OIDC provider drift: ' + key, ok=actual == value)
+    iam.require('Identity ownership drift', ok=provider['pk'] == journal['provider_pk'] and str(app['pk']) == str(journal['app_pk']))
+    iam.require('Client-secret drift; no rotation', ok=secrets.compare_digest(provider.get('client_secret', ''), journal['client_secret']))
+    iam.require('Application drift', ok=app.get('provider') == provider['pk'] and all((app.get(k) == v for k, v in APP.items())))
     bindings = api.rows('policies/bindings/?target=' + str(app['pk']))
-    iam.require(len(bindings) == 1, 'Unexpected application bindings')
+    iam.require('Unexpected application bindings', ok=len(bindings) == 1)
     b = bindings[0]
-    iam.require(b.get('group') == owner['pk'] and not b.get('user') and not b.get('policy') and b.get('enabled') is True and not b.get('negate') and not b.get('failure_result'), 'Owner-only admission binding drift')
+    iam.require('Owner-only admission binding drift', ok=b.get('group') == owner['pk'] and (not b.get('user')) and (not b.get('policy')) and (b.get('enabled') is True) and (not b.get('negate')) and (not b.get('failure_result')))
 
 
 def main():
@@ -95,28 +95,28 @@ def main():
     p.add_argument('--approve-plan-hash')
     a = p.parse_args(); os.umask(0o077)
     a.state_dir.mkdir(mode=0o700,parents=True,exist_ok=True)
-    iam.require(not a.state_dir.is_symlink() and not a.state_dir.stat().st_mode & 0o077, 'Unsafe state directory')
+    iam.require('Unsafe state directory', ok=not a.state_dir.is_symlink() and not a.state_dir.stat().st_mode & 0o077)
     lock = os.open(a.state_dir/'lock', os.O_CREAT|os.O_RDWR|os.O_NOFOLLOW, 0o600)
     fcntl.flock(lock, fcntl.LOCK_EX|fcntl.LOCK_NB)
     marker = a.state_dir/'uncertain.json'; file = a.state_dir/'client.json'
-    iam.require(not marker.exists(), 'Uncertain prior write; inspect manually, do not retry')
+    iam.require('Uncertain prior write; inspect manually, do not retry', ok=not marker.exists())
     journal = None
     if file.exists(): iam.private(file); journal = json.loads(file.read_text())
     api = iam.API(a.credentials)
     owner, settings, provider, app = inspect(api)
     if provider or app: validate(api,owner,settings,provider,app,journal)
-    else: iam.require(journal is None, 'Private journal without live identity; stop')
+    else: iam.require('Private journal without live identity; stop', ok=journal is None)
     context = {'application':APP,'provider':settings,'owner_group':owner['pk'],'existing':bool(provider),
                'tool_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
     digest = hashlib.sha256(json.dumps(context,sort_keys=True).encode()).hexdigest()
     if not a.apply:
         print(json.dumps({'plan_hash':digest,'creates':0 if provider else 3,'allowed_group':'homelab-owner','existing_identities_modified':False}));return
-    iam.require(a.approve_plan_hash == digest, 'Exact fresh plan approval required')
+    iam.require('Exact fresh plan approval required', ok=a.approve_plan_hash == digest)
     if not provider:
         iam.private(a.backup_receipt); receipt = json.loads(a.backup_receipt.read_text())
         age = (datetime.now(timezone.utc)-datetime.fromisoformat(receipt['observedAt'])).total_seconds()
         backup = Path(receipt['encryptedBackup']); iam.private(backup)
-        iam.require(0 <= age <= 3600 and hashlib.sha256(backup.read_bytes()).hexdigest() == receipt['sha256'], 'Fresh valid encrypted backup required')
+        iam.require('Fresh valid encrypted backup required', ok=0 <= age <= 3600 and hashlib.sha256(backup.read_bytes()).hexdigest() == receipt['sha256'])
         write_private(marker,{'plan_hash':digest})
         journal = {'status':'pending','client_secret':secrets.token_urlsafe(48),'cookie_secret':encode_cookie_secret(secrets.token_bytes(32))}
         write_private(file,journal)
@@ -135,12 +135,12 @@ def main():
     old = subprocess.check_output(['kubectl','-n','identity','get','secret','openhands-oidc','--ignore-not-found','-o','json'])
     if old.strip():
         old = json.loads(old)
-        iam.require(old['metadata'].get('labels',{}).get('homelab-app') == 'openhands', 'Unexpected existing Secret owner')
+        iam.require('Unexpected existing Secret owner', ok=old['metadata'].get('labels', {}).get('homelab-app') == 'openhands')
     payload = {'apiVersion':'v1','kind':'Secret','metadata':{'name':'openhands-oidc','namespace':'identity','labels':{'homelab-app':'openhands'}},
                'type':'Opaque','stringData':{'client-id':CLIENT,'client-secret':journal['client_secret'],'cookie-secret':journal['cookie_secret']}}
     if old:
         for name,value in payload['stringData'].items():
-            iam.require(secrets.compare_digest(base64.b64decode(old.get('data',{}).get(name,'')),value.encode()), 'Runtime Secret drift; no silent rotation')
+            iam.require('Runtime Secret drift; no silent rotation', ok=secrets.compare_digest(base64.b64decode(old.get('data', {}).get(name, '')), value.encode()))
     else:
         subprocess.run(['kubectl','create','-f','-'],input=json.dumps(payload).encode(),stdout=subprocess.DEVNULL,check=True)
     print('OpenHands OIDC ready: existing owner group only; proxy Secret delivered; values withheld')
