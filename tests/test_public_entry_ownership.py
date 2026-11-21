@@ -104,6 +104,7 @@ def migration_payload(resource: _HandoffResource) -> _HandoffResource:
 
 
 class OwnershipTests(unittest.TestCase):
+    """Verify transferred payloads match the reviewed pre-migration render."""
     def test_every_transferred_payload_is_identical_to_reviewed_pre_migration_render(
         self,
     ) -> None:

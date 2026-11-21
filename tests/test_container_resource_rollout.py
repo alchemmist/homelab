@@ -166,6 +166,7 @@ def profiled_pod() -> Pod:
 
 
 class RolloutTests(unittest.TestCase):
+    """Check container resource rollout reconciliation decisions."""
     def test_profile_node_selector_requires_reconciliation_when_missing_or_different(
         self,
     ) -> None:

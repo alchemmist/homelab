@@ -797,6 +797,7 @@ class HostBindingTests(unittest.TestCase):
 
 @unittest.skipUnless(shutil.which("ansible-playbook"), "ansible-playbook unavailable")
 class AnsibleIntentTests(unittest.TestCase):
+    """Run the Ansible intent playbooks against generated inventories."""
     def run_play(
         self,
         payload: object,

@@ -21,6 +21,7 @@ OLD_WRITER_LEASE = 999
 
 
 class RetryTests(unittest.TestCase):
+    """Exercise SPI operator retry behaviour in temporary stores."""
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
@@ -271,6 +272,7 @@ if __name__ == "__main__":
 
 
 class ProductionStoreTests(unittest.TestCase):
+    """Check production store reopen and old-writer safety."""
     def test_v3_reopen_three_times_and_old_writer(self) -> None:
         import sys
 

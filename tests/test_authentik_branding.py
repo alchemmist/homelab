@@ -26,6 +26,7 @@ def load(name) -> ModuleType:
 
 
 class AuthentikBrandingTests(unittest.TestCase):
+    """Check the frozen reference theme matches its manifest exactly."""
     def test_approved_reference_is_frozen(self) -> None:
         root = THEME / "reference"
         manifest = json.loads((root / "manifest.json").read_text())
@@ -180,6 +181,7 @@ class AuthentikBrandingTests(unittest.TestCase):
 
 
 class NatureBackgroundTests(unittest.TestCase):
+    """Validate the nature background collection and random endpoint."""
     def test_full_collection_and_css_only_random_endpoint(self) -> None:
         photos = json.loads((THEME / "nature.json").read_text())["photos"]
         # The nature collection ships thirty unique photos, served via CSS only.

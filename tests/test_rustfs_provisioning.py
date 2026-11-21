@@ -37,6 +37,7 @@ def put(path, data) -> None:
 
 
 class Provisioning(unittest.TestCase):
+    """Check RustFS provisioning policies match exactly."""
     def test_policies_exact(self) -> None:
         b = module("bootstrap")
         assert b.POLICIES["spi-reader"]["Statement"][0]["Action"] == ["s3:GetObject"]

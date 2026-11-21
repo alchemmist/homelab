@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class HarborGitopsRuntimeTests(unittest.TestCase):
+    """Render the Harbor gitops charts and inspect the produced runtime."""
     def render(self) -> str:
         """Render the committed Harbor chart offline."""
         return subprocess.check_output(

@@ -32,6 +32,7 @@ def node(host) -> dict[str, object]:
 
 
 class Fake(n.Runtime):
+    """Fake NetBird runtime capturing applied reconciliation actions."""
     def __init__(self, apply=True, existing=True) -> None:
         self.apply = apply
         self.config = n.validate_config(

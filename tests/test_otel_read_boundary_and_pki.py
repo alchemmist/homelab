@@ -20,6 +20,7 @@ def load(name) -> ModuleType:
 
 
 class ReadBoundaryTests(unittest.TestCase):
+    """Check the store read-boundary repair rules."""
     def test_only_known_read_limit_can_be_removed(self) -> None:
         repair = load("otel-store-read-boundary")
         arguments = ["store", "--max-time=-12h", "--consistency-delay=30m"]

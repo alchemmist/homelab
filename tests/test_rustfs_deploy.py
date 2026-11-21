@@ -8,6 +8,7 @@ import unittest
 
 
 class Deploy(unittest.TestCase):
+    """Check the RustFS deploy script's safe refusals and anchored paths."""
     def test_safe_refusals_and_anchored_paths(self) -> None:
         source = Path(__file__).resolve().parents[1] / "scripts/rustfs/deploy.sh"
         with tempfile.TemporaryDirectory() as tmp:

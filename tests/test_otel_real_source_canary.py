@@ -14,6 +14,7 @@ SPEC.loader.exec_module(CANARY)
 
 
 class RealSourceCanaryTests(unittest.TestCase):
+    """Verify real-source canary discovery uses private files only."""
     def test_source_assets_and_discovery_use_private_files(self) -> None:
         original = {
             "authorization": {"credentials_file": "/etc/otel/source-auth/ns/name/key"},

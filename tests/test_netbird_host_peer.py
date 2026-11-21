@@ -26,6 +26,7 @@ probe = load("netbird-stun-check")
 
 
 class HostPeerTest(unittest.TestCase):
+    """Check NetBird host peer group rendering and peers."""
     def groups(self) -> list[dict[str, object]]:
         """Build the reviewed claimable groups for the preflight tests."""
         result: list[dict[str, object]] = [
@@ -124,6 +125,7 @@ class HostPeerTest(unittest.TestCase):
 
 
 class StunTest(unittest.TestCase):
+    """Validate the bounded STUN-only manifest without service SNAT."""
     def test_bounded_stun_only_no_service_snat(self) -> None:
         docs = stun.manifests()
         assert len(docs) == 1

@@ -15,6 +15,8 @@ CM = next(d for d in DOCS if d["kind"] == "ConfigMap")
 
 
 class StoragePlatformTest(unittest.TestCase):
+    """Validate storage tier classes stay dynamic, retained, and local."""
+
     def test_explicit_dynamic_retained_local_tiers(self):
         for d in yaml.safe_load_all((ROOT / "deploy/storage/tiers/classes.yaml").read_text()):
             assert d["provisioner"] == "rancher.io/local-path"

@@ -28,6 +28,8 @@ fi
 
 
 class LoginRewriteTests(unittest.TestCase):
+    """Verify desktop login rewrites preserve surrounding shell config."""
+
     def test_replaces_selector_preserving_surrounding_shell_configuration(self):
         before = 'export PATH="$HOME/.elan/bin:$PATH"\n'
         after = 'alias ll="ls -l"\n'
@@ -87,6 +89,8 @@ class LoginRewriteTests(unittest.TestCase):
 
 
 class IdleConfigurationTests(unittest.TestCase):
+    """Check the hypridle configuration survives the desktop setup guard."""
+
     def test_retains_lock_dim_and_general_handlers(self):
         retained = "general {\n    before_sleep_cmd = loginctl lock-session\n}\nlistener {\n    timeout = 120\n    on-timeout = brightnessctl set 10%\n}\nlistener {\n    timeout = 180\n    on-timeout = loginctl lock-session\n}\n"
         for command in (
@@ -108,6 +112,8 @@ class IdleConfigurationTests(unittest.TestCase):
 
 @unittest.skipUnless(ZSH, "zsh is required")
 class ConfigureTests(unittest.TestCase):
+    """Exercise the desktop configure script against temporary home dirs."""
+
     def setUp(self):
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)

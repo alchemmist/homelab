@@ -62,6 +62,7 @@ class Deployment(TypedDict):
 
 
 class ApplicationRegistryTests(unittest.TestCase):
+    """Validate the registered OpenTelemetry application deployments."""
     def deployment(self) -> Deployment:
         return {
             "kind": "Deployment",

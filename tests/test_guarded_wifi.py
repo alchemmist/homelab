@@ -176,6 +176,7 @@ class GuardedWifiTests(unittest.TestCase):
 
 
 class ModuleNoteTests(unittest.TestCase):
+    """Verify module notes round-trip without losing the original."""
     def test_decompression_and_note_extraction_preserve_original(self) -> None:
         """Round-trip notes through compressed modules."""
         for suffix, encode in (

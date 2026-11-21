@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class LokiMarkerScratchTests(unittest.TestCase):
+    """Verify Loki's writable scratch stays bounded and secure."""
     def test_loki_only_writable_bounded_scratch_preserves_security_and_data(self) -> None:
         rendered = "\n---\n".join(
             subprocess.check_output(

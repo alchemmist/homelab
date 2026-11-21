@@ -17,6 +17,8 @@ spec.loader.exec_module(check)
 
 
 class ManualSSHTests(unittest.TestCase):
+    """Check the manual SSH user provisioning policy end to end."""
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.temp = tempfile.TemporaryDirectory(prefix="manual-ssh-test-")
