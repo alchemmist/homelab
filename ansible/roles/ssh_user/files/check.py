@@ -13,6 +13,12 @@ import stat
 import subprocess
 import sys
 import tempfile
+from typing import Protocol, cast
+
+
+class _Condition(Protocol):
+    def __bool__(self) -> bool: ...
+
 
 PROTECTED = {"root", "alchemmist", "ghactions", "nobody"}
 PRIVILEGED = {
@@ -37,19 +43,19 @@ KEY = re.compile(
 )
 
 
-def require(ok, message):
+def require(ok: _Condition, message: str):
     if not ok:
         raise ValueError(message)
 
 
-def username(name):
+def username(name: str):
     require(
         bool(re.fullmatch(r"[a-z_][a-z0-9_-]{0,30}", name)) and name not in PROTECTED,
         "Invalid or protected Linux username",
     )
 
 
-def fingerprint(line):
+def fingerprint(line: str):
     with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8") as f:
         f.write(line + "\n")
         f.flush()
@@ -65,11 +71,11 @@ def fingerprint(line):
     return fields[1]
 
 
-def validate(name, text):
+def validate(name: str, text: object):
     username(name)
     require(isinstance(text, str) and len(text) <= 16384, "Supply one OpenSSH public key")
     # Strip a normal public-file line ending, not arbitrary embedded controls.
-    text = text.rstrip("\r\n")
+    text = cast("str", text).rstrip("\r\n")
     require(
         not any(ord(c) < 32 or ord(c) == 127 for c in text),
         "Multiline/control characters are forbidden",
@@ -83,7 +89,7 @@ def validate(name, text):
     return {"username": name, "public_key": canonical, "fingerprint": fp}
 
 
-def safe_paths(name, account):
+def safe_paths(name: str, account: pwd.struct_passwd | None):
     home = Path("/home") / name
     require(
         account is None or account.pw_dir == str(home), "Nonstandard home requires separate review"
@@ -119,7 +125,7 @@ def safe_paths(name, account):
     return home
 
 
-def ssh_policy(name):
+def ssh_policy(name: str):
     daemon = shutil.which("sshd") or "/usr/sbin/sshd"
     r = subprocess.run(
         [daemon, "-T", "-C", "user=" + name + ",host=socrat,addr=100.100.240.102"],
@@ -143,7 +149,7 @@ def ssh_policy(name):
     )
 
 
-def inspect(name, expected=None, enforce=False):
+def inspect(name: str, expected: str | None = None, enforce: _Condition = False):
     username(name)
     require(os.geteuid() == 0, "Account verification requires root")
     require(

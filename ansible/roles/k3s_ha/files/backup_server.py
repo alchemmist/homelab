@@ -38,7 +38,7 @@ def backup():
     print(json.dumps({"backup": str(destination)}))
 
 
-def restore(directory):
+def restore(directory: str | os.PathLike[str]):
     directory = Path(directory).resolve()
     if (
         directory.parent != Path("/var/backups/homelab-k3s")
