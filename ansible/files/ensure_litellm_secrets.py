@@ -1,3 +1,5 @@
+"""Create LiteLLM database and runtime Kubernetes secrets if missing."""
+
 import base64
 import json
 import secrets

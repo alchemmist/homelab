@@ -1,3 +1,5 @@
+"""Configure file-upload settings for a terminal user in Open WebUI."""
+
 import argparse
 import asyncio
 import copy

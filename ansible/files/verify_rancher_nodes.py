@@ -1,3 +1,5 @@
+"""Verify expected Rancher-managed nodes match the cluster state."""
+
 import http.client
 import json
 import socket
