@@ -207,7 +207,7 @@
     "trusted": false,
     "waiver": false,
     "publisher": ".github/workflows/quality-graph-publish.yml",
-    "compiler": "quality-graph-github==0.2.0 _publication_workflow",
+    "compiler": "quality-graph-github 36940ce publisher.yaml.in",
     "triggers": {
       "workflow_run": {
         "workflows": [
@@ -232,20 +232,20 @@
         "checks": "write",
         "contents": "read",
         "issues": "write",
-        "pull-requests": "write"
+        "pull-requests": "read"
       },
       "command": {
         "actions": "write",
         "contents": "read",
         "issues": "write",
-        "pull-requests": "write"
+        "pull-requests": "read"
       }
     },
     "zizmor": [
       "zizmor/dangerous-triggers",
       "zizmor/undocumented-permissions"
     ],
-    "blocker": "The pinned compiler hardcodes workflow_run and issue_comment plus job permissions with no comment field. qg.yaml cannot narrow those triggers or document the token. Hand-editing the generated file is overwritten by qg generate. Findings stay blocking; generated workflows are not trusted code."
+    "blocker": "The pinned compiler documents publisher permissions but still relies on workflow_run. qg.yaml cannot replace that trigger. Hand-editing the generated file is overwritten by qg generate. Findings stay blocking; generated workflows are not trusted code."
   },
   "vendorPaths": [
     "charts/_vendor",

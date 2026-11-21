@@ -677,7 +677,7 @@ def test_mypy_syntax_error_does_not_hide_another_file(tmp_path, monkeypatch) -> 
     assert "python-syntax" in rules
 
 
-def test_generated_publisher_findings_are_not_waived() -> None:
+def test_generated_publisher_findings_are_not_waived(tmp_path) -> None:
     """Auditor findings on the generated publisher stay visible and untrusted."""
     from common import command, use_project_tools
 
@@ -685,6 +685,19 @@ def test_generated_publisher_findings_are_not_waived() -> None:
     policy = json.loads((ROOT / "quality/strict-policy.json").read_text())["generatedWorkflows"]
     assert policy["trusted"] is False
     assert policy["waiver"] is False
+    # Reintroduce the unsafe surface in a fixture, not as a requirement on the real publisher.
+    fixture = tmp_path / ".github/workflows/publisher.yml"
+    fixture.parent.mkdir(parents=True)
+    fixture.write_text("""name: Fixture
+on: workflow_run
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+    steps:
+      - run: echo fixture
+""")
     process = command(
         [
             "zizmor",
@@ -693,7 +706,7 @@ def test_generated_publisher_findings_are_not_waived() -> None:
             "auditor",
             "--format",
             "sarif",
-            policy["publisher"],
+            str(fixture),
         ],
         allowed=(0, 1),
         timeout=60,

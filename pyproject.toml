@@ -14,8 +14,8 @@ dev = [
   "pyflakes==3.4.0",
   "pytest==9.0.3",
   "pyyaml==6.0.3",
-  "quality-graph-cli==0.2.0",
-  "quality-graph-github==0.2.0",
+  "quality-graph-cli==0.2.1",
+  "quality-graph-github==0.2.1",
   "ruff==0.15.12",
   "types-pyyaml==6.0.12.20261113",
   "yamllint==1.38.0",
@@ -24,3 +24,6 @@ dev = [
 
 [tool.uv]
 package = false
+
+[tool.uv.sources]
+quality-graph-github = { git = "https://github.com/alchemmist/quality-graph.git", rev = "36940ce12920d073780c6123b55fd81ee941b2ae", subdirectory = "packages/github" }
