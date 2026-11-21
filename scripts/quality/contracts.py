@@ -11,11 +11,13 @@ import boundaries
 
 
 def require(condition: object, message: str) -> None:
+    """Execute require."""
     if not condition:
         raise ValueError(message)
 
 
 def unique_json(pairs):
+    """Execute unique_json."""
     result = {}
     for key, value in pairs:
         require(key not in result, "Duplicate JSON policy/schema key")
@@ -24,6 +26,7 @@ def unique_json(pairs):
 
 
 def local_refs(value):
+    """Execute local_refs."""
     if isinstance(value, dict):
         for key, item in value.items():
             if key == "$ref":
@@ -87,6 +90,7 @@ def owned_test_files(names: list[str]) -> set[str]:
 
 
 def check():
+    """Execute check."""
     frozen_source_files()
     for policy in (ROOT / "quality").rglob("*.json"):
         require(policy.resolve().is_relative_to(ROOT / "quality"), "Quality policy path escape")

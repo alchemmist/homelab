@@ -1,6 +1,11 @@
 """Consistent SQLite plus auth secrets snapshot; stream only into encryption."""
 
-import json, os, subprocess, sys, tarfile, tempfile
+import json
+import os
+import subprocess
+import sys
+import tarfile
+import tempfile
 from pathlib import Path
 
 os.environ["K3S_CONFIG_FILE"] = "/dev/null"

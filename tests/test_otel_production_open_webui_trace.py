@@ -1,14 +1,40 @@
+"""Production trace checks for the OpenTelemetry Open WebUI setup."""
+
 import copy
 import importlib.util
-from pathlib import Path
 import unittest
+from pathlib import Path
+from types import ModuleType
+from typing import TypedDict
 
 ROOT = Path(__file__).resolve().parents[1]
 TRACE = "1" * 32
 PARENT = "2" * 16
 
 
-def module():
+class _Attribute(TypedDict):
+    key: str
+    value: dict[str, str]
+
+
+class _Resource(TypedDict):
+    attributes: list[_Attribute]
+
+
+class _Span(TypedDict, total=False):
+    traceId: str
+    spanId: str
+    parentSpanId: str
+    name: str
+    kind: str
+
+
+class _ResourceSpan(TypedDict):
+    resource: _Resource
+    scopeSpans: list[dict[str, list[_Span]]]
+
+
+def module() -> ModuleType:
     spec = importlib.util.spec_from_file_location(
         "trace_verify", ROOT / "scripts/otel-application-trace-verify.py"
     )
@@ -17,8 +43,8 @@ def module():
     return result
 
 
-def document():
-    def resource(service, span):
+def document() -> dict[str, list[_ResourceSpan]]:
+    def resource(service, span) -> _ResourceSpan:
         return {
             "resource": {
                 "attributes": [{"key": "service.name", "value": {"stringValue": service}}]
@@ -51,11 +77,14 @@ def document():
 
 
 class OpenWebuiProductionTraceTests(unittest.TestCase):
-    def test_real_application_server_resource_and_parent_are_required(self):
+    """Verify production Open WebUI trace summaries require real resources."""
+    def test_real_application_server_resource_and_parent_are_required(self) -> None:
+        """Real application server resource and parent are required."""
+
         result = module().summarize_production_open_webui(document(), TRACE, PARENT)
-        self.assertTrue(result["success"])
-        self.assertFalse(result["productionOpenWebuiInferencePathVerified"])
-        self.assertFalse(result["allApplicationSdkCoverageComplete"])
+        assert result["success"]
+        assert not result["productionOpenWebuiInferencePathVerified"]
+        assert not result["allApplicationSdkCoverageComplete"]
         for kind in ["service", "parent", "name", "duplicate", "kind", "missing-kind"]:
             data = document()
             child = data["resourceSpans"][1]["scopeSpans"][0]["spans"][0]
@@ -73,6 +102,4 @@ class OpenWebuiProductionTraceTests(unittest.TestCase):
                 child["kind"] = "SPAN_KIND_INTERNAL"
             if kind == "missing-kind":
                 child.pop("kind")
-            self.assertFalse(
-                module().summarize_production_open_webui(data, TRACE, PARENT)["success"]
-            )
+            assert not module().summarize_production_open_webui(data, TRACE, PARENT)["success"]

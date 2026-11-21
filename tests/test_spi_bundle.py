@@ -1,16 +1,18 @@
 """Offline source/Helm invariants for the full-service extraction; no live calls."""
 
 import json
-from pathlib import Path
 import subprocess
 import unittest
+from pathlib import Path
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class FullServiceBundleTests(unittest.TestCase):
-    def render(self, bundled=False):
+    """Render the SPI full-service bundle chart for inspection."""
+    def render(self, bundled=False) -> dict[tuple[str, str, str], dict[str, object]]:
         args = [
             "helm",
             "template",
@@ -42,52 +44,49 @@ class FullServiceBundleTests(unittest.TestCase):
             if x
         }
 
-    def test_same_release_image_for_backend_frontend_and_scoped_broker(self):
+    def test_same_release_image_for_backend_frontend_and_scoped_broker(self) -> None:
         docs = self.render(True)
         image = "harbor.socrat.alchemmist.xyz/homelab/spi-triage@sha256:" + "a" * 64
         for name in ("spi-triage", "spi-queue-ui"):
             pod = docs["Deployment", "automation", name]["spec"]["template"]["spec"]
-            self.assertEqual(pod["containers"][0]["image"], image)
-            self.assertFalse(any(v["name"] in ("code", "ui") for v in pod["volumes"]))
+            assert pod["containers"][0]["image"] == image
+            assert not any(v["name"] in ("code", "ui") for v in pod["volumes"])
         pod = docs["CronJob", "pr-agent", "spi-github-broker"]["spec"]["jobTemplate"]["spec"][
             "template"
         ]["spec"]
-        self.assertEqual(pod["containers"][0]["image"], image)
-        self.assertNotIn("volumes", pod)
-        self.assertNotIn(("ConfigMap", "automation", "spi-triage-code"), docs)
-        self.assertNotIn(("ConfigMap", "pr-agent", "spi-github-broker-code"), docs)
-        self.assertNotIn(("ConfigMap", "automation", "spi-queue-ui"), docs)
+        assert pod["containers"][0]["image"] == image
+        assert "volumes" not in pod
+        assert ("ConfigMap", "automation", "spi-triage-code") not in docs
+        assert ("ConfigMap", "pr-agent", "spi-github-broker-code") not in docs
+        assert ("ConfigMap", "automation", "spi-queue-ui") not in docs
 
-    def test_queue_identity_is_not_replaced_or_exposed_to_web(self):
+    def test_queue_identity_is_not_replaced_or_exposed_to_web(self) -> None:
         docs = self.render(True)
         dep = docs["Deployment", "automation", "spi-triage"]
-        self.assertEqual(dep["spec"]["replicas"], 1)
-        self.assertEqual(dep["spec"]["strategy"], {"type": "Recreate"})
+        assert dep["spec"]["replicas"] == 1
+        assert dep["spec"]["strategy"] == {"type": "Recreate"}
         pod = dep["spec"]["template"]["spec"]
-        self.assertIn(
-            {"name": "data", "persistentVolumeClaim": {"claimName": "spi-triage-socrat5"}},
-            pod["volumes"],
-        )
+        assert {
+            "name": "data",
+            "persistentVolumeClaim": {"claimName": "spi-triage-socrat5"},
+        } in pod["volumes"]
         frontend = docs["Deployment", "automation", "spi-queue-ui"]["spec"]["template"]["spec"]
-        self.assertFalse(frontend["automountServiceAccountToken"])
-        self.assertNotIn("envFrom", frontend["containers"][0])
-        self.assertEqual(
-            frontend["volumes"],
-            [
-                {
-                    "name": "queue-control",
-                    "secret": {"secretName": "spi-queue-control", "defaultMode": 288},
-                }
-            ],
-        )
-        self.assertIn(
-            "Delete=false",
-            docs["PersistentVolumeClaim", "automation", "spi-triage-data"]["metadata"][
+        assert not frontend["automountServiceAccountToken"]
+        assert "envFrom" not in frontend["containers"][0]
+        assert frontend["volumes"] == [
+            {
+                "name": "queue-control",
+                "secret": {"secretName": "spi-queue-control", "defaultMode": 288},
+            }
+        ]
+        assert (
+            "Delete=false"
+            in docs["PersistentVolumeClaim", "automation", "spi-triage-data"]["metadata"][
                 "annotations"
-            ]["argocd.argoproj.io/sync-options"],
+            ]["argocd.argoproj.io/sync-options"]
         )
 
-    def test_bundle_does_not_change_resources_credentials_fences_or_quotas(self):
+    def test_bundle_does_not_change_resources_credentials_fences_or_quotas(self) -> None:
         legacy = self.render()
         bundled = self.render(True)
         a = legacy["Deployment", "automation", "spi-triage"]["spec"]["template"]["spec"][
@@ -105,7 +104,7 @@ class FullServiceBundleTests(unittest.TestCase):
             "readinessProbe",
             "livenessProbe",
         ):
-            self.assertEqual(a[field], b[field], field)
+            assert a[field] == b[field], field
         for kind in (
             "PersistentVolumeClaim",
             "Service",
@@ -114,28 +113,26 @@ class FullServiceBundleTests(unittest.TestCase):
             "Role",
             "RoleBinding",
         ):
-            self.assertEqual(
-                {k: v for k, v in legacy.items() if k[0] == kind},
-                {k: v for k, v in bundled.items() if k[0] == kind},
-            )
+            assert {k: v for k, v in legacy.items() if k[0] == kind} == {
+                k: v for k, v in bundled.items() if k[0] == kind
+            }
 
-    def test_legacy_code_is_frozen_and_no_second_argo_publisher_exists(self):
+    def test_legacy_code_is_frozen_and_no_second_argo_publisher_exists(self) -> None:
         import hashlib
 
         manifest = json.loads((ROOT / "charts/spi-triage/LEGACY-SOURCE-MANIFEST.json").read_text())
         for name, digest in manifest["backend_sha256"].items():
-            self.assertEqual(
-                hashlib.sha256((ROOT / "charts/spi-triage/files" / name).read_bytes()).hexdigest(),
-                digest,
-                name,
-            )
-        self.assertFalse((ROOT / "deploy/argocd/apps/spi-queue-ui.yaml").exists())
+            assert (
+                hashlib.sha256((ROOT / "charts/spi-triage/files" / name).read_bytes()).hexdigest()
+                == digest
+            ), name
+        assert not (ROOT / "deploy/argocd/apps/spi-queue-ui.yaml").exists()
         app = yaml.safe_load((ROOT / "deploy/argocd/apps/spi-triage.yaml").read_text())
-        self.assertEqual(app["spec"]["source"]["helm"]["parameters"], [])
-        self.assertEqual(
-            app["spec"]["source"]["helm"]["valueFiles"], ["../../deploy/spi-triage/values.yaml"]
-        )
-        self.assertEqual(app["spec"]["project"], "default")
+        assert app["spec"]["source"]["helm"]["parameters"] == []
+        assert app["spec"]["source"]["helm"]["valueFiles"] == [
+            "../../deploy/spi-triage/values.yaml"
+        ]
+        assert app["spec"]["project"] == "default"
 
 
 if __name__ == "__main__":

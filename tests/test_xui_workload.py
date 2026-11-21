@@ -1,3 +1,5 @@
+"""Tests for the 3x-ui workload configuration."""
+
 import os
 from pathlib import Path
 import shutil
@@ -16,6 +18,7 @@ HELM = os.environ.get("HELM_BIN") or shutil.which("helm")
 
 @unittest.skipUnless(HELM and yaml, "Helm and PyYAML are required for chart rendering")
 class XuiWorkloadTests(unittest.TestCase):
+    """Tests or helper for XuiWorkloadTests."""
     @classmethod
     def setUpClass(cls):
         result = subprocess.run(
@@ -31,16 +34,15 @@ class XuiWorkloadTests(unittest.TestCase):
         cls.volumes = {item["name"]: item["hostPath"] for item in cls.pod["volumes"]}
 
     def test_single_workload_cannot_create_concurrent_database_writers(self):
-        self.assertEqual(
-            [item["metadata"]["name"] for item in self.documents if item["kind"] == "Deployment"],
-            ["x-ui"],
-        )
-        self.assertEqual(self.deployment["spec"]["replicas"], 1)
-        self.assertEqual(self.deployment["spec"]["strategy"], {"type": "Recreate"})
-        self.assertEqual(set(self.containers), {"primary"})
-        self.assertTrue(self.pod["hostNetwork"])
-        self.assertEqual(self.pod["dnsPolicy"], "Default")
-        self.assertEqual(self.pod["nodeSelector"], {"kubernetes.io/hostname": "socrat-2"})
+        assert [
+            item["metadata"]["name"] for item in self.documents if item["kind"] == "Deployment"
+        ] == ["x-ui"]
+        assert self.deployment["spec"]["replicas"] == 1
+        assert self.deployment["spec"]["strategy"] == {"type": "Recreate"}
+        assert set(self.containers) == {"primary"}
+        assert self.pod["hostNetwork"]
+        assert self.pod["dnsPolicy"] == "Default"
+        assert self.pod["nodeSelector"] == {"kubernetes.io/hostname": "socrat-2"}
 
     def test_existing_database_and_runtime_paths_remain_isolated(self):
         expected = {
@@ -53,12 +55,11 @@ class XuiWorkloadTests(unittest.TestCase):
         for name, paths in expected.items():
             with self.subTest(container=name):
                 mounts = self.containers[name]["volumeMounts"]
-                self.assertEqual(
-                    {mount["mountPath"]: self.volumes[mount["name"]]["path"] for mount in mounts},
-                    paths,
-                )
+                assert {
+                    mount["mountPath"]: self.volumes[mount["name"]]["path"] for mount in mounts
+                } == paths
                 database = next(mount for mount in mounts if mount["mountPath"] == "/etc/x-ui")
-                self.assertEqual(self.volumes[database["name"]]["type"], "Directory")
+                assert self.volumes[database["name"]]["type"] == "Directory"
 
     def test_versions_and_probe_endpoints_are_preserved(self):
         expected = {
@@ -74,29 +75,30 @@ class XuiWorkloadTests(unittest.TestCase):
         for name, (digest, host, panel, subscription, trojan) in expected.items():
             with self.subTest(container=name):
                 container = self.containers[name]
-                self.assertEqual(container["image"], "ghcr.io/mhsanaei/3x-ui@sha256:" + digest)
+                assert container["image"] == "ghcr.io/mhsanaei/3x-ui@sha256:" + digest
                 ports = {port["name"]: port["containerPort"] for port in container["ports"]}
                 names.extend(ports)
-                self.assertEqual(set(ports.values()), {panel, subscription, trojan})
+                assert set(ports.values()) == {panel, subscription, trojan}
                 for probe, endpoint in [("startupProbe", panel), ("readinessProbe", trojan)]:
                     socket = container[probe]["tcpSocket"]
-                    self.assertEqual(socket["host"], host)
-                    self.assertEqual(ports[socket["port"]], endpoint)
-        self.assertEqual(len(names), len(set(names)))
-        self.assertTrue(all(len(name) <= 15 for name in names))
+                    assert socket["host"] == host
+                    assert ports[socket["port"]] == endpoint
+        assert len(names) == len(set(names))
+        assert all(len(name) <= 15 for name in names)
 
     def test_service_selects_unified_pod_and_primary_ports(self):
         service = next(item for item in self.documents if item["kind"] == "Service")
-        self.assertEqual(
-            service["spec"]["selector"], self.deployment["spec"]["template"]["metadata"]["labels"]
+        assert (
+            service["spec"]["selector"] == self.deployment["spec"]["template"]["metadata"]["labels"]
         )
         ports = {
             port["name"]: port["containerPort"] for port in self.containers["primary"]["ports"]
         }
-        self.assertEqual(
-            {port["port"]: ports[port["targetPort"]] for port in service["spec"]["ports"]},
-            {2053: 18082, 2096: 12096, 10443: 32087},
-        )
+        assert {port["port"]: ports[port["targetPort"]] for port in service["spec"]["ports"]} == {
+            2053: 18082,
+            2096: 12096,
+            10443: 32087,
+        }
 
 
 if __name__ == "__main__":
