@@ -183,7 +183,7 @@ def report(inputs, candidates, audit, chart, delta):
 
 
 def assert_safe_manifests(docs, publication="internal"):
-    """Keep internal publication free of Service, Ingress, or NodePort resources."""
+    """Assert that internal publication omits Service, Ingress, and NodePort; edge may add them."""
     nb.require(publication in ("internal", "edge"), "publication invalid")
     namespaces = set()
     runtime_refs = []
