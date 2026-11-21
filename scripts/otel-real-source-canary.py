@@ -499,7 +499,7 @@ def main():
     except (OSError, RuntimeError, subprocess.SubprocessError, ValueError):
         raise SystemExit(
             "Real-source canary failed; sensitive responses are not printed. Inspect the private root-owned run artifacts."
-        )
+        ) from None
 
 
 if __name__ == "__main__":

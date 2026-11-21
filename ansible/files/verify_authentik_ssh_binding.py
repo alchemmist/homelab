@@ -204,8 +204,8 @@ if __name__ == "__main__":
         else:
             result = verify(args.name, args.uuid)
         print(json.dumps(result))
-    except (ValueError, OSError, TypeError, subprocess.SubprocessError):
+    except (ValueError, OSError, TypeError, subprocess.SubprocessError) as exc:
         # Never print raw files/exception text from a host.
         raise SystemExit(
             "SSH binding/key verification refused; inspect supported host policy and root enrollment marker"
-        )
+        ) from exc

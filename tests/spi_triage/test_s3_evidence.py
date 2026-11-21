@@ -5,6 +5,8 @@ import socket
 import threading
 import time
 import unittest
+from typing import Protocol
+from typing import cast
 from pathlib import Path
 from unittest.mock import patch
 
@@ -14,25 +16,35 @@ import s3_evidence as s
 KEY = "spi/v1/" + "a" * 64 + "/" + "b" * 64 + "/E001-test.json"
 
 
-class ClientTests(unittest.TestCase):
-    def client(self, responses):
-        self.calls = []
+class S3ClientHandle(Protocol):
+    """Duck-type of s3_evidence.S3Evidence used by these transport tests."""
 
-        def transport(*args):
-            self.calls.append(args)
+    def ensure_object(self, key: str, body: object) -> dict[str, object]:
+        """Upload an object under a public key with readback verification."""
+        ...
+
+
+class ClientTests(unittest.TestCase):
+    def client(self, responses: list[object]) -> S3ClientHandle:
+        self.calls: list[tuple[str, str, dict[str, object], bytes]] = []
+
+        def transport(*args: object) -> object:
+            self.calls.append(cast("tuple[str, str, dict[str, object], bytes]", args))
             value = responses.pop(0)
             if isinstance(value, Exception):
                 raise value
             return value
 
-        return s.S3Evidence("access", "secret", transport=transport)
+        result: S3ClientHandle = s.S3Evidence("access", "secret", transport=transport)
+        return result
 
-    def test_resolver_capacity_survives_sequential_timeouts(self):
+    def test_resolver_capacity_survives_sequential_timeouts(self) -> None:
         release = threading.Event()
         workers = []
         slots = threading.BoundedSemaphore(s.MAX_RESOLVERS)
 
-        def stuck(*args, **kwargs):
+
+        def stuck(*_args, **_kwargs) -> list[tuple[int, int, int, str, tuple[str, int]]]:
             workers.append(threading.current_thread())
             release.wait()
             return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 9))]
@@ -62,12 +74,12 @@ class ClientTests(unittest.TestCase):
                 self.assertTrue(slots.acquire(blocking=False))
             self.assertFalse(slots.acquire(blocking=False))
 
-    def test_existing(self):
+    def test_existing(self) -> None:
         c = self.client([(200, {}, b"abc")])
         self.assertTrue(c.ensure_object(KEY, b"abc")["verified"])
         self.assertEqual(len(self.calls), 1)
 
-    def test_private_bucket_qualified_paths_unchanged(self):
+    def test_private_bucket_qualified_paths_unchanged(self) -> None:
         for key in (KEY, KEY.rsplit("/", 1)[0] + "/manifest.json"):
             c = self.client([(404, {}, b""), (201, {}, b""), (200, {}, b"abc")])
             receipt = c.ensure_object(key, b"abc")
@@ -77,26 +89,26 @@ class ClientTests(unittest.TestCase):
             self.assertEqual(receipt["key"], key)
             self.assertEqual(receipt["sha256"], hashlib.sha256(b"abc").hexdigest())
 
-    def test_conflict(self):
+    def test_conflict(self) -> None:
         c = self.client([(200, {}, b"bad")])
         with self.assertRaises(s.StorageConflict):
             c.ensure_object(KEY, b"abc")
         self.assertEqual(len(self.calls), 1)
 
-    def test_conditional_and_races(self):
+    def test_conditional_and_races(self) -> None:
         for status in (200, 201, 204, 409, 412):
             c = self.client([(404, {}, b""), (status, {}, b""), (200, {}, b"abc")])
             c.ensure_object(KEY, b"abc")
             self.assertEqual(self.calls[1][2]["If-None-Match"], "*")
             self.assertEqual(self.calls[1][3], b"abc")
 
-    def test_ambiguous_recovery(self):
+    def test_ambiguous_recovery(self) -> None:
         c = self.client([(404, {}, b""), TimeoutError(), (200, {}, b"abc"), (200, {}, b"abc")])
         c.ensure_object(KEY, b"abc")
         c.ensure_object(KEY, b"abc")
         self.assertEqual([x[0] for x in self.calls], ["GET", "PUT", "GET", "GET"])
 
-    def test_status(self):
+    def test_status(self) -> None:
         for status in (408, 429, 500, 503):
             c = self.client([(status, {"Retry-After": "12"}, b"")])
             with self.assertRaises(s.StorageTransient) as ctx:
@@ -106,7 +118,7 @@ class ClientTests(unittest.TestCase):
             with self.assertRaises(s.StoragePermanent):
                 self.client([(status, {}, b"")]).ensure_object(KEY, b"abc")
 
-    def test_validation(self):
+    def test_validation(self) -> None:
         for origin in ("http://localhost", s.ORIGIN + "/", s.ORIGIN + "?x=1"):
             with self.assertRaises(s.StoragePermanent):
                 s.S3Evidence("a", "b", origin=origin)
@@ -117,7 +129,7 @@ class ClientTests(unittest.TestCase):
             with self.assertRaises(s.StoragePermanent):
                 self.client([]).ensure_object(KEY, body)
 
-    def test_readback(self):
+    def test_readback(self) -> None:
         for body, error in (
             (b"bad", s.StorageConflict),
             (b"x" * (s.MAX_BYTES + 1), s.StoragePermanent),
@@ -127,7 +139,7 @@ class ClientTests(unittest.TestCase):
                     KEY, b"abc"
                 )
 
-    def test_retry_date(self):
+    def test_retry_date(self) -> None:
         date = (
             datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=50)
         ).strftime("%a, %d %b %Y %H:%M:%S GMT")
@@ -135,7 +147,7 @@ class ClientTests(unittest.TestCase):
         self.assertEqual(s.retry_after("999999999"), 86400)
         self.assertIsNone(s.retry_after("invalid"))
 
-    def test_signing(self):
+    def test_signing(self) -> None:
         now = datetime.datetime(2025, 1, 2, tzinfo=datetime.timezone.utc)
         h = s.sign(
             "PUT",
@@ -169,12 +181,12 @@ class ClientTests(unittest.TestCase):
             ),
         )
 
-    def test_close_body_deadline_and_cleanup(self):
+    def test_close_body_deadline_and_cleanup(self) -> None:
         listener = socket.socket()
         listener.bind(("127.0.0.1", 0))
         listener.listen()
 
-        def serve():
+        def serve() -> None:
             conn, _ = listener.accept()
             with conn:
                 conn.recv(8192)

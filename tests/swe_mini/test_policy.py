@@ -41,7 +41,7 @@ class PublicationPolicy(unittest.TestCase):
         updated = json.loads(json.dumps(original))
         updated["dependencies"]["@mantine/core"] = "^9.6.0"
 
-        def changes():
+        def changes() -> list[dict[str, str]]:
             return [
                 self.item("web/package.json", content=json.dumps(updated).encode()),
                 self.item("web/package-lock.json", content=b'{"lockfileVersion":3,"packages":{}}'),
