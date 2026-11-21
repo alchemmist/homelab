@@ -1,13 +1,55 @@
 """Full report campaign. Trusted scheduler on socrat-0; no agent or pytest on host."""
 import ast,collections,contextlib,difflib,fcntl,gzip,hashlib,json,os,re,sqlite3,subprocess,sys,time
+from collections.abc import Sequence
 from pathlib import Path
+from typing import TypedDict
 import dispatcher as pilot
 from artifact import artifact_response
+
+class Task(TypedDict):
+ """Queued mutation task loaded from SQLite."""
+
+ id: str
+ fam: str
+ num: int
+ category: str
+ base: str
+ pr: int | None
+
+class Repair(TypedDict):
+ """In-place pull request repair handed to the author."""
+
+ dest: str
+ previous: str
+ head: str
+ fails: list[str]
+
+class GitUser(TypedDict):
+ """GitHub user fields read during reconciliation."""
+
+ login: str
+
+class GitHead(TypedDict):
+ """GitHub ref fields read during reconciliation."""
+
+ ref: str
+ sha: str
+
+class Pull(TypedDict, total=False):
+ """Open pull request fields read from the public GitHub API."""
+
+ number: int
+ title: str
+ state: str
+ merged: bool
+ draft: bool
+ head: GitHead
+ user: GitUser
 R=pilot.ROOT; BASE0=pilot.BASE; D=R/'campaign.sqlite'; A=R/'campaign-artifacts';A.mkdir(exist_ok=True); C=json.load(gzip.open(R/'catalog-full.json.gz')); BACK=json.loads((R/'backlog.json').read_text()); J='/scratch/monori/'; K=pilot.k
 
 ISSUE=509
 
-def query(q,a=()):
+def query(q: str,a: Sequence[object]=()):
  with contextlib.closing(sqlite3.connect(D,timeout=15)) as db,db:
   db.row_factory=sqlite3.Row;return [dict(x) for x in db.execute(q,a)]
 def init():
@@ -34,33 +76,33 @@ def init():
     v=json.loads(proof.read_text());uid=next((k for k in C if k.endswith('.x_'+name)),None)
     if uid:query("update tasks set state='published',pr=?,base=?,note=? where id=? and state='queued'",(json.loads(published[0][0])['pr'],v['base'],'pilot proof',uid.rsplit('.',1)[0]+'.'+v['mutmut']))
 
-def mark(t,state,note='',base=None,pr=None):
+def mark(t: Task,state: str,note: str='',base: str | None=None,pr: int | None=None):
  q=(state,note[:1500],base or t['base'],pr or t['pr'],time.time(),t['id']);query('update tasks set state=?,note=?,base=?,pr=?,updated=? where id=?',q);query('insert into audit values(?,?,?,?)',(time.time(),t['id'],state,note[:1500]));print(time.strftime('%FT%T%z'),state,t['id'],note[:120].replace('\n',' '),flush=True)
-def key(t):return hashlib.sha256(t['id'].encode()).hexdigest()[:12]
-def remote_json(path):
+def key(t: Task):return hashlib.sha256(t['id'].encode()).hexdigest()[:12]
+def remote_json(path: str):
  # Public GET only; no publisher/host credentials in workers.
  import urllib.request
  with urllib.request.urlopen(urllib.request.Request('https://api.github.com/repos/alchemmist/monori/'+path,headers={'User-Agent':'socrat-campaign'}),timeout=15) as r:return json.load(r)
 def git(*a):return pilot.cmd(['git','--git-dir=base.git',*a]).stdout
-def source(sha,file):return git('show',sha+':'+file)
+def source(sha: str,file: str):return git('show',sha+':'+file)
 
-def patch(t,sha):
+def patch(t: Task,sha: str):
  f=C[t['fam']];file=f['file'];s=source(sha,file);old=''.join(f['old']);start,end,repl=f['diffs'][str(t['num'])];mut=''.join(f['old'][:start]+repl+f['old'][end:]);
  if s.count(old)!=1:raise ValueError('Generated function body not unique/exact on current base; refresh required')
  return file,s,s.replace(old,mut,1),''.join(difflib.unified_diff(old.splitlines(True),mut.splitlines(True),n=3))
 
-def select_suite(t,sha):
+def select_suite(t: Task,sha: str):
  mod=C[t['fam']]['file'];leaf=Path(mod).stem;func=t['fam'].split('.')[-1].split('ǁ')[-1];func=func.removeprefix('x_');area='ci/tests' if mod.startswith('ci/') else 'server/tests/unit';files=git('ls-tree','-r','--name-only',sha,'--',area).splitlines();tests=[p for p in files if Path(p).name.startswith('test_') and p.endswith('.py')];module=mod[:-3].replace('/','.');p=pilot.cmd(['git','--git-dir=base.git','grep','-l','-F',module,sha,'--',area],ok=False);imports={line.split(':',1)[-1] for line in p.stdout.splitlines()};p=pilot.cmd(['git','--git-dir=base.git','grep','-l','-Fw',func,sha,'--',area],ok=False);refs={line.split(':',1)[-1] for line in p.stdout.splitlines()};top=sorted(tests,key=lambda p:(-(10*(p in imports)+6*(p in refs)+4*(leaf in Path(p).stem)),p));direct=[p for p in top if p in imports|refs or leaf in Path(p).stem];return (direct[:6] or [area]),area
 
-def sandbox_write(path,text):pilot.write('judge',J+path,text)
-def reset_source(src,original):sandbox_write(src,original);K('judge',['rm','-rf',J+str(Path(src).parent/'__pycache__')])
-def tests(paths,limit=250):
+def sandbox_write(path: str,text: str):pilot.write('judge',J+path,text)
+def reset_source(src: str,original: str):sandbox_write(src,original);K('judge',['rm','-rf',J+str(Path(src).parent/'__pycache__')])
+def tests(paths: Sequence[str],limit: int=250):
  # Timeout INSIDE the pod, including children, not just the kubectl client.
  r=K('judge',['sh','-ec','cd /scratch/monori; export PYTHONPATH=/scratch PYTHONDONTWRITEBYTECODE=1;exec timeout -k 5 "$1" .venv/bin/python -m pytest -q --tb=short --disable-warnings -m "not integration" "${@:2}"'.replace('"${@:2}"','"$@"').replace('exec timeout -k 5 "$1"','budget=$1;shift;exec timeout -k 5 "$budget"'),'sh',str(limit),*paths],timeout=limit+25,ok=False);return r.returncode,r.stdout[-5000:]
-def green(p):return p[0]==0 and bool(re.search(r'\b[1-9]\d* passed',p[1]))
-def killed(p):return p[0]==1 and bool(re.search(r'\b[1-9]\d* failed',p[1]))
+def green(p: tuple[int, str]):return p[0]==0 and bool(re.search(r'\b[1-9]\d* passed',p[1]))
+def killed(p: tuple[int, str]):return p[0]==1 and bool(re.search(r'\b[1-9]\d* failed',p[1]))
 
-def install_base(sha):
+def install_base(sha: str):
  """Stream tracked files only. No untrusted tar input on the SSH host."""
  for file in ('pyproject.toml','server/pyproject.toml','common/pyproject.toml','ci/pyproject.toml'):
   if source(sha,file)!=source(BASE0,file):raise RuntimeError('dependency drift: rebuild locked offline verifier before admitting this base')
@@ -71,12 +113,12 @@ def install_base(sha):
  # Author fetches public main; no host key or git credential is passed in.
  K('author',['sh','-ec','git --git-dir=/scratch/base.git cat-file -e "$1^{commit}" 2>/dev/null || git --git-dir=/scratch/base.git fetch --depth=1 https://github.com/alchemmist/monori.git main','sh',sha])
 
-def candidate_guard(text,src):
+def candidate_guard(text: str,src: str):
  if not 40<len(text)<20000:raise ValueError('missing/oversized candidate')
  if re.search(r'#\s*(?:type:\s*ignore|noqa|nosec)',text):raise ValueError('repo forbids lint/type suppressions')
  tree=ast.parse(text)
  if any(isinstance(n,ast.arg) and n.annotation and any(isinstance(a,ast.Name) and a.id in {'object','Any'} for a in ast.walk(n.annotation)) for n in ast.walk(tree)):raise ValueError('use a concrete project type, not object/Any')
- allowed=('monori.'+src.split('/')[0]+'.','monori.common.');safe={'pytest','datetime','decimal','collections','dataclasses','typing','pathlib','io','json','re','math','unittest.mock','openpyxl','sqlite3','uuid'}
+ allowed=('monori.'+src.partition('/')[0]+'.','monori.common.');safe={'pytest','datetime','decimal','collections','dataclasses','typing','pathlib','io','json','re','math','unittest.mock','openpyxl','sqlite3','uuid'}
  if not any(isinstance(n,ast.FunctionDef) and n.name.startswith('test_') for n in tree.body):raise ValueError('missing test')
  for n in ast.walk(tree):
   if isinstance(n,(ast.Import,ast.ImportFrom)):
@@ -89,7 +131,15 @@ def candidate_guard(text,src):
    if x.startswith('__') or x in {'eval','exec','compile','globals','locals','exit','quit','getattr','setattr','delattr','skip','skipif','xfail','importorskip','open','read_bytes','read_text','write_bytes','write_text','unlink','system','popen','connect_ex','socket','subprocess','os','sys','builtins','importlib','pytest_plugins'}:raise ValueError('test uses unsupported introspection, I/O or bypass')
   if isinstance(n,ast.Constant) and isinstance(n.value,str) and ('/scratch/' in n.value or '/proc/' in n.value or 'PYTEST_CURRENT_TEST' in n.value):raise ValueError('environment-dependent test')
 
-def try_pi(t,sha,mid,detail,oldtests,folder,repair=None):
+def try_pi(
+ t: Task,
+ sha: str,
+ mid: str,
+ detail: str,
+ oldtests: list[str],
+ folder: Path,
+ repair: Repair | None=None,
+):
  src=C[t['fam']]['file'];slug=key(t);dest=('ci/tests/' if src.startswith('ci/') else 'server/tests/unit/')+'test_mutation_'+slug+'.py';wt='/scratch/campaign/'+slug+'/monori';folder.mkdir(exist_ok=True);K('author',['sh','-ec','if test -d "$1";then git --git-dir=/scratch/base.git worktree remove --force "$1";fi;git --git-dir=/scratch/base.git worktree prune;git --git-dir=/scratch/base.git worktree add --detach "$1" "$2"','sh',wt,sha]);feedback=''
  if repair:
   dest=repair['dest'];pilot.write('author',wt+'/'+dest,repair['previous']);feedback='Repair this existing PR test in place, retain the behavioral assertion and remove all lint suppressions. Red current-head checks: '+', '.join(repair['fails'])
@@ -140,13 +190,13 @@ def try_pi(t,sha,mid,detail,oldtests,folder,repair=None):
    if event not in ('published','update_uncertain'):mark(t,'published','CI repair attempt did not meet proof; PR remains open',sha,t['pr'])
   K('author',['git','--git-dir=/scratch/base.git','worktree','remove','--force',wt],ok=False)
 
-def prove(t,sha,dest,text,oldtests):
+def prove(t: Task,sha: str,dest: str,text: str,oldtests: list[str]):
  src,orig,mut,_=patch(t,sha);reset_source(src,orig)
  try:
   sandbox_write(dest,text);a=tests([dest]);assert green(a),'original did not pass: '+a[1][-450:];reset_source(src,mut);b=tests(['--ignore='+dest,*oldtests]);assert green(b),'old suite did not survive independently: '+b[1][-260:];red=tests([dest]);assert killed(red) and 'FAILED '+dest+'::test_' in red[1] and re.search(r'AssertionError|^E\s+assert |DID NOT RAISE|Regex pattern did not match',red[1],re.M),'no assertion kill: '+red[1][-450:];reset_source(src,orig);g=tests(oldtests if any(dest.startswith(p.rstrip('/')+'/') for p in oldtests) else oldtests+[dest]);assert green(g),'combined original failed: '+g[1][-450:];return {'base':sha,'mutant':t['id'],'dest':dest,'sha256':hashlib.sha256(text.encode()).hexdigest(),'old_suite':oldtests,'old_on_mutant':b[1].splitlines()[-1],'new_on_mutant':red[1][-2400:],'original':g[1].splitlines()[-1]}
  finally:reset_source(src,orig);K('judge',['rm','-f',J+dest])
 
-def screen(t,sha):
+def screen(t: Task,sha: str):
  try:src,orig,mut,detail=patch(t,sha)
  except (ValueError,KeyError):mark(t,'catalog_drift','Cannot apply exact mutation to current main',sha);return
  oldtests,area=select_suite(t,sha);reset_source(src,orig);cache='baseline:'+sha+':'+hashlib.sha256(json.dumps(oldtests).encode()).hexdigest()
@@ -169,7 +219,7 @@ def screen(t,sha):
   mark(t,'covered_pending_merge','Covered by '+prior['id'],sha,prior['pr']);return
  mark(t,'survived',p[1].splitlines()[-1],sha);try_pi(t,sha,t['id'],detail,oldtests,A/key(t))
 
-def publish(t,sha):
+def publish(t: Task,sha: str):
  folder=A/key(t);receipt=json.loads((folder/'proof.json').read_text());text=(folder/'test.py.txt').read_text();assert hashlib.sha256(text.encode()).hexdigest()==receipt['sha256'];dest=receipt['dest']
  if receipt['base']!=sha:
   oldtests,_=select_suite(t,sha)
@@ -182,7 +232,7 @@ def publish(t,sha):
   mark(t,'publication_uncertain',title,sha);return
  (folder/'publication.json').write_text(json.dumps(obj));mark(t,'published',obj['head'],sha,obj['pr'])
 
-def reconcile(prs,sha):
+def reconcile(prs: Sequence[Pull],sha: str):
  open_by={p['number']:p for p in prs}
  # Repair lost acknowledgements by unique title, never replay a blind create.
  for t in query("select * from tasks where state='publication_uncertain'"):
@@ -194,7 +244,7 @@ def reconcile(prs,sha):
   p=remote_json('pulls/'+str(t['pr']))
   if p['state']=='closed':mark(t,'merged' if p['merged'] else 'closed_unmerged','GitHub reconciliation; full rerun still required',sha,t['pr'])
 
-def repair_one(prs,sha):
+def repair_one(prs: Sequence[Pull],sha: str):
  bynum={p['number']:p for p in prs};now=time.time()
  for t in query("select * from tasks where state='published' and pr is not null order by updated"):
   p=bynum.get(t['pr'])
@@ -211,7 +261,7 @@ def repair_one(prs,sha):
   query('insert or replace into meta values(?,?)',(keyfix,str(1+(int(attempts[0]['v']) if attempts else 0))));folder=A/key(t)/('repair-'+head[:10]);folder.mkdir(parents=True,exist_ok=True)
   try_pi(t,sha,t['id'],diff,olds,folder,{'dest':dest,'previous':previous,'head':head,'fails':fails});return
 
-def census(sha,prs):
+def census(sha: str,prs: Sequence[Pull]):
  # No blanket merge; only after queued work drained and GitHub writes reconciled.
  if sha==BASE0 or any(p['head']['ref'].startswith(f'openhands/issue-{ISSUE}/') for p in prs):return False
  if query("select id from tasks where state in ('published','verified','publishing','publication_uncertain','update_uncertain') limit 1"):return False

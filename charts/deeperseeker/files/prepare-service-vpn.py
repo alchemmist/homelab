@@ -18,7 +18,7 @@ def prepare(value):
     stream = outbound.get("streamSettings") or {}
     if endpoint.get("address") != ENDPOINT or endpoint.get("port") != PORT or stream.get("security") != "reality":
         raise SystemExit("PROFILE_POLICY")
-    def check(node):
+    def check(node) -> None:
         if isinstance(node, dict):
             for key, item in node.items():
                 if key == "allowInsecure" and item is not False:
@@ -69,6 +69,6 @@ if __name__ == "__main__":
     except SystemExit:
         print("VPN_SUBSCRIPTION_PREPARE_FAILED")
         raise
-    except Exception:
+    except Exception as exc:
         print("VPN_SUBSCRIPTION_PREPARE_FAILED")
-        raise SystemExit(1)
+        raise SystemExit(1) from exc

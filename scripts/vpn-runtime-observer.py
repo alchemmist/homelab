@@ -18,7 +18,7 @@ import time
 from pathlib import Path
 
 OUTPUT = Path("/var/lib/node_exporter/textfile_collector/vpn-runtime.prom")
-PROFILES = {
+PROFILES: dict[str, dict[str, object]] = {
     "socrat-4": {
         "component": "relay",
         "command": ["python3", "/usr/local/libexec/vpn-transit-failover.py", "status"],
@@ -42,19 +42,29 @@ PROFILES = {
 }
 
 
-def command(args, timeout=30):
+def command(args: list[str], timeout: int = 30) -> subprocess.CompletedProcess[str]:
     return subprocess.run(args, capture_output=True, text=True, timeout=timeout, check=False)
 
 
-def active(unit):
+def active(unit: str) -> bool:
     p = command(["systemctl", "is-active", unit], 5)
     if p.returncode not in (0, 3):
         raise ValueError("Unobservable unit")
     return p.returncode == 0
 
 
-def listening(proc, protocol):
-    ports = set()
+def _unit_list(value: object) -> list[str]:
+    items = value if isinstance(value, list) else []
+    return [str(u) for u in items]
+
+
+def _port_set(value: object) -> set[int]:
+    items = value if isinstance(value, list) else []
+    return {int(p) for p in items if isinstance(p, int)}
+
+
+def listening(proc: Path, protocol: str) -> set[int]:
+    ports: set[int] = set()
     for suffix in ("", "6"):
         lines = (proc / ("net/" + protocol + suffix)).read_text().splitlines()
         for line in lines[1:]:
@@ -67,7 +77,14 @@ def listening(proc, protocol):
     return ports
 
 
-def classify(profile, status, agent, native, marker):
+def classify(
+    profile: dict[str, object],
+    status: dict[str, object],
+    *,
+    agent: bool,
+    native: list[bool],
+    marker: bool,
+) -> int:
     """Latch alone is insufficient: actual unit ownership must agree."""
     if profile["component"] == "relay":
         if status.get("agent_active") is not agent or status.get("native_active") is not all(
@@ -86,13 +103,13 @@ def classify(profile, status, agent, native, marker):
     return -1
 
 
-def units_snapshot(units):
+def units_snapshot(units: list[str]) -> dict[str, bool]:
     result = command(
         ["systemctl", "show", *units, "-p", "Id", "-p", "LoadState", "-p", "ActiveState"], 5
     )
     if result.returncode:
         raise ValueError("Unobservable unit set")
-    states = {}
+    states: dict[str, bool] = {}
     for block in result.stdout.strip().split("\n\n"):
         fields = dict(line.split("=", 1) for line in block.splitlines() if "=" in line)
         if fields.get("LoadState") != "loaded":
@@ -103,13 +120,15 @@ def units_snapshot(units):
     return states
 
 
-def observe(profile, proc=Path("/proc"), live_check=False):
-    before = Path(profile["marker"]).exists()
+def observe(
+    profile: dict[str, object], proc: Path = Path("/proc"), *, live_check: bool = False
+) -> dict[str, object]:
+    before = Path(str(profile["marker"])).exists()
     cached = profile["component"] == "relay" and not live_check
     if cached:
         # Reuse the watchdog's actual persisted check. Do not add another TLS
         # handshake/CLI lock to the constrained Moscow relay every30seconds.
-        path = Path(profile["marker"]).parent / "state.json"
+        path = Path(str(profile["marker"])).parent / "state.json"
         stamp = path.stat()
         status = json.loads(path.read_text())
         after = path.stat()
@@ -120,7 +139,11 @@ def observe(profile, proc=Path("/proc"), live_check=False):
         status["data_path_healthy"] = status["healthy"]
         observed = stamp.st_mtime
     else:
-        result = command(profile["command"])
+        profile_command = profile["command"]
+        if not isinstance(profile_command, list):
+            reason = "Missing status command"
+            raise ValueError(reason)
+        result = command([str(x) for x in profile_command])
         if result.returncode not in (0, 1):
             raise ValueError("Status command failed")
         status = json.loads(result.stdout)
@@ -128,18 +151,20 @@ def observe(profile, proc=Path("/proc"), live_check=False):
     key = "data_path_healthy" if profile["component"] == "relay" else "healthy"
     if type(status.get(key)) is not bool:
         raise ValueError("Missing health observation")
-    states = units_snapshot([profile["agent"], *profile["native"]])
-    agent = states[profile["agent"]]
-    native = [states[u] for u in profile["native"]]
-    marker = Path(profile["marker"]).exists()
+    native_names = _unit_list(profile["native"])
+    agent_unit = str(profile["agent"])
+    states = units_snapshot([agent_unit, *native_names])
+    agent = states[agent_unit]
+    native = [states[u] for u in native_names]
+    marker = Path(str(profile["marker"])).exists()
     if marker != before:
         raise ValueError("Concurrent runtime transition")
     if cached:
         status.update(agent_active=agent, native_active=all(native), fallback_marker=marker)
-    runtime = classify(profile, status, agent, native, marker)
+    runtime = classify(profile, status, agent=agent, native=native, marker=marker)
     tcp = listening(proc, "tcp")
     udp = listening(proc, "udp")
-    off = not (tcp & profile["tcp"] or udp & profile["udp"])
+    off = not (tcp & _port_set(profile["tcp"]) or udp & _port_set(profile["udp"]))
     return {
         "runtime": runtime,
         "check_success": int(status[key]),
@@ -149,7 +174,7 @@ def observe(profile, proc=Path("/proc"), live_check=False):
     }
 
 
-def write_metrics(path, component, values):
+def write_metrics(path: Path, component: str, values: dict[str, object]) -> None:
     lines = []
     for key, value in values.items():
         name = "socrat_vpn_component_" + key
@@ -169,14 +194,18 @@ def write_metrics(path, component, values):
             os.unlink(name)
 
 
-def audit(host, profile, expected_image=None):
+def audit(
+    host: str, profile: dict[str, object], expected_image: str | None = None
+) -> dict[str, object]:
     observation = observe(profile, live_check=True)
-    native_units = [command(["systemctl", "cat", unit], 5).stdout for unit in profile["native"]]
-    agent = command(["systemctl", "cat", profile["agent"]], 5).stdout
+    native_units = [
+        command(["systemctl", "cat", unit], 5).stdout for unit in _unit_list(profile["native"])
+    ]
+    agent = command(["systemctl", "cat", str(profile["agent"])], 5).stdout
     if host == "socrat-4":
-        boot_fence = "ExecCondition=/usr/bin/test ! -e " + profile["marker"] in agent
+        boot_fence = "ExecCondition=/usr/bin/test ! -e " + str(profile["marker"]) in agent
         native_fences = all(
-            "ExecCondition=+/usr/bin/test -e " + profile["marker"] in t for t in native_units
+            "ExecCondition=+/usr/bin/test -e " + str(profile["marker"]) in t for t in native_units
         )
         validation = (
             command(
@@ -202,10 +231,11 @@ def audit(host, profile, expected_image=None):
         config = json.loads(Path("/etc/homelab-vpn-failover/config.json").read_text())
         klass = runpy.run_path("/usr/local/sbin/homelab-vpn-failover")["Watchdog"]
         klass(config).preflight()  # read-only files + SQLite quick_check, no activation
-        boot_fence = "ConditionPathExists=!" + profile["marker"] in agent
+        boot_fence = "ConditionPathExists=!" + str(profile["marker"]) in agent
         obsolete = command(["systemctl", "cat", "k3s-agent.service"], 5).stdout
         native_fences = all(
-            "ConditionPathExists=" + profile["marker"] in t and "homelab-vpn-failover guard" in t
+            "ConditionPathExists=" + str(profile["marker"]) in t
+            and "homelab-vpn-failover guard" in t
             for t in native_units
         )
         validation = (
@@ -229,7 +259,8 @@ def audit(host, profile, expected_image=None):
             "configured_agent_is_server": config.get("agent_unit") == "k3s.service",
             "both_k3s_units_fenced": set(config.get("fenced_units", []))
             == {"k3s.service", "k3s-agent.service"},
-            "obsolete_agent_boot_fenced": "ConditionPathExists=!" + profile["marker"] in obsolete,
+            "obsolete_agent_boot_fenced": "ConditionPathExists=!" + str(profile["marker"])
+            in obsolete,
             "watchdog_inhibited": Path("/var/lib/homelab-vpn-failover/inhibit").exists(),
         }
     nameservers = []
@@ -239,8 +270,10 @@ def audit(host, profile, expected_image=None):
     return {
         "host": host,
         "observation": observation,
-        "watchdog_active": active(profile["timer"]),
-        "watchdog_enabled": command(["systemctl", "is-enabled", profile["timer"]], 5).returncode
+        "watchdog_active": active(str(profile["timer"])),
+        "watchdog_enabled": command(
+            ["systemctl", "is-enabled", str(profile["timer"])], 5
+        ).returncode
         == 0,
         "agent_boot_fenced": boot_fence,
         "native_boot_fenced": native_fences,
@@ -262,12 +295,12 @@ if __name__ == "__main__":
         if args.audit:
             print(json.dumps(audit(host, profile, args.expected_image), sort_keys=True))
         else:
-            write_metrics(OUTPUT, profile["component"], observe(profile))
+            write_metrics(OUTPUT, str(profile["component"]), observe(profile))
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
         if not args.audit:
             write_metrics(
                 OUTPUT,
-                profile["component"],
+                str(profile["component"]),
                 {
                     "runtime": -1,
                     "check_success": 0,

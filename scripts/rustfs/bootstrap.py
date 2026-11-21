@@ -15,6 +15,7 @@ import stat
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import cast
 
 
 def policy(actions):
@@ -163,8 +164,9 @@ def main():
             )
         )
 
-        def mc(*a, stdin=None):
-            return run(args.mc, tmp, list(a), stdin)
+        def mc(*a, stdin=None) -> list[dict[str, object]]:
+            result: list[dict[str, object]] = run(args.mc, tmp, list(a), stdin)
+            return result
 
         # Inventories must succeed before any mutation. No failure means 'absent'.
         users = mc("admin", "user", "list", "store")
@@ -172,7 +174,7 @@ def main():
         policies = mc("admin", "policy", "list", "store")
         policy_names = {r["policy"] for r in policies}
         buckets = mc("ls", "store")
-        bucket_names = {r["key"].rstrip("/") for r in buckets}
+        bucket_names = {cast("str", r["key"]).rstrip("/") for r in buckets}
         for name, document in POLICIES.items():
             if name in policy_names:
                 path = Path(tmp, name + ".existing.json")
@@ -228,4 +230,4 @@ if __name__ == "__main__":
     except Exception:
         raise SystemExit(
             "Bootstrap stopped safely; inspect private state; no secrets or response bodies printed."
-        )
+        ) from None

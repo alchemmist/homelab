@@ -4,6 +4,7 @@ import json
 import sqlite3
 import urllib.request
 from datetime import timedelta
+from typing import cast
 
 
 def configure():
@@ -31,7 +32,7 @@ def configure():
     )
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
-    def request(path, payload=None):
+    def request(path, payload=None) -> object:
         req = urllib.request.Request(
             "http://127.0.0.1:8080" + path,
             headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
@@ -40,16 +41,26 @@ def configure():
         with opener.open(req, timeout=60) as response:
             return json.load(response)
 
-    if not any(model.get("id") == "qwen3.8-27b" for model in request("/api/v1/models/all")):
+    known_document = request("/api/v1/models/all")
+    if not isinstance(known_document, list) or not all(
+        isinstance(model, dict) for model in known_document
+    ):
+        raise RuntimeError("Unexpected models response shape")
+    known = cast("list[dict[str, object]]", known_document)
+    if not any(model.get("id") == "qwen3.8-27b" for model in known):
         return {
             "changed": False,
             "skipped": True,
             "reason": "Qwen workspace model is not configured",
         }
     path = "/api/v1/models/model?id=qwen3.8-27b"
-    before = request(path)
+    before_document = request(path)
+    if not isinstance(before_document, dict):
+        raise RuntimeError("Unexpected model response shape")
+    before = cast("dict[str, object]", before_document)
     fields = ("id", "base_model_id", "name", "meta", "params", "access_grants", "is_active")
     desired = {key: copy.deepcopy(before[key]) for key in fields if key in before}
+
     sampling = {
         "temperature": 0.7,
         "top_p": 0.8,
@@ -58,24 +69,30 @@ def configure():
         "presence_penalty": 1.5,
         "repetition_penalty": 1.0,
     }
-    desired["params"] = {**(desired.get("params") or {}), **sampling}
-    if isinstance(desired["params"].get("custom_params"), dict):
+    params = cast("dict[str, object]", dict(desired.get("params") or {}))
+    params.update(sampling)
+    desired["params"] = params
+    if isinstance(params.get("custom_params"), dict):
+        custom = cast("dict[str, object]", params["custom_params"])
         for key in sampling:
-            desired["params"]["custom_params"].pop(key, None)
+            custom.pop(key, None)
     changed = desired["params"] != before.get("params")
     if changed:
         request("/api/v1/models/model/update", desired)
-    after = request(path)
+    after_document = request(path)
+    if not isinstance(after_document, dict):
+        raise RuntimeError("Unexpected model readback shape")
+    after = cast("dict[str, object]", after_document)
     if after["params"] != desired["params"]:
         raise RuntimeError("Qwen sampling settings failed readback validation")
     for key in ("id", "user_id", "base_model_id", "name", "meta", "is_active"):
         if after.get(key) != before.get(key):
             raise RuntimeError("Unrelated model settings changed")
 
-    def grants(model):
+    def grants(model) -> list[tuple[object, object, object]]:
         return sorted(
             (g.get("principal_type"), g.get("principal_id"), g.get("permission"))
-            for g in model.get("access_grants") or []
+            for g in cast("list[dict[str, object]]", model.get("access_grants") or [])
         )
 
     if grants(after) != grants(before):

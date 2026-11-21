@@ -14,7 +14,7 @@ PATHS = {"/check", "/render", "/create-pr", "/close-older"}
 
 
 class Handler(BaseHTTPRequestHandler):
-    def log_message(self, *args):
+    def log_message(self, *args: object):
         pass
 
     def do_GET(self):
