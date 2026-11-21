@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import subprocess
+from typing import cast
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,14 +18,13 @@ CHARTS = {
 }
 
 
-def values(owner):
-    """Run values."""
-    value = yaml.safe_load((ROOT / CHARTS[owner] / "values.yaml").read_text())
-    return value if CHARTS[owner].startswith("deploy/") else value["publicEntry"]
+def values(owner) -> dict[str, object]:
+    value: dict[str, object] = yaml.safe_load((ROOT / CHARTS[owner] / "values.yaml").read_text())
+    entry = cast("dict[str, object]", value["publicEntry"])
+    return value if CHARTS[owner].startswith("deploy/") else entry
 
 
-def render(owner=None):
-    """Run render."""
+def render(owner=None) -> list[dict[str, object]]:
     docs = []
     for name in [owner] if owner else CHARTS:
         output = subprocess.check_output(

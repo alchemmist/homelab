@@ -39,7 +39,7 @@ spec:
                 matchExpressions:
                   - key: kubernetes.io/hostname
                     operator: In
-                    values: [socrat-0]
+                    values: [socrat-1]
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
@@ -79,7 +79,9 @@ spec:
               path: /ready
               port: http
             periodSeconds: 5
-            failureThreshold: 36
+            # Allow cold recovery on NFS without repeatedly killing startup.
+            timeoutSeconds: 4
+            failureThreshold: 120
           readinessProbe:
             httpGet:
               path: /ready

@@ -1,3 +1,5 @@
+"""Tests for the blog update engine loaded by file path."""
+
 import importlib.util
 from pathlib import Path
 import unittest
@@ -14,7 +16,7 @@ class EngineTests(unittest.TestCase):
 
     def test_self_update_skipped(self) -> None:
         """Skip a compare that only touches the updates document."""
-        self.assertIsNone(e.prepare({"files": [{"filename": e.UPDATES}]}, ""))
+        assert e.prepare({"files": [{"filename": e.UPDATES}]}, "") is None
 
     def test_missing_diff_fails(self) -> None:
         """Reject a text change that arrives without a diff."""
@@ -56,9 +58,9 @@ class EngineTests(unittest.TestCase):
         source = "---\ntitle: Updates\n---\n- [x] old\n"
         entries = [{"text": "New poem."}]
         result = e.render(source, entries, "2026-10-30T10:00:00Z")
-        self.assertIn("2026-10-30 13:00", result)
-        self.assertEqual(result, e.render(result, entries, "2026-10-30T11:00:00Z"))
-        self.assertTrue(result.endswith("- [x] old\n"))
+        assert "2026-10-30 13:00" in result
+        assert result == e.render(result, entries, "2026-10-30T11:00:00Z")
+        assert result.endswith("- [x] old\n")
 
     def test_bad_event(self) -> None:
         """Reject an event that does not match the expected schema."""

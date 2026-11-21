@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Refresh the Uptime Kuma Syncthing monitor group in its SQLite database."""
+
 import datetime
 import json
 import shutil
@@ -44,28 +46,28 @@ for stale_id, stale_name in cur.execute(
 
 for idx, (name, url) in enumerate(SYNC_MONITORS, 1):
     row = cur.execute("select id from monitor where name=?", (name,)).fetchone()
-    vals = dict(
-        name=name,
-        active=1,
-        user_id=USER_ID,
-        interval=60,
-        retry_interval=30,
-        maxretries=2,
-        url=url,
-        type="http",
-        hostname=None,
-        port=None,
-        maxredirects=10,
-        accepted_statuscodes_json=accepted,
-        method="GET",
-        upside_down=0,
-        ignore_tls=0,
-        expiry_notification=1,
-        description="Private node-local Syncthing health check",
-        timeout=30,
-        resend_interval=0,
-        weight=300 + idx,
-    )
+    vals = {
+        "name": name,
+        "active": 1,
+        "user_id": USER_ID,
+        "interval": 60,
+        "retry_interval": 30,
+        "maxretries": 2,
+        "url": url,
+        "type": "http",
+        "hostname": None,
+        "port": None,
+        "maxredirects": 10,
+        "accepted_statuscodes_json": accepted,
+        "method": "GET",
+        "upside_down": 0,
+        "ignore_tls": 0,
+        "expiry_notification": 1,
+        "description": "Private node-local Syncthing health check",
+        "timeout": 30,
+        "resend_interval": 0,
+        "weight": 300 + idx,
+    }
     if row:
         mid = row[0]
         cur.execute(

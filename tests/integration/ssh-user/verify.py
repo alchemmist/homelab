@@ -13,6 +13,7 @@ import subprocess
 import tempfile
 import time
 import uuid
+from typing import cast
 
 ROOT = Path(__file__).resolve().parents[3]
 IMAGE = "homelab-ssh-user-fixture:local"
@@ -20,7 +21,6 @@ USER = "ssh_fixture"
 
 
 def run(args, expected=0, **kw):
-    """Run run."""
     p = subprocess.run(args, capture_output=True, text=True, timeout=kw.pop("timeout", 180), **kw)
     if p.returncode != expected:
         # Fixture output contains public data only, but keep it private to avoid
@@ -34,11 +34,10 @@ def run(args, expected=0, **kw):
             + p.stdout[-2500:]
             + p.stderr[-1000:]
         )
-    return p.stdout
+    return cast("str", p.stdout)
 
 
-def main():
-    """Run main."""
+def main() -> None:
     run(["docker", "info", "--format", "{{.ServerVersion}}"])
     run(["docker", "build", "-q", "-t", IMAGE, str(Path(__file__).parent)], timeout=300)
     containers = []
@@ -75,24 +74,27 @@ def main():
             inventory = d / "inventory.json"
             inventory.write_text(json.dumps({"all": {"children": {"Socrat": {"hosts": hosts}}}}))
 
-            def execute(container, *args):
-                return run(["docker", "exec", container, *args])
+            def execute(container, *args) -> str:
+                return cast("str", run(["docker", "exec", container, *args]))
 
-            def play(key=1, check=False, expected=0, name=USER):
-                return run(
-                    [
-                        "ansible-playbook",
-                        "-i",
-                        str(inventory),
-                        "playbooks/ssh-user.yml",
-                        "-e",
-                        "ssh_username=" + name,
-                        "-e",
-                        "ssh_public_key_file=" + str(d / ("key" + str(key) + ".pub")),
-                    ]
-                    + (["--check"] if check else []),
-                    expected=expected,
-                    cwd=ROOT / "ansible",
+            def play(key=1, check=False, expected=0, name=USER) -> str:
+                return cast(
+                    "str",
+                    run(
+                        [
+                            "ansible-playbook",
+                            "-i",
+                            str(inventory),
+                            "playbooks/ssh-user.yml",
+                            "-e",
+                            "ssh_username=" + name,
+                            "-e",
+                            "ssh_public_key_file=" + str(d / ("key" + str(key) + ".pub")),
+                        ]
+                        + (["--check"] if check else []),
+                        expected=expected,
+                        cwd=ROOT / "ansible",
+                    ),
                 )
 
             # Wait for sshd host keys; not an infrastructure-outage sleep/poll.
@@ -118,7 +120,7 @@ def main():
                 assert p.returncode != 0, "check mode created an account"
             play()
 
-            def login(container, key):
+            def login(container, key) -> None:
                 execute(container, "mkdir", "-p", "/tmp/ssh-fixture")
                 run(
                     [

@@ -1,3 +1,4 @@
+"""Fixture definitions, prompts, and verifiers for Venice autonomy benchmark tasks."""
 import copy
 import html
 import json
@@ -217,7 +218,7 @@ def check_verdict(task, nonce, cases, result):
         or len(data["results"]) != len(cases)
     ):
         return {"accepted": False, "reason": "incomplete verifier output"}
-    for index, (args, actual) in enumerate(zip(cases, data["results"])):
+    for index, (args, actual) in enumerate(zip(cases, data["results"], strict=True)):
         want = expected(task, args) | {"mutated": False}
         if (
             not isinstance(actual, dict)

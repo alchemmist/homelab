@@ -4,9 +4,20 @@ import json
 from pathlib import Path
 import shutil
 import subprocess
+from typing import Protocol, cast
+
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+class ValuesCall(Protocol):
+    """Callable shape of the per-owner values helper."""
+
+    def __call__(self, owner: str) -> dict[str, list[dict[str, str]]]:
+        """Call through to the untyped fixture for the owner's routes."""
+
+
 JS = ROOT / "deploy/platform/grafana/public-entry/files/traffic-light-inset.js"
 
 
@@ -24,8 +35,8 @@ JS = ROOT / "deploy/platform/grafana/public-entry/files/traffic-light-inset.js"
         "public",
     ],
 )
-def test_inset_runtime_scope_and_compacted_layout(mode):
-    """Run test inset runtime scope and compacted layout."""
+def test_inset_runtime_scope_and_compacted_layout(mode: str) -> None:
+    """Gate the inset to public TV URLs and compact the native grid."""
     script = r"""
 const fs=require('fs'),vm=require('vm'),mode=process.argv[1];
 const token='a'.repeat(32), styles={}, calls=[];
@@ -70,8 +81,8 @@ console.log(JSON.stringify({css:styles['socrat-tv-inset']?.textContent||'',calls
             assert "grid-template-rows" not in result["css"]
 
 
-def test_only_one_dashboard_and_no_anonymous_org_fallback():
-    """Run test only one dashboard and no anonymous org fallback."""
+def test_only_one_dashboard_and_no_anonymous_org_fallback() -> None:
+    """Publish exactly the traffic-light dashboard without anonymous auth."""
     s = (ROOT / "scripts/grafana-tv-public.py").read_text()
     assert "UID='socrat-traffic-light'" in s
     assert "'annotationsEnabled':False" in s
@@ -83,8 +94,8 @@ def test_only_one_dashboard_and_no_anonymous_org_fallback():
     assert "GF_AUTH_ANONYMOUS_ENABLED" not in s
 
 
-def test_live_update_is_url_only_and_does_not_reprovision_tv():
-    """Run test live update is url only and does not reprovision tv."""
+def test_live_update_is_url_only_and_does_not_reprovision_tv() -> None:
+    """Update only the dashboard URL without reprovisioning the TV."""
     s = (ROOT / "ansible/playbooks/tv-public-dashboard.yml").read_text()
     assert "{'startURL':tv_start_url}" in s
     assert "tv_public_hash == tv_plan_hash" in s
@@ -96,13 +107,15 @@ def test_live_update_is_url_only_and_does_not_reprovision_tv():
     assert "initialScale" not in s and "fontSize" not in s and "injectJsCode" not in s
 
 
-def test_no_dedicated_tv_alias_or_internal_vpn_in_helpers():
-    """Run test no dedicated tv alias or internal vpn in helpers."""
+def test_no_dedicated_tv_alias_or_internal_vpn_in_helpers() -> None:
+    """Keep the TV on public URLs with no dedicated alias or internal VPN."""
     import yaml
     from tests.public_entry_contract import CHARTS, values
 
     assert not any(
-        r["host"] == "tv.alchemmist.xyz" for owner in CHARTS for r in values(owner)["routes"]
+        r["host"] == "tv.alchemmist.xyz"
+        for owner in CHARTS
+        for r in cast("ValuesCall", values)(owner)["routes"]
     )
     for app in ["tv-mode", "tv-grafana"]:
         s = (ROOT / "android" / app / "smali/xyz/alchemmist/tvmode/SwitchVpn.smali").read_text()
@@ -117,8 +130,8 @@ def test_no_dedicated_tv_alias_or_internal_vpn_in_helpers():
     "mode",
     ["public", "normal", "auth_kiosk", "wrong_uid", "horizontal", "missing_fill", "duplicate_name"],
 )
-def test_compact_argo_is_guarded_public_tv_only_and_preserves_native_data(mode):
-    """Run test compact argo is guarded public tv only and preserves native data."""
+def test_compact_argo_is_guarded_public_tv_only_and_preserves_native_data(mode: str) -> None:
+    """Keep argo compaction public-only and preserve native panel data."""
     script = r"""
 const fs=require('fs'),vm=require('vm'),mode=process.argv[1],styles={};
 const node=(style={})=>({style,children:[],classes:new Set(),classList:{add(c){this.owner.classes.add(c)}}});

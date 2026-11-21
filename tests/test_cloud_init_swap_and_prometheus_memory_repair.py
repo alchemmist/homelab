@@ -4,14 +4,15 @@ import copy
 import importlib.util
 import json
 from pathlib import Path
+from types import ModuleType
+from typing import NotRequired, TypedDict
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(name):
-    """Run load."""
+def load(name) -> ModuleType:
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / (name + ".py"))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -24,8 +25,7 @@ SWAPS = "Filename Type Size Used Priority\n/swap.img file 524284 26412 -2\n"
 FSTAB = "/swap.img none swap sw 0 0\n"
 
 
-def test_swap_repair_accepts_existing_persistent_active_swap():
-    """Run test swap repair accepts existing persistent active swap."""
+def test_swap_repair_accepts_existing_persistent_active_swap() -> None:
     CLOUD.validate(
         {"bootcmd": CLOUD.EXPECTED},
         [{}, {"hostname": "socrat-4"}],
@@ -36,8 +36,7 @@ def test_swap_repair_accepts_existing_persistent_active_swap():
 
 
 @pytest.mark.parametrize("change", ["provider", "competitor", "inactive", "fstab", "size"])
-def test_swap_repair_refuses_unknown_conditions(change):
-    """Run test swap repair refuses unknown conditions."""
+def test_swap_repair_refuses_unknown_conditions(change) -> None:
     base, others, swaps, fstab, size = (
         {"bootcmd": CLOUD.EXPECTED},
         [],
@@ -59,8 +58,7 @@ def test_swap_repair_refuses_unknown_conditions(change):
         CLOUD.validate(base, others, swaps, fstab, size)
 
 
-def test_cloud_atomic_permissions_and_no_active_swap_mutation(tmp_path):
-    """Run test cloud atomic permissions and no active swap mutation."""
+def test_cloud_atomic_permissions_and_no_active_swap_mutation(tmp_path) -> None:
     target = tmp_path / "receipt"
     CLOUD.atomic(target, CLOUD.OVERRIDE, 0o600)
     assert target.read_text() == CLOUD.OVERRIDE
@@ -74,8 +72,7 @@ def test_cloud_atomic_permissions_and_no_active_swap_mutation(tmp_path):
     assert "'cloud-init', 'clean'" not in source
 
 
-def expression():
-    """Run expression."""
+def expression() -> str:
     return (
         """[
         {
@@ -100,8 +97,7 @@ def expression():
 
 
 @pytest.mark.parametrize("indent", [0, 6, 12])
-def test_only_prometheus_memory_scalars_change(indent):
-    """Run test only prometheus memory scalars change."""
+def test_only_prometheus_memory_scalars_change(indent) -> None:
     before = "\n".join(
         line[indent:] if line.startswith(" " * indent) else line
         for line in expression().split("\n")
@@ -132,14 +128,12 @@ def test_only_prometheus_memory_scalars_change(indent):
         "[]",
     ],
 )
-def test_policy_drift_refused(expr):
-    """Run test policy drift refused."""
+def test_policy_drift_refused(expr) -> None:
     with pytest.raises(RuntimeError):
         PROM.expression_change(expr)
 
 
-def test_policy_cas_and_input_immutability():
-    """Run test policy cas and input immutability."""
+def test_policy_cas_and_input_immutability() -> None:
     before = {
         "metadata": {"uid": "policy-uid", "resourceVersion": "42"},
         "spec": {
@@ -157,8 +151,48 @@ def test_policy_cas_and_input_immutability():
     assert patch[-1]["path"] == "/spec/variables/1/expression"
 
 
-def pod():
-    """Run pod."""
+class OwnerRef(TypedDict):
+    """Kubernetes ownerReference entry."""
+
+    controller: bool
+    kind: str
+    name: str
+
+
+class Container(TypedDict, total=False):
+    """Pod container entry as produced by the test fixture."""
+
+    name: str
+    resources: dict[str, dict[str, object]]
+    resizePolicy: list[dict[str, str]]
+
+
+class PodMetadata(TypedDict):
+    """Pod metadata fields used by the memory repair script and tests."""
+
+    name: str
+    namespace: str
+    uid: str
+    resourceVersion: str
+    ownerReferences: list[OwnerRef]
+
+
+class PodSpec(TypedDict):
+    """Pod spec fields referenced by resize checks."""
+
+    nodeName: str
+    containers: list[Container]
+
+
+class Pod(TypedDict):
+    """Prometheus pod fixture for resize and capacity tests."""
+
+    metadata: PodMetadata
+    spec: PodSpec
+    status: NotRequired[dict[str, str]]
+
+
+def pod() -> Pod:
     return {
         "metadata": {
             "name": PROM.NAME,
@@ -183,8 +217,7 @@ def pod():
     }
 
 
-def test_resize_only_ram_and_has_uid_rv_and_resource_guards():
-    """Run test resize only ram and has uid rv and resource guards."""
+def test_resize_only_ram_and_has_uid_rv_and_resource_guards() -> None:
     before = pod()
     original = copy.deepcopy(before)
     patch = PROM.resize_patch(before)
@@ -198,8 +231,7 @@ def test_resize_only_ram_and_has_uid_rv_and_resource_guards():
 
 
 @pytest.mark.parametrize("change", ["node", "controller", "restart", "memory", "name"])
-def test_resize_refuses_unknown_or_disruptive_conditions(change):
-    """Run test resize refuses unknown or disruptive conditions."""
+def test_resize_refuses_unknown_or_disruptive_conditions(change) -> None:
     value = pod()
     if change == "node":
         value["spec"]["nodeName"] = "socrat-1"
@@ -217,8 +249,7 @@ def test_resize_refuses_unknown_or_disruptive_conditions(change):
         PROM.resize_patch(value)
 
 
-def test_capacity_gate_includes_request_growth_and_ignores_failed_pods():
-    """Run test capacity gate includes request growth and ignores failed pods."""
+def test_capacity_gate_includes_request_growth_and_ignores_failed_pods() -> None:
     value = pod()
     value["status"] = {"phase": "Running"}
     dead = copy.deepcopy(value)
@@ -229,14 +260,12 @@ def test_capacity_gate_includes_request_growth_and_ignores_failed_pods():
     assert result["projected_remaining_bytes"] == 1024**3
 
 
-def test_capacity_gate_stops_before_mutation_if_request_growth_does_not_fit():
-    """Run test capacity gate stops before mutation if request growth does not fit."""
+def test_capacity_gate_stops_before_mutation_if_request_growth_does_not_fit() -> None:
     with pytest.raises(RuntimeError, match="Insufficient node reservation"):
         PROM.memory_capacity({"status": {"allocatable": {"memory": "2500Mi"}}}, [pod()])
 
 
-def test_admission_cache_propagation_is_bounded_and_verified(monkeypatch):
-    """Run test admission cache propagation is bounded and verified."""
+def test_admission_cache_propagation_is_bounded_and_verified(monkeypatch) -> None:
     responses = iter(
         [
             {"requests": {"memory": "2Gi"}, "limits": {"memory": "3Gi"}},
@@ -252,8 +281,7 @@ def test_admission_cache_propagation_is_bounded_and_verified(monkeypatch):
     assert samples == [{"request": "2Gi", "limit": "3Gi"}, {"request": "3Gi", "limit": "8Gi"}]
 
 
-def test_admission_nonconvergence_is_failure(monkeypatch):
-    """Run test admission nonconvergence is failure."""
+def test_admission_nonconvergence_is_failure(monkeypatch) -> None:
     monkeypatch.setattr(PROM, "probe", lambda sts: {})
     monkeypatch.setattr(
         PROM,
