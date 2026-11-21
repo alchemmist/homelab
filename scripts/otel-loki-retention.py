@@ -20,7 +20,7 @@ def rules(policy):
         raise ValueError("Unsupported policy schema")
     fallback = policy["fallbackHours"]
 
-    def hours(value, level):
+    def hours(value, level) -> int:
         if type(value) is not int or not 24 <= value <= 8760:
             raise ValueError("Retention must be integer hours between 24h and 365d")
         if level == "unknown" and value != 336:

@@ -1,15 +1,18 @@
 import importlib.util
 from pathlib import Path
+import types
 import unittest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(name):
+def load(name: str) -> types.ModuleType:
     spec = importlib.util.spec_from_file_location(
         name.replace("-", "_"), ROOT / "scripts" / (name + ".py")
     )
+    if spec is None or spec.loader is None:
+        raise RuntimeError("missing script loader for " + name)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -22,7 +25,7 @@ base = load("netbird-host-peer")
 
 
 class IndependentAccessTest(unittest.TestCase):
-    def test_four_exact_hosts_opt_in_no_implicit_enrollment(self):
+    def test_four_exact_hosts_opt_in_no_implicit_enrollment(self) -> None:
         docs = mesh.manifests()
         self.assertEqual(len(docs), 8)
         for host in mesh.HOSTS:
@@ -41,7 +44,7 @@ class IndependentAccessTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             mesh.peer("new-vm")
 
-    def test_native_group_router_not_single_peer_or_default_route(self):
+    def test_native_group_router_not_single_peer_or_default_route(self) -> None:
         self.assertEqual(
             mesh.router_body("exact-node-group"),
             {
@@ -59,7 +62,7 @@ class IndependentAccessTest(unittest.TestCase):
             with self.subTest(bad=bad), self.assertRaises(ValueError):
                 mesh.router_body(bad)
 
-    def test_distinct_input_policies_keep_pilot_tcp_only(self):
+    def test_distinct_input_policies_keep_pilot_tcp_only(self) -> None:
         admin = mesh.admin_input_policy("jwt-admin", "nodes")["rules"][0]
         pilot = mesh.pilot_input_policy("jwt-pilot", "only-node2")["rules"][0]
         self.assertEqual(admin["sources"], ["jwt-admin"])
@@ -75,7 +78,7 @@ class IndependentAccessTest(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     fn(*args)
 
-    def test_relay_pinned_vps_and_no_secret_values_or_management(self):
+    def test_relay_pinned_vps_and_no_secret_values_or_management(self) -> None:
         docs = relay.manifests()
         self.assertEqual(
             [d["kind"] for d in docs],
@@ -99,7 +102,7 @@ class IndependentAccessTest(unittest.TestCase):
         self.assertEqual(ingress["rules"][0]["http"]["paths"][0]["pathType"], "Exact")
         self.assertNotIn("/api", yaml.safe_dump(docs))
 
-    def test_native_self_health_bootstrap_and_actual_vps_cni(self):
+    def test_native_self_health_bootstrap_and_actual_vps_cni(self) -> None:
         service, policy = relay.manifests()[1:3]
         self.assertTrue(service["spec"]["publishNotReadyAddresses"])
         self.assertEqual(
@@ -113,7 +116,7 @@ class IndependentAccessTest(unittest.TestCase):
         self.assertNotIn("0.0.0.0/0", cidrs)
         self.assertEqual(ingress["ports"], [{"protocol": "TCP", "port": 33080}])
 
-    def test_home_relay_is_separate_and_reuses_existing_tls(self):
+    def test_home_relay_is_separate_and_reuses_existing_tls(self) -> None:
         deploy, service, policy, ingress = relay.home_manifests()
         self.assertEqual(
             deploy["spec"]["template"]["spec"]["nodeSelector"],
@@ -136,7 +139,7 @@ class IndependentAccessTest(unittest.TestCase):
         self.assertEqual(relay.advertised_relays()["credentialsTTL"], "12h")
         self.assertNotIn("relay", relay.advertised_relays())
 
-    def test_mac_bootstrap_does_not_depend_on_internal_dns(self):
+    def test_mac_bootstrap_does_not_depend_on_internal_dns(self) -> None:
         self.assertEqual(len(dns.HOSTS), 3)
         self.assertIn("auth.socrat.alchemmist.xyz", dns.HOSTS)
         body = dns.render().decode()

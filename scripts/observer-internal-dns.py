@@ -132,7 +132,7 @@ def main():
     os.umask(0o077)
     a.state.mkdir(mode=0o700, parents=False)
 
-    def save(name, obj):
+    def save(name, obj) -> None:
         (a.state / name).write_text(json.dumps(obj, sort_keys=True))
 
     save("before.json", before)

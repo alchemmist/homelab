@@ -43,7 +43,7 @@ def main():
         return
     origin = "http://127.0.0.1:19000"
 
-    def request(role, method, path, payload=b""):
+    def request(role, method, path, payload=b"") -> tuple[int, bytes]:
         url = origin + path
         headers = g.sign(method, url, c[role]["access"], c[role]["secret"], payload=payload)
         req = urllib.request.Request(
@@ -133,7 +133,7 @@ def verify_denial_gates(request: Request, cases: list[tuple[str, str, str]]) -> 
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
+    except (OSError, ValueError, SyntaxError, ImportError, RuntimeError):
         raise SystemExit(
             "Runtime gate failed; no secret/response body printed. Inspect private state; do not activate SPI."
-        )
+        ) from None
