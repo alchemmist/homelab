@@ -151,7 +151,8 @@ class AdmissionTests(unittest.TestCase):
         seen = []
         saved = []
 
-        def call(task, data, schema, deadline):
+
+        def call(task, data, schema, _deadline) -> dict[str, object]:
             self.assertLessEqual(m.reservation(m.payload(task, data, schema)), 30000)
             self.assertLessEqual(len(data["open_issues"]), 12)
             seen.extend(x["number"] for x in data["open_issues"])
@@ -195,7 +196,8 @@ class AdmissionTests(unittest.TestCase):
         saved = []
         calls = []
 
-        def choose(task, data, schema, deadline):
+
+        def choose(task, data, schema, _deadline) -> dict[str, object]:
             self.assertLessEqual(m.reservation(m.payload(task, data, schema)), 30000)
             ids = [x["number"] for x in data["open_issues"]]
             calls.append(ids)

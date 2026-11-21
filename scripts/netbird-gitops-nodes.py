@@ -115,7 +115,7 @@ def main():
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except Exception:
+    except (ValueError, KeyError, TypeError, RuntimeError, OSError, subprocess.SubprocessError):
         print(
             "Blocked: inspect inventory/bindings; no cluster writes were attempted", file=sys.stderr
         )

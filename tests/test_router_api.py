@@ -37,6 +37,7 @@ def forward(address, local_port, external_port, protocol, comment) -> dict[str, 
                 "Enabled",
                 comment,
             ],
+            strict=True,
         )
     )
 

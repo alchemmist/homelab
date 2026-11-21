@@ -259,7 +259,7 @@ class IdentityTests(unittest.TestCase):
                     if slug != "litellm" and not service.get("managedBy")
                 ),
             )
-            for method, path, body, query in api.requests:
+            for method, path, _body, query in api.requests:
                 if method == "GET" and path == "core/applications/":
                     self.assertEqual(query["superuser_full_list"], ["true"])
             self.assertEqual((root / "owner-login.json").stat().st_mode & 0o777, 0o600)
@@ -450,7 +450,8 @@ class RolloutRegressionTests(unittest.TestCase):
             (Path(d) / ".ssh").mkdir()
             (Path(d) / ".ssh/authorized_keys").write_text("key1\nkey2\n")
 
-            def run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+
+            def run(args: list[str], **_kwargs) -> subprocess.CompletedProcess[str]:
                 """Answer sshd -T, sudo, and generic probes with scripted results."""
                 if "-T" in args:
                     return subprocess.CompletedProcess(

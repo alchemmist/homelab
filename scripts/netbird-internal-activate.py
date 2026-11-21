@@ -38,7 +38,7 @@ def main():
         raise ValueError("enrollment keys and Secrets must be retired first")
 
     class NoRedirect(urllib.request.HTTPRedirectHandler):
-        def redirect_request(self, *a, **kw) -> None:
+        def redirect_request(self, *_a, **_kw) -> None:
             return None
 
     opener = urllib.request.build_opener(NoRedirect)
@@ -188,6 +188,6 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception as exc:
+    except (ValueError, KeyError, TypeError, RuntimeError, OSError) as exc:
         print("BLOCKED: " + (str(exc) if isinstance(exc, ValueError) else type(exc).__name__))
-        raise SystemExit(2)
+        raise SystemExit(2) from exc

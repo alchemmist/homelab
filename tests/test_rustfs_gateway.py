@@ -102,9 +102,9 @@ class Tests(unittest.TestCase):
         worker.start()
         try:
 
-            def request(path, headers={}, method="GET"):
+            def request(path, headers=None, method="GET"):
                 conn = http.client.HTTPConnection(*server.server_address, timeout=2)
-                conn.request(method, path, headers={"Host": g.HOST, **headers})
+                conn.request(method, path, headers={"Host": g.HOST, **(headers or {})})
                 response = conn.getresponse()
                 data = response.read()
                 result = (response.status, dict(response.getheaders()), data)
@@ -232,6 +232,7 @@ class Integrity(unittest.TestCase):
         class HTTP:
             def open(self, req, timeout):
                 self.request = req
+                self.timeout = timeout
                 return response
 
         response = Response()

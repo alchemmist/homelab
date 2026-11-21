@@ -311,7 +311,7 @@ class BootstrapTests(unittest.TestCase):
     def test_claim_redacts_token_and_requires_setup(self) -> None:
         calls = []
 
-        def opener(url, body):
+        def opener(url, body) -> dict[str, object]:
             calls.append((url, body))
             if url.endswith("/api/instance"):
                 return {"setup_required": True}
@@ -333,7 +333,8 @@ class BootstrapTests(unittest.TestCase):
         )
         self.assertNotIn("create_pat", calls[1][1])
 
-        def claimed(url, body):
+
+        def claimed(_url, _body) -> dict[str, object]:
             return {"setup_required": False}
 
         with self.assertRaises(ValueError):

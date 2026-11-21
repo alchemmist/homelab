@@ -105,10 +105,10 @@ def test_unknown_port_owner_blocks_native_start(ctl, monkeypatch) -> None:
     monkeypatch.setattr(c, "prerequisites", lambda: None)
     monkeypatch.setattr(m, "pod_processes", lambda: [])
     monkeypatch.setattr(m, "active", lambda _: False)
-    monkeypatch.setattr(m, "run", lambda a, **kw: calls.append(a))
+    monkeypatch.setattr(m, "run", lambda a, **_kw: calls.append(a))
     monkeypatch.setattr(m.time, "sleep", lambda _: None)
 
-    def occupied():
+    def occupied() -> None:
         raise OSError("occupied")
 
     monkeypatch.setattr(m, "free_ports", occupied)
@@ -191,7 +191,7 @@ def test_late_native_health_reconciles_without_replaying_lifecycle(ctl, monkeypa
     monkeypatch.setattr(c, "healthy", lambda: True)
     calls = []
     monkeypatch.setattr(c, "prerequisites", lambda: calls.append("verified"))
-    monkeypatch.setattr(m, "run", lambda *a, **kw: pytest.fail("no lifecycle replay"))
+    monkeypatch.setattr(m, "run", lambda *_a, **_kw: pytest.fail("no lifecycle replay"))
     c.tick()
     assert c.state["mode"] == "native" and c.state["failures"] == 0 and c.state["healthy"]
     assert c.marker.exists() and calls == ["verified"]
@@ -218,7 +218,7 @@ def test_late_native_acceptance_refuses_active_agent(ctl, monkeypatch) -> None:
     m, c = ctl
     m.atomic(c.marker, {})
     c.save(mode="transition-to-native")
-    monkeypatch.setattr(m, "active", lambda unit: True)
+    monkeypatch.setattr(m, "active", lambda _unit: True)
     monkeypatch.setattr(c, "healthy", lambda: True)
     with pytest.raises(RuntimeError, match="Agent active"):
         c.tick()
@@ -232,7 +232,7 @@ def test_late_native_acceptance_requires_prerequisites(ctl, monkeypatch) -> None
     monkeypatch.setattr(m, "active", lambda unit: unit == m.NATIVE)
     monkeypatch.setattr(c, "healthy", lambda: True)
 
-    def refuse():
+    def refuse() -> None:
         raise RuntimeError("prerequisite drift")
 
     monkeypatch.setattr(c, "prerequisites", refuse)
@@ -269,7 +269,7 @@ def test_unhealthy_primary_never_restarts_agent_or_releases_fence(ctl, monkeypat
     c.save(mode="native-primary")
     monkeypatch.setattr(m, "active", lambda unit: unit == m.NATIVE)
     monkeypatch.setattr(c, "healthy", lambda: False)
-    monkeypatch.setattr(m, "run", lambda *a, **k: pytest.fail("must not change lifecycle"))
+    monkeypatch.setattr(m, "run", lambda *_a, **_k: pytest.fail("must not change lifecycle"))
     c.tick()
     assert not c.state["healthy"] and c.marker.exists()
     with pytest.raises(AssertionError):
@@ -289,11 +289,13 @@ def test_failure_scope_uses_direct_upstream_not_api(
     ctl, monkeypatch, agent, listeners, upstream, recover, scope
 ) -> None:
     m, c = ctl
-    monkeypatch.setattr(m, "active", lambda unit: agent)
+    monkeypatch.setattr(m, "active", lambda _unit: agent)
     monkeypatch.setattr(m, "local_listeners_respond", lambda: listeners)
 
-    def check(config, host, source, detail):
+
+    def check(_config, host, source, detail) -> bool:
         assert host == "10.250.0.2" and source == ("10.250.0.40", 0)
+        assert isinstance(detail, dict)  # probe records its observation in-place
         if not upstream:
             raise TimeoutError()
         return True
@@ -314,7 +316,7 @@ def test_upstream_failure_never_fences_worker_or_releases_marker(ctl, monkeypatc
     monkeypatch.setattr(
         c,
         "activate",
-        lambda why: pytest.fail("must not fence healthy local listeners for upstream failure"),
+        lambda _why: pytest.fail("must not fence healthy local listeners for upstream failure"),
     )
     for _ in range(12):
         c.tick()
@@ -336,7 +338,8 @@ def test_upstream_failure_never_fences_worker_or_releases_marker(ctl, monkeypatc
 def test_probe_failure_records_stage_not_private_path(ctl, monkeypatch) -> None:
     m, c = ctl
 
-    def fail(*a, **kw):
+
+    def fail(*_a, **_kw) -> None:
         raise TimeoutError()
 
     monkeypatch.setattr(m.socket, "create_connection", fail)
@@ -369,18 +372,18 @@ def test_failed_websocket_diagnostic_does_not_store_private_path(ctl, monkeypatc
         def __exit__(self, *args) -> None:
             pass
 
-        def sendall(self, data):
+        def sendall(self, data) -> None:
             assert b"/test" in data
 
-        def recv(self, n):
+        def recv(self, n) -> bytes:
             return b"HTTP/1.1 403 Forbidden\r\n"
 
     class Context:
-        def wrap_socket(self, s, server_hostname):
+        def wrap_socket(self, s, server_hostname) -> Connection:
             assert server_hostname == "vpn.alchemmist.xyz"
             return Connection()
 
-    monkeypatch.setattr(m.socket, "create_connection", lambda *a, **kw: Connection())
+    monkeypatch.setattr(m.socket, "create_connection", lambda *_a, **_kw: Connection())
     monkeypatch.setattr(m.ssl, "create_default_context", lambda: Context())
     assert (
         not c.healthy()

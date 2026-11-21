@@ -87,7 +87,7 @@ class DirectIpTest(unittest.TestCase):
     def test_actual_panel_expressions_down_pressure_stale_and_no_vpn_coupling(self) -> None:
         cases = []
 
-        def add(expr, data, value, when="3m"):
+        def add(expr, data, value, when="3m") -> None:
             cases.append(
                 {
                     "interval": "15s",
@@ -164,7 +164,7 @@ class DirectIpTest(unittest.TestCase):
     def test_mode_missing_is_not_off(self) -> None:
         e = panel(9)["targets"][0]["expr"]
 
-        def case(data, value):
+        def case(data, value) -> dict[str, object]:
             return {
                 "interval": "15s",
                 "input_series": data,

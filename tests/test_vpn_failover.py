@@ -431,7 +431,7 @@ class HardeningTests(unittest.TestCase):
         self.w.activate()
         self.w.events.clear()
         self.w.agent = "k3s-agent.service"
-        self.w.service_installed = lambda unit: True
+        self.w.service_installed = lambda _unit: True
         with self.assertRaisesRegex(RuntimeError, "Legacy agent"):
             self.w.failback()
         self.assertEqual(self.w.events, [])
@@ -440,7 +440,7 @@ class HardeningTests(unittest.TestCase):
     def test_missing_target_keeps_native_untouched(self) -> None:
         self.w.activate()
         self.w.events.clear()
-        self.w.service_installed = lambda unit: False
+        self.w.service_installed = lambda _unit: False
         with self.assertRaisesRegex(RuntimeError, "not installed"):
             self.w.failback()
         self.assertEqual(self.w.events, [])
@@ -449,7 +449,7 @@ class HardeningTests(unittest.TestCase):
         self.w.activate()
         command = self.w.command
 
-        def failed(*args):
+        def failed(*args) -> object:
             if args == ("systemctl", "start", self.w.agent):
                 raise RuntimeError("start failed")
             return command(*args)

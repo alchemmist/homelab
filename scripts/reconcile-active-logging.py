@@ -55,14 +55,14 @@ for pod in pods["items"]:
             excluded["job_or_nonrunning_regular"] += 1
             continue
         sources.append(
-            dict(
-                kind="container",
-                namespace=pod["metadata"]["namespace"],
-                pod=pod["metadata"]["name"],
-                container=container["name"],
-                node=pod["spec"].get("nodeName", ""),
-                emission="unknown",
-            )
+            {
+                "kind": "container",
+                "namespace": pod["metadata"]["namespace"],
+                "pod": pod["metadata"]["name"],
+                "container": container["name"],
+                "node": pod["spec"].get("nodeName", ""),
+                "emission": "unknown",
+            }
         )
     excluded["init_or_ephemeral"] += len(pod["spec"].get("initContainers", [])) + len(
         pod["spec"].get("ephemeralContainers", [])
@@ -74,14 +74,14 @@ for n in range(4):
         unit = line.split()[0]
         if unit.endswith(".service"):
             sources.append(
-                dict(
-                    kind="host",
-                    host=f"socrat-{n}",
-                    unit=unit,
-                    emission="unknown",
-                    journalVisibleCount600=journal.get(unit, 0),
-                    journalVisibility="unprivileged-not-complete",
-                )
+                {
+                    "kind": "host",
+                    "host": f"socrat-{n}",
+                    "unit": unit,
+                    "emission": "unknown",
+                    "journalVisibleCount600": journal.get(unit, 0),
+                    "journalVisibility": "unprivileged-not-complete",
+                }
             )
 rows = c.assess(sources, metadata["600"], metadata["3600"])
 for r in rows:
@@ -137,19 +137,19 @@ for r in rows:
             r["cause"] = "agent-self-logs-explicitly-excluded"
     if r["kind"] == "host" and r["journalVisibleCount600"] > 0 and not r["fresh"]:
         r["cause"] = "journal-emission-without-fresh-matched-receipt-investigate-labels-checkpoint"
-result = dict(
-    observedAtUnix=metadata["observedAtUnix"],
-    lokiLogBodiesFetched=False,
-    logBodiesPersistedOrOutput=False,
-    sourceEvidence="aligned stdout counts (transient process memory only), unprivileged journal metadata"
+result = {
+    "observedAtUnix": metadata["observedAtUnix"],
+    "lokiLogBodiesFetched": False,
+    "logBodiesPersistedOrOutput": False,
+    "sourceEvidence": "aligned stdout counts (transient process memory only), unprivileged journal metadata"
     if a.source_counts
     else "journal metadata only",
-    evaluationTimeFixed=metadata.get("evaluationTimeFixed", False),
-    denominator="running regular non-Job containers plus running system services",
-    excluded=dict(excluded),
-    summary=dict(collections.Counter(r["cause"] for r in rows)),
-    sources=rows,
-)
+    "evaluationTimeFixed": metadata.get("evaluationTimeFixed", False),
+    "denominator": "running regular non-Job containers plus running system services",
+    "excluded": dict(excluded),
+    "summary": dict(collections.Counter(r["cause"] for r in rows)),
+    "sources": rows,
+}
 out = pathlib.Path(a.output)
 out.with_suffix(".json").write_text(json.dumps(result, indent=2) + "\n")
 keys = [

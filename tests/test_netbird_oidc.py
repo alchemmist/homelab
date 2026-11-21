@@ -57,7 +57,7 @@ def _string(value: object) -> str:
 
 
 class FakeAuthentik(threading.Thread):
-    def __init__(self):
+    def __init__(self) -> None:
         """Serve the reviewed offline contract fixtures over localhost HTTP."""
         super().__init__(daemon=True)
         self.calls: list[tuple[str, str, str, object]] = []
@@ -218,7 +218,14 @@ class FakeAuthentik(threading.Thread):
                     return self._send(401, {"detail": "unauthorized"})
                 try:
                     code, body = server.route(method, parsed.path, parsed.query, payload)
-                except Exception as error:
+                except (
+                    AttributeError,
+                    IndexError,
+                    KeyError,
+                    TypeError,
+                    ValueError,
+                    StopIteration,
+                ) as error:
                     return self._send(500, {"detail": str(error)})
                 self._send(code, body)
 

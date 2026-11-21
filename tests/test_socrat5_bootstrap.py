@@ -33,7 +33,7 @@ class BootstrapTests(unittest.TestCase):
         v = {}
         for f in [
             "ansible/roles/wireguard_socrat/defaults/main.yml",
-            "ansible/inventory/group_vars/Socrat.yml",
+            "ansible/inventory/group_vars/Socrat/cluster.yml",
             "ansible/inventory/host_vars/socrat-4.yml",
         ]:
             v.update(yaml.safe_load((ROOT / f).read_text()))

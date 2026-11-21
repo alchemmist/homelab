@@ -40,10 +40,10 @@ class CredentialTest(unittest.TestCase):
         ]
 
         class Runtime:
-            def __init__(self, root, config):
+            def __init__(self, root, config) -> None:
                 self.auth = dict(old)
 
-            def api(self, method, path, body=None):
+            def api(self, method, path, _body=None):
                 calls.append((method, path))
                 if method == "GET":
                     return users

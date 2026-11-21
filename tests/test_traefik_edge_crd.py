@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class EdgeCrdTests(unittest.TestCase):
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         output = subprocess.check_output(
             [
                 "helm",
