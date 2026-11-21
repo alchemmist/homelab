@@ -1,4 +1,6 @@
 import ast
+from types import ModuleType
+from typing import NotRequired, TypedDict
 import importlib.util, json, subprocess, copy
 from pathlib import Path
 import pytest, yaml
@@ -6,14 +8,14 @@ import pytest, yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def module(name):
+def module(name) -> ModuleType:
     s = importlib.util.spec_from_file_location(name, ROOT / "scripts" / f"{name}.py")
     m = importlib.util.module_from_spec(s)
     s.loader.exec_module(m)
     return m
 
 
-def test_scoped_web_groups_create_no_users():
+def test_scoped_web_groups_create_no_users() -> None:
     m = module("public-web-role-groups")
     ops = m.plan([])
     assert {x["name"] for x in ops} == {"syncthing-web-admins", "uptime-kuma-web-admins"}
@@ -35,7 +37,7 @@ def test_scoped_web_groups_create_no_users():
         ("children", ["inheritor"]),
     ],
 )
-def test_reject_foreign_or_privileged_web_group(field, value):
+def test_reject_foreign_or_privileged_web_group(field, value) -> None:
     m = module("public-web-role-groups")
     ops = m.plan([])
     ops[0][field] = value
@@ -43,7 +45,46 @@ def test_reject_foreign_or_privileged_web_group(field, value):
         m.plan(ops)
 
 
-def grafana():
+class _EnvVar(TypedDict):
+    """Grafana environment entry sourced from reviewed defaults or a secret."""
+
+    name: str
+    value: NotRequired[str]
+    valueFrom: NotRequired[dict[str, dict[str, str]]]
+
+
+class _Container(TypedDict):
+    """Deployment container with an optional ordered environment list."""
+
+    name: str
+    env: NotRequired[list[_EnvVar]]
+
+
+class _PodSpec(TypedDict):
+    """Pod template owned fields exercised by the SSO environment plan."""
+
+    containers: list[_Container]
+
+
+class _TemplateSpec(TypedDict):
+    """Inner template pod spec block."""
+
+    spec: _PodSpec
+
+
+class _DeploymentSpec(TypedDict):
+    """Deployment spec template holder."""
+
+    template: _TemplateSpec
+
+
+class _Deployment(TypedDict):
+    """Grafana deployment fragment rendered for public SSO review."""
+
+    spec: _DeploymentSpec
+
+
+def grafana() -> _Deployment:
     e = {
         "GF_AUTH_GENERIC_OAUTH_ENABLED": "true",
         "GF_AUTH_GENERIC_OAUTH_CLIENT_ID": "socrat-grafana",
@@ -54,14 +95,15 @@ def grafana():
         "GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH": "contains(groups[*], 'homelab-owner') && 'GrafanaAdmin' || 'Viewer'",
         "GOMEMLIMIT": "1GiB",
     }
-    env = [{"name": k, "value": v} for k, v in e.items()] + [
+    env: list[_EnvVar] = [{"name": k, "value": v} for k, v in e.items()]
+    env.append(
         {
             "name": "GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET",
             "valueFrom": {
                 "secretKeyRef": {"name": "socrat-authentik-grafana", "key": "client-secret"}
             },
         }
-    ]
+    )
     return {
         "spec": {
             "template": {
@@ -71,7 +113,7 @@ def grafana():
     }
 
 
-def test_grafana_only_reviewed_env_changes():
+def test_grafana_only_reviewed_env_changes() -> None:
     m = module("grafana-public-sso")
     d = grafana()
     before = copy.deepcopy(d)
@@ -95,7 +137,7 @@ def test_grafana_only_reviewed_env_changes():
         ("GF_AUTH_OAUTH_ALLOW_INSECURE_EMAIL_LOOKUP", "true"),
     ],
 )
-def test_grafana_drift_stops(key, value):
+def test_grafana_drift_stops(key, value) -> None:
     m = module("grafana-public-sso")
     d = grafana()
     next(e for e in d["spec"]["template"]["spec"]["containers"][1]["env"] if e["name"] == key)[
@@ -105,7 +147,7 @@ def test_grafana_drift_stops(key, value):
         m.env_plan(d)
 
 
-def test_public_policies_keep_machine_auth_and_block_human_fallbacks():
+def test_public_policies_keep_machine_auth_and_block_human_fallbacks() -> None:
     gf = (ROOT / "deploy/platform/grafana/public-entry/files/grafana-policy.conf").read_text()
     assert "~*^Basic 1" in gf and "~^POST:/login/?$ 1" in gf
     assert (
@@ -123,7 +165,7 @@ def test_public_policies_keep_machine_auth_and_block_human_fallbacks():
     assert "return 410" in sync and "syncthing-sync-1" not in sync
 
 
-def test_kuma_no_gitops_random_secret_by_default():
+def test_kuma_no_gitops_random_secret_by_default() -> None:
     docs = [
         x
         for x in yaml.safe_load_all(
@@ -146,7 +188,7 @@ def test_kuma_no_gitops_random_secret_by_default():
     )
 
 
-def test_schema_recovery_never_resets_existing_passwords_or_restarts_database():
+def test_schema_recovery_never_resets_existing_passwords_or_restarts_database() -> None:
     text = ast.unparse(ast.parse((ROOT / "scripts/kuma-db-account-recovery.py").read_text()))
     assert "CREATE USER" in text and "ALTER USER" not in text and "DROP USER" not in text
     assert "rollout restart" not in text and "secret['metadata']['resourceVersion']" in text
@@ -154,7 +196,7 @@ def test_schema_recovery_never_resets_existing_passwords_or_restarts_database():
     assert "Foreign/partial service account; stop" in text and "uncertain.json" in text
 
 
-def test_fresh_bootstrap_rejects_mismatched_application_identity():
+def test_fresh_bootstrap_rejects_mismatched_application_identity() -> None:
     r = subprocess.run(
         [
             "helm",
@@ -170,7 +212,7 @@ def test_fresh_bootstrap_rejects_mismatched_application_identity():
     assert r.returncode != 0 and "Fresh DB bootstrap requires" in r.stderr
 
 
-def test_dns_cleanup_only_owned_files_and_no_global_flush_or_vpn_commands():
+def test_dns_cleanup_only_owned_files_and_no_global_flush_or_vpn_commands() -> None:
     text = (ROOT / "scripts/macos-public-dns-cleanup.py").read_text()
     m = module("macos-public-dns-cleanup")
     assert len(m.DOMAINS) == 12 and all(x.endswith(".alchemmist.xyz") for x in m.DOMAINS)
@@ -190,7 +232,7 @@ def test_dns_cleanup_only_owned_files_and_no_global_flush_or_vpn_commands():
     assert "Backup verification failed" in text and "Fresh exact plan approval required" in text
 
 
-def test_new_clients_do_not_reinstall_private_dns_by_default():
+def test_new_clients_do_not_reinstall_private_dns_by_default() -> None:
     defaults = yaml.safe_load(
         (ROOT / "ansible/roles/wireguard_admin_client/defaults/main.yml").read_text()
     )
