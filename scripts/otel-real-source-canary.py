@@ -10,21 +10,37 @@ import time
 import urllib.parse
 import urllib.request
 import uuid
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import NotRequired, TypedDict
+
+type _Json = None | bool | int | float | str | list[_Json] | dict[str, _Json]
+
+
+class _Target(TypedDict):
+    scrapePool: str
+    health: str
+    labels: dict[str, str]
+    discoveredLabels: NotRequired[dict[str, str]]
+
+
+class _Targets(TypedDict):
+    activeTargets: list[_Target]
+
 
 NAMESPACE = "cattle-monitoring-system"
 PROMETHEUS = "kube-prometheus-stack-prometheus"
 CERT_ROOT = "/etc/prometheus/certs/"
 
 
-def fingerprint(value):
+def fingerprint(value: object):
     return hashlib.sha256(
         json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
 
 
-def kube(*arguments: str, document=None):
+def kube(*arguments, document: object | None = None):
     result = subprocess.run(
         ["kubectl", "-n", NAMESPACE, *arguments],
         input=json.dumps(document) if document is not None else None,
@@ -37,7 +53,7 @@ def kube(*arguments: str, document=None):
     return result.stdout
 
 
-def prometheus(endpoint):
+def prometheus(endpoint: str):
     path = (
         "/api/v1/namespaces/"
         + NAMESPACE
@@ -58,7 +74,7 @@ def free_port():
         return handle.getsockname()[1]
 
 
-def rewrite_assets(value, paths, kubeconfig):
+def rewrite_assets(value: _Json, paths: Mapping[str, str], kubeconfig: Path):
     if isinstance(value, dict):
         result = {key: rewrite_assets(item, paths, kubeconfig) for key, item in value.items()}
         for discovery in result.get("kubernetes_sd_configs", []):
@@ -75,7 +91,7 @@ def rewrite_assets(value, paths, kubeconfig):
     return paths.get(value, value) if isinstance(value, str) else value
 
 
-def expected_targets(targets, pools):
+def expected_targets(targets: _Targets, pools: set[str]):
     selected = [target for target in targets["activeTargets"] if target["scrapePool"] in pools]
     if not selected or any(target["health"] != "up" for target in selected):
         raise ValueError("Selected sources must be healthy before canary collection")
@@ -85,7 +101,7 @@ def expected_targets(targets, pools):
     return set(identities)
 
 
-def cleanup_workspace(workspace):
+def cleanup_workspace(workspace: Path):
     if (
         os.geteuid() != 0
         or workspace.is_symlink()
@@ -132,7 +148,7 @@ def cleanup_workspace(workspace):
         raise RuntimeError("Temporary discovery RBAC cleanup incomplete")
 
 
-def run(args):
+def run(args: argparse.Namespace):
     if os.geteuid() != 0:
         raise ValueError("Private host canary staging requires the authorized root controller")
     contract = json.loads((args.bundle / "contract.json").read_text())

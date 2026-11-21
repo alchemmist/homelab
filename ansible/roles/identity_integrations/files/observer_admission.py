@@ -1,9 +1,31 @@
 """Pure retention guard; only the reviewed bootstrap may open group admission."""
 
+from collections.abc import Mapping, Sequence
+from typing import NotRequired, TypedDict
+
 PRINCIPAL = "genericoidc_group://homelab-observer"
 
 
-def retain_observer(original, allowed, roles, ttl):
+class _RoleMetadata(TypedDict):
+    name: str
+    labels: NotRequired[dict[str, str]]
+
+
+class _Role(TypedDict):
+    metadata: _RoleMetadata
+    newUserDefault: NotRequired[bool]
+
+
+class _Admission(TypedDict, total=False):
+    allowedPrincipalIds: list[str]
+
+
+def retain_observer(
+    original: _Admission,
+    allowed: Sequence[str],
+    roles: Sequence[_Role],
+    ttl: Mapping[str, str],
+):
     result = list(allowed)
     if PRINCIPAL not in original.get("allowedPrincipalIds", []):
         return result
@@ -28,7 +50,7 @@ def retain_observer(original, allowed, roles, ttl):
     return result
 
 
-def authconfig_patch(original, settings):
+def authconfig_patch(original: Mapping[str, Mapping[str, str]], settings: Mapping[str, object]):
     """Do not overwrite another writer's admission/configuration changes."""
     return [
         {"op": "test", "path": "/metadata/uid", "value": original["metadata"]["uid"]},

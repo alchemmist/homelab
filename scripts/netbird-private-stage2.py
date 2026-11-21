@@ -16,6 +16,7 @@ import subprocess
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Mapping
 from pathlib import Path
 
 ROOT = Path.home() / ".local/state/netbird-internal-stage"
@@ -30,19 +31,43 @@ KUBE = [
 ]
 
 
-def require(ok, message):
+def require(ok: object, message: str) -> None:
     if not ok:
         raise ValueError(message)
 
 
-def private(path, data):
+def as_dict(value: object) -> dict[str, object]:
+    """Return a JSON object, raising on structural divergence from the plan."""
+    if not isinstance(value, dict):
+        error = "expected a JSON object"
+        raise TypeError(error)
+    return value
+
+
+def as_list(value: object) -> list[object]:
+    """Return a JSON array, raising on structural divergence from the plan."""
+    if not isinstance(value, list):
+        error = "expected a JSON list"
+        raise TypeError(error)
+    return value
+
+
+def as_str(value: object) -> str:
+    """Return a JSON string, raising on structural divergence from the plan."""
+    if not isinstance(value, str):
+        error = "expected a JSON string"
+        raise TypeError(error)
+    return value
+
+
+def private(path: Path, data: object) -> None:
     require(not path.is_symlink(), "private path is a symlink")
     fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     with os.fdopen(fd, "w") as f:
         json.dump(data, f)
 
 
-def evidence(root, name):
+def evidence(root: Path, name: str) -> None:
     data = json.loads((root / "journal" / (name + ".evidence.json")).read_text())
     age = datetime.datetime.now(datetime.UTC) - datetime.datetime.fromisoformat(data["created_at"])
     require(
@@ -54,8 +79,8 @@ def evidence(root, name):
     )
 
 
-def settings_body(account):
-    settings = dict(account["settings"])
+def settings_body(account: Mapping[str, object]) -> dict[str, object]:
+    settings = dict(as_dict(account["settings"]))
     settings.update(
         jwt_groups_enabled=True,
         jwt_groups_claim_name="groups",
@@ -70,29 +95,29 @@ def settings_body(account):
     return {"settings": settings}
 
 
-def default_policy(policies):
+def default_policy(policies: object) -> str:
+    items = as_list(policies)
+    require(len(items) == 1, "expected only native Default policy")
+    p = as_dict(items[0])
+    rules = as_list(p["rules"])
     require(
-        isinstance(policies, list) and len(policies) == 1, "expected only native Default policy"
-    )
-    p = policies[0]
-    require(
-        p["name"] == "Default" and p["enabled"] is True and len(p["rules"]) == 1,
+        p["name"] == "Default" and p["enabled"] is True and len(rules) == 1,
         "unexpected default policy",
     )
-    rule = p["rules"][0]
+    rule = as_dict(rules[0])
     require(
         rule["action"] == "accept" and rule["protocol"] == "all" and rule["bidirectional"] is True,
         "unexpected default rule",
     )
     require(
-        [g["name"] for g in rule["sources"]] == ["All"]
-        and [g["name"] for g in rule["destinations"]] == ["All"],
+        [as_dict(d)["name"] for d in as_list(rule["sources"])] == ["All"]
+        and [as_dict(d)["name"] for d in as_list(rule["destinations"])] == ["All"],
         "unexpected default groups",
     )
-    return p["id"]
+    return as_str(p["id"])
 
 
-def run(command):
+def run(command: list[str]) -> bytes:
     return subprocess.check_output(KUBE + command, stderr=subprocess.DEVNULL)
 
 
@@ -106,7 +131,7 @@ def main():
     token = None
     process = None
 
-    def api(method, path, body=None):
+    def api(method: str, path: str, body: dict[str, object] | None = None):
         headers = {"Content-Type": "application/json"}
         if token:
             headers["Authorization"] = "Token " + token
@@ -214,7 +239,7 @@ def main():
                 "peer_login_expiration",
                 "regular_users_view_blocked",
             ):
-                require(actual[key] == desired["settings"][key], "account settings drift")
+                require(actual[key] == as_dict(desired["settings"])[key], "account settings drift")
             private(
                 journal / "bootstrap-complete.json",
                 {

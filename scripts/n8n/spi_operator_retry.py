@@ -10,6 +10,7 @@ import json
 import re
 import sqlite3
 import time
+from typing import NotRequired, TypedDict
 
 TARGETS = {
     "08ba1f0938dd3bf6d8a03b9383b5d852255bbd16fa6c24ba6ece198c0a503af9": "LLM_CONTEXT_METADATA_TOO_LARGE",
@@ -19,19 +20,47 @@ NONCE = "spi-two-target-retry-08ba-998b-20261107-v1"
 AUDIT = "operator_retry_audit"
 
 
-def packed(x):
+
+
+class _Authorization(TypedDict):
+    authorization_text: str
+    nonce: str
+    job_ids: list[str]
+    reason: str
+    recorded_at: str
+    supervisor_run_id: str
+    target_manifest_digest: NotRequired[str]
+
+
+class _TargetManifest(TypedDict):
+    version: int
+    nonce: str
+    original_target_file_sha256: str
+    rows: list[dict[str, object]]
+
+
+def packed(x: object):
     return json.dumps(x, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
 
 
-def digest(x):
+def digest(x: object):
     return hashlib.sha256(packed(x).encode()).hexdigest()
 
 
-def quoted(name):
+def quoted(name: str):
     return '"' + name.replace('"', '""') + '"'
 
 
-def ordered_table_scan(c, name):
+def row_id(row: dict[str, object]) -> str:
+    """Return the authoritative text id of a reviewed job row."""
+    identifier = row["id"]
+    if not isinstance(identifier, str):
+        message = "job id must be text"
+        raise TypeError(message)
+    return identifier
+
+
+def ordered_table_scan(c: sqlite3.Connection, name: str):
     """Transaction-local physical order, not a VACUUM-independent logical hash.
 
     Never sort complete rows: require the native rowid/primary btree order and
@@ -64,8 +93,8 @@ def ordered_table_scan(c, name):
     return c.execute(sql)
 
 
-def table_hashes(c, original_jobs=None):
-    result = {}
+def table_hashes(c: sqlite3.Connection, original_jobs: dict[str, dict[str, object]] | None = None):
+    result: dict[str, str] = {}
     for (name,) in c.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"):
         if name == AUDIT:
             continue
@@ -83,7 +112,14 @@ def table_hashes(c, original_jobs=None):
     return result
 
 
-def manifest_digest(manifest):
+def manifest_rows(manifest: _TargetManifest | None) -> list[dict[str, object]]:
+    """Return the reviewed rows of the operator-signed target manifest."""
+    if manifest is None:
+        raise TypeError("target manifest is required")
+    return manifest["rows"]
+
+
+def manifest_digest(manifest: object):
     if (
         not isinstance(manifest, dict)
         or manifest.get("version") != 1
@@ -102,7 +138,7 @@ def manifest_digest(manifest):
     return digest(manifest)
 
 
-def authorize(a):
+def authorize(a: _Authorization):
     if (
         a.get("authorization_text") != "Да, все рзрешаю"
         or a.get("nonce") != NONCE
@@ -116,7 +152,12 @@ def authorize(a):
     datetime.datetime.fromisoformat(a["recorded_at"].replace("Z", "+00:00"))
 
 
-def retry(path, authorization, execute=False, manifest=None):
+def retry(
+    path: str,
+    authorization: _Authorization,
+    execute: bool = False,
+    manifest: _TargetManifest | None = None,
+):
     authorize(authorization)
     bound = manifest_digest(manifest)
     if authorization.get("target_manifest_digest") != bound:
@@ -126,13 +167,13 @@ def retry(path, authorization, execute=False, manifest=None):
     try:
         c.execute("BEGIN IMMEDIATE")
         before = table_hashes(c)
-        rows = []
+        rows: list[dict[str, object]] = []
         for key, error in TARGETS.items():
             matches = list(c.execute("SELECT * FROM jobs WHERE id=?", (key,)))
             if len(matches) != 1:
                 raise ValueError("missing exact full ID")
             row = dict(matches[0])
-            if row != next(r for r in manifest["rows"] if r["id"] == key):
+            if row != next(r for r in manifest_rows(manifest) if r["id"] == key):
                 raise ValueError("reviewed full row drift")
             if row["state"] == "complete" and row["stage"] == 2:
                 raise ValueError("already complete: skip, never rerun")
@@ -213,9 +254,9 @@ def retry(path, authorization, execute=False, manifest=None):
                 raise ValueError("unexpected selected row mutation")
         # Normalize only the two already-verified selected rows while hashing;
         # no compensating UPDATEs or history rewrites are performed.
-        if table_hashes(c, {r["id"]: r for r in rows}) != before:
+        if table_hashes(c, {row_id(r): r for r in rows}) != before:
             raise ValueError("non-authorized row/table mutation")
-        expected = {r["id"]: dict(r, state="retry", available=now, updated=now) for r in rows}
+        expected = {row_id(r): dict(r, state="retry", available=now, updated=now) for r in rows}
         for key, row in expected.items():
             if dict(c.execute("SELECT * FROM jobs WHERE id=?", (key,)).fetchone()) != row:
                 raise ValueError("final target mismatch")
@@ -245,7 +286,7 @@ def main():
         auth = json.load(f)
     with open(a.target_manifest) as f:
         manifest = json.load(f)
-    print(packed(retry(a.database, auth, a.execute, manifest)))
+    print(packed(retry(a.database, auth, execute=a.execute, manifest=manifest)))
 
 
 if __name__ == "__main__":

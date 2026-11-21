@@ -14,7 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 
-def literal(value):
+def literal(value: object) -> object:
     if isinstance(value, dict):
         return {key: literal(item) for key, item in value.items()}
     if isinstance(value, list):
@@ -22,7 +22,7 @@ def literal(value):
     return value.replace("$", "$$") if isinstance(value, str) else value
 
 
-def metrics(counter, gauge):
+def metrics(counter: int, *, gauge: bool) -> str:
     text = "# TYPE smoke_requests_total counter\nsmoke_requests_total " + str(counter) + "\n"
     if gauge:
         text += '# TYPE smoke_value gauge\nsmoke_value{region="test"} 42\n'
@@ -42,7 +42,7 @@ smoke_summary_count 3
     )
 
 
-def query(port, context, expression='{__name__=~"smoke_.+|up"}'):
+def query(port: int, context: ssl.SSLContext, expression: str = '{__name__=~"smoke_.+|up"}'):
     parameters = urllib.parse.urlencode({"query": expression})
     with urllib.request.urlopen(
         "https://127.0.0.1:" + str(port) + "/api/v1/query?" + parameters, context=context, timeout=5
@@ -56,7 +56,9 @@ def query(port, context, expression='{__name__=~"smoke_.+|up"}'):
     }
 
 
-def semantic_series_view(series):
+def semantic_series_view(series: object):
+    if not isinstance(series, dict):
+        raise TypeError
     result = {}
     for key, value in series.items():
         attributes = dict(key)
@@ -75,11 +77,11 @@ def semantic_series_view(series):
     return result
 
 
-def equivalent_series(legacy, shadow):
+def equivalent_series(legacy: object, shadow: object):
     return semantic_series_view(legacy) == semantic_series_view(shadow)
 
 
-def promql_checks(context, reset):
+def promql_checks(context: ssl.SSLContext, *, reset: bool) -> int:
     pairs = [
         (
             "histogram_quantile",
@@ -109,7 +111,7 @@ def promql_checks(context, reset):
     return len(pairs)
 
 
-def run(args):
+def run(args: argparse.Namespace):
     if os.readlink("/proc/self/ns/net") == os.readlink("/proc/1/ns/net"):
         raise ValueError("A separate network namespace is mandatory")
     args.workspace.mkdir(mode=0o700, exist_ok=False)
@@ -117,7 +119,7 @@ def run(args):
 
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
-            body = metrics(state["counter"], state["gauge"]).encode()
+            body = metrics(state["counter"], gauge=bool(state["gauge"])).encode()
             self.send_response(200)
             self.send_header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
@@ -290,7 +292,7 @@ def run(args):
                         <= names
                         and all(dict(key).get("fixture_port") == "19100" for key in shadow)
                     ):
-                        checked_queries = promql_checks(context, phase != "initial")
+                        checked_queries = promql_checks(context, reset=phase != "initial")
                         phases.append(
                             {
                                 "promqlChecks": checked_queries,

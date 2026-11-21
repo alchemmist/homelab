@@ -10,10 +10,10 @@ from engine import REPO, UPDATES, UnsafeInput
 
 
 class GitHub:
-    def __init__(self, token):
+    def __init__(self, token: str):
         self.token = token
 
-    def api(self, method, path, body=None):
+    def api(self, method: str, path: str, body: object = None):
         # All destinations are fixed; model input never controls API paths.
         request = urllib.request.Request(
             "https://api.github.com/repos/" + REPO + "/" + path,
@@ -32,7 +32,7 @@ class GitHub:
         except urllib.error.HTTPError as exc:
             raise RuntimeError(f"GitHub {method} failed (HTTP {exc.code})") from None
 
-    def compare(self, before, after):
+    def compare(self, before: str, after: str):
         for sha in (before, after):
             if not re.fullmatch("[a-f0-9]{40}", sha):
                 raise UnsafeInput("Full SHA required")
@@ -58,13 +58,13 @@ class GitHub:
         result["commits"] = commits
         return result
 
-    def read_updates(self, ref):
+    def read_updates(self, ref: str):
         f = self.api("GET", f"contents/{UPDATES}?ref={ref}")
         if f.get("encoding") != "base64":
             raise UnsafeInput("Unexpected GitHub content encoding")
         return base64.b64decode(f["content"]).decode(), f["sha"]
 
-    def propose(self, after, content, reason, draft=False):
+    def propose(self, after: str, content: str, reason: str, *, draft: bool = False):
         if not re.fullmatch("[a-f0-9]{40}", after):
             raise UnsafeInput("Full SHA required")
         branch = "automation/blog-updates-" + after + ("-test" if draft else "")
