@@ -37,6 +37,8 @@ load_config() {
       value="${value%"${value##*[![:space:]]}"}"
       if [[ "${value}" == \"*\" && "${value}" == *\" || "${value}" == \'*\' && "${value}" == *\' ]]; then
         value="${value:1:${#value}-2}"
+      else
+        value="${value%%[[:space:]]#*}"
       fi
       export "${key}=${value}"
     done < "${CONFIG_FILE}"
