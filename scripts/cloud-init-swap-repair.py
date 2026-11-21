@@ -26,11 +26,13 @@ RECEIPT = Path("/var/lib/homelab-recovery/20261114-cloud-init-swap")
 
 
 def require(condition, message):
+    """Raise an error when a required condition is not met."""
     if not condition:
         raise RuntimeError(message)
 
 
 def validate(base, others, swaps, fstab, size):
+    """Perform the validate operation."""
     require(base.get("bootcmd") == EXPECTED, "Provider bootcmd differs; refuse")
     require(not any("bootcmd" in d for d in others), "Another bootcmd owner exists")
     rows = [line.split() for line in swaps.splitlines()[1:] if line.strip()]
@@ -50,10 +52,12 @@ def validate(base, others, swaps, fstab, size):
 
 
 def command(argv):
+    """Perform the command operation."""
     return subprocess.run(argv, check=True, capture_output=True, text=True).stdout
 
 
 def atomic(path, text, mode):
+    """Perform the atomic operation."""
     fd, tmp = tempfile.mkstemp(dir=path.parent)
     try:
         os.fchmod(fd, mode)
@@ -73,6 +77,7 @@ def atomic(path, text, mode):
 
 
 def main():
+    """Run the command-line entry point."""
     import yaml  # Existing cloud-init dependency on the target, not pip on production.
 
     parser = argparse.ArgumentParser(description=__doc__)

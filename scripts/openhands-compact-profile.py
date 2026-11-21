@@ -1,4 +1,5 @@
 """Run inside Canvas via `kubectl -n openhands exec -i openhands-0 -- python -`.
+
 Creates/activates a dedicated native agent profile; no LLM key or global edit.
 """
 import json

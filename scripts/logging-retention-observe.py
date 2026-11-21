@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Bounded metadata-only retention observation through a local Prometheus port-forward.
+
 Does not mutate the cluster, query log bodies, or assert infinite reliability.
 """
 

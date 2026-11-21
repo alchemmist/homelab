@@ -1,4 +1,5 @@
 """Explicit owner-admin API migration. Never run as part of normal reconciliation.
+
 The legacy credential key remains an alias for existing consumers, not a bootstrap token.
 apply/check never delete humans; retire-akadmin is a separate explicit guarded action. Never prints credentials.
 """

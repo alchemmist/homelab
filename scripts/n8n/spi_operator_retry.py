@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Offline-reviewed, private operator CLI. Default dry-run; never a public API.
+
 No allowance reset: one subsequent unsafe failure can kill a selected job again.
 """
 
@@ -20,14 +21,17 @@ AUDIT = "operator_retry_audit"
 
 
 def packed(x):
+    """Serialize a value to a canonical, stable JSON encoding."""
     return json.dumps(x, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
 
 
 def digest(x):
+    """Return the SHA-256 hex digest of the canonical JSON encoding of x."""
     return hashlib.sha256(packed(x).encode()).hexdigest()
 
 
 def quoted(name):
+    """Quote an identifier for embedding into SQLite SQL."""
     return '"' + name.replace('"', '""') + '"'
 
 
@@ -65,6 +69,7 @@ def ordered_table_scan(c, name):
 
 
 def table_hashes(c, original_jobs=None):
+    """Hash every non-audit table row-by-row in stable btree order."""
     result = {}
     for (name,) in c.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"):
         if name == AUDIT:
@@ -84,6 +89,7 @@ def table_hashes(c, original_jobs=None):
 
 
 def manifest_digest(manifest):
+    """Validate the reviewed target manifest and return its canonical digest."""
     if (
         not isinstance(manifest, dict)
         or manifest.get("version") != 1
@@ -103,6 +109,7 @@ def manifest_digest(manifest):
 
 
 def authorize(a):
+    """Validate the recorded operator authorization against the expected nonce and reasons."""
     if (
         a.get("authorization_text") != "Да, все рзрешаю"
         or a.get("nonce") != NONCE
@@ -249,6 +256,7 @@ def _verify_audit_state(
 
 
 def retry(path, authorization, execute=False, manifest=None):
+    """Verify state and re-queue the two reviewed dead jobs under immutable audit."""
     authorize(authorization)
     bound = manifest_digest(manifest)
     if authorization.get("target_manifest_digest") != bound:
@@ -286,6 +294,7 @@ def retry(path, authorization, execute=False, manifest=None):
 
 
 def main():
+    """Parse CLI arguments and run the dry-run or executed retry."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--database", required=True)
     p.add_argument("--authorization", required=True)

@@ -1,4 +1,5 @@
 """SSO-protected, bounded, integrity-checked artifact reader; private read-only S3 upstream.
+
 No cookies, caller identity headers, request paths or bodies are logged.
 """
 

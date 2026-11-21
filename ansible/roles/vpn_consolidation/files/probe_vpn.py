@@ -10,6 +10,7 @@ from pathlib import Path
 
 
 def main():
+    """Execute the main operation."""
     with sqlite3.connect("file:/srv/x-ui-lab/db/x-ui.db?mode=ro", uri=True) as database:
         clients = []
         for row in database.execute(

@@ -22,6 +22,7 @@ MAPPING = "homelab-litellm-reviewed-identity"
 
 def identity_expression(owner_uid, owner_email, user_uuids=(), user_group=None):
     # Identities/roles are selected by reviewed immutable subject, never email.
+    """Document the identity expression operation."""
     return (
         "uid = str(request.user.uuid)\n"
         'owner = uid.replace("-", "") == ' + repr(owner_uid.replace("-", "")) + "\n"
@@ -48,6 +49,7 @@ def identity_expression(owner_uid, owner_email, user_uuids=(), user_group=None):
 
 
 def main():
+    """Document the main operation."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("root", type=Path)
     p.add_argument("--public-edge", default="109.173.40.247")

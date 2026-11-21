@@ -178,6 +178,7 @@ def _run_restore_pod(service: str, dump: bytes, blobs: int) -> None:
 
 
 def main():
+    """Run the command-line entry point."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--backup", type=Path, required=True)
     p.add_argument("--service", choices=["authentik", "harbor", "open-webui"], default="authentik")

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Provision only a new dedicated OpenHands Redis credential; never rotate/adopt.
+
 Default GET-only. --apply creates the missing Secret via stdin, never argv/Git.
 Does not read or modify Authentik, existing OIDC credentials or Canvas secrets.
 """
