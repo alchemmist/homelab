@@ -51,7 +51,14 @@ class API:
             d = self.call(
                 "GET", path + ("&" if "?" in path else "?") + f"page_size=100&page={page}"
             )
-            rows.extend(d["results"])
+            require(isinstance(d, dict), "Authentik returned a non-object page")
+            results = d["results"]
+            require(isinstance(results, list), "Authentik returned invalid results")
+            require(
+                all(isinstance(row, dict) for row in results),
+                "Authentik returned a non-object result",
+            )
+            rows.extend(results)
             if not d.get("pagination", {}).get("next"):
                 return rows
         raise ValueError("Pagination exceeded")

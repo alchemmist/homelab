@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--private-dir", type=Path, required=True)
     a = p.parse_args()
