@@ -18,7 +18,13 @@ class BrokerFailure(Exception):
     pass
 
 
-def request(method, url, token, body=None, context=None):
+def request(
+    method: str,
+    url: str,
+    token: str,
+    body: object = None,
+    context: ssl.SSLContext | None = None,
+):
     req = urllib.request.Request(
         url,
         data=json.dumps(body).encode() if body is not None else None,

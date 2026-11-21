@@ -5,13 +5,47 @@ import os
 import subprocess
 import tempfile
 import urllib.request
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
+from typing import Protocol
 
 from engine import UnsafeInput, page_ok, select_closable, spec_changed
 from github import BotRepo, Homelab
 
 
-def model(system, data):
+class PageBot(Protocol):
+    """Bot repo reads used by a stage. Test doubles only need these methods."""
+
+    def files(self, before: object, after: object) -> object:
+        """Return compare or commit file entries."""
+        ...
+
+    def text(self, sha: object, path: str) -> str:
+        """Return one allowed file at sha."""
+        ...
+
+
+class WikiRepo(Protocol):
+    """Homelab writes used by a stage."""
+
+    def propose(self, after: object, markdown: str) -> object:
+        """Open or reuse the wiki refresh pull request."""
+        ...
+
+    def automation_prs(self, keep: object) -> Sequence[Mapping[str, object]]:
+        """List older automation pull requests."""
+        ...
+
+    def close(self, number: object, survivor: object) -> object:
+        """Close one pull request as superseded."""
+        ...
+
+    def api(self, method: str, path: str, body: object = ...) -> object:
+        """Call the homelab GitHub API."""
+        ...
+
+
+def model(system: str, data: object):
     request = urllib.request.Request(
         "http://litellm.llm.svc.cluster.local:4000/v1/chat/completions",
         data=json.dumps(
@@ -50,7 +84,7 @@ def model(system, data):
         return json.loads(json.load(response)["choices"][0]["message"]["content"])
 
 
-def render_page(after, bot):
+def render_page(after: object, bot: PageBot):
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
         (root / "openapi.yaml").write_text(bot.text(after, "openapi.yaml"))
@@ -77,7 +111,15 @@ def render_page(after, bot):
         return page_ok(target.read_text())
 
 
-def stage(name, payload, bot=None, homelab=None, call_model=None, write=False):
+def stage(
+    name: str,
+    payload: Mapping[str, object],
+    bot: PageBot | None = None,
+    homelab: WikiRepo | None = None,
+    call_model: Callable[[str, object], object] | None = None,
+    *,
+    write: bool = False,
+):
     bot = bot or BotRepo()
     if name == "check":
         event = payload.get("body", payload)
@@ -97,6 +139,8 @@ def stage(name, payload, bot=None, homelab=None, call_model=None, write=False):
         if not write:
             return [{"after": after, "status": "dry_run"}]
         result = homelab.propose(after, markdown)
+        if not isinstance(result, dict):
+            raise UnsafeInput("GitHub proposal returned invalid data")
         result["after"] = after
         return [result]
     if name != "close-older":
