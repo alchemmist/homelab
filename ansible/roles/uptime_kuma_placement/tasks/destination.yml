@@ -16,7 +16,7 @@
         dest: "{{ kuma_destination_transfer.path }}/data.tar"
         owner: root
         group: root
-        mode: '0600'
+        mode: "0600"
 
     - name: Calculate the received archive digest
       ansible.builtin.stat:
@@ -32,7 +32,7 @@
       ansible.builtin.file:
         path: "{{ kuma_destination_transfer.path }}/data"
         state: directory
-        mode: '0700'
+        mode: "0700"
 
     - name: Extract the complete data directory
       ansible.builtin.command:
@@ -47,7 +47,8 @@
       changed_when: true
 
     - name: Verify the staged database
-      ansible.builtin.script: "{{ role_path }}/files/verify_database.py {{ kuma_destination_transfer.path }}/data/kuma.db"
+      ansible.builtin.script: "{{ role_path }}/files/verify_database.py
+                                  {{ kuma_destination_transfer.path }}/data/kuma.db"
       args:
         executable: python3
       register: kuma_destination_snapshot
@@ -55,14 +56,17 @@
 
     - name: Require matching database records
       ansible.builtin.assert:
-        that: (kuma_source_snapshot.stdout | from_json) == (kuma_destination_snapshot.stdout | from_json)
+        that: (kuma_source_snapshot.stdout | from_json)
+          == (kuma_destination_snapshot.stdout | from_json)
 
     - name: Preserve any previous destination and activate the staged directory
       ansible.builtin.shell: |
         set -eu
         if [ -e {{ uptime_kuma_directory | quote }} ]; then
-          mv -- {{ uptime_kuma_directory | quote }} {{ (kuma_destination_transfer.path ~ '/previous') | quote }}
+          mv -- {{ uptime_kuma_directory | quote }} \
+          {{ (kuma_destination_transfer.path ~ '/previous') | quote }}
         fi
-        mv -- {{ (kuma_destination_transfer.path ~ '/data') | quote }} {{ uptime_kuma_directory | quote }}
+        mv -- {{ (kuma_destination_transfer.path ~ '/data') | quote }} \
+        {{ uptime_kuma_directory | quote }}
       changed_when: true
 ...

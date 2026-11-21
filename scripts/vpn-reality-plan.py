@@ -11,6 +11,7 @@ import json
 import sqlite3
 from contextlib import closing
 from pathlib import Path
+from typing import TypedDict
 
 spec = importlib.util.spec_from_file_location(
     "inventory", Path(__file__).with_name("vpn-hardening-inventory.py")
@@ -19,7 +20,38 @@ inventory = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(inventory)
 
 
-def build(config, policy):
+class _RealityCorrection(TypedDict):
+    port: int
+    protocol: str
+    network: str
+    security: str
+    serverNames: list[str]
+    oldTarget: str
+    newTarget: str
+    apiApplyEnabled: bool
+    preserveClientMaterial: bool
+
+
+class _Policy(TypedDict):
+    version: int
+    newVpsOrPublicIp: bool
+    scope: str
+    realityCorrection: _RealityCorrection
+
+
+class _InboundRow(TypedDict):
+    port: int
+    protocol: str
+    enable: int | bool
+    stream_settings: str
+    id: int
+
+
+class _Config(TypedDict):
+    inbounds: list[_InboundRow]
+
+
+def build(config: _Config, policy: _Policy):
     if (
         policy.get("version") != 1
         or policy.get("newVpsOrPublicIp") is not False

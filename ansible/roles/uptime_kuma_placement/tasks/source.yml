@@ -4,7 +4,8 @@
   become: true
   block:
     - name: Verify the stopped source database
-      ansible.builtin.script: "{{ role_path }}/files/verify_database.py {{ uptime_kuma_directory }}/kuma.db"
+      ansible.builtin.script: "{{ role_path }}/files/verify_database.py
+                                  {{ uptime_kuma_directory }}/kuma.db"
       args:
         executable: python3
       register: kuma_source_snapshot
