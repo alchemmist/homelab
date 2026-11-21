@@ -1,3 +1,4 @@
+---
 image:
   # Built from artyom08-dev/deeperseeker 1b1148e plus local proxy wiring
   # (DEEPSEEKER_BROWSER_PROXY / DEEPSEEKER_UPSTREAM_PROXY / DEEPSEEKER_TOKEN_CONCURRENCY).
@@ -46,3 +47,4 @@ browserUserAgent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, lik
 clientVersion: 2.8.0
 cookieHeadless: "true"
 warmupNonHeadless: "false"
+...

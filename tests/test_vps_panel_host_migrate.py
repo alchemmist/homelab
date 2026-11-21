@@ -32,10 +32,10 @@ class HostMigrationTests(unittest.TestCase):
 
     def test_bad_group_and_port_refuse_before_network(self):
         for group in [
-            dict(groupId="../bad", inboundIds=[1], hosts=[OLD]),
-            dict(groupId="good", inboundIds=[1], hosts=[OLD + ":bad"]),
-            dict(groupId="good", inboundIds=[], hosts=[OLD]),
-            dict(groupId="good", inboundIds=[1], hosts=["11.1.1.1"]),
+            {"groupId": "../bad", "inboundIds": [1], "hosts": [OLD]},
+            {"groupId": "good", "inboundIds": [1], "hosts": [OLD + ":bad"]},
+            {"groupId": "good", "inboundIds": [], "hosts": [OLD]},
+            {"groupId": "good", "inboundIds": [1], "hosts": ["11.1.1.1"]},
         ]:
             with self.subTest(group=group), self.assertRaises(ValueError):
                 m.payload(group, OLD, NEW)

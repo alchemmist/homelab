@@ -33,7 +33,8 @@
         out=/var/lib/homelab-recovery/20261109-socrat4-bootstrap/before.tar
         test ! -e "$out" || exit 0
         umask 077
-        tar -cf "$out" /etc/passwd /etc/group /etc/shadow /etc/gshadow /etc/ssh /etc/sudoers /etc/sudoers.d /etc/hosts
+        tar -cf "$out" /etc/passwd /etc/group /etc/shadow /etc/gshadow \
+          /etc/ssh /etc/sudoers /etc/sudoers.d /etc/hosts
       args:
         creates: /var/lib/homelab-recovery/20261109-socrat4-bootstrap/before.tar
       no_log: true

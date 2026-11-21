@@ -11,11 +11,13 @@
 - name: Require Kubernetes mode before replacing recovery assets
   ansible.builtin.assert:
     that: not vpn_failover_latch.stat.exists
-    fail_msg: Native VPN recovery is active. Use its documented failback procedure before changing recovery assets.
+    fail_msg: Native VPN recovery is active. Use its documented failback procedure
+      before changing recovery assets.
 
 - name: Load current pinned edge configuration
   ansible.builtin.set_fact:
-    vpn_failover_edge: "{{ lookup('file', playbook_dir + '/../../charts/traefik-edge/values.yaml') | from_yaml }}"
+    vpn_failover_edge: >-
+      {{ lookup('file', playbook_dir + '/../../charts/traefik-edge/values.yaml') | from_yaml }}
 
 - name: Create private recovery directories
   ansible.builtin.file:
@@ -42,7 +44,8 @@
   when: vpn_failover_timer.stdout == 'loaded'
 
 - name: Wait for an in-flight watchdog check to finish
-  ansible.builtin.command: /usr/bin/flock --exclusive --timeout 240 {{ vpn_failover_state }}/lock /usr/bin/true
+  ansible.builtin.command: >-
+    /usr/bin/flock --exclusive --timeout 240 {{ vpn_failover_state }}/lock /usr/bin/true
   changed_when: false
 
 - name: Recheck recovery latch after pausing monitoring
@@ -76,7 +79,8 @@
     argv:
       - /usr/bin/python3
       - "{{ vpn_failover_root }}/prepare_runtime.py"
-      - "{{ (lookup('file', playbook_dir + '/../../charts/x-ui/values.yaml') | from_yaml).instances[item.instance].image }}"
+      - "{{ (lookup('file', playbook_dir + '/../../charts/x-ui/values.yaml')
+           | from_yaml).instances[item.instance].image }}"
       - "{{ vpn_failover_root }}/{{ item.name }}"
   loop: "{{ vpn_failover_workloads }}"
   loop_control:

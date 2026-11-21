@@ -6,10 +6,14 @@
       - item.name not in ['root', 'alchemmist', 'ghactions']
       - item.state | default('present') in ['present', 'disabled']
       - not (item.sudo | default(false) | bool)
-      - item.groups | default([]) | intersect(['sudo', 'wheel', 'admin', 'docker', 'disk', 'lxd', 'incus', 'kvm', 'libvirt']) | length == 0
+      - item.groups | default([]) | intersect(['sudo', 'wheel', 'admin', 'docker', 'disk',
+        'lxd', 'incus', 'kvm', 'libvirt']) | length == 0
       - item.authorized_keys | default([]) is not string
-      - item.state | default('present') == 'disabled' or item.authorized_keys | default([]) | length > 0
-    fail_msg: Managed users are key-only/non-root. Privileged roles require a separately reviewed policy.
+      - item.state | default('present') == 'disabled'
+        or item.authorized_keys | default([]) | length > 0
+    fail_msg: >-
+      Managed users are key-only/non-root. Privileged roles require a separately
+      reviewed policy.
   loop: "{{ homelab_users | default([]) }}"
   loop_control:
     label: "{{ item.name }}"
@@ -18,15 +22,19 @@
   ansible.builtin.assert:
     that:
       - item.1 is string
-      - item.1 is match('^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp256|sk-ssh-ed25519@openssh.com|sk-ecdsa-sha2-nistp256@openssh.com) [A-Za-z0-9+/]+={0,3}( .*)?$')
-  loop: "{{ homelab_users | default([]) | subelements('authorized_keys', skip_missing=True) }}"
+      - >-
+        item.1 is match('^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp256|sk-ssh-ed25519@openssh.com|'
+                        'sk-ecdsa-sha2-nistp256@openssh.com) [A-Za-z0-9+/]+={0,3}( .*)?$')
+  loop: "{{ homelab_users | default([]) | subelements('authorized_keys',
+             skip_missing=True) }}"
   loop_control:
     label: "{{ item.0.name }}"
 
 - name: Require unique identities
   ansible.builtin.assert:
     that:
-      - homelab_users | default([]) | map(attribute='name') | list | unique | length == homelab_users | default([]) | length
+      - homelab_users | default([]) | map(attribute='name') | list | unique | length
+        == homelab_users | default([]) | length
 
 - name: Select explicitly assigned users for this node
   ansible.builtin.set_fact:
@@ -46,8 +54,10 @@
     state: present
     create_home: true
     # Only the opt-in Authentik integration pins home; legacy users retain OS defaults.
-    home: "{{ '/home/' + item.name if homelab_authentik_ssh_scoped | default(false) | bool else omit }}"
-    shell: "{{ '/usr/sbin/nologin' if item.state | default('present') == 'disabled' else item.shell | default('/bin/bash') }}"
+    home: "{{ '/home/' + item.name if homelab_authentik_ssh_scoped | default(false) | bool
+              else omit }}"
+    shell: "{{ '/usr/sbin/nologin' if item.state | default('present') == 'disabled'
+               else item.shell | default('/bin/bash') }}"
     groups: "{{ item.groups | default([]) | join(',') }}"
     append: false
     password_lock: true
@@ -58,11 +68,11 @@
 
 - name: Ensure private SSH directories
   ansible.builtin.file:
-    path: /home/{{ item.name }}/.ssh
+    path: "/home/{{ item.name }}/.ssh"
     state: directory
     owner: "{{ item.name }}"
     group: "{{ item.name }}"
-    mode: "0700"
+    mode: '0700'
   become: true
   loop: "{{ homelab_assigned_users }}"
   loop_control:
@@ -70,11 +80,12 @@
 
 - name: Replace managed key sets so removed keys are actually revoked
   ansible.builtin.copy:
-    content: "{{ '' if item.state | default('present') == 'disabled' else (item.authorized_keys | join('\n')) + '\n' }}"
-    dest: /home/{{ item.name }}/.ssh/authorized_keys
+    content: "{{ '' if item.state | default('present') == 'disabled'
+                 else (item.authorized_keys | join('\n')) + '\n' }}"
+    dest: "/home/{{ item.name }}/.ssh/authorized_keys"
     owner: "{{ item.name }}"
     group: "{{ item.name }}"
-    mode: "0600"
+    mode: '0600'
   become: true
   loop: "{{ homelab_assigned_users }}"
   loop_control:
@@ -82,7 +93,7 @@
 
 - name: Remove legacy direct sudoers grants for managed non-sudo accounts
   ansible.builtin.file:
-    path: /etc/sudoers.d/{{ item.name }}
+    path: "/etc/sudoers.d/{{ item.name }}"
     state: absent
   become: true
   loop: "{{ homelab_assigned_users }}"
@@ -91,24 +102,26 @@
 
 - name: Inspect effective SSH, sudo and Kubernetes credential isolation
   ansible.builtin.script:
-    cmd: verify.py {{ item.name }}
+    cmd: 'verify.py {{ item.name }}'
     executable: python3
   become: true
   changed_when: false
   register: homelab_user_access_checks
-  loop: "{{ homelab_assigned_users }}"
+  loop: '{{ homelab_assigned_users }}'
   loop_control:
-    label: "{{ item.name }}"
+    label: '{{ item.name }}'
 
 - name: Require managed users to remain non-privileged
   ansible.builtin.assert:
     that:
       - not (item.stdout | regex_search('(?m)\{"username":.*\}') | from_json).hasSudoGrant
-      - not (item.stdout | regex_search('(?m)\{"username":.*\}') | from_json).canReadAdminKubeconfig
-      - (item.stdout | regex_search('(?m)\{"username":.*\}') | from_json).pubkeyAuthentication == 'yes'
+      - not (item.stdout | regex_search('(?m)\{"username":.*\}') | from_json)
+        .canReadAdminKubeconfig
+      - (item.stdout | regex_search('(?m)\{"username":.*\}') | from_json)
+        .pubkeyAuthentication == 'yes'
       - (item.stdout | regex_search('(?m)\{"username":.*\}') | from_json).usePAM == 'yes'
     fail_msg: Effective user isolation failed. Review host policy before onboarding.
-  loop: "{{ homelab_user_access_checks.results }}"
+  loop: '{{ homelab_user_access_checks.results }}'
   loop_control:
-    label: "{{ item.item.name }}"
+    label: '{{ item.item.name }}'
 ...
