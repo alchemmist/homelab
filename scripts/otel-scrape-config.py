@@ -127,6 +127,32 @@ def escape_literals(value):
     return value
 
 
+def refresh_api_targets(scrape):
+    """Update only the owned keep rule in frozen native Collector bundles."""
+    desired = yaml.safe_load((ROOT / "charts/prometheus/values.yaml").read_text())[
+        "kube-prometheus-stack"
+    ]["kubeApiServer"]["serviceMonitor"]["relabelings"][0]["regex"]
+    result = copy.deepcopy(scrape)
+    for job in result.get("scrape_configs", []):
+        if (
+            job.get("job_name")
+            != "serviceMonitor/cattle-monitoring-system/kube-prometheus-stack-apiserver/0"
+        ):
+            continue
+        rules = [
+            r
+            for r in job.get("relabel_configs", [])
+            if r.get("action") == "keep" and r.get("source_labels") == ["__address__"]
+        ]
+        if len(rules) != 1 or rules[0].get("regex") not in (
+            r"10\.250\.0\.(1|3|5):6443",
+            desired,
+        ):
+            raise ValueError("Unrecognized apiserver scrape keep rule")
+        rules[0]["regex"] = desired
+    return result
+
+
 def refresh_public_edge_probe(scrape):
     """Keep captured native scrape bundles aligned with the owned VPS probe."""
     targets = yaml.safe_load((ROOT / "charts/monitoring-k3s/values.yaml").read_text())[
@@ -151,7 +177,7 @@ def refresh_public_edge_probe(scrape):
                 msg = "Unexpected catalog TCP probe module"
                 raise ValueError(msg)
             job["params"]["target"] = [tcp_targets[identity[0]]]
-    return add_moscow_edge_probe(result)
+    return refresh_api_targets(add_moscow_edge_probe(result))
 
 
 def add_moscow_edge_probe(scrape):
@@ -223,6 +249,29 @@ def add_logging_self_monitoring(scrape):
     if existing and existing != [job]:
         msg = "Conflicting Loki self-monitoring target"
         raise ValueError(msg)
+    if not existing:
+        result["scrape_configs"].append(job)
+    return result
+
+
+def add_service_path_scrape(scrape):
+    """One native static DNS target per source; headless Services avoid VIP indirection."""
+    result = copy.deepcopy(scrape)
+    job = {
+        "job_name": "socrat-service-path",
+        "scrape_interval": "15s",
+        "scrape_timeout": "4s",
+        "static_configs": [
+            {
+                "targets": [f"service-path-{node}.automation.svc:9119"],
+                "labels": {"source": node},
+            }
+            for node in ("socrat-3", "socrat-5")
+        ],
+    }
+    existing = [j for j in result["scrape_configs"] if j["job_name"] == job["job_name"]]
+    if existing and existing != [job]:
+        raise ValueError("Conflicting service path scrape owner")
     if not existing:
         result["scrape_configs"].append(job)
     return result
@@ -414,6 +463,7 @@ def compile_config(source, targets, monitors=None):
     outputs["cluster"] = add_pg_platform_scrape(
         refresh_public_edge_probe(add_logging_self_monitoring(outputs["cluster"]))
     )
+    outputs["cluster"] = add_service_path_scrape(outputs["cluster"])
     outputs = escape_literals(outputs)
     contract["dollarEscaping"] = (
         "literal Prometheus dollars escaped before Collector confmap resolution"

@@ -226,7 +226,7 @@
     {
       "path": "deploy/wiki-runtime/chart",
       "basis": "reviewed-git-baseline",
-      "reviewedCommit": "5e7f2f8ce946ad428dec8a079ced2b1803d80222",
+      "reviewedCommit": "3b2412a0d309febc9fdd2ecab48123b33f7fbb17",
       "provenanceNote": "Existing local chart/identity guards retained. See deploy/wiki-runtime/oidc/README.md and docs/wiki-upgrade-20261107.md; no claim that all local files equal a tagged upstream release.",
       "files": {
         "Chart.yaml": "3da852d1b8b108c6d95b5485ceaa5fe2dfdfcb7ce83e075f5bfbd2f3b32a6f1b",

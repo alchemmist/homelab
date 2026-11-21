@@ -807,6 +807,68 @@
   },
   {
     "owner": "monitoring-k3s",
+    "resource": "socrat-service-path",
+    "group": "socrat.service.paths",
+    "alert": "SocratApiScrapeMissing",
+    "expr": "absent(up{job=\"apiserver\",instance=\"10.250.0.1:6443\"}) or\nabsent(up{job=\"apiserver\",instance=\"10.250.0.3:6443\"}) or\nabsent(up{job=\"apiserver\",instance=\"10.250.0.41:6443\"})\n",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratApiScrapeMissing",
+          "dashboard_uid": "alerts-9b2750a20f4596c3",
+          "panel_id": 1,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratApiScrapeMissing / rule evaluations",
+          "dashboard_uid": "alerts-9b2750a20f4596c3",
+          "panel_id": 2,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
+    "resource": "socrat-service-path",
+    "group": "socrat.service.paths",
+    "alert": "SocratApiScrapeUnavailable",
+    "expr": "up{job=\"apiserver\",instance=~\"10[.]250[.]0[.](1|3|41):6443\"} == 0",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratApiScrapeUnavailable",
+          "dashboard_uid": "alerts-9b2750a20f4596c3",
+          "panel_id": 3,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratApiScrapeUnavailable / rule evaluations",
+          "dashboard_uid": "alerts-9b2750a20f4596c3",
+          "panel_id": 4,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
     "resource": "monitoring-k3s-shared-registry",
     "group": "socrat.containers.health",
     "alert": "SocratContainerOOMKilled",
@@ -2255,6 +2317,37 @@
           "title": "SocratServiceOpenWebuiUnavailable / rule evaluations",
           "dashboard_uid": "alerts-8bcf7e7a450f9592",
           "panel_id": 46,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
+    "resource": "socrat-service-path",
+    "group": "socrat.service.paths",
+    "alert": "SocratServicePathDiverged",
+    "expr": "(socrat_service_path_divergence_streak >= 3) and (time() - socrat_service_path_sample_seconds < 60)",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratServicePathDiverged",
+          "dashboard_uid": "alerts-9b2750a20f4596c3",
+          "panel_id": 5,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratServicePathDiverged / rule evaluations",
+          "dashboard_uid": "alerts-9b2750a20f4596c3",
+          "panel_id": 6,
           "variables": {},
           "before_seconds": 7200,
           "after_seconds": 300

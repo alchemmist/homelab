@@ -107,6 +107,7 @@ def configure(bundle, cutover):
     scrape = native_scrape.refresh_public_edge_probe(
         native_scrape.add_pg_platform_scrape(native_scrape.add_logging_self_monitoring(scrape))
     )
+    scrape = native_scrape.add_service_path_scrape(scrape)
     cm = bootstrap.resource("ConfigMap", "otel-cluster-config", api="v1")
     cm["data"] = {
         "collector.yaml": yaml.safe_dump(config, sort_keys=False),

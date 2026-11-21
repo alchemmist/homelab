@@ -35,8 +35,8 @@ class AlertGraphInventoryTests(unittest.TestCase):
     def test_all_source_rules_have_real_panel_queries_and_priority(self) -> None:
         """Every source variant links to a real panel containing its exact condition."""
         rows = json.loads((ROOT / "docs/monitoring/alert-graphs.inventory.json").read_text())
-        # Main split PSI and CPU steal into ordinary-node and socrat-4 variants.
-        expected_source_rule_count = 212
+        # Includes Service-path divergence and distinct absent/down API scrapes.
+        expected_source_rule_count = 215
         assert len(rows) == expected_source_rule_count
         expected_graph_spec_version = 1
         for row in rows:
