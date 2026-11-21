@@ -26,6 +26,12 @@ NS = "cattle-monitoring-system"
 APPLICATIONS = ("litellm", "vllm", "open-webui")
 
 
+def require(expected: object, message: str) -> None:
+    """Enforce an invariant, failing with the given message."""
+    if not expected:
+        raise ValueError(message)
+
+
 def leaf_name(application):
     if application not in APPLICATIONS:
         raise ValueError("Only explicitly allowed application client leaves may be renewed")
@@ -89,8 +95,10 @@ def run(output, application="litellm"):
     leaf_name(application)
     os.umask(0o077)
     controller = Path.home() / "Library/Application Support/homelab/otel-controller"
-    if not output.resolve().is_relative_to(controller.resolve()):
-        raise ValueError("Use protected durable controller evidence")
+    require(
+        output.resolve().is_relative_to(controller.resolve()),
+        "Use protected durable controller evidence",
+    )
     output.mkdir(mode=0o700)
     kube = BOOTSTRAP.kube
     before = kube("-n", NS, "get", "certificate", leaf_name(application), "-o", "json")
@@ -98,8 +106,7 @@ def run(output, application="litellm"):
     identity_before = public_certificate_identity(kube, NS, application)
     source_before = identity_before["certificateSHA256"]
     target_before = public_certificate_hash(kube, "llm", application)
-    if source_before != target_before:
-        raise ValueError("Existing client-leaf mirror has not converged")
+    require(source_before == target_before, "Existing client-leaf mirror has not converged")
     (output / "certificate-before.json").write_text(json.dumps(before, indent=2) + "\n")
     progress = {
         "success": False,
@@ -161,15 +168,14 @@ def run(output, application="litellm"):
         time.sleep(2)
     else:
         raise ValueError("Native renewal deadline exceeded; preserve progress")
-    if after["spec"] != before["spec"]:
-        raise ValueError("Certificate spec changed during exercise")
+    require(after["spec"] == before["spec"], "Certificate spec changed during exercise")
     identity_after = public_certificate_identity(kube, NS, application)
     source_after = identity_after["certificateSHA256"]
-    if (
-        source_after == source_before
-        or identity_after["publicKeySHA256"] == identity_before["publicKeySHA256"]
-    ):
-        raise ValueError("New native revision must rotate both certificate and keypair")
+    require(
+        source_after != source_before
+        and identity_after["publicKeySHA256"] != identity_before["publicKeySHA256"],
+        "New native revision must rotate both certificate and keypair",
+    )
     progress.update(
         renewedPublicKeySHA256=identity_after["publicKeySHA256"], clientKeypairRotationVerified=True
     )

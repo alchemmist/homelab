@@ -139,11 +139,149 @@ def trace_records(document):
     return found
 
 
-def run(args):
-    if os.geteuid() != 0 or os.readlink("/proc/self/ns/net") == os.readlink("/proc/1/ns/net"):
-        raise ValueError("Root-owned isolated network namespace required")
-    args.workspace.mkdir(mode=0o700)
-    root = args.workspace
+def require(expected: object, message: str) -> None:
+    """Enforce an invariant, failing with the given message."""
+    if not expected:
+        raise ValueError(message)
+
+
+def replay_require_mtls_denial(args, report):
+    """Require every synthetic endpoint to refuse unauthenticated TLS clients."""
+    anonymous = ssl.create_default_context(cafile=str(args.tls / "ca.crt"))
+    anonymous.minimum_version = ssl.TLSVersion.TLSv1_3
+    denied = []
+    for port, path in [
+        (29090, "/-/ready"),
+        (3100, "/ready"),
+        (3200, "/ready"),
+        (4318, "/v1/metrics"),
+    ]:
+        try:
+            with urllib.request.urlopen(
+                "https://127.0.0.1:%d%s" % (port, path), context=anonymous, timeout=4
+            ):
+                raise ValueError("Synthetic endpoint accepted anonymous TLS client")
+        except ssl.SSLError:
+            denied.append(port)
+        except OSError as error:
+            if isinstance(getattr(error, "reason", None), ssl.SSLError):
+                denied.append(port)
+            else:
+                raise
+    report["anonymousClientRejectedPorts"] = denied
+
+
+def replay_save(root, report):
+    """Persist the current report to the private workspace."""
+    (root / "result.json").write_text(json.dumps(report, indent=2) + "\n")
+
+
+def replay_request(context, port, path, body=None):
+    """Issue a bounded authenticated request against a synthetic endpoint."""
+    payload = json.dumps(body).encode() if body is not None else None
+    req = urllib.request.Request(
+        "https://127.0.0.1:%d%s" % (port, path),
+        data=payload,
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(req, context=context, timeout=4) as response:
+        data = response.read(4 * 1024**2 + 1)
+    if len(data) > 4 * 1024**2:
+        raise ValueError("Bounded synthetic response exceeded")
+    return json.loads(data) if data and path not in ["/ready", "/-/ready"] else {}
+
+
+def replay_start(args, root, environment, children, generations, name):
+    """Start one named synthetic component exactly once per generation."""
+    if name in children and children[name].poll() is None:
+        raise ValueError("Duplicate synthetic process")
+    generations[name] = generations.get(name, 0) + 1
+    if name == "prometheus":
+        command = [
+            str(args.binaries / name),
+            "--config.file=" + str(root / "prometheus.json"),
+            "--storage.tsdb.path=" + str(root / "prometheus-data"),
+            "--web.listen-address=127.0.0.1:29090",
+            "--web.config.file=" + str(root / "web.json"),
+            "--web.enable-otlp-receiver",
+        ]
+    elif name in ["cluster", "trace-gateway"]:
+        command = [
+            str(args.binaries / "otelcol-contrib"),
+            "--config=" + str(root / (name + ".json")),
+        ]
+    else:
+        command = [
+            str(args.binaries / name),
+            "-config.file=" + str(root / (name + ".json")),
+            "-config.expand-env=true",
+        ]
+    with (root / ("%s-%d.log" % (name, generations[name]))).open("x") as log:
+        children[name] = subprocess.Popen(
+            command,
+            env=environment,
+            stdin=subprocess.DEVNULL,
+            stdout=log,
+            stderr=subprocess.STDOUT,
+        )
+
+
+def replay_stop(children, name):
+    """Stop one synthetic component and require a graceful exit."""
+    process = children[name]
+    if process.poll() is not None:
+        raise ValueError("Synthetic process exited before controlled stop")
+    process.terminate()
+    process.wait(timeout=20)
+    if process.returncode != 0:
+        raise ValueError("Synthetic process graceful stop failed")
+
+
+def replay_wait(check, seconds=100):
+    """Poll a bounded check until it passes or a TLS fault aborts the run."""
+    end = time.monotonic() + seconds
+    while True:
+        try:
+            if check():
+                return
+        except (OSError, ValueError) as error:
+            if isinstance(error, ssl.SSLCertVerificationError) or isinstance(
+                getattr(error, "reason", None), ssl.SSLCertVerificationError
+            ):
+                raise
+        if time.monotonic() >= end:
+            raise TimeoutError("Bounded synthetic phase failed")
+        time.sleep(1)
+
+
+def replay_ready(context, report):
+    """Require every synthetic backend to report readiness."""
+    for port, path in [(29090, "/-/ready"), (3100, "/ready"), (3200, "/ready")]:
+        try:
+            replay_request(context, port, path)
+            report.setdefault("backendReadiness", {})[str(port)] = "ready"
+        except Exception as error:
+            report.setdefault("backendReadiness", {})[str(port)] = (
+                type(error).__name__ + ": " + str(error)[:180]
+            )
+            raise
+    return True
+
+
+def replay_queues():
+    """Read exporter queue metrics from the synthetic collectors."""
+    result = {}
+    for port in [18888, 18889]:
+        with urllib.request.urlopen("http://127.0.0.1:%d/metrics" % port, timeout=4) as response:
+            lines = response.read(2 * 1024**2).decode().splitlines()
+        result[str(port)] = [
+            line for line in lines if line.startswith("otelcol_exporter_queue_size{")
+        ]
+    return result
+
+
+def replay_prepare(args, root):
+    """Mutate the synthetic configs and return the environment, report and context."""
     configs = {
         name: json.loads((args.config / (name + ".json")).read_text())
         for name in ["cluster", "trace-gateway", "loki", "tempo"]
@@ -210,7 +348,6 @@ def run(args):
     context = ssl.create_default_context(cafile=str(args.tls / "ca.crt"))
     context.load_cert_chain(str(args.tls / "client.crt"), str(args.tls / "client.key"))
     context.minimum_version = ssl.TLSVersion.TLSv1_3
-    children, generations = {}, {}
     report = {
         "success": False,
         "syntheticOnly": True,
@@ -223,136 +360,118 @@ def run(args):
         "errors": [],
         "queryClientTlsPolicy": "strict verified mTLS, TLS1.3 minimum, default curves",
     }
+    return environment, report, context
 
-    def save() -> None:
-        (root / "result.json").write_text(json.dumps(report, indent=2) + "\n")
 
-    def request(port, path, body=None) -> dict[str, object]:
-        payload = json.dumps(body).encode() if body is not None else None
-        req = urllib.request.Request(
-            "https://127.0.0.1:%d%s" % (port, path),
-            data=payload,
-            headers={"Content-Type": "application/json"},
+def replay_recovered(context, report, metrics_query, logs_query, expected, ids):
+    """Return whether every recovered signal matches the exact synthetic fixtures."""
+    metric_document = replay_request(context, 29090, metrics_query)
+    log_document = replay_request(context, 3100, logs_query)
+    values = [
+        entry[1]
+        for stream in log_document.get("data", {}).get("result", [])
+        for entry in stream["values"]
+    ]
+    expected_logs = {"ops-replay-log-%02d" % i for i in range(24)}
+    report["lastRecoveryCounts"] = {
+        "metricSeries": len(metric_document.get("data", {}).get("result", [])),
+        "metricPoints": sum(
+            len(item.get("values", []))
+            for item in metric_document.get("data", {}).get("result", [])
+        ),
+        "metricTimestampsValuesAndMultiplicityExact": check_metrics(metric_document, expected),
+        "logRecords": len(values),
+        "logBodiesAndMultiplicityExact": len(values) == 24 and set(values) == expected_logs,
+    }
+    if (
+        not check_metrics(metric_document, expected)
+        or len(values) != 24
+        or set(values) != expected_logs
+    ):
+        return False
+    for identity in ids:
+        body = replay_request(context, 3200, "/api/traces/" + identity)
+        spans = trace_records(body)
+        if (
+            len(spans) != 1
+            or spans[0][0] != identity
+            or not spans[0][1].startswith("ops-mandatory-")
+        ):
+            return False
+    return True
+
+
+def replay_rollback_phase(args, root, environment, children, generations, report):
+    """Exercise the restart and exact-configuration-rollback recovery path."""
+    preimage = (root / "cluster.json").read_bytes()
+    (root / "cluster-config-preimage.json").write_bytes(preimage)
+    candidate = rollback_candidate(preimage)
+    for name in ["cluster", "trace-gateway"]:
+        replay_stop(children, name)
+    (root / "cluster.json").write_bytes(candidate)
+    report["durableQueueFiles"] = [
+        {"path": str(p.relative_to(root)), "bytes": p.stat().st_size}
+        for p in (root / "state").rglob("*")
+        if p.is_file() and ("cluster" in p.parts or "traces" in p.parts)
+    ]
+    require(report["durableQueueFiles"], "No durable queue files")
+    for name in ["trace-gateway", "cluster"]:
+        replay_start(args, root, environment, children, generations, name)
+    time.sleep(3)
+    report["outageQueueMetricsAfterRestart"] = replay_queues()
+    replay_stop(children, "cluster")
+    (root / "cluster.json").write_bytes((root / "cluster-config-preimage.json").read_bytes())
+    require(
+        (root / "cluster.json").read_bytes() == preimage,
+        "Exact configuration preimage restore failed",
+    )
+    replay_start(args, root, environment, children, generations, "cluster")
+    time.sleep(3)
+    report["outageQueueMetricsAfterConfigRollback"] = replay_queues()
+    report["configurationRollback"] = {
+        "preimageSHA256": hashlib.sha256(preimage).hexdigest(),
+        "candidateSHA256": hashlib.sha256(candidate).hexdigest(),
+        "restoredSHA256": hashlib.sha256((root / "cluster.json").read_bytes()).hexdigest(),
+        "exactBytesRestoredWhileBackendsUnavailable": True,
+        "productionOwnershipRollbackExercised": False,
+    }
+
+
+def replay_post_fixtures(context, metrics, logs, traces):
+    """Post each synthetic fixture exactly once; an ambiguous response fails the run."""
+    # Never retry a fixture POST: an ambiguous response is a failed run,
+    # not permission to change fixture multiplicity by resending it.
+    for path, body in [("/v1/metrics", metrics), ("/v1/logs", logs), ("/v1/traces", traces)]:
+        response = replay_request(context, 4318, path, body)
+        require(
+            not response.get("partialSuccess"),
+            "Synthetic OTLP partial success is not full acceptance",
         )
-        with urllib.request.urlopen(req, context=context, timeout=4) as response:
-            data = response.read(4 * 1024**2 + 1)
-        if len(data) > 4 * 1024**2:
-            raise ValueError("Bounded synthetic response exceeded")
-        document: dict[str, object] = (
-            json.loads(data) if data and path not in ["/ready", "/-/ready"] else {}
-        )
-        return document
 
-    def start(name) -> None:
-        if name in children and children[name].poll() is None:
-            raise ValueError("Duplicate synthetic process")
-        generations[name] = generations.get(name, 0) + 1
-        if name == "prometheus":
-            command = [
-                str(args.binaries / name),
-                "--config.file=" + str(root / "prometheus.json"),
-                "--storage.tsdb.path=" + str(root / "prometheus-data"),
-                "--web.listen-address=127.0.0.1:29090",
-                "--web.config.file=" + str(root / "web.json"),
-                "--web.enable-otlp-receiver",
+
+def run(args):
+    require(
+        all(
+            [
+                os.geteuid() == 0,
+                os.readlink("/proc/self/ns/net") != os.readlink("/proc/1/ns/net"),
             ]
-        elif name in ["cluster", "trace-gateway"]:
-            command = [
-                str(args.binaries / "otelcol-contrib"),
-                "--config=" + str(root / (name + ".json")),
-            ]
-        else:
-            command = [
-                str(args.binaries / name),
-                "-config.file=" + str(root / (name + ".json")),
-                "-config.expand-env=true",
-            ]
-        with (root / ("%s-%d.log" % (name, generations[name]))).open("x") as log:
-            children[name] = subprocess.Popen(
-                command,
-                env=environment,
-                stdin=subprocess.DEVNULL,
-                stdout=log,
-                stderr=subprocess.STDOUT,
-            )
-
-    def stop(name) -> None:
-        process = children[name]
-        if process.poll() is not None:
-            raise ValueError("Synthetic process exited before controlled stop")
-        process.terminate()
-        process.wait(timeout=20)
-        if process.returncode != 0:
-            raise ValueError("Synthetic process graceful stop failed")
-
-    def wait(check, seconds=100) -> None:
-        end = time.monotonic() + seconds
-        while True:
-            try:
-                if check():
-                    return
-            except (OSError, ValueError) as error:
-                if isinstance(error, ssl.SSLCertVerificationError) or isinstance(
-                    getattr(error, "reason", None), ssl.SSLCertVerificationError
-                ):
-                    raise
-            if time.monotonic() >= end:
-                raise TimeoutError("Bounded synthetic phase failed")
-            time.sleep(1)
-
-    def ready() -> bool:
-        for port, path in [(29090, "/-/ready"), (3100, "/ready"), (3200, "/ready")]:
-            try:
-                request(port, path)
-                report.setdefault("backendReadiness", {})[str(port)] = "ready"
-            except Exception as error:
-                report.setdefault("backendReadiness", {})[str(port)] = (
-                    type(error).__name__ + ": " + str(error)[:180]
-                )
-                raise
-        return True
-
-    def queues() -> dict[str, list[str]]:
-        result: dict[str, list[str]] = {}
-        for port in [18888, 18889]:
-            with urllib.request.urlopen(
-                "http://127.0.0.1:%d/metrics" % port, timeout=4
-            ) as response:
-                lines = response.read(2 * 1024**2).decode().splitlines()
-            result[str(port)] = [
-                line for line in lines if line.startswith("otelcol_exporter_queue_size{")
-            ]
-        return result
-
-    save()
+        ),
+        "Root-owned isolated network namespace required",
+    )
+    args.workspace.mkdir(mode=0o700)
+    root = args.workspace
+    environment, report, context, boundary = replay_prepare(args, root)
+    children: dict[object, subprocess.Popen[bytes]] = {}
+    generations: dict[object, int] = {}
+    replay_save(root, report)
     try:
         for name in ["prometheus", "loki", "tempo", "trace-gateway", "cluster"]:
-            start(name)
-        wait(ready)
-        anonymous = ssl.create_default_context(cafile=str(args.tls / "ca.crt"))
-        anonymous.minimum_version = ssl.TLSVersion.TLSv1_3
-        denied = []
-        for port, path in [
-            (29090, "/-/ready"),
-            (3100, "/ready"),
-            (3200, "/ready"),
-            (4318, "/v1/metrics"),
-        ]:
-            try:
-                with urllib.request.urlopen(
-                    "https://127.0.0.1:%d%s" % (port, path), context=anonymous, timeout=4
-                ):
-                    raise ValueError("Synthetic endpoint accepted anonymous TLS client")
-            except ssl.SSLError:
-                denied.append(port)
-            except OSError as error:
-                if isinstance(getattr(error, "reason", None), ssl.SSLError):
-                    denied.append(port)
-                else:
-                    raise
-        report["anonymousClientRejectedPorts"] = denied
+            replay_start(args, root, environment, children, generations, name)
+        replay_wait(lambda: replay_ready(context, report))
+        replay_require_mtls_denial(args, report)
         for name in ["prometheus", "loki", "tempo"]:
-            stop(name)
+            replay_stop(children, name)
         outage_start = time.monotonic()
         metrics, logs, traces, expected, ids = fixtures(time.time_ns())
 
@@ -361,51 +480,20 @@ def run(args):
                 with context.wrap_socket(connection, server_hostname="127.0.0.1"):
                     return True
 
-        wait(ingress_ready, seconds=15)
+        replay_wait(ingress_ready, seconds=15)
         # Never retry a fixture POST: an ambiguous response is a failed run,
         # not permission to change fixture multiplicity by resending it.
-        for path, body in [("/v1/metrics", metrics), ("/v1/logs", logs), ("/v1/traces", traces)]:
-            response = request(4318, path, body)
-            if response.get("partialSuccess"):
-                raise ValueError("Synthetic OTLP partial success is not full acceptance")
+        replay_post_fixtures(context, metrics, logs, traces)
+
         # Full 30s tail decision must finish BEFORE gateway restart; never claim
         # restart durability for unsampled, in-memory tail-sampling state.
         time.sleep(42)
-        report["outageQueueMetricsBeforeRestart"] = queues()
-        preimage = (root / "cluster.json").read_bytes()
-        (root / "cluster-config-preimage.json").write_bytes(preimage)
-        candidate = rollback_candidate(preimage)
-        for name in ["cluster", "trace-gateway"]:
-            stop(name)
-        (root / "cluster.json").write_bytes(candidate)
-        report["durableQueueFiles"] = [
-            {"path": str(p.relative_to(root)), "bytes": p.stat().st_size}
-            for p in (root / "state").rglob("*")
-            if p.is_file() and ("cluster" in p.parts or "traces" in p.parts)
-        ]
-        if not report["durableQueueFiles"]:
-            raise ValueError("No durable queue files")
-        for name in ["trace-gateway", "cluster"]:
-            start(name)
-        time.sleep(3)
-        report["outageQueueMetricsAfterRestart"] = queues()
-        stop("cluster")
-        (root / "cluster.json").write_bytes((root / "cluster-config-preimage.json").read_bytes())
-        if (root / "cluster.json").read_bytes() != preimage:
-            raise ValueError("Exact configuration preimage restore failed")
-        start("cluster")
-        time.sleep(3)
-        report["outageQueueMetricsAfterConfigRollback"] = queues()
-        report["configurationRollback"] = {
-            "preimageSHA256": hashlib.sha256(preimage).hexdigest(),
-            "candidateSHA256": hashlib.sha256(candidate).hexdigest(),
-            "restoredSHA256": hashlib.sha256((root / "cluster.json").read_bytes()).hexdigest(),
-            "exactBytesRestoredWhileBackendsUnavailable": True,
-            "productionOwnershipRollbackExercised": False,
-        }
+        report["outageQueueMetricsBeforeRestart"] = replay_queues()
+        replay_rollback_phase(args, root, environment, children, generations, report)
+
         for name in ["prometheus", "loki", "tempo"]:
-            start(name)
-        wait(ready)
+            replay_start(args, root, environment, children, generations, name)
+        replay_wait(lambda: replay_ready(context, report))
         metrics_query = "/api/v1/query?" + urllib.parse.urlencode(
             {"query": 'homelab_ops_probe{source="isolated"}[10m]'}
         )
@@ -413,52 +501,10 @@ def run(args):
             {"query": '{service_name="' + SERVICE + '"}', "start": str(boundary), "limit": 100}
         )
 
-        def recovered() -> bool:
-            metric_document = request(29090, metrics_query)
-            log_document = request(3100, logs_query)
-            metric_result = cast(
-                "list[dict[str, object]]",
-                cast("dict[str, object]", metric_document.get("data", {})).get("result", []),
-            )
-            log_result = cast(
-                "list[dict[str, object]]",
-                cast("dict[str, object]", log_document.get("data", {})).get("result", []),
-            )
-            values = [
-                entry[1]
-                for stream in log_result
-                for entry in cast("list[list[str]]", stream["values"])
-            ]
-            expected_logs = {"ops-replay-log-%02d" % i for i in range(24)}
-            report["lastRecoveryCounts"] = {
-                "metricSeries": len(metric_result),
-                "metricPoints": sum(
-                    len(cast("list[object]", item.get("values", []))) for item in metric_result
-                ),
-                "metricTimestampsValuesAndMultiplicityExact": check_metrics(
-                    metric_document, expected
-                ),
-                "logRecords": len(values),
-                "logBodiesAndMultiplicityExact": len(values) == 24 and set(values) == expected_logs,
-            }
-            if (
-                not check_metrics(metric_document, expected)
-                or len(values) != 24
-                or set(values) != expected_logs
-            ):
-                return False
-            for identity in ids:
-                body = request(3200, "/api/traces/" + identity)
-                spans = trace_records(body)
-                if (
-                    len(spans) != 1
-                    or spans[0][0] != identity
-                    or not spans[0][1].startswith("ops-mandatory-")
-                ):
-                    return False
-            return True
+        def recovered():
+            return replay_recovered(context, report, metrics_query, logs_query, expected, ids)
 
-        wait(recovered, seconds=140)
+        replay_wait(recovered, seconds=140)
         report.update(
             success=True,
             allSignalDurableRecoveryVerified=True,
@@ -473,11 +519,11 @@ def run(args):
             elapsedOutageRecoverySeconds=time.monotonic() - outage_start,
             processGenerations=generations,
         )
-        save()
+        replay_save(root, report)
         return report
     except Exception as error:
         report["errors"].append(type(error).__name__)
-        save()
+        replay_save(root, report)
         raise
     finally:
         for process in reversed(list(children.values())):

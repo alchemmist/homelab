@@ -7,6 +7,7 @@ An in-process mock HTTP backend exercises actual stock client instrumentation.
 
 import contextlib
 import hashlib
+import http.server
 import io
 import json
 import logging
@@ -22,26 +23,137 @@ MARKERS = [
 ]
 
 
+class SyntheticBackend(http.server.BaseHTTPRequestHandler):
+    """Minimal fixtured backend that refuses oversized synthetic payloads."""
+
+    def log_message(self, *args):
+        pass
+
+    def do_POST(self):
+        length = int(self.headers.get("Content-Length", "0"))
+        require(length <= 65536, "Synthetic backend budget exceeded")
+        self.rfile.read(length)
+        body = json.dumps({"synthetic": MARKERS[1]}).encode()
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+
+def require(expected: object, message: str) -> None:
+    """Enforce an invariant, failing with the given message."""
+    if not expected:
+        raise ValueError(message)
+
+
+def ensure_profile_mode() -> None:
+    """Activate the declared bootstrap mode, refusing any late fallback."""
+    import open_webui_source_profile
+    import source_privacy
+
+    if os.environ.get("HOMELAB_REQUIRE_EARLY_PROFILE") == "1":
+        from open_webui.utils.telemetry import instrumentors as early_native
+        from opentelemetry.sdk.trace import TracerProvider
+
+        require(
+            all(
+                [
+                    getattr(TracerProvider, "_homelab_source_privacy", False),
+                    getattr(early_native.Instrumentor, "_homelab_http_only_profile", False),
+                ]
+            ),
+            "Required early bootstrap absent; no late/manual fallback",
+        )
+    else:
+        source_privacy.activate()
+        open_webui_source_profile.activate()
+
+
+def make_audit(audit):
+    """Build a span processor recording mandatory sampling and source privacy."""
+    from opentelemetry.sdk.trace import SpanProcessor
+
+    class Audit(SpanProcessor):
+        def on_start(self, span, parent_context=None):
+            pass
+
+        def on_end(self, span):
+            audit["endedSpans"] += 1
+            audit["sensitiveSyntheticContentFoundBeforeDownstreamProcessor"] |= any(
+                marker in span.to_json() for marker in MARKERS
+            )
+            audit["httpClientSpanSeen"] |= span.kind.name == "CLIENT"
+            audit["serverSpanSeen"] |= span.kind.name == "SERVER"
+
+        def shutdown(self):
+            pass
+
+        def force_flush(self, timeout_millis=30000):
+            return True
+
+    return Audit
+
+
+def certificate_hash() -> str:
+    """Hash the public client leaf mounted for this canary."""
+    return hashlib.sha256(Path("/etc/otel-client/tls.crt").read_bytes()).hexdigest()
+
+
+def await_new_leaf(before: str, deadline: float) -> str:
+    """Wait until the projected leaf hash changes from before."""
+    while certificate_hash() == before:
+        require(time.monotonic() < deadline, "Projected leaf renewal deadline exceeded")
+        time.sleep(2)
+    return certificate_hash()
+
+
+def publish_completion(renewal: object, report: dict[str, object]) -> None:
+    """Publish the final completion receipt when a renewal was awaited."""
+    if renewal:
+        progress(dict(report, phase="completed"))
+
+
+def statuses_ok(traces: list[dict[str, object]]) -> bool:
+    """Report whether every synthetic trace received the mandatory 500."""
+    return all(item["httpStatus"] == 500 for item in traces)
+
+
+def await_renewal(
+    renewal: object, before_hash: str, first: object, loaded: list[str], traces: list[object]
+) -> str:
+    """Prove initial leaf load, wait for renewal, and report the new hash."""
+    if renewal:
+        require(before_hash in loaded, "Native HTTP client did not load initial leaf")
+        progress(
+            {
+                "phase": "await-renewal",
+                "beforeCertificateSHA256": before_hash,
+                "beforeTrace": first,
+            }
+        )
+        return await_new_leaf(before_hash, time.monotonic() + 600)
+    return before_hash
+
+
+def progress(value: object) -> None:
+    """Publish canary progress to the unprivileged progress socket."""
+    path = Path("/run/otel-test/renewal-progress.json")
+    temporary = path.with_suffix(".new")
+    temporary.write_text(json.dumps(value))
+    temporary.replace(path)
+
+
 def run():
     logging.disable(logging.CRITICAL)
     renewal = os.environ.get("HOMELAB_AWAIT_LEAF_RENEWAL") == "1"
     loaded = []
     original_loader = ssl.SSLContext.load_cert_chain
 
-    def certificate_hash() -> str:
-        return hashlib.sha256(Path("/etc/otel-client/tls.crt").read_bytes()).hexdigest()
-
-    def observe_loader(context, certfile, keyfile=None, password=None) -> None:
+    def observe_loader(context, certfile, keyfile=None, password=None):
         public_hash = hashlib.sha256(Path(certfile).read_bytes()).hexdigest()
         result = original_loader(context, certfile, keyfile, password)
         loaded.append(public_hash)
         return result
-
-    def progress(value) -> None:
-        path = Path("/run/otel-test/renewal-progress.json")
-        temporary = path.with_suffix(".new")
-        temporary.write_text(json.dumps(value))
-        temporary.replace(path)
 
     if renewal:
 
@@ -50,27 +162,13 @@ def run():
 
         ssl.SSLContext.load_cert_chain = wrapped_loader
     with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-        import open_webui_source_profile
-        import source_privacy
-
-        if os.environ.get("HOMELAB_REQUIRE_EARLY_PROFILE") == "1":
-            from open_webui.utils.telemetry import instrumentors as early_native
-            from opentelemetry.sdk.trace import TracerProvider
-
-            if not getattr(TracerProvider, "_homelab_source_privacy", False) or not getattr(
-                early_native.Instrumentor, "_homelab_http_only_profile", False
-            ):
-                raise ValueError("Required early bootstrap absent; no late/manual fallback")
-        else:
-            source_privacy.activate()
-            open_webui_source_profile.activate()
+        ensure_profile_mode()
         import httpx
         from fastapi import FastAPI, HTTPException, Request
         from fastapi.testclient import TestClient
         from open_webui.utils.telemetry import instrumentors
         from open_webui.utils.telemetry import setup as native
         from opentelemetry import trace
-        from opentelemetry.sdk.trace import SpanProcessor
         from opentelemetry.trace import Status, StatusCode
         from sqlalchemy import create_engine
 
@@ -86,22 +184,7 @@ def run():
         import http.server
         import threading
 
-        class Backend(http.server.BaseHTTPRequestHandler):
-            def log_message(self, *args) -> None:
-                pass
-
-            def do_POST(self) -> None:
-                length = int(self.headers.get("Content-Length", "0"))
-                if length > 65536:
-                    raise ValueError("Synthetic backend budget exceeded")
-                self.rfile.read(length)
-                body = json.dumps({"synthetic": MARKERS[1]}).encode()
-                self.send_response(200)
-                self.send_header("Content-Length", str(len(body)))
-                self.end_headers()
-                self.wfile.write(body)
-
-        backend = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Backend)
+        backend = http.server.ThreadingHTTPServer(("127.0.0.1", 0), SyntheticBackend)
         worker = threading.Thread(target=backend.serve_forever, daemon=True)
         worker.start()
         app = FastAPI()
@@ -121,8 +204,10 @@ def run():
 
         app.add_api_route("/synthetic", route, methods=["POST"])
         native.setup(app, create_engine("sqlite:///:memory:"))
-        if not getattr(instrumentors.Instrumentor, "_homelab_http_only_profile", False):
-            raise ValueError("Unsafe native factory was not replaced before setup import")
+        require(
+            getattr(instrumentors.Instrumentor, "_homelab_http_only_profile", False),
+            "Unsafe native factory was not replaced before setup import",
+        )
         disabled = {
             name: not cls().is_instrumented_by_opentelemetry
             for name, cls in [
@@ -132,8 +217,7 @@ def run():
                 ("logging", instrumentors.LoggingInstrumentor),
             ]
         }
-        if not all(disabled.values()):
-            raise ValueError("Unsafe or duplicate signal instrumentor active")
+        require(all(disabled.values()), "Unsafe or duplicate signal instrumentor active")
         provider = trace.get_tracer_provider()
         audit = {
             "endedSpans": 0,
@@ -142,25 +226,7 @@ def run():
             "serverSpanSeen": False,
         }
 
-        class Audit(SpanProcessor):
-            def on_start(self, span, parent_context=None) -> None:
-                pass
-
-            def on_end(self, span) -> None:
-                audit["endedSpans"] += 1
-                audit["sensitiveSyntheticContentFoundBeforeDownstreamProcessor"] |= any(
-                    marker in span.to_json() for marker in MARKERS
-                )
-                audit["httpClientSpanSeen"] |= span.kind.name == "CLIENT"
-                audit["serverSpanSeen"] |= span.kind.name == "SERVER"
-
-            def shutdown(self) -> None:
-                pass
-
-            def force_flush(self, timeout_millis=30000) -> bool:
-                return True
-
-        provider.add_span_processor(Audit())
+        provider.add_span_processor(make_audit(audit)())
         tracer = trace.get_tracer("homelab.synthetic.open-webui-profile")
 
         def emit_request() -> dict[str, object]:
@@ -192,28 +258,12 @@ def run():
 
         before_hash = certificate_hash()
         first = emit_request()
-        if not provider.force_flush(timeout_millis=10000):
-            raise ValueError("Initial native source SDK flush failed")
+        require(
+            provider.force_flush(timeout_millis=10000),
+            "Initial native source SDK flush failed",
+        )
         traces = [first]
-        if renewal:
-            if before_hash not in loaded:
-                raise ValueError("Native HTTP client did not load initial leaf")
-            progress(
-                {
-                    "phase": "await-renewal",
-                    "beforeCertificateSHA256": before_hash,
-                    "beforeTrace": first,
-                }
-            )
-            deadline = time.monotonic() + 600
-            while certificate_hash() == before_hash:
-                if time.monotonic() >= deadline:
-                    raise ValueError("Projected leaf renewal deadline exceeded")
-                time.sleep(2)
-            after_hash = certificate_hash()
-            traces.append(emit_request())
-        else:
-            after_hash = before_hash
+        after_hash = await_renewal(renewal, before_hash, first, loaded, traces)
         trace_id, parent_id, status = first["traceId"], first["parentSpanId"], first["httpStatus"]
         flushed = provider.force_flush(timeout_millis=10000)
         provider.shutdown()
@@ -221,20 +271,27 @@ def run():
         backend.server_close()
     if renewal:
         ssl.SSLContext.load_cert_chain = original_loader
-    reload_verified = (
-        renewal and before_hash != after_hash and before_hash in loaded and after_hash in loaded
+    reload_verified = all(
+        [
+            renewal,
+            before_hash != after_hash,
+            before_hash in loaded,
+            after_hash in loaded,
+        ]
     )
-    success = (
-        (not renewal or reload_verified)
-        and all(item["httpStatus"] == 500 for item in traces)
-        and status == 500
-        and flushed is True
-        and all(disabled.values())
-        and constructed == [True]
-        and audit["endedSpans"] >= 3
-        and audit["serverSpanSeen"]
-        and audit["httpClientSpanSeen"]
-        and not audit["sensitiveSyntheticContentFoundBeforeDownstreamProcessor"]
+    success = all(
+        [
+            any([not renewal, reload_verified]),
+            statuses_ok(traces),
+            status == 500,
+            flushed is True,
+            all(disabled.values()),
+            constructed == [True],
+            audit["endedSpans"] >= 3,
+            audit["serverSpanSeen"],
+            audit["httpClientSpanSeen"],
+            not audit["sensitiveSyntheticContentFoundBeforeDownstreamProcessor"],
+        ]
     )
     report = {
         "success": success,
@@ -262,8 +319,7 @@ def run():
         "productionApplicationSdkCoverageVerified": False,
         "backendAndSdkRenewalProofStillRequired": True,
     }
-    if renewal:
-        progress(dict(report, phase="completed"))
+    publish_completion(renewal, report)
     print(json.dumps(report))
     if not success:
         raise SystemExit(1)

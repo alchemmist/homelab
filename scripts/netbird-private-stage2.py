@@ -31,7 +31,8 @@ KUBE = [
 ]
 
 
-def require(ok, message):
+def require(ok: object, message: str) -> None:
+    """Enforce an invariant, failing with the given message."""
     if not ok:
         raise ValueError(message)
 
@@ -93,8 +94,43 @@ def default_policy(policies):
     return p["id"]
 
 
-def run(command):
+def run(command: list[str]) -> bytes:
+    """Run a fixed kubectl invocation, returning its raw output."""
     return subprocess.check_output(KUBE + command, stderr=subprocess.DEVNULL)
+
+
+def forward(call, process_slot):
+    """Start the private port-forward once and wait until the API answers."""
+    # Poll reads only; never retry setup or another mutation.
+    for _ in range(45):
+        pods = json.loads(run(["get", "pods", "-l", "app=netbird-server", "-o", "json"]))["items"]
+        running = [
+            p
+            for p in pods
+            if not p["metadata"].get("deletionTimestamp") and p["status"]["phase"] == "Running"
+        ]
+        if len(running) == 1:
+            break
+        time.sleep(1)
+    else:
+        raise ValueError("no unique running server")
+    process_slot["process"] = subprocess.Popen(
+        KUBE
+        + [
+            "port-forward",
+            "--address=127.0.0.1",
+            "pod/" + running[0]["metadata"]["name"],
+            "18081:80",
+        ],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    for _ in range(30):
+        try:
+            return call("GET", "instance")
+        except urllib.error.URLError:
+            time.sleep(1)
+    raise ValueError("private port-forward unavailable")
 
 
 def main():
@@ -105,7 +141,7 @@ def main():
     evidence(ROOT, "netbird-pre-stage2")
     journal = ROOT / "journal"
     token = None
-    process = None
+    process_slot = {}
 
     def api(method, path, body=None) -> dict[str, object] | list[object] | None:
         headers = {"Content-Type": "application/json"}
@@ -129,41 +165,6 @@ def main():
                 "NetBird API rejected " + method + " " + path + " status=" + str(code)
             ) from None
 
-    def forward() -> dict[str, object]:
-        nonlocal process
-        # Poll reads only; never retry setup or another mutation.
-        for _ in range(45):
-            pods = json.loads(run(["get", "pods", "-l", "app=netbird-server", "-o", "json"]))[
-                "items"
-            ]
-            running = [
-                p
-                for p in pods
-                if not p["metadata"].get("deletionTimestamp") and p["status"]["phase"] == "Running"
-            ]
-            if len(running) == 1:
-                break
-            time.sleep(1)
-        else:
-            raise ValueError("no unique running server")
-        process = subprocess.Popen(
-            KUBE
-            + [
-                "port-forward",
-                "--address=127.0.0.1",
-                "pod/" + running[0]["metadata"]["name"],
-                "18081:80",
-            ],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        for _ in range(30):
-            try:
-                return cast("dict[str, object]", api("GET", "instance"))
-            except urllib.error.URLError:
-                time.sleep(1)
-        raise ValueError("private port-forward unavailable")
-
     enabled = False
     try:
         if args.action == "bootstrap":
@@ -174,7 +175,7 @@ def main():
             enabled = True
             # Wait for deployment's old pod to be removed, including Recreate rollout.
             time.sleep(4)
-            status = forward()
+            status = forward(api, process_slot)
             require(status.get("setup_required") is True, "instance already claimed")
             password = secrets.token_urlsafe(48)
             private(
@@ -239,7 +240,7 @@ def main():
         else:
             evidence(ROOT, "authentik-pre-stage2")
             token = json.loads((journal / "bootstrap.json").read_text())["personal_access_token"]
-            forward()
+            forward(api, process_slot)
             require(
                 api("GET", "identity-providers") == [],
                 "identity provider already exists; no replay",
@@ -267,9 +268,9 @@ def main():
             )
             print("Authentik connector configured; real owner login/transfer not yet accepted")
     finally:
-        if process:
-            process.terminate()
-            process.wait(timeout=10)
+        if process_slot["process"]:
+            process_slot["process"].terminate()
+            process_slot["process"].wait(timeout=10)
         if enabled:
             run(["set", "env", "deploy/server", "NB_SETUP_PAT_ENABLED=false"])
             print("NB_SETUP_PAT_ENABLED=false restored")
