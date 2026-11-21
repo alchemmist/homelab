@@ -40,7 +40,7 @@ load_config() {
         [[ "${value: -1}" == "${quote}" ]] || die "config value has an unmatched quote: ${key}"
         value="${value:1:${#value}-2}"
       fi
-      declare -gx "${key}=${value}"
+      export "${key}=${value}"
     done < "${CONFIG_FILE}"
   fi
 }
