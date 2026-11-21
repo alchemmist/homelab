@@ -2,6 +2,7 @@ import importlib.util
 import json
 from pathlib import Path
 import subprocess
+from typing import TypedDict, cast
 import unittest
 
 BASE = Path(__file__).resolve().parents[2]
@@ -10,20 +11,38 @@ sync = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sync)
 
 
+class Node(TypedDict, total=False):
+    """Shape of a rendered n8n workflow node."""
+
+    type: str
+    name: str
+    parameters: dict[str, object]
+    retryOnFail: bool
+
+
+class Workflow(TypedDict):
+    """Shape of a rendered n8n workflow document."""
+
+    nodes: "list[Node]"
+
+
 class CalendarTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.template = json.loads((BASE / "docs/n8n/calendar-voice-reminder.json").read_text())
         self.creds = {
             k: {"id": "test-id", "name": "Test"}
             for k in ["googleCalendarOAuth2Api", "yandexStationApi"]
         }
 
-    def render(self):
-        return sync.render_workflow(
-            self.template, self.creds, {"calendar_ids": ["primary", "work@example.test"]}
+    def render(self) -> Workflow:
+        return cast(
+            "Workflow",
+            sync.render_workflow(
+                self.template, self.creds, {"calendar_ids": ["primary", "work@example.test"]}
+            ),
         )
 
-    def test_render_scoped_native_node(self):
+    def test_render_scoped_native_node(self) -> None:
         w = self.render()
         raw = json.dumps(w)
         self.assertNotIn("REPLACE_WITH_", raw)
@@ -36,7 +55,7 @@ class CalendarTests(unittest.TestCase):
         self.assertNotIn("iot.quasar.yandex.ru", raw)
         self.assertNotIn("xToken", raw)
 
-    def test_raw_internal_http_forbidden(self):
+    def test_raw_internal_http_forbidden(self) -> None:
         for url in [
             "https://iot.quasar.yandex.ru/m/user/scenarios/x/actions",
             "http://api.iot.yandex.net/v1.0/scenarios/x/actions",
@@ -47,18 +66,18 @@ class CalendarTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 sync.require_yandex_policy(w)
 
-    def test_missing_auth_rejected(self):
+    def test_missing_auth_rejected(self) -> None:
         with self.assertRaises(RuntimeError):
             sync.render_workflow(self.template, {}, {})
 
-    def test_maintenance_renews_without_speech(self):
+    def test_maintenance_renews_without_speech(self) -> None:
         t = json.loads((BASE / "docs/n8n/yandex-session-maintenance.json").read_text())
         w = sync.render_workflow(t, self.creds, {})
         n = next(n for n in w["nodes"] if n["type"] == "CUSTOM.yandexStation")
         self.assertEqual(n["parameters"]["operation"], "check")
-        self.assertFalse(n["parameters"]["forceRefresh"])
+        self.assertFalse(cast("bool", n["parameters"]["forceRefresh"]))
 
-    def test_failed_call_does_not_mark(self):
+    def test_failed_call_does_not_mark(self) -> None:
         code = next(n for n in self.render()["nodes"] if n["name"] == "Mark Announced")[
             "parameters"
         ]["jsCode"]
@@ -69,7 +88,7 @@ class CalendarTests(unittest.TestCase):
         )
         subprocess.check_call(["node", "-e", script])
 
-    def test_due_matching_and_dedup(self):
+    def test_due_matching_and_dedup(self) -> None:
         code = next(n for n in self.render()["nodes"] if n["name"] == "Match Due Reminders")[
             "parameters"
         ]["jsCode"]

@@ -1,11 +1,12 @@
 """Only callable via the trusted signer. Validate mutable GitHub state before each write."""
 import hashlib,json,re,runpy
+from typing import cast
 from pathlib import Path
 G=runpy.run_path(str(Path(__file__).with_name('ready_gate.py')));REVIEWERS={'socrat-steward','coderabbitai'};HANDLERS={'alchemmist'}
 
 def lifecycle(x,api,owned,check):
  n=x['pr'];head=x['head'];p=owned(n,head);check(p['head']['ref'].startswith('openhands/issue-') and 'mutation-pr' in {l['name'] for l in p['labels']});mode=x['action'];issue=f'issues/{n}'
- def snap():
+ def snap() -> tuple[dict[str, object], list[dict[str, object]], list[dict[str, object]]]:
   q=api('graphql',{'query':G['QUERY'].replace('reviewThreads(first:100){nodes{id isResolved comments(first:100){nodes{id author','reviewThreads(first:100){nodes{id isResolved comments(first:100){nodes{id originalCommit{oid} author'),'variables':{'owner':'alchemmist','repo':'monori','number':n}});check(not q.get('errors'));v=q['data']['repository']['pullRequest'];check(v['headRefOid']==head);v['statusCheckRollup']=(v['tip']['nodes'][-1]['commit']['statusCheckRollup'] or {});a=G['assess'](v,REVIEWERS,HANDLERS);ctx=v['statusCheckRollup'].get('contexts',{}).get('nodes',[])
   if not any(y.get('name')=='Quality Graph' and y.get('conclusion')=='SUCCESS' for y in ctx):a['blockers'].append('Missing successful Quality Graph aggregate')
   # Required gate above is in addition to all visible checks, not a replacement.
@@ -15,7 +16,7 @@ def lifecycle(x,api,owned,check):
    for data in re.findall(r'<!-- rtr:(\{[^\n]+?\}) -->',c.get('body','')):
     try:j=json.loads(data);seen[(j['comment'],j.get('digest'),j.get('head'))]=True
     except (ValueError,KeyError):pass
-  def add(c,thread=None,resolved=False):
+  def add(c,thread=None,resolved=False) -> None:
    auth=c.get('author') or {};body=c.get('body') or ''
    if not body or auth.get('__typename')!='Bot' and auth.get('login') not in REVIEWERS:return
    digest=hashlib.sha256(body.encode()).hexdigest();replied=(c['id'],digest,head) in seen
@@ -30,12 +31,12 @@ def lifecycle(x,api,owned,check):
     for row in rows:
      if row['thread']==t['id']:row['human_discussion']=True
   a['ready_to_review']=not a['blockers'];return a,rows,ctx
- a,rows,ctx=snap();incomplete=any('pagination' in b for b in a['blockers']);url=f'https://github.com/alchemmist/monori';ready='mutation-ready'
+ a,rows,ctx=snap();incomplete=any('pagination' in b for b in cast("list[str]", a['blockers']));url=f'https://github.com/alchemmist/monori';ready='mutation-ready'
  if ready in {l['name'] for l in p['labels']} and not a['ready_to_review']:api(issue+'/labels/'+ready,method='DELETE')
  if mode=='life_snapshot':return dict(a,files=[{k:f.get(k,'') for k in ('filename','status','patch')} for f in api(f'pulls/{n}/files?per_page=20')],remarks=rows,checks=[{'name':c.get('name',c.get('context')),'status':c.get('status',c.get('state')),'conclusion':c.get('conclusion'),'url':c.get('detailsUrl',c.get('targetUrl'))} for c in ctx])
  check(not incomplete)
  if mode=='life_request':
-  bot=x['reviewer'];check(bot in REVIEWERS and 'Bot review incomplete on current head: '+bot in a['blockers']);marker=f'<!-- mutation-review-request:{bot}:{head} -->';comments=api(issue+'/comments?per_page=100');check(len(comments)<100);previous=[c for c in comments if c['user']['login']=='alchemmist' and marker in c['body']];
+  bot=x['reviewer'];blockers=cast("list[str]", a['blockers']);check(bot in REVIEWERS and 'Bot review incomplete on current head: '+bot in blockers);marker=f'<!-- mutation-review-request:{bot}:{head} -->';comments=api(issue+'/comments?per_page=100');check(len(comments)<100);previous=[c for c in comments if c['user']['login']=='alchemmist' and marker in c['body']];
   if previous:return {'requested':False}
   owned(n,head);api(issue+'/comments',{'body':('@coderabbitai review' if bot=='coderabbitai' else '/review')+'\n\n'+marker});return {'requested':True}
  if mode=='life_ready':

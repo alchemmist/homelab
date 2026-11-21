@@ -12,6 +12,7 @@ from pathlib import Path
 import socket
 import urllib.parse
 import urllib.request
+from typing import cast
 
 HOST = "auth.socrat.alchemmist.xyz"
 BASE = "https://" + HOST
@@ -64,7 +65,7 @@ def main():
     credentials = json.loads((args.root / "credentials.json").read_text())
     headers = {"Authorization": "Bearer " + credentials["AUTHENTIK_BOOTSTRAP_TOKEN"]}
 
-    def api(method, path, data=None):
+    def api(method, path, data=None) -> dict[str, object] | None:
         request = urllib.request.Request(
             BASE + "/api/v3/" + path,
             method=method,
@@ -73,10 +74,14 @@ def main():
         )
         with urllib.request.urlopen(request, timeout=60) as response:
             body = response.read()
-            return json.loads(body) if body else None
+            document: dict[str, object] | None = json.loads(body) if body else None
+            return document
 
-    def exact_brand():
-        rows = api("GET", "core/brands/?page_size=100")["results"]
+    def exact_brand() -> tuple[list[dict[str, object]], dict[str, object] | None]:
+        rows = cast(
+            "list[dict[str, object]]",
+            cast("dict[str, object]", api("GET", "core/brands/?page_size=100"))["results"],
+        )
         matches = [row for row in rows if row["domain"] == HOST]
         if len(matches) > 1:
             raise RuntimeError("Ambiguous domain brand; refusing to change it")
@@ -84,7 +89,8 @@ def main():
 
     if (
         args.action != "rollback"
-        and api("GET", "admin/version/").get("version_current") != "2026.8.5"
+        and cast("dict[str, object]", api("GET", "admin/version/")).get("version_current")
+        != "2026.8.5"
     ):
         raise RuntimeError("Theme requires reviewed Authentik 2026.8.5; refusing version drift")
     journal_path = args.root / "quiet-mono-brand-journal.json"
@@ -98,7 +104,7 @@ def main():
                 raise RuntimeError("Brand identity changed; manual review required")
             api(
                 "PATCH",
-                "core/brands/" + current["brand_uuid"] + "/",
+                "core/brands/" + cast("str", current["brand_uuid"]) + "/",
                 {
                     key: backup["brand_before"][key]
                     for key in FIELDS
@@ -109,9 +115,9 @@ def main():
             journal = json.loads(journal_path.read_text())
             if current["brand_uuid"] != journal["brand_uuid"]:
                 raise RuntimeError("Refusing to remove an unrelated brand")
-            api("DELETE", "core/brands/" + current["brand_uuid"] + "/")
+            api("DELETE", "core/brands/" + cast("str", current["brand_uuid"]) + "/")
         flow = backup["flow_before"]
-        api("PATCH", "flows/instances/" + flow["slug"] + "/", {"title": flow["title"]})
+        api("PATCH", "flows/instances/" + cast("str", flow["slug"]) + "/", {"title": flow["title"]})
         if backup.get("identification_before"):
             stage = backup["identification_before"]
             api(
@@ -191,29 +197,46 @@ def main():
 
     rows, current = exact_brand()
     base = current or next(row for row in rows if row["default"])
-    flow = api("GET", "flows/instances/?slug=default-authentication-flow")["results"]
-    if len(flow) != 1:
+    flows = cast(
+        "list[dict[str, object]]",
+        cast(
+            "dict[str, object]", api("GET", "flows/instances/?slug=default-authentication-flow")
+        )["results"],
+    )
+    if len(flows) != 1:
         raise RuntimeError("Expected one default authentication flow")
-    flow = flow[0]
-    ident = api("GET", "stages/identification/?name=default-authentication-identification")[
-        "results"
-    ]
-    password = api("GET", "stages/password/?name=default-authentication-password")["results"]
-    if len(ident) != 1 or len(password) != 1:
+    flow = flows[0]
+    idents = cast(
+        "list[dict[str, object]]",
+        cast(
+            "dict[str, object]",
+            api("GET", "stages/identification/?name=default-authentication-identification"),
+        )["results"],
+    )
+    passwords = cast(
+        "list[dict[str, object]]",
+        cast(
+            "dict[str, object]",
+            api("GET", "stages/password/?name=default-authentication-password"),
+        )["results"],
+    )
+    if len(idents) != 1 or len(passwords) != 1:
         raise RuntimeError("Expected reviewed native identification/password stages")
-    ident, password = ident[0], password[0]
+    ident = idents[0]
+    password = passwords[0]
     if ident.get("password_stage") not in (None, password["pk"]):
         raise RuntimeError("Unexpected inline password stage; refusing to replace it")
     # Do not silently overwrite an unrelated existing custom theme.
     if (
         current
         and current.get("branding_custom_css")
-        and "Quiet Mono v5" not in current["branding_custom_css"]
+        and "Quiet Mono v5" not in cast("str", current["branding_custom_css"])
     ):
         raise RuntimeError("Unmanaged domain CSS found; manual review required")
     payload = {key: base[key] for key in FIELDS if key in base}
-    attributes = dict(base.get("attributes") or {})
-    attributes["settings"] = {**attributes.get("settings", {}), "locale": "en", "theme": "light"}
+    attributes = cast("dict[str, object]", base.get("attributes") or {})
+    settings = cast("dict[str, object]", attributes.get("settings", {}))
+    attributes["settings"] = {**settings, "locale": "en", "theme": "light"}
     payload.update(
         domain=HOST,
         default=False,
@@ -250,20 +273,20 @@ def main():
     created = None
     try:
         if current:
-            created = api("PATCH", "core/brands/" + current["brand_uuid"] + "/", payload)
+            created = api("PATCH", "core/brands/" + cast("str", current["brand_uuid"]) + "/", payload)
         else:
             created = api("POST", "core/brands/", payload)
-        api("PATCH", "flows/instances/" + flow["slug"] + "/", {"title": "Sign in"})
+        api("PATCH", "flows/instances/" + cast("str", flow["slug"]) + "/", {"title": "Sign in"})
         api(
             "PATCH",
-            "stages/identification/" + ident["pk"] + "/",
+            "stages/identification/" + cast("str", ident["pk"]) + "/",
             {"password_stage": password["pk"], "user_fields": ident["user_fields"]},
         )
-        api("PATCH", "stages/password/" + password["pk"] + "/", {"allow_show_password": True})
+        api("PATCH", "stages/password/" + cast("str", password["pk"]) + "/", {"allow_show_password": True})
         protected_json(
             journal_path,
             {
-                "brand_uuid": created["brand_uuid"],
+                "brand_uuid": cast("dict[str, object]", created)["brand_uuid"],
                 "backup": str(backup_path),
                 "css_sha256": hashlib.sha256(css.encode()).hexdigest(),
                 "version": "2026.8.5",
@@ -274,20 +297,20 @@ def main():
             if current:
                 api(
                     "PATCH",
-                    "core/brands/" + created["brand_uuid"] + "/",
+                    "core/brands/" + cast("str", created["brand_uuid"]) + "/",
                     {key: current[key] for key in FIELDS if key in current},
                 )
             else:
-                api("DELETE", "core/brands/" + created["brand_uuid"] + "/")
-        api("PATCH", "flows/instances/" + flow["slug"] + "/", {"title": flow["title"]})
+                api("DELETE", "core/brands/" + cast("str", created["brand_uuid"]) + "/")
+        api("PATCH", "flows/instances/" + cast("str", flow["slug"]) + "/", {"title": flow["title"]})
         api(
             "PATCH",
-            "stages/identification/" + ident["pk"] + "/",
+            "stages/identification/" + cast("str", ident["pk"]) + "/",
             {"password_stage": ident.get("password_stage"), "user_fields": ident["user_fields"]},
         )
         api(
             "PATCH",
-            "stages/password/" + password["pk"] + "/",
+            "stages/password/" + cast("str", password["pk"]) + "/",
             {"allow_show_password": password.get("allow_show_password", False)},
         )
         raise

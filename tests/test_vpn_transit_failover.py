@@ -1,20 +1,53 @@
 """Check VPN transit failover decisions, image bytes, and source contracts."""
 
 import importlib.util, json, pathlib, hashlib, tarfile, io
+from types import ModuleType
+from typing import Protocol
 import pytest, yaml
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
-def module(name):
+def module(name: str) -> ModuleType:
     s = importlib.util.spec_from_file_location(name, ROOT / "scripts" / f"{name}.py")
     m = importlib.util.module_from_spec(s)
     s.loader.exec_module(m)
     return m
 
 
+class TransitController(Protocol):
+    """Static surface of the dynamically loaded transit failover controller."""
+
+    marker: pathlib.Path
+    state: dict[str, object]
+    last_probe: dict[str, object]
+
+    def tick(self) -> None: ...
+
+    def save(
+        self,
+        mode: str,
+        boot_id: str = "",
+        grace_until: int = 0,
+        failures: int = 0,
+        healthy: bool = False,
+    ) -> None: ...
+
+    def healthy(self) -> bool: ...
+
+    def activate(self, why: str) -> None: ...
+
+    def promote(self) -> None: ...
+
+    def demote(self) -> None: ...
+
+    def failback(self) -> None: ...
+
+    def recovery_scope(self) -> dict[str, object]: ...
+
+
 @pytest.fixture
-def ctl(tmp_path, monkeypatch):
+def ctl(tmp_path, monkeypatch) -> tuple[ModuleType, TransitController]:
     m = module("vpn-transit-failover")
     monkeypatch.setattr(m, "ROOT", tmp_path)
     p = tmp_path / "config.json"
@@ -23,7 +56,7 @@ def ctl(tmp_path, monkeypatch):
     return m, m.Controller()
 
 
-def test_no_api_only_failover_and_failure_threshold(ctl, monkeypatch):
+def test_no_api_only_failover_and_failure_threshold(ctl, monkeypatch) -> None:
     m, c = ctl
     monkeypatch.setattr(m, "boot_id", lambda: "test-boot")
     c.save(mode="kubernetes", boot_id="test-boot", grace_until=0)
@@ -43,7 +76,7 @@ def test_no_api_only_failover_and_failure_threshold(ctl, monkeypatch):
     assert c.state["failures"] == 0 and c.state["grace_until"] == 0
 
 
-def test_prepared_and_native_are_sticky(ctl, monkeypatch):
+def test_prepared_and_native_are_sticky(ctl, monkeypatch) -> None:
     m, c = ctl
     calls = []
     monkeypatch.setattr(c, "activate", lambda why: calls.append(why))
@@ -58,14 +91,14 @@ def test_prepared_and_native_are_sticky(ctl, monkeypatch):
     assert calls == []
 
 
-def test_uncertain_transition_never_replays(ctl):
+def test_uncertain_transition_never_replays(ctl) -> None:
     m, c = ctl
     c.save(mode="transition-to-kubernetes")
     with pytest.raises(RuntimeError, match="Uncertain"):
         c.tick()
 
 
-def test_unknown_port_owner_blocks_native_start(ctl, monkeypatch):
+def test_unknown_port_owner_blocks_native_start(ctl, monkeypatch) -> None:
     m, c = ctl
     calls = []
     monkeypatch.setattr(c, "prerequisites", lambda: None)
@@ -85,7 +118,7 @@ def test_unknown_port_owner_blocks_native_start(ctl, monkeypatch):
     assert ["systemctl", "start", m.NATIVE] not in calls
 
 
-def test_image_determinism_and_binary_integrity(tmp_path, monkeypatch):
+def test_image_determinism_and_binary_integrity(tmp_path, monkeypatch) -> None:
     m = module("vpn-transit-image")
     binary = tmp_path / "binary"
     binary.write_bytes(b"fixture static binary")
@@ -120,7 +153,7 @@ def test_deployment_single_host_no_api_token_and_native_boot_fence() -> None:
     assert "flock" in controller and "fsync" in controller and "free_ports()" in controller
 
 
-def test_tcp_time_wait_reuse_never_allows_a_live_owner_or_udp_reuse():
+def test_tcp_time_wait_reuse_never_allows_a_live_owner_or_udp_reuse() -> None:
     m = module("vpn-transit-failover")
     import socket
 
@@ -149,7 +182,7 @@ def test_machine_https_exception_is_exact_not_a_human_acl_relaxation() -> None:
     assert host["public_dns_extra_listen"] == ["10.250.0.2@5354"]
 
 
-def test_late_native_health_reconciles_without_replaying_lifecycle(ctl, monkeypatch):
+def test_late_native_health_reconciles_without_replaying_lifecycle(ctl, monkeypatch) -> None:
     m, c = ctl
     m.atomic(c.marker, {"reason": "four failures"})
     c.save(mode="transition-to-native", failures=4, healthy=False)
@@ -168,7 +201,7 @@ def test_late_native_health_reconciles_without_replaying_lifecycle(ctl, monkeypa
 
 
 @pytest.mark.parametrize("native,healthy", [(False, True), (True, False), (False, False)])
-def test_unhealthy_native_transition_stays_fenced(ctl, monkeypatch, native, healthy):
+def test_unhealthy_native_transition_stays_fenced(ctl, monkeypatch, native, healthy) -> None:
     m, c = ctl
     m.atomic(c.marker, {})
     c.save(mode="transition-to-native", failures=4)
@@ -180,7 +213,7 @@ def test_unhealthy_native_transition_stays_fenced(ctl, monkeypatch, native, heal
     assert c.marker.exists()
 
 
-def test_late_native_acceptance_refuses_active_agent(ctl, monkeypatch):
+def test_late_native_acceptance_refuses_active_agent(ctl, monkeypatch) -> None:
     m, c = ctl
     m.atomic(c.marker, {})
     c.save(mode="transition-to-native")
@@ -191,7 +224,7 @@ def test_late_native_acceptance_refuses_active_agent(ctl, monkeypatch):
     assert c.state["mode"] == "transition-to-native" and c.marker.exists()
 
 
-def test_late_native_acceptance_requires_prerequisites(ctl, monkeypatch):
+def test_late_native_acceptance_requires_prerequisites(ctl, monkeypatch) -> None:
     m, c = ctl
     m.atomic(c.marker, {})
     c.save(mode="transition-to-native")
@@ -207,7 +240,7 @@ def test_late_native_acceptance_requires_prerequisites(ctl, monkeypatch):
     assert c.state["mode"] == "transition-to-native" and c.marker.exists()
 
 
-def test_native_primary_requires_healthy_fenced_native_and_is_sticky(ctl, monkeypatch):
+def test_native_primary_requires_healthy_fenced_native_and_is_sticky(ctl, monkeypatch) -> None:
     m, c = ctl
     monkeypatch.setattr(c, "prerequisites", lambda: None)
     monkeypatch.setattr(m, "active", lambda unit: unit == m.NATIVE)
@@ -228,7 +261,7 @@ def test_native_primary_requires_healthy_fenced_native_and_is_sticky(ctl, monkey
     assert c.state["mode"] == "native" and c.marker.exists()
 
 
-def test_unhealthy_primary_never_restarts_agent_or_releases_fence(ctl, monkeypatch):
+def test_unhealthy_primary_never_restarts_agent_or_releases_fence(ctl, monkeypatch) -> None:
     m, c = ctl
     monkeypatch.setattr(c, "prerequisites", lambda: None)
     m.atomic(c.marker, {"native": True})
@@ -253,7 +286,7 @@ def test_unhealthy_primary_never_restarts_agent_or_releases_fence(ctl, monkeypat
 )
 def test_failure_scope_uses_direct_upstream_not_api(
     ctl, monkeypatch, agent, listeners, upstream, recover, scope
-):
+) -> None:
     m, c = ctl
     monkeypatch.setattr(m, "active", lambda unit: agent)
     monkeypatch.setattr(m, "local_listeners_respond", lambda: listeners)
@@ -269,7 +302,7 @@ def test_failure_scope_uses_direct_upstream_not_api(
     assert d["recover_local"] == recover and d["scope"] == scope
 
 
-def test_upstream_failure_never_fences_worker_or_releases_marker(ctl, monkeypatch):
+def test_upstream_failure_never_fences_worker_or_releases_marker(ctl, monkeypatch) -> None:
     m, c = ctl
     monkeypatch.setattr(m, "boot_id", lambda: "boot")
     c.save(mode="kubernetes", boot_id="boot", grace_until=0)
@@ -299,7 +332,7 @@ def test_upstream_failure_never_fences_worker_or_releases_marker(ctl, monkeypatc
     assert len(calls) == 1
 
 
-def test_probe_failure_records_stage_not_private_path(ctl, monkeypatch):
+def test_probe_failure_records_stage_not_private_path(ctl, monkeypatch) -> None:
     m, c = ctl
 
     def fail(*a, **kw) -> None:
@@ -311,7 +344,9 @@ def test_probe_failure_records_stage_not_private_path(ctl, monkeypatch):
     assert c.last_probe["error"] == "TimeoutError" and "/test" not in json.dumps(c.last_probe)
 
 
-def test_boot_grace_never_refreshes_old_green_health_or_carries_failure_count(ctl, monkeypatch):
+def test_boot_grace_never_refreshes_old_green_health_or_carries_failure_count(
+    ctl, monkeypatch
+) -> None:
     m, c = ctl
     c.save(mode="kubernetes", healthy=True, failures=3, boot_id="old")
     monkeypatch.setattr(m, "boot_id", lambda: "new")
@@ -323,7 +358,7 @@ def test_boot_grace_never_refreshes_old_green_health_or_carries_failure_count(ct
     assert c.state["healthy"] is False and c.state["failures"] == 0
 
 
-def test_failed_websocket_diagnostic_does_not_store_private_path(ctl, monkeypatch):
+def test_failed_websocket_diagnostic_does_not_store_private_path(ctl, monkeypatch) -> None:
     m, c = ctl
 
     class Connection:
