@@ -9,11 +9,11 @@ from __future__ import annotations
 import base64
 import json
 import os
+from pathlib import Path
 import secrets
 import subprocess
 import sys
 import tempfile
-from pathlib import Path
 
 ROOT = Path.home() / ".cache/homelab-authentik"
 CLIENTS_PATH = ROOT / "oidc-clients.json"
@@ -132,8 +132,8 @@ def run(args: list[str], *, input_text: str | None = None, check: bool = True) -
     result = subprocess.run(args, input=input_text, text=True, capture_output=True)
     if check and result.returncode:
         # Never include subprocess output: it may contain authentication material.
-        msg = "secure OIDC reconciliation command failed"
-        raise RuntimeError(msg)
+        message = "secure OIDC reconciliation command failed"
+        raise RuntimeError(message)
     return result.stdout.strip()
 
 
@@ -147,8 +147,8 @@ def exec_authentik(code: str, input_text: str | None = None) -> dict:
     try:
         return json.loads(raw)
     except (TypeError, json.JSONDecodeError) as exc:
-        msg = "Authentik returned an unexpected response"
-        raise RuntimeError(msg) from exc
+        message = "Authentik returned an unexpected response"
+        raise RuntimeError(message) from exc
 
 
 def persist_clients(clients: dict) -> None:
@@ -173,25 +173,23 @@ def main() -> None:
     global STAGE
     STAGE = "read-private-credential-journal"
     if not (ROOT / "credentials.json").is_file():
-        msg = "Authentik runtime credential file is missing"
-        raise RuntimeError(msg)
+        message = "Authentik runtime credential file is missing"
+        raise RuntimeError(message)
     clients = json.loads(CLIENTS_PATH.read_text()) if CLIENTS_PATH.exists() else {}
     entry = clients.get("argocd")
     STAGE = "Authentik-preflight"
     state = exec_authentik(PROBE_CODE)
     if entry is None:
         if state["provider_exists"]:
-            msg_0 = "Existing provider has no local credential journal; refusing rotation"
-            raise RuntimeError(
-                msg_0
-            )
+            message = "Existing provider has no local credential journal; refusing rotation"
+            raise RuntimeError(message)
         entry = {"client_id": "socrat-argocd", "client_secret": secrets.token_urlsafe(48)}
         clients["argocd"] = entry
         STAGE = "persist-client-credential-journal"
         persist_clients(clients)
     if not entry.get("client_id") or not entry.get("client_secret"):
-        msg = "Argo CD OAuth credential journal is incomplete"
-        raise RuntimeError(msg)
+        message = "Argo CD OAuth credential journal is incomplete"
+        raise RuntimeError(message)
     STAGE = "reconcile-Authentik-provider-and-access-bindings"
     result = exec_authentik(RECONCILE_CODE, json.dumps(entry))
     if result.get("ok") is not True:
@@ -205,8 +203,8 @@ def main() -> None:
             + ":"
             + str(error_type)
         )
-        msg = "Authentik did not confirm the Argo CD client"
-        raise RuntimeError(msg)
+        message = "Authentik did not confirm the Argo CD client"
+        raise RuntimeError(message)
 
     desired = base64.b64encode(entry["client_secret"].encode()).decode()
     STAGE = "read-Argo-CD-runtime-secret"
@@ -253,8 +251,8 @@ if __name__ == "__main__":
         if sys.argv[1:] == ["--check"]:
             STAGE = "preflight"
             if not (ROOT / "credentials.json").is_file():
-                msg = "Authentik runtime credential file is missing"
-                raise RuntimeError(msg)
+                message = "Authentik runtime credential file is missing"
+                raise RuntimeError(message)
             state = exec_authentik(PROBE_CODE)
             print(
                 "preflight=ok provider_exists="
@@ -265,8 +263,8 @@ if __name__ == "__main__":
         elif not sys.argv[1:]:
             main()
         else:
-            msg = "unsupported option"
-            raise RuntimeError(msg)
+            message = "unsupported option"
+            raise RuntimeError(message)
     except Exception as exc:
         print(
             "Argo CD Authentik OIDC setup failed at "
