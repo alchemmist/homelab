@@ -76,7 +76,7 @@ spec:
         - name: probe
           image: python:3.13-alpine@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8
           command: [python, -B, /probe/paths.py]
-          env: [{name: SOURCE, value: {{ $source }}}, {name: BOT_SERVICE_VIP, value: {{ $botVIP | quote }}}]
+          env: [{name: SOURCE, value: {{ $source | quote }}}, {name: BOT_SERVICE_VIP, value: {{ $botVIP | quote }}}]
           ports: [{name: metrics, containerPort: 9119}]
           resources:
             requests: {cpu: 5m, memory: 24Mi}

@@ -35,6 +35,41 @@ def test_snapshot_turnover_and_failures():
             assert probe.pair() == expected
 
 
+def test_probe_configuration_trims_vip_whitespace():
+    with (
+        patch.dict(probe.os.environ, {"BOT_SERVICE_VIP": " 10.43.167.29\n"}),
+        patch("socket.gethostbyname", return_value="10.43.167.29"),
+        patch.object(
+            probe,
+            "snapshot",
+            Mock(side_effect=[("stable", [("192.0.2.1", 8082)])] * 2),
+        ),
+        patch.object(probe, "health", Mock(return_value="ok")),
+    ):
+        assert probe.pair() == "ok"
+
+
+def test_rendered_source_environment_is_a_string():
+    rendered = subprocess.check_output(
+        [
+            "helm",
+            "template",
+            "monitoring-k3s",
+            str(CHART),
+            "-s",
+            "templates/service-paths.yaml",
+        ],
+        text=True,
+    )
+    documents = [d for d in yaml.safe_load_all(rendered) if d]
+    deployments = [d for d in documents if d.get("kind") == "Deployment"]
+    assert deployments
+    for deployment in deployments:
+        env = deployment["spec"]["template"]["spec"]["containers"][0]["env"]
+        source = next(item["value"] for item in env if item["name"] == "SOURCE")
+        assert isinstance(source, str)
+
+
 def test_prometheus_rules(tmp_path):
     rendered = subprocess.check_output(
         [

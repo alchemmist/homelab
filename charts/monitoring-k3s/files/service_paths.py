@@ -83,7 +83,7 @@ def pair():
             vip = socket.gethostbyname(SERVICE)
         except socket.gaierror:
             return "service_dns"
-        expected = os.environ.get("BOT_SERVICE_VIP")
+        expected = os.environ.get("BOT_SERVICE_VIP", "").strip()
         if not expected:
             return "probe_config_error"
         if vip != expected:
