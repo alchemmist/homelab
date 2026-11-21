@@ -144,12 +144,11 @@ processors:
       error_mode: silent
       statements:
       - >-
-        set(body, ParseJSON(body)) where IsString(body) and IsMatch(body, "^[ \\t]*(\\{|\\[[
-        \\t]*(\\{|\\[|\"))")
+        set(body, ParseJSON(body)) where IsString(body) and IsMatch(body, "^[ \\t]*(\\{|\\[[ \\t]*(\\{|\\[|\"))")
     - context: log
       statements:
       - >-
-      - set(body, "<redacted-invalid-json>") where IsString(body) and IsMatch(body, "^[ \\t]*(\\{|\\[[ \\t]*(\\{|\\[|\"))")
+        set(body, "<redacted-invalid-json>") where IsString(body) and IsMatch(body, "^[ \\t]*(\\{|\\[[ \\t]*(\\{|\\[|\"))")
       - set(body, "<redacted-unstructured-array>") where IsList(body)
       - flatten(body, resolveConflicts=true) where IsMap(body)
       - >-
