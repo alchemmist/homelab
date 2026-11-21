@@ -5,7 +5,7 @@ replicaCount: 1
 
 image:
   repository: syncthing/syncthing
-  tag: "2.1.7"
+  tag: 2.1.7
   pullPolicy: IfNotPresent
 
 hostPath: /srv/syncthing

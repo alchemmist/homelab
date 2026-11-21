@@ -158,10 +158,10 @@ secrets:
   # for most single-tenant deployments.
   ohSecretKey:
     existingSecret: ""
-    key: "ohSecretKey"
+    key: ohSecretKey
   sessionApiKey:
     existingSecret: ""
-    key: "sessionApiKey"
+    key: sessionApiKey
 
 # ── Pod-level knobs ──────────────────────────────────────────────────────────
 podAnnotations: {}
