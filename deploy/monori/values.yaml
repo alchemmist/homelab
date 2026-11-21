@@ -1,6 +1,7 @@
 ---
 oidc:
   enabled: true
+  onlyUserIds: [1, 3]
   hostAliases:
     - ip: 10.43.218.222
       hostnames: [auth.socrat.alchemmist.xyz]
