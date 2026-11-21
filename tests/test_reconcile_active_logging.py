@@ -6,14 +6,23 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import TypedDict
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts/reconcile-active-logging.py"
+
+
+class _Report(TypedDict):
+    """Reconciliation output read back locally; never published anywhere."""
+
+    sources: list[dict[str, object]]
 
 
 class ReconciliationTests(unittest.TestCase):
     """Snapshot reconciliation stays local to fixture files and fails closed."""
 
-    def run_case(self, names, counts, aligned=True):
+    def run_case(
+        self, names, counts, aligned=True
+    ) -> tuple[subprocess.CompletedProcess[str], _Report | None]:
         with tempfile.TemporaryDirectory() as d:
             p = Path(d)
             pods = {
@@ -79,6 +88,7 @@ class ReconciliationTests(unittest.TestCase):
         """Verify a zero stdout window is unobserved rather than recorded as loss."""
         result, report = self.run_case([("app", "app")], [0])
         self.assertEqual(result.returncode, 0)
+        assert report is not None
         self.assertEqual(
             report["sources"][0]["cause"], "no-heartbeat-exclusion-no-stdout-in-window"
         )
@@ -95,6 +105,7 @@ class ReconciliationTests(unittest.TestCase):
             ],
             [3, 3, 3],
         )
+        assert report is not None
         self.assertEqual(report["sources"][0]["cause"], "agent-self-logs-explicitly-excluded")
         self.assertTrue(
             all(

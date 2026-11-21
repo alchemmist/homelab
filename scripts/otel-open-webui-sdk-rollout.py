@@ -153,7 +153,7 @@ def run(output, apply):
         "productionSdkCoverageVerified": False,
     }
 
-    def record():
+    def record() -> None:
         (output / "result.json").write_text(json.dumps(receipt, indent=2) + "\n")
 
     record()
