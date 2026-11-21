@@ -5,8 +5,12 @@ import io
 import lzma
 from pathlib import Path
 import tempfile
+from typing import TYPE_CHECKING
 import unittest
 from unittest import mock
+
+if TYPE_CHECKING:
+    from _typeshed import Incomplete
 
 SOURCE = (
     Path(__file__).resolve().parents[1] / "ansible/roles/debian_laptop/files/load_guarded_wifi.py"
@@ -63,7 +67,7 @@ class GuardedWifiTests(unittest.TestCase):
             return str(self.module).encode()
         return b""
 
-    def invoke(self, *arguments):
+    def invoke(self, *arguments: str) -> "Incomplete":
         with (
             mock.patch("sys.argv", ["guard", *arguments]),
             contextlib.redirect_stdout(io.StringIO()),

@@ -3,19 +3,29 @@
 import pathlib
 import subprocess
 import unittest
+from typing import TypedDict
 import yaml
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
-def render(chart, *values):
+def render(chart: str, *values: str):
     cmd = ["helm", "template", "test", str(ROOT / "charts" / chart)]
     for value in values:
         cmd += ["--set", value]
     return list(yaml.safe_load_all(subprocess.check_output(cmd, text=True)))
 
 
-def resource(docs, kind, name):
+class _ChartMetadata(TypedDict):
+    name: str
+
+
+class _ChartDocument(TypedDict):
+    kind: str
+    metadata: _ChartMetadata
+
+
+def resource(docs: list[_ChartDocument | None], kind: str, name: str):
     return next(d for d in docs if d and d["kind"] == kind and d["metadata"]["name"] == name)
 
 
