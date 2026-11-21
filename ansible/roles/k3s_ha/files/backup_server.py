@@ -1,11 +1,11 @@
 import argparse
 import json
 import os
-from pathlib import Path
 import shutil
 import sqlite3
 import subprocess
 import tempfile
+from pathlib import Path
 
 CONFIG_PATHS = [
     Path("/etc/rancher/k3s"),

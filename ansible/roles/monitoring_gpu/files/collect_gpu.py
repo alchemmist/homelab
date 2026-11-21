@@ -4,11 +4,10 @@ import io
 import json
 import math
 import os
-from pathlib import Path
 import subprocess
 import tempfile
 import time
-
+from pathlib import Path
 
 FIELDS = (
     ("temperature.gpu", "temperature_celsius", 1),

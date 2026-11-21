@@ -5,7 +5,6 @@ import argparse
 import grp
 import json
 import os
-from pathlib import Path
 import pwd
 import re
 import shutil
@@ -13,6 +12,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 PROTECTED = {"root", "alchemmist", "ghactions", "nobody"}
 PRIVILEGED = {

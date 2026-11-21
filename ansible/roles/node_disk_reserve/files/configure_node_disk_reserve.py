@@ -1,15 +1,14 @@
 import argparse
-from datetime import datetime, timezone
 import json
 import os
-from pathlib import Path
 import shutil
 import socket
 import stat
 import subprocess
 import urllib.request
 import xml.etree.ElementTree as ET
-
+from datetime import datetime, timezone
+from pathlib import Path
 
 SYNCTHING_CONFIG = Path("/srv/syncthing/config/config.xml")
 KUBELET_CONFIG = Path("/var/lib/rancher/k3s/agent/etc/kubelet.conf.d/99-homelab-disk-reserve.conf")

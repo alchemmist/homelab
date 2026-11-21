@@ -7,7 +7,6 @@ import sys
 import time
 from decimal import Decimal, InvalidOperation
 
-
 RESOURCE_NAMES = ("cpu", "memory", "ephemeral-storage")
 LIMIT_RESOURCE_NAMES = ("memory", "ephemeral-storage")
 LABEL_NAME = re.compile(r"^[A-Za-z0-9](?:[-_.A-Za-z0-9]*[A-Za-z0-9])?$")

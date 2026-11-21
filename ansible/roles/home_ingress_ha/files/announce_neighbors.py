@@ -6,7 +6,6 @@ import socket
 import struct
 import subprocess
 
-
 ETH_P_ARP = 0x0806
 
 

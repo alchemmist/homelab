@@ -3,11 +3,11 @@ import argparse
 import gzip
 import lzma
 import os
-from pathlib import Path
 import platform
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 DKMS_NAME = "homelab-alx"
 DKMS_VERSION = "6.12.111-1"

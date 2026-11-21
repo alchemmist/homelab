@@ -8,7 +8,6 @@ import time
 import urllib.parse
 import urllib.request
 
-
 FIELDS = ("ip", "local_port", "protocol", "remote_ip", "external_port", "wan", "status", "comment")
 
 

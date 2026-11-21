@@ -1,7 +1,6 @@
 import json
 import sys
 
-
 CLAIM_PREFIX = "prometheus-kube-prometheus-stack-prometheus-db"
 POD_PREFIX = "prometheus-kube-prometheus-stack-prometheus-"
 

@@ -1,7 +1,6 @@
 import json
 import sys
 
-
 MEMORY_FACTORS = (
     ("Ti", 1024**4),
     ("Gi", 1024**3),

@@ -1,11 +1,11 @@
 import argparse
 import json
 import os
-from pathlib import Path
 import re
 import subprocess
 import tempfile
 import time
+from pathlib import Path
 from urllib.parse import quote, urlencode
 
 PROMETHEUS_PATH = (
