@@ -23,7 +23,7 @@ async def main():
         }
     }
 
-    async def call(url):
+    async def call(url: str):
         return await execute_tool_call(
             {},
             metadata,
