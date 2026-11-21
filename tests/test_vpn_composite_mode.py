@@ -54,7 +54,7 @@ class CompositeModeTest(unittest.TestCase):
     def test_actual_mode_expression_two_components_partial_total_stale_and_errors(self) -> None:
         cases = []
 
-        def add(name, data, value):
+        def add(name, data, value) -> None:
             cases.append(
                 {
                     "name": name,

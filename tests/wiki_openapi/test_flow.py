@@ -78,7 +78,7 @@ class Flow(unittest.TestCase):
         created = stage("create-pr", rendered[0], homelab=lab, write=True)
         self.assertEqual(created[0]["number"], 9)
 
-        def decide(prompt, data):
+        def decide(prompt, data) -> dict[str, object]:
             self.assertEqual(data["candidates"][0]["number"], 4)
             return {"close": [4, 9, 99]}
 

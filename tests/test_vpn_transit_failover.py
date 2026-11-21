@@ -108,7 +108,7 @@ def test_unknown_port_owner_blocks_native_start(ctl, monkeypatch) -> None:
     monkeypatch.setattr(m, "run", lambda a, **kw: calls.append(a))
     monkeypatch.setattr(m.time, "sleep", lambda _: None)
 
-    def occupied():
+    def occupied() -> None:
         raise OSError("occupied")
 
     monkeypatch.setattr(m, "free_ports", occupied)
@@ -232,7 +232,7 @@ def test_late_native_acceptance_requires_prerequisites(ctl, monkeypatch) -> None
     monkeypatch.setattr(m, "active", lambda unit: unit == m.NATIVE)
     monkeypatch.setattr(c, "healthy", lambda: True)
 
-    def refuse():
+    def refuse() -> None:
         raise RuntimeError("prerequisite drift")
 
     monkeypatch.setattr(c, "prerequisites", refuse)
@@ -292,7 +292,7 @@ def test_failure_scope_uses_direct_upstream_not_api(
     monkeypatch.setattr(m, "active", lambda unit: agent)
     monkeypatch.setattr(m, "local_listeners_respond", lambda: listeners)
 
-    def check(config, host, source, detail):
+    def check(config, host, source, detail) -> bool:
         assert host == "10.250.0.2" and source == ("10.250.0.40", 0)
         if not upstream:
             raise TimeoutError()
@@ -336,7 +336,7 @@ def test_upstream_failure_never_fences_worker_or_releases_marker(ctl, monkeypatc
 def test_probe_failure_records_stage_not_private_path(ctl, monkeypatch) -> None:
     m, c = ctl
 
-    def fail(*a, **kw):
+    def fail(*a, **kw) -> None:
         raise TimeoutError()
 
     monkeypatch.setattr(m.socket, "create_connection", fail)
@@ -369,14 +369,14 @@ def test_failed_websocket_diagnostic_does_not_store_private_path(ctl, monkeypatc
         def __exit__(self, *args) -> None:
             pass
 
-        def sendall(self, data):
+        def sendall(self, data) -> None:
             assert b"/test" in data
 
-        def recv(self, n):
+        def recv(self, n) -> bytes:
             return b"HTTP/1.1 403 Forbidden\r\n"
 
     class Context:
-        def wrap_socket(self, s, server_hostname):
+        def wrap_socket(self, s, server_hostname) -> Connection:
             assert server_hostname == "vpn.alchemmist.xyz"
             return Connection()
 

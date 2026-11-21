@@ -449,7 +449,7 @@ class HardeningTests(unittest.TestCase):
         self.w.activate()
         command = self.w.command
 
-        def failed(*args):
+        def failed(*args) -> object:
             if args == ("systemctl", "start", self.w.agent):
                 raise RuntimeError("start failed")
             return command(*args)
