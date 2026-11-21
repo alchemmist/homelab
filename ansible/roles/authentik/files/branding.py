@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import socket
+from typing import cast
 import urllib.parse
 import urllib.request
 
@@ -39,102 +40,95 @@ FIELDS = (
 )
 
 
-def protected_json(path, value):
-    """Protected json."""
+def protected_json(path: Path, value: object) -> None:
+    """Atomically persist JSON readable only by the owner."""
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     with open(path, "w", opener=lambda p, flags: os.open(p, flags, 0o600)) as stream:
         json.dump(value, stream, indent=2)
     path.chmod(0o600)
 
 
-def main():
-    """Main."""
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("root", type=Path)
-    parser.add_argument("theme", type=Path)
-    parser.add_argument("--action", choices=["prepare", "apply", "rollback"], default="prepare")
-    parser.add_argument("--backup", type=Path)
-    parser.add_argument(
-        "--public-edge", help="Process-local resolution only; TLS/SNI stays verified"
+def api(
+    method: str, path: str, headers: dict[str, str], data: object | None = None
+) -> dict[str, object]:
+    """Call the Authentik v3 API and return the parsed (object) JSON response."""
+    request = urllib.request.Request(
+        BASE + "/api/v3/" + path,
+        method=method,
+        headers={**headers, "Content-Type": "application/json"},
+        data=json.dumps(data).encode() if data is not None else None,
     )
-    args = parser.parse_args()
-    if args.public_edge:
-        original = socket.getaddrinfo
-        socket.getaddrinfo = lambda host, *a, **kw: original(
-            args.public_edge if host == HOST else host, *a, **kw
+    with urllib.request.urlopen(request, timeout=60) as response:
+        body = response.read()
+        if not body:
+            return {}
+        return cast("dict[str, object]", json.loads(body))
+
+
+def exact_brand(
+    headers: dict[str, str],
+) -> tuple[list[dict[str, object]], dict[str, object] | None]:
+    """Return every brand row and the unique domain brand, if present."""
+    rows = cast(
+        "list[dict[str, object]]", api("GET", "core/brands/?page_size=100", headers)["results"]
+    )
+    matches = [row for row in rows if row["domain"] == HOST]
+    if len(matches) > 1:
+        raise RuntimeError("Ambiguous domain brand; refusing to change it")
+    return rows, matches[0] if matches else None
+
+
+def _rollback(headers: dict[str, str], journal_path: Path, backup_arg: Path) -> None:
+    """Restore the journaled pre-theme Brand, flow titles and native stages."""
+    backup = cast("dict[str, object]", json.loads(backup_arg.read_text()))
+    _, current = exact_brand(headers)
+    before = cast("dict[str, object]", backup["brand_before"])
+    if before:
+        if not current or current["brand_uuid"] != before["brand_uuid"]:
+            raise RuntimeError("Brand identity changed; manual review required")
+        api(
+            "PATCH",
+            "core/brands/" + cast("str", current["brand_uuid"]) + "/",
+            headers,
+            {key: before[key] for key in FIELDS if key in before},
         )
-    credentials = json.loads((args.root / "credentials.json").read_text())
-    headers = {"Authorization": "Bearer " + credentials["AUTHENTIK_BOOTSTRAP_TOKEN"]}
-
-    def api(method, path, data=None):
-        request = urllib.request.Request(
-            BASE + "/api/v3/" + path,
-            method=method,
-            headers={**headers, "Content-Type": "application/json"},
-            data=json.dumps(data).encode() if data is not None else None,
+    elif current:
+        journal = cast("dict[str, object]", json.loads(journal_path.read_text()))
+        if current["brand_uuid"] != journal["brand_uuid"]:
+            raise RuntimeError("Refusing to remove an unrelated brand")
+        api("DELETE", "core/brands/" + cast("str", current["brand_uuid"]) + "/", headers)
+    flow = cast("dict[str, object]", backup["flow_before"])
+    api(
+        "PATCH",
+        "flows/instances/" + cast("str", flow["slug"]) + "/",
+        headers,
+        {"title": flow["title"]},
+    )
+    if backup.get("identification_before"):
+        stage = cast("dict[str, object]", backup["identification_before"])
+        api(
+            "PATCH",
+            "stages/identification/" + cast("str", stage["pk"]) + "/",
+            headers,
+            {"password_stage": stage["password_stage"], "user_fields": stage["user_fields"]},
         )
-        with urllib.request.urlopen(request, timeout=60) as response:
-            body = response.read()
-            return json.loads(body) if body else None
+    if backup.get("password_before"):
+        stage = cast("dict[str, object]", backup["password_before"])
+        api(
+            "PATCH",
+            "stages/password/" + cast("str", stage["pk"]) + "/",
+            headers,
+            {"allow_show_password": stage["allow_show_password"]},
+        )
+    print("Brand and native display settings restored; no user/provider/session changes")
 
-    def exact_brand():
-        rows = api("GET", "core/brands/?page_size=100")["results"]
-        matches = [row for row in rows if row["domain"] == HOST]
-        if len(matches) > 1:
-            raise RuntimeError("Ambiguous domain brand; refusing to change it")
-        return rows, matches[0] if matches else None
 
-    if (
-        args.action != "rollback"
-        and api("GET", "admin/version/").get("version_current") != "2026.8.5"
-    ):
-        raise RuntimeError("Theme requires reviewed Authentik 2026.8.5; refusing version drift")
-    journal_path = args.root / "quiet-mono-brand-journal.json"
-    if args.action == "rollback":
-        if not args.backup:
-            raise RuntimeError("Explicit --backup required for rollback")
-        backup = json.loads(args.backup.read_text())
-        _, current = exact_brand()
-        if backup["brand_before"]:
-            if not current or current["brand_uuid"] != backup["brand_before"]["brand_uuid"]:
-                raise RuntimeError("Brand identity changed; manual review required")
-            api(
-                "PATCH",
-                "core/brands/" + current["brand_uuid"] + "/",
-                {
-                    key: backup["brand_before"][key]
-                    for key in FIELDS
-                    if key in backup["brand_before"]
-                },
-            )
-        elif current:
-            journal = json.loads(journal_path.read_text())
-            if current["brand_uuid"] != journal["brand_uuid"]:
-                raise RuntimeError("Refusing to remove an unrelated brand")
-            api("DELETE", "core/brands/" + current["brand_uuid"] + "/")
-        flow = backup["flow_before"]
-        api("PATCH", "flows/instances/" + flow["slug"] + "/", {"title": flow["title"]})
-        if backup.get("identification_before"):
-            stage = backup["identification_before"]
-            api(
-                "PATCH",
-                "stages/identification/" + stage["pk"] + "/",
-                {"password_stage": stage["password_stage"], "user_fields": stage["user_fields"]},
-            )
-        if backup.get("password_before"):
-            stage = backup["password_before"]
-            api(
-                "PATCH",
-                "stages/password/" + stage["pk"] + "/",
-                {"allow_show_password": stage["allow_show_password"]},
-            )
-        print("Brand and native display settings restored; no user/provider/session changes")
-        return
-
-    assets = json.loads((args.theme / "assets.json").read_text())
-    urls = {}
+def _collect_asset_urls(theme: Path) -> tuple[dict[str, str], dict[str, dict[str, object]]]:
+    """Verify every theme asset on the public edge and map it to its URL."""
+    assets = cast("dict[str, dict[str, object]]", json.loads((theme / "assets.json").read_text()))
+    urls: dict[str, str] = {}
     for key, asset in assets.items():
-        path = args.theme / asset["path"]
+        path = theme / cast("str", asset["path"])
         content = path.read_bytes()
         digest = hashlib.sha256(content).hexdigest()
         if digest != asset["sha256"]:
@@ -145,77 +139,152 @@ def main():
             if hashlib.sha256(response.read()).hexdigest() != digest:
                 raise RuntimeError("Public static asset verification failed: " + key)
         urls[key] = url
-    if (args.theme / "nature.json").exists():
-        for variant in ["desktop", "mobile"]:
-            url = BASE + "/-/quiet-mono/v1/nature/" + variant
-            with urllib.request.urlopen(url, timeout=60) as response:
-                digest = hashlib.sha256(response.read()).hexdigest()
-                allowed = {
-                    assets[p[variant]]["sha256"]
-                    for p in json.loads((args.theme / "nature.json").read_text())["photos"]
-                }
-                if digest not in allowed or "immutable" not in response.headers.get(
-                    "Cache-Control", ""
-                ):
-                    raise RuntimeError("Random Nature response failed verification")
-            urls["NATURE_RANDOM_" + variant.upper()] = url
-    if (args.theme / "nature.json").exists():
-        scene_url = BASE + "/-/quiet-mono/v1/nature/scene.css"
-        with urllib.request.urlopen(scene_url, timeout=60) as response:
-            allowed_css = {
-                assets[p["sceneCss"]]["sha256"]
-                for p in json.loads((args.theme / "nature.json").read_text())["photos"]
-            }
-            if (
-                hashlib.sha256(response.read()).hexdigest() not in allowed_css
-                or response.headers.get("Cache-Control") != "no-store"
+    return urls, assets
+
+
+def _nature_photo_hashes(
+    theme: Path, assets: dict[str, dict[str, object]], field: str
+) -> set[object]:
+    nature = cast("dict[str, object]", json.loads((theme / "nature.json").read_text()))
+    return {
+        assets[cast("dict[str, str]", photo)[field]]["sha256"]
+        for photo in cast("list[object]", nature["photos"])
+        if field in cast("dict[str, str]", photo)
+    }
+
+
+def _verify_nature_responses(
+    theme: Path, urls: dict[str, str], assets: dict[str, dict[str, object]]
+) -> None:
+    """Verify the randomized Nature photo/scene responses against journaled assets."""
+    if not (theme / "nature.json").exists():
+        return
+    for variant in ["desktop", "mobile"]:
+        url = BASE + "/-/quiet-mono/v1/nature/" + variant
+        with urllib.request.urlopen(url, timeout=60) as response:
+            digest = hashlib.sha256(response.read()).hexdigest()
+            allowed = _nature_photo_hashes(theme, assets, variant)
+            if digest not in allowed or "immutable" not in response.headers.get(
+                "Cache-Control", ""
             ):
-                raise RuntimeError("Random scene CSS verification failed")
-        urls["NATURE_SCENE"] = scene_url
-    css = (args.theme / "theme.css").read_text()
+                raise RuntimeError("Random Nature response failed verification")
+        urls["NATURE_RANDOM_" + variant.upper()] = url
+    scene_url = BASE + "/-/quiet-mono/v1/nature/scene.css"
+    with urllib.request.urlopen(scene_url, timeout=60) as response:
+        if (
+            hashlib.sha256(response.read()).hexdigest()
+            not in _nature_photo_hashes(theme, assets, "sceneCss")
+            or response.headers.get("Cache-Control") != "no-store"
+        ):
+            raise RuntimeError("Random scene CSS verification failed")
+    urls["NATURE_SCENE"] = scene_url
+
+
+def _render_css(theme: Path, urls: dict[str, str]) -> str:
+    """Substitute asset URLs and normalize; DRF trims the textarea value."""
+    css = (theme / "theme.css").read_text()
     for key, url in urls.items():
         css = css.replace("__ASSET_" + key + "__", url)
     if "__ASSET_" in css:
         raise RuntimeError("Unresolved CSS asset reference")
-    # DRF trims the textarea value; normalize before comparing for idempotence.
-    css = css.strip()
-    protected_json(args.root / "quiet-mono-media.json", urls)
-    rendered = args.root / "quiet-mono-rendered.css"
-    rendered.write_text(css)
-    rendered.chmod(0o600)
-    if args.action == "prepare":
-        print(
-            "Prepared/verified",
-            len(urls),
-            "same-origin immutable static assets; no brand/flow changes",
-        )
-        return
+    return css.strip()
 
-    rows, current = exact_brand()
-    base = current or next(row for row in rows if row["default"])
-    flow = api("GET", "flows/instances/?slug=default-authentication-flow")["results"]
-    if len(flow) != 1:
-        raise RuntimeError("Expected one default authentication flow")
-    flow = flow[0]
-    ident = api("GET", "stages/identification/?name=default-authentication-identification")[
-        "results"
-    ]
-    password = api("GET", "stages/password/?name=default-authentication-password")["results"]
+
+def _resolve_native_stages(headers: dict[str, str]) -> tuple[dict[str, object], dict[str, object]]:
+    """Fetch the reviewed identification and password stages exactly once."""
+    ident = cast(
+        "list[dict[str, object]]",
+        api("GET", "stages/identification/?name=default-authentication-identification", headers)[
+            "results"
+        ],
+    )
+    password = cast(
+        "list[dict[str, object]]",
+        api("GET", "stages/password/?name=default-authentication-password", headers)["results"],
+    )
     if len(ident) != 1 or len(password) != 1:
         raise RuntimeError("Expected reviewed native identification/password stages")
-    ident, password = ident[0], password[0]
+    return ident[0], password[0]
+
+
+def _revert_applied(
+    headers: dict[str, str],
+    previous: tuple[
+        dict[str, object] | None, dict[str, object], dict[str, object], dict[str, object]
+    ],
+    created: dict[str, object] | None,
+) -> None:
+    """Restore the pre-change brand, flow title and stages after a failed apply."""
+    current, flow, ident, password = previous
+    if created:
+        if current:
+            api(
+                "PATCH",
+                "core/brands/" + cast("str", created["brand_uuid"]) + "/",
+                headers,
+                {key: current[key] for key in FIELDS if key in current},
+            )
+        else:
+            api("DELETE", "core/brands/" + cast("str", created["brand_uuid"]) + "/", headers)
+    api(
+        "PATCH",
+        "flows/instances/" + cast("str", flow["slug"]) + "/",
+        headers,
+        {"title": flow["title"]},
+    )
+    api(
+        "PATCH",
+        "stages/identification/" + cast("str", ident["pk"]) + "/",
+        headers,
+        {"password_stage": ident.get("password_stage"), "user_fields": ident["user_fields"]},
+    )
+    api(
+        "PATCH",
+        "stages/password/" + cast("str", password["pk"]) + "/",
+        headers,
+        {"allow_show_password": password.get("allow_show_password", False)},
+    )
+
+
+def _apply_brand(
+    headers: dict[str, str],
+    root: Path,
+    journal_path: Path,
+    urls: dict[str, str],
+    css: str,
+) -> None:
+    """Apply the reviewed domain brand and native combined form, with rollback."""
+    rows, current = exact_brand(headers)
+    base = current or next(row for row in rows if row["default"])
+    flows = cast(
+        "list[dict[str, object]]",
+        api("GET", "flows/instances/?slug=default-authentication-flow", headers)["results"],
+    )
+    if len(flows) != 1:
+        raise RuntimeError("Expected one default authentication flow")
+    flow = flows[0]
+    ident, password = _resolve_native_stages(headers)
     if ident.get("password_stage") not in (None, password["pk"]):
         raise RuntimeError("Unexpected inline password stage; refusing to replace it")
     # Do not silently overwrite an unrelated existing custom theme.
     if (
         current
         and current.get("branding_custom_css")
-        and "Quiet Mono v5" not in current["branding_custom_css"]
+        and "Quiet Mono v5" not in cast("str", current["branding_custom_css"])
     ):
         raise RuntimeError("Unmanaged domain CSS found; manual review required")
     payload = {key: base[key] for key in FIELDS if key in base}
-    attributes = dict(base.get("attributes") or {})
-    attributes["settings"] = {**attributes.get("settings", {}), "locale": "en", "theme": "light"}
+    base_attributes = base.get("attributes")
+    attributes = cast(
+        "dict[str, object]",
+        dict(base_attributes if isinstance(base_attributes, dict) else {}),
+    )
+    settings = attributes.get("settings")
+    attributes["settings"] = {
+        **(settings if isinstance(settings, dict) else {}),
+        "locale": "en",
+        "theme": "light",
+    }
     payload.update(
         domain=HOST,
         default=False,
@@ -238,7 +307,7 @@ def main():
         print("Quiet Mono Brand already reconciled; no changes")
         return
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
-    backup_path = args.root / "theme-backups" / ("before-quiet-mono-" + stamp + ".json")
+    backup_path = root / "theme-backups" / ("before-quiet-mono-" + stamp + ".json")
     protected_json(
         backup_path,
         {
@@ -252,16 +321,29 @@ def main():
     created = None
     try:
         if current:
-            created = api("PATCH", "core/brands/" + current["brand_uuid"] + "/", payload)
+            created = api(
+                "PATCH", "core/brands/" + cast("str", current["brand_uuid"]) + "/", headers, payload
+            )
         else:
-            created = api("POST", "core/brands/", payload)
-        api("PATCH", "flows/instances/" + flow["slug"] + "/", {"title": "Sign in"})
+            created = api("POST", "core/brands/", headers, payload)
         api(
             "PATCH",
-            "stages/identification/" + ident["pk"] + "/",
+            "flows/instances/" + cast("str", flow["slug"]) + "/",
+            headers,
+            {"title": "Sign in"},
+        )
+        api(
+            "PATCH",
+            "stages/identification/" + cast("str", ident["pk"]) + "/",
+            headers,
             {"password_stage": password["pk"], "user_fields": ident["user_fields"]},
         )
-        api("PATCH", "stages/password/" + password["pk"] + "/", {"allow_show_password": True})
+        api(
+            "PATCH",
+            "stages/password/" + cast("str", password["pk"]) + "/",
+            headers,
+            {"allow_show_password": True},
+        )
         protected_json(
             journal_path,
             {
@@ -272,30 +354,59 @@ def main():
             },
         )
     except Exception:
-        if created:
-            if current:
-                api(
-                    "PATCH",
-                    "core/brands/" + created["brand_uuid"] + "/",
-                    {key: current[key] for key in FIELDS if key in current},
-                )
-            else:
-                api("DELETE", "core/brands/" + created["brand_uuid"] + "/")
-        api("PATCH", "flows/instances/" + flow["slug"] + "/", {"title": flow["title"]})
-        api(
-            "PATCH",
-            "stages/identification/" + ident["pk"] + "/",
-            {"password_stage": ident.get("password_stage"), "user_fields": ident["user_fields"]},
-        )
-        api(
-            "PATCH",
-            "stages/password/" + password["pk"] + "/",
-            {"allow_show_password": password.get("allow_show_password", False)},
-        )
+        _revert_applied(headers, (current, flow, ident, password), created)
         raise
     print(
         "Applied domain Brand, title and native combined identification/password form; protected rollback saved"
     )
+
+
+def main():
+    'Main.'
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("root", type=Path)
+    parser.add_argument("theme", type=Path)
+    parser.add_argument("--action", choices=["prepare", "apply", "rollback"], default="prepare")
+    parser.add_argument("--backup", type=Path)
+    parser.add_argument(
+        "--public-edge", help="Process-local resolution only; TLS/SNI stays verified"
+    )
+    args = parser.parse_args()
+    if args.public_edge:
+        original = socket.getaddrinfo
+        socket.getaddrinfo = lambda host, *a, **kw: original(
+            args.public_edge if host == HOST else host, *a, **kw
+        )
+    credentials = cast(
+        "dict[str, object]", json.loads((args.root / "credentials.json").read_text())
+    )
+    headers = {"Authorization": "Bearer " + cast("str", credentials["AUTHENTIK_BOOTSTRAP_TOKEN"])}
+    if (
+        args.action != "rollback"
+        and api("GET", "admin/version/", headers).get("version_current") != "2026.8.5"
+    ):
+        raise RuntimeError("Theme requires reviewed Authentik 2026.8.5; refusing version drift")
+    journal_path = args.root / "quiet-mono-brand-journal.json"
+    if args.action == "rollback":
+        if not args.backup:
+            raise RuntimeError("Explicit --backup required for rollback")
+        _rollback(headers, journal_path, args.backup)
+        return
+    urls, assets = _collect_asset_urls(args.theme)
+    _verify_nature_responses(args.theme, urls, assets)
+    css = _render_css(args.theme, urls)
+    protected_json(args.root / "quiet-mono-media.json", urls)
+    rendered = args.root / "quiet-mono-rendered.css"
+    rendered.write_text(css)
+    rendered.chmod(0o600)
+    if args.action == "prepare":
+        print(
+            "Prepared/verified",
+            len(urls),
+            "same-origin immutable static assets; no brand/flow changes",
+        )
+        return
+    _apply_brand(headers, args.root, journal_path, urls, css)
 
 
 if __name__ == "__main__":

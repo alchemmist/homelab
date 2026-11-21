@@ -1,3 +1,5 @@
+"""Configure LiteLLM branding (logo/favicon URLs) via its admin API."""
+
 import base64
 import json
 import subprocess

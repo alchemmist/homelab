@@ -148,5 +148,6 @@ def main():
 
 if __name__ == '__main__':
     try:main()
-    except Exception as exc:
+    except (OSError, RuntimeError, ValueError, KeyError, TypeError,
+            subprocess.SubprocessError) as exc:
         raise SystemExit('STOP: '+(str(exc) if isinstance(exc,RuntimeError) else type(exc).__name__)+'; inspect private state/uncertain marker; values withheld') from None

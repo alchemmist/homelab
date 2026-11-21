@@ -61,7 +61,7 @@ def main():
     )
     credential = json.loads((args.root / "credentials.json").read_text())
 
-    def api(method, path, value=None):
+    def api(method, path, value=None) -> dict[str, object]:
         req = urllib.request.Request(
             "https://auth.socrat.alchemmist.xyz/api/v3/" + path,
             method=method,
@@ -72,7 +72,8 @@ def main():
             data=json.dumps(value).encode() if value is not None else None,
         )
         with urllib.request.urlopen(req, timeout=45) as response:
-            return json.load(response)
+            document: dict[str, object] = json.load(response)
+            return document
 
     if not args.rollback and api("GET", "admin/version/")["version_current"] != "2026.8.5":
         raise RuntimeError("Unreviewed Authentik version")
