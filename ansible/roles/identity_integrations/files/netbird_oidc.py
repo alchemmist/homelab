@@ -340,7 +340,8 @@ def _pilot_snapshot(inventory: dict[str, list[dict[str, object]]]):
 
 def _group_owned(group: dict[str, object] | None, journal: _Journal):
     groups = journal.get("groups")
-    recorded = groups.get(group["name"]) if group and isinstance(groups, dict) else None
+    name = group.get("name") if group else None
+    recorded = groups.get(name) if isinstance(name, str) and isinstance(groups, dict) else None
     attributes = group.get("attributes") if group else None
     if not isinstance(attributes, dict):
         attributes = {}
