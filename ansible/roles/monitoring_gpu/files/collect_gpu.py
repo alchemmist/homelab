@@ -1,3 +1,5 @@
+"""Collect GPU metrics via nvidia-smi for Prometheus text exposition."""
+
 import argparse
 import csv
 import io

@@ -10,7 +10,7 @@ from pathlib import Path
 from sync import api
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--wait-seconds", type=int, default=0, choices=range(0, 86401), metavar="0..86400")
     args = parser.parse_args()

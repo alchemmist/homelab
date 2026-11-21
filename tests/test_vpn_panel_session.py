@@ -1,9 +1,8 @@
+"""Tests for the VPN panel session management script."""
+
 import hashlib
 import importlib.util
-import io
-from types import ModuleType
 import json
-import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -11,25 +10,11 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 
-
-def _mapping(value: object) -> dict[str, object]:
-    """Narrow decoded report fields to mappings for typed test callers."""
-    assert isinstance(value, dict)
-    return value
-
-
-def _sequence(value: object) -> list[object]:
-    """Narrow decoded report fields to sequences for typed test callers."""
-    assert isinstance(value, list)
-    return value
-
-
-def _text(value: object) -> str:
-    """Narrow report fields to string values for typed test callers."""
-    assert isinstance(value, str)
-    return value
-
-
+EXPECTED_REMOVED_PLAINTEXT_LINKS = 7
+EXPECTED_UPSTREAM_PORT = 443
+SESSION_FILE_MODE = 0o600
+EXPECTED_FAILURE_THRESHOLD = 4
+LEGACY_ENDPOINT_COUNT = 2
 spec = importlib.util.spec_from_file_location(
     "panel_session", ROOT / "scripts/vpn-panel-session.py"
 )
@@ -38,12 +23,12 @@ spec.loader.exec_module(m)
 
 
 class SessionTests(unittest.TestCase):
-    def test_unsafe_name_rejected(self) -> None:
+    def test_unsafe_name_rejected(self):
         for name in ("install", "cli-fallback", "vpn83-../x", "vpn83-a"):
             with self.assertRaises(ValueError):
                 m.NativeSession("/tmp/" + name)
 
-    def test_collision_refuses_even_preview(self) -> None:
+    def test_collision_refuses_even_preview(self):
         s = m.NativeSession("/tmp/vpn83-20261108-test")
         with (
             patch.object(m, "token_rows", return_value=[{"name": s.names["worker"]}]),
@@ -53,14 +38,14 @@ class SessionTests(unittest.TestCase):
                 s.preview()
             pod.assert_not_called()
 
-    def test_api_paths_and_redirects_are_restricted(self) -> None:
+    def test_api_paths_and_redirects_are_restricted(self):
         for path in ("/setting/reset", "/inbounds/update/1?x=y", "/../secret"):
             with self.assertRaises(ValueError):
                 m.request("http://127.0.0.1:18082/base", "A" * 48, "POST", path, {})
         with self.assertRaises(ValueError):
             m.NoRedirect().redirect_request(None, None, None, None, None, None)
 
-    def test_wrong_host_refuses_before_token_creation(self) -> None:
+    def test_wrong_host_refuses_before_token_creation(self):
         s = m.NativeSession("/tmp/vpn83-20261108-host")
         with (
             patch.object(m.socket, "gethostname", return_value="socrat-0"),
@@ -70,7 +55,7 @@ class SessionTests(unittest.TestCase):
                 s.open("bad")
             run.assert_not_called()
 
-    def test_native_success_and_cleanup_preserve_original_credentials(self) -> None:
+    def test_native_success_and_cleanup_preserve_original_credentials(self):
         with tempfile.TemporaryDirectory() as tmp:
             state = Path(tmp).resolve() / "vpn83-20261108-success"
             s = m.NativeSession(state)
@@ -83,11 +68,11 @@ class SessionTests(unittest.TestCase):
                 "created_at": 1,
                 "expires_at": 0,
             }
-            rows: list[dict[str, object]] = [original.copy()]
-            calls: list[object] = []
+            rows = [original.copy()]
+            calls = []
             values = {"bootstrap": "B" * 48, "cleanup": "C" * 48, "worker": "W" * 48}
 
-            def insert(kind: str, scope: str, expires: int = 0) -> dict[str, object]:
+            def insert(kind, scope, expires=0):
                 row = {
                     "id": max([x["id"] for x in rows] + [0]) + 1,
                     "name": s.names[kind],
@@ -106,54 +91,37 @@ class SessionTests(unittest.TestCase):
                     "token": values[kind],
                 }
 
-            def cli(args: object, **kwargs: object) -> object:
-                assert isinstance(args, list)
-                stdout = kwargs["stdout"]
-                assert isinstance(stdout, io.TextIOBase)
-                self.assertIn("-tokenName", args)
-                self.assertIn(s.names["bootstrap"], args)
-                self.assertNotIn("existing", args)
+            def cli(args, **kwargs):
+                assert "-tokenName" in args
+                assert s.names["bootstrap"] in args
+                assert "existing" not in args
                 insert("bootstrap", "admin")
+                kwargs["stdout"].write("apiToken: " + values["bootstrap"] + "\n")
+                return type("Result", (), {"returncode": 0})()
 
-                stdout.write("apiToken: " + values["bootstrap"] + "\n")
-                result: object = type("Result", (), {"returncode": 0})()
-                return result
-
-            def api(
-                base: str,
-                token: str,
-                method: str,
-                path: str,
-                body: dict[str, object] | None = None,
-            ) -> object:
+            def api(base, token, method, path, body=None):
                 calls.append((token, method, path, body))
                 if path.endswith("/create"):
-                    assert body is not None
                     kind = next(k for k in values if s.names[k] == body["name"])
-                    scope = body["scope"]
-                    expires_at = body["expiresAt"]
-                    assert isinstance(scope, str) and isinstance(expires_at, int)
-                    self.assertGreater(expires_at, 0)
-                    return insert(kind, scope, expires_at)
+                    assert body["expiresAt"] > 0
+                    return insert(kind, body["scope"], body["expiresAt"])
                 if "/delete/" in path:
-                    assert body is not None
                     target = int(path.rsplit("/", 1)[1])
                     row = next(r for r in rows if r["id"] == target)
-                    self.assertEqual(row["scope"], body["expectedScope"])
+                    assert row["scope"] == body["expectedScope"]
                     rows.remove(row)
                     return None
-                self.assertEqual(token, values["worker"])
+                assert token == values["worker"]
                 return []
 
-            def directory(path: object) -> object:
-                assert isinstance(path, Path)
+            def directory(path):
                 path.mkdir(mode=0o700)
                 return path
 
             with (
                 patch.object(m.socket, "gethostname", return_value="socrat-2"),
                 patch.object(m.os, "geteuid", return_value=0),
-                patch.object(m, "token_rows", side_effect=lambda *_args: [x.copy() for x in rows]),
+                patch.object(m, "token_rows", side_effect=lambda *args: [x.copy() for x in rows]),
                 patch.object(
                     m,
                     "pod_identity",
@@ -167,8 +135,8 @@ class SessionTests(unittest.TestCase):
             ):
                 approval = m.h.digest(s.preview())
                 s.open(approval)
-                self.assertFalse(any(r["name"] == s.names["bootstrap"] for r in rows))
-                self.assertEqual(s.credentials["worker"]["scope"], "node-sync")
+                assert not any(r["name"] == s.names["bootstrap"] for r in rows)
+                assert s.credentials["worker"]["scope"] == "node-sync"
                 s.call("GET", "/inbounds/list")
                 with self.assertRaises(ValueError):
                     s.call("POST", "/setting/apiTokens/create", {})
@@ -181,26 +149,23 @@ class SessionTests(unittest.TestCase):
                 worker["token"] = old
                 s.cleanup()
                 s.cleanup()
-            self.assertEqual(rows, [original])
-            self.assertTrue(
-                json.loads((state / "credential-cleanup.json").read_text())[
-                    "existing_tokens_unchanged"
-                ]
-            )
-            self.assertFalse((state / "uncertain.json").exists())
+            assert rows == [original]
+            assert json.loads((state / "credential-cleanup.json").read_text())[
+                "existing_tokens_unchanged"
+            ]
+            assert not (state / "uncertain.json").exists()
             for filename in ("bootstrap.stdout", "bootstrap.json", "cleanup.json", "worker.json"):
-                self.assertFalse((state / filename).exists())
-            self.assertNotIn(
-                "B" * 48, json.dumps(json.loads((state / "credential-cleanup.json").read_text()))
+                assert not (state / filename).exists()
+            assert "B" * 48 not in json.dumps(
+                json.loads((state / "credential-cleanup.json").read_text())
             )
 
-    def test_wrong_approval_does_not_invoke_cli(self) -> None:
+    def test_wrong_approval_does_not_invoke_cli(self):
         with tempfile.TemporaryDirectory() as tmp:
             state = Path(tmp).resolve() / "vpn83-20261108-approval"
             s = m.NativeSession(state)
 
-            def directory(path: object) -> object:
-                assert isinstance(path, Path)
+            def directory(path):
                 path.mkdir(mode=0o700)
                 return path
 
@@ -219,16 +184,15 @@ class SessionTests(unittest.TestCase):
 
 
 class TargetHelperTests(unittest.TestCase):
-    def module(self) -> ModuleType:
+    def module(self):
         spec = importlib.util.spec_from_file_location(
             "target_apply", ROOT / "scripts/vpn-reality-apply.py"
         )
-        assert spec is not None and spec.loader is not None
         result = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(result)
         return result
 
-    def inbound(self) -> dict[str, object]:
+    def inbound(self):
         stream = {
             "network": "xhttp",
             "security": "reality",
@@ -251,75 +215,72 @@ class TargetHelperTests(unittest.TestCase):
             "clientStats": [{"secret": "sentinel"}],
         }
 
-    def test_only_target_is_patched_and_stats_not_posted(self) -> None:
+    def test_only_target_is_patched_and_stats_not_posted(self):
         module = self.module()
         before = self.inbound()
         after = module.api_payload(before)
-        self.assertNotIn("clientStats", after)
-        self.assertEqual(after["settings"], before["settings"])
-        a = json.loads(_text(after["streamSettings"]))
-        b = json.loads(_text(before["streamSettings"]))
-        self.assertEqual(a["realitySettings"]["target"], "www.yahoo.com:443")
+        assert "clientStats" not in after
+        assert after["settings"] == before["settings"]
+        a = json.loads(after["streamSettings"])
+        b = json.loads(before["streamSettings"])
+        assert a["realitySettings"]["target"] == "www.yahoo.com:443"
         b["realitySettings"]["target"] = "www.yahoo.com:443"
-        self.assertEqual(a, b)
-        self.assertEqual(
-            json.loads(_text(before["streamSettings"]))["realitySettings"]["target"],
-            "www.intel.com:443",
+        assert a == b
+        assert (
+            json.loads(before["streamSettings"])["realitySettings"]["target"] == "www.intel.com:443"
         )
 
-    def test_unexpected_sni_or_security_stops(self) -> None:
+    def test_unexpected_sni_or_security_stops(self):
         module = self.module()
         before = self.inbound()
-        s = json.loads(_text(before["streamSettings"]))
+        s = json.loads(before["streamSettings"])
         s["security"] = "none"
         before["streamSettings"] = json.dumps(s)
         with self.assertRaises(ValueError):
             module.api_payload(before)
 
-    def test_probe_is_loopback_and_only_allows_public_test_destination(self) -> None:
+    def test_probe_is_loopback_and_only_allows_public_test_destination(self):
         module = self.module()
         cfg = module.vless_client(
-            json.loads(_text(self.inbound()["streamSettings"])), "new-owned-id", 12345
+            json.loads(self.inbound()["streamSettings"]), "new-owned-id", 12345
         )
-        self.assertEqual(cfg["inbounds"][0]["listen"], "127.0.0.1")
-        self.assertEqual(cfg["outbounds"][0]["protocol"], "blackhole")
-        self.assertEqual(cfg["routing"]["rules"][0]["domain"], ["full:speed.cloudflare.com"])
-        self.assertNotIn("PRIVATE_SENTINEL", json.dumps(cfg))
-        self.assertEqual(cfg["outbounds"][1]["settings"]["vnext"][0]["users"][0]["flow"], "")
+        assert cfg["inbounds"][0]["listen"] == "127.0.0.1"
+        assert cfg["outbounds"][0]["protocol"] == "blackhole"
+        assert cfg["routing"]["rules"][0]["domain"] == ["full:speed.cloudflare.com"]
+        assert "PRIVATE_SENTINEL" not in json.dumps(cfg)
+        assert cfg["outbounds"][1]["settings"]["vnext"][0]["users"][0]["flow"] == ""
 
-    def test_json_formatting_is_not_a_semantic_change(self) -> None:
+    def test_json_formatting_is_not_a_semantic_change(self):
         module = self.module()
         a = {"inbounds": [{"id": 1, "stream_settings": '{"b":2,"a":1}'}]}
         b = {"inbounds": [{"id": 1, "stream_settings": '{ "a": 1, "b": 2 }'}]}
-        self.assertEqual(module.semantic(a), module.semantic(b))
+        assert module.semantic(a) == module.semantic(b)
 
-    def test_modern_nested_json_dto_is_supported_without_legacy_reencoding(self) -> None:
+    def test_modern_nested_json_dto_is_supported_without_legacy_reencoding(self):
         module = self.module()
         before = self.inbound()
-        before["streamSettings"] = json.loads(_text(before["streamSettings"]))
-        before["settings"] = json.loads(_text(before["settings"]))
+        before["streamSettings"] = json.loads(before["streamSettings"])
+        before["settings"] = json.loads(before["settings"])
         before["sniffing"] = None
         after = module.api_payload(before)
-        self.assertIsInstance(after["streamSettings"], dict)
-        self.assertEqual(after["streamSettings"]["realitySettings"]["target"], "www.yahoo.com:443")
-        self.assertEqual(after["settings"], before["settings"])
-        reality = _mapping(_mapping(before["streamSettings"])["realitySettings"])
-        self.assertEqual(reality["target"], "www.intel.com:443")
-        self.assertIsNone(module.json_field(None))
-        self.assertIsNone(module.json_field(""))
+        assert isinstance(after["streamSettings"], dict)
+        assert after["streamSettings"]["realitySettings"]["target"] == "www.yahoo.com:443"
+        assert after["settings"] == before["settings"]
+        assert before["streamSettings"]["realitySettings"]["target"] == "www.intel.com:443"
+        assert module.json_field(None) is None
+        assert module.json_field("") is None
 
 
 class SubscriptionMigrationTests(unittest.TestCase):
-    def module(self) -> ModuleType:
+    def module(self):
         spec = importlib.util.spec_from_file_location(
             "sub_migrate", ROOT / "scripts/vpn-subscription-migrate.py"
         )
-        assert spec is not None and spec.loader is not None
         m = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(m)
         return m
 
-    def test_payload_only_excludes_publication(self) -> None:
+    def test_payload_only_excludes_publication(self):
         m = self.module()
         before = {
             "id": 7,
@@ -332,28 +293,31 @@ class SubscriptionMigrationTests(unittest.TestCase):
             "clientStats": [],
         }
         after = m.payload(before, 7)
-        self.assertTrue(after["enable"])
-        self.assertTrue(after["excludeFromSub"])
+        assert after["enable"]
+        assert after["excludeFromSub"]
         expected = dict(before, excludeFromSub=True)
         expected.pop("clientStats")
-        self.assertEqual(after, expected)
-        self.assertFalse(before["excludeFromSub"])
+        assert after == expected
+        assert not before["excludeFromSub"]
         with self.assertRaises(ValueError):
             m.payload(after, 7)
 
-    def test_publication_delta_preserves_opaque_imports_and_credentials(self) -> None:
+    def test_publication_delta_preserves_opaque_imports_and_credentials(self):
         m = self.module()
         secure = "vless://preserved@192.0.2.1:32053?security=reality"
         legacy = "vless://preserved@192.0.2.1:32063?security=none"
         opaque = "vpn://opaque-private"
         before = {str(i): sorted([secure, legacy, opaque]) for i in range(7)}
         after = {k: sorted([secure, opaque]) for k in before}
-        self.assertEqual(m.check_delta(before, after)["plaintext_links_removed"], 7)
+        assert (
+            m.check_delta(before, after)["plaintext_links_removed"]
+            == EXPECTED_REMOVED_PLAINTEXT_LINKS
+        )
         after["0"] = [secure]
         with self.assertRaises(ValueError):
             m.check_delta(before, after)
 
-    def test_only_reality_random_id_is_normalized(self) -> None:
+    def test_only_reality_random_id_is_normalized(self):
         m = self.module()
         before = {
             "shortId": "preserve",
@@ -362,54 +326,43 @@ class SubscriptionMigrationTests(unittest.TestCase):
             },
         }
         after = m.normalize_json(before)
-        self.assertEqual(
-            after,
-            {
-                "shortId": "preserve",
-                "streamSettings": {"realitySettings": {"publicKey": "preserve-key"}},
-            },
+        assert after == {
+            "shortId": "preserve",
+            "streamSettings": {"realitySettings": {"publicKey": "preserve-key"}},
+        }
+        assert before["streamSettings"]["realitySettings"]["shortId"] == "random"
+        assert m.json_legacy(
+            {"outbounds": [{"protocol": "vless", "settings": {"vnext": [{"port": 32063}]}}]}
         )
-        reality = _mapping(_mapping(before["streamSettings"])["realitySettings"])
-        self.assertEqual(reality["shortId"], "random")
-        self.assertTrue(
-            m.json_legacy(
-                {"outbounds": [{"protocol": "vless", "settings": {"vnext": [{"port": 32063}]}}]}
-            )
-        )
-        self.assertFalse(
-            m.json_legacy(
-                {"outbounds": [{"protocol": "trojan", "settings": {"vnext": [{"port": 32063}]}}]}
-            )
+        assert not m.json_legacy(
+            {"outbounds": [{"protocol": "trojan", "settings": {"vnext": [{"port": 32063}]}}]}
         )
 
-    def test_native_flat_vless_json_settings_are_detected(self) -> None:
+    def test_native_flat_vless_json_settings_are_detected(self):
         m = self.module()
-        self.assertTrue(
-            m.json_legacy(
-                {
-                    "outbounds": [
-                        {
-                            "protocol": "vless",
-                            "settings": {"address": "192.0.2.1", "port": 32063, "id": "PRESERVE"},
-                        }
-                    ]
-                }
-            )
+        assert m.json_legacy(
+            {
+                "outbounds": [
+                    {
+                        "protocol": "vless",
+                        "settings": {"address": "192.0.2.1", "port": 32063, "id": "PRESERVE"},
+                    }
+                ]
+            }
         )
-        self.assertFalse(
-            m.json_legacy({"outbounds": [{"protocol": "vless", "settings": {"port": 32053}}]})
+        assert not m.json_legacy(
+            {"outbounds": [{"protocol": "vless", "settings": {"port": 32053}}]}
         )
 
 
 class BackendGuardTests(unittest.TestCase):
-    def module(self, filename: str) -> ModuleType:
+    def module(self, filename):
         spec = importlib.util.spec_from_file_location("backend_test", ROOT / "scripts" / filename)
-        assert spec is not None and spec.loader is not None
         m = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(m)
         return m
 
-    def test_exact_owned_guard_and_missing_table_comment_supported(self) -> None:
+    def test_exact_owned_guard_and_missing_table_comment_supported(self):
         m = self.module("vpn-backend-guard.py")
         objects = m.expected()
         m.validate(objects)
@@ -419,7 +372,7 @@ class BackendGuardTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             m.validate(objects)
 
-    def test_foreign_owner_and_extra_rule_refused(self) -> None:
+    def test_foreign_owner_and_extra_rule_refused(self):
         m = self.module("vpn-backend-guard.py")
         objects = m.expected()
         objects[0]["table"]["comment"] = "foreign"
@@ -430,7 +383,7 @@ class BackendGuardTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             m.validate(objects)
 
-    def test_exact_existing_netbird_allowance_preserved_without_relaxing_public_guard(self) -> None:
+    def test_exact_existing_netbird_allowance_preserved_without_relaxing_public_guard(self):
         import copy
 
         m = self.module("vpn-backend-guard.py")
@@ -456,7 +409,7 @@ class BackendGuardTests(unittest.TestCase):
         objects.insert(2, allow)
         before = copy.deepcopy(objects)
         m.validate(objects)
-        self.assertEqual(objects, before)
+        assert objects == before
         for iface in ["eth0", "lo", "wg-socrat"]:
             bad = copy.deepcopy(objects)
             bad[2]["rule"]["expr"][0]["match"]["right"] = iface
@@ -475,77 +428,75 @@ class BackendGuardTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             m.validate(bad)
 
-    def test_guard_scope_and_boot_ensure(self) -> None:
+    def test_guard_scope_and_boot_ensure(self):
         m = self.module("vpn-backend-guard.py")
         text = m.rules()
-        self.assertIn('iifname "eth0"', text)
-        self.assertIn("{ 12096, 32087 }", text)
-        self.assertIn("ct state established", text)
-        self.assertNotIn("flush", text)
-        self.assertNotIn("forward", text)
-        self.assertNotIn(" log ", text)
-        self.assertIn("--ensure", m.UNIT)
-        self.assertNotIn("ExecStop=", m.UNIT)
+        assert 'iifname "eth0"' in text
+        assert "{ 12096, 32087 }" in text
+        assert "ct state established" in text
+        assert "flush" not in text
+        assert "forward" not in text
+        assert " log " not in text
+        assert "--ensure" in m.UNIT
+        assert "ExecStop=" not in m.UNIT
 
-    def test_trojan_probe_uses_fresh_own_secret_and_verified_tls443(self) -> None:
+    def test_trojan_probe_uses_fresh_own_secret_and_verified_tls443(self):
         m = self.module("vpn-backend-enforce.py")
         cfg = m.client(
             {"network": "ws", "security": "none", "wsSettings": {"path": "/owned-test"}},
             "OWN_FRESH_SECRET",
             12345,
         )
-        self.assertEqual(cfg["inbounds"][0]["listen"], "127.0.0.1")
+        assert cfg["inbounds"][0]["listen"] == "127.0.0.1"
         proxy = cfg["outbounds"][1]
-        self.assertEqual(proxy["settings"]["servers"][0]["port"], 443)
-        self.assertFalse(proxy["streamSettings"]["tlsSettings"]["allowInsecure"])
-        self.assertEqual(cfg["outbounds"][0]["protocol"], "blackhole")
-        self.assertEqual(cfg["routing"]["rules"][0]["domain"], ["full:speed.cloudflare.com"])
+        assert proxy["settings"]["servers"][0]["port"] == EXPECTED_UPSTREAM_PORT
+        assert not proxy["streamSettings"]["tlsSettings"]["allowInsecure"]
+        assert cfg["outbounds"][0]["protocol"] == "blackhole"
+        assert cfg["routing"]["rules"][0]["domain"] == ["full:speed.cloudflare.com"]
 
-    def test_nft_106_conntrack_membership_uses_in_operator(self) -> None:
+    def test_nft_106_conntrack_membership_uses_in_operator(self):
         m = self.module("vpn-backend-guard.py")
         expr = m.expected()[2]["rule"]["expr"][2]
-        self.assertEqual(expr["match"]["op"], "in")
-        self.assertEqual(expr["match"]["right"], "established")
+        assert expr["match"]["op"] == "in"
+        assert expr["match"]["right"] == "established"
 
 
 class HomeProbeTests(unittest.TestCase):
-    def module(self) -> ModuleType:
+    def module(self):
         spec = importlib.util.spec_from_file_location(
             "home_probe", ROOT / "scripts/vpn-home-probe.py"
         )
-        assert spec is not None and spec.loader is not None
         m = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(m)
         return m
 
-    def test_home_receipt_write_is_private_exclusive(self) -> None:
+    def test_home_receipt_write_is_private_exclusive(self):
         m = self.module()
         with tempfile.TemporaryDirectory() as tmp:
             p = Path(tmp) / "proof.json"
             m.exclusive(p, {"own_fixture": True})
-            self.assertEqual(p.stat().st_mode & 0o777, 0o600)
+            assert p.stat().st_mode & 0o777 == SESSION_FILE_MODE
             with self.assertRaises(FileExistsError):
                 m.exclusive(p, {"overwrite": True})
 
-    def test_probe_limits_destination_and_avoids_global_network_writes(self) -> None:
+    def test_probe_limits_destination_and_avoids_global_network_writes(self):
         text = (ROOT / "scripts/vpn-home-probe.py").read_text()
-        self.assertIn("65536", text)
-        self.assertIn("socks5h://127.0.0.1:", text)
+        assert "65536" in text
+        assert "socks5h://127.0.0.1:" in text
         for forbidden in ["ip route add", "networksetup", "resolvectl dns", "sysctl -w"]:
-            self.assertNotIn(forbidden, text)
+            assert forbidden not in text
 
 
 class LegacyRetirementTests(unittest.TestCase):
-    def module(self) -> ModuleType:
+    def module(self):
         spec = importlib.util.spec_from_file_location(
             "retire", ROOT / "scripts/vpn-legacy-retire.py"
         )
-        assert spec is not None and spec.loader is not None
         m = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(m)
         return m
 
-    def test_watchdog_removes_only_legacy_dependencies(self) -> None:
+    def test_watchdog_removes_only_legacy_dependencies(self):
         m = self.module()
         old = {
             "state_dir": "/var/lib/homelab-vpn-failover",
@@ -561,28 +512,25 @@ class LegacyRetirementTests(unittest.TestCase):
             "confirmation_checks": 2,
         }
         after = m.watchdog_after(old)
-        self.assertEqual(after["tcp_endpoints"], [["127.0.0.1", 32053]])
-        self.assertEqual(after["listen_ports"], [{"protocol": "tcp", "port": 443}])
-        self.assertEqual(after["failure_threshold"], 4)
-        self.assertEqual(
-            after["native_unit_ports"]["homelab-vpn-primary.service"],
-            [{"protocol": "udp", "port": 32085}],
-        )
-        self.assertEqual(len(_sequence(old["tcp_endpoints"])), 2)
+        assert after["tcp_endpoints"] == [["127.0.0.1", 32053]]
+        assert after["listen_ports"] == [{"protocol": "tcp", "port": 443}]
+        assert after["failure_threshold"] == EXPECTED_FAILURE_THRESHOLD
+        assert after["native_unit_ports"]["homelab-vpn-primary.service"] == [
+            {"protocol": "udp", "port": 32085}
+        ]
+        assert len(old["tcp_endpoints"]) == LEGACY_ENDPOINT_COUNT
         with self.assertRaises(ValueError):
             m.watchdog_after(after)
 
-    def test_collector_rewrite_is_narrow_and_not_repeatable(self) -> None:
+    def test_collector_rewrite_is_narrow_and_not_repeatable(self):
         m = self.module()
         before = "ExecStart=python3 collector --ports 32087,32053,32083,32063 --state PRIVATEPATH"
         after = m.monitoring_after(before)
-        self.assertEqual(
-            after, "ExecStart=python3 collector --ports 32087,32053,32083 --state PRIVATEPATH"
-        )
+        assert after == "ExecStart=python3 collector --ports 32087,32053,32083 --state PRIVATEPATH"
         with self.assertRaises(ValueError):
             m.monitoring_after(after)
 
-    def test_native_projection_only_disables_excluded_legacy(self) -> None:
+    def test_native_projection_only_disables_excluded_legacy(self):
         m = self.module()
         old = {
             "inbounds": [
@@ -601,17 +549,15 @@ class LegacyRetirementTests(unittest.TestCase):
             "hosts": [{"id": 7}],
         }
         after = m.desired(old)
-        self.assertFalse(after["inbounds"][0]["enable"])
-        self.assertTrue(old["inbounds"][0]["enable"])
+        assert not after["inbounds"][0]["enable"]
+        assert old["inbounds"][0]["enable"]
         after["inbounds"][0]["enable"] = 1
-        self.assertEqual(after, old)
-        old_inbounds = _sequence(old["inbounds"])
-        assert isinstance(old_inbounds[0], dict)
-        old_inbounds[0]["exclude_from_sub"] = 0
+        assert after == old
+        old["inbounds"][0]["exclude_from_sub"] = 0
         with self.assertRaises(ValueError):
             m.desired(old)
 
-    def test_expected_sqlite_enable_flag_keeps_integer_sort_semantics(self) -> None:
+    def test_expected_sqlite_enable_flag_keeps_integer_sort_semantics(self):
         m = self.module()
         old = {
             "inbounds": [
@@ -626,5 +572,5 @@ class LegacyRetirementTests(unittest.TestCase):
             ]
         }
         result = m.desired(old)
-        self.assertIs(type(result["inbounds"][0]["enable"]), int)
-        self.assertEqual(result["inbounds"][0]["enable"], 0)
+        assert type(result["inbounds"][0]["enable"]) is int
+        assert result["inbounds"][0]["enable"] == 0

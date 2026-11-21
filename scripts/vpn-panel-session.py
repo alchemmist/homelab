@@ -21,7 +21,7 @@ import urllib.request
 from collections.abc import Sequence
 from contextlib import closing
 from pathlib import Path
-from typing import cast
+from typing import TextIO, TypedDict, cast
 
 spec = importlib.util.spec_from_file_location(
     "inventory", Path(__file__).with_name("vpn-hardening-inventory.py")
@@ -49,7 +49,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         raise ValueError("API redirect refused")
 
 
-def command(args, **kwargs) -> str:
+def command(args: Sequence[str], **kwargs: object) -> str:
     result = subprocess.run(args, capture_output=True, text=True, timeout=25, **kwargs)
     if result.returncode:
         raise RuntimeError("Native read failed")
@@ -111,7 +111,7 @@ def request(base, token, method, path, body=None) -> object:
             raise ValueError("Native API rejected operation")
         resolved: object = obj.get("obj")
         return resolved
-    except (OSError, ValueError, RuntimeError):
+    except Exception:
         raise RuntimeError(
             "Native API operation failed; inspect private receipts, never retry writes blindly"
         ) from None
@@ -302,12 +302,10 @@ class NativeSession:
             self._create("cleanup", "admin", 30, "bootstrap")
             self._delete("bootstrap", "cleanup")
             self._create("worker", self.worker_scope, 20, "cleanup")
-            session: NativeSession = self
         except Exception:
             self.cleanup()
             raise
-        else:
-            return session
+        return self
 
     def call(self, method, path, body=None) -> object:
         if path.startswith("/setting/"):
@@ -325,7 +323,7 @@ class NativeSession:
                     continue
                 try:
                     self._delete(kind, actor)
-                except (OSError, ValueError, RuntimeError):
+                except Exception:
                     errors.append(kind)
         rows = token_rows(self.database)
         if any(r["name"] in self.names.values() for r in rows):

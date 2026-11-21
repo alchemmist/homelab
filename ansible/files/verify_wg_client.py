@@ -1,3 +1,5 @@
+"""Verify a WireGuard client tunnel against SSH host keys and DNS checks."""
+
 import argparse
 import json
 from pathlib import Path

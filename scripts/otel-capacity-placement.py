@@ -1,3 +1,4 @@
+"""Pin Rancher Fleet controller pods to specific nodes for OTEL capacity."""
 import argparse
 import copy
 import json

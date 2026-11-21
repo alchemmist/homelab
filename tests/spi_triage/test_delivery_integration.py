@@ -1,3 +1,5 @@
+"""Tests for SPI triage message delivery integration."""
+
 import json
 import tempfile
 import unittest

@@ -122,7 +122,9 @@ def refresh_public_edge_probe(scrape):
     targets = yaml.safe_load((ROOT / "charts/monitoring-k3s/values.yaml").read_text())[
         "serviceProbes"
     ]["targets"]
-    tcp_targets = {t["id"]: t["url"] for t in targets if t["id"] in ("edge-vps", "litellm-db", "umami-db")}
+    tcp_targets = {
+        t["id"]: t["url"] for t in targets if t["id"] in ("edge-vps", "litellm-db", "umami-db")
+    }
     result = copy.deepcopy(scrape)
     for job in result.get("scrape_configs", []):
         if not job.get("job_name", "").startswith(
@@ -214,11 +216,23 @@ def add_logging_self_monitoring(scrape):
 def add_pg_platform_scrape(scrape):
     result = copy.deepcopy(scrape)
     job = {
-        "job_name": "postgres-platform", "scrape_interval": "15s", "scrape_timeout": "5s",
-        "static_configs": [{"targets": [f"pg-{tier}-primary-metrics.postgres.svc:9187"],
-                            "labels": {"pg_cluster": f"pg-{tier}"}} for tier in ("common", "critical")],
-        "metric_relabel_configs": [{"source_labels": ["__name__"], "action": "keep",
-                                    "regex": "cnpg_(collector_sync_replicas|pg_replication_streaming_replicas|pg_stat_replication_replay_lag_seconds|pg_replication_slots_pg_wal_lsn_diff)"}],
+        "job_name": "postgres-platform",
+        "scrape_interval": "15s",
+        "scrape_timeout": "5s",
+        "static_configs": [
+            {
+                "targets": [f"pg-{tier}-primary-metrics.postgres.svc:9187"],
+                "labels": {"pg_cluster": f"pg-{tier}"},
+            }
+            for tier in ("common", "critical")
+        ],
+        "metric_relabel_configs": [
+            {
+                "source_labels": ["__name__"],
+                "action": "keep",
+                "regex": "cnpg_(collector_sync_replicas|pg_replication_streaming_replicas|pg_stat_replication_replay_lag_seconds|pg_replication_slots_pg_wal_lsn_diff)",
+            }
+        ],
     }
     existing = [x for x in result["scrape_configs"] if x["job_name"] == job["job_name"]]
     if existing and existing != [job]:
@@ -228,12 +242,107 @@ def add_pg_platform_scrape(scrape):
     return result
 
 
+def require(expected: object, message: str) -> None:
+    """Enforce an invariant, failing with the given message."""
+    if not expected:
+        raise ValueError(message)
+
+
+def append_local_translations(translated, group, outputs, nodes):
+    """Bring one local job's targets onto the owning node's agent config."""
+    for target in group:
+        discovered = target.get("discoveredLabels", {})
+        node = discovered.get("__meta_kubernetes_pod_node_name") or discovered.get(
+            "__meta_kubernetes_node_name"
+        )
+        require(
+            node in NODES and node not in nodes,
+            "Node-exporter ownership is missing, unknown or duplicated",
+        )
+        nodes.add(node)
+        local = {
+            key: copy.deepcopy(value)
+            for key, value in translated.items()
+            if not key.endswith("_sd_configs") and key not in ("static_configs", "relabel_configs")
+        }
+        local["static_configs"] = [
+            {"targets": ["127.0.0.1:19100"], "labels": copy.deepcopy(target["labels"])}
+        ]
+        outputs[node]["scrape_configs"].append(local)
+
+
+def distribute_source_pools(source, pools, monitors, contract, outputs, mounts):
+    """Translate every source scrape config into the cutover-shaped outputs."""
+    seen: set[object] = set()
+    nodes: set[object] = set()
+    for original in source.get("scrape_configs", []):
+        pool = original["job_name"]
+        require(pool not in seen, "Duplicate scrape pool")
+        seen.add(pool)
+        if pool not in pools:
+            contract["excludedEmptyPools"].append(pool)
+            continue
+        group = pools[pool]
+        jobs = {target["labels"].get("job") for target in group}
+        if jobs <= REGISTRY.CLUSTER_JOBS:
+            owner = "cluster"
+        elif jobs <= REGISTRY.LOCAL_JOBS:
+            owner = "node-agents"
+        else:
+            raise ValueError("Unknown or mixed source ownership")
+        translated, secret_keys = translate_authorization(original, monitors)
+        for reference in secret_keys:
+            if reference not in contract["requiredSecretKeys"]:
+                contract["requiredSecretKeys"].append(reference)
+        translated.update(scrape_interval="5s", scrape_timeout="4s")
+        references: list[object] = assets(translated)
+        mounts.update(references)
+        record = {
+            "pool": pool,
+            "owner": owner,
+            "targetCount": len(group),
+            "originalConfigSHA256": fingerprint(original),
+            "fileDependencies": sorted(references),
+            "targetLabelSHA256": sorted(fingerprint(target["labels"]) for target in group),
+        }
+        if owner == "cluster":
+            outputs["cluster"]["scrape_configs"].append(translated)
+        else:
+            require(
+                all(
+                    [
+                        translated.get("scheme", "http") == "http",
+                        not references,
+                        not any(
+                            key in translated
+                            for key in ("basic_auth", "authorization", "oauth2", "tls_config")
+                        ),
+                    ]
+                ),
+                "Local exporter transport/authentication needs explicit compatibility review",
+            )
+            append_local_translations(translated, group, outputs, nodes)
+            record["labelMode"] = (
+                "legacy target labels retained as explicit compatibility aliases,"
+                " not host-process runtime metadata"
+            )
+        contract["pools"].append(record)
+    return nodes, seen
+
+
 def compile_config(source, targets, monitors=None):
     monitors = {} if monitors is None else monitors
     active = targets["activeTargets"]
-    if not active or any(target.get("health") != "up" for target in active):
-        raise ValueError("A complete healthy target inventory is required")
-    pools = {}
+    require(
+        all(
+            [
+                bool(active),
+                all(target.get("health") == "up" for target in active),
+            ]
+        ),
+        "A complete healthy target inventory is required",
+    )
+    pools: dict[object, list[object]] = {}
     for target in active:
         pools.setdefault(target["scrapePool"], []).append(target)
     global_config = copy.deepcopy(source.get("global", {}))
@@ -262,82 +371,19 @@ def compile_config(source, targets, monitors=None):
         "secretAssetSynchronizationRuntimeVerified": False,
         "requiredSecretKeys": [],
     }
-    seen = set()
-    mounts = set(assets(global_config))
-    nodes = set()
-    for original in source.get("scrape_configs", []):
-        pool = original["job_name"]
-        if pool in seen:
-            raise ValueError("Duplicate scrape pool")
-        seen.add(pool)
-        if pool not in pools:
-            contract["excludedEmptyPools"].append(pool)
-            continue
-        group = pools[pool]
-        jobs = {target["labels"].get("job") for target in group}
-        if jobs <= REGISTRY.CLUSTER_JOBS:
-            owner = "cluster"
-        elif jobs <= REGISTRY.LOCAL_JOBS:
-            owner = "node-agents"
-        else:
-            raise ValueError("Unknown or mixed source ownership")
-        translated, secret_keys = translate_authorization(original, monitors)
-        for reference in secret_keys:
-            if reference not in contract["requiredSecretKeys"]:
-                contract["requiredSecretKeys"].append(reference)
-        translated.update(scrape_interval="5s", scrape_timeout="4s")
-        references = assets(translated)
-        mounts.update(references)
-        record = {
-            "pool": pool,
-            "owner": owner,
-            "targetCount": len(group),
-            "originalConfigSHA256": fingerprint(original),
-            "fileDependencies": sorted(references),
-            "targetLabelSHA256": sorted(fingerprint(target["labels"]) for target in group),
-        }
-        if owner == "cluster":
-            outputs["cluster"]["scrape_configs"].append(translated)
-        else:
-            if (
-                translated.get("scheme", "http") != "http"
-                or references
-                or any(
-                    key in translated
-                    for key in ("basic_auth", "authorization", "oauth2", "tls_config")
-                )
-            ):
-                raise ValueError(
-                    "Local exporter transport/authentication needs explicit compatibility review"
-                )
-            for target in group:
-                discovered = target.get("discoveredLabels", {})
-                node = discovered.get("__meta_kubernetes_pod_node_name") or discovered.get(
-                    "__meta_kubernetes_node_name"
-                )
-                if node not in NODES or node in nodes:
-                    raise ValueError("Node-exporter ownership is missing, unknown or duplicated")
-                nodes.add(node)
-                local = {
-                    key: copy.deepcopy(value)
-                    for key, value in translated.items()
-                    if not key.endswith("_sd_configs")
-                    and key not in ("static_configs", "relabel_configs")
-                }
-                local["static_configs"] = [
-                    {"targets": ["127.0.0.1:19100"], "labels": copy.deepcopy(target["labels"])}
-                ]
-                outputs[node]["scrape_configs"].append(local)
-            record["labelMode"] = (
-                "legacy target labels retained as explicit compatibility aliases, not host-process runtime metadata"
-            )
-        contract["pools"].append(record)
-    if set(pools) - seen:
-        raise ValueError("Active targets are absent from the effective scrape configuration")
-    if nodes != set(NODES):
-        raise ValueError("Exactly one independent node source is required for every node")
-    if not outputs["cluster"]["scrape_configs"]:
-        raise ValueError("Cluster source inventory is empty")
+    mounts: set[object] = set(assets(global_config))
+    nodes, seen = distribute_source_pools(source, pools, monitors, contract, outputs, mounts)
+    require(
+        not (set(pools) - seen), "Active targets are absent from the effective scrape configuration"
+    )
+    require(
+        nodes == set(NODES),
+        "Exactly one independent node source is required for every node",
+    )
+    require(
+        outputs["cluster"]["scrape_configs"],
+        "Cluster source inventory is empty",
+    )
     contract["requiredFileMounts"] = sorted(mounts)
     contract["activeTargetCount"] = len(active)
     contract["loggingSelfMonitoring"] = {
@@ -348,7 +394,9 @@ def compile_config(source, targets, monitors=None):
         "intervalSeconds": 5,
         "timeoutSeconds": 4,
     }
-    outputs["cluster"] = add_pg_platform_scrape(refresh_public_edge_probe(add_logging_self_monitoring(outputs["cluster"])))
+    outputs["cluster"] = add_pg_platform_scrape(
+        refresh_public_edge_probe(add_logging_self_monitoring(outputs["cluster"]))
+    )
     outputs = escape_literals(outputs)
     contract["dollarEscaping"] = (
         "literal Prometheus dollars escaped before Collector confmap resolution"

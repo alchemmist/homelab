@@ -3,7 +3,9 @@
 kube-prometheus-stack:
   alertmanager:
     alertmanagerSpec:
-      replicas: 1
+      # Temporary loss-of-1 drill exception: one RWO claim per ordinal.
+      replicas: 2
+      podAntiAffinity: hard
       nodeSelector:
         kubernetes.io/os: linux
       affinity:

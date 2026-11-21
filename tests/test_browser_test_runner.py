@@ -1,3 +1,5 @@
+"""Tests for the open-terminal browser test runner."""
+
 import os
 import signal
 import subprocess

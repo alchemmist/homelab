@@ -87,23 +87,42 @@ def expected_targets(targets, pools):
     return set(identities)
 
 
+def require(expected: object, message: str) -> None:
+    """Enforce an invariant, failing with the given message."""
+    if not expected:
+        raise ValueError(message)
+
+
+def fail(message: str) -> None:
+    """Abort the private canary run with RuntimeError."""
+    raise RuntimeError(message)
+
+
 def cleanup_workspace(workspace):
-    if (
-        os.geteuid() != 0
-        or workspace.is_symlink()
-        or workspace.resolve().parent != Path("/var/tmp/otel-real-source-canary")
-    ):
-        raise ValueError("Cleanup requires an owned private canary workspace")
+    require(
+        all(
+            [
+                os.geteuid() == 0,
+                not workspace.is_symlink(),
+                workspace.resolve().parent == Path("/var/tmp/otel-real-source-canary"),
+            ]
+        ),
+        "Cleanup requires an owned private canary workspace",
+    )
     manifest = workspace / "cleanup.json"
     if not manifest.exists():
         return
     name = json.loads(manifest.read_text())["name"]
-    if (
-        not name.startswith("otel-canary-")
-        or len(name) != 24
-        or not all(c in "0123456789abcdef" for c in name[12:])
-    ):
-        raise ValueError("Invalid canary cleanup identity")
+    require(
+        all(
+            [
+                name.startswith("otel-canary-"),
+                len(name) == 24,
+                all(c in "0123456789abcdef" for c in name[12:]),
+            ]
+        ),
+        "Invalid canary cleanup identity",
+    )
     failed = False
     try:
         for kind in ["clusterrolebinding", "clusterrole", "serviceaccount"]:
@@ -112,49 +131,188 @@ def cleanup_workspace(workspace):
                     kube("get", kind, "-l", "homelab.alchemmist.xyz/canary=" + name, "-o", "json")
                 )["items"]
                 for obj in objects:
-                    if (
-                        obj["metadata"]["name"] != name
-                        or obj["metadata"].get("labels", {}).get("homelab.alchemmist.xyz/canary")
-                        != name
-                    ):
-                        raise ValueError("Unexpected canary ownership")
+                    require(
+                        all(
+                            [
+                                obj["metadata"]["name"] == name,
+                                obj["metadata"]
+                                .get("labels", {})
+                                .get("homelab.alchemmist.xyz/canary")
+                                == name,
+                            ]
+                        ),
+                        "Unexpected canary ownership",
+                    )
                     kube("delete", kind, name, "--wait=true", "--timeout=15s")
             except (RuntimeError, subprocess.TimeoutExpired):
                 failed = True
     finally:
         directory = workspace / "credentials"
         if directory.exists():
-            if directory.is_symlink():
-                raise ValueError("Credential cleanup refuses symlinks")
+            require(
+                not directory.is_symlink(),
+                "Credential cleanup refuses symlinks",
+            )
             for path in directory.iterdir():
-                if path.is_symlink() or not path.is_file():
-                    raise ValueError("Credential cleanup refuses non-regular files")
+                require(
+                    all([not path.is_symlink(), path.is_file()]),
+                    "Credential cleanup refuses non-regular files",
+                )
                 path.unlink()
     if failed:
         raise RuntimeError("Temporary discovery RBAC cleanup incomplete")
 
 
+def teardown_canary(children, logs, created, name, credentials):
+    """Stop the canary processes, drop the RBAC objects and clear credentials."""
+    for child in reversed(children):
+        if child.poll() is None:
+            child.terminate()
+            try:
+                child.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                child.kill()
+                child.wait(timeout=5)
+    for log in logs:
+        log.close()
+    cleanup_succeeded = True
+    for kind in reversed(created):
+        try:
+            kube("delete", kind.lower(), name, "--wait=true", "--timeout=15s")
+        except (RuntimeError, subprocess.TimeoutExpired):
+            cleanup_succeeded = False
+    for path in credentials.iterdir():
+        path.unlink()
+    return cleanup_succeeded
+
+
+def materialize_source_credentials(contract, credentials, kubeconfig):
+    """Write every reviewed secret and TLS asset into the private canary workspace."""
+    paths = {}
+    for index, reference in enumerate(contract["requiredSecretKeys"]):
+        response = subprocess.run(
+            [
+                "kubectl",
+                "-n",
+                reference["namespace"],
+                "get",
+                "secret",
+                reference["secret"],
+                "-o",
+                "json",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=True,
+        )
+        secret = json.loads(response.stdout)["data"]
+        path = credentials / ("source-" + str(index))
+        path.write_bytes(base64.b64decode(secret[reference["key"]], validate=True))
+        paths[reference["mountPath"]] = str(path)
+    pods = json.loads(kube("get", "pods", "-l", "app.kubernetes.io/name=prometheus", "-o", "json"))[
+        "items"
+    ]
+    require(
+        len(pods) == 1,
+        "Exactly one existing production Prometheus pod is required",
+    )
+    volume = next(v for v in pods[0]["spec"]["volumes"] if v["name"] == "tls-assets")
+    certs = {}
+    for source in volume["projected"]["sources"]:
+        require(
+            all([set(source) == {"secret"}, not source["secret"].get("items")]),
+            "Unsupported TLS asset projection",
+        )
+        secret = json.loads(kube("get", "secret", source["secret"]["name"], "-o", "json"))["data"]
+        require(
+            not (set(certs) & set(secret)),
+            "Ambiguous TLS asset projection",
+        )
+        certs.update(secret)
+    for index, asset in enumerate(contract["requiredFileMounts"]):
+        if asset in paths:
+            continue
+        require(
+            all([asset.startswith(CERT_ROOT), Path(asset).name in certs]),
+            "Unresolved file dependency",
+        )
+        path = credentials / ("ca-" + str(index))
+        path.write_bytes(base64.b64decode(certs[Path(asset).name], validate=True))
+        paths[asset] = str(path)
+    return paths
+
+
+def await_stable_targets(context, port, children, expected):
+    """Poll the canary until its targets match the expected inventory for three rounds."""
+    started = time.monotonic()
+    consecutive = 0
+    observed = {}
+    ages = []
+    while time.monotonic() - started < 150:
+        if any(process.poll() is not None for process in children):
+            fail("Canary native service stopped; inspect private logs")
+        try:
+            expression = urllib.parse.urlencode({"query": "up"})
+            with urllib.request.urlopen(
+                "https://127.0.0.1:" + str(port) + "/api/v1/query?" + expression,
+                context=context,
+                timeout=5,
+            ) as response:
+                vector = json.load(response)["data"]["result"]
+            observed = {fingerprint(point["metric"]): point["value"][1] for point in vector}
+            age_query = urllib.parse.urlencode({"query": "time() - timestamp(up)"})
+            with urllib.request.urlopen(
+                "https://127.0.0.1:" + str(port) + "/api/v1/query?" + age_query,
+                context=context,
+                timeout=5,
+            ) as response:
+                ages = [float(point["value"][1]) for point in json.load(response)["data"]["result"]]
+            healthy = (
+                set(observed) == expected
+                and all(value == "1" for value in observed.values())
+                and len(ages) == len(expected)
+                and all(0 <= age < 15 for age in ages)
+            )
+            consecutive = consecutive + 1 if healthy else 0
+            if consecutive >= 3:
+                break
+        except (OSError, ValueError, KeyError):
+            consecutive = 0
+        time.sleep(5)
+    return observed, ages, consecutive
+
+
 def run(args):
-    if os.geteuid() != 0:
-        raise ValueError("Private host canary staging requires the authorized root controller")
+    require(
+        os.geteuid() == 0,
+        "Private host canary staging requires the authorized root controller",
+    )
     contract = json.loads((args.bundle / "contract.json").read_text())
     collected = datetime.fromisoformat(contract["collectedAt"])
     age = (datetime.now(UTC) - collected).total_seconds()
-    if age < 0 or age > 900:
-        raise ValueError("Scrape inventory is stale or future-dated")
+    require(0 <= age <= 900, "Scrape inventory is stale or future-dated")
     scrape = json.loads((args.bundle / "cluster.json").read_text())
-    if fingerprint(scrape) != contract["outputSHA256"]["cluster"]:
-        raise ValueError("Scrape bundle fingerprint differs")
+    require(
+        fingerprint(scrape) == contract["outputSHA256"]["cluster"],
+        "Scrape bundle fingerprint differs",
+    )
     current = prometheus("status/config")["yaml"]
-    if hashlib.sha256(current.encode()).hexdigest() != contract["sourceYAMLTextSHA256"]:
-        raise ValueError("Production source configuration changed after translation")
+    require(
+        hashlib.sha256(current.encode()).hexdigest() == contract["sourceYAMLTextSHA256"],
+        "Production source configuration changed after translation",
+    )
     fs = os.statvfs("/var/lib/rancher/k3s/storage")
     memory = dict(line.split(":", 1) for line in Path("/proc/meminfo").read_text().splitlines())
-    if (
-        fs.f_bavail < max(30 * 2**30 / fs.f_frsize, fs.f_blocks * 0.2)
-        or int(memory["MemAvailable"].split()[0]) * 1024 < 4 * 2**30
-    ):
-        raise ValueError("Canary resource reserve is insufficient")
+    require(
+        all(
+            [
+                fs.f_bavail >= max(30 * 2**30 / fs.f_frsize, fs.f_blocks * 0.2),
+                int(memory["MemAvailable"].split()[0]) * 1024 >= 4 * 2**30,
+            ]
+        ),
+        "Canary resource reserve is insufficient",
+    )
     pools = {job["job_name"] for job in scrape["scrape_configs"]}
     expected = expected_targets(prometheus("targets"), pools)
     args.workspace.mkdir(mode=0o700, exist_ok=False)
@@ -229,52 +387,7 @@ def run(args):
                 }
             )
         )
-        paths = {}
-        for index, reference in enumerate(contract["requiredSecretKeys"]):
-            response = subprocess.run(
-                [
-                    "kubectl",
-                    "-n",
-                    reference["namespace"],
-                    "get",
-                    "secret",
-                    reference["secret"],
-                    "-o",
-                    "json",
-                ],
-                capture_output=True,
-                text=True,
-                timeout=30,
-                check=True,
-            )
-            secret = json.loads(response.stdout)["data"]
-            path = credentials / ("source-" + str(index))
-            path.write_bytes(base64.b64decode(secret[reference["key"]], validate=True))
-            paths[reference["mountPath"]] = str(path)
-        pods = json.loads(
-            kube("get", "pods", "-l", "app.kubernetes.io/name=prometheus", "-o", "json")
-        )["items"]
-        if len(pods) != 1:
-            raise ValueError("Exactly one existing production Prometheus pod is required")
-        volume = next(v for v in pods[0]["spec"]["volumes"] if v["name"] == "tls-assets")
-        certs = {}
-        for source in volume["projected"]["sources"]:
-            if set(source) != {"secret"} or source["secret"].get("items"):
-                raise ValueError("Unsupported TLS asset projection")
-            secret = json.loads(kube("get", "secret", source["secret"]["name"], "-o", "json"))[
-                "data"
-            ]
-            if set(certs) & set(secret):
-                raise ValueError("Ambiguous TLS asset projection")
-            certs.update(secret)
-        for index, asset in enumerate(contract["requiredFileMounts"]):
-            if asset in paths:
-                continue
-            if not asset.startswith(CERT_ROOT) or Path(asset).name not in certs:
-                raise ValueError("Unresolved file dependency")
-            path = credentials / ("ca-" + str(index))
-            path.write_bytes(base64.b64decode(certs[Path(asset).name], validate=True))
-            paths[asset] = str(path)
+        paths = materialize_source_credentials(contract, credentials, kubeconfig)
         for path in credentials.iterdir():
             path.chmod(0o600)
         translated = rewrite_assets(scrape, paths, kubeconfig)
@@ -359,41 +472,7 @@ def run(args):
         context = ssl.create_default_context(cafile=str(args.tls / "ca.crt"))
         context.load_cert_chain(str(args.tls / "client.crt"), str(args.tls / "client.key"))
         started = time.monotonic()
-        consecutive = 0
-        observed = {}
-        while time.monotonic() - started < 150:
-            if any(process.poll() is not None for process in children):
-                raise RuntimeError("Canary native service stopped; inspect private logs")
-            try:
-                expression = urllib.parse.urlencode({"query": "up"})
-                with urllib.request.urlopen(
-                    "https://127.0.0.1:" + str(port) + "/api/v1/query?" + expression,
-                    context=context,
-                    timeout=5,
-                ) as response:
-                    vector = json.load(response)["data"]["result"]
-                observed = {fingerprint(point["metric"]): point["value"][1] for point in vector}
-                age_query = urllib.parse.urlencode({"query": "time() - timestamp(up)"})
-                with urllib.request.urlopen(
-                    "https://127.0.0.1:" + str(port) + "/api/v1/query?" + age_query,
-                    context=context,
-                    timeout=5,
-                ) as response:
-                    ages = [
-                        float(point["value"][1]) for point in json.load(response)["data"]["result"]
-                    ]
-                healthy = (
-                    set(observed) == expected
-                    and all(value == "1" for value in observed.values())
-                    and len(ages) == len(expected)
-                    and all(0 <= age < 15 for age in ages)
-                )
-                consecutive = consecutive + 1 if healthy else 0
-                if consecutive >= 3:
-                    break
-            except (OSError, ValueError, KeyError):
-                consecutive = 0
-            time.sleep(5)
+        observed, ages, consecutive = await_stable_targets(context, port, children, expected)
         if consecutive < 3:
             (args.workspace / "failure-summary.json").write_text(
                 json.dumps(
@@ -408,8 +487,9 @@ def run(args):
                     }
                 )
             )
-            raise RuntimeError(
-                "Real-source target labels, authorization or availability differ; raw responses are not logged"
+            fail(
+                "Real-source target labels, authorization or availability differ;"
+                " raw responses are not logged"
             )
         collector_log = (args.workspace / "collector.log").read_text()
         rejected = {
@@ -458,25 +538,11 @@ def run(args):
             "readyForCutover": False,
         }
     finally:
-        for child in reversed(children):
-            if child.poll() is None:
-                child.terminate()
-                try:
-                    child.wait(timeout=10)
-                except subprocess.TimeoutExpired:
-                    child.kill()
-                    child.wait(timeout=5)
-        for log in logs:
-            log.close()
-        for kind in reversed(created):
-            try:
-                kube("delete", kind.lower(), name, "--wait=true", "--timeout=15s")
-            except (RuntimeError, subprocess.TimeoutExpired):
-                cleanup_succeeded = False
-        for path in credentials.iterdir():
-            path.unlink()
+        cleanup_succeeded = teardown_canary(children, logs, created, name, credentials) and (
+            cleanup_succeeded
+        )
     if not cleanup_succeeded:
-        raise RuntimeError("Temporary canary RBAC cleanup failed; inspect the retained private run")
+        fail("Temporary canary RBAC cleanup failed; inspect the retained private run")
     result["temporaryCredentialsRemoved"] = True
     result["temporaryRBACRemoved"] = True
     (args.workspace / "result.json").write_text(json.dumps(result, indent=2) + "\n")

@@ -42,26 +42,26 @@ class ObservabilityConfigTests(unittest.TestCase):
             ("trace-gateway", 256 * 2**20),
         ]:
             document = config(name)
-            self.assertTrue(_mapping(_mapping(document["extensions"])["file_storage"])["fsync"])
+            assert _mapping(_mapping(document["extensions"])["file_storage"])["fsync"]
             for exporter in _mapping(document["exporters"]).values():
                 queue = _mapping(_mapping(exporter)["sending_queue"])
-                self.assertEqual(queue["sizer"], "bytes")
-                self.assertEqual(queue["queue_size"], limit)
-                self.assertEqual(queue["storage"], "file_storage")
+                assert queue["sizer"] == "bytes"
+                assert queue["queue_size"] == limit
+                assert queue["storage"] == "file_storage"
 
     def test_new_file_startup_records_and_historical_cut_are_separate(self) -> None:
         """Require new-file startup and the historical cut to stay separate."""
         filelog = _mapping(_mapping(config("agent")["receivers"])["filelog"])
-        self.assertEqual(filelog["start_at"], "beginning")
+        assert filelog["start_at"] == "beginning"
         for name in ["agent", "cluster"]:
             document = config(name)
             pipelines = _mapping(_mapping(document["service"])["pipelines"])
             processors = _list(_mapping(pipelines["logs"])["processors"])
-            self.assertLess(processors.index("filter/log-ingestion-cut"), len(processors) - 1)
+            assert processors.index("filter/log-ingestion-cut") < len(processors) - 1
             cut = _mapping(_mapping(document["processors"])["filter/log-ingestion-cut"])
             condition = _text(_list(_mapping(cut["logs"])["log_record"])[0])
-            self.assertIn("time_unix_nano == 0", condition)
-            self.assertIn("${env:OTEL_LOG_INGESTION_START_NS}", condition)
+            assert "time_unix_nano == 0" in condition
+            assert "${env:OTEL_LOG_INGESTION_START_NS}" in condition
 
     def test_public_otlp_cannot_be_enabled_without_client_authentication(self) -> None:
         """Require public OTLP listeners to present client-authenticated TLS."""
@@ -70,14 +70,12 @@ class ObservabilityConfigTests(unittest.TestCase):
             protocols = _mapping(_mapping(receivers["otlp"])["protocols"])
             for protocol in protocols.values():
                 listener = _mapping(protocol)
-                self.assertIn("${env:OTEL_BIND_IP}", _text(listener["endpoint"]))
+                assert "${env:OTEL_BIND_IP}" in _text(listener["endpoint"])
                 tls = _mapping(listener["tls"])
-                self.assertTrue({"cert_file", "key_file", "client_ca_file"} <= set(tls))
-                self.assertTrue(
-                    set(tls) <= {"cert_file", "key_file", "client_ca_file", "reload_interval"}
-                )
+                assert {"cert_file", "key_file", "client_ca_file"} <= set(tls)
+                assert set(tls) <= {"cert_file", "key_file", "client_ca_file", "reload_interval"}
                 if "reload_interval" in tls:
-                    self.assertEqual(tls["reload_interval"], "1m")
+                    assert tls["reload_interval"] == "1m"
 
     def test_production_ingestion_uses_the_service_identity(self) -> None:
         """The host dials the Service IP but verifies its DNS SAN without a DNS dependency."""
@@ -87,59 +85,46 @@ class ObservabilityConfigTests(unittest.TestCase):
         )
         tasks = {task["name"]: task for task in play["tasks"]}
         unit = tasks["Install native tail sampling gateway"]["ansible.builtin.copy"]["content"]
-        self.assertIn(
-            "Environment=OTEL_TEMPO_ENDPOINT={{ trace_gateway_service.stdout }}:4317",
-            unit,
-        )
-        self.assertIn(
-            "--set=exporters.otlp/tempo.tls.server_name_override="
-            "otel-tempo.cattle-monitoring-system.svc.cluster.local",
-            unit,
-        )
+        assert "Environment=OTEL_TEMPO_ENDPOINT={{ trace_gateway_service.stdout }}:4317" in unit
+        assert "--set=exporters.otlp/tempo.tls.server_name_override=" "otel-tempo.cattle-monitoring-system.svc.cluster.local" in unit
         for source in (
             "charts/prometheus/values.yaml",
             "deploy/monitoring/otel-production-values.yaml",
             "scripts/otel-production-cluster.py",
         ):
             text = (repo / source).read_text()
-            self.assertIn("https://otel-loki.cattle-monitoring-system.svc:3100/otlp", text)
-            self.assertNotIn("https://10.250.0.3:3100/otlp", text)
+            assert "https://otel-loki.cattle-monitoring-system.svc:3100/otlp" in text
+            assert "https://10.250.0.3:3100/otlp" not in text
 
     def test_retention_is_not_shortened(self) -> None:
         """Require Loki and Tempo retention periods to stay at their current lengths."""
         loki = config("loki")
-        self.assertEqual(_mapping(loki["limits_config"])["retention_period"], "336h")
+        assert _mapping(loki["limits_config"])["retention_period"] == "336h"
         retention = _mapping(loki["compactor"])["retention_enabled"]
         assert isinstance(retention, bool)
-        self.assertTrue(retention)
+        assert retention
         tempo = _mapping(_mapping(config("tempo")["compactor"])["compaction"])
-        self.assertEqual(tempo["block_retention"], "168h")
+        assert tempo["block_retention"] == "168h"
         for name in ["loki", "tempo"]:
             server = _mapping(config(name)["server"])
-            self.assertEqual(
-                _mapping(server["http_tls_config"])["client_auth_type"],
-                "RequireAndVerifyClientCert",
-            )
+            assert _mapping(server["http_tls_config"])["client_auth_type"] == "RequireAndVerifyClientCert"
 
     def test_sampling_contract_includes_both_http_conventions(self) -> None:
         """Require tail sampling to match both HTTP status conventions."""
         documents = _mapping(config("trace-gateway")["processors"])
         sampling = _mapping(documents["tail_sampling"])
-        self.assertEqual(sampling["decision_wait"], "30s")
+        assert sampling["decision_wait"] == "30s"
         policies: dict[str, dict[str, object]] = {}
         for entry in _list(sampling["policies"]):
             policy = _mapping(entry)
             policies[_text(policy["name"])] = policy
         errors = _mapping(policies["errors"])
-        self.assertEqual(_mapping(errors["status_code"])["status_codes"], ["ERROR"])
-        self.assertEqual(_mapping(_mapping(policies["slow"])["latency"])["threshold_ms"], 2000)
+        assert _mapping(errors["status_code"])["status_codes"] == ["ERROR"]
+        assert _mapping(_mapping(policies["slow"])["latency"])["threshold_ms"] == 2000
         probabilistic = _mapping(_mapping(policies["other"])["probabilistic"])
-        self.assertEqual(probabilistic["sampling_percentage"], 10)
+        assert probabilistic["sampling_percentage"] == 10
         for name, key in [
             ("http-5xx", "http.response.status_code"),
             ("legacy-http-5xx", "http.status_code"),
         ]:
-            self.assertEqual(
-                policies[name]["numeric_attribute"],
-                {"key": key, "min_value": 500, "max_value": 599},
-            )
+            assert policies[name]["numeric_attribute"] == {"key": key, "min_value": 500, "max_value": 599}
