@@ -25,8 +25,9 @@ MARKERS = [
 def run():
     logging.disable(logging.CRITICAL)
     if os.environ.get("OTEL_EXPORTER_OTLP_TRACES_PROTOCOL") != "http/protobuf":
+        msg = "vLLM ignores generic protocol for this selector; insecure gRPC path forbidden"
         raise ValueError(
-            "vLLM ignores generic protocol for this selector; insecure gRPC path forbidden"
+            msg
         )
     renewal = os.environ.get("HOMELAB_AWAIT_LEAF_RENEWAL") == "1"
     loaded = []
@@ -40,7 +41,8 @@ def run():
 
     if renewal:
         if os.environ.get("OTEL_EXPORTER_OTLP_HEADERS", "").lower() != "connection=close":
-            raise ValueError("Fresh native HTTP handshakes required")
+            msg = "Fresh native HTTP handshakes required"
+            raise ValueError(msg)
         ssl.SSLContext.load_cert_chain = observe_loader
 
     def certificate_hash():
@@ -66,7 +68,8 @@ def run():
         endpoint = "https://10.250.0.3:44318/v1/traces"
         probe_exporter = get_span_exporter(endpoint)
         if not isinstance(probe_exporter, OTLPSpanExporter):
-            raise ValueError("Installed vLLM selected a non-HTTP exporter")
+            msg = "Installed vLLM selected a non-HTTP exporter"
+            raise ValueError(msg)
         probe_exporter.shutdown()
         tracer = init_tracer("homelab.synthetic.vllm-request-validation", endpoint)
         provider = trace.get_tracer_provider()
@@ -134,11 +137,13 @@ def run():
         before_hash = certificate_hash()
         first = emit_request()
         if not provider.force_flush(timeout_millis=10000):
-            raise ValueError("Initial native SDK flush failed")
+            msg = "Initial native SDK flush failed"
+            raise ValueError(msg)
         traces = [first]
         if renewal:
             if before_hash not in loaded:
-                raise ValueError("Initial leaf was not loaded by native HTTP client")
+                msg = "Initial leaf was not loaded by native HTTP client"
+                raise ValueError(msg)
             progress(
                 {
                     "phase": "await-renewal",
@@ -149,7 +154,8 @@ def run():
             deadline = time.monotonic() + 600
             while certificate_hash() == before_hash:
                 if time.monotonic() >= deadline:
-                    raise ValueError("Projected leaf renewal deadline exceeded")
+                    msg = "Projected leaf renewal deadline exceeded"
+                    raise ValueError(msg)
                 time.sleep(2)
             after_hash = certificate_hash()
             traces.append(emit_request())

@@ -12,9 +12,11 @@ import sys
 def activate():
     from opentelemetry.sdk.trace import TracerProvider
     if not getattr(TracerProvider, '_homelab_source_privacy', False):
-        raise ValueError('Early before-export source guard must be active first')
+        msg = 'Early before-export source guard must be active first'
+        raise ValueError(msg)
     if 'open_webui.utils.telemetry.setup' in sys.modules:
-        raise ValueError('Native setup already imported; never allow late unsafe-hook fallback')
+        msg = 'Native setup already imported; never allow late unsafe-hook fallback'
+        raise ValueError(msg)
     from open_webui.utils.telemetry import instrumentors as native
     if getattr(native.Instrumentor, '_homelab_http_only_profile', False):
         return

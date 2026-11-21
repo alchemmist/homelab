@@ -86,18 +86,22 @@ def privileged_journals(directory, now=None):
         or directory.stat().st_mode & 0o077
         or directory.stat().st_uid != os.getuid()
     ):
-        raise ValueError("Journal evidence directory must be private and not symlinked")
+        msg = "Journal evidence directory must be private and not symlinked"
+        raise ValueError(msg)
     reports = {}
     for node in ["socrat-0", "socrat-1", "socrat-2", "socrat-3"]:
         path = directory / (node + ".json")
         if path.is_symlink() or not path.is_file() or path.stat().st_mode & 0o077:
-            raise ValueError("Journal evidence files must be private regular files")
+            msg = "Journal evidence files must be private regular files"
+            raise ValueError(msg)
         if path.stat().st_uid != os.getuid():
-            raise ValueError("Journal evidence must belong to the controller user")
+            msg = "Journal evidence must belong to the controller user"
+            raise ValueError(msg)
         report = json.loads(path.read_text())
         observed = datetime.fromisoformat(report["collectedAt"])
         if observed.tzinfo is None or not -30 <= (now - observed).total_seconds() <= 900:
-            raise ValueError("Journal evidence is stale or has an invalid timestamp")
+            msg = "Journal evidence is stale or has an invalid timestamp"
+            raise ValueError(msg)
         for field in [
             "records",
             "serializedBytes",
@@ -106,13 +110,15 @@ def privileged_journals(directory, now=None):
             "windowSeconds",
         ]:
             if type(report[field]) is not int or report[field] < 0:
-                raise ValueError("Journal counts must be nonnegative integers")
+                msg = "Journal counts must be nonnegative integers"
+                raise ValueError(msg)
         if (
             report["schemaVersion"] != 1
             or report["windowSeconds"] != 600
             or report["invalidRecords"]
         ):
-            raise ValueError("Unsupported or incomplete journal measurement")
+            msg = "Unsupported or incomplete journal measurement"
+            raise ValueError(msg)
         if (
             report.get("rootAccessVerified") is not True
             or report.get("systemJournalReadSucceeded") is not True
@@ -120,8 +126,9 @@ def privileged_journals(directory, now=None):
             or report.get("rawLogBodiesPersisted") is not False
             or report.get("productionModified") is not False
         ):
+            msg = "Journal evidence does not establish a complete privileged read-only measurement"
             raise ValueError(
-                "Journal evidence does not establish a complete privileged read-only measurement"
+                msg
             )
         reports[node] = {
             "systemJournalAccessVerified": True,
@@ -143,7 +150,8 @@ def summarize(pods, journals):
     missing = [source for source in sources if not source.get("measurementAvailable")]
     window = pods["windowSeconds"]
     if window <= 0:
-        raise ValueError("Measurement window must be positive")
+        msg = "Measurement window must be positive"
+        raise ValueError(msg)
     total_bytes = sum(source["bytes"] for source in measured)
     active = [source for source in sources if source.get("containerState") == "running"]
     active_missing = [source for source in active if not source.get("measurementAvailable")]
@@ -202,7 +210,8 @@ def main():
     args = parser.parse_args()
     try:
         if not 1048576 <= args.limit_bytes_per_container <= 16 * 1048576:
-            raise ValueError("Log inspection cap must be between 1 and 16 MiB per container")
+            msg = "Log inspection cap must be between 1 and 16 MiB per container"
+            raise ValueError(msg)
         probe = POD_PROBE.replace(
             "LIMIT = 1048576", "LIMIT = " + str(args.limit_bytes_per_container)
         )

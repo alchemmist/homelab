@@ -56,7 +56,8 @@ def run():
             if not getattr(TracerProvider, "_homelab_source_privacy", False) or not getattr(
                 early_native.Instrumentor, "_homelab_http_only_profile", False
             ):
-                raise ValueError("Required early bootstrap absent; no late/manual fallback")
+                msg = "Required early bootstrap absent; no late/manual fallback"
+                raise ValueError(msg)
         else:
             source_privacy.activate()
             open_webui_source_profile.activate()
@@ -89,7 +90,8 @@ def run():
             def do_POST(self):
                 length = int(self.headers.get("Content-Length", "0"))
                 if length > 65536:
-                    raise ValueError("Synthetic backend budget exceeded")
+                    msg = "Synthetic backend budget exceeded"
+                    raise ValueError(msg)
                 self.rfile.read(length)
                 body = json.dumps({"synthetic": MARKERS[1]}).encode()
                 self.send_response(200)
@@ -118,7 +120,8 @@ def run():
         app.add_api_route("/synthetic", route, methods=["POST"])
         native.setup(app, create_engine("sqlite:///:memory:"))
         if not getattr(instrumentors.Instrumentor, "_homelab_http_only_profile", False):
-            raise ValueError("Unsafe native factory was not replaced before setup import")
+            msg = "Unsafe native factory was not replaced before setup import"
+            raise ValueError(msg)
         disabled = {
             name: not cls().is_instrumented_by_opentelemetry
             for name, cls in [
@@ -129,7 +132,8 @@ def run():
             ]
         }
         if not all(disabled.values()):
-            raise ValueError("Unsafe or duplicate signal instrumentor active")
+            msg = "Unsafe or duplicate signal instrumentor active"
+            raise ValueError(msg)
         provider = trace.get_tracer_provider()
         audit = {
             "endedSpans": 0,
@@ -189,11 +193,13 @@ def run():
         before_hash = certificate_hash()
         first = emit_request()
         if not provider.force_flush(timeout_millis=10000):
-            raise ValueError("Initial native source SDK flush failed")
+            msg = "Initial native source SDK flush failed"
+            raise ValueError(msg)
         traces = [first]
         if renewal:
             if before_hash not in loaded:
-                raise ValueError("Native HTTP client did not load initial leaf")
+                msg = "Native HTTP client did not load initial leaf"
+                raise ValueError(msg)
             progress(
                 {
                     "phase": "await-renewal",
@@ -204,7 +210,8 @@ def run():
             deadline = time.monotonic() + 600
             while certificate_hash() == before_hash:
                 if time.monotonic() >= deadline:
-                    raise ValueError("Projected leaf renewal deadline exceeded")
+                    msg = "Projected leaf renewal deadline exceeded"
+                    raise ValueError(msg)
                 time.sleep(2)
             after_hash = certificate_hash()
             traces.append(emit_request())

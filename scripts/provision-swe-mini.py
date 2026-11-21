@@ -112,8 +112,9 @@ def main():
             )
             with urllib.request.urlopen(req, timeout=30):
                 pass
+        msg = "Private model provisioning failed; no credential values emitted"
         raise RuntimeError(
-            "Private model provisioning failed; no credential values emitted"
+            msg
         ) from None
     finally:
         forward.terminate()

@@ -51,14 +51,17 @@ def extract(image, name, output):
     ) as response:
         manifest_body = response.read()
     if "sha256:" + hashlib.sha256(manifest_body).hexdigest() != image["linuxAMD64Digest"]:
-        raise ValueError("Image manifest checksum mismatch")
+        msg = "Image manifest checksum mismatch"
+        raise ValueError(msg)
     manifest = json.loads(manifest_body)
     target = output / BINARIES[name]
     if target.exists() or target.is_symlink():
-        raise ValueError("Existing validation binaries are never overwritten")
+        msg = "Existing validation binaries are never overwritten"
+        raise ValueError(msg)
     for layer in manifest["layers"]:
         if layer["size"] > MAX_LAYER_BYTES:
-            raise ValueError("Image layer exceeds the inspection budget")
+            msg = "Image layer exceeds the inspection budget"
+            raise ValueError(msg)
         with tempfile.TemporaryFile(dir=output) as stream:
             digest = hashlib.sha256()
             size = 0
@@ -68,18 +71,21 @@ def extract(image, name, output):
                 while data := response.read(4 * 1024**2):
                     size += len(data)
                     if size > MAX_LAYER_BYTES:
-                        raise ValueError("Image layer exceeds the inspection budget")
+                        msg = "Image layer exceeds the inspection budget"
+                        raise ValueError(msg)
                     digest.update(data)
                     stream.write(data)
             if size != layer["size"] or "sha256:" + digest.hexdigest() != layer["digest"]:
-                raise ValueError("Image layer checksum mismatch")
+                msg = "Image layer checksum mismatch"
+                raise ValueError(msg)
             stream.seek(0)
             with tarfile.open(fileobj=stream, mode="r:*") as archive:
                 for member in archive:
                     if member.name.removeprefix("./").lstrip("/") != IMAGE_PATHS[name]:
                         continue
                     if not member.isfile() or member.size > MAX_BINARY_BYTES:
-                        raise ValueError("Unexpected image binary member")
+                        msg = "Unexpected image binary member"
+                        raise ValueError(msg)
                     descriptor = os.open(target, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o700)
                     with (
                         os.fdopen(descriptor, "wb") as destination,
@@ -87,9 +93,11 @@ def extract(image, name, output):
                     ):
                         shutil.copyfileobj(source, destination, 4 * 1024**2)
                     if target.stat().st_size != member.size:
-                        raise ValueError("Truncated image binary")
+                        msg = "Truncated image binary"
+                        raise ValueError(msg)
     if not target.exists():
-        raise ValueError("Expected validation binary was not found in the pinned image")
+        msg = "Expected validation binary was not found in the pinned image"
+        raise ValueError(msg)
     with target.open("rb") as stream:
         binary_digest = hashlib.file_digest(stream, "sha256").hexdigest()
     return {

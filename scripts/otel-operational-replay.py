@@ -140,7 +140,8 @@ def trace_records(document):
 
 def run(args):
     if os.geteuid() != 0 or os.readlink("/proc/self/ns/net") == os.readlink("/proc/1/ns/net"):
-        raise ValueError("Root-owned isolated network namespace required")
+        msg = "Root-owned isolated network namespace required"
+        raise ValueError(msg)
     args.workspace.mkdir(mode=0o700)
     root = args.workspace
     configs = {
@@ -236,12 +237,14 @@ def run(args):
         with urllib.request.urlopen(req, context=context, timeout=4) as response:
             data = response.read(4 * 1024**2 + 1)
         if len(data) > 4 * 1024**2:
-            raise ValueError("Bounded synthetic response exceeded")
+            msg = "Bounded synthetic response exceeded"
+            raise ValueError(msg)
         return json.loads(data) if data and path not in ["/ready", "/-/ready"] else {}
 
     def start(name):
         if name in children and children[name].poll() is None:
-            raise ValueError("Duplicate synthetic process")
+            msg = "Duplicate synthetic process"
+            raise ValueError(msg)
         generations[name] = generations.get(name, 0) + 1
         if name == "prometheus":
             command = [
@@ -275,11 +278,13 @@ def run(args):
     def stop(name):
         process = children[name]
         if process.poll() is not None:
-            raise ValueError("Synthetic process exited before controlled stop")
+            msg = "Synthetic process exited before controlled stop"
+            raise ValueError(msg)
         process.terminate()
         process.wait(timeout=20)
         if process.returncode != 0:
-            raise ValueError("Synthetic process graceful stop failed")
+            msg = "Synthetic process graceful stop failed"
+            raise ValueError(msg)
 
     def wait(check, seconds=100):
         end = time.monotonic() + seconds
@@ -293,7 +298,8 @@ def run(args):
                 ):
                     raise
             if time.monotonic() >= end:
-                raise TimeoutError("Bounded synthetic phase failed")
+                msg = "Bounded synthetic phase failed"
+                raise TimeoutError(msg)
             time.sleep(1)
 
     def ready():
@@ -338,7 +344,8 @@ def run(args):
                 with urllib.request.urlopen(
                     "https://127.0.0.1:%d%s" % (port, path), context=anonymous, timeout=4
                 ):
-                    raise ValueError("Synthetic endpoint accepted anonymous TLS client")
+                    msg = "Synthetic endpoint accepted anonymous TLS client"
+                    raise ValueError(msg)
             except ssl.SSLError:
                 denied.append(port)
             except OSError as error:
@@ -363,7 +370,8 @@ def run(args):
         for path, body in [("/v1/metrics", metrics), ("/v1/logs", logs), ("/v1/traces", traces)]:
             response = request(4318, path, body)
             if response.get("partialSuccess"):
-                raise ValueError("Synthetic OTLP partial success is not full acceptance")
+                msg = "Synthetic OTLP partial success is not full acceptance"
+                raise ValueError(msg)
         # Full 30s tail decision must finish BEFORE gateway restart; never claim
         # restart durability for unsampled, in-memory tail-sampling state.
         time.sleep(42)
@@ -380,7 +388,8 @@ def run(args):
             if p.is_file() and ("cluster" in p.parts or "traces" in p.parts)
         ]
         if not report["durableQueueFiles"]:
-            raise ValueError("No durable queue files")
+            msg = "No durable queue files"
+            raise ValueError(msg)
         for name in ["trace-gateway", "cluster"]:
             start(name)
         time.sleep(3)
@@ -388,7 +397,8 @@ def run(args):
         stop("cluster")
         (root / "cluster.json").write_bytes((root / "cluster-config-preimage.json").read_bytes())
         if (root / "cluster.json").read_bytes() != preimage:
-            raise ValueError("Exact configuration preimage restore failed")
+            msg = "Exact configuration preimage restore failed"
+            raise ValueError(msg)
         start("cluster")
         time.sleep(3)
         report["outageQueueMetricsAfterConfigRollback"] = queues()

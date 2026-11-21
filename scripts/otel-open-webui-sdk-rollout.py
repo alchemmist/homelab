@@ -81,7 +81,8 @@ def run(output, apply):
     os.umask(0o077)
     controller = Path.home() / "Library/Application Support/homelab/otel-controller"
     if not output.resolve().is_relative_to(controller.resolve()):
-        raise ValueError("Private preimages must remain in durable controller root")
+        msg = "Private preimages must remain in durable controller root"
+        raise ValueError(msg)
     evidence = ROOT / "deploy/monitoring/migration-evidence"
     bootstrap = json.loads((evidence / "open-webui-sdk-early-bootstrap-20261101.json").read_text())
     renewal = json.loads((evidence / "open-webui-sdk-leaf-renewal-20261101.json").read_text())
@@ -98,8 +99,9 @@ def run(output, apply):
         and all(x["success"] for x in renewal["backend"])
         and all(bootstrap["source"]["unsafeAndDuplicateInstrumentorsDisabled"].values())
     ):
+        msg = "Exact source/profile/bootstrap/renewal/backend gates must pass before enablement"
         raise ValueError(
-            "Exact source/profile/bootstrap/renewal/backend gates must pass before enablement"
+            msg
         )
     kube = BOOTSTRAP.kube
     deployment = kube("-n", "llm", "get", "deployment", "open-webui", "-o", "json")
@@ -107,17 +109,20 @@ def run(output, apply):
     pod = template["spec"]
     container = next(c for c in pod["containers"] if c["name"] == "open-webui")
     if container["image"].split("@")[-1] != bootstrap["testedImage"].split("@")[-1]:
-        raise ValueError("Production image differs from tested pinned runtime")
+        msg = "Production image differs from tested pinned runtime"
+        raise ValueError(msg)
     if (
         deployment["spec"].get("replicas", 1) != 1
         or deployment["spec"].get("strategy", {}).get("type") != "Recreate"
         or deployment.get("status", {}).get("availableReplicas") != 1
     ):
-        raise ValueError("Require healthy single SQLite-safe Recreate deployment")
+        msg = "Require healthy single SQLite-safe Recreate deployment"
+        raise ValueError(msg)
     current = {e["name"]: e for e in container.get("env", [])}
     for name, value in sdk_environment().items():
         if name in current and not environment_matches(current[name], name, value):
-            raise ValueError("Unreviewed conflicting SDK/drain environment")
+            msg = "Unreviewed conflicting SDK/drain environment"
+            raise ValueError(msg)
     cm_name = source_configmap_name()
     volumes = [
         {"name": "otel-source", "configMap": {"name": cm_name, "defaultMode": 420}},
@@ -137,7 +142,8 @@ def run(output, apply):
         if any(
             any(old["name"] == item["name"] and old != item for old in existing) for item in desired
         ):
-            raise ValueError("Conflicting credential/bootstrap volume or mount")
+            msg = "Conflicting credential/bootstrap volume or mount"
+            raise ValueError(msg)
     fingerprint = hashlib.sha256(
         json.dumps({"env": sdk_environment(), "source": source_data()}, sort_keys=True).encode()
     ).hexdigest()
@@ -163,7 +169,8 @@ def run(output, apply):
     cm = kube("-n", "llm", "get", "configmap", cm_name, "--ignore-not-found", "-o", "json")
     if cm:
         if cm.get("data") != source_data() or not cm.get("immutable"):
-            raise ValueError("Immutable source bootstrap mismatch")
+            msg = "Immutable source bootstrap mismatch"
+            raise ValueError(msg)
     else:
         kube(
             "create",
@@ -271,8 +278,9 @@ def run(output, apply):
             print(json.dumps(receipt))
             return
         time.sleep(5)
+    msg = "Readiness or natural request drain pending; preserve preimages, never force kill or automatically delete/restore DB"
     raise ValueError(
-        "Readiness or natural request drain pending; preserve preimages, never force kill or automatically delete/restore DB"
+        msg
     )
 
 

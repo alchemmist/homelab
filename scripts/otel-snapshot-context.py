@@ -20,11 +20,13 @@ def bind(source, output, proof_path, expected_path, binary):
             hashlib.file_digest(stream, "sha256").hexdigest()
             != "e7db18da5afcde9dcadfede588bf2f3b27aaf23f5beba03f916cfac50f5454d2"
         ):
-            raise ValueError("Unpinned canonical inventory executable")
+            msg = "Unpinned canonical inventory executable"
+            raise ValueError(msg)
     source = source.resolve(strict=True)
     output = output.absolute()
     if output.exists() or output.is_relative_to(source) or source.is_relative_to(output):
-        raise ValueError("Separate new context-bound output required")
+        msg = "Separate new context-bound output required"
+        raise ValueError(msg)
     proof = json.loads(proof_path.read_text())
     expected = json.loads(expected_path.read_text())
     metadata = json.loads((source / "meta.json").read_text())
@@ -32,28 +34,34 @@ def bind(source, output, proof_path, expected_path, binary):
         metadata.get("thanos") is not None
         or proof.get("verifiedHistoricalQueryContextForAnchors") is not True
     ):
-        raise ValueError("Only an unbound snapshot and independent historical proof are accepted")
+        msg = "Only an unbound snapshot and independent historical proof are accepted"
+        raise ValueError(msg)
     if metadata["ulid"] != proof["restoredSnapshot"]:
-        raise ValueError("Historical query proof does not identify this restored snapshot")
+        msg = "Historical query proof does not identify this restored snapshot"
+        raise ValueError(msg)
     if len(proof.get("checks", [])) != 3 or any(
         check.get("originalHistoricalRawLabelsAndFloatBitsMatch") is not True
         or check.get("sourceSampleTimestampMatches") is not True
         for check in proof["checks"]
     ):
-        raise ValueError("Historical ordinary labels, float bits and source times must all match")
+        msg = "Historical ordinary labels, float bits and source times must all match"
+        raise ValueError(msg)
     labels = proof["externalLabels"]
     if set(labels) != {"prometheus", "prometheus_replica"} or any(
         not isinstance(value, str) or not value for value in labels.values()
     ):
-        raise ValueError("Unexpected external label context")
+        msg = "Unexpected external label context"
+        raise ValueError(msg)
     for path in source.rglob("*"):
         if path.is_symlink():
-            raise ValueError("Symlinked snapshot members forbidden")
+            msg = "Symlinked snapshot members forbidden"
+            raise ValueError(msg)
     size = sum(path.stat().st_size for path in source.rglob("*") if path.is_file())
     output.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     disk = shutil.disk_usage(output.parent)
     if disk.free - size < disk.total // 5:
-        raise ValueError("Snapshot binding would violate 20% disk reserve")
+        msg = "Snapshot binding would violate 20% disk reserve"
+        raise ValueError(msg)
     original_hash = hashlib.sha256((source / "meta.json").read_bytes()).hexdigest()
     block = output / metadata["ulid"]
     shutil.copytree(source, block)
@@ -86,9 +94,11 @@ def bind(source, output, proof_path, expected_path, binary):
         inventory["samples"] != expected["samples"]
         or inventory["canonicalSHA256"] != expected["canonicalSHA256"]
     ):
-        raise ValueError("Context binding changed canonical source data")
+        msg = "Context binding changed canonical source data"
+        raise ValueError(msg)
     if hashlib.sha256((source / "meta.json").read_bytes()).hexdigest() != original_hash:
-        raise ValueError("Original coordinator metadata changed")
+        msg = "Original coordinator metadata changed"
+        raise ValueError(msg)
     receipt = {
         "contextBoundInIsolatedCopy": True,
         "sourceMetadataUnchanged": True,

@@ -58,7 +58,8 @@ def activate():
     if getattr(sdk.TracerProvider, '_homelab_source_privacy', False):
         return
     if not isinstance(trace.get_tracer_provider(), trace.ProxyTracerProvider):
-        raise ValueError('Source privacy guard must activate before any real tracer provider')
+        msg = 'Source privacy guard must activate before any real tracer provider'
+        raise ValueError(msg)
     class BeforeQueuePrivacy(sdk.SpanProcessor):
         def __init__(self, downstream):
             self.downstream = downstream

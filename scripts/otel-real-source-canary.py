@@ -33,7 +33,8 @@ def kube(*arguments, document=None):
         timeout=45,
     )
     if result.returncode:
-        raise RuntimeError("Canary Kubernetes operation failed; response bodies are not logged")
+        msg = "Canary Kubernetes operation failed; response bodies are not logged"
+        raise RuntimeError(msg)
     return result.stdout
 
 
@@ -48,7 +49,8 @@ def prometheus(endpoint):
     )
     data = json.loads(kube("get", "--raw", path))
     if data.get("status") != "success":
-        raise ValueError("Production read-only Prometheus inventory failed")
+        msg = "Production read-only Prometheus inventory failed"
+        raise ValueError(msg)
     return data["data"]
 
 
@@ -67,7 +69,8 @@ def rewrite_assets(value, paths, kubeconfig):
                 or discovery.get("kubeconfig_file")
                 or discovery.get("authorization")
             ):
-                raise ValueError("Unexpected discovery authentication requires explicit review")
+                msg = "Unexpected discovery authentication requires explicit review"
+                raise ValueError(msg)
             discovery["kubeconfig_file"] = str(kubeconfig)
         return result
     if isinstance(value, list):
@@ -78,10 +81,12 @@ def rewrite_assets(value, paths, kubeconfig):
 def expected_targets(targets, pools):
     selected = [target for target in targets["activeTargets"] if target["scrapePool"] in pools]
     if not selected or any(target["health"] != "up" for target in selected):
-        raise ValueError("Selected sources must be healthy before canary collection")
+        msg = "Selected sources must be healthy before canary collection"
+        raise ValueError(msg)
     identities = [fingerprint({**target["labels"], "__name__": "up"}) for target in selected]
     if len(set(identities)) != len(identities):
-        raise ValueError("Duplicate source target label sets")
+        msg = "Duplicate source target label sets"
+        raise ValueError(msg)
     return set(identities)
 
 
@@ -91,7 +96,8 @@ def cleanup_workspace(workspace):
         or workspace.is_symlink()
         or workspace.resolve().parent != Path("/var/tmp/otel-real-source-canary")
     ):
-        raise ValueError("Cleanup requires an owned private canary workspace")
+        msg = "Cleanup requires an owned private canary workspace"
+        raise ValueError(msg)
     manifest = workspace / "cleanup.json"
     if not manifest.exists():
         return
@@ -101,7 +107,8 @@ def cleanup_workspace(workspace):
         or len(name) != 24
         or not all(c in "0123456789abcdef" for c in name[12:])
     ):
-        raise ValueError("Invalid canary cleanup identity")
+        msg = "Invalid canary cleanup identity"
+        raise ValueError(msg)
     failed = False
     try:
         for kind in ["clusterrolebinding", "clusterrole", "serviceaccount"]:
@@ -115,7 +122,8 @@ def cleanup_workspace(workspace):
                         or obj["metadata"].get("labels", {}).get("homelab.alchemmist.xyz/canary")
                         != name
                     ):
-                        raise ValueError("Unexpected canary ownership")
+                        msg = "Unexpected canary ownership"
+                        raise ValueError(msg)
                     kube("delete", kind, name, "--wait=true", "--timeout=15s")
             except (RuntimeError, subprocess.TimeoutExpired):
                 failed = True
@@ -123,36 +131,44 @@ def cleanup_workspace(workspace):
         directory = workspace / "credentials"
         if directory.exists():
             if directory.is_symlink():
-                raise ValueError("Credential cleanup refuses symlinks")
+                msg = "Credential cleanup refuses symlinks"
+                raise ValueError(msg)
             for path in directory.iterdir():
                 if path.is_symlink() or not path.is_file():
-                    raise ValueError("Credential cleanup refuses non-regular files")
+                    msg = "Credential cleanup refuses non-regular files"
+                    raise ValueError(msg)
                 path.unlink()
     if failed:
-        raise RuntimeError("Temporary discovery RBAC cleanup incomplete")
+        msg = "Temporary discovery RBAC cleanup incomplete"
+        raise RuntimeError(msg)
 
 
 def run(args):
     if os.geteuid() != 0:
-        raise ValueError("Private host canary staging requires the authorized root controller")
+        msg = "Private host canary staging requires the authorized root controller"
+        raise ValueError(msg)
     contract = json.loads((args.bundle / "contract.json").read_text())
     collected = datetime.fromisoformat(contract["collectedAt"])
     age = (datetime.now(UTC) - collected).total_seconds()
     if age < 0 or age > 900:
-        raise ValueError("Scrape inventory is stale or future-dated")
+        msg = "Scrape inventory is stale or future-dated"
+        raise ValueError(msg)
     scrape = json.loads((args.bundle / "cluster.json").read_text())
     if fingerprint(scrape) != contract["outputSHA256"]["cluster"]:
-        raise ValueError("Scrape bundle fingerprint differs")
+        msg = "Scrape bundle fingerprint differs"
+        raise ValueError(msg)
     current = prometheus("status/config")["yaml"]
     if hashlib.sha256(current.encode()).hexdigest() != contract["sourceYAMLTextSHA256"]:
-        raise ValueError("Production source configuration changed after translation")
+        msg = "Production source configuration changed after translation"
+        raise ValueError(msg)
     fs = os.statvfs("/var/lib/rancher/k3s/storage")
     memory = dict(line.split(":", 1) for line in Path("/proc/meminfo").read_text().splitlines())
     if (
         fs.f_bavail < max(30 * 2**30 / fs.f_frsize, fs.f_blocks * 0.2)
         or int(memory["MemAvailable"].split()[0]) * 1024 < 4 * 2**30
     ):
-        raise ValueError("Canary resource reserve is insufficient")
+        msg = "Canary resource reserve is insufficient"
+        raise ValueError(msg)
     pools = {job["job_name"] for job in scrape["scrape_configs"]}
     expected = expected_targets(prometheus("targets"), pools)
     args.workspace.mkdir(mode=0o700, exist_ok=False)
@@ -253,23 +269,27 @@ def run(args):
             kube("get", "pods", "-l", "app.kubernetes.io/name=prometheus", "-o", "json")
         )["items"]
         if len(pods) != 1:
-            raise ValueError("Exactly one existing production Prometheus pod is required")
+            msg = "Exactly one existing production Prometheus pod is required"
+            raise ValueError(msg)
         volume = next(v for v in pods[0]["spec"]["volumes"] if v["name"] == "tls-assets")
         certs = {}
         for source in volume["projected"]["sources"]:
             if set(source) != {"secret"} or source["secret"].get("items"):
-                raise ValueError("Unsupported TLS asset projection")
+                msg = "Unsupported TLS asset projection"
+                raise ValueError(msg)
             secret = json.loads(kube("get", "secret", source["secret"]["name"], "-o", "json"))[
                 "data"
             ]
             if set(certs) & set(secret):
-                raise ValueError("Ambiguous TLS asset projection")
+                msg = "Ambiguous TLS asset projection"
+                raise ValueError(msg)
             certs.update(secret)
         for index, asset in enumerate(contract["requiredFileMounts"]):
             if asset in paths:
                 continue
             if not asset.startswith(CERT_ROOT) or Path(asset).name not in certs:
-                raise ValueError("Unresolved file dependency")
+                msg = "Unresolved file dependency"
+                raise ValueError(msg)
             path = credentials / ("ca-" + str(index))
             path.write_bytes(base64.b64decode(certs[Path(asset).name], validate=True))
             paths[asset] = str(path)
@@ -361,7 +381,8 @@ def run(args):
         observed = {}
         while time.monotonic() - started < 150:
             if any(process.poll() is not None for process in children):
-                raise RuntimeError("Canary native service stopped; inspect private logs")
+                msg = "Canary native service stopped; inspect private logs"
+                raise RuntimeError(msg)
             try:
                 expression = urllib.parse.urlencode({"query": "up"})
                 with urllib.request.urlopen(
@@ -406,8 +427,9 @@ def run(args):
                     }
                 )
             )
+            msg = "Real-source target labels, authorization or availability differ; raw responses are not logged"
             raise RuntimeError(
-                "Real-source target labels, authorization or availability differ; raw responses are not logged"
+                msg
             )
         collector_log = (args.workspace / "collector.log").read_text()
         rejected = {
@@ -420,8 +442,9 @@ def run(args):
         }
         if any(rejected.values()):
             (args.workspace / "failure-summary.json").write_text(json.dumps(rejected))
+            msg = "Source canary observed refused or dropped data; capacity is not accepted"
             raise RuntimeError(
-                "Source canary observed refused or dropped data; capacity is not accepted"
+                msg
             )
         cgroup = next(
             line[3:]
@@ -474,7 +497,8 @@ def run(args):
         for path in credentials.iterdir():
             path.unlink()
     if not cleanup_succeeded:
-        raise RuntimeError("Temporary canary RBAC cleanup failed; inspect the retained private run")
+        msg = "Temporary canary RBAC cleanup failed; inspect the retained private run"
+        raise RuntimeError(msg)
     result["temporaryCredentialsRemoved"] = True
     result["temporaryRBACRemoved"] = True
     (args.workspace / "result.json").write_text(json.dumps(result, indent=2) + "\n")
@@ -494,11 +518,13 @@ def main():
             cleanup_workspace(args.cleanup_workspace)
             return
         if any(getattr(args, name) is None for name in names):
-            raise ValueError("Explicit canary artifacts are required")
+            msg = "Explicit canary artifacts are required"
+            raise ValueError(msg)
         print(json.dumps(run(args), indent=2))
     except Exception:
+        msg = "Real-source canary failed; sensitive responses are not printed. Inspect the private root-owned run artifacts."
         raise SystemExit(
-            "Real-source canary failed; sensitive responses are not printed. Inspect the private root-owned run artifacts."
+            msg
         )
 
 

@@ -42,12 +42,14 @@ def send(context, payload):
     with urllib.request.urlopen(request, context=context, timeout=10) as response:
         result = json.load(response)
     if int(result.get("partialSuccess", {}).get("rejectedLogRecords", 0)):
-        raise ValueError("Synthetic logs were rejected")
+        msg = "Synthetic logs were rejected"
+        raise ValueError(msg)
 
 
 def run(binary, config, tls, workspace):
     if os.readlink("/proc/self/ns/net") == os.readlink("/proc/1/ns/net"):
-        raise ValueError("A separate network namespace is mandatory")
+        msg = "A separate network namespace is mandatory"
+        raise ValueError(msg)
     workspace.mkdir(mode=0o700, exist_ok=False)
     output = workspace / "sanitized.json"
     prepared = isolated_config(json.loads(config.read_text()), output)
@@ -121,13 +123,15 @@ def run(binary, config, tls, workspace):
         deadline = time.monotonic() + 30
         while True:
             if process.poll() is not None:
-                raise RuntimeError("Collector stopped; inspect the private smoke workspace")
+                msg = "Collector stopped; inspect the private smoke workspace"
+                raise RuntimeError(msg)
             try:
                 with socket.create_connection(("127.0.0.1", 14318), timeout=1):
                     break
             except OSError:
                 if time.monotonic() >= deadline:
-                    raise RuntimeError("Synthetic receiver startup timed out")
+                    msg = "Synthetic receiver startup timed out"
+                    raise RuntimeError(msg)
                 time.sleep(0.1)
         send(context, payload)
         anonymous = ssl.create_default_context(cafile=str(tls / "ca.crt"))
@@ -139,7 +143,8 @@ def run(binary, config, tls, workspace):
         except (ssl.SSLError, ConnectionResetError, BrokenPipeError):
             pass
         else:
-            raise ValueError("Receiver accepted a request without a client certificate")
+            msg = "Receiver accepted a request without a client certificate"
+            raise ValueError(msg)
         while True:
             text = output.read_text() if output.exists() else ""
             if all(
@@ -148,7 +153,8 @@ def run(binary, config, tls, workspace):
             ):
                 break
             if process.poll() is not None or time.monotonic() >= deadline:
-                raise RuntimeError("Expected sanitized fixture records were not exported")
+                msg = "Expected sanitized fixture records were not exported"
+                raise RuntimeError(msg)
             time.sleep(0.1)
         forbidden = [
             "FIXTURE_PASSWORD",
@@ -163,7 +169,8 @@ def run(binary, config, tls, workspace):
             "UNKNOWN_TIMESTAMP_DO_NOT_IMPORT",
         ]
         if any(value in text for value in forbidden):
-            raise ValueError("Privacy or historical-cut fixture leaked into synthetic output")
+            msg = "Privacy or historical-cut fixture leaked into synthetic output"
+            raise ValueError(msg)
     finally:
         process.terminate()
         try:

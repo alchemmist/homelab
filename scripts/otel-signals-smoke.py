@@ -121,7 +121,8 @@ def logs_fixture(now):
 
 def run(args):
     if os.readlink("/proc/self/ns/net") == os.readlink("/proc/1/ns/net"):
-        raise ValueError("Signal smoke requires an isolated loopback-only network namespace")
+        msg = "Signal smoke requires an isolated loopback-only network namespace"
+        raise ValueError(msg)
     args.workspace.mkdir(mode=0o700, exist_ok=False)
     configs = {
         name: json.loads((args.config / (name + ".json")).read_text())
@@ -186,18 +187,21 @@ def run(args):
         deadline = started + 80
         while True:
             if any(child.poll() is not None for child in children):
-                raise RuntimeError("Native signal component stopped; inspect private run logs")
+                msg = "Native signal component stopped; inspect private run logs"
+                raise RuntimeError(msg)
             try:
                 for port in [3100, 3200]:
                     with urllib.request.urlopen(
                         "https://127.0.0.1:" + str(port) + "/ready", context=context, timeout=3
                     ) as response:
                         if response.status != 200:
-                            raise ValueError("Backend not ready")
+                            msg = "Backend not ready"
+                            raise ValueError(msg)
                 break
             except (OSError, ValueError):
                 if time.monotonic() >= deadline:
-                    raise RuntimeError("Native signal backend readiness timed out")
+                    msg = "Native signal backend readiness timed out"
+                    raise RuntimeError(msg)
                 time.sleep(1)
         now = time.time_ns()
         traces, groups = trace_fixtures(now)
@@ -223,7 +227,8 @@ def run(args):
         ids = set()
         while True:
             if any(child.poll() is not None for child in children):
-                raise RuntimeError("Native signal component stopped during delivery")
+                msg = "Native signal component stopped during delivery"
+                raise RuntimeError(msg)
             loki = request(context, 3100, "/loki/api/v1/query_range?" + selector)
             data = request(context, 3200, "/api/search?" + search)
             ids = {trace["traceID"].lower().zfill(32) for trace in data.get("traces", [])}
@@ -233,7 +238,8 @@ def run(args):
             if loki.get("data", {}).get("result") and mandatory <= ids:
                 break
             if time.monotonic() >= deadline:
-                raise RuntimeError("Native log delivery or mandatory tail sampling timed out")
+                msg = "Native log delivery or mandatory tail sampling timed out"
+                raise RuntimeError(msg)
             time.sleep(2)
         serialized = json.dumps(loki)
         if (
@@ -242,14 +248,17 @@ def run(args):
             or "forbidden-time-zero" in serialized
             or "fresh-fixture" not in serialized
         ):
-            raise ValueError("Loki privacy or historical boundary failed")
+            msg = "Loki privacy or historical boundary failed"
+            raise ValueError(msg)
         normal = len(groups["normal"] & ids)
         if not 5 <= normal <= 45:
-            raise ValueError("Normal trace sampling is outside the synthetic acceptance range")
+            msg = "Normal trace sampling is outside the synthetic acceptance range"
+            raise ValueError(msg)
         for identity in sorted(mandatory):
             body = request(context, 3200, "/api/traces/" + identity)
             if SECRET in json.dumps(body):
-                raise ValueError("Trace attribute/event/resource privacy failed")
+                msg = "Trace attribute/event/resource privacy failed"
+                raise ValueError(msg)
         unauthenticated = ssl.create_default_context(cafile=str(args.tls / "ca.crt"))
         for port in [3100, 3200]:
             try:
@@ -263,7 +272,8 @@ def run(args):
                 if isinstance(error.reason, ssl.SSLError):
                     continue
                 raise
-            raise ValueError("Backend unexpectedly accepted a client without a certificate")
+            msg = "Backend unexpectedly accepted a client without a certificate"
+            raise ValueError(msg)
         result = {
             "schemaVersion": 1,
             "observedAt": datetime.now(UTC).isoformat(),
@@ -309,7 +319,8 @@ def main():
     try:
         print(json.dumps(run(args), indent=2))
     except Exception:
-        raise SystemExit("Isolated signal smoke failed; inspect private root-owned run logs")
+        msg = "Isolated signal smoke failed; inspect private root-owned run logs"
+        raise SystemExit(msg)
 
 
 if __name__ == "__main__":

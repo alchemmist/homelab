@@ -99,7 +99,8 @@ def main():
                     data=json.dumps({"keys": [created]}).encode(),
                 )
                 urllib.request.urlopen(request, timeout=30).close()
-            raise RuntimeError("Scoped model provisioning failed; values withheld") from None
+            msg = "Scoped model provisioning failed; values withheld"
+            raise RuntimeError(msg) from None
         finally:
             forward.terminate()
             forward.wait(timeout=10)
@@ -223,7 +224,8 @@ d=api('/api/settings');print('Native agent profile active:',name,'key_set:',d['l
     private = Path.home() / ".config/homelab/openhands"
     private.mkdir(mode=0o700, parents=True, exist_ok=True)
     if private.is_symlink():
-        raise RuntimeError("Unsafe private state directory")
+        msg = "Unsafe private state directory"
+        raise RuntimeError(msg)
     os.chmod(private, 0o700)
     owner_key = subprocess.check_output(
         [
