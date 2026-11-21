@@ -1,0 +1,69 @@
+# Independent expectations for the pilot workloads in the owner Helm render.
+# Compare actual volume sources and every mount, not just allowed volume types.
+canvasVolumes:
+  - {name: pilot-code, configMap: {name: mutation-pilot-code}}
+  - {name: pilot-ticket, secret: {secretName: monori-proof-ticket, defaultMode: 288}}
+  - {name: pilot-scratch, emptyDir: {sizeLimit: 2Gi}}
+  - {name: pilot-tmp, emptyDir: {sizeLimit: 256Mi}}
+  - {name: sdk-iteration-policy, emptyDir: {sizeLimit: 2Mi}}
+canvasPilotMounts:
+  - {name: pilot-code, mountPath: /code, readOnly: true}
+  - {name: pilot-ticket, mountPath: /proof, readOnly: true}
+  - {name: pilot-scratch, mountPath: /scratch}
+  - {name: pilot-tmp, mountPath: /tmp}
+  - {name: data, mountPath: /state, subPath: mutation-pilot-state}
+  - {name: data, mountPath: /session-key, subPath: openhands/agent-canvas/api-key.txt, readOnly: true}
+deployments:
+  pi-monori-judge:
+    volumes:
+      - &work {name: work, emptyDir: {sizeLimit: 3Gi}}
+      - &temp {name: temp, emptyDir: {sizeLimit: 384Mi}}
+    mounts:
+      sandbox: [&scratch {name: work, mountPath: /scratch}, &tmp {name: temp, mountPath: /tmp}]
+  pi-monori-author:
+    volumes:
+      - *work
+      - *temp
+      - {name: pi, emptyDir: {sizeLimit: 512Mi}}
+      - {name: code, configMap: {name: pi-monori-code}}
+      - {name: model, secret: {secretName: openhands-model, defaultMode: 288}}
+    mounts:
+      install-pi: [{name: pi, mountPath: /opt/pi}, &code {name: code, mountPath: /code, readOnly: true}, *tmp]
+      sandbox: [*scratch, *tmp, {name: pi, mountPath: /opt/pi, readOnly: true}, *code]
+      relay: [*code, {name: model, mountPath: /model, readOnly: true}]
+  mutation-report-intake:
+    volumes:
+      - {name: code, configMap: {name: mutation-report-intake}}
+      - {name: review-auth, secret: {secretName: mutation-pr-hook, defaultMode: 288}}
+      - {name: auth, secret: {secretName: mutation-report-hook, defaultMode: 288}}
+      - {name: state, persistentVolumeClaim: {claimName: mutation-report-intake}}
+    mounts:
+      intake:
+        - *code
+        - {name: review-auth, mountPath: /review-auth, readOnly: true}
+        - {name: auth, mountPath: /auth, readOnly: true}
+        - {name: state, mountPath: /state}
+policies:
+  pi-monori-judge-offline:
+    podSelector: {matchLabels: {app: pi-monori-judge}}
+    policyTypes: [Ingress, Egress]
+    ingress: []
+    egress: []
+  mutation-report-intake:
+    podSelector: {matchLabels: {app: mutation-report-intake}}
+    policyTypes: [Ingress, Egress]
+    egress: []
+    ingress:
+      - from: &n8n
+          - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: automation}}
+            podSelector: {matchLabels: {app: n8n}}
+        ports: [{port: 8091, protocol: TCP}]
+  mutation-pilot-ticks:
+    podSelector: {matchLabels: {statefulset.kubernetes.io/pod-name: openhands-0}}
+    policyTypes: [Ingress]
+    ingress:
+      - from: *n8n
+        ports: [{port: 8083, protocol: TCP}]
+services:
+  mutation-pilot: {selector: {statefulset.kubernetes.io/pod-name: openhands-0}, ports: [{port: 8083, targetPort: 8083}]}
+  mutation-report-intake: {selector: {app: mutation-report-intake}, ports: [{port: 8091}]}
