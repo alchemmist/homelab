@@ -7,7 +7,8 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("demo_validation", ROOT/"scripts/validate-openhands-demo.py")
-m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+m = importlib.util.module_from_spec(spec); 
+spec.loader.exec_module(m)
 
 
 class LoopSetup(unittest.TestCase):
@@ -52,7 +53,8 @@ class LoopSetup(unittest.TestCase):
         cm,np,job = m.resources("fixture-name","candidate-code","original-tests")
         assert cm["data"]["test_intervals.py"] == "original-tests"
         assert np["spec"]["egress"] == []
-        pod=job["spec"]["template"]["spec"];c=pod["containers"][0]
+        pod=job["spec"]["template"]["spec"];
+        c=pod["containers"][0]
         assert not pod["automountServiceAccountToken"]
         assert "serviceAccountName" not in pod
         assert "hostNetwork" not in pod

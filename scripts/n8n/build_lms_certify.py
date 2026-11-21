@@ -289,14 +289,17 @@ try { payload = JSON.parse($json.body.choices[0].message.content); } catch { pay
  const out = next => ({json:{phase:data.calls >= (data.callLimit || 12) && ['solve','repair','tests','expand','witness','wrepair','audit','probes'].includes(next) ? 'needs_review' : next,data}});
 '''
         if phase in ('witness','wrepair'):
-            logic='''const w=payload?.source;if(typeof w!=='string'||!w.trim()||w.length>6000||w.replace(/\\s/g,'')===data.source.replace(/\\s/g,'')){data.reviewReason='no_distinct_witness';return out('needs_review');} data.witness=w;return out('wpublic');''';label='Validate blind witness' if phase=='witness' else 'Validate repaired witness'
+            logic='''const w=payload?.source;if(typeof w!=='string'||!w.trim()||w.length>6000||w.replace(/\\s/g,'')===data.source.replace(/\\s/g,'')){data.reviewReason='no_distinct_witness';return out('needs_review');} data.witness=w;return out('wpublic');''';
+            label='Validate blind witness' if phase=='witness' else 'Validate repaired witness'
         elif phase=='audit':
             logic='''if(payload?.approved!==true){data.reviewReason='semantic_review_failed';data.reviewDetail=String(payload?.reason||'').slice(0,500);
 const ids=payload?.badIndices; if(payload?.issue==='cases' && Array.isArray(ids)&&ids.length && ids.every(i=>Number.isInteger(i)&&i>=0&&i<data.cases.length)&& (data.auditRetries||0)<2 && (!data.semanticApproved || (ids.length===1 && ids[0]===data.disputedIndex))){
  data.disputedIndex=null;data.disputeNote=null;data.quarantine=[...(data.quarantine||[]),...data.cases.filter((c,i)=>ids.includes(i))];data.cases=data.cases.filter((c,i)=>!ids.includes(i));data.coverageHints=data.reviewDetail;data.auditRetries=(data.auditRetries||0)+1;return out('expand');
-}return out('needs_review');}data.semanticApproved=true;if(Number.isInteger(data.disputedIndex)){data.reviewReason='both_references_disagree_with_approved_expected';return out('needs_review');}return out(data.faults?.length?'public':'probes');''';label='Require semantic approval'
+}return out('needs_review');}data.semanticApproved=true;if(Number.isInteger(data.disputedIndex)){data.reviewReason='both_references_disagree_with_approved_expected';return out('needs_review');}return out(data.faults?.length?'public':'probes');''';
+            label='Require semantic approval'
         elif phase=='probes':
-            logic='''const probes=Array.isArray(payload?.faults)?payload.faults:[];const seen=new Set([data.source.trim(),data.witness.trim()]);data.faults=[];for(const p of probes){if(typeof p?.source!=='string'||!p.source.includes('input(')||p.source.length>6000||typeof p.label!=='string'||seen.has(p.source.trim()))continue;seen.add(p.source.trim());data.faults.push([p.label.slice(0,100),p.source]);}if(data.faults.length<3){data.reviewReason='insufficient_distinct_probes';return out('needs_review');}data.faults=data.faults.slice(0,5);return out('public');''';label='Require three distinct probes'
+            logic='''const probes=Array.isArray(payload?.faults)?payload.faults:[];const seen=new Set([data.source.trim(),data.witness.trim()]);data.faults=[];for(const p of probes){if(typeof p?.source!=='string'||!p.source.includes('input(')||p.source.length>6000||typeof p.label!=='string'||seen.has(p.source.trim()))continue;seen.add(p.source.trim());data.faults.push([p.label.slice(0,100),p.source]);}if(data.faults.length<3){data.reviewReason='insufficient_distinct_probes';return out('needs_review');}data.faults=data.faults.slice(0,5);return out('public');''';
+            label='Require three distinct probes'
         elif phase in {'solve','repair'}:
             logic = '''const source = typeof payload?.source === 'string' ? payload.source.trim() : '';
 if (!source || source.length > 6000 || (data.contract === 'echo' && (/[\\r\\n]/.test(source) || [...source].length > 14))) return out(phase);
@@ -372,7 +375,8 @@ if (!['accepted','wrong_answer','runtime_error','time_limit','output_limit','mem
         if phase=='triage':
             logic+='''if(verdict==='accepted')return {json:{phase:data.calls<(data.callLimit||12)?'repair':'needs_review',data}};
 if(verdict!=='wrong_answer'){data.reviewReason='dispute_inconclusive';return {json:{phase:'needs_review',data}};}
-data.disputedIndex=data.failure.index;data.disputeNote='Both independently written programs failed this proposed case. Recompute its expected output from the statement; do not change the statement or public examples.';return {json:{phase:data.calls<(data.callLimit||12)?'audit':'needs_review',data}};''';label='Distinguish bad case from bad solution'
+data.disputedIndex=data.failure.index;data.disputeNote='Both independently written programs failed this proposed case. Recompute its expected output from the statement; do not change the statement or public examples.';return {json:{phase:data.calls<(data.callLimit||12)?'audit':'needs_review',data}};''';
+            label='Distinguish bad case from bad solution'
         elif phase in ('wpublic','wsuite'):
             logic+=("if(verdict!=='accepted'){data.witnessFailure=data.examples[$json.body.test_index-1];data.witnessRetries=(data.witnessRetries||0)+1;return {json:{phase:data.witnessRetries<=2 && data.calls<(data.callLimit||12)?'wrepair':'needs_review',data}};}" if phase=='wpublic' else "if(verdict!=='accepted'){data.reviewReason='independent_witness_disagrees';return {json:{phase:'needs_review',data}};}")+ ("return {json:{phase:data.semanticApproved?'wsuite':'tests',data}};" if phase=='wpublic' else "data.variant=0;data.survivors=[];data.faultsKilled=0;return {json:{phase:'mutate',data}};")
             label='Check witness verdict '+phase

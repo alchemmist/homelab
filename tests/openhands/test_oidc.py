@@ -9,7 +9,8 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("openhands_oidc", ROOT/"scripts/provision-openhands-oidc.py")
-m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+m = importlib.util.module_from_spec(spec); 
+spec.loader.exec_module(m)
 
 
 class NativeOIDC(unittest.TestCase):
@@ -81,7 +82,8 @@ class OIDCRender(unittest.TestCase):
 
     def objects(self):
         'Return every rendered manifest object.'
-        r = self.helm(); assert r.returncode == 0, r.stderr
+        r = self.helm(); 
+        assert r.returncode == 0, r.stderr
         return [v for v in yaml.safe_load_all(r.stdout) if v]
 
     def test_only_ingress_terminates_at_oidc(self):
@@ -122,7 +124,8 @@ class OIDCRender(unittest.TestCase):
     def test_oidc_not_custom_auth_or_bearer_bypass(self):
         'Verify the chart uses OIDC, with no custom-auth bypass.'
         d = next(v for v in self.objects() if v["kind"]=="Deployment" and v["metadata"]["name"]=="openhands-oidc")
-        pod = d["spec"]["template"]["spec"]; c = pod["containers"][0]
+        pod = d["spec"]["template"]["spec"]; 
+        c = pod["containers"][0]
         assert not pod["automountServiceAccountToken"]
         assert "@sha256:" in c["image"]
         for flag in ["--provider=oidc","--allowed-group=homelab-owner","--skip-jwt-bearer-tokens=false","--cookie-secure=true","--code-challenge-method=S256"]:
@@ -143,7 +146,8 @@ class OIDCRender(unittest.TestCase):
     def test_session_cache_is_private_nonpersistent_and_restricted(self):
         'Verify the session cache is private, non-persistent and restricted.'
         d=next(v for v in self.objects() if v["kind"]=="Deployment" and v["metadata"]["name"]=="openhands-oidc-sessions")
-        pod=d["spec"]["template"]["spec"];c=pod["containers"][0]
+        pod=d["spec"]["template"]["spec"];
+        c=pod["containers"][0]
         assert d["spec"]["strategy"]["type"] == "Recreate"
         assert not pod["automountServiceAccountToken"]
         assert c["securityContext"]["readOnlyRootFilesystem"]
