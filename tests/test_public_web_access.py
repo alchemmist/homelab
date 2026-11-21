@@ -1,10 +1,15 @@
 """Tests for public web access through the entry charts."""
 
-import copy, importlib.util, json
+import copy
+import importlib.util
+import json
 from collections.abc import Callable
 from pathlib import Path
+
 import pytest
-from tests.public_entry_contract import CHARTS, render, values as entry_values
+
+from tests.public_entry_contract import CHARTS, render
+from tests.public_entry_contract import values as entry_values
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
@@ -142,7 +147,9 @@ def test_public_probe_reuses_migration_owned_addresses() -> None:
     ],
 )
 def test_chart_rejects_mislabeled_authorization(owner, key, value, tmp_path) -> None:
-    import yaml, subprocess
+    import subprocess
+
+    import yaml
 
     values = copy.deepcopy(entry_values(owner))
     values["routes"][0][key] = value
@@ -158,7 +165,9 @@ def test_chart_rejects_mislabeled_authorization(owner, key, value, tmp_path) -> 
 
 
 def test_rancher_public_proxy_denies_local_password_without_changing_private_backend() -> None:
-    import yaml, subprocess
+    import subprocess
+
+    import yaml
 
     docs = render("rancher")
     config = next(

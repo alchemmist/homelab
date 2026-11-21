@@ -69,6 +69,7 @@ def test_wiki_font_is_self_hosted_and_mounted() -> None:
     import base64
     import hashlib
     import subprocess
+
     import yaml
 
     font = (ROOT / "charts/socrat-home/files/cmu.serif-roman.woff2").read_bytes()
