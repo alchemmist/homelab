@@ -7,8 +7,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "charts/spi-triage/files"))
-from core import Store, normalize, Failure
 from card_correlation import record_receipt
+from core import Failure, Store, normalize
 
 
 class CorrelationTests(unittest.TestCase):

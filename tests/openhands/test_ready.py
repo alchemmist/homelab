@@ -1,7 +1,7 @@
 import copy
 import importlib.util
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 spec = importlib.util.spec_from_file_location(
     "pr_ready", Path(__file__).resolve().parents[2] / "scripts/openhands-pr-ready.py"

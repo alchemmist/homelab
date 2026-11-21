@@ -1,18 +1,18 @@
 """Durable single-writer queue. GitHub credentials never reach agent pods."""
 
 import base64
-from http.server import BaseHTTPRequestHandler, HTTPServer
-import json
 import hashlib
 import hmac
-import secrets
+import json
 import logging
 import os
-from pathlib import Path
+import secrets
 import sqlite3
 import threading
 import time
 import uuid
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 
 import jwt
 import requests
@@ -20,8 +20,8 @@ from kubernetes import client, config
 from policy import (
     LANES,
     decode_result,
-    validate_changes,
     dependency_repair,
+    validate_changes,
     validate_dependency_update,
 )
 

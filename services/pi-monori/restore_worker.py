@@ -1,5 +1,7 @@
 """Rehydrate only the empty worker pod's scratch volume. Never import worker files on host."""
-import hashlib, subprocess
+import hashlib
+import subprocess
+
 PIN='5446e880afaaf2e640fa4e1f7fac54b3100aa67e20adc8327e744fd8fd7aa46e'
 
 def ensure(c):

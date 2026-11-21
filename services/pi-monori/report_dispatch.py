@@ -1,8 +1,16 @@
 """Trusted systemd consumer. Only enrolled repo adapters; never execute issue text here."""
-import fcntl, json, os, re, subprocess, sys, time
+import fcntl
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+
 import campaign as c
-import restore_worker
 import lifecycle_worker
+import restore_worker
+
 # Remote RPC via the existing operator transport. No pod gets kube credentials.
 RPC='''import json,sqlite3,sys
 m=json.load(sys.stdin); db=sqlite3.connect('/state/reports.db',timeout=10);db.row_factory=sqlite3.Row

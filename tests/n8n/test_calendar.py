@@ -1,8 +1,8 @@
 import importlib.util
 import json
-from pathlib import Path
 import subprocess
 import unittest
+from pathlib import Path
 
 BASE = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("sync", BASE / "scripts/n8n/sync.py")

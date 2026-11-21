@@ -1,10 +1,10 @@
 import sys
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts/blog_updates"))
-from github import GitHub
 from engine import UnsafeInput
+from github import GitHub
 
 
 class Fake(GitHub):

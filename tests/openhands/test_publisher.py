@@ -1,5 +1,8 @@
-import importlib.util,pathlib,unittest
+import importlib.util
+import pathlib
+import unittest
 from unittest.mock import patch
+
 p=pathlib.Path(__file__).resolve().parents[2]/'charts/openhands/files/steward/publisher.py';s=importlib.util.spec_from_file_location('publisher',p);m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
 class Publisher(unittest.TestCase):
  def test_no_generic_or_merge(self):

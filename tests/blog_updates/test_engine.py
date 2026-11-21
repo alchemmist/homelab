@@ -1,6 +1,6 @@
 import importlib.util
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 s = importlib.util.spec_from_file_location(
     "engine", Path(__file__).resolve().parents[2] / "scripts/blog_updates/engine.py"

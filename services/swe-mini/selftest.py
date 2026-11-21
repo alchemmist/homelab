@@ -1,13 +1,14 @@
 """Real upstream loop + local OpenAI-compatible stub, no external inference."""
 
-from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
 import os
-from pathlib import Path
-import tempfile
-import threading
 import subprocess
 import sys
+import tempfile
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
+
 import worker
 
 calls = []
