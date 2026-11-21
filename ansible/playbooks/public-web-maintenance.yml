@@ -20,7 +20,11 @@
         dest: /usr/local/sbin/homelab-{{ maintenance_helpers[public_web_maintenance_task] }}
         mode: "0700"
     - ansible.builtin.command:
-        argv: "{{ ['/usr/local/sbin/homelab-' + maintenance_helpers[public_web_maintenance_task]] + (['--apply','--approve-plan-hash',public_web_maintenance_hash | default('')] if public_web_maintenance_apply | default(false) | bool else []) }}"
+        argv: >-
+          {{ ['/usr/local/sbin/homelab-' + maintenance_helpers[public_web_maintenance_task]]
+          + (['--apply','--approve-plan-hash',public_web_maintenance_hash
+          | default('')] if public_web_maintenance_apply | default(false)
+          | bool else []) }}
       register: maintenance
       changed_when: (maintenance.stdout|from_json).applied
       when: not ansible_check_mode

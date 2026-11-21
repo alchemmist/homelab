@@ -159,8 +159,14 @@
       ansible.builtin.shell:
         cmd: |
           set -o pipefail
-          pod=$(kubectl --kubeconfig {{ private_gateway_kubeconfig }} -n syncthing get pod -l app.kubernetes.io/name=private-gateway -o jsonpath='{.items[0].metadata.name}')
-          kubectl --kubeconfig {{ private_gateway_kubeconfig }} -n syncthing exec "$pod" -- wget -qO- http://127.0.0.1:{{ private_gateway_health_port }}/healthz
+          pod=$(kubectl --kubeconfig {{ private_gateway_kubeconfig }} \
+            -n syncthing get pod \
+            -l app.kubernetes.io/name=private-gateway \
+            -o jsonpath='{.items[0].metadata.name}')
+          kubectl --kubeconfig {{ private_gateway_kubeconfig }} \
+            -n syncthing exec "$pod" -- \
+            wget -qO- \
+            http://127.0.0.1:{{ private_gateway_health_port }}/healthz
       register: private_gateway_healthz
       changed_when: false
       failed_when: private_gateway_healthz.stdout != 'OK'
@@ -184,7 +190,9 @@
 
     - name: Merge privateGui.enabled=false into live syncthing values
       ansible.builtin.set_fact:
-        private_gateway_syncthing_merged: "{{ (private_gateway_syncthing_values.stdout | from_json) | combine({'privateGui': {'enabled': false}}, recursive=true) }}"
+        private_gateway_syncthing_merged: >-
+          {{ (private_gateway_syncthing_values.stdout | from_json)
+          | combine({'privateGui': {'enabled': false}}, recursive=true) }}
       no_log: true
 
     - name: Stage merged syncthing values

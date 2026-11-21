@@ -75,7 +75,10 @@
 
     - name: Render the candidate native signal configurations
       ansible.builtin.copy:
-        content: "{{ lookup('ansible.builtin.file', playbook_dir + '/../../deploy/monitoring/otel/' + item + '.yaml') | from_yaml | to_nice_json }}\n"
+        content: >
+          {{ lookup('ansible.builtin.file', playbook_dir
+          + '/../../deploy/monitoring/otel/' + item + '.yaml')
+          | from_yaml | to_nice_json }}
         dest: "{{ otel_signal_stage }}/config/{{ item }}.json"
         owner: root
         group: root

@@ -206,7 +206,9 @@
                -o, "jsonpath={.spec.clusterIP}"]
       register: trace_gateway_service
       changed_when: false
-      failed_when: trace_gateway_service.rc != 0 or not (trace_gateway_service.stdout is match('^[0-9]+(?:\.[0-9]+){3}$'))
+      failed_when: >-
+        trace_gateway_service.rc != 0 or not
+        (trace_gateway_service.stdout is regex('^[0-9]+(?:\\.[0-9]+){3}\\s*$'))
       when: inventory_hostname == 'socrat-0'
     - name: Install trace gateway configuration on its planned host
       ansible.builtin.copy:

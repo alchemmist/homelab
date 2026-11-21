@@ -11,7 +11,8 @@
         mode: "0755"
     - name: Fetch existing project-pinned official bottom package
       ansible.builtin.get_url:
-        url: https://github.com/ClementTsang/bottom/releases/download/0.14.9/bottom_0.14.9-1_amd64.deb
+        url: >-
+          https://github.com/ClementTsang/bottom/releases/download/0.14.9/bottom_0.14.9-1_amd64.deb
         checksum: sha256:e8312526746c1190c3433e6ce0843f64c6e0c501003ee377552745c040dc6d56
         dest: /var/cache/homelab/bottom_0.14.9-1_amd64.deb
         mode: "0644"

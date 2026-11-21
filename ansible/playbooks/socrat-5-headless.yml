@@ -23,7 +23,8 @@
         install -d -m 700 "$out"
         test ! -e "$out/before.tar" || exit 0
         umask 077
-        tar -cf "$out/before.tar" /etc/passwd /etc/shadow /etc/group /etc/gshadow /etc/ssh /etc/hosts /etc/hostname /etc/wireguard
+        tar -cf "$out/before.tar" /etc/passwd /etc/shadow /etc/group \
+          /etc/gshadow /etc/ssh /etc/hosts /etc/hostname /etc/wireguard
       args:
         creates: /var/lib/homelab-recovery/20261110-socrat5-owner/before.tar
       no_log: true

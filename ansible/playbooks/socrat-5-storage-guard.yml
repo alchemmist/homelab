@@ -7,7 +7,9 @@
     - name: Refuse to recreate the retired LXC no-NFS boundary on native VM105
       ansible.builtin.assert:
         that: not (hostvars['socrat-5'].k3s_worker_nfs_enabled | default(false) | bool)
-        fail_msg: Native socrat-5 has NFS enabled; this historical local-only guard must remain retired.
+        fail_msg: >-
+          Native socrat-5 has NFS enabled; this historical local-only guard
+          must remain retired.
   tasks:
     - name: Install secret-free guard reconciler
       ansible.builtin.copy:
@@ -16,7 +18,9 @@
         mode: "0700"
     - name: Render the public desired admission objects
       ansible.builtin.copy:
-        content: "{{ lookup('file', '../../deploy/admission/socrat5-local-storage.yaml') | from_yaml_all | list | to_json }}"
+        content: >-
+          {{ lookup('file', '../../deploy/admission/socrat5-local-storage.yaml')
+          | from_yaml_all | list | to_json }}
         dest: /var/lib/homelab-socrat5-storage-guard.json
         mode: "0600"
     - name: Audit only unless explicitly applying missing owned objects

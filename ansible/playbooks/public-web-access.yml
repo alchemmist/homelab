@@ -16,7 +16,11 @@
         mode: "0600"
     - name: Audit or apply an explicitly approved fresh plan
       ansible.builtin.command:
-        argv: "{{ ['/usr/local/sbin/homelab-public-web-access', '--catalog', '/var/lib/homelab-public-web-services.json'] + (['--apply', '--approve-plan-hash', public_web_approve_plan_hash | default('')] if public_web_apply | default(false) | bool else []) }}"
+        argv: >-
+          {{ ['/usr/local/sbin/homelab-public-web-access', '--catalog',
+          '/var/lib/homelab-public-web-services.json']
+          + (['--apply', '--approve-plan-hash', public_web_approve_plan_hash
+          | default('')] if public_web_apply | default(false) | bool else []) }}
       register: public_web_result
       changed_when: (public_web_result.stdout | from_json).applied
       when: not ansible_check_mode
