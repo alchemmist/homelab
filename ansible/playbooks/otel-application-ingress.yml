@@ -8,7 +8,7 @@
       ansible.builtin.copy:
         src: ../../scripts/otel-host-credentials.py
         dest: /var/lib/homelab-otel/credentials.py
-        mode: '0700'
+        mode: "0700"
 
 - name: Maintain private native OTLP HTTP traces without restarting existing owners
   hosts: socrat-1
@@ -28,18 +28,18 @@
         argv:
           - python3
           - -c
-          - "import os; m={k:int(v.split()[0])*1024 for k,v in (line.split(':',1) for line in open('/proc/meminfo'))}; d=os.statvfs('/var/lib/homelab-otel'); assert m['MemAvailable']-192*1024**2>=m['MemTotal']*.2; assert d.f_bavail*d.f_frsize-64*1024**2>=d.f_blocks*d.f_frsize*.2"
+          - import os; m={k:int(v.split()[0])*1024 for k,v in (line.split(':',1) for line in open('/proc/meminfo'))}; d=os.statvfs('/var/lib/homelab-otel'); assert m['MemAvailable']-192*1024**2>=m['MemTotal']*.2; assert d.f_bavail*d.f_frsize-64*1024**2>=d.f_blocks*d.f_frsize*.2
       changed_when: false
     - name: Create a separate protected durable queue without touching existing signal queues
       ansible.builtin.file:
         path: /var/lib/homelab-otel/application-ingress-queue
         state: directory
-        mode: '0700'
+        mode: "0700"
     - name: Maintain client-mTLS HTTP-only traces with privacy before durable queueing
       ansible.builtin.copy:
         src: ../../deploy/monitoring/otel/application-ingress.yaml
         dest: /etc/homelab-otel/application-ingress.yaml
-        mode: '0600'
+        mode: "0600"
       register: application_ingress_configuration
     - name: Validate the configuration using the unchanged stock Collector
       ansible.builtin.command:
@@ -48,19 +48,19 @@
                --config=/etc/homelab-otel/application-ingress.yaml]
       environment:
         GOMEMLIMIT: 96MiB
-        GOMAXPROCS: '1'
+        GOMAXPROCS: "1"
       changed_when: false
     - name: Maintain isolated resource-bounded native service
       ansible.builtin.copy:
         src: ../../deploy/monitoring/otel/homelab-otel-application-ingress.service
         dest: /etc/systemd/system/homelab-otel-application-ingress.service
-        mode: '0644'
+        mode: "0644"
       register: application_ingress_unit
     - name: Start only the new receiver; never restart metrics, logs or global tail sampling
       ansible.builtin.systemd_service:
         name: homelab-otel-application-ingress.service
         enabled: true
-        daemon_reload: '{{ application_ingress_unit.changed }}'
+        daemon_reload: "{{ application_ingress_unit.changed }}"
         state: "{{ 'restarted' if application_ingress_configuration.changed or application_ingress_unit.changed else 'started' }}"
     - name: Wait for the new loopback-only native health endpoint
       ansible.builtin.wait_for:

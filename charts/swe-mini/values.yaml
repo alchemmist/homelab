@@ -1,3 +1,4 @@
+---
 enabled: true
 paused: true
 nodeName: socrat-5
@@ -11,3 +12,4 @@ minIntervalSeconds: 300
 storage:
   size: 2Gi
   className: local-path
+...

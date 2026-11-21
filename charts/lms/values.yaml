@@ -24,8 +24,8 @@ env:
   LMS_OIDC_ISSUER: https://auth.socrat.alchemmist.xyz/application/o/lms/
   LMS_OIDC_ALLOWED_GROUP: lms-students
 resources:
-  requests: { cpu: 50m, memory: 128Mi }
-  limits: { memory: 512Mi }
+  requests: {cpu: 50m, memory: 128Mi}
+  limits: {memory: 512Mi}
 
 imagePullSecrets:
   - ghcr-pull

@@ -102,7 +102,7 @@ class AppAccessTests(unittest.TestCase):
             credential = root / "credentials.json"
             credential.write_text(json.dumps({"AUTHENTIK_BOOTSTRAP_TOKEN": "fake-test-only"}))
             credential.chmod(0o600)
-            fake = SimpleNamespace(open=lambda *a, **kw: io.BytesIO(b'{"pk": 3}'))
+            fake = SimpleNamespace(open=lambda *_a, **_kw: io.BytesIO(b'{"pk": 3}'))
             with patch.object(access.urllib.request, "build_opener", return_value=fake):
                 api = access.api_for(root)
             self.assertEqual(api("GET", "providers/oauth2/3/"), {"pk": 3})
@@ -240,7 +240,7 @@ class AppAccessTests(unittest.TestCase):
         plan = access.build_plan(state, catalog)
         api.state["core/applications/"][0]["policy_engine_mode"] = "all"
         with self.assertRaises(RuntimeError):
-            access.execute(api, state, catalog, plan["sha256"], lambda *args: None)
+            access.execute(api, state, catalog, plan["sha256"], lambda *_args: None)
         self.assertEqual(api.writes, [])
 
     def test_alias_scopes_attached_before_admission_and_idempotent(self):
@@ -255,7 +255,7 @@ class AppAccessTests(unittest.TestCase):
             [x["kind"] for x in plan["operations"]],
             ["group", "mapping", "mapping", "provider", "binding"],
         )
-        access.execute(api, state, catalog, plan["sha256"], lambda *args: None)
+        access.execute(api, state, catalog, plan["sha256"], lambda *_args: None)
         self.assertEqual(access.build_plan(access.inventory(api), catalog)["operations"], [])
 
 

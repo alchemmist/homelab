@@ -12,12 +12,17 @@ import shlex
 import signal
 import subprocess
 import time
+from typing import Protocol
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 K = ["kubectl", "--kubeconfig=/etc/rancher/k3s/k3s.yaml"]
 
 
-def call(args, timeout=40):
+class _Flag(Protocol):
+    def __bool__(self) -> bool: ...
+
+
+def call(args: list[str], timeout: int = 40):
     r = subprocess.run(
         ["ssh", "socrat-0", shlex.join(K + args)], capture_output=True, text=True, timeout=timeout
     )
@@ -26,11 +31,11 @@ def call(args, timeout=40):
     return r.stdout
 
 
-def get(args):
+def get(args: list[str]):
     return json.loads(call(args + ["-o", "json"]))
 
 
-def patch_service(paused):
+def patch_service(paused: _Flag):
     s = get(["get", "service", "spi-triage", "-n", "automation"])
     key = "homelab.io/maintenance-serving"
     if paused == bool(s["spec"]["selector"].get(key)):

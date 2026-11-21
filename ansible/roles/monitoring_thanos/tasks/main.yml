@@ -78,7 +78,7 @@
     that:
       - (item.stdout | from_json).disk_available | int >= item.item.disk_bytes | int
       - item.item.memory_bytes | int == 0 or (item.stdout | from_json).memory_available | int >= item.item.memory_bytes | int
-    fail_msg: "Thanos needs 80 GiB and 6 GiB available RAM on socrat-0, 40 GiB on socrat-1, and 20 GiB on socrat-3."
+    fail_msg: Thanos needs 80 GiB and 6 GiB available RAM on socrat-0, 40 GiB on socrat-1, and 20 GiB on socrat-3.
   loop: "{{ monitoring_thanos_capacity.results }}"
 
 - name: Create the Thanos raw directories on socrat-0
@@ -115,9 +115,9 @@
 
 - name: Download the pinned Thanos archive
   ansible.builtin.get_url:
-    url: "https://github.com/thanos-io/thanos/releases/download/v{{ monitoring_thanos_version }}/thanos-{{ monitoring_thanos_version }}.linux-amd64.tar.gz"
+    url: https://github.com/thanos-io/thanos/releases/download/v{{ monitoring_thanos_version }}/thanos-{{ monitoring_thanos_version }}.linux-amd64.tar.gz
     dest: "{{ monitoring_thanos_directory }}/thanos.tar.gz"
-    checksum: "sha256:{{ monitoring_thanos_archive_sha256 }}"
+    checksum: sha256:{{ monitoring_thanos_archive_sha256 }}
     mode: "0644"
 
 - name: Extract the Thanos binary

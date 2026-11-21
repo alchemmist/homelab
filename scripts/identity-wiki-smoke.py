@@ -103,7 +103,7 @@ try:
     admin("POST", "core/users/" + str(user["pk"]) + "/set_password/", {"password": password})
     status, headers, body = browser("https://wiki.socrat.alchemmist.xyz/api/auth/oidc/login")
     target = headers["Location"]
-    for step in range(30):
+    for _step in range(30):
         if "/if/flow/" in target or "/api/v3/flows/executor/" in target:
             if "/if/flow/" in target:
                 browser(urllib.parse.urljoin(base, target))
@@ -123,7 +123,7 @@ try:
                 target = headers["Location"]
                 continue
             challenge = json.loads(body)
-            for inner in range(12):
+            for _inner in range(12):
                 component = challenge.get("component")
                 kind = challenge.get("type")
                 # Challenge data, TOTP secrets and OAuth parameters stay in memory.

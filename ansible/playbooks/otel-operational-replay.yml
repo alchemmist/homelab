@@ -42,40 +42,40 @@
           - (ops_memory.stdout | from_json).MemAvailable - otel_ops_memory_bytes >= (ops_memory.stdout | from_json).MemTotal / 5
         fail_msg: No workload eviction or reserve waiver for the isolated test
     - ansible.builtin.file:
-        path: '{{ otel_ops_root }}/{{ item }}'
+        path: "{{ otel_ops_root }}/{{ item }}"
         state: directory
-        mode: '0700'
-      loop: ['', bin, 'tls-{{ otel_ops_run }}', config]
+        mode: "0700"
+      loop: ["", bin, "tls-{{ otel_ops_run }}", config]
     - ansible.builtin.copy:
-        src: '{{ item.source }}'
-        dest: '{{ otel_ops_root }}/bin/{{ item.name }}'
+        src: "{{ item.source }}"
+        dest: "{{ otel_ops_root }}/bin/{{ item.name }}"
         remote_src: true
-        mode: '0700'
-      loop: '{{ otel_ops_artifacts }}'
+        mode: "0700"
+      loop: "{{ otel_ops_artifacts }}"
     - ansible.builtin.stat:
-        path: '{{ otel_ops_root }}/bin/{{ item.name }}'
+        path: "{{ otel_ops_root }}/bin/{{ item.name }}"
         checksum_algorithm: sha256
-      loop: '{{ otel_ops_artifacts }}'
+      loop: "{{ otel_ops_artifacts }}"
       register: ops_hashes
     - ansible.builtin.assert:
         that: item.stat.checksum == item.item.sha256
-      loop: '{{ ops_hashes.results }}'
+      loop: "{{ ops_hashes.results }}"
     - name: Copy only isolated leaves and public CA, never a CA signing key
       ansible.builtin.copy:
-        src: '{{ otel_ops_tls }}/{{ item }}'
-        dest: '{{ otel_ops_root }}/tls-{{ otel_ops_run }}/{{ item }}'
-        mode: '0600'
+        src: "{{ otel_ops_tls }}/{{ item }}"
+        dest: "{{ otel_ops_root }}/tls-{{ otel_ops_run }}/{{ item }}"
+        mode: "0600"
       loop: [ca.crt, server.crt, server.key, client.crt, client.key]
       no_log: true
     - ansible.builtin.copy:
-        content: '{{ lookup("file", playbook_dir + "/../../deploy/monitoring/otel/" + item + ".yaml") | from_yaml | to_json }}'
-        dest: '{{ otel_ops_root }}/config/{{ item }}.json'
-        mode: '0600'
+        content: "{{ lookup('file', playbook_dir + '/../../deploy/monitoring/otel/' + item + '.yaml') | from_yaml | to_json }}"
+        dest: "{{ otel_ops_root }}/config/{{ item }}.json"
+        mode: "0600"
       loop: [cluster, trace-gateway, loki, tempo]
     - ansible.builtin.copy:
-        src: '{{ playbook_dir }}/../../scripts/otel-operational-replay.py'
-        dest: '{{ otel_ops_root }}/replay.py'
-        mode: '0700'
+        src: "{{ playbook_dir }}/../../scripts/otel-operational-replay.py"
+        dest: "{{ otel_ops_root }}/replay.py"
+        mode: "0700"
     - name: Only owned synthetic children in loopback-only namespace, durable state outside tmp
       ansible.builtin.command:
         argv:
@@ -84,8 +84,8 @@
           - --collect
           - --wait
           - --pipe
-          - '--unit=homelab-otel-ops-{{ otel_ops_run }}'
-          - '--property=MemoryMax={{ otel_ops_memory_bytes }}'
+          - --unit=homelab-otel-ops-{{ otel_ops_run }}
+          - --property=MemoryMax={{ otel_ops_memory_bytes }}
           - --property=MemorySwapMax=0
           - --property=CPUQuota=100%
           - --property=RuntimeMaxSec=420
@@ -95,24 +95,24 @@
           - --
           - sh
           - -ec
-          - 'ip link set lo up; exec python3 "$@"'
+          - ip link set lo up; exec python3 "$@"
           - isolated-ops
-          - '{{ otel_ops_root }}/replay.py'
+          - "{{ otel_ops_root }}/replay.py"
           - --binaries
-          - '{{ otel_ops_root }}/bin'
+          - "{{ otel_ops_root }}/bin"
           - --config
-          - '{{ otel_ops_root }}/config'
+          - "{{ otel_ops_root }}/config"
           - --tls
-          - '{{ otel_ops_root }}/tls-{{ otel_ops_run }}'
+          - "{{ otel_ops_root }}/tls-{{ otel_ops_run }}"
           - --workspace
-          - '{{ otel_ops_root }}/{{ otel_ops_run }}'
+          - "{{ otel_ops_root }}/{{ otel_ops_run }}"
       timeout: 450
       register: ops_replay
       changed_when: false
     - ansible.builtin.copy:
-        content: '{{ ops_replay.stdout }}'
-        dest: '{{ otel_ops_controller_output }}'
-        mode: '0600'
+        content: "{{ ops_replay.stdout }}"
+        dest: "{{ otel_ops_controller_output }}"
+        mode: "0600"
       delegate_to: localhost
       become: false
 ...

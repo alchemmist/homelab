@@ -18,6 +18,7 @@ allowedTopologies:
       - key: kubernetes.io/hostname
         values:
           - socrat-5
+...
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
@@ -38,3 +39,4 @@ allowedTopologies:
       - key: kubernetes.io/hostname
         values:
           - socrat-5
+...

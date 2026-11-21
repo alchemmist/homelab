@@ -215,3 +215,4 @@ tests:
   - eval_time: 10m
     alertname: SocratNodeMetricsStale
     exp_alerts: []
+...
