@@ -12,14 +12,43 @@ import sqlite3
 import ssl
 import subprocess
 import time
+from typing import TypedDict
 
 CONFIG_PATH = "/etc/homelab-vpn-failover/config.json"
 STATE_DIR = "/var/lib/homelab-vpn-failover"
 NATIVE_UNITS = ["homelab-vpn-primary.service", "homelab-vpn-caddy.service"]
 
 
+class _Websocket(TypedDict, total=False):
+    address: str
+    port: int
+    host: str
+    path: str
+
+
+class _Config(TypedDict, total=False):
+    state_dir: str
+    agent_unit: str
+    fenced_units: list[str]
+    native_units: list[str]
+    timeout_seconds: int
+    kubernetes_start_timeout_seconds: int
+    fence_timeout_seconds: float
+    boot_grace_seconds: float
+    native_start_grace_seconds: float
+    confirmation_checks: int
+    confirmation_interval_seconds: float
+    failure_threshold: int
+    preflight_files: list[str]
+    databases: list[str]
+    listen_ports: list[dict[str, str | int]]
+    tcp_endpoints: list[tuple[str, int]]
+    websocket: _Websocket
+    native_unit_ports: dict[str, list[dict[str, str | int]]]
+
+
 class Watchdog:
-    def __init__(self, config):
+    def __init__(self, config: _Config):
         self.config = config
         self.state = Path(config.get("state_dir", STATE_DIR))
         self.agent = config.get("agent_unit", "k3s.service")
@@ -31,7 +60,7 @@ class Watchdog:
         self.units = config.get("native_units", NATIVE_UNITS)
         self.timeout = config.get("timeout_seconds", 4)
 
-    def write(self, name, data):
+    def write(self, name: str, data: object):
         target = self.state / name
         temporary = target.with_suffix(".tmp")
         with temporary.open("w") as stream:
@@ -59,7 +88,7 @@ class Watchdog:
             args, check=True, capture_output=True, text=True, timeout=timeout
         ).stdout.strip()
 
-    def service_installed(self, unit):
+    def service_installed(self, unit: str):
         state = self.command("systemctl", "show", unit, "--property=LoadState", "--value")
         if state == "not-found":
             return False
@@ -67,13 +96,13 @@ class Watchdog:
             raise RuntimeError("Cannot verify systemd unit: " + unit + ": " + state)
         return True
 
-    def service_active(self, unit):
+    def service_active(self, unit: str):
         return self.command("systemctl", "show", unit, "--property=ActiveState", "--value") not in (
             "inactive",
             "failed",
         )
 
-    def kubernetes_group(self, group):
+    def kubernetes_group(self, group: str):
         return "kubepods" in group or any("/" + unit in group for unit in self.fenced_units)
 
     def processes(self):
@@ -90,7 +119,7 @@ class Watchdog:
                 result.append(int(entry.name))
         return result
 
-    def terminate(self, pid, sig):
+    def terminate(self, pid: int, sig: signal.Signals):
         try:
             descriptor = os.pidfd_open(pid)
         except ProcessLookupError:
@@ -232,7 +261,7 @@ class Watchdog:
             Path("/proc/uptime").read_text().split()[0]
         )
 
-    def counters(self, boot):
+    def counters(self, boot: str):
         try:
             saved = json.loads((self.state / "failures.json").read_text())
         except (FileNotFoundError, ValueError):

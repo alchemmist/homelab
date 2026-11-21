@@ -29,7 +29,7 @@ print(json.dumps({'status':status,'body':body}))
 """
 
 
-def api(method, path, body=None):
+def api(method: str, path: str, body: object | None = None):
     r = subprocess.run(
         ["ssh", "socrat-0", "python3 -c " + shlex.quote(REMOTE)],
         input=json.dumps({"method": method, "path": path, "body": body}),

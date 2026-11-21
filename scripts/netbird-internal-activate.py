@@ -42,7 +42,7 @@ def main():
 
     opener = urllib.request.build_opener(NoRedirect)
 
-    def api(method, endpoint, body=None):
+    def api(method: str, endpoint: str, body: object | None = None):
         req = urllib.request.Request(
             BASE + endpoint,
             method=method,
