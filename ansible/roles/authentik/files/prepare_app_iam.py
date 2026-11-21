@@ -54,7 +54,7 @@ COLLECTIONS = (
 )
 
 
-def require(condition, message):
+def require(condition: object, message: str) -> None:
     if not condition:
         raise RuntimeError(message)
 
@@ -83,7 +83,11 @@ def private(path, directory=False):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
+    def redirect_request(self, _req, fp, _code, _msg, _headers, _newurl):
+
+        'Refuse redirects by closing the body and raising instead.'
         if fp is not None:
             fp.close()
         raise RuntimeError("API redirect refused")
@@ -107,7 +111,7 @@ def api_for(root):
     token = tokens[0]
     opener = urllib.request.build_opener(NoRedirect())  # default verified HTTPS context
 
-    def api(method, endpoint, payload=None):
+    def api(method, endpoint, payload=None) -> dict[str, object]:
         require(
             method in ("GET", "POST")
             and endpoint.split("?")[0] in COLLECTIONS
@@ -122,7 +126,8 @@ def api_for(root):
         )
         try:
             with opener.open(request, timeout=45) as response:
-                return json.loads(response.read())
+                document: dict[str, object] = json.loads(response.read())
+                return document
         except urllib.error.HTTPError as error:
             # Close without reading/logging: unclosed HTTPError ResourceWarnings can
             # echo an untrusted server reason phrase during garbage collection.
@@ -248,6 +253,32 @@ def evidence_input(path):
     return evidence
 
 
+def _require_pinned(
+    users: dict[str, dict[str, object]],
+    groups: dict[str, dict[str, object]],
+    reviewed: dict[str, object],
+) -> None:
+    """Require every pinned identity to be present and unchanged with legacy groups."""
+    for name, uuid in PINNED.items():
+        entry = users.get(name)
+        require(
+            entry is not None
+            and entry.get("uuid") == uuid
+            and entry.get("is_active") is True
+            and entry.get("type") == "internal",
+            "Pinned active owner/Tim missing or changed",
+        )
+        require(
+            all(
+                g in groups
+                and groups[g]["pk"]
+                in cast("list[object]", cast("dict[str, object]", entry)["groups"])
+                for g in cast("list[str]", cast("dict[str, object]", reviewed[name])["groups"])
+            ),
+            "Pinned legacy membership missing",
+        )
+
+
 def build_plan(api, services, reviewed, stage="groups-only", evidence=None):
     require(stage in ("groups-only", "groups+empty-bindings"), "Unknown stage")
     actual = {slug: set(s.get("appRoles", {})) for slug, s in services.items() if s.get("appRoles")}
@@ -275,21 +306,7 @@ def build_plan(api, services, reviewed, stage="groups-only", evidence=None):
             type(user.get("groups")) is list and not app_pks.intersection(user["groups"]),
             "App membership present or user inventory incomplete",
         )
-    for name, uuid in PINNED.items():
-        user = users.get(name)
-        require(
-            user is not None
-            and user.get("uuid") == uuid
-            and user.get("is_active") is True
-            and user.get("type") == "internal",
-            "Pinned active owner/Tim missing or changed",
-        )
-        require(
-            all(
-                g in groups and groups[g]["pk"] in user["groups"] for g in reviewed[name]["groups"]
-            ),
-            "Pinned legacy membership missing",
-        )
+    _require_pinned(users, groups, reviewed)
     require(
         users["antropophag"].get("is_superuser") is False
         and groups["homelab-owner"]["pk"] not in users["antropophag"]["groups"],

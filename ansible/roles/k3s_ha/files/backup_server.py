@@ -1,3 +1,5 @@
+"""Snapshot k3s server configuration and datastore before HA changes."""
+
 import argparse
 import json
 import os

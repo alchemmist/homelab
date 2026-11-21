@@ -1,4 +1,6 @@
 #!/usr/bin/python3
+"""Validate and load the guarded ALX Wi-Fi kernel module safely."""
+
 import argparse
 import gzip
 import lzma

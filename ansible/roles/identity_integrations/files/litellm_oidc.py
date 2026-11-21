@@ -100,12 +100,8 @@ def main():
             raise RuntimeError("Ambiguous configuration")
         return found[0] if found else None
 
-    if api("GET", "admin/version/")["version_current"] != "2026.8.5":
-        raise RuntimeError("Unreviewed Authentik version")
     deployment = json.loads(kubectl(["get", "deployment", "litellm", "-o", "json"]))
     container = deployment["spec"]["template"]["spec"]["containers"][0]
-    if container["image"] != "ghcr.io/berriai/litellm:1.105.1":
-        raise RuntimeError("Unreviewed LiteLLM version")
     query = """import asyncio,json
 from prisma import Prisma
 async def main():
@@ -118,29 +114,79 @@ asyncio.run(main())
 """
     raw = kubectl(["exec", "-i", "deployment/litellm", "--", "python", "-"], query.encode())
     users = json.loads(raw.decode().splitlines()[-1])
-    owner_rows = [r for r in users if r["user_id"] == OWNER_ID and r["user_role"] == "proxy_admin"]
-    if len(owner_rows) != 1 or len(users) > 5:
-        raise RuntimeError("Reviewed owner identity / free-tier capacity gate failed")
-    if any(r.get("password") for r in users if r["user_id"] != OWNER_ID):
-        raise RuntimeError("Non-owner password identity requires explicit review")
+    _require_versions(api, container)
+    owner_rows = _reviewed_rows(users)
     owner = one("core/users/", "username", "alchemmist")
     group = one("core/groups/", "name", "homelab-owner")
     reviewed = json.loads((args.root / "account-mappings.json").read_text())["alchemmist"]
+    _require_owner_boundary(owner, group, reviewed)
+    granted = _granted_subjects(
+        json.loads((args.root / "litellm-users.json").read_text()), owner, one
+    )
+    access_group = one("core/groups/", "name", "app-litellm-user")
+    _require_access_group(access_group)
+    if not args.apply:
+        print(
+            "Preflight passed: native OIDC available, reviewed owner and owner-only local password boundary; no changes"
+        )
+        return
+    private(args.root / "litellm-users-before-oidc.json", users)
+    private(args.root / "litellm-deployment-before-oidc.json", deployment)
+    _sync_owner_binding(args.root / "litellm-owner-binding.json", private, owner)
+    clients = _register_client(args.root / "oidc-clients.json", one, private)
+    mapping = _scope_mapping(one, api, owner, owner_rows[0]["user_email"], granted)
+    mappings = _default_scope_pks(api) + [mapping["pk"]]
+    provider = _require_oauth2_provider(api, one, clients, mappings)
+    manifest = json.loads((args.root / "service-icons/sources.json").read_text())
+    app = _require_application(api, manifest, provider, one)
+    _reconcile_bindings(api, app, group, access_group, granted)
+    _reconcile_secret(kubectl, clients, container)
+
+
+def _require_versions(api: "ApiCall", container: object) -> None:
+    """Refuse to run against unreviewed Authentik or LiteLLM versions."""
+    if cast("dict[str, object]", api("GET", "admin/version/"))["version_current"] != "2026.8.5":
+        raise RuntimeError("Unreviewed Authentik version")
+    if cast("dict[str, object]", container)["image"] != "ghcr.io/berriai/litellm:1.105.1":
+        raise RuntimeError("Unreviewed LiteLLM version")
+
+
+def _reviewed_rows(users: "Sequence[dict[str, object]]") -> list[dict[str, object]]:
+    """Return the reviewed proxy_admin rows, enforcing the capacity gate."""
+    rows = [r for r in users if r["user_id"] == OWNER_ID and r["user_role"] == "proxy_admin"]
+    if len(rows) != 1 or len(users) > 5:
+        raise RuntimeError("Reviewed owner identity / free-tier capacity gate failed")
+    if any(r.get("password") for r in users if r["user_id"] != OWNER_ID):
+        raise RuntimeError("Non-owner password identity requires explicit review")
+    return rows
+
+
+def _require_owner_boundary(owner: object, group: object, reviewed: object) -> None:
+    """Require the owner account and owner group to match reviewed mappings."""
     if (
         not owner
-        or owner["uuid"] != reviewed.get("idpUserUuid")
-        or reviewed.get("litellmUserId") != OWNER_ID
+        or cast("dict[str, object]", owner)["uuid"]
+        != cast("dict[str, object]", reviewed).get("idpUserUuid")
+        or cast("dict[str, object]", reviewed).get("litellmUserId") != OWNER_ID
     ):
         raise RuntimeError("Owner UUID differs from explicit reviewed account mapping")
-    if not group or owner["pk"] not in group.get("users", []):
+    users = cast("list[object]", cast("dict[str, object]", group).get("users", []))
+    if not group or cast("dict[str, object]", owner)["pk"] not in users:
         raise RuntimeError("Reviewed owner group boundary missing")
-    grants = json.loads((args.root / "litellm-users.json").read_text())
+
+
+def _granted_subjects(grants: object, owner: object, one: "One") -> list[dict[str, object]]:
+    """Verify and return the reviewed internal-user subjects."""
     if not isinstance(grants, dict):
         raise RuntimeError("Invalid reviewed LiteLLM grants")
-    granted_users = []
-    for username, grant in grants.items():
-        uid = str(uuid.UUID(grant["idpUserUuid"]))
-        if uid == owner["uuid"] or grant != {"idpUserUuid": uid, "litellmRole": "internal_user"}:
+    granted = []
+    for username, grant in cast("dict[str, object]", grants).items():
+        entry = cast("dict[str, object]", grant)
+        uid = str(uuid.UUID(cast("str", entry["idpUserUuid"])))
+        if uid == cast("dict[str, object]", owner)["uuid"] or entry != {
+            "idpUserUuid": uid,
+            "litellmRole": "internal_user",
+        }:
             raise RuntimeError("Unreviewed user privilege or owner override")
         subject = one("core/users/", "username", username)
         if (
@@ -150,39 +196,42 @@ asyncio.run(main())
             or subject.get("is_superuser")
         ):
             raise RuntimeError("Reviewed LiteLLM subject missing, inactive, privileged or rebound")
-        granted_users.append(subject)
-    if len({u["uuid"] for u in granted_users}) != len(granted_users):
+        granted.append(subject)
+    if len({u["uuid"] for u in granted}) != len(granted):
         raise RuntimeError("Duplicate LiteLLM subject")
-    access_group = one("core/groups/", "name", "app-litellm-user")
+    return granted
+
+
+def _require_access_group(access_group: object) -> None:
+    """Require the reviewed non-privileged LiteLLM app group unchanged."""
     if (
         not access_group
-        or access_group.get("is_superuser") is not False
-        or access_group.get("parents") != []
-        or access_group.get("children") != []
-        or access_group.get("roles") != []
-        or access_group.get("attributes") != {"homelab_app_iam": 1}
+        or cast("dict[str, object]", access_group).get("is_superuser") is not False
+        or cast("dict[str, object]", access_group).get("parents") != []
+        or cast("dict[str, object]", access_group).get("children") != []
+        or cast("dict[str, object]", access_group).get("roles") != []
+        or cast("dict[str, object]", access_group).get("attributes") != {"homelab_app_iam": 1}
     ):
         raise RuntimeError("Reviewed non-privileged LiteLLM app group missing or drifted")
-    if not args.apply:
-        print(
-            "Preflight passed: native OIDC available, reviewed owner and owner-only local password boundary; no changes"
-        )
-        return
-    private(args.root / "litellm-users-before-oidc.json", users)
-    private(args.root / "litellm-deployment-before-oidc.json", deployment)
-    binding_path = args.root / "litellm-owner-binding.json"
+
+
+def _sync_owner_binding(binding_path: Path, private: "Private", owner: dict[str, object]) -> None:
+    """Journal the owner binding, upgrading the initial hashed-UID record."""
     expected_binding = {"authentik_uuid": owner["uuid"], "litellm_user_id": OWNER_ID}
     if binding_path.exists():
         binding = json.loads(binding_path.read_text())
         # One-time upgrade from the initial same-owner hashed UID journal.
         if binding == {"authentik_uid": owner["uid"], "litellm_user_id": OWNER_ID}:
-            private(args.root / "litellm-owner-hashed-uid-original.json", binding)
+            private(binding_path.parent / "litellm-owner-hashed-uid-original.json", binding)
             private(binding_path, expected_binding, overwrite=True)
         elif binding != expected_binding:
             raise RuntimeError("Owner subject drift; refusing automatic rebind")
     else:
         private(binding_path, expected_binding)
-    client_path = args.root / "oidc-clients.json"
+
+
+def _register_client(client_path: Path, one: "One", private: "Private") -> dict[str, object]:
+    """Return the reviewed client registry, creating the LiteLLM secret if absent."""
     clients = json.loads(client_path.read_text())
     if "litellm" not in clients:
         if one("providers/oauth2/", "name", "homelab-litellm"):
@@ -192,29 +241,46 @@ asyncio.run(main())
             "client_secret": secrets.token_urlsafe(48),
         }
         private(client_path, clients, overwrite=True)
+    return cast("dict[str, object]", clients)
+
+
+def _scope_mapping(
+    one: "One",
+    api: "ApiCall",
+    owner: dict[str, object],
+    owner_email: object,
+    granted: list[dict[str, object]],
+) -> dict[str, object]:
+    """Create or update the reviewed LiteLLM identity scope expression."""
     mapping = one("propertymappings/provider/scope/", "name", MAPPING)
     settings = {
         "name": MAPPING,
         "scope_name": "litellm_identity",
         "expression": identity_expression(
             owner["uuid"],
-            owner_rows[0]["user_email"],
-            [u["uuid"] for u in granted_users],
+            owner_email,
+            [u["uuid"] for u in granted],
             "app-litellm-user",
         ),
     }
     if not mapping or any(mapping.get(k) != v for k, v in settings.items()):
-        mapping = api(
+        updated = api(
             "PATCH" if mapping else "POST",
-            "propertymappings/provider/scope/" + (mapping["pk"] + "/" if mapping else ""),
+            "propertymappings/provider/scope/" + (str(mapping["pk"]) + "/" if mapping else ""),
             settings,
         )
-    scopes = api("GET", "propertymappings/provider/scope/?page_size=100")["results"]
+        return cast("dict[str, object]", updated)
+    return mapping
+
+
+def _default_scope_pks(api: "ApiCall") -> list[object]:
+    """Return the default OpenID/profile/email scope mapping pks in order."""
+    scopes = api("GET", "propertymappings/provider/scope/?page_size=100")
     mappings = []
     for scope in ["openid", "profile", "email"]:
         matches = [
             r
-            for r in scopes
+            for r in cast("list[dict[str, object]]", cast("dict[str, object]", scopes)["results"])
             if r.get("scope_name") == scope
             and r.get("name") == "authentik default OAuth Mapping: OpenID '" + scope + "'"
         ]
@@ -223,14 +289,30 @@ asyncio.run(main())
                 "Missing/ambiguous exact default scope; never mix app profile mappings"
             )
         mappings.append(matches[0]["pk"])
-    mappings.append(mapping["pk"])
-    flows = {r["slug"]: r["pk"] for r in api("GET", "flows/instances/?page_size=100")["results"]}
-    cert = one("crypto/certificatekeypairs/", "name", "authentik Self-signed Certificate")
+    return mappings
+
+
+def _require_oauth2_provider(
+    api: "ApiCall", one: "One", clients: dict[str, object], mappings: list[object]
+) -> dict[str, object]:
+    """Create or update the reviewed LiteLLM OAuth2 provider."""
+    flows = {
+        r["slug"]: r["pk"]
+        for r in cast(
+            "list[dict[str, object]]",
+            cast("dict[str, object]", api("GET", "flows/instances/?page_size=100"))["results"],
+        )
+    }
+    cert = cast(
+        "dict[str, object]",
+        one("crypto/certificatekeypairs/", "name", "authentik Self-signed Certificate"),
+    )
     provider = one("providers/oauth2/", "name", "homelab-litellm")
+    client = cast("dict[str, object]", clients["litellm"])
     settings = {
         "name": "homelab-litellm",
         "client_type": "confidential",
-        **clients["litellm"],
+        **client,
         "grant_types": ["authorization_code", "refresh_token"],
         "sub_mode": "user_uuid",
         "authentication_flow": flows["default-authentication-flow"],
@@ -245,13 +327,23 @@ asyncio.run(main())
         "access_token_validity": "minutes=5",
         "refresh_token_validity": "hours=8",
     }
-    provider = api(
-        "PATCH" if provider else "POST",
-        "providers/oauth2/" + (str(provider["pk"]) + "/" if provider else ""),
-        settings,
+    return cast(
+        "dict[str, object]",
+        api(
+            "PATCH" if provider else "POST",
+            "providers/oauth2/" + (str(provider["pk"]) + "/" if provider else ""),
+            settings,
+        ),
     )
-    manifest = json.loads((args.root / "service-icons/sources.json").read_text())
-    icon = "service-icons/litellm-" + manifest["files"]["litellm.svg"]["sha256"][:12] + ".svg"
+
+
+def _require_application(
+    api: "ApiCall", manifest: object, provider: dict[str, object], one: "One"
+) -> dict[str, object]:
+    """Create or update the reviewed LiteLLM application entry."""
+    files = cast("dict[str, object]", cast("dict[str, object]", manifest)["files"])
+    sha = cast("str", cast("dict[str, object]", files["litellm.svg"])["sha256"])
+    icon = "service-icons/litellm-" + sha[:12] + ".svg"
     app = one("core/applications/", "slug", "litellm")
     settings = {
         "name": "LiteLLM",
@@ -263,16 +355,27 @@ asyncio.run(main())
         "group": "Socrat",
         "policy_engine_mode": "any",
     }
-    app = api(
-        "PATCH" if app else "POST", "core/applications/" + ("litellm/" if app else ""), settings
+    return cast(
+        "dict[str, object]",
+        api(
+            "PATCH" if app else "POST", "core/applications/" + ("litellm/" if app else ""), settings
+        ),
     )
-    bindings = api("GET", "policies/bindings/?target=" + app["pk"] + "&page_size=100")["results"]
-    approved_pks = {u["pk"] for u in granted_users}
 
-    def accepted_binding(b):
+
+def _reconcile_bindings(
+    api: "ApiCall",
+    app: dict[str, object],
+    group: dict[str, object],
+    access_group: dict[str, object],
+    granted: list[dict[str, object]],
+) -> None:
+    """Audit and create the reviewed application admission bindings."""
+
+    def accepted_binding(b: dict[str, object]) -> bool:
         target_ok = (
             b.get("group") in {group["pk"], access_group["pk"]} and b.get("user") is None
-        ) or (b.get("group") is None and b.get("user") in approved_pks)
+        ) or (b.get("group") is None and b.get("user") in {u["pk"] for u in granted})
         return (
             target_ok
             and b.get("policy") is None
@@ -282,6 +385,13 @@ asyncio.run(main())
             and not b.get("expires")
         )
 
+    bindings = cast(
+        "list[dict[str, object]]",
+        cast(
+            "dict[str, object]",
+            api("GET", "policies/bindings/?target=" + str(app["pk"]) + "&page_size=100"),
+        )["results"],
+    )
     if any(not accepted_binding(b) for b in bindings):
         raise RuntimeError("Unexpected application admission binding; review before rollout")
     if len({(b.get("group"), b.get("user")) for b in bindings}) != len(bindings):
@@ -311,7 +421,7 @@ asyncio.run(main())
                 "failure_result": False,
             },
         )
-    for subject in granted_users:
+    for subject in granted:
         if not any(b.get("user") == subject["pk"] for b in bindings):
             api(
                 "POST",
@@ -325,14 +435,20 @@ asyncio.run(main())
                     "failure_result": False,
                 },
             )
-    secret = {
-        "apiVersion": "v1",
-        "kind": "Secret",
-        "metadata": {"name": "socrat-authentik-litellm", "namespace": "llm"},
-        "type": "Opaque",
-        "stringData": {
-            "GENERIC_CLIENT_ID": clients["litellm"]["client_id"],
-            "GENERIC_CLIENT_SECRET": clients["litellm"]["client_secret"],
+
+
+def _reconcile_secret(
+    kubectl: "Kube", clients: dict[str, object], container: dict[str, object]
+) -> None:
+    """Apply the LiteLLM OIDC Secret and roll the deployment when changed."""
+    import base64
+
+    client = cast("dict[str, object]", clients["litellm"])
+    string_data = cast(
+        "dict[str, object]",
+        {
+            "GENERIC_CLIENT_ID": client["client_id"],
+            "GENERIC_CLIENT_SECRET": client["client_secret"],
             "GENERIC_AUTHORIZATION_ENDPOINT": BASE + "/application/o/authorize/",
             "GENERIC_TOKEN_ENDPOINT": BASE + "/application/o/token/",
             "GENERIC_USERINFO_ENDPOINT": BASE + "/application/o/userinfo/",
@@ -343,34 +459,42 @@ asyncio.run(main())
             "GENERIC_USER_ROLE_ATTRIBUTE": "litellm_user_role",
             "PROXY_BASE_URL": "https://llm.alchemmist.xyz",
         },
+    )
+    secret: dict[str, object] = {
+        "apiVersion": "v1",
+        "kind": "Secret",
+        "metadata": {"name": "socrat-authentik-litellm", "namespace": "llm"},
+        "type": "Opaque",
+        "stringData": string_data,
     }
-    import base64
 
     old = kubectl(["get", "secret", "socrat-authentik-litellm", "--ignore-not-found", "-o", "json"])
-    old_data = json.loads(old).get("data", {}) if old else {}
+    old_data = cast("dict[str, object]", json.loads(old).get("data", {})) if old else {}
     changed_secret = any(
-        old_data.get(k) != base64.b64encode(v.encode()).decode()
-        for k, v in secret["stringData"].items()
+        old_data.get(k) != base64.b64encode(str(v).encode()).decode()
+        for k, v in string_data.items()
     )
     kubectl(["apply", "-f", "-"], json.dumps(secret).encode())
-    env_from = container.get("envFrom", [])
+    env_from = cast("list[dict[str, object]]", container.get("envFrom", []))
     has_mount = any(
-        e.get("secretRef", {}).get("name") == "socrat-authentik-litellm" for e in env_from
+        cast("dict[str, object]", e.get("secretRef", {})).get("name") == "socrat-authentik-litellm"
+        for e in env_from
     )
     if not has_mount or changed_secret:
         if not has_mount:
-            env_from = env_from + [{"secretRef": {"name": "socrat-authentik-litellm"}}]
-        patch = {
+            env_from = [*env_from, {"secretRef": {"name": "socrat-authentik-litellm"}}]
+        patch: dict[str, object] = {
             "spec": {
                 "template": {
                     "spec": {"containers": [{"name": container["name"], "envFrom": env_from}]}
                 }
             }
         }
-        patch["spec"]["template"]["metadata"] = {
+        template = cast("dict[str, object]", cast("dict[str, object]", patch["spec"])["template"])
+        template["metadata"] = {
             "annotations": {
                 "socrat.alchemmist.xyz/oidc-env-sha256": hashlib.sha256(
-                    json.dumps(secret["stringData"], sort_keys=True).encode()
+                    json.dumps(string_data, sort_keys=True).encode()
                 ).hexdigest()
             }
         }
@@ -380,6 +504,38 @@ asyncio.run(main())
         )
     else:
         print("Native OIDC configuration reconciled; no deployment restart requested")
+
+
+class One(Protocol):
+    """Callable matching the in-main `one` lookup helper."""
+
+    def __call__(self, path: str, field: str, value: str) -> dict[str, object] | None:
+        """Return the unique reviewed Authentik record, if present."""
+        ...
+
+
+class ApiCall(Protocol):
+    """Callable matching the in-main `api` Authentik HTTP helper."""
+
+    def __call__(self, method: str, path: str, payload: object | None = ...) -> object:
+        """Perform one reviewed Authentik API call."""
+        ...
+
+
+class Kube(Protocol):
+    """Callable matching the in-main `kubectl` command helper."""
+
+    def __call__(self, arguments: list[str], data: object | None = ...) -> bytes:
+        """Run one reviewed kubectl invocation, returning its stdout."""
+        ...
+
+
+class Private(Protocol):
+    """Callable matching the in-main `private` journal writer."""
+
+    def __call__(self, path: Path, data: object, *, overwrite: bool = ...) -> None:
+        """Persist one 0600-reviewed JSON artifact."""
+        ...
 
 
 if __name__ == "__main__":

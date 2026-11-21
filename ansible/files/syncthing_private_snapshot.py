@@ -1,3 +1,5 @@
+"""Print a snapshot of private Syncthing certificate, devices, and folders."""
+
 import hashlib
 import json
 import sys

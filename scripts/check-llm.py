@@ -1,3 +1,4 @@
+"""Smoke-check an OpenAI-compatible LLM inference endpoint."""
 import json
 import os
 import sys

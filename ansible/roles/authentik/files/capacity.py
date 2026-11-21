@@ -7,6 +7,7 @@ from decimal import Decimal
 
 
 def quantity(x):
+    """Quantity."""
     for unit, mul in [
         ("Ki", 1024),
         ("Mi", 1024**2),

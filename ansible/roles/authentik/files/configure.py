@@ -22,6 +22,7 @@ base = "https://auth.socrat.alchemmist.xyz/api/v3/"
 
 
 def api(method, path, payload=None):
+    """Api."""
     req = urllib.request.Request(
         base + path,
         method=method,
@@ -41,6 +42,7 @@ import secrets
 
 
 def unique(path, field, value):
+    """Unique."""
     from urllib.parse import urlencode
 
     query = {field: value}
@@ -137,7 +139,7 @@ if not owner_login["initialized"]:
     owner_path.chmod(0o600)
 # Only the declared owner may inherit this group's superuser rights.
 owner_group = unique("core/groups/", "name", "homelab-owner")
-if set(owner_group.get("users", [])) - set([owner["pk"]]):
+if set(owner_group.get("users", [])) - {owner["pk"]}:
     raise RuntimeError("Unexpected owner group membership; review before granting superuser")
 api("PATCH", "core/groups/" + groups["homelab-owner"] + "/", {"is_superuser": True})
 

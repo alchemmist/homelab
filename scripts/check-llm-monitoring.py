@@ -1,3 +1,4 @@
+"""Check Prometheus scrape targets and metrics for the LLM stack."""
 import importlib.util
 import json
 import math

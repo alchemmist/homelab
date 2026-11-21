@@ -32,7 +32,7 @@ def main():
         "109.173.40.247" if h == "auth.socrat.alchemmist.xyz" else h, *a, **kw
     )
 
-    def api(method, path, payload=None):
+    def api(method, path, payload=None) -> dict[str, object]:
         request = urllib.request.Request(
             "https://auth.socrat.alchemmist.xyz/api/v3/" + path,
             method=method,
@@ -40,19 +40,20 @@ def main():
             headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
         )
         with urllib.request.urlopen(request, timeout=25) as response:
-            return json.load(response)
+            document: dict[str, object] = json.load(response)
+            return document
 
-    def existing():
+    def existing() -> list[dict[str, object]]:
         data = api("GET", "core/applications/?superuser_full_list=true&slug=password-self-service")
-        assert not data.get("next") and len(data["results"]) <= 1
-        return data["results"]
+        assert not data.get("next") and len(cast("list[object]", data["results"])) <= 1
+        return cast("list[dict[str, object]]", data["results"])
 
     before = existing()
     if before:
         assert all(before[0].get(k) == v for k, v in spec.items()), (
             "Existing application drift; stop"
         )
-        bindings = api("GET", "policies/bindings/?target=" + before[0]["pk"])
+        bindings = api("GET", "policies/bindings/?target=" + cast("str", before[0]["pk"]))
         assert not bindings.get("next") and bindings["results"] == [], (
             "Unexpected admission restriction"
         )
@@ -73,7 +74,7 @@ def main():
     (receipt / "created.json").write_text(json.dumps(created, indent=2))
     after = existing()
     assert len(after) == 1 and all(after[0].get(k) == v for k, v in spec.items())
-    bindings = api("GET", "policies/bindings/?target=" + after[0]["pk"])
+    bindings = api("GET", "policies/bindings/?target=" + cast("str", after[0]["pk"]))
     assert not bindings.get("next") and bindings["results"] == []
     (receipt / "verified.json").write_text(json.dumps(after[0], indent=2))
     print(

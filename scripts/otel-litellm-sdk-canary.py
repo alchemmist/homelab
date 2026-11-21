@@ -29,10 +29,10 @@ def run():
         source_audit = {"endedSpans": 0, "sensitiveSyntheticContentFoundAtSource": False}
 
         class SourcePrivacyAudit(SpanProcessor):
-            def on_start(self, span, parent_context=None):
+            def on_start(self, span, parent_context=None) -> None:
                 pass
 
-            def on_end(self, span):
+            def on_end(self, span) -> None:
                 source_audit["endedSpans"] += 1
                 serialized = span.to_json()
                 if any(
@@ -45,10 +45,10 @@ def run():
                 ):
                     source_audit["sensitiveSyntheticContentFoundAtSource"] = True
 
-            def shutdown(self):
+            def shutdown(self) -> None:
                 pass
 
-            def force_flush(self, timeout_millis=30000):
+            def force_flush(self, _timeout_millis=30000) -> bool:
                 return True
 
         handler._tracer_provider.add_span_processor(SourcePrivacyAudit())
@@ -99,7 +99,7 @@ def run():
 if __name__ == "__main__":
     try:
         run()
-    except Exception as error:
+    except (ImportError, OSError, RuntimeError, ValueError) as error:
         print(
             json.dumps(
                 {
@@ -110,4 +110,4 @@ if __name__ == "__main__":
                 }
             )
         )
-        raise SystemExit(1)
+        raise SystemExit(1) from error

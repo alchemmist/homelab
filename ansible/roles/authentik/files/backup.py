@@ -14,7 +14,14 @@ with tempfile.TemporaryDirectory(dir=root) as work:
     # Resolve the active CNPG primary on each run; never dump the retained legacy PVC.
     pg = [*k[:-1], "postgres"]
     primary = subprocess.check_output(
-        pg + ["get", "cluster.postgresql.cnpg.io", "pg-critical", "-o", "jsonpath={.status.currentPrimary}"],
+        pg
+        + [
+            "get",
+            "cluster.postgresql.cnpg.io",
+            "pg-critical",
+            "-o",
+            "jsonpath={.status.currentPrimary}",
+        ],
         text=True,
     ).strip()
     if not primary.startswith("pg-critical-") or not primary.removeprefix("pg-critical-").isdigit():

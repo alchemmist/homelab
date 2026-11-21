@@ -1,3 +1,5 @@
+"""Announce a virtual IP to neighbor hosts via ARP for ingress HA."""
+
 import argparse
 import ipaddress
 import json

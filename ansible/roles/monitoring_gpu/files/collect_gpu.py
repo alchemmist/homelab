@@ -1,3 +1,5 @@
+"""Collect GPU metrics via nvidia-smi for Prometheus text exposition."""
+
 import argparse
 import csv
 import io
@@ -44,6 +46,30 @@ def sample(name, labels, value):
     return name + suffix + " " + format(value, ".15g") + "\n"
 
 
+def _metric_lines(labels, row):
+    """Convert one GPU query row into its numeric metric lines."""
+    metrics = []
+    for (_, metric, factor), raw in zip(FIELDS, row[3:]):
+        if metric == "performance_state" and raw.startswith("P"):
+            raw = raw[1:]
+        try:
+            value = float(raw) * factor
+        except ValueError:
+            continue
+        if math.isfinite(value):
+            metrics.append(sample("socrat_gpu_" + metric, labels, value))
+    for reason, raw in zip(REASONS, row[3 + len(FIELDS) :]):
+        if raw in ("Active", "Not Active"):
+            metrics.append(
+                sample(
+                    "socrat_gpu_throttle_active",
+                    {**labels, "reason": reason},
+                    float(raw == "Active"),
+                )
+            )
+    return metrics
+
+
 def parse_metrics(output):
     metrics = []
     count = 0
@@ -57,24 +83,7 @@ def parse_metrics(output):
             raise ValueError("Invalid NVIDIA GPU identity")
         labels = dict(zip(("uuid", "name", "index"), row[:3]))
         count += 1
-        for (_, metric, factor), raw in zip(FIELDS, row[3:]):
-            if metric == "performance_state" and raw.startswith("P"):
-                raw = raw[1:]
-            try:
-                value = float(raw) * factor
-            except ValueError:
-                continue
-            if math.isfinite(value):
-                metrics.append(sample("socrat_gpu_" + metric, labels, value))
-        for reason, raw in zip(REASONS, row[3 + len(FIELDS) :]):
-            if raw in ("Active", "Not Active"):
-                metrics.append(
-                    sample(
-                        "socrat_gpu_throttle_active",
-                        {**labels, "reason": reason},
-                        float(raw == "Active"),
-                    )
-                )
+        metrics.extend(_metric_lines(labels, row))
     if not count:
         raise ValueError("No NVIDIA GPU returned")
     return "".join(metrics)

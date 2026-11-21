@@ -1,3 +1,5 @@
+"""Resolve alert annotations into direct Grafana alert links."""
+
 import argparse
 import json
 import os

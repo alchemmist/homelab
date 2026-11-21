@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+
+"""Relabel node series in the Rancher Grafana dashboards."""
+
 import json
 import sys
 
@@ -155,79 +158,92 @@ def panels(dashboard):
         yield from panels(panel)
 
 
+def _pin_node_series(dashboard):
+    """Rewrite one pinned dashboard's targets to use nodename labels."""
+    for panel in panels(dashboard):
+        for target in panel.get("targets", []):
+            legend = target.get("legendFormat", "")
+            if "{{instance}}" not in legend:
+                continue
+            target["expr"] = (
+                "("
+                + target["expr"].strip()
+                + ") * on (instance) group_left (nodename) "
+                + NODE_NAMES
+            )
+            target["legendFormat"] = legend.replace("{{instance}}", "{{nodename}}")
+        for override in panel.get("fieldConfig", {}).get("overrides", []):
+            matcher = override.get("matcher", {})
+            if matcher.get("id") == "byName" and isinstance(matcher.get("options"), str):
+                matcher["options"] = matcher["options"].replace("{{instance}}", "{{nodename}}")
+
+
+def _retitle_rancher(manifest, name, dashboard):
+    """Strip the Rancher prefix from a retained dashboard's title."""
+    dashboard["title"] = dashboard["title"].removeprefix("Rancher / ").removeprefix("[Rancher] ")
+    manifest["data"][name] = json.dumps(dashboard, ensure_ascii=False, separators=(",", ":"))
+
+
+def _process_dashboard(manifest, name, dashboard, found):
+    """Process one rancher dashboard entry and track retained UIDs."""
+    uid = dashboard.get("uid")
+    if not uid:
+        return (False, None)
+    if uid not in RANCHER_DASHBOARD_UIDS:
+        del manifest["data"][name]
+        return (True, None)
+    found.add(uid)
+    _retitle_rancher(manifest, name, dashboard)
+    if uid in NODE_DASHBOARD_UIDS:
+        resolve_node_exporter(dashboard)
+        add_cpu_temperature(dashboard)
+        manifest["data"][name] = json.dumps(dashboard, ensure_ascii=False, separators=(",", ":"))
+    if uid != DASHBOARD_UID:
+        apply_descriptions(dashboard)
+        manifest["data"][name] = json.dumps(dashboard, ensure_ascii=False, separators=(",", ":"))
+        return (False, uid)
+    _pin_node_series(dashboard)
+    apply_descriptions(dashboard)
+    manifest["data"][name] = json.dumps(dashboard, ensure_ascii=False, separators=(",", ":"))
+    return (False, uid)
+
+
+def _process_manifest(manifest, found):
+    """Fold dashboards inside one ConfigMap; return False to drop it entirely."""
+    if not manifest or manifest.get("kind") != "ConfigMap":
+        return (True, None)
+    dashboard_uids = set()
+    removed_dashboard = False
+    for name, content in list(manifest.get("data", {}).items()):
+        if not name.endswith(".json"):
+            continue
+        try:
+            dashboard = json.loads(content)
+        except (TypeError, ValueError):
+            continue
+        if not isinstance(dashboard, dict) or not isinstance(dashboard.get("panels"), list):
+            continue
+        removed, uid = _process_dashboard(manifest, name, dashboard, found)
+        removed_dashboard = removed_dashboard or removed
+        if uid:
+            dashboard_uids.add(uid)
+    if dashboard_uids:
+        metadata = manifest.setdefault("metadata", {})
+        metadata["annotations"] = metadata.get("annotations") or {}
+        metadata["annotations"]["grafana_folder"] = "/tmp/dashboards/Rancher"
+    if removed_dashboard and not manifest.get("data") and not manifest.get("binaryData"):
+        return (False, None)
+    return (True, None)
+
+
 def main():
+    """Read ConfigMaps on stdin and rework the pinned Rancher dashboards."""
     manifests = list(yaml.safe_load_all(sys.stdin))
-    found = set()
+    found: set[str] = set()
     retained = []
     for manifest in manifests:
-        if not manifest or manifest.get("kind") != "ConfigMap":
-            retained.append(manifest)
-            continue
-        dashboard_uids = set()
-        removed_dashboard = False
-        for name, content in list(manifest.get("data", {}).items()):
-            if not name.endswith(".json"):
-                continue
-            try:
-                dashboard = json.loads(content)
-            except (TypeError, ValueError):
-                continue
-            if not isinstance(dashboard, dict) or not isinstance(dashboard.get("panels"), list):
-                continue
-            uid = dashboard.get("uid")
-            if not uid:
-                continue
-            if uid not in RANCHER_DASHBOARD_UIDS:
-                del manifest["data"][name]
-                removed_dashboard = True
-                continue
-            dashboard_uids.add(uid)
-            if uid in RANCHER_DASHBOARD_UIDS:
-                found.add(uid)
-                title = dashboard["title"].removeprefix("Rancher / ").removeprefix("[Rancher] ")
-                dashboard["title"] = title
-                manifest["data"][name] = json.dumps(
-                    dashboard, ensure_ascii=False, separators=(",", ":")
-                )
-            if uid in NODE_DASHBOARD_UIDS:
-                resolve_node_exporter(dashboard)
-                add_cpu_temperature(dashboard)
-                manifest["data"][name] = json.dumps(
-                    dashboard, ensure_ascii=False, separators=(",", ":")
-                )
-            if uid != DASHBOARD_UID:
-                apply_descriptions(dashboard)
-                manifest["data"][name] = json.dumps(
-                    dashboard, ensure_ascii=False, separators=(",", ":")
-                )
-                continue
-            for panel in panels(dashboard):
-                for target in panel.get("targets", []):
-                    legend = target.get("legendFormat", "")
-                    if "{{instance}}" not in legend:
-                        continue
-                    target["expr"] = (
-                        "("
-                        + target["expr"].strip()
-                        + ") * on (instance) group_left (nodename) "
-                        + NODE_NAMES
-                    )
-                    target["legendFormat"] = legend.replace("{{instance}}", "{{nodename}}")
-                for override in panel.get("fieldConfig", {}).get("overrides", []):
-                    matcher = override.get("matcher", {})
-                    if matcher.get("id") == "byName" and isinstance(matcher.get("options"), str):
-                        matcher["options"] = matcher["options"].replace(
-                            "{{instance}}", "{{nodename}}"
-                        )
-            apply_descriptions(dashboard)
-            manifest["data"][name] = json.dumps(
-                dashboard, ensure_ascii=False, separators=(",", ":")
-            )
-        if dashboard_uids:
-            metadata = manifest.setdefault("metadata", {})
-            metadata["annotations"] = metadata.get("annotations") or {}
-            metadata["annotations"]["grafana_folder"] = "/tmp/dashboards/Rancher"
-        if removed_dashboard and not manifest.get("data") and not manifest.get("binaryData"):
+        keep, _uid = _process_manifest(manifest, found)
+        if not keep:
             continue
         retained.append(manifest)
     if found != RANCHER_DASHBOARD_UIDS:

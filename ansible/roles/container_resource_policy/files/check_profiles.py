@@ -1,3 +1,5 @@
+"""Validate container resource profiles against live workload owners."""
+
 import argparse
 import copy
 import json
