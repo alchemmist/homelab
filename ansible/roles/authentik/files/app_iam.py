@@ -82,7 +82,7 @@ def admission_groups(slug: str, service: Service):
     ]
 
 
-def rows(api: Callable[..., Page], path: str):
+def rows(api: Callable[[str, str], Page], path: str):
     """Follow Authentik page numbers, never arbitrary next URLs with credentials."""
     result = []
     page = 1
