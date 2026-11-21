@@ -39,3 +39,31 @@ def test_apiserver_scrape_targets():
     assert {
         address for address in candidates if re.fullmatch(rule["regex"], address)
     } == accepted
+
+
+def test_native_frozen_scrape_preserves_tls_auth_and_other_jobs():
+    import runpy
+
+    refresh = runpy.run_path(str(ROOT / "scripts/otel-scrape-config.py"))[
+        "refresh_api_targets"
+    ]
+    job = {
+        "job_name": "serviceMonitor/cattle-monitoring-system/kube-prometheus-stack-apiserver/0",
+        "relabel_configs": [
+            {
+                "action": "keep",
+                "source_labels": ["__address__"],
+                "regex": r"10\.250\.0\.(1|3|5):6443",
+            }
+        ],
+        "tls_config": {"ca_file": "ca"},
+        "authorization": {"credentials_file": "token"},
+    }
+    original = {"scrape_configs": [job, {"job_name": "other"}]}
+    new = refresh(original)
+    assert new == refresh(new)
+    assert original != new
+    rule = new["scrape_configs"][0]["relabel_configs"][0]
+    assert re.fullmatch(rule["regex"], "10.250.0.41:6443")
+    rule["regex"] = job["relabel_configs"][0]["regex"]
+    assert new == original

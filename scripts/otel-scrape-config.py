@@ -70,7 +70,9 @@ def translate_authorization(job, monitors):
     monitor = monitors.get("/".join(parts[:-1]))
     if monitor is None:
         raise ValueError("Authorization monitor was not inventoried")
-    endpoints = monitor["spec"].get("endpoints", monitor["spec"].get("podMetricsEndpoints", []))
+    endpoints = monitor["spec"].get(
+        "endpoints", monitor["spec"].get("podMetricsEndpoints", [])
+    )
     if int(parts[-1]) >= len(endpoints):
         raise ValueError("Authorization endpoint was not inventoried")
     endpoint = endpoints[int(parts[-1])]
@@ -95,7 +97,9 @@ def translate_authorization(job, monitors):
     if authorization.get("credentials_file"):
         raise ValueError("Ambiguous authorization credential sources")
     authorization.pop("credentials")
-    authorization["credentials_file"] = "/etc/otel/source-auth/" + "/".join((namespace, name, key))
+    authorization["credentials_file"] = "/etc/otel/source-auth/" + "/".join(
+        (namespace, name, key)
+    )
     references.append(
         {
             "namespace": namespace,
@@ -117,13 +121,41 @@ def escape_literals(value):
     return value
 
 
+def refresh_api_targets(scrape):
+    """Update only the owned keep rule in frozen native Collector bundles."""
+    desired = yaml.safe_load((ROOT / "charts/prometheus/values.yaml").read_text())[
+        "kube-prometheus-stack"
+    ]["kubeApiServer"]["serviceMonitor"]["relabelings"][0]["regex"]
+    result = copy.deepcopy(scrape)
+    for job in result.get("scrape_configs", []):
+        if (
+            job.get("job_name")
+            != "serviceMonitor/cattle-monitoring-system/kube-prometheus-stack-apiserver/0"
+        ):
+            continue
+        rules = [
+            r
+            for r in job.get("relabel_configs", [])
+            if r.get("action") == "keep" and r.get("source_labels") == ["__address__"]
+        ]
+        if len(rules) != 1 or rules[0].get("regex") not in (
+            r"10\.250\.0\.(1|3|5):6443",
+            desired,
+        ):
+            raise ValueError("Unrecognized apiserver scrape keep rule")
+        rules[0]["regex"] = desired
+    return result
+
+
 def refresh_public_edge_probe(scrape):
     """Keep captured native scrape bundles aligned with the owned VPS probe."""
     targets = yaml.safe_load((ROOT / "charts/monitoring-k3s/values.yaml").read_text())[
         "serviceProbes"
     ]["targets"]
     tcp_targets = {
-        t["id"]: t["url"] for t in targets if t["id"] in ("edge-vps", "litellm-db", "umami-db")
+        t["id"]: t["url"]
+        for t in targets
+        if t["id"] in ("edge-vps", "litellm-db", "umami-db")
     }
     result = copy.deepcopy(scrape)
     for job in result.get("scrape_configs", []):
@@ -140,7 +172,7 @@ def refresh_public_edge_probe(scrape):
             if job.get("params", {}).get("module") != ["tcp_connect"]:
                 raise ValueError("Unexpected catalog TCP probe module")
             job["params"]["target"] = [tcp_targets[identity[0]]]
-    return add_moscow_edge_probe(result)
+    return refresh_api_targets(add_moscow_edge_probe(result))
 
 
 def add_moscow_edge_probe(scrape):
@@ -166,7 +198,10 @@ def add_moscow_edge_probe(scrape):
         raise ValueError("Ambiguous public edge scrape ownership")
     target = next(t for t in targets if t["id"] == "edge-moscow")
     if existing:
-        if existing[0].get("params") != {"module": ["tcp_connect"], "target": [target["url"]]}:
+        if existing[0].get("params") != {
+            "module": ["tcp_connect"],
+            "target": [target["url"]],
+        }:
             raise ValueError("Moscow probe differs from owned catalog")
         return result
     job = copy.deepcopy(source[0])
@@ -263,7 +298,8 @@ def append_local_translations(translated, group, outputs, nodes):
         local = {
             key: copy.deepcopy(value)
             for key, value in translated.items()
-            if not key.endswith("_sd_configs") and key not in ("static_configs", "relabel_configs")
+            if not key.endswith("_sd_configs")
+            and key not in ("static_configs", "relabel_configs")
         }
         local["static_configs"] = [
             {"targets": ["127.0.0.1:19100"], "labels": copy.deepcopy(target["labels"])}
@@ -303,7 +339,9 @@ def distribute_source_pools(source, pools, monitors, contract, outputs, mounts):
             "targetCount": len(group),
             "originalConfigSHA256": fingerprint(original),
             "fileDependencies": sorted(references),
-            "targetLabelSHA256": sorted(fingerprint(target["labels"]) for target in group),
+            "targetLabelSHA256": sorted(
+                fingerprint(target["labels"]) for target in group
+            ),
         }
         if owner == "cluster":
             outputs["cluster"]["scrape_configs"].append(translated)
@@ -315,7 +353,12 @@ def distribute_source_pools(source, pools, monitors, contract, outputs, mounts):
                         not references,
                         not any(
                             key in translated
-                            for key in ("basic_auth", "authorization", "oauth2", "tls_config")
+                            for key in (
+                                "basic_auth",
+                                "authorization",
+                                "oauth2",
+                                "tls_config",
+                            )
                         ),
                     ]
                 ),
@@ -372,9 +415,12 @@ def compile_config(source, targets, monitors=None):
         "requiredSecretKeys": [],
     }
     mounts: set[object] = set(assets(global_config))
-    nodes, seen = distribute_source_pools(source, pools, monitors, contract, outputs, mounts)
+    nodes, seen = distribute_source_pools(
+        source, pools, monitors, contract, outputs, mounts
+    )
     require(
-        not (set(pools) - seen), "Active targets are absent from the effective scrape configuration"
+        not (set(pools) - seen),
+        "Active targets are absent from the effective scrape configuration",
     )
     require(
         nodes == set(NODES),
@@ -401,7 +447,9 @@ def compile_config(source, targets, monitors=None):
     contract["dollarEscaping"] = (
         "literal Prometheus dollars escaped before Collector confmap resolution"
     )
-    contract["outputSHA256"] = {name: fingerprint(document) for name, document in outputs.items()}
+    contract["outputSHA256"] = {
+        name: fingerprint(document) for name, document in outputs.items()
+    }
     return outputs, contract
 
 
@@ -439,7 +487,9 @@ def main():
             args.ssh_host, REGISTRY.NAMESPACE, "status/config"
         )["yaml"]
         source = yaml.safe_load(source_yaml)
-        targets = REGISTRY.PREFLIGHT.prometheus(args.ssh_host, REGISTRY.NAMESPACE, "targets")
+        targets = REGISTRY.PREFLIGHT.prometheus(
+            args.ssh_host, REGISTRY.NAMESPACE, "targets"
+        )
         monitor_items = REGISTRY.PREFLIGHT.kube(
             args.ssh_host,
             REGISTRY.NAMESPACE,
@@ -456,7 +506,9 @@ def main():
             for item in monitor_items
         }
         outputs, contract = compile_config(source, targets, monitors)
-        contract["sourceYAMLTextSHA256"] = hashlib.sha256(source_yaml.encode()).hexdigest()
+        contract["sourceYAMLTextSHA256"] = hashlib.sha256(
+            source_yaml.encode()
+        ).hexdigest()
         args.output.mkdir(mode=0o700, exist_ok=False)
         for name, document in outputs.items():
             with (args.output / (name + ".yaml")).open("x") as stream:
