@@ -337,7 +337,7 @@ class Runtime:
         return response
 
     @staticmethod
-    def require_argocd(obj):
+    def require_argocd(obj) -> None:
         meta = obj["metadata"]
         require(
             meta.get("annotations", {})
