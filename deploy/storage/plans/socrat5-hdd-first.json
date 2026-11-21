@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "status": "applied-retained-ssd-preimage",
+  "node": "socrat-5",
+  "service": "k3s.service",
+  "required_hdd": {
+    "mountpoint": "/mnt/files",
+    "source": "/dev/sdb1",
+    "fstype": "ext4"
+  },
+  "runtime": {
+    "source": "/var/lib/rancher/k3s/agent/containerd",
+    "destination": "/mnt/files/homelab/runtime/containerd",
+    "strategy": "cold-copy-then-bind-mount-original-path",
+    "keep_on_ssd": [
+      "/var/lib/rancher/k3s/server",
+      "/var/lib/rancher/k3s/data"
+    ],
+    "minimum_destination_headroom_bytes": 21474836480,
+    "delete_source_automatically": false,
+    "execution": "approved-reboot-before-k3s"
+  },
+  "tiers": {
+    "default_for_socrat5_application_templates": "local-hdd",
+    "ssd_requires_explicit_exception": true,
+    "cluster_default": "nfs-shared",
+    "dynamic_provisioning": "pending-k3s-owner-integration",
+    "directory_quotas": false
+  },
+  "maintenance_gates": [
+    "fresh-proxmox-physical-capacity-and-vm105-backing-identity",
+    "independent-live-etcd-quorum-and-surviving-api-health",
+    "explicit-owner-approved-downtime-window",
+    "singleton-writer-and-active-job-quiescence-plan",
+    "cold-containerd-and-shim-shutdown-verified",
+    "destination-filesystem-capacity-and-inodes",
+    "rollback-copy-and-config-preimages-preserved"
+  ],
+  "hypervisor_capacity_status": "unverified-owner-authorized-ssh-only-attempt",
+  "last_attempt": "docs/socrat5-hdd-first-attempt-20261120.md",
+  "completed_receipt": "docs/socrat5-runtime-hdd-complete-20261120.md"
+}

@@ -121,7 +121,7 @@
   ansible.builtin.replace:
     path: /etc/fstab
     regexp: ^(\s*[^#\s]\S*\s+\S+\s+swap\s+.*)$
-    replace: '# \1'
+    replace: "# \\1"
     backup: true
   when: not k3s_worker_swap_enabled | bool
 

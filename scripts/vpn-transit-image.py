@@ -12,11 +12,11 @@ SHA = "a27e3f95ab6ce270956d0cecd32eda4686a811afc71c64a6a734a3dede14883e"
 TAG = "localhost/homelab/vpn-transit:" + SHA[:16]
 
 
-def encode(v):
+def encode(v: object):
     return json.dumps(v, sort_keys=True, separators=(",", ":")).encode()
 
 
-def entry(t, name, data, mode=0o644):
+def entry(t: tarfile.TarFile, name: str, data: bytes, mode: int = 0o644):
     i = tarfile.TarInfo(name)
     i.size = len(data)
     i.mode = mode
@@ -24,7 +24,7 @@ def entry(t, name, data, mode=0o644):
     t.addfile(i, io.BytesIO(data))
 
 
-def build(binary, output):
+def build(binary: str, output: str):
     data = pathlib.Path(binary).read_bytes()
     assert hashlib.sha256(data).hexdigest() == SHA
     buf = io.BytesIO()

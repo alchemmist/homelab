@@ -33,7 +33,7 @@ class MembershipTests(unittest.TestCase):
         """Replace only the observer group through compare-and-swap operations."""
         users, attrs, auth = fixture()
         before = copy.deepcopy(attrs)
-        operations = m.rancher_plan(users, attrs, auth, lambda *a: False)
+        operations = m.rancher_plan(users, attrs, auth, lambda *_a: False)
         self.assertEqual(attrs, before)
         name, ops = operations[0]
         self.assertEqual(name, "u-fixture")
@@ -47,17 +47,17 @@ class MembershipTests(unittest.TestCase):
         for subject in [m.OWNER, "legacy-owner"]:
             users, attrs, auth = fixture(subject)
             auth["allowedPrincipalIds"].append(m.PREFIX + subject)
-            self.assertEqual(m.rancher_plan(users, attrs, auth, lambda *a: False), [])
+            self.assertEqual(m.rancher_plan(users, attrs, auth, lambda *_a: False), [])
 
     def test_only_observer_group_changes_and_other_groups_survive(self) -> None:
         """Drop or add only the observer group and retain an unrelated group."""
         users, attrs, auth = fixture()
         other = {"metadata": {"name": "genericoidc_group://other-reviewed-group"}}
         attrs[0]["GroupPrincipals"]["genericoidc"]["Items"].append(other)
-        ops = m.rancher_plan(users, attrs, auth, lambda *a: False)[0][1]
+        ops = m.rancher_plan(users, attrs, auth, lambda *_a: False)[0][1]
         self.assertEqual(ops[-1]["value"], [other])
         attrs[0]["GroupPrincipals"]["genericoidc"]["Items"] = [other]
-        ops = m.rancher_plan(users, attrs, auth, lambda *a: True)[0][1]
+        ops = m.rancher_plan(users, attrs, auth, lambda *_a: True)[0][1]
         self.assertEqual(ops[-1]["value"][0], other)
         self.assertEqual(ops[-1]["value"][1]["metadata"]["name"], m.PRINCIPAL)
 
@@ -65,13 +65,13 @@ class MembershipTests(unittest.TestCase):
         """Remove the cached observer grant when Rancher admission is closed."""
         users, attrs, auth = fixture()
         auth["allowedPrincipalIds"].remove(m.PRINCIPAL)
-        self.assertEqual(m.rancher_plan(users, attrs, auth, lambda *a: True)[0][1][-1]["value"], [])
+        self.assertEqual(m.rancher_plan(users, attrs, auth, lambda *_: True)[0][1][-1]["value"], [])
 
     def test_no_native_user_provisioning_and_noop_when_converged(self) -> None:
         """Do not provision users and do nothing once the cache matches admission."""
         users, attrs, auth = fixture()
-        self.assertEqual(m.rancher_plan(users, attrs, auth, lambda *a: True), [])
-        self.assertEqual(m.rancher_plan([], attrs, auth, lambda *a: True), [])
+        self.assertEqual(m.rancher_plan(users, attrs, auth, lambda *_a: True), [])
+        self.assertEqual(m.rancher_plan([], attrs, auth, lambda *_a: True), [])
 
     def test_wrong_subject_duplicate_and_malformed_cache_stop(self) -> None:
         """Stop on a mismatched, duplicate, or malformed observer cache."""
@@ -85,7 +85,7 @@ class MembershipTests(unittest.TestCase):
             users, attrs, auth = fixture()
             change(attrs[0])
             with self.assertRaises(RuntimeError):
-                m.rancher_plan(users, attrs, auth, lambda *a: False)
+                m.rancher_plan(users, attrs, auth, lambda *_a: False)
 
     def test_unrelated_legacy_orphan_is_preserved_and_does_not_block_current_viewer(self) -> None:
         """Keep a legacy orphan unchanged while planning the current viewer."""
@@ -93,7 +93,7 @@ class MembershipTests(unittest.TestCase):
         legacy_user = {"metadata": {"name": "u-old"}, "principalIds": [m.PREFIX + "old-subject"]}
         legacy_attr = {"metadata": {"name": "u-old"}, "ExtraByProvider": {}, "GroupPrincipals": {}}
         before = copy.deepcopy(legacy_attr)
-        ops = m.rancher_plan([legacy_user] + users, [legacy_attr] + attrs, auth, lambda *a: False)
+        ops = m.rancher_plan([legacy_user] + users, [legacy_attr] + attrs, auth, lambda *_a: False)
         self.assertEqual(len(ops), 1)
         self.assertEqual(ops[0][0], "u-fixture")
         self.assertEqual(legacy_attr, before)
@@ -102,7 +102,7 @@ class MembershipTests(unittest.TestCase):
         """Propagate an identity failure before any cache mutation is planned."""
         users, attrs, auth = fixture()
 
-        def failed(*args):
+        def failed(*args) -> None:
             raise RuntimeError("IdP unavailable")
 
         with self.assertRaises(RuntimeError):
@@ -133,10 +133,10 @@ class MembershipTests(unittest.TestCase):
             oidc_enabled = True
             local_owners = {"owner"}
 
-            def connect(self):
+            def connect(self) -> sqlite3.Connection:
                 return db
 
-            def session(self, token):
+            def session(self, token) -> dict[str, object]:
                 return {
                     "user": {
                         "id": token,
@@ -261,10 +261,10 @@ class MembershipTests(unittest.TestCase):
             def __init__(self, credentials):
                 pass
 
-            def rows(self, path):
+            def rows(self, path) -> list[object]:
                 return [copy.deepcopy(group)]
 
-            def call(self, system, method, path, body=None):
+            def call(self, system, method, path, body=None) -> object:
                 if method == "GET":
                     return copy.deepcopy(user)
                 posts.append((path, body))
@@ -272,15 +272,16 @@ class MembershipTests(unittest.TestCase):
                     user["groups"].append("observer")
                 else:
                     user["groups"].remove(c.READONLY)
+                return None
 
         fake = types.ModuleType("observer_bootstrap")
         fake.Client = Client
-        fake.private = lambda *args, **kwargs: None
+        fake.private = lambda *_args, **_kwargs: None
         fake.planner = types.SimpleNamespace(
             exact=lambda rows, key, value: next(x for x in rows if x[key] == value)
         )
 
-        def exclusive_save(path, value):
+        def exclusive_save(path, value) -> None:
             with path.open("x") as file:
                 json.dump(value, file)
 
@@ -289,10 +290,10 @@ class MembershipTests(unittest.TestCase):
         class Loader:
             """Supply the prepared bootstrap module instead of its source file."""
 
-            def create_module(self, spec):
+            def create_module(self, spec) -> types.ModuleType:
                 return fake
 
-            def exec_module(self, module):
+            def exec_module(self, module) -> None:
                 pass
 
         boot_spec = importlib.machinery.ModuleSpec("observer_bootstrap", Loader())

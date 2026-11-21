@@ -1,4 +1,5 @@
 import importlib.util
+from collections.abc import Callable
 from pathlib import Path
 import unittest
 
@@ -92,7 +93,7 @@ class InternalNetworkTests(unittest.TestCase):
             "login_expired": False,
         }
 
-        def api(peers, policies=None):
+        def api(peers, policies=None) -> Callable[[str], object]:
             return lambda endpoint: (
                 peers if endpoint == "peers" else (policies or []) if endpoint == "policies" else []
             )

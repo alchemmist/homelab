@@ -48,8 +48,10 @@
   ansible.builtin.set_fact:
     home_ingress_ha_vip_present: >-
       {{ home_ingress_ha_vip in
-         ([home_ingress_ha_addresses_0.stdout | from_json, home_ingress_ha_addresses_1.stdout | from_json] |
-          flatten | map(attribute='addr_info') | flatten | map(attribute='local') | list) }}
+      ([home_ingress_ha_addresses_0.stdout | from_json,
+      home_ingress_ha_addresses_1.stdout | from_json] |
+      flatten | map(attribute='addr_info') | flatten
+      | map(attribute='local') | list) }}
 
 - name: Check the new VIP for duplicate ARP ownership
   ansible.builtin.command:

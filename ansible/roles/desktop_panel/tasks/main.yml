@@ -36,7 +36,10 @@
     mode: "0755"
     follow: true
     backup: true
-  loop: "{{ ['toggle_noscreenshare.sh'] + (['waybar-gpu.py'] if homelab_waybar_profile == 'desktop' else ['battery-degradation.sh', 'pacman_updates.sh', 'paru_updates.sh']) }}"
+  loop: >-
+    {{ ['toggle_noscreenshare.sh']
+    + (['waybar-gpu.py'] if homelab_waybar_profile == 'desktop'
+    else ['battery-degradation.sh', 'pacman_updates.sh', 'paru_updates.sh']) }}
 
 - name: Deliver the shared Waybar configuration
   tags: waybar

@@ -4,7 +4,9 @@ homelab_wallpaper_path: /usr/local/share/wallpapers/homelab/default.png
 homelab_hypr_monitors:
   - ",preferred,auto,1"
 homelab_hypr_blur: "{{ homelab_desktop_profile == 'laptop' }}"
-homelab_hypr_browser: "{{ 'google-chrome-stable' if homelab_desktop_profile == 'laptop' else 'firefox' }}"
+homelab_hypr_browser: >-
+  {{ 'google-chrome-stable' if homelab_desktop_profile == 'laptop'
+  else 'firefox' }}
 homelab_hypr_file_manager: thunar
 homelab_hypr_logout: wlogout
 homelab_hypr_chat_command: "{{ homelab_hypr_browser }} https://chatgpt.com"

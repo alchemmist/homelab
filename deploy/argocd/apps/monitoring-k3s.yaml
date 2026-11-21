@@ -15,7 +15,7 @@ spec:
     helm:
       releaseName: monitoring-k3s
       valueFiles:
-      - alert-graphs.values.yaml
+        - alert-graphs.values.yaml
       parameters: []
   destination:
     namespace: cattle-monitoring-system

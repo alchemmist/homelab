@@ -23,9 +23,9 @@
       - "{{ uptime_kuma_namespace }}"
       - --reset-values
       - --set-string
-      - "nodeName={{ uptime_kuma_destination }}"
+      - nodeName={{ uptime_kuma_destination }}
       - --set-string
-      - "hostPath={{ uptime_kuma_directory }}"
+      - hostPath={{ uptime_kuma_directory }}
       - --atomic
       - --wait
       - --timeout
@@ -33,7 +33,8 @@
   changed_when: true
 
 - name: Read the resulting Kuma pod
-  ansible.builtin.command: /usr/local/bin/kubectl -n {{ uptime_kuma_namespace }} get pods -l app=uptime-kuma -o json
+  ansible.builtin.command: >-
+    /usr/local/bin/kubectl -n {{ uptime_kuma_namespace }} get pods -l app=uptime-kuma -o json
   register: kuma_result_pods
   changed_when: false
 
@@ -42,5 +43,6 @@
     that:
       - (kuma_result_pods.stdout | from_json)['items'] | length == 1
       - (kuma_result_pods.stdout | from_json)['items'][0].spec.nodeName == uptime_kuma_destination
-      - (kuma_result_pods.stdout | from_json)['items'][0].status.conditions | selectattr('type', 'equalto', 'Ready') | map(attribute='status') | list == ['True']
+      - (kuma_result_pods.stdout | from_json)['items'][0].status.conditions
+        | selectattr('type', 'equalto', 'Ready') | map(attribute='status') | list == ['True']
 ...

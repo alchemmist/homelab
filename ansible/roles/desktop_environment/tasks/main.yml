@@ -8,7 +8,9 @@
 
 - name: Check the existing graphical tools
   become: false
-  ansible.builtin.shell: for tool in Hyprland awww awww-daemon waybar hypridle; do command -v "$tool" || exit 1; done
+  ansible.builtin.shell: >-
+    for tool in Hyprland awww awww-daemon waybar hypridle;
+    do command -v "$tool" || exit 1; done
   environment:
     PATH: "{{ homelab_user_home }}/.local/bin:/usr/local/bin:/usr/bin:/bin"
   changed_when: false

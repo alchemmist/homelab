@@ -55,6 +55,8 @@
     argv: [fc-match, -f, "%{family}", "{{ homelab_alacritty_font_family }}"]
   register: homelab_alacritty_font_verified
   changed_when: false
-  failed_when: homelab_alacritty_font_family not in homelab_alacritty_font_verified.stdout.split(',')
+  failed_when: >-
+    homelab_alacritty_font_family not in
+    homelab_alacritty_font_verified.stdout.split(',')
   when: not ansible_check_mode
 ...
