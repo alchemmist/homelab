@@ -35,9 +35,7 @@ load_config() {
       if [[ "${value}" == \"* || "${value}" == \'* ]]; then
         local quote="${value:0:1}"
         [[ ${#value} -ge 2 && "${value: -1}" == "${quote}" ]] || die "config value has an unmatched quote: ${key}"
-        local inner="${value:1:${#value}-2}"
-        [[ "${inner}" != *"${quote}"* ]] || die "config value has an unmatched quote: ${key}"
-        value="${inner}"
+        value="${value:1:${#value}-2}"
       fi
       export "${key}=${value}"
     done < "${CONFIG_FILE}"
