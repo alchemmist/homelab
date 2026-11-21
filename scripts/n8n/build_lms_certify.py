@@ -14,8 +14,8 @@ nodes, edges = [], {}
 
 
 def node(name, kind, version, params, x, y, credential=None):
-    out = dict(id=str(uuid5(NAMESPACE_URL, 'lms-certification/' + name)), name=name,
-               type='n8n-nodes-base.' + kind, typeVersion=version, position=[x, y], parameters=params)
+    out = {'id': str(uuid5(NAMESPACE_URL, 'lms-certification/' + name)), 'name': name,
+               'type': 'n8n-nodes-base.' + kind, 'typeVersion': version, 'position': [x, y], 'parameters': params}
     if credential:
         typ, role = credential
         out['credentials'] = {typ: {'id': 'REPLACE_' + role, 'name': role}}
@@ -27,7 +27,7 @@ def link(a, b, port=0):
     branches = edges.setdefault(a, {'main': []})['main']
     while len(branches) <= port:
         branches.append([])
-    branches[port].append(dict(node=b, type='main', index=0))
+    branches[port].append({'node': b, 'type': 'main', 'index': 0})
 
 
 def chain(*names):
@@ -412,9 +412,9 @@ return {{json: {{phase:next,data}}}};'''
 link(previous, terminal, 1)
 
 assert len({n['name'] for n in nodes}) == len(nodes) == len({n['id'] for n in nodes}), 'Duplicate node names or IDs'
-workflow = dict(name='LMS certification — reviewed queue', nodes=nodes, connections=edges,
-                settings=dict(errorWorkflow='iZn7biFh6321a1w8', executionOrder='v1', timezone='Europe/Moscow',
-                              executionTimeout=720, saveDataSuccessExecution='none', saveDataErrorExecution='all',
-                              saveExecutionProgress=False, saveManualExecutions=False))
+workflow = {'name': 'LMS certification — reviewed queue', 'nodes': nodes, 'connections': edges,
+                'settings': {'errorWorkflow': 'iZn7biFh6321a1w8', 'executionOrder': 'v1', 'timezone': 'Europe/Moscow',
+                              'executionTimeout': 720, 'saveDataSuccessExecution': 'none', 'saveDataErrorExecution': 'all',
+                              'saveExecutionProgress': False, 'saveManualExecutions': False}}
 if __name__ == '__main__':
     (ROOT / 'workflow.json').write_text(json.dumps(workflow, ensure_ascii=False, indent=2)+'\n')
