@@ -43,10 +43,11 @@ def opener(context=None):
 
 
 class MembershipReader:
-    def __init__(self, token_file, ttl=60):
+    def __init__(self, token_file, ttl=60) -> None:
         self.token_file, self.ttl = Path(token_file), ttl
         self.lock, self.expires = threading.Lock(), 0
-        self.users, self.groups = {}, {}
+        self.users: dict[str, dict[str, object]] = {}
+        self.groups: dict[str, str] = {}
         self.http = opener()
 
     def rows(self, path):
@@ -88,7 +89,10 @@ class MembershipReader:
     def admitted(self, subject, groups):
         self.refresh()
         user = self.users.get(subject)
-        return bool(user and user['is_active'] and set(groups) & {self.groups.get(g) for g in user['groups']})
+        membership = user.get('groups') if isinstance(user, dict) else None
+        if not isinstance(user, dict) or not isinstance(membership, list):
+            return False
+        return bool(user.get('is_active') and set(groups) & {self.groups.get(g) for g in membership})
 
 
 def rancher_plan(users, attributes, authconfig, admitted):

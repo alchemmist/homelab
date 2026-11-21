@@ -5,10 +5,10 @@ from repository_runner import apply_continuation_policy
 
 
 class Conversation:
-    def __init__(self, failures=0):
+    def __init__(self, failures=0) -> None:
         self.failures = failures
         self.runs = 0
-        self.messages = []
+        self.messages: list[str] = []
 
     def run(self):
         self.runs += 1
