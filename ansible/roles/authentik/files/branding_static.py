@@ -294,13 +294,10 @@ http {
                                 ]
                             },
                             "podAntiAffinity": {
-                                "preferredDuringSchedulingIgnoredDuringExecution": [
+                                "requiredDuringSchedulingIgnoredDuringExecution": [
                                     {
-                                        "weight": 100,
-                                        "podAffinityTerm": {
-                                            "topologyKey": "kubernetes.io/hostname",
-                                            "labelSelector": {"matchLabels": labels},
-                                        },
+                                        "topologyKey": "kubernetes.io/hostname",
+                                        "labelSelector": {"matchLabels": labels},
                                     }
                                 ]
                             },
