@@ -131,7 +131,7 @@ class QueueAdminTests(unittest.TestCase):
                 "CREATE TRIGGER block_operator_audit BEFORE INSERT ON queue_operator_actions BEGIN SELECT RAISE(ABORT,'blocked'); END"
             )
         item = self.row()
-        with self.assertRaisesRegex(sqlite3.IntegrityError, "blocked"):
+        with self.assertRaisesRegex(sqlite3.IntegrityError, r"^blocked$"):
             self.api.cancel({"job_id": self.key, "expected_updated": item["updated"]})
         self.assertEqual(self.store.get(self.key)["state"], "queued")
 
