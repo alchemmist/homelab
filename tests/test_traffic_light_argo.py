@@ -1,3 +1,5 @@
+"""Tests for Argo-related traffic light behaviour."""
+
 import importlib.util
 import json
 import shutil

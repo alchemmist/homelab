@@ -1,3 +1,5 @@
+"""Tests for the Thanos shelf configuration."""
+
 import importlib.util
 import json
 import os

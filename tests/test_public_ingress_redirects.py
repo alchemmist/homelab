@@ -1,3 +1,5 @@
+"""Tests for public ingress redirect rules."""
+
 import importlib.util
 from pathlib import Path
 import unittest

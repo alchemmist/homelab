@@ -1,3 +1,5 @@
+"""Tests for private DNS zone provisioning and resolution."""
+
 from pathlib import Path
 import json
 import os

@@ -1,3 +1,5 @@
+"""Tests for the Sway desktop session guard."""
+
 import importlib.util
 import json
 import os

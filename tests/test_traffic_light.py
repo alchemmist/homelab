@@ -1,3 +1,5 @@
+"""Tests for the traffic light status indicator."""
+
 import json
 import unittest
 from pathlib import Path

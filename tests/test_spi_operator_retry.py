@@ -1,3 +1,5 @@
+"""Tests for SPI operator retry behaviour."""
+
 import importlib.util
 import json
 from pathlib import Path
