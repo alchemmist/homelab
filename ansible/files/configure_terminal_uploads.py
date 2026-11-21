@@ -11,6 +11,7 @@ from typing import cast
 
 
 def configure(terminal_id):
+    """Configure."""
     from open_webui.utils.auth import create_token
     from open_webui.utils.mfa import get_auth, get_mfa_config, is_mfa_required
 

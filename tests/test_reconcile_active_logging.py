@@ -23,6 +23,8 @@ class ReconciliationTests(unittest.TestCase):
     def run_case(
         self, names, counts, aligned=True
     ) -> tuple[subprocess.CompletedProcess[str], _Report | None]:
+        """Run the snapshot reconciliation case."""
+
         with tempfile.TemporaryDirectory() as d:
             p = Path(d)
             pods = {

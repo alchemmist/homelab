@@ -1,10 +1,12 @@
 -- Hyprland 0.57+ entry point; keep the rendered host inventory as source.
+-- A tty-less compositor may inherit no LANG: tmux then replaces Unicode with underscores.
+hl.env('LANG', 'C.UTF-8')
 local home=os.getenv('HOME'); local starts={}; local d=hl.dsp
 local function trim(s) return s:match('^%s*(.-)%s*$') end
 local dirs={l='left',r='right',u='up',d='down'}
 local function action(a,v,mouse)
  if a=='exec' then
-  if v=='alacritty' then v='alacritty -e tmux new-session' end
+  if v=='alacritty' then v='alacritty -e tmux -u new-session' end
   if v:match('^hyprctl dispatch movecursor .* && wlogout$') then v='wlogout' end
   return d.exec_cmd(v) elseif a=='killactive' then return d.window.close() elseif a=='exit' then return d.exit() elseif a=='togglefloating' then return d.window.float({action='toggle'}) elseif a=='pseudo' then return d.window.pseudo() elseif a=='fullscreen' then return d.window.fullscreen() elseif a=='layoutmsg' then return d.layout(v) elseif a=='workspace' then return d.focus({workspace=v}) elseif a:match('^movetoworkspace') then return d.window.move({workspace=v,follow=a~='movetoworkspacesilent'}) elseif a=='togglespecialworkspace' then return d.workspace.toggle_special(v) elseif a=='movefocus' then return d.focus({direction=dirs[v]}) elseif a=='swapwindow' then return d.window.swap({direction=dirs[v]}) elseif a=='resizeactive' then local x,y=v:match('(%-?%d+) (%-?%d+)');return d.window.resize({x=tonumber(x),y=tonumber(y)}) elseif a=='movewindow' and mouse then return d.window.drag() elseif a=='resizewindow' then return d.window.resize() elseif a=='togglegroup' then return d.group.toggle() elseif a=='changegroupactive' then return d.group.next() elseif a=='moveoutofgroup' then return d.window.move({out_of_group=true}) end
 end

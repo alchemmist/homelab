@@ -137,6 +137,8 @@ def snapshot() -> dict[str, list[dict[str, object]]]:
 class PilotTests(unittest.TestCase):
     """Check pilot inputs fail closed without leaking rendered output."""
     def test_checked_in_inputs_fail_closed_without_output(self) -> None:
+        """Checked-in inputs fail closed without output."""
+
         with tempfile.TemporaryDirectory() as d:
             target = Path(d) / "rendered"
             result = subprocess.run(
@@ -155,6 +157,8 @@ class PilotTests(unittest.TestCase):
             assert not target.exists()
 
     def test_cli_refuses_render_into_git_worktree(self) -> None:
+        """The CLI refuses to render into the git worktree."""
+
         with tempfile.TemporaryDirectory() as d:
             source = Path(d) / "inputs.json"
             source.write_text(json.dumps(inputs()))
@@ -177,6 +181,8 @@ class PilotTests(unittest.TestCase):
             assert not target.exists()
 
     def test_required_inputs_and_reviews_fail_closed(self) -> None:
+        """Required inputs and reviews fail closed."""
+
         nb.validate(inputs())
         for key in inputs():
             c = {k: v for k, v in inputs().items() if k != key}
@@ -195,6 +201,8 @@ class PilotTests(unittest.TestCase):
                 nb.validate(document)
 
     def test_no_broad_networks_ports_or_all_to_all(self) -> None:
+        """Broad networks, ports or all-to-all rules are rejected."""
+
         for address in [
             "0.0.0.0/0",
             "192.168.0.0/24",
@@ -218,6 +226,8 @@ class PilotTests(unittest.TestCase):
             nb.validate(c)
 
     def test_mesh_k3s_transport_never_selected_as_overlay(self) -> None:
+        """Mesh or k3s transports are never selected as the overlay."""
+
         for network in [
             "10.250.0.0/24",
             "10.42.0.0/16",
@@ -231,6 +241,8 @@ class PilotTests(unittest.TestCase):
                 nb.validate(c)
 
     def test_one_ssh_router_is_not_a_second_ha_peer(self) -> None:
+        """A single SSH router is not a second HA peer."""
+
         empty = inputs()
         empty["routing_peers"] = []
         with self.assertRaises(ValueError):
@@ -262,6 +274,8 @@ class PilotTests(unittest.TestCase):
         assert set(compose["services"]) == {"routing-peer"}
 
     def test_internal_manifest_has_no_service_and_isolates_signup(self) -> None:
+        """The internal manifest has no Service and isolates signup."""
+
         cidrs = ["203.0.113.10/32", "10.42.0.1/32"]
         docs = nb.manifests(inputs(), "internal", cidrs)
         assert [doc["kind"] for doc in docs] == ["Namespace", "PersistentVolumeClaim", "Deployment", "Deployment", "NetworkPolicy"]
@@ -292,6 +306,8 @@ class PilotTests(unittest.TestCase):
             nb.manifests(inputs(), "internal", None)
 
     def test_manifest_pins_runtime_secret_singleton_no_argo(self) -> None:
+        """The manifest pins a runtime-secret singleton without Argo CD."""
+
         docs = nb.manifests(inputs(), "edge")
         assert not any(x["kind"] in ["Secret", "Application", "DaemonSet", "IngressRoute"] for x in docs)
         deployments = [x for x in docs if x["kind"] == "Deployment"]
@@ -343,6 +359,8 @@ class PilotTests(unittest.TestCase):
         assert [doc["metadata"].get("namespace") for doc in docs if "netbird-runtime" in yaml.safe_dump(doc)] == ["netbird-pilot"]
 
     def test_router_runtime_key_file_and_separate_interface(self) -> None:
+        """The router uses a runtime key file and a separate interface."""
+
         c = inputs()
         compose = nb.router_compose(c, c["routing_peers"][0])
         peer = compose["services"]["routing-peer"]
@@ -356,6 +374,8 @@ class PilotTests(unittest.TestCase):
         assert "privileged" not in peer
 
     def test_policy_compiler_defaults_deny_specific_tcp_only(self) -> None:
+        """The policy compiler defaults to deny with specific TCP-only ports."""
+
         requests = nb.access_requests(inputs(), bindings(), snapshot())
         routers = [x for x in requests if x["path"].endswith("/routers")]
         assert len(routers) == 1
@@ -372,6 +392,8 @@ class PilotTests(unittest.TestCase):
         assert not any("/routes" in x["path"] for x in requests)
 
     def test_default_policy_legacy_route_shared_groups_abort_compilation(self) -> None:
+        """Default policies, legacy routes or shared groups abort compilation."""
+
         for key in ["policies", "routes"]:
             s = snapshot()
             s[key] = [{"id": "default"}]
@@ -396,6 +418,8 @@ class PilotTests(unittest.TestCase):
             nb.access_requests(inputs(), b, snapshot())
 
     def test_network_current_schema_empty_required_no_partial_replay(self) -> None:
+        """A network missing required current fields allows no partial replay."""
+
         for field in ["routers", "resources", "policies", "routing_peers_count"]:
             for value in [None, "missing", False, {}, "", ["existing-id"], 1]:
                 s = snapshot()
@@ -410,6 +434,8 @@ class PilotTests(unittest.TestCase):
                     nb.access_requests(inputs(), bindings(), s)
 
     def test_destination_group_propagation_and_incomplete_responses_refused(self) -> None:
+        """Destination group propagation and incomplete responses are refused."""
+
         assert nb.account_settings(inputs())["groups_propagation_enabled"]
         for field, values in [
             ("issued", ["missing", None, "jwt", "integration", ""]),
@@ -431,6 +457,8 @@ class PilotTests(unittest.TestCase):
             nb.access_requests(inputs(), bindings(), s)
 
     def test_settings_group_propagation_expiry_expose_and_ipv6(self) -> None:
+        """Settings cover propagation, expiry, exposure and IPv6."""
+
         s = nb.account_settings(inputs())
         assert s["jwt_groups_enabled"]
         assert s["groups_propagation_enabled"]
@@ -440,6 +468,8 @@ class PilotTests(unittest.TestCase):
         assert s["ipv6_enabled_groups"] == []
 
     def test_render_reproducible_and_never_overwrites(self) -> None:
+        """Rendering is reproducible and never overwrites."""
+
         with tempfile.TemporaryDirectory() as d:
             a, b = Path(d) / "a", Path(d) / "b"
             nb.render(inputs(), a)
@@ -449,6 +479,8 @@ class PilotTests(unittest.TestCase):
                 nb.render(inputs(), a)
 
     def test_runtime_config_secrets_not_printed_and_mode_0600(self) -> None:
+        """Runtime config never prints secrets and is mode 0600."""
+
         with tempfile.TemporaryDirectory() as d:
             source, target = Path(d) / "inputs.json", Path(d) / "config.yaml"
             source.write_text(json.dumps(inputs()))
@@ -494,6 +526,8 @@ class UpstreamContractTests(unittest.TestCase):
         os.environ.get("NETBIRD_OPENAPI_FILE"), "optional pinned upstream schema not supplied"
     )
     def test_generated_requests_against_official_v082_openapi(self) -> None:
+        """Generated requests validate against the official v0.82 OpenAPI."""
+
         import jsonschema
 
         path = Path(os.environ["NETBIRD_OPENAPI_FILE"])
@@ -531,6 +565,8 @@ class ProbeTests(unittest.TestCase):
     """Run the NetBird probe module loaded from its pinned location."""
     @classmethod
     def setUpClass(cls) -> None:
+        """Load the pilot probe module once."""
+
         spec = importlib.util.spec_from_file_location(
             "netbird_probe", ROOT / "scripts/netbird-pilot-probe.py"
         )
@@ -538,6 +574,8 @@ class ProbeTests(unittest.TestCase):
         spec.loader.exec_module(cls.probes)
 
     def test_denial_requires_tcp_block_not_merely_tls_failure(self) -> None:
+        """Denial requires a TCP block, not merely a TLS failure."""
+
         with patch.object(
             self.probes, "probe", return_value={"tcp_connected": True, "tls_verified": False}
         ):
@@ -545,6 +583,8 @@ class ProbeTests(unittest.TestCase):
         assert all(not r["passed"] for r in result)
 
     def test_allowed_web_requires_tls_and_exact_dns(self) -> None:
+        """Allowed web requires TLS and exact DNS resolution."""
+
         with (
             patch.object(
                 self.probes, "probe", return_value={"tcp_connected": True, "tls_verified": True}
@@ -567,6 +607,8 @@ class ProbeTests(unittest.TestCase):
         assert not result[0]["passed"]
 
     def test_negative_uses_direct_ip_even_when_dns_broken(self) -> None:
+        """Negative probes use the direct IP even when DNS is broken."""
+
         with (
             patch.object(
                 self.probes, "probe", return_value={"tcp_connected": False, "tls_verified": False}

@@ -49,6 +49,8 @@ class LeafRotationTests(unittest.TestCase):
     """Manual renewal keeps the existing spec and refuses private material."""
 
     def certificate(self) -> Certificate:
+        """Build the reviewed LiteLLM leaf certificate fixture."""
+
         return {
             "metadata": {
                 "name": "otel-app-tls-litellm",

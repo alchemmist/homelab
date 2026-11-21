@@ -19,6 +19,8 @@ class IsolationTests(unittest.TestCase):
     """Materialize configuration links under a disposable home directory."""
 
     def setUp(self) -> None:
+        """Create a disposable home with a dotfiles source."""
+
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.home = Path(self.temporary.name).resolve()
