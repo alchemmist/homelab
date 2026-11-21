@@ -15,9 +15,10 @@ import subprocess
 import tempfile
 import time
 from pathlib import Path
+from typing import TypedDict
 
 
-def load(name, filename):
+def load(name: str, filename: str):
     spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name(filename))
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
@@ -34,41 +35,74 @@ UNIT = Path("/etc/systemd/system/monitoring-vpn.service")
 TIMER = "homelab-vpn-watchdog.timer"
 
 
-def run(args):
+def run(args: list[str]):
     r = subprocess.run(args, capture_output=True, text=True, timeout=30)
     if r.returncode:
         raise RuntimeError("Retirement dependency operation failed; inspect private receipt")
     return r.stdout
 
 
-def watchdog_after(before):
+class _PortSpec(TypedDict):
+    port: int
+    protocol: str
+
+
+class _Watchdog(TypedDict):
+    state_dir: str
+    tcp_endpoints: list[list[str | int]]
+    listen_ports: list[_PortSpec]
+    native_unit_ports: dict[str, list[_PortSpec]]
+
+
+class _LegacyInbound(TypedDict):
+    id: int
+    port: int
+    protocol: str
+    enable: int | bool
+    exclude_from_sub: bool
+    stream_settings: str
+    settings: str
+    sniffing: str
+
+
+class _LegacyConfig(TypedDict):
+    inbounds: list[_LegacyInbound]
+
+
+def watchdog_after(before: _Watchdog):
     after = copy.deepcopy(before)
     if before.get("state_dir") != "/var/lib/homelab-vpn-failover":
         raise ValueError("Unexpected watchdog state")
-    for items, kind in [
-        (after["tcp_endpoints"], "endpoint"),
-        (after["listen_ports"], "port"),
-        (after["native_unit_ports"]["homelab-vpn-primary.service"], "port"),
-    ]:
-        matches = (
-            [v for v in items if v == ["127.0.0.1", 32063]]
-            if kind == "endpoint"
-            else [v for v in items if v.get("port") == 32063 and v.get("protocol") == "tcp"]
+
+    def matching_ports(items: list[_PortSpec]) -> list[_PortSpec]:
+        return [v for v in items if v.get("port") == 32063 and v.get("protocol") == "tcp"]
+
+    endpoints = after["tcp_endpoints"]
+    endpoint_matches = [v for v in endpoints if v == ["127.0.0.1", 32063]]
+    groups: tuple[list[_PortSpec], ...] = ()
+    grouped: list[list[_PortSpec]] = []
+    if len(endpoint_matches) == 1:
+        groups = (
+            after["listen_ports"],
+            after["native_unit_ports"]["homelab-vpn-primary.service"],
         )
-        if len(matches) != 1:
-            raise ValueError("Watchdog preimage drift")
+        grouped = [matching_ports(items) for items in groups]
+    if len(endpoint_matches) != 1 or any(len(matches) != 1 for matches in grouped):
+        raise ValueError("Watchdog preimage drift")
+    endpoints.remove(endpoint_matches[0])
+    for items, matches in zip(groups, grouped, strict=True):
         items.remove(matches[0])
     return after
 
 
-def monitoring_after(before):
+def monitoring_after(before: str):
     old = "--ports 32087,32053,32083,32063 "
     if before.count(old) != 1:
         raise ValueError("Monitoring preimage drift")
     return before.replace(old, "--ports 32087,32053,32083 ")
 
 
-def select(config):
+def select(config: _LegacyConfig):
     rows = [r for r in config["inbounds"] if r["port"] == 32063]
     if len(rows) != 1:
         raise ValueError("Legacy count drift")
@@ -85,13 +119,13 @@ def select(config):
     return row
 
 
-def desired(config):
+def desired(config: _LegacyConfig):
     result = copy.deepcopy(config)
     select(result)["enable"] = 0
     return result
 
 
-def plan(state):
+def plan(state: Path):
     s = native.NativeSession(state)
     session = s.preview()
     config = target.configuration(s.database)
@@ -111,7 +145,7 @@ def plan(state):
     }
 
 
-def atomic(path, content, mode):
+def atomic(path: Path, content: str, mode: int):
     h.check_path(path)
     if path.stat().st_uid != 0:
         raise ValueError("Non-root-owned dependency")
@@ -140,7 +174,7 @@ def healthy():
     return {"mode": "kubernetes", "healthy": True, "inhibited": False}
 
 
-def apply(state, approval):
+def apply(state: Path, approval: str):
     if socket.gethostname() != "socrat-2" or os.geteuid() != 0:
         raise ValueError("Requires VPS root")
     wanted = plan(state)

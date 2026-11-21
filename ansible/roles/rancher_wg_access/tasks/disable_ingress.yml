@@ -32,11 +32,11 @@
            --show-error,
            --fail,
            --noproxy,
-           '*',
+           "*",
            --max-time,
-           '10',
+           "10",
            --write-out,
-           '\n%{remote_ip}',
+           "\\n%{remote_ip}",
            "https://{{ rancher_wg_host }}/ping"]
   loop: "{{ (rancher_wg_pods.stdout | from_json)['items'] }}"
   loop_control:
@@ -48,7 +48,8 @@
   until:
     - rancher_wg_self_ping.rc == 0
     - rancher_wg_self_ping.stdout_lines | first == 'pong'
-    - rancher_wg_self_ping.stdout_lines | last in rancher_wg_nodes | map('extract', wg_socrat_nodes, 'address') | list
+    - rancher_wg_self_ping.stdout_lines | last in rancher_wg_nodes
+      | map('extract', wg_socrat_nodes, 'address') | list
 
 - name: Read the installed Rancher release metadata
   ansible.builtin.command:
@@ -59,7 +60,7 @@
            --kubeconfig,
            "{{ rancher_wg_kubeconfig }}",
            --filter,
-           '^rancher$',
+           ^rancher$,
            --output,
            json]
   register: rancher_wg_release_metadata
@@ -97,7 +98,8 @@
       - --repo
       - https://releases.rancher.com/server-charts/stable
       - --version
-      - "{{ (rancher_wg_release_metadata.stdout | from_json)[0].chart | regex_replace('^rancher-', '') }}"
+      - "{{ (rancher_wg_release_metadata.stdout | from_json)[0].chart
+           | regex_replace('^rancher-', '') }}"
       - --namespace
       - cattle-system
       - --kubeconfig
@@ -109,7 +111,9 @@
       - --wait
       - --timeout
       - 10m
-  when: ((rancher_wg_rancher_values.stdout | from_json).ingress | default({})).enabled | default(true) | bool
+  when:
+    - ((rancher_wg_rancher_values.stdout | from_json).ingress
+      | default({})).enabled | default(true) | bool
   changed_when: true
   no_log: true
 

@@ -48,7 +48,7 @@ def get(kind, name):
 
 def inspect():
     out = []
-    for kind, name, uid, path in OWNED:
+    for kind, name, uid, _path in OWNED:
         o = get(kind, name)
         if o:
             need(o["metadata"]["uid"] == uid, "Unowned replacement; stop")

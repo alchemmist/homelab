@@ -1,3 +1,4 @@
+---
 rule_files:
 - container-health.rules.yml
 evaluation_interval: 30s
@@ -138,3 +139,4 @@ tests:
   - expr: ALERTS{alertname="SocratContainerRestartsFrequent",alertstate="firing"}
     eval_time: 3m
     exp_samples: []
+...

@@ -1,3 +1,4 @@
+---
 rule_files:
 - node-health.rules.yml
 evaluation_interval: 1m
@@ -214,3 +215,4 @@ tests:
   - eval_time: 10m
     alertname: SocratNodeMetricsStale
     exp_alerts: []
+...

@@ -7,7 +7,9 @@
       - homelab_private_dns_listen_address | length > 0
       - homelab_private_dns_listen_address is match('^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$')
       - homelab_private_dns_listen_address.split('.') | length == 4
-      - homelab_private_dns_listen_address.split('.') | map('int') | select('le', 255) | list | length == 4
+      - >-
+        homelab_private_dns_listen_address.split('.') | map('int')
+        | select('le', 255) | list | length == 4
       - homelab_private_dns_interface | length > 0
       - homelab_private_dns_port | int > 0
       - homelab_private_dns_port | int < 65536

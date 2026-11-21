@@ -9,14 +9,15 @@
   ansible.builtin.file:
     path: /var/lib/rancher/k3s/server/manifests
     state: directory
-    mode: '0700'
+    mode: "0700"
   when: not storage_manifest_dir.stat.exists
 - name: Prevent packaged local-storage from competing with the Git owner
   ansible.builtin.copy:
     dest: /var/lib/rancher/k3s/server/manifests/local-storage.yaml.skip
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
     content: |
       # Managed by k3s_storage_owner. Do not delete: Git Application storage-tiers
       # owns provisioner/RBAC/config/classes. Never disable/uninstall local-storage.
+...
