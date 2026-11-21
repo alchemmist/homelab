@@ -6,7 +6,10 @@ spec:
   strategy: {type: Recreate}
   selector: {matchLabels: {app: gatus}}
   template:
-    metadata: {labels: {app: gatus}}
+    metadata:
+      labels: {app: gatus}
+      annotations:
+        checksum/config: {{ .Files.Get "files/config.yaml" | sha256sum | quote }}
     spec:
       automountServiceAccountToken: false
       containers:

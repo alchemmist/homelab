@@ -4,6 +4,8 @@ storage:
 ui:
   title: Socrat Status
   header: Socrat · System status
+  dashboard-heading: Socrat services
+  dashboard-subheading: Live service checks · updated every minute. Readiness checks are explicitly labelled.
   description: Live availability of Socrat services
   default-sort-by: group
   custom-css: |
@@ -83,7 +85,7 @@ endpoints:
     conditions: ["[STATUS] == 200"]
   - name: Images
     group: Applications
-    url: "http://img-proxy.img-proxy/health"
+    url: "https://img.alchemmist.xyz/?url=https%3A%2F%2Fgithub.githubassets.com%2Ffavicons%2Ffavicon.png&w=32"
     interval: 60s
     client: {timeout: 8s, ignore-redirect: true}
     ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
@@ -102,13 +104,13 @@ endpoints:
     client: {timeout: 8s, ignore-redirect: true}
     ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
     conditions: ["[STATUS] == 200"]
-  - name: Inference
+  - name: Inference readiness
     group: AI
-    url: "http://vllm.llm:8000/health"
+    url: "http://kube-prometheus-stack-prometheus.cattle-monitoring-system:9090/api/v1/query?query=kube_deployment_status_replicas_available%7Bnamespace%3D%22llm%22%2Cdeployment%3D%22vllm%22%7D"
     interval: 60s
     client: {timeout: 8s, ignore-redirect: true}
     ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
-    conditions: ["[STATUS] == 200"]
+    conditions: ["[STATUS] == 200", "[BODY].data.result[0].value[1] >= 1"]
   - name: Search
     group: AI
     url: "http://searxng.llm:8080/healthz"
@@ -116,13 +118,13 @@ endpoints:
     client: {timeout: 8s, ignore-redirect: true}
     ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
     conditions: ["[STATUS] == 200"]
-  - name: OpenHands
+  - name: OpenHands readiness
     group: AI
-    url: "http://openhands.openhands:8000/"
+    url: "http://kube-prometheus-stack-prometheus.cattle-monitoring-system:9090/api/v1/query?query=kube_statefulset_status_replicas_ready%7Bnamespace%3D%22openhands%22%2Cstatefulset%3D%22openhands%22%7D"
     interval: 60s
     client: {timeout: 8s, ignore-redirect: true}
     ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
-    conditions: ["[STATUS] == 200"]
+    conditions: ["[STATUS] == 200", "[BODY].data.result[0].value[1] >= 1"]
   - name: Venice
     group: AI
     url: "http://venice-api.venice-api:8080/healthz"
@@ -137,13 +139,13 @@ endpoints:
     client: {timeout: 8s, ignore-redirect: true}
     ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
     conditions: ["[STATUS] == 200"]
-  - name: Socrat Bot
+  - name: Socrat Bot readiness
     group: Automation
-    url: "http://socrat-bot.socrat-bot:8080/healthz"
+    url: "http://kube-prometheus-stack-prometheus.cattle-monitoring-system:9090/api/v1/query?query=kube_deployment_status_replicas_available%7Bnamespace%3D%22socrat-bot%22%2Cdeployment%3D%22socrat-bot%22%7D"
     interval: 60s
     client: {timeout: 8s, ignore-redirect: true}
     ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
-    conditions: ["[STATUS] == 200"]
+    conditions: ["[STATUS] == 200", "[BODY].data.result[0].value[1] >= 1"]
   - name: Pull request agent
     group: Automation
     url: "http://pr-agent.pr-agent/"
@@ -151,13 +153,13 @@ endpoints:
     client: {timeout: 8s, ignore-redirect: true}
     ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
     conditions: ["[STATUS] == 200"]
-  - name: SPI Triage
+  - name: SPI Triage readiness
     group: Automation
-    url: "http://spi-triage.automation:8080/healthz"
+    url: "http://kube-prometheus-stack-prometheus.cattle-monitoring-system:9090/api/v1/query?query=kube_deployment_status_replicas_available%7Bnamespace%3D%22automation%22%2Cdeployment%3D%22spi-triage%22%7D"
     interval: 60s
     client: {timeout: 8s, ignore-redirect: true}
     ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
-    conditions: ["[STATUS] == 200"]
+    conditions: ["[STATUS] == 200", "[BODY].data.result[0].value[1] >= 1"]
   - name: Blog updates
     group: Automation
     url: "http://blog-updates-worker.automation:8080/healthz"
@@ -165,13 +167,13 @@ endpoints:
     client: {timeout: 8s, ignore-redirect: true}
     ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
     conditions: ["[STATUS] == 200"]
-  - name: Certification
+  - name: Certification readiness
     group: Automation
-    url: "http://lms-certification-runner.automation:9000/healthz"
+    url: "http://kube-prometheus-stack-prometheus.cattle-monitoring-system:9090/api/v1/query?query=kube_deployment_status_replicas_available%7Bnamespace%3D%22automation%22%2Cdeployment%3D%22lms-certification-runner%22%7D"
     interval: 60s
     client: {timeout: 8s, ignore-redirect: true}
     ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
-    conditions: ["[STATUS] == 200"]
+    conditions: ["[STATUS] == 200", "[BODY].data.result[0].value[1] >= 1"]
   - name: Wiki worker
     group: Automation
     url: "http://wiki-openapi-worker.automation:8080/healthz"
@@ -221,16 +223,16 @@ endpoints:
     client: {timeout: 8s, ignore-redirect: true}
     ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
     conditions: ["[STATUS] == 200"]
-  - name: Object storage
+  - name: Object storage readiness
     group: Platform
-    url: "http://rustfs-gateway.identity:8080/health"
+    url: "http://kube-prometheus-stack-prometheus.cattle-monitoring-system:9090/api/v1/query?query=kube_statefulset_status_replicas_ready%7Bnamespace%3D%22rustfs%22%2Cstatefulset%3D%22rustfs%22%7D"
     interval: 60s
     client: {timeout: 8s, ignore-redirect: true}
     ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
-    conditions: ["[STATUS] == 200"]
+    conditions: ["[STATUS] == 200", "[BODY].data.result[0].value[1] >= 1"]
   - name: NetBird
     group: Network
-    url: "http://netbird-edge-forwarder.identity:8080/ping"
+    url: "https://netbird.socrat.alchemmist.xyz/"
     interval: 60s
     client: {timeout: 8s, ignore-redirect: true}
     ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
@@ -238,13 +240,6 @@ endpoints:
   - name: File sync A
     group: Network
     url: "http://syncthing-sync-0.syncthing/rest/noauth/health"
-    interval: 60s
-    client: {timeout: 8s, ignore-redirect: true}
-    ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
-    conditions: ["[STATUS] == 200"]
-  - name: File sync B
-    group: Network
-    url: "http://syncthing-sync-1.syncthing/rest/noauth/health"
     interval: 60s
     client: {timeout: 8s, ignore-redirect: true}
     ui: {hide-url: true, hide-hostname: true, hide-port: true, hide-errors: true}
