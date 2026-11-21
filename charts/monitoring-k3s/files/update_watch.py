@@ -159,7 +159,7 @@ def serve(state, port):
             self.end_headers()
             self.wfile.write(body)
 
-        def log_message(self, _fmt, *_args):
+        def log_message(self, _fmt: str, *_args: object) -> None:
             return
 
     server = ThreadingHTTPServer(("0.0.0.0", port), Handler)
