@@ -553,15 +553,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
 class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
     daemon_threads = True
 
-<<<<<<< ours
-    def __init__(self, *args: object, **kwargs: object):
-=======
     def __init__(
         self,
         server_address: tuple[str, int],
         handler_class: type[http.server.BaseHTTPRequestHandler],
     ) -> None:
->>>>>>> theirs
+
         self.slots = threading.BoundedSemaphore(MAX_CONNECTIONS)
         super().__init__(server_address, handler_class)
 
