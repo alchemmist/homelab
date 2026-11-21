@@ -6,7 +6,7 @@ import unittest
 
 
 class Deploy(unittest.TestCase):
-    def test_safe_refusals_and_anchored_paths(self):
+    def test_safe_refusals_and_anchored_paths(self) -> None:
         source = Path(__file__).resolve().parents[1] / "scripts/rustfs/deploy.sh"
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -3,20 +3,78 @@
 import copy
 import importlib.util
 from pathlib import Path
+from typing import NotRequired, TypedDict, cast
 import unittest
 
 
 PATH = Path(__file__).resolve().parents[1] / "scripts/check-resource-budget.py"
 SPEC = importlib.util.spec_from_file_location("resource_budget", PATH)
+assert SPEC is not None
 BUDGET = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(BUDGET)
 
 
-def container(name="app", cpu="100m", memory="128Mi", **kwargs):
-    return dict(name=name, resources={"requests": {"cpu": cpu, "memory": memory}}, **kwargs)
+class _Resources(TypedDict):
+    """Container request/limit quantity maps of the synthetic pod."""
+
+    requests: dict[str, str]
+    limits: NotRequired[dict[str, str]]
 
 
-def pod():
+class _Container(TypedDict):
+    """Synthetic workload container consumed by the budget calculator."""
+
+    name: str
+    resources: _Resources
+    restartPolicy: NotRequired[str]
+
+
+class _PodSpec(TypedDict):
+    """Pod spec fields exercised by the effective-request rules."""
+
+    nodeName: NotRequired[str]
+    containers: list[_Container]
+    initContainers: NotRequired[list[_Container]]
+    resources: NotRequired[dict[str, dict[str, str]]]
+    overhead: NotRequired[dict[str, str]]
+
+
+class _FixturePod(TypedDict):
+    """Mutable pod fixture passed through every budget scenario."""
+
+    metadata: dict[str, object]
+    spec: _PodSpec
+    status: dict[str, str]
+
+
+class _ProfileContainer(TypedDict):
+    """Budget profile entry describing one application container."""
+
+    requests: dict[str, str]
+    removeCpuLimit: NotRequired[bool]
+
+
+class _Profile(TypedDict):
+    """Budget profile that matches synthetic pods by owner and pattern."""
+
+    namespace: str
+    ownerKind: str
+    ownerPattern: str
+    containers: dict[str, _ProfileContainer]
+
+
+def container(name="app", cpu="100m", memory="128Mi", **kwargs) -> _Container:
+    value: _Container = {
+        "name": name,
+        "resources": {"requests": {"cpu": cpu, "memory": memory}},
+    }
+    value.update(cast(dict[str, object], kwargs))
+    if "restartPolicy" in kwargs:
+        value["restartPolicy"] = str(kwargs["restartPolicy"])
+    return value
+
+
+def pod() -> _FixturePod:
     return {
         "metadata": {
             "namespace": "test",
@@ -28,7 +86,7 @@ def pod():
     }
 
 
-def profiles():
+def profiles() -> list[_Profile]:
     return [
         {
             "namespace": "test",
@@ -44,7 +102,7 @@ def profiles():
     ]
 
 
-def nodes():
+def nodes() -> list[dict[str, object]]:
     return [
         {
             "metadata": {"name": "node"},
@@ -100,9 +158,8 @@ class BudgetTests(unittest.TestCase):
     def test_overhead_and_pod_resources(self) -> None:
         """Replace pod-level requests and keep overhead in the total."""
         value = pod()
-        value["spec"].update(
-            resources={"requests": {"cpu": "2"}}, overhead={"cpu": "250m", "memory": "1Mi"}
-        )
+        value["spec"]["resources"] = {"requests": {"cpu": "2"}}
+        value["spec"]["overhead"] = {"cpu": "250m", "memory": "1Mi"}
         result = BUDGET.effective_requests(value)
         assert result["cpu"] == BUDGET.quantity("2.25")
         assert result["memory"] == BUDGET.quantity("129Mi")

@@ -11,6 +11,7 @@ import threading
 import unittest
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from typing import override
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "ansible/roles/identity_integrations/files/netbird_oidc.py"
@@ -29,15 +30,37 @@ OWNER_GROUPS = [
 TIM_GROUPS = ["b7af46a6-6208-4a32-bfb1-4e61fd3c88ec"]
 
 
-def write_json(path, value):
+def write_json(path, value) -> None:
+    """Write the given value as a 0600 permissions JSON document."""
     path.write_text(json.dumps(value, indent=2) + "\n")
     os.chmod(path, 0o600)
 
 
+def _mapping(value: object) -> dict[str, object]:
+    """Return the assert-verified mapping view of an untyped runtime value."""
+    assert isinstance(value, dict)
+    mapping: dict[str, object] = value
+    return mapping
+
+
+def _sequence(value: object) -> list[object]:
+    """Return the assert-verified sequence view of an untyped runtime value."""
+    assert isinstance(value, list)
+    sequence: list[object] = value
+    return sequence
+
+
+def _string(value: object) -> str:
+    """Return the assert-verified string view of an untyped runtime value."""
+    assert isinstance(value, str)
+    return value
+
+
 class FakeAuthentik(threading.Thread):
-    def __init__(self):
+    def __init__(self) -> None:
+        """Serve the reviewed offline contract fixtures over localhost HTTP."""
         super().__init__(daemon=True)
-        self.calls = []
+        self.calls: list[tuple[str, str, str, object]] = []
         self.fail_provider = False
         self.drop_legacy_on_add = False
         self.attach_outpost = False
@@ -150,8 +173,8 @@ class FakeAuthentik(threading.Thread):
                 "property_mappings": ["profile-pk", "email-pk", "openid-pk"],
             },
         ]
-        self.applications = []
-        self.bindings = []
+        self.applications: list[dict[str, object]] = []
+        self.bindings: list[dict[str, object]] = []
         self.outposts = [
             {
                 "pk": "outpost-pk",
@@ -167,21 +190,22 @@ class FakeAuthentik(threading.Thread):
             {"pk": "invalidation-flow", "slug": "default-provider-invalidation-flow"},
         ]
         self.certificates = [{"pk": "cert-pk", "name": oidc.CERT_NAME}]
-        self.provider_secrets = {}
+        self.provider_secrets: dict[int, object] = {}
         self._seq = 20
         server = self
 
         class Handler(BaseHTTPRequestHandler):
-            def log_message(self, fmt, *args):
-                return
+            @override
+            def log_message(self, fmt, *args) -> None:
+                """Stay quiet while the offline contract server runs."""
 
-            def do_GET(self):
+            def do_GET(self) -> None:
                 self._handle("GET")
 
-            def do_POST(self):
+            def do_POST(self) -> None:
                 self._handle("POST")
 
-            def do_PATCH(self):
+            def do_PATCH(self) -> None:
                 self._handle("PATCH")
 
             def _handle(self, method):
@@ -194,7 +218,14 @@ class FakeAuthentik(threading.Thread):
                     return self._send(401, {"detail": "unauthorized"})
                 try:
                     code, body = server.route(method, parsed.path, parsed.query, payload)
-                except Exception as error:
+                except (
+                    AttributeError,
+                    IndexError,
+                    KeyError,
+                    TypeError,
+                    ValueError,
+                    StopIteration,
+                ) as error:
                     return self._send(500, {"detail": str(error)})
                 self._send(code, body)
 
@@ -209,21 +240,31 @@ class FakeAuthentik(threading.Thread):
         self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
         self.base = "http://127.0.0.1:" + str(self.httpd.server_address[1])
 
-    def start(self):
+    @override
+    def start(self) -> None:
+        """Start the offline contract server thread."""
         super().start()
-        return self
 
-    def run(self):
+    @override
+    def run(self) -> None:
+        """Serve contract requests until the server shuts down."""
         self.httpd.serve_forever()
 
-    def close(self):
+    def close(self) -> None:
+        """Stop the offline contract server and release its socket."""
         self.httpd.shutdown()
         self.httpd.server_close()
 
-    def page(self, rows):
-        return {"pagination": {"next": None, "count": len(rows)}, "results": rows}
+    def page(self, rows) -> dict[str, object]:
+        """Wrap fixture rows in the API pagination envelope."""
+        result: dict[str, object] = {
+            "pagination": {"next": None, "count": len(rows)},
+            "results": rows,
+        }
+        return result
 
-    def route(self, method, path, query, payload):
+    def route(self, method, path, query, payload) -> tuple[int, object]:
+        """Route an offline contract API request to the fake backend."""
         if method == "GET" and path == "/api/v3/admin/version/":
             return 200, {"version_current": oidc.AUTHENTIK_VERSION}
         collections = {
@@ -308,21 +349,24 @@ class FakeAuthentik(threading.Thread):
             group = next(item for item in self.groups if item["pk"] == pk)
             user_pk = payload["pk"]
             user = next(item for item in self.users if item["pk"] == user_pk)
-            if user_pk not in group["users"]:
-                group["users"].append(user_pk)
-            if group["pk"] not in user["groups"]:
-                user["groups"].append(group["pk"])
+            if user_pk not in _sequence(group["users"]):
+                _sequence(group["users"]).append(user_pk)
+            if group["pk"] not in _sequence(user["groups"]):
+                _sequence(user["groups"]).append(group["pk"])
             if self.drop_legacy_on_add:
                 user["groups"] = [item for item in user["groups"] if item == group["pk"]]
             return 200, {"pk": user_pk}
         return 404, {"detail": "missing"}
 
-    def writes(self):
+    def writes(self) -> list[tuple[str, str, str, object]]:
+        """Return only the non-GET calls recorded by the offline server."""
         return [call for call in self.calls if call[0] != "GET"]
 
 
 class NetBirdOIDCTests(unittest.TestCase):
-    def setUp(self):
+    @override
+    def setUp(self) -> None:
+        """Start the offline contract server and write fixture documents."""
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
         self.mappings = self.root / "account-mappings.json"
@@ -348,13 +392,17 @@ class NetBirdOIDCTests(unittest.TestCase):
             + ISSUER
             + "\n  relaySecret: relay-secret-must-not-leak\n"
         )
-        self.fake = FakeAuthentik().start()
+        self.fake = FakeAuthentik()
+        self.fake.start()
 
-    def tearDown(self):
+    @override
+    def tearDown(self) -> None:
+        """Stop the offline contract server and remove its directory."""
         self.fake.close()
         self.tmp.cleanup()
 
-    def run_tool(self, *args):
+    def run_tool(self, *args: object) -> tuple[int, str, str]:
+        """Run the offline tool with redirected standard streams."""
         from io import StringIO
         import contextlib
 
@@ -372,23 +420,22 @@ class NetBirdOIDCTests(unittest.TestCase):
             )
         return code, stdout.getvalue(), stderr.getvalue()
 
-    def plan(self, config=True):
+    def plan(self, config=True) -> dict[str, object]:
+        """Run the tool's plan command and parse its JSON report."""
         args = ["plan"]
         if config:
             args += ["--netbird-config", str(self.config)]
         code, out, err = self.run_tool(*args)
         assert err == "", err
         assert code == 0, out
-        return json.loads(out)
+        result: dict[str, object] = json.loads(out)
+        return result
 
-    def test_callback_follows_pinned_redirect_algorithm(self):
+    def test_callback_follows_pinned_redirect_algorithm(self) -> None:
         assert oidc.callback_from_issuer(ISSUER) == CALLBACK
         assert oidc.callback_from_issuer(ISSUER + "/") == CALLBACK
         assert oidc.callback_from_issuer("https://netbird.socrat.alchemmist.xyz") == CALLBACK
-        assert (
-            oidc.callback_from_issuer("https://netbird.socrat.alchemmist.xyz/oauth2//")
-            == "https://netbird.socrat.alchemmist.xyz/oauth2//oauth2/callback"
-        )
+        assert oidc.callback_from_issuer("https://netbird.socrat.alchemmist.xyz/oauth2//") == "https://netbird.socrat.alchemmist.xyz/oauth2//oauth2/callback"
         with self.assertRaises(RuntimeError):
             oidc.validate_management_issuer("https://example.com/oauth2")
         with self.assertRaises(RuntimeError):
@@ -400,11 +447,9 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert "--callback" not in SOURCE.read_text()
         assert "configure" not in SOURCE.read_text()
 
-    def test_profile_expression_is_allowlisted_and_not_a_groups_scope(self):
+    def test_profile_expression_is_allowlisted_and_not_a_groups_scope(self) -> None:
         expression = oidc.profile_expression()
-        assert expression == expression.strip(), (
-            "Expression must survive Authentik serializer round-trip"
-        )
+        assert expression == expression.strip(), "Expression must survive Authentik serializer round-trip"
         assert "request.user.ak_groups.all()" in expression
         assert "request.user.groups.all()" not in expression
         assert "request.user.email" not in expression
@@ -416,7 +461,7 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert oidc.UPSTREAM_SCOPES == ("openid", "profile", "email")
         assert "groups" not in oidc.UPSTREAM_SCOPES
 
-    def test_check_and_plan_are_get_only_and_do_not_invent_callback(self):
+    def test_check_and_plan_are_get_only_and_do_not_invent_callback(self) -> None:
         code, out, err = self.run_tool("check")
         assert code == 1, err
         assert "reconciled=false" in out
@@ -425,7 +470,7 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert not (self.root / oidc.RUNTIME_NAME).exists()
         missing = self.plan(config=False)
         assert missing["callback"] is None
-        assert "missing NetBird issuer config" in missing["blockers"][0]
+        assert "missing NetBird issuer config" in _string(_sequence(missing["blockers"])[0])
         assert "https://netbird.socrat.alchemmist.xyz/oauth2/callback" not in json.dumps(missing)
         assert "relay-secret-must-not-leak" not in json.dumps(missing)
         assert self.fake.writes() == []
@@ -438,12 +483,9 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert not present["dashboard_groups_scope_sufficient"]
         assert present["sub_mode"] == "user_uuid"
         assert present["sha256"] == self.plan()["sha256"]
-        assert any(
-            call[1] == "/api/v3/core/applications/" and "superuser_full_list=true" in call[2]
-            for call in self.fake.calls
-        )
+        assert any(call[1] == "/api/v3/core/applications/" and "superuser_full_list=true" in call[2] for call in self.fake.calls)
 
-    def test_apply_requires_digest_and_keeps_secret_runtime_only(self):
+    def test_apply_requires_digest_and_keeps_secret_runtime_only(self) -> None:
         code, out, err = self.run_tool("apply", "--netbird-config", str(self.config))
         assert code == 1
         assert "Plan digest mismatch" in err
@@ -464,16 +506,12 @@ class NetBirdOIDCTests(unittest.TestCase):
         secret = runtime["client_secret"]
         assert secret not in out + err
         assert secret not in (self.root / oidc.JOURNAL_NAME).read_text()
-        owner_only_mode = 0o600
-        assert (self.root / oidc.RUNTIME_NAME).stat().st_mode & 511 == owner_only_mode
-        assert (self.root / oidc.JOURNAL_NAME).stat().st_mode & 511 == owner_only_mode
+        assert (self.root / oidc.RUNTIME_NAME).stat().st_mode & 511 == 384
+        assert (self.root / oidc.JOURNAL_NAME).stat().st_mode & 511 == 384
         journal = json.loads((self.root / oidc.JOURNAL_NAME).read_text())
         assert journal["client_secret_sha256"] == hashlib.sha256(secret.encode()).hexdigest()
-        assert (
-            journal["pilot_users"]["alchemmist"]["uuid"] == "9e33877a-3eaa-4541-98eb-8cdc10088ef6"
-        )
-        expected_pilot_user_pk = 6
-        assert journal["pilot_users"]["antropophag"]["pk"] == expected_pilot_user_pk
+        assert journal["pilot_users"]["alchemmist"]["uuid"] == "9e33877a-3eaa-4541-98eb-8cdc10088ef6"
+        assert journal["pilot_users"]["antropophag"]["pk"] == 6
         assert set(journal["groups"]) == set(oidc.GROUP_NAMES)
         for recorded in journal["groups"].values():
             assert isinstance(recorded["pk"], str)
@@ -481,17 +519,15 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert isinstance(journal["provider_pk"], int)
         assert isinstance(journal["application_pk"], str)
         assert journal["callback"] == CALLBACK
-        assert journal["marker"] == self.fake.groups[-1]["attributes"][oidc.MARKER_ATTRIBUTE]
+        assert journal["marker"] == _mapping(_mapping(self.fake.groups[-1])["attributes"])[oidc.MARKER_ATTRIBUTE]
         provider = next(item for item in self.fake.providers if item["name"] == oidc.PROVIDER_NAME)
         assert provider["sub_mode"] == "user_uuid"
         assert provider["include_claims_in_id_token"]
-        assert provider["redirect_uris"] == [
-            {"matching_mode": "strict", "url": CALLBACK, "redirect_uri_type": "authorization"}
-        ]
+        assert provider["redirect_uris"] == [{"matching_mode": "strict", "url": CALLBACK, "redirect_uri_type": "authorization"}]
         assert provider["property_mappings"] == ["openid-pk", "email-pk", journal["mapping_pk"]]
-        assert "profile-pk" not in provider["property_mappings"]
-        assert "groups-pk" not in provider["property_mappings"]
-        assert "password" not in provider["grant_types"]
+        assert "profile-pk" not in _sequence(provider["property_mappings"])
+        assert "groups-pk" not in _sequence(provider["property_mappings"])
+        assert "password" not in _sequence(provider["grant_types"])
         mapping = next(item for item in self.fake.scopes if item["pk"] == journal["mapping_pk"])
         assert mapping["scope_name"] == "profile"
         assert mapping["expression"] != self.fake.scopes[2]["expression"]
@@ -500,14 +536,14 @@ class NetBirdOIDCTests(unittest.TestCase):
                 assert not group["is_superuser"]
                 assert group["parents"] == []
                 assert group["roles"] == []
-                assert sorted(group["users"]) == [5, 6]
+                assert sorted(_sequence(group["users"])) == [5, 6]
         assert self.fake.outposts[0]["providers"] == [5, 9]
         assert self.fake.providers[0]["name"] == "homelab-grafana"
         owner = self.fake.users[0]
-        assert owner["is_superuser"] is True
-        assert set(OWNER_GROUPS).issubset(owner["groups"])
-        assert self.fake.users[1]["is_superuser"] is False
-        assert TIM_GROUPS[0] in self.fake.users[1]["groups"]
+        assert owner["is_superuser"] == True
+        assert set(OWNER_GROUPS).issubset(_sequence(owner["groups"]))
+        assert self.fake.users[1]["is_superuser"] == False
+        assert TIM_GROUPS[0] in _sequence(self.fake.users[1]["groups"])
         user_writes = [
             call for call in self.fake.writes() if call[1].startswith("/api/v3/core/users/")
         ]
@@ -529,7 +565,7 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert len(self.fake.writes()) == before
         assert json.loads((self.root / oidc.RUNTIME_NAME).read_text())["client_secret"] == secret
 
-    def test_apply_does_not_adopt_or_continue_after_a_foreign_object(self):
+    def test_apply_does_not_adopt_or_continue_after_a_foreign_object(self) -> None:
         self.fake.providers.append(
             {
                 "pk": 77,
@@ -544,39 +580,34 @@ class NetBirdOIDCTests(unittest.TestCase):
         code, out, err = self.run_tool("plan", "--netbird-config", str(self.config))
         assert code == 0
         plan = json.loads(out)
-        assert any("adopt" in item for item in plan["blockers"])
+        assert any("adopt" in _string(item) for item in _sequence(plan["blockers"]))
         code, out, err = self.run_tool(
             "apply", "--approve-sha256", plan["sha256"], "--netbird-config", str(self.config)
         )
         assert code == 1
         assert self.fake.writes() == []
 
-    def test_partial_provider_failure_retries_without_a_second_group(self):
+    def test_partial_provider_failure_retries_without_a_second_group(self) -> None:
         self.fake.fail_provider = True
         approved = self.plan()
         code, out, err = self.run_tool(
             "apply", "--approve-sha256", approved["sha256"], "--netbird-config", str(self.config)
         )
         assert code == 1, out
-        expected_group_writes = 3
-        assert sum(1 for call in self.fake.writes() if call[1] == "/api/v3/core/groups/") == (
-            expected_group_writes
-        )
+        assert sum(1 for call in self.fake.writes() if call[1] == "/api/v3/core/groups/") == 3
         journal = json.loads((self.root / oidc.JOURNAL_NAME).read_text())
-        assert len(journal["groups"]) == expected_group_writes
+        assert len(journal["groups"]) == 3
         assert "provider_pk" not in journal
         retry = self.plan()
         code, out, err = self.run_tool(
             "apply", "--approve-sha256", retry["sha256"], "--netbird-config", str(self.config)
         )
         assert code == 0, err
-        assert sum(1 for call in self.fake.writes() if call[1] == "/api/v3/core/groups/") == (
-            expected_group_writes
-        )
+        assert sum(1 for call in self.fake.writes() if call[1] == "/api/v3/core/groups/") == 3
         assert sum(1 for item in self.fake.providers if item["name"] == oidc.PROVIDER_NAME) == 1
 
-    def test_tim_superuser_group_and_extra_member_block_without_writes(self):
-        self.fake.users[1]["groups"].append(OWNER_GROUPS[0])
+    def test_tim_superuser_group_and_extra_member_block_without_writes(self) -> None:
+        _sequence(self.fake.users[1]["groups"]).append(OWNER_GROUPS[0])
         code, out, err = self.run_tool("plan", "--netbird-config", str(self.config))
         assert code == 1
         assert "superuser group" in err
@@ -616,7 +647,7 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert code == 1
         assert self.fake.writes() == []
 
-    def test_legacy_membership_loss_stops_without_a_user_patch(self):
+    def test_legacy_membership_loss_stops_without_a_user_patch(self) -> None:
         self.fake.drop_legacy_on_add = True
         approved = self.plan()
         code, out, err = self.run_tool(
@@ -624,12 +655,9 @@ class NetBirdOIDCTests(unittest.TestCase):
         )
         assert code == 1
         assert "Reviewed legacy group membership is missing" in err
-        assert not any(
-            call[1].startswith("/api/v3/core/users/") and call[0] != "GET"
-            for call in self.fake.calls
-        )
+        assert not any(call[1].startswith("/api/v3/core/users/") and call[0] != "GET" for call in self.fake.calls)
 
-    def test_journal_symlink_is_not_followed(self):
+    def test_journal_symlink_is_not_followed(self) -> None:
         approved = self.plan()
         outside = self.root / "outside.json"
         outside.write_text('{"client_secret": "nope"}\n')
@@ -642,7 +670,7 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert self.fake.writes() == []
         assert outside.read_text() == '{"client_secret": "nope"}\n'
 
-    def test_markerless_nonempty_journal_is_not_replaced_or_used_to_mint_a_secret(self):
+    def test_markerless_nonempty_journal_is_not_replaced_or_used_to_mint_a_secret(self) -> None:
         approved = self.plan()
         write_json(
             self.root / oidc.JOURNAL_NAME,
@@ -661,7 +689,7 @@ class NetBirdOIDCTests(unittest.TestCase):
         assert not (self.root / oidc.RUNTIME_NAME).exists()
         assert self.fake.writes() == []
 
-    def test_pinned_connector_source_matches_when_present(self):
+    def test_pinned_connector_source_matches_when_present(self) -> None:
         repo = Path(os.environ.get("NETBIRD_V082_SRC", "/tmp/netbird-v082-repo"))
         connector = repo / "idp/dex/connector.go"
         if not connector.is_file():

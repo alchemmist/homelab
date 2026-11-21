@@ -1,13 +1,16 @@
+"""Tests for OpenTelemetry operational replay handling."""
+
 import base64
 import copy
 import importlib.util
 from pathlib import Path
+from types import ModuleType
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def module():
+def module() -> ModuleType:
     spec = importlib.util.spec_from_file_location(
         "ops_replay", ROOT / "scripts/otel-operational-replay.py"
     )
@@ -17,25 +20,20 @@ def module():
 
 
 class OperationalReplayTests(unittest.TestCase):
-    def test_exact_fixture_counts_cadence_and_unique_native_ids(self):
+    def test_exact_fixture_counts_cadence_and_unique_native_ids(self) -> None:
         helper = module()
         metrics, logs, traces, expected, ids = helper.fixtures(1793536000 * 10**9)
-        expected_records = 9
-        assert len(expected) == expected_records
-        expected_cadence_seconds = 5
-        assert all(b[0] - a[0] == expected_cadence_seconds for a, b in zip(expected, expected[1:]))
-        expected_log_records = 24
-        assert len(logs["resourceLogs"][0]["scopeLogs"][0]["logRecords"]) == expected_log_records
-        assert len(helper.trace_records(traces)) == expected_records
-        assert len(ids) == expected_records
+        assert len(expected) == 9
+        assert all(b[0] - a[0] == 5 for a, b in zip(expected, expected[1:], strict=False))
+        assert len(logs["resourceLogs"][0]["scopeLogs"][0]["logRecords"]) == 24
+        assert len(helper.trace_records(traces)) == 9
+        assert len(ids) == 9
         points = metrics["resourceMetrics"][0]["scopeMetrics"][0]["metrics"][0]["gauge"][
             "dataPoints"
         ]
-        assert [int(p["timeUnixNano"]) // 10**6 for p in points] == [
-            int(p[0] * 1000) for p in expected
-        ]
+        assert [int(p["timeUnixNano"]) // 10 ** 6 for p in points] == [int(p[0] * 1000) for p in expected]
 
-    def test_matrix_requires_exact_values_timestamps_multiplicity_and_no_partial(self):
+    def test_matrix_requires_exact_values_timestamps_multiplicity_and_no_partial(self) -> None:
         helper = module()
         expected = [[1, "0"], [6, "1"]]
         data = {
@@ -55,7 +53,7 @@ class OperationalReplayTests(unittest.TestCase):
                 changed["warnings"] = ["partial"]
             assert not helper.check_metrics(changed, expected)
 
-    def test_rollback_candidate_changes_only_batch_timeout_preserving_queues_and_tls(self):
+    def test_rollback_candidate_changes_only_batch_timeout_preserving_queues_and_tls(self) -> None:
         import json
 
         original = {
@@ -74,10 +72,8 @@ class OperationalReplayTests(unittest.TestCase):
         changed["processors"]["batch/metrics"]["timeout"] = "1s"
         assert changed == original
 
-    def test_native_trace_json_hex_and_base64(self):
+    def test_native_trace_json_hex_and_base64(self) -> None:
         helper = module()
         trace = "12" * 16
         for identity in [trace, base64.b64encode(bytes.fromhex(trace)).decode()]:
-            assert helper.trace_records(
-                {"traceId": identity, "spanId": "34" * 8, "name": "fixture"}
-            ) == [(trace, "fixture")]
+            assert helper.trace_records({"traceId": identity, "spanId": "34" * 8, "name": "fixture"}) == [(trace, "fixture")]

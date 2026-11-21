@@ -22,7 +22,7 @@ SPEC.loader.exec_module(MODULE)
 class PauseFolderTests(unittest.TestCase):
     """Check that only the backup folder is paused in a local config."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.config = Path(self.directory.name) / "config.xml"

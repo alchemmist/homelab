@@ -1,3 +1,5 @@
+"""Tests for the OpenTelemetry signal inventory."""
+
 import importlib.util
 import json
 from pathlib import Path
@@ -13,7 +15,7 @@ SPEC.loader.exec_module(SIGNALS)
 
 
 class SignalInventoryTests(unittest.TestCase):
-    def test_observations_are_not_a_capacity_approval(self):
+    def test_observations_are_not_a_capacity_approval(self) -> None:
         pods = {
             "windowSeconds": 600,
             "sources": [
@@ -25,8 +27,7 @@ class SignalInventoryTests(unittest.TestCase):
             for node in ["socrat-0", "socrat-1", "socrat-2", "socrat-3"]
         }
         result = SIGNALS.summarize(pods, journals)
-        expected_bytes_per_second = 2
-        assert result["observedContainerBytesPerSecond"] == expected_bytes_per_second
+        assert result["observedContainerBytesPerSecond"] == 2
         assert result["observedSourcesReadable"]
         assert not result["logRatesComplete"]
         assert not result["traceRateMeasured"]
@@ -34,7 +35,7 @@ class SignalInventoryTests(unittest.TestCase):
         assert not result["rawLogBodiesPersisted"]
         assert result["countsAreLowerBounds"]
 
-    def test_truncation_unavailable_logs_and_journal_gaps_are_explicit(self):
+    def test_truncation_unavailable_logs_and_journal_gaps_are_explicit(self) -> None:
         pods = {
             "windowSeconds": 600,
             "sources": [
@@ -47,15 +48,15 @@ class SignalInventoryTests(unittest.TestCase):
         assert result["unavailableContainerCount"] == 1
         assert not result["observedSourcesReadable"]
 
-    def test_empty_sources_and_missing_nodes_cannot_pass(self):
+    def test_empty_sources_and_missing_nodes_cannot_pass(self) -> None:
         result = SIGNALS.summarize({"windowSeconds": 600, "sources": []}, {})
         assert not result["observedSourcesReadable"]
 
-    def test_zero_measurement_window_is_rejected(self):
+    def test_zero_measurement_window_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
             SIGNALS.summarize({"windowSeconds": 0, "sources": []}, {})
 
-    def test_probe_returns_counts_not_log_contents_or_env_values(self):
+    def test_probe_returns_counts_not_log_contents_or_env_values(self) -> None:
         assert "'body':" not in SIGNALS.POD_PROBE
         assert "'bytes':size" in SIGNALS.POD_PROBE
         assert "entry['name']" in SIGNALS.POD_PROBE
@@ -70,7 +71,7 @@ if __name__ == "__main__":
 
 
 class PrivilegedJournalTests(unittest.TestCase):
-    def evidence(self, directory, **updates):
+    def evidence(self, directory, **updates) -> None:
         from datetime import datetime, timezone
 
         document = {
@@ -93,19 +94,18 @@ class PrivilegedJournalTests(unittest.TestCase):
             path.write_text(json.dumps(document))
             path.chmod(0o600)
 
-    def test_merges_only_whitelisted_counts(self):
+    def test_merges_only_whitelisted_counts(self) -> None:
         import tempfile
 
         with tempfile.TemporaryDirectory() as name:
             directory = Path(name)
             self.evidence(directory, MESSAGE="not-persisted-in-report")
             result = SIGNALS.privileged_journals(directory)
-            expected_nodes = 4
-            assert len(result) == expected_nodes
+            assert len(result) == 4
             assert all(item["systemJournalAccessVerified"] for item in result.values())
             assert "not-persisted-in-report" not in str(result)
 
-    def test_stale_or_incomplete_evidence_is_rejected(self):
+    def test_stale_or_incomplete_evidence_is_rejected(self) -> None:
         import tempfile
 
         for update in [
@@ -121,7 +121,7 @@ class PrivilegedJournalTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     SIGNALS.privileged_journals(directory)
 
-    def test_public_evidence_file_is_rejected(self):
+    def test_public_evidence_file_is_rejected(self) -> None:
         import tempfile
 
         with tempfile.TemporaryDirectory() as name:
@@ -133,7 +133,7 @@ class PrivilegedJournalTests(unittest.TestCase):
 
 
 class ActiveLogSourceTests(unittest.TestCase):
-    def test_historical_unavailable_sources_are_not_hidden_by_active_counts(self):
+    def test_historical_unavailable_sources_are_not_hidden_by_active_counts(self) -> None:
         data = {
             "windowSeconds": 600,
             "sources": [
@@ -153,7 +153,7 @@ class ActiveLogSourceTests(unittest.TestCase):
         assert not report["observedSourcesReadable"]
         assert not report["logRatesComplete"]
 
-    def test_missing_active_or_unknown_state_does_not_pass(self):
+    def test_missing_active_or_unknown_state_does_not_pass(self) -> None:
         for sources in [
             [{"containerState": "running", "measurementAvailable": False}],
             [
@@ -166,6 +166,4 @@ class ActiveLogSourceTests(unittest.TestCase):
                 {"measurementAvailable": False},
             ],
         ]:
-            assert not SIGNALS.summarize({"windowSeconds": 600, "sources": sources}, {})[
-                "activeLogAPIsReadable"
-            ]
+            assert not SIGNALS.summarize({"windowSeconds": 600, "sources": sources}, {})["activeLogAPIsReadable"]

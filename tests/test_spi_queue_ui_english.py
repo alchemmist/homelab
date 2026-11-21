@@ -10,11 +10,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class EnglishUITests(unittest.TestCase):
-    def test_all_owned_interface_assets_are_english(self):
+    def test_all_owned_interface_assets_are_english(self) -> None:
         class HTML(HTMLParser):
             language = None
 
-            def handle_starttag(self, tag, attrs):
+            def handle_starttag(self, tag, attrs) -> None:
                 if tag == "html":
                     self.language = dict(attrs).get("lang")
 
@@ -32,7 +32,7 @@ class EnglishUITests(unittest.TestCase):
         js = (ROOT / "charts/spi-triage/ui/app.js").read_text()
         self.assertIn("toLocaleString('en-GB'", js)
 
-    def test_render_confirmation_and_errors_are_english_but_data_is_preserved(self):
+    def test_render_confirmation_and_errors_are_english_but_data_is_preserved(self) -> None:
         script = r"""
 const fs=require('node:fs'), vm=require('node:vm'), assert=require('node:assert/strict');
 class Element {

@@ -3,15 +3,40 @@
 import base64
 import copy
 import importlib.util
+import types
 from pathlib import Path
 import subprocess
 import unittest
+from typing import TypedDict
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load():
+class Condition(TypedDict, total=False):
+    """Condition entries of a cert-manager Certificate document."""
+
+    type: str
+    status: str
+    reason: str
+    observedGeneration: int
+
+
+class CertificateStatus(TypedDict):
+    """Status section of a cert-manager Certificate document."""
+
+    conditions: list[Condition]
+
+
+class Certificate(TypedDict):
+    """cert-manager Certificate shape the renewal script inspects."""
+
+    metadata: dict[str, object]
+    spec: dict[str, object]
+    status: CertificateStatus
+
+
+def load() -> types.ModuleType:
     spec = importlib.util.spec_from_file_location(
         "leaf_rotation", ROOT / "scripts/otel-application-leaf-rotation.py"
     )
@@ -23,7 +48,7 @@ def load():
 class LeafRotationTests(unittest.TestCase):
     """Manual renewal keeps the existing spec and refuses private material."""
 
-    def certificate(self):
+    def certificate(self) -> Certificate:
         return {
             "metadata": {
                 "name": "otel-app-tls-litellm",
@@ -76,7 +101,10 @@ class LeafRotationTests(unittest.TestCase):
             }
 
         response = subprocess.CompletedProcess(
-            [], 0, b"-----BEGIN PUBLIC KEY-----\nsynthetic\n-----END PUBLIC KEY-----", b""
+            [],
+            0,
+            b"-----BEGIN PUBLIC KEY-----\nsynthetic\n-----END PUBLIC KEY-----",
+            b"",
         )
         with patch.object(module.subprocess, "run", return_value=response):
             identity = module.public_certificate_identity(kube, "llm")

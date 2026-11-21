@@ -1,6 +1,9 @@
+"""Tests for the OpenTelemetry vLLM rollout."""
+
 import importlib.util
 import os
 from pathlib import Path
+from types import ModuleType
 import subprocess
 import sys
 import tempfile
@@ -10,7 +13,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def module():
+def module() -> ModuleType:
     spec = importlib.util.spec_from_file_location(
         "vllm_rollout", ROOT / "scripts/otel-vllm-sdk-rollout.py"
     )
@@ -20,7 +23,7 @@ def module():
 
 
 class VllmRolloutTests(unittest.TestCase):
-    def test_only_native_trace_flag_added_model_args_unmodified(self):
+    def test_only_native_trace_flag_added_model_args_unmodified(self) -> None:
         helper = module()
         original = ["model", "--max-model-len", "114688", "--gpu-memory-utilization", ".95"]
         updated = helper.trace_arguments(original)
@@ -35,7 +38,7 @@ class VllmRolloutTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 helper.trace_arguments(args)
 
-    def test_exact_mtls_protocol_always_on_no_duplicate_signals(self):
+    def test_exact_mtls_protocol_always_on_no_duplicate_signals(self) -> None:
         env = module().sdk_environment()
         assert env["OTEL_EXPORTER_OTLP_TRACES_PROTOCOL"] == "http/protobuf"
         assert env["OTEL_EXPORTER_OTLP_INSECURE"] == "false"
@@ -44,7 +47,7 @@ class VllmRolloutTests(unittest.TestCase):
         assert env["OTEL_LOGS_EXPORTER"] == "none"
         assert env["OTEL_EXPORTER_OTLP_HEADERS"] == "Connection=close"
 
-    def test_maintained_overlay_matches_exact_guard_sources_and_environment(self):
+    def test_maintained_overlay_matches_exact_guard_sources_and_environment(self) -> None:
         helper = module()
         overlay = yaml.safe_load(
             (ROOT / "deploy/monitoring/otel-vllm-sdk-values.yaml").read_text()
@@ -52,7 +55,7 @@ class VllmRolloutTests(unittest.TestCase):
         assert overlay["sourceConfigMap"] == helper.source_configmap_name()
         assert overlay["environment"] == helper.sdk_environment()
 
-    def test_sitecustomize_refuses_startup_without_dumping_failure_payload(self):
+    def test_sitecustomize_refuses_startup_without_dumping_failure_payload(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory)
             (path / "sitecustomize.py").write_text(

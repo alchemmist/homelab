@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import sqlite3
 import unittest
+from typing import TypedDict
 from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,10 +16,26 @@ m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 
 
-def fixture(subject="fixture-uuid"):
+class Attribute(TypedDict):
+    """Rancher userattributes shape the membership plan reads and patches."""
+
+    metadata: dict[str, str]
+    ExtraByProvider: dict[str, dict[str, list[str]]]
+    GroupPrincipals: dict[str, dict[str, list[dict[str, object]]]]
+
+
+class AuthPatch(TypedDict):
+    """Rancher auth slice exposing the observer allowance to the plan."""
+
+    allowedPrincipalIds: list[str]
+
+
+def fixture(
+    subject: str = "fixture-uuid",
+) -> tuple[list[dict[str, object]], list[Attribute], AuthPatch]:
     principal = m.PREFIX + subject
-    user = {"metadata": {"name": "u-fixture"}, "principalIds": [principal]}
-    attr = {
+    user: dict[str, object] = {"metadata": {"name": "u-fixture"}, "principalIds": [principal]}
+    attr: Attribute = {
         "metadata": {"name": "u-fixture", "uid": "owned", "resourceVersion": "17"},
         "ExtraByProvider": {"genericoidc": {"principalid": [principal]}},
         "GroupPrincipals": {"genericoidc": {"Items": [{"metadata": {"name": m.PRINCIPAL}}]}},
@@ -38,23 +55,22 @@ class MembershipTests(unittest.TestCase):
         name, ops = operations[0]
         assert name == "u-fixture"
         assert [o["op"] for o in ops] == ["test", "test", "test", "test", "replace"]
-        assert ops[-1] == {
-            "op": "replace",
-            "path": "/GroupPrincipals/genericoidc/Items",
-            "value": [],
-        }
+        assert ops[-1] == {"op": "replace", "path": "/GroupPrincipals/genericoidc/Items", "value": []}
 
     def test_owner_and_reviewed_direct_principals_are_never_changed(self) -> None:
         """Leave owner and reviewed direct principals out of the cache plan."""
         for subject in [m.OWNER, "legacy-owner"]:
             users, attrs, auth = fixture(subject)
-            auth["allowedPrincipalIds"].append(m.PREFIX + subject)
+            allowed: list[str] = auth["allowedPrincipalIds"]
+            allowed.append(m.PREFIX + subject)
             assert m.rancher_plan(users, attrs, auth, lambda *a: False) == []
 
     def test_only_observer_group_changes_and_other_groups_survive(self) -> None:
         """Drop or add only the observer group and retain an unrelated group."""
         users, attrs, auth = fixture()
-        other = {"metadata": {"name": "genericoidc_group://other-reviewed-group"}}
+        other: dict[str, object] = {
+            "metadata": {"name": "genericoidc_group://other-reviewed-group"}
+        }
         attrs[0]["GroupPrincipals"]["genericoidc"]["Items"].append(other)
         ops = m.rancher_plan(users, attrs, auth, lambda *a: False)[0][1]
         assert ops[-1]["value"] == [other]
@@ -104,7 +120,7 @@ class MembershipTests(unittest.TestCase):
         """Propagate an identity failure before any cache mutation is planned."""
         users, attrs, auth = fixture()
 
-        def failed(*args):
+        def failed(*_args):
             raise RuntimeError("IdP unavailable")
 
         with self.assertRaises(RuntimeError):
@@ -112,10 +128,7 @@ class MembershipTests(unittest.TestCase):
 
     def test_wiki_module_matches_single_reviewed_controller_source(self) -> None:
         """Require the wiki copy to match the single reviewed controller source."""
-        assert (
-            SOURCE.read_bytes()
-            == (ROOT / "deploy/wiki-runtime/chart/files/observer_membership.py").read_bytes()
-        )
+        assert SOURCE.read_bytes() == (ROOT / "deploy/wiki-runtime/chart/files/observer_membership.py").read_bytes()
 
     def test_reader_gate_applies_to_cookie_and_api_tokens_not_privileged_or_unlinked_accounts(
         self,
@@ -192,8 +205,7 @@ class MembershipTests(unittest.TestCase):
         assert not reader.admitted("missing", {"homelab-observer"})
         reader.users["subject"]["is_active"] = False
         assert not reader.admitted("subject", {"homelab-observer"})
-        expected_lookups = 2
-        assert reader.rows.call_count == expected_lookups
+        assert reader.rows.call_count == 2
 
     def test_initial_human_cutover_is_only_reviewed_group_delta(self) -> None:
         """Plan only the reviewed observer add and readonly removal."""
@@ -219,10 +231,7 @@ class MembershipTests(unittest.TestCase):
         before = copy.deepcopy(user)
         ops = c.plan(user, group)
         assert user == before
-        assert ops == [
-            {"path": "core/groups/observer/add_user/", "body": {"pk": 94}},
-            {"path": "core/groups/" + c.READONLY + "/remove_user/", "body": {"pk": 94}},
-        ]
+        assert ops == [{"path": "core/groups/observer/add_user/", "body": {"pk": 94}}, {"path": "core/groups/" + c.READONLY + "/remove_user/", "body": {"pk": 94}}]
         user["groups"] = [c.NETBIRD, "unrelated", "observer"]
         assert c.plan(user, group) == []
         user["uuid"] = "somebody-else"
@@ -258,13 +267,13 @@ class MembershipTests(unittest.TestCase):
         class Client:
             """Fake Authentik client that mutates only the in-memory user."""
 
-            def __init__(self, credentials):
+            def __init__(self, credentials) -> None:
                 pass
 
-            def rows(self, path):
+            def rows(self, _path):
                 return [copy.deepcopy(group)]
 
-            def call(self, system, method, path, body=None):
+            def call(self, _system, method, path, body=None):
                 if method == "GET":
                     return copy.deepcopy(user)
                 posts.append((path, body))
@@ -289,7 +298,7 @@ class MembershipTests(unittest.TestCase):
         class Loader:
             """Supply the prepared bootstrap module instead of its source file."""
 
-            def create_module(self, spec):
+            def create_module(self, _spec):
                 return fake
 
             def exec_module(self, module):
@@ -330,8 +339,7 @@ class MembershipTests(unittest.TestCase):
                 contextlib.redirect_stdout(io.StringIO()),
             ):
                 c.main()
-            expected_posts = 2
-            assert len(posts) == expected_posts
+            assert len(posts) == 2
             assert (state / "progress-1.json").exists()
             assert (state / "progress-2.json").exists()
             assert not (state / "uncertain.json").exists()
@@ -348,15 +356,11 @@ class MembershipTests(unittest.TestCase):
         b = yaml.safe_load((ROOT / "charts/grafana/values.yaml").read_text())["grafana"]["env"]
         for env in [a, b]:
             assert env["GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_STRICT"] == "true"
-            rotation_minutes = env["GF_AUTH_TOKEN_ROTATION_INTERVAL_MINUTES"]
-            assert rotation_minutes == "1"
+            assert env["GF_AUTH_TOKEN_ROTATION_INTERVAL_MINUTES"] == "1"
             assert "groups" in env["GF_AUTH_GENERIC_OAUTH_SCOPES"].split()
             assert env["GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH"].endswith("|| ''")
             assert "'homelab-observer'" in env["GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH"]
-        assert (
-            a["GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH"]
-            == b["GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH"]
-        )
+        assert a["GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH"] == b["GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH"]
 
     def test_argo_unknown_groups_have_no_default_reader_grant_machine_reader_is_explicit(
         self,

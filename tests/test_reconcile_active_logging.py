@@ -6,14 +6,23 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import TypedDict
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts/reconcile-active-logging.py"
+
+
+class _Report(TypedDict):
+    """Reconciliation output read back locally; never published anywhere."""
+
+    sources: list[dict[str, object]]
 
 
 class ReconciliationTests(unittest.TestCase):
     """Snapshot reconciliation stays local to fixture files and fails closed."""
 
-    def run_case(self, names, counts, aligned=True):
+    def run_case(
+        self, names, counts, aligned=True
+    ) -> tuple[subprocess.CompletedProcess[str], _Report | None]:
         with tempfile.TemporaryDirectory() as d:
             p = Path(d)
             pods = {
@@ -46,7 +55,7 @@ class ReconciliationTests(unittest.TestCase):
                         "status": "ok",
                         "count": count,
                     }
-                    for (name, container), count in zip(names, counts)
+                    for (name, container), count in zip(names, counts, strict=True)
                 ],
             }
             for file, data in [("pods", pods), ("meta", metadata), ("counts", sources)]:
@@ -79,6 +88,7 @@ class ReconciliationTests(unittest.TestCase):
         """Verify a zero stdout window is unobserved rather than recorded as loss."""
         result, report = self.run_case([("app", "app")], [0])
         assert result.returncode == 0
+        assert report is not None
         assert report["sources"][0]["cause"] == "no-heartbeat-exclusion-no-stdout-in-window"
         assert report["sources"][0]["normalization"] == "unobserved"
         assert report["sources"][0]["emits"] is None
@@ -93,11 +103,9 @@ class ReconciliationTests(unittest.TestCase):
             ],
             [3, 3, 3],
         )
+        assert report is not None
         assert report["sources"][0]["cause"] == "agent-self-logs-explicitly-excluded"
-        assert all(
-            r["cause"] == "stdout-emission-without-receipt-investigate"
-            for r in report["sources"][1:]
-        )
+        assert all(r["cause"] == "stdout-emission-without-receipt-investigate" for r in report["sources"][1:])
 
     def test_unaligned_windows_fail_closed(self) -> None:
         """Verify an unaligned source window is rejected and produces no report."""

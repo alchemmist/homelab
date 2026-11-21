@@ -1,15 +1,18 @@
 import importlib.util
 from pathlib import Path
+import types
 import unittest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(name):
+def load(name: str) -> types.ModuleType:
     spec = importlib.util.spec_from_file_location(
         name.replace("-", "_"), ROOT / "scripts" / (name + ".py")
     )
+    if spec is None or spec.loader is None:
+        raise RuntimeError("missing script loader for " + name)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -22,10 +25,9 @@ base = load("netbird-host-peer")
 
 
 class IndependentAccessTest(unittest.TestCase):
-    def test_four_exact_hosts_opt_in_no_implicit_enrollment(self):
+    def test_four_exact_hosts_opt_in_no_implicit_enrollment(self) -> None:
         docs = mesh.manifests()
-        expected_manifests = 8
-        assert len(docs) == expected_manifests
+        assert len(docs) == 8
         for host in mesh.HOSTS:
             pvc, deploy = mesh.peer(host)
             assert deploy["spec"]["replicas"] == 0
@@ -42,24 +44,14 @@ class IndependentAccessTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             mesh.peer("new-vm")
 
-    def test_native_group_router_not_single_peer_or_default_route(self):
-        assert mesh.router_body("exact-node-group") == {
-            "peer_groups": ["exact-node-group"],
-            "enabled": True,
-            "masquerade": True,
-            "metric": 80,
-        }
-        assert set(mesh.NODE_ADDRESSES.values()) == {
-            "10.250.0.1/32",
-            "10.250.0.2/32",
-            "10.250.0.3/32",
-            "10.250.0.5/32",
-        }
+    def test_native_group_router_not_single_peer_or_default_route(self) -> None:
+        assert mesh.router_body("exact-node-group") == {"peer_groups": ["exact-node-group"], "enabled": True, "masquerade": True, "metric": 80}
+        assert set(mesh.NODE_ADDRESSES.values()) == {"10.250.0.1/32", "10.250.0.2/32", "10.250.0.3/32", "10.250.0.5/32"}
         for bad in [None, "", "All", "default", [], "group/other", "group name"]:
             with self.subTest(bad=bad), self.assertRaises(ValueError):
                 mesh.router_body(bad)
 
-    def test_distinct_input_policies_keep_pilot_tcp_only(self):
+    def test_distinct_input_policies_keep_pilot_tcp_only(self) -> None:
         admin = mesh.admin_input_policy("jwt-admin", "nodes")["rules"][0]
         pilot = mesh.pilot_input_policy("jwt-pilot", "only-node2")["rules"][0]
         assert admin["sources"] == ["jwt-admin"]
@@ -75,15 +67,9 @@ class IndependentAccessTest(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     fn(*args)
 
-    def test_relay_pinned_vps_and_no_secret_values_or_management(self):
+    def test_relay_pinned_vps_and_no_secret_values_or_management(self) -> None:
         docs = relay.manifests()
-        assert [d["kind"] for d in docs] == [
-            "Deployment",
-            "Service",
-            "NetworkPolicy",
-            "Certificate",
-            "Ingress",
-        ]
+        assert [d["kind"] for d in docs] == ["Deployment", "Service", "NetworkPolicy", "Certificate", "Ingress"]
         pod = docs[0]["spec"]["template"]["spec"]
         assert pod["nodeSelector"] == {"kubernetes.io/hostname": "socrat-2"}
         assert not pod["automountServiceAccountToken"]
@@ -102,13 +88,10 @@ class IndependentAccessTest(unittest.TestCase):
         assert ingress["rules"][0]["http"]["paths"][0]["pathType"] == "Exact"
         assert "/api" not in yaml.safe_dump(docs)
 
-    def test_native_self_health_bootstrap_and_actual_vps_cni(self):
+    def test_native_self_health_bootstrap_and_actual_vps_cni(self) -> None:
         service, policy = relay.manifests()[1:3]
         assert service["spec"]["publishNotReadyAddresses"]
-        assert (
-            service["metadata"]["annotations"]["traefik.ingress.kubernetes.io/service.nativelb"]
-            == "true"
-        )
+        assert service["metadata"]["annotations"]["traefik.ingress.kubernetes.io/service.nativelb"] == "true"
         ingress = policy["spec"]["ingress"][0]
         cidrs = {source["ipBlock"]["cidr"] for source in ingress["from"]}
         assert "10.42.0.1/32" in cidrs
@@ -116,11 +99,9 @@ class IndependentAccessTest(unittest.TestCase):
         assert "0.0.0.0/0" not in cidrs
         assert ingress["ports"] == [{"protocol": "TCP", "port": 33080}]
 
-    def test_home_relay_is_separate_and_reuses_existing_tls(self):
+    def test_home_relay_is_separate_and_reuses_existing_tls(self) -> None:
         deploy, service, policy, ingress = relay.home_manifests()
-        assert deploy["spec"]["template"]["spec"]["nodeSelector"] == {
-            "kubernetes.io/hostname": "socrat-0"
-        }
+        assert deploy["spec"]["template"]["spec"]["nodeSelector"] == {"kubernetes.io/hostname": "socrat-0"}
         assert service["spec"]["selector"] == {"app": "netbird-relay-home"}
         assert service["spec"]["publishNotReadyAddresses"]
         assert ingress["spec"]["tls"][0]["secretName"] == "netbird-pilot-tls"
@@ -128,16 +109,13 @@ class IndependentAccessTest(unittest.TestCase):
         sources = policy["spec"]["ingress"][0]["from"]
         assert "10.42.0.0/32" in {s["ipBlock"]["cidr"] for s in sources if "ipBlock" in s}
         assert sources[0]["podSelector"]["matchLabels"] == {"app.kubernetes.io/name": "traefik"}
-        assert sources[0]["namespaceSelector"]["matchLabels"] == {
-            "kubernetes.io/metadata.name": "kube-system"
-        }
+        assert sources[0]["namespaceSelector"]["matchLabels"] == {"kubernetes.io/metadata.name": "kube-system"}
         assert relay.advertised_relays()["addresses"] == [relay.URI, relay.HOME_URI]
         assert relay.advertised_relays()["credentialsTTL"] == "12h"
         assert "relay" not in relay.advertised_relays()
 
-    def test_mac_bootstrap_does_not_depend_on_internal_dns(self):
-        expected_dns_hosts = 3
-        assert len(dns.HOSTS) == expected_dns_hosts
+    def test_mac_bootstrap_does_not_depend_on_internal_dns(self) -> None:
+        assert len(dns.HOSTS) == 3
         assert "auth.socrat.alchemmist.xyz" in dns.HOSTS
         body = dns.render().decode()
         assert "10.250." not in body

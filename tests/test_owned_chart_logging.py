@@ -1,3 +1,5 @@
+"""Tests for logging in the owned Helm charts."""
+
 import contextlib
 import importlib.util
 import io
@@ -14,14 +16,14 @@ sys.path.insert(0, str(ROOT / "charts/spi-triage/files"))
 
 
 class OwnedLoggingTests(unittest.TestCase):
-    def contract(self, row, service):
+    def contract(self, row, service) -> None:
         assert row["service"] == service
         assert row["level"] in ["info", "warn", "error", "debug"]
         assert row["ts"].endswith("Z")
         datetime.fromisoformat(row["ts"].replace("Z", "+00:00"))
         assert "\n" not in row["msg"]
 
-    def test_worker_allowlist(self):
+    def test_worker_allowlist(self) -> None:
         from service import log_event
 
         output = io.StringIO()
@@ -42,7 +44,7 @@ class OwnedLoggingTests(unittest.TestCase):
         assert row["stage"] == "REDACTED"
         assert row["code"] == "REDACTED"
 
-    def test_js_allowlist(self):
+    def test_js_allowlist(self) -> None:
         script = "const {logEvent}=require('./charts/n8n/extensions/event-log'); logEvent('yandex-calendar','announcement_failed',{code:'HTTP_500',body:'private',id:'private'});"
         output = subprocess.run(
             ["node", "-e", script], cwd=ROOT, capture_output=True, text=True, check=True
@@ -52,7 +54,7 @@ class OwnedLoggingTests(unittest.TestCase):
         assert row["level"] == "error"
         assert "private" not in output.stderr
 
-    def test_watchdog_exception_is_safe(self):
+    def test_watchdog_exception_is_safe(self) -> None:
         spec = importlib.util.spec_from_file_location(
             "watchdog_logging", ROOT / "charts/open-terminal/files/browser_watchdog.py"
         )

@@ -1,3 +1,5 @@
+"""Verify the telemetry source registry against live cluster scrape sources."""
+
 import argparse
 import hashlib
 import importlib.util

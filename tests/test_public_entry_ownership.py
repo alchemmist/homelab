@@ -2,6 +2,7 @@
 
 import copy
 import subprocess
+from typing import NotRequired, TypedDict
 from unittest.mock import patch
 
 import pytest
@@ -17,7 +18,38 @@ from tests.public_entry_contract import CHARTS, ROOT, render
 PUBLIC_HANDOFF = "c6121e1975eb6218804a9be43d7c2a8e99584838"
 
 
-def migration_payload(resource):
+# Functional syntax keeps the dotted YAML annotation key as a valid identifier.
+_Annotations = TypedDict("_Annotations", {"checksum/config": str})
+
+
+class _PodMetadata(TypedDict):
+    """Deployment pod template metadata carrying the checksum annotation."""
+
+    annotations: NotRequired[_Annotations]
+
+
+class _PodTemplate(TypedDict):
+    """Pod template block of a Grafana proxy Deployment."""
+
+    metadata: _PodMetadata
+
+
+class _DeploymentSpec(TypedDict):
+    """Deployment spec holding the pod template."""
+
+    template: _PodTemplate
+
+
+class _HandoffResource(TypedDict):
+    """Migrated resource shape surfaced by the application render."""
+
+    kind: str
+    metadata: dict[str, str]
+    data: NotRequired[dict[str, str]]
+    spec: NotRequired[_DeploymentSpec]
+
+
+def migration_payload(resource: _HandoffResource) -> _HandoffResource:
     """Keep immutable handoff hashes; supply later source payloads independently.
 
     Only the two source-owned Grafana text inputs/checksum may differ. Validate
@@ -72,7 +104,9 @@ def migration_payload(resource):
 
 
 class OwnershipTests(unittest.TestCase):
-    def test_every_transferred_payload_is_identical_to_reviewed_pre_migration_render(self):
+    def test_every_transferred_payload_is_identical_to_reviewed_pre_migration_render(
+        self,
+    ) -> None:
         fixture = json.loads((ROOT / "tests/fixtures/public-entry-handoff.json").read_text())
         actual = {}
         for owner in CHARTS:
@@ -93,7 +127,7 @@ class OwnershipTests(unittest.TestCase):
                 actual[key] = {"owner": owner, "sha256": digest}
         assert actual == fixture
 
-    def test_platform_extensions_belong_to_the_existing_application(self):
+    def test_platform_extensions_belong_to_the_existing_application(self) -> None:
         for owner, chart in CHARTS.items():
             app = yaml.safe_load((ROOT / f"deploy/argocd/apps/{owner}.yaml").read_text())
             assert app["spec"]["project"] == "default"
@@ -102,7 +136,7 @@ class OwnershipTests(unittest.TestCase):
             assert not app["spec"]["syncPolicy"]["automated"]["prune"]
             assert app["spec"]["syncPolicy"]["automated"]["selfHeal"]
 
-    def test_aggregate_chart_and_application_are_gone(self):
+    def test_aggregate_chart_and_application_are_gone(self) -> None:
         assert not (ROOT / "charts/public-web-entry").exists()
         assert not (ROOT / "deploy/argocd/apps/public-web-entry.yaml").exists()
         for path in (ROOT / "deploy/argocd/apps").glob("*.yaml"):
@@ -115,7 +149,7 @@ class OwnershipTests(unittest.TestCase):
 
 
 @pytest.mark.parametrize("violation", ["payload", "checksum", "token", "image"])
-def test_live_grafana_input_projection_rejects_mutations(violation):
+def test_live_grafana_input_projection_rejects_mutations(violation) -> None:
     """A passing baseline is required; normalization must not hide other changes."""
     OwnershipTests().test_every_transferred_payload_is_identical_to_reviewed_pre_migration_render()
     resources = copy.deepcopy(render("grafana"))

@@ -1,5 +1,8 @@
+"""Tests for OpenTelemetry application credential handling."""
+
 import importlib.util
 import base64
+import types
 import copy
 import json
 from pathlib import Path
@@ -9,7 +12,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(name):
+def load(name: str) -> types.ModuleType:
     spec = importlib.util.spec_from_file_location(
         name.replace("-", "_"), ROOT / "scripts" / (name + ".py")
     )
@@ -19,9 +22,13 @@ def load(name):
 
 
 class ApplicationCredentialTests(unittest.TestCase):
-    def test_cross_namespace_or_ca_key_mirror_is_rejected(self):
+    def test_cross_namespace_or_ca_key_mirror_is_rejected(self) -> None:
         module = load("otel-application-credentials")
-        good = {"application": "litellm", "namespace": "llm", "secret": "otel-app-tls-litellm"}
+        good = {
+            "application": "litellm",
+            "namespace": "llm",
+            "secret": "otel-app-tls-litellm",
+        }
         module.validate_destination(good)
         for field, value in [
             ("namespace", "cattle-monitoring-system"),
@@ -32,7 +39,7 @@ class ApplicationCredentialTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 module.validate_destination(bad)
 
-    def test_unrelated_workload_cannot_be_reloaded(self):
+    def test_unrelated_workload_cannot_be_reloaded(self) -> None:
         module = load("otel-application-credentials")
         with self.assertRaises(ValueError):
             module.validate_destination(
@@ -44,67 +51,46 @@ class ApplicationCredentialTests(unittest.TestCase):
                 }
             )
 
-    def test_rendered_mirror_code_matches_maintained_source(self):
+    def test_rendered_mirror_code_matches_maintained_source(self) -> None:
         resources = list(
             yaml.safe_load_all(
                 (ROOT / "deploy/monitoring/otel-application-credentials.yaml").read_text()
             )
         )
         config = next(resource for resource in resources if resource["kind"] == "ConfigMap")
-        assert (
-            config["data"]["mirror.py"]
-            == (ROOT / "scripts/otel-application-credentials.py").read_text()
-        )
+        assert config["data"]["mirror.py"] == (ROOT / "scripts/otel-application-credentials.py").read_text()
         for destination in json.loads(config["data"]["destinations.json"]):
-            assert destination["reloadDeployments"] == (
-                [destination["application"]]
-                if destination["application"] in {"lms", "wishlist"}
-                else []
-            )
+            assert destination["reloadDeployments"] == ([destination["application"]] if destination["application"] in {"lms", "wishlist"} else [])
         for role in (resource for resource in resources if resource["kind"] == "Role"):
             for rule in role["rules"]:
                 assert rule["resources"] in [["secrets"], ["deployments"]]
                 assert set(rule["verbs"]) == {"get", "patch"}
                 assert rule["resourceNames"]
-                assert (
-                    all(name.startswith("otel-app-tls-") for name in rule["resourceNames"])
-                    if rule["resources"] == ["secrets"]
-                    else role["metadata"]["namespace"] in {"lms", "wishlist"}
-                    and rule["resourceNames"] == [role["metadata"]["namespace"]]
-                )
+                assert all(name.startswith("otel-app-tls-") for name in rule["resourceNames"]) if rule["resources"] == ["secrets"] else role["metadata"]["namespace"] in {"lms", "wishlist"} and rule["resourceNames"] == [role["metadata"]["namespace"]]
 
-    def test_native_ingress_has_no_second_sampler_or_other_signal_owner(self):
+    def test_native_ingress_has_no_second_sampler_or_other_signal_owner(self) -> None:
         config = yaml.safe_load(
             (ROOT / "deploy/monitoring/otel/application-ingress.yaml").read_text()
         )
         assert set(config["service"]["pipelines"]) == {"traces"}
         assert "tail_sampling" not in config["processors"]
         assert config["exporters"]["otlp/global-sampler"]["endpoint"] == "10.250.0.1:44317"
-        assert (
-            config["exporters"]["otlp/global-sampler"]["sending_queue"]["queue_size"]
-            == 64 * 1024**2
-        )
+        assert config["exporters"]["otlp/global-sampler"]["sending_queue"]["queue_size"] == 64 * 1024 ** 2
         protocol = config["receivers"]["otlp"]["protocols"]
         assert set(protocol) == {"http"}
         assert protocol["http"]["endpoint"] == "10.250.0.3:44318"
         assert "client_ca_file" in protocol["http"]["tls"]
         assert "insecure" not in str(config).lower()
 
-    def test_privacy_is_identical_and_runs_before_persistent_export_queue(self):
+    def test_privacy_is_identical_and_runs_before_persistent_export_queue(self) -> None:
         config = yaml.safe_load(
             (ROOT / "deploy/monitoring/otel/application-ingress.yaml").read_text()
         )
         gateway = yaml.safe_load((ROOT / "deploy/monitoring/otel/trace-gateway.yaml").read_text())
-        assert (
-            config["processors"]["transform/privacy"] == gateway["processors"]["transform/privacy"]
-        )
-        assert config["service"]["pipelines"]["traces"]["processors"] == [
-            "memory_limiter",
-            "transform/privacy",
-            "batch",
-        ]
+        assert config["processors"]["transform/privacy"] == gateway["processors"]["transform/privacy"]
+        assert config["service"]["pipelines"]["traces"]["processors"] == ["memory_limiter", "transform/privacy", "batch"]
 
-    def test_backend_sdk_proof_requires_child_and_negative_content_test(self):
+    def test_backend_sdk_proof_requires_child_and_negative_content_test(self) -> None:
         module = load("otel-application-trace-verify")
         trace_id = "ab" * 16
         parent_id = "cd" * 8

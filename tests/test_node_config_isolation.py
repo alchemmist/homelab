@@ -18,7 +18,7 @@ SPEC.loader.exec_module(MODULE)
 class IsolationTests(unittest.TestCase):
     """Materialize configuration links under a disposable home directory."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.home = Path(self.temporary.name).resolve()

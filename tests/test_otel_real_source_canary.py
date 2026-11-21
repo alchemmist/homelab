@@ -1,3 +1,5 @@
+"""Tests for the OpenTelemetry real-source canary."""
+
 import importlib.util
 from pathlib import Path
 import unittest
@@ -12,7 +14,7 @@ SPEC.loader.exec_module(CANARY)
 
 
 class RealSourceCanaryTests(unittest.TestCase):
-    def test_source_assets_and_discovery_use_private_files(self):
+    def test_source_assets_and_discovery_use_private_files(self) -> None:
         original = {
             "authorization": {"credentials_file": "/etc/otel/source-auth/ns/name/key"},
             "kubernetes_sd_configs": [{"role": "endpoints"}],
@@ -28,7 +30,7 @@ class RealSourceCanaryTests(unittest.TestCase):
         assert result["replacement"] == "$$1"
         assert "kubeconfig_file" not in original["kubernetes_sd_configs"][0]
 
-    def test_existing_discovery_auth_is_never_silently_replaced(self):
+    def test_existing_discovery_auth_is_never_silently_replaced(self) -> None:
         with self.assertRaises(ValueError):
             CANARY.rewrite_assets(
                 {"kubernetes_sd_configs": [{"api_server": "https://other"}]},
@@ -36,7 +38,7 @@ class RealSourceCanaryTests(unittest.TestCase):
                 Path("/private/kubeconfig"),
             )
 
-    def test_expected_target_identity_covers_every_label(self):
+    def test_expected_target_identity_covers_every_label(self) -> None:
         item = {
             "scrapePool": "owned",
             "health": "up",
@@ -49,6 +51,6 @@ class RealSourceCanaryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             CANARY.expected_targets({"activeTargets": [{**item, "health": "down"}]}, {"owned"})
 
-    def test_cleanup_refuses_non_canary_workspaces(self):
+    def test_cleanup_refuses_non_canary_workspaces(self) -> None:
         with self.assertRaises(ValueError):
             CANARY.cleanup_workspace(Path("/tmp/production-history"))

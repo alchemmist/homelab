@@ -1,3 +1,5 @@
+"""Serve synthetic OpenMetrics endpoints and verify collector/scrape ingestion."""
+
 import argparse
 import copy
 import json
@@ -116,7 +118,7 @@ def run(args):
     state = {"counter": 17, "gauge": True}
 
     class Handler(BaseHTTPRequestHandler):
-        def do_GET(self):
+        def do_GET(self) -> None:
             body = metrics(state["counter"], state["gauge"]).encode()
             self.send_response(200)
             self.send_header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
@@ -124,7 +126,7 @@ def run(args):
             self.end_headers()
             self.wfile.write(body)
 
-        def log_message(self, *unused):
+        def log_message(self, *unused) -> None:
             pass
 
     server = ThreadingHTTPServer(("127.0.0.1", 19100), Handler)

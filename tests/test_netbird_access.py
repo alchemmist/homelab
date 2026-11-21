@@ -11,8 +11,30 @@ M = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(M)
 
 
-def snapshot():
-    return {
+def _mapping(value: object) -> dict[str, object]:
+    """Return the assert-verified mapping view of a parsed snapshot value."""
+    assert isinstance(value, dict)
+    result: dict[str, object] = value
+    return result
+
+
+def _documents(value: object) -> list[dict[str, object]]:
+    """Return the assert-verified list-of-mappings view of a parsed snapshot value."""
+    assert isinstance(value, list)
+    documents: list[dict[str, object]] = value
+    return documents
+
+
+def _sequence(value: object) -> list[object]:
+    """Return the assert-verified list view of a parsed snapshot value."""
+    assert isinstance(value, list)
+    sequence: list[object] = value
+    return sequence
+
+
+def snapshot() -> dict[str, object]:
+    """Build the reviewed management-plane snapshot used by the offline tests."""
+    s: dict[str, object] = {
         "nb_accounts": [
             {
                 "id": "account",
@@ -82,34 +104,39 @@ def snapshot():
             }
         ],
     }
+    return s
 
 
 class AdmissionTests(unittest.TestCase):
-    def test_reconcile_is_additive_and_preserves_session_policy(self):
+    def test_reconcile_is_additive_and_preserves_session_policy(self) -> None:
         s = snapshot()
         before = copy.deepcopy(s)
         plan = M.reconcile_plan(s)
         assert s == before
-        expected_steps = 4
-        assert len(plan) == expected_steps
+        assert len(plan) == 4
         assert plan[0]["body"]["property_mappings"] == ["openid", "email", "profile", "groups"]
         account = next(p for p in plan if p["purpose"] == "trusted-group-sso-admission")
-        login_expiration = 28800
-        assert account["body"]["settings"]["peer_login_expiration"] == login_expiration
+        assert account["body"]["settings"]["peer_login_expiration"] == 28800
         assert account["body"]["settings"]["jwt_allow_groups"] == [M.LEGACY_LOGIN, M.ADMIN]
         dns = next(p for p in plan if p["purpose"] == "server-side-dns-management-off")
         assert dns["body"]["disabled_management_groups"] == ["all"]
 
-    def test_reconcile_noop_after_expected_readback(self):
+    def test_reconcile_noop_after_expected_readback(self) -> None:
         s = snapshot()
-        s["ak_providers"][0]["property_mappings"].append("groups")
-        s["ak_bindings"].append({"group": "admins", "enabled": True, "order": 1})
-        s["nb_accounts"][0]["settings"]["jwt_allow_groups"].append(M.ADMIN)
-        s["nb_accounts"][0]["settings"]["extra"]["user_approval_required"] = False
-        s["nb_dns"]["disabled_management_groups"] = ["all"]
+        _sequence(
+            _mapping(_documents(s["ak_providers"])[0])["property_mappings"]
+        ).append("groups")
+        _documents(s["ak_bindings"]).append({"group": "admins", "enabled": True, "order": 1})
+        _sequence(
+            _mapping(_mapping(_documents(s["nb_accounts"])[0])["settings"])["jwt_allow_groups"]
+        ).append(M.ADMIN)
+        _mapping(
+            _mapping(_mapping(_documents(s["nb_accounts"])[0])["settings"])["extra"]
+        )["user_approval_required"] = False
+        _mapping(s["nb_dns"])["disabled_management_groups"] = ["all"]
         assert M.reconcile_plan(s) == []
 
-    def test_vendor_scope_gap_creates_profile_mapping_without_fake_groups(self):
+    def test_vendor_scope_gap_creates_profile_mapping_without_fake_groups(self) -> None:
         s = snapshot()
         s["ak_scopes"] = []
         plan = M.reconcile_plan(s)
@@ -117,43 +144,47 @@ class AdmissionTests(unittest.TestCase):
         assert plan[0]["body"]["expression"] == M.EXPRESSION
         assert plan[1]["body"]["property_mappings"][-1] == "$profile_mapping"
 
-    def test_auto_admission_remains_group_restricted_and_preserves_peer_policy(self):
+    def test_auto_admission_remains_group_restricted_and_preserves_peer_policy(self) -> None:
         s = snapshot()
         plan = M.reconcile_plan(s)
         change = next(p for p in plan if p["purpose"] == "trusted-group-sso-admission")
         assert not change["body"]["settings"]["extra"]["user_approval_required"]
         assert not change["body"]["settings"]["extra"]["peer_approval_enabled"]
-        s["nb_accounts"][0]["settings"]["jwt_allow_groups"].append("unreviewed-public-signup")
+        _sequence(
+            _mapping(_mapping(_documents(s["nb_accounts"])[0])["settings"])["jwt_allow_groups"]
+        ).append("unreviewed-public-signup")
         with self.assertRaises(ValueError):
             M.reconcile_plan(s)
 
-    def test_missing_or_skipping_mfa_blocks_admission(self):
+    def test_missing_or_skipping_mfa_blocks_admission(self) -> None:
         s = snapshot()
         s["ak_flow_bindings"] = []
         with self.assertRaises(ValueError):
             M.reconcile_plan(s)
         s = snapshot()
-        s["ak_mfa"][0]["not_configured_action"] = "skip"
+        _documents(s["ak_mfa"])[0]["not_configured_action"] = "skip"
         with self.assertRaises(ValueError):
             M.reconcile_plan(s)
 
-    def test_default_all_policy_blocks_onboarding(self):
+    def test_default_all_policy_blocks_onboarding(self) -> None:
         s = snapshot()
-        s["nb_policies"][0]["rules"][0]["sources"] = ["all"]
+        _mapping(_documents(_documents(s["nb_policies"])[0]["rules"])[0])["sources"] = ["all"]
         with self.assertRaises(ValueError):
             M.reconcile_plan(s)
         s = snapshot()
-        s["nb_policies"][0]["rules"][0]["destinations"] = [{"id": "all"}]
-        with self.assertRaises(ValueError):
-            M.reconcile_plan(s)
-
-    def test_fake_jwt_source_rejected(self):
-        s = snapshot()
-        s["nb_groups"][1]["issued"] = "api"
+        _mapping(_documents(_documents(s["nb_policies"])[0]["rules"])[0])["destinations"] = [
+            {"id": "all"}
+        ]
         with self.assertRaises(ValueError):
             M.reconcile_plan(s)
 
-    def test_superuser_or_parent_group_rejected(self):
+    def test_fake_jwt_source_rejected(self) -> None:
+        s = snapshot()
+        _documents(s["nb_groups"])[1]["issued"] = "api"
+        with self.assertRaises(ValueError):
+            M.reconcile_plan(s)
+
+    def test_superuser_or_parent_group_rejected(self) -> None:
         for key, value in [
             ("is_superuser", True),
             ("parents", ["owner"]),
@@ -161,11 +192,11 @@ class AdmissionTests(unittest.TestCase):
         ]:
             with self.subTest(key=key):
                 s = snapshot()
-                s["ak_groups"][0][key] = value
+                _documents(s["ak_groups"])[0][key] = value
                 with self.assertRaises(ValueError):
                     M.reconcile_plan(s)
 
-    def test_unexpected_app_bypass_rejected(self):
+    def test_unexpected_app_bypass_rejected(self) -> None:
         for binding in [
             {"group": "unknown", "enabled": True},
             {"group": "login", "enabled": True, "user": 12},
@@ -176,44 +207,42 @@ class AdmissionTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 M.reconcile_plan(s)
 
-    def test_membership_action_never_replaces_other_groups_or_grants_superuser(self):
+    def test_membership_action_never_replaces_other_groups_or_grants_superuser(self) -> None:
         s = snapshot()
         plan = M.membership_plan(s, "new-admin", "exact-reviewed-uuid")
         assert plan[0]["path"] == "core/groups/admins/add_user/"
         assert plan[0]["body"] == {"pk": 2}
-        assert s["ak_users"][0]["groups"] == ["unrelated"]
+        assert _documents(s["ak_users"])[0]["groups"] == ["unrelated"]
         assert len(plan) == 1
 
-    def test_no_email_fallback_or_ambiguous_adoption(self):
+    def test_no_email_fallback_or_ambiguous_adoption(self) -> None:
         s = snapshot()
         with self.assertRaises(ValueError):
             M.membership_plan(s, "new-admin", "wrong-uuid")
-        s["ak_users"].append(dict(s["ak_users"][0]))
+        users = _documents(s["ak_users"])
+        users.append(dict(users[0]))
         with self.assertRaises(ValueError):
             M.membership_plan(s, "new-admin", "exact-reviewed-uuid")
 
-    def test_nonhuman_inactive_superuser_rejected(self):
+    def test_nonhuman_inactive_superuser_rejected(self) -> None:
         for key, value in [
             ("type", "service_account"),
             ("is_active", False),
             ("is_superuser", True),
         ]:
             s = snapshot()
-            s["ak_users"][0][key] = value
+            _documents(s["ak_users"])[0][key] = value
             with self.assertRaises(ValueError):
                 M.membership_plan(s, "new-admin", "exact-reviewed-uuid")
 
-    def test_membership_grant_revoke_idempotence(self):
+    def test_membership_grant_revoke_idempotence(self) -> None:
         s = snapshot()
         assert M.membership_plan(s, "new-admin", "exact-reviewed-uuid", True) == []
-        s["ak_groups"][0]["users"].append(2)
+        _sequence(_mapping(_documents(s["ak_groups"])[0])["users"]).append(2)
         assert M.membership_plan(s, "new-admin", "exact-reviewed-uuid") == []
-        assert (
-            "remove_user"
-            in M.membership_plan(s, "new-admin", "exact-reviewed-uuid", True)[0]["path"]
-        )
+        assert "remove_user" in M.membership_plan(s, "new-admin", "exact-reviewed-uuid", True)[0]["path"]
 
-    def test_prior_uncertain_receipt_blocks_rerun(self):
+    def test_prior_uncertain_receipt_blocks_rerun(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             root.chmod(0o700)
@@ -223,9 +252,10 @@ class AdmissionTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 M.check_state_folder(root)
 
-    def offboard_state(self):
+    def offboard_state(self) -> dict[str, object]:
+        """Build the reviewed connected-state snapshot used by offboarding tests."""
         s = snapshot()
-        s["ak_providers"][0]["client_id"] = "reviewed-client"
+        _mapping(_documents(s["ak_providers"])[0])["client_id"] = "reviewed-client"
         s["nb_idps"] = [
             {
                 "id": "authentik-reviewed-connector",
@@ -255,10 +285,10 @@ class AdmissionTests(unittest.TestCase):
             {"id": "target-peer", "user_id": subject},
             {"id": "untouched-machine", "user_id": "service"},
         ]
-        s["ak_groups"][0]["users"].append(2)
+        _sequence(_mapping(_documents(s["ak_groups"])[0])["users"]).append(2)
         return s
 
-    def test_offboarding_blocks_login_and_retires_only_exact_subject_devices(self):
+    def test_offboarding_blocks_login_and_retires_only_exact_subject_devices(self) -> None:
         s = self.offboard_state()
         plan = M.offboard_plan(s, "new-admin", "exact-reviewed-uuid")
         assert plan[0]["body"]["is_blocked"]
@@ -266,29 +296,31 @@ class AdmissionTests(unittest.TestCase):
         assert "remove_user" in plan[2]["path"]
         assert "untouched-machine" not in str(plan)
 
-    def test_owner_or_foreign_connector_offboarding_is_refused(self):
+    def test_owner_or_foreign_connector_offboarding_is_refused(self) -> None:
         s = self.offboard_state()
-        s["nb_users"][0]["role"] = "owner"
+        _documents(s["nb_users"])[0]["role"] = "owner"
         with self.assertRaises(ValueError):
             M.offboard_plan(s, "new-admin", "exact-reviewed-uuid")
         s = self.offboard_state()
-        s["nb_idps"][0]["client_id"] = "unexpected"
+        _documents(s["nb_idps"])[0]["client_id"] = "unexpected"
         with self.assertRaises(ValueError):
             M.offboard_plan(s, "new-admin", "exact-reviewed-uuid")
 
-    def test_already_disabled_authentik_user_can_still_be_offboarded(self):
+    def test_already_disabled_authentik_user_can_still_be_offboarded(self) -> None:
         s = self.offboard_state()
-        s["ak_users"][0]["is_active"] = False
+        _documents(s["ak_users"])[0]["is_active"] = False
         assert M.offboard_plan(s, "new-admin", "exact-reviewed-uuid")
 
-    def test_offboard_noop_after_readback(self):
+    def test_offboard_noop_after_readback(self) -> None:
         s = self.offboard_state()
-        s["nb_users"][0]["is_blocked"] = True
+        _documents(s["nb_users"])[0]["is_blocked"] = True
         s["nb_peers"] = []
-        s["ak_groups"][0]["users"].remove(2)
+        users = _sequence(_mapping(_documents(s["ak_groups"])[0])["users"])
+        assert 2 in users
+        users.remove(2)
         assert M.offboard_plan(s, "new-admin", "exact-reviewed-uuid") == []
 
-    def test_no_password_setup_key_or_kubernetes_mutations(self):
+    def test_no_password_setup_key_or_kubernetes_mutations(self) -> None:
         actions = str(M.reconcile_plan(snapshot())) + str(
             M.membership_plan(snapshot(), "new-admin", "exact-reviewed-uuid")
         )

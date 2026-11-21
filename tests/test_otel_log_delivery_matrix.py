@@ -2,12 +2,13 @@
 
 import importlib.util
 from pathlib import Path
+from types import ModuleType
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def module():
+def module() -> ModuleType:
     spec = importlib.util.spec_from_file_location(
         "log_matrix", ROOT / "scripts/otel-log-delivery-matrix.py"
     )

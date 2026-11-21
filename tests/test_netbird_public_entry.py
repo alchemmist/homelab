@@ -2,14 +2,17 @@ import base64
 import datetime
 import importlib.util
 from pathlib import Path
+import types
 import unittest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(name, file):
+def load(name: str, file: str) -> types.ModuleType:
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / file)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("missing script loader for " + file)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
@@ -20,7 +23,7 @@ owner = load("nb_owner", "netbird-owner-handover.py")
 
 
 class PublicEntryTests(unittest.TestCase):
-    def test_scoped_identity_entry(self):
+    def test_scoped_identity_entry(self) -> None:
         docs = entry.manifests()
         assert all(d["metadata"]["namespace"] in ["identity", "netbird-pilot"] for d in docs)
         assert not any(
@@ -56,7 +59,7 @@ class PublicEntryTests(unittest.TestCase):
         }
         assert rule["from"][0]["podSelector"]["matchLabels"] == {"app": "netbird-edge-forwarder"}
 
-    def test_invite_list_read_does_not_enable_local_signup(self):
+    def test_invite_list_read_does_not_enable_local_signup(self) -> None:
         cm = next(d for d in entry.manifests() if d["kind"] == "ConfigMap")
         dynamic = yaml.safe_load(cm["data"]["dynamic.yaml"])
         deny = dynamic["http"]["routers"]["deny-setup"]
@@ -73,7 +76,7 @@ class PublicEntryTests(unittest.TestCase):
         # existing native API middleware still checks bearer identity and role.
         assert "invite-list" not in dynamic["http"]["routers"]
 
-    def test_grpc_scheme_is_on_dedicated_service_not_ingress(self):
+    def test_grpc_scheme_is_on_dedicated_service_not_ingress(self) -> None:
         docs = entry.manifests()
         by_name = {(d["kind"], d["metadata"]["name"]): d for d in docs}
         key = "traefik.ingress.kubernetes.io/service.serversscheme"
@@ -94,7 +97,7 @@ class PublicEntryTests(unittest.TestCase):
                 for p in ingress["spec"]["rules"][0]["http"]["paths"]
             )
 
-    def fixture(self):
+    def fixture(self) -> dict[str, object]:
         return {
             "id": owner.subject(),
             "email": owner.EMAIL,
@@ -107,7 +110,7 @@ class PublicEntryTests(unittest.TestCase):
             "role": "user",
         }
 
-    def test_exact_subject_matches_upstream_protobuf(self):
+    def test_exact_subject_matches_upstream_protobuf(self) -> None:
         data = base64.b64decode(owner.subject() + "==")
         assert (
             data
@@ -119,7 +122,7 @@ class PublicEntryTests(unittest.TestCase):
         )
         assert owner.target_user([self.fixture()], owner.subject())["id"] == owner.subject()
 
-    def test_no_uuid_connector_email_fallback(self):
+    def test_no_uuid_connector_email_fallback(self) -> None:
         for candidate in [
             owner.EMAIL,
             owner.UUID,
