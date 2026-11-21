@@ -332,7 +332,15 @@ if __name__ == "__main__":
     else:
         try:
             main()
-        except Exception as exc:
+        except (
+            RuntimeError,
+            subprocess.SubprocessError,
+            ValueError,
+            OSError,
+            KeyError,
+            TypeError,
+            AssertionError,
+        ) as exc:
             tail = (
                 (ART / "commands.log").read_text(errors="replace")[-12000:]
                 if (ART / "commands.log").exists()
