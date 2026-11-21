@@ -15,7 +15,6 @@ import socket
 import ssl
 import subprocess
 import time
-
 from typing import TypedDict
 
 ROOT = pathlib.Path("/var/lib/homelab-vpn-transit/relay-failover")

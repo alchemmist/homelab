@@ -1,10 +1,10 @@
 """Tests for PR readiness evaluation in the scripts/openhands-pr-ready module."""
 
 import copy
-from typing import cast
 import importlib.util
 import unittest
 from pathlib import Path
+from typing import cast
 
 spec = importlib.util.spec_from_file_location(
     "pr_ready", Path(__file__).resolve().parents[2] / "scripts/openhands-pr-ready.py"

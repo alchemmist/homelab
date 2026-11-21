@@ -8,9 +8,9 @@ import tempfile
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+from typing import override
 
 import worker
-from typing import override
 
 calls: list[dict[str, object]] = []
 if sys.platform == "linux":

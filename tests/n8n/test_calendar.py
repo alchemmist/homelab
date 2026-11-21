@@ -3,9 +3,9 @@
 import importlib.util
 import json
 import subprocess
-from typing import TypedDict, cast
 import unittest
 from pathlib import Path
+from typing import TypedDict, cast
 
 BASE = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("sync", BASE / "scripts/n8n/sync.py")
