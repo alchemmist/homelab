@@ -1,3 +1,5 @@
+"""Tests for OpenTelemetry capacity placement logic."""
+
 import copy
 import importlib.util
 from pathlib import Path

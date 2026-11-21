@@ -1,3 +1,5 @@
+"""Tests for the observer diagnostics runner."""
+
 import contextlib
 import importlib.util
 import io

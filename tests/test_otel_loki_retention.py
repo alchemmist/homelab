@@ -1,3 +1,5 @@
+"""Tests for the OpenTelemetry Loki retention script."""
+
 import importlib.util
 import json
 from pathlib import Path

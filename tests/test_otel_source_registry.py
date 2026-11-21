@@ -1,3 +1,5 @@
+"""Tests for the OpenTelemetry source registry."""
+
 import copy
 import importlib.util
 import json

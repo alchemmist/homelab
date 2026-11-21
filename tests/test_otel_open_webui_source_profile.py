@@ -1,3 +1,5 @@
+"""Tests for the OpenTelemetry Open WebUI source profile."""
+
 import importlib.util
 from pathlib import Path
 import sys

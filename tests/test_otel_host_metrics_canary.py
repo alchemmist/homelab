@@ -1,3 +1,5 @@
+"""Tests for the OpenTelemetry host metrics canary."""
+
 import importlib.util
 import json
 from pathlib import Path

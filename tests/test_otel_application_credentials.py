@@ -1,3 +1,5 @@
+"""Tests for OpenTelemetry application credential handling."""
+
 import importlib.util
 import base64
 import copy

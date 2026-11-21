@@ -1,3 +1,5 @@
+"""Tests for node throttling tile rendering under load."""
+
 import json
 import os
 from pathlib import Path

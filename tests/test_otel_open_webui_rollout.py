@@ -1,3 +1,5 @@
+"""Tests for the OpenTelemetry Open WebUI rollout."""
+
 import importlib.util
 from pathlib import Path
 import unittest

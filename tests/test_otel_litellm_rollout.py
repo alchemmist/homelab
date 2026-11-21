@@ -1,3 +1,5 @@
+"""Tests for the OpenTelemetry LiteLLM rollout."""
+
 import copy
 import importlib.util
 import json

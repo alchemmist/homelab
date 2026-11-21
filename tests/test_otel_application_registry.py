@@ -1,3 +1,5 @@
+"""Tests for the OpenTelemetry application registry script."""
+
 import importlib.util
 import json
 from pathlib import Path

@@ -1,3 +1,5 @@
+"""Tests for the OpenTelemetry migration script."""
+
 import copy
 import importlib.util
 import json
