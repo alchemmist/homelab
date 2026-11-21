@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Explicit isolated real S3 fixture gate; no incidents, publishing or root keys.
+
 Never invoked by tests/deploy. Requires local operator port-forward and private
 machine-only credentials JSON. Leaves fixture intentionally (no Delete grants).
 """

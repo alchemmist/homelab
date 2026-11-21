@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """One explicit native API target correction with a synthetic VLESS acceptance client.
+
 No listener retirement/firewall update/SQL mutation or human credential use.
 Preview is read-only. Apply requires both fresh hashes and private node state.
 """

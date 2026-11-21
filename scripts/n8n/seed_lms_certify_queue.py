@@ -93,6 +93,7 @@ for task, (contract, faults, fixtures) in contracts.items():
     }
 
     def sql(s) -> str:
+        """Quote a string as a single SQL literal."""
         escaped: str = s.replace("'", "''")
         return "'" + escaped + "'"
 

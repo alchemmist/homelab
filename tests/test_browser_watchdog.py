@@ -1,14 +1,13 @@
 """Tests for the open-terminal browser watchdog."""
 
 import importlib.util
-from typing import Protocol, cast
 import signal
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Protocol, cast
 from unittest.mock import patch
-
 
 SPEC = importlib.util.spec_from_file_location(
     "browser_watchdog",

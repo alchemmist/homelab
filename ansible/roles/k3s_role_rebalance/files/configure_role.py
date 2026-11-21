@@ -3,15 +3,16 @@
 import argparse
 import json
 import os
-from pathlib import Path
 import stat
 import sys
 import tempfile
+from pathlib import Path
 
 import yaml
 
 
 def configure(args):
+    """Document the configure operation."""
     path = Path(args.config)
     if path.is_symlink():
         raise ValueError("config must not be a symlink")
@@ -86,6 +87,7 @@ def _write_desired(path, original, encoded, exists):
 
 
 def main():
+    """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
     parser.add_argument("--role", choices=("server", "control-plane"), required=True)

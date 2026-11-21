@@ -2,9 +2,9 @@
 
 import importlib.util
 import json
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 SOURCE = Path(__file__).resolve().parents[1] / "ansible/roles/vpn_failover/files/vpn_failover.py"

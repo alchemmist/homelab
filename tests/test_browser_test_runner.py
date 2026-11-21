@@ -9,7 +9,6 @@ import time
 import unittest
 from pathlib import Path
 
-
 RUNNER = Path(__file__).resolve().parents[1] / "charts/open-terminal/files/browser_test_runner.py"
 
 

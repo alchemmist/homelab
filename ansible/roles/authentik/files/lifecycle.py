@@ -1,4 +1,5 @@
 """Existing-user app membership lifecycle. Default plan/check are GET-only.
+
 Never creates/deletes/merges humans, resets passwords/MFA or manages legacy groups.
 """
 
@@ -7,15 +8,21 @@ import fcntl
 import hashlib
 import json
 import os
-from pathlib import Path
 import re
 import sys
 import urllib.error
 import urllib.request
+from pathlib import Path
 from typing import Protocol, cast
 from uuid import UUID
 
-from app_iam import app_groups, rows, validate_bindings, validate_group, admission_groups
+from app_iam import (
+    admission_groups,
+    app_groups,
+    rows,
+    validate_bindings,
+    validate_group,
+)
 
 BASE = "https://auth.socrat.alchemmist.xyz/api/v3/"
 OWNER = "alchemmist"

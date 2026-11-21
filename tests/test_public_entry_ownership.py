@@ -1,19 +1,18 @@
 """Migration contracts: exact payload preservation and one owner per resource."""
 
 import copy
+import hashlib
+import json
 import subprocess
+import unittest
+from pathlib import Path
 from typing import NotRequired, TypedDict
 from unittest.mock import patch
 
 import pytest
-
-import hashlib
-import json
-from pathlib import Path
-import unittest
 import yaml
-from tests.public_entry_contract import CHARTS, ROOT, render
 
+from tests.public_entry_contract import CHARTS, ROOT, render
 
 PUBLIC_HANDOFF = "c6121e1975eb6218804a9be43d7c2a8e99584838"
 

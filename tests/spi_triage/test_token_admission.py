@@ -1,10 +1,14 @@
 """SPI-only synthetic payloads and deterministic ledger clocks; no live inference."""
 
-import json, tempfile, time, unittest, os
-from unittest.mock import patch
-from unittest.mock import Mock
+import json
+import os
+import tempfile
+import time
+import unittest
+from unittest.mock import Mock, patch
+
 import test_triage as f
-from core import Store, Failure, MATCH_SCHEMA, REPORT_SCHEMA
+from core import MATCH_SCHEMA, REPORT_SCHEMA, Failure, Store
 from integrations import Model
 
 GOOD = {"issue_number": 0, "reason": "Distinct cause; no supporting overlap.", "confidence": "low"}
@@ -91,7 +95,8 @@ class AdmissionTests(unittest.TestCase):
         assert m.call("test", {"huge": ["x" * 12000] * 5}, MATCH_SCHEMA, time.monotonic() + 20) == GOOD
         h.request.assert_called_once()
         h.reset_mock()
-        import random, string
+        import random
+        import string
 
         rng = random.Random(419)
         noise = "".join(rng.choice(string.ascii_letters + string.digits) for _ in range(60000))
@@ -245,6 +250,7 @@ class AdmissionTests(unittest.TestCase):
     def test_numeric_rate_headers_allowlist_and_durable_metadata(self) -> None:
         'Verify numeric rate headers pass the allowlist durably.'
         import urllib.error
+
         from integrations import HTTP
 
         h = HTTP()

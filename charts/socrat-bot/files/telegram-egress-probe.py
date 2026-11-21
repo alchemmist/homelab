@@ -4,6 +4,7 @@ import json
 import sys
 from collections import deque
 from pathlib import Path
+import subprocess
 import socket
 import ssl
 from datetime import UTC, datetime
@@ -14,12 +15,30 @@ def elapsed(start):
     return round((monotonic() - start) * 1000, 1)
 
 
+def resolve(host):
+    # libc getaddrinfo has no portable timeout. Reap the isolated resolver even
+    # when a nameserver stops answering; a timed-out thread would keep running.
+    program = "import json,socket,sys; print(json.dumps(socket.getaddrinfo(sys.argv[1],443,type=socket.SOCK_STREAM)))"
+    try:
+        result = subprocess.run(
+            [sys.executable, "-c", program, host], capture_output=True, timeout=3
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise TimeoutError("DNS deadline") from exc
+    if result.returncode:
+        raise socket.gaierror("resolution failed")
+    return [
+        (socket.AddressFamily(f), k, p, n, tuple(a))
+        for f, k, p, n, a in json.loads(result.stdout)
+    ]
+
+
 def samples(host, context):
     """Keep each candidate distinct; IPv6 failure does not imply IPv4 failure."""
     row = {"utc": datetime.now(UTC).isoformat(), "host": host}
     start = monotonic()
     try:
-        addresses = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
+        addresses = resolve(host)
     except OSError as exc:
         yield {
             **row,

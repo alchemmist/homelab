@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Offline completeness/drift check of reviewed vendored trees; never downloads or rewrites.
+
 A reviewed Git baseline is NOT independent upstream provenance or a security audit.
 """
 

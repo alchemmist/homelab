@@ -3,6 +3,7 @@
 import unittest
 from pathlib import Path
 from typing import override
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]

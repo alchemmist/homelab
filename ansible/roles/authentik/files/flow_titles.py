@@ -4,9 +4,9 @@
 import argparse
 import json
 import os
-from pathlib import Path
 import socket
 import urllib.request
+from pathlib import Path
 
 TITLES = {
     "default-provider-authorization-explicit-consent": "Redirecting",
