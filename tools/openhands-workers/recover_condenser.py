@@ -9,6 +9,7 @@ import runpy
 import sys
 import uuid
 
+
 def main(lane):
  d=runpy.run_path(str(pathlib.Path(__file__).with_name('worker-dispatch.py')));api=d['api'];parent=d['M'];assert lane in ('transfer-buckets','workbook-month-range');pc=api('conversations/'+parent);root=pathlib.Path(pc['workspace']['working_dir']);reg=root/'.worker-registry';lock=(reg/'lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX);f=reg/(lane+'.json');rec=json.loads(f.read_text());old=rec['id'];c='conversations/'+old;j=api(c);tree=root/'worker-trees'/lane/'monori';assert tree.is_dir() and str(tree)==rec['worktree'];assert j['execution_status']=='error' and j['agent']['condenser']['llm']['model']=='openai/o-deepseek';ev=api(c+'/events/search?sort_order=TIMESTAMP_DESC&limit=6')['items'];assert any(e.get('code')=='NoCondensationAvailableException' and 'o-deepseek' in e.get('detail','') for e in ev)
  name='socrat-mutation-worker-qwen';ps=api('agent-profiles')['profiles'];
