@@ -6,11 +6,7 @@ import hashlib
 import json
 import subprocess
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol, cast
 from urllib.parse import urlsplit
-
-if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
 
 
 def main():
@@ -35,26 +31,9 @@ def main():
         ).read_bytes()
     ).hexdigest()
     passed = 0
+    for ip in ["109.173.40.247", "109.120.141.60"]:
 
-    class Check(Protocol):
-        """Typed signature of the per-IP forced-route curl acceptance probe."""
-
-        def __call__(
-            self,
-            name: str,
-            path: str,
-            status: int,
-            **options: object,
-        ) -> None:
-            """Issue one forced-route request and assert the expectation."""
-
-    def make_check(ip: str) -> Check:
-        def check(
-            name: str,
-            path: str,
-            status: int,
-            **options: object,
-        ) -> None:
+        def check(name, path, status, body=None, headers=(), predicate=None, ip=ip) -> None:
             nonlocal passed
             cmd = [
                 "curl",
@@ -68,24 +47,17 @@ def main():
                 "--write-out",
                 "\n%{http_code}",
             ]
-            body = options.get("body")
             if body is not None:
                 cmd += ["-H", "Content-Type: application/json", "--data", json.dumps(body)]
-            for h in cast("Sequence[str]", options.get("headers", ())):
+            for h in headers:
                 cmd += ["-H", h]
             r = subprocess.run(cmd, capture_output=True, check=True)
             data, code = r.stdout.rsplit(b"\n", 1)
-            predicate = cast("Callable[[bytes], bool] | None", options.get("predicate"))
             assert int(code) == status and (predicate is None or predicate(data)), (
                 f"{ip}: {name} failed ({code.decode()}); URL/body intentionally not logged"
             )
             print(f"PASS {ip}: {name} ({status})")
             passed += 1
-
-        return check
-
-    for ip in ["109.173.40.247", "109.120.141.60"]:
-        check = make_check(ip)
 
         check(
             "shared dashboard HTML",

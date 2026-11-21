@@ -11,6 +11,7 @@ import io
 import json
 import subprocess
 from pathlib import Path
+from typing import cast
 
 from PIL import Image, ImageOps, features
 from PIL import __version__ as pillow_version
@@ -55,7 +56,7 @@ def build(source, output):
             # AVIF inherits ICC from im.info by default; WebP does not. Strip all
             # metadata explicitly so both formats/preview share the same RGB data.
             image.info.clear()
-            record: dict[str, object] = {
+            record = {
                 "id": ident,
                 "source": str(path.relative_to(source)),
                 "sourceSha256": source_hash,
@@ -111,30 +112,24 @@ def build(source, output):
             preview.save(buf, format="WEBP", quality=25, method=6)
             tiny = base64.b64encode(buf.getvalue()).decode()
 
-            def url(key: str) -> str:
+            def url(key) -> str:
                 item = manifest[key]
-                return (
-                    "/-/quiet-mono/v1/"
-                    + str(item["sha256"])[:12]
-                    + "-"
-                    + Path(str(item["path"])).name
+                return cast(
+                    "str",
+                    "/-/quiet-mono/v1/" + item["sha256"][:12] + "-" + Path(item["path"]).name,
                 )
 
-            def layer(
-                label: str,
-                record: dict[str, object] = record,
-                tiny: str = tiny,
-            ) -> str:
+            def layer(label, record=record, tiny=tiny) -> str:
                 return (
                     "background-image:url('"
-                    + url(str(record[label]))
+                    + url(record[label])
                     + "'),url('data:image/webp;base64,"
                     + tiny
                     + "')!important;"
                     + "background-image:image-set(url('"
-                    + url(str(record[label + "Avif"]))
+                    + url(record[label + "Avif"])
                     + "') type('image/avif'),url('"
-                    + url(str(record[label]))
+                    + url(record[label])
                     + "') type('image/webp')),url('data:image/webp;base64,"
                     + tiny
                     + "')!important;"

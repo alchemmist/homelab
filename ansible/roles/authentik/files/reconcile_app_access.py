@@ -17,6 +17,7 @@ import socket
 import tempfile
 import urllib.error
 import urllib.request
+from typing import cast
 
 from app_iam import GROUP_MARKER, rows, validate_group
 
@@ -352,14 +353,12 @@ def execute(api, state, services, expected, receipt):
     for path in ("core/groups/", "core/applications/", "policies/bindings/"):
         after_by = unique(after[path], "pk")
 
-        def owned_fields(
-            value: dict[str, object] | None, path: str = path
-        ) -> dict[str, object] | None:
+        def owned_fields(value, path=path) -> object:
             # ApplicationSerializer embeds a read-only provider_obj which changes
             # when we update that provider's scopes; it is not an app write.
             if path == "core/applications/" and value is not None:
                 return {k: v for k, v in value.items() if k != "provider_obj"}
-            return value
+            return cast("object", value)
 
         require(
             all(owned_fields(after_by.get(old["pk"])) == owned_fields(old) for old in state[path]),
@@ -372,7 +371,7 @@ def execute(api, state, services, expected, receipt):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
+    def redirect_request(self, _req, fp, _code, _msg, _headers, _newurl):
         if fp:
             fp.close()
         raise RuntimeError("API redirect refused")
@@ -390,7 +389,7 @@ def api_for(root):
     token = json.loads(credential.read_text())["AUTHENTIK_BOOTSTRAP_TOKEN"]
     http = urllib.request.build_opener(NoRedirect())
 
-    def api(method, path, data=None):
+    def api(method, path, data=None) -> dict[str, object] | None:
         base = path.split("?")[0]
         allowed = method == "GET" and (
             base in COLLECTIONS or bool(re.fullmatch(r"providers/oauth2/\d+/", base))
@@ -415,7 +414,8 @@ def api_for(root):
         try:
             with http.open(req, timeout=40) as response:
                 raw = response.read()
-                return json.loads(raw) if raw else None
+                document: dict[str, object] | None = json.loads(raw) if raw else None
+                return document
         except urllib.error.HTTPError as e:
             status = e.code
             e.close()
@@ -465,7 +465,7 @@ def main():
         directory = Path(tempfile.mkdtemp(prefix="app-access-", dir=args.root))
         directory.chmod(0o700)
 
-        def receipt(name, value):
+        def receipt(name, value) -> None:
             path = directory / name
             tmp = path.with_suffix(".tmp")
             tmp.write_text(json.dumps(value, indent=2))
