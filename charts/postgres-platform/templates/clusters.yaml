@@ -19,7 +19,7 @@ spec:
   instances: {{ ternary 3 2 (eq $tier "critical") }}
   imageName: {{ $.Values.imageName | quote }}
   monitoring:
-    customQueriesConfigMap: [{name: pg-dr-metrics, key: queries}]
+    customQueriesConfigMap: [{name: cnpg-default-monitoring, key: queries}, {name: pg-dr-metrics, key: queries}]
   enableSuperuserAccess: false
   storage:
     size: {{ ternary "5Gi" "20Gi" (eq $tier "critical") }}
