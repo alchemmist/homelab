@@ -72,12 +72,12 @@ EXECUTABLE_MARKERS = (
 )
 
 
-def require(ok, message):
+def require(ok, message) -> None:
     if not ok:
         raise ValueError(message)
 
 
-def default_facts():
+def default_facts() -> dict[str, object]:
     """Observed hosts. ssh_probe is a TCP connect, not an OpenSSH login."""
     return {
         "schema_version": 1,
@@ -128,14 +128,15 @@ def default_facts():
     }
 
 
-def parse_mib(value):
+def parse_mib(value) -> int:
     match = re.fullmatch(r"([1-9][0-9]*)m", value or "")
-    require(match is not None, "memory limit must look like 96m")
+    if match is None:
+        raise ValueError("memory limit must look like 96m")
     return int(match.group(1))
 
 
-def client_image():
-    item = json.loads(LOCK.read_text())["images"]["client"]
+def client_image() -> str:
+    item: dict[str, str] = json.loads(LOCK.read_text())["images"]["client"]
     require(
         item["repository"] == "netbirdio/netbird" and item["tag"] == "0.82.0",
         "client lock is not the pinned 0.82.0 image",
@@ -155,7 +156,7 @@ def _host_map(facts):
     return {h["name"]: h for h in hosts}
 
 
-def classify(host, address):
+def classify(host, address) -> str:
     ip = ipaddress.ip_address(address)
     owned = {ipaddress.ip_address(item) for item in host["owned"]}
     if ip in owned:
@@ -166,7 +167,7 @@ def classify(host, address):
     return "unreachable"
 
 
-def validate(facts):
+def validate(facts) -> dict[str, object]:
     require(
         isinstance(facts, dict) and facts.get("schema_version") == 1, "unsupported schema_version"
     )
@@ -190,7 +191,7 @@ def validate(facts):
     overlay = ipaddress.ip_network(facts["overlay_cidr"], strict=True)
     require(
         overlay.version == 4
-        and overlay.subnet_of(ipaddress.ip_network("100.64.0.0/10"))
+        and overlay.subnet_of(ipaddress.IPv4Network("100.64.0.0/10"))
         and 16 <= overlay.prefixlen <= 24,
         "overlay must be a CGNAT IPv4 /16 through /24",
     )
@@ -303,10 +304,11 @@ def validate(facts):
         routers == ["socrat-0"],
         "SSH has one routing peer; socrat-2 cannot be a second router for its own address",
     )
-    return facts
+    validated: dict[str, object] = facts
+    return validated
 
 
-def blockers_for(facts):
+def blockers_for(facts) -> tuple[list[str], list[str]]:
     facts = validate(facts)
     hosts = _host_map(facts)
     blockers = []
@@ -349,7 +351,7 @@ def blockers_for(facts):
     return blockers, notes
 
 
-def bind_allowed(address, overlay_cidr):
+def bind_allowed(address, overlay_cidr) -> bool:
     try:
         addr = ipaddress.ip_address(address)
         overlay = ipaddress.ip_network(overlay_cidr, strict=True)
@@ -365,7 +367,7 @@ def bind_allowed(address, overlay_cidr):
     return True
 
 
-def roles(facts):
+def roles(facts) -> dict[str, dict[str, object]]:
     facts = validate(facts)
     hosts = _host_map(facts)
     return {
@@ -432,16 +434,17 @@ cat >"$tmp" <<'NFT'
 """ % (OVERLAY_TOKEN, TABLE, body)
 
 
-def assign_overlay(script, address, overlay_cidr):
+def assign_overlay(script, address, overlay_cidr) -> str:
     require(
         bind_allowed(address, overlay_cidr), "overlay address is not a dedicated NetBird address"
     )
     require(script.count(OVERLAY_TOKEN) >= 1, "firewall script lost its overlay token")
     concrete = str(ipaddress.ip_address(address))
-    return script.replace(OVERLAY_TOKEN, concrete)
+    concrete_script: str = script.replace(OVERLAY_TOKEN, concrete)
+    return concrete_script
 
 
-def firewall_rules(script, chain):
+def firewall_rules(script, chain) -> list[str]:
     rules = []
     for line in script.splitlines():
         if line.startswith("add rule ip %s %s " % (TABLE, chain)):
@@ -761,8 +764,8 @@ def _client_env(facts):
     return "NB_MANAGEMENT_URL=%s\n" % url
 
 
-def assert_clean(filename, content):
-    markers = EXECUTABLE_MARKERS
+def assert_clean(filename, content) -> None:
+    markers: tuple[str, ...] = EXECUTABLE_MARKERS
     if filename == "grafana-frontend.py":
         markers = (
             "/etc/wireguard",
@@ -782,7 +785,7 @@ def assert_clean(filename, content):
         require(marker not in content, "%s contains forbidden marker %s" % (filename, marker))
 
 
-def render_host(host, facts, image):
+def render_host(host, facts, image) -> dict[str, str]:
     runtime = host["runtime"] or "docker"
     files = {
         "netbird-host-router.service": _unit(host, facts, image, runtime),
@@ -836,7 +839,7 @@ def render_host(host, facts, image):
     return files
 
 
-def build(facts):
+def build(facts) -> tuple[dict[str, object], dict[str, dict[str, str]]]:
     facts = validate(facts)
     image = client_image()
     blockers, notes = blockers_for(facts)
@@ -884,7 +887,7 @@ def _outside_worktree(path):
     return not resolved.is_relative_to(ROOT.resolve())
 
 
-def write_plan(out, plan, rendered):
+def write_plan(out, plan, rendered) -> None:
     require(_outside_worktree(out), "--out must be outside the Git worktree")
     target = Path(out)
     require(not target.exists(), "--out must be a new directory")
@@ -924,7 +927,7 @@ OWNED = {
 }
 
 
-def apply_tree(plan_dir, root, host, overlay_ip=None):
+def apply_tree(plan_dir, root, host, overlay_ip=None) -> list[str]:
     plan_dir = Path(plan_dir)
     root = Path(root)
     plan = json.loads((plan_dir / "plan.json").read_text())
@@ -963,7 +966,7 @@ def apply_tree(plan_dir, root, host, overlay_ip=None):
     return written
 
 
-def main(argv):
+def main(argv) -> int:
     parser = argparse.ArgumentParser(
         description="Plan NetBird peers on existing socrat-0 and socrat-2 hosts"
     )

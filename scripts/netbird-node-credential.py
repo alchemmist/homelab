@@ -13,15 +13,18 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import cast
 
 spec = importlib.util.spec_from_file_location(
     "reconcile", Path(__file__).with_name("netbird-node-reconcile.py")
 )
+if spec is None or spec.loader is None:
+    raise RuntimeError("netbird-node-reconcile module missing or unloadable")
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
 
-def credential(result, user_id):
+def credential(result, user_id) -> dict[str, object]:
     metadata = result["personal_access_token"]
     return {
         "user_id": user_id,
@@ -31,7 +34,7 @@ def credential(result, user_id):
     }
 
 
-def renew(folder, config, bootstrap=None):
+def renew(folder, config, bootstrap=None) -> bool:
     path = folder / "credential.json"
     intent = folder / "credential-intent.json"
     mod.require(not intent.exists(), "uncertain prior credential operation; inspect locally")
@@ -94,12 +97,15 @@ def renew(folder, config, bootstrap=None):
     # any ambiguous failure, including failure after the atomic switch.
     mod.atomic(path, new)
     if previous.get("token_id"):
-        runtime.api("DELETE", "users/" + new["user_id"] + "/tokens/" + previous["token_id"])
+        runtime.api(
+            "DELETE",
+            "users/" + cast("str", new["user_id"]) + "/tokens/" + previous["token_id"],
+        )
     intent.unlink()
     return True
 
 
-def main():
+def main() -> None:
     os.umask(0o077)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state-dir", required=True, type=Path)
