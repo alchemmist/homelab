@@ -26,7 +26,7 @@ ENTRANCES = ["109.173.40.247", "109.120.141.60"]
 
 
 class WS:
-    def __init__(self, address):
+    def __init__(self, address: str) -> None:
         self.s = ssl.create_default_context().wrap_socket(
             socket.create_connection((address, 443), timeout=10), server_hostname=HOST
         )
@@ -59,7 +59,7 @@ class WS:
         if expected.lower() not in headers.lower():
             raise ValueError("wrong WS accept")
 
-    def send(self, data, opcode=2):
+    def send(self, data: bytes, opcode: int = 2) -> None:
         n = len(data)
         mask = os.urandom(4)
         head = (
@@ -69,7 +69,7 @@ class WS:
         )
         self.s.sendall(head + mask + bytes(b ^ mask[i % 4] for i, b in enumerate(data)))
 
-    def read(self, n):
+    def read(self, n: int) -> bytes:
         while len(self.buffer) < n:
             data = self.s.recv(4096)
             if not data:
@@ -78,7 +78,7 @@ class WS:
         data, self.buffer = self.buffer[:n], self.buffer[n:]
         return data
 
-    def receive(self):
+    def receive(self) -> bytes:
         for _ in range(8):
             head = self.read(2)
             opcode = head[0] & 15
@@ -98,7 +98,7 @@ class WS:
             return data
         raise ValueError("no relay payload")
 
-    def close(self):
+    def close(self) -> None:
         try:
             self.send(b"", 8)
         finally:

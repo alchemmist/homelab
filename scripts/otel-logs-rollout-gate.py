@@ -27,7 +27,7 @@ def metrics():
     return result
 
 
-def total(data, prefix):
+def total(data: dict[str, float], prefix: str):
     base = prefix.removesuffix("_total")
     names = {k.split("{")[0] for k in data if k.split("{")[0] in (base, base + "_total")}
     if len(names) > 1:

@@ -44,7 +44,7 @@ class EngineStorageTests(unittest.TestCase):
             self.store, self.g, Mock(), Mock(), write=True, storage=self.s, storage_backend="s3"
         )
 
-    def verify(self, key, raw):
+    def verify(self, key: str, raw: bytes) -> dict[str, object]:
         self.assertEqual(self.store.get(self.key)["result"]["publication_backend"], "s3")
         self.g.request.assert_not_called()
         return {
@@ -55,7 +55,7 @@ class EngineStorageTests(unittest.TestCase):
             "verified": True,
         }
 
-    def assert_public_links(self, body, objects):
+    def assert_public_links(self, body: str, objects: list[tuple[str, bytes]]) -> None:
         spec = importlib.util.spec_from_file_location(
             "public_link_gateway",
             Path(__file__).resolve().parents[2] / "services/rustfs_gateway/gateway.py",
@@ -111,7 +111,7 @@ class EngineStorageTests(unittest.TestCase):
     def test_per_file_checkpoint_restart_toggle(self):
         n = [0]
 
-        def upload(k, b):
+        def upload(k: str, b: bytes) -> dict[str, object]:
             n[0] += 1
             if n[0] == 2:
                 raise StorageTransient(2)
@@ -425,7 +425,7 @@ class EngineStorageTests(unittest.TestCase):
                 ]
                 original_save = self.store.save
 
-                def checkpoint(*args, **kwargs):
+                def checkpoint(*args: object, **kwargs: object) -> None:
                     original_save(*args, **kwargs)
                     if args[1] == 3:
                         self.assertIsNotNone(self.store.get(self.key)["intent"])
@@ -450,7 +450,7 @@ class EngineStorageTests(unittest.TestCase):
         key = self.resolved_job()
         self.g.request.side_effect = [{"state": "open"}, {"state": "closed"}]
 
-        def upload(k, b):
+        def upload(k: str, b: bytes) -> dict[str, object]:
             return {
                 "bucket": "spi-evidence",
                 "key": k,
@@ -502,7 +502,7 @@ class EngineStorageTests(unittest.TestCase):
         stored = {}
         posts = []
 
-        def ensure(k, b):
+        def ensure(k: str, b: bytes) -> dict[str, object]:
             if k not in stored:
                 stored[k] = b
                 if len(stored) == 1:
@@ -515,7 +515,7 @@ class EngineStorageTests(unittest.TestCase):
             self.engine.run("publish", self.key)
         self.store.save(self.key, 3, self.store.get(self.key)["result"], state="processing")
 
-        def post(method, path, data):
+        def post(method: str, path: str, data: object) -> dict[str, object]:
             self.assertEqual(
                 len(self.store.get(self.key)["result"]["storage_publication"]["verified"]), 2
             )

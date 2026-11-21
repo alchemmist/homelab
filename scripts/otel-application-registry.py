@@ -10,6 +10,13 @@ import os
 from datetime import UTC, datetime
 from pathlib import Path
 
+
+def _as_kind[T](value: object, kind: type[T]) -> T:
+    if not isinstance(value, kind):
+        raise TypeError
+    return value
+
+
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
     "production_bootstrap", ROOT / "scripts/otel-production-bootstrap.py"
@@ -19,7 +26,17 @@ SPEC.loader.exec_module(BOOTSTRAP)
 PREFIXES = ("OTEL_", "ENABLE_OTEL", "LITELLM_OTEL", "JAEGER_", "ZIPKIN_", "TRACING_")
 
 
-def container_record(namespace, workload, kind, template, container, init=False):
+def container_record(
+    namespace: str,
+    workload: str,
+    kind: str,
+    template: object,
+    container: object,
+    *,
+    init: bool = False,
+):
+    if not isinstance(template, dict) or not isinstance(container, dict):
+        raise TypeError
     names = sorted(
         {
             entry["name"]
@@ -62,7 +79,8 @@ def container_record(namespace, workload, kind, template, container, init=False)
     }
 
 
-def summarize(objects):
+def summarize(objects: object):
+    objects = _as_kind(objects, list)
     records = []
     incarnations = []
     for obj in objects:
@@ -107,7 +125,7 @@ def summarize(objects):
                         kind,
                         template,
                         container,
-                        key == "initContainers",
+                        init=key == "initContainers",
                     )
                 )
     records.sort(

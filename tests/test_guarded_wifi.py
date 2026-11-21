@@ -5,8 +5,12 @@ import io
 import lzma
 from pathlib import Path
 import tempfile
+from typing import TYPE_CHECKING
 import unittest
 from unittest import mock
+
+if TYPE_CHECKING:
+    from _typeshed import Incomplete
 
 SOURCE = (
     Path(__file__).resolve().parents[1] / "ansible/roles/debian_laptop/files/load_guarded_wifi.py"
@@ -55,7 +59,7 @@ class GuardedWifiTests(unittest.TestCase):
             patcher.start()
             self.addCleanup(patcher.stop)
 
-    def run_command(self, command):
+    def run_command(self, command: list[str]) -> bytes:
         self.calls.append(command)
         if command[0] == "dkms":
             return self.status
@@ -63,7 +67,7 @@ class GuardedWifiTests(unittest.TestCase):
             return str(self.module).encode()
         return b""
 
-    def invoke(self, *arguments):
+    def invoke(self, *arguments: str) -> "Incomplete":
         with (
             mock.patch("sys.argv", ["guard", *arguments]),
             contextlib.redirect_stdout(io.StringIO()),
@@ -165,7 +169,7 @@ class ModuleNoteTests(unittest.TestCase):
                 encoded = encode(b"elf-module")
                 source.write_bytes(encoded)
 
-                def objcopy(command):
+                def objcopy(command: list[str]) -> bytes:
                     self.assertEqual(command[:2], ["objcopy", "--dump-section"])
                     self.assertEqual(Path(command[3]).read_bytes(), b"elf-module")
                     self.assertNotEqual(command[3], command[4])
