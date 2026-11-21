@@ -264,11 +264,20 @@ http {
                     "metadata": {"labels": labels},
                     "spec": {
                         "automountServiceAccountToken": False,
+                        "tolerations": [
+                            {
+                                "key": "homelab.io/bootstrap",
+                                "operator": "Equal",
+                                "value": "true",
+                                "effect": "NoSchedule",
+                            }
+                        ],
                         "affinity": {
                             "nodeAffinity": {
-                                "requiredDuringSchedulingIgnoredDuringExecution": {
-                                    "nodeSelectorTerms": [
-                                        {
+                                "preferredDuringSchedulingIgnoredDuringExecution": [
+                                    {
+                                        "weight": 80,
+                                        "preference": {
                                             "matchExpressions": [
                                                 {
                                                     "key": "kubernetes.io/hostname",
@@ -280,15 +289,18 @@ http {
                                                     ],
                                                 }
                                             ]
-                                        }
-                                    ]
-                                }
+                                        },
+                                    }
+                                ]
                             },
                             "podAntiAffinity": {
-                                "requiredDuringSchedulingIgnoredDuringExecution": [
+                                "preferredDuringSchedulingIgnoredDuringExecution": [
                                     {
-                                        "topologyKey": "kubernetes.io/hostname",
-                                        "labelSelector": {"matchLabels": labels},
+                                        "weight": 100,
+                                        "podAffinityTerm": {
+                                            "topologyKey": "kubernetes.io/hostname",
+                                            "labelSelector": {"matchLabels": labels},
+                                        },
                                     }
                                 ]
                             },
