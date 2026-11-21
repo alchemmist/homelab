@@ -15,11 +15,11 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args: object) -> None:
         pass  # no request bodies, credentials or content in logs
 
-    def do_GET(self):
+    def do_GET(self) -> None:
         self.send_response(200 if self.path == "/healthz" else 404)
         self.end_headers()
 
-    def do_POST(self):
+    def do_POST(self) -> None:
         if self.path not in ("/validate", "/generate", "/create-pr") or not hmac.compare_digest(
             self.headers.get("X-Worker-Token", ""), os.environ["WORKER_TOKEN"]
         ):

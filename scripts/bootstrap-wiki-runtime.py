@@ -32,7 +32,7 @@ class Kubernetes:
         value = self.run("-n", namespace, "get", kind, name, "--ignore-not-found", "-o", "json")
         return json.loads(value) if value.strip() else None
 
-    def create(self, resource: Mapping[str, object]):
+    def create(self, resource: Mapping[str, object]) -> None:
         self.run("create", "-f", "-", payload=resource)
 
 
@@ -157,7 +157,7 @@ def bootstrap(kube: Kubernetes, *, skip_legacy_git: bool = False):
     return results
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Create isolated wiki runtime storage and Secret prerequisites without changing routes or deployments"
     )

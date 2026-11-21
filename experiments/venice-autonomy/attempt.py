@@ -179,7 +179,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
     }
 
 
-def continue_openhands(conversation, sandbox, directory, acceptance=None):
+def continue_openhands(conversation, sandbox, directory, acceptance=None) -> str:
     limit = 3 if acceptance is not None else 1
     for round_number in range(limit):
         conversation.run()

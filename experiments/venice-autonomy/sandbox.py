@@ -363,7 +363,7 @@ class Sandbox:
     def serialize(self):
         return {"info": {"environment": self.config, "security": self.security}}
 
-    def close(self):
+    def close(self) -> None:
         import owned_resources
 
         expected = str(self.directory.resolve())

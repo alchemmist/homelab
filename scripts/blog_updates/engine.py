@@ -63,7 +63,7 @@ class _DecisionContext(TypedDict):
     files: list[_DecisionFile]
 
 
-def validate_event(event: _PushEvent):
+def validate_event(event: _PushEvent) -> bool:
     if event.get("repository", {}).get("full_name") != REPO:
         raise UnsafeInput("Unexpected repository")
     if event.get("ref") != "refs/heads/main" or event.get("deleted"):
