@@ -29,6 +29,16 @@ def run(argv, *, data=None, check=True, timeout=180):
     return result
 
 
+class Kube(Protocol):
+    """Callable running `kubectl`, mirroring a types.SimpleNamespace-style wrapper."""
+
+    def __call__(
+        self, *args: str, data: str | None = None, check: bool = True, timeout: int = 180
+    ) -> subprocess.CompletedProcess[str]:
+        """Invoke kubectl with the given arguments."""
+        ...
+
+
 @pytest.fixture(scope="module")
 def cluster(tmp_path_factory):
     directory = tmp_path_factory.mktemp("kind-private")

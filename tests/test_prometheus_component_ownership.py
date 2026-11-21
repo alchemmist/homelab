@@ -10,6 +10,7 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+from typing import cast, TypedDict
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,8 +33,40 @@ yaml.SafeLoader.add_constructor(
 )
 
 
+class _Metadata(TypedDict):
+    name: str
+
+
+class _Probe(TypedDict):
+    exec: dict[str, list[str]]
+
+
+class _Container(TypedDict, total=False):
+    name: str
+    image: str
+    args: list[str]
+    securityContext: dict[str, object]
+    ports: list[dict[str, object]]
+    volumeMounts: list[dict[str, object]]
+    readinessProbe: _Probe
+
+
+class _Spec(TypedDict, total=False):
+    containers: list[_Container]
+    type: str
+    podMetadata: dict[str, dict[str, str]]
+    volumes: list[dict[str, object]]
+
+
+class _RenderedDoc(TypedDict, total=False):
+    kind: str
+    metadata: _Metadata
+    data: dict[str, str]
+    spec: _Spec
+
+
 @lru_cache(maxsize=None)
-def render(name):
+def render(name) -> list[_RenderedDoc]:
     text = subprocess.check_output(
         [
             "helm",
@@ -53,7 +86,7 @@ def render(name):
     ]
 
 
-def key(d):
+def key(d) -> str:
     return "/".join(
         [
             d["kind"],
@@ -65,7 +98,7 @@ def key(d):
     )
 
 
-def software_update_extension(document):
+def software_update_extension(document) -> None:
     """Review the one additive receiver without refreshing any handoff hash."""
     assert document == {
         "apiVersion": "v1",
@@ -106,10 +139,10 @@ def software_update_extension(document):
     }, "Software update receiver scope changed"
 
 
-def migration_payload(document):
+def migration_payload(document) -> dict[str, object]:
     """Check declared runtime overrides before comparing the unchanged handoff payload."""
     if document["kind"] != "Prometheus":
-        return document
+        return cast("dict[str, object]", document)
     result = copy.deepcopy(document)
     spec = result["spec"]
     source = yaml.safe_load((ROOT / "charts/prometheus/values.yaml").read_text())[
@@ -178,10 +211,10 @@ def migration_payload(document):
     extension = {"name": "software-update-otel", "configMap": {"name": "software-update-otel"}}
     assert spec["volumes"].count(extension) == 1
     spec["volumes"].remove(extension)
-    return result
+    return cast("dict[str, object]", result)
 
 
-def test_disjoint_complete_payload_identical_handoff():
+def test_disjoint_complete_payload_identical_handoff() -> None:
     fixture = json.loads((ROOT / "tests/fixtures/prometheus-service-handoff.json").read_text())
     actual = {}
     all_owners = {}
@@ -207,7 +240,7 @@ def test_disjoint_complete_payload_identical_handoff():
     assert actual == fixture
 
 
-def test_each_application_has_only_its_own_runtime():
+def test_each_application_has_only_its_own_runtime() -> None:
     runtime = {
         "Prometheus": "prometheus",
         "Alertmanager": "alertmanager",
@@ -225,7 +258,7 @@ def test_each_application_has_only_its_own_runtime():
             assert not kinds & {"MutatingWebhookConfiguration", "ValidatingWebhookConfiguration"}
 
 
-def test_offline_source_is_immutable_shared_code_not_shared_ownership():
+def test_offline_source_is_immutable_shared_code_not_shared_ownership() -> None:
     archive = ROOT / "charts/_vendor/kube-prometheus-stack-92.10.0.tgz"
     expected = (archive.with_suffix(".sha256")).read_text().split()[0]
     assert hashlib.sha256(archive.read_bytes()).hexdigest() == expected
@@ -252,7 +285,7 @@ def test_offline_source_is_immutable_shared_code_not_shared_ownership():
         assert app["spec"]["syncPolicy"]["automated"] == {"prune": False, "selfHeal": True}
 
 
-def test_aggregate_application_and_values_are_gone():
+def test_aggregate_application_and_values_are_gone() -> None:
     assert not (ROOT / "deploy/argocd/apps/prometheus-stack.yaml").exists()
     assert not (ROOT / "deploy/platform/prometheus-stack").exists()
 
@@ -260,7 +293,7 @@ def test_aggregate_application_and_values_are_gone():
 @pytest.mark.parametrize(
     "violation", ["scrape-target", "second-owner", "otel-image", "otel-mount", "probe", "service"]
 )
-def test_current_extension_projection_rejects_mutations(violation):
+def test_current_extension_projection_rejects_mutations(violation: str) -> None:
     """The historical comparison stays strict after validating each new input."""
     test_disjoint_complete_payload_identical_handoff()
     graphs = {name: copy.deepcopy(render(name)) for name in COMPONENTS}
