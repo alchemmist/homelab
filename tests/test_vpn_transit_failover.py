@@ -336,11 +336,11 @@ def test_failed_websocket_diagnostic_does_not_store_private_path(ctl, monkeypatc
         def sendall(self, data):
             assert b"/test" in data
 
-        def recv(self, n):
+        def recv(self, _n):
             return b"HTTP/1.1 403 Forbidden\r\n"
 
     class Context:
-        def wrap_socket(self, s, server_hostname):
+        def wrap_socket(self, _s, server_hostname):
             assert server_hostname == "vpn.alchemmist.xyz"
             return Connection()
 
