@@ -1,3 +1,5 @@
+"""Tests for OpenTelemetry read boundaries and PKI wiring."""
+
 import importlib.util
 from pathlib import Path
 from types import ModuleType
