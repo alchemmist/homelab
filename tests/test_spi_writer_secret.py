@@ -27,7 +27,7 @@ class WriterSecret(unittest.TestCase):
                 for r in ("root", "reader", "writer")
             }
 
-            def put(name, obj):
+            def put(name, obj) -> None:
                 p = d / name
                 p.write_text(json.dumps(obj))
                 p.chmod(0o600)

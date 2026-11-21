@@ -1,5 +1,5 @@
 """Trusted systemd consumer. Only enrolled repo adapters; never execute issue text here."""
-import fcntl, json, os, re, subprocess, sys, time
+import fcntl, json, os, re, sqlite3, subprocess, sys, time
 import campaign as c
 import restore_worker
 import lifecycle_worker
@@ -26,7 +26,7 @@ def main():
  last=c.query("select v from meta where k='last_admission'") if c.D.exists() else []
  prior=int(last[0]['v']) if last else 0;c.ISSUE=next((i for i in reports if i>prior),reports[0]);r=rpc('get')
  revision=(c.R/'report_dispatch.py').stat().st_mtime_ns
- rows=r['cards']; c.BACK=[dict(id=str(i+1),family=x['target'],section=x['section']) for i,x in enumerate(rows)];c.init(); allowed=set()
+ rows=r['cards']; c.BACK=[{'id': str(i+1),'family': x['target'],'section': x['section']} for i,x in enumerate(rows)];c.init(); allowed=set()
  for x in rows:
   f,_,num=x['target'].partition('__mutmut_');allowed.update(f+'__mutmut_'+n for n in ([num] if num else c.C.get(f,{}).get('diffs',{})))
  if not allowed:
@@ -39,7 +39,7 @@ def main():
   log=c.A/c.key(t)/'pi-3.log'
   if log.exists() and b'502 Bad Gateway' in log.read_bytes()[-2000:]:c.mark(t,'queued','Recovered prior transport failure, no model verdict')
  c.query("update tasks set state='queued' where pr is null and state in ('screening','survived','authoring','rejected')");c.query("update tasks set state='published' where pr is not null and state in ('authoring','rejected')");c.query("update tasks set state='publication_uncertain' where state='publishing'");cache=0;nextrepair=0
- def sync(active=''):
+ def sync(active='') -> None:
   tasks={x['id']:x for x in c.query('select id,state,pr from tasks')};changes=[]
   for row in rows:
    f,_,n=row['target'].partition('__mutmut_');ids=[f+'__mutmut_'+i for i in ([n] if n else c.C.get(f,{}).get('diffs',{}))];states={tasks[i]['state'] for i in ids if i in tasks};state='processing' if active in ids else 'partial' if 'queued' in states and len(states)>1 else 'queued' if states=={'queued'} else 'attention' if states-{'published','merged','already_killed','covered_pending_merge'} or not states else 'assessed';changes.append([row['section'],row['target'],state])
@@ -69,5 +69,6 @@ def main():
    except (RuntimeError,subprocess.TimeoutExpired) as ex:
     cache=0;c.K('judge',['rm','-f','/scratch/campaign-base'],ok=False);c.mark(t,'transport_wait',str(ex)[:360],sha)
    sync()
-  except Exception as ex:print('adapter backoff:',type(ex).__name__,str(ex)[:360],flush=True);time.sleep(45)
+  except (OSError,ValueError,RuntimeError,sqlite3.Error,subprocess.SubprocessError) as ex:
+   print('adapter backoff:',type(ex).__name__,str(ex)[:360],flush=True);time.sleep(45)
 if __name__=='__main__':main()
