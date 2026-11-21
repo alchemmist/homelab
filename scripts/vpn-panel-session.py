@@ -16,12 +16,10 @@ import socket
 import sqlite3
 import subprocess
 import time
-import typing
 import urllib.request
-from collections.abc import Sequence
 from contextlib import closing
 from pathlib import Path
-from typing import cast
+from typing import Protocol, TextIO
 
 spec = importlib.util.spec_from_file_location(
     "inventory", Path(__file__).with_name("vpn-hardening-inventory.py")
@@ -35,35 +33,26 @@ DB = Path("/srv/x-ui-lab/db/x-ui.db")
 KUBE = ["/usr/local/bin/kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml"]
 
 
-class _Credential(TypedDict, total=False):
-    """Machine credential fields consumed by this tool (JSON payloads stay dynamic)."""
-
-    id: object
-    scope: str
-    token: str
-
-
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    @typing.override
-    def redirect_request(self, *args, **kwargs) -> typing.NoReturn:
+    def redirect_request(self, *args, **kwargs):
         raise ValueError("API redirect refused")
 
 
-def command(args, **kwargs) -> str:
+def command(args, **kwargs):
     result = subprocess.run(args, capture_output=True, text=True, timeout=25, **kwargs)
     if result.returncode:
         raise RuntimeError("Native read failed")
-    output: str = result.stdout
-    return output
+    return result.stdout
 
 
-def token_rows(database=DB) -> "list[dict[str, object]]":
+def token_rows(database: Path = DB) -> list[dict[str, object]]:
+    """Read the native api_tokens table read-only ordered by id."""
     with closing(sqlite3.connect(h.check_path(database).as_uri() + "?mode=ro", uri=True)) as con:
         con.row_factory = sqlite3.Row
         return [dict(r) for r in con.execute("SELECT * FROM api_tokens ORDER BY id")]
 
 
-def api_path(database=DB) -> str:
+def api_path(database=DB):
     with closing(sqlite3.connect(h.check_path(database).as_uri() + "?mode=ro", uri=True)) as con:
         settings = dict(con.execute("SELECT key,value FROM settings"))
     path = settings["webBasePath"]
@@ -71,11 +60,10 @@ def api_path(database=DB) -> str:
         raise ValueError("Unexpected API base path")
     if int(settings["webPort"]) != 18082:
         raise ValueError("Unexpected panel port")
-    url: str = "http://127.0.0.1:18082/" + path.strip("/") + "/panel/api"
-    return url
+    return "http://127.0.0.1:18082/" + path.strip("/") + "/panel/api"
 
 
-def request(base, token, method, path, body=None) -> object:
+def request(base, token, method, path, body=None):
     if not re.fullmatch(
         r"/(?:setting/apiTokens(?:/create|/delete/[0-9]+)?|inbounds/(?:list|update/[0-9]+)|clients/(?:add|del/[A-Za-z0-9_.@-]+)|hosts/(?:list|raw|get/[A-Za-z0-9_-]{1,64}|update/[A-Za-z0-9_-]{1,64}))",
         path,
@@ -109,15 +97,14 @@ def request(base, token, method, path, body=None) -> object:
         obj = json.loads(data)
         if obj.get("success") is not True:
             raise ValueError("Native API rejected operation")
-        resolved: object = obj.get("obj")
-        return resolved
-    except (OSError, ValueError, RuntimeError):
+        return obj.get("obj")
+    except Exception:
         raise RuntimeError(
             "Native API operation failed; inspect private receipts, never retry writes blindly"
         ) from None
 
 
-def pod_identity() -> "dict[str, object]":
+def pod_identity():
     items = json.loads(
         command(
             KUBE + ["-n", "x-ui", "get", "pods", "-l", "app.kubernetes.io/name=x-ui", "-o", "json"]
@@ -145,8 +132,55 @@ def pod_identity() -> "dict[str, object]":
     return {"name": p["metadata"]["name"], "uid": p["metadata"]["uid"], "image": IMAGE}
 
 
+class TokenAuditor(Protocol):
+    """Session shape needed to audit temporary and original token rows."""
+
+    database: Path
+    names: dict[str, str]
+    original: list[dict[str, object]]
+
+
+class ReleasableState(Protocol):
+    """Session shape needed to finish cleanup after the audit."""
+
+    state: Path
+    lock: TextIO | None
+
+
+def token_drift_errors(session: TokenAuditor) -> list[str]:
+    """Report any temporary row that remains and any original token drift."""
+    errors: list[str] = []
+    rows = token_rows(session.database)
+    if any(r["name"] in session.names.values() for r in rows):
+        errors.append("temporary-row-remains")
+    # Untouched tokens must remain byte-identical, not just still enabled.
+    original_ids = {r["id"] for r in session.original}
+    if session.original and [r for r in rows if r["id"] in original_ids] != session.original:
+        errors.append("original-token-drift")
+    return errors
+
+
+def finalize_cleanup(session: ReleasableState, errors: list[str]) -> None:
+    """Refuse on any cleanup uncertainty, then release the private state."""
+    if errors:
+        raise RuntimeError("Temporary credential cleanup uncertain; inspect private state")
+    if (session.state / "uncertain.json").exists():
+        h.save(
+            session.state / "credential-cleanup.json",
+            {"temporary_rows_removed": True, "existing_tokens_unchanged": True},
+        )
+        (session.state / "uncertain.json").unlink()
+    for name in ("bootstrap.stdout", "bootstrap.json", "cleanup.json", "worker.json"):
+        path = session.state / name
+        if path.exists():
+            path.unlink()
+    if session.lock:
+        session.lock.close()
+        session.lock = None
+
+
 class NativeSession:
-    def __init__(self, state, database=DB, worker_scope="node-sync") -> None:
+    def __init__(self, state, database=DB, worker_scope="node-sync"):
         if worker_scope not in ("node-sync", "admin"):
             raise ValueError("Unreviewed worker scope")
         self.worker_scope = worker_scope
@@ -157,11 +191,11 @@ class NativeSession:
             raise ValueError("Use a fresh explicit vpn83-* session name")
         self.names = {kind: label + "-" + kind for kind in ("bootstrap", "cleanup", "worker")}
         self.base = None
-        self.credentials: dict[str, _Credential] = {}
-        self.original: list[dict[str, object]] = []
-        self.lock: TextIO | None = None
+        self.credentials = {}
+        self.original = []
+        self.lock = None
 
-    def preview(self) -> "dict[str, object]":
+    def preview(self):
         original = token_rows(self.database)
         if any(r["name"] in self.names.values() for r in original):
             raise ValueError("Temporary token name collision; never rotate")
@@ -175,11 +209,11 @@ class NativeSession:
             "cleanup_ttl_minutes": 30,
         }
 
-    def _save_credential(self, kind, value) -> None:
+    def _save_credential(self, kind, value):
         h.save(self.state / (kind + ".json"), value)
         self.credentials[kind] = value
 
-    def _owned(self, kind) -> "dict[str, object] | None":
+    def _owned(self, kind):
         expected = self.credentials[kind]
         rows = [r for r in token_rows(self.database) if r["id"] == expected["id"]]
         if not rows:
@@ -191,9 +225,9 @@ class NativeSession:
             or row["token"] != hashlib.sha256(expected["token"].encode()).hexdigest()
         ):
             raise ValueError("Credential ownership changed; refusing deletion")
-        return cast("dict[str, object]", row)
+        return row
 
-    def _delete(self, kind, actor) -> None:
+    def _delete(self, kind, actor):
         row = self._owned(kind)
         if row is not None:
             request(
@@ -206,7 +240,7 @@ class NativeSession:
         if self._owned(kind) is not None:
             raise RuntimeError("Credential deletion did not converge")
 
-    def _create(self, kind, scope, minutes, actor) -> None:
+    def _create(self, kind, scope, minutes, actor):
         expires = int(time.time() * 1000) + minutes * 60000
         # Write intent BEFORE remote creation. An ambiguous result stays uncertain.
         h.save(
@@ -220,9 +254,6 @@ class NativeSession:
             "/setting/apiTokens/create",
             {"name": self.names[kind], "scope": scope, "expiresAt": expires},
         )
-        if not isinstance(obj, dict):
-            reason = "Unexpected created credential"
-            raise TypeError(reason)
         if (
             obj.get("name") != self.names[kind]
             or obj.get("scope") != scope
@@ -233,7 +264,7 @@ class NativeSession:
         if self._owned(kind) is None:
             raise RuntimeError("Missing created credential")
 
-    def open(self, approval) -> "NativeSession":
+    def open(self, approval):
         if socket.gethostname() != "socrat-2" or os.geteuid() != 0:
             raise ValueError("Explicit session creation requires root on socrat-2")
         self.state = h.private_directory(self.state)
@@ -252,7 +283,7 @@ class NativeSession:
             raise ValueError("State drift before credential creation")
         h.save(self.state / "before-tokens.json", self.original)
         h.save(self.state / "uncertain.json", {"approval": approval, "names": self.names})
-        p = cast("dict[str, str]", plan["pod"])
+        p = plan["pod"]
         # Native CLI stdout contains a credential. Direct it to a private file,
         # not a terminal, environment, shell argument or exception message.
         fd = os.open(
@@ -302,22 +333,21 @@ class NativeSession:
             self._create("cleanup", "admin", 30, "bootstrap")
             self._delete("bootstrap", "cleanup")
             self._create("worker", self.worker_scope, 20, "cleanup")
-            session: NativeSession = self
+            return self
         except Exception:
             self.cleanup()
             raise
-        else:
-            return session
 
-    def call(self, method, path, body=None) -> object:
+    def call(self, method, path, body=None):
         if path.startswith("/setting/"):
             raise ValueError("Worker cannot use administrative token endpoints")
         if self._owned("worker") is None:
             raise RuntimeError("Worker credential unavailable")
         return request(self.base, self.credentials["worker"]["token"], method, path, body)
 
-    def cleanup(self) -> None:
-        errors = []
+    def cleanup(self):
+        """Revoke every temporary token and prove the untouched rows stayed identical."""
+        errors: list[str] = []
         actor = "cleanup" if "cleanup" in self.credentials else "bootstrap"
         if actor in self.credentials:
             for kind in ("worker", "bootstrap", "cleanup"):
@@ -325,34 +355,13 @@ class NativeSession:
                     continue
                 try:
                     self._delete(kind, actor)
-                except (OSError, ValueError, RuntimeError):
+                except Exception:
                     errors.append(kind)
-        rows = token_rows(self.database)
-        if any(r["name"] in self.names.values() for r in rows):
-            errors.append("temporary-row-remains")
-        # Untouched tokens must remain byte-identical, not just still enabled.
-        original_ids = {r["id"] for r in self.original}
-        if self.original and [r for r in rows if r["id"] in original_ids] != self.original:
-            errors.append("original-token-drift")
-        if errors:
-            raise RuntimeError("Temporary credential cleanup uncertain; inspect private state")
-        if (self.state / "uncertain.json").exists():
-            h.save(
-                self.state / "credential-cleanup.json",
-                {"temporary_rows_removed": True, "existing_tokens_unchanged": True},
-            )
-            (self.state / "uncertain.json").unlink()
-        for name in ("bootstrap.stdout", "bootstrap.json", "cleanup.json", "worker.json"):
-            path = self.state / name
-            if path.exists():
-                path.unlink()
-        if self.lock:
-            self.lock.close()
-            self.lock = None
+        errors.extend(token_drift_errors(self))
+        finalize_cleanup(self, errors)
 
-    def __enter__(self) -> typing.Self:
-        enter: typing.Self = self
-        return enter
+    def __enter__(self):
+        return self
 
-    def __exit__(self, *args) -> None:
+    def __exit__(self, *args):
         self.cleanup()

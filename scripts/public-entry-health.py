@@ -41,34 +41,35 @@ def valid_discovery(data):
     return True
 
 
-def probe(entry, vantage, timeout=3):
-    if entry not in ENTRIES or vantage not in ["home", "vps", "workstation", "external"]:
-        raise ValueError("Unknown owned entry or vantage")
-    if entry == "internal" and vantage != "home":
-        raise ValueError("Private LAN probe is home-only")
-    started = time.monotonic()
+def classify_failure(error):
+    """Map an expected transport, TLS or JSON failure to its failure kind."""
+    if isinstance(error, ssl.SSLCertVerificationError):
+        return "tls_certificate"
+    if isinstance(error, ssl.SSLError):
+        return "tls_error"
+    if isinstance(error, TimeoutError):
+        return "timeout"
+    if isinstance(error, ConnectionRefusedError):
+        return "connection_refused"
+    if isinstance(error, (ValueError, TypeError)):
+        return "invalid_json_or_schema"
+    if isinstance(error, (OSError, http.client.HTTPException)):
+        return "transport_or_http_error"
+    return None
+
+
+def attempt_probe(entry, result, timeout, phase):
+    """Drive one forced-IP probe attempt, updating result through phase states."""
     raw = None
     tls = None
     response = None
-    phase = "tcp"
-    result = {
-        "entry": entry,
-        "vantage": vantage,
-        "checked_at": int(time.time()),
-        "tcp_ok": False,
-        "tls_ok": False,
-        "http_ok": False,
-        "backend_ok": False,
-        "local_only": entry == "internal" or entry == vantage or vantage == "workstation",
-        "evidence": "forced-ip-host-sni; not normal DNS or client-failover acceptance",
-    }
     try:
         raw = socket.create_connection((ENTRIES[entry], 443), timeout=timeout)
         result["tcp_ok"] = True
-        phase = "tls"
+        phase["at"] = "tls"
         tls = ssl.create_default_context().wrap_socket(raw, server_hostname=HOST)
         result["tls_ok"] = True
-        phase = "http"
+        phase["at"] = "http"
         tls.sendall(
             (
                 "GET "
@@ -82,7 +83,7 @@ def probe(entry, vantage, timeout=3):
         response.begin()
         result["http_status"] = response.status
         result["http_ok"] = response.status == 200
-        phase = "body"
+        phase["at"] = "body"
         body = response.read(65537)
         result["body_bytes"] = len(body)
         if len(body) > 65536:
@@ -90,22 +91,10 @@ def probe(entry, vantage, timeout=3):
         elif not result["http_ok"]:
             result["failure_kind"] = "http_status"
         else:
-            phase = "backend_schema"
+            phase["at"] = "backend_schema"
             result["backend_ok"] = valid_discovery(json.loads(body))
             if not result["backend_ok"]:
                 result["failure_kind"] = "unexpected_discovery"
-    except ssl.SSLCertVerificationError:
-        result["failure_kind"] = "tls_certificate"
-    except ssl.SSLError:
-        result["failure_kind"] = "tls_error"
-    except TimeoutError:
-        result["failure_kind"] = "timeout"
-    except ConnectionRefusedError:
-        result["failure_kind"] = "connection_refused"
-    except (ValueError, TypeError):
-        result["failure_kind"] = "invalid_json_or_schema"
-    except (OSError, http.client.HTTPException):
-        result["failure_kind"] = "transport_or_http_error"
     finally:
         if response:
             response.close()
@@ -113,8 +102,40 @@ def probe(entry, vantage, timeout=3):
             tls.close()
         elif raw:
             raw.close()
+
+
+def require_known_pair(entry, vantage) -> None:
+    """Fail on unowned entries or vantages, keeping the LAN probe home-only."""
+    if entry not in ENTRIES or vantage not in ["home", "vps", "workstation", "external"]:
+        raise ValueError("Unknown owned entry or vantage")
+    if entry == "internal" and vantage != "home":
+        raise ValueError("Private LAN probe is home-only")
+
+
+def probe(entry, vantage, timeout=3):
+    require_known_pair(entry, vantage)
+    started = time.monotonic()
+    result = {
+        "entry": entry,
+        "vantage": vantage,
+        "checked_at": int(time.time()),
+        "tcp_ok": False,
+        "tls_ok": False,
+        "http_ok": False,
+        "backend_ok": False,
+        "local_only": entry == "internal" or entry == vantage or vantage == "workstation",
+        "evidence": "forced-ip-host-sni; not normal DNS or client-failover acceptance",
+    }
+    phase = {"at": "tcp"}
+    try:
+        attempt_probe(entry, result, timeout, phase)
+    except Exception as error:
+        failure_kind = classify_failure(error)
+        if failure_kind is None:
+            raise
+        result["failure_kind"] = failure_kind
     if not result["backend_ok"]:
-        result["failure_phase"] = phase
+        result["failure_phase"] = phase["at"]
     result["duration_ms"] = round((time.monotonic() - started) * 1000)
     return result
 
