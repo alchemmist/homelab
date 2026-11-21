@@ -1,12 +1,14 @@
 """One direct DNS/TCP/TLS sample per resolved address. Sends no HTTP or bot data."""
 
 import json
+import sys
+from collections import deque
+from pathlib import Path
+import subprocess
 import socket
 import ssl
-import subprocess
-import sys
 from datetime import UTC, datetime
-from time import monotonic
+from time import monotonic, sleep
 
 
 def elapsed(start):
@@ -75,8 +77,40 @@ def samples(host, context):
             }
 
 
+def batch(context):
+    return [
+        row
+        for target in ("api.telegram.org", "example.com")
+        for row in samples(target, context)
+    ]
+
+
+def periodic(context):
+    # Per-address diagnostics stay local. No unbounded container logs or IP labels.
+    batches = deque(maxlen=120)
+    target = Path("/samples/recent.json")
+    storage_failed = False
+    while True:
+        start = monotonic()
+        batches.append(batch(context))
+        temp = target.with_suffix(".tmp")
+        try:
+            temp.write_text(json.dumps(list(batches)))
+            temp.replace(target)
+        except OSError as exc:
+            if not storage_failed:
+                print("sample publication failed:", type(exc).__name__, file=sys.stderr, flush=True)
+            storage_failed = True
+        else:
+            storage_failed = False
+        # Skip missed ticks rather than immediately launching a catch-up batch.
+        sleep(30 - ((monotonic() - start) % 30))
+
+
 if __name__ == "__main__":
     tls = ssl.create_default_context()
-    for target in ("api.telegram.org", "example.com"):
-        for sample in samples(target, tls):
+    if sys.argv[1:] == ["--periodic"]:
+        periodic(tls)
+    else:
+        for sample in batch(tls):
             print(json.dumps(sample), flush=True)

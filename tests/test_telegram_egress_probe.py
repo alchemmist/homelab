@@ -60,3 +60,107 @@ def test_each_distinct_address_is_sampled():
             "192.0.2.1",
             "192.0.2.2",
         ]
+
+
+def test_periodic_chart_isolated_and_bounded():
+    """Only the probe shares the bot network; it gets no bot credentials or ports."""
+    import subprocess
+
+    import yaml
+
+    root = Path(__file__).resolve().parents[1]
+    args = [
+        "helm",
+        "template",
+        "socrat-bot",
+        str(root / "charts/socrat-bot"),
+        "-f",
+        str(root / "deploy/socrat-bot/values.yaml"),
+    ]
+    manifests = list(yaml.safe_load_all(subprocess.check_output(args, text=True)))
+    specs = {
+        d["metadata"]["name"]: d["spec"]["template"]["spec"]
+        for d in manifests
+        if d and d["kind"] == "Deployment"
+    }
+    for name in ("socrat-bot", "socrat-telegram-path-control"):
+        spec = specs[name]
+        probe = next(c for c in spec["containers"] if c["name"] == "telegram-path")
+        assert not {"env", "envFrom", "ports"} & probe.keys()
+        assert {v["name"] for v in probe["volumeMounts"]} == {
+            "probe-code",
+            "probe-samples",
+        }
+        assert spec["automountServiceAccountToken"] is False
+        volume = next(v for v in spec["volumes"] if v["name"] == "probe-samples")
+        assert volume["emptyDir"] == {"medium": "Memory", "sizeLimit": "4Mi"}
+    assert specs["socrat-bot"]["nodeSelector"]["kubernetes.io/hostname"] == "socrat-2"
+    assert (
+        specs["socrat-telegram-path-control"]["nodeSelector"]["kubernetes.io/hostname"]
+        == "socrat-3"
+    )
+
+
+def test_periodic_retains_last_120_batches(tmp_path):
+    """No network, sleeps or pod runtime required."""
+    import json
+
+    rows = iter(range(121))
+    periodic = runpy.run_path(
+        str(Path(__file__).resolve().parents[1] / "scripts/telegram-egress-probe.py")
+    )["periodic"]
+    with patch.dict(
+        periodic.__globals__,
+        {
+            "Path": lambda _: tmp_path / "recent.json",
+            "batch": lambda _: next(rows),
+            "sleep": lambda _: None,
+        },
+    ):
+        try:
+            periodic(None)
+        except StopIteration:
+            pass
+    assert json.loads((tmp_path / "recent.json").read_text()) == list(range(1, 121))
+
+
+def test_streamable_probe_matches_helm_payload():
+    """The standalone stdin entrypoint and chart payload must remain byte-identical."""
+    root = Path(__file__).resolve().parents[1]
+    assert (root / "scripts/telegram-egress-probe.py").read_bytes() == (
+        root / "charts/socrat-bot/files/telegram-egress-probe.py"
+    ).read_bytes()
+
+
+def test_overrun_skips_ticks_and_transient_write_failure_recovers(tmp_path):
+    import json
+
+    periodic = samples.__globals__["periodic"]
+    rows = iter([1, 2])
+    ticks = iter([0, 38, 60, 65, 90])
+    waits = []
+    write = Path.write_text
+
+    def flaky_write(path, data):
+        if not waits:
+            raise OSError("simulated transient failure")
+        return write(path, data)
+
+    with (
+        patch.object(Path, "write_text", flaky_write),
+        patch.dict(
+            periodic.__globals__,
+            {
+                "Path": lambda _: tmp_path / "recent.json",
+                "batch": lambda _: next(rows),
+                "monotonic": lambda: next(ticks),
+                "sleep": waits.append,
+            },
+        ),
+    ):
+        try:
+            periodic(None)
+        except StopIteration:
+            pass
+    assert waits == [22, 25]
+    assert json.loads((tmp_path / "recent.json").read_text()) == [1, 2]
