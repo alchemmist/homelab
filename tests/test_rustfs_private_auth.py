@@ -29,10 +29,10 @@ class PrivateAuth(unittest.TestCase):
             status = 403
             calls = []
 
-            def authorization(self, cookie):
+            def authorization(self, cookie: str):
                 return self.status
 
-            def read(self, key):
+            def read(self, key: str):
                 self.calls.append(key)
                 raise AssertionError("unauthorized object read")
 

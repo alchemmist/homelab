@@ -5,7 +5,11 @@ import json
 from pathlib import Path
 import shutil
 import subprocess
+from typing import TYPE_CHECKING
 import unittest
+
+if TYPE_CHECKING:
+    from _typeshed import Incomplete
 
 import yaml
 
@@ -51,7 +55,7 @@ class InventoryStructureTests(unittest.TestCase):
 
 @unittest.skipUnless(shutil.which("ansible-inventory"), "ansible-inventory is required")
 class ResolvedInventoryTests(unittest.TestCase):
-    def inventory(self, *sources):
+    def inventory(self, *sources: str) -> "Incomplete":
         command = ["ansible-inventory"]
         for source in sources:
             command += ["-i", f"inventory/{source}.yml"]

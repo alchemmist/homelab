@@ -57,7 +57,7 @@ class BackupTests(unittest.TestCase):
 
 
 class BackupDeadlineTests(unittest.TestCase):
-    def run_failure(self, kind):
+    def run_failure(self, kind: str):
         import time
 
         with tempfile.TemporaryDirectory() as d:
