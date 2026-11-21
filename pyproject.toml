@@ -26,4 +26,4 @@ dev = [
 package = false
 
 [tool.uv.sources]
-quality-graph-github = { git = "https://github.com/alchemmist/quality-graph.git", rev = "36940ce12920d073780c6123b55fd81ee941b2ae", subdirectory = "packages/github" }
+quality-graph-github = { git = "https://github.com/alchemmist/quality-graph.git", rev = "5878bce5023da48a9bc3ff5136a4ef0c2536bd5a", subdirectory = "packages/github" }

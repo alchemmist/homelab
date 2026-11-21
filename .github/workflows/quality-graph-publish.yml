@@ -2,47 +2,44 @@
 ---
 name: Quality Graph Publisher
 'on':
-  workflow_run:
-    workflows:
-      - Quality Graph
-    types:
-      - requested
-      - completed
+  schedule:
+    - cron: '3-58/5 * * * *'
   issue_comment:
-    types:
-      - created
-      - edited
+    types: [created, edited]
 permissions: {}
-concurrency:
-  group: quality-graph-publish-${{ github.event.workflow_run.id || github.event.issue.number }}
-  cancel-in-progress: false
 jobs:
   publish:
-    name: Publish Quality Graph
-    if: github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request'
+    name: Reconcile Quality Graph
+    if: github.event_name == 'schedule'
+    concurrency:
+      group: quality-graph-reconcile
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     permissions:
-      actions: read  # Inspect run attempts, jobs and result artifacts.
-      checks: write  # Create and update the aggregate check run.
-      contents: read  # Read trusted declarations at immutable revisions.
-      issues: write  # Manage the PR dashboard, labels and command ledger via the issues API.
-      pull-requests: read  # Resolve the pull request and verify its head and base.
+      actions: read  # Inspect the read-only execution workflow and its result artifacts.
+      checks: write  # Publish the verified aggregate on the exact PR head.
+      contents: read  # Read the declaration at the verified base revision.
+      issues: write  # Maintain the dashboard comment and managed labels.
+      pull-requests: read  # Verify current open PR identity; never modify the PR.
     steps:
-      - name: Publish trusted Quality Graph state
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
+      - name: Reconcile trusted Quality Graph state
+        uses: alchemmist/quality-graph@5878bce5023da48a9bc3ff5136a4ef0c2536bd5a
         with:
-          operation: ${{ github.event.action == 'completed' && 'publish' || 'watch' }}
+          operation: reconcile
   command:
     name: Handle Quality Graph command
     if: github.event_name == 'issue_comment' && github.event.issue.pull_request
+    concurrency:
+      group: quality-graph-command-${{ github.event.issue.number }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     permissions:
-      actions: write  # Rerun failed jobs after command authorization.
-      contents: read  # Read trusted declarations at immutable revisions.
-      issues: write  # Manage the PR dashboard, labels and command ledger via the issues API.
-      pull-requests: read  # Resolve the pull request and verify its head and base.
+      actions: write  # Read run evidence and rerun failed jobs for authorized commands.
+      contents: read  # Read the base declaration for command admission.
+      issues: write  # Manage command replies, reactions and the approval ledger.
+      pull-requests: read  # Read PR metadata; never modify the PR.
     steps:
       - name: Handle trusted Quality Graph command
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
+        uses: alchemmist/quality-graph@5878bce5023da48a9bc3ff5136a4ef0c2536bd5a
         with:
-          operation: command
+          operation: scheduled-command

@@ -580,7 +580,7 @@ dev = [
     { name = "pytest", specifier = "==9.0.3" },
     { name = "pyyaml", specifier = "==6.0.3" },
     { name = "quality-graph-cli", specifier = "==0.2.1" },
-    { name = "quality-graph-github", git = "https://github.com/alchemmist/quality-graph.git?subdirectory=packages%2Fgithub&rev=36940ce12920d073780c6123b55fd81ee941b2ae" },
+    { name = "quality-graph-github", git = "https://github.com/alchemmist/quality-graph.git?subdirectory=packages%2Fgithub&rev=5878bce5023da48a9bc3ff5136a4ef0c2536bd5a" },
     { name = "ruff", specifier = "==0.15.12" },
     { name = "types-pyyaml", specifier = "==6.0.12.20261113" },
     { name = "yamllint", specifier = "==1.38.0" },
@@ -1251,7 +1251,7 @@ wheels = [
 [[package]]
 name = "quality-graph-core"
 version = "0.2.1"
-source = { git = "https://github.com/alchemmist/quality-graph.git?subdirectory=packages%2Fcore&rev=36940ce12920d073780c6123b55fd81ee941b2ae#36940ce12920d073780c6123b55fd81ee941b2ae" }
+source = { git = "https://github.com/alchemmist/quality-graph.git?subdirectory=packages%2Fcore&rev=5878bce5023da48a9bc3ff5136a4ef0c2536bd5a#5878bce5023da48a9bc3ff5136a4ef0c2536bd5a" }
 dependencies = [
     { name = "defusedxml" },
     { name = "pyyaml" },
@@ -1260,7 +1260,7 @@ dependencies = [
 [[package]]
 name = "quality-graph-github"
 version = "0.2.1"
-source = { git = "https://github.com/alchemmist/quality-graph.git?subdirectory=packages%2Fgithub&rev=36940ce12920d073780c6123b55fd81ee941b2ae#36940ce12920d073780c6123b55fd81ee941b2ae" }
+source = { git = "https://github.com/alchemmist/quality-graph.git?subdirectory=packages%2Fgithub&rev=5878bce5023da48a9bc3ff5136a4ef0c2536bd5a#5878bce5023da48a9bc3ff5136a4ef0c2536bd5a" }
 dependencies = [
     { name = "httpx" },
     { name = "jinja2" },

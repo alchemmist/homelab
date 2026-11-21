@@ -207,17 +207,13 @@
     "trusted": false,
     "waiver": false,
     "publisher": ".github/workflows/quality-graph-publish.yml",
-    "compiler": "quality-graph-github 36940ce publisher.yaml.in",
+    "compiler": "quality-graph-github 5878bce5023da48a9bc3ff5136a4ef0c2536bd5a scheduled-publisher.yml.in",
     "triggers": {
-      "workflow_run": {
-        "workflows": [
-          "Quality Graph"
-        ],
-        "types": [
-          "requested",
-          "completed"
-        ]
-      },
+      "schedule": [
+        {
+          "cron": "3-58/5 * * * *"
+        }
+      ],
       "issue_comment": {
         "types": [
           "created",
@@ -245,7 +241,7 @@
       "zizmor/dangerous-triggers",
       "zizmor/undocumented-permissions"
     ],
-    "blocker": "The pinned compiler documents publisher permissions but still relies on workflow_run. qg.yaml cannot replace that trigger. Hand-editing the generated file is overwritten by qg generate. Findings stay blocking; generated workflows are not trusted code."
+    "blocker": "No generated workflow exemption: audit the scheduled publisher, preserve trusted base governance and never grant write permissions to PR execution."
   },
   "vendorPaths": [
     "charts/_vendor",
