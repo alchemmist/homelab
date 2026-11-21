@@ -1,3 +1,4 @@
+"""Sandboxed execution helpers for benchmark tasks, including archive inspection."""
 import io
 import json
 import os

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Watchdog service that detects VPN failures and triggers homelab failover."""
 import argparse
 import base64
 import fcntl

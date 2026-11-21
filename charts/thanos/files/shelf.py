@@ -1,3 +1,4 @@
+"""HTTP service that stores and manages Thanos blocks on the shelf."""
 import json
 import os
 import re

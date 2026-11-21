@@ -1,3 +1,4 @@
+"""Controller that schedules and supervises Venice autonomy benchmark attempts."""
 import argparse
 import fcntl
 import hashlib

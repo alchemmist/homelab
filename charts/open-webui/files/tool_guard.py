@@ -1,3 +1,4 @@
+"""Guarded Open WebUI tool execution with validation and no-progress tracking."""
 import ast
 import asyncio
 import functools

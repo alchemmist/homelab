@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Protocol regression checks comparing candidate edits against the baseline."""
 from __future__ import annotations
 
 import argparse

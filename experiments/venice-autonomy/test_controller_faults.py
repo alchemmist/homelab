@@ -1,3 +1,4 @@
+"""Tests for controller behavior under faults and interruptions."""
 import json
 import os
 import pathlib

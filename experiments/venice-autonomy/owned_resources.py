@@ -1,3 +1,4 @@
+"""Helpers to find and clean up resources owned by benchmark attempts."""
 import json
 import pathlib
 import subprocess
