@@ -3,6 +3,7 @@ import json
 import os
 import secrets
 import subprocess
+from typing import cast
 import sys
 import urllib.error
 import urllib.request
@@ -17,7 +18,7 @@ class BootstrapError(Exception):
     pass
 
 
-def kubectl(arguments, payload=None):
+def kubectl(arguments: list[str], payload: object | None = None) -> dict[str, object] | None:
     result = subprocess.run(
         KUBECTL + arguments,
         input=json.dumps(payload) if payload is not None else None,
@@ -28,16 +29,22 @@ def kubectl(arguments, payload=None):
     )
     if result.returncode:
         raise BootstrapError("Kubernetes operation failed")
-    return json.loads(result.stdout) if result.stdout.strip() else None
+    return cast("dict[str, object]", json.loads(result.stdout)) if result.stdout.strip() else None
 
 
 class Grafana:
-    def __init__(self, url, username, password):
+    def __init__(self, url: str, username: str, password: str) -> None:
         self.url = url
         encoded = base64.b64encode((username + ":" + password).encode()).decode()
         self.authorization = "Basic " + encoded
 
-    def request(self, method, path, payload=None, token=None):
+    def request(
+        self,
+        method: str,
+        path: str,
+        payload: object | None = None,
+        token: str | None = None,
+    ) -> dict[str, object]:
         request = urllib.request.Request(
             self.url + path,
             data=json.dumps(payload).encode() if payload is not None else None,
@@ -49,18 +56,19 @@ class Grafana:
         )
         try:
             with urllib.request.urlopen(request, timeout=20) as response:
-                return json.load(response)
+                return cast("dict[str, object]", json.load(response))
         except urllib.error.HTTPError as error:
             raise BootstrapError("Grafana returned HTTP " + str(error.code)) from None
         except (urllib.error.URLError, TimeoutError, ValueError):
             raise BootstrapError("Grafana request failed") from None
 
 
-def decode_secret(secret):
+def decode_secret(secret: object) -> dict[str, str]:
     try:
+        data = cast("dict[str, object]", secret).get("data", {}) if secret else {}
         return {
             key: base64.b64decode(value, validate=True).decode()
-            for key, value in (secret or {}).get("data", {}).items()
+            for key, value in cast("dict[str, str]", data).items()
         }
     except (ValueError, UnicodeError):
         return {}
@@ -110,6 +118,11 @@ def bootstrap(grafana, existing_secret, persist, has_admin=True):
             return {"changed": changed}
         except BootstrapError:
             pass
+    return {"changed": _issue_credentials(grafana, account_id, values, persist)}
+
+
+def _issue_credentials(grafana, account_id, values, persist):
+    """Create a fresh Grafana token, persist the Secret, and revoke on failure."""
     token = grafana.request(
         "POST",
         "/api/serviceaccounts/" + account_id + "/tokens",
@@ -140,7 +153,7 @@ def bootstrap(grafana, existing_secret, persist, has_admin=True):
                 "Credential persistence failed; newly created token cleanup also failed"
             ) from None
         raise BootstrapError("Credential persistence failed; newly created token revoked") from None
-    return {"changed": True}
+    return True
 
 
 def main():
@@ -149,9 +162,12 @@ def main():
         service = kubectl(
             ["-n", NAMESPACE, "get", "service", "kube-prometheus-stack-grafana", "-o", "json"]
         )
-        address = service["spec"]["clusterIP"]
+        spec = cast("dict[str, object]", service["spec"]) if service else {}
+        address = cast("str", spec["clusterIP"])
         port = next(
-            port["port"] for port in service["spec"]["ports"] if port.get("name") == "http-web"
+            cast("dict[str, object]", entry)["port"]
+            for entry in cast("list[object]", spec["ports"])
+            if cast("dict[str, object]", entry).get("name") == "http-web"
         )
         grafana = Grafana(
             "http://" + address + ":" + str(port),

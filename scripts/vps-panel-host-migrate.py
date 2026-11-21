@@ -14,8 +14,10 @@ import json
 import re
 import sqlite3
 import time
+from collections.abc import Mapping
 from contextlib import closing
 from pathlib import Path
+from typing import cast
 
 _spec = importlib.util.spec_from_file_location(
     "panel_native", Path(__file__).with_name("vpn-panel-session.py")
@@ -33,43 +35,58 @@ ARRAY_FIELDS = {
 }
 
 
-def configuration(database):
+def configuration(database: str | Path):
     with closing(sqlite3.connect(h.check_path(database).as_uri() + "?mode=ro", uri=True)) as source:
         with closing(sqlite3.connect(":memory:")) as snapshot:
             source.backup(snapshot)
             return h.projection(snapshot)
 
 
-def expected_configuration(before, old, new, group_id=None):
-    expected = copy.deepcopy(before)
-    for row in expected["hosts"]:
+def expected_configuration(
+    before: Mapping[str, object],
+    old: str,
+    new: str,
+    group_id: object = None,
+):
+    expected: dict[str, object] = copy.deepcopy(dict(before))
+    for row in cast("list[dict[str, object]]", expected["hosts"]):
         if row["address"] == old and (group_id is None or row["group_id"] == group_id):
             row["address"] = new
     return expected
 
 
-def canonical_projection(config):
-    config = copy.deepcopy(config)
-    for row in config["hosts"]:
+def canonical_projection(config: Mapping[str, object]):
+    copied: dict[str, object] = copy.deepcopy(dict(config))
+    for row in cast("list[dict[str, object]]", copied["hosts"]):
         if "sni_shared_random" in row:
             row["sni_shared_random"] = bool(row["sni_shared_random"])
         for key in ARRAY_FIELDS & row.keys():
-            value = row[key]
+            value: object = row[key]
             if isinstance(value, str):
                 value = json.loads(value) if value else []
             row[key] = [] if value is None else value
         if not row.get("snis") and row.get("sni"):
             row["snis"] = [row["sni"]]
-    return {key: sorted(rows, key=h.canonical) for key, rows in config.items()}
+    return {
+        key: sorted(cast("list[object]", rows), key=h.canonical) for key, rows in copied.items()
+    }
 
 
-def verify_transition(before, after, old, new, group_id=None):
+def verify_transition(
+    before: Mapping[str, object],
+    after: Mapping[str, object],
+    old: str,
+    new: str,
+    group_id: object = None,
+):
     expected = expected_configuration(before, old, new, group_id)
-    actual = {row["id"]: row for row in after["hosts"]}
-    for row in expected["hosts"]:
-        original = next(r for r in before["hosts"] if r["id"] == row["id"])
+    after_hosts = cast("list[dict[str, object]]", after["hosts"])
+    before_hosts = cast("list[dict[str, object]]", before["hosts"])
+    actual = {cast("int | str", row["id"]): row for row in after_hosts}
+    for row in cast("list[dict[str, object]]", expected["hosts"]):
+        original = next(r for r in before_hosts if r["id"] == row["id"])
         changed = original["address"] == old and row["address"] == new
-        observed = actual.get(row["id"], {})
+        observed = actual.get(cast("int | str", row["id"]), {})
         if changed and "updated_at" in row and observed.get("updated_at") != row["updated_at"]:
             stamp = observed.get("updated_at")
             if not isinstance(stamp, (int, float)):
@@ -81,26 +98,27 @@ def verify_transition(before, after, old, new, group_id=None):
     return canonical_projection(after) == canonical_projection(expected)
 
 
-def payload(group, old, new):
-    result = copy.deepcopy(group)
-    if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", result.get("groupId", "")):
+def payload(group: Mapping[str, object], old: str, new: str):
+    result: dict[str, object] = copy.deepcopy(dict(group))
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", cast("str", result.get("groupId", ""))):
         raise ValueError("Invalid host group identity")
-    if not isinstance(result.get("hosts"), list) or not result.get("inboundIds"):
+    hosts = result.get("hosts")
+    if not isinstance(hosts, list) or not result.get("inboundIds"):
         raise ValueError("Unexpected native host DTO")
-    for index, value in enumerate(result["hosts"]):
+    for index, value in enumerate(hosts):
         if value == old:
-            result["hosts"][index] = new
-        elif value.startswith(old + ":"):
-            port = value[len(old) + 1 :]
+            hosts[index] = new
+        elif cast("str", value).startswith(old + ":"):
+            port = cast("str", value)[len(old) + 1 :]
             if not port.isdigit() or not 0 < int(port) < 65536:
                 raise ValueError("Unexpected host port")
-            result["hosts"][index] = new + ":" + port
-    if result["hosts"] == group["hosts"]:
+            hosts[index] = new + ":" + port
+    if hosts == group["hosts"]:
         raise ValueError("Native group does not contain the approved old address")
     return result
 
 
-def preview(state, old, new):
+def preview(state: str | Path, old: str, new: str):
     import ipaddress
 
     if old == new or not all(ipaddress.ip_address(v).is_global for v in (old, new)):
@@ -124,7 +142,7 @@ def preview(state, old, new):
     )
 
 
-def apply(state, old, new, approval):
+def apply(state: str | Path, old: str, new: str, approval: str | None):
     session, before, plan = preview(state, old, new)
     if approval != h.digest(plan):
         raise ValueError("Fresh approved migration hash required")
@@ -210,7 +228,7 @@ if __name__ == "__main__":
                     }
                 )
             )
-    except Exception:
+    except (OSError, ValueError, RuntimeError, ImportError, sqlite3.Error):
         raise SystemExit(
             "Host migration stopped; inspect private receipts and readback, never replay writes blindly."
         ) from None

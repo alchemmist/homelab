@@ -1,3 +1,5 @@
+"""Tests for node throttling tile rendering under load."""
+
 import json
 import os
 from pathlib import Path
@@ -13,13 +15,36 @@ DASHBOARD = ROOT / "charts/monitoring-k3s/dashboards/nodes.json"
 PROMTOOL = os.environ.get("PROMTOOL") or shutil.which("promtool")
 
 
-def panel():
+def _mapping(value: object) -> dict[str, object]:
+    """Validate each JSON key without inventing types for unknown nested fields."""
+    assert isinstance(value, dict)
+    result: dict[str, object] = {}
+    for key, item in value.items():
+        assert isinstance(key, str)
+        result[key] = item
+    return result
+
+
+def _list(value: object) -> list[object]:
+    """Accept only a real JSON array before indexing into it."""
+    assert isinstance(value, list)
+    return value
+
+
+def panel() -> dict[str, object]:
     dashboard = json.loads(DASHBOARD.read_text())
-    return next(item for item in dashboard["panels"] if item.get("id") == 215)
+    return next(
+        _mapping(item)
+        for item in _list(_mapping(dashboard)["panels"])
+        if _mapping(item).get("id") == 215
+    )
 
 
-def fixtures():
-    expr = panel()["targets"][0]["expr"].replace("$node", "socrat-3")
+def fixtures() -> dict[str, object]:
+    target = _mapping(_list(panel()["targets"])[0])
+    expr = target["expr"]
+    assert isinstance(expr, str)
+    expr = expr.replace("$node", "socrat-3")
     source = 'up{job="kubelet",metrics_path="/metrics/cadvisor",instance="node:10250"}'
     ksm = 'up{job="kube-state-metrics"}'
     info = 'kube_node_info{job="kube-state-metrics",node="socrat-3"}'
@@ -33,7 +58,7 @@ def fixtures():
         rules: "0+30x12",
         'kubelet_node_name{job="kubelet",node="socrat-3",instance="node:10250"}': "1x12",
     }
-    cases = [
+    cases: list[tuple[str, dict[str, str | None], int | None]] = [
         ("no CPU quota is not applicable", {}, -1),
         (
             "running init CPU quota requires CFS telemetry",
@@ -87,7 +112,7 @@ def fixtures():
             -1,
         ),
     ]
-    tests = []
+    tests: list[dict[str, object]] = []
     for name, overrides, expected in cases:
         series = healthy | overrides
         tests.append(
@@ -114,16 +139,21 @@ def fixtures():
 
 
 class NodeThrottlingTileTest(unittest.TestCase):
-    def test_not_applicable_and_no_telemetry_are_distinct(self):
-        defaults = panel()["fieldConfig"]["defaults"]
-        mapping = next(item for item in defaults["mappings"] if item["type"] == "value")
-        self.assertEqual(mapping["options"]["-1"]["text"], "N/A")
+    def test_not_applicable_and_no_telemetry_are_distinct(self) -> None:
+        defaults = _mapping(_mapping(panel()["fieldConfig"])["defaults"])
+        mapping = next(
+            entry for entry in _list(defaults["mappings"]) if _mapping(entry)["type"] == "value"
+        )
+        self.assertEqual(_mapping(_mapping(_mapping(mapping)["options"])["-1"])["text"], "N/A")
         self.assertEqual(defaults["noValue"], "No telemetry")
-        self.assertIn("positive CPU limit", panel()["description"])
+        description = panel()["description"]
+        assert isinstance(description, str)
+        self.assertIn("positive CPU limit", description)
 
     @unittest.skipUnless(PROMTOOL, "promtool is not installed; use --generate for remote execution")
-    def test_promql_semantics(self):
+    def test_promql_semantics(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
+            assert PROMTOOL is not None
             path = Path(directory) / "node-throttling.test.yml"
             path.write_text(json.dumps(fixtures()))
             subprocess.run([PROMTOOL, "test", "rules", str(path)], check=True)

@@ -13,6 +13,7 @@ import subprocess
 import time
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 import yaml
 
@@ -24,7 +25,7 @@ WORKERS = {
 K = ["kubectl", "--kubeconfig=/etc/rancher/k3s/k3s.yaml"]
 
 
-def call(args, data=None, timeout=40):
+def call(args, data=None, timeout=40) -> str:
     r = subprocess.run(
         ["ssh", "socrat-0", shlex.join(K + args)],
         input=data,
@@ -34,18 +35,31 @@ def call(args, data=None, timeout=40):
     )
     if r.returncode:
         raise RuntimeError("kubectl failed: " + r.stderr[-400:])
-    return r.stdout
+    output: str = r.stdout
+    return output
 
 
-def get(args):
-    return json.loads(call(args + ["-o", "json"]))
+def get(args) -> object:
+    payload: object = json.loads(call(args + ["-o", "json"]))
+    if not isinstance(payload, dict):
+        reason = "Kubernetes returned a non-object payload"
+        raise TypeError(reason)
+    return payload
 
 
-def worker_pods(name):
-    return get(["get", "pods", "-n", "automation", "-l", "app=" + name])["items"]
+def worker_pods(name) -> "list[dict[str, object]]":
+    payload = get(["get", "pods", "-n", "automation", "-l", "app=" + name])
+    if not isinstance(payload, dict):
+        reason = "Kubernetes returned a non-object pod list"
+        raise TypeError(reason)
+    items = payload["items"]
+    if not isinstance(items, list):
+        reason = "Kubernetes returned a malformed pod list"
+        raise TypeError(reason)
+    return items
 
 
-def idle(pod, seconds=900):
+def idle(pod, seconds=900) -> None:
     # PID1 is the original Python HTTP server, NOT this probe process. Handler
     # threads include in-progress and lock-queued stages. Never read payloads.
     code = "from pathlib import Path; assert Path('/proc/1/comm').read_text().strip().startswith('python'); print(len(list(Path('/proc/1/task').iterdir())))"
@@ -60,7 +74,7 @@ def idle(pod, seconds=900):
     raise RuntimeError("Worker did not reach a proven idle checkpoint")
 
 
-def has_ready_endpoints(slices):
+def has_ready_endpoints(slices) -> bool:
     return any(
         e.get("addresses") and (e.get("conditions") or {}).get("ready") is not False
         for s in (slices.get("items") or [])
@@ -68,7 +82,7 @@ def has_ready_endpoints(slices):
     )
 
 
-def main():
+def main() -> None:
     os.umask(0o077)
     p = argparse.ArgumentParser()
     p.add_argument("worker", choices=WORKERS)
@@ -99,16 +113,19 @@ def main():
         if x and x["metadata"]["name"] == name
     )
     old = worker_pods(name)
-    if len(old) != 1 or old[0]["metadata"].get("deletionTimestamp"):
+    if len(old) != 1 or cast("dict[str, dict[str, object]]", old[0])["metadata"].get(
+        "deletionTimestamp"
+    ):
         raise RuntimeError("Ambiguous old worker")
-    if old[0]["spec"]["nodeName"] == "socrat-5":
+    old_pod = cast("dict[str, dict[str, object]]", old[0])
+    if old_pod["spec"]["nodeName"] == "socrat-5":
         raise RuntimeError("Already on5; inspect, do not replay maintenance")
-    old_name = old[0]["metadata"]["name"]
+    old_name = old_pod["metadata"]["name"]
     idle(old_name)  # no Service pause while waiting for a long stage
     receipt = {
         "worker": name,
         "oldPod": old_name,
-        "oldNode": old[0]["spec"]["nodeName"],
+        "oldNode": old_pod["spec"]["nodeName"],
         "initialIdle": True,
         "sourceRevision": subprocess.check_output(
             ["git", "-C", str(ROOT), "rev-parse", "HEAD"], text=True
@@ -152,13 +169,16 @@ def main():
         new = worker_pods(name)
         if (
             len(new) != 1
-            or new[0]["spec"]["nodeName"] != "socrat-5"
-            or new[0]["metadata"].get("deletionTimestamp")
+            or cast("dict[str, dict[str, object]]", new[0])["spec"]["nodeName"] != "socrat-5"
+            or cast("dict[str, dict[str, object]]", new[0])["metadata"].get("deletionTimestamp")
         ):
             raise RuntimeError("Expected exactly one new worker on5, no old overlap")
+        new_pod = cast("dict[str, dict[str, object]]", new[0])
         health = "import urllib.request; r=urllib.request.urlopen('http://127.0.0.1:8080/healthz',timeout=5); assert r.status==200; print('HEALTH200')"
-        call(["exec", new[0]["metadata"]["name"], "-n", "automation", "--", "python", "-c", health])
-        receipt["newPod"] = new[0]["metadata"]["name"]
+        call(
+            ["exec", new_pod["metadata"]["name"], "-n", "automation", "--", "python", "-c", health]
+        )
+        receipt["newPod"] = new_pod["metadata"]["name"]
         receipt["success"] = True
     finally:
         if paused:
