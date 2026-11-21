@@ -119,22 +119,26 @@ serviceProbes:
     alertName: SocratServiceRancherUnavailable
   - id: grafana
     title: Grafana
-    url: http://kube-prometheus-stack-grafana.cattle-monitoring-system.svc.cluster.local:80/api/health
+    url: >-
+      http://kube-prometheus-stack-grafana.cattle-monitoring-system.svc.cluster.local:80/api/health
     module: http_2xx
     alertName: SocratServiceGrafanaUnavailable
   - id: prometheus
     title: Prometheus
-    url: http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090/-/ready
+    url: >-
+      http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090/-/ready
     module: http_2xx
     alertName: SocratServicePrometheusUnavailable
   - id: alertmanager
     title: Alertmanager
-    url: http://kube-prometheus-stack-alertmanager.cattle-monitoring-system.svc.cluster.local:9093/-/ready
+    url: >-
+      http://kube-prometheus-stack-alertmanager.cattle-monitoring-system.svc.cluster.local:9093/-/ready
     module: http_2xx
     alertName: SocratServiceAlertmanagerUnavailable
   - id: grafana-mcp
     title: Grafana MCP
-    url: http://monitoring-grafana-mcp-health.cattle-monitoring-system.svc.cluster.local:8080/healthz
+    url: >-
+      http://monitoring-grafana-mcp-health.cattle-monitoring-system.svc.cluster.local:8080/healthz
     module: http_2xx
     alertName: SocratServiceGrafanaMcpUnavailable
   - id: edge-home

@@ -5,5 +5,6 @@ groups:
       # Incomplete. Image 1b1148ec1e2a logs chat_session/create on failure only.
       # This is not a count of successful web chats. Do not steer bans from it.
       - record: deeperseeker:web_chats:created:1h
-        expr: |
-          sum(count_over_time({service_name="deeperseeker", k8s_namespace_name="deeperseeker"} |~ "chat_session/create|created chat_session" [1h]))
+        expr: >
+          sum(count_over_time({service_name="deeperseeker", k8s_namespace_name="deeperseeker"} |~
+          "chat_session/create|created chat_session" [1h]))
