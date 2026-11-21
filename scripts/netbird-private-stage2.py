@@ -278,6 +278,6 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except (ValueError, OSError, subprocess.SubprocessError, KeyError, TypeError):
+    except (ValueError, OSError, subprocess.SubprocessError, KeyError, TypeError) as exc:
         print("BLOCKED: stage2 stopped; inspect private journal; no blind write retries")
-        raise SystemExit(2)
+        raise SystemExit(2) from exc

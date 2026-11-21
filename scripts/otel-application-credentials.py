@@ -111,4 +111,4 @@ if __name__ == '__main__':
         run()
     except Exception as error:
         print(json.dumps({'success': False, 'errorType': type(error).__name__, 'secretValuesLogged': False, **OBSERVED_PHASE}))
-        raise SystemExit(1)
+        raise SystemExit(1) from error
