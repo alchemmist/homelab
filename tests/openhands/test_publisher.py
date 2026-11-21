@@ -17,7 +17,7 @@ class Publisher(unittest.TestCase):
    self.assertEqual(api.call_count,1)
  def test_qa_create_rejects_unowned_issue(self):
   with patch.object(m,'api',return_value={'state':'open','user':{'login':'alchemmist'},'body':'ordinary issue'}) as api:
-   with self.assertRaises(ValueError):m.dispatch(dict(action='qa_create',issue=509,head='a'*40,title='Scoped test',files={'web/src/test.ts':'x'}))
+   with self.assertRaises(ValueError):m.dispatch({'action': 'qa_create','issue': 509,'head': 'a'*40,'title': 'Scoped test','files': {'web/src/test.ts':'x'}})
    self.assertEqual(api.call_count,1)
  def test_qa_files_and_credential_filter(self):
   self.assertEqual(len(m.changes({'web/e2e/filter.spec.ts':'abc'},True)),1)

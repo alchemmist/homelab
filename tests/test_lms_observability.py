@@ -93,9 +93,9 @@ def test_renewal_scope_is_only_lms_leaf_and_lms_deployment():
     mod = importlib.util.module_from_spec(spec)
     exec(compile(source, "mirror.py", "exec"), mod.__dict__)
     mod.validate_destination(
-        dict(
-            application="lms", namespace="lms", secret="otel-app-tls-lms", reloadDeployments=["lms"]
-        )
+        {
+            "application": "lms", "namespace": "lms", "secret": "otel-app-tls-lms", "reloadDeployments": ["lms"]
+        }
     )
     cm = next(d for d in docs if d["kind"] == "ConfigMap")
     assert cm["data"]["mirror.py"] == source

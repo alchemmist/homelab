@@ -97,9 +97,9 @@ def _request(opener, base, path, credential=None, read_json=False):
         return error.code, None
 
 
-def _require_key_state(request, token):
+def _require_key_state(request, token, master):
     """Require the existing key restricted to metrics and still enforced."""
-    status, info = request("/key/info?" + urllib.parse.urlencode({"key": token}), True)
+    status, info = request("/key/info?" + urllib.parse.urlencode({"key": token}), master, True)
     if status != 200 or info.get("info", {}).get("allowed_routes") != ["/metrics"]:
         raise RuntimeError("Existing key must be restricted to metrics")
     if request("/metrics")[0] not in (401, 403):
@@ -142,12 +142,7 @@ def verify(args, runner=None, opener=None):
     def request(path, credential=None, read_json=False):
         return _request(opener, base, path, credential, read_json)
 
-    _require_key_state(
-        lambda path, credential=None, read_json=False: _request(
-            opener, base, path, credential, read_json
-        ),
-        token,
-    )
+    _require_key_state(request, token, master)
     return False
 
 

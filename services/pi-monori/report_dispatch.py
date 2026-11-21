@@ -26,7 +26,7 @@ def main():
  last=c.query("select v from meta where k='last_admission'") if c.D.exists() else []
  prior=int(last[0]['v']) if last else 0;c.ISSUE=next((i for i in reports if i>prior),reports[0]);r=rpc('get')
  revision=(c.R/'report_dispatch.py').stat().st_mtime_ns
- rows=r['cards']; c.BACK=[dict(id=str(i+1),family=x['target'],section=x['section']) for i,x in enumerate(rows)];c.init(); allowed=set()
+ rows=r['cards']; c.BACK=[{'id': str(i+1),'family': x['target'],'section': x['section']} for i,x in enumerate(rows)];c.init(); allowed=set()
  for x in rows:
   f,_,num=x['target'].partition('__mutmut_');allowed.update(f+'__mutmut_'+n for n in ([num] if num else c.C.get(f,{}).get('diffs',{})))
  if not allowed:
