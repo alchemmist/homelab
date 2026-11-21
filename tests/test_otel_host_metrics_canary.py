@@ -15,10 +15,12 @@ spec.loader.exec_module(canary)
 
 
 def log(message, **fields):
+    """Test behavior for log."""
     return "2026-10-30T20:33:41.405+0300\terror\t" + message + "\t" + json.dumps(fields)
 
 
 def shutdown():
+    """Test behavior for shutdown."""
     return log(
         "Exporting failed. Dropping data.",
         resource={"service.version": "0.164.0"},

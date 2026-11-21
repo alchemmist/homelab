@@ -19,6 +19,7 @@ POLICY_FIXTURE = ROOT / "tests/fixtures/retired-otel/policy.json"
 
 
 def fixtures():
+    """Test behavior for fixtures."""
     policy = json.loads((POLICY_FIXTURE).read_text())
     for key in (
         "diskProjectionVerified",

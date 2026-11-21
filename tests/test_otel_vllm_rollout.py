@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def module():
+    """Test behavior for module."""
     spec = importlib.util.spec_from_file_location(
         "vllm_rollout", ROOT / "scripts/otel-vllm-sdk-rollout.py"
     )

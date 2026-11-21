@@ -11,6 +11,7 @@ spec.loader.exec_module(capacity)
 
 
 def deployment():
+    """Test behavior for deployment."""
     return {
         "metadata": {
             "namespace": "cattle-fleet-system",

@@ -34,6 +34,7 @@ yaml.SafeLoader.add_constructor(
 
 @lru_cache(maxsize=None)
 def render(name):
+    """Test behavior for render."""
     text = subprocess.check_output(
         [
             "helm",
@@ -54,6 +55,7 @@ def render(name):
 
 
 def key(d):
+    """Test behavior for key."""
     return "/".join(
         [
             d["kind"],
@@ -182,6 +184,7 @@ def migration_payload(document):
 
 
 def test_disjoint_complete_payload_identical_handoff():
+    """Test behavior for test_disjoint_complete_payload_identical_handoff."""
     fixture = json.loads((ROOT / "tests/fixtures/prometheus-service-handoff.json").read_text())
     actual = {}
     all_owners = {}
@@ -208,6 +211,7 @@ def test_disjoint_complete_payload_identical_handoff():
 
 
 def test_each_application_has_only_its_own_runtime():
+    """Test behavior for test_each_application_has_only_its_own_runtime."""
     runtime = {
         "Prometheus": "prometheus",
         "Alertmanager": "alertmanager",
@@ -226,6 +230,7 @@ def test_each_application_has_only_its_own_runtime():
 
 
 def test_offline_source_is_immutable_shared_code_not_shared_ownership():
+    """Test behavior for test_offline_source_is_immutable_shared_code_not_shared_ownership."""
     archive = ROOT / "charts/_vendor/kube-prometheus-stack-92.10.0.tgz"
     expected = (archive.with_suffix(".sha256")).read_text().split()[0]
     assert hashlib.sha256(archive.read_bytes()).hexdigest() == expected
@@ -253,6 +258,7 @@ def test_offline_source_is_immutable_shared_code_not_shared_ownership():
 
 
 def test_aggregate_application_and_values_are_gone():
+    """Test behavior for test_aggregate_application_and_values_are_gone."""
     assert not (ROOT / "deploy/argocd/apps/prometheus-stack.yaml").exists()
     assert not (ROOT / "deploy/platform/prometheus-stack").exists()
 

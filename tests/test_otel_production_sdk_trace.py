@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def module():
+    """Test behavior for module."""
     spec = importlib.util.spec_from_file_location(
         "production_sdk_verify", ROOT / "scripts/otel-application-trace-verify.py"
     )

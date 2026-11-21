@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def module():
+    """Test behavior for module."""
     spec = importlib.util.spec_from_file_location(
         "log_matrix", ROOT / "scripts/otel-log-delivery-matrix.py"
     )

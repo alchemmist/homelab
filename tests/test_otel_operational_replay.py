@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def module():
+    """Test behavior for module."""
     spec = importlib.util.spec_from_file_location(
         "ops_replay", ROOT / "scripts/otel-operational-replay.py"
     )

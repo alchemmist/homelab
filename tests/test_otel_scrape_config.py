@@ -15,6 +15,7 @@ SPEC.loader.exec_module(SCRAPE)
 
 
 def fixtures():
+    """Test behavior for fixtures."""
     cluster = {
         "job_name": "serviceMonitor/llm/vllm/0",
         "scrape_interval": "30s",

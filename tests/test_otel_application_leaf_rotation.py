@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def load():
+    """Test behavior for load."""
     spec = importlib.util.spec_from_file_location(
         "leaf_rotation", ROOT / "scripts/otel-application-leaf-rotation.py"
     )

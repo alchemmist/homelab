@@ -14,6 +14,7 @@ SPEC.loader.exec_module(REGISTRY)
 
 
 def fixtures():
+    """Test behavior for fixtures."""
     monitor = {
         "kind": "ServiceMonitor",
         "metadata": {

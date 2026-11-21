@@ -9,6 +9,7 @@ PARENT = "2" * 16
 
 
 def module():
+    """Test behavior for module."""
     spec = importlib.util.spec_from_file_location(
         "trace_verify", ROOT / "scripts/otel-application-trace-verify.py"
     )
@@ -18,6 +19,7 @@ def module():
 
 
 def document():
+    """Test behavior for document."""
     def resource(service, span):
         return {
             "resource": {

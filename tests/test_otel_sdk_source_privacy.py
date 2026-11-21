@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def load():
+    """Test behavior for load."""
     spec = importlib.util.spec_from_file_location(
         "source_privacy", ROOT / "scripts/otel-sdk-source-privacy.py"
     )
