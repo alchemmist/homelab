@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(path, name):
+def load(path: Path, name: str):
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -77,7 +77,7 @@ class DNSPreflightSafetyTests(unittest.TestCase):
         previous_umask = guard.os.umask(0o077)
         self.addCleanup(guard.os.umask, previous_umask)
 
-        def fixture_permissions(ok, message):
+        def fixture_permissions(ok: object, message: str):
             # Fixture files are user-owned; retain every non-ownership safety check.
             if message not in ("Unsafe renderer", "Unsafe state directory"):
                 require(ok, message)
@@ -88,7 +88,7 @@ class DNSPreflightSafetyTests(unittest.TestCase):
             current.write_text("VALUE = 1\n")
             (base / "proposed.py").write_text("VALUE = 2\n")
 
-            def acquired(fd, operation):
+            def acquired(fd: int, operation: int):
                 self.assertEqual(operation, guard.fcntl.LOCK_EX)
                 # Simulate a prior writer leaving an uncertain marker before releasing its lock.
                 (base / "uncertain.json").write_text("{}")

@@ -34,7 +34,7 @@ def configure(repository: str):
     # Normal DNS, native robot auth and certificate verification. No redirects
     # should be involved in the native registry machine endpoint.
     class NoRedirect(urllib.request.HTTPRedirectHandler):
-        def redirect_request(self, *args, **kwargs):
+        def redirect_request(self, *args: object, **kwargs: object) -> None:
             return None
 
     with urllib.request.build_opener(NoRedirect()).open(request, timeout=15) as response:

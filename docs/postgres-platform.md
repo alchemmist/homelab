@@ -4,7 +4,7 @@ All application writes use the cluster `-rw.postgres.svc.cluster.local` endpoint
 
 Acceptance receipts: Umami 27 table counts; Certification 3 table digests and advancing workflow heartbeats; LMS 11 table digests; Socrat Bot 17 table digests and sequence values (final transfer Job timed out after restore; contents independently compared); LiteLLM 91 table counts and sequences; Authentik 230 table counts and sequences, worker/server TLS and OIDC discovery (first rehearsal failed, retry succeeded); Harbor 49 table digests, sequences and separate robot push/pull. Application ACL audit: each of the seven runtime roles has CONNECT only on its own *application* database, excluding built-in/maintenance databases. This is not CPU, I/O or superuser isolation.
 
-Browser acceptance: the owner confirmed the manual LMS check after the public LMS/OIDC routing fix. This closes the user-side acceptance item; it is not an automated MFA test.
+Browser acceptance: use a private window, open LMS, log in using your own MFA and verify a protected page. Discovery, HTTP redirects and existing sessions do not prove a new login. Do not share credentials or MFA codes.
 
 ## CA rotation
 

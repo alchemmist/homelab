@@ -10,7 +10,7 @@ import urllib.request
 URL = "https://grafana-mcp.socrat.alchemmist.xyz/mcp"
 
 
-def load_token(ssh_host):
+def load_token(ssh_host: str):
     result = subprocess.run(
         [
             "ssh",
@@ -28,7 +28,7 @@ def load_token(ssh_host):
 
 
 class Client:
-    def __init__(self, url, token):
+    def __init__(self, url: str, token: str):
         self.url = url
         self.headers = {
             "Authorization": "Bearer " + token,
@@ -38,7 +38,7 @@ class Client:
         self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         self.sequence = 0
 
-    def request(self, method, params, notify=False):
+    def request(self, method: str, params: object, *, notify: bool = False):
         self.sequence += 1
         body = {"jsonrpc": "2.0", "method": method, "params": params}
         if not notify:
@@ -65,7 +65,7 @@ class Client:
             raise RuntimeError("MCP protocol error")
         return result["result"]
 
-    def tool(self, name, arguments):
+    def tool(self, name: str, arguments: object):
         result = self.request("tools/call", {"name": name, "arguments": arguments})
         if result.get("isError"):
             raise RuntimeError("MCP tool failed: " + name)

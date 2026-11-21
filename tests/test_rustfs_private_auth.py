@@ -13,7 +13,7 @@ class PrivateAuth(unittest.TestCase):
         reader.auth = g.ORIGIN + "/outpost.goauthentik.io/auth/nginx"
 
         class HTTP:
-            def open(self, *args, **kwargs):
+            def open(self, *args: object, **kwargs: object) -> None:
                 raise self.error
 
         reader.http = HTTP()
@@ -29,10 +29,10 @@ class PrivateAuth(unittest.TestCase):
             status = 403
             calls = []
 
-            def authorization(self, cookie):
+            def authorization(self, cookie: str):
                 return self.status
 
-            def read(self, key):
+            def read(self, key: str):
                 self.calls.append(key)
                 raise AssertionError("unauthorized object read")
 

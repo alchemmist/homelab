@@ -1,7 +1,7 @@
 import asyncio
 import json
 import uuid
-from collections.abc import Mapping
+from typing import cast
 
 from open_webui.utils.homelab_tool_guard import REPEAT_STOP_MESSAGE, guard_stopped
 from open_webui.utils.middleware import build_terminal_file_tool_result, execute_tool_call
@@ -14,7 +14,7 @@ from open_webui.utils.tools import (
 )
 
 
-def serialize(result: object):
+def serialize(result):
     if isinstance(result, tuple):
         result = result[0]
     return result if isinstance(result, str) else json.dumps(result)
@@ -47,7 +47,7 @@ async def main():
     changed = "GUARD_AFTER_" + uuid.uuid4().hex
     dispatches = 0
 
-    async def raw(name: str, params: Mapping[str, object]):
+    async def raw(name, params):
         return await execute_tool_server(
             url=server["url"],
             headers=headers,
@@ -57,10 +57,10 @@ async def main():
             server_data=server,
         )
 
-    async def replace(**params):
+    async def replace(**params: object) -> object:
         nonlocal dispatches
         dispatches += 1
-        return await raw("replace_file_content", params)
+        return cast("object", await raw("replace_file_content", params))
 
     metadata = {
         "message_id": str(uuid.uuid4()),
@@ -74,7 +74,7 @@ async def main():
         },
     }
 
-    async def call(params: Mapping[str, object]):
+    async def call(params):
         return await execute_tool_call(
             {"messages": []},
             metadata,
@@ -124,9 +124,9 @@ async def main():
         metadata["message_id"] = str(uuid.uuid4())
         metadata["tools"]["read_file"] = {"type": "terminal", "spec": specs["read_file"]}
 
-        async def read(params: Mapping[str, object]):
-            async def dispatch(**kwargs):
-                return await raw("read_file", params)
+        async def read(params):
+            async def dispatch(**kwargs: object) -> object:
+                return cast("object", await raw("read_file", params))
 
             metadata["tools"]["read_file"]["callable"] = dispatch
             return await execute_tool_call(

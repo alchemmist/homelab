@@ -11,6 +11,7 @@ import re
 import sys
 import urllib.request
 from pathlib import Path
+from typing import TypedDict, Unpack
 
 import yaml
 
@@ -364,6 +365,17 @@ def ingress_allowed(policy, source, port, protocol="TCP"):
     return False
 
 
+class _ManifestFields(TypedDict, total=False):
+    spec: object
+    data: object
+
+
+class _Manifest(_ManifestFields):
+    apiVersion: str
+    kind: str
+    metadata: dict[str, object]
+
+
 def manifests(c, publication="internal", port_forward_cidrs=None):
     """Control plane only. No router, Secret, or Argo Application.
 
@@ -377,8 +389,14 @@ def manifests(c, publication="internal", port_forward_cidrs=None):
     """
     require(publication in ("internal", "edge"), "publication invalid")
 
-    def obj(kind, name, namespace, api="v1", **fields):
-        meta = {"name": name}
+    def obj(
+        kind: str,
+        name: str,
+        namespace: str | None,
+        api: str = "v1",
+        **fields: Unpack[_ManifestFields],
+    ) -> _Manifest:
+        meta: dict[str, object] = {"name": name}
         if namespace:
             meta["namespace"] = namespace
         return {"apiVersion": api, "kind": kind, "metadata": meta, **fields}
@@ -740,17 +758,13 @@ def edge_manifests(c):
     return docs
 
 
-def obj_edge(kind, name, api="v1", **fields):
-    return {
-        "apiVersion": api,
-        "kind": kind,
-        "metadata": {
-            "name": name,
-            "namespace": EDGE,
-            "labels": {"homelab.alchemmist.xyz/netbird": "control-plane"},
-        },
-        **fields,
+def obj_edge(kind: str, name: str, api: str = "v1", **fields: Unpack[_ManifestFields]) -> _Manifest:
+    metadata: dict[str, object] = {
+        "name": name,
+        "namespace": EDGE,
+        "labels": {"homelab.alchemmist.xyz/netbird": "control-plane"},
     }
+    return {"apiVersion": api, "kind": kind, "metadata": metadata, **fields}
 
 
 def ingress(c, name, paths, port, scheme, priority):
