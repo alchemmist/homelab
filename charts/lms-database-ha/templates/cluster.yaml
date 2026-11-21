@@ -1,3 +1,4 @@
+{{- if not .Values.retired }}
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
@@ -53,3 +54,4 @@ spec:
       failoverQuorum: true
   monitoring:
     enablePodMonitor: true
+{{- end }}

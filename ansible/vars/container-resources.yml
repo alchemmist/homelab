@@ -462,7 +462,7 @@ container_resource_policy_profiles:
       limits:
         memory: 4096Mi
         ephemeral-storage: 5Gi
-        cpu: '6'
+        cpu: "6"
     browser-cleanup:
       requests:
         cpu: 5m
@@ -519,20 +519,20 @@ container_resource_policy_profiles:
       limits:
         memory: 768Mi
         ephemeral-storage: 512Mi
-        cpu: '1'
+        cpu: "1"
 - namespace: llm
   ownerKind: ReplicaSet
   ownerPattern: ^vllm-[a-z0-9]+$
   containers:
     vllm:
       requests:
-        cpu: '2'
+        cpu: "2"
         memory: 10240Mi
         ephemeral-storage: 512Mi
       limits:
         memory: 24576Mi
         ephemeral-storage: 4Gi
-        cpu: '8'
+        cpu: "8"
 - namespace: lms
   ownerKind: ReplicaSet
   ownerPattern: ^lms-[a-z0-9]+$

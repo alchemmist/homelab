@@ -1,3 +1,4 @@
+---
 rule_files:
 - container-health.rules.yml
 evaluation_interval: 30s
@@ -19,7 +20,7 @@ tests:
   - expr: ALERTS{alertname="SocratContainerOOMKilled",alertstate="firing"}
     eval_time: 1m30s
     exp_samples:
-    - labels: '{__name__="ALERTS",alertname="SocratContainerOOMKilled",alertstate="firing",container="grafana",namespace="monitoring",node="socrat-1",pod="grafana-test",severity="warning",uid="pod-1"}'
+    - labels: "{__name__=\"ALERTS\",alertname=\"SocratContainerOOMKilled\",alertstate=\"firing\",container=\"grafana\",namespace=\"monitoring\",node=\"socrat-1\",pod=\"grafana-test\",severity=\"warning\",uid=\"pod-1\"}"
       value: 1
   - expr: ALERTS{alertname="SocratContainerOOMKilled",alertstate="firing"}
     eval_time: 11m30s
@@ -31,7 +32,7 @@ tests:
   - series: kube_pod_container_status_last_terminated_reason{job="kube-state-metrics",namespace="monitoring",pod="grafana-test",container="grafana",uid="pod-1",reason="OOMKilled"}
     values: 1x80
   - series: kube_pod_container_status_last_terminated_timestamp{job="kube-state-metrics",namespace="monitoring",pod="grafana-test",container="grafana",uid="pod-1"}
-    values: '0x80'
+    values: "0x80"
   promql_expr_test:
   - expr: ALERTS{alertname="SocratContainerOOMKilled",alertstate="firing"}
     eval_time: 11m
@@ -72,7 +73,7 @@ tests:
   - expr: ALERTS{alertname="SocratContainerRestartsFrequent",alertstate="firing"}
     eval_time: 3m
     exp_samples:
-    - labels: '{__name__="ALERTS",alertname="SocratContainerRestartsFrequent",alertstate="firing",container="grafana",namespace="monitoring",node="socrat-1",pod="grafana-test",severity="warning",uid="pod-1"}'
+    - labels: "{__name__=\"ALERTS\",alertname=\"SocratContainerRestartsFrequent\",alertstate=\"firing\",container=\"grafana\",namespace=\"monitoring\",node=\"socrat-1\",pod=\"grafana-test\",severity=\"warning\",uid=\"pod-1\"}"
       value: 1
 - name: below restart threshold does not fire
   interval: 30s
@@ -104,7 +105,7 @@ tests:
   - expr: ALERTS{alertname="SocratContainerRestartsFrequent",alertstate="firing"}
     eval_time: 3m
     exp_samples:
-    - labels: '{__name__="ALERTS",alertname="SocratContainerRestartsFrequent",alertstate="firing",container="grafana",namespace="monitoring",node="socrat-1",pod="grafana-test",severity="warning",uid="pod-1"}'
+    - labels: "{__name__=\"ALERTS\",alertname=\"SocratContainerRestartsFrequent\",alertstate=\"firing\",container=\"grafana\",namespace=\"monitoring\",node=\"socrat-1\",pod=\"grafana-test\",severity=\"warning\",uid=\"pod-1\"}"
       value: 1
 - name: duplicate state metrics do not duplicate oom alert
   interval: 30s
@@ -124,7 +125,7 @@ tests:
   - expr: ALERTS{alertname="SocratContainerOOMKilled",alertstate="firing"}
     eval_time: 1m30s
     exp_samples:
-    - labels: '{__name__="ALERTS",alertname="SocratContainerOOMKilled",alertstate="firing",container="grafana",namespace="monitoring",node="socrat-1",pod="grafana-test",severity="warning",uid="pod-1"}'
+    - labels: "{__name__=\"ALERTS\",alertname=\"SocratContainerOOMKilled\",alertstate=\"firing\",container=\"grafana\",namespace=\"monitoring\",node=\"socrat-1\",pod=\"grafana-test\",severity=\"warning\",uid=\"pod-1\"}"
       value: 1
 - name: duplicate state metrics do not inflate restart count
   interval: 30s
@@ -138,3 +139,4 @@ tests:
   - expr: ALERTS{alertname="SocratContainerRestartsFrequent",alertstate="firing"}
     eval_time: 3m
     exp_samples: []
+...

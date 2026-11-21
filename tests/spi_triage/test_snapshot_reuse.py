@@ -148,7 +148,7 @@ class ReviewReuseTests(unittest.TestCase):
             m.match(f.event(), issues, proof, lambda p: saved.append(copy.deepcopy(p)))
         self.assertEqual(saved[-1]["selection"], proof["selection"])
         m.call = Mock(
-            side_effect=lambda task, data, *args: dict(
+            side_effect=lambda _task, data, *_args: dict(
                 GOOD, issue_number=data["open_issues"][0]["number"]
             )
         )
@@ -255,12 +255,12 @@ class ChurnPublicationTests(unittest.TestCase):
             )
             model = Model(Mock(), "fake")
             model.call = Mock(
-                side_effect=lambda task, data, *args: dict(
+                side_effect=lambda _task, data, *_args: dict(
                     GOOD,
                     issue_number=1 if any(x["number"] == 1 for x in data["open_issues"]) else 0,
                 )
             )
-            model.analyze = Mock(side_effect=lambda *args: f.report(1))
+            model.analyze = Mock(side_effect=lambda *_args: f.report(1))
             evidence = Mock()
             bundle_count = [0]
 

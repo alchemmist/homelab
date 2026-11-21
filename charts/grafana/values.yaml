@@ -86,10 +86,10 @@ grafana:
         cpu: 10m
         memory: 96Mi
   extraConfigmapMounts:
-  - configMap: socrat-branding
-    mountPath: /usr/share/grafana/public/img/socrat
-    name: socrat-branding
-    readOnly: true
+    - configMap: socrat-branding
+      mountPath: /usr/share/grafana/public/img/socrat
+      name: socrat-branding
+      readOnly: true
   deleteDatasources: []
   additionalDataSources: []
   additionalDataSourcesString: ""
@@ -158,7 +158,7 @@ grafana:
   persistence:
     existingClaim: grafana-socrat5
     accessModes:
-    - ReadWriteOnce
+      - ReadWriteOnce
     enabled: true
     size: 1Gi
     storageClassName: local-path

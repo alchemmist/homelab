@@ -137,7 +137,7 @@ def run(args):
     import time
 
     try:
-        for attempt in range(60):
+        for _attempt in range(60):
             status = json.loads(kube("-n", "lms", "get", "job", name, "-o", "json")).get(
                 "status", {}
             )

@@ -44,7 +44,7 @@ resources:
           - name: AUTH_AUTHORITY
             value: https://netbird.socrat.alchemmist.xyz/oauth2
           - name: USE_AUTH0
-            value: 'false'
+            value: "false"
           - name: AUTH_SUPPORTED_SCOPES
             value: openid profile email groups
           - name: AUTH_REDIRECT_URI
@@ -70,7 +70,7 @@ resources:
             timeoutSeconds: 1
           resources:
             limits:
-              cpu: '1'
+              cpu: "1"
               memory: 768Mi
             requests:
               cpu: 100m
@@ -102,7 +102,7 @@ resources:
     template:
       metadata:
         annotations:
-          kubectl.kubernetes.io/restartedAt: '2026-11-03T15:17:16+03:00'
+          kubectl.kubernetes.io/restartedAt: "2026-11-03T15:17:16+03:00"
         labels:
           app: netbird-server
       spec:
@@ -113,7 +113,7 @@ resources:
           - /etc/netbird/config.yaml
           env:
           - name: NB_SETUP_PAT_ENABLED
-            value: 'false'
+            value: "false"
           image: netbirdio/netbird-server:0.82.0@sha256:7b5b53b2dc8bc25639f791cf72d47cf86911894ff3f8a97cb79bab9be958109c
           imagePullPolicy: IfNotPresent
           livenessProbe:
@@ -150,7 +150,7 @@ resources:
             timeoutSeconds: 1
           resources:
             limits:
-              cpu: '1'
+              cpu: "1"
               memory: 768Mi
             requests:
               cpu: 100m
@@ -373,19 +373,19 @@ resources:
           - name: NB_INTERFACE_NAME
             value: nb-host
           - name: NB_WIREGUARD_PORT
-            value: '51871'
+            value: "51871"
           - name: NB_DISABLE_CLIENT_ROUTES
-            value: 'true'
+            value: "true"
           - name: NB_DISABLE_SERVER_ROUTES
-            value: 'false'
+            value: "false"
           - name: NB_DISABLE_DNS
-            value: 'true'
+            value: "true"
           - name: NB_DISABLE_IPV6
-            value: 'true'
+            value: "true"
           - name: NB_DISABLE_FIREWALL
-            value: 'false'
+            value: "false"
           - name: NB_ALLOW_SERVER_SSH
-            value: 'false'
+            value: "false"
           - name: NB_CONFIG
             value: /etc/netbird/config.json
           - name: NB_LOG_LEVEL
@@ -393,7 +393,7 @@ resources:
           - name: NB_LOG_FILE
             value: /dev/null
           - name: NB_ENABLE_CAPTURE
-            value: 'false'
+            value: "false"
           image: netbirdio/netbird:0.82.0@sha256:eca5b274c635bfbb04ec6724a0712d1146190dd450eea199eeb83916fdd94965
           imagePullPolicy: IfNotPresent
           name: peer
@@ -468,19 +468,19 @@ resources:
           - name: NB_INTERFACE_NAME
             value: nb-host
           - name: NB_WIREGUARD_PORT
-            value: '51871'
+            value: "51871"
           - name: NB_DISABLE_CLIENT_ROUTES
-            value: 'true'
+            value: "true"
           - name: NB_DISABLE_SERVER_ROUTES
-            value: 'false'
+            value: "false"
           - name: NB_DISABLE_DNS
-            value: 'true'
+            value: "true"
           - name: NB_DISABLE_IPV6
-            value: 'true'
+            value: "true"
           - name: NB_DISABLE_FIREWALL
-            value: 'false'
+            value: "false"
           - name: NB_ALLOW_SERVER_SSH
-            value: 'false'
+            value: "false"
           - name: NB_CONFIG
             value: /etc/netbird/config.json
           - name: NB_LOG_LEVEL
@@ -488,7 +488,7 @@ resources:
           - name: NB_LOG_FILE
             value: /dev/null
           - name: NB_ENABLE_CAPTURE
-            value: 'false'
+            value: "false"
           image: netbirdio/netbird:0.82.0@sha256:eca5b274c635bfbb04ec6724a0712d1146190dd450eea199eeb83916fdd94965
           imagePullPolicy: IfNotPresent
           name: peer
@@ -563,19 +563,19 @@ resources:
           - name: NB_INTERFACE_NAME
             value: nb-host
           - name: NB_WIREGUARD_PORT
-            value: '51871'
+            value: "51871"
           - name: NB_DISABLE_CLIENT_ROUTES
-            value: 'true'
+            value: "true"
           - name: NB_DISABLE_SERVER_ROUTES
-            value: 'false'
+            value: "false"
           - name: NB_DISABLE_DNS
-            value: 'true'
+            value: "true"
           - name: NB_DISABLE_IPV6
-            value: 'true'
+            value: "true"
           - name: NB_DISABLE_FIREWALL
-            value: 'false'
+            value: "false"
           - name: NB_ALLOW_SERVER_SSH
-            value: 'false'
+            value: "false"
           - name: NB_CONFIG
             value: /etc/netbird/config.json
           - name: NB_LOG_LEVEL
@@ -583,7 +583,7 @@ resources:
           - name: NB_LOG_FILE
             value: /dev/null
           - name: NB_ENABLE_CAPTURE
-            value: 'false'
+            value: "false"
           image: netbirdio/netbird:0.82.0@sha256:eca5b274c635bfbb04ec6724a0712d1146190dd450eea199eeb83916fdd94965
           imagePullPolicy: IfNotPresent
           name: peer
@@ -658,19 +658,19 @@ resources:
           - name: NB_INTERFACE_NAME
             value: nb-host
           - name: NB_WIREGUARD_PORT
-            value: '51871'
+            value: "51871"
           - name: NB_DISABLE_CLIENT_ROUTES
-            value: 'true'
+            value: "true"
           - name: NB_DISABLE_SERVER_ROUTES
-            value: 'false'
+            value: "false"
           - name: NB_DISABLE_DNS
-            value: 'true'
+            value: "true"
           - name: NB_DISABLE_IPV6
-            value: 'true'
+            value: "true"
           - name: NB_DISABLE_FIREWALL
-            value: 'false'
+            value: "false"
           - name: NB_ALLOW_SERVER_SSH
-            value: 'false'
+            value: "false"
           - name: NB_CONFIG
             value: /etc/netbird/config.json
           - name: NB_LOG_LEVEL
@@ -678,7 +678,7 @@ resources:
           - name: NB_LOG_FILE
             value: /dev/null
           - name: NB_ENABLE_CAPTURE
-            value: 'false'
+            value: "false"
           image: netbirdio/netbird:0.82.0@sha256:eca5b274c635bfbb04ec6724a0712d1146190dd450eea199eeb83916fdd94965
           imagePullPolicy: IfNotPresent
           name: peer
@@ -796,7 +796,7 @@ resources:
     labels:
       homelab.alchemmist.xyz/netbird: control-plane
     annotations:
-      field.cattle.io/publicEndpoints: '[{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder","ingressName":"identity:netbird-http","hostname":"netbird.socrat.alchemmist.xyz","path":"/ws-proxy/","allNodes":false},{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder","ingressName":"identity:netbird-http","hostname":"netbird.socrat.alchemmist.xyz","path":"/relay","allNodes":false},{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder","ingressName":"identity:netbird-http","hostname":"netbird.socrat.alchemmist.xyz","path":"/api/","allNodes":false},{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder","ingressName":"identity:netbird-http","hostname":"netbird.socrat.alchemmist.xyz","path":"/oauth2/","allNodes":false},{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder","ingressName":"identity:netbird-http","hostname":"netbird.socrat.alchemmist.xyz","path":"/","allNodes":false},{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder-grpc","ingressName":"identity:netbird-grpc","hostname":"netbird.socrat.alchemmist.xyz","path":"/management.ManagementService/","allNodes":false},{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder-grpc","ingressName":"identity:netbird-grpc","hostname":"netbird.socrat.alchemmist.xyz","path":"/signalexchange.SignalExchange/","allNodes":false}]'
+      field.cattle.io/publicEndpoints: "[{\"addresses\":[\"192.168.0.23\",\"192.168.0.24\"],\"port\":443,\"protocol\":\"HTTPS\",\"serviceName\":\"identity:netbird-edge-forwarder\",\"ingressName\":\"identity:netbird-http\",\"hostname\":\"netbird.socrat.alchemmist.xyz\",\"path\":\"/ws-proxy/\",\"allNodes\":false},{\"addresses\":[\"192.168.0.23\",\"192.168.0.24\"],\"port\":443,\"protocol\":\"HTTPS\",\"serviceName\":\"identity:netbird-edge-forwarder\",\"ingressName\":\"identity:netbird-http\",\"hostname\":\"netbird.socrat.alchemmist.xyz\",\"path\":\"/relay\",\"allNodes\":false},{\"addresses\":[\"192.168.0.23\",\"192.168.0.24\"],\"port\":443,\"protocol\":\"HTTPS\",\"serviceName\":\"identity:netbird-edge-forwarder\",\"ingressName\":\"identity:netbird-http\",\"hostname\":\"netbird.socrat.alchemmist.xyz\",\"path\":\"/api/\",\"allNodes\":false},{\"addresses\":[\"192.168.0.23\",\"192.168.0.24\"],\"port\":443,\"protocol\":\"HTTPS\",\"serviceName\":\"identity:netbird-edge-forwarder\",\"ingressName\":\"identity:netbird-http\",\"hostname\":\"netbird.socrat.alchemmist.xyz\",\"path\":\"/oauth2/\",\"allNodes\":false},{\"addresses\":[\"192.168.0.23\",\"192.168.0.24\"],\"port\":443,\"protocol\":\"HTTPS\",\"serviceName\":\"identity:netbird-edge-forwarder\",\"ingressName\":\"identity:netbird-http\",\"hostname\":\"netbird.socrat.alchemmist.xyz\",\"path\":\"/\",\"allNodes\":false},{\"addresses\":[\"192.168.0.23\",\"192.168.0.24\"],\"port\":443,\"protocol\":\"HTTPS\",\"serviceName\":\"identity:netbird-edge-forwarder-grpc\",\"ingressName\":\"identity:netbird-grpc\",\"hostname\":\"netbird.socrat.alchemmist.xyz\",\"path\":\"/management.ManagementService/\",\"allNodes\":false},{\"addresses\":[\"192.168.0.23\",\"192.168.0.24\"],\"port\":443,\"protocol\":\"HTTPS\",\"serviceName\":\"identity:netbird-edge-forwarder-grpc\",\"ingressName\":\"identity:netbird-grpc\",\"hostname\":\"netbird.socrat.alchemmist.xyz\",\"path\":\"/signalexchange.SignalExchange/\",\"allNodes\":false}]"
   spec:
     progressDeadlineSeconds: 600
     replicas: 1
@@ -809,7 +809,7 @@ resources:
     template:
       metadata:
         annotations:
-          kubectl.kubernetes.io/restartedAt: '2026-11-02T21:19:25+03:00'
+          kubectl.kubernetes.io/restartedAt: "2026-11-02T21:19:25+03:00"
         labels:
           app: netbird-edge-forwarder
       spec:
@@ -868,7 +868,7 @@ resources:
     name: netbird-relay-home
     namespace: identity
     annotations:
-      field.cattle.io/publicEndpoints: '[{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-relay-home","ingressName":"identity:netbird-relay-home","hostname":"netbird.socrat.alchemmist.xyz","path":"/relay","allNodes":false}]'
+      field.cattle.io/publicEndpoints: "[{\"addresses\":[\"192.168.0.23\",\"192.168.0.24\"],\"port\":443,\"protocol\":\"HTTPS\",\"serviceName\":\"identity:netbird-relay-home\",\"ingressName\":\"identity:netbird-relay-home\",\"hostname\":\"netbird.socrat.alchemmist.xyz\",\"path\":\"/relay\",\"allNodes\":false}]"
   spec:
     progressDeadlineSeconds: 600
     replicas: 1
@@ -893,9 +893,9 @@ resources:
           - name: NB_HEALTH_LISTEN_ADDRESS
             value: :9000
           - name: NB_METRICS_PORT
-            value: '9090'
+            value: "9090"
           - name: NB_ENABLE_STUN
-            value: 'false'
+            value: "false"
           - name: NB_LOG_LEVEL
             value: warn
           - name: NB_LOG_FILE
@@ -963,7 +963,7 @@ resources:
     name: netbird-relay-vps
     namespace: identity
     annotations:
-      field.cattle.io/publicEndpoints: '[{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-relay-vps","ingressName":"identity:netbird-relay-vps","hostname":"netbird-relay-vps.socrat.alchemmist.xyz","path":"/relay","allNodes":false}]'
+      field.cattle.io/publicEndpoints: "[{\"addresses\":[\"192.168.0.23\",\"192.168.0.24\"],\"port\":443,\"protocol\":\"HTTPS\",\"serviceName\":\"identity:netbird-relay-vps\",\"ingressName\":\"identity:netbird-relay-vps\",\"hostname\":\"netbird-relay-vps.socrat.alchemmist.xyz\",\"path\":\"/relay\",\"allNodes\":false}]"
   spec:
     progressDeadlineSeconds: 600
     replicas: 1
@@ -988,9 +988,9 @@ resources:
           - name: NB_HEALTH_LISTEN_ADDRESS
             value: :9000
           - name: NB_METRICS_PORT
-            value: '9090'
+            value: "9090"
           - name: NB_ENABLE_STUN
-            value: 'false'
+            value: "false"
           - name: NB_LOG_LEVEL
             value: warn
           - name: NB_LOG_FILE
@@ -1096,7 +1096,7 @@ resources:
     name: netbird-relay-home
     namespace: identity
     annotations:
-      traefik.ingress.kubernetes.io/service.nativelb: 'true'
+      traefik.ingress.kubernetes.io/service.nativelb: "true"
   spec:
     ports:
     - name: relay
@@ -1114,7 +1114,7 @@ resources:
     name: netbird-relay-vps
     namespace: identity
     annotations:
-      traefik.ingress.kubernetes.io/service.nativelb: 'true'
+      traefik.ingress.kubernetes.io/service.nativelb: "true"
   spec:
     ports:
     - name: relay
@@ -1232,9 +1232,9 @@ resources:
     labels:
       homelab.alchemmist.xyz/netbird: control-plane
     annotations:
-      field.cattle.io/publicEndpoints: '[{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder-grpc","ingressName":"identity:netbird-grpc","hostname":"netbird.socrat.alchemmist.xyz","path":"/management.ManagementService/","allNodes":false},{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder-grpc","ingressName":"identity:netbird-grpc","hostname":"netbird.socrat.alchemmist.xyz","path":"/signalexchange.SignalExchange/","allNodes":false}]'
+      field.cattle.io/publicEndpoints: "[{\"addresses\":[\"192.168.0.23\",\"192.168.0.24\"],\"port\":443,\"protocol\":\"HTTPS\",\"serviceName\":\"identity:netbird-edge-forwarder-grpc\",\"ingressName\":\"identity:netbird-grpc\",\"hostname\":\"netbird.socrat.alchemmist.xyz\",\"path\":\"/management.ManagementService/\",\"allNodes\":false},{\"addresses\":[\"192.168.0.23\",\"192.168.0.24\"],\"port\":443,\"protocol\":\"HTTPS\",\"serviceName\":\"identity:netbird-edge-forwarder-grpc\",\"ingressName\":\"identity:netbird-grpc\",\"hostname\":\"netbird.socrat.alchemmist.xyz\",\"path\":\"/signalexchange.SignalExchange/\",\"allNodes\":false}]"
       traefik.ingress.kubernetes.io/router.entrypoints: websecure
-      traefik.ingress.kubernetes.io/router.priority: '200'
+      traefik.ingress.kubernetes.io/router.priority: "200"
   spec:
     ingressClassName: traefik
     rules:
@@ -1267,9 +1267,9 @@ resources:
     labels:
       homelab.alchemmist.xyz/netbird: control-plane
     annotations:
-      field.cattle.io/publicEndpoints: '[{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder","ingressName":"identity:netbird-http","hostname":"netbird.socrat.alchemmist.xyz","path":"/ws-proxy/","allNodes":false},{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder","ingressName":"identity:netbird-http","hostname":"netbird.socrat.alchemmist.xyz","path":"/relay","allNodes":false},{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder","ingressName":"identity:netbird-http","hostname":"netbird.socrat.alchemmist.xyz","path":"/api/","allNodes":false},{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder","ingressName":"identity:netbird-http","hostname":"netbird.socrat.alchemmist.xyz","path":"/oauth2/","allNodes":false},{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder","ingressName":"identity:netbird-http","hostname":"netbird.socrat.alchemmist.xyz","path":"/","allNodes":false}]'
+      field.cattle.io/publicEndpoints: "[{\"addresses\":[\"192.168.0.23\",\"192.168.0.24\"],\"port\":443,\"protocol\":\"HTTPS\",\"serviceName\":\"identity:netbird-edge-forwarder\",\"ingressName\":\"identity:netbird-http\",\"hostname\":\"netbird.socrat.alchemmist.xyz\",\"path\":\"/ws-proxy/\",\"allNodes\":false},{\"addresses\":[\"192.168.0.23\",\"192.168.0.24\"],\"port\":443,\"protocol\":\"HTTPS\",\"serviceName\":\"identity:netbird-edge-forwarder\",\"ingressName\":\"identity:netbird-http\",\"hostname\":\"netbird.socrat.alchemmist.xyz\",\"path\":\"/relay\",\"allNodes\":false},{\"addresses\":[\"192.168.0.23\",\"192.168.0.24\"],\"port\":443,\"protocol\":\"HTTPS\",\"serviceName\":\"identity:netbird-edge-forwarder\",\"ingressName\":\"identity:netbird-http\",\"hostname\":\"netbird.socrat.alchemmist.xyz\",\"path\":\"/api/\",\"allNodes\":false},{\"addresses\":[\"192.168.0.23\",\"192.168.0.24\"],\"port\":443,\"protocol\":\"HTTPS\",\"serviceName\":\"identity:netbird-edge-forwarder\",\"ingressName\":\"identity:netbird-http\",\"hostname\":\"netbird.socrat.alchemmist.xyz\",\"path\":\"/oauth2/\",\"allNodes\":false},{\"addresses\":[\"192.168.0.23\",\"192.168.0.24\"],\"port\":443,\"protocol\":\"HTTPS\",\"serviceName\":\"identity:netbird-edge-forwarder\",\"ingressName\":\"identity:netbird-http\",\"hostname\":\"netbird.socrat.alchemmist.xyz\",\"path\":\"/\",\"allNodes\":false}]"
       traefik.ingress.kubernetes.io/router.entrypoints: websecure
-      traefik.ingress.kubernetes.io/router.priority: '10'
+      traefik.ingress.kubernetes.io/router.priority: "10"
   spec:
     ingressClassName: traefik
     rules:
@@ -1321,9 +1321,9 @@ resources:
     name: netbird-relay-home
     namespace: identity
     annotations:
-      field.cattle.io/publicEndpoints: '[{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-relay-home","ingressName":"identity:netbird-relay-home","hostname":"netbird.socrat.alchemmist.xyz","path":"/relay","allNodes":false}]'
+      field.cattle.io/publicEndpoints: "[{\"addresses\":[\"192.168.0.23\",\"192.168.0.24\"],\"port\":443,\"protocol\":\"HTTPS\",\"serviceName\":\"identity:netbird-relay-home\",\"ingressName\":\"identity:netbird-relay-home\",\"hostname\":\"netbird.socrat.alchemmist.xyz\",\"path\":\"/relay\",\"allNodes\":false}]"
       traefik.ingress.kubernetes.io/router.entrypoints: websecure
-      traefik.ingress.kubernetes.io/router.priority: '200'
+      traefik.ingress.kubernetes.io/router.priority: "200"
   spec:
     ingressClassName: traefik
     rules:
@@ -1347,9 +1347,9 @@ resources:
     name: netbird-relay-vps
     namespace: identity
     annotations:
-      field.cattle.io/publicEndpoints: '[{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-relay-vps","ingressName":"identity:netbird-relay-vps","hostname":"netbird-relay-vps.socrat.alchemmist.xyz","path":"/relay","allNodes":false}]'
+      field.cattle.io/publicEndpoints: "[{\"addresses\":[\"192.168.0.23\",\"192.168.0.24\"],\"port\":443,\"protocol\":\"HTTPS\",\"serviceName\":\"identity:netbird-relay-vps\",\"ingressName\":\"identity:netbird-relay-vps\",\"hostname\":\"netbird-relay-vps.socrat.alchemmist.xyz\",\"path\":\"/relay\",\"allNodes\":false}]"
       traefik.ingress.kubernetes.io/router.entrypoints: websecure
-      traefik.ingress.kubernetes.io/router.priority: '200'
+      traefik.ingress.kubernetes.io/router.priority: "200"
   spec:
     ingressClassName: traefik
     rules:
@@ -1399,8 +1399,8 @@ resources:
       homelab.alchemmist.xyz/netbird: control-plane
       kubernetes.io/metadata.name: netbird-pilot
     annotations:
-      cattle.io/status: '{"Conditions":[{"Type":"ResourceQuotaInit","Status":"True","Message":"","LastUpdateTime":"2026-11-02T17:12:16Z"},{"Type":"InitialRolesPopulated","Status":"True","Message":"","LastUpdateTime":"2026-11-02T17:12:16Z"}]}'
-      lifecycle.cattle.io/create.namespace-auth: 'true'
+      cattle.io/status: "{\"Conditions\":[{\"Type\":\"ResourceQuotaInit\",\"Status\":\"True\",\"Message\":\"\",\"LastUpdateTime\":\"2026-11-02T17:12:16Z\"},{\"Type\":\"InitialRolesPopulated\",\"Status\":\"True\",\"Message\":\"\",\"LastUpdateTime\":\"2026-11-02T17:12:16Z\"}]}"
+      lifecycle.cattle.io/create.namespace-auth: "true"
       argocd.argoproj.io/sync-options: Prune=false,Delete=false
 - apiVersion: v1
   kind: Namespace
@@ -1409,8 +1409,8 @@ resources:
     labels:
       kubernetes.io/metadata.name: netbird-host-peers
     annotations:
-      cattle.io/status: '{"Conditions":[{"Type":"ResourceQuotaInit","Status":"True","Message":"","LastUpdateTime":"2026-11-03T09:37:33Z"},{"Type":"InitialRolesPopulated","Status":"True","Message":"","LastUpdateTime":"2026-11-03T09:37:33Z"}]}'
-      lifecycle.cattle.io/create.namespace-auth: 'true'
+      cattle.io/status: "{\"Conditions\":[{\"Type\":\"ResourceQuotaInit\",\"Status\":\"True\",\"Message\":\"\",\"LastUpdateTime\":\"2026-11-03T09:37:33Z\"},{\"Type\":\"InitialRolesPopulated\",\"Status\":\"True\",\"Message\":\"\",\"LastUpdateTime\":\"2026-11-03T09:37:33Z\"}]}"
+      lifecycle.cattle.io/create.namespace-auth: "true"
       argocd.argoproj.io/sync-options: Prune=false,Delete=false
 - apiVersion: v1
   kind: PersistentVolumeClaim
@@ -1450,11 +1450,11 @@ resources:
         tolerations:
         - key: homelab.io/bootstrap
           operator: Equal
-          value: 'true'
+          value: "true"
           effect: NoSchedule
         - key: homelab.io/no-nfs
           operator: Equal
-          value: 'true'
+          value: "true"
           effect: NoSchedule
         containers:
         - name: peer
@@ -1467,19 +1467,19 @@ resources:
           - name: NB_INTERFACE_NAME
             value: nb-host
           - name: NB_WIREGUARD_PORT
-            value: '51871'
+            value: "51871"
           - name: NB_DISABLE_CLIENT_ROUTES
-            value: 'true'
+            value: "true"
           - name: NB_DISABLE_SERVER_ROUTES
-            value: 'false'
+            value: "false"
           - name: NB_DISABLE_DNS
-            value: 'true'
+            value: "true"
           - name: NB_DISABLE_IPV6
-            value: 'true'
+            value: "true"
           - name: NB_DISABLE_FIREWALL
-            value: 'false'
+            value: "false"
           - name: NB_ALLOW_SERVER_SSH
-            value: 'false'
+            value: "false"
           - name: NB_CONFIG
             value: /etc/netbird/config.json
           - name: NB_LOG_LEVEL
@@ -1487,7 +1487,7 @@ resources:
           - name: NB_LOG_FILE
             value: /dev/null
           - name: NB_ENABLE_CAPTURE
-            value: 'false'
+            value: "false"
           resources:
             requests:
               memory: 32Mi

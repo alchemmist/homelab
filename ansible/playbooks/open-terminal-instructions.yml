@@ -30,7 +30,11 @@
             block = begin + '\n' + sys.stdin.read().strip() + '\n' + end
             before = path.read_text() if path.exists() else ''
             if begin in before or end in before:
-                if before.count(begin) != 1 or before.count(end) != 1 or before.index(begin) > before.index(end):
+                if (
+                    before.count(begin) != 1
+                    or before.count(end) != 1
+                    or before.index(begin) > before.index(end)
+                ):
                     raise RuntimeError('Invalid managed instruction markers')
                 after = before[:before.index(begin)] + block + before[before.index(end) + len(end):]
             else:

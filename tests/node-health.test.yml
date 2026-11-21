@@ -1,3 +1,4 @@
+---
 rule_files:
 - node-health.rules.yml
 evaluation_interval: 1m
@@ -15,7 +16,7 @@ tests:
     series: kube_node_spec_unschedulable{job="kube-state-metrics",node="test-node"}
     values: 1x30
   - series: kube_node_status_condition{job="kube-state-metrics",node="test-node",condition="Ready",status="true"}
-    values: '0x30'
+    values: "0x30"
   alert_rule_test:
   - eval_time: 14m
     alertname: KubeNodeNotReady
@@ -181,15 +182,15 @@ tests:
   - *id001
   - *id002
   - series: kube_node_spec_unschedulable{job="kube-state-metrics",node="test-node"}
-    values: '0x30'
+    values: "0x30"
   - series: kube_node_status_condition{job="kube-state-metrics",node="test-node",condition="Ready",status="true"}
     values: 1x30
   - series: kube_node_status_condition{job="kube-state-metrics",node="test-node",condition="MemoryPressure",status="true"}
-    values: '0x30'
+    values: "0x30"
   - series: kube_node_status_condition{job="kube-state-metrics",node="test-node",condition="DiskPressure",status="true"}
-    values: '0x30'
+    values: "0x30"
   - series: kube_node_status_condition{job="kube-state-metrics",node="test-node",condition="PIDPressure",status="true"}
-    values: '0x30'
+    values: "0x30"
   alert_rule_test:
   - eval_time: 20m
     alertname: KubeNodeNotReady
@@ -214,3 +215,4 @@ tests:
   - eval_time: 10m
     alertname: SocratNodeMetricsStale
     exp_alerts: []
+...

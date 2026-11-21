@@ -76,7 +76,7 @@ def main():
     if {n["id"] for n in api("GET", "networks")} != {n["id"] for n in state["networks"].values()}:
         raise ValueError("network drift")
     plan = []
-    for host, (name, addresses) in compiler["NETWORKS"].items():
+    for host, (_name, addresses) in compiler["NETWORKS"].items():
         network = state["networks"][host]
         resources = api("GET", "networks/" + network["id"] + "/resources")
         if {r["address"] for r in resources} != set(addresses):
