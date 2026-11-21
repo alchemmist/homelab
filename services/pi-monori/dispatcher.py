@@ -51,7 +51,8 @@ def k(
 
 def sql(q: str, args: Sequence[object] = ()) -> list[dict[str, object]]:
     with contextlib.closing(sqlite3.connect(ROOT / "queue.sqlite")) as d, d:
-        return d.execute(q, args).fetchall()
+        d.row_factory = sqlite3.Row
+        return [dict(row) for row in d.execute(q, args).fetchall()]
 
 
 def phase(name: str, st: str, note: str) -> None:

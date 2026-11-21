@@ -130,7 +130,10 @@ class Homelab:
         if not isinstance(head_object, dict):
             shape = "Unexpected object shape"
             raise GitHubError(shape)
-        main = head_object["sha"]
+        main = head_object.get("sha")
+        if not isinstance(main, str):
+            shape = "Unexpected object shape"
+            raise GitHubError(shape)
         self.api("POST", "git/refs", {"ref": "refs/heads/" + branch, "sha": main})
         _, blob = self.read_page(branch)
         body = {
