@@ -362,6 +362,7 @@ def _apply_brand(
 
 
 def main():
+    'Main.'
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
     parser.add_argument("theme", type=Path)

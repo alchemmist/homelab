@@ -20,6 +20,7 @@ def request_json(
     token: str | None = None,
     payload: object | None = None,
 ) -> object:
+    'Request json.'
     headers = {"Accept": "application/json"}
     if token is not None:
         headers["Authorization"] = f"Bearer {token}"
@@ -185,6 +186,7 @@ def _apply_model_defaults(
 
 
 def configure(args: argparse.Namespace) -> dict[str, object]:
+    'Configure.'
     result: dict[str, object] = {
         "changed": False,
         "skipped": False,
@@ -220,6 +222,7 @@ def configure(args: argparse.Namespace) -> dict[str, object]:
 
 
 def main() -> int:
+    'Main.'
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", required=True)
     parser.add_argument("--max-output-tokens", type=int, default=16384)

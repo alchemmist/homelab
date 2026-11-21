@@ -119,6 +119,7 @@ def bootstrap_is_migration_aware(source: str) -> bool:
 
 
 def save(path: Path, data: object) -> None:
+    'Save.'
     tmp = path.with_name(path.name + ".tmp-" + secrets.token_hex(8))
     fd = os.open(tmp, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     try:
@@ -132,6 +133,7 @@ def save(path: Path, data: object) -> None:
 
 
 def api(token: str, method: str, path: str, data: object | None = None) -> dict[str, object]:
+    'Api.'
     req = urllib.request.Request(
         BASE + path,
         method=method,
@@ -146,6 +148,7 @@ def api(token: str, method: str, path: str, data: object | None = None) -> dict[
 
 
 def exact(token: str, endpoint: str, field: str, value: str) -> dict[str, object] | None:
+    'Exact.'
     payload = api(
         token, "GET", endpoint + "?" + field + "=" + quote(value, safe="") + "&page_size=1000"
     )
@@ -158,6 +161,7 @@ def exact(token: str, endpoint: str, field: str, value: str) -> dict[str, object
 
 
 def verify(token: str, journal: dict[str, object]) -> dict[str, object]:
+    'Verify.'
     user = api(token, "GET", "core/users/" + str(journal["user_pk"]) + "/")
     group = api(token, "GET", "core/groups/" + str(journal["group_pk"]) + "/")
     marker = {"homelab_automation_journal": journal["nonce"]}
@@ -332,6 +336,7 @@ def _ensure_token(old: str, user: dict[str, object], journal: dict[str, object])
 
 
 def migrate(root, action):
+    'Migrate.'
     if root.stat().st_mode & 0o077:
         raise RuntimeError("Deployment directory is not private")
     path = root / "automation-api.json"
