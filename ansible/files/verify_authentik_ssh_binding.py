@@ -64,6 +64,7 @@ def _reject_included_files(arguments: str, seen: set[Path]) -> None:
 
 
 def verify_key_location(name, config=CONFIG):
+    'Verify key location.'
     reject_contextual_config(config)
     parsed = subprocess.run(
         [shutil.which("sshd") or "/usr/sbin/sshd", "-T"], text=True, capture_output=True, check=True
@@ -139,6 +140,7 @@ def _reject_marker_mismatch(marker: Path, name: str, ident: str) -> None:
 
 
 def verify(name, ident, directory=DIRECTORY):
+    'Verify.'
     _reject_bad_username(name)
     _reject_bad_ident(ident)
     try:
@@ -186,6 +188,7 @@ def fingerprints(path):
 
 
 def verify_keys(name, ident, state, expected, directory=DIRECTORY):
+    'Verify keys.'
     if (
         state not in {"present", "disabled"}
         or not isinstance(expected, list)

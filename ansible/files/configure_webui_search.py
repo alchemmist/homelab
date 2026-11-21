@@ -149,6 +149,7 @@ async def _verify_users(desired_permissions: dict[str, object], after_access_gra
 
 
 def configure():
+    'Configure.'
     token = _create_admin_token()
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
