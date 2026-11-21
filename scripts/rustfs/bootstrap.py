@@ -230,4 +230,4 @@ if __name__ == "__main__":
     except Exception:
         raise SystemExit(
             "Bootstrap stopped safely; inspect private state; no secrets or response bodies printed."
-        )
+        ) from None
