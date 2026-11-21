@@ -19,6 +19,7 @@ import time
 import urllib.request
 from contextlib import closing
 from pathlib import Path
+from typing import IO, TypedDict, cast
 
 spec = importlib.util.spec_from_file_location(
     "inventory", Path(__file__).with_name("vpn-hardening-inventory.py")
@@ -37,20 +38,20 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         raise ValueError("API redirect refused")
 
 
-def command(args, **kwargs):
-    result = subprocess.run(args, capture_output=True, text=True, timeout=25, **kwargs)
+def command(args: list[str]):
+    result = subprocess.run(args, capture_output=True, text=True, timeout=25)
     if result.returncode:
         raise RuntimeError("Native read failed")
     return result.stdout
 
 
-def token_rows(database=DB):
+def token_rows(database: Path = DB):
     with closing(sqlite3.connect(h.check_path(database).as_uri() + "?mode=ro", uri=True)) as con:
         con.row_factory = sqlite3.Row
         return [dict(r) for r in con.execute("SELECT * FROM api_tokens ORDER BY id")]
 
 
-def api_path(database=DB):
+def api_path(database: Path = DB):
     with closing(sqlite3.connect(h.check_path(database).as_uri() + "?mode=ro", uri=True)) as con:
         settings = dict(con.execute("SELECT key,value FROM settings"))
     path = settings["webBasePath"]
@@ -61,7 +62,7 @@ def api_path(database=DB):
     return "http://127.0.0.1:18082/" + path.strip("/") + "/panel/api"
 
 
-def request(base, token, method, path, body=None):
+def request(base: str, token: str, method: str, path: str, body: object = None):
     if not re.fullmatch(
         r"/(?:setting/apiTokens(?:/create|/delete/[0-9]+)?|inbounds/(?:list|update/[0-9]+)|clients/(?:add|del/[A-Za-z0-9_.@-]+)|hosts/(?:list|raw|get/[A-Za-z0-9_-]{1,64}|update/[A-Za-z0-9_-]{1,64}))",
         path,
@@ -130,8 +131,15 @@ def pod_identity():
     return {"name": p["metadata"]["name"], "uid": p["metadata"]["uid"], "image": IMAGE}
 
 
+class _StoredCredential(TypedDict):
+    id: object
+    name: str
+    scope: str
+    token: str
+
+
 class NativeSession:
-    def __init__(self, state, database=DB, worker_scope="node-sync"):
+    def __init__(self, state: str | Path, database: Path = DB, worker_scope: str = "node-sync"):
         if worker_scope not in ("node-sync", "admin"):
             raise ValueError("Unreviewed worker scope")
         self.worker_scope = worker_scope
@@ -141,10 +149,10 @@ class NativeSession:
         if not re.fullmatch(r"vpn83-[a-z0-9-]{8,32}", label):
             raise ValueError("Use a fresh explicit vpn83-* session name")
         self.names = {kind: label + "-" + kind for kind in ("bootstrap", "cleanup", "worker")}
-        self.base = None
-        self.credentials = {}
-        self.original = []
-        self.lock = None
+        self.base: str | None = None
+        self.credentials: dict[str, _StoredCredential] = {}
+        self.original: list[dict[str, object]] = []
+        self.lock: IO[str] | None = None
 
     def preview(self):
         original = token_rows(self.database)
@@ -160,11 +168,11 @@ class NativeSession:
             "cleanup_ttl_minutes": 30,
         }
 
-    def _save_credential(self, kind, value):
+    def _save_credential(self, kind: str, value: _StoredCredential):
         h.save(self.state / (kind + ".json"), value)
         self.credentials[kind] = value
 
-    def _owned(self, kind):
+    def _owned(self, kind: str):
         expected = self.credentials[kind]
         rows = [r for r in token_rows(self.database) if r["id"] == expected["id"]]
         if not rows:
@@ -178,11 +186,11 @@ class NativeSession:
             raise ValueError("Credential ownership changed; refusing deletion")
         return row
 
-    def _delete(self, kind, actor):
+    def _delete(self, kind: str, actor: str):
         row = self._owned(kind)
         if row is not None:
             request(
-                self.base,
+                cast("str", self.base),
                 self.credentials[actor]["token"],
                 "POST",
                 "/setting/apiTokens/delete/" + str(row["id"]),
@@ -191,7 +199,7 @@ class NativeSession:
         if self._owned(kind) is not None:
             raise RuntimeError("Credential deletion did not converge")
 
-    def _create(self, kind, scope, minutes, actor):
+    def _create(self, kind: str, scope: str, minutes: int, actor: str):
         expires = int(time.time() * 1000) + minutes * 60000
         # Write intent BEFORE remote creation. An ambiguous result stays uncertain.
         h.save(
@@ -199,7 +207,7 @@ class NativeSession:
             {"name": self.names[kind], "scope": scope, "expiresAt": expires},
         )
         obj = request(
-            self.base,
+            cast("str", self.base),
             self.credentials[actor]["token"],
             "POST",
             "/setting/apiTokens/create",
@@ -215,13 +223,14 @@ class NativeSession:
         if self._owned(kind) is None:
             raise RuntimeError("Missing created credential")
 
-    def open(self, approval):
+    def open(self, approval: str):
         if socket.gethostname() != "socrat-2" or os.geteuid() != 0:
             raise ValueError("Explicit session creation requires root on socrat-2")
         self.state = h.private_directory(self.state)
         fd = os.open(self.state / "lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
-        self.lock = os.fdopen(fd, "w")
-        fcntl.flock(self.lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        lock = os.fdopen(fd, "w")
+        self.lock = lock
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         if any(p.name != "lock" for p in self.state.iterdir()):
             raise ValueError("Existing session state; inspect instead of replaying")
         plan = self.preview()
@@ -289,15 +298,17 @@ class NativeSession:
             self.cleanup()
             raise
 
-    def call(self, method, path, body=None):
+    def call(self, method: str, path: str, body: object = None):
         if path.startswith("/setting/"):
             raise ValueError("Worker cannot use administrative token endpoints")
         if self._owned("worker") is None:
             raise RuntimeError("Worker credential unavailable")
-        return request(self.base, self.credentials["worker"]["token"], method, path, body)
+        return request(
+            cast("str", self.base), self.credentials["worker"]["token"], method, path, body
+        )
 
     def cleanup(self):
-        errors = []
+        errors: list[str] = []
         actor = "cleanup" if "cleanup" in self.credentials else "bootstrap"
         if actor in self.credentials:
             for kind in ("worker", "bootstrap", "cleanup"):
@@ -326,7 +337,7 @@ class NativeSession:
             path = self.state / name
             if path.exists():
                 path.unlink()
-        if self.lock:
+        if self.lock is not None:
             self.lock.close()
             self.lock = None
 

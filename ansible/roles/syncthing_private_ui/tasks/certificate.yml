@@ -15,7 +15,7 @@
   ansible.builtin.copy:
     dest: "{{ syncthing_private_ui_chart_dir }}/private-certificate.yml"
     content: "{{ {'apiVersion': 'cert-manager.io/v1', 'kind': 'Certificate', 'metadata': {'name': syncthing_private_ui_tls_secret, 'namespace': syncthing_private_ui_namespace, 'labels': {'app.kubernetes.io/managed-by': 'Helm'}, 'annotations': {'meta.helm.sh/release-name': syncthing_private_ui_release, 'meta.helm.sh/release-namespace': syncthing_private_ui_namespace}}, 'spec': {'secretName': syncthing_private_ui_tls_secret, 'commonName': syncthing_private_ui_nodes[0].host, 'dnsNames': syncthing_private_ui_nodes | map(attribute='host') | list, 'issuerRef': {'name': syncthing_private_ui_cluster_issuer, 'kind': 'ClusterIssuer'}}} | to_nice_yaml }}"
-    mode: '0600'
+    mode: "0600"
 
 - name: Request the certificate without publishing the private UI
   ansible.builtin.command:
@@ -39,7 +39,7 @@
     - "{{ syncthing_private_ui_namespace }}"
     - wait
     - --for=condition=Ready
-    - "certificate/{{ syncthing_private_ui_tls_secret }}"
+    - certificate/{{ syncthing_private_ui_tls_secret }}
     - --timeout=300s
   changed_when: false
 ...
