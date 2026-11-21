@@ -1,3 +1,5 @@
+"""Tests for wiki runtime migration."""
+
 import importlib.util
 import json
 from pathlib import Path
@@ -14,7 +16,7 @@ SPEC.loader.exec_module(MIGRATION)
 
 
 class MigrationTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name)
@@ -43,7 +45,7 @@ class MigrationTests(unittest.TestCase):
         (self.source / "uploads/image.png").write_bytes(b"opaque upload fixture")
         self.bundle = self.root / "backup"
 
-    def git(self, *args):
+    def git(self, *args) -> str:
         return subprocess.run(
             ["git", "-C", str(self.source / "repository"), *args],
             check=True,
@@ -51,43 +53,42 @@ class MigrationTests(unittest.TestCase):
             text=True,
         ).stdout
 
-    def test_round_trip_preserves_history_outbox_users_and_uploads(self):
+    def test_round_trip_preserves_history_outbox_users_and_uploads(self) -> None:
         summary = MIGRATION.export_data(self.source, self.bundle)
-        self.assertEqual(summary, {"commit": self.commit, "pending_publications": 1})
-        self.assertEqual(MIGRATION.verify(self.bundle), summary)
+        assert summary == {"commit": self.commit, "pending_publications": 1}
+        assert MIGRATION.verify(self.bundle) == summary
         target = self.root / "new-volume"
-        self.assertEqual(MIGRATION.restore(self.bundle, target), summary)
-        self.assertEqual(
-            (target / "live/current/state.json").read_text(),
-            (self.source / "live/snapshots" / self.commit / "state.json").read_text(),
-        )
-        self.assertEqual((target / "users.sqlite3").read_bytes(), b"opaque database fixture")
-        self.assertEqual((target / "uploads/image.png").read_bytes(), b"opaque upload fixture")
-        self.assertTrue((self.source / "live/current").is_symlink())
+        assert MIGRATION.restore(self.bundle, target) == summary
+        assert (target / "live/current/state.json").read_text() == (
+            self.source / "live/snapshots" / self.commit / "state.json"
+        ).read_text()
+        assert (target / "users.sqlite3").read_bytes() == b"opaque database fixture"
+        assert (target / "uploads/image.png").read_bytes() == b"opaque upload fixture"
+        assert (self.source / "live/current").is_symlink()
 
-    def test_corrupt_backup_is_rejected(self):
+    def test_corrupt_backup_is_rejected(self) -> None:
         MIGRATION.export_data(self.source, self.bundle)
         (self.bundle / "data/uploads/image.png").write_bytes(b"corruption")
         with self.assertRaisesRegex(ValueError, "checksum"):
             MIGRATION.restore(self.bundle, self.root / "new-volume")
-        self.assertFalse((self.root / "new-volume").exists())
+        assert not (self.root / "new-volume").exists()
 
-    def test_existing_destination_is_never_overwritten(self):
+    def test_existing_destination_is_never_overwritten(self) -> None:
         MIGRATION.export_data(self.source, self.bundle)
         with self.assertRaisesRegex(ValueError, "must not exist"):
             MIGRATION.restore(self.bundle, self.source)
 
-    def test_external_symlink_is_rejected(self):
+    def test_external_symlink_is_rejected(self) -> None:
         (self.source / "escape").symlink_to("/etc/passwd")
         with self.assertRaisesRegex(ValueError, "External absolute symlink"):
             MIGRATION.export_data(self.source, self.bundle)
 
-    def test_dirty_repository_is_rejected(self):
+    def test_dirty_repository_is_rejected(self) -> None:
         (self.source / "repository/wiki/content/page.md").write_text("unsaved data")
         with self.assertRaisesRegex(ValueError, "uncommitted"):
             MIGRATION.export_data(self.source, self.bundle)
 
-    def test_missing_outbox_commit_is_rejected(self):
+    def test_missing_outbox_commit_is_rejected(self) -> None:
         state = self.source / "live/snapshots" / self.commit / "state.json"
         state.write_text(json.dumps({"commit": self.commit, "base": "a" * 40, "pending": True}))
         with self.assertRaises(subprocess.CalledProcessError):

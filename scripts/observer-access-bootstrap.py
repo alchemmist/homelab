@@ -104,10 +104,13 @@ def harbor_authorization(credentials):
 
 
 class Client:
-    def __init__(self, credentials):
+    """Observer API client using local credentials."""
+
+    def __init__(self, credentials) -> None:
         """Initialize the observer API client."""
+
         class NoRedirect(urllib.request.HTTPRedirectHandler):
-            def redirect_request(self, *args, **kwargs):
+            def redirect_request(self, *_args, **_kwargs) -> None:
                 return None
 
         context = ssl.create_default_context(cafile="/var/lib/rancher/k3s/server/tls/server-ca.crt")
@@ -137,6 +140,7 @@ class Client:
         }
 
     def call(self, system, method, path, body=None):
+        """Call the Authentik, NetBird, Kubernetes or Harbor API."""
         validate_path(system, path)
         headers = {
             "Content-Type": "application/json-patch+json"
@@ -164,6 +168,7 @@ class Client:
             ) from None
 
     def rows(self, path):
+        """Collect all pages of Authentik rows for the path."""
         result = []
         for page in range(1, 101):
             data = self.call(
@@ -177,6 +182,7 @@ class Client:
         raise RuntimeError("Incomplete IdP pagination")
 
     def harbor_members(self, project):
+        """List all Harbor project members for the given project."""
         result = []
         for page in range(1, 101):
             data = self.call(
@@ -190,6 +196,7 @@ class Client:
         raise RuntimeError("Incomplete Harbor pagination")
 
     def harbor_groups(self):
+        """List the Harbor user groups matching the observer group."""
         result = []
         for page in range(1, 101):
             data = self.call(

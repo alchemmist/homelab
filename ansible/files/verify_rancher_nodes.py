@@ -1,3 +1,5 @@
+"""Verify expected Rancher-managed nodes match the cluster state."""
+
 import http.client
 import json
 import socket
@@ -7,6 +9,7 @@ import urllib.request
 
 
 def kubectl(*arguments):
+    """Kubectl."""
     return json.loads(
         subprocess.check_output(
             ["kubectl", *arguments, "-o", "json"],
@@ -16,6 +19,7 @@ def kubectl(*arguments):
 
 
 def verify():
+    """Verify."""
     expected = sorted(node["metadata"]["name"] for node in kubectl("get", "nodes")["items"])
     tokens = kubectl("get", "tokens.management.cattle.io")["items"]
     token = next(
@@ -39,11 +43,13 @@ def verify():
                 timeout=30,
                 context=ssl.create_default_context(),
             )
-            connection._create_connection = lambda target, timeout, source_address=None: (
-                socket.create_connection(
-                    (endpoint, 443),
-                    timeout,
-                    source_address=("10.250.0.1", 0),
+            connection._create_connection = (
+                lambda target, timeout, source_address=None, endpoint=endpoint: (
+                    socket.create_connection(
+                        (endpoint, 443),
+                        timeout,
+                        source_address=("10.250.0.1", 0),
+                    )
                 )
             )
             try:

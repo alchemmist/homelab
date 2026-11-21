@@ -29,11 +29,11 @@ class LokiRetentionAlertTests(unittest.TestCase):
             and d.get("kind") == "PrometheusRule"
             and d["metadata"]["name"] == "otel-loki-retention"
         )
-        self.assertEqual(rules["metadata"]["labels"]["release"], "kube-prometheus-stack")
+        assert rules["metadata"]["labels"]["release"] == "kube-prometheus-stack"
         alerts = {r["alert"]: r for g in rules["spec"]["groups"] for r in g["rules"]}
-        self.assertIn('status="failure"', alerts["LokiRetentionFailed"]["expr"])
-        self.assertIn("process_start_time_seconds", alerts["LokiRetentionSuccessStale"]["expr"])
-        self.assertTrue(alerts["LokiRetentionMetricsMissing"]["expr"].startswith("absent("))
+        assert 'status="failure"' in alerts["LokiRetentionFailed"]["expr"]
+        assert "process_start_time_seconds" in alerts["LokiRetentionSuccessStale"]["expr"]
+        assert alerts["LokiRetentionMetricsMissing"]["expr"].startswith("absent(")
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as f:
             yaml.safe_dump(rules["spec"], f)
             f.flush()

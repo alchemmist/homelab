@@ -1,3 +1,5 @@
+"""Tests for the public DNS zone management script."""
+
 import importlib.util
 from pathlib import Path
 
@@ -9,7 +11,7 @@ zone = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(zone)
 
 
-def test_both_entrances_stay_published_while_both_are_healthy():
+def test_both_entrances_stay_published_while_both_are_healthy() -> None:
     text = zone.render(1, True, True)
     assert text.count("chat IN A %s" % zone.HOME) == 1
     assert text.count("chat IN A %s" % zone.VPS) == 1
@@ -17,7 +19,7 @@ def test_both_entrances_stay_published_while_both_are_healthy():
     assert "mail IN A %s" % zone.VPS not in text
 
 
-def test_home_failure_leaves_only_the_vps_on_failover_names():
+def test_home_failure_leaves_only_the_vps_on_failover_names() -> None:
     text = zone.render(2, False, True)
     assert "llm IN A %s" % zone.VPS in text
     assert "llm IN A %s" % zone.HOME not in text
@@ -25,7 +27,7 @@ def test_home_failure_leaves_only_the_vps_on_failover_names():
     assert "sync IN A %s" % zone.HOME in text
 
 
-def test_netbird_and_existing_bot_survive_renderer_deploys_and_follow_health():
+def test_netbird_and_existing_bot_survive_renderer_deploys_and_follow_health() -> None:
     for home_up, vps_up in [(True, True), (False, True), (True, False), (False, False)]:
         text = zone.render(3, home_up, vps_up)
         expected = zone.healthy_addresses(home_up, vps_up)
@@ -35,14 +37,14 @@ def test_netbird_and_existing_bot_survive_renderer_deploys_and_follow_health():
     assert zone.FAILOVER.count("netbird.socrat") == 1
 
 
-def test_independent_vps_relay_never_points_to_home():
+def test_independent_vps_relay_never_points_to_home() -> None:
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
         text = zone.render(4, home, vps)
         assert f"netbird-relay-vps.socrat IN A {zone.VPS}" in text
         assert f"netbird-relay-vps.socrat IN A {zone.HOME}" not in text
 
 
-def test_total_probe_failure_keeps_both_addresses():
+def test_total_probe_failure_keeps_both_addresses() -> None:
     assert zone.healthy_addresses(False, False) == [zone.HOME, zone.VPS]
 
 
@@ -66,7 +68,7 @@ def test_reviewed_addition_refuses_missing_wrong_or_duplicate_records(records: l
         _reviewed_openhands_addition(lines, ["192.0.2.1", "192.0.2.2"])
 
 
-def test_rustfs_names_additive_without_changes_to_existing_records():
+def test_rustfs_names_additive_without_changes_to_existing_records() -> None:
     import subprocess
 
     original = subprocess.check_output(
@@ -107,23 +109,23 @@ def test_rustfs_names_additive_without_changes_to_existing_records():
                 assert new.count(f"{name} IN A {address}") == 1
 
 
-def test_current_vps_address_after_provider_migration():
+def test_current_vps_address_after_provider_migration() -> None:
     assert zone.VPS == "109.120.141.60"
 
 
-def test_kuma_administration_name_follows_both_reviewed_entrances():
+def test_kuma_administration_name_follows_both_reviewed_entrances() -> None:
     for home, vps in [(True, True), (False, True), (True, False), (False, False)]:
         text = zone.render(7, home, vps)
         for ip in [zone.HOME, zone.VPS]:
             assert (f"kuma.socrat IN A {ip}" in text) == (ip in zone.healthy_addresses(home, vps))
 
 
-def test_retired_tv_alias_is_not_rendered():
+def test_retired_tv_alias_is_not_rendered() -> None:
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
         assert "tv IN A " not in zone.render(8, home, vps)
 
 
-def test_vpn_has_only_moscow_even_when_original_entrances_fail():
+def test_vpn_has_only_moscow_even_when_original_entrances_fail() -> None:
     assert "vpn" not in zone.FAILOVER
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
         lines = zone.render(123, home, vps).splitlines()
