@@ -1,3 +1,4 @@
+"""Rewrite the WireGuard config with the current TCP transport endpoint."""
 import json
 import os
 import re
@@ -11,7 +12,8 @@ from pathlib import Path
 
 def update_config(original, public_key, endpoint):
     if re.search(r"^\s*SaveConfig\s*=\s*true\s*$", original, re.M | re.I):
-        raise ValueError("SaveConfig must be disabled")
+        message = "SaveConfig must be disabled"
+        raise ValueError(message)
     blocks = re.split(r"(?=^\s*\[Peer\]\s*$)", original, flags=re.M)
     found = 0
     for index, block in enumerate(blocks):
@@ -21,7 +23,8 @@ def update_config(original, public_key, endpoint):
         found += 1
         entries = list(re.finditer(r"^[ \t]*Endpoint[ \t]*=[^\n]*(?:\n|$)", block, re.M))
         if len(entries) > 1:
-            raise ValueError("Duplicate peer endpoint")
+            message = "Duplicate peer endpoint"
+            raise ValueError(message)
         replacement = "Endpoint = " + endpoint + "\n" if endpoint else ""
         if entries:
             entry = entries[0]
@@ -30,16 +33,19 @@ def update_config(original, public_key, endpoint):
             block = block.rstrip("\n") + "\n" + replacement + "\n"
         blocks[index] = block
     if found != 1:
-        raise ValueError("Expected exactly one matching peer")
+        message = "Expected exactly one matching peer"
+        raise ValueError(message)
     return "".join(blocks)
 
 
 def main():
     interface, public_key, endpoint = sys.argv[1:]
     if not re.fullmatch(r"[a-zA-Z0-9_=+.-]{1,15}", interface):
-        raise ValueError("Invalid interface")
+        message = "Invalid interface"
+        raise ValueError(message)
     if endpoint not in ("", "127.0.0.1:51840"):
-        raise ValueError("Unexpected transport endpoint")
+        message = "Unexpected transport endpoint"
+        raise ValueError(message)
     config = Path("/etc/wireguard") / (interface + ".conf")
     original = config.read_text()
     updated = update_config(original, public_key, endpoint)
@@ -50,7 +56,8 @@ def main():
         ).splitlines()
     )
     if public_key not in live:
-        raise ValueError("Peer missing from live interface")
+        message = "Peer missing from live interface"
+        raise ValueError(message)
     changed = updated != original
     if changed:
         backup = str(config) + ".before-tcp-transport-" + str(time.time_ns())
@@ -72,6 +79,7 @@ def main():
             ["wg", "set", interface, "peer", public_key, "endpoint", endpoint], check=True
         )
         changed = True
+    print(json.dumps({"changed": changed}))  # noqa: T201
 
 
 if __name__ == "__main__":

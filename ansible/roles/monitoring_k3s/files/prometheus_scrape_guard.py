@@ -1,6 +1,7 @@
+"""Check Prometheus scrape limits against pod resource requests."""
+
 import json
 import sys
-
 
 MEMORY_FACTORS = (
     ("Ti", 1024**4),
@@ -16,6 +17,7 @@ MEMORY_FACTORS = (
 
 
 def memory_bytes(value):
+    """Execute the memory_bytes operation."""
     text = str(value).strip()
     for suffix, factor in MEMORY_FACTORS:
         if text.endswith(suffix):
@@ -23,7 +25,34 @@ def memory_bytes(value):
     return int(float(text))
 
 
+def _pod_problems(running):
+    """Return per-Pod problems for effective Prometheus containers."""
+    found = []
+    for pod in running:
+        containers = [
+            c for c in pod.get("spec", {}).get("containers", []) if c["name"] == "prometheus"
+        ]
+        statuses = [
+            c
+            for c in pod.get("status", {}).get("containerStatuses", [])
+            if c["name"] == "prometheus"
+        ]
+        if len(containers) != 1 or len(statuses) != 1:
+            found.append("Prometheus Pod container/status is missing or ambiguous")
+            continue
+        if not statuses[0].get("ready"):
+            found.append("Prometheus container is not Ready")
+        for label, resources in [
+            ("Pod spec", containers[0].get("resources", {})),
+            ("runtime status", statuses[0].get("resources", {})),
+        ]:
+            if memory_bytes(resources.get("limits", {}).get("memory", "0")) < memory_bytes("8Gi"):
+                found.append("Effective Prometheus " + label + " memory limit is below 8Gi")
+    return found
+
+
 def problems(document, pods=None):
+    """Execute the problems operation."""
     if not document:
         return ["Prometheus is not installed"]
     items = (
@@ -44,32 +73,12 @@ def problems(document, pods=None):
         ]
         if not running:
             found.append("No running Prometheus Pod to verify effective memory")
-        for pod in running:
-            containers = [
-                c for c in pod.get("spec", {}).get("containers", []) if c["name"] == "prometheus"
-            ]
-            statuses = [
-                c
-                for c in pod.get("status", {}).get("containerStatuses", [])
-                if c["name"] == "prometheus"
-            ]
-            if len(containers) != 1 or len(statuses) != 1:
-                found.append("Prometheus Pod container/status is missing or ambiguous")
-                continue
-            if not statuses[0].get("ready"):
-                found.append("Prometheus container is not Ready")
-            for label, resources in [
-                ("Pod spec", containers[0].get("resources", {})),
-                ("runtime status", statuses[0].get("resources", {})),
-            ]:
-                if memory_bytes(resources.get("limits", {}).get("memory", "0")) < memory_bytes(
-                    "8Gi"
-                ):
-                    found.append("Effective Prometheus " + label + " memory limit is below 8Gi")
+        found.extend(_pod_problems(running))
     return found
 
 
 def main():
+    """Execute the main operation."""
     document = json.load(sys.stdin)
     found = (
         problems(document["prometheus"], document["pods"])
@@ -77,6 +86,7 @@ def main():
         else problems(document)
     )
     if found:
+        print("; ".join(found), file=sys.stderr)  # noqa: T201
         return 1
     return 0
 

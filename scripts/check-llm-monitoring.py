@@ -1,3 +1,4 @@
+"""Check Prometheus scrape targets and metrics for the LLM stack."""
 import importlib.util
 import json
 import math
@@ -15,6 +16,7 @@ JOBS = {"vllm", "litellm"}
 
 
 def main():
+    """Run the command-line entry point."""
     deadline = time.monotonic() + 120
     while True:
         targets = [
@@ -27,7 +29,8 @@ def main():
         ):
             break
         if time.monotonic() >= deadline:
-            raise RuntimeError("LLM scrape targets are missing or unhealthy")
+            msg = "LLM scrape targets are missing or unhealthy"
+            raise RuntimeError(msg)
         time.sleep(5)
     print("PASS: authenticated LiteLLM and vLLM scrape targets are UP")
     for expression in [

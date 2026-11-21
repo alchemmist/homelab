@@ -3,10 +3,10 @@
 import base64
 import json
 import os
-from pathlib import Path
 import sys
-import urllib.request
 import urllib.error
+import urllib.request
+from pathlib import Path
 
 root = Path(sys.argv[1])
 password = json.loads((root / "private-values.json").read_text())["harborAdminPassword"]
@@ -15,6 +15,7 @@ auth = "Basic " + base64.b64encode(("admin:" + password).encode()).decode()
 
 
 def api(method, path, payload=None):
+    """Document the api operation."""
     req = urllib.request.Request(
         base + path,
         method=method,
@@ -44,7 +45,8 @@ for name, actions in [("ci-push", ["pull", "push"]), ("cluster-pull", ["pull"])]
         continue
     existing = api("GET", "/robots?page_size=100")
     if any(r["name"] == "robot$homelab+" + name for r in existing):
-        raise RuntimeError("Robot exists but local credential is missing; rotate explicitly")
+        msg = "Robot exists but local credential is missing; rotate explicitly"
+        raise RuntimeError(msg)
     result = api(
         "POST",
         "/robots",
@@ -66,3 +68,4 @@ for name, actions in [("ci-push", ["pull", "push"]), ("cluster-pull", ["pull"])]
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as f:
         json.dump(result, f)
+print("Private homelab project and scoped 90-day robot credentials ready.")  # noqa: T201

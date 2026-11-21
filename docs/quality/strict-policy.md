@@ -4,7 +4,7 @@ This file is the enforcement contract for `quality/strict-all`. It does not clai
 
 The existing 15-node `qg.yaml` graph is unchanged. Its `python`, `yaml`, `shell`, `workflow`, `secrets`, `docker`, `javascript`, `ansible`, `manifests`, and `dependencies` nodes call the stricter adapters. No shard and no decorative node was added. Trusted-base registration is not bypassed.
 
-Monori (`/Users/antonmoss/code/monori`) is the reference for strict Python, read-only. It selects Ruff `ALL` with `strict` mypy. Its test ignores (`D*`, `S105`, `S106`, `S107`, `F401`, `PLR2004`) and its `D212` choice are not copied. Homelab keeps one test exception, `S101`, because pytest rewrites `assert`.
+Monori (`/Users/antonmoss/code/monori`) is the reference for strict Python, read-only. It selects Ruff `ALL` with `strict` mypy. Its test ignores (`D*`, `S105`, `S106`, `S107`, `F401`, `PLR2004`) and its `D212` choice are not copied. Homelab exempts test methods from `D102` and permits pytest assertions as described below.
 
 ## Python
 
@@ -14,7 +14,7 @@ Monori (`/Users/antonmoss/code/monori`) is the reference for strict Python, read
 - `ISC001` is ignored because the formatter can introduce the concatenations it forbids.
 - `COM812` is ignored because the formatter owns trailing commas. The defect remains visible through `ruff format --check`.
 - `ISC002` stays enabled. Its formatter conflict requires `allow-multiline = false`, which is not set.
-- `**/tests/**` ignores only `S101`.
+- `**/test/**` and `**/tests/**` ignore `D102` (missing method docstring); `**/tests/**` additionally ignores `S101`.
 - mypy `2.4.1` uses `strict` plus `warn_unreachable`, `explicit_package_bases`, `disallow_any_explicit`, `disallow_any_unimported`, `disallow_any_decorated`, `strict_equality_for_none`, and the extra error codes in `quality/mypy.ini`.
 - The config file does not set `follow_imports`, `ignore_missing_imports`, or `disable_error_code`. The adapter passes every owned Python file and `--follow-imports=silent` so imported modules that are themselves in that set still report. Missing third-party stubs stay `import-untyped` findings. Stubs are not installed to hide them.
 - A syntax error is a source finding for that file. It is parsed first so mypy's fatal exit 2 cannot drop the rest of the owned set. If mypy still stops (`Duplicate module`, an internal traceback, or exit 2), the adapter retries by directory and then by file. A batch that exits 2 is never stored as a complete audit. `mypy coverage incomplete` is a tool failure, distinct from source findings. The owned-file count is claimed only after every file was examined.

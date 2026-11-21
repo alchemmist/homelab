@@ -34,7 +34,8 @@ def run():
         ) as response:
             loaded = json.loads(response.read(65537)).get("data", [])
         if len(loaded) != 1 or loaded[0]["id"] != "qwen3.8-27b":
-            raise ValueError("Local model not already loaded; no switching allowed")
+            msg = "Local model not already loaded; no switching allowed"
+            raise ValueError(msg)
         valid_response = False
         completion_tokens = 0
         provider = TracerProvider(
@@ -80,7 +81,8 @@ def run():
                     status = response.status
                     raw = response.read(65537)
                     if len(raw) > 65536:
-                        raise ValueError("Response inspection budget exceeded")
+                        msg = "Response inspection budget exceeded"
+                        raise ValueError(msg)
                     result = json.loads(raw)
                     completion_tokens = result.get("usage", {}).get("completion_tokens", 0)
                     valid_response = bool(result.get("choices")) and completion_tokens == 1
@@ -114,7 +116,7 @@ def run():
 if __name__ == "__main__":
     try:
         run()
-    except Exception as error:
+    except (ImportError, OSError, RuntimeError, ValueError) as error:
         print(
             json.dumps(
                 {
@@ -124,4 +126,4 @@ if __name__ == "__main__":
                 }
             )
         )
-        raise SystemExit(1)
+        raise SystemExit(1) from error

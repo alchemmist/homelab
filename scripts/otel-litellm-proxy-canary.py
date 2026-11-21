@@ -34,19 +34,20 @@ async def run():
             "litellm_settings": {"turn_off_message_logging": True, "telemetry": False},
         }
         path = Path("/run/otel-test/proxy-canary-config.json")
-        path.write_text(json.dumps(config))
+        await asyncio.to_thread(path.write_text, json.dumps(config))
         await proxy_server.initialize(config=str(path))
         litellm.turn_off_message_logging = True
         handler = OpenTelemetry()
         if handler.config.enable_metrics or handler.config.enable_events:
-            raise ValueError("Duplicate metrics or message events must remain disabled")
+            msg = "Duplicate metrics or message events must remain disabled"
+            raise ValueError(msg)
         audit = {"endedSpans": 0, "sensitiveSyntheticContentFoundAtSource": False}
 
         class PrivacyAudit(SpanProcessor):
-            def on_start(self, span, parent_context=None):
+            def on_start(self, span, parent_context=None) -> None:
                 pass
 
-            def on_end(self, span):
+            def on_end(self, span) -> None:
                 audit["endedSpans"] += 1
                 data = span.to_json()
                 if any(
@@ -59,10 +60,10 @@ async def run():
                 ):
                     audit["sensitiveSyntheticContentFoundAtSource"] = True
 
-            def shutdown(self):
+            def shutdown(self) -> None:
                 pass
 
-            def force_flush(self, timeout_millis=30000):
+            def force_flush(self, _timeout_millis=30000) -> bool:
                 return True
 
         handler._tracer_provider.add_span_processor(PrivacyAudit())
@@ -125,7 +126,7 @@ async def run():
 if __name__ == "__main__":
     try:
         asyncio.run(run())
-    except Exception as error:
+    except (ImportError, OSError, RuntimeError, ValueError) as error:
         print(
             json.dumps(
                 {
@@ -136,4 +137,4 @@ if __name__ == "__main__":
                 }
             )
         )
-        raise SystemExit(1)
+        raise SystemExit(1) from error

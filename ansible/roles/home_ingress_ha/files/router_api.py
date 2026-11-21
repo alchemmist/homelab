@@ -1,3 +1,5 @@
+"""Fetch and reconcile port-forwarding rules on the home router API."""
+
 import argparse
 import html
 import ipaddress
@@ -8,11 +10,11 @@ import time
 import urllib.parse
 import urllib.request
 
-
 FIELDS = ("ip", "local_port", "protocol", "remote_ip", "external_port", "wan", "status", "comment")
 
 
 def parse_forwards(page):
+    """Document the parse forwards operation."""
     rows = []
     for row in re.findall(r"<tr\b[^>]*>(.*?)</tr>", page, re.S | re.I):
         selected = re.search(r'name="(select\d+)"', row)
@@ -21,31 +23,40 @@ def parse_forwards(page):
         cells = re.findall(r"<td\b[^>]*>(.*?)</td>", row, re.S | re.I)
         values = [html.unescape(re.sub(r"<[^>]*>", "", cell)).strip() for cell in cells]
         if len(values) != 9:
-            raise ValueError("Unexpected router forwarding table format")
-        entry = dict(zip(FIELDS, values[:8]))
+            msg = "Unexpected router forwarding table format"
+            raise ValueError(msg)
+        entry = dict(zip(FIELDS, values[:8], strict=True))
         entry["selector"] = selected.group(1)
         rows.append(entry)
     if not rows:
-        raise ValueError("Missing router forwarding table")
+        msg = "Missing router forwarding table"
+        raise ValueError(msg)
     return rows
 
 
 def canonical(rows):
+    """Document the canonical operation."""
     return sorted(tuple(row[field] for field in FIELDS) for row in rows)
 
 
 class Router:
-    def __init__(self, credentials, address):
+    """Router HTTP API client using authenticated requests."""
+
+    def __init__(self, credentials, address) -> None:
+        """Initialize the router client."""
+
         self.base = "http://" + str(ipaddress.IPv4Address(address))
         self.cookie = None
         page = self.request("/login.htm")
         match = re.search(r"var map2 = '(.*?)';", page)
         if not match:
-            raise ValueError("Unsupported router authentication page")
+            msg = "Unsupported router authentication page"
+            raise ValueError(msg)
         alphabet = match.group(1).replace("\\\\", "\\").replace("\\'", "'")
         plain = credentials["username"] + credentials["password"]
         if any(ord(char) < 32 or ord(char) - 32 >= len(alphabet) for char in plain):
-            raise ValueError("Unsupported credential character")
+            msg = "Unsupported credential character"
+            raise ValueError(msg)
         credit = "".join(alphabet[ord(char) - 32] for char in plain)
         page = self.request(
             "/boafrm/formLoginCookie",
@@ -59,10 +70,12 @@ class Router:
         )
         match = re.search(r'document.cookie = "(cookie_auth=[^;"\r\n]+)', page)
         if not match:
-            raise ValueError("Router authentication failed")
+            msg = "Router authentication failed"
+            raise ValueError(msg)
         self.cookie = match.group(1)
 
     def request(self, path, data=None):
+        """GET/POST the router web UI, reusing the session cookie when present."""
         encoded = None if data is None else urllib.parse.urlencode(data).encode()
         headers = {} if self.cookie is None else {"Cookie": self.cookie}
         request = urllib.request.Request(self.base + path, data=encoded, headers=headers)
@@ -70,22 +83,27 @@ class Router:
             return response.read().decode("utf-8")
 
     def forwards(self):
+        """Return the parsed port-forwarding table from the router UI."""
         return parse_forwards(self.request("/portfw.htm"))
 
     def verify(self, expected):
+        """Poll forwards until they match the expected state, then return them."""
         for attempt in range(5):
             rows = self.forwards()
             if canonical(rows) == canonical(expected):
                 return rows
             if attempt < 4:
                 time.sleep(1)
-        raise RuntimeError("Router forwarding readback does not match expected state")
+        msg = "Router forwarding readback does not match expected state"
+        raise RuntimeError(msg)
 
     def replace(self, expected_rows, old, new):
+        """Replace exactly one existing forward with a new entry after verification."""
         rows = self.verify(expected_rows)
         matching = [row for row in rows if canonical([row]) == canonical([old])]
         if len(matching) != 1:
-            raise RuntimeError("Expected old forward is not unique")
+            msg = "Expected old forward is not unique"
+            raise RuntimeError(msg)
         remaining = [row for row in rows if row is not matching[0]]
         try:
             self.request(
@@ -109,8 +127,10 @@ class Router:
             raise
 
     def add(self, row):
+        """Add one enabled WAN2 TCP forward through the router form endpoint."""
         if row["protocol"] != "TCP" or row["wan"] != "Wan2" or row["status"] != "Enabled":
-            raise ValueError("Only enabled WAN2 TCP forwarding is supported")
+            msg = "Only enabled WAN2 TCP forwarding is supported"
+            raise ValueError(msg)
         self.request(
             "/boafrm/formPortFw",
             {
@@ -132,6 +152,7 @@ class Router:
 
 
 def main():
+    """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--router", default="192.168.0.1")
     parser.add_argument("--expected-old")
@@ -141,18 +162,24 @@ def main():
     router = Router(json.load(sys.stdin), args.router)
     rows = router.forwards()
     if not args.apply:
+        print(json.dumps({"forwards": rows}, indent=2))  # noqa: T201
         return
     if not args.expected_old or not args.destination:
         parser.error("--apply requires --expected-old and --destination")
     old_ip = str(ipaddress.IPv4Address(args.expected_old))
     destination = str(ipaddress.IPv4Address(args.destination))
     if old_ip == destination:
-        raise ValueError("Old and destination addresses must differ")
+        msg = "Old and destination addresses must differ"
+        raise ValueError(msg)
     targets = []
     for port, comment in [("80", "socrat-http"), ("443", "socrat-https")]:
         matches = [row for row in rows if row["external_port"] == port]
         expected = dict(
-            zip(FIELDS, [old_ip, port, "TCP", "0.0.0.0", port, "Wan2", "Enabled", comment])
+            zip(
+                FIELDS,
+                [old_ip, port, "TCP", "0.0.0.0", port, "Wan2", "Enabled", comment],
+                strict=True,
+            )
         )
         if len(matches) != 1 or canonical(matches) != canonical([expected]):
             raise RuntimeError("Forward does not match explicit expected old state: " + port)
@@ -167,6 +194,7 @@ def main():
         for old, new in reversed(completed):
             rows = router.replace(rows, new, old)
         raise
+    print(json.dumps({"changed": True, "forwards": rows}, indent=2))  # noqa: T201
 
 
 if __name__ == "__main__":

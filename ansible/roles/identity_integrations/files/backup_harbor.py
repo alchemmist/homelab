@@ -1,6 +1,10 @@
 """Stream a pre-OIDC Harbor snapshot to the encryption process, never to logs."""
 
-import os, subprocess, sys, tarfile, tempfile
+import os
+import subprocess
+import sys
+import tarfile
+import tempfile
 from pathlib import Path
 
 os.environ["K3S_CONFIG_FILE"] = "/dev/null"

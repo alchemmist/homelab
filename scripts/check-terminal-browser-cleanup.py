@@ -1,3 +1,4 @@
+"""Check that the terminal browser watchdog cleans up browser artifacts."""
 import argparse
 import ctypes
 import importlib.util
@@ -12,6 +13,7 @@ from pathlib import Path
 
 
 def load(path):
+    """Load a Python module from the supplied path."""
     spec = importlib.util.spec_from_file_location("browser_watchdog_probe", path)
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
@@ -20,6 +22,7 @@ def load(path):
 
 
 def tree(module, root):
+    """Perform the tree operation."""
     snapshot = module.snapshot()
     selected = {root}
     while True:
@@ -30,6 +33,7 @@ def tree(module, root):
 
 
 def alive(module, identities):
+    """Perform the alive operation."""
     snapshot = module.snapshot()
     return [
         identity
@@ -38,7 +42,19 @@ def alive(module, identities):
     ]
 
 
+def _reap_children() -> None:
+    """Collect any remaining adopted children without blocking the exit path."""
+    while True:
+        try:
+            pid, _status = os.waitpid(-1, os.WNOHANG)
+            if not pid:
+                break
+        except ChildProcessError:
+            break
+
+
 def main():
+    """Run the command-line entry point."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--watchdog", required=True)
     parser.add_argument(
@@ -134,13 +150,7 @@ def main():
                 module.signal_process(identity, signal.SIGKILL)
             for process in fixtures + [marker]:
                 process.wait(timeout=5)
-            while True:
-                try:
-                    pid, status = os.waitpid(-1, os.WNOHANG)
-                    if not pid:
-                        break
-                except ChildProcessError:
-                    break
+        _reap_children()
 
 
 if __name__ == "__main__":

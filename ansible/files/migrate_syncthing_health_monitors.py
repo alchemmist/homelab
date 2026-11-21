@@ -1,3 +1,5 @@
+"""Migrate Uptime Kuma monitor rows for Syncthing's private UI to new targets."""
+
 import argparse
 import json
 import os
@@ -7,6 +9,7 @@ from pathlib import Path
 
 
 def migrate(database, plan, check=False):
+    """Migrate."""
     if not database.is_file():
         raise FileNotFoundError(database)
     connection = sqlite3.connect(f"file:{database}?mode=ro", uri=True)
@@ -49,12 +52,14 @@ def migrate(database, plan, check=False):
 
 
 def main():
+    """Main."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--database", type=Path, required=True)
     parser.add_argument("--plan", type=Path, required=True)
     parser.add_argument("--check", action="store_true")
     arguments = parser.parse_args()
     plan = json.loads(arguments.plan.read_text())
+    print(json.dumps(migrate(arguments.database, plan, arguments.check)))  # noqa: T201
 
 
 if __name__ == "__main__":

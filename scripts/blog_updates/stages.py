@@ -3,7 +3,9 @@
 import json
 import os
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
+from typing import cast
 
 from engine import UnsafeInput, prepare, render, validate_decision, validate_event
 from github import GitHub
@@ -81,8 +83,43 @@ def checked_model(call_model, prompt, data, context):
             return validate_decision(call_model(prompt, data), context)
         except (UnsafeInput, json.JSONDecodeError):
             if attempt:
-                raise UnsafeInput("Model response failed validation after two attempts") from None
+                message = "Model response failed validation after two attempts"
+                raise UnsafeInput(message) from None
             prompt += "\nPrevious response failed validation. Return only the exact JSON schema, plain text without URLs or Markdown, and supplied changed file paths."
+
+
+def _validate_stage(call_model: object, event: object, context: object) -> list[dict[str, object]]:
+    """Select only worthwhile announcements for the later stages."""
+    prompt = Path(os.environ["PROMPT_FILE"]).read_text()
+    prompt += "\nThis is the VALIDATION stage. Select only worthwhile announcements. Entry text is a concise factual outline for a separate writer, not a final publication. Return the specified JSON schema."
+    runner = cast("Callable[[object, object], object]", call_model)
+    decision = checked_model(runner, prompt, context, context)
+    if not decision["should_update"]:
+        return []
+    return [{"event": event, "selection": decision}]
+
+
+def _generate_stage(
+    call_model: object,
+    payload: dict[str, object],
+    event: object,
+    context: object,
+) -> list[dict[str, object]]:
+    """Write final announcement entries for the selected changes only."""
+    selection = validate_decision(payload["selection"], context)
+    if not selection["should_update"]:
+        return []
+    prompt = Path(os.environ["PROMPT_FILE"]).read_text()
+    prompt += "\nThis is the GENERATION stage. Write final concise English announcement entries ONLY for the selected changes. Do not add other topics. Keep source_paths within the selected source_paths. Use the specified JSON schema; you may omit an unsupported selected item."
+    runner = cast("Callable[[object, object], object]", call_model)
+    decision = checked_model(runner, prompt, {"context": context, "selected": selection}, context)
+    allowed = {p for e in selection["entries"] for p in e["source_paths"]}
+    if any(p not in allowed for e in decision["entries"] for p in e["source_paths"]):
+        message = "Generation introduced an unselected source"
+        raise UnsafeInput(message)
+    if not decision["should_update"]:
+        return []
+    return [{"event": event, "decision": decision}]
 
 
 def stage(name, payload, github=None, call_model=None, write=False):
@@ -94,34 +131,35 @@ def stage(name, payload, github=None, call_model=None, write=False):
         return []
     context, comparison, updates = snapshot
     if name == "validate":
-        prompt = Path(os.environ["PROMPT_FILE"]).read_text()
-        prompt += "\nThis is the VALIDATION stage. Select only worthwhile announcements. Entry text is a concise factual outline for a separate writer, not a final publication. Return the specified JSON schema."
-        decision = checked_model(call_model, prompt, context, context)
-        return [{"event": event, "selection": decision}] if decision["should_update"] else []
+        return _validate_stage(call_model, event, context)
     if name == "generate":
-        selection = validate_decision(payload["selection"], context)
-        if not selection["should_update"]:
-            return []
-        prompt = Path(os.environ["PROMPT_FILE"]).read_text()
-        prompt += "\nThis is the GENERATION stage. Write final concise English announcement entries ONLY for the selected changes. Do not add other topics. Keep source_paths within the selected source_paths. Use the specified JSON schema; you may omit an unsupported selected item."
-        decision = checked_model(
-            call_model, prompt, {"context": context, "selected": selection}, context
-        )
-        allowed = {p for e in selection["entries"] for p in e["source_paths"]}
-        if any(p not in allowed for e in decision["entries"] for p in e["source_paths"]):
-            raise UnsafeInput("Generation introduced an unselected source")
-        return [{"event": event, "decision": decision}] if decision["should_update"] else []
+        return _generate_stage(call_model, payload, event, context)
     if name != "create-pr":
-        raise UnsafeInput("Unknown stage")
+        message = "Unknown stage"
+        raise UnsafeInput(message)
     decision = validate_decision(payload["decision"], context)
     if not decision["should_update"]:
         return []
     head = next((c for c in comparison["commits"] if c["sha"] == event["after"]), None)
     if not head:
-        raise UnsafeInput("Missing head commit")
+        message = "Missing head commit"
+        raise UnsafeInput(message)
     content = render(updates, decision["entries"], head["commit"]["committer"]["date"])
     if content == updates:
         return [{"status": "no_change"}]
+    return _publish(github.propose, decision, event["after"], content, write=write)
+
+
+def _publish(
+    propose: object,
+    decision: dict[str, object],
+    event_after: object,
+    content: str,
+    *,
+    write: bool,
+) -> list[dict[str, object]]:
+    """Report a dry run or propose the rendered announcement upstream."""
     if not write:
         return [{"status": "dry_run", "entries": decision["entries"], "reason": decision["reason"]}]
-    return [github.propose(event["after"], content, decision["reason"])]
+    runner = cast("Callable[[object, str, object], dict[str, object]]", propose)
+    return [runner(event_after, content, decision["reason"])]

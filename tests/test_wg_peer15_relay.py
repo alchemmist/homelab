@@ -2,8 +2,8 @@
 
 import ast
 import importlib.util
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
@@ -16,13 +16,13 @@ spec.loader.exec_module(endpoint)
 class EndpointTests(unittest.TestCase):
     """Synthetic config checks and the static relay service contract."""
 
-    def config(self):
+    def config(self) -> str:
         return (
             "[Interface]\nPrivateKey = SYNTHETIC-NOT-A-KEY\nListenPort = 51830\n\n"
             "[Peer]\nPublicKey = other-peer\nEndpoint = 127.0.0.1:51840\n\n"
-            "[Peer]\n# socrat-1\nPublicKey = " + endpoint.PEER + "\n"
+            "[Peer]\n# socrat-1\nPublicKey = " + str(endpoint.PEER) + "\n"
             "AllowedIPs = 10.250.0.3/32, 10.42.1.0/24\n"
-            "Endpoint = " + endpoint.DIRECT + "\nPersistentKeepalive = 25\n\n"
+            "Endpoint = " + str(endpoint.DIRECT) + "\nPersistentKeepalive = 25\n\n"
             "[Peer]\nPublicKey = another-peer\nEndpoint = example.test:1234\n"
         )
 
@@ -30,13 +30,13 @@ class EndpointTests(unittest.TestCase):
         """Replacing the direct endpoint is reversible and touches no other byte."""
         before = self.config()
         after = endpoint.replace_endpoint(before, endpoint.RELAY)
-        self.assertEqual(after, before.replace(endpoint.DIRECT, endpoint.RELAY))
-        self.assertEqual(endpoint.replace_endpoint(after, endpoint.DIRECT), before)
+        assert after == before.replace(endpoint.DIRECT, endpoint.RELAY)
+        assert endpoint.replace_endpoint(after, endpoint.DIRECT) == before
 
     def test_idempotent(self) -> None:
         """Applying the relay endpoint twice leaves the replaced config unchanged."""
         once = endpoint.replace_endpoint(self.config(), endpoint.RELAY)
-        self.assertEqual(endpoint.replace_endpoint(once, endpoint.RELAY), once)
+        assert endpoint.replace_endpoint(once, endpoint.RELAY) == once
 
     def test_unknown_endpoint_rejected(self) -> None:
         """An endpoint outside the direct and relay pair is rejected."""
@@ -78,8 +78,8 @@ class EndpointTests(unittest.TestCase):
             "IPAddressDeny=any",
             "IPAddressAllow=10.250.0.41/32 192.168.0.24/32",
         ]:
-            self.assertIn(required, service)
-        self.assertNotIn("PrivateKey", service)
+            assert required in service
+        assert "PrivateKey" not in service
         relay = (ROOT / "scripts/wg-peer15-relay.py").read_text()
         tree = ast.parse(relay)
         expected = {
@@ -96,23 +96,21 @@ class EndpointTests(unittest.TestCase):
             and isinstance(node.targets[0], ast.Name)
             and node.targets[0].id in expected
         }
-        self.assertEqual(constants, expected)
-        self.assertTrue(
-            any(
-                isinstance(part, ast.Compare)
-                and isinstance(part.left, ast.Name)
-                and part.left.id == "source"
-                and len(part.ops) == 1
-                and isinstance(part.ops[0], ast.NotEq)
-                and len(part.comparators) == 1
-                and isinstance(part.comparators[0], ast.Name)
-                and part.comparators[0].id == "CLIENT"
-                for node in ast.walk(tree)
-                if isinstance(node, ast.If)
-                for part in ast.walk(node.test)
-            )
+        assert constants == expected
+        assert any(
+            isinstance(part, ast.Compare)
+            and isinstance(part.left, ast.Name)
+            and part.left.id == "source"
+            and len(part.ops) == 1
+            and isinstance(part.ops[0], ast.NotEq)
+            and len(part.comparators) == 1
+            and isinstance(part.comparators[0], ast.Name)
+            and part.comparators[0].id == "CLIENT"
+            for node in ast.walk(tree)
+            if isinstance(node, ast.If)
+            for part in ast.walk(node.test)
         )
-        self.assertNotIn("0.0.0.0", relay)
+        assert "0.0.0.0" not in relay
 
 
 if __name__ == "__main__":

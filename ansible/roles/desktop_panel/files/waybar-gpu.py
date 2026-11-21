@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Sample GPU statistics and print them as JSON for waybar."""
+
 import csv
 import json
 import shutil
@@ -7,6 +9,7 @@ from pathlib import Path
 
 
 def sample():
+    """Document the sample operation."""
     tool = shutil.which("nvidia-smi")
     if tool:
         try:
@@ -25,7 +28,8 @@ def sample():
             name, usage, temperature, used, total = (value.strip() for value in row)
             percentage = float(usage)
             if not 0 <= percentage <= 100:
-                raise ValueError("invalid GPU utilization")
+                msg = "invalid GPU utilization"
+                raise ValueError(msg)
             return {
                 "text": f"GPU {percentage:.0f}%",
                 "percentage": round(percentage),
@@ -54,4 +58,4 @@ def sample():
 
 
 if __name__ == "__main__":
-    pass
+    print(json.dumps(sample(), ensure_ascii=False))  # noqa: T201

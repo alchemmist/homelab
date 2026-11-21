@@ -1,3 +1,5 @@
+"""Back up the Authentik database and related secrets via kubectl."""
+
 import json, os, subprocess, sys, tarfile, tempfile
 from pathlib import Path
 
@@ -9,11 +11,19 @@ with tempfile.TemporaryDirectory(dir=root) as work:
     # Resolve the active CNPG primary on each run; never dump the retained legacy PVC.
     pg = [*k[:-1], "postgres"]
     primary = subprocess.check_output(
-        pg + ["get", "cluster.postgresql.cnpg.io", "pg-critical", "-o", "jsonpath={.status.currentPrimary}"],
+        pg
+        + [
+            "get",
+            "cluster.postgresql.cnpg.io",
+            "pg-critical",
+            "-o",
+            "jsonpath={.status.currentPrimary}",
+        ],
         text=True,
     ).strip()
     if not primary.startswith("pg-critical-") or not primary.removeprefix("pg-critical-").isdigit():
-        raise RuntimeError("Cannot resolve pg-critical primary")
+        message = "Cannot resolve pg-critical primary"
+        raise RuntimeError(message)
     with (p / "database.dump").open("wb") as f:
         subprocess.run(
             pg

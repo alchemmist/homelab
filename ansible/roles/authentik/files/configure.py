@@ -21,6 +21,7 @@ base = "https://auth.socrat.alchemmist.xyz/api/v3/"
 
 
 def api(method, path, payload=None):
+    """Api."""
     req = urllib.request.Request(
         base + path,
         method=method,
@@ -40,6 +41,7 @@ import secrets
 
 
 def unique(path, field, value):
+    """Unique."""
     from urllib.parse import urlencode
 
     query = {field: value}
@@ -62,7 +64,8 @@ if observer_ready_path.exists():
 
     st = observer_ready_path.stat()
     if observer_ready_path.is_symlink() or st.st_mode & 0o077 or st.st_uid != os.geteuid():
-        raise RuntimeError("Unsafe observer readiness receipt")
+        message = "Unsafe observer readiness receipt"
+        raise RuntimeError(message)
     ready = json.loads(observer_ready_path.read_text())
     import hashlib
 
@@ -104,9 +107,10 @@ owner_path = root / "owner-login.json"
 owner = unique("core/users/", "username", "alchemmist")
 if not owner_path.exists():
     if owner:
-        raise RuntimeError(
+        message = (
             "Owner username already exists without bootstrap journal; review identity manually"
         )
+        raise RuntimeError(message)
     fd = os.open(owner_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     with os.fdopen(fd, "w") as f:
         json.dump(
@@ -136,15 +140,17 @@ if not owner_login["initialized"]:
     owner_path.chmod(0o600)
 # Only the declared owner may inherit this group's superuser rights.
 owner_group = unique("core/groups/", "name", "homelab-owner")
-if set(owner_group.get("users", [])) - set([owner["pk"]]):
-    raise RuntimeError("Unexpected owner group membership; review before granting superuser")
+if set(owner_group.get("users", [])) - {owner["pk"]}:
+    message = "Unexpected owner group membership; review before granting superuser"
+    raise RuntimeError(message)
 api("PATCH", "core/groups/" + groups["homelab-owner"] + "/", {"is_superuser": True})
 
 # Explicitly reviewed existing identities; no general email-based account merging.
 if account_path.exists():
     for username, account in accounts.items():
         if username != "alchemmist" and "homelab-owner" in account["groups"]:
-            raise RuntimeError("Only the declared owner may receive owner membership")
+            message = "Only the declared owner may receive owner membership"
+            raise RuntimeError(message)
         user = unique("core/users/", "username", username)
         login_path = root / (username + "-login.json") if username != "alchemmist" else owner_path
         if not login_path.exists():
@@ -193,7 +199,8 @@ validation = unique(
 )
 totp = unique("stages/authenticator/totp/", "name", "default-authenticator-totp-setup")
 if not validation or not totp:
-    raise RuntimeError("Expected default MFA stages missing")
+    message = "Expected default MFA stages missing"
+    raise RuntimeError(message)
 api(
     "PATCH",
     "stages/authenticator/validate/" + validation["pk"] + "/",
@@ -210,7 +217,8 @@ cert = unique("crypto/certificatekeypairs/", "name", "authentik Self-signed Cert
 scopes = api("GET", "propertymappings/provider/scope/?page_size=100")["results"]
 mapping = standard_scope_ids(scopes)
 if len(mapping) != 3 or not cert:
-    raise RuntimeError("OIDC defaults missing")
+    message = "OIDC defaults missing"
+    raise RuntimeError(message)
 groups_scope = unique("propertymappings/provider/scope/", "name", "homelab-groups")
 groups_settings = {
     "name": "homelab-groups",
@@ -257,9 +265,8 @@ for slug, service in services.items():
         provider = unique("providers/oauth2/", "name", "homelab-" + slug)
         if slug not in clients:
             if provider:
-                raise RuntimeError(
-                    "Provider exists without local client credentials; refusing rotation"
-                )
+                message = "Provider exists without local client credentials; refusing rotation"
+                raise RuntimeError(message)
             clients[slug] = {
                 "client_id": "socrat-" + slug,
                 "client_secret": secrets.token_urlsafe(48),
@@ -293,6 +300,9 @@ for slug, service in services.items():
             if not custom_mapping:
                 if slug != "litellm":
                     raise RuntimeError("Reviewed custom scope missing: " + slug)
+                print(  # noqa: T201
+                    "LiteLLM awaits explicit reviewed native integration; no placeholder application created"
+                )
                 service_mapping = None
                 break
             service_mapping.append(custom_mapping["pk"])
@@ -303,7 +313,8 @@ for slug, service in services.items():
         if slug == "grafana":
             offline = next((x for x in scopes if x.get("scope_name") == "offline_access"), None)
             if not offline:
-                raise RuntimeError("offline_access scope missing")
+                message = "offline_access scope missing"
+                raise RuntimeError(message)
             service_mapping.append(offline["pk"])
         settings = {
             "name": "homelab-" + slug,
@@ -374,7 +385,8 @@ if proxy_ids:
     outposts = api("GET", "outposts/instances/?page_size=100")["results"]
     embedded = [o for o in outposts if o.get("managed") == "goauthentik.io/outposts/embedded"]
     if len(embedded) != 1:
-        raise RuntimeError("Expected one managed embedded outpost")
+        message = "Expected one managed embedded outpost"
+        raise RuntimeError(message)
     outpost = embedded[0]
     config = dict(outpost["config"])
     config["authentik_host"] = "https://auth.socrat.alchemmist.xyz/"
@@ -384,3 +396,6 @@ if proxy_ids:
         "outposts/instances/" + outpost["pk"] + "/",
         {"providers": list(set(outpost["providers"]) | set(proxy_ids)), "config": config},
     )
+print(  # noqa: T201
+    "Owner bootstrap, role groups, mandatory MFA and restricted providers reconciled; no existing service accounts auto-linked"
+)

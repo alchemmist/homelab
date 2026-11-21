@@ -1,3 +1,4 @@
+"""Verify TLS and authentication behavior of the WireGuard transport endpoint."""
 import socket
 import ssl
 import struct
@@ -13,7 +14,8 @@ def connect(host, port, context, name):
 def require_rejection(host, port, context, name):
     try:
         with connect(host, port, context, name):
-            raise RuntimeError("Untrusted TLS connection unexpectedly succeeded")
+            message = "Untrusted TLS connection unexpectedly succeeded"
+            raise RuntimeError(message)
     except ssl.SSLCertVerificationError:
         pass
 
@@ -39,7 +41,9 @@ def main():
                     break
                 reply += chunk
             if reply != b"\x01\x02\x00\x00":
-                raise RuntimeError("Relay did not explicitly reject invalid authentication")
+                message = "Relay did not explicitly reject invalid authentication"
+                raise RuntimeError(message)
+    print("TLS trust, hostname verification and relay authentication verified")  # noqa: T201
 
 
 if __name__ == "__main__":

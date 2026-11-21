@@ -1,7 +1,8 @@
+"""Render a Helm release manifest and report whether it changed."""
+
 import argparse
 import json
 import subprocess
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--release", required=True)
@@ -34,3 +35,8 @@ installed = subprocess.run(
 )
 if installed.returncode != 0 and installed.stderr.strip() != "Error: release: not found":
     installed.check_returncode()
+print(  # noqa: T201
+    json.dumps(
+        {"changed": installed.returncode != 0 or desired.stdout.strip() != installed.stdout.strip()}
+    )
+)

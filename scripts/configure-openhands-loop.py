@@ -6,28 +6,28 @@ scripts/audit disabled into the existing PVC. Native API stores settings/profile
 Does not overwrite demo code/results, create schedules or launch model calls.
 """
 import json
-from pathlib import Path
 import subprocess
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DEST = '/home/openhands/.openhands/tools/filesystem'
-WORKSPACE = '/home/openhands/workspace/the-loop-demo'
+DEST = "/home/openhands/.openhands/tools/filesystem"
+WORKSPACE = "/home/openhands/workspace/the-loop-demo"
 
 
 def main():
-    files = {n:(ROOT/'tools/openhands-mcp'/n).read_text() for n in ['package.json','package-lock.json']}
-    stage = '''import pathlib,json,sys
+    files = {n:(ROOT/"tools/openhands-mcp"/n).read_text() for n in ["package.json","package-lock.json"]}
+    stage = """import pathlib,json,sys
 files=json.load(sys.stdin);p=pathlib.Path('/home/openhands/.openhands/tools/filesystem');p.mkdir(parents=True,exist_ok=True)
 for n,v in files.items():
  f=p/n
  if f.is_symlink():raise RuntimeError('Unsafe npm manifest path')
  f.write_text(v)
 pathlib.Path('/home/openhands/workspace/the-loop-demo').mkdir(parents=True,exist_ok=True)
-'''
-    subprocess.run(['kubectl','-n','openhands','exec','-i','openhands-0','--','python','-c',stage],input=json.dumps(files),text=True,check=True)
-    subprocess.run(['kubectl','-n','openhands','exec','openhands-0','--','npm','ci','--prefix',DEST,'--ignore-scripts','--no-audit','--no-fund'],check=True)
-    policy = (ROOT/'services/openhands/READY_TO_REVIEW.md').read_text()+'\n\n'+(ROOT/'services/openhands/THE_LOOP.md').read_text()
-    code = '''import json,sys,pathlib,urllib.request
+"""
+    subprocess.run(["kubectl","-n","openhands","exec","-i","openhands-0","--","python","-c",stage],input=json.dumps(files),text=True,check=True)
+    subprocess.run(["kubectl","-n","openhands","exec","openhands-0","--","npm","ci","--prefix",DEST,"--ignore-scripts","--no-audit","--no-fund"],check=True)
+    policy = (ROOT/"services/openhands/READY_TO_REVIEW.md").read_text()+"\n\n"+(ROOT/"services/openhands/THE_LOOP.md").read_text()
+    code = """import json,sys,pathlib,urllib.request
 policy=json.load(sys.stdin)['policy'];key=pathlib.Path('/home/openhands/.openhands/agent-canvas/api-key.txt').read_text().strip()
 def api(path,body=None,method=None):
  r=urllib.request.Request('http://127.0.0.1:8000'+path,data=None if body is None else json.dumps(body).encode(),method=method,headers={'X-Session-API-Key':key,'Content-Type':'application/json'})
@@ -49,8 +49,8 @@ else:api('/api/settings/mcp/socrat-workspace',settings)
 api('/api/agent-profiles/socrat-the-loop',{'agent_kind':'openhands','llm_profile_ref':'socrat-deepseek','mcp_server_refs':['socrat-workspace'],'secret_refs':[],'integration_refs':[],'system_message_suffix':policy,'condenser':{'max_size':240,'max_tokens':24000}})
 p=api('/api/agent-profiles/socrat-the-loop')['profile'];api('/api/agent-profiles/'+p['id']+'/activate',{})
 print(json.dumps({'profile':p['name'],'id':p['id'],'mcp_tools':len(test['tools']),'outside_workspace_denied':True}))
-'''
-    subprocess.run(['kubectl','-n','openhands','exec','-i','openhands-0','--','python','-c',code],input=json.dumps({'policy':policy}),text=True,check=True)
+"""
+    subprocess.run(["kubectl","-n","openhands","exec","-i","openhands-0","--","python","-c",code],input=json.dumps({"policy":policy}),text=True,check=True)
 
 
-if __name__ == '__main__': main()
+if __name__ == "__main__": main()

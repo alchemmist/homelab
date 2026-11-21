@@ -1,13 +1,15 @@
+"""Verify VPN clients between the primary and legacy x-ui databases."""
+
 import argparse
 import base64
 import hashlib
 import json
 import os
-from pathlib import Path
 import sqlite3
 import sys
 import urllib.parse
 import urllib.request
+from pathlib import Path
 
 DATABASES = {"primary": "/srv/x-ui-lab/db/x-ui.db", "legacy": "/etc/x-ui/x-ui.db"}
 TABLES = (
@@ -32,14 +34,17 @@ RUNTIME_COLUMNS = {
 
 
 def canonical(value):
+    """Execute the canonical operation."""
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
 def digest(value):
+    """Execute the digest operation."""
     return hashlib.sha256(canonical(value).encode()).hexdigest()
 
 
 def configuration(connection):
+    """Execute the configuration operation."""
     connection.row_factory = sqlite3.Row
     result = {}
     for table in TABLES:
@@ -54,6 +59,7 @@ def configuration(connection):
 
 
 def normalize_subscription(body):
+    """Execute the normalize_subscription operation."""
     text = body.decode("utf-8").strip()
     if "://" not in text:
         text = base64.b64decode(text + "=" * (-len(text) % 4), validate=True).decode("utf-8")
@@ -76,17 +82,8 @@ def normalize_subscription(body):
     return sorted(links)
 
 
-def subscriptions(connection):
-    settings = dict(connection.execute("SELECT key, value FROM settings"))
-    if settings.get("subCertFile") or settings.get("subKeyFile"):
-        raise ValueError("Local TLS subscription endpoint is unsupported")
-    port = int(settings.get("subPort", "2096"))
-    host = settings.get("subListen", "") or ("127.0.0.1" if port == 12096 else "172.18.0.1")
-    if host in ("0.0.0.0", "::"):
-        host = "127.0.0.1"
-    if host not in ("127.0.0.1", "172.18.0.1"):
-        raise ValueError("Unexpected local subscription address")
-    path = settings.get("subPath", "/sub/")
+def subscription_identifiers(connection: sqlite3.Connection) -> set[str]:
+    """Collect enabled subscription identifiers from both client tables."""
     identifiers = set()
     for row in connection.execute("SELECT settings FROM inbounds WHERE enable = 1"):
         for client in json.loads(row[0]).get("clients", []):
@@ -97,6 +94,22 @@ def subscriptions(connection):
     ):
         if row[0]:
             identifiers.add(row[0])
+    return identifiers
+
+
+def subscriptions(connection):
+    """Execute the subscriptions operation."""
+    settings = dict(connection.execute("SELECT key, value FROM settings"))
+    if settings.get("subCertFile") or settings.get("subKeyFile"):
+        raise ValueError("Local TLS subscription endpoint is unsupported")
+    port = int(settings.get("subPort", "2096"))
+    host = settings.get("subListen", "") or ("127.0.0.1" if port == 12096 else "172.18.0.1")
+    if host in ("0.0.0.0", "::"):
+        host = "127.0.0.1"
+    if host not in ("127.0.0.1", "172.18.0.1"):
+        raise ValueError("Unexpected local subscription address")
+    path = settings.get("subPath", "/sub/")
+    identifiers = subscription_identifiers(connection)
     if not identifiers:
         raise ValueError("No enabled subscriptions found")
     result = {}
@@ -122,10 +135,12 @@ def subscriptions(connection):
 
 
 def connect(path):
+    """Execute the connect operation."""
     return sqlite3.connect(Path(path).resolve().as_uri() + "?mode=ro", uri=True)
 
 
 def inspect(connection):
+    """Execute the inspect operation."""
     if connection.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
         raise ValueError("SQLite integrity check failed")
     config = configuration(connection)
@@ -136,6 +151,7 @@ def inspect(connection):
 
 
 def run(mode, directory):
+    """Execute the run operation."""
     if os.geteuid() != 0:
         raise ValueError("Run as root")
     os.umask(0o077)
@@ -175,9 +191,11 @@ def run(mode, directory):
             raise ValueError("VPN configuration or subscriptions changed")
     count = sum(len(item["subscriptions"]) for item in current.values())
     links = sum(sub["links"] for item in current.values() for sub in item["subscriptions"].values())
+    print(f"{mode}: {len(current)} databases, {count} subscriptions, {links} links verified")  # noqa: T201
 
 
 def main():
+    """Execute the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("mode", choices=("snapshot", "verify"))
     parser.add_argument("--directory", required=True)
@@ -186,9 +204,9 @@ def main():
         run(args.mode, args.directory)
     except Exception as error:
         if isinstance(error, ValueError):
-            pass
+            print(str(error), file=sys.stderr)  # noqa: T201
         else:
-            pass
+            print("VPN snapshot operation failed: " + type(error).__name__, file=sys.stderr)  # noqa: T201
         return 1
     return 0
 

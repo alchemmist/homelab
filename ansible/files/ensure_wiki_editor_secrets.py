@@ -1,14 +1,17 @@
+"""Ensure wiki editor credentials and repository secrets exist."""
+
 import base64
 import json
 import os
-from pathlib import Path
 import secrets
 import subprocess
 import tempfile
 import urllib.request
+from pathlib import Path
 
 
 def get_secret(name):
+    """Get secret."""
     result = subprocess.run(
         ["kubectl", "-n", "wiki", "get", "secret", name, "--ignore-not-found", "-o", "json"],
         text=True,
@@ -19,6 +22,7 @@ def get_secret(name):
 
 
 def apply(kind, namespace, name, data):
+    """Apply."""
     payload = {
         "apiVersion": "v1",
         "kind": kind,
@@ -32,6 +36,7 @@ def apply(kind, namespace, name, data):
         capture_output=True,
         check=True,
     )
+    print(result.stdout.strip())  # noqa: T201
 
 
 existing = get_secret("wiki-editor-git")
@@ -58,6 +63,7 @@ with tempfile.TemporaryDirectory(prefix="wiki-editor-key-") as folder:
         )
         apply("Secret", "wiki", "wiki-editor-git", {"id_ed25519": key.read_text()})
     public = subprocess.check_output(["ssh-keygen", "-y", "-f", str(key)], text=True).strip()
+    print("Repository deploy public key:", public)  # noqa: T201
 existing = get_secret("wiki-editor-auth")
 token = (
     base64.b64decode(existing["gateway-token"]).decode()

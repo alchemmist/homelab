@@ -17,6 +17,7 @@ import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
+from typing import cast
 from uuid import uuid4
 
 BASE = "https://auth.socrat.alchemmist.xyz/api/v3/"
@@ -54,24 +55,29 @@ COLLECTIONS = (
 )
 
 
-def require(condition, message):
+def require(condition: object, message: str) -> None:
+    """Document the require operation."""
     if not condition:
         raise RuntimeError(message)
 
 
 def encoded(value):
+    """Document the encoded operation."""
     return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
 
 
 def digest(value):
+    """Document the digest operation."""
     return hashlib.sha256(encoded(value)).hexdigest()
 
 
 def tool_hash():
+    """Document the tool hash operation."""
     return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 
 
 def private(path, directory=False):
+    """Document the private operation."""
     s = path.lstat()
     require(
         not stat.S_ISLNK(s.st_mode)
@@ -83,13 +89,18 @@ def private(path, directory=False):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
+    def redirect_request(self, _req, fp, _code, _msg, _headers, _newurl):
+        "Refuse redirects by closing the body and raising instead."
         if fp is not None:
             fp.close()
-        raise RuntimeError("API redirect refused")
+        message = "API redirect refused"
+        raise RuntimeError(message)
 
 
 def api_for(root):
+    """Document the api for operation."""
     private(root, directory=True)
     path = root / "credentials.json"
     private(path)
@@ -107,7 +118,7 @@ def api_for(root):
     token = tokens[0]
     opener = urllib.request.build_opener(NoRedirect())  # default verified HTTPS context
 
-    def api(method, endpoint, payload=None):
+    def api(method, endpoint, payload=None) -> dict[str, object]:
         require(
             method in ("GET", "POST")
             and endpoint.split("?")[0] in COLLECTIONS
@@ -122,20 +133,24 @@ def api_for(root):
         )
         try:
             with opener.open(request, timeout=45) as response:
-                return json.loads(response.read())
+                document: dict[str, object] = json.loads(response.read())
+                return document
         except urllib.error.HTTPError as error:
             # Close without reading/logging: unclosed HTTPError ResourceWarnings can
             # echo an untrusted server reason phrase during garbage collection.
             error.close()
-            raise RuntimeError("API request failed; outcome may be uncertain") from None
+            message = "API request failed; outcome may be uncertain"
+            raise RuntimeError(message) from None
         except (urllib.error.URLError, OSError, ValueError):
             # Never include response bodies, URLs, credentials or server errors.
-            raise RuntimeError("API request failed; outcome may be uncertain") from None
+            message = "API request failed; outcome may be uncertain"
+            raise RuntimeError(message) from None
 
     return api
 
 
 def rows(api, path):
+    """Document the rows operation."""
     result = []
     for page in range(1, 1001):
         query = {"page_size": 100, "page": page}
@@ -157,10 +172,12 @@ def rows(api, path):
         )
         if nxt is None or nxt == 0:
             return result
-    raise RuntimeError("Pagination limit exceeded")
+    message = "Pagination limit exceeded"
+    raise RuntimeError(message)
 
 
 def unique(items, key):
+    """Document the unique operation."""
     result = {}
     for item in items:
         require(
@@ -175,6 +192,7 @@ def unique(items, key):
 
 
 def snapshot(api):
+    """Document the snapshot operation."""
     state = {}
     for path in COLLECTIONS:
         items = rows(api, path)
@@ -184,10 +202,12 @@ def snapshot(api):
 
 
 def hashes(state):
+    """Document the hashes operation."""
     return {path: digest(items) for path, items in state.items()}
 
 
 def empty_group(group):
+    """Document the empty group operation."""
     require(
         group.get("is_superuser") is False
         and all(
@@ -248,6 +268,32 @@ def evidence_input(path):
     return evidence
 
 
+def _require_pinned(
+    users: dict[str, dict[str, object]],
+    groups: dict[str, dict[str, object]],
+    reviewed: dict[str, object],
+) -> None:
+    """Require every pinned identity to be present and unchanged with legacy groups."""
+    for name, uuid in PINNED.items():
+        entry = users.get(name)
+        require(
+            entry is not None
+            and entry.get("uuid") == uuid
+            and entry.get("is_active") is True
+            and entry.get("type") == "internal",
+            "Pinned active owner/Tim missing or changed",
+        )
+        require(
+            all(
+                g in groups
+                and groups[g]["pk"]
+                in cast("list[object]", cast("dict[str, object]", entry)["groups"])
+                for g in cast("list[str]", cast("dict[str, object]", reviewed[name])["groups"])
+            ),
+            "Pinned legacy membership missing",
+        )
+
+
 def build_plan(api, services, reviewed, stage="groups-only", evidence=None):
     require(stage in ("groups-only", "groups+empty-bindings"), "Unknown stage")
     actual = {slug: set(s.get("appRoles", {})) for slug, s in services.items() if s.get("appRoles")}
@@ -275,21 +321,7 @@ def build_plan(api, services, reviewed, stage="groups-only", evidence=None):
             type(user.get("groups")) is list and not app_pks.intersection(user["groups"]),
             "App membership present or user inventory incomplete",
         )
-    for name, uuid in PINNED.items():
-        user = users.get(name)
-        require(
-            user is not None
-            and user.get("uuid") == uuid
-            and user.get("is_active") is True
-            and user.get("type") == "internal",
-            "Pinned active owner/Tim missing or changed",
-        )
-        require(
-            all(
-                g in groups and groups[g]["pk"] in user["groups"] for g in reviewed[name]["groups"]
-            ),
-            "Pinned legacy membership missing",
-        )
+    _require_pinned(users, groups, reviewed)
     require(
         users["antropophag"].get("is_superuser") is False
         and groups["homelab-owner"]["pk"] not in users["antropophag"]["groups"],
@@ -391,7 +423,8 @@ def locked(root):
         try:
             fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
-            raise RuntimeError("Another preparation invocation holds the lock") from None
+            message = "Another preparation invocation holds the lock"
+            raise RuntimeError(message) from None
         yield
     finally:
         os.close(fd)  # never unlink a lock inode another invocation may hold
@@ -517,8 +550,10 @@ def main():
             count = apply_plan(
                 api, args.root, services, reviewed, args.stage, evidence, args.approve_sha256
             )
+            print(f"PASS: {count} verified create requests; no assignments or native rollout")  # noqa: T201
             return 0
         plan, _ = build_plan(api, services, reviewed, args.stage, evidence)
+        print(json.dumps(plan, indent=2))  # only request allowlist + hashes, never API responses  # noqa: T201
         return int(args.action == "check" and bool(plan["operations"]))
 
 
@@ -527,6 +562,5 @@ if __name__ == "__main__":
         raise SystemExit(main())
     except (RuntimeError, OSError, KeyError, ValueError, TypeError, AttributeError):
         # Sanitized fixed text also covers malformed/untrusted API/input values.
-        raise SystemExit(
-            "Preparation stopped: private input/API/schema/drift/approval or journal failure; inspect locally, never replay configure.py"
-        ) from None
+        message = "Preparation stopped: private input/API/schema/drift/approval or journal failure; inspect locally, never replay configure.py"
+        raise SystemExit(message) from None

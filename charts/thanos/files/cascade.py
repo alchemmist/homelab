@@ -1,3 +1,4 @@
+"""Plan and apply Thanos block cascades through the compactor."""
 import json
 import os
 import signal
@@ -9,7 +10,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
-
+from typing import cast
 
 RAW_RESOLUTION = 0
 FIVE_RESOLUTION = 300000
@@ -54,6 +55,81 @@ def selected(blocks):
     return sorted(block["ulid"] for block in blocks)
 
 
+def _five_source_blocks(
+    raw_fives: list[dict[str, object]],
+    raw_hours: list[dict[str, object]],
+    shelf_five_ids: set[object],
+    *,
+    five_reachable: bool,
+) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+    copy_five: list[dict[str, object]] = []
+    mark_five_source: list[dict[str, object]] = []
+    if five_reachable:
+        for block in raw_fives:
+            if block.get("deletionMark") or not fully_covered(block, raw_hours):
+                continue
+            if block["ulid"] in shelf_five_ids:
+                mark_five_source.append(block)
+            else:
+                copy_five.append(block)
+    return copy_five, mark_five_source
+
+
+def _hour_source_blocks(
+    raw_hours: list[dict[str, object]],
+    shelf_hour_ids: set[object],
+    *,
+    hour_reachable: bool,
+) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+    copy_hour: list[dict[str, object]] = []
+    mark_hour_source: list[dict[str, object]] = []
+    if hour_reachable:
+        for block in raw_hours:
+            if block.get("deletionMark"):
+                continue
+            if block["ulid"] in shelf_hour_ids:
+                mark_hour_source.append(block)
+            else:
+                copy_hour.append(block)
+    return copy_hour, mark_hour_source
+
+
+def _five_shelf_removals(
+    five_blocks: list[dict[str, object]],
+    shelf_hours: list[dict[str, object]],
+    *,
+    hour_reachable: bool,
+    now_ms: int,
+    disk_free_bytes: int | None,
+) -> list[dict[str, object]]:
+    chosen: list[dict[str, object]] = []
+    if hour_reachable:
+        eligible = [
+            block
+            for block in five_blocks
+            if block.get("resolution") == FIVE_RESOLUTION
+            and not block.get("deletionMark")
+            and fully_covered(block, shelf_hours)
+        ]
+        aged = [
+            block for block in eligible if cast("int", block["maxTime"]) <= now_ms - FIVE_KEEP_MS
+        ]
+        chosen = list(aged)
+        if disk_free_bytes is not None and disk_free_bytes < DISK_FLOOR_BYTES:
+            deficit = DISK_FLOOR_BYTES - disk_free_bytes
+            freed = sum(block_bytes(block) for block in chosen)
+            rest = sorted(
+                (block for block in eligible if block not in chosen),
+                key=lambda block: (cast("int", block["minTime"]), block["ulid"]),
+            )
+            for block in rest:
+                if freed >= deficit:
+                    break
+                chosen.append(block)
+                freed += block_bytes(block)
+    return chosen
+
+
 def plan(
     raw_blocks, five_blocks, hour_blocks, now_ms, disk_free_bytes, five_reachable, hour_reachable
 ):
@@ -63,61 +139,29 @@ def plan(
     shelf_hour_ids = {block["ulid"] for block in hour_blocks}
     shelf_hours = [block for block in hour_blocks if block.get("resolution") == HOUR_RESOLUTION]
 
-    copy_five = []
-    mark_five_source = []
-    if five_reachable:
-        for block in raw_fives:
-            if block.get("deletionMark") or not fully_covered(block, raw_hours):
-                continue
-            if block["ulid"] in shelf_five_ids:
-                mark_five_source.append(block)
-            else:
-                copy_five.append(block)
-
-    copy_hour = []
-    mark_hour_source = []
-    if hour_reachable:
-        for block in raw_hours:
-            if block.get("deletionMark"):
-                continue
-            if block["ulid"] in shelf_hour_ids:
-                mark_hour_source.append(block)
-            else:
-                copy_hour.append(block)
+    copy_five, mark_five_source = _five_source_blocks(
+        raw_fives, raw_hours, shelf_five_ids, five_reachable=five_reachable
+    )
+    copy_hour, mark_hour_source = _hour_source_blocks(
+        raw_hours, shelf_hour_ids, hour_reachable=hour_reachable
+    )
 
     mark_raw = [
         block
         for block in raw_blocks
         if block.get("resolution") == RAW_RESOLUTION
         and not block.get("deletionMark")
-        and block["maxTime"] <= now_ms - RAW_KEEP_MS
+        and cast("int", block["maxTime"]) <= now_ms - RAW_KEEP_MS
         and fully_covered(block, raw_fives)
     ]
 
-    mark_five_shelf = []
-    if hour_reachable:
-        eligible = [
-            block
-            for block in five_blocks
-            if block.get("resolution") == FIVE_RESOLUTION
-            and not block.get("deletionMark")
-            and fully_covered(block, shelf_hours)
-        ]
-        aged = [block for block in eligible if block["maxTime"] <= now_ms - FIVE_KEEP_MS]
-        chosen = list(aged)
-        if disk_free_bytes is not None and disk_free_bytes < DISK_FLOOR_BYTES:
-            deficit = DISK_FLOOR_BYTES - disk_free_bytes
-            freed = sum(block_bytes(block) for block in chosen)
-            rest = sorted(
-                (block for block in eligible if block not in chosen),
-                key=lambda block: (block["minTime"], block["ulid"]),
-            )
-            for block in rest:
-                if freed >= deficit:
-                    break
-                chosen.append(block)
-                freed += block_bytes(block)
-        mark_five_shelf = chosen
+    mark_five_shelf = _five_shelf_removals(
+        five_blocks,
+        shelf_hours,
+        hour_reachable=hour_reachable,
+        now_ms=now_ms,
+        disk_free_bytes=disk_free_bytes,
+    )
 
     return {
         "copyFive": selected(copy_five),
@@ -215,7 +259,8 @@ def wait_compactor_idle(namespace, name, timeout=180):
         if spec == 0 and ready == 0 and current == 0:
             return
         if time.monotonic() >= deadline:
-            raise TimeoutError("compactor did not scale to zero")
+            message = "compactor did not scale to zero"
+            raise TimeoutError(message)
         time.sleep(2)
 
 
@@ -319,11 +364,13 @@ def upload_block(base, token, directory, ulid):
         for filename in filenames:
             full = os.path.join(dirpath, filename)
             relative = os.path.relpath(full, root).replace(os.sep, "/")
-            with open(full, "rb") as handle:
-                with shelf_open(
+            with (
+                open(full, "rb") as handle,
+                shelf_open(
                     prefix + "/files/" + relative, token, "PUT", handle, timeout=600
-                ) as response:
-                    response.read()
+                ) as response,
+            ):
+                response.read()
     with shelf_open(prefix + "/commit", token, "POST", b"") as response:
         response.read()
 

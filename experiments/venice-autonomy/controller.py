@@ -1,15 +1,17 @@
+"""Controller that schedules and supervises Venice autonomy benchmark attempts."""
 import argparse
 import fcntl
 import hashlib
 import json
 import os
-import owned_resources
 import pathlib
 import shlex
 import signal
 import subprocess
-import sys
 import time
+from typing import TypedDict, cast
+
+import owned_resources
 
 DEFAULT_ENGINES = ("mini_native", "openhands")
 ENGINES = DEFAULT_ENGINES + ("mini_text",)
@@ -46,7 +48,7 @@ WRAPPER_ERROR_TYPES = ("ConversationRunError", "SDKError")
 def exception_types(result):
     names = []
 
-    def add(value):
+    def add(value) -> None:
         if isinstance(value, str) and value and value not in names:
             names.append(value)
 
@@ -101,12 +103,14 @@ def classify_result(result):
     if any(name in CLIENT_INPUT_ERRORS for name in names):
         return "client_input"
     if result.get("infrastructure_error_type"):
-        raise ValueError("unknown error type: " + str(result.get("infrastructure_error_type")))
+        message = "unknown error type: " + str(result.get("infrastructure_error_type"))
+        raise ValueError(message)
     if not names:
         return "none"
     if any(name in RUNNER_ERRORS for name in names):
         return "runner"
-    raise ValueError("unknown error type: " + names[0])
+    message = "unknown error type: " + names[0]
+    raise ValueError(message)
 
 
 def resolve_mini_exit(trajectory):
@@ -198,21 +202,25 @@ def attempt_facts(attempt):
     }
 
 
+def _artifact_outcome(facts: list[dict[str, object]]) -> str:
+    last = facts[-1]
+    if last["provider"]:
+        return "artifact_and_provider_error"
+    if last["exit_status"] == "LimitsExceeded":
+        return "artifact_and_limits_exceeded"
+    if last["exit_status"] == "RepeatedFormatError":
+        return "artifact_and_repeated_format_error"
+    if last["clean"]:
+        return "artifact_and_clean_finish"
+    return "unknown"
+
+
 def task_outcome(task):
     facts = [attempt_facts(attempt) for attempt in task.get("attempts", [])]
     if not facts:
         return "pending", facts
     if facts[-1]["artifact"]:
-        last = facts[-1]
-        if last["provider"]:
-            return "artifact_and_provider_error", facts
-        if last["exit_status"] == "LimitsExceeded":
-            return "artifact_and_limits_exceeded", facts
-        if last["exit_status"] == "RepeatedFormatError":
-            return "artifact_and_repeated_format_error", facts
-        if last["clean"]:
-            return "artifact_and_clean_finish", facts
-        return "unknown", facts
+        return _artifact_outcome(facts), facts
     if all(item["exit_status"] == "RepeatedFormatError" and not item["provider"] for item in facts):
         return "blocked_both_format_error", facts
     if (
@@ -224,8 +232,6 @@ def task_outcome(task):
         return "blocked_format_then_provider", facts
     if all(item["provider"] for item in facts):
         return "blocked_both_provider_error", facts
-    if any(item["exit_status"] is None and not item["provider"] for item in facts):
-        return "unknown", facts
     return "unknown", facts
 
 
@@ -247,9 +253,11 @@ def save_state(path, state):
 def initial_state(duration, rounds, engines=DEFAULT_ENGINES):
     selected = tuple(engines)
     if not selected or any(engine not in ENGINES for engine in selected):
-        raise ValueError("unknown engine selection")
+        message = "unknown engine selection"
+        raise ValueError(message)
     if not 1 <= duration <= 7200 or not 1 <= rounds <= 10:
-        raise ValueError("experiment must have 1..7200 seconds and 1..10 rounds")
+        message = "experiment must have 1..7200 seconds and 1..10 rounds"
+        raise ValueError(message)
     now = time.time()
     tasks = [
         {
@@ -355,10 +363,11 @@ def cleanup_interrupted(running):
     for role in ("agent", "verifier"):
         try:
             cleanup_role(pathlib.Path(directory) / role)
-        except Exception as error:
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
             errors.append(f"{role}: {error}")
     if errors:
-        raise ValueError("cleanup errors: " + "; ".join(errors))
+        message = "cleanup errors: " + "; ".join(errors)
+        raise ValueError(message)
 
 
 def render_report(state):
@@ -489,149 +498,227 @@ def write_report(root, state):
     (root / "REPORT.md").write_text(render_report(state))
 
 
+class ResumePlan(TypedDict):
+    """Run plan parameters resumed or freshly initialized by the controller."""
+
+    path: pathlib.Path
+    root: pathlib.Path
+    duration: int
+    rounds: int
+    include_text: bool
+
+
+def _resume_or_init(plan: ResumePlan) -> dict[str, object]:
+    path = plan["path"]
+    root = plan["root"]
+    duration = plan["duration"]
+    rounds = plan["rounds"]
+    include_text = plan["include_text"]
+    if path.exists():
+        state = json.loads(path.read_text())
+        if state.get("running"):
+            try:
+                cleanup_interrupted(state["running"])
+            except Exception as error:
+                state["phase"] = "cleanup_failed"
+                state["termination_error"] = str(error)
+                save_state(path, state)
+                write_report(root, state)
+                raise
+        recover_interrupted(state)
+    else:
+        state = initial_state(duration, rounds, ENGINES if include_text else DEFAULT_ENGINES)
+    return cast("dict[str, object]", state)
+
+
+def _validate_source_hashes(state: dict[str, object]) -> None:
+    source_hashes = {
+        name: hashlib.sha256(pathlib.Path(__file__).with_name(name).read_bytes()).hexdigest()
+        for name in (
+            "attempt.py",
+            "sandbox.py",
+            "fixtures.py",
+            "controller.py",
+            "owned_resources.py",
+        )
+    }
+    if state.get("source_hashes", source_hashes) != source_hashes:
+        message = "runner source changed; refusing an incomparable resume"
+        raise ValueError(message)
+    state["source_hashes"] = source_hashes
+
+
+def _apply_result_kind(state: dict[str, object], kind: str) -> None:
+    if kind == "runner":
+        state["phase"] = "runner_infrastructure_error"
+    elif kind == "provider":
+        state["consecutive_provider_failures"] = (
+            cast("int", state["consecutive_provider_failures"]) + 1
+        )
+    elif kind == "context_length":
+        state["phase"] = "context_length_exceeded"
+    elif kind == "client_input":
+        state["phase"] = "client_input_rejected"
+    elif kind == "none":
+        state["consecutive_provider_failures"] = 0
+    if cast("int", state["consecutive_provider_failures"]) >= 2 and state["phase"] == "running":
+        state["phase"] = "repeated_provider_failures"
+
+
+def _read_result(directory: pathlib.Path, process: "subprocess.Popen[bytes]") -> dict[str, object]:
+    summary_path = directory / "summary.json"
+    try:
+        result = json.loads(summary_path.read_text())
+        if not isinstance(result, dict) or type(result.get("accepted")) is not bool:
+            message = "invalid summary"
+            raise ValueError(message)
+    except (OSError, ValueError):
+        result = {
+            "accepted": False,
+            "controller_error": "missing_or_invalid_summary",
+            "process_exit": process.returncode,
+        }
+    return result
+
+
+class TaskRunCtx(TypedDict):
+    """Interpreter paths needed to execute one task attempt."""
+
+    root: pathlib.Path
+    path: pathlib.Path
+    mini_python: str
+    openhands_python: str
+
+
+def _run_one_task(state: dict[str, object], task: dict[str, object], ctx: TaskRunCtx) -> None:
+    root, path, mini_python, openhands_python = (
+        ctx["root"],
+        ctx["path"],
+        ctx["mini_python"],
+        ctx["openhands_python"],
+    )
+    attempts = cast("list[dict[str, object]]", task["attempts"])
+    task_id = cast("str", task["id"])
+    directory = root / "runs" / (task_id + "-attempt-" + str(len(attempts) + 1))
+    directory.parent.mkdir(exist_ok=True)
+    python = mini_python if cast("str", task["engine"]).startswith("mini_") else openhands_python
+    command = [
+        python,
+        "-u",
+        str(pathlib.Path(__file__).with_name("attempt.py")),
+        "--engine",
+        cast("str", task["engine"]),
+        "--task",
+        cast("str", task["task"]),
+        "--directory",
+        str(directory),
+        "--seed",
+        str(task["seed"]),
+    ]
+    if attempts:
+        command += [
+            "--feedback",
+            json.dumps(attempts[-1].get("verdict", {"accepted": False}))[:1800],
+        ]
+    with (root / (task_id + "-" + str(len(attempts) + 1) + ".log")).open("w") as log:
+        process = subprocess.Popen(
+            command, stdout=log, stderr=subprocess.STDOUT, start_new_session=True
+        )
+        try:
+            signature = list(process_signature(process.pid))
+        except subprocess.CalledProcessError:
+            if process.poll() is None:
+                raise
+            signature = None
+        running: dict[str, object] = {
+            "task_id": task_id,
+            "pid": process.pid,
+            "directory": str(directory),
+        }
+        if signature:
+            running["signature"] = signature
+        state["running"] = running
+        save_state(path, state)
+        try:
+            process.wait(
+                timeout=max(1, min(900, float(cast("float", state["deadline"])) - time.time()))
+            )
+        except subprocess.TimeoutExpired:
+            try:
+                cleanup_interrupted(running)
+            except Exception as error:
+                state["phase"] = "cleanup_failed"
+                state["termination_error"] = str(error)
+                raise
+            process.wait(timeout=10)
+    result = _read_result(directory, process)
+    result["directory"] = str(directory)
+    settle_task(task, result)
+    try:
+        kind = classify_result(result)
+    except ValueError as error:
+        if not str(error).startswith("unknown error type:"):
+            raise
+        state["phase"] = "unknown_error_type"
+        state["termination_error"] = str(error)
+        kind = "unknown"
+    _apply_result_kind(state, cast("str", kind))
+    state["running"] = None
+    save_state(path, state)
+    write_report(root, state)
+    print(
+        json.dumps(
+            {
+                "task": task_id,
+                "status": task["status"],
+                "accepted": result.get("accepted"),
+            }
+        ),
+        flush=True,
+    )
+
+
 def run(root, mini_python, openhands_python, duration, rounds, include_text=False):
     os.umask(0o077)
     root = pathlib.Path(root)
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
     if root.is_symlink() or root.stat().st_mode & 0o077:
-        raise ValueError("controller root must be a private real directory")
+        message = "controller root must be a private real directory"
+        raise ValueError(message)
     with (root / "controller.lock").open("w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         path = root / "state.json"
-        if path.exists():
-            state = json.loads(path.read_text())
-            if state.get("running"):
-                try:
-                    cleanup_interrupted(state["running"])
-                except Exception as error:
-                    state["phase"] = "cleanup_failed"
-                    state["termination_error"] = str(error)
-                    save_state(path, state)
-                    write_report(root, state)
-                    raise
-            recover_interrupted(state)
-        else:
-            state = initial_state(duration, rounds, ENGINES if include_text else DEFAULT_ENGINES)
-        source_hashes = {
-            name: hashlib.sha256(pathlib.Path(__file__).with_name(name).read_bytes()).hexdigest()
-            for name in (
-                "attempt.py",
-                "sandbox.py",
-                "fixtures.py",
-                "controller.py",
-                "owned_resources.py",
-            )
+        plan: ResumePlan = {
+            "path": path,
+            "root": root,
+            "duration": duration,
+            "rounds": rounds,
+            "include_text": include_text,
         }
-        if state.get("source_hashes", source_hashes) != source_hashes:
-            raise ValueError("runner source changed; refusing an incomparable resume")
-        state["source_hashes"] = source_hashes
+        state = _resume_or_init(plan)
+        _validate_source_hashes(state)
         save_state(path, state)
         try:
-            while time.time() < state["deadline"] and state["phase"] == "running":
-                task = next((task for task in state["tasks"] if task["status"] == "pending"), None)
+            while time.time() < cast("float", state["deadline"]) and state["phase"] == "running":
+                task = next(
+                    (
+                        task
+                        for task in cast("list[dict[str, object]]", state["tasks"])
+                        if task["status"] == "pending"
+                    ),
+                    None,
+                )
                 if task is None:
                     state["phase"] = "queue_finished"
                     break
-                directory = (
-                    root / "runs" / (task["id"] + "-attempt-" + str(len(task["attempts"]) + 1))
-                )
-                directory.parent.mkdir(exist_ok=True)
-                python = mini_python if task["engine"].startswith("mini_") else openhands_python
-                command = [
-                    python,
-                    "-u",
-                    str(pathlib.Path(__file__).with_name("attempt.py")),
-                    "--engine",
-                    task["engine"],
-                    "--task",
-                    task["task"],
-                    "--directory",
-                    str(directory),
-                    "--seed",
-                    str(task["seed"]),
-                ]
-                if task["attempts"]:
-                    command += [
-                        "--feedback",
-                        json.dumps(task["attempts"][-1].get("verdict", {"accepted": False}))[:1800],
-                    ]
-                with (root / (task["id"] + "-" + str(len(task["attempts"]) + 1) + ".log")).open(
-                    "w"
-                ) as log:
-                    process = subprocess.Popen(
-                        command, stdout=log, stderr=subprocess.STDOUT, start_new_session=True
-                    )
-                    try:
-                        signature = list(process_signature(process.pid))
-                    except subprocess.CalledProcessError:
-                        if process.poll() is None:
-                            raise
-                        signature = None
-                    running = {
-                        "task_id": task["id"],
-                        "pid": process.pid,
-                        "directory": str(directory),
-                    }
-                    if signature:
-                        running["signature"] = signature
-                    state["running"] = running
-                    save_state(path, state)
-                    try:
-                        process.wait(timeout=max(1, min(900, state["deadline"] - time.time())))
-                    except subprocess.TimeoutExpired:
-                        try:
-                            cleanup_interrupted(running)
-                        except Exception as error:
-                            state["phase"] = "cleanup_failed"
-                            state["termination_error"] = str(error)
-                            raise
-                        process.wait(timeout=10)
-                summary_path = directory / "summary.json"
-                try:
-                    result = json.loads(summary_path.read_text())
-                    if not isinstance(result, dict) or type(result.get("accepted")) is not bool:
-                        raise ValueError("invalid summary")
-                except (OSError, ValueError):
-                    result = {
-                        "accepted": False,
-                        "controller_error": "missing_or_invalid_summary",
-                        "process_exit": process.returncode,
-                    }
-                result["directory"] = str(directory)
-                settle_task(task, result)
-                try:
-                    kind = classify_result(result)
-                except ValueError as error:
-                    if not str(error).startswith("unknown error type:"):
-                        raise
-                    state["phase"] = "unknown_error_type"
-                    state["termination_error"] = str(error)
-                    kind = "unknown"
-                if kind == "runner":
-                    state["phase"] = "runner_infrastructure_error"
-                elif kind == "provider":
-                    state["consecutive_provider_failures"] += 1
-                elif kind == "context_length":
-                    state["phase"] = "context_length_exceeded"
-                elif kind == "client_input":
-                    state["phase"] = "client_input_rejected"
-                elif kind == "none":
-                    state["consecutive_provider_failures"] = 0
-                if state["consecutive_provider_failures"] >= 2 and state["phase"] == "running":
-                    state["phase"] = "repeated_provider_failures"
-                state["running"] = None
-                save_state(path, state)
-                write_report(root, state)
-                print(
-                    json.dumps(
-                        {
-                            "task": task["id"],
-                            "status": task["status"],
-                            "accepted": result.get("accepted"),
-                        }
-                    ),
-                    flush=True,
-                )
+                task_run_ctx: TaskRunCtx = {
+                    "root": root,
+                    "path": path,
+                    "mini_python": mini_python,
+                    "openhands_python": openhands_python,
+                }
+                _run_one_task(state, task, task_run_ctx)
+
             if state["phase"] == "running":
                 state["phase"] = "deadline_reached"
         except KeyboardInterrupt:

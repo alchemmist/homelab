@@ -11,12 +11,13 @@ import fcntl
 import hashlib
 import json
 import os
-from pathlib import Path
 import re
 import socket
 import tempfile
 import urllib.error
 import urllib.request
+from pathlib import Path
+from typing import cast
 
 from app_iam import GROUP_MARKER, rows, validate_group
 
@@ -31,18 +32,21 @@ COLLECTIONS = (
 )
 
 
-def require(ok, message):
+def require(ok: object, message: str) -> None:
+    """Document the require operation."""
     if not ok:
         raise RuntimeError(message)
 
 
 def digest(value):
+    """Document the digest operation."""
     return hashlib.sha256(
         json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
 
 
 def unique(items, key):
+    """Document the unique operation."""
     found = {}
     for item in items:
         require(item[key] not in found, "Ambiguous " + key)
@@ -51,6 +55,7 @@ def unique(items, key):
 
 
 def group_expression(aliases):
+    """Document the group expression operation."""
     require(isinstance(aliases, dict), "Invalid claim aliases")
     for name, values in aliases.items():
         require(
@@ -75,6 +80,7 @@ def group_expression(aliases):
 
 
 def profile_expression(base_expression, aliases):
+    """Document the profile expression operation."""
     # Only transform the reviewed upstream profile groups entry. Preserve all
     # identity/avatar behavior and never mutate the global/default scope mapping.
     old = '"groups": [group.name for group in request.user.groups.all()],'
@@ -83,6 +89,7 @@ def profile_expression(base_expression, aliases):
 
 
 def contracts(services, applications):
+    """Document the contracts operation."""
     result = {}
     for slug in sorted(set(services) | set(applications)):
         require(SLUG.fullmatch(slug), "Unsafe application slug")
@@ -109,6 +116,7 @@ def contracts(services, applications):
 
 
 def inventory(api):
+    """Document the inventory operation."""
     return {
         p: sorted(
             rows(api, p + ("?superuser_full_list=true" if p == "core/applications/" else "")),
@@ -118,7 +126,103 @@ def inventory(api):
     }
 
 
+def _existing_admission_pks(
+    bindings: list[dict[str, object]], admissible: set[object], slug: str
+) -> set[object]:
+    """Verify each existing application binding and return the wired group PK set."""
+    seen = set()
+    for b in bindings:
+        require(
+            b.get("enabled") is True
+            and b.get("negate") is False
+            and b.get("failure_result") is False
+            and b.get("policy") is None
+            and not b.get("expires"),
+            "Complex/disabled/expiring policy needs review: " + slug,
+        )
+        if b.get("group"):
+            require(b["group"] in admissible, "Unexpected admission group: " + slug)
+            require(b["group"] not in seen, "Duplicate admission group")
+            seen.add(b["group"])
+        else:
+            # Existing exact human bindings are preserved, never broadened,
+            # adopted, deleted or created by this generic reconciler.
+            require(b.get("user") is not None, "Empty admission binding")
+    return seen
+
+
+def _plan_scope_migration(
+    aliases: object,
+    mappings: object,
+    provider: dict[str, object],
+    slug: str,
+    operations: list[dict[str, object]],
+) -> None:
+    """Plan the reviewed per-app profile/groups scope migration for one service."""
+    known = cast("dict[str, dict[str, object]]", mappings)
+    default = known.get("authentik default OAuth Mapping: OpenID 'profile'")
+    require(
+        default is not None and default["scope_name"] == "profile",
+        "Default profile missing",
+    )
+    safe_default = cast("dict[str, object]", default)
+    prefix = "homelab-app-" + slug + "-"
+
+    wanted = [
+        {
+            "name": prefix + "profile",
+            "scope_name": "profile",
+            "expression": profile_expression(safe_default["expression"], aliases),
+        },
+        {
+            "name": prefix + "groups",
+            "scope_name": "groups",
+            "expression": group_expression(aliases) + 'return {"groups": names}',
+        },
+    ]
+    for want in wanted:
+        have = known.get(cast("str", want["name"]))
+        if have:
+            require(have.get("scope_name") == want["scope_name"], "Scope ownership mismatch")
+            require(
+                cast("str", have.get("expression", "")).rstrip("\n")
+                == cast("str", want["expression"]).rstrip("\n"),
+                "Managed scope drift; explicit migration required",
+            )
+        else:
+            operations.append({"kind": "mapping", "settings": want})
+    pks = cast("list[object]", provider["property_mappings"])
+    by_pk = {m["pk"]: m for m in known.values()}
+    require(all(pk in by_pk for pk in pks), "Unknown provider scope")
+    retained = [pk for pk in pks if by_pk[pk]["scope_name"] not in ("profile", "groups")]
+    # Preserve ONLY the reviewed default scopes on first migration.
+    for pk in pks:
+        m = by_pk[pk]
+        if m["scope_name"] in ("profile", "groups"):
+            require(
+                m["name"]
+                in (
+                    safe_default["name"],
+                    "homelab-groups",
+                    prefix + "profile",
+                    prefix + "groups",
+                ),
+                "Unreviewed custom profile/groups mapping",
+            )
+    wanted_pks = [known[cast("str", w["name"])]["pk"] for w in wanted if w["name"] in known]
+    if len(wanted_pks) != 2 or set(pks) != set(retained + wanted_pks):
+        operations.append(
+            {
+                "kind": "provider",
+                "slug": slug,
+                "retained": retained,
+                "mappingNames": [w["name"] for w in wanted],
+            }
+        )
+
+
 def build_plan(state, services):
+    """Document the build plan operation."""
     groups = unique(state["core/groups/"], "name")
     apps = unique(state["core/applications/"], "slug")
     providers = unique(state["providers/oauth2/"], "pk")
@@ -147,98 +251,16 @@ def build_plan(state, services):
         require(provider["name"] == "homelab-" + slug, "Provider ownership mismatch: " + slug)
         expected_group_names = set(service.get("groups", [])) | set(active)
         bindings = [b for b in state["policies/bindings/"] if b["target"] == app["pk"]]
-        seen = set()
-        for b in bindings:
-            require(
-                b.get("enabled") is True
-                and b.get("negate") is False
-                and b.get("failure_result") is False
-                and b.get("policy") is None
-                and not b.get("expires"),
-                "Complex/disabled/expiring policy needs review: " + slug,
-            )
-            if b.get("group"):
-                require(
-                    b["group"] in {groups[n]["pk"] for n in expected_group_names if n in groups},
-                    "Unexpected admission group: " + slug,
-                )
-                require(b["group"] not in seen, "Duplicate admission group")
-                seen.add(b["group"])
-            else:
-                # Existing exact human bindings are preserved, never broadened,
-                # adopted, deleted or created by this generic reconciler.
-                require(b.get("user") is not None, "Empty admission binding")
+        admissible = {groups[n]["pk"] for n in expected_group_names if n in groups}
+        seen = _existing_admission_pks(bindings, admissible, slug)
         for name in active:
             if name not in groups or groups[name]["pk"] not in seen:
                 operations.append({"kind": "binding", "slug": slug, "group": name})
         aliases = service.get("accessManagement", {}).get("claimAliases")
         if aliases:
-            default = mappings.get("authentik default OAuth Mapping: OpenID 'profile'")
-            require(
-                default is not None and default["scope_name"] == "profile",
-                "Default profile missing",
-            )
-            prefix = "homelab-app-" + slug + "-"
-            wanted = [
-                {
-                    "name": prefix + "profile",
-                    "scope_name": "profile",
-                    "expression": profile_expression(default["expression"], aliases),
-                },
-                {
-                    "name": prefix + "groups",
-                    "scope_name": "groups",
-                    "expression": group_expression(aliases) + 'return {"groups": names}',
-                },
-            ]
-            for want in wanted:
-                have = mappings.get(want["name"])
-                if have:
-                    require(
-                        have.get("scope_name") == want["scope_name"], "Scope ownership mismatch"
-                    )
-                    require(
-                        have.get("expression", "").rstrip("\n") == want["expression"].rstrip("\n"),
-                        "Managed scope drift; explicit migration required",
-                    )
-                else:
-                    operations.append({"kind": "mapping", "settings": want})
-            by_pk = {m["pk"]: m for m in mappings.values()}
-            require(
-                all(pk in by_pk for pk in provider["property_mappings"]), "Unknown provider scope"
-            )
-            retained = [
-                pk
-                for pk in provider["property_mappings"]
-                if by_pk[pk]["scope_name"] not in ("profile", "groups")
-            ]
-            # Preserve ONLY the reviewed default scopes on first migration.
-            for pk in provider["property_mappings"]:
-                m = by_pk[pk]
-                if m["scope_name"] in ("profile", "groups"):
-                    require(
-                        m["name"]
-                        in (
-                            default["name"],
-                            "homelab-groups",
-                            prefix + "profile",
-                            prefix + "groups",
-                        ),
-                        "Unreviewed custom profile/groups mapping",
-                    )
-            wanted_pks = [mappings[w["name"]]["pk"] for w in wanted if w["name"] in mappings]
-            if len(wanted_pks) != 2 or set(provider["property_mappings"]) != set(
-                retained + wanted_pks
-            ):
-                operations.append(
-                    {
-                        "kind": "provider",
-                        "slug": slug,
-                        "retained": retained,
-                        "mappingNames": [w["name"] for w in wanted],
-                    }
-                )
-    # Native claims must exist BEFORE group bindings open admission.
+            _plan_scope_migration(
+                aliases, mappings, provider, slug, operations
+            )  # Native claims must exist BEFORE group bindings open admission.
     order = {"group": 0, "mapping": 1, "provider": 2, "binding": 3}
     operations.sort(key=lambda op: order[op["kind"]])
     payload = {"services": services, "state": state, "operations": operations}
@@ -246,6 +268,7 @@ def build_plan(state, services):
 
 
 def execute(api, state, services, expected, receipt):
+    """Document the execute operation."""
     fresh = inventory(api)
     plan = build_plan(fresh, services)
     require(plan["sha256"] == expected and fresh == state, "Inventory/approval drift; no retry")
@@ -352,12 +375,12 @@ def execute(api, state, services, expected, receipt):
     for path in ("core/groups/", "core/applications/", "policies/bindings/"):
         after_by = unique(after[path], "pk")
 
-        def owned_fields(value):
+        def owned_fields(value, path=path) -> object:
             # ApplicationSerializer embeds a read-only provider_obj which changes
             # when we update that provider's scopes; it is not an app write.
             if path == "core/applications/" and value is not None:
                 return {k: v for k, v in value.items() if k != "provider_obj"}
-            return value
+            return cast("object", value)
 
         require(
             all(owned_fields(after_by.get(old["pk"])) == owned_fields(old) for old in state[path]),
@@ -370,13 +393,18 @@ def execute(api, state, services, expected, receipt):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
+    def redirect_request(self, _req, fp, _code, _msg, _headers, _newurl):
+        "Refuse redirects by closing the body and raising instead."
         if fp:
             fp.close()
-        raise RuntimeError("API redirect refused")
+        message = "API redirect refused"
+        raise RuntimeError(message)
 
 
 def api_for(root):
+    """Document the api for operation."""
     credential = root / "credentials.json"
     for path in (root, credential):
         require(
@@ -388,7 +416,7 @@ def api_for(root):
     token = json.loads(credential.read_text())["AUTHENTIK_BOOTSTRAP_TOKEN"]
     http = urllib.request.build_opener(NoRedirect())
 
-    def api(method, path, data=None):
+    def api(method, path, data=None) -> dict[str, object] | None:
         base = path.split("?")[0]
         allowed = method == "GET" and (
             base in COLLECTIONS or bool(re.fullmatch(r"providers/oauth2/\d+/", base))
@@ -413,7 +441,8 @@ def api_for(root):
         try:
             with http.open(req, timeout=40) as response:
                 raw = response.read()
-                return json.loads(raw) if raw else None
+                document: dict[str, object] | None = json.loads(raw) if raw else None
+                return document
         except urllib.error.HTTPError as e:
             status = e.code
             e.close()
@@ -421,9 +450,8 @@ def api_for(root):
                 "API HTTP " + str(status) + "; stop and inspect receipt, no retry"
             ) from None
         except (OSError, ValueError, urllib.error.URLError):
-            raise RuntimeError(
-                "API outcome uncertain; stop and inspect receipt, no retry"
-            ) from None
+            message = "API outcome uncertain; stop and inspect receipt, no retry"
+            raise RuntimeError(message) from None
 
     return api
 
@@ -446,6 +474,16 @@ def main():
         services = json.loads((args.root / "services.json").read_text())
         state = inventory(api)
         plan = build_plan(state, services)
+        print(  # noqa: T201
+            json.dumps(
+                {
+                    "sha256": plan["sha256"],
+                    "operations": plan["operations"],
+                    "groups": plan["groups"],
+                },
+                indent=2,
+            )
+        )
         if not args.apply:
             return
         require(args.confirm_sha256 == plan["sha256"], "Explicit fresh plan hash required")
@@ -453,7 +491,7 @@ def main():
         directory = Path(tempfile.mkdtemp(prefix="app-access-", dir=args.root))
         directory.chmod(0o700)
 
-        def receipt(name, value):
+        def receipt(name, value) -> None:
             path = directory / name
             tmp = path.with_suffix(".tmp")
             tmp.write_text(json.dumps(value, indent=2))
@@ -461,7 +499,13 @@ def main():
             os.replace(tmp, path)
             require(json.loads(path.read_text()) == value, "Receipt verification failed")
 
+        print("PRIVATE_RECEIPT", directory, flush=True)  # noqa: T201
         count = execute(api, state, services, plan["sha256"], receipt)
+        print(  # noqa: T201
+            "VERIFIED operations="
+            + str(count)
+            + "; people/legacy grants unchanged; repeat plan empty"
+        )
 
 
 if __name__ == "__main__":

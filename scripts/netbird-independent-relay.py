@@ -8,6 +8,7 @@ no host network/capabilities, cluster token, local accounts or management API.
 
 import json
 from pathlib import Path
+from typing import cast
 
 import yaml
 
@@ -19,13 +20,15 @@ URI = "rels://" + HOST + ":443"
 HOME_URI = "rels://netbird.socrat.alchemmist.xyz:443"
 
 
-def advertised_relays():
+def advertised_relays() -> dict[str, object]:
     # Native simplified schema: root relay YAML is intentionally ignored by 0.82.
     # Explicit endpoints suppress the combined relay; deploy both standalone pods.
+    """Return the native simplified-schema relay advertisement configuration."""
     return {"addresses": [URI, HOME_URI], "credentialsTTL": "12h"}
 
 
-def manifests():
+def manifests() -> list[dict[str, object]]:
+    """Render the pinned standalone relay Deployment and Service manifests."""
     image = json.loads((ROOT / "deploy/netbird/images.lock.json").read_text())["images"]["relay"]
     reference = image["repository"] + ":" + image["tag"] + "@" + image["digest"]
     labels = {"app": NAME}
@@ -180,7 +183,7 @@ def manifests():
     ]
 
 
-def home_manifests():
+def home_manifests() -> list[dict[str, object]]:
     """Separate home relay: external relays disable the combined v0.82 relay.
 
     Reuses the existing exact-host TLS certificate, never modifies its owner.
@@ -193,20 +196,31 @@ def home_manifests():
     labels = {"app": name}
     docs = [d for d in docs if d["kind"] != "Certificate"]
     for doc in docs:
-        doc["metadata"]["name"] = name
+        cast("dict[str, object]", doc["metadata"])["name"] = name
     deploy, service, policy, ingress = docs
-    deploy["spec"]["selector"]["matchLabels"] = labels
-    pod = deploy["spec"]["template"]
-    pod["metadata"]["labels"] = labels
-    pod["spec"]["nodeSelector"] = {"kubernetes.io/hostname": "socrat-0"}
-    for env in pod["spec"]["containers"][0]["env"]:
+    cast("dict[str, object]", cast("dict[str, object]", deploy["spec"])["selector"])[
+        "matchLabels"
+    ] = labels
+    pod = cast("dict[str, object]", cast("dict[str, object]", deploy["spec"])["template"])
+    cast("dict[str, object]", pod["metadata"])["labels"] = labels
+    cast("dict[str, object]", pod["spec"])["nodeSelector"] = {"kubernetes.io/hostname": "socrat-0"}
+    for env in cast(
+        "list[dict[str, object]]",
+        cast(
+            "dict[str, object]",
+            cast("list[object]", cast("dict[str, object]", pod["spec"])["containers"])[0],
+        )["env"],
+    ):
         if env["name"] == "NB_EXPOSED_ADDRESS":
             env["value"] = HOME_URI
         if env["name"] == "NB_AUTH_SECRET":
-            env["valueFrom"]["secretKeyRef"]["name"] = name + "-auth"
-    service["spec"]["selector"] = labels
-    policy["spec"]["podSelector"]["matchLabels"] = labels
-    policy["spec"]["ingress"][0]["from"] = [
+            cast("dict[str, object]", cast("dict[str, object]", env["valueFrom"])["secretKeyRef"])[
+                "name"
+            ] = name + "-auth"
+    cast("dict[str, object]", service["spec"])["selector"] = labels
+    policy_spec = cast("dict[str, object]", policy["spec"])
+    cast("dict[str, object]", policy_spec["podSelector"])["matchLabels"] = labels
+    cast("dict[str, object]", cast("list[object]", policy_spec["ingress"])[0])["from"] = [
         {
             "namespaceSelector": {"matchLabels": {"kubernetes.io/metadata.name": "kube-system"}},
             "podSelector": {"matchLabels": {"app.kubernetes.io/name": "traefik"}},
@@ -226,11 +240,19 @@ def home_manifests():
             "10.42.1.1",
         ]
     ]
-    ingress["spec"]["tls"] = [
+    ingress_spec = cast("dict[str, object]", ingress["spec"])
+    ingress_spec["tls"] = [
         {"hosts": ["netbird.socrat.alchemmist.xyz"], "secretName": "netbird-pilot-tls"}
     ]
-    ingress["spec"]["rules"][0]["host"] = "netbird.socrat.alchemmist.xyz"
-    ingress["spec"]["rules"][0]["http"]["paths"][0]["backend"]["service"]["name"] = name
+    rules = cast("list[dict[str, object]]", ingress_spec["rules"])
+    rules[0]["host"] = "netbird.socrat.alchemmist.xyz"
+    http = cast("dict[str, object]", rules[0]["http"])
+    paths = cast("list[dict[str, object]]", http["paths"])
+    backend_service = cast(
+        "dict[str, object]",
+        cast("dict[str, object]", paths[0]["backend"])["service"],
+    )
+    backend_service["name"] = name
     return docs
 
 

@@ -12,10 +12,10 @@ import hashlib
 import importlib.util
 import json
 import os
-from pathlib import Path
 import secrets
 import subprocess
 from datetime import datetime, timezone
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('iam', ROOT / 'scripts/spi-queue-oidc.py')
@@ -42,7 +42,9 @@ def encode_cookie_secret(raw):
 def write_private(path, data):
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, 'w') as f:
-        json.dump(data, f); f.flush(); os.fsync(f.fileno())
+        json.dump(data, f); 
+        f.flush(); 
+        os.fsync(f.fileno())
 
 
 def inspect(api):
@@ -93,15 +95,19 @@ def main():
     p.add_argument('--backup-receipt',type=Path,default=private/'oidc-backup-receipt.json')
     p.add_argument('--apply',action='store_true')
     p.add_argument('--approve-plan-hash')
-    a = p.parse_args(); os.umask(0o077)
+    a = p.parse_args(); 
+    os.umask(0o077)
     a.state_dir.mkdir(mode=0o700,parents=True,exist_ok=True)
     iam.require(not a.state_dir.is_symlink() and not a.state_dir.stat().st_mode & 0o077, 'Unsafe state directory')
     lock = os.open(a.state_dir/'lock', os.O_CREAT|os.O_RDWR|os.O_NOFOLLOW, 0o600)
     fcntl.flock(lock, fcntl.LOCK_EX|fcntl.LOCK_NB)
-    marker = a.state_dir/'uncertain.json'; file = a.state_dir/'client.json'
+    marker = a.state_dir/'uncertain.json'; 
+    file = a.state_dir/'client.json'
     iam.require(not marker.exists(), 'Uncertain prior write; inspect manually, do not retry')
     journal = None
-    if file.exists(): iam.private(file); journal = json.loads(file.read_text())
+    if file.exists():
+        iam.private(file); 
+        journal = json.loads(file.read_text())
     api = iam.API(a.credentials)
     owner, settings, provider, app = inspect(api)
     if provider or app: validate(api,owner,settings,provider,app,journal)
@@ -110,12 +116,15 @@ def main():
                'tool_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
     digest = hashlib.sha256(json.dumps(context,sort_keys=True).encode()).hexdigest()
     if not a.apply:
-        print(json.dumps({'plan_hash':digest,'creates':0 if provider else 3,'allowed_group':'homelab-owner','existing_identities_modified':False}));return
+        print(json.dumps({'plan_hash':digest,'creates':0 if provider else 3,'allowed_group':'homelab-owner','existing_identities_modified':False}));
+        return
     iam.require(a.approve_plan_hash == digest, 'Exact fresh plan approval required')
     if not provider:
-        iam.private(a.backup_receipt); receipt = json.loads(a.backup_receipt.read_text())
+        iam.private(a.backup_receipt); 
+        receipt = json.loads(a.backup_receipt.read_text())
         age = (datetime.now(timezone.utc)-datetime.fromisoformat(receipt['observedAt'])).total_seconds()
-        backup = Path(receipt['encryptedBackup']); iam.private(backup)
+        backup = Path(receipt['encryptedBackup']); 
+        iam.private(backup)
         iam.require(0 <= age <= 3600 and hashlib.sha256(backup.read_bytes()).hexdigest() == receipt['sha256'], 'Fresh valid encrypted backup required')
         write_private(marker,{'plan_hash':digest})
         journal = {'status':'pending','client_secret':secrets.token_urlsafe(48),'cookie_secret':encode_cookie_secret(secrets.token_bytes(32))}
@@ -127,7 +136,10 @@ def main():
         journal.update(status='active',provider_pk=provider['pk'],app_pk=app['pk'])
         # Private journal already exists with mode0600; do not follow symlinks.
         fd = os.open(file,os.O_WRONLY|os.O_TRUNC|os.O_NOFOLLOW)
-        with os.fdopen(fd,'w') as f:json.dump(journal,f);f.flush();os.fsync(f.fileno())
+        with os.fdopen(fd,'w') as f:
+            json.dump(journal,f);
+            f.flush();
+            os.fsync(f.fileno())
         owner,settings,provider,app = inspect(api)
         validate(api,owner,settings,provider,app,journal)
         marker.unlink()
@@ -148,5 +160,6 @@ def main():
 
 if __name__ == '__main__':
     try:main()
-    except Exception as exc:
+    except (OSError, RuntimeError, ValueError, KeyError, TypeError,
+            subprocess.SubprocessError) as exc:
         raise SystemExit('STOP: '+(str(exc) if isinstance(exc,RuntimeError) else type(exc).__name__)+'; inspect private state/uncertain marker; values withheld') from None

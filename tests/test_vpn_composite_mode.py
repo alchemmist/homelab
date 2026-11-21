@@ -1,9 +1,11 @@
+"""Tests for VPN composite mode configuration."""
+
 import json
-from pathlib import Path
 import shutil
 import subprocess
 import tempfile
 import unittest
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 P = next(
@@ -16,6 +18,7 @@ P = next(
 
 
 def component(c, runtime=0, check=1, off=0, success=1, observed="0+15x20", extra=""):
+    """Test behavior for component."""
     ip = "10.250.0.40" if c == "relay" else "10.250.0.2"
     labels = f'job="node-exporter",instance="{ip}:9100",component="{c}"' + extra
     data = {
@@ -32,15 +35,16 @@ def component(c, runtime=0, check=1, off=0, success=1, observed="0+15x20", extra
 
 
 class CompositeModeTest(unittest.TestCase):
+    """Tests for CompositeModeTest."""
     def test_contract_and_geometry(self):
-        self.assertEqual(P["gridPos"], {"x": 4, "y": 0, "w": 2, "h": 2})
+        assert P["gridPos"] == {"x": 4, "y": 0, "w": 2, "h": 2}
         mapping = P["fieldConfig"]["defaults"]["mappings"][0]["options"]
-        self.assertEqual(mapping["-2"]["text"], "NO DATA")
-        self.assertEqual(mapping["3"]["text"], "K3S")
-        self.assertEqual(mapping["3"]["color"], mapping["1"]["color"])
-        self.assertNotIn("socrat_vpn_fallback_active", P["targets"][0]["expr"])
-        self.assertIn("component=", P["targets"][0]["expr"])
-        self.assertIn("/explore?", P["fieldConfig"]["defaults"]["links"][0]["url"])
+        assert mapping["-2"]["text"] == "NO DATA"
+        assert mapping["3"]["text"] == "K3S"
+        assert mapping["3"]["color"] == mapping["1"]["color"]
+        assert "socrat_vpn_fallback_active" not in P["targets"][0]["expr"]
+        assert "component=" in P["targets"][0]["expr"]
+        assert "/explore?" in P["fieldConfig"]["defaults"]["links"][0]["url"]
 
     @unittest.skipUnless(shutil.which("promtool"), "promtool required")
     def test_actual_mode_expression_two_components_partial_total_stale_and_errors(self):
@@ -143,4 +147,4 @@ class CompositeModeTest(unittest.TestCase):
             r = subprocess.run(
                 ["promtool", "test", "rules", str(p)], capture_output=True, text=True
             )
-            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            assert r.returncode == 0, r.stdout + r.stderr

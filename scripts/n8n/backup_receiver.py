@@ -11,7 +11,7 @@ import uuid
 from pathlib import Path
 
 
-def main():
+def main() -> None:
     os.umask(0o077)
     if os.environ.get("SSH_ORIGINAL_COMMAND", "") not in ("", "receive-n8n-backup"):
         raise SystemExit("unsupported command")

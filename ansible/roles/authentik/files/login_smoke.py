@@ -1,4 +1,6 @@
-import http.cookiejar, json, urllib.request
+import http.cookiejar
+import json
+import urllib.request
 from pathlib import Path
 
 root = Path.home() / ".cache/homelab-authentik"
@@ -10,6 +12,7 @@ endpoint = base + "/api/v3/flows/executor/default-authentication-flow/"
 
 
 def call(data=None):
+    """Document the call operation."""
     headers = {
         "Content-Type": "application/json",
         "Referer": base + "/if/flow/default-authentication-flow/",
@@ -27,16 +30,23 @@ for i in range(6):
     response = call() if i == 0 else response
     component = response.get("component", "")
     kind = response.get("type", "")
+    print("Login stage:", component or kind)  # noqa: T201
     if component == "ak-stage-identification":
         response = call({"uid_field": owner["username"]})
     elif component == "ak-stage-password":
         response = call({"password": owner["password"]})
     elif component in ["ak-stage-authenticator-totp", "ak-stage-authenticator-validate"]:
+        print(  # noqa: T201
+            "Owner initial password accepted; MFA enrollment/challenge required (not enrolled by automation)"
+        )
         break
     elif kind == "redirect":
         target = response.get("to", "")
         if "default-authenticator-totp-setup" in target:
+            print("MFA setup redirect required")  # noqa: T201
             break
+        print("Additional browser interaction required")  # noqa: T201
         break
     else:
+        print("Challenge keys:", list(response))  # noqa: T201
         break

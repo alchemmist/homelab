@@ -1,14 +1,16 @@
 """Retired IdP gateway must not reappear or alter VPN transports."""
 
-from pathlib import Path
 import subprocess
-import yaml
+from pathlib import Path
+
 import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def render(*args):
+def render(*args) -> list[dict[str, object]]:
+    """Test behavior for render."""
     return [
         d
         for d in yaml.safe_load_all(
@@ -33,18 +35,29 @@ def test_native_panel_and_vpn_transports_keep_exact_backends() -> None:
     """Require VPN ingress paths to keep their chart backends."""
     objects = render()
     route = next(
-        o for o in objects if o["kind"] == "Ingress" and o["metadata"]["name"] == "traefik-edge-vpn"
+        o
+        for o in objects
+        if isinstance(m := o["metadata"], dict)
+        and o["kind"] == "Ingress"
+        and m["name"] == "traefik-edge-vpn"
     )
     values = yaml.safe_load((ROOT / "charts/traefik-edge/values.yaml").read_text())
-    paths = route["spec"]["rules"][0]["http"]["paths"]
+    spec = route["spec"]
+    assert isinstance(spec, dict)
+    rules = spec["rules"]
+    assert isinstance(rules, list)
+    paths = rules[0]["http"]["paths"]
     assert len(paths) == len(values["routes"])
-    for p, v in zip(paths, values["routes"]):
+    for p, v in zip(paths, values["routes"], strict=True):
         assert p["path"] == v["path"] and p["pathType"] == v["pathType"]
         assert p["backend"]["service"] == {
             "name": "traefik-edge-" + v["name"],
             "port": {"number": v["port"]},
         }
-    assert not any(o["metadata"]["name"] == "traefik-edge-panel-auth" for o in objects)
+    assert not any(
+        isinstance(o["metadata"], dict) and o["metadata"]["name"] == "traefik-edge-panel-auth"
+        for o in objects
+    )
 
 
 def test_retired_auth_override_is_rejected() -> None:

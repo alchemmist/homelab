@@ -72,7 +72,8 @@ def collect():
         if not cursor or (dates and max(dates) < now - 3600):
             break
     else:
-        raise RuntimeError("recent-start scan exceeds 4000 execution budget")
+        message = "recent-start scan exceeds 4000 execution budget"
+        raise RuntimeError(message)
     # The unfiltered API deliberately excludes active executions. Fetch them
     # explicitly. Waiting workflows are not actively running.
     active, cursor = [], None
@@ -83,7 +84,8 @@ def collect():
         if not cursor:
             break
     else:
-        raise RuntimeError("running scan incomplete")
+        message = "running scan incomplete"
+        raise RuntimeError(message)
     result = summarize(rows + active, now)
     result["running", 0] = len({r["id"] for r in active if r.get("status") == "running"})
     return result
@@ -103,7 +105,10 @@ def loop():
 
 
 class Handler(BaseHTTPRequestHandler):
+    """HTTP request handler exposing Prometheus metrics."""
+
     def do_GET(self):
+        """Serve the current metrics snapshot on /metrics."""
         if self.path != "/metrics":
             self.send_error(404)
             return
@@ -130,11 +135,15 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
     def log_message(self, *_):
+        """Suppress default request-line logging."""
         pass
 
 
 class MetricsServer(ThreadingHTTPServer):
+    """Threaded HTTP server with explicit address binding."""
+
     def server_bind(self):
+        """Bind without reverse DNS and pin the server name."""
         # Avoid slow reverse DNS lookups during HTTPServer initialization.
         socketserver.TCPServer.server_bind(self)
         self.server_name = "n8n-observer"

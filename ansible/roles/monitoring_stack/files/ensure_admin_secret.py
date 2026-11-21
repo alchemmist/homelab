@@ -1,3 +1,5 @@
+"""Ensure the monitoring admin credentials secret exists in Kubernetes."""
+
 import json
 import secrets
 import subprocess
@@ -12,7 +14,7 @@ result = subprocess.run(
     text=True,
 )
 if result.stdout.strip():
-    pass
+    print("unchanged")  # noqa: T201
 else:
     secret = {
         "apiVersion": "v1",
@@ -28,3 +30,4 @@ else:
         check=True,
         capture_output=True,
     )
+    print("created")  # noqa: T201

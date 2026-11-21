@@ -15,13 +15,15 @@ TITLES = {
 
 
 def reconcile(api, root, rollback=False):
+    """Reconcile."""
     backup = root / "authorization-flow-titles-original.json"
     current = {slug: api("GET", "flows/instances/" + slug + "/") for slug in TITLES}
     if rollback:
         original = json.loads(backup.read_text())
         desired = {slug: original[slug]["title"] for slug in TITLES}
         if any(current[slug]["pk"] != original[slug]["pk"] for slug in TITLES):
-            raise RuntimeError("Flow identity changed; refusing automatic rollback")
+            message = "Flow identity changed; refusing automatic rollback"
+            raise RuntimeError(message)
     else:
         desired = TITLES
         if not backup.exists():
@@ -48,6 +50,7 @@ def reconcile(api, root, rollback=False):
 
 
 def main():
+    """Main."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
     parser.add_argument("--public-edge", default="109.173.40.247")
@@ -59,7 +62,7 @@ def main():
     )
     credential = json.loads((args.root / "credentials.json").read_text())
 
-    def api(method, path, value=None):
+    def api(method, path, value=None) -> dict[str, object]:
         req = urllib.request.Request(
             "https://auth.socrat.alchemmist.xyz/api/v3/" + path,
             method=method,
@@ -70,11 +73,18 @@ def main():
             data=json.dumps(value).encode() if value is not None else None,
         )
         with urllib.request.urlopen(req, timeout=45) as response:
-            return json.load(response)
+            document: dict[str, object] = json.load(response)
+            return document
 
     if not args.rollback and api("GET", "admin/version/")["version_current"] != "2026.8.5":
-        raise RuntimeError("Unreviewed Authentik version")
+        message = "Unreviewed Authentik version"
+        raise RuntimeError(message)
     changed = reconcile(api, args.root, args.rollback)
+    print(  # noqa: T201
+        "Authorization flow titles updated"
+        if changed
+        else "Authorization flow titles already reconciled"
+    )
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Protocol regression checks comparing candidate edits against the baseline."""
 from __future__ import annotations
 
 import argparse
@@ -9,8 +10,8 @@ import json
 import os
 import re
 import selectors
-import signal
 import shutil
+import signal
 import subprocess
 import sys
 import tarfile
@@ -44,7 +45,8 @@ def resolve_repo(explicit: Path | None) -> Path:
         return explicit
     raw = os.environ.get("PROTOCOL_REGRESSION_REPO")
     if not raw:
-        raise ValueError("pass --repo or set PROTOCOL_REGRESSION_REPO")
+        msg = "pass --repo or set PROTOCOL_REGRESSION_REPO"
+        raise ValueError(msg)
     return Path(raw)
 
 
@@ -95,10 +97,12 @@ def method_spans(source: str) -> dict[str, tuple[int, int]]:
         for child in node.body:
             if isinstance(child, ast.AsyncFunctionDef) and child.name in ALLOWED_METHODS:
                 if child.name in spans:
-                    raise ValueError("duplicate allowed method")
+                    msg = "duplicate allowed method"
+                    raise ValueError(msg)
                 spans[child.name] = (child.lineno, child.end_lineno or child.lineno)
     if tuple(sorted(spans)) != tuple(sorted(ALLOWED_METHODS)):
-        raise ValueError("snapshot is missing BrowserSession._answer or _generate_on_page")
+        msg = "snapshot is missing BrowserSession._answer or _generate_on_page"
+        raise ValueError(msg)
     return spans
 
 
@@ -126,7 +130,7 @@ def mask_allowed_methods(source: str) -> str:
 def allowed_edit_report(baseline: str, candidate: str) -> dict:
     try:
 
-        def signatures(source):
+        def signatures(source) -> dict[str, tuple[str, str | None, tuple[str, ...], str | None]]:
             tree = ast.parse(source)
             return {
                 child.name: (
@@ -288,7 +292,8 @@ def bounded_test_process(args, cwd=None, env=None, timeout=120, limit=131072):
         while selector.get_map():
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                raise TimeoutError("test process deadline exceeded")
+                msg = "test process deadline exceeded"
+                raise TimeoutError(msg)
             for key, _ in selector.select(min(remaining, 1)):
                 data = os.read(key.fileobj.fileno(), 65536)
                 if not data:
@@ -296,7 +301,8 @@ def bounded_test_process(args, cwd=None, env=None, timeout=120, limit=131072):
                     continue
                 output[key.data].extend(data)
                 if len(output[key.data]) > limit:
-                    raise ValueError("test process output limit exceeded")
+                    msg = "test process output limit exceeded"
+                    raise ValueError(msg)
         code = process.wait(timeout=max(0.01, deadline - time.monotonic()))
         return subprocess.CompletedProcess(
             args,
@@ -432,7 +438,8 @@ def pinned_base_digest(dockerfile: Path) -> str:
             if marker not in image or not image.startswith(BASE_IMAGE + marker):
                 raise ValueError(f"worker base is not a pinned {BASE_IMAGE} digest")
             return image.split("@", 1)[1]
-    raise ValueError("worker Dockerfile has no FROM")
+    msg = "worker Dockerfile has no FROM"
+    raise ValueError(msg)
 
 
 def verify_pinned_base(docker: str, dockerfile: Path) -> dict:
@@ -675,7 +682,8 @@ def image_facts(docker: str, image: str) -> dict:
         raise RuntimeError(f"image probe failed: {detail}")
     version, imports, baked_main, pip_present, baked_grader = ran.stdout.splitlines()
     if baked_main != "False" or baked_grader != "False" or pip_present != "False":
-        raise RuntimeError("image contains a solution, grader, or pip")
+        msg = "image contains a solution, grader, or pip"
+        raise RuntimeError(msg)
     return {
         "image_id": document["Id"],
         "created": document.get("Created"),
@@ -723,7 +731,7 @@ def collect_evidence(repo: Path, snapshot: Path, docker: str, image: str, docker
     }
 
 
-def main(argv: list[str] | None = None) -> int:
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Historical protocol regression pilot")
     parser.add_argument("command", choices=("export", "verify", "grade", "evidence"))
     parser.add_argument("--repo", type=Path, default=None)
@@ -736,40 +744,47 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--docker", default="docker")
     parser.add_argument("--dockerfile", type=Path, default=None)
     parser.add_argument("--container", action="store_true")
-    args = parser.parse_args(argv)
-    repo = None
-    if args.command in ("export", "evidence") or args.repo is not None:
-        repo = resolve_repo(args.repo)
-    python = resolve_python(args.python)
-    if args.command == "export":
-        if args.dest is None:
-            parser.error("export requires --dest")
-        manifest = export_snapshot(repo, args.dest)
-        print(json.dumps({"manifest_sha256": manifest["manifest_sha256"]}, sort_keys=True))
-        return 0
-    if args.snapshot is None:
-        parser.error(f"{args.command} requires --snapshot")
-    if args.command == "verify":
-        manifest = verify_snapshot(args.snapshot)
-        print(
-            json.dumps(
-                {"files": len(manifest["files"]), "label": manifest["label"]}, sort_keys=True
-            )
-        )
-        return 0
-    if args.command == "grade":
-        if args.candidate is None:
-            parser.error("grade requires --candidate")
-        if args.container:
-            if not args.image:
-                parser.error("container grade requires --image")
-            report = grade_candidate_container(
-                args.docker, args.image, args.snapshot, args.candidate
-            )
-        else:
-            report = grade_candidate(python, args.snapshot, args.candidate)
-        print(json.dumps(report, indent=2, sort_keys=True))
-        return 0 if report["passed"] else 1
+    return parser
+
+
+def _export_command(
+    args: argparse.Namespace, repo: Path | None, parser: argparse.ArgumentParser
+) -> int:
+    if args.dest is None:
+        parser.error("export requires --dest")
+    manifest = export_snapshot(repo, args.dest)
+    print(json.dumps({"manifest_sha256": manifest["manifest_sha256"]}, sort_keys=True))
+    return 0
+
+
+def _verify_command(args: argparse.Namespace) -> int:
+    manifest = verify_snapshot(args.snapshot)
+    print(json.dumps({"files": len(manifest["files"]), "label": manifest["label"]}, sort_keys=True))
+    return 0
+
+
+def _grade_command(
+    args: argparse.Namespace,
+    python: Path,
+    parser: argparse.ArgumentParser,
+) -> int:
+    if args.candidate is None:
+        parser.error("grade requires --candidate")
+    if args.container:
+        if not args.image:
+            parser.error("container grade requires --image")
+        report = grade_candidate_container(args.docker, args.image, args.snapshot, args.candidate)
+    else:
+        report = grade_candidate(python, args.snapshot, args.candidate)
+    print(json.dumps(report, indent=2, sort_keys=True))
+    return 0 if report["passed"] else 1
+
+
+def _evidence_command(
+    args: argparse.Namespace,
+    repo: Path | None,
+    parser: argparse.ArgumentParser,
+) -> int:
     if not args.image:
         parser.error("evidence requires --image")
     dockerfile = args.dockerfile or Path(__file__).with_name("worker.Dockerfile")
@@ -779,6 +794,24 @@ def main(argv: list[str] | None = None) -> int:
         write_bytes(args.evidence, encoded.encode("utf-8"))
     print(encoded, end="")
     return 0 if evidence["historical_gate_holds"] else 1
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = _build_parser()
+    args = parser.parse_args(argv)
+    repo = None
+    if args.command in ("export", "evidence") or args.repo is not None:
+        repo = resolve_repo(args.repo)
+    python = resolve_python(args.python)
+    if args.command == "export":
+        return _export_command(args, repo, parser)
+    if args.snapshot is None:
+        parser.error(f"{args.command} requires --snapshot")
+    if args.command == "verify":
+        return _verify_command(args)
+    if args.command == "grade":
+        return _grade_command(args, python, parser)
+    return _evidence_command(args, repo, parser)
 
 
 if __name__ == "__main__":

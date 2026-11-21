@@ -8,23 +8,38 @@ import json
 import os
 import secrets
 import time
+from typing import TYPE_CHECKING, Protocol, cast
 
 from fastapi import HTTPException, Request
 from fastapi.responses import RedirectResponse
 
+if TYPE_CHECKING:
+    import sqlite3
+
+
+class WikiStore(Protocol):
+    """Minimal storage facade needed by the OIDC flows."""
+
+    def validate(self, username: str, password: str, role: str) -> object:
+        """Verify credentials; ties into the legacy account store."""
+        ...
+
 
 def configure_store(store):
+    """Install OIDC config; verify emergency owners exist before enabling."""
     store.oidc_enabled = bool(os.getenv("WIKI_OIDC_ISSUER"))
     store.local_owners = set(json.loads(os.getenv("WIKI_OIDC_LOCAL_OWNER_IDS", "[]")))
     if not store.oidc_enabled:
         return
     if not store.local_owners:
-        raise RuntimeError("OIDC requires explicit local emergency owner IDs")
+        message = "OIDC requires explicit local emergency owner IDs"
+        raise RuntimeError(message)
     with store.connect() as db:
         for user_id in store.local_owners:
             row = db.execute("SELECT role,disabled FROM users WHERE id=?", (user_id,)).fetchone()
             if not row or row["role"] != "admin" or row["disabled"]:
-                raise RuntimeError("Emergency owner must be an existing active administrator")
+                message = "Emergency owner must be an existing active administrator"
+                raise RuntimeError(message)
         db.executescript("""
             CREATE TABLE IF NOT EXISTS oidc_accounts (
                 issuer TEXT NOT NULL, subject TEXT NOT NULL,
@@ -37,32 +52,54 @@ def configure_store(store):
         """)
 
 
-def external_login(store, issuer, subject, username, role, links):
+def binding_user_id(
+    db: object, issuer: str, subject: str, links: dict[str, str]
+) -> tuple[object, str | None]:
+    """Resolve the reviewed binding for an issuer+subject pair."""
+    binding = cast(
+        "sqlite3.Row | None",
+        cast("sqlite3.Connection", db)
+        .execute(
+            "SELECT user_id FROM oidc_accounts WHERE issuer=? AND subject=?", (issuer, subject)
+        )
+        .fetchone(),
+    )
+    user_id = binding["user_id"] if binding else links.get(subject)
+    if binding and subject in links and links[subject] != user_id:
+        raise HTTPException(409, "Reviewed identity mapping differs")
+    return binding, user_id
+
+
+def create_account(store: "WikiStore", db: object, username: str, role: str) -> str:
+    """Create a placeholder-strength local account for a federated identity."""
     from auth import PASSWORD_HASHER
 
+    store.validate(username, secrets.token_urlsafe(32), role)
+    if (
+        cast("sqlite3.Connection", db)
+        .execute("SELECT 1 FROM users WHERE username=? COLLATE NOCASE", (username,))
+        .fetchone()
+    ):
+        raise HTTPException(409, "Account exists; explicit identity linking required")
+    user_id = secrets.token_hex(16)
+    cast("sqlite3.Connection", db).execute(
+        "INSERT INTO users VALUES (?, ?, ?, ?, 0)",
+        (user_id, username, PASSWORD_HASHER.hash(secrets.token_urlsafe(48)), role),
+    )
+    return user_id
+
+
+def external_login(store, issuer, subject, username, role, links):
+    """Adopt a reviewed federated identity into a wiki session."""
     if not subject or not isinstance(subject, str) or len(subject) > 512:
         raise HTTPException(403, "Invalid identity subject")
     if role not in ("reader", "editor", "admin"):
         raise HTTPException(403, "No admitted role")
     with store.lock, store.connect() as db:
         db.execute("BEGIN IMMEDIATE")
-        binding = db.execute(
-            "SELECT user_id FROM oidc_accounts WHERE issuer=? AND subject=?", (issuer, subject)
-        ).fetchone()
-        user_id = binding["user_id"] if binding else links.get(subject)
-        if binding and subject in links and links[subject] != user_id:
-            raise HTTPException(409, "Reviewed identity mapping differs")
+        binding, user_id = binding_user_id(db, issuer, subject, links)
         if not user_id:
-            store.validate(username, secrets.token_urlsafe(32), role)
-            if db.execute(
-                "SELECT 1 FROM users WHERE username=? COLLATE NOCASE", (username,)
-            ).fetchone():
-                raise HTTPException(409, "Account exists; explicit identity linking required")
-            user_id = secrets.token_hex(16)
-            db.execute(
-                "INSERT INTO users VALUES (?, ?, ?, ?, 0)",
-                (user_id, username, PASSWORD_HASHER.hash(secrets.token_urlsafe(48)), role),
-            )
+            user_id = create_account(store, db, username, role)
         row = db.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
         if not row or row["disabled"]:
             raise HTTPException(403, "Account is not active")
@@ -88,21 +125,46 @@ def external_login(store, issuer, subject, username, role, links):
         return token
 
 
+def request_role(
+    claims: object, issuer: str, groups: dict[str, str], overrides: dict[str, str]
+) -> str:
+    """Validate claims and map group membership to an application role."""
+    claims_dict = cast("dict[str, object]", claims)
+    # Authlib validates signature, exp, aud and nonce; still pin issuer.
+    if not claims_dict or claims_dict.get("iss") != issuer or not claims_dict.get("sub"):
+        message = "Invalid ID token"
+        raise ValueError(message)
+    membership = claims_dict.get("groups", [])
+    if not isinstance(membership, list) or not all(isinstance(g, str) for g in membership):
+        message = "Invalid groups claim"
+        raise ValueError(message)
+    admitted = [groups[g] for g in cast("list[str]", membership) if g in groups]
+    if not admitted:
+        message = "Application membership required"
+        raise HTTPException(403, message)
+    role = max(admitted, key=lambda r: ("reader", "editor", "admin").index(r))
+    return overrides.get(cast("str", claims_dict["sub"]), role)
+
+
 def install_oidc(app, store, origin, prefix, cookie_path, session_seconds):
+    """Mount the OIDC routes onto the given FastAPI application."""
     from authlib.integrations.starlette_client import OAuth
     from starlette.middleware.sessions import SessionMiddleware
 
     issuer = os.environ["WIKI_OIDC_ISSUER"]
     if not issuer.startswith("https://") or "?" in issuer or "#" in issuer:
-        raise RuntimeError("OIDC issuer must be a fixed HTTPS URL")
+        message = "OIDC issuer must be a fixed HTTPS URL"
+        raise RuntimeError(message)
     secret = os.environ["WIKI_OIDC_SESSION_SECRET"]
     if len(secret) < 32:
-        raise RuntimeError("OIDC state signing key is too short")
+        message = "OIDC state signing key is too short"
+        raise RuntimeError(message)
     groups = json.loads(os.environ["WIKI_OIDC_GROUP_ROLES"])
     links = json.loads(os.getenv("WIKI_OIDC_LINKS", "{}"))
     overrides = json.loads(os.getenv("WIKI_OIDC_SUBJECT_ROLES", "{}"))
     if any(r not in ("reader", "editor", "admin") for r in [*groups.values(), *overrides.values()]):
-        raise RuntimeError("Unsupported OIDC role")
+        message = "Unsupported OIDC role"
+        raise RuntimeError(message)
     oauth = OAuth()
     client = oauth.register(
         "wiki",
@@ -134,17 +196,7 @@ def install_oidc(app, store, origin, prefix, cookie_path, session_seconds):
         try:
             token = await client.authorize_access_token(request)
             claims = token.get("userinfo")
-            # Authlib validates signature, exp, aud and nonce; still pin issuer.
-            if not claims or claims.get("iss") != issuer or not claims.get("sub"):
-                raise ValueError("Invalid ID token")
-            membership = claims.get("groups", [])
-            if not isinstance(membership, list) or not all(isinstance(g, str) for g in membership):
-                raise ValueError("Invalid groups claim")
-            admitted = [groups[g] for g in membership if g in groups]
-            if not admitted:
-                raise HTTPException(403, "Application membership required")
-            role = max(admitted, key=lambda r: ("reader", "editor", "admin").index(r))
-            role = overrides.get(claims["sub"], role)
+            role = request_role(claims, issuer, groups, overrides)
             raw = external_login(
                 store, issuer, claims["sub"], claims.get("preferred_username", ""), role, links
             )

@@ -1,3 +1,4 @@
+"""Sandboxed execution helpers for benchmark tasks, including archive inspection."""
 import io
 import json
 import os
@@ -39,7 +40,8 @@ def bounded_process(args, limit, timeout=55, input_bytes=None):
         while selector.get_map():
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                raise TimeoutError("subprocess deadline exceeded")
+                message = "subprocess deadline exceeded"
+                raise TimeoutError(message)
             for key, _ in selector.select(min(remaining, 1)):
                 part = os.read(key.fileobj.fileno(), 65536)
                 if not part:
@@ -47,7 +49,8 @@ def bounded_process(args, limit, timeout=55, input_bytes=None):
                     continue
                 output.extend(part)
                 if len(output) > limit:
-                    raise ValueError("subprocess output limit exceeded")
+                    message = "subprocess output limit exceeded"
+                    raise ValueError(message)
         return process.wait(timeout=max(1, deadline - time.monotonic())), bytes(output)
     finally:
         selector.close()
@@ -59,63 +62,84 @@ def bounded_process(args, limit, timeout=55, input_bytes=None):
 
 def _raw_member_name(data, offset):
     if not isinstance(offset, int) or offset < 0 or offset + 512 > len(data):
-        raise ValueError("invalid archive")
+        message = "invalid archive"
+        raise ValueError(message)
     header = data[offset : offset + 512]
 
     def take(field):
         if b"\0" in field:
             head, tail = field.split(b"\0", 1)
             if tail.replace(b"\0", b""):
-                raise ValueError("unsafe archive path")
+                message = "unsafe archive path"
+                raise ValueError(message)
             field = head
         try:
             return field.decode("utf-8")
         except UnicodeDecodeError as exc:
-            raise ValueError("invalid archive") from exc
+            message = "invalid archive"
+            raise ValueError(message) from exc
 
     name = take(header[0:100])
     prefix = take(header[345:500]) if header[257:262] == b"ustar" else ""
     return prefix + "/" + name if prefix else name
 
 
+def _validated_member(
+    archive: tarfile.TarFile, data: bytes, member: tarfile.TarInfo, result: dict[str, str]
+) -> None:
+    """Record one member or raise; unsafe entries never pass through."""
+    raw_name = _raw_member_name(data, member.offset)
+    if raw_name != member.name:
+        message = "unsafe archive path"
+        raise ValueError(message)
+    if member.name == "." and member.isdir():
+        return
+    if member.name not in ("lib.cjs", "test.cjs") or member.type not in (
+        tarfile.REGTYPE,
+        tarfile.AREGTYPE,
+    ):
+        message = "unexpected workspace entry or file type"
+        raise ValueError(message)
+    if member.size > MAX_FILE or member.name in result:
+        message = "oversized or duplicate workspace entry"
+        raise ValueError(message)
+    extracted = archive.extractfile(member)
+    if extracted is None:
+        message = "invalid archive"
+        raise ValueError(message)
+    try:
+        result[member.name] = extracted.read().decode("utf-8")
+    except UnicodeDecodeError as exc:
+        message = "invalid archive"
+        raise ValueError(message) from exc
+
+
 def inspect_archive(data):
-    result = {}
+    result: dict[str, str] = {}
     try:
         archive = tarfile.open(fileobj=io.BytesIO(data), mode="r:*")
     except (tarfile.ReadError, OSError, EOFError) as exc:
-        raise ValueError("invalid archive") from exc
+        message = "invalid archive"
+        raise ValueError(message) from exc
     try:
         for member in archive:
-            raw_name = _raw_member_name(data, member.offset)
-            if raw_name != member.name:
-                raise ValueError("unsafe archive path")
-            if member.name == "." and member.isdir():
-                continue
-            if member.name not in ("lib.cjs", "test.cjs") or member.type not in (
-                tarfile.REGTYPE,
-                tarfile.AREGTYPE,
-            ):
-                raise ValueError("unexpected workspace entry or file type")
-            if member.size > MAX_FILE or member.name in result:
-                raise ValueError("oversized or duplicate workspace entry")
-            extracted = archive.extractfile(member)
-            if extracted is None:
-                raise ValueError("invalid archive")
-            try:
-                result[member.name] = extracted.read().decode("utf-8")
-            except UnicodeDecodeError as exc:
-                raise ValueError("invalid archive") from exc
+            _validated_member(archive, data, member, result)
     except (tarfile.ReadError, OSError, EOFError) as exc:
-        raise ValueError("invalid archive") from exc
+        message = "invalid archive"
+        raise ValueError(message) from exc
     finally:
         archive.close()
     if set(result) != {"lib.cjs", "test.cjs"}:
-        raise ValueError("workspace is missing expected files")
+        message = "workspace is missing expected files"
+        raise ValueError(message)
     return result
 
 
 class Sandbox:
+    """Docker sandbox hosting a persistent working directory."""
+
     def __init__(self, files, directory, verifier=False):
+        """Initialize the sandbox environment."""
         self.directory = pathlib.Path(directory)
         self.directory.mkdir(parents=True, exist_ok=True)
         self.events = []
@@ -128,7 +152,8 @@ class Sandbox:
         source.chmod(0o777)
         for name, content in files.items():
             if name not in ("lib.cjs", "test.cjs"):
-                raise ValueError("unexpected fixture path")
+                message = "unexpected fixture path"
+                raise ValueError(message)
             path = source / name
             path.write_text(content)
             path.chmod(0o444 if verifier else 0o666)
@@ -217,7 +242,8 @@ class Sandbox:
                 ["docker", "exec", self.container_id, "node", "-e", capacity_probe], 2048, 15
             )
             if code != 0 or output.strip() != b"CAPACITY_OK":
-                raise ValueError("workspace tmpfs capacity preflight failed")
+                message = "workspace tmpfs capacity preflight failed"
+                raise ValueError(message)
             self.security["workspace_capacity_bytes"] = 33554432
             if not verifier:
                 probe = (
@@ -229,13 +255,15 @@ class Sandbox:
                     ["docker", "exec", self.container_id, "node", "-e", probe], 2048, 15
                 )
                 if code != 0 or output.strip() != b"WORKSPACE_WRITE_OK":
-                    raise ValueError("workspace write preflight failed")
+                    message = "workspace write preflight failed"
+                    raise ValueError(message)
             (self.directory / "security.json").write_text(json.dumps(self.security, indent=2))
         except BaseException:
             self.close()
             raise
 
     def inspect_security(self):
+        """Return the container's security-relevant inspect section."""
         info = json.loads(
             subprocess.check_output(["docker", "inspect", self.container_id], timeout=15)
         )[0]
@@ -288,10 +316,12 @@ class Sandbox:
             or not any(value.startswith("no-new-privileges") for value in result["security_opt"])
             or any("KEY" in name or "TOKEN" in name for name in result["environment_names"])
         ):
-            raise ValueError("sandbox security preflight failed")
+            message = "sandbox security preflight failed"
+            raise ValueError(message)
         return result
 
     def execute(self, action, input_bytes=None, **kwargs):
+        """Run one wrapped command action with bounded timeout and stdin."""
         command = action["command"]
         wrapped = (
             "timeout -k 2 40 bash -lc "
@@ -319,6 +349,7 @@ class Sandbox:
         return {"returncode": code, "output": text, "exception_info": None}
 
     def snapshot(self):
+        """Pause the container and export a snapshot archive to state."""
         subprocess.run(
             ["docker", "pause", self.container_id], capture_output=True, check=True, timeout=15
         )
@@ -326,16 +357,20 @@ class Sandbox:
             ["docker", "cp", self.container_id + ":/workspace/.", "-"], MAX_ARCHIVE, timeout=30
         )
         if code:
-            raise ValueError("workspace snapshot failed")
+            message = "workspace snapshot failed"
+            raise ValueError(message)
         return inspect_archive(data)
 
     def get_template_vars(self):
+        """Return template variables exposed to this sandbox."""
         return {"cwd": "/workspace", **self.config}
 
     def serialize(self):
+        """Return the JSON-serializable sandbox state summary."""
         return {"info": {"environment": self.config, "security": self.security}}
 
     def close(self):
+        """Tear down the container and verify no foreign writes remain."""
         import owned_resources
 
         expected = str(self.directory.resolve())
@@ -355,10 +390,13 @@ class Sandbox:
             else:
                 self.volume_name = None
         if errors:
-            raise ValueError("; ".join(errors))
+            message = "; "
+            raise ValueError(message.join(errors))
 
     def __enter__(self):
+        """Return this sandbox as the active context manager resource."""
         return self
 
     def __exit__(self, *args):
+        """Close the sandbox when leaving its context manager block."""
         self.close()

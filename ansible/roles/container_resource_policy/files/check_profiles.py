@@ -1,3 +1,5 @@
+"""Validate container resource profiles against live workload owners."""
+
 import argparse
 import copy
 import json
@@ -5,13 +7,20 @@ import os
 import subprocess
 import sys
 
-from reconcile_pods import Client, load_profiles, matching_profile, owner, positive, quantity
-
+from reconcile_pods import (
+    Client,
+    load_profiles,
+    matching_profile,
+    owner,
+    positive,
+    quantity,
+)
 
 RESOURCE_NAMES = ("cpu", "memory", "ephemeral-storage")
 
 
 def check(namespace, kubectl, kubeconfig, profile, owner_name):
+    """Document the check operation."""
     command = [kubectl, "--kubeconfig", kubeconfig, "--request-timeout=30s"]
     selector = {"resource-policy.socrat.io/probe": "preserved"}
     selector.update({key: "previous" for key in profile.get("nodeSelector", {})})
@@ -100,9 +109,12 @@ def check(namespace, kubectl, kubeconfig, profile, owner_name):
             if expected.get("removeCpuLimit"):
                 assert "cpu" not in actual.get("limits", {}), actual
             assert actual["limits"]["nvidia.com/gpu"] == "1", actual
+        print(container_type + ": authoritative profiles and unprofiled fallback passed")  # noqa: T201
+    print("No workload pods created.")  # noqa: T201
 
 
 def main():
+    """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--kubectl", default="kubectl")
     parser.add_argument("--kubeconfig", default="/etc/rancher/k3s/k3s.yaml")
@@ -120,6 +132,7 @@ def main():
     for profile in profiles:
         if id(profile) not in examples:
             raise ValueError("Profile has no live owner for dry-run verification: " + str(profile))
+    print("Profile schema and live owner matching passed: " + str(len(profiles)))  # noqa: T201
     if not args.validate_only:
         for profile in profiles:
             check(
@@ -131,6 +144,8 @@ if __name__ == "__main__":
     try:
         main()
     except subprocess.CalledProcessError as error:
+        print(error.stderr or error.stdout or str(error), file=sys.stderr, flush=True)  # noqa: T201
         sys.exit(1)
     except (ValueError, RuntimeError, AssertionError, subprocess.TimeoutExpired) as error:
+        print(str(error), file=sys.stderr, flush=True)  # noqa: T201
         sys.exit(1)

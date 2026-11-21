@@ -2,10 +2,10 @@
 
 import json
 import os
-from pathlib import Path
 import secrets
 import subprocess
 import sys
+from pathlib import Path
 
 root = Path(sys.argv[1])
 path = root / "credentials.json"
@@ -18,15 +18,17 @@ if not path.exists():
         check=True,
     )
     if check.stdout.strip():
+        msg = "Runtime Secret exists but credential file is missing; refusing implicit rotation"
         raise SystemExit(
-            "Runtime Secret exists but credential file is missing; refusing implicit rotation"
+            msg
         )
     claims = subprocess.run(
         kube + ["get", "pvc", "-o", "name"], capture_output=True, text=True, check=True
     )
     if claims.stdout.strip():
+        msg = "Identity PVCs already exist without credential file; restore credentials before deployment"
         raise SystemExit(
-            "Identity PVCs already exist without credential file; restore credentials before deployment"
+            msg
         )
     values = {
         "AUTHENTIK_SECRET_KEY": secrets.token_urlsafe(64),
@@ -55,7 +57,8 @@ if automation_path.exists():
         automation.get("status") != "active"
         or automation.get("token") != values["AUTHENTIK_BOOTSTRAP_TOKEN"]
     ):
-        raise SystemExit("Incomplete automation migration; refusing runtime credential update")
+        msg = "Incomplete automation migration; refusing runtime credential update"
+        raise SystemExit(msg)
     for key in ["AUTHENTIK_BOOTSTRAP_TOKEN", "AUTHENTIK_BOOTSTRAP_PASSWORD"]:
         runtime_values.pop(key, None)
 manifest = {
@@ -72,3 +75,4 @@ subprocess.run(
     stdout=subprocess.DEVNULL,
     check=True,
 )
+print("Stable runtime credentials installed without displaying secrets")  # noqa: T201

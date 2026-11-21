@@ -1,3 +1,4 @@
+"""Smoke-check the LiteLLM proxy service running in the llm namespace."""
 import base64
 import json
 import os
@@ -7,6 +8,7 @@ import urllib.request
 
 
 def kubectl(*args):
+    """Perform the kubectl operation."""
     return subprocess.check_output(["kubectl", "-n", "llm", *args], text=True)
 
 
@@ -20,6 +22,7 @@ opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
 def request(path, key=None, data=None):
+    """Perform the HTTP request and return its response."""
     headers = {"Content-Type": "application/json"}
     if key:
         headers["Authorization"] = "Bearer " + key
@@ -32,7 +35,8 @@ def request(path, key=None, data=None):
 
 try:
     request("/v1/models")
-    raise AssertionError("Unauthenticated API request succeeded")
+    msg = "Unauthenticated API request succeeded"
+    raise AssertionError(msg)
 except urllib.error.HTTPError as exc:
     assert exc.code == 401, exc.code
 print("unauthenticated API: 401")

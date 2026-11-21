@@ -9,7 +9,7 @@ from sync import api
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def main():
+def main() -> None:
     body = json.loads((ROOT / "docs/n8n/lms-certify/workflow.json").read_text())
     matches = [w for w in api("GET", "workflows?limit=250")["data"] if w["name"] == body["name"]]
     if matches:

@@ -58,7 +58,8 @@ def fetch_releases(repo, timeout):
     with urllib.request.urlopen(request, timeout=timeout) as response:
         payload = json.load(response)
     if not isinstance(payload, list):
-        raise ValueError(f"unexpected GitHub response for {repo}")
+        message = f"unexpected GitHub response for {repo}"
+        raise ValueError(message)
     return payload
 
 
@@ -97,11 +98,13 @@ def evaluate(targets, fetch, timeout, images=None):
         }
         try:
             if current is None:
-                raise ValueError("current version is not a dotted triple")
+                message = "current version is not a dotted triple"
+                raise ValueError(message)
             releases = fetch(target["github"], timeout)
             latest, _tag = latest_stable(releases)
             if latest is None:
-                raise ValueError("no stable release")
+                message = "no stable release"
+                raise ValueError(message)
             sample["latest"] = format_version(latest)
             sample["available"] = 1 if latest > current else 0
             sample["success"] = 1
@@ -134,11 +137,15 @@ def render_metrics(samples):
 
 
 class State:
-    def __init__(self):
+    """Mutable state collected by the update watcher."""
+
+    def __init__(self) -> None:
+
         self.lock = threading.Lock()
         self.body = render_metrics([]).encode()
 
     def update(self, samples):
+        """Regenerate the metrics body from fresh samples under the lock."""
         body = render_metrics(samples).encode()
         with self.lock:
             self.body = body
@@ -146,7 +153,7 @@ class State:
 
 def serve(state, port):
     class Handler(BaseHTTPRequestHandler):
-        def do_GET(self):
+        def do_GET(self) -> None:
             if self.path != "/metrics":
                 self.send_response(404)
                 self.end_headers()
@@ -159,7 +166,7 @@ def serve(state, port):
             self.end_headers()
             self.wfile.write(body)
 
-        def log_message(self, _fmt, *_args):
+        def log_message(self, _fmt, *_args) -> None:
             return
 
     server = ThreadingHTTPServer(("0.0.0.0", port), Handler)
@@ -168,7 +175,8 @@ def serve(state, port):
 
 def workload_ref(target):
     if target.get("deployment") and target.get("statefulset"):
-        raise ValueError("ambiguous workload target")
+        message = "ambiguous workload target"
+        raise ValueError(message)
     if target.get("statefulset"):
         return "statefulsets", target["statefulset"]
     return "deployments", target.get("deployment")
@@ -202,7 +210,8 @@ def deployment_image(target, timeout):
     for item in payload["spec"]["template"]["spec"]["containers"]:
         if item.get("name") == container:
             return item.get("image")
-    raise ValueError(f"container {container} not found on {namespace}/{name}")
+    message = f"container {container} not found on {namespace}/{name}"
+    raise ValueError(message)
 
 
 def load_images(targets, timeout):
@@ -226,7 +235,7 @@ def main():
         targets = json.load(handle)
     state = State()
 
-    def refresh():
+    def refresh() -> None:
         while True:
             state.update(evaluate(targets, fetch_releases, timeout, load_images(targets, timeout)))
             time.sleep(interval)

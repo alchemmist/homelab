@@ -169,14 +169,19 @@ def test_baseline_regeneration_stays_forbidden(tmp_path: Path) -> None:
 
 
 def test_frozen_provenance_is_the_exact_reviewed_file_set() -> None:
-    """Exclude only the 17 byte-checked compatibility inputs, not their directory."""
+    """Check all 17 digests without exempting locally patched modules from lint."""
     policy = json.loads((ROOT / "quality/strict-policy.json").read_text())
     record = policy["frozenCompatibility"]
     manifest = json.loads((ROOT / record["manifest"]).read_text())
     expected = {record["directory"] + "/" + name for name in manifest["backend_sha256"]}
     frozen = common.frozen_source_files()
-    assert frozen == expected
-    assert len(frozen) == _FROZEN_FILE_COUNT
+    patched = [
+        "charts/spi-triage/files/telegram_delivery.py",
+        "charts/spi-triage/files/telegram_links.py",
+    ]
+    assert common.owned(patched) == patched
+    assert frozen == expected - set(patched)
+    assert len(expected) == _FROZEN_FILE_COUNT
     assert record["count"] == _FROZEN_FILE_COUNT
     assert record["canonicalRepository"] == "https://github.com/alchemmist/spi-triage"
     assert record["directory"] == "charts/spi-triage/files"

@@ -6,18 +6,20 @@ public registry. Its isolated Go TLS setting is configured by the workflow.
 
 import argparse
 import base64
+import http.client
 import json
 import os
-from pathlib import Path
 import re
 import tempfile
 import urllib.parse
 import urllib.request
+from pathlib import Path
 
 HOST = "harbor.socrat.alchemmist.xyz"
 
 
 def configure(repository):
+    """Perform the configure operation."""
     if not re.fullmatch(r"homelab/[a-z0-9-]+", repository):
         raise ValueError("INVALID_REPOSITORY")
     username, password = os.environ["HARBOR_USERNAME"], os.environ["HARBOR_PASSWORD"]
@@ -34,7 +36,7 @@ def configure(repository):
     # Normal DNS, native robot auth and certificate verification. No redirects
     # should be involved in the native registry machine endpoint.
     class NoRedirect(urllib.request.HTTPRedirectHandler):
-        def redirect_request(self, *args, **kwargs):
+        def redirect_request(self, *_args, **_kwargs) -> None:
             return None
 
     with urllib.request.build_opener(NoRedirect()).open(request, timeout=15) as response:
@@ -75,7 +77,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     try:
         configure(args.repository)
-    except Exception as error:
+    except (ValueError, KeyError, TypeError, RuntimeError, OSError, http.client.HTTPException) as error:
         # No URLs, HTTP bodies, credential material or token text in tracebacks.
         print("Harbor authentication preflight failed: " + type(error).__name__)
         raise SystemExit(1) from None

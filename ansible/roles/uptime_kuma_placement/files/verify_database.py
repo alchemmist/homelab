@@ -1,3 +1,5 @@
+"""Run read-only integrity and consistency checks on a SQLite database."""
+
 import json
 import pathlib
 import sqlite3
@@ -18,5 +20,6 @@ try:
         ).fetchone()[0]
         for table in tables
     }
+    print(json.dumps(counts, sort_keys=True))  # noqa: T201
 finally:
     connection.close()

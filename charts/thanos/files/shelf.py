@@ -1,20 +1,23 @@
+"""HTTP service that stores and manages Thanos blocks on the shelf."""
 import json
 import os
 import re
 import shutil
 import time
+from collections.abc import Iterator
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-
 
 ULID = re.compile(r"^[0-9A-Z]{26}$")
 
 
 def safe_relative(path):
     if not path or path.startswith("/") or "\\" in path:
-        raise ValueError("bad path")
+        message = "bad path"
+        raise ValueError(message)
     parts = path.split("/")
     if any(part in ("", ".", "..") for part in parts):
-        raise ValueError("bad path")
+        message = "bad path"
+        raise ValueError(message)
     return parts
 
 
@@ -58,7 +61,8 @@ def list_blocks(directory):
 
 def begin(directory, ulid):
     if not ULID.match(ulid):
-        raise ValueError("bad ulid")
+        message = "bad ulid"
+        raise ValueError(message)
     path = staging_path(directory, ulid)
     if os.path.isdir(path):
         shutil.rmtree(path)
@@ -67,7 +71,8 @@ def begin(directory, ulid):
 
 def write_file(directory, ulid, relative, chunks):
     if not ULID.match(ulid):
-        raise ValueError("bad ulid")
+        message = "bad ulid"
+        raise ValueError(message)
     parts = safe_relative(relative)
     root = staging_path(directory, ulid)
     if not os.path.isdir(root):
@@ -76,19 +81,20 @@ def write_file(directory, ulid, relative, chunks):
     os.makedirs(os.path.dirname(destination), mode=0o775, exist_ok=True)
     temporary = destination + ".tmp"
     with open(temporary, "wb") as handle:
-        for chunk in chunks:
-            handle.write(chunk)
+        handle.writelines(chunks)
     os.replace(temporary, destination)
 
 
 def commit(directory, ulid):
     if not ULID.match(ulid):
-        raise ValueError("bad ulid")
+        message = "bad ulid"
+        raise ValueError(message)
     staged = staging_path(directory, ulid)
     with open(os.path.join(staged, "meta.json"), encoding="utf-8") as handle:
         meta = json.load(handle)
     if meta.get("ulid") != ulid:
-        raise ValueError("ulid mismatch")
+        message = "ulid mismatch"
+        raise ValueError(message)
     final = block_path(directory, ulid)
     if os.path.isdir(final):
         previous = final + ".previous"
@@ -103,7 +109,8 @@ def commit(directory, ulid):
 
 def mark_deleted(directory, ulid, details="cascade"):
     if not ULID.match(ulid):
-        raise ValueError("bad ulid")
+        message = "bad ulid"
+        raise ValueError(message)
     root = block_path(directory, ulid)
     if not os.path.isdir(root):
         raise FileNotFoundError(ulid)
@@ -122,96 +129,124 @@ def mark_deleted(directory, ulid, details="cascade"):
     os.replace(temporary, target)
 
 
+def _authorized(handler: BaseHTTPRequestHandler, token: str) -> bool:
+    header = handler.headers.get("Authorization", "")
+    supplied = header[7:] if header.startswith("Bearer ") else ""
+    if len(supplied) != len(token) or supplied != token:
+        handler.send_error(401)
+        return False
+    return True
+
+
+def _send_json(handler: BaseHTTPRequestHandler, status: int, payload: object) -> None:
+    body = json.dumps(payload).encode()
+    handler.send_response(status)
+    handler.send_header("Content-Type", "application/json")
+    handler.send_header("Content-Length", str(len(body)))
+    handler.end_headers()
+    handler.wfile.write(body)
+
+
+def _route_parts(path: str) -> tuple[str, list[str]] | None:
+    parts = [part for part in path.split("?", 1)[0].split("/") if part]
+    if len(parts) < 3 or parts[0] != "v1" or parts[1] != "blocks":
+        return None
+    return parts[2], parts[3:]
+
+
+def _read_chunks(handler: BaseHTTPRequestHandler) -> Iterator[bytes]:
+    remaining = int(handler.headers.get("Content-Length", "0"))
+    while remaining:
+        chunk = handler.rfile.read(min(1024 * 1024, remaining))
+        if not chunk:
+            break
+        remaining -= len(chunk)
+        yield chunk
+
+
+def _serve_get(handler: BaseHTTPRequestHandler, directory: str, token: str) -> None:
+    if handler.path == "/healthz":
+        _send_json(handler, 200, {"ok": True})
+        return
+    if not _authorized(handler, token):
+        return
+    if handler.path.split("?", 1)[0] == "/v1/blocks":
+        _send_json(handler, 200, list_blocks(directory))
+        return
+    handler.send_error(404)
+
+
+def _serve_post(handler: BaseHTTPRequestHandler, directory: str, token: str) -> None:
+    if not _authorized(handler, token):
+        return
+    route = _route_parts(handler.path)
+    if route is None:
+        handler.send_error(404)
+        return
+    ulid, rest = route
+    try:
+        if rest == []:
+            begin(directory, ulid)
+        elif rest == ["commit"]:
+            commit(directory, ulid)
+        elif rest == ["deletion-mark"]:
+            mark_deleted(directory, ulid)
+        else:
+            handler.send_error(404)
+            return
+    except FileNotFoundError:
+        handler.send_error(404)
+        return
+    except (ValueError, OSError, json.JSONDecodeError):
+        handler.send_error(400)
+        return
+    _send_json(handler, 200, {"ok": True})
+
+
+def _serve_put(handler: BaseHTTPRequestHandler, directory: str, token: str) -> None:
+    if not _authorized(handler, token):
+        return
+    route = _route_parts(handler.path)
+    if route is None or len(route[1]) < 2 or route[1][0] != "files":
+        handler.send_error(404)
+        return
+    ulid, rest = route
+    try:
+        write_file(directory, ulid, "/".join(rest[1:]), _read_chunks(handler))
+    except FileNotFoundError:
+        handler.send_error(404)
+        return
+    except (ValueError, OSError):
+        handler.send_error(400)
+        return
+    _send_json(handler, 200, {"ok": True})
+
+
 def handler(directory, token):
     class ShelfHandler(BaseHTTPRequestHandler):
         def log_message(self, fmt, *args):
             return
 
         def authorized(self):
-            header = self.headers.get("Authorization", "")
-            supplied = header[7:] if header.startswith("Bearer ") else ""
-            if len(supplied) != len(token) or supplied != token:
-                self.send_error(401)
-                return False
-            return True
+            return _authorized(self, token)
 
         def read_chunks(self):
-            remaining = int(self.headers.get("Content-Length", "0"))
-            while remaining:
-                chunk = self.rfile.read(min(1024 * 1024, remaining))
-                if not chunk:
-                    break
-                remaining -= len(chunk)
-                yield chunk
+            return _read_chunks(self)
 
         def send_json(self, status, payload):
-            body = json.dumps(payload).encode()
-            self.send_response(status)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
+            return _send_json(self, status, payload)
 
         def do_GET(self):
-            if self.path == "/healthz":
-                self.send_json(200, {"ok": True})
-                return
-            if not self.authorized():
-                return
-            if self.path.split("?", 1)[0] == "/v1/blocks":
-                self.send_json(200, list_blocks(directory))
-                return
-            self.send_error(404)
+            return _serve_get(self, directory, token)
 
         def route(self):
-            parts = [part for part in self.path.split("?", 1)[0].split("/") if part]
-            if len(parts) < 3 or parts[0] != "v1" or parts[1] != "blocks":
-                return None
-            return parts[2], parts[3:]
+            return _route_parts(self.path)
 
         def do_POST(self):
-            if not self.authorized():
-                return
-            route = self.route()
-            if route is None:
-                self.send_error(404)
-                return
-            ulid, rest = route
-            try:
-                if rest == []:
-                    begin(directory, ulid)
-                elif rest == ["commit"]:
-                    commit(directory, ulid)
-                elif rest == ["deletion-mark"]:
-                    mark_deleted(directory, ulid)
-                else:
-                    self.send_error(404)
-                    return
-            except FileNotFoundError:
-                self.send_error(404)
-                return
-            except (ValueError, OSError, json.JSONDecodeError):
-                self.send_error(400)
-                return
-            self.send_json(200, {"ok": True})
+            return _serve_post(self, directory, token)
 
         def do_PUT(self):
-            if not self.authorized():
-                return
-            route = self.route()
-            if route is None or len(route[1]) < 2 or route[1][0] != "files":
-                self.send_error(404)
-                return
-            ulid, rest = route
-            try:
-                write_file(directory, ulid, "/".join(rest[1:]), self.read_chunks())
-            except FileNotFoundError:
-                self.send_error(404)
-                return
-            except (ValueError, OSError):
-                self.send_error(400)
-                return
-            self.send_json(200, {"ok": True})
+            return _serve_put(self, directory, token)
 
     return ShelfHandler
 

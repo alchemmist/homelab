@@ -7,6 +7,7 @@ import subprocess
 
 
 def quantity(x):
+    """Quantity."""
     for unit, mul in [
         ("Ki", 1024),
         ("Mi", 1024**2),
@@ -49,10 +50,14 @@ if (
     or conditions.get("Ready") != "True"
     or any(conditions.get(x) != "False" for x in ["MemoryPressure", "DiskPressure", "PIDPressure"])
 ):
-    raise SystemExit("Node is not healthy/schedulable")
+    message = "Node is not healthy/schedulable"
+    raise SystemExit(message)
 # 1792 MiB app requests, 2304 MiB outstanding OTel envelope, 2048 MiB host reserve.
 if available < (1792 + 2304 + 2048) * 1024**2 or free < (1792 + 2304) * 1024**2:
-    raise SystemExit("Insufficient memory for identity staging and reserved OTel budget")
+    message = "Insufficient memory for identity staging and reserved OTel budget"
+    raise SystemExit(message)
 disk = os.statvfs("/var/lib/rancher/k3s/storage")
 if disk.f_bavail * disk.f_frsize < 30 * 1024**3:
-    raise SystemExit("Insufficient storage staging reserve")
+    message = "Insufficient storage staging reserve"
+    raise SystemExit(message)
+print("Capacity gate passed: single-node identity staging only, not HA certification")  # noqa: T201

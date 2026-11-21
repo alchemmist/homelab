@@ -1,23 +1,28 @@
+"""Apply the rebalanced k3s role to a node's config file."""
+
 import argparse
 import json
 import os
-from pathlib import Path
 import stat
 import sys
 import tempfile
+from pathlib import Path
 
 import yaml
 
 
 def configure(args):
+    """Document the configure operation."""
     path = Path(args.config)
     if path.is_symlink():
-        raise ValueError("config must not be a symlink")
+        msg = "config must not be a symlink"
+        raise ValueError(msg)
     exists = path.exists()
     original = path.read_bytes() if exists else b""
     current = yaml.safe_load(original) or {}
     if not isinstance(current, dict):
-        raise ValueError("config must be a YAML mapping")
+        msg = "config must be a YAML mapping"
+        raise ValueError(msg)
     desired = dict(current)
     for key in (
         "cluster-init",
@@ -45,13 +50,20 @@ def configure(args):
     if isinstance(sans, str):
         sans = [sans]
     if not isinstance(sans, list) or any(not isinstance(value, str) for value in sans):
-        raise ValueError("tls-san must contain strings")
+        msg = "tls-san must contain strings"
+        raise ValueError(msg)
     desired["tls-san"] = list(dict.fromkeys(sans + [args.advertise_ip, "127.0.0.1"]))
     changed = desired != current or not exists or stat.S_IMODE(path.stat().st_mode) != 0o600
     result = {"changed": changed, "backup": None}
     if not changed or args.check:
         return result
     encoded = yaml.safe_dump(desired, sort_keys=False).encode()
+    result["backup"] = _write_desired(path, original, encoded, exists)
+    return result
+
+
+def _write_desired(path, original, encoded, exists):
+    """Atomically install the new config; return the backup file name, if any."""
     backup = None
     if exists:
         fd, backup = tempfile.mkstemp(prefix=path.name + ".backup-", dir=path.parent)
@@ -74,11 +86,11 @@ def configure(args):
     finally:
         if os.path.exists(temporary):
             os.unlink(temporary)
-    result["backup"] = Path(backup).name if backup else None
-    return result
+    return Path(backup).name if backup else None
 
 
 def main():
+    """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
     parser.add_argument("--role", choices=("server", "control-plane"), required=True)
@@ -92,7 +104,9 @@ def main():
     try:
         result = configure(args)
     except (OSError, ValueError, yaml.YAMLError) as error:
+        print(json.dumps({"error": type(error).__name__}), file=sys.stderr)  # noqa: T201
         return 1
+    print(json.dumps(result))  # noqa: T201
     return 0
 
 

@@ -5,8 +5,9 @@ from __future__ import annotations
 import argparse
 import json
 import re
-from pathlib import Path
 import sys
+from pathlib import Path
+from typing import NotRequired, TypedDict, cast
 
 import yaml
 
@@ -14,7 +15,10 @@ from common import ROOT, command, digest, failure, finding, report, tracked
 
 
 class ManifestLoader(yaml.SafeLoader):
+    """YAML loader that preserves mapping key order."""
+
     def construct_mapping(self, node, deep=False):
+        """Reject duplicate mapping keys while loading YAML manifests."""
         seen = set()
         for key, _value in node.value:
             if key.tag == "tag:yaml.org,2002:merge":
@@ -38,14 +42,84 @@ API_VERSIONS = [
 
 
 def local_path(value):
+    """Execute local_path."""
     path = (ROOT / value).resolve()
     if not path.is_relative_to(ROOT) or not path.exists():
         raise ValueError("Missing or escaping chart/value path")
     return path
 
 
-def targets():
-    result = []
+class HelmParameter(TypedDict, total=False):
+    """Name/value pair Helm passes through `--set-string` or `--set`."""
+
+    name: str
+    value: str
+    forceString: bool
+
+
+class HelmOverrides(TypedDict, total=False):
+    """Helm value overrides the offline renderer explicitly supports."""
+
+    valuesObject: dict[str, object]
+    releaseName: str
+    valueFiles: list[str]
+    parameters: list[HelmParameter]
+
+
+class ValueRef(TypedDict, total=False):
+    """Value reference pinned by an Argocd Application source."""
+
+    targetRevision: str
+
+
+class ObjectMeta(TypedDict, total=False):
+    """Metadata fields used for rendered-object identity."""
+
+    namespace: str
+    name: str
+
+
+class RenderedObject(TypedDict):
+    """Mandatory keys of every rendered Kubernetes object."""
+
+    apiVersion: str
+    kind: str
+    metadata: dict[str, object]
+
+
+class RenderTarget(TypedDict):
+    """One chart render target consumed by the quality renderer."""
+
+    id: str
+    source: str
+    inline_values: NotRequired[dict[str, object]]
+    chart: Path
+    namespace: str
+    release: str
+    values: list[Path]
+    parameters: list[HelmParameter]
+
+
+def resolve_values(
+    helm: HelmOverrides, chart: Path, refs: dict[str, ValueRef]
+) -> list[Path]:
+    """Resolve a Helm valueFiles list to local paths, rejecting foreign references."""
+    relative = chart.relative_to(ROOT)
+    values = []
+    for value in helm.get("valueFiles", []):
+        if value.startswith("$"):
+            ref, subpath = value[1:].split("/", 1)
+            if ref not in refs or refs[ref].get("targetRevision") != "main":
+                raise ValueError("Unsupported value reference")
+            values.append(local_path(subpath))
+        else:
+            values.append(local_path(str(relative / value)))
+    return values
+
+
+def argocd_targets() -> tuple[list[RenderTarget], set[str]]:
+    """Build render targets from the Argocd Application manifests."""
+    result: list[RenderTarget] = []
     consumed = set()
     for path in sorted((ROOT / "deploy/argocd/apps").glob("*.yaml")):
         app = yaml.safe_load(path.read_text())
@@ -60,17 +134,10 @@ def targets():
                 continue  # Plain-manifest Application, checked by source/ownership contracts.
             consumed.add(str(chart.relative_to(ROOT)))
             helm = source.get("helm", {})
-            if set(helm) - {"releaseName", "valueFiles", "parameters"}:
+            if set(helm) - {"releaseName", "valueFiles", "parameters", "valuesObject"}:
                 raise ValueError("Unsupported Helm override: extend the renderer explicitly")
-            values = []
-            for value in helm.get("valueFiles", []):
-                if value.startswith("$"):
-                    ref, relative = value[1:].split("/", 1)
-                    if ref not in refs or refs[ref].get("targetRevision") != "main":
-                        raise ValueError("Unsupported value reference")
-                    values.append(local_path(relative))
-                else:
-                    values.append(local_path(str(chart.relative_to(ROOT) / value)))
+            if not isinstance(helm.get("valuesObject", {}), dict):
+                raise ValueError("Helm valuesObject must be a mapping")
             result.append(
                 {
                     "id": app["metadata"]["name"] + f"-{index}",
@@ -78,11 +145,16 @@ def targets():
                     "chart": chart,
                     "namespace": spec["destination"].get("namespace", "default"),
                     "release": helm.get("releaseName", app["metadata"]["name"]),
-                    "values": values,
+                    "inline_values": helm.get("valuesObject", {}),
+                    "values": resolve_values(helm, chart, refs),
                     "parameters": helm.get("parameters", []),
                 }
             )
-    # Include every unconsumed root, including vendored charts, with chart defaults.
+    return result, consumed
+
+
+def default_targets(result: list[RenderTarget], consumed: set[str]) -> list[RenderTarget]:
+    """Add render targets with chart defaults for every unconsumed root Chart.yaml."""
     for name in tracked():
         if Path(name).name != "Chart.yaml":
             continue
@@ -99,15 +171,26 @@ def targets():
                     "parameters": [],
                 }
             )
+    return result
+
+
+def targets():
+    """Execute targets."""
+    result, consumed = argocd_targets()
+    # Include every unconsumed root, including vendored charts, with chart defaults.
+    result = default_targets(result, consumed)
     return sorted(result, key=lambda target: target["id"])
 
 
 def arguments(target):
+    """Execute arguments."""
     if not re.fullmatch(r"[a-z0-9][a-z0-9.-]{0,52}", target["release"]):
         raise ValueError("Invalid Helm release name")
     args = ["--kube-version", KUBE_VERSION, "--namespace", target["namespace"]]
     for value in target["values"]:
         args += ["--values", str(value)]
+    if target.get("inline_values"):
+        args += ["--values", "-"]
     for parameter in target["parameters"]:
         if set(parameter) - {"name", "value", "forceString"}:
             raise ValueError("Unsupported Helm parameter")
@@ -119,6 +202,7 @@ def arguments(target):
 
 
 def render(target):
+    """Execute render."""
     args = [
         "helm",
         "template",
@@ -129,7 +213,9 @@ def render(target):
     ]
     for version in API_VERSIONS:
         args += ["--api-versions", version]
-    process = command(args, allowed=(0, 1), timeout=180)
+    process = command(
+        args, stdin=json.dumps(target.get("inline_values", {})), allowed=(0, 1), timeout=180
+    )
     if process.returncode:
         return None
     try:
@@ -139,12 +225,14 @@ def render(target):
 
 
 def schema_name(resource):
+    """Execute schema_name."""
     api = resource["apiVersion"].split("/")
     version = (api[0].split(".")[0] + "-" + api[1]) if len(api) == 2 else api[0]
     return resource["kind"].lower() + "-" + version + ".json"
 
 
 def policies(resource):
+    """Execute policies."""
     # Generic Kubernetes best practices belong to kube-linter, not a parallel implementation.
     # These are additional Homelab ownership/data/image contracts.
     kind = resource.get("kind")
@@ -179,6 +267,7 @@ def policies(resource):
 
 
 def kube_lint(target, resources):
+    """Execute kube_lint."""
     data = command(
         [
             "kube-linter",
@@ -219,8 +308,11 @@ def kube_lint(target, resources):
 
 
 def contract_hash(target):
+    """Execute contract_hash."""
     # A previously broken render is accepted ONLY while its entire source stays identical.
     parts = [target["id"], json.dumps(target["parameters"], sort_keys=True)]
+    if target.get("inline_values"):
+        parts.append(json.dumps(target["inline_values"], sort_keys=True))
     for path in sorted(target["chart"].rglob("*")):
         if path.is_file():
             if not path.resolve().is_relative_to(ROOT):
@@ -231,7 +323,75 @@ def contract_hash(target):
     return digest("\0".join(parts))
 
 
+def identity_key(target: RenderTarget, resource: RenderedObject) -> str:
+    """Build the semantic identity used for duplicate and schema findings."""
+    return "|".join(
+        str(v)
+        for v in [
+            target["id"],
+            resource["apiVersion"],
+            resource["kind"],
+            resource["metadata"].get("namespace", target["namespace"]),
+            resource["metadata"].get("name"),
+        ]
+    )
+
+
+def schema_findings(
+    *, target: RenderTarget, resource: RenderedObject, key: str, validate: bool
+) -> list[object]:
+    """Return schema availability and strict validation findings for one object."""
+    findings: list[object] = []
+    if not validate:
+        return findings
+    path = ROOT / "quality/schemas" / schema_name(resource)
+    if not path.exists():
+        return [
+            finding(
+                "schema-unavailable",
+                target["source"],
+                1,
+                f"{resource['apiVersion']}/{resource['kind']}: no reviewed offline schema",
+                key,
+            )
+        ]
+    process = command(
+        [
+            "kubeconform",
+            "-strict",
+            "-output",
+            "json",
+            "-kubernetes-version",
+            KUBE_VERSION,
+            "-schema-location",
+            str(path),
+        ],
+        stdin=json.dumps(resource),
+        allowed=(0, 1),
+    )
+    if process.returncode:
+        findings.append(
+            finding(
+                "kubernetes-schema",
+                target["source"],
+                1,
+                f"{resource['kind']}: strict Kubernetes schema validation failed",
+                key + digest(json.dumps(resource, sort_keys=True)),
+            )
+        )
+    return findings
+
+
+def policy_findings(*, target: RenderTarget, resource: RenderedObject, key: str) -> list[object]:
+    """Return Homelab ownership/data/image policy findings for one object."""
+    return [
+        finding(rule, target["source"], 1, message, key + "|" + message)
+        for rule, message in policies(resource)
+    ]
+
+
 def check(*, validate=True):
+    """Execute check."""
     selected = targets()
     if not selected:
         raise ValueError("No local chart targets")
@@ -241,6 +401,7 @@ def check(*, validate=True):
         source = target["source"]
         lint = command(
             ["helm", "lint", str(target["chart"]), *arguments(target)],
+            stdin=json.dumps(target.get("inline_values", {})),
             allowed=(0, 1),
             timeout=180,
         )
@@ -266,16 +427,8 @@ def check(*, validate=True):
                 or not {"apiVersion", "kind", "metadata"} <= resource.keys()
             ):
                 raise ValueError("Rendered output is not a Kubernetes object")
-            key = "|".join(
-                str(v)
-                for v in [
-                    target["id"],
-                    resource["apiVersion"],
-                    resource["kind"],
-                    resource["metadata"].get("namespace", target["namespace"]),
-                    resource["metadata"].get("name"),
-                ]
-            )
+            resource = cast("RenderedObject", resource)
+            key = identity_key(target=target, resource=resource)
             if key in seen:
                 findings.append(
                     finding(
@@ -288,49 +441,17 @@ def check(*, validate=True):
                 )
             seen.add(key)
             inventory.append(schema_name(resource))
-            if validate:
-                path = ROOT / "quality/schemas" / schema_name(resource)
-                if not path.exists():
-                    findings.append(
-                        finding(
-                            "schema-unavailable",
-                            source,
-                            1,
-                            f"{resource['apiVersion']}/{resource['kind']}: no reviewed offline schema",
-                            key,
-                        )
-                    )
-                else:
-                    process = command(
-                        [
-                            "kubeconform",
-                            "-strict",
-                            "-output",
-                            "json",
-                            "-kubernetes-version",
-                            KUBE_VERSION,
-                            "-schema-location",
-                            str(path),
-                        ],
-                        stdin=json.dumps(resource),
-                        allowed=(0, 1),
-                    )
-                    if process.returncode:
-                        findings.append(
-                            finding(
-                                "kubernetes-schema",
-                                source,
-                                1,
-                                f"{resource['kind']}: strict Kubernetes schema validation failed",
-                                key + digest(json.dumps(resource, sort_keys=True)),
-                            )
-                        )
-            for rule, message in policies(resource):
-                findings.append(finding(rule, source, 1, message, key + "|" + message))
+            findings.extend(
+                schema_findings(
+                    target=target, resource=resource, key=key, validate=validate
+                )
+            )
+            findings.extend(policy_findings(target=target, resource=resource, key=key))
     return findings, len(selected), sorted(set(inventory))
 
 
 def main():
+    """Execute main."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--schema-inventory", action="store_true")
     args = parser.parse_args()
@@ -341,7 +462,7 @@ def main():
             print(json.dumps(inventory))
             return 0
         return report("manifests", findings, count, output)
-    except Exception as error:
+    except (OSError, RuntimeError, TypeError, ValueError, yaml.YAMLError) as error:
         failure(output, error)
         print(
             f"charts: {type(error).__name__}; no fallback or live access",

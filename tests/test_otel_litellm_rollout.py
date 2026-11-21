@@ -1,15 +1,19 @@
+"""Tests for the OpenTelemetry LiteLLM rollout."""
+
 import copy
 import importlib.util
 import json
-from pathlib import Path
 import tempfile
+import types
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load():
+def load() -> types.ModuleType:
+    """Test behavior for load."""
     spec = importlib.util.spec_from_file_location(
         "litellm_rollout", ROOT / "scripts/otel-litellm-sdk-rollout.py"
     )
@@ -26,7 +30,10 @@ class LiteLLMRolloutTests(unittest.TestCase):
         module = load()
         before = {
             "model_list": [
-                {"model_name": "existing", "litellm_params": {"api_key": "os.environ.EXISTING"}}
+                {
+                    "model_name": "existing",
+                    "litellm_params": {"api_key": "os.environ.EXISTING"},
+                }
             ],
             "general_settings": {"master_key": "os.environ.MASTER"},
             "litellm_settings": {
@@ -37,12 +44,12 @@ class LiteLLMRolloutTests(unittest.TestCase):
         }
         untouched = copy.deepcopy(before)
         after = module.configuration(before)
-        self.assertEqual(before, untouched)
-        self.assertEqual(after["model_list"], before["model_list"])
-        self.assertEqual(after["general_settings"], before["general_settings"])
-        self.assertEqual(after["litellm_settings"]["callbacks"], ["prometheus", "otel"])
-        self.assertTrue(after["litellm_settings"]["require_auth_for_metrics_endpoint"])
-        self.assertTrue(after["litellm_settings"]["turn_off_message_logging"])
+        assert before == untouched
+        assert after["model_list"] == before["model_list"]
+        assert after["general_settings"] == before["general_settings"]
+        assert after["litellm_settings"]["callbacks"] == ["prometheus", "otel"]
+        assert after["litellm_settings"]["require_auth_for_metrics_endpoint"]
+        assert after["litellm_settings"]["turn_off_message_logging"]
 
     def test_missing_existing_metrics_callback_is_rejected(self) -> None:
         """Reject a configuration that drops the Prometheus callback."""
@@ -52,15 +59,15 @@ class LiteLLMRolloutTests(unittest.TestCase):
     def test_sdk_does_not_create_second_metrics_or_log_owner(self) -> None:
         """Keep metrics and log exporters disabled on the SDK environment."""
         environment = load().sdk_environment()
-        self.assertEqual(environment["OTEL_TRACES_SAMPLER"], "always_on")
-        self.assertEqual(environment["OTEL_METRICS_EXPORTER"], "none")
-        self.assertEqual(environment["OTEL_LOGS_EXPORTER"], "none")
-        self.assertEqual(environment["OTEL_EXPORTER_OTLP_INSECURE"], "false")
-        self.assertEqual(
-            environment["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"], "NO_CONTENT"
-        )
+        assert environment["OTEL_TRACES_SAMPLER"] == "always_on"
+        assert environment["OTEL_METRICS_EXPORTER"] == "none"
+        assert environment["OTEL_LOGS_EXPORTER"] == "none"
+        assert environment["OTEL_EXPORTER_OTLP_INSECURE"] == "false"
+        assert environment["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] == "NO_CONTENT"
 
-    def test_apply_is_blocked_before_cluster_access_without_verified_reload(self) -> None:
+    def test_apply_is_blocked_before_cluster_access_without_verified_reload(
+        self,
+    ) -> None:
         """Refuse apply before any cluster call when SDK reload is not verified."""
         module = load()
         with tempfile.TemporaryDirectory() as directory:
@@ -79,4 +86,4 @@ class LiteLLMRolloutTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "renewable SDK credential reload"):
                     module.run(output, True)
                 kube.assert_not_called()
-            self.assertFalse(output.exists())
+            assert not output.exists()

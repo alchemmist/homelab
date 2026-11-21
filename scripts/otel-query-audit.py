@@ -1,3 +1,5 @@
+"""Audit query files for expressions that require manual review."""
+
 import argparse
 import hashlib
 import json
@@ -15,7 +17,8 @@ SELECTOR = re.compile(r'(?<![A-Za-z0-9_])(le|quantile)\s*(=~|!~|!=|=)\s*("(?:\\.
 def otlp_number(value):
     number = float(value)
     if math.isnan(number):
-        raise ValueError("NaN is not a valid numeric dimension")
+        msg = "NaN is not a valid numeric dimension"
+        raise ValueError(msg)
     if math.isinf(number):
         return "+Inf" if number > 0 else "-Inf"
     text = format(Decimal(repr(number)), "f")
