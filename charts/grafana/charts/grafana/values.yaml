@@ -160,7 +160,7 @@ testFramework:
     privileged: false
     capabilities:
       drop:
-      - ALL
+        - ALL
     seccompProfile:
       type: RuntimeDefault
     readOnlyRootFilesystem: true
@@ -198,7 +198,7 @@ containerSecurityContext:
   privileged: false
   capabilities:
     drop:
-    - ALL
+      - ALL
   seccompProfile:
     type: RuntimeDefault
   readOnlyRootFilesystem: true
@@ -254,7 +254,7 @@ downloadDashboards:
     allowPrivilegeEscalation: false
     capabilities:
       drop:
-      - ALL
+        - ALL
     seccompProfile:
       type: RuntimeDefault
     readOnlyRootFilesystem: true
@@ -1133,7 +1133,7 @@ sidecar:
     allowPrivilegeEscalation: false
     capabilities:
       drop:
-      - ALL
+        - ALL
     seccompProfile:
       type: RuntimeDefault
     readOnlyRootFilesystem: true

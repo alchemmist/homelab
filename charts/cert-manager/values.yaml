@@ -273,8 +273,8 @@ disableAutoApproval: false
 # ref: https://cert-manager.io/docs/concepts/certificaterequest/#approval
 # +docs:property
 approveSignerNames:
-- issuers.cert-manager.io/*
-- clusterissuers.cert-manager.io/*
+  - issuers.cert-manager.io/*
+  - clusterissuers.cert-manager.io/*
 
 # Additional command line flags to pass to cert-manager controller binary.
 # To see all available flags run `docker run quay.io/jetstack/cert-manager-controller:<version> --help`.
@@ -318,7 +318,7 @@ containerSecurityContext:
   allowPrivilegeEscalation: false
   capabilities:
     drop:
-    - ALL
+      - ALL
   readOnlyRootFilesystem: true
 
 # Additional volumes to add to the cert-manager controller pod.
@@ -684,7 +684,7 @@ webhook:
     allowPrivilegeEscalation: false
     capabilities:
       drop:
-      - ALL
+        - ALL
     readOnlyRootFilesystem: true
 
   podDisruptionBudget:
@@ -947,30 +947,30 @@ webhook:
     # inbound traffic.
     # +docs:property
     ingress:
-    - from:
-      - ipBlock:
-          cidr: 0.0.0.0/0
+      - from:
+          - ipBlock:
+              cidr: 0.0.0.0/0
 
     # Egress rule for the webhook network policy. By default, it allows all
     # outbound traffic to ports 80 and 443, as well as DNS ports.
     # +docs:property
     egress:
-    - ports:
-      - port: 80
-        protocol: TCP
-      - port: 443
-        protocol: TCP
-      - port: 53
-        protocol: TCP
-      - port: 53
-        protocol: UDP
-      # On OpenShift and OKD, the Kubernetes API server listens on.
-      # port 6443.
-      - port: 6443
-        protocol: TCP
-      to:
-      - ipBlock:
-          cidr: 0.0.0.0/0
+      - ports:
+          - port: 80
+            protocol: TCP
+          - port: 443
+            protocol: TCP
+          - port: 53
+            protocol: TCP
+          - port: 53
+            protocol: UDP
+          # On OpenShift and OKD, the Kubernetes API server listens on.
+          # port 6443.
+          - port: 6443
+            protocol: TCP
+        to:
+          - ipBlock:
+              cidr: 0.0.0.0/0
 
   # Additional volumes to add to the cert-manager controller pod.
   volumes: []
@@ -1051,7 +1051,7 @@ cainjector:
     allowPrivilegeEscalation: false
     capabilities:
       drop:
-      - ALL
+        - ALL
     readOnlyRootFilesystem: true
 
   podDisruptionBudget:
@@ -1278,7 +1278,7 @@ startupapicheck:
     allowPrivilegeEscalation: false
     capabilities:
       drop:
-      - ALL
+        - ALL
     readOnlyRootFilesystem: true
 
   # Timeout for 'kubectl check api' command.
@@ -1306,7 +1306,7 @@ startupapicheck:
   # the webhook URL, IP address and TCP connect errors for example.
   # +docs:property
   extraArgs:
-  - -v
+    - -v
 
   # Additional environment variables to pass to cert-manager startupapicheck binary.
   # For example:

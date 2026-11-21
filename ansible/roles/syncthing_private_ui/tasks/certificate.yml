@@ -20,26 +20,26 @@
 - name: Request the certificate without publishing the private UI
   ansible.builtin.command:
     argv:
-    - kubectl
-    - --kubeconfig
-    - "{{ syncthing_private_ui_kubeconfig }}"
-    - apply
-    - -f
-    - "{{ syncthing_private_ui_chart_dir }}/private-certificate.yml"
+      - kubectl
+      - --kubeconfig
+      - "{{ syncthing_private_ui_kubeconfig }}"
+      - apply
+      - -f
+      - "{{ syncthing_private_ui_chart_dir }}/private-certificate.yml"
   register: syncthing_private_ui_certificate_apply
   changed_when: "' created' in syncthing_private_ui_certificate_apply.stdout or ' configured' in syncthing_private_ui_certificate_apply.stdout"
 
 - name: Wait for the private UI certificate
   ansible.builtin.command:
     argv:
-    - kubectl
-    - --kubeconfig
-    - "{{ syncthing_private_ui_kubeconfig }}"
-    - -n
-    - "{{ syncthing_private_ui_namespace }}"
-    - wait
-    - --for=condition=Ready
-    - "certificate/{{ syncthing_private_ui_tls_secret }}"
-    - --timeout=300s
+      - kubectl
+      - --kubeconfig
+      - "{{ syncthing_private_ui_kubeconfig }}"
+      - -n
+      - "{{ syncthing_private_ui_namespace }}"
+      - wait
+      - --for=condition=Ready
+      - "certificate/{{ syncthing_private_ui_tls_secret }}"
+      - --timeout=300s
   changed_when: false
 ...
