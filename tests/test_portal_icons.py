@@ -87,7 +87,7 @@ class FakeAPI:
             "pk": "fixture-unmanaged",
             "meta_icon": "keep.svg",
         }
-        self.patches = []
+        self.patches: list[str] = []
         self.files = []
         self.content = {}
         for filename, record in MANIFEST["files"].items():

@@ -23,7 +23,7 @@ RealAuthorization = web.Handler.authorization
 
 class QueueWebTests(unittest.TestCase):
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         cls.auth_patch = patch.object(web.Handler, "authorization", return_value=200)
         cls.auth_patch.start()
         cls.server = web.Server(("127.0.0.1", 0), web.Handler)
@@ -31,7 +31,7 @@ class QueueWebTests(unittest.TestCase):
         cls.thread.start()
 
     @classmethod
-    def tearDownClass(cls):
+    def tearDownClass(cls) -> None:
         cls.server.shutdown()
         cls.server.server_close()
         cls.thread.join(2)

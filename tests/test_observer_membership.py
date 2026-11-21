@@ -122,7 +122,7 @@ class MembershipTests(unittest.TestCase):
         """Propagate an identity failure before any cache mutation is planned."""
         users, attrs, auth = fixture()
 
-        def failed(*args):
+        def failed(*_args):
             raise RuntimeError("IdP unavailable")
 
         with self.assertRaises(RuntimeError):
@@ -278,7 +278,7 @@ class MembershipTests(unittest.TestCase):
         class Client:
             """Fake Authentik client that mutates only the in-memory user."""
 
-            def __init__(self, credentials):
+            def __init__(self, credentials) -> None:
                 pass
 
             def rows(self, path):

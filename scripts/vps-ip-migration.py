@@ -23,7 +23,7 @@ from pathlib import Path
 HOSTS = ("socrat-0", "socrat-1", "socrat-2", "socrat-3")
 SOURCE_FILES = (
     "ansible/inventory/direct.yml",
-    "ansible/inventory/group_vars/Socrat.yml",
+    "ansible/inventory/group_vars/Socrat/cluster.yml",
     "ansible/inventory/host_vars/socrat-2.yml",
     "ansible/roles/public_authoritative_dns/defaults/main.yml",
     "ansible/roles/wireguard_admin_client/defaults/main.yml",
@@ -119,7 +119,7 @@ def run(argv: Sequence[str]):
 
 
 class Preimages:
-    def __init__(self, root: str | Path, label: str):
+    def __init__(self, root: str | Path, label: str) -> None:
         raw = Path(root).expanduser()
         if not raw.is_absolute() or raw.is_symlink():
             raise MigrationError("Backup root must be an absolute non-symlink directory")

@@ -17,7 +17,7 @@ HELM = os.environ.get("HELM_BIN") or shutil.which("helm")
 @unittest.skipUnless(HELM and yaml, "Helm and PyYAML are required for chart rendering")
 class XuiWorkloadTests(unittest.TestCase):
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         result = subprocess.run(
             [HELM, "template", "x-ui", str(CHART), "--namespace", "x-ui"],
             check=True,

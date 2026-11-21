@@ -114,6 +114,7 @@ class SessionTests(unittest.TestCase):
                 self.assertIn(s.names["bootstrap"], args)
                 self.assertNotIn("existing", args)
                 insert("bootstrap", "admin")
+
                 stdout.write("apiToken: " + values["bootstrap"] + "\n")
                 result: object = type("Result", (), {"returncode": 0})()
                 return result

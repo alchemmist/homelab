@@ -22,11 +22,11 @@ from tests import test_identity as identity
 
 
 class LifecycleAPI:
-    def __init__(self, fake):
+    def __init__(self, fake) -> None:
         self.fake = fake
-        self.writes = []
+        self.writes: list[tuple[str, str, object]] = []
 
-    def __call__(self, method, path, data=None):
+    def __call__(self, method, path, data=None) -> object:
         if method != "GET":
             self.writes.append((method, path, data))
         if path.endswith(("/add_user/", "/remove_user/")):
@@ -247,7 +247,8 @@ class AppIAMTests(unittest.TestCase):
     def test_pagination_and_binding_duplicates(self):
         calls = []
 
-        def api(method, path) -> dict[str, object]:
+
+        def api(_method, path) -> dict[str, object]:
             calls.append(path)
             page = len(calls)
             return {"results": [page], "pagination": {"next": page == 1}}

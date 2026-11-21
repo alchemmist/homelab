@@ -31,7 +31,7 @@ UUID = "11111111-2222-4333-8444-555555555555"
 OTHER = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
 SSH_PATH = shutil.which("sshd")
 # Existing PUBLIC key, not a private fixture; inventory itself is kept byte-for-byte.
-TIM = yaml.safe_load((ROOT / "ansible/inventory/group_vars/Socrat.yml").read_text())[
+TIM = yaml.safe_load((ROOT / "ansible/inventory/group_vars/Socrat/users.yml").read_text())[
     "homelab_users"
 ][0]
 KEY = TIM["authorized_keys"][0]
@@ -247,7 +247,8 @@ class BindingTests(unittest.TestCase):
         """Skip the IdP for disabled and removed hosts."""
         p = policy("disabled", hosts=["socrat-1"], revoked=["socrat-2"])
 
-        def unavailable(_ident: object) -> None:
+
+        def unavailable(_ident) -> None:
             """Refuse any IdP lookup for the revocation path."""
             refusal = "Must not call IdP for revocation"
             raise AssertionError(refusal)
@@ -382,6 +383,7 @@ class ApiTests(unittest.TestCase):
         """Pin GET, UUID queries, TLS verification, and redirect refusal."""
         api = self.api()
         seen: list[urllib.request.Request] = []
+
 
         def opened(req: urllib.request.Request, timeout: int) -> io.BytesIO:
             """Record one opener request and return the scheduled page."""

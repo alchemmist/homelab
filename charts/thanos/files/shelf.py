@@ -125,7 +125,7 @@ def mark_deleted(directory, ulid, details="cascade"):
 
 def handler(directory, token):
     class ShelfHandler(BaseHTTPRequestHandler):
-        def log_message(self, fmt: str, *args: object) -> None:
+        def log_message(self, _fmt: str, *_args: object) -> None:
             return
 
         def authorized(self) -> bool:

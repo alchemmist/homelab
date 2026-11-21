@@ -246,7 +246,7 @@ def public_keys(value):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
+    def redirect_request(self, _req, _fp, _code, _msg, _headers, _newurl):
         raise Refused("Authentik redirect refused")
 
 
