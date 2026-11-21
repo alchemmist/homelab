@@ -1,10 +1,10 @@
 import json
-from datetime import datetime, timezone
 import logging
 import os
 import signal
 import time
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -13,7 +13,7 @@ class JsonFormatter(logging.Formatter):
         # Do not render exception text/tracebacks: they can contain process arguments.
         event = getattr(record, "event", "watchdog_error")
         result = dict(
-            ts=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            ts=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             level={10: "debug", 20: "info", 30: "warn"}.get(record.levelno, "error"),
             service="open-terminal-browser-watchdog",
             msg=event,
@@ -117,6 +117,16 @@ class Watchdog:
         self.send = send
         self.browsers: dict[tuple[int, int], Browser] = {}
 
+    def absorb_descendants(self, browser: Browser, processes: dict[int, Process]) -> None:
+        """Add every descendant of a known browser member to the group."""
+        while True:
+            parents = {pid for pid, start in browser.members}
+            additions = {p.identity for p in processes.values() if p.ppid in parents}
+            additions -= browser.members
+            if not additions:
+                break
+            browser.members.update(additions)
+
     def step(self, processes, now):
         for process in processes.values():
             if is_test_browser(process) and process.identity not in self.browsers:
@@ -129,13 +139,7 @@ class Watchdog:
                 for identity in browser.members
                 if identity[0] in processes and processes[identity[0]].identity == identity
             }
-            while True:
-                parents = {pid for pid, start in browser.members}
-                additions = {p.identity for p in processes.values() if p.ppid in parents}
-                additions -= browser.members
-                if not additions:
-                    break
-                browser.members.update(additions)
+            self.absorb_descendants(browser, processes)
             if not browser.members:
                 del self.browsers[root]
                 continue

@@ -9,7 +9,6 @@ import tarfile
 import tempfile
 import time
 import uuid
-from typing import Self, cast
 
 IMAGE = (
     "docker.io/library/node@sha256:1f70dfa8d7be2321da1247e671217c11a555cd005edf4ccb014af28c9e8f78ca"
@@ -19,9 +18,7 @@ MAX_FILE = 65536
 MAX_OUTPUT = 24000
 
 
-def bounded_process(
-    args: list[str], limit: int, timeout: int = 55, input_bytes: bytes | None = None
-) -> tuple[int, bytes]:
+def bounded_process(args, limit, timeout=55, input_bytes=None):
     source = None
     try:
         if input_bytes is not None:
@@ -60,12 +57,12 @@ def bounded_process(
         process.stdout.close()
 
 
-def _raw_member_name(data, offset) -> str:
+def _raw_member_name(data, offset):
     if not isinstance(offset, int) or offset < 0 or offset + 512 > len(data):
         raise ValueError("invalid archive")
     header = data[offset : offset + 512]
 
-    def take(field: bytes) -> str:
+    def take(field):
         if b"\0" in field:
             head, tail = field.split(b"\0", 1)
             if tail.replace(b"\0", b""):
@@ -81,7 +78,32 @@ def _raw_member_name(data, offset) -> str:
     return prefix + "/" + name if prefix else name
 
 
-def inspect_archive(data: bytes) -> dict[str, str]:
+def _validated_member(
+    archive: tarfile.TarFile, data: bytes, member: tarfile.TarInfo, result: dict[str, str]
+) -> None:
+    """Record one member or raise; unsafe entries never pass through."""
+    raw_name = _raw_member_name(data, member.offset)
+    if raw_name != member.name:
+        raise ValueError("unsafe archive path")
+    if member.name == "." and member.isdir():
+        return
+    if member.name not in ("lib.cjs", "test.cjs") or member.type not in (
+        tarfile.REGTYPE,
+        tarfile.AREGTYPE,
+    ):
+        raise ValueError("unexpected workspace entry or file type")
+    if member.size > MAX_FILE or member.name in result:
+        raise ValueError("oversized or duplicate workspace entry")
+    extracted = archive.extractfile(member)
+    if extracted is None:
+        raise ValueError("invalid archive")
+    try:
+        result[member.name] = extracted.read().decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ValueError("invalid archive") from exc
+
+
+def inspect_archive(data):
     result: dict[str, str] = {}
     try:
         archive = tarfile.open(fileobj=io.BytesIO(data), mode="r:*")
@@ -89,25 +111,7 @@ def inspect_archive(data: bytes) -> dict[str, str]:
         raise ValueError("invalid archive") from exc
     try:
         for member in archive:
-            raw_name = _raw_member_name(data, member.offset)
-            if raw_name != member.name:
-                raise ValueError("unsafe archive path")
-            if member.name == "." and member.isdir():
-                continue
-            if member.name not in ("lib.cjs", "test.cjs") or member.type not in (
-                tarfile.REGTYPE,
-                tarfile.AREGTYPE,
-            ):
-                raise ValueError("unexpected workspace entry or file type")
-            if member.size > MAX_FILE or member.name in result:
-                raise ValueError("oversized or duplicate workspace entry")
-            extracted = archive.extractfile(member)
-            if extracted is None:
-                raise ValueError("invalid archive")
-            try:
-                result[member.name] = extracted.read().decode("utf-8")
-            except UnicodeDecodeError as exc:
-                raise ValueError("invalid archive") from exc
+            _validated_member(archive, data, member, result)
     except (tarfile.ReadError, OSError, EOFError) as exc:
         raise ValueError("invalid archive") from exc
     finally:
@@ -118,11 +122,11 @@ def inspect_archive(data: bytes) -> dict[str, str]:
 
 
 class Sandbox:
-    def __init__(self, files, directory, verifier=False) -> None:
+    def __init__(self, files, directory, verifier=False):
         self.directory = pathlib.Path(directory)
         self.directory.mkdir(parents=True, exist_ok=True)
-        self.events: list[dict[str, object]] = []
-        self.container_id: str | None = None
+        self.events = []
+        self.container_id = None
         self.volume_name = "venice-lab-" + uuid.uuid4().hex[:12]
         self.verifier = verifier
         self.config = {"image": IMAGE, "network": "none", "read_only": True}
@@ -258,7 +262,7 @@ class Sandbox:
             [
                 "docker",
                 "exec",
-                cast("str", self.container_id),
+                self.container_id,
                 "bash",
                 "-lc",
                 "grep -E '^(Cap(Inh|Prm|Eff|Bnd|Amb)|NoNewPrivs):' /proc/self/status",
@@ -294,9 +298,7 @@ class Sandbox:
             raise ValueError("sandbox security preflight failed")
         return result
 
-    def execute(
-        self, action: dict[str, object], input_bytes: bytes | None = None, **_kwargs: object
-    ) -> dict[str, object]:
+    def execute(self, action, input_bytes=None, **kwargs):
         command = action["command"]
         wrapped = (
             "timeout -k 2 40 bash -lc "
@@ -323,7 +325,7 @@ class Sandbox:
             stream.write(json.dumps(event) + "\n")
         return {"returncode": code, "output": text, "exception_info": None}
 
-    def snapshot(self) -> dict[str, str]:
+    def snapshot(self):
         subprocess.run(
             ["docker", "pause", self.container_id], capture_output=True, check=True, timeout=15
         )
@@ -348,22 +350,22 @@ class Sandbox:
         if self.container_id:
             try:
                 owned_resources.remove_container(self.container_id, expected)
-            except (OSError, ValueError, subprocess.SubprocessError) as error:
+            except Exception as error:
                 errors.append(str(error))
             else:
                 self.container_id = None
         if self.volume_name:
             try:
                 owned_resources.remove_volume(self.volume_name, expected)
-            except (OSError, ValueError, subprocess.SubprocessError) as error:
+            except Exception as error:
                 errors.append(str(error))
             else:
                 self.volume_name = None
         if errors:
             raise ValueError("; ".join(errors))
 
-    def __enter__(self) -> Self:
+    def __enter__(self):
         return self
 
-    def __exit__(self, *args) -> None:
+    def __exit__(self, *args):
         self.close()
