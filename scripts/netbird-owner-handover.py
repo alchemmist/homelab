@@ -30,7 +30,6 @@ def require(expected: object, message: str) -> None:
 
 
 def subject(uuid=UUID, connector=CONNECTOR) -> str:
-def subject(uuid=UUID, connector=CONNECTOR) -> str:
     a, b = uuid.encode(), connector.encode()
     return (
         base64.b64encode(b"\x0a" + bytes([len(a)]) + a + b"\x12" + bytes([len(b)]) + b)
