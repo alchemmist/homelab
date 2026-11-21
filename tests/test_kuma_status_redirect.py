@@ -55,6 +55,7 @@ def test_public_read_only_status_and_legacy_https_redirect(rendered_policy: str)
     ("old", "new"),
     [
         ("upstream kuma {", "upstream kuma { server dummy.invalid:80; }\nupstream unused {"),
+        ("gatus.uptime-kuma.svc.cluster.local:80", "dummy.invalid:80"),
         ("^(GET|HEAD)$", "^(GET|HEAD|POST)$"),
         ("endpoints/|suites/|favicon", "socket.io|endpoints/|suites/|favicon"),
         ("return 302 /;", "return 302 http://gatus:8080/;"),
