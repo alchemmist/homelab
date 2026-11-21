@@ -36,6 +36,7 @@ load_config() {
       value="${line#*=}"
       [[ "${key}" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]] || die "config key is not a valid identifier: ${key}"
       if [[ "${value}" == \"*\" || "${value}" == \'*\' ]]; then
+        [[ ${#value} -ge 2 ]] || die "config value has an unmatched quote: ${key}"
         local quote="${value:0:1}"
         [[ "${value: -1}" == "${quote}" ]] || die "config value has an unmatched quote: ${key}"
         value="${value:1:${#value}-2}"
