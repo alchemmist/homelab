@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Explicit Argo CD native OIDC refresh acceptance with a temporary read-only observer.
+
 Requires a reviewed refresh + end-to-end TLS deployment; fails closed before
 creating fixtures when offline_access is absent. Expects renewed cookies to retain
 Secure; Argo CD 3.5.6 server.insecure=true fails this check.
