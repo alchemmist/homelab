@@ -1,3 +1,5 @@
+"""Ensure wiki editor credentials and repository secrets exist."""
+
 import base64
 import json
 import os
