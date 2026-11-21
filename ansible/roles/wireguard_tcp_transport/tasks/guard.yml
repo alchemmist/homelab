@@ -35,7 +35,8 @@
 - name: Activate the direct transport guard before switching the peer endpoint
   ansible.builtin.systemd:
     name: wireguard-tcp-transport-guard.service
-    state: "{{ 'restarted' if wg_tcp_guard_helper.changed or wg_tcp_guard_unit.changed else 'started' }}"
+    state: >-
+      {{ 'restarted' if wg_tcp_guard_helper.changed or wg_tcp_guard_unit.changed else 'started' }}
     enabled: true
     daemon_reload: true
 ...

@@ -23,7 +23,9 @@
 
 - name: Download pinned official GOST binary archive
   ansible.builtin.get_url:
-    url: 'https://github.com/go-gost/gost/releases/download/v{{ wg_tcp_version }}/gost_{{ wg_tcp_version }}_linux_amd64.tar.gz'
+    url: >-
+      https://github.com/go-gost/gost/releases/download/v{{ wg_tcp_version }}/gost_{{ wg_tcp_version
+      }}_linux_amd64.tar.gz
     dest: '{{ wg_tcp_directory }}/gost-{{ wg_tcp_version }}.tar.gz'
     checksum: sha256:676fb7f78d267b6ae73df719c0c7f2b565dde7147da935cfafbc1e1da558b6d5
     mode: '0600'
@@ -196,7 +198,9 @@
       - python3
       - /usr/local/libexec/wireguard-tcp-transport-endpoint.py
       - '{{ wg_tcp_interface }}'
-      - '{{ wg_socrat_nodes[wg_tcp_client if inventory_hostname == wg_tcp_server else wg_tcp_server].public_key }}'
+      - >-
+        {{ wg_socrat_nodes[wg_tcp_client if inventory_hostname == wg_tcp_server else
+        wg_tcp_server].public_key }}
       - "{{ '' if inventory_hostname == wg_tcp_server else '127.0.0.1:' + (wg_tcp_port | string) }}"
   register: wg_tcp_endpoint
   changed_when: (wg_tcp_endpoint.stdout | from_json).changed
@@ -260,7 +264,8 @@
   changed_when: false
   failed_when: >-
     wg_tcp_verified_endpoints.rc != 0 or
-    (wg_socrat_nodes[wg_tcp_server].public_key + '\t127.0.0.1:' + (wg_tcp_port | string)) not in wg_tcp_verified_endpoints.stdout
+    (wg_socrat_nodes[wg_tcp_server].public_key + '\t127.0.0.1:' + (wg_tcp_port | string)) not in
+    wg_tcp_verified_endpoints.stdout
   when: inventory_hostname == wg_tcp_client and not ansible_check_mode
 
 - name: Verify the VPS learned the client's local relay endpoint
@@ -275,6 +280,7 @@
   changed_when: false
   failed_when: >-
     wg_tcp_verified_server_endpoints.rc != 0 or
-    (wg_socrat_nodes[wg_tcp_client].public_key + '\t127.0.0.1:') not in wg_tcp_verified_server_endpoints.stdout
+    (wg_socrat_nodes[wg_tcp_client].public_key + '\t127.0.0.1:') not in
+    wg_tcp_verified_server_endpoints.stdout
   when: inventory_hostname == wg_tcp_client and not ansible_check_mode
 ...

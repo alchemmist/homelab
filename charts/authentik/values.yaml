@@ -1,7 +1,8 @@
 ---
 # -- Provide a name in place of `authentik`. Prefer using global.nameOverride if possible
 nameOverride: ""
-# -- String to fully override `"authentik.fullname"`. Prefer using global.fullnameOverride if possible
+# -- String to fully override `"authentik.fullname"`. Prefer using global.fullnameOverride if
+# possible
 fullnameOverride: ""
 # -- Override the Kubernetes version, which is used to evaluate certain manifests
 kubeVersionOverride: ""
@@ -27,7 +28,8 @@ global:
   # Number of old deployment ReplicaSets to retain. The rest will be garbage collected.
   revisionHistoryLimit: 3
 
-  # Default image used by all authentik components. For GeoIP configuration, see the geoip values below.
+  # Default image used by all authentik components. For GeoIP configuration, see the geoip values
+  # below.
   image:
     # -- If defined, a repository applied to all authentik deployments
     repository: ghcr.io/goauthentik/server
@@ -53,7 +55,8 @@ global:
   # -- Labels for all deployed pods
   podLabels: {}
 
-  # -- Add Prometheus scrape annotations to all metrics services. This can be used as an alternative to the ServiceMonitors.
+  # -- Add Prometheus scrape annotations to all metrics services. This can be used as an
+  # alternative to the ServiceMonitors.
   addPrometheusAnnotations: false
 
   # -- Toggle and define pod-level security context.
@@ -146,7 +149,9 @@ global:
     #   emptyDir: {}
 
 
-# -- Authentik configuration. See the [authentik configuration docs] for details about which values are accepted here. See the note at the top of that page for details about transforming environment variable names into values here.
+# -- Authentik configuration. See the [authentik configuration docs] for details about which values
+# are accepted here. See the note at the top of that page for details about transforming
+# environment variable names into values here.
 # @default -- See [values.yaml]
 authentik:
   # -- whether to create the authentik configuration secret
@@ -159,7 +164,9 @@ authentik:
   ## use existing secret for authentik configuration instead of creating one
   ## WARNING: when set, authentik.* secret values are ignored
   existingSecret:
-    # -- name of an existing secret to use for authentik configuration. This secret must contain keys matching configuration option names, see the docs for the full list of configuration options https://docs.goauthentik.io/install-config/configuration/
+    # -- name of an existing secret to use for authentik configuration. This secret must contain
+    # keys matching configuration option names, see the docs for the full list of configuration
+    # options https://docs.goauthentik.io/install-config/configuration/
     secretName: ""
   events:
     context_processors:
@@ -168,7 +175,8 @@ authentik:
       # -- Path for the GeoIP ASN database. If the file doesn't exist, GeoIP features are disabled.
       asn: /geoip/GeoLite2-ASN.mmdb
   web:
-    # -- Relative path the authentik instance will be available at. Value _must_ contain both a leading and trailing slash.
+    # -- Relative path the authentik instance will be available at. Value _must_ contain both a
+    # leading and trailing slash.
     path: /
   email:
     # -- SMTP Server emails are sent from, fully optional
@@ -392,7 +400,8 @@ server:
 
   # -- serviceAccount to use for authentik server pods
   serviceAccountName: ~
-  # -- (bool) automount behavior for service account token in server pods. Only applies if server.serviceAccountName is set.
+  # -- (bool) automount behavior for service account token in server pods. Only applies if
+  # server.serviceAccountName is set.
   automountServiceAccountToken: ~
 
   # -- authentik server pod-level security context
@@ -416,7 +425,8 @@ server:
     #     - ALL
 
   ## Liveness, readiness and startup probes for authentik server
-  ## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/
+  ## Ref:
+  ## https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/
   livenessProbe:
     # -- Minimum consecutive failures for the [probe] to be considered failed after having succeeded
     failureThreshold: 3
@@ -424,7 +434,8 @@ server:
     initialDelaySeconds: 5
     # -- How often (in seconds) to perform the [probe]
     periodSeconds: 10
-    # -- Minimum consecutive successes for the [probe] to be considered successful after having failed
+    # -- Minimum consecutive successes for the [probe] to be considered successful after having
+    # failed
     successThreshold: 1
     # -- Number of seconds after which the [probe] times out
     timeoutSeconds: 3
@@ -440,7 +451,8 @@ server:
     initialDelaySeconds: 5
     # -- How often (in seconds) to perform the [probe]
     periodSeconds: 10
-    # -- Minimum consecutive successes for the [probe] to be considered successful after having failed
+    # -- Minimum consecutive successes for the [probe] to be considered successful after having
+    # failed
     successThreshold: 1
     # -- Number of seconds after which the [probe] times out
     timeoutSeconds: 3
@@ -456,7 +468,8 @@ server:
     initialDelaySeconds: 5
     # -- How often (in seconds) to perform the [probe]
     periodSeconds: 10
-    # -- Minimum consecutive successes for the [probe] to be considered successful after having failed
+    # -- Minimum consecutive successes for the [probe] to be considered successful after having
+    # failed
     successThreshold: 1
     # -- Number of seconds after which the [probe] times out
     timeoutSeconds: 3
@@ -487,7 +500,8 @@ server:
   # -- Assign custom [TopologySpreadConstraints] rules to the authentik server
   # @default -- `[]` (defaults to global.topologySpreadConstraints)
   ## Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
-  ## If labelSelector is left out, it will default to the labelSelector configuration of the deployment
+  ## If labelSelector is left out, it will default to the labelSelector configuration of the
+  ## deployment
   topologySpreadConstraints: []
     # - maxSkew: 1
     #   topologyKey: topology.kubernetes.io/zone
@@ -509,9 +523,11 @@ server:
     labels: {}
     # -- authentik server service type
     type: ClusterIP
-    # -- authentik server service http port for NodePort service type (only if `server.service.type` is set to `NodePort`)
+    # -- authentik server service http port for NodePort service type (only if
+    # `server.service.type` is set to `NodePort`)
     nodePortHttp: 30080
-    # -- authentik server service https port for NodePort service type (only if `server.service.type` is set to `NodePort`)
+    # -- authentik server service https port for NodePort service type (only if
+    # `server.service.type` is set to `NodePort`)
     nodePortHttps: 30443
     # -- authentik server service http port
     servicePortHttp: 80
@@ -531,7 +547,8 @@ server:
     loadBalancerSourceRanges: []
     # -- authentik server service external IPs
     externalIPs: []
-    # -- Denotes if this service desires to route external traffic to node-local or cluster-wide endpoints
+    # -- Denotes if this service desires to route external traffic to node-local or cluster-wide
+    # endpoints
     externalTrafficPolicy: ""
     # -- Used to maintain session affinity. Supports `ClientIP` and `None`
     sessionAffinity: ""
@@ -621,7 +638,8 @@ server:
   route:
     main:
       # -- enable an HTTPRoute resource for the authentik server.
-      # Be aware that this is an early beta of this feature. We don't guarantee this works and is subject to change.
+      # Be aware that this is an early beta of this feature. We don't guarantee this works and is
+      # subject to change.
       enabled: false
       # -- Set the route apiVersion
       apiVersion: gateway.networking.k8s.io/v1
@@ -638,8 +656,10 @@ server:
       # -- Reference to parent gateways
       parentRefs: []
 
-      # -- Create http route for redirect (https://gateway-api.sigs.k8s.io/guides/http-redirect-rewrite/#http-to-https-redirects).
-      # Take care that you only enable this on the http listener of the gateway to avoid an infinite redirect.
+      # -- Create http route for redirect
+      # (https://gateway-api.sigs.k8s.io/guides/http-redirect-rewrite/#http-to-https-redirects).
+      # Take care that you only enable this on the http listener of the gateway to avoid an
+      # infinite redirect.
       # Matches, filters and additionalRules will be ignored if this is set to true
       httpsRedirect: false
 
@@ -821,9 +841,11 @@ worker:
   # -- Alternative DNS policy for authentik worker pods
   dnsPolicy: ""
 
-  # -- serviceAccount to use for authentik worker pods. If set, overrides the value used when serviceAccount.create is true
+  # -- serviceAccount to use for authentik worker pods. If set, overrides the value used when
+  # serviceAccount.create is true
   serviceAccountName: ~
-  # -- (bool) automount behavior for service account token in worker pods. Only applies if worker.serviceAccountName is set.
+  # -- (bool) automount behavior for service account token in worker pods. Only applies if
+  # worker.serviceAccountName is set.
   automountServiceAccountToken: ~
 
   # -- authentik worker pod-level security context
@@ -853,7 +875,8 @@ worker:
     initialDelaySeconds: 5
     # -- How often (in seconds) to perform the [probe]
     periodSeconds: 10
-    # -- Minimum consecutive successes for the [probe] to be considered successful after having failed
+    # -- Minimum consecutive successes for the [probe] to be considered successful after having
+    # failed
     successThreshold: 1
     # -- Number of seconds after which the [probe] times out
     timeoutSeconds: 3
@@ -870,7 +893,8 @@ worker:
     initialDelaySeconds: 5
     # -- How often (in seconds) to perform the [probe]
     periodSeconds: 10
-    # -- Minimum consecutive successes for the [probe] to be considered successful after having failed
+    # -- Minimum consecutive successes for the [probe] to be considered successful after having
+    # failed
     successThreshold: 1
     # -- Number of seconds after which the [probe] times out
     timeoutSeconds: 3
@@ -887,7 +911,8 @@ worker:
     initialDelaySeconds: 30
     # -- How often (in seconds) to perform the [probe]
     periodSeconds: 10
-    # -- Minimum consecutive successes for the [probe] to be considered successful after having failed
+    # -- Minimum consecutive successes for the [probe] to be considered successful after having
+    # failed
     successThreshold: 1
     # -- Number of seconds after which the [probe] times out
     timeoutSeconds: 3
@@ -919,7 +944,8 @@ worker:
   # -- Assign custom [TopologySpreadConstraints] rules to the authentik worker
   # @default -- `[]` (defaults to global.topologySpreadConstraints)
   ## Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
-  ## If labelSelector is left out, it will default to the labelSelector configuration of the deployment
+  ## If labelSelector is left out, it will default to the labelSelector configuration of the
+  ## deployment
   topologySpreadConstraints: []
     # - maxSkew: 1
     #   topologyKey: topology.kubernetes.io/zone
@@ -1044,7 +1070,8 @@ geoip:
     # - secretRef:
     #     name: secret-name
 
-  # -- Additional volumeMounts to the GeoIP containers. Make sure the volumes exists for the server and the worker.
+  # -- Additional volumeMounts to the GeoIP containers. Make sure the volumes exists for the server
+  # and the worker.
   volumeMounts: []
     # - name: custom
     #   mountPath: /custom
@@ -1089,7 +1116,8 @@ prometheus:
 
 
 postgresql:
-  # -- enable the Bitnami PostgreSQL chart. Refer to https://github.com/bitnami/charts/blob/main/bitnami/postgresql/ for possible values.
+  # -- enable the Bitnami PostgreSQL chart. Refer to
+  # https://github.com/bitnami/charts/blob/main/bitnami/postgresql/ for possible values.
   enabled: false
   image:
     registry: docker.io
