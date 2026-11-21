@@ -156,4 +156,4 @@ if __name__ == "__main__":
         }
         record(result)
         print(json.dumps(result))
-        raise SystemExit(1)
+        raise SystemExit(1) from error

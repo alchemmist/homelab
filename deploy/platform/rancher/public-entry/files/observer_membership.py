@@ -188,5 +188,7 @@ def reconcile_rancher():
 if __name__ == '__main__':
     try:
         reconcile_rancher()
-    except Exception:
-        raise SystemExit('Observer membership reconciliation failed safely; inspect native state')
+    except Exception as exc:
+        raise SystemExit(
+            'Observer membership reconciliation failed safely; inspect native state'
+        ) from exc

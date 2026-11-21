@@ -78,7 +78,7 @@ def browser(url, data=None):
             loc = urllib.parse.urlparse(e.headers["Location"])
             q = urllib.parse.parse_qs(loc.query)
             return e.code, e.headers, b""
-        raise RuntimeError("Browser request failed with HTTP " + str(e.code))
+        raise RuntimeError("Browser request failed with HTTP " + str(e.code)) from e
 
 
 username = "identity-smoke-" + uuid.uuid4().hex[:10]
@@ -192,7 +192,7 @@ try:
                     raise RuntimeError("Reader could write")
                 except urllib.error.HTTPError as error:
                     if error.code != 403:
-                        raise RuntimeError("Unexpected write rejection status")
+                        raise RuntimeError("Unexpected write rejection status") from error
                 print(
                     "Wiki password + TOTP + consent + OIDC/PKCE passed; observer is reader; writes denied 403"
                 )

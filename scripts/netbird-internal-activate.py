@@ -174,4 +174,4 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print("BLOCKED: " + (str(exc) if isinstance(exc, ValueError) else type(exc).__name__))
-        raise SystemExit(2)
+        raise SystemExit(2) from exc

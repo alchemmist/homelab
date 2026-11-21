@@ -83,7 +83,7 @@ def browser(url, data=None):
             + str(e.code)
             + " at "
             + urllib.parse.urlsplit(url).path
-        )
+        ) from e
 
 
 username = "identity-smoke-" + uuid.uuid4().hex[:10]
