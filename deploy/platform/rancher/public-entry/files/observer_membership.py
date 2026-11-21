@@ -7,6 +7,8 @@ checks, keeping owner, editor and unlinked machine credentials untouched.
 """
 import json
 import os
+from collections.abc import Callable
+from typing import TypedDict, cast
 from pathlib import Path
 import ssl
 import threading
@@ -19,6 +21,15 @@ ORIGIN = 'https://auth.socrat.alchemmist.xyz/api/v3/'
 PRINCIPAL = 'genericoidc_group://homelab-observer'
 PREFIX = 'genericoidc_user://'
 OWNER = '9e33877a-3eaa-4541-98eb-8cdc10088ef6'
+
+
+class _AuthUser(TypedDict):
+    role: str
+    id: str
+
+
+class _AuthPayload(TypedDict):
+    user: _AuthUser
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -134,8 +145,10 @@ def install_wiki_guard(store):
     reader = MembershipReader(path)
     groups = set(json.loads(os.environ['WIKI_OIDC_GROUP_ROLES']))
     issuer = os.environ['WIKI_OIDC_ISSUER']
-    def wrap(original):
-        def checked(token):
+    def wrap(
+        original: Callable[[str], _AuthPayload | None],
+    ) -> Callable[[str], _AuthPayload | None]:
+        def checked(token: str) -> _AuthPayload | None:
             auth = original(token)
             if not auth or auth['user']['role'] != 'reader' or auth['user']['id'] in store.local_owners:
                 return auth
@@ -162,20 +175,22 @@ def reconcile_rancher():
     token = Path('/var/run/secrets/kubernetes.io/serviceaccount/token').read_text().strip()
     http = opener(ssl.create_default_context(cafile=ca))
     prefix = '/apis/management.cattle.io/v3/'
-    def call(method, path, body=None):
+    def call(method, path, body: object | None = None) -> dict[str, object]:
         request = urllib.request.Request(base + prefix + path, method=method,
             headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json-patch+json'},
             data=None if body is None else json.dumps(body).encode())
         try:
             with http.open(request, timeout=5) as response:
-                return json.load(response)
+                return cast("dict[str, object]", json.load(response))
         except Exception:
             raise RuntimeError('Native cache API failed; no blind retry') from None
-    def items(path):
-        result, cursor = [], ''
+    def items(path: str) -> list[dict[str, object]]:
+        result: list[dict[str, object]] = []
+        cursor: str = ''
         for _ in range(201):
             data = call('GET', path + '?limit=100' + ('&continue=' + urllib.parse.quote(cursor, safe='') if cursor else ''))
-            result.extend(data['items']);cursor=data['metadata'].get('continue', '')
+            result.extend(cast("list[dict[str, object]]", data['items']))
+            cursor = cast("dict[str, str]", data['metadata']).get('continue', '')
             if not cursor:
                 return result
         raise RuntimeError('Incomplete native cache pagination')
