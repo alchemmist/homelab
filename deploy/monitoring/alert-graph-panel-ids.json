@@ -11,7 +11,8 @@
       "ThanosFiveDiskLow": 7,
       "ThanosRawDiskLow": 9,
       "ThanosScrapeNodeMemoryLow": 11,
-      "ThanosSidecarDown": 13
+      "ThanosSidecarDown": 13,
+      "ThanosWarmWorkshopDiskLow": 15
     },
     "alerts-068de8cd81fbc8d7": {
       "SocratPgCommonReplicaLag": 1,

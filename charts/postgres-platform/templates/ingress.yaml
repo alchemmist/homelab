@@ -24,7 +24,7 @@ spec:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: identity}}
           podSelector: {matchLabels: {app.kubernetes.io/instance: authentik}, matchExpressions: [{key: app.kubernetes.io/component, operator: In, values: [server, worker]}]}
         {{- else }}
-        {{- range $p := list (list "llm" "app.kubernetes.io/instance" "litellm") (list "lms" "app.kubernetes.io/name" "lms") (list "automation" "app" "n8n") (list "umami" "app" "umami") (list "socrat-bot" "app.kubernetes.io/name" "socrat-bot") }}
+        {{- range $p := list (list "llm" "app.kubernetes.io/instance" "litellm") (list "llm" "app" "open-webui") (list "lms" "app.kubernetes.io/name" "lms") (list "automation" "app" "n8n") (list "umami" "app" "umami") (list "socrat-bot" "app.kubernetes.io/name" "socrat-bot") }}
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: {{ index $p 0 }}}}
           podSelector: {matchLabels: { {{ index $p 1 }}: {{ index $p 2 }} }}
         {{- end }}
@@ -32,6 +32,8 @@ spec:
           podSelector: {matchLabels: {app: harbor}, matchExpressions: [{key: component, operator: In, values: [core, jobservice, exporter]}]}
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: cattle-monitoring-system}}
           podSelector: {matchLabels: {app.kubernetes.io/name: grafana, app.kubernetes.io/instance: kube-prometheus-stack}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: wishlist}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: wishlist, app.kubernetes.io/instance: wishlist}}
         # The bot is hostNetwork on socrat-2. CNI can present its host or flannel address.
         - ipBlock: {cidr: 10.250.0.2/32}
         - ipBlock: {cidr: 10.42.0.0/32}
