@@ -1,7 +1,7 @@
 {
   "uid": "socrat-metrics",
   "title": "Metrics",
-  "description": "The metric cascade itself: the 5-second scrape on socrat-0, Thanos blocks on each shelf, node disk, and the hourly thanos-cascade Job. socrat-2 is not part of the cascade.",
+  "description": "OTel → Prometheus on socrat-0 → warm S3 on socrat-1 → verified hourly copies on socrat-3. The legacy 5m NFS shelf is separate.",
   "tags": [
     "Primary"
   ],
@@ -308,7 +308,7 @@
     {
       "id": 1,
       "type": "row",
-      "title": "Live scrape on socrat-0",
+      "title": "OTel ingest → Prometheus · socrat-0",
       "collapsed": false,
       "gridPos": {
         "x": 0,
@@ -574,7 +574,7 @@
       "id": 6,
       "title": "Targets up",
       "type": "stat",
-      "description": "Number of Prometheus scrape targets reporting up at the range end. It counts every job, not only the cascade. No data means Prometheus itself did not answer.",
+      "description": "Targets reporting up through the OTel scraper at the end of the range.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -635,9 +635,9 @@
     },
     {
       "id": 7,
-      "title": "Sidecar",
+      "title": "Sidecar → Prometheus",
       "type": "stat",
-      "description": "Whether the Thanos sidecar next to Prometheus can see Prometheus. Up means fresh blocks can be written under /var/lib/socrat-thanos. Down means shipping from socrat-0 has stopped.",
+      "description": "Sidecar connectivity to local Prometheus, not proof of an S3 upload. See Last upload to warm S3.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -715,9 +715,9 @@
     },
     {
       "id": 8,
-      "title": "Last sidecar upload",
+      "title": "Last upload to warm S3",
       "type": "stat",
-      "description": "Time since the sidecar last uploaded a block into the raw directory. No data means no successful upload has been recorded yet, which is expected until the first 2-hour block closes. Zero timestamps are hidden.",
+      "description": "Last successful sidecar upload into warm S3 on socrat-1. Hidden until a positive timestamp exists.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -779,7 +779,7 @@
     {
       "id": 9,
       "type": "row",
-      "title": "Blocks on each shelf",
+      "title": "Archive blocks by physical storage host",
       "collapsed": false,
       "gridPos": {
         "x": 0,
@@ -793,7 +793,7 @@
       "id": 10,
       "title": "Loaded blocks",
       "type": "stat",
-      "description": "Blocks the compactors currently have loaded. raw · socrat-0 is the workshop and can hold raw, 5-minute and hourly blocks until they are copied away. 5m · socrat-1 and 1h · socrat-3 are the shelves. Zero means that shelf has no loaded blocks yet. A missing shelf means that compactor is not being scraped.",
+      "description": "Blocks loaded by each compactor, grouped by physical storage host. The main compactor runs on socrat-0 but reads warm S3 on socrat-1; the legacy 5m compactor runs on socrat-1 but reads NFS on socrat-0.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -807,7 +807,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (shelf) (label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-[0-9a-f]+-.+\"}, \"shelf\", \"raw · socrat-0\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-5m-.+\"}, \"shelf\", \"5m · socrat-1\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-1h-.+\"}, \"shelf\", \"1h · socrat-3\", \"pod\", \".+\"))",
+          "expr": "sum by (shelf) (label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-[0-9a-f]+-.+\"}, \"shelf\", \"warm S3 · socrat-1\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-5m-.+\"}, \"shelf\", \"legacy 5m NFS · socrat-0\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-1h-.+\"}, \"shelf\", \"1h · socrat-3\", \"pod\", \".+\"))",
           "legendFormat": "{{shelf}}",
           "instant": true,
           "format": "time_series"
@@ -871,7 +871,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (shelf) (label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"marked-for-deletion\",pod=~\"thanos-compactor-[0-9a-f]+-.+\"}, \"shelf\", \"raw · socrat-0\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"marked-for-deletion\",pod=~\"thanos-compactor-5m-.+\"}, \"shelf\", \"5m · socrat-1\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"marked-for-deletion\",pod=~\"thanos-compactor-1h-.+\"}, \"shelf\", \"1h · socrat-3\", \"pod\", \".+\"))",
+          "expr": "sum by (shelf) (label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"marked-for-deletion\",pod=~\"thanos-compactor-[0-9a-f]+-.+\"}, \"shelf\", \"warm S3 · socrat-1\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"marked-for-deletion\",pod=~\"thanos-compactor-5m-.+\"}, \"shelf\", \"legacy 5m NFS · socrat-0\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"marked-for-deletion\",pod=~\"thanos-compactor-1h-.+\"}, \"shelf\", \"1h · socrat-3\", \"pod\", \".+\"))",
           "legendFormat": "{{shelf}}",
           "instant": true,
           "format": "time_series"
@@ -935,7 +935,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "max by (shelf) (label_replace(thanos_compact_halted{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor-[0-9a-f]+-.+\"}, \"shelf\", \"raw · socrat-0\", \"pod\", \".+\") or label_replace(thanos_compact_halted{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor-5m-.+\"}, \"shelf\", \"5m · socrat-1\", \"pod\", \".+\") or label_replace(thanos_compact_halted{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor-1h-.+\"}, \"shelf\", \"1h · socrat-3\", \"pod\", \".+\"))",
+          "expr": "max by (shelf) (label_replace(thanos_compact_halted{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor-[0-9a-f]+-.+\"}, \"shelf\", \"warm S3 · socrat-1\", \"pod\", \".+\") or label_replace(thanos_compact_halted{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor-5m-.+\"}, \"shelf\", \"legacy 5m NFS · socrat-0\", \"pod\", \".+\") or label_replace(thanos_compact_halted{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor-1h-.+\"}, \"shelf\", \"1h · socrat-3\", \"pod\", \".+\"))",
           "legendFormat": "{{shelf}}",
           "instant": true,
           "format": "time_series"
@@ -1002,7 +1002,7 @@
       "id": 13,
       "title": "Loaded blocks",
       "type": "timeseries",
-      "description": "Loaded block count on each shelf across the selected range. The raw shelf on socrat-0 includes every resolution still waiting there. Shelves stay at zero until the first blocks are compacted and, for socrat-1 and socrat-3, copied.",
+      "description": "Loaded blocks over time by physical storage host. Warm S3 contains raw, 5m and 1h blocks; the hourly job copies only 1h blocks to socrat-3.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1016,7 +1016,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (shelf) (label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-[0-9a-f]+-.+\"}, \"shelf\", \"raw · socrat-0\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-5m-.+\"}, \"shelf\", \"5m · socrat-1\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-1h-.+\"}, \"shelf\", \"1h · socrat-3\", \"pod\", \".+\"))",
+          "expr": "sum by (shelf) (label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-[0-9a-f]+-.+\"}, \"shelf\", \"warm S3 · socrat-1\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-5m-.+\"}, \"shelf\", \"legacy 5m NFS · socrat-0\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-1h-.+\"}, \"shelf\", \"1h · socrat-3\", \"pod\", \".+\"))",
           "legendFormat": "{{shelf}}",
           "instant": false,
           "format": "time_series"
@@ -1125,7 +1125,7 @@
       "id": 16,
       "title": "Metrics storage by node",
       "type": "table",
-      "description": "Live directory allocations by physical host, separated from the retained pre-cutover workshop on socrat-0. Free space is the whole root filesystem, not a metrics quota. A blank retained value means that node has no reported retained workshop. Cold backup copies are not summed here.",
+      "description": "Active directory allocations by physical node and free space on its root filesystem. The retired workshop is empty; cold backups are not counted as live metrics.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1140,12 +1140,6 @@
         {
           "refId": "A",
           "expr": "sum by (node) (socrat_metrics_directory_bytes{role!=\"retained\"})",
-          "instant": true,
-          "format": "table"
-        },
-        {
-          "refId": "B",
-          "expr": "sum by (node) (socrat_metrics_directory_bytes{role=\"retained\"})",
           "instant": true,
           "format": "table"
         },
@@ -1197,22 +1191,6 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Retained workshop"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "bytes"
-              },
-              {
-                "id": "custom.width",
-                "value": 130
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
               "options": "Disk free"
             },
             "properties": [
@@ -1256,14 +1234,12 @@
             "renameByName": {
               "node": "Node",
               "Value #A": "Active",
-              "Value #B": "Retained workshop",
               "Value #E": "Disk free"
             },
             "indexByName": {
               "Node": 0,
               "Active": 1,
-              "Retained workshop": 2,
-              "Disk free": 3
+              "Disk free": 2
             }
           }
         }
@@ -1273,7 +1249,7 @@
       "id": 19,
       "title": "Metrics bytes",
       "type": "timeseries",
-      "description": "Active directory allocation by storage host. Prometheus TSDB and compactor work stay on socrat-0; the warm S3 workshop is on socrat-1 and hourly storage on socrat-3. The separate legacy 5m shelf still uses NFS on socrat-0. Excludes the retained pre-cutover workshop.",
+      "description": "Active directory allocation: TSDB, compactor work and legacy 5m NFS on socrat-0; warm S3 on socrat-1; hourly archive on socrat-3. Cold backups excluded.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1328,7 +1304,7 @@
     {
       "id": 20,
       "type": "row",
-      "title": "Cascade job",
+      "title": "Hourly copy · socrat-1 → socrat-3",
       "collapsed": false,
       "gridPos": {
         "x": 0,
@@ -1340,9 +1316,9 @@
     },
     {
       "id": 21,
-      "title": "Last success",
+      "title": "Last successful run",
       "type": "stat",
-      "description": "When thanos-cascade last finished successfully. The job is scheduled at minute 30 of every hour, Europe/Moscow. The value is a timestamp, so it reads as a time ago. No data means kube-state-metrics has not reported a successful run.",
+      "description": "Last successful scheduled check. A run with no eligible 1h blocks also succeeds; this timestamp is not proof of a transfer.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1468,7 +1444,7 @@
       "id": 23,
       "title": "Active runs",
       "type": "stat",
-      "description": "How many thanos-cascade Jobs are active now. Idle is the steady state. Running means a copy or cleanup pass is in progress. The policy allows only one at a time.",
+      "description": "Active hourly copy checks. They never delete S3 source blocks; at most one runs at a time.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1545,7 +1521,7 @@
       "id": 24,
       "title": "Since last success",
       "type": "stat",
-      "description": "Seconds since the last successful thanos-cascade run. Yellow after 3 hours, which is also when the shipping alert is allowed to fire. Red after 6 hours. Finished blocks stay on socrat-0 until a later run moves them.",
+      "description": "Time since the last successful check, not since the last block copy. Eligible hourly blocks remain in warm S3 even after publication on socrat-3.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1732,7 +1708,7 @@
       "id": 27,
       "title": "Sidecar uploads",
       "type": "timeseries",
-      "description": "Increase over one hour of block uploads from the Prometheus sidecar into the raw directory, and of upload failures. This is the sidecar shipper, not the hourly copy to the 5m and hourly shelves. Flat zero is expected until the first block closes.",
+      "description": "Sidecar uploads from socrat-0 to warm S3 on socrat-1 and failures over one hour. Independent of the hourly copy to socrat-3. Zero can be normal between two-hour block closures.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1807,7 +1783,7 @@
       "id": 34,
       "title": "Directories",
       "type": "table",
-      "description": "Allocated bytes by directory and host. Warm is the S3 backing directory on socrat-1 including storage overhead. Retained is the old workshop on socrat-0 kept for recovery, not an active writer.",
+      "description": "Live directory allocations by physical host. Warm includes S3 storage overhead. The empty retired directory and cold recovery archive are not active storage.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1821,7 +1797,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "socrat_metrics_directory_bytes",
+          "expr": "socrat_metrics_directory_bytes{role!=\"retained\"}",
           "instant": true,
           "format": "table"
         }

@@ -54,6 +54,11 @@
       "sha256": "f49fee30367890a492146d63c3c433a7853e9088ebfe9e25cc792ec4b1400f18"
     },
     {
+      "path": "limitrange-v1.json",
+      "url": "https://raw.githubusercontent.com/yannh/kubernetes-json-schema/6ea44f54bb5cdedb2f61fba42c9b342e97959262/v1.36.0-standalone-strict/limitrange-v1.json",
+      "sha256": "de9bfabf9ea0bff36b71e5e686d3ecce5246b098061f39a70549f82f8f03acd7"
+    },
+    {
       "path": "mutatingwebhookconfiguration-admissionregistration-v1.json",
       "url": "https://raw.githubusercontent.com/yannh/kubernetes-json-schema/6ea44f54bb5cdedb2f61fba42c9b342e97959262/v1.36.0-standalone-strict/mutatingwebhookconfiguration-admissionregistration-v1.json",
       "sha256": "f6d7abff06dc187551017d0bb188940f41ae75f78612211df95a447c686b8711"
@@ -84,9 +89,19 @@
       "sha256": "6f99b68397fd3fe1756eb434f756698415544c15facf923e6e1bd97fd89395fa"
     },
     {
+      "path": "poddisruptionbudget-policy-v1.json",
+      "url": "https://raw.githubusercontent.com/yannh/kubernetes-json-schema/6ea44f54bb5cdedb2f61fba42c9b342e97959262/v1.36.0-standalone-strict/poddisruptionbudget-policy-v1.json",
+      "sha256": "92b2b2cf7c193b9d10943e7785ebe6eefce439d9e1e34e5fd9e820155a657137"
+    },
+    {
       "path": "priorityclass-scheduling-v1.json",
       "url": "https://raw.githubusercontent.com/yannh/kubernetes-json-schema/6ea44f54bb5cdedb2f61fba42c9b342e97959262/v1.36.0-standalone-strict/priorityclass-scheduling-v1.json",
       "sha256": "614e8878ac82099cccc0c55e90f487c09ced6057954cb1c5189f6cccc5799451"
+    },
+    {
+      "path": "resourcequota-v1.json",
+      "url": "https://raw.githubusercontent.com/yannh/kubernetes-json-schema/6ea44f54bb5cdedb2f61fba42c9b342e97959262/v1.36.0-standalone-strict/resourcequota-v1.json",
+      "sha256": "9546ed313e622ea84a0ab1ec7ef7e683f05acfbfe97beb746f0b5be6407691df"
     },
     {
       "path": "role-rbac-v1.json",
