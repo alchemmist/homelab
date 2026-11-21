@@ -4,6 +4,7 @@ import getpass
 import json
 import subprocess
 import urllib.request
+from collections.abc import Mapping
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--admin-email", required=True)
@@ -11,7 +12,7 @@ args = parser.parse_args()
 password = getpass.getpass("Open WebUI password: ")
 
 
-def kubectl(*argv):
+def kubectl(*argv: str) -> str:
     return subprocess.check_output(["kubectl", "-n", "llm", *argv], text=True)
 
 
@@ -20,7 +21,7 @@ base = "http://" + ip + ":8080"
 opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
-def request(path, data=None, token=None):
+def request(path: str, data: Mapping[str, object] | None = None, token: str | None = None):
     headers = {"Content-Type": "application/json"}
     if token:
         headers["Authorization"] = "Bearer " + token

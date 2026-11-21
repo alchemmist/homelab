@@ -302,7 +302,7 @@ def test_upstream_failure_never_fences_worker_or_releases_marker(ctl, monkeypatc
 def test_probe_failure_records_stage_not_private_path(ctl, monkeypatch):
     m, c = ctl
 
-    def fail(*a, **kw: object):
+    def fail(*a: object, **kw: object) -> None:
         raise TimeoutError()
 
     monkeypatch.setattr(m.socket, "create_connection", fail)
@@ -330,7 +330,7 @@ def test_failed_websocket_diagnostic_does_not_store_private_path(ctl, monkeypatc
         def __enter__(self):
             return self
 
-        def __exit__(self, *args):
+        def __exit__(self, *args: object) -> None:
             pass
 
         def sendall(self, data):

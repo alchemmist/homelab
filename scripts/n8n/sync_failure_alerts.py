@@ -7,6 +7,7 @@ import argparse
 import copy
 import json
 from pathlib import Path
+from typing import Protocol, TypedDict
 
 from native_api import api
 
@@ -15,11 +16,42 @@ NAME = "Workflow Failure Alerts"
 ALERTS_ID = "b2TlucyOTiZP9CzN"
 
 
-def graph(w):
+class _Node(TypedDict, total=False):
+    name: str
+    type: str
+    credentials: dict[str, dict[str, object]]
+
+
+class _Workflow(TypedDict, total=False):
+    id: str
+    name: str
+    active: bool
+    nodes: list[_Node]
+    connections: object
+    settings: dict[str, object]
+    isArchived: bool
+    activeVersion: "_Workflow"
+    activeVersionId: str
+    versionId: str
+    shared: object
+    tags: object
+    pinData: object
+    meta: object
+    staticData: object
+
+
+class _Api(Protocol):
+    """Untyped native API entry used by this binder."""
+
+    def __call__(self, method: str, path: str, body: object | None = ...) -> _Workflow:
+        """Return the raw workflow JSON document for the API call."""
+
+
+def graph(w: _Workflow):
     return {k: w.get(k) for k in ("nodes", "connections")}
 
 
-def guard(w, target):
+def guard(w: _Workflow, target: str | None):
     if w.get("settings", {}).get("errorWorkflow") not in (None, "", target):
         raise RuntimeError("Existing error handler differs; refusing overwrite")
     published = w.get("activeVersion")
@@ -29,11 +61,11 @@ def guard(w, target):
         )
 
 
-def body(w):
+def body(w: _Workflow):
     return {k: copy.deepcopy(w[k]) for k in ("name", "nodes", "connections", "settings")}
 
 
-def bind(api, before, target):
+def bind(api: "_Api", before: _Workflow, target: str | None):
     # Fresh compare immediately before mutation; API has no documented CAS.
     fresh = api("GET", "workflows/" + before["id"])
     for k in ("name", "nodes", "connections", "settings", "active", "versionId", "activeVersionId"):
@@ -57,7 +89,7 @@ def bind(api, before, target):
     return after
 
 
-def protected_static(w):
+def protected_static(w: _Workflow):
     # Native active-workflow updates delete/recreate GitHub subscriptions. Never
     # restore the obsolete signing secret or suppress drift in other node state.
     state = copy.deepcopy(w.get("staticData"))
@@ -75,7 +107,9 @@ def protected_static(w):
     return state
 
 
-def check(before, after, target, verify_static=True):
+def check(
+    before: _Workflow, after: _Workflow, target: str | None, *, verify_static: bool = True
+):
     if (
         graph(before) != graph(after)
         or before["name"] != after["name"]

@@ -1,4 +1,5 @@
 import argparse
+from collections.abc import Callable, Mapping, Sequence
 import json
 import os
 from pathlib import Path
@@ -6,6 +7,7 @@ import re
 import subprocess
 import tempfile
 import time
+from typing import Protocol, TypedDict
 from urllib.parse import quote, urlencode
 
 PROMETHEUS_PATH = (
@@ -18,11 +20,86 @@ FORMAT_QUERY_PATH = PROMETHEUS_PATH.rsplit("/", 1)[0] + "/format_query"
 GRAFANA_PATH = "/api/v1/namespaces/cattle-monitoring-system/services/http:kube-prometheus-stack-grafana:80/proxy/api/frontend/settings"
 
 
-def compact(value):
+class _Condition(Protocol):
+    def __bool__(self) -> bool: ...
+
+
+class _ApiRule(TypedDict, total=False):
+    name: str
+    query: str
+    type: str
+    annotations: dict[str, str]
+    labels: dict[str, str]
+
+
+class _ApiGroup(TypedDict, total=False):
+    file: str
+    name: str
+    rules: list[_ApiRule]
+
+
+class _RulesData(TypedDict):
+    groups: list[_ApiGroup]
+
+
+class _RulesResponse(TypedDict):
+    data: _RulesData
+
+
+class _ExprTarget(TypedDict, total=False):
+    expr: str
+
+
+class _GrafanaPanel(TypedDict, total=False):
+    id: int
+    panels: list["_GrafanaPanel"]
+    targets: list[_ExprTarget]
+
+
+class _FeatureToggles(TypedDict, total=False):
+    alertingPrometheusRulesPrimary: bool
+
+
+class _GrafanaSettings(TypedDict, total=False):
+    featureToggles: _FeatureToggles
+
+
+class _ObjectMeta(TypedDict):
+    namespace: str
+    name: str
+    uid: str
+
+
+class _K8sRule(TypedDict, total=False):
+    alert: str
+    expr: object
+    labels: dict[str, str]
+    annotations: dict[str, str]
+
+
+class _K8sGroup(TypedDict, total=False):
+    name: str
+    rules: list[_K8sRule]
+
+
+class _K8sSpec(TypedDict, total=False):
+    groups: list[_K8sGroup]
+
+
+class _K8sResource(TypedDict):
+    metadata: _ObjectMeta
+    spec: _K8sSpec
+
+
+class _ResourceList(TypedDict):
+    items: list[_K8sResource]
+
+
+def compact(value: object):
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
 
 
-def js_hash(value):
+def js_hash(value: str):
     result = 0
     encoded = value.encode("utf-16-le", errors="surrogatepass")
     for index in range(0, len(encoded), 2):
@@ -30,7 +107,7 @@ def js_hash(value):
     return result if result < 0x80000000 else result - 0x100000000
 
 
-def query_fingerprint(query):
+def query_fingerprint(query: str):
     query = "\n".join(
         line.strip() for line in re.sub(r"#[^\n]*", "", query).split("\n") if line.strip()
     )
@@ -43,11 +120,11 @@ def query_fingerprint(query):
     return "".join(sorted(query, key=lambda char: char.encode("utf-16-be", errors="surrogatepass")))
 
 
-def pairs_fingerprint(values):
+def pairs_fingerprint(values: Mapping[str, str] | None):
     return compact(sorted((values or {}).items(), key=lambda item: item[0]))
 
 
-def rule_hash(rule, primary=False):
+def rule_hash(rule: _ApiRule, primary: _Condition = False):
     fingerprint = [
         rule["name"],
         "alerting",
@@ -58,7 +135,7 @@ def rule_hash(rule, primary=False):
     return str(js_hash(compact(fingerprint)))
 
 
-def rule_url(group, rule, primary=False):
+def rule_url(group: _ApiGroup, rule: _ApiRule, primary: _Condition = False):
     parts = [
         "pri",
         "Prometheus",
@@ -73,13 +150,13 @@ def rule_url(group, rule, primary=False):
     return "/alerting/Prometheus/" + quote(identifier, safe="~!*'()") + "/view"
 
 
-def panels(dashboard):
+def panels(dashboard: _GrafanaPanel):
     for panel in dashboard.get("panels", []):
         yield panel
         yield from panels(panel)
 
 
-def panel_rules(panel, name_prefix=""):
+def panel_rules(panel: _GrafanaPanel, name_prefix: str = ""):
     result = set()
     for target in panel.get("targets", []):
         for selector in re.findall(r"\bALERTS\s*\{([^}]*)\}", target.get("expr", "")):
@@ -94,7 +171,13 @@ def panel_rules(panel, name_prefix=""):
     return result
 
 
-def resolve(dashboard, response, settings, values_key="nodeAlertLinks", name_prefix=""):
+def resolve(
+    dashboard: _GrafanaPanel,
+    response: _RulesResponse,
+    settings: _GrafanaSettings,
+    values_key: str = "nodeAlertLinks",
+    name_prefix: str = "",
+):
     groups = response["data"]["groups"]
     primary = settings.get("featureToggles", {}).get("alertingPrometheusRulesPrimary", False)
     available = {}
@@ -127,7 +210,12 @@ def resolve(dashboard, response, settings, values_key="nodeAlertLinks", name_pre
     return {values_key: result}
 
 
-def expected_rules(dashboard, resources, formatter, name_prefix=""):
+def expected_rules(
+    dashboard: _GrafanaPanel,
+    resources: _ResourceList,
+    formatter: Callable[[str], str],
+    name_prefix: str = "",
+):
     names = set().union(*(panel_rules(panel, name_prefix) for panel in panels(dashboard)))
     expected = []
     cache = {}
@@ -161,7 +249,7 @@ def expected_rules(dashboard, resources, formatter, name_prefix=""):
     return expected
 
 
-def require_convergence(response, expected):
+def require_convergence(response: _RulesResponse, expected: Sequence[tuple[str, str, _ApiRule]]):
     actual = set()
     for group in response["data"]["groups"]:
         for rule in group.get("rules", []):
@@ -180,7 +268,7 @@ def require_convergence(response, expected):
         )
 
 
-def fetch(path):
+def fetch(path: str):
     if "/format_query?" in path:
         from urllib.parse import parse_qs, urlsplit
 

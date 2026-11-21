@@ -3,7 +3,6 @@ import importlib.util
 import json
 import pathlib
 import unittest
-from typing import TypedDict, Unpack
 from unittest.mock import AsyncMock, patch
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -55,13 +54,22 @@ class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
         processes = []
         started = asyncio.Event()
 
-        class SpawnKwargs(TypedDict, total=False):
-            stdin: int
-            stdout: int
-            stderr: int
-
-        async def spawn(*args, **kwargs: Unpack[SpawnKwargs]):
-            process = await original(*args, **kwargs)
+        async def spawn(
+            program: str,
+            *args: str,
+            stdin: object = None,
+            stdout: object = None,
+            stderr: object = None,
+            **kwargs: object,
+        ) -> asyncio.subprocess.Process:
+            process = await original(
+                program,
+                *args,
+                stdin=stdin,
+                stdout=stdout,
+                stderr=stderr,
+                **kwargs,
+            )
             processes.append(process)
             started.set()
             return process

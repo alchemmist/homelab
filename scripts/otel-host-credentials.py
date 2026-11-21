@@ -19,14 +19,14 @@ from pathlib import Path
 ROOT = Path("/var/lib/homelab-otel")
 
 
-def atomic(path, value):
+def atomic(path: Path, value: str) -> None:
     temporary = path.with_name(path.name + ".tmp")
     temporary.write_text(value)
     temporary.chmod(0o600)
     temporary.replace(path)
 
 
-def run(verify_scope=False):
+def run(*, verify_scope: bool = False) -> None:
     os.umask(0o077)
     if os.geteuid() != 0 or ROOT.is_symlink():
         raise ValueError("Root-owned native host workspace required")
@@ -34,7 +34,7 @@ def run(verify_scope=False):
     token = json.loads((ROOT / "token.json").read_text())
     context = ssl.create_default_context(cafile=str(ROOT / "kubernetes-ca.crt"))
 
-    def api(path, payload=None, method=None):
+    def api(path: str, payload: object | None = None, method: str | None = None):
         headers = {"Authorization": "Bearer " + token["token"]}
         if payload is not None:
             headers["Content-Type"] = (
@@ -239,7 +239,7 @@ if __name__ == "__main__":
     try:
         parser = argparse.ArgumentParser()
         parser.add_argument("--verify-scope", action="store_true")
-        run(parser.parse_args().verify_scope)
+        run(verify_scope=parser.parse_args().verify_scope)
     except Exception as error:
         # Do not include HTTP response bodies, private key material, or bearer tokens.
         print(json.dumps({"credentialRefreshSucceeded": False, "errorType": type(error).__name__}))
