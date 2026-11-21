@@ -9,11 +9,20 @@ import urllib.parse
 import urllib.request
 
 
-FIELDS = ("ip", "local_port", "protocol", "remote_ip", "external_port", "wan", "status", "comment")
+FIELDS = (
+    "ip",
+    "local_port",
+    "protocol",
+    "remote_ip",
+    "external_port",
+    "wan",
+    "status",
+    "comment",
+)
 
 
-def parse_forwards(page: str):
-    rows = []
+def parse_forwards(page) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
     for row in re.findall(r"<tr\b[^>]*>(.*?)</tr>", page, re.S | re.I):
         selected = re.search(r'name="(select\d+)"', row)
         if not selected:
@@ -30,12 +39,12 @@ def parse_forwards(page: str):
     return rows
 
 
-def canonical(rows: list[dict[str, str]]):
+def canonical(rows) -> list[tuple[str, ...]]:
     return sorted(tuple(row[field] for field in FIELDS) for row in rows)
 
 
 class Router:
-    def __init__(self, credentials: dict[str, str], address: str):
+    def __init__(self, credentials, address):
         self.base = "http://" + str(ipaddress.IPv4Address(address))
         self.cookie = None
         page = self.request("/login.htm")
@@ -62,17 +71,20 @@ class Router:
             raise ValueError("Router authentication failed")
         self.cookie = match.group(1)
 
-    def request(self, path: str, data: dict[str, str] | None = None):
+    def request(self, path, data=None) -> str:
         encoded = None if data is None else urllib.parse.urlencode(data).encode()
         headers = {} if self.cookie is None else {"Cookie": self.cookie}
-        request = urllib.request.Request(self.base + path, data=encoded, headers=headers)
+        request = urllib.request.Request(
+            self.base + path, data=encoded, headers=headers
+        )
         with urllib.request.urlopen(request, timeout=15) as response:
-            return response.read().decode("utf-8")
+            body: bytes = response.read()
+            return body.decode("utf-8")
 
-    def forwards(self):
+    def forwards(self) -> list[dict[str, str]]:
         return parse_forwards(self.request("/portfw.htm"))
 
-    def verify(self, expected: list[dict[str, str]]):
+    def verify(self, expected) -> list[dict[str, str]]:
         for attempt in range(5):
             rows = self.forwards()
             if canonical(rows) == canonical(expected):
@@ -81,9 +93,7 @@ class Router:
                 time.sleep(1)
         raise RuntimeError("Router forwarding readback does not match expected state")
 
-    def replace(
-        self, expected_rows: list[dict[str, str]], old: dict[str, str], new: dict[str, str]
-    ):
+    def replace(self, expected_rows, old, new) -> list[dict[str, str]]:
         rows = self.verify(expected_rows)
         matching = [row for row in rows if canonical([row]) == canonical([old])]
         if len(matching) != 1:
@@ -110,8 +120,12 @@ class Router:
                 self.verify(remaining + [old])
             raise
 
-    def add(self, row: dict[str, str]):
-        if row["protocol"] != "TCP" or row["wan"] != "Wan2" or row["status"] != "Enabled":
+    def add(self, row) -> None:
+        if (
+            row["protocol"] != "TCP"
+            or row["wan"] != "Wan2"
+            or row["status"] != "Enabled"
+        ):
             raise ValueError("Only enabled WAN2 TCP forwarding is supported")
         self.request(
             "/boafrm/formPortFw",
@@ -133,7 +147,7 @@ class Router:
         )
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--router", default="192.168.0.1")
     parser.add_argument("--expected-old")
@@ -155,10 +169,15 @@ def main():
     for port, comment in [("80", "socrat-http"), ("443", "socrat-https")]:
         matches = [row for row in rows if row["external_port"] == port]
         expected = dict(
-            zip(FIELDS, [old_ip, port, "TCP", "0.0.0.0", port, "Wan2", "Enabled", comment])
+            zip(
+                FIELDS,
+                [old_ip, port, "TCP", "0.0.0.0", port, "Wan2", "Enabled", comment],
+            )
         )
         if len(matches) != 1 or canonical(matches) != canonical([expected]):
-            raise RuntimeError("Forward does not match explicit expected old state: " + port)
+            raise RuntimeError(
+                "Forward does not match explicit expected old state: " + port
+            )
         targets.append(matches[0])
     completed = []
     try:

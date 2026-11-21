@@ -1,5 +1,4 @@
 import argparse
-from collections.abc import Mapping
 import csv
 import io
 import json
@@ -37,16 +36,18 @@ QUERY = (
 )
 
 
-def sample(name: str, labels: Mapping[str, str], value: float):
+def sample(name, labels, value) -> str:
     suffix = (
-        "{" + ",".join(key + "=" + json.dumps(value) for key, value in labels.items()) + "}"
+        "{"
+        + ",".join(key + "=" + json.dumps(value) for key, value in labels.items())
+        + "}"
         if labels
         else ""
     )
-    return name + suffix + " " + format(value, ".15g") + "\n"
+    return str(name) + suffix + " " + format(value, ".15g") + "\n"
 
 
-def parse_metrics(output: str):
+def parse_metrics(output) -> str:
     metrics = []
     count = 0
     for row in csv.reader(io.StringIO(output), skipinitialspace=True):
@@ -82,7 +83,7 @@ def parse_metrics(output: str):
     return "".join(metrics)
 
 
-def atomic_write(destination: str | os.PathLike[str], content: str):
+def atomic_write(destination, content) -> None:
     destination = Path(destination)
     descriptor, temporary = tempfile.mkstemp(prefix=".nvidia-", dir=destination.parent)
     try:
@@ -97,7 +98,7 @@ def atomic_write(destination: str | os.PathLike[str], content: str):
             os.unlink(temporary)
 
 
-def collect(binary: str, destination: str | os.PathLike[str]):
+def collect(binary, destination) -> int:
     success = 0
     metrics = ""
     try:
@@ -119,7 +120,7 @@ def collect(binary: str, destination: str | os.PathLike[str]):
     return success
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--binary", default="/usr/bin/nvidia-smi")
     parser.add_argument("--output", required=True)

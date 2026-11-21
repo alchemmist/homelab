@@ -6,7 +6,6 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
-from collections.abc import Callable
 
 NAMESPACE = "cattle-monitoring-system"
 SECRET_NAME = "grafana-mcp-credentials"
@@ -18,7 +17,7 @@ class BootstrapError(Exception):
     pass
 
 
-def kubectl(arguments: list[str], payload: object | None = None):
+def kubectl(arguments, payload=None) -> object | None:
     result = subprocess.run(
         KUBECTL + arguments,
         input=json.dumps(payload) if payload is not None else None,
@@ -29,18 +28,19 @@ def kubectl(arguments: list[str], payload: object | None = None):
     )
     if result.returncode:
         raise BootstrapError("Kubernetes operation failed")
-    return json.loads(result.stdout) if result.stdout.strip() else None
+    if not result.stdout.strip():
+        return None
+    response: object = json.loads(result.stdout)
+    return response
 
 
 class Grafana:
-    def __init__(self, url: str, username: str, password: str):
+    def __init__(self, url, username, password):
         self.url = url
         encoded = base64.b64encode((username + ":" + password).encode()).decode()
         self.authorization = "Basic " + encoded
 
-    def request(
-        self, method: str, path: str, payload: object | None = None, token: str | None = None
-    ):
+    def request(self, method, path, payload=None, token=None) -> object:
         request = urllib.request.Request(
             self.url + path,
             data=json.dumps(payload).encode() if payload is not None else None,
@@ -59,7 +59,7 @@ class Grafana:
             raise BootstrapError("Grafana request failed") from None
 
 
-def decode_secret(secret: dict[str, dict[str, str]] | None):
+def decode_secret(secret) -> dict[str, str]:
     try:
         return {
             key: base64.b64decode(value, validate=True).decode()
@@ -69,22 +69,21 @@ def decode_secret(secret: dict[str, dict[str, str]] | None):
         return {}
 
 
-def bootstrap(
-    grafana: Grafana,
-    existing_secret: dict[str, dict[str, str]] | None,
-    persist: Callable[[dict[str, object]], object],
-    *,
-    has_admin: bool = True,
-):
-    values = decode_secret(existing_secret)
+def bootstrap(grafana, existing_secret, persist, has_admin=True) -> dict[str, object]:
+    values: dict[str, str] = decode_secret(existing_secret)
     if not has_admin:
         if not all(
-            values.get(key) for key in ("grafana-token", "client-token", "service-account-id")
+            values.get(key)
+            for key in ("grafana-token", "client-token", "service-account-id")
         ):
-            raise BootstrapError("Admin credentials required to create missing MCP credentials")
+            raise BootstrapError(
+                "Admin credentials required to create missing MCP credentials"
+            )
         grafana.request("GET", "/api/org", token=values["grafana-token"])
         return {"changed": False}
-    accounts = grafana.request("GET", "/api/serviceaccounts/search?query=socrat-mcp&perpage=100")
+    accounts = grafana.request(
+        "GET", "/api/serviceaccounts/search?query=socrat-mcp&perpage=100"
+    )
     matches = [
         account
         for account in accounts.get("serviceAccounts", [])
@@ -99,7 +98,9 @@ def bootstrap(
             raise BootstrapError("Grafana service account is disabled")
         if account.get("role") != "Viewer":
             grafana.request(
-                "PATCH", "/api/serviceaccounts/" + str(account["id"]), {"role": "Viewer"}
+                "PATCH",
+                "/api/serviceaccounts/" + str(account["id"]),
+                {"role": "Viewer"},
             )
             changed = True
     else:
@@ -108,7 +109,6 @@ def bootstrap(
         )
         changed = True
     account_id = str(account["id"])
-    values = decode_secret(existing_secret)
     if (
         values.get("grafana-token")
         and values.get("client-token")
@@ -134,7 +134,8 @@ def bootstrap(
                 "type": "Opaque",
                 "stringData": {
                     "grafana-token": token["key"],
-                    "client-token": values.get("client-token") or secrets.token_urlsafe(48),
+                    "client-token": values.get("client-token")
+                    or secrets.token_urlsafe(48),
                     "service-account-id": account_id,
                 },
             }
@@ -142,25 +143,41 @@ def bootstrap(
     except Exception:
         try:
             grafana.request(
-                "DELETE", "/api/serviceaccounts/" + account_id + "/tokens/" + str(token["id"])
+                "DELETE",
+                "/api/serviceaccounts/" + account_id + "/tokens/" + str(token["id"]),
             )
         except Exception:
             raise BootstrapError(
                 "Credential persistence failed; newly created token cleanup also failed"
             ) from None
-        raise BootstrapError("Credential persistence failed; newly created token revoked") from None
+        raise BootstrapError(
+            "Credential persistence failed; newly created token revoked"
+        ) from None
     return {"changed": True}
 
 
-def main():
+def main() -> int:
     try:
         credentials = json.load(sys.stdin)
         service = kubectl(
-            ["-n", NAMESPACE, "get", "service", "kube-prometheus-stack-grafana", "-o", "json"]
+            [
+                "-n",
+                NAMESPACE,
+                "get",
+                "service",
+                "kube-prometheus-stack-grafana",
+                "-o",
+                "json",
+            ]
         )
+        if not isinstance(service, dict):
+            message = "Unexpected Grafana service payload"
+            raise BootstrapError(message)
         address = service["spec"]["clusterIP"]
         port = next(
-            port["port"] for port in service["spec"]["ports"] if port.get("name") == "http-web"
+            port["port"]
+            for port in service["spec"]["ports"]
+            if port.get("name") == "http-web"
         )
         grafana = Grafana(
             "http://" + address + ":" + str(port),
@@ -168,16 +185,35 @@ def main():
             credentials.get("admin_password", ""),
         )
         secret = kubectl(
-            ["-n", NAMESPACE, "get", "secret", SECRET_NAME, "--ignore-not-found", "-o", "json"]
+            [
+                "-n",
+                NAMESPACE,
+                "get",
+                "secret",
+                SECRET_NAME,
+                "--ignore-not-found",
+                "-o",
+                "json",
+            ]
         )
         result = bootstrap(
             grafana,
             secret,
             lambda body: kubectl(
-                ["apply", "--server-side", "--field-manager=socrat-mcp", "-f", "-", "-o", "json"],
+                [
+                    "apply",
+                    "--server-side",
+                    "--field-manager=socrat-mcp",
+                    "-f",
+                    "-",
+                    "-o",
+                    "json",
+                ],
                 body,
             ),
-            has_admin=bool(credentials.get("admin_user") and credentials.get("admin_password")),
+            has_admin=bool(
+                credentials.get("admin_user") and credentials.get("admin_password")
+            ),
         )
         print(json.dumps(result))
     except Exception as error:

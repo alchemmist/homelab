@@ -10,15 +10,15 @@ import time
 from pathlib import Path
 
 
-def run(*args: str) -> str:
+def run(*args) -> str:
     return subprocess.check_output(args, text=True).strip()
 
 
-def merge(values: list[str], additions: list[str]):
+def merge(values, additions) -> list[str]:
     return list(dict.fromkeys(values + additions))
 
 
-def update_config(original: str, routes: dict[str, list[str]]):
+def update_config(original, routes) -> str:
     blocks = re.split(r"(?=^\s*\[Peer\]\s*$)", original, flags=re.MULTILINE)
     found = set()
     for index, block in enumerate(blocks):
@@ -35,13 +35,15 @@ def update_config(original: str, routes: dict[str, list[str]]):
         values = [value.strip() for value in allowed[2].split(",") if value.strip()]
         updated = merge(values, routes[key])
         if updated != values:
-            blocks[index] = block[: allowed.start(2)] + ", ".join(updated) + block[allowed.end(2) :]
+            blocks[index] = (
+                block[: allowed.start(2)] + ", ".join(updated) + block[allowed.end(2) :]
+            )
     if found != set(routes):
         raise ValueError("Requested peer absent from persistent configuration")
     return "".join(blocks)
 
 
-def main():
+def main() -> None:
     interface, source, payload = sys.argv[1:]
     if not re.fullmatch(r"[a-zA-Z0-9_=+.-]{1,15}", interface):
         raise ValueError("Invalid interface")
@@ -54,7 +56,9 @@ def main():
         routes.setdefault(item["public_key"], []).append(str(network))
     config = Path("/etc/wireguard") / (interface + ".conf")
     original = config.read_text()
-    if re.search(r"^\s*SaveConfig\s*=\s*true\s*$", original, re.MULTILINE | re.IGNORECASE):
+    if re.search(
+        r"^\s*SaveConfig\s*=\s*true\s*$", original, re.MULTILINE | re.IGNORECASE
+    ):
         raise ValueError("SaveConfig must be disabled")
     updated = update_config(original, routes)
     live = {}
@@ -92,15 +96,30 @@ def main():
         if allowed != live[key]:
             run("wg", "set", interface, "peer", key, "allowed-ips", ",".join(allowed))
             changed = True
-        for host_route in networks:
-            current = json.loads(run("ip", "-json", "route", "show", "exact", host_route))
+        for route_network in networks:
+            current = json.loads(
+                run("ip", "-json", "route", "show", "exact", route_network)
+            )
             if not any(
                 route.get("dev") == interface and route.get("prefsrc") == source
                 for route in current
             ):
-                run("ip", "route", "replace", host_route, "dev", interface, "src", source)
+                run(
+                    "ip",
+                    "route",
+                    "replace",
+                    route_network,
+                    "dev",
+                    interface,
+                    "src",
+                    source,
+                )
                 changed = True
-    print(json.dumps({"changed": changed, "routes": sum(len(value) for value in routes.values())}))
+    summary: dict[str, object] = {
+        "changed": changed,
+        "routes": sum(len(value) for value in routes.values()),
+    }
+    print(json.dumps(summary))
 
 
 if __name__ == "__main__":

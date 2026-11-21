@@ -8,19 +8,29 @@ import sys
 RESOURCE_NAMES = ("cpu", "memory", "ephemeral-storage")
 
 
-def check(namespace: str, kubectl: str, kubeconfig: str):
+def check(namespace, kubectl, kubeconfig) -> None:
     command = [kubectl, "--kubeconfig", kubeconfig, "--request-timeout=30s"]
     cases = [
         ("empty", {}),
         ("memory-only", {"limits": {"memory": "256Mi"}}),
-        ("high-request", {"requests": {"cpu": "4", "memory": "2Gi", "ephemeral-storage": "8Gi"}}),
-        ("small-limit", {"limits": {"cpu": "5m", "memory": "16Mi", "ephemeral-storage": "8Mi"}}),
+        (
+            "high-request",
+            {"requests": {"cpu": "4", "memory": "2Gi", "ephemeral-storage": "8Gi"}},
+        ),
+        (
+            "small-limit",
+            {"limits": {"cpu": "5m", "memory": "16Mi", "ephemeral-storage": "8Mi"}},
+        ),
         ("gpu", {"limits": {"nvidia.com/gpu": "1"}}),
         ("zero-limits", {"limits": dict.fromkeys(RESOURCE_NAMES, "0")}),
         (
             "explicit",
             {
-                "requests": {"cpu": "250m", "memory": "512Mi", "ephemeral-storage": "100Mi"},
+                "requests": {
+                    "cpu": "250m",
+                    "memory": "512Mi",
+                    "ephemeral-storage": "100Mi",
+                },
                 "limits": {"cpu": "6", "memory": "2Gi", "ephemeral-storage": "10Gi"},
             },
         ),
@@ -29,14 +39,25 @@ def check(namespace: str, kubectl: str, kubeconfig: str):
         pod = {
             "apiVersion": "v1",
             "kind": "Pod",
-            "metadata": {"name": "resource-policy-check-" + case, "namespace": namespace},
+            "metadata": {
+                "name": "resource-policy-check-" + case,
+                "namespace": namespace,
+            },
             "spec": {
                 "restartPolicy": "Never",
                 "containers": [
-                    {"name": "main", "image": "registry.k8s.io/pause:3.10", "resources": resources}
+                    {
+                        "name": "main",
+                        "image": "registry.k8s.io/pause:3.10",
+                        "resources": resources,
+                    }
                 ],
                 "initContainers": [
-                    {"name": "init", "image": "registry.k8s.io/pause:3.10", "resources": resources}
+                    {
+                        "name": "init",
+                        "image": "registry.k8s.io/pause:3.10",
+                        "resources": resources,
+                    }
                 ],
             },
         }
@@ -57,7 +78,9 @@ def check(namespace: str, kubectl: str, kubeconfig: str):
             ):
                 if not all(key in actual.get(mode, {}) for key in keys):
                     raise AssertionError((case, container_type, actual))
-            if any(actual["limits"][key] == "0" for key in ("memory", "ephemeral-storage")):
+            if any(
+                actual["limits"][key] == "0" for key in ("memory", "ephemeral-storage")
+            ):
                 raise AssertionError((case, container_type, actual))
             if case == "zero-limits" and "cpu" in actual["limits"]:
                 raise AssertionError(
@@ -71,7 +94,9 @@ def check(namespace: str, kubectl: str, kubeconfig: str):
             ):
                 raise AssertionError((case, container_type, actual))
             if "cpu" not in resources.get("limits", {}) and "cpu" in actual["limits"]:
-                raise AssertionError(("Unexpected CPU cap", case, container_type, actual))
+                raise AssertionError(
+                    ("Unexpected CPU cap", case, container_type, actual)
+                )
             if case == "small-limit" and actual["requests"] != resources["limits"]:
                 raise AssertionError((case, container_type, actual))
             if case == "explicit" and actual != resources:
@@ -82,7 +107,7 @@ def check(namespace: str, kubectl: str, kubeconfig: str):
     )
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--namespace", required=True)
     parser.add_argument("--kubectl", default="kubectl")
@@ -98,6 +123,11 @@ if __name__ == "__main__":
     except subprocess.CalledProcessError as error:
         print(error.stderr or error.stdout or str(error), file=sys.stderr, flush=True)
         sys.exit(1)
-    except (ValueError, RuntimeError, AssertionError, subprocess.TimeoutExpired) as error:
+    except (
+        ValueError,
+        RuntimeError,
+        AssertionError,
+        subprocess.TimeoutExpired,
+    ) as error:
         print(str(error), file=sys.stderr, flush=True)
         sys.exit(1)
