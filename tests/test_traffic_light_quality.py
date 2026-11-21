@@ -15,11 +15,11 @@ SPEC.loader.exec_module(Q)
 
 
 class QualityPanelsTest(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.d = json.loads(Q.SOURCE.read_text())
         self.p = {p["id"]: p for p in self.d["panels"]}
 
-    def test_generator_idempotent_and_preserves_every_unrelated_panel(self):
+    def test_generator_idempotent_and_preserves_every_unrelated_panel(self) -> None:
         self.assertEqual(Q.build(self.d), self.d)
         base = copy.deepcopy(self.d)
         base["panels"] = [p for p in base["panels"] if p["id"] not in Q.IDS]
@@ -30,7 +30,7 @@ class QualityPanelsTest(unittest.TestCase):
             {k: v for k, v in base.items() if k != "panels"},
         )
 
-    def test_writer_preserves_existing_format_and_is_stable(self):
+    def test_writer_preserves_existing_format_and_is_stable(self) -> None:
         with tempfile.TemporaryDirectory() as t:
             path = Path(t) / "dashboard.json"
             with patch.object(Q, "SOURCE", path):
@@ -46,7 +46,7 @@ class QualityPanelsTest(unittest.TestCase):
                     )
                     self.assertIn(formatted, first.decode())
 
-    def test_preserves_future_manual_network_geometry(self):
+    def test_preserves_future_manual_network_geometry(self) -> None:
         panel = next(p for p in self.d["panels"] if p["id"] == 931)
         panel["gridPos"] = {"x": 12, "y": 13, "w": 3, "h": 3}
         built = Q.build(self.d)
@@ -54,7 +54,7 @@ class QualityPanelsTest(unittest.TestCase):
             next(p for p in built["panels"] if p["id"] == 931)["gridPos"], panel["gridPos"]
         )
 
-    def test_manual_return_to_legacy_width_is_also_authoritative(self):
+    def test_manual_return_to_legacy_width_is_also_authoritative(self) -> None:
         grids = {931: {"x": 12, "y": 10, "w": 4, "h": 3}, 932: {"x": 12, "y": 13, "w": 4, "h": 3}}
         for p in self.d["panels"]:
             if p["id"] in grids:
@@ -64,12 +64,12 @@ class QualityPanelsTest(unittest.TestCase):
             if p["id"] in grids:
                 self.assertEqual(p["gridPos"], grids[p["id"]])
 
-    def test_will_not_move_owner_panels_to_force_space(self):
+    def test_will_not_move_owner_panels_to_force_space(self) -> None:
         self.d["panels"][0]["gridPos"] = {"x": 12, "y": 14, "w": 4, "h": 4}
         with self.assertRaises(ValueError):
             Q.build(self.d)
 
-    def test_backup_latest_state_not_last_known_good(self):
+    def test_backup_latest_state_not_last_known_good(self) -> None:
         for i in [934, 935]:
             p = self.p[i]
             self.assertEqual(p["options"]["reduceOptions"]["calcs"], ["last"])
@@ -78,7 +78,7 @@ class QualityPanelsTest(unittest.TestCase):
                 self.assertIn(token, e)
             self.assertNotIn("or vector(0)", e)
 
-    def test_native_network_not_fabricated_object_or_image_counts(self):
+    def test_native_network_not_fabricated_object_or_image_counts(self) -> None:
         for i in [931, 932]:
             p = self.p[i]
             e = p["targets"][0]["expr"]
@@ -101,7 +101,7 @@ class QualityPanelsTest(unittest.TestCase):
             self.assertTrue(p["hideTimeOverride"])
             self.assertIn("NOT object or OCI counts", p["description"])
 
-    def test_one_compact_ai_block_replaces_http_errors(self):
+    def test_one_compact_ai_block_replaces_http_errors(self) -> None:
         self.assertNotIn(930, self.p)  # Owner removed this TV block.
         p = Q.ai_quality()
         self.assertEqual(p["type"], "stat")
@@ -119,7 +119,7 @@ class QualityPanelsTest(unittest.TestCase):
         self.assertEqual(p["fieldConfig"]["overrides"][0]["properties"][0]["value"], "s")
         self.assertNotIn("traefik_service_requests_total", json.dumps(p))
 
-    def test_no_new_blue_and_no_ai_dominance(self):
+    def test_no_new_blue_and_no_ai_dominance(self) -> None:
         for i in Q.IDS & self.p.keys():
             p = self.p[i]
             self.assertNotIn("#5794F2", json.dumps(p))
@@ -128,7 +128,7 @@ class QualityPanelsTest(unittest.TestCase):
         self.assertEqual(self.p[931]["fieldConfig"]["defaults"]["color"]["fixedColor"], "#B877D9")
         self.assertEqual(self.p[932]["fieldConfig"]["defaults"]["color"]["fixedColor"], "#2EBFA5")
 
-    def test_more_service_room_without_moving_originals(self):
+    def test_more_service_room_without_moving_originals(self) -> None:
         self.assertNotIn(933, self.p)
         for i in [931, 932]:
             self.assertEqual(self.p[i]["gridPos"]["w"], 4)
@@ -137,7 +137,7 @@ class QualityPanelsTest(unittest.TestCase):
             "socrat:node_pressure", json.dumps([self.p[i] for i in Q.IDS & self.p.keys()])
         )
 
-    def test_cascade_split_cards_without_new_css(self):
+    def test_cascade_split_cards_without_new_css(self) -> None:
         for i, x, y in [(934, 4, 12), (935, 6, 14)]:
             self.assertEqual(self.p[i]["gridPos"], {"x": x, "y": y, "w": 2, "h": 2})
         for i, x in [(936, 2), (939, 0)]:
@@ -151,7 +151,7 @@ class QualityPanelsTest(unittest.TestCase):
         self.assertIn("thanos-cascade", self.p[936]["targets"][0]["expr"])
         self.assertIn("head_samples_appended_total", self.p[939]["targets"][0]["expr"])
 
-    def test_backup_success_not_restore_claim(self):
+    def test_backup_success_not_restore_claim(self) -> None:
         for i in [934, 935]:
             p = self.p[i]
 

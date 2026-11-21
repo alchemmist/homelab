@@ -3,6 +3,7 @@ import json
 import os
 import re
 import subprocess
+from typing import cast
 import sys
 import time
 from decimal import Decimal, InvalidOperation
@@ -78,43 +79,59 @@ def validate_node_selector(selector):
             raise ValueError("Invalid nodeSelector label value: " + value)
 
 
+def _validate_container_resources(resources: dict[str, object]) -> None:
+    """Validate one profiled container's requests/limits, including CPU handling."""
+    if not isinstance(resources.get("removeCpuLimit", False), bool):
+        raise ValueError("removeCpuLimit must be boolean")
+    requests = cast("dict[str, object]", resources.get("requests", {}))
+    limits = cast("dict[str, object]", resources.get("limits", {}))
+    if resources.get("removeCpuLimit") and "cpu" in limits:
+        raise ValueError("Cannot remove and set CPU limit together")
+    if not resources.get("removeCpuLimit") and "cpu" not in limits:
+        raise ValueError("Profile must set CPU limit or explicitly remove it")
+    for resource in RESOURCE_NAMES:
+        if not positive(requests.get(resource)):
+            raise ValueError("Profile must specify positive requests/" + resource)
+    for resource in LIMIT_RESOURCE_NAMES:
+        if not positive(limits.get(resource)):
+            raise ValueError("Profile must specify positive limits/" + resource)
+    _validate_limit_values(requests, limits)
+
+
+def _validate_limit_values(requests: dict[str, object], limits: dict[str, object]) -> None:
+    """Reject unknown, nonpositive, or request-exceeding profile limits."""
+    for resource, limit in limits.items():
+        if resource not in RESOURCE_NAMES or not positive(limit):
+            raise ValueError("Invalid profile limit: " + resource)
+        if quantity(requests[resource]) > quantity(limit):
+            raise ValueError("Profile request exceeds limit: " + resource)
+
+
+def _validate_profile(profile: dict[str, object]) -> None:
+    """Validate one resource profile entry and its container resources."""
+    if not all(
+        isinstance(profile.get(key), str) and profile[key]
+        for key in ("namespace", "ownerKind", "ownerPattern")
+    ):
+        raise ValueError("Profile requires namespace, ownerKind, and ownerPattern")
+    validate_node_selector(cast("dict[str, object]", profile.get("nodeSelector", {})))
+    pattern = cast("str", profile["ownerPattern"])
+    if not pattern.startswith("^") or not pattern.endswith("$"):
+        raise ValueError("Profile ownerPattern must be anchored with ^ and $")
+    re.compile(pattern)
+    if not isinstance(profile.get("containers"), dict) or not profile["containers"]:
+        raise ValueError("Profile requires a nonempty containers map")
+    for resources in cast("dict[str, dict[str, object]]", profile["containers"]).values():
+        _validate_container_resources(resources)
+
+
 def load_profiles(path):
     with open(path) as source:
         profiles = json.load(source)
     if not isinstance(profiles, list):
         raise ValueError("Profiles must be a JSON list")
-    for profile in profiles:
-        if not all(
-            isinstance(profile.get(key), str) and profile[key]
-            for key in ("namespace", "ownerKind", "ownerPattern")
-        ):
-            raise ValueError("Profile requires namespace, ownerKind, and ownerPattern")
-        validate_node_selector(profile.get("nodeSelector", {}))
-        pattern = profile["ownerPattern"]
-        if not pattern.startswith("^") or not pattern.endswith("$"):
-            raise ValueError("Profile ownerPattern must be anchored with ^ and $")
-        re.compile(pattern)
-        if not isinstance(profile.get("containers"), dict) or not profile["containers"]:
-            raise ValueError("Profile requires a nonempty containers map")
-        for resources in profile["containers"].values():
-            if not isinstance(resources.get("removeCpuLimit", False), bool):
-                raise ValueError("removeCpuLimit must be boolean")
-            requests, limits = resources.get("requests", {}), resources.get("limits", {})
-            if resources.get("removeCpuLimit") and "cpu" in limits:
-                raise ValueError("Cannot remove and set CPU limit together")
-            if not resources.get("removeCpuLimit") and "cpu" not in limits:
-                raise ValueError("Profile must set CPU limit or explicitly remove it")
-            for resource in RESOURCE_NAMES:
-                if not positive(requests.get(resource)):
-                    raise ValueError("Profile must specify positive requests/" + resource)
-            for resource in LIMIT_RESOURCE_NAMES:
-                if not positive(limits.get(resource)):
-                    raise ValueError("Profile must specify positive limits/" + resource)
-            for resource, limit in limits.items():
-                if resource not in RESOURCE_NAMES or not positive(limit):
-                    raise ValueError("Invalid profile limit: " + resource)
-                if quantity(requests[resource]) > quantity(limit):
-                    raise ValueError("Profile request exceeds limit: " + resource)
+    for profile in cast("list[dict[str, object]]", profiles):
+        _validate_profile(profile)
     return profiles
 
 
@@ -131,6 +148,24 @@ def matching_profile(pod, profiles):
     if len(matches) > 1:
         raise RuntimeError("Ambiguous resource profiles for " + label(pod))
     return matches[0] if matches else None
+
+
+def _container_mismatches(
+    kind: str, name: str, container: dict[str, object], expected: dict[str, object]
+) -> list[str]:
+    """Return resource mismatches between one live container and its profile."""
+    mismatches = []
+    resources = cast("dict[str, object]", container.get("resources", {}))
+    for mode in ("requests", "limits"):
+        for resource, desired in cast("dict[str, object]", expected[mode]).items():
+            actual = cast("dict[str, object]", resources.get(mode, {})).get(resource)
+            if not positive(actual) or quantity(actual) != quantity(desired):
+                mismatches.append(kind + "/" + name + "/" + mode + "/" + resource)
+    if expected.get("removeCpuLimit") and "cpu" in cast(
+        "dict[str, object]", resources.get("limits", {})
+    ):
+        mismatches.append(kind + "/" + name + "/limits/cpu-present")
+    return mismatches
 
 
 def profile_mismatches(pod, profile):
@@ -152,16 +187,9 @@ def profile_mismatches(pod, profile):
             if name not in profile["containers"]:
                 mismatches.append(kind + "/" + name + "/missing-profile")
                 continue
-            expected = profile["containers"][name]
-            for mode in ("requests", "limits"):
-                for resource, desired in expected[mode].items():
-                    actual = container.get("resources", {}).get(mode, {}).get(resource)
-                    if not positive(actual) or quantity(actual) != quantity(desired):
-                        mismatches.append(kind + "/" + name + "/" + mode + "/" + resource)
-            if expected.get("removeCpuLimit") and "cpu" in container.get("resources", {}).get(
-                "limits", {}
-            ):
-                mismatches.append(kind + "/" + name + "/limits/cpu-present")
+            mismatches.extend(
+                _container_mismatches(kind, name, container, profile["containers"][name])
+            )
     for name in profile["containers"].keys() - present:
         mismatches.append(name + "/missing-container")
     return mismatches
@@ -241,7 +269,7 @@ def eviction_payload(pod):
 
 
 class Client:
-    def __init__(self, kubectl, kubeconfig):
+    def __init__(self, kubectl, kubeconfig) -> None:
         self.command = [kubectl, "--kubeconfig", kubeconfig, "--request-timeout=30s"]
 
     def pods(self):

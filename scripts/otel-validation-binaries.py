@@ -1,3 +1,5 @@
+"""Extract and verify telemetry validation binaries from pinned images."""
+
 import argparse
 import hashlib
 import json
