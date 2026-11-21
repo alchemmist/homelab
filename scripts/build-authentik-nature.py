@@ -11,19 +11,131 @@ import io
 import json
 import subprocess
 from pathlib import Path
-from typing import cast
+from typing import NamedTuple, Protocol
 
 from PIL import Image, ImageOps, features
 from PIL import __version__ as pillow_version
 
 
-def build(source, output):
+class PILImage(Protocol):
+    """Structural subset of PIL.Image.Image operations used by the builders."""
+
+    size: tuple[int, int]
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        """Encode the image into the provided buffer at the requested quality."""
+
+    def copy(self) -> "PILImage":
+        """Duplicate the image for lossless derivative transformations."""
+
+    def thumbnail(self, size: tuple[int, int], resample: int) -> None:
+        """Resize in place so the derivative fits the reviewed bounding box."""
+
+
+class SceneContext(NamedTuple):
+    """Shared facts about the source photo being processed for the scene."""
+
+    record: dict[str, object]
+    manifest: dict[str, dict[str, str]]
+    dest: Path
+    image: PILImage
+    path: Path
+    ident: str
+
+
+def _collect_files(source: Path) -> list[Path]:
+    """List the Nature wallpapers to derive, ordered deterministically."""
     folder = source / "wallpapers/nature/images"
     files = sorted(
         p for p in folder.iterdir() if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}
     )
     if not files:
         raise ValueError("No Nature images found")
+    return files
+
+
+def _ensure_single_frame(image: PILImage) -> None:
+    """Reject animated sources so scenes cannot become scripted or multi-state."""
+    if getattr(image, "n_frames", 1) != 1:
+        raise ValueError("Animated images are not allowed")
+
+
+def _encode_webp(derivative: PILImage, cap: int, name: str) -> tuple[bytes, int]:
+    """Encode the largest WebP derivative that fits the review byte budget."""
+    for quality in [80, 76, 72, 68]:
+        buf = io.BytesIO()
+        derivative.save(buf, format="WEBP", quality=quality, method=6)
+        content = buf.getvalue()
+        if len(content) <= cap:
+            return content, quality
+    raise ValueError("Derivative too large: " + name)
+
+
+def _encode_avif(derivative: PILImage, label: str) -> tuple[bytes, int]:
+    """Encode the AVIF transfer copy under its per-format byte budget."""
+    cap = 220000 if label == "desktop" else 100000
+    for avif_quality in [45, 42, 38, 34]:
+        buf = io.BytesIO()
+        derivative.save(buf, format="AVIF", quality=avif_quality, speed=6)
+        avif_content = buf.getvalue()
+        if len(avif_content) <= cap:
+            return avif_content, avif_quality
+    raise ValueError("AVIF derivative exceeds transfer budget")
+
+
+def _reject_metadata(avif_content: bytes) -> None:
+    """Ensure the AVIF encoder did not inherit EXIF/XMP/ICC from the source."""
+    with Image.open(io.BytesIO(avif_content)) as decoded:
+        if any(decoded.info.get(k) for k in ["exif", "xmp", "icc_profile"]):
+            raise ValueError("AVIF output must not inherit source metadata")
+
+
+def _add_derivative(
+    scene: SceneContext,
+    label: str,
+    width: int,
+    cap: int,
+) -> None:
+    """Write one responsive size plus its AVIF transfer copy and manifest keys."""
+    record, manifest, dest, image, path, ident = (
+        scene.record,
+        scene.manifest,
+        scene.dest,
+        scene.image,
+        scene.path,
+        scene.ident,
+    )
+    derivative = image.copy()
+    derivative.thumbnail((width, width), Image.Resampling.LANCZOS)
+    content, quality = _encode_webp(derivative, cap, path.name)
+    name = f"nature-{ident}-{width}.webp"
+    (dest / name).write_bytes(content)
+    key = "NATURE_" + ident.upper() + "_" + label.upper()
+    manifest[key] = {
+        "path": "nature/" + name,
+        "sha256": hashlib.sha256(content).hexdigest(),
+    }
+    record[label] = key
+    record[label + "Dimensions"] = list(derivative.size)
+    record[label + "Bytes"] = len(content)
+    record[label + "Quality"] = quality
+    # AVIF is the preferred transfer; keep the reviewed WebP fallback.
+    avif_content, avif_quality = _encode_avif(derivative, label)
+    _reject_metadata(avif_content)
+    avif_name = f"nature-{ident}-{width}.avif"
+    (dest / avif_name).write_bytes(avif_content)
+    avif_key = key + "_AVIF"
+    manifest[avif_key] = {
+        "path": "nature/" + avif_name,
+        "sha256": hashlib.sha256(avif_content).hexdigest(),
+    }
+    record[label + "Avif"] = avif_key
+    record[label + "AvifBytes"] = len(avif_content)
+    record[label + "AvifQuality"] = avif_quality
+
+
+def build(source, output):
+    files = _collect_files(source)
     manifest = json.loads((output / "assets.json").read_text())
     manifest = {k: v for k, v in manifest.items() if not k.startswith("NATURE_")}
     revision = subprocess.check_output(
@@ -50,76 +162,32 @@ def build(source, output):
         seen.add(source_hash)
         ident = source_hash[:12]
         with Image.open(io.BytesIO(raw)) as image:
-            if getattr(image, "n_frames", 1) != 1:
-                raise ValueError("Animated images are not allowed")
+            _ensure_single_frame(image)
             image = ImageOps.exif_transpose(image).convert("RGB")
             # AVIF inherits ICC from im.info by default; WebP does not. Strip all
             # metadata explicitly so both formats/preview share the same RGB data.
             image.info.clear()
-            record = {
+            record: dict[str, object] = {
                 "id": ident,
                 "source": str(path.relative_to(source)),
                 "sourceSha256": source_hash,
                 "sourceDimensions": list(image.size),
             }
             for label, width, cap in [("desktop", 1920, 600000), ("mobile", 960, 220000)]:
-                derivative = image.copy()
-                derivative.thumbnail((width, width), Image.Resampling.LANCZOS)
-                for quality in [80, 76, 72, 68]:
-                    buf = io.BytesIO()
-                    derivative.save(buf, format="WEBP", quality=quality, method=6)
-                    content = buf.getvalue()
-                    if len(content) <= cap:
-                        break
-                else:
-                    raise ValueError("Derivative too large: " + path.name)
-                name = f"nature-{ident}-{width}.webp"
-                (dest / name).write_bytes(content)
-                key = "NATURE_" + ident.upper() + "_" + label.upper()
-                manifest[key] = {
-                    "path": "nature/" + name,
-                    "sha256": hashlib.sha256(content).hexdigest(),
-                }
-                record[label] = key
-                record[label + "Dimensions"] = list(derivative.size)
-                record[label + "Bytes"] = len(content)
-                record[label + "Quality"] = quality
-                # AVIF is the preferred transfer; keep the reviewed WebP fallback.
-                for avif_quality in [45, 42, 38, 34]:
-                    buf = io.BytesIO()
-                    derivative.save(buf, format="AVIF", quality=avif_quality, speed=6)
-                    avif_content = buf.getvalue()
-                    if len(avif_content) <= (220000 if label == "desktop" else 100000):
-                        break
-                else:
-                    raise ValueError("AVIF derivative exceeds transfer budget")
-                with Image.open(io.BytesIO(avif_content)) as decoded:
-                    if any(decoded.info.get(k) for k in ["exif", "xmp", "icc_profile"]):
-                        raise ValueError("AVIF output must not inherit source metadata")
-                avif_name = f"nature-{ident}-{width}.avif"
-                (dest / avif_name).write_bytes(avif_content)
-                avif_key = key + "_AVIF"
-                manifest[avif_key] = {
-                    "path": "nature/" + avif_name,
-                    "sha256": hashlib.sha256(avif_content).hexdigest(),
-                }
-                record[label + "Avif"] = avif_key
-                record[label + "AvifBytes"] = len(avif_content)
-                record[label + "AvifQuality"] = avif_quality
+                _add_derivative(
+                    SceneContext(record, manifest, dest, image, path, ident), label, width, cap
+                )
             preview = image.copy()
             preview.thumbnail((48, 48), Image.Resampling.LANCZOS)
             buf = io.BytesIO()
             preview.save(buf, format="WEBP", quality=25, method=6)
             tiny = base64.b64encode(buf.getvalue()).decode()
 
-            def url(key) -> str:
+            def url(key):
                 item = manifest[key]
-                return cast(
-                    "str",
-                    "/-/quiet-mono/v1/" + item["sha256"][:12] + "-" + Path(item["path"]).name,
-                )
+                return "/-/quiet-mono/v1/" + item["sha256"][:12] + "-" + Path(item["path"]).name
 
-            def layer(label) -> str:
+            def layer(label):
                 return (
                     "background-image:url('"
                     + url(record[label])

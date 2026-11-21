@@ -28,7 +28,7 @@ def load_token(ssh_host):
 
 
 class Client:
-    def __init__(self, url, token) -> None:
+    def __init__(self, url: str, token: str) -> None:
         self.url = url
         self.headers = {
             "Authorization": "Bearer " + token,
@@ -38,7 +38,9 @@ class Client:
         self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         self.sequence = 0
 
-    def request(self, method, params, notify=False):
+    def request(
+        self, method: str, params: dict[str, object], *, notify: bool = False
+    ) -> dict[str, object]:
         self.sequence += 1
         body = {"jsonrpc": "2.0", "method": method, "params": params}
         if not notify:
@@ -65,11 +67,55 @@ class Client:
             raise RuntimeError("MCP protocol error")
         return result["result"]
 
-    def tool(self, name, arguments):
+    def tool(self, name: str, arguments: dict[str, object]) -> str:
         result = self.request("tools/call", {"name": name, "arguments": arguments})
         if result.get("isError"):
             raise RuntimeError("MCP tool failed: " + name)
         return "\n".join(block.get("text", "") for block in result.get("content", []))
+
+
+def _rejection_checks(client: Client, url: str) -> None:
+    """Require the endpoint to refuse invalid and missing authentication."""
+    for authorization in [None, "Bearer invalid-test-token"]:
+        headers = {"Accept": "application/json, text/event-stream"}
+        if authorization:
+            headers["Authorization"] = authorization
+        try:
+            client.opener.open(urllib.request.Request(url, headers=headers), timeout=15)
+        except urllib.error.HTTPError as error:
+            if error.code != 401:
+                raise RuntimeError("Unexpected unauthenticated response") from None
+        else:
+            raise RuntimeError("MCP accepted invalid authentication")
+
+
+def _check_dashboards(client: Client) -> None:
+    """Search the overview dashboard and verify a full read returns its panels."""
+    result = client.tool("search_dashboards", {"query": "Overview"})
+    if "socrat-overview" not in result:
+        raise RuntimeError("Overview was not found")
+    result = client.tool("get_dashboard_by_uid", {"uid": "socrat-overview"})
+    if "Cluster health" not in result:
+        raise RuntimeError("Overview panels were not returned")
+    print("PASS: dashboard search and full dashboard read")
+
+
+def _check_prometheus(client: Client) -> None:
+    """Run one instant query and require a strictly positive sample."""
+    result = client.tool(
+        "query_prometheus",
+        {
+            "datasourceUid": "prometheus",
+            "expr": "count(up)",
+            "queryType": "instant",
+            "endTime": "now",
+        },
+    )
+    parsed = json.loads(result)
+    samples = parsed.get("data", [])
+    if len(samples) != 1 or float(samples[0]["value"][1]) <= 0:
+        raise RuntimeError("Prometheus returned no data")
+    print("PASS: live Prometheus query returned data")
 
 
 def main():
@@ -88,17 +134,7 @@ def main():
             args.address if host == hostname else host, *pos, **kw
         )
     client = Client(args.url, load_token(args.ssh_host))
-    for authorization in [None, "Bearer invalid-test-token"]:
-        headers = {"Accept": "application/json, text/event-stream"}
-        if authorization:
-            headers["Authorization"] = authorization
-        try:
-            client.opener.open(urllib.request.Request(args.url, headers=headers), timeout=15)
-        except urllib.error.HTTPError as error:
-            if error.code != 401:
-                raise RuntimeError("Unexpected unauthenticated response") from None
-        else:
-            raise RuntimeError("MCP accepted invalid authentication")
+    _rejection_checks(client, args.url)
     print("PASS: trusted HTTPS and both authentication rejection checks")
     initialized = client.request(
         "initialize",
@@ -114,27 +150,8 @@ def main():
     if not tools or any(not tool.get("annotations", {}).get("readOnlyHint") for tool in tools):
         raise RuntimeError("Unexpected non-read-only tool")
     print(f"PASS: MCP initialized with {len(tools)} read-only tools")
-    result = client.tool("search_dashboards", {"query": "Overview"})
-    if "socrat-overview" not in result:
-        raise RuntimeError("Overview was not found")
-    result = client.tool("get_dashboard_by_uid", {"uid": "socrat-overview"})
-    if "Cluster health" not in result:
-        raise RuntimeError("Overview panels were not returned")
-    print("PASS: dashboard search and full dashboard read")
-    result = client.tool(
-        "query_prometheus",
-        {
-            "datasourceUid": "prometheus",
-            "expr": "count(up)",
-            "queryType": "instant",
-            "endTime": "now",
-        },
-    )
-    parsed = json.loads(result)
-    samples = parsed.get("data", [])
-    if len(samples) != 1 or float(samples[0]["value"][1]) <= 0:
-        raise RuntimeError("Prometheus returned no data")
-    print("PASS: live Prometheus query returned data")
+    _check_dashboards(client)
+    _check_prometheus(client)
 
 
 if __name__ == "__main__":
@@ -148,4 +165,4 @@ if __name__ == "__main__":
             if isinstance(error, RuntimeError)
             else "Connection or protocol check failed",
         )
-        raise SystemExit(1) from error
+        raise SystemExit(1)
