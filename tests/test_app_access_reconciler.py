@@ -1,16 +1,16 @@
 """Pure app access reconciler checks; no credentials or live calls."""
 
 import copy
+import importlib.util
 import io
 import json
-import tempfile
-from unittest.mock import patch
-import importlib.util
-from pathlib import Path
 import sys
+import tempfile
+import unittest
+from pathlib import Path
 from types import SimpleNamespace
 from typing import NotRequired, TypedDict, cast
-import unittest
+from unittest.mock import patch
 
 FILES = Path(__file__).resolve().parents[1] / "ansible/roles/authentik/files"
 sys.path.insert(0, str(FILES))
