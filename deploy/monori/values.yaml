@@ -1,6 +1,9 @@
 ---
 oidc:
   enabled: true
+  hostAliases:
+    - ip: 10.43.218.222
+      hostnames: [auth.socrat.alchemmist.xyz]
   issuer: https://auth.socrat.alchemmist.xyz/application/o/monori/
   clientId: socrat-monori
   secretName: monori-oidc
