@@ -46,7 +46,9 @@ def packet(name,mid,feedback):
 
 def process(name):
     src,olds=CARDS[name];dest='server/tests/unit/test_pi509_'+name.strip('_')+'.py';casepath='/scratch/trees/'+name+'/monori';basepath='/scratch/monori/'+src;testpath='/scratch/monori/'+dest
-    def restore():write('judge',basepath,gitfile(src));k('judge',['rm','-f',testpath]);k('judge',['rm','-rf','/scratch/monori/'+str(pathlib.Path(src).parent/'__pycache__')])
+    def restore() -> None:
+        write('judge',basepath,gitfile(src));k('judge',['rm','-f',testpath])
+        k('judge',['rm','-rf','/scratch/monori/'+str(pathlib.Path(src).parent/'__pycache__')])
     restore();rc,out=suite(olds);assert not rc and re.search(r'\d+ passed',out),'baseline not green'
     for mid in CAT[name]:
         scanned=dict(sql('select mid,status from scans where card=?',(name,)))

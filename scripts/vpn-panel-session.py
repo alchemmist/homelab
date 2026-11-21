@@ -19,6 +19,7 @@ import time
 import urllib.request
 from contextlib import closing
 from pathlib import Path
+from typing import cast
 
 spec = importlib.util.spec_from_file_location(
     "inventory", Path(__file__).with_name("vpn-hardening-inventory.py")
@@ -160,11 +161,11 @@ class NativeSession:
             "cleanup_ttl_minutes": 30,
         }
 
-    def _save_credential(self, kind, value):
+    def _save_credential(self, kind, value) -> None:
         h.save(self.state / (kind + ".json"), value)
         self.credentials[kind] = value
 
-    def _owned(self, kind):
+    def _owned(self, kind) -> "dict[str, object] | None":
         expected = self.credentials[kind]
         rows = [r for r in token_rows(self.database) if r["id"] == expected["id"]]
         if not rows:
@@ -176,9 +177,9 @@ class NativeSession:
             or row["token"] != hashlib.sha256(expected["token"].encode()).hexdigest()
         ):
             raise ValueError("Credential ownership changed; refusing deletion")
-        return row
+        return cast("dict[str, object]", row)
 
-    def _delete(self, kind, actor):
+    def _delete(self, kind, actor) -> None:
         row = self._owned(kind)
         if row is not None:
             request(
@@ -191,7 +192,7 @@ class NativeSession:
         if self._owned(kind) is not None:
             raise RuntimeError("Credential deletion did not converge")
 
-    def _create(self, kind, scope, minutes, actor):
+    def _create(self, kind, scope, minutes, actor) -> None:
         expires = int(time.time() * 1000) + minutes * 60000
         # Write intent BEFORE remote creation. An ambiguous result stays uncertain.
         h.save(

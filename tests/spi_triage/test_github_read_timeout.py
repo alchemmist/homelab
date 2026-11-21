@@ -62,7 +62,7 @@ class GitHubReadTimeoutTests(unittest.TestCase):
                 c.execute("UPDATE jobs SET attempts=100 WHERE id=?", (key,))
             tables = ("snapshot_budget", "match_review_v3", "job_failure_budget", "llm_admission")
 
-            def preserved():
+            def preserved() -> "dict[str, object]":
                 with store.db() as c:
                     return {t: [tuple(r) for r in c.execute("SELECT * FROM " + t)] for t in tables}
 

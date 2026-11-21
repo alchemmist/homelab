@@ -58,7 +58,7 @@ class EventWorkflowTests(unittest.TestCase):
         ]
         self.assertEqual([nodes[n]["id"] for n in chain], original_ids)
 
-        def targets(name):
+        def targets(name) -> "list[list[object]]":
             return [[x["node"] for x in output] for output in w["connections"][name]["main"]]
 
         self.assertEqual(targets("Dispatch Triage Job"), [["Claim Triage Job"]])

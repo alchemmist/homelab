@@ -66,7 +66,7 @@ def rules(direct_probe=None):
 def projection():
     value = json.loads(command(["nft", "-j", "list", "table", "inet", TABLE]))
 
-    def clean(v):
+    def clean(v) -> object:
         if isinstance(v, list):
             return [clean(x) for x in v if not isinstance(x, dict) or "metainfo" not in x]
         if isinstance(v, dict):

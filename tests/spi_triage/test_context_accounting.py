@@ -52,7 +52,7 @@ class ContextAccountingTests(unittest.TestCase):
         event["description"] = "x" * 1000000
         seen = []
 
-        def call(task, data, schema, deadline):
+        def call(task, data, schema, deadline) -> "dict[str, object]":
             self.assertLessEqual(m.reservation(m.payload(task, data, schema)), 30000)
             self.assertTrue(data["alert"]["description"]["truncated"])
             seen.extend(x["number"] for x in data["open_issues"])
@@ -85,7 +85,7 @@ class ContextAccountingTests(unittest.TestCase):
         class Stop(Exception):
             pass
 
-        def call(task, data, schema, deadline):
+        def call(task, data, schema, deadline) -> "dict[str, object]":
             captured.update(data)
             self.assertLessEqual(m.budget_reservation(m.payload(task, data, schema)), 30000)
             raise Stop()
@@ -132,7 +132,7 @@ class ContextAccountingTests(unittest.TestCase):
         class Stop(Exception):
             pass
 
-        def call(task, data, schema, deadline):
+        def call(task, data, schema, deadline) -> "dict[str, object]":
             captured.update(data)
             self.assertLessEqual(m.counter.reservation(m.payload(task, data, schema)), 30000)
             raise Stop()

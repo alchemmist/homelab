@@ -74,7 +74,7 @@ class DeadlineConnection:
         self.response_owns_deadline = False
         connected_socket = []
 
-        def abort():
+        def abort() -> None:
             self.deadline_expired = True
             sock = (
                 self.sock

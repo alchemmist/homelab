@@ -19,7 +19,7 @@ TARGET = ("192.168.0.24", 51830)
 def main():
     alive = True
 
-    def stop(_signum, _frame):
+    def stop(_signum, _frame) -> None:
         nonlocal alive
         alive = False
 
