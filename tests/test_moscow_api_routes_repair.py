@@ -12,8 +12,11 @@ m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 
 
-def fixture():
-    peers = {key: [addr + "/32"] for key, addr in zip(m.PEERS, ["10.250.0.1", "10.250.0.3"])}
+def fixture() -> tuple[str, dict[str, list[str]]]:
+    """Build a fixture wg-quick config and the expected per-peer routes."""
+    peers: dict[str, list[str]] = {
+        key: [addr + "/32"] for key, addr in zip(m.PEERS, ["10.250.0.1", "10.250.0.3"])
+    }
     peers["other"] = ["10.250.0.2/32"]
     text = "[Interface]\nPrivateKey = fixture-not-a-real-key\nAddress = 10.250.0.40/24\n"
     for key, nets in peers.items():
