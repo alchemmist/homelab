@@ -263,23 +263,12 @@ def evaluate(policy, inventory, now=None):
     )
     fraction = policy["minimumFreeFraction"]
     require(
-        all(
-            [
-                nonnegative(fraction),
-                fraction >= 0.2,
-                fraction < 1,
-            ]
-        ),
+        nonnegative(fraction) and fraction >= 0.2 and fraction < 1,
         "Free-space fraction must be at least 0.2 and less than 1",
     )
     maximum_age = policy["maximumObservationAgeSeconds"]
     require(
-        all(
-            [
-                nonnegative(maximum_age),
-                0 < maximum_age <= 900,
-            ]
-        ),
+        nonnegative(maximum_age) and 0 < maximum_age <= 900,
         "Observation lifetime must be at most 900 seconds",
     )
     for node, reservation in policy["nodes"].items():

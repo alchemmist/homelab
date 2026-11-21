@@ -360,7 +360,7 @@ def replay_prepare(args, root):
         "errors": [],
         "queryClientTlsPolicy": "strict verified mTLS, TLS1.3 minimum, default curves",
     }
-    return environment, report, context
+    return environment, report, context, boundary
 
 
 def replay_recovered(context, report, metrics_query, logs_query, expected, ids):
@@ -461,7 +461,7 @@ def run(args):
     )
     args.workspace.mkdir(mode=0o700)
     root = args.workspace
-    environment, report, context = replay_prepare(args, root)
+    environment, report, context, boundary = replay_prepare(args, root)
     children: dict[object, subprocess.Popen[bytes]] = {}
     generations: dict[object, int] = {}
     replay_save(root, report)

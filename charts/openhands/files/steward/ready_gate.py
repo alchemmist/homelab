@@ -10,7 +10,6 @@ import datetime
 import json
 import re
 import subprocess
-from typing import TypedDict, cast
 
 QUERY = """query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$number){
 url headRefOid state isDraft mergeable
@@ -36,19 +35,59 @@ def _complete_connection(value: object, direction: str) -> bool:
     )
 
 
-def _author(entry: dict[str, object]) -> dict[str, object]:
-    return cast("dict[str, object]", entry.get("author") or {})
+def collect_protocol_evidence(comments, handlers):
+    """Index protocol handoff records found in trusted handler replies."""
+    evidence: dict[object, list[object]] = {}
+    for reply in comments:
+        if (reply.get("author") or {}).get("login") not in handlers:
+            continue
+        for raw in re.findall(r"<!--\s*rtr:(\{.*?\})\s*-->", reply.get("body", ""), re.S):
+            try:
+                item = json.loads(raw)
+                evidence.setdefault(item["comment"], []).append((item, reply))
+            except (ValueError, KeyError, TypeError):
+                pass
+    return evidence
 
 
-def _connection_entries(pr: dict[str, object], key: str) -> list[dict[str, object]]:
-    return cast(
-        "list[dict[str, object]]", cast("dict[str, object]", pr.get(key, {})).get("nodes", [])
-    )
+def remark_blockers(remarks, evidence, commits, repo_url, handlers, reviewers, threads, blockers):
+    """Append a blocker for every bot remark lacking an evidenced disposition."""
+    for remark in remarks:
+        author = remark.get("author") or {}
+        is_bot = author.get("__typename") == "Bot" or author.get("login") in reviewers
+        # Only protocol replies by the explicitly trusted handler are audit records.
+        if not is_bot or (
+            author.get("login") in handlers and "<!-- rtr:" in remark.get("body", "")
+        ):
+            continue
+        valid = False
+        for item, reply in evidence.get(remark["id"], []):
+            if reply.get("id") == remark["id"]:
+                continue
+            if item.get("decision") == "fixed":
+                sha = item.get("commit", "")
+                valid |= bool(
+                    re.fullmatch("[0-9a-f]{40}", sha)
+                    and sha in commits
+                    and repo_url + "/commit/" + sha in reply.get("body", "")
+                )
+            elif item.get("decision") == "irrelevant":
+                valid |= isinstance(item.get("reason"), str) and len(item["reason"].strip()) >= 40
+        if not valid:
+            blockers.append("Missing evidenced disposition: " + remark["id"])
+    for thread in threads:
+        bot_thread = any(
+            (c.get("author") or {}).get("__typename") == "Bot"
+            or (c.get("author") or {}).get("login") in reviewers
+            for c in thread.get("comments", {}).get("nodes", [])
+        )
+        if bot_thread and not thread.get("isResolved"):
+            blockers.append("Unresolved bot thread: " + thread["id"])
 
 
-def _state_blockers(
-    pr: dict[str, object], reviewers: set[str], handlers: set[str], blockers: list[str]
-) -> None:
+def base_blockers(pr, reviewers, handlers):
+    """Collect the non-CI readiness blockers for a pull request."""
+    blockers = []
     if pr.get("state") != "OPEN":
         blockers.append("PR is not open")
     head = pr.get("headRefOid")
@@ -60,14 +99,14 @@ def _state_blockers(
         blockers.append("PR conflicts or mergeability unknown")
     if pr.get("isDraft"):
         blockers.append("PR is still draft")
+    return blockers
 
 
-def _ci_blockers(pr: dict[str, object], blockers: list[str]) -> None:
-    rollup = cast("dict[str, object]", pr.get("statusCheckRollup") or {})
-    checks = cast("dict[str, object]", rollup.get("contexts", {}))
+def ci_blockers(checks, blockers):
+    """Append a blocker for every CI context that is not a successful completed run."""
     if not checks.get("nodes"):
         blockers.append("No remote CI evidence")
-    for check in cast("list[dict[str, object]]", checks.get("nodes", [])):
+    for check in checks.get("nodes", []):
         ok = (
             check.get("__typename") == "CheckRun"
             and check.get("status") == "COMPLETED"
@@ -77,166 +116,47 @@ def _ci_blockers(pr: dict[str, object], blockers: list[str]) -> None:
             blockers.append("CI not green: " + str(check.get("name") or check.get("context")))
 
 
-def _pagination_blockers(
-    pr: dict[str, object], checks: dict[str, object], blockers: list[str]
-) -> None:
+def assess(pr, reviewers, handlers):
+    blockers = base_blockers(pr, reviewers, handlers)
+    checks = (pr.get("statusCheckRollup") or {}).get("contexts", {})
+    ci_blockers(checks, blockers)
     sections = [
-        (cast("dict[str, object]", pr.get(k, {})), "hasNextPage")
-        for k in ("reviews", "comments", "reviewThreads")
-    ] + [
-        (cast("dict[str, object]", pr.get("commits", {})), "hasPreviousPage"),
-        (checks, "hasNextPage"),
-    ]
-    threads = cast(
-        "list[dict[str, object]]",
-        cast("dict[str, object]", pr.get("reviewThreads", {})).get("nodes", []),
-    )
-    sections += [(cast("dict[str, object]", t.get("comments", {})), "hasNextPage") for t in threads]
+        (pr.get(k, {}), "hasNextPage") for k in ("reviews", "comments", "reviewThreads")
+    ] + [(pr.get("commits", {}), "hasPreviousPage"), (checks, "hasNextPage")]
+    threads = pr.get("reviewThreads", {}).get("nodes", [])
+    sections += [(t.get("comments", {}), "hasNextPage") for t in threads]
     if not all(_complete_connection(section, direction) for section, direction in sections):
         blockers.append("Incomplete pagination; cannot authorize handoff")
-
-
-def _review_blockers(pr: dict[str, object], reviewers: set[str], blockers: list[str]) -> None:
-    reviews = _connection_entries(pr, "reviews")
+    reviews = pr.get("reviews", {}).get("nodes", [])
     observed_bots = {
-        _author(r).get("login") for r in reviews if _author(r).get("__typename") == "Bot"
+        (r.get("author") or {}).get("login")
+        for r in reviews
+        if (r.get("author") or {}).get("__typename") == "Bot"
     }
     for actor in set(reviewers) | (observed_bots - {None}):
         current = [
             r
             for r in reviews
-            if _author(r).get("login") == actor
-            and cast("dict[str, object]", r.get("commit") or {}).get("oid") == pr.get("headRefOid")
+            if (r.get("author") or {}).get("login") == actor
+            and (r.get("commit") or {}).get("oid") == pr.get("headRefOid")
         ]
         if not current or current[-1].get("state") not in ("APPROVED", "COMMENTED"):
-            blockers.append("Bot review incomplete on current head: " + cast("str", actor))
+            blockers.append("Bot review incomplete on current head: " + actor)
     if any(r.get("state") == "PENDING" for r in reviews):
         blockers.append("Pending review")
-
-
-def _comment_evidence(
-    comments: list[dict[str, object]], handlers: set[str]
-) -> dict[str, list[tuple[object, dict[str, object]]]]:
-    evidence: dict[str, list[tuple[object, dict[str, object]]]] = {}
-    for reply in comments:
-        if _author(reply).get("login") not in handlers:
-            continue
-        for raw in re.findall(
-            r"<!--\s*rtr:(\{.*?\})\s*-->", cast("str", reply.get("body", "")), re.DOTALL
-        ):
-            try:
-                item = json.loads(raw)
-                evidence.setdefault(item["comment"], []).append((item, reply))
-            except (ValueError, KeyError, TypeError):
-                pass
-    return evidence
-
-
-class DispositionCtx(TypedDict):
-    """Evidence gathered for the disposition scan of one PR."""
-
-    evidence: dict[str, list[tuple[object, dict[str, object]]]]
-    commits: set[str]
-    repo_url: str
-    handlers: set[str]
-    reviewers: set[str]
-
-
-def _disposition_blockers(
-    remarks: list[dict[str, object]], ctx: DispositionCtx, blockers: list[str]
-) -> None:
-    evidence = ctx["evidence"]
-    commits = ctx["commits"]
-    repo_url = ctx["repo_url"]
-    handlers = ctx["handlers"]
-    reviewers = ctx["reviewers"]
-    for remark in remarks:
-        author = _author(remark)
-        is_bot = author.get("__typename") == "Bot" or cast("str", author.get("login")) in reviewers
-        # Only protocol replies by the explicitly trusted handler are audit records.
-        if not is_bot or (
-            author.get("login") in handlers and "<!-- rtr:" in cast("str", remark.get("body", ""))
-        ):
-            continue
-        valid = False
-        for item, reply in evidence.get(cast("str", remark["id"]), []):
-            if reply.get("id") == remark["id"]:
-                continue
-            if cast("dict[str, object]", item).get("decision") == "fixed":
-                sha = cast("str", cast("dict[str, object]", item).get("commit", ""))
-                valid |= bool(
-                    re.fullmatch("[0-9a-f]{40}", sha)
-                    and sha in commits
-                    and repo_url + "/commit/" + sha in cast("str", reply.get("body", ""))
-                )
-            elif cast("dict[str, object]", item).get("decision") == "irrelevant":
-                valid |= (
-                    isinstance(cast("dict[str, object]", item).get("reason"), str)
-                    and len(cast("str", cast("dict[str, object]", item)["reason"]).strip()) >= 40
-                )
-        if not valid:
-            blockers.append("Missing evidenced disposition: " + cast("str", remark["id"]))
-
-
-def _thread_blockers(
-    threads: list[dict[str, object]], reviewers: set[str], blockers: list[str]
-) -> None:
-    for thread in threads:
-        bot_thread = any(
-            _author(c).get("__typename") == "Bot" or _author(c).get("login") in reviewers
-            for c in cast(
-                "list[dict[str, object]]",
-                cast("dict[str, object]", thread.get("comments", {})).get("nodes", []),
-            )
-        )
-        if bot_thread and not thread.get("isResolved"):
-            blockers.append("Unresolved bot thread: " + cast("str", thread["id"]))
-
-
-def assess(pr, reviewers, handlers):
-    pr_dict = cast("dict[str, object]", pr)
-    blockers: list[str] = []
-    _state_blockers(pr_dict, set(reviewers), set(handlers), blockers)
-    _ci_blockers(pr_dict, blockers)
-    rollup = cast("dict[str, object]", pr_dict.get("statusCheckRollup") or {})
-    checks = cast("dict[str, object]", rollup.get("contexts", {}))
-    _pagination_blockers(pr_dict, checks, blockers)
-    threads = cast(
-        "list[dict[str, object]]",
-        cast("dict[str, object]", pr_dict.get("reviewThreads", {})).get("nodes", []),
-    )
-    _review_blockers(pr_dict, set(reviewers), blockers)
-    general = _connection_entries(pr_dict, "comments")
-    comments = general + [
-        c
-        for t in threads
-        for c in cast(
-            "list[dict[str, object]]",
-            cast("dict[str, object]", t.get("comments", {})).get("nodes", []),
-        )
-    ]
+    general = pr.get("comments", {}).get("nodes", [])
+    comments = general + [c for t in threads for c in t.get("comments", {}).get("nodes", [])]
     # Review summaries are remarks too; general PR replies can account for them.
-    remarks = comments + [r for r in _connection_entries(pr_dict, "reviews") if r.get("body")]
-    evidence = _comment_evidence(comments, set(handlers))
-    commits = {
-        cast("str", cast("dict[str, object]", n["commit"])["oid"])
-        for n in _connection_entries(pr_dict, "commits")
-    }
-    repo_url = cast("str", pr_dict.get("url", "")).split("/pull/")[0]
-    disposition_ctx: DispositionCtx = {
-        "evidence": evidence,
-        "commits": commits,
-        "repo_url": repo_url,
-        "handlers": set(handlers),
-        "reviewers": set(reviewers),
-    }
-    _disposition_blockers(remarks, disposition_ctx, blockers)
-    _thread_blockers(threads, set(reviewers), blockers)
+    remarks = comments + [r for r in reviews if r.get("body")]
+    commits = {n["commit"]["oid"] for n in pr.get("commits", {}).get("nodes", [])}
+    repo_url = pr.get("url", "").split("/pull/")[0]
+    evidence = collect_protocol_evidence(comments, handlers)
+    remark_blockers(remarks, evidence, commits, repo_url, handlers, reviewers, threads, blockers)
     return {
         "ready_to_review": not blockers,
-        "head": pr_dict.get("headRefOid"),
-        "state": pr_dict.get("state"),
-        "url": pr_dict.get("url"),
+        "head": pr.get("headRefOid"),
+        "state": pr.get("state"),
+        "url": pr.get("url"),
         "blockers": blockers,
     }
 
@@ -300,12 +220,17 @@ def main():
             report = fresh_report
         if report is None:
             return _error_report("RuntimeError")
-        report["checked_at"] = datetime.datetime.now(datetime.UTC).isoformat()
+        report["checked_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0 if report["ready_to_review"] else 1
     except (
-        ValueError, KeyError, TypeError, RuntimeError, OSError,
-        subprocess.SubprocessError, IndexError,
+        ValueError,
+        KeyError,
+        TypeError,
+        RuntimeError,
+        OSError,
+        subprocess.SubprocessError,
+        IndexError,
     ) as exc:
         return _error_report(type(exc).__name__)
 

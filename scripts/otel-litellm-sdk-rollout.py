@@ -70,14 +70,10 @@ def run(output, apply):
     )
     scope = json.loads((ROOT / "deploy/monitoring/otel-application-scope.json").read_text())
     require(
-        all(
-            [
-                not apply,
-                "litellm"
-                in scope.get("dedicatedClientCertificates", {}).get(
-                    "sdkReloadVerifiedForApplications", []
-                ),
-            ]
+        not apply
+        or "litellm"
+        in scope.get("dedicatedClientCertificates", {}).get(
+            "sdkReloadVerifiedForApplications", []
         ),
         "Production apply blocked until least-privilege renewable SDK credential"
         " reload is independently verified",

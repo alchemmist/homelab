@@ -496,8 +496,8 @@ def drain_start_phase(root, request, _result):
 
 
 def selected_cleanup_phase(root, _request, result):
-    phase = result["phase"]
     """Stop the phase's selected services and require them to be gone."""
+    phase = result["phase"]
     labels = ["agent", "exporter"] if phase == "agents-cleanup" else ["gateway", "prometheus"]
     stop(root, labels)
     require(

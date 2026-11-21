@@ -136,9 +136,9 @@ def start_signal_components(
     configs: dict[str, object],
     environment: dict[str, str],
     logs: list[object],
+    children: list[subprocess.Popen[bytes]],
 ) -> list[subprocess.Popen[bytes]]:
     """Start the four private smoke components; return Popen handles."""
-    children = []
     for name in ["loki", "tempo", "trace-gateway", "cluster"]:
         path = args.workspace / (name + ".json")
         path.write_text(json.dumps(configs[name]))
@@ -248,7 +248,7 @@ def run(args):
     context = ssl.create_default_context(cafile=str(args.tls / "ca.crt"))
     context.load_cert_chain(str(args.tls / "client.crt"), str(args.tls / "client.key"))
     try:
-        children = start_signal_components(args, configs, environment, logs)
+        start_signal_components(args, configs, environment, logs, children)
         started = time.monotonic()
         await_backend_readiness(children, context)
         now = time.time_ns()

@@ -251,12 +251,15 @@ def run(verify_scope=False):
         atomic(ROOT / "token.json", json.dumps(token))
     secret = api(cfg, token, context, namespace + "/secrets/" + cfg["secret"])["data"]
     changed = materialize_certificate(api, ROOT, namespace, secret)
+    bound_api = lambda path, payload=None, method=None: api(
+        cfg, token, context, path, payload, method
+    )
     if cfg["sourceReferences"]:
-        mirror_source_auth(api, cfg, namespace)
+        mirror_source_auth(bound_api, cfg, namespace)
     grafana = cfg.get("grafanaDatasourceSecret")
     if grafana:
-        mirror_grafana_sources(api, namespace, grafana)
-    mirror_remote_tls(api, cfg)
+        mirror_grafana_sources(bound_api, namespace, grafana)
+    mirror_remote_tls(bound_api, cfg)
     restart_units_if_changed(changed)
     print(
         json.dumps(

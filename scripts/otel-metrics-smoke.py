@@ -126,9 +126,9 @@ def spawn_source_collectors(
     source: dict[str, object],
     environment: dict[str, str],
     logs: list[object],
+    children: list[subprocess.Popen[bytes]],
 ) -> list[subprocess.Popen[bytes]]:
     """Launch the legacy and shadow Prometheus collectors; return Popen handles."""
-    children = []
     for name, port in [("legacy", 19090), ("shadow", 29090)]:
         document = (
             copy.deepcopy(source)
@@ -253,8 +253,9 @@ def run(args):
     }
     logs: list[IO[str]] = []
     phases = []
+    children: list[subprocess.Popen[bytes]] = []
     try:
-        children = spawn_source_collectors(args, source, environment, logs)
+        spawn_source_collectors(args, source, environment, logs, children)
         collector = json.loads(args.config.read_text())
         collector["receivers"] = {
             "prometheus": {"config": literal(source), "trim_metric_suffixes": False}
