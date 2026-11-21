@@ -55,7 +55,9 @@ def _matches_migration_recipe(
         'msg = "Incomplete automation migration; refusing runtime credential update"\n'
         "raise SystemExit(msg)"
     ).body
-    if guard.orelse or [ast.dump(node) for node in guard.body] != [ast.dump(node) for node in refusal]:
+    if guard.orelse or [ast.dump(node) for node in guard.body] != [
+        ast.dump(node) for node in refusal
+    ]:
         return False
     expected_removal = ast.parse(
         'for key in ["AUTHENTIK_BOOTSTRAP_TOKEN", "AUTHENTIK_BOOTSTRAP_PASSWORD"]:\n'

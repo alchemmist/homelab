@@ -51,7 +51,9 @@ def _sharing_contract(source: str) -> None:
     assert len(guards) == 1
     if ast.get_docstring(guards[0]) is not None:
         guards[0].body.pop(0)
-    _same_statement(module.body, "def need(ok, msg):\n    if not ok:\n        raise RuntimeError(msg)")
+    _same_statement(
+        module.body, "def need(ok, msg):\n    if not ok:\n        raise RuntimeError(msg)"
+    )
     locks = [n for n in mains[0].body if isinstance(n, ast.With)]
     assert len(locks) == 1
     body = locks[0].body

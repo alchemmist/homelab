@@ -326,9 +326,19 @@ def test_bootstrap_source_guard_accepts_formatting_not_decoy_text() -> None:
     assert not a.bootstrap_is_migration_aware(" " * 1_048_577)
 
 
+def test_bootstrap_refusal_cannot_execute_an_extra_call() -> None:
+    """Keep the abort path free of effects before it exits."""
+    source = (FILES / "bootstrap.py").read_text()
+    assert a.bootstrap_is_migration_aware(source)
+    refusal = "        raise SystemExit(msg)\n    for key in"
+    assert source.count(refusal) == 1
+    changed = source.replace(refusal, "        unexpected_call()\n" + refusal)
+    assert not a.bootstrap_is_migration_aware(changed)
+
+
 @pytest.mark.parametrize(
     "mutation",
-    ["password-key", "removal", "guard", "refusal", "refusal-extra", "journal", "manifest", "order"],
+    ["password-key", "removal", "guard", "refusal", "journal", "manifest", "order"],
 )
 def test_bootstrap_source_guard_rejects_real_boundary_mutations(mutation: str) -> None:
     """Reject changes that would reintroduce administrative runtime credentials."""
@@ -349,8 +359,6 @@ def test_bootstrap_source_guard_rejects_real_boundary_mutations(mutation: str) -
         guard.test = ast.Constant(False)
     elif mutation == "refusal":
         guard.body = [ast.Pass()]
-    elif mutation == "refusal-extra":
-        guard.body.insert(0, ast.parse("unexpected_call()").body[0])
     elif mutation == "journal":
         load.value = ast.Constant(None)
     elif mutation == "manifest":
