@@ -30,6 +30,7 @@ _original_getaddrinfo = socket.getaddrinfo
 
 
 def public_auth(host, *params, **kwargs):
+    """Document this public function."""
     return _original_getaddrinfo(
         args.public_edge if host == "auth.socrat.alchemmist.xyz" else host, *params, **kwargs
     )
@@ -52,6 +53,7 @@ credential = json.loads(
 
 
 def api(method, path, data=None):
+    """Document this public function."""
     req = urllib.request.Request(
         BASE + "/api/v3/" + path,
         method=method,
@@ -108,6 +110,7 @@ try:
         errors = []
 
         def observe(response):
+            """Document this public function."""
             if "/api/v3/flows/executor/" in response.url and response.status in [200, 400]:
                 try:
                     data = response.json()

@@ -38,15 +38,18 @@ class Refused(ValueError):
 
 
 def require(ok, message):
+    """Document this public function."""
     if not ok:
         raise Refused(message)
 
 
 def fields(obj, expected):
+    """Document this public function."""
     require(isinstance(obj, dict) and set(obj) == set(expected), "Unexpected document fields")
 
 
 def canonical_uuid(value):
+    """Document this public function."""
     try:
         require(
             isinstance(value, str) and str(uuid.UUID(value)) == value, "Canonical UUID required"
@@ -59,6 +62,7 @@ def canonical_uuid(value):
 
 def read_json(path):
     # Do not include decoder errors: they can contain supplied private material.
+    """Document this public function."""
     def unique_pairs(pairs):
         result = {}
         for key, value in pairs:
@@ -73,6 +77,7 @@ def read_json(path):
 
 
 def bindings_map(document):
+    """Document this public function."""
     fields(document, ["version", "bindings"])
     require(
         document["version"] == 1 and isinstance(document["bindings"], list),
@@ -96,6 +101,7 @@ def bindings_map(document):
 
 
 def validate_history(current, histories):
+    """Document this public function."""
     for old in histories:
         for ident, name in bindings_map(old).items():
             require(
@@ -130,6 +136,7 @@ def binding_history():
 
 
 def host_list(value):
+    """Document this public function."""
     require(
         isinstance(value, list)
         and all(isinstance(h, str) and re.fullmatch(r"[a-z0-9][a-z0-9.-]{0,62}", h) for h in value),
@@ -140,6 +147,7 @@ def host_list(value):
 
 
 def validate_policy(policy, bindings):
+    """Document this public function."""
     fields(policy, ["version", "public_key_attribute", "assignments"])
     require(policy["version"] == 1, "Unsupported policy version")
     require(
@@ -179,6 +187,7 @@ def validate_transition(policy, histories):
 
 def policy_history():
     # Same full-checkout trust boundary as bindings. Only this fixed path is read.
+    """Document this public function."""
     path = str(POLICY.relative_to(ROOT))
     try:
         revisions = subprocess.run(
@@ -203,6 +212,7 @@ def policy_history():
 
 
 def public_keys(value):
+    """Document this public function."""
     require(
         isinstance(value, list) and 0 < len(value) <= 32,
         "Active assignment needs a public key list",
@@ -311,10 +321,12 @@ class Authentik:
 
 
 def digest(value):
+    """Document this public function."""
     return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=True).encode()).hexdigest()
 
 
 def build_plan(bindings, policy, get_user):
+    """Document this public function."""
     validate_policy(policy, bindings)
     by_host, summary = {}, []
     for row in policy["assignments"]:
@@ -369,6 +381,7 @@ def build_plan(bindings, policy, get_user):
 
 
 def export(path, payload, approval):
+    """Document this public function."""
     require(bool(payload["required_hosts"]), "Empty integration cannot be exported")
     review = digest(payload)
     require(approval == review, "Export requires --approve-plan with the current review SHA256")
@@ -388,6 +401,7 @@ def export(path, payload, approval):
 
 
 def main(argv=None):
+    """Document this public function."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--authentik-url", help="HTTPS origin, no API path; token from AUTHENTIK_SSH_TOKEN"

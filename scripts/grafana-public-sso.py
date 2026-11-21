@@ -20,15 +20,18 @@ DESIRED = {
 
 
 def require(ok, message):
+    """Document this public function."""
     if not ok:
         raise RuntimeError(message)
 
 
 def kube(*args):
+    """Document this public function."""
     return subprocess.check_output(["kubectl", "-n", NS, *args], text=True)
 
 
 def env_plan(d):
+    """Document this public function."""
     containers = d["spec"]["template"]["spec"]["containers"]
     index = next(i for i, c in enumerate(containers) if c["name"] == "grafana")
     env = containers[index].get("env", [])
@@ -82,6 +85,7 @@ def env_plan(d):
 
 
 def main():
+    """Document this public function."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")

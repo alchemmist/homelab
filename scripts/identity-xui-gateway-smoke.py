@@ -59,6 +59,7 @@ credential = json.loads(
 
 
 def api(method, path, data=None):
+    """Document this public function."""
     req = urllib.request.Request(
         BASE + "/api/v3/" + path,
         method=method,
@@ -124,6 +125,7 @@ try:
         authorization_scopes = []
 
         def observe(response):
+            """Document this public function."""
             parsed = urllib.parse.urlparse(response.url)
             if (
                 parsed.hostname == "auth.socrat.alchemmist.xyz"

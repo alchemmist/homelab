@@ -18,6 +18,7 @@ HOST = "harbor.socrat.alchemmist.xyz"
 
 
 def configure(repository):
+    """Document this public function."""
     if not re.fullmatch(r"homelab/[a-z0-9-]+", repository):
         raise ValueError("INVALID_REPOSITORY")
     username, password = os.environ["HARBOR_USERNAME"], os.environ["HARBOR_PASSWORD"]

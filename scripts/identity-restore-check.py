@@ -19,6 +19,7 @@ spec.loader.exec_module(b)
 
 
 def main():
+    """Document this public function."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--backup", type=Path, required=True)
     p.add_argument("--service", choices=["authentik", "harbor", "open-webui"], default="authentik")

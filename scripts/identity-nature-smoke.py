@@ -102,6 +102,7 @@ with sync_playwright() as p:
             )
 
             def current_scene():
+                """Document this public function."""
                 page.wait_for_function(
                     "getComputedStyle(document.body,'::before').getPropertyValue('--qm-scene').trim().length===12"
                 )
@@ -219,6 +220,7 @@ if args.delay_hq:
     from playwright.async_api import async_playwright
 
     async def preview_only():
+        """Document this public function."""
         async with async_playwright() as p:
             for edge in (
                 [args.public_edge] if args.public_edge else ["109.173.40.247", "109.120.141.60"]

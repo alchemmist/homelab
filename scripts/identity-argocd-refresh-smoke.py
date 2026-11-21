@@ -32,6 +32,7 @@ _original_getaddrinfo = socket.getaddrinfo
 
 
 def public_auth(host, *params, **kwargs):
+    """Document this public function."""
     return _original_getaddrinfo(
         args.public_edge
         if host in ["auth.socrat.alchemmist.xyz", "argocd.socrat.alchemmist.xyz"]
@@ -58,6 +59,7 @@ credential = json.loads(
 
 
 def api(method, path, data=None):
+    """Document this public function."""
     req = urllib.request.Request(
         BASE + "/api/v3/" + path,
         method=method,
@@ -149,6 +151,7 @@ try:
         errors = []
 
         def observe(response):
+            """Document this public function."""
             if (
                 urllib.parse.urlparse(response.url).hostname == "argocd.socrat.alchemmist.xyz"
                 and urllib.parse.urlparse(response.url).path == "/auth/login"
@@ -274,6 +277,7 @@ try:
                 context = page.context
 
                 def claims():
+                    """Document this public function."""
                     c = next(
                         c
                         for c in context.cookies("https://argocd.socrat.alchemmist.xyz")
@@ -290,6 +294,7 @@ try:
                 }
 
                 def api_page(path):
+                    """Document this public function."""
                     response = page.goto("https://argocd.socrat.alchemmist.xyz" + path)
                     assert response.status == 200
                     return response.json()

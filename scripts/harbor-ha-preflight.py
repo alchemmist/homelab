@@ -22,6 +22,7 @@ print(json.dumps({'availableMemoryBytes':int(m['MemAvailable'].split()[0])*1024,
 
 
 def quantity(value):
+    """Document this public function."""
     value = str(value)
     for suffix, factor in [
         ("Ki", 1024),
@@ -42,6 +43,7 @@ def quantity(value):
 def requested_memory(pod):
     # Intentionally conservative: sum all init containers, including restartable
     # sidecars, instead of underestimating their maximum concurrent startup usage.
+    """Document this public function."""
     spec = pod["spec"]
     total = sum(
         quantity(c.get("resources", {}).get("requests", {}).get("memory", 0))
@@ -52,6 +54,7 @@ def requested_memory(pod):
 
 
 def ssh(policy, node, command):
+    """Document this public function."""
     return subprocess.check_output(
         [
             "ssh",
@@ -68,6 +71,7 @@ def ssh(policy, node, command):
 
 
 def collect(policy):
+    """Document this public function."""
     import shlex
 
     hosts = {
@@ -110,6 +114,7 @@ def collect(policy):
 
 
 def check(policy, observation, otel, now=None):
+    """Document this public function."""
     now = now or datetime.now(UTC)
     age = (now - datetime.fromisoformat(observation["collectedAt"])).total_seconds()
     if age < 0 or age > policy["maximumObservationAgeSeconds"]:
@@ -160,6 +165,7 @@ def check(policy, observation, otel, now=None):
 
 
 def save_exclusive(path, obj):
+    """Document this public function."""
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as f:
         json.dump(obj, f, indent=2)
@@ -167,6 +173,7 @@ def save_exclusive(path, obj):
 
 
 def main():
+    """Document this public function."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=["collect", "check"])
     parser.add_argument("--policy", type=Path, default=ROOT / "deploy/harbor/ha-policy.json")

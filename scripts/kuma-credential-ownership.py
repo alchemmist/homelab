@@ -15,17 +15,20 @@ TRACK = "uptime-kuma:/Secret:uptime-kuma/uptime-kuma-db"
 
 
 def require(ok, message):
+    """Document this public function."""
     if not ok:
         raise RuntimeError(message)
 
 
 def get(kind, name, ns=NS):
+    """Document this public function."""
     return json.loads(
         subprocess.check_output(["kubectl", "-n", ns, "get", kind, name, "-o", "json"])
     )
 
 
 def main():
+    """Document this public function."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")

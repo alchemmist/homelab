@@ -9,11 +9,13 @@ STATE = Path("/var/lib/homelab-grafana-tv-public")
 
 
 def need(ok, msg):
+    """Document this public function."""
     if not ok:
         raise RuntimeError(msg)
 
 
 def main():
+    """Document this public function."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")
