@@ -17,8 +17,10 @@ import sqlite3
 import subprocess
 import time
 import urllib.request
+from collections.abc import Sequence
 from contextlib import closing
 from pathlib import Path
+from typing import TypedDict, Unpack
 
 spec = importlib.util.spec_from_file_location(
     "inventory", Path(__file__).with_name("vpn-hardening-inventory.py")
@@ -33,11 +35,15 @@ KUBE = ["/usr/local/bin/kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml"]
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *args, **kwargs):
+    def redirect_request(self, *args: object, **kwargs: object):
         raise ValueError("API redirect refused")
 
 
-def command(args, **kwargs):
+class _CommandKeywords(TypedDict, total=False):
+    input: str
+
+
+def command(args: Sequence[str], **kwargs: Unpack[_CommandKeywords]) -> str:
     result = subprocess.run(args, capture_output=True, text=True, timeout=25, **kwargs)
     if result.returncode:
         raise RuntimeError("Native read failed")
@@ -333,5 +339,5 @@ class NativeSession:
     def __enter__(self):
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, *args: object):
         self.cleanup()

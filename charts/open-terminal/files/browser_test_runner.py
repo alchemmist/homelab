@@ -37,7 +37,7 @@ def descendants() -> set[tuple[int, int]]:
         parents.update(pid for pid, start in additions)
 
 
-def send(identity, sig) -> None:
+def send(identity: tuple[int, int], sig: int) -> None:
     pid, start = identity
     try:
         descriptor = os.pidfd_open(pid)
@@ -64,7 +64,7 @@ def reap() -> None:
             return
 
 
-def cleanup(owned, grace) -> None:
+def cleanup(owned: set[tuple[int, int]], grace: float) -> None:
     deadline = time.monotonic() + grace
     while True:
         owned.update(descendants())
@@ -85,7 +85,7 @@ def cleanup(owned, grace) -> None:
         time.sleep(0.05)
 
 
-def run(command, timeout=180, grace=2) -> int:
+def run(command: list[str], timeout: float = 180, grace: float = 2) -> int:
     if sys.platform != "linux":
         raise RuntimeError("homelab-browser-test requires Linux")
     libc = ctypes.CDLL(None, use_errno=True)
@@ -125,14 +125,14 @@ def run(command, timeout=180, grace=2) -> int:
                 signal.signal(sig, handler)
 
 
-def positive(value) -> float:
+def positive(value: str) -> float:
     number = float(value)
     if not math.isfinite(number) or number <= 0:
         raise argparse.ArgumentTypeError("timeout must be finite and positive")
     return number
 
 
-def main() -> int:
+def main():
     parser = argparse.ArgumentParser(
         description="Run a bounded browser test and clean up all its child processes"
     )

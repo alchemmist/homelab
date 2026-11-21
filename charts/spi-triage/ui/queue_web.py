@@ -24,14 +24,14 @@ TOKEN = ""
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *args, **kwargs) -> None:
+    def redirect_request(self, *args: object, **kwargs: object) -> None:
         return None
 
 
 AUTH = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
 
-def expire(sock)->None:
+def expire(sock: socket.socket) -> None:
     try:
         sock.shutdown(socket.SHUT_RDWR)
     except OSError:
@@ -39,10 +39,10 @@ def expire(sock)->None:
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
-    def log_message(self, *args) -> None:
+    def log_message(self, *args: object) -> None:
         pass
 
-    def handle(self) -> None:
+    def handle(self):
         timer = threading.Timer(20, expire, (self.request,))
         timer.daemon = True
         timer.start()
@@ -52,10 +52,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
         finally:
             timer.cancel()
 
-    def send_error(self, code, message=None, explain=None) -> None:
+    def send_error(self, code: int, message: str | None = None, explain: str | None = None) -> None:
         self.send(400, b"", "text/plain")
 
-    def send(self, status, body, mime="application/json; charset=utf-8", location=None) -> None:
+    def send(
+        self,
+        status: int,
+        body: bytes,
+        mime: str = "application/json; charset=utf-8",
+        location: str | None = None,
+    ) -> None:
         self.close_connection = True
         self.send_response(status)
         for k, v in {
@@ -76,10 +82,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError):
             pass
 
-    def valid_host(self) -> bool:
+    def valid_host(self):
         return self.headers.get_all("Host", []) == ["rustfs.socrat.alchemmist.xyz"]
 
-    def authorization(self) -> int:
+    def authorization(self):
         # Same trusted auth/nginx endpoint as the private evidence Reader.
         # Never trust caller identity headers or forward cookies to the backend.
         cookies = self.headers.get_all("Cookie", [])
@@ -114,7 +120,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return code if code in (401, 403) else 503
             return 503
 
-    def do_GET(self) -> None:
+    def do_GET(self):
         if not self.valid_host():
             return self.send(400, b"{}")
         auth = self.authorization()
@@ -135,7 +141,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.send(404, b"{}")
         self.send(200, Path(__file__).with_name(asset[0]).read_bytes(), asset[1])
 
-    def do_POST(self) -> None:
+    def do_POST(self):
         if not self.valid_host():
             return self.send(400, b"{}")
         auth = self.authorization()
@@ -194,18 +200,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if connection:
                 connection.close()
 
-    def do_OPTIONS(self) -> None:
+    def do_OPTIONS(self):
         self.send(405, b"{}")
 
 
 class Server(http.server.ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, *args) -> None:
+    def __init__(self, address: tuple[str, int], handler: type[Handler]) -> None:
         self.slots = threading.BoundedSemaphore(8)
-        super().__init__(*args)
+        super().__init__(address, handler)
 
-    def process_request(self, request, client_address) -> None:
+    def process_request(
+        self,
+        request: socket.socket | tuple[bytes, socket.socket],
+        client_address: tuple[str, int] | tuple[bytes, str],
+    ) -> None:
         if not self.slots.acquire(False):
             return self.shutdown_request(request)
         try:
@@ -214,13 +224,21 @@ class Server(http.server.ThreadingHTTPServer):
             self.slots.release()
             raise
 
-    def process_request_thread(self, request, client_address) -> None:
+    def process_request_thread(
+        self,
+        request: socket.socket | tuple[bytes, socket.socket],
+        client_address: tuple[str, int] | tuple[bytes, str],
+    ) -> None:
         try:
             super().process_request_thread(request, client_address)
         finally:
             self.slots.release()
 
-    def handle_error(self, request, client_address) -> None:
+    def handle_error(
+        self,
+        request: socket.socket | tuple[bytes, socket.socket],
+        client_address: tuple[str, int] | tuple[bytes, str],
+    ) -> None:
         pass
 
 

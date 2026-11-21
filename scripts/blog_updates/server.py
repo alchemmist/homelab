@@ -12,7 +12,7 @@ from stages import stage
 
 
 class Handler(BaseHTTPRequestHandler):
-    def log_message(self, *args):
+    def log_message(self, *args: object) -> None:
         pass  # no request bodies, credentials or content in logs
 
     def do_GET(self):

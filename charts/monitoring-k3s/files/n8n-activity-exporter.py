@@ -9,18 +9,43 @@ import time
 import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import cast
+from typing import TypedDict, cast
 
 BASE = os.environ.get("N8N_URL", "http://n8n.automation.svc.cluster.local")
 LOCK = threading.Lock()
 STATE = {"ok": 0, "at": 0, "counts": {}}
 
 
-def timestamp(value) -> float:
+class Execution(TypedDict, total=False):
+    """A single execution record."""
+
+    startedAt: str
+
+
+class ExecutionRecord(Execution):
+    """An execution row from the activity API."""
+
+    id: str
+    status: str
+
+
+class _ExecutionPageOptional(TypedDict, total=False):
+    """Optional pagination fields."""
+
+    nextCursor: str
+
+
+class ExecutionPage(_ExecutionPageOptional):
+    """A page of activity executions."""
+
+    data: list[ExecutionRecord]
+
+
+def timestamp(value: str) -> float:
     return dt.datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
 
 
-def summarize(rows, now) -> dict[tuple[str, int], int]:
+def summarize(rows: list[ExecutionRecord], now: float) -> dict[tuple[str, int], int]:
     counts = {
         (status, window): 0
         for status in ("success", "error", "running", "waiting", "other")
@@ -45,7 +70,7 @@ def summarize(rows, now) -> dict[tuple[str, int], int]:
     return counts
 
 
-def get_page(cursor=None, status=None) -> dict[str, object]:
+def get_page(cursor: str | None = None, status: str | None = None) -> ExecutionPage:
     params = {"limit": 100, "includeData": "false"}
     if cursor:
         params["cursor"] = cursor
@@ -57,20 +82,19 @@ def get_page(cursor=None, status=None) -> dict[str, object]:
         headers={"X-N8N-API-KEY": key},
     )
     with urllib.request.urlopen(request, timeout=8) as response:
-        return cast("dict[str, object]", json.load(response))
+        return cast("ExecutionPage", json.load(response))
 
 
-def collect() -> dict[tuple[str, int], int]:
+def collect():
     # History is sorted by descending execution ID. Count recent starts by
     # current outcome, not recent completions of arbitrarily old executions.
     now = time.time()
     rows, cursor = [], None
     for _ in range(40):
         page = get_page(cursor)
-        data = cast("list[dict[str, object]]", page["data"])
-        rows.extend(data)
-        cursor = cast("str | None", page.get("nextCursor"))
-        dates = [timestamp(r["startedAt"]) for r in data if r.get("startedAt")]
+        rows.extend(page["data"])
+        cursor = page.get("nextCursor")
+        dates = [timestamp(r["startedAt"]) for r in page["data"] if r.get("startedAt")]
         if not cursor or (dates and max(dates) < now - 3600):
             break
     else:
@@ -80,19 +104,18 @@ def collect() -> dict[tuple[str, int], int]:
     active, cursor = [], None
     for _ in range(10):
         page = get_page(cursor, "running")
-        active.extend(cast("list[dict[str, object]]", page["data"]))
-        cursor = cast("str | None", page.get("nextCursor"))
+        active.extend(page["data"])
+        cursor = page.get("nextCursor")
         if not cursor:
             break
     else:
         raise RuntimeError("running scan incomplete")
     result = summarize(rows + active, now)
-    running = {r["id"] for r in active if r.get("status") == "running"}
-    result["running", 0] = len(running)
+    result["running", 0] = len({r["id"] for r in active if r.get("status") == "running"})
     return result
 
 
-def loop() -> None:
+def loop():
     while True:
         try:
             counts = collect()
@@ -106,7 +129,7 @@ def loop() -> None:
 
 
 class Handler(BaseHTTPRequestHandler):
-    def do_GET(self) -> None:
+    def do_GET(self):
         if self.path != "/metrics":
             self.send_error(404)
             return
@@ -132,12 +155,12 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
 
-    def log_message(self, *_) -> None:
+    def log_message(self, *_: object) -> None:
         pass
 
 
 class MetricsServer(ThreadingHTTPServer):
-    def server_bind(self) -> None:
+    def server_bind(self):
         # Avoid slow reverse DNS lookups during HTTPServer initialization.
         socketserver.TCPServer.server_bind(self)
         self.server_name = "n8n-observer"

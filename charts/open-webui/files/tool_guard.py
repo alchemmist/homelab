@@ -4,8 +4,9 @@ import functools
 import hashlib
 import json
 import sys
+from collections.abc import Awaitable
 from itertools import islice
-from typing import cast
+from typing import Protocol, cast
 
 from jsonschema import Draft202012Validator
 
@@ -34,7 +35,7 @@ print(json.dumps(result))
 """
 
 
-async def bounded_fetch(params) -> str | dict[str, str]:
+async def bounded_fetch(params: dict[str, object]):
     try:
         process = await asyncio.create_subprocess_exec(
             sys.executable,
@@ -74,7 +75,7 @@ async def bounded_fetch(params) -> str | dict[str, str]:
         await process.wait()
 
 
-def validation_problem(params, schema) -> str | None:
+def validation_problem(params: dict[str, object], schema: dict[str, object]):
     try:
         errors = list(islice(Draft202012Validator(schema).iter_errors(params), 4))
     except Exception:
@@ -95,18 +96,22 @@ def validation_problem(params, schema) -> str | None:
     return "; ".join(problems)
 
 
-def repeated_period(fingerprints, periods=REPEAT_PERIODS, cycles=REPEAT_CYCLES) -> int | None:
+def repeated_period(
+    fingerprints: list[str],
+    periods: tuple[int, ...] = REPEAT_PERIODS,
+    cycles: int = REPEAT_CYCLES,
+):
     for period in periods:
         need = period * cycles
         if len(fingerprints) >= need and fingerprints[-need:] == fingerprints[-period:] * cycles:
-            return cast("int", period)
+            return period
     return None
 
 
-def record_failure(metadata, name, arguments, problem) -> dict[str, str]:
+def record_failure(metadata: dict[str, object], name: str, arguments: str, problem: str):
     state = guard_state(metadata)
     fingerprint = hashlib.sha256((name + "\n" + arguments).encode()).hexdigest()
-    failures = cast("dict[str, int]", state["failures"])
+    failures = state["failures"]
     if len(failures) >= 128 and fingerprint not in failures:
         failures.pop(next(iter(failures)))
     count = failures.get(fingerprint, 0) + 1
@@ -125,9 +130,9 @@ def record_failure(metadata, name, arguments, problem) -> dict[str, str]:
     }
 
 
-def guard_state(metadata) -> dict[str, object]:
+def guard_state(metadata: dict[str, object]):
     generation = metadata.get("message_id") or metadata.get("assistant_message_id")
-    state: dict[str, object] | None = metadata.get(STATE_KEY)
+    state = metadata.get(STATE_KEY)
     if not isinstance(state, dict) or state.get("generation") != generation:
         state = {
             "generation": generation,
@@ -141,15 +146,15 @@ def guard_state(metadata) -> dict[str, object]:
     return state
 
 
-def guard_stopped(metadata) -> bool:
-    return cast("bool", guard_state(metadata)["stopped"])
+def guard_stopped(metadata: dict[str, object]):
+    return guard_state(metadata)["stopped"]
 
 
-def guard_stop_message(metadata) -> str:
-    return cast("str", guard_state(metadata).get("stop_message") or STOP_MESSAGE)
+def guard_stop_message(metadata: dict[str, object]):
+    return guard_state(metadata).get("stop_message") or STOP_MESSAGE
 
 
-def record_no_progress_round(metadata, output) -> None:
+def record_no_progress_round(metadata: dict[str, object], output: object):
     """Track rounds whose every tool call failed before execution.
 
     Calls that resolve_tool_call rejects never reach guarded_execute, so the
@@ -163,7 +168,7 @@ def record_no_progress_round(metadata, output) -> None:
     state = guard_state(metadata)
     if not isinstance(output, list):
         return
-    seen = cast("int", state.get("no_progress_seen") or 0)
+    seen = state.get("no_progress_seen") or 0
     if id(output) != state.get("no_progress_output_id"):
         # The loop rebinds output to a fresh list for every generated response.
         seen = 0
@@ -179,7 +184,7 @@ def record_no_progress_round(metadata, output) -> None:
     ]
     if not outputs:
         return
-    history = cast("list[str]", state.setdefault("no_progress", []))
+    history = state.setdefault("no_progress", [])
     if not all(item.get("status") == "failed" for item in outputs):
         history.clear()
         return
@@ -199,7 +204,7 @@ def record_no_progress_round(metadata, output) -> None:
         state["stop_message"] = NO_PROGRESS_STOP_MESSAGE
 
 
-def backend_validation_problem(result) -> str | None:
+def backend_validation_problem(result: object):
     value = result
     if isinstance(value, tuple) and value:
         value = value[0]
@@ -211,30 +216,58 @@ def backend_validation_problem(result) -> str | None:
     return "terminal rejected the arguments with HTTP 422; recheck required fields and types in its schema"
 
 
-def guarded_execute(function) -> object:
+class _Resolve(Protocol):
+    def __call__(self, tool_call: dict[str, object], tools: dict[str, object]) -> object: ...
+
+
+class _Execute(Protocol):
+    def __call__(
+        self,
+        form_data: dict[str, object],
+        metadata: dict[str, object],
+        event_caller: object,
+        tool_call: dict[str, object],
+    ) -> Awaitable[object]: ...
+    __globals__: dict[str, object]
+
+
+def _tools(metadata: dict[str, object]) -> dict[str, object]:
+    value = metadata.get("tools")
+    return cast("dict[str, object]", value) if isinstance(value, dict) else {}
+
+
+def guarded_execute(function: _Execute):
     @functools.wraps(function)
-    async def wrapped(form_data, metadata, event_caller, tool_call):
+    async def wrapped(
+        form_data: dict[str, object],
+        metadata: dict[str, object],
+        event_caller: object,
+        tool_call: dict[str, object],
+    ) -> object:
         resolver = function.__globals__.get("resolve_tool_call")
         if resolver is not None:
-            error = resolver(tool_call, metadata.get("tools", {}))
+            error = cast("_Resolve", resolver)(tool_call, _tools(metadata))
             if error:
                 return await function(form_data, metadata, event_caller, tool_call)
-        call = tool_call.get("function", {})
-        name = call.get("name", "")
-        tool = metadata.get("tools", {}).get(name, {})
+        call = cast("dict[str, object]", tool_call.get("function", {}))
+        name = cast("str", call.get("name", ""))
+        tool = cast("dict[str, object]", _tools(metadata).get(name, {}))
         if name == "fetch_url" and tool.get("type") == "builtin" and not tool.get("direct"):
 
-            async def fetch(url):
+            async def fetch(url: str):
                 return await bounded_fetch({"url": url})
 
-            tools = {**metadata["tools"], name: {**tool, "callable": fetch}}
+            tools = cast(
+                "dict[str, object]",
+                {**_tools(metadata), name: {**tool, "callable": fetch}},
+            )
             return await function(form_data, {**metadata, "tools": tools}, event_caller, tool_call)
         if tool.get("type") != "terminal":
             return await function(form_data, metadata, event_caller, tool_call)
         direct = tool.get("direct", False)
         if guard_stopped(metadata):
             return {}, {"error": guard_stop_message(metadata)}, tool, "terminal", direct
-        arguments = call.get("arguments", "{}")
+        arguments = cast("str", call.get("arguments", "{}"))
         try:
             try:
                 params = json.loads(arguments)
@@ -244,19 +277,25 @@ def guarded_execute(function) -> object:
         except (ValueError, TypeError, SyntaxError):
             params = {}
             canonical = str(arguments)
-            problem: str | None = "arguments must be a complete JSON object"
+            problem = "arguments must be a complete JSON object"
         else:
             problem = (
                 "arguments must be a JSON object"
                 if not isinstance(params, dict)
-                else validation_problem(params, tool.get("spec", {}).get("parameters", {}))
+                else validation_problem(
+                    params,
+                    cast(
+                        "dict[str, object]",
+                        cast("dict[str, object]", tool.get("spec", {})).get("parameters", {}),
+                    ),
+                )
             )
         if problem:
             result = record_failure(metadata, name, canonical, problem)
             return params if isinstance(params, dict) else {}, result, tool, "terminal", direct
         fingerprint = hashlib.sha256((name + "\n" + canonical).encode()).hexdigest()
         state = guard_state(metadata)
-        recent = cast("list[str]", state.setdefault("recent", []))
+        recent = state.setdefault("recent", [])
         projected = recent[-(REPEAT_HISTORY - 1) :] + [fingerprint]
         period = repeated_period(projected)
         if period:
@@ -273,7 +312,10 @@ def guarded_execute(function) -> object:
                 "terminal",
                 direct,
             )
-        response = await function(form_data, metadata, event_caller, tool_call)
+        response = cast(
+            "tuple[object, ...]",
+            await function(form_data, metadata, event_caller, tool_call),
+        )
         problem = backend_validation_problem(response[1])
         if problem:
             return response[0], record_failure(metadata, name, canonical, problem), *response[2:]
@@ -284,7 +326,7 @@ def guarded_execute(function) -> object:
         if isinstance(value, tuple) and value:
             value = value[0]
         if value is not None and not (isinstance(value, dict) and value.get("error")):
-            cast("dict[str, int]", guard_state(metadata)["failures"]).pop(fingerprint, None)
+            guard_state(metadata)["failures"].pop(fingerprint, None)
         return response
 
     return wrapped

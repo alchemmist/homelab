@@ -10,7 +10,7 @@ import datetime
 import json
 import re
 import subprocess
-from typing import cast
+from typing import TypedDict, cast
 
 QUERY = """query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$number){
 url headRefOid state isDraft mergeable
@@ -20,6 +20,46 @@ comments(first:100){nodes{id author{login __typename} body url} pageInfo{hasNext
 reviewThreads(first:100){nodes{id isResolved comments(first:100){nodes{id author{login __typename} body url} pageInfo{hasNextPage}}} pageInfo{hasNextPage}}
 tip:commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){nodes{__typename ... on CheckRun{name status conclusion detailsUrl} ... on StatusContext{context state targetUrl}} pageInfo{hasNextPage}}}}}}
 }}}"""
+
+
+class _NodeList(TypedDict, total=False):
+    nodes: list[dict[str, object]]
+    pageInfo: dict[str, object]
+
+
+class _Thread(TypedDict, total=False):
+    id: str
+    isResolved: bool
+    comments: _NodeList
+
+
+class _ThreadsPage(TypedDict, total=False):
+    nodes: list[_Thread]
+
+
+class _CommitNode(TypedDict, total=False):
+    commit: dict[str, object]
+
+
+class _CommitsPage(TypedDict, total=False):
+    nodes: list[_CommitNode]
+
+
+class _Rollup(TypedDict, total=False):
+    contexts: _NodeList
+
+
+class _PullRequest(TypedDict, total=False):
+    url: str
+    headRefOid: str
+    state: str
+    mergeable: str
+    isDraft: bool
+    reviews: _NodeList
+    comments: _NodeList
+    reviewThreads: _ThreadsPage
+    commits: _CommitsPage
+    statusCheckRollup: _Rollup
 
 
 def _complete_connection(value: object, direction: str) -> bool:
@@ -36,7 +76,7 @@ def _complete_connection(value: object, direction: str) -> bool:
     )
 
 
-def assess(pr, reviewers, handlers) -> dict[str, object]:
+def assess(pr: _PullRequest, reviewers: set[str], handlers: set[str]):
     blockers = []
     if pr.get("state") != "OPEN":
         blockers.append("PR is not open")
@@ -60,25 +100,27 @@ def assess(pr, reviewers, handlers) -> dict[str, object]:
         ) or (check.get("__typename") == "StatusContext" and check.get("state") == "SUCCESS")
         if not ok:
             blockers.append("CI not green: " + str(check.get("name") or check.get("context")))
+    raw_pr = cast("dict[str, object]", pr)
     sections = [
-        (pr.get(k, {}), "hasNextPage") for k in ("reviews", "comments", "reviewThreads")
-    ] + [(pr.get("commits", {}), "hasPreviousPage"), (checks, "hasNextPage")]
+        (raw_pr.get(k, {}), "hasNextPage") for k in ("reviews", "comments", "reviewThreads")
+    ] + [(raw_pr.get("commits", {}), "hasPreviousPage"), (checks, "hasNextPage")]
     threads = pr.get("reviewThreads", {}).get("nodes", [])
     sections += [(t.get("comments", {}), "hasNextPage") for t in threads]
     if not all(_complete_connection(section, direction) for section, direction in sections):
         blockers.append("Incomplete pagination; cannot authorize handoff")
     reviews = pr.get("reviews", {}).get("nodes", [])
     observed_bots = {
-        (r.get("author") or {}).get("login")
+        cast("dict[str, object]", r.get("author") or {}).get("login")
         for r in reviews
-        if (r.get("author") or {}).get("__typename") == "Bot"
+        if cast("dict[str, object]", r.get("author") or {}).get("__typename") == "Bot"
+        and cast("dict[str, object]", r.get("author") or {}).get("login") is not None
     }
-    for actor in set(reviewers) | (observed_bots - {None}):
+    for actor in set(reviewers) | cast("set[str]", observed_bots):
         current = [
             r
             for r in reviews
-            if (r.get("author") or {}).get("login") == actor
-            and (r.get("commit") or {}).get("oid") == pr.get("headRefOid")
+            if cast("dict[str, object]", r.get("author") or {}).get("login") == actor
+            and cast("dict[str, object]", r.get("commit") or {}).get("oid") == pr.get("headRefOid")
         ]
         if not current or current[-1].get("state") not in ("APPROVED", "COMMENTED"):
             blockers.append("Bot review incomplete on current head: " + actor)
@@ -88,11 +130,12 @@ def assess(pr, reviewers, handlers) -> dict[str, object]:
     comments = general + [c for t in threads for c in t.get("comments", {}).get("nodes", [])]
     # Review summaries are remarks too; general PR replies can account for them.
     remarks = comments + [r for r in reviews if r.get("body")]
-    evidence = {}
+    evidence: dict[object, list[tuple[dict[str, object], dict[str, object]]]] = {}
     for reply in comments:
-        if (reply.get("author") or {}).get("login") not in handlers:
+        if cast("dict[str, object]", reply.get("author") or {}).get("login") not in handlers:
             continue
-        for raw in re.findall(r"<!--\s*rtr:(\{.*?\})\s*-->", reply.get("body", ""), re.S):
+        body = cast("str", reply.get("body", ""))
+        for raw in re.findall(r"<!--\s*rtr:(\{.*?\})\s*-->", body, re.S):
             try:
                 item = json.loads(raw)
                 evidence.setdefault(item["comment"], []).append((item, reply))
@@ -101,11 +144,11 @@ def assess(pr, reviewers, handlers) -> dict[str, object]:
     commits = {n["commit"]["oid"] for n in pr.get("commits", {}).get("nodes", [])}
     repo_url = pr.get("url", "").split("/pull/")[0]
     for remark in remarks:
-        author = remark.get("author") or {}
+        author = cast("dict[str, object]", remark.get("author") or {})
         is_bot = author.get("__typename") == "Bot" or author.get("login") in reviewers
         # Only protocol replies by the explicitly trusted handler are audit records.
         if not is_bot or (
-            author.get("login") in handlers and "<!-- rtr:" in remark.get("body", "")
+            author.get("login") in handlers and "<!-- rtr:" in cast("str", remark.get("body", ""))
         ):
             continue
         valid = False
@@ -113,20 +156,21 @@ def assess(pr, reviewers, handlers) -> dict[str, object]:
             if reply.get("id") == remark["id"]:
                 continue
             if item.get("decision") == "fixed":
-                sha = item.get("commit", "")
+                sha = cast("str", item.get("commit", ""))
                 valid |= bool(
                     re.fullmatch("[0-9a-f]{40}", sha)
                     and sha in commits
-                    and repo_url + "/commit/" + sha in reply.get("body", "")
+                    and repo_url + "/commit/" + sha in cast("str", reply.get("body", ""))
                 )
             elif item.get("decision") == "irrelevant":
-                valid |= isinstance(item.get("reason"), str) and len(item["reason"].strip()) >= 40
+                reason = item.get("reason")
+                valid |= isinstance(reason, str) and len(reason.strip()) >= 40
         if not valid:
-            blockers.append("Missing evidenced disposition: " + remark["id"])
+            blockers.append("Missing evidenced disposition: " + cast("str", remark["id"]))
     for thread in threads:
         bot_thread = any(
-            (c.get("author") or {}).get("__typename") == "Bot"
-            or (c.get("author") or {}).get("login") in reviewers
+            cast("dict[str, object]", c.get("author") or {}).get("__typename") == "Bot"
+            or cast("dict[str, object]", c.get("author") or {}).get("login") in reviewers
             for c in thread.get("comments", {}).get("nodes", [])
         )
         if bot_thread and not thread.get("isResolved"):
@@ -140,7 +184,7 @@ def assess(pr, reviewers, handlers) -> dict[str, object]:
     }
 
 
-def fetch(repo, number) -> dict[str, object]:
+def fetch(repo: str, number: int):
     owner, name = repo.split("/")
     out = subprocess.check_output(
         [
@@ -165,7 +209,7 @@ def fetch(repo, number) -> dict[str, object]:
     pr["statusCheckRollup"] = (
         pr.get("tip", {}).get("nodes", [{}])[-1].get("commit", {}).get("statusCheckRollup")
     )
-    return cast("dict[str, object]", pr)
+    return pr
 
 
 _HANDOFF_SNAPSHOT_COUNT = 2
@@ -177,7 +221,7 @@ def _error_report(error_name: str) -> int:
     return 2
 
 
-def main() -> int:
+def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", default="alchemmist/monori")
     parser.add_argument("--pr", type=int, required=True)
@@ -190,12 +234,12 @@ def main() -> int:
             snapshot = fetch(args.repo, args.pr)
             if report is not None and snapshot["headRefOid"] != report["head"]:
                 report["ready_to_review"] = False
-                cast("list[str]", report["blockers"]).append("Head changed during audit")
+                report["blockers"].append("Head changed during audit")
                 break
             fresh_report = assess(snapshot, set(args.reviewer), set(args.handler))
             if report is not None and fresh_report != report:
                 fresh_report["ready_to_review"] = False
-                cast("list[str]", fresh_report["blockers"]).append("PR state changed during audit")
+                fresh_report["blockers"].append("PR state changed during audit")
             report = fresh_report
         if report is None:
             return _error_report("RuntimeError")

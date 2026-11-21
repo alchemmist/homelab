@@ -27,13 +27,13 @@ EVENT = "    if not event_emitter:\n        return\n\n    if tool_function_name 
 EVENT_GUARD = "    if not event_emitter or _is_tool_result_error(tool_result):\n        return\n\n    if tool_function_name == 'display_file':"
 
 
-def patch(source) -> str:
+def patch(source: str) -> str:
     if IMPORT in source:
         raise ValueError("Tool guard already present; expected pristine middleware")
     for anchor in (FUNCTION, CONTINUATION, FILE_RESULT, EVENT):
         if source.count(anchor) != 1:
             raise ValueError("Unsupported WebUI middleware; tool guard anchor count differs")
-    result: str = IMPORT + source.replace(FUNCTION, "@guarded_execute\n" + FUNCTION).replace(
+    result = IMPORT + source.replace(FUNCTION, "@guarded_execute\n" + FUNCTION).replace(
         CONTINUATION, GUARDED_CONTINUATION
     ).replace(FILE_RESULT, FILE_RESULT_GUARD).replace(EVENT, EVENT_GUARD)
     ast.parse(result)

@@ -36,16 +36,18 @@ QUERY = (
 )
 
 
-def sample(name, labels, value):
+def sample(name, labels, value) -> str:
     suffix = (
-        "{" + ",".join(key + "=" + json.dumps(value) for key, value in labels.items()) + "}"
+        "{"
+        + ",".join(key + "=" + json.dumps(value) for key, value in labels.items())
+        + "}"
         if labels
         else ""
     )
-    return name + suffix + " " + format(value, ".15g") + "\n"
+    return str(name) + suffix + " " + format(value, ".15g") + "\n"
 
 
-def parse_metrics(output):
+def parse_metrics(output) -> str:
     metrics = []
     count = 0
     for row in csv.reader(io.StringIO(output), skipinitialspace=True):
@@ -81,7 +83,7 @@ def parse_metrics(output):
     return "".join(metrics)
 
 
-def atomic_write(destination, content):
+def atomic_write(destination, content) -> None:
     destination = Path(destination)
     descriptor, temporary = tempfile.mkstemp(prefix=".nvidia-", dir=destination.parent)
     try:
@@ -96,7 +98,7 @@ def atomic_write(destination, content):
             os.unlink(temporary)
 
 
-def collect(binary, destination):
+def collect(binary, destination) -> int:
     success = 0
     metrics = ""
     try:
@@ -118,7 +120,7 @@ def collect(binary, destination):
     return success
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--binary", default="/usr/bin/nvidia-smi")
     parser.add_argument("--output", required=True)

@@ -1,16 +1,16 @@
 """Cold full-claim backup: no key on disk, no plaintext archive, never extract arbitrary paths."""
-import base64, hashlib, json, os, pathlib, sqlite3, subprocess, tarfile
+import base64, hashlib, io, json, os, pathlib, sqlite3, subprocess, tarfile
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 ROOT=pathlib.Path('/backup'); SRC=pathlib.Path('/source'); TMP=pathlib.Path('/tmp'); NAME='canvas-cold-20261119'; AAD=b'openhands-full-claim-v2'; CHUNK=1024*1024
 DB='openhands/automation/automations.db'; CONV='openhands/agent-canvas/conversations/'; IDS=('1ab3985a219341778dd28ec7d54dbfeb','51a35822a87043cca775fd5e662f0039'); HAND='workspace/the-loop-demo/HANDOFF.md'
-def b64(b)->str:return base64.b64encode(b).decode('ascii')
-def file_digest(p)->str:
+def b64(b: bytes) -> str:return base64.b64encode(b).decode('ascii')
+def file_digest(p: pathlib.Path) -> str:
     with p.open('rb') as f:return hashlib.file_digest(f,'sha256').hexdigest()
 
-def main()->None:
+def main():
     os.umask(0o077);enc=ROOT/(NAME+'.gcm');receipt=ROOT/(NAME+'.json');part=ROOT/(NAME+'.partial');assert not any(p.exists() for p in (enc,receipt,part));assert all((SRC/k).is_dir() for k in ('openhands','workspace'))
     key=os.urandom(32);iv=os.urandom(12);crypt=Cipher(algorithms.AES(key),modes.GCM(iv)).encryptor();crypt.authenticate_additional_data(AAD)
     digest=hashlib.sha256();n=0
@@ -20,9 +20,9 @@ def main()->None:
         assert tar.wait()==0,'Source tar failed';dst.write(crypt.finalize());dst.flush();os.fsync(dst.fileno())
     assert n>0 and part.stat().st_size==n
     class Reader:
-        def __init__(self,f):
+        def __init__(self, f: io.BufferedReader) -> None:
             self.f=f;self.decrypt=Cipher(algorithms.AES(key),modes.GCM(iv,crypt.tag)).decryptor();self.decrypt.authenticate_additional_data(AAD);self.hash=hashlib.sha256();self.done=False
-        def read(self,size):
+        def read(self, size: int) -> bytes:
             if self.done:return b''
             buf=self.f.read(size)
             if not buf:self.decrypt.finalize();self.done=True;return b''

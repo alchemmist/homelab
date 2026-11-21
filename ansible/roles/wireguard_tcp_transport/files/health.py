@@ -2,12 +2,19 @@ import json
 import subprocess
 import time
 from pathlib import Path
+from typing import Protocol
+
+
+class _Condition(Protocol):
+    def __bool__(self) -> bool: ...
 
 
 STATE = Path("/run/wireguard-tcp-transport-health/state.json")
 
 
-def next_state(state, now, healthy):
+def next_state(
+    state: dict[str, int | float], now: float, healthy: _Condition
+) -> tuple[dict[str, int | float], bool]:
     if healthy:
         return {"failures": 0, "restarted": state.get("restarted", 0)}, False
     failures = state.get("failures", 0) + 1
