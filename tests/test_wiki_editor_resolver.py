@@ -8,6 +8,8 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+EXPECTED_FLUSH_COUNT = 2
 SOURCE = ROOT / "ansible/roles/wiki_editor_client/files/wiki-editor-resolver.sh"
 
 
@@ -70,10 +72,10 @@ printf '%s\\n' "$FIXTURE_ANSWER"
             "/bin/mv",
         ):
             executable = shutil.which(Path(original).name)
-            self.assertIsNotNone(executable)
+            assert executable is not None
             source = source.replace(original, shlex.quote(executable))
-        self.assertNotIn("/etc/resolver", source)
-        self.assertNotIn("/var/db/", source)
+        assert "/etc/resolver" not in source
+        assert "/var/db/" not in source
         self.script = self.root / "resolver.sh"
         self.script.write_text(source)
 
@@ -91,7 +93,7 @@ printf '%s\\n' "$FIXTURE_ANSWER"
             text=True,
             timeout=5,
         )
-        self.assertEqual(result.returncode, expected, result.stderr)
+        assert result.returncode == expected, result.stderr
         return result
 
     def commands(self):
@@ -99,58 +101,56 @@ printf '%s\\n' "$FIXTURE_ANSWER"
 
     def test_private_route_creates_owned_resolver_and_is_idempotent(self):
         self.run_resolver()
-        self.assertEqual(
-            self.resolver.read_text(), "nameserver 10.250.0.1\ntimeout 1\noptions attempts:1\n"
-        )
-        self.assertTrue(self.marker.exists())
+        assert self.resolver.read_text() == "nameserver 10.250.0.1\ntimeout 1\noptions attempts:1\n"
+        assert self.marker.exists()
         before = self.resolver.stat().st_mtime_ns
         self.run_resolver()
-        self.assertEqual(self.resolver.stat().st_mtime_ns, before)
-        self.assertEqual(self.commands().count("flush"), 1)
-        self.assertEqual(self.commands().count("reload"), 1)
-        self.assertEqual(list(self.resolver_directory.glob(".socrat-wiki.*")), [])
+        assert self.resolver.stat().st_mtime_ns == before
+        assert self.commands().count("flush") == 1
+        assert self.commands().count("reload") == 1
+        assert list(self.resolver_directory.glob(".socrat-wiki.*")) == []
 
     def test_disconnect_removes_owned_override_and_restores_public_dns(self):
         self.run_resolver()
         self.run_resolver(FIXTURE_INTERFACE="en0")
-        self.assertFalse(self.resolver.exists())
-        self.assertFalse(self.marker.exists())
-        self.assertEqual(self.commands().count("flush"), 2)
+        assert not self.resolver.exists()
+        assert not self.marker.exists()
+        assert self.commands().count("flush") == EXPECTED_FLUSH_COUNT
         self.run_resolver(FIXTURE_INTERFACE="en0")
-        self.assertEqual(self.commands().count("flush"), 2)
+        assert self.commands().count("flush") == EXPECTED_FLUSH_COUNT
 
     def test_unmanaged_override_is_preserved_and_rejected(self):
         contents = "nameserver 192.0.2.1\n"
         self.resolver.write_text(contents)
         self.run_resolver(expected=1)
-        self.assertEqual(self.resolver.read_text(), contents)
-        self.assertFalse(self.marker.exists())
-        self.assertNotIn("flush", self.commands())
+        assert self.resolver.read_text() == contents
+        assert not self.marker.exists()
+        assert "flush" not in self.commands()
         self.run_resolver(expected=1, FIXTURE_INTERFACE="en0")
-        self.assertEqual(self.resolver.read_text(), contents)
+        assert self.resolver.read_text() == contents
 
     def test_public_dns_answer_does_not_enable_private_route(self):
         self.run_resolver(FIXTURE_ANSWER="109.173.40.247")
-        self.assertFalse(self.resolver.exists())
-        self.assertFalse(self.marker.exists())
-        self.assertNotIn("flush", self.commands())
+        assert not self.resolver.exists()
+        assert not self.marker.exists()
+        assert "flush" not in self.commands()
 
     def test_private_dns_answer_without_tunnel_does_not_enable_route(self):
         self.run_resolver(FIXTURE_INTERFACE="en0")
-        self.assertFalse(self.resolver.exists())
-        self.assertEqual(self.commands(), [])
+        assert not self.resolver.exists()
+        assert self.commands() == []
 
     def test_private_dns_loss_removes_previously_enabled_route(self):
         self.run_resolver()
         self.run_resolver(FIXTURE_ANSWER="")
-        self.assertFalse(self.resolver.exists())
-        self.assertFalse(self.marker.exists())
-        self.assertEqual(self.commands().count("flush"), 2)
+        assert not self.resolver.exists()
+        assert not self.marker.exists()
+        assert self.commands().count("flush") == EXPECTED_FLUSH_COUNT
 
     def test_unreachable_primary_uses_reachable_secondary(self):
         self.run_resolver(FIXTURE_PRIMARY_FAILURE="1")
-        self.assertIn("nameserver 10.250.0.3\n", self.resolver.read_text())
-        self.assertTrue(self.marker.exists())
+        assert "nameserver 10.250.0.3\n" in self.resolver.read_text()
+        assert self.marker.exists()
 
 
 if __name__ == "__main__":
