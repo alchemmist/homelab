@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
     ],
 )
 def test_direct_route_and_reject_mislabeled_backend(
-    chart, ns, service, authorization, tmp_path
+    chart: str, ns: str, service: str, authorization: str, tmp_path: Path
 ) -> None:
     """Require each published route identity and reject a substituted service name."""
     values = yaml.safe_load((ROOT / f"charts/{chart}/values.yaml").read_text())
