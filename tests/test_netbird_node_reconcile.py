@@ -3,9 +3,9 @@
 import copy
 import importlib.util
 import json
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -198,6 +198,8 @@ class ReconcileTest(unittest.TestCase):
         return result
 
     def test_kernel_only_daemon_has_no_tun_or_interactive_sso(self) -> None:
+        """The kernel-only daemon has no TUN or interactive SSO."""
+
         pvc, deployment = n.manifests("socrat-5", IMAGE, kernel_only=True)
         spec = deployment["spec"]["template"]["spec"]
         assert spec["containers"][0]["command"] == ["netbird"]
@@ -207,6 +209,8 @@ class ReconcileTest(unittest.TestCase):
         assert "privileged" not in spec["containers"][0]["securityContext"]
 
     def test_inventory_is_generic_but_not_arbitrary_network_access(self) -> None:
+        """The inventory is generic but not arbitrary network access."""
+
         for values in [
             {"socrat-4": "10.250.0.4"},
             {"other": "10.250.0.9"},
@@ -232,6 +236,8 @@ class ReconcileTest(unittest.TestCase):
             n.validate_config({"image": "latest", "nodes": {"socrat-4": "10.250.0.9"}})
 
     def test_render_has_persistent_identity_and_no_human_or_dns_permissions(self) -> None:
+        """Rendered manifests keep identity persistent without human or DNS permissions."""
+
         pvc, deploy = n.manifests("socrat-28", IMAGE)
         pod = deploy["spec"]["template"]["spec"]
         env = {e["name"]: e.get("value") for e in pod["containers"][0]["env"]}
@@ -244,6 +250,8 @@ class ReconcileTest(unittest.TestCase):
         assert not pod["automountServiceAccountToken"]
 
     def test_adopt_requires_trusted_exact_peer_not_name(self) -> None:
+        """Adoption requires the trusted exact peer, not a name."""
+
         for seed in [None, {"nodes": {"socrat-4": {"id": "wrong"}}}]:
             f = Fake()
             with self.assertRaises(ValueError):
@@ -251,6 +259,8 @@ class ReconcileTest(unittest.TestCase):
             assert f.writes == []
 
     def test_adopt_and_second_run_are_idempotent(self) -> None:
+        """Adoption and the second run are idempotent."""
+
         f = Fake()
         assert f.reconcile("socrat-4", self.seed())["changed"]
         assert len(f.resources) == 1
@@ -260,22 +270,30 @@ class ReconcileTest(unittest.TestCase):
         assert len(f.writes) == writes
 
     def test_plan_never_enrolls_or_writes(self) -> None:
+        """Plan never enrolls or writes."""
+
         f = Fake(apply=False, existing=False)
         assert f.reconcile("socrat-4")["status"] == "awaiting-argocd-workloads"
         assert f.writes == []
 
     def test_missing_git_workloads_are_deferred_without_kubernetes_or_api_writes(self) -> None:
+        """Missing git workloads defer without Kubernetes or API writes."""
+
         f = Fake(existing=False)
         assert f.reconcile("socrat-4")["status"] == "awaiting-argocd-workloads"
         assert f.writes == []
 
     def test_fresh_argocd_agent_plan_has_no_setup_key(self) -> None:
+        """A fresh Argo CD agent plan contains no setup key."""
+
         f = Fake(apply=False)
         f.enrolled = False
         assert f.reconcile("socrat-4")["status"] == "would-enroll-and-authorize"
         assert f.writes == []
 
     def test_unmanaged_workloads_cannot_be_adopted_by_controller(self) -> None:
+        """Unmanaged workloads cannot be adopted by the controller."""
+
         f = Fake()
         f.dep["metadata"].pop("labels")
         with self.assertRaises(ValueError):
@@ -283,12 +301,16 @@ class ReconcileTest(unittest.TestCase):
         assert f.writes == []
 
     def test_missing_not_ready_node_is_deferred(self) -> None:
+        """A missing or unready node is deferred."""
+
         f = Fake()
         f.cluster_node = None
         assert f.reconcile("socrat-4")["status"] == "deferred-node-not-ready"
         assert f.writes == []
 
     def test_simulated_new_node_flow_retires_key_and_second_run_no_writes(self) -> None:
+        """The new-node flow retires the key and the second run writes nothing."""
+
         f = Fake()
         f.enrolled = False
         assert f.reconcile("socrat-4")["changed"]
@@ -304,6 +326,8 @@ class ReconcileTest(unittest.TestCase):
         assert len(f.writes) == writes
 
     def test_failed_enrollment_revokes_known_key_and_never_auto_reissues(self) -> None:
+        """A failed enrollment revokes the known key and never reissues automatically."""
+
         f = Fake()
         f.enrolled = False
         f.fail_restart = True
@@ -317,6 +341,8 @@ class ReconcileTest(unittest.TestCase):
         assert len(f.writes) == writes
 
     def test_node_uid_pvc_peer_address_and_image_drift_are_not_repaired(self) -> None:
+        """Identity drift on node, PVC, peer, address or image is never repaired."""
+
         for kind in ["node", "pvc", "peer", "address", "image", "key", "deleted-volume"]:
             f = Fake()
             f.reconcile("socrat-4", self.seed())
@@ -341,6 +367,8 @@ class ReconcileTest(unittest.TestCase):
             assert len(f.writes) == before
 
     def test_fake_jwt_broad_acl_or_wrong_router_fail_before_writes(self) -> None:
+        """Fake JWTs, broad ACLs or wrong routers fail before writes."""
+
         for kind in ["jwt", "input", "member"]:
             f = Fake()
             if kind == "jwt":
@@ -354,6 +382,8 @@ class ReconcileTest(unittest.TestCase):
             assert f.writes == []
 
     def test_removed_or_broadened_grants_are_not_resurrected(self) -> None:
+        """Removed or broadened grants are never resurrected."""
+
         for kind in ["resource", "policy", "disabled", "broadened", "membership"]:
             f = Fake()
             f.reconcile("socrat-4", self.seed())
@@ -373,6 +403,8 @@ class ReconcileTest(unittest.TestCase):
             assert len(f.writes) == before
 
     def test_uncertain_write_remains_blocking(self) -> None:
+        """An uncertain write remains blocking."""
+
         f = Fake()
         f.state["pending"] = {"method": "POST", "path": "policies"}
         with self.assertRaises(ValueError):

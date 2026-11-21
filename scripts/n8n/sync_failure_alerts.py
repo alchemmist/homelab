@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Bind a native error handler without changing workflow graphs/credentials/state.
+
 No workflow execution, forced retries, SQL writes, credential creation or probes.
 """
 

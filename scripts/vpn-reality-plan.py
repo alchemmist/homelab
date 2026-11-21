@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Pure target-only migration plan; no panel authentication, DB writes or Xray reload.
+
 The policy is intent, not a claim of deployed state. A native API executor and
 client acceptance must be reviewed before applying this plan.
 """

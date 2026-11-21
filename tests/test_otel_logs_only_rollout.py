@@ -2,8 +2,9 @@
 
 import copy
 import importlib.util
-from pathlib import Path
 import unittest
+from pathlib import Path
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,6 +17,8 @@ class ScopedRolloutTests(unittest.TestCase):
     """Owned log exporters change without rewriting metrics, cursors, or endpoints."""
 
     def setUp(self) -> None:
+        """Load the desired agent config and a live variant."""
+
         self.desired = yaml.safe_load((ROOT / "deploy/monitoring/otel/agent.yaml").read_text())
         self.live = copy.deepcopy(self.desired)
         self.live["service"]["pipelines"]["logs"]["exporters"] = ["otlp"]

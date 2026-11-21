@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Read-only VPN config projection and private online backup. Never emits identities/keys.
+
 This does not authenticate clients, change SQLite, restart Xray or install firewall rules.
 """
 

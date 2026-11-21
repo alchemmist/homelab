@@ -1,8 +1,8 @@
 """Check logging coverage classification without inventory or query clients."""
 
 import importlib.util
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 SPEC = importlib.util.spec_from_file_location(
     "coverage_check", Path(__file__).resolve().parents[1] / "scripts/logging-coverage.py"

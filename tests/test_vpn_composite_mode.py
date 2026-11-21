@@ -1,11 +1,11 @@
 """Tests for VPN composite mode configuration."""
 
 import json
-from pathlib import Path
 import shutil
 import subprocess
 import tempfile
 import unittest
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 P = next(
@@ -34,6 +34,7 @@ def component(c, runtime=0, check=1, off=0, success=1, observed="0+15x20", extra
 
 
 class CompositeModeTest(unittest.TestCase):
+    """Tests for CompositeModeTest."""
     def test_contract_and_geometry(self):
         assert P["gridPos"] == {"x": 4, "y": 0, "w": 2, "h": 2}
         mapping = P["fieldConfig"]["defaults"]["mappings"][0]["options"]

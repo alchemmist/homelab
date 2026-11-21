@@ -1,7 +1,8 @@
 """Offline contracts for the native agent; no host log bodies are read."""
 
-from pathlib import Path
 import unittest
+from pathlib import Path
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -26,6 +27,8 @@ def _text(value: object) -> str:
 class AgentLoggingTests(unittest.TestCase):
     """Validate the OpenTelemetry agent's logging configuration."""
     def setUp(self) -> None:
+        """Load the agent collector configuration."""
+
         document: object = yaml.safe_load((ROOT / "deploy/monitoring/otel/agent.yaml").read_text())
         assert isinstance(document, dict)
         self.agent: dict[str, object] = document
@@ -33,6 +36,8 @@ class AgentLoggingTests(unittest.TestCase):
     def test_self_log_exclusion_does_not_drop_backends_or_adjacent_containers(
         self,
     ) -> None:
+        """Self-log exclusion keeps backends and adjacent containers."""
+
         from fnmatch import fnmatchcase
 
         patterns = _list(_mapping(_mapping(self.agent["receivers"])["filelog"])["exclude"])
@@ -52,6 +57,8 @@ class AgentLoggingTests(unittest.TestCase):
             assert not excluded(pod, container), (pod, container)
 
     def test_rotation_and_restart_contract(self) -> None:
+        """Rotation and restart settings follow the durable contract."""
+
         receiver = _mapping(_mapping(self.agent["receivers"])["filelog"])
         assert _mapping(_list(receiver["operators"])[0])["type"] == "container"
         assert receiver["start_at"] == "beginning"
@@ -65,6 +72,8 @@ class AgentLoggingTests(unittest.TestCase):
         assert _mapping(_mapping(self.agent["extensions"])["file_storage"])["fsync"]
 
     def test_privacy_precedes_durable_log_queue_without_async_batch(self) -> None:
+        """Privacy precedes a durable log queue without async batching."""
+
         pipeline = _mapping(_mapping(_mapping(self.agent["service"])["pipelines"])["logs"])
         assert "transform/log-privacy" in _list(pipeline["processors"])
         assert "batch/logs" not in _list(pipeline["processors"])
@@ -77,6 +86,8 @@ class AgentLoggingTests(unittest.TestCase):
         assert _list(_mapping(_mapping(_mapping(self.agent["service"])["pipelines"])["metrics"])["exporters"]) == ["otlp"]
 
     def test_common_schema_and_priority_mapping(self) -> None:
+        """The common schema keeps severity and identity mappings."""
+
         processors_document = _mapping(self.agent["processors"])
         identity = str(processors_document["transform/log-identity"])
         for field in ["service.name", "k8s.namespace.name", "severity", "unknown"]:
@@ -90,6 +101,8 @@ class AgentLoggingTests(unittest.TestCase):
         assert "host.name" in str(processors_document["resource"])
 
     def test_journal_identity_is_split_before_shared_resource_promotion(self) -> None:
+        """Journal identity is split before shared resource promotion."""
+
         processors = _mapping(self.agent["processors"])
         identity = str(processors["transform/journal-identity"])
         assert 'set(attributes["service.name"], body["_SYSTEMD_UNIT"])' in identity
@@ -103,6 +116,8 @@ class AgentLoggingTests(unittest.TestCase):
         assert chain.index("groupbyattrs/journal-identity") < chain.index("transform/journal")
 
     def test_serial_rollout_validates_before_handler_flush(self) -> None:
+        """A serial rollout validates before flushing handlers."""
+
         play = yaml.safe_load((ROOT / "ansible/playbooks/otel-production-agents.yml").read_text())[
             0
         ]

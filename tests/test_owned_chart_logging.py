@@ -18,6 +18,8 @@ sys.path.insert(0, str(ROOT / "charts/spi-triage/files"))
 class OwnedLoggingTests(unittest.TestCase):
     """Enforce the owned-chart logging contract per service."""
     def contract(self, row, service) -> None:
+        """Assert a row conforms to the owned logging contract."""
+
         assert row["service"] == service
         assert row["level"] in ["info", "warn", "error", "debug"]
         assert row["ts"].endswith("Z")
@@ -25,6 +27,8 @@ class OwnedLoggingTests(unittest.TestCase):
         assert "\n" not in row["msg"]
 
     def test_worker_allowlist(self) -> None:
+        """Worker allowlist."""
+
         from service import log_event
 
         output = io.StringIO()
@@ -46,6 +50,8 @@ class OwnedLoggingTests(unittest.TestCase):
         assert row["code"] == "REDACTED"
 
     def test_js_allowlist(self) -> None:
+        """Js allowlist."""
+
         script = "const {logEvent}=require('./charts/n8n/extensions/event-log'); logEvent('yandex-calendar','announcement_failed',{code:'HTTP_500',body:'private',id:'private'});"
         output = subprocess.run(
             ["node", "-e", script], cwd=ROOT, capture_output=True, text=True, check=True
@@ -56,6 +62,8 @@ class OwnedLoggingTests(unittest.TestCase):
         assert "private" not in output.stderr
 
     def test_watchdog_exception_is_safe(self) -> None:
+        """Watchdog exception is safe."""
+
         spec = importlib.util.spec_from_file_location(
             "watchdog_logging", ROOT / "charts/open-terminal/files/browser_watchdog.py"
         )

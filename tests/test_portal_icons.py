@@ -3,10 +3,10 @@
 import copy
 import hashlib
 import json
-from pathlib import Path
 import runpy
 import shutil
 import sys
+from pathlib import Path
 from typing import Literal, Self
 from unittest.mock import patch
 from urllib.parse import urlsplit
@@ -53,12 +53,16 @@ class Response:
         self.body = body if isinstance(body, bytes) else json.dumps(body).encode()
 
     def __enter__(self) -> Self:
+        """Return this response as the active context manager resource."""
         return self
 
     def __exit__(self, *args) -> Literal[False]:
+        """Leave the response context without suppressing exceptions."""
         return False
 
     def read(self) -> bytes:
+        """Return the fixture body."""
+
         return self.body
 
 
@@ -99,6 +103,8 @@ class FakeAPI:
             self.content[url] = (ASSETS / filename).read_bytes()
 
     def __call__(self, request, timeout=None) -> Response:
+        """Serve fixture media without API credentials."""
+
         if isinstance(request, str):
             # No API bearer token is sent when reading media.
             return Response(self.content[request])

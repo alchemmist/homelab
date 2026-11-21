@@ -3,16 +3,17 @@
 import hashlib
 import importlib.util
 import re
-from urllib.parse import urlsplit
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
-from test_triage import event, report
-from core import Store, digest, Failure
-from service import Engine
-from evidence_bundle import prepare_bundle, storage_objects, storage_markdown
+from urllib.parse import urlsplit
+
+from core import Failure, Store, digest
+from evidence_bundle import prepare_bundle, storage_markdown, storage_objects
 from s3_evidence import StorageTransient
+from service import Engine
+from test_triage import event, report
 
 
 class EngineStorageTests(unittest.TestCase):
@@ -409,7 +410,8 @@ class EngineStorageTests(unittest.TestCase):
 
     def test_legacy_intent_reconciles_before_snapshot_each_checkpoint(self) -> None:
         'Verify legacy intent reconciles before snapshots at every checkpoint.'
-        import copy, json
+        import copy
+        import json
 
         original_save = self.store.save
         for field in ("pending", "done", "index_pending", "index_done"):

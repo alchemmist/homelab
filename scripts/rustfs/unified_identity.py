@@ -278,6 +278,7 @@ def require_default_flows() -> None:
 
 
 def authority(url):
+    """Execute authority."""
     parsed = urlsplit(url)
     if (
         parsed.scheme not in ("https", "http")
@@ -293,10 +294,12 @@ def authority(url):
 
 
 def digest(value):
+    """Execute digest."""
     return hashlib.sha256(json.dumps(value, sort_keys=True, default=str).encode()).hexdigest()
 
 
 def run(action="plan", nonce=None):
+    """Execute run."""
     from django.db import transaction
     from authentik.core.models import Application, Group, User
     from authentik.outposts.models import Outpost

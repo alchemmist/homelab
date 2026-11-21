@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Offline local Argo source/value-file and selected current-document pointers.
+
 No rendering, download, live reconciliation or historical-document rewrites.
 External chart contents, web routes and Markdown fragments are not verified.
 """

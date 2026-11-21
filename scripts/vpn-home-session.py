@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Bounded two-phase native session for an owned cross-node home probe.
+
 Prepare leaves TTL-limited credentials PRIVATE on VPS; controller must always clean.
 No human credentials/SQL writes; no listener changes. Default read-only preview.
 """

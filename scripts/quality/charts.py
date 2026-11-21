@@ -42,6 +42,7 @@ API_VERSIONS = [
 
 
 def local_path(value):
+    """Execute local_path."""
     path = (ROOT / value).resolve()
     if not path.is_relative_to(ROOT) or not path.exists():
         raise ValueError("Missing or escaping chart/value path")
@@ -169,6 +170,7 @@ def default_targets(result: list[RenderTarget], consumed: set[str]) -> list[Rend
 
 
 def targets():
+    """Execute targets."""
     result, consumed = argocd_targets()
     # Include every unconsumed root, including vendored charts, with chart defaults.
     result = default_targets(result, consumed)
@@ -176,6 +178,7 @@ def targets():
 
 
 def arguments(target):
+    """Execute arguments."""
     if not re.fullmatch(r"[a-z0-9][a-z0-9.-]{0,52}", target["release"]):
         raise ValueError("Invalid Helm release name")
     args = ["--kube-version", KUBE_VERSION, "--namespace", target["namespace"]]
@@ -192,6 +195,7 @@ def arguments(target):
 
 
 def render(target):
+    """Execute render."""
     args = [
         "helm",
         "template",
@@ -212,12 +216,14 @@ def render(target):
 
 
 def schema_name(resource):
+    """Execute schema_name."""
     api = resource["apiVersion"].split("/")
     version = (api[0].split(".")[0] + "-" + api[1]) if len(api) == 2 else api[0]
     return resource["kind"].lower() + "-" + version + ".json"
 
 
 def policies(resource):
+    """Execute policies."""
     # Generic Kubernetes best practices belong to kube-linter, not a parallel implementation.
     # These are additional Homelab ownership/data/image contracts.
     kind = resource.get("kind")
@@ -252,6 +258,7 @@ def policies(resource):
 
 
 def kube_lint(target, resources):
+    """Execute kube_lint."""
     data = command(
         [
             "kube-linter",
@@ -292,6 +299,7 @@ def kube_lint(target, resources):
 
 
 def contract_hash(target):
+    """Execute contract_hash."""
     # A previously broken render is accepted ONLY while its entire source stays identical.
     parts = [target["id"], json.dumps(target["parameters"], sort_keys=True)]
     for path in sorted(target["chart"].rglob("*")):
@@ -372,6 +380,7 @@ def policy_findings(*, target: RenderTarget, resource: RenderedObject, key: str)
 
 
 def check(*, validate=True):
+    """Execute check."""
     selected = targets()
     if not selected:
         raise ValueError("No local chart targets")
@@ -430,6 +439,7 @@ def check(*, validate=True):
 
 
 def main():
+    """Execute main."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--schema-inventory", action="store_true")
     args = parser.parse_args()

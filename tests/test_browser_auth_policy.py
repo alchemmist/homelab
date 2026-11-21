@@ -1,8 +1,8 @@
 """Tests for the open-terminal browser auth policy."""
 
 import json
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -10,16 +10,22 @@ ROOT = Path(__file__).resolve().parents[1]
 class ExistingHumanBrowserAuthPolicyTests(unittest.TestCase):
     """Assert the browser auth policy only targets reviewed non-owners."""
     def setUp(self) -> None:
+        """Load the browser auth policy and reviewed account mappings."""
+
         self.policy = json.loads((ROOT / "deploy/identity/browser-auth-policy.json").read_text())
         self.people = json.loads((ROOT / "deploy/identity/account-mappings.json").read_text())
 
     def test_only_reviewed_nonowner_is_targeted(self) -> None:
+        """Only the reviewed non-owner human is targeted by the policy."""
+
         assert self.policy["preserveOwnerRecoveryAndMachineIdentities"]
         assert self.policy["protectedOwner"] not in self.policy["humans"]
         assert set(self.policy["humans"]).issubset(self.people)
         assert self.policy["humans"]["antropophag"]["desiredBrowserAuthentication"] == "authentik-only"
 
     def test_disable_legacy_rancher_not_the_oidc_account(self) -> None:
+        """Legacy Rancher login is disabled while the OIDC account stays enabled."""
+
         target = self.policy["humans"]["antropophag"]
         assert not target["rancher"]["legacyLocalUserEnabled"]
         assert target["rancher"]["currentExternalUserEnabled"]
@@ -28,12 +34,16 @@ class ExistingHumanBrowserAuthPolicyTests(unittest.TestCase):
         assert not target["grafana"]["localPasswordPresent"]
 
     def test_webui_active_row_is_required_for_oauth(self) -> None:
+        """OpenWebUI requires an active auth row with revoked legacy sessions."""
+
         target = self.policy["humans"]["antropophag"]["openWebui"]
         assert target["authRowActiveForOAuth"]
         assert target["legacyPasswordReplacedWithDiscardedRandomCredential"]
         assert target["legacySessionStampRevoked"]
 
     def test_fresh_native_user_without_custom_activation(self) -> None:
+        """Enrollment is native without passwords, MFA, or activation links."""
+
         enrollment = self.policy["humans"]["antropophag"]["idpEnrollment"]
         assert enrollment["nativeCreateUser"]
         assert not enrollment["passwordAssigned"]
@@ -44,6 +54,8 @@ class ExistingHumanBrowserAuthPolicyTests(unittest.TestCase):
         assert self.people["antropophag"]["idpUserUuid"] == "6015c85b-82e9-49ce-a4e3-0270c676e26d"
 
     def test_native_rancher_replacement_preserves_retired_identity_and_grants(self) -> None:
+        """Rancher replacement preserves the retired identity and grant history."""
+
         rancher = self.policy["humans"]["antropophag"]["rancher"]
         assert rancher["nativePrincipalIsImmutable"]
         assert not rancher["retiredExternalUserEnabled"]
@@ -52,6 +64,8 @@ class ExistingHumanBrowserAuthPolicyTests(unittest.TestCase):
         assert rancher["retainDisabledLegacyRecordAndInertGrantHistory"]
 
     def test_umami_is_explicitly_suspended_not_false_oidc_success(self) -> None:
+        """Umami stays soft-suspended rather than reporting fake OIDC success."""
+
         target = self.policy["humans"]["antropophag"]["umami"]
         assert target["state"] == "suspended-pending-native-oidc"
         assert target["softDisabledWithoutDeletingData"]

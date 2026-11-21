@@ -1,4 +1,5 @@
 """Existing-user app membership lifecycle. Default plan/check are GET-only.
+
 Never creates/deletes/merges humans, resets passwords/MFA or manages legacy groups.
 """
 
@@ -31,6 +32,7 @@ class Api(Protocol):
 
 
 def api_for(root: Path) -> Api:
+    'Api for.'
     path = root / "credentials.json"
     if root.stat().st_mode & 0o077 or path.stat().st_mode & 0o077:
         raise RuntimeError("Deployment directory/credentials must be private")
@@ -299,6 +301,7 @@ def apply_plan(api: Api, plan: dict[str, object], approval: object) -> None:
 
 
 def main():
+    'Main.'
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
     parser.add_argument("action", choices=["plan", "check", "apply"], default="plan", nargs="?")

@@ -1,16 +1,16 @@
 """Pure app access reconciler checks; no credentials or live calls."""
 
 import copy
+import importlib.util
 import io
 import json
-import tempfile
-from unittest.mock import patch
-import importlib.util
-from pathlib import Path
 import sys
+import tempfile
+import unittest
+from pathlib import Path
 from types import SimpleNamespace
 from typing import NotRequired, TypedDict, cast
-import unittest
+from unittest.mock import patch
 
 FILES = Path(__file__).resolve().parents[1] / "ansible/roles/authentik/files"
 sys.path.insert(0, str(FILES))
@@ -76,6 +76,8 @@ class FakeAPI:
         self.writes: list[tuple[str, str, object]] = []
 
     def __call__(self, method, path, payload=None) -> dict[str, object]:
+        """Dispatch a fake Authentik API request against the in-memory state."""
+
         base = path.split("?")[0]
         if method == "GET":
             if base.startswith("providers/oauth2/") and base != "providers/oauth2/":
@@ -111,6 +113,8 @@ class FakeAPI:
 class AppAccessTests(unittest.TestCase):
     """Exercise the app-access reconciler against a fake API."""
     def test_api_guard_accepts_provider_get_but_rejects_other_writes(self) -> None:
+        """The API guard permits provider GETs and refuses other writes."""
+
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             credential = root / "credentials.json"
@@ -126,6 +130,8 @@ class AppAccessTests(unittest.TestCase):
                 api("POST", "core/users/", {})
 
     def test_default_scope_selection_does_not_cross_app_profiles(self) -> None:
+        """Default scope selection stays within standard mappings."""
+
         from app_iam import standard_scope_ids
 
         scopes = [
@@ -144,23 +150,31 @@ class AppAccessTests(unittest.TestCase):
             standard_scope_ids(scopes + [scopes[0]])
 
     def test_new_registered_app_generates_group_without_hardcoded_allowlist(self) -> None:
+        """A discovered app plans a group and binding without an allowlist."""
+
         state, catalog = fixture()
         operations = access.build_plan(state, catalog)["operations"]
         assert [x["kind"] for x in operations] == ["group", "binding"]
         assert operations[0]["name"] == "app-example-user"
 
     def test_discovered_unknown_app_gets_empty_group_not_admission(self) -> None:
+        """Unknown apps get a disabled empty group, not admission."""
+
         state, _ = fixture()
         plan = access.build_plan(state, {})
         assert plan["operations"] == [{"kind": "group", "name": "app-example-user"}]
         assert not plan["groups"]["app-example-user"]["enabled"]
 
     def test_unready_roles_never_open_access(self) -> None:
+        """Blocked access state yields a group only, never a binding."""
+
         state, catalog = fixture()
         catalog["example"]["accessManagement"]["state"] = "blocked"
         assert [op["kind"] for op in access.build_plan(state, catalog)["operations"]] == ["group"]
 
     def test_missing_native_adapter_defaults_closed(self) -> None:
+        """A missing accessManagement block defaults to closed access."""
+
         state, catalog = fixture()
         del catalog["example"]["accessManagement"]
         assert not any(
@@ -168,6 +182,8 @@ class AppAccessTests(unittest.TestCase):
         )
 
     def test_managed_group_inheritance_or_foreign_owner_refused(self) -> None:
+        """Tampered managed-group fields abort planning before any write."""
+
         state, catalog = fixture()
         group = {
             "pk": "g",
@@ -192,6 +208,8 @@ class AppAccessTests(unittest.TestCase):
                 access.build_plan(changed, catalog)
 
     def test_policy_bypass_or_unknown_scope_refused_before_any_write(self) -> None:
+        """Negated, disabled, or policy-routed bindings are refused."""
+
         state, catalog = fixture()
         for field, value in [
             ("negate", True),
@@ -204,6 +222,8 @@ class AppAccessTests(unittest.TestCase):
                 access.build_plan(changed, catalog)
 
     def test_scoped_alias_preserves_identity_and_not_global_membership(self) -> None:
+        """Alias mappings keep app-scoped identity without leaking groups."""
+
         state, catalog = fixture()
         expression = access.profile_expression(
             state["propertymappings/provider/scope/"][0]["expression"],
@@ -226,6 +246,8 @@ class AppAccessTests(unittest.TestCase):
             access.group_expression({"app-example-user": ["homelab-owner"]})
 
     def test_apply_idempotent_and_preserves_people_and_owner(self) -> None:
+        """Applying a plan is idempotent and preserves owners and bindings."""
+
         state, catalog = fixture()
         api = FakeAPI(state)
         receipts = {}
@@ -247,6 +269,8 @@ class AppAccessTests(unittest.TestCase):
         assert receipts["verified.json"]["idempotent"]
 
     def test_drift_stops_before_write(self) -> None:
+        """Detected drift halts execution before any write is issued."""
+
         state, catalog = fixture()
         api = FakeAPI(state)
         plan = access.build_plan(state, catalog)
@@ -256,6 +280,8 @@ class AppAccessTests(unittest.TestCase):
         assert api.writes == []
 
     def test_alias_scopes_attached_before_admission_and_idempotent(self) -> None:
+        """Alias scopes attach mappings before admission and re-run cleanly."""
+
         state, catalog = fixture()
         catalog["example"]["accessManagement"]["claimAliases"] = {
             "app-example-user": ["legacy-example-user"]

@@ -5,8 +5,9 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import Mock
+
 import test_triage as f
-from core import Failure, Store, PATIENT_TRANSIENT
+from core import PATIENT_TRANSIENT, Failure, Store
 from integrations import GitHub
 
 
@@ -131,8 +132,9 @@ class EngineReadRecoveryTests(unittest.TestCase):
 
     def test_actual_analyze_resumes_after_read_deadline(self) -> None:
         'Verify analysis resumes after a read deadline.'
-        from integrations import REQUEST_DEADLINE
         import time
+
+        from integrations import REQUEST_DEADLINE
 
         key = self.store.enqueue(f.event())["job_id"]
         self.store.claim()

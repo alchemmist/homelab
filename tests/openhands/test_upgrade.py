@@ -12,7 +12,8 @@ class UpgradeSafety(unittest.TestCase):
 
         objs=[x for x in yaml.safe_load_all(r) if x]
         j=next(x for x in objs if x["kind"]=="Job" and x["metadata"]["name"]=="openhands-cold-backup-20261119")
-        p=j["spec"]["template"]["spec"];assert not p["automountServiceAccountToken"]
+        p=j["spec"]["template"]["spec"];
+        assert not p["automountServiceAccountToken"]
         assert p["volumes"][0]["persistentVolumeClaim"] == {"claimName": "data-openhands-0", "readOnly": True}
         assert p["volumes"][1]["persistentVolumeClaim"]["claimName"] == "openhands-cold-backups"
         np=next(x for x in objs if x["kind"]=="NetworkPolicy" and x["metadata"]["name"]=="openhands-backup-pre142")

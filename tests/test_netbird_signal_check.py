@@ -1,11 +1,11 @@
 """Tests for the NetBird signal reachability check script."""
 
 import importlib.util
+import unittest
 from collections.abc import Iterable
 from pathlib import Path
 from types import SimpleNamespace
 from typing import TypedDict
-import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
@@ -32,6 +32,8 @@ class ProbeState(TypedDict, total=False):
 class ProbeTests(unittest.TestCase):
     """Exercise the NetBird signal probe with fake responders."""
     def fake(self, registered=True, fail=False) -> tuple[SimpleNamespace, ProbeState]:
+        """Build a fake grpc module and observable call state."""
+
         class RPCError(Exception):
             def code(self):
                 return SimpleNamespace(name="DEADLINE_EXCEEDED")
@@ -80,6 +82,8 @@ class ProbeTests(unittest.TestCase):
         ), state
 
     def test_trusted_tls_header_only_stream_and_cleanup(self) -> None:
+        """The probe uses trusted TLS, a header-only stream and cleanup."""
+
         grpc, state = self.fake()
         result = check.probe(check.ENTRANCES[0], grpc_module=grpc)
         assert result["registered_header"]
@@ -96,6 +100,8 @@ class ProbeTests(unittest.TestCase):
         assert "metadata" not in result
 
     def test_missing_header_and_rpc_error_fail_closed_and_release_stream(self) -> None:
+        """Missing headers and RPC errors fail closed with the stream released."""
+
         for registered, fail in [(False, False), (False, True)]:
             grpc, state = self.fake(registered, fail)
             result = check.probe(check.ENTRANCES[0], grpc_module=grpc)
@@ -105,6 +111,8 @@ class ProbeTests(unittest.TestCase):
             assert state["closed"]
 
     def test_unreviewed_destination_or_unbounded_deadline_refused(self) -> None:
+        """Unreviewed destinations and unbounded deadlines are refused."""
+
         for address, deadline in [
             ("127.0.0.1", 6),
             (check.ENTRANCES[0], 0),

@@ -3,10 +3,9 @@
 import copy
 import importlib.util
 import json
+import unittest
 from pathlib import Path
 from typing import TypedDict
-import unittest
-
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
@@ -135,6 +134,8 @@ def fixtures() -> tuple[
 class SourceRegistryTests(unittest.TestCase):
     """Check the source registry's active inventory completeness."""
     def test_complete_active_inventory_preserves_labels_and_ownership(self) -> None:
+        """Complete active inventory preserves labels and ownership."""
+
         args = fixtures()
         before = copy.deepcopy(args)
         result = REGISTRY.build(*args)
@@ -147,6 +148,8 @@ class SourceRegistryTests(unittest.TestCase):
         assert args == before
 
     def test_nondefault_intervals_are_reported_not_rewritten(self) -> None:
+        """Nondefault intervals are reported not rewritten."""
+
         args = fixtures()
         args[1]["activeTargets"][0]["scrapeInterval"] = "30s"
         result = REGISTRY.build(*args)
@@ -154,6 +157,8 @@ class SourceRegistryTests(unittest.TestCase):
         assert result["findings"][0]["targets"] == 1
 
     def test_unknown_jobs_and_monitor_endpoints_fail_closed(self) -> None:
+        """Unknown jobs and monitor endpoints fail closed."""
+
         for field, value in [
             ("job", "unknown-new-exporter"),
             ("pool", "serviceMonitor/monitoring/nodes/9"),
@@ -167,6 +172,8 @@ class SourceRegistryTests(unittest.TestCase):
             assert not REGISTRY.build(*args)["liveInventoryVerified"]
 
     def test_unselected_monitors_are_retained_without_activation(self) -> None:
+        """Unselected monitors are retained without activation."""
+
         args = fixtures()
         monitor = copy.deepcopy(args[0]["items"][0])
         monitor["metadata"]["name"] = "excluded"
@@ -179,11 +186,15 @@ class SourceRegistryTests(unittest.TestCase):
         assert result["liveInventoryVerified"]
 
     def test_active_target_outside_selector_is_an_error(self) -> None:
+        """Active target outside selector is an error."""
+
         args = fixtures()
         args[0]["items"][0]["metadata"]["labels"] = {}
         assert not REGISTRY.build(*args)["liveInventoryVerified"]
 
     def test_kubernetes_selector_semantics(self) -> None:
+        """Kubernetes selector semantics."""
+
         cases = [
             (
                 {"matchExpressions": [{"key": "x", "operator": "In", "values": ["a"]}]},
@@ -200,6 +211,8 @@ class SourceRegistryTests(unittest.TestCase):
             REGISTRY.selected({"matchExpressions": [{"key": "x", "operator": "unsupported"}]}, {})
 
     def test_unhealthy_or_missing_targets_block_inventory(self) -> None:
+        """Unhealthy or missing targets block inventory."""
+
         args = fixtures()
         args[1]["activeTargets"][0]["health"] = "down"
         assert not REGISTRY.build(*args)["liveInventoryVerified"]
@@ -207,6 +220,8 @@ class SourceRegistryTests(unittest.TestCase):
         assert not REGISTRY.build(*args)["liveInventoryVerified"]
 
     def test_secrets_urls_and_values_are_not_published(self) -> None:
+        """Secrets urls and values are not published."""
+
         scrubbed = REGISTRY.scrub(
             {
                 "authorization": {"credentials": "actual-secret"},
@@ -232,18 +247,24 @@ class SourceRegistryTests(unittest.TestCase):
             assert secret not in summary
 
     def test_nested_dashboard_queries_are_inventoried_without_mutation(self) -> None:
+        """Nested dashboard queries are inventoried without mutation."""
+
         document = {
             "panels": [{"id": 1, "panels": [{"id": 2, "targets": [{"expr": "up", "refId": "B"}]}]}]
         }
         assert list(REGISTRY.expressions(document)) == [(2, "B", "up")]
 
     def test_duplicate_dashboard_uid_is_rejected(self) -> None:
+        """Duplicate dashboard uid is rejected."""
+
         args = fixtures()
         args[-1]["items"].append(copy.deepcopy(args[-1]["items"][0]))
         with self.assertRaises(ValueError):
             REGISTRY.build(*args)
 
     def test_known_producers_complete_the_registry_not_cutover(self) -> None:
+        """Known producers complete the registry not cutover."""
+
         registry = REGISTRY.build(*fixtures())
         producers: dict[str, dict[str, object]] = {
             node: {"files": [], "timers": {}}
@@ -280,6 +301,8 @@ class SourceRegistryTests(unittest.TestCase):
         assert registry["diskProducerRefreshSeconds"] == "30"
 
     def test_missing_producers_are_not_assumed_healthy(self) -> None:
+        """Missing producers are not assumed healthy."""
+
         registry = REGISTRY.build(*fixtures())
         REGISTRY.attach_producers(registry, {}, {"items": []})
         assert not registry["sourceRegistryVerified"]

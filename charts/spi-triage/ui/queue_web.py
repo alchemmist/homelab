@@ -1,4 +1,5 @@
 """Private queue BFF; verified SSO cookie + Traefik-only ingress.
+
 Cookies go only to the fixed TLS auth endpoint, never to the queue backend.
 Only two fixed operator routes; no worker token or caller identity is trusted.
 """

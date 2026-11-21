@@ -3,8 +3,9 @@
 import tempfile
 import unittest
 from unittest.mock import Mock, patch
+
 import test_triage as f
-from core import Store, Failure, digest
+from core import Failure, Store, digest
 from service import Engine
 
 

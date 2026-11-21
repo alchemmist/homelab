@@ -2,8 +2,8 @@
 
 import copy
 import importlib.util
-from pathlib import Path
 import unittest
+from pathlib import Path
 from typing import TypedDict
 
 spec = importlib.util.spec_from_file_location(
@@ -74,6 +74,8 @@ def deployment() -> Deployment:
 class CapacityPlacementTests(unittest.TestCase):
     """Check OpenTelemetry capacity placement strategy changes."""
     def test_only_scheduling_and_zero_unavailable_strategy_change(self) -> None:
+        """Only scheduling and zero-unavailable strategy change."""
+
         doc = deployment()
         before = copy.deepcopy(doc)
         patch, undo = capacity.placement(doc)
@@ -90,6 +92,8 @@ class CapacityPlacementTests(unittest.TestCase):
         assert expression["values"] == ["socrat-0", "socrat-1"]
 
     def test_pod_anti_affinity_preserved_and_reapply_is_idempotent(self) -> None:
+        """Pod anti-affinity is preserved and re-apply is idempotent."""
+
         doc = deployment()
         doc["spec"]["template"]["spec"]["affinity"] = {
             "podAntiAffinity": {"preferredDuringSchedulingIgnoredDuringExecution": []}
@@ -101,6 +105,8 @@ class CapacityPlacementTests(unittest.TestCase):
         assert capacity.placement(doc) == (None, None)
 
     def test_persistent_or_host_data_refused(self) -> None:
+        """Persistent or host data placements are refused."""
+
         for key in ("persistentVolumeClaim", "hostPath", "nfs"):
             doc = deployment()
             doc["spec"]["template"]["spec"]["volumes"] = [{"name": "data", key: {}}]
@@ -110,6 +116,8 @@ class CapacityPlacementTests(unittest.TestCase):
     def test_unhealthy_unapproved_paused_and_conflicting_placements_refused(
         self,
     ) -> None:
+        """Unhealthy, unapproved, paused or conflicting placements are refused."""
+
         for change in (
             lambda d: d["metadata"].update(name="prometheus"),
             lambda d: d["status"].update(readyReplicas=0),

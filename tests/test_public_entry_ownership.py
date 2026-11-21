@@ -1,19 +1,18 @@
 """Migration contracts: exact payload preservation and one owner per resource."""
 
 import copy
+import hashlib
+import json
 import subprocess
+import unittest
+from pathlib import Path
 from typing import NotRequired, TypedDict
 from unittest.mock import patch
 
 import pytest
-
-import hashlib
-import json
-from pathlib import Path
-import unittest
 import yaml
-from tests.public_entry_contract import CHARTS, ROOT, render
 
+from tests.public_entry_contract import CHARTS, ROOT, render
 
 PUBLIC_HANDOFF = "c6121e1975eb6218804a9be43d7c2a8e99584838"
 
@@ -108,6 +107,8 @@ class OwnershipTests(unittest.TestCase):
     def test_every_transferred_payload_is_identical_to_reviewed_pre_migration_render(
         self,
     ) -> None:
+        """Every transferred payload is identical to reviewed pre migration render."""
+
         fixture = json.loads((ROOT / "tests/fixtures/public-entry-handoff.json").read_text())
         actual = {}
         for owner in CHARTS:
@@ -129,6 +130,8 @@ class OwnershipTests(unittest.TestCase):
         assert actual == fixture
 
     def test_platform_extensions_belong_to_the_existing_application(self) -> None:
+        """Platform extensions belong to the existing application."""
+
         for owner, chart in CHARTS.items():
             app = yaml.safe_load((ROOT / f"deploy/argocd/apps/{owner}.yaml").read_text())
             assert app["spec"]["project"] == "default"
@@ -138,6 +141,8 @@ class OwnershipTests(unittest.TestCase):
             assert app["spec"]["syncPolicy"]["automated"]["selfHeal"]
 
     def test_aggregate_chart_and_application_are_gone(self) -> None:
+        """Aggregate chart and application are gone."""
+
         assert not (ROOT / "charts/public-web-entry").exists()
         assert not (ROOT / "deploy/argocd/apps/public-web-entry.yaml").exists()
         for path in (ROOT / "deploy/argocd/apps").glob("*.yaml"):

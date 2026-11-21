@@ -3,10 +3,10 @@
 import base64
 import copy
 import importlib.util
-import types
-from pathlib import Path
 import subprocess
+import types
 import unittest
+from pathlib import Path
 from typing import TypedDict
 from unittest.mock import patch
 
@@ -49,6 +49,8 @@ class LeafRotationTests(unittest.TestCase):
     """Manual renewal keeps the existing spec and refuses private material."""
 
     def certificate(self) -> Certificate:
+        """Build the reviewed LiteLLM leaf certificate fixture."""
+
         return {
             "metadata": {
                 "name": "otel-app-tls-litellm",

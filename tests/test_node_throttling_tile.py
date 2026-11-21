@@ -2,13 +2,12 @@
 
 import json
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DASHBOARD = ROOT / "charts/monitoring-k3s/dashboards/nodes.json"
@@ -141,6 +140,8 @@ def fixtures() -> dict[str, object]:
 class NodeThrottlingTileTest(unittest.TestCase):
     """Check the node throttling dashboard tile's mappings."""
     def test_not_applicable_and_no_telemetry_are_distinct(self) -> None:
+        """Not-applicable and no-telemetry states render distinctly."""
+
         defaults = _mapping(_mapping(panel()["fieldConfig"])["defaults"])
         mapping = next(
             entry for entry in _list(defaults["mappings"]) if _mapping(entry)["type"] == "value"
@@ -153,6 +154,8 @@ class NodeThrottlingTileTest(unittest.TestCase):
 
     @unittest.skipUnless(PROMTOOL, "promtool is not installed; use --generate for remote execution")
     def test_promql_semantics(self) -> None:
+        """The PromQL tile semantics hold under promtool tests."""
+
         with tempfile.TemporaryDirectory() as directory:
             assert PROMTOOL is not None
             path = Path(directory) / "node-throttling.test.yml"

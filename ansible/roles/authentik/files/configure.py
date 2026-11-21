@@ -21,6 +21,7 @@ base = "https://auth.socrat.alchemmist.xyz/api/v3/"
 
 
 def api(method, path, payload=None):
+    """Api."""
     req = urllib.request.Request(
         base + path,
         method=method,
@@ -40,6 +41,7 @@ import secrets
 
 
 def unique(path, field, value):
+    """Unique."""
     from urllib.parse import urlencode
 
     query = {field: value}

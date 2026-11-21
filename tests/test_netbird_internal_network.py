@@ -1,9 +1,9 @@
 """Tests for the NetBird internal network resources."""
 
 import importlib.util
-from pathlib import Path
 import types
 import unittest
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -24,6 +24,8 @@ oidc = load("net_oidc", "ansible/roles/identity_integrations/files/netbird_oidc.
 class InternalNetworkTests(unittest.TestCase):
     """Validate the internal network's exact resources and gateways."""
     def test_single_gateway_exact_resources_and_separate_local_input_gate(self) -> None:
+        """A single gateway serves exact resources behind a separate input gate."""
+
         expected = {"10.250.0.1/32", "10.250.0.2/32", "10.250.0.3/32", "10.250.0.5/32"}
         actual = {a for _, addresses in net.NETWORKS.values() for a in addresses}
         assert actual == expected
@@ -43,6 +45,8 @@ class InternalNetworkTests(unittest.TestCase):
                 net.resource_body("socrat-0", address)
 
     def test_clients_do_not_import_routes_but_serve_explicit_networks(self) -> None:
+        """Clients import no routes but serve the explicit networks."""
+
         docs = net.peers()
         assert [o["metadata"]["name"] for o in docs if o["kind"] == "Deployment"] == ["machine-socrat-0"]
         for obj in docs:
@@ -62,6 +66,8 @@ class InternalNetworkTests(unittest.TestCase):
         assert net.router_body("exact-peer")["masquerade"]
 
     def test_fake_api_admin_group_or_observer_group_never_accepted(self) -> None:
+        """Fake API or observer groups never satisfy the admin check."""
+
         for groups in [
             [],
             [{"name": net.ADMIN_GROUP, "issued": "api", "id": "fake"}],
@@ -77,11 +83,15 @@ class InternalNetworkTests(unittest.TestCase):
         assert "All" not in str(rule)
 
     def test_admin_claim_not_part_of_automatic_pilot_human_grants(self) -> None:
+        """The admin claim is never granted automatically to pilot humans."""
+
         assert net.ADMIN_GROUP not in oidc.GROUP_NAMES
         assert net.ADMIN_GROUP in oidc.PROFILE_GROUP_NAMES
         assert net.ADMIN_GROUP in oidc.profile_expression()
 
     def test_owner_handover_accepts_only_one_exact_owner_device_explicitly(self) -> None:
+        """Owner handover accepts only one exact owner device, explicitly."""
+
         p = {
             "id": "mac",
             "user_id": owner.subject(),

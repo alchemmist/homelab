@@ -1,10 +1,9 @@
 """Offline checks for detaching symlinked account configuration inside a temp home."""
 
 import importlib.util
-from pathlib import Path
 import tempfile
 import unittest
-
+from pathlib import Path
 
 SOURCE = (
     Path(__file__).resolve().parents[1]
@@ -19,6 +18,8 @@ class IsolationTests(unittest.TestCase):
     """Materialize configuration links under a disposable home directory."""
 
     def setUp(self) -> None:
+        """Create a disposable home with a dotfiles source."""
+
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.home = Path(self.temporary.name).resolve()

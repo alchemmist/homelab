@@ -3,10 +3,10 @@
 import copy
 import importlib.util
 import json
-from pathlib import Path
 import subprocess
 import sys
 import unittest
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts/n8n"))
@@ -47,6 +47,8 @@ class FailureAlertsTests(unittest.TestCase):
         return result
 
     def test_metadata_only_and_trusted_url(self) -> None:
+        """Only safe metadata and the trusted URL reach the alert."""
+
         p = {
             "workflow": {"id": "abc123", "name": "Calendar"},
             "execution": {
@@ -68,6 +70,8 @@ class FailureAlertsTests(unittest.TestCase):
         assert _mapping(result["alert"])["fingerprint"] != _mapping(self.notification(p)["alert"])["fingerprint"]
 
     def test_trigger_failure_without_execution_id(self) -> None:
+        """Trigger failures alert without leaking the error message."""
+
         p = {
             "workflow": {"id": "abc", "name": "Calendar"},
             "trigger": {"error": {"message": "password"}},
@@ -78,6 +82,8 @@ class FailureAlertsTests(unittest.TestCase):
         assert _mapping(result["alert"])["fingerprint"] != _mapping(self.notification(p, "9999")["alert"])["fingerprint"]
 
     def test_no_message_storage_retries_recursion_or_spi_ingress(self) -> None:
+        """The template stores no messages, retries or recursion."""
+
         assert "errorWorkflow" not in TEMPLATE["settings"]
         assert TEMPLATE["settings"]["saveDataErrorExecution"] == "none"
         assert TEMPLATE["settings"]["saveDataSuccessExecution"] == "none"
@@ -107,6 +113,8 @@ class FailureAlertsTests(unittest.TestCase):
         }
 
     def test_guard_rejects_unpublished_changes_and_other_handler(self) -> None:
+        """Guard rejects unpublished changes and foreign handlers."""
+
         w = self.wf()
         _mapping(w["activeVersion"])["nodes"] = []
         with self.assertRaises(RuntimeError):
@@ -117,6 +125,8 @@ class FailureAlertsTests(unittest.TestCase):
             sync.guard(w, "handler")
 
     def test_only_settings_change_and_active_state_preserved(self) -> None:
+        """Only settings change; active state drives activation alone."""
+
         for active in (True, False):
             original = self.wf(active)
             current = copy.deepcopy(original)
@@ -141,6 +151,8 @@ class FailureAlertsTests(unittest.TestCase):
             assert not any("execute" in path or "deactivate" in path for _, path, _ in calls)
 
     def test_idempotent_and_concurrent_drift_stops(self) -> None:
+        """A bound workflow is idempotent until drift appears."""
+
         w = self.wf()
         _mapping(w["settings"])["errorWorkflow"] = "handler"
         calls = []
@@ -157,6 +169,8 @@ class FailureAlertsTests(unittest.TestCase):
             sync.bind(api, before, "handler")
 
     def test_only_native_github_registration_may_change(self) -> None:
+        """Only native GitHub registration fields may change."""
+
         before = self.wf()
         before["nodes"] = [{"id": "n", "name": "Push", "type": "n8n-nodes-base.githubTrigger"}]
         before["staticData"] = {
@@ -179,6 +193,8 @@ class FailureAlertsTests(unittest.TestCase):
             sync.check(before, after, "handler")
 
     def test_transient_put_state_requires_authoritative_readback(self) -> None:
+        """Transient PUT state requires an authoritative readback."""
+
         before = self.wf()
         before["staticData"] = {"checkpoint": "must-remain"}
         transient = copy.deepcopy(before)
@@ -192,6 +208,8 @@ class FailureAlertsTests(unittest.TestCase):
         sync.check(before, stable, "handler")
 
     def test_unexpected_settings_drift_stops(self) -> None:
+        """Unexpected settings drift stops the sync."""
+
         before = self.wf()
         after = copy.deepcopy(before)
         after["settings"] = {"errorWorkflow": "handler"}

@@ -2,15 +2,14 @@
 
 import importlib.util
 import os
-from pathlib import Path
 import shutil
 import stat
 import subprocess
 import tempfile
-from types import SimpleNamespace
 import unittest
+from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
-
 
 SOURCE = (
     Path(__file__).resolve().parents[1]
@@ -31,6 +30,8 @@ class LoginRewriteTests(unittest.TestCase):
     """Verify desktop login rewrites preserve surrounding shell config."""
 
     def test_replaces_selector_preserving_surrounding_shell_configuration(self):
+        """Selector replacement preserves surrounding shell configuration."""
+
         before = 'export PATH="$HOME/.elan/bin:$PATH"\n'
         after = 'alias ll="ls -l"\n'
         self.assertEqual(
@@ -38,21 +39,29 @@ class LoginRewriteTests(unittest.TestCase):
         )
 
     def test_existing_server_guard_is_normalized_and_idempotent(self):
+        """Older guards normalize to the canonical block, idempotently."""
+
         old = 'if [[ -o interactive && "$TTY" == /dev/tty1 ]]; then\n    exec /usr/local/bin/start-socrat-hyprland\nfi\n'
         result = MODULE.rewrite_login(old, True)
         self.assertEqual(result, MODULE.LOGIN_BLOCK)
         self.assertEqual(MODULE.rewrite_login(result, True), result)
 
     def test_nonselected_profile_loses_only_its_competing_startup(self):
+        """Unselected profiles drop only their competing startup block."""
+
         self.assertEqual(
             MODULE.rewrite_login("export EDITOR=vim\n" + LEGACY, False), "export EDITOR=vim\n"
         )
 
     def test_multiple_blocks_are_refused(self):
+        """Ambiguity from multiple startup blocks is refused."""
+
         with self.assertRaisesRegex(ValueError, "Multiple"):
             MODULE.rewrite_login(LEGACY + MODULE.LOGIN_BLOCK, True)
 
     def test_unknown_startup_is_refused_in_every_profile(self):
+        """Unknown startup commands are refused in every profile."""
+
         for selected in (False, True):
             for prefix in ("", LEGACY):
                 with self.subTest(selected=selected, prefix=bool(prefix)):
@@ -61,6 +70,8 @@ class LoginRewriteTests(unittest.TestCase):
 
     @unittest.skipUnless(ZSH, "zsh is required")
     def test_guard_only_starts_on_interactive_local_tty1_without_existing_display(self):
+        """The guard starts only on interactive local tty1 with no display."""
+
         block = MODULE.LOGIN_BLOCK.replace(
             "exec /usr/local/bin/start-socrat-hyprland", "print -r -- STARTED"
         )
@@ -92,6 +103,8 @@ class IdleConfigurationTests(unittest.TestCase):
     """Check the hypridle configuration survives the desktop setup guard."""
 
     def test_retains_lock_dim_and_general_handlers(self):
+        """Removing idle shutdown keeps lock/dim handlers and general blocks."""
+
         retained = "general {\n    before_sleep_cmd = loginctl lock-session\n}\nlistener {\n    timeout = 120\n    on-timeout = brightnessctl set 10%\n}\nlistener {\n    timeout = 180\n    on-timeout = loginctl lock-session\n}\n"
         for command in (
             "poweroff",
@@ -115,6 +128,8 @@ class ConfigureTests(unittest.TestCase):
     """Exercise the desktop configure script against temporary home dirs."""
 
     def setUp(self):
+        """Patch a fake home, user and zsh-runner into the configure module."""
+
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         self.home = Path(directory.name).resolve()
@@ -135,11 +150,15 @@ class ConfigureTests(unittest.TestCase):
         self.addCleanup(runner.stop)
 
     def configure(self, cleanup=False, disable_shutdown=False, check=False):
+        """Run configure against the fake home with the given flags."""
+
         return MODULE.configure(
             self.home, "testuser", ".zshrc", cleanup, disable_shutdown, check=check
         )
 
     def test_preserves_symlink_target_mode_and_original_backup_then_is_idempotent(self):
+        """Symlink targets, modes and backups survive configuration idempotently."""
+
         target = self.home / "dotfiles/zshrc"
         target.parent.mkdir()
         target.write_text("export EDITOR=vim\n" + LEGACY)
@@ -159,6 +178,8 @@ class ConfigureTests(unittest.TestCase):
         self.assertEqual(len(list(self.backups.iterdir())), 1)
 
     def test_archives_selector_symlinks_without_removing_their_sources_or_swaync(self):
+        """Cleanup archives selector symlinks but spares sources and swaync."""
+
         source = self.home / "dotfiles/wlinitrc"
         source.parent.mkdir()
         source.write_text("exec tdm.sh\n")
@@ -179,6 +200,8 @@ class ConfigureTests(unittest.TestCase):
         self.assertFalse(self.configure(cleanup=True)["changed"])
 
     def test_check_reports_planned_changes_without_writes_or_archives(self):
+        """Check mode reports the plan without writing or archiving anything."""
+
         profile = self.home / ".zshrc"
         profile.write_text(LEGACY)
         idle = self.home / ".config/hypr/hypridle.conf"
@@ -200,6 +223,8 @@ class ConfigureTests(unittest.TestCase):
         self.assertEqual(list(self.backups.iterdir()), [])
 
     def test_check_requires_no_backup_directory_and_does_not_create_profiles(self):
+        """Check mode needs no backup dir and creates no profiles."""
+
         self.backups.rmdir()
         result = self.configure(check=True)
         self.assertTrue(result["changed"])
@@ -207,12 +232,16 @@ class ConfigureTests(unittest.TestCase):
         self.assertFalse(self.backups.exists())
 
     def test_check_reports_no_change_after_configuration(self):
+        """Check reports no change once configuration is complete."""
+
         self.configure()
         before = list(self.backups.iterdir())
         self.assertFalse(self.configure(check=True)["changed"])
         self.assertEqual(list(self.backups.iterdir()), before)
 
     def test_check_still_rejects_invalid_shell_before_writes(self):
+        """Check mode still rejects invalid zsh syntax before any write."""
+
         profile = self.home / ".zshrc"
         profile.write_text("if then\n")
         with self.assertRaisesRegex(ValueError, "Invalid zsh syntax"):
@@ -221,6 +250,8 @@ class ConfigureTests(unittest.TestCase):
         self.assertEqual(list(self.backups.iterdir()), [])
 
     def test_external_profile_symlink_is_rejected_before_any_mutation(self):
+        """Profile symlinks pointing outside the home are rejected first."""
+
         with tempfile.TemporaryDirectory() as other:
             target = Path(other) / "profile"
             target.write_text("export EDITOR=vim\n")
@@ -232,6 +263,8 @@ class ConfigureTests(unittest.TestCase):
             self.assertEqual(target.read_text(), "export EDITOR=vim\n")
 
     def test_invalid_shell_syntax_is_rejected_before_any_mutation(self):
+        """Invalid shell syntax is rejected before any profile mutation."""
+
         profile = self.home / ".zshrc"
         profile.write_text("if then\n")
         with self.assertRaisesRegex(ValueError, "Invalid zsh syntax"):

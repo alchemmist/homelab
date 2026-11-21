@@ -1,10 +1,11 @@
 """Offline chart rendering and real nginx parser tests; no cluster access."""
 
-from pathlib import Path
 import re
 import shutil
 import subprocess
 import unittest
+from pathlib import Path
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,6 +15,8 @@ CHARTS = ("private-gateway", "syncthing", "img-proxy", "litellm-infra", "socrat-
 class SafeNginxLoggingTests(unittest.TestCase):
     """Verify nginx access logging renders with sensitive data stripped."""
     def render(self, chart: str) -> list[dict[str, object]]:
+        """Render a chart and return its documents."""
+
         return list(
             yaml.safe_load_all(
                 subprocess.check_output(
@@ -25,6 +28,8 @@ class SafeNginxLoggingTests(unittest.TestCase):
         )
 
     def test_render_and_safe_contract(self) -> None:
+        """Every chart renders the safe logging contract."""
+
         for chart in CHARTS:
             with self.subTest(chart=chart):
                 docs = self.render(chart)
@@ -60,6 +65,8 @@ class SafeNginxLoggingTests(unittest.TestCase):
 
     @unittest.skipUnless(shutil.which("docker"), "docker required for nginx syntax validation")
     def test_real_nginx_http_syntax(self) -> None:
+        """The rendered logging directives pass real nginx syntax checks."""
+
         # Extract exact rendered logging directives; TLS/listen/upstream resources
         # in full gateway configs depend on deployment-only IPs and secrets.
         for chart in CHARTS:
@@ -102,6 +109,8 @@ class SafeNginxLoggingTests(unittest.TestCase):
                 assert result.returncode == 0, f"{chart}: nginx syntax rejected"
 
     def test_socrat_mount_without_homepage(self) -> None:
+        """The socrat-home chart mounts access logging without the homepage."""
+
         output = subprocess.check_output(
             [
                 "helm",
