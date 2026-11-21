@@ -94,6 +94,9 @@ spec:
           for: 15m
           labels: {severity: warning}
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "ThanosWarmWorkshopDiskLow" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: The warm workshop host has less than 50 GiB available.
             description: Check capacity on socrat-1. This warning never authorizes deleting a source block.
         - alert: ThanosFiveDiskLow

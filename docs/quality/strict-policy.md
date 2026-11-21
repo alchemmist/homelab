@@ -43,14 +43,7 @@ Shellcheck uses `--enable=all` on `*.sh` and shell shebangs. Jinja templates are
 
 Workflow security uses `zizmor --persona auditor` on the whole `.github/workflows` directory. Generated files are included. There is no rule allowlist and no generated-file waiver. Every tracked workflow is explicitly passed to actionlint with ShellCheck and Pyflakes required, and to zizmor in strict collection mode without loading repository configs. CI provides the job’s read-only token to enable online audits; a local run without GH_TOKEN does not verify those online rules. hadolint `failure-threshold` is `style` and `ignored` is empty. The single `DL3064` exception is the exact line `ENV TOKENIZERS_PARALLELISM=false RAYON_NUM_THREADS=1 PYTHONPATH=/app` in `services/spi-tokenizer/Dockerfile`. Any other line fails. JavaScript is `node --check` only.
 
-`quality-graph-github` `0.2.0` function `_publication_workflow` hardcodes `.github/workflows/quality-graph-publish.yml`. `qg.yaml` can pin the action digest. It has no field for publisher triggers, permission comments, or a narrower publisher token. The generated file is marked `DO NOT EDIT MANUALLY` and `qg generate` overwrites hand edits. The current generated surface, which remains blocking, is:
-
-- triggers: `workflow_run` types `requested` and `completed` for workflow `Quality Graph`, plus `issue_comment` types `created` and `edited`
-- top-level `permissions: {}`
-- job `publish`: `actions: read`, `checks: write`, `contents: read`, `issues: write`, `pull-requests: write`
-- job `command`: `actions: write`, `contents: read`, `issues: write`, `pull-requests: write`
-
-`zizmor --persona auditor` reports `dangerous-triggers` on that `on` block and `undocumented-permissions` on both job permission blocks, because the compiler emits no explanatory comment. Opaque generated workflows are not trusted code. This policy does not waive those results and does not widen the token. Clearing them requires a compiler change that can express the same publisher contract with a documented, reviewed permission comment and without treating `workflow_run` or `issue_comment` as invisible.
+The pinned GitHub compiler generates `.github/workflows/quality-graph-publish.yml`. Edit the compiler, not its output. Both publisher jobs read PR metadata with `pull-requests: read`; their remaining write grants are documented inline. The two historical `undocumented-permissions` findings no longer reproduce. The outstanding `dangerous-triggers` finding is on `workflow_run`, which still starts privileged publication after PR execution. It remains blocking: neither the generated file nor its trigger is exempt from scanning.
 
 Not adopted, and not counted as a pass: ESLint, Prettier execution, Bandit beside Ruff `S`, Vulture, and mutation testing. Those need a reviewed tool lock or a test-owned change. This configuration does not add them.
 
