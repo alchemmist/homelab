@@ -10,9 +10,24 @@ import urllib.parse
 
 
 class DiagnosticFailure(RuntimeError):
-    def __init__(self, event):
+    def __init__(self, event) -> None:
         super().__init__("Observer dependency operation failed")
         self.event = event
+
+
+def classify_network(error: BaseException) -> dict[str, object] | None:
+    """Never use exception strings, URL, headers, body, subject or request data."""
+    if isinstance(error, ssl.SSLCertVerificationError):
+        return {"kind": "tls_certificate"}
+    if isinstance(error, ssl.SSLError):
+        return {"kind": "tls_error"}
+    if isinstance(error, (socket.gaierror, TimeoutError)):
+        return {"kind": "dns_error" if isinstance(error, socket.gaierror) else "timeout"}
+    if isinstance(error, ConnectionRefusedError):
+        return {"kind": "connection_refused"}
+    if isinstance(error, ConnectionError):
+        return {"kind": "connection_error"}
+    return None
 
 
 def classify(error):
@@ -25,18 +40,9 @@ def classify(error):
             if isinstance(error.reason, BaseException)
             else {"kind": "transport_error"}
         )
-    if isinstance(error, ssl.SSLCertVerificationError):
-        return {"kind": "tls_certificate"}
-    if isinstance(error, ssl.SSLError):
-        return {"kind": "tls_error"}
-    if isinstance(error, socket.gaierror):
-        return {"kind": "dns_error"}
-    if isinstance(error, TimeoutError):
-        return {"kind": "timeout"}
-    if isinstance(error, ConnectionRefusedError):
-        return {"kind": "connection_refused"}
-    if isinstance(error, ConnectionError):
-        return {"kind": "connection_error"}
+    mapped = classify_network(error)
+    if mapped is not None:
+        return mapped
     if isinstance(error, json.JSONDecodeError):
         return {"kind": "invalid_json"}
     if isinstance(error, OSError):
@@ -64,7 +70,7 @@ def stage(request):
 
 
 class ObservedHTTP:
-    def __init__(self, inner):
+    def __init__(self, inner) -> None:
         self.inner = inner
 
     @contextlib.contextmanager
@@ -115,7 +121,7 @@ def failure_event(error):
 def run(controller):
     original = controller.opener
 
-    def observed(*args, **kwargs):
+    def observed(*args: object, **kwargs: object) -> ObservedHTTP:
         return ObservedHTTP(original(*args, **kwargs))
 
     controller.opener = observed

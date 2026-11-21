@@ -15,7 +15,7 @@
   добавление без удаления остальных ключей: [короткая инструкция](ssh-user.md).
 - `ansible/playbooks/users.yml` — точный декларативный key set из inventory.
 - `ansible/playbooks/identity-hosts.yml` — защита owner kubeconfig + users playbook.
-- Inventory/group/host vars `homelab_users` — реальные публичные ключи и assignments.
+- [Реестр персональных SSH-учёток](../ansible/inventory/group_vars/Socrat/users.yml): `homelab_owner_account` — защищённый sudo-владелец; `homelab_users` — реальные публичные ключи и assignments.
 - `deploy/identity/access-policy.yaml` — intent ролей, не самостоятельный enforcement.
 - [Опциональный Authentik public-key import](identity-ssh-keys.md) — отдельный
   read-only plan/export и guarded Ansible play; сейчас пустой/выключенный, без

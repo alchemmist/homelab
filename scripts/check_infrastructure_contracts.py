@@ -47,8 +47,8 @@ def check(root=ROOT, write=False):
             raise ValueError("Inventory endpoint drift: " + name)
     relay = c["relayContract"]
 
-    def literals(path):
-        result = {}
+    def literals(path) -> dict[str, object]:
+        result: dict[str, object] = {}
         for statement in ast.parse((root / path).read_text()).body:
             if (
                 isinstance(statement, ast.Assign)
@@ -124,7 +124,7 @@ def check(root=ROOT, write=False):
             value, tree = value[key], scalar_node(tree, key)
         matches = [
             (entry, node)
-            for entry, node in zip(value, tree.value)
+            for entry, node in zip(value, tree.value, strict=True)
             if route["hostname"] in entry.get("hostnames", [])
         ]
         if len(matches) != 1:

@@ -82,9 +82,9 @@ def main():
                 try:
                     with socket.create_connection(("127.0.0.1", port), 0.5):
                         break
-                except OSError:
+                except OSError as exc:
                     if time.monotonic() > deadline:
-                        raise RuntimeError("VPN probe client did not become ready")
+                        raise RuntimeError("VPN probe client did not become ready") from exc
                     time.sleep(0.1)
             result = subprocess.run(
                 [

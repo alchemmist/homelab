@@ -8,7 +8,7 @@ from engine import UnsafeInput
 
 
 class ModelBoundaryTests(unittest.TestCase):
-    def test_retry_schema_failure(self):
+    def test_retry_schema_failure(self) -> None:
         calls = []
         valid = {
             "should_update": True,
@@ -16,7 +16,7 @@ class ModelBoundaryTests(unittest.TestCase):
             "entries": [{"text": "New poem.", "source_paths": ["a"]}],
         }
 
-        def model(prompt, data):
+        def model(prompt, data) -> object:
             calls.append(prompt)
             return {"extra": True} if len(calls) == 1 else valid
 
@@ -26,7 +26,7 @@ class ModelBoundaryTests(unittest.TestCase):
     def test_bad_output_stays_rejected(self):
         calls = []
 
-        def model(prompt, data):
+        def model(prompt, data) -> object:
             calls.append(1)
             return []
 

@@ -14,7 +14,7 @@ CM = next(d for d in DOCS if d['kind'] == 'ConfigMap')
 
 
 class StoragePlatformTest(unittest.TestCase):
-    def test_explicit_dynamic_retained_local_tiers(self):
+    def test_explicit_dynamic_retained_local_tiers(self) -> None:
         for d in yaml.safe_load_all((ROOT / 'deploy/storage/tiers/classes.yaml').read_text()):
             self.assertEqual(d['provisioner'], 'rancher.io/local-path')
             self.assertEqual(d['reclaimPolicy'], 'Retain')
@@ -23,7 +23,7 @@ class StoragePlatformTest(unittest.TestCase):
             self.assertEqual(d['metadata']['annotations']['storageclass.kubernetes.io/is-default-class'], 'false')
             self.assertEqual(d['allowedTopologies'][0]['matchLabelExpressions'][0]['values'], ['socrat-5'])
 
-    def test_preserve_legacy_classes_and_default_node_mapping(self):
+    def test_preserve_legacy_classes_and_default_node_mapping(self) -> None:
         c = json.loads(CM['data']['config.json'])
         self.assertEqual(c['nodePathMap'], [])
         for name in ['local-path', 'lms-db-retain', 'rustfs-retain', 'socrat-bot-retain', 'venice-browser-retain', 'pg-local-retain']:
@@ -33,11 +33,11 @@ class StoragePlatformTest(unittest.TestCase):
         for name in ['local-hdd', 'local-ssd']:
             self.assertIn({'node': 'DEFAULT_PATH_FOR_NON_LISTED_NODES', 'paths': []}, c['storageClassConfigs'][name]['nodePathMap'])
 
-    def test_legacy_is_not_default(self):
+    def test_legacy_is_not_default(self) -> None:
         sc = next(d for d in DOCS if d['kind'] == 'StorageClass')
         self.assertEqual(sc['metadata']['annotations']['storageclass.kubernetes.io/is-default-class'], 'false')
 
-    def run_setup(self, device, marker):
+    def run_setup(self, device, marker) -> tuple[int, bool]:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp); parent = root / 'volumes'; parent.mkdir()
             (parent / '.homelab-filesystem-id').write_text(marker)
@@ -47,28 +47,28 @@ class StoragePlatformTest(unittest.TestCase):
             p = subprocess.run(['sh', '-c', script], env={**os.environ, 'VOL_DIR': str(parent / 'pvc-test'), 'TEST_DEVICE_ID': str(device), 'PATH': str(tools) + ':' + os.environ['PATH']}, capture_output=True, text=True)
             return p.returncode, (parent / 'pvc-test').exists()
 
-    def test_missing_hdd_rejects_even_copied_identity_marker(self):
+    def test_missing_hdd_rejects_even_copied_identity_marker(self) -> None:
         code, created = self.run_setup(2049, '3ec3263e-32e3-4b38-84e6-17cd168244b9')
         self.assertNotEqual(code, 0); self.assertFalse(created)
 
-    def test_wrong_marker_rejects_even_correct_device(self):
+    def test_wrong_marker_rejects_even_correct_device(self) -> None:
         code, created = self.run_setup(2065, 'wrong-filesystem')
         self.assertNotEqual(code, 0); self.assertFalse(created)
 
-    def test_matching_identity_allows_directory_creation(self):
+    def test_matching_identity_allows_directory_creation(self) -> None:
         code, created = self.run_setup(2065, '3ec3263e-32e3-4b38-84e6-17cd168244b9')
         self.assertEqual(code, 0); self.assertTrue(created)
 
-    def test_teardown_guard_precedes_removal(self):
+    def test_teardown_guard_precedes_removal(self) -> None:
         text = CM['data']['teardown']
         self.assertLess(text.index('HDD_DEVICE_MISMATCH'), text.index('rm -rf'))
 
-    def test_rancher_native_cache_can_reach_exact_node5_api(self):
+    def test_rancher_native_cache_can_reach_exact_node5_api(self) -> None:
         text = (ROOT / 'deploy/platform/rancher/public-entry/templates/observer-membership.yaml').read_text()
         self.assertIn('ipBlock: {cidr: 10.250.0.41/32}', text)
         self.assertIn('port: 6443', text)
 
-    def test_archive_day2_refuses_unaccepted_mounts_and_never_restarts(self):
+    def test_archive_day2_refuses_unaccepted_mounts_and_never_restarts(self) -> None:
         text = (ROOT / 'ansible/playbooks/socrat-5-runtime-storage.yml').read_text()
         self.assertIn('Require already accepted archive binds', text)
         self.assertIn('/mnt/files/homelab/openhands-archives/cold-backups', text)
@@ -77,14 +77,14 @@ class StoragePlatformTest(unittest.TestCase):
         self.assertIn('/dev/sdb1[/homelab/openhands-archives/cold-backups]', guard)
         self.assertIn('/dev/sdb1[/homelab/openhands-archives/upgrade-backups]', guard)
 
-    def test_inventory_matches_claim_namespace_not_only_name(self):
+    def test_inventory_matches_claim_namespace_not_only_name(self) -> None:
         spec = importlib.util.spec_from_file_location('audit_storage', ROOT / 'scripts/audit_storage.py')
         module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
         pv = {'metadata': {'name': 'fixture'}, 'spec': {'claimRef': {'namespace': 'a', 'name': 'data'}, 'capacity': {'storage': '1Gi'}, 'persistentVolumeReclaimPolicy': 'Retain'}}
         pods = [{'metadata': {'namespace': ns, 'name': ns}, 'spec': {'nodeName': 'socrat-5', 'volumes': [{'persistentVolumeClaim': {'claimName': 'data'}}]}} for ns in ['a', 'b']]
         self.assertEqual(module.inventory([pv], pods)[0]['consumers'], [{'pod': 'a', 'node': 'socrat-5'}])
 
-    def test_storage_dashboard_keeps_missing_as_unknown(self):
+    def test_storage_dashboard_keeps_missing_as_unknown(self) -> None:
         d = json.loads((ROOT / 'charts/monitoring-k3s/dashboards/storage.json').read_text())
         self.assertEqual(d['uid'], 'socrat-storage')
         for p in d['panels']:

@@ -5,11 +5,11 @@ import base64
 import hashlib
 import json
 import os
-from pathlib import Path
 import sqlite3
 import sys
 import urllib.parse
 import urllib.request
+from pathlib import Path
 
 DATABASES = {"primary": "/srv/x-ui-lab/db/x-ui.db", "legacy": "/etc/x-ui/x-ui.db"}
 TABLES = (
@@ -78,6 +78,21 @@ def normalize_subscription(body):
     return sorted(links)
 
 
+def subscription_identifiers(connection: sqlite3.Connection) -> set[str]:
+    """Collect enabled subscription identifiers from both client tables."""
+    identifiers = set()
+    for row in connection.execute("SELECT settings FROM inbounds WHERE enable = 1"):
+        for client in json.loads(row[0]).get("clients", []):
+            if client.get("enable", True) and client.get("subId"):
+                identifiers.add(client["subId"])
+    for row in connection.execute(
+        "SELECT DISTINCT c.sub_id FROM clients c JOIN client_inbounds ci ON ci.client_id = c.id JOIN inbounds i ON i.id = ci.inbound_id WHERE c.enable = 1 AND i.enable = 1"
+    ):
+        if row[0]:
+            identifiers.add(row[0])
+    return identifiers
+
+
 def subscriptions(connection):
     settings = dict(connection.execute("SELECT key, value FROM settings"))
     if settings.get("subCertFile") or settings.get("subKeyFile"):
@@ -89,16 +104,7 @@ def subscriptions(connection):
     if host not in ("127.0.0.1", "172.18.0.1"):
         raise ValueError("Unexpected local subscription address")
     path = settings.get("subPath", "/sub/")
-    identifiers = set()
-    for row in connection.execute("SELECT settings FROM inbounds WHERE enable = 1"):
-        for client in json.loads(row[0]).get("clients", []):
-            if client.get("enable", True) and client.get("subId"):
-                identifiers.add(client["subId"])
-    for row in connection.execute(
-        "SELECT DISTINCT c.sub_id FROM clients c JOIN client_inbounds ci ON ci.client_id = c.id JOIN inbounds i ON i.id = ci.inbound_id WHERE c.enable = 1 AND i.enable = 1"
-    ):
-        if row[0]:
-            identifiers.add(row[0])
+    identifiers = subscription_identifiers(connection)
     if not identifiers:
         raise ValueError("No enabled subscriptions found")
     result = {}

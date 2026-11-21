@@ -45,6 +45,78 @@ def ssh_port(node):
     raise RuntimeError(f"No SSH listener on {node['name']} ({node['address']})")
 
 
+def _reconcile_node(config, prefix, mappings, owned, node):
+    """Add or refresh the port mapping for one managed SSH node."""
+    port = ssh_port(node)
+    address = node["address"]
+    if node.get("relay", False):
+        address = config["gateway_address"]
+        port = node["external_port"]
+    description = "homelab-ssh-" + node["name"]
+    existing = mappings.get(node["external_port"])
+    if existing and existing[:2] == (address, port):
+        owned[str(node["external_port"])] = [address, port]
+        print(
+            f"{node['name']}: {node['external_port']} -> {address}:{port} (present)",
+            flush=True,
+        )
+        return
+    if existing:
+        if existing[2] != description and owned.get(str(node["external_port"])) != list(
+            existing[:2]
+        ):
+            raise RuntimeError("External port is occupied by an unmanaged mapping")
+        subprocess.run(
+            prefix + ["-d", str(node["external_port"]), "TCP"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=True,
+        )
+    command = prefix + [
+        "-e",
+        description,
+        "-a",
+        address,
+        str(port),
+        str(node["external_port"]),
+        "TCP",
+        "0",
+    ]
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, timeout=15)
+        expected = (
+            f"external {config['external_address']}:{node['external_port']} TCP "
+            f"is redirected to internal {address}:{port}"
+        )
+        if result.returncode or expected not in result.stdout:
+            raise RuntimeError(result.stdout.strip() + "\n" + result.stderr.strip())
+    except (OSError, RuntimeError, subprocess.SubprocessError):
+        if existing:
+            try:
+                subprocess.run(
+                    prefix
+                    + [
+                        "-e",
+                        existing[2],
+                        "-a",
+                        existing[0],
+                        str(existing[1]),
+                        str(node["external_port"]),
+                        "TCP",
+                        "0",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
+                )
+            except (OSError, subprocess.SubprocessError) as error:
+                print(f"Rollback failed for {node['name']}: {error}", file=sys.stderr)
+        raise
+    owned[str(node["external_port"])] = [address, port]
+    print(f"{node['name']}: {node['external_port']} -> {address}:{port}", flush=True)
+
+
 def reconcile(config):
     prefix = ["upnpc", "-u", config["router_description"]]
     listing = subprocess.run(prefix + ["-l"], capture_output=True, text=True, timeout=15)
@@ -60,77 +132,10 @@ def reconcile(config):
         )
     }
     owned = json.loads(STATE.read_text()) if STATE.exists() else {}
-    errors = []
+    errors: list[str] = []
     for node in config["nodes"]:
         try:
-            port = ssh_port(node)
-            address = node["address"]
-            if node.get("relay", False):
-                address = config["gateway_address"]
-                port = node["external_port"]
-            description = "homelab-ssh-" + node["name"]
-            existing = mappings.get(node["external_port"])
-            if existing and existing[:2] == (address, port):
-                owned[str(node["external_port"])] = [address, port]
-                print(
-                    f"{node['name']}: {node['external_port']} -> {address}:{port} (present)",
-                    flush=True,
-                )
-                continue
-            if existing:
-                if existing[2] != description and owned.get(str(node["external_port"])) != list(
-                    existing[:2]
-                ):
-                    raise RuntimeError("External port is occupied by an unmanaged mapping")
-                subprocess.run(
-                    prefix + ["-d", str(node["external_port"]), "TCP"],
-                    capture_output=True,
-                    text=True,
-                    timeout=15,
-                    check=True,
-                )
-            command = prefix + [
-                "-e",
-                description,
-                "-a",
-                address,
-                str(port),
-                str(node["external_port"]),
-                "TCP",
-                "0",
-            ]
-            try:
-                result = subprocess.run(command, capture_output=True, text=True, timeout=15)
-                expected = (
-                    f"external {config['external_address']}:{node['external_port']} TCP "
-                    f"is redirected to internal {address}:{port}"
-                )
-                if result.returncode or expected not in result.stdout:
-                    raise RuntimeError(result.stdout.strip() + "\n" + result.stderr.strip())
-            except (OSError, RuntimeError, subprocess.SubprocessError):
-                if existing:
-                    try:
-                        subprocess.run(
-                            prefix
-                            + [
-                                "-e",
-                                existing[2],
-                                "-a",
-                                existing[0],
-                                str(existing[1]),
-                                str(node["external_port"]),
-                                "TCP",
-                                "0",
-                            ],
-                            capture_output=True,
-                            text=True,
-                            timeout=15,
-                        )
-                    except (OSError, subprocess.SubprocessError) as error:
-                        print(f"Rollback failed for {node['name']}: {error}", file=sys.stderr)
-                raise
-            owned[str(node["external_port"])] = [address, port]
-            print(f"{node['name']}: {node['external_port']} -> {address}:{port}", flush=True)
+            _reconcile_node(config, prefix, mappings, owned, node)
         except (OSError, RuntimeError, subprocess.SubprocessError) as error:
             errors.append(f"{node['name']}: {error}")
     STATE.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
