@@ -1,8 +1,8 @@
 """Tests for public ingress redirect rules."""
 
 import importlib.util
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 SPEC = importlib.util.spec_from_file_location(
     "ingress", Path(__file__).resolve().parents[1] / "scripts/check-public-ingress.py"

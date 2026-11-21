@@ -2,9 +2,9 @@
 
 import base64
 import importlib.util
-from pathlib import Path
 import sqlite3
 import unittest
+from pathlib import Path
 
 SPEC = importlib.util.spec_from_file_location(
     "verify_vpn",

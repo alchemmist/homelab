@@ -1,12 +1,11 @@
 """Offline contracts for GPU metric text and failure replacement."""
 
 import importlib.util
-from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
-
 
 SOURCE = Path(__file__).resolve().parents[1] / "ansible/roles/monitoring_gpu/files/collect_gpu.py"
 SPEC = importlib.util.spec_from_file_location("collect_gpu", SOURCE)
