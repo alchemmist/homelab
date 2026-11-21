@@ -15,6 +15,10 @@ import sys
 
 CONFIG = Path.home() / ".config/homelab/ssh-gateway.json"
 STATE = Path.home() / ".local/state/homelab/ssh-mappings.json"
+INVALID_NODE = "Invalid node name"
+INVALID_EXTERNAL_PORT = "Invalid or duplicate external port"
+INVALID_SERVER_PORTS = "Invalid server ports"
+UNMANAGED_MAPPING = "External port is occupied by an unmanaged mapping"
 
 
 def load_config(path):
@@ -22,13 +26,13 @@ def load_config(path):
     ports = set()
     for node in config["nodes"]:
         if not re.fullmatch(r"socrat-\d+", node["name"]):
-            raise ValueError("Invalid node name")
+            raise ValueError(INVALID_NODE)
         ipaddress.IPv4Address(node["address"])
         if not 1024 <= node["external_port"] <= 65535 or node["external_port"] in ports:
-            raise ValueError("Invalid or duplicate external port")
+            raise ValueError(INVALID_EXTERNAL_PORT)
         ports.add(node["external_port"])
         if not node["ports"] or any(not 1 <= port <= 65535 for port in node["ports"]):
-            raise ValueError("Invalid server ports")
+            raise ValueError(INVALID_SERVER_PORTS)
     ipaddress.IPv4Address(config["gateway_address"])
     return config
 
@@ -42,7 +46,8 @@ def ssh_port(node):
                     return port
         except OSError:
             continue
-    raise RuntimeError(f"No SSH listener on {node['name']} ({node['address']})")
+    message = f"No SSH listener on {node['name']} ({node['address']})"
+    raise RuntimeError(message)
 
 
 def _reconcile_node(config, prefix, mappings, owned, node):
@@ -65,7 +70,7 @@ def _reconcile_node(config, prefix, mappings, owned, node):
         if existing[2] != description and owned.get(str(node["external_port"])) != list(
             existing[:2]
         ):
-            raise RuntimeError("External port is occupied by an unmanaged mapping")
+            raise RuntimeError(UNMANAGED_MAPPING)
         subprocess.run(
             prefix + ["-d", str(node["external_port"]), "TCP"],
             capture_output=True,

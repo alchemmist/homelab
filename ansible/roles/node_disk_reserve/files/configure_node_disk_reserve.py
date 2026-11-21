@@ -16,6 +16,14 @@ import xml.etree.ElementTree as ET
 SYNCTHING_CONFIG = Path("/srv/syncthing/config/config.xml")
 KUBELET_CONFIG = Path("/var/lib/rancher/k3s/agent/etc/kubelet.conf.d/99-homelab-disk-reserve.conf")
 RESULT = Path("/var/lib/homelab/node-disk-reserve-result.json")
+MISSING_FOLDER = "Missing Syncthing folder: "
+API_KEY_MISSING = "Syncthing API key is missing"
+PAUSE_UNCONFIRMED = "Syncthing did not confirm folder pause"
+ROOT_REQUIRED = "Root authentication is required"
+WRONG_NODE = "Policy belongs to another node"
+INVALID_CONFIG = "Invalid kubelet configuration type"
+INVALID_THRESHOLDS = "Invalid image garbage collection thresholds"
+CONFIG_DIR_MISSING = "K3s kubelet configuration directory does not exist"
 
 
 def atomic_write(path, content, mode):
@@ -36,7 +44,7 @@ def pause_folder(config_path, folder_id):
     tree = ET.fromstring(config_path.read_bytes())
     folder = next((f for f in tree.findall("folder") if f.get("id") == folder_id), None)
     if folder is None:
-        raise RuntimeError(f"Missing Syncthing folder: {folder_id}")
+        raise RuntimeError(MISSING_FOLDER + folder_id)
     paused = folder.find("paused")
     if paused is not None and paused.text == "true":
         return False
@@ -44,7 +52,7 @@ def pause_folder(config_path, folder_id):
     if running:
         key = tree.findtext("gui/apikey")
         if not key:
-            raise RuntimeError("Syncthing API key is missing")
+            raise RuntimeError(API_KEY_MISSING)
         endpoint = "http://127.0.0.1:8384/rest/config/folders/" + folder_id
         request = urllib.request.Request(
             endpoint,
@@ -57,7 +65,7 @@ def pause_folder(config_path, folder_id):
         request = urllib.request.Request(endpoint, headers={"X-API-Key": key})
         with urllib.request.urlopen(request, timeout=10) as response:
             if not json.load(response)["paused"]:
-                raise RuntimeError("Syncthing did not confirm folder pause")
+                raise RuntimeError(PAUSE_UNCONFIRMED)
     else:
         if paused is None:
             paused = ET.SubElement(folder, "paused")
@@ -72,20 +80,20 @@ def pause_folder(config_path, folder_id):
 
 def apply(policy):
     if os.geteuid() != 0:
-        raise RuntimeError("Root authentication is required")
+        raise RuntimeError(ROOT_REQUIRED)
     if socket.gethostname().split(".")[0] != policy["node"]:
-        raise RuntimeError("Policy belongs to another node")
+        raise RuntimeError(WRONG_NODE)
     service = policy.get("service", "k3s-agent.service")
     config = policy["kubelet"]
     if (
         config["kind"] != "KubeletConfiguration"
         or config["apiVersion"] != "kubelet.config.k8s.io/v1beta1"
     ):
-        raise RuntimeError("Invalid kubelet configuration type")
+        raise RuntimeError(INVALID_CONFIG)
     if not 0 < config["imageGCLowThresholdPercent"] < config["imageGCHighThresholdPercent"] < 100:
-        raise RuntimeError("Invalid image garbage collection thresholds")
+        raise RuntimeError(INVALID_THRESHOLDS)
     if not KUBELET_CONFIG.parent.is_dir():
-        raise RuntimeError("K3s kubelet configuration directory does not exist")
+        raise RuntimeError(CONFIG_DIR_MISSING)
     backup = Path("/var/backups/homelab-node-disk-reserve") / datetime.now(timezone.utc).strftime(
         "%Y%m%dT%H%M%S.%fZ"
     )
