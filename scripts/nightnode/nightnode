@@ -34,8 +34,10 @@ load_config() {
       [[ "${key}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || die "config key is invalid: ${key}"
       if [[ "${value}" == \"* || "${value}" == \'* ]]; then
         local quote="${value:0:1}"
-        [[ "${value: -1}" == "${quote}" ]] || die "config value has an unmatched quote: ${key}"
-        value="${value:1:${#value}-2}"
+        [[ ${#value} -ge 2 && "${value: -1}" == "${quote}" ]] || die "config value has an unmatched quote: ${key}"
+        local inner="${value:1:${#value}-2}"
+        [[ "${inner}" != *"${quote}"* ]] || die "config value has an unmatched quote: ${key}"
+        value="${inner}"
       fi
       export "${key}=${value}"
     done < "${CONFIG_FILE}"
