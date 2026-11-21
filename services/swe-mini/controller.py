@@ -13,6 +13,7 @@ import sqlite3
 import threading
 import time
 import uuid
+import zlib
 
 import jwt
 import requests
@@ -311,7 +312,7 @@ def tick():
         log = CORE.read_namespaced_pod_log(pods[0].metadata.name, NS, limit_bytes=2_000_000)
         try:
             result = decode_result(log, signing_key(run["id"], run["state"]))
-        except (KeyError, TypeError, ValueError, OSError):
+        except (KeyError, TypeError, ValueError, OSError, zlib.error):
             if run["state"] == "review":
                 try:
                     CORE.delete_namespaced_config_map(run["job"] + "-proposal", NS)
