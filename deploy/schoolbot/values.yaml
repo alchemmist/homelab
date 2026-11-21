@@ -23,7 +23,8 @@ cookieSecure: true
 adminUi: false
 updateMode: polling
 timezone: Europe/Moscow
-# Role and database schoolbot are created on pg-internal. Password stays in the secret.
+# CNPG creates role schoolbot and stores it in secret pg-internal-schoolbot
+# in namespace postgres. Copy username and password into schoolbot-env.
 database:
   host: pg-internal-rw.postgres.svc.cluster.local
   port: 5432

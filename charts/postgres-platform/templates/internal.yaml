@@ -20,4 +20,20 @@ spec:
       kubernetes.io/hostname: socrat-5
   resources:
     requests: {cpu: 100m, memory: 256Mi}
+  managed:
+    roles:
+      - name: schoolbot
+        ensure: present
+        login: true
+        comment: schoolbot application
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: schoolbot
+spec:
+  cluster:
+    name: pg-internal
+  name: schoolbot
+  owner: schoolbot
 {{- end }}
