@@ -16,10 +16,12 @@ class Bot:
         self.calls = 0
 
     def files(self, before, after):
+        """Exercise the expected behavior."""
         self.calls += 1
         return self._files
 
     def text(self, sha, path):
+        """Exercise the expected behavior."""
         if path.endswith("openapi.yaml"):
             return 'openapi: 3.0.3\ninfo:\n  title: x\npaths:\n  /v1/messages:\n    post:\n      summary: Send\n      responses:\n        "200":\n          description: ok\ncomponents:\n  schemas: {}\n'
         return Path("/Users/antonmoss/code/socrat-bot/scripts/render_wiki.py").read_text()
@@ -31,9 +33,11 @@ class Lab:
         self.page = "old"
 
     def read_page(self, ref="main"):
+        """Exercise the expected behavior."""
         return self.page, "blob"
 
     def propose(self, after, markdown):
+        """Exercise the expected behavior."""
         self.written = markdown
         return {
             "status": "created",
@@ -42,6 +46,7 @@ class Lab:
         }
 
     def automation_prs(self, keep):
+        """Exercise the expected behavior."""
         return [
             {
                 "number": 4,
@@ -52,11 +57,13 @@ class Lab:
         ]
 
     def close(self, number, survivor):
+        """Exercise the expected behavior."""
         self.closed.append((number, survivor))
 
 
 class Flow(unittest.TestCase):
     def test_ignores_other_branches_without_github(self):
+        """Exercise the expected behavior."""
         bot = Bot([{"filename": "openapi.yaml"}])
         self.assertEqual(
             stage("check", {"ref": "refs/heads/dev", "before": BEFORE, "after": SHA}, bot=bot), []
@@ -64,11 +71,13 @@ class Flow(unittest.TestCase):
         self.assertEqual(bot.calls, 0)
 
     def test_ignores_push_that_does_not_touch_the_spec(self):
+        """Exercise the expected behavior."""
         event = {"ref": "refs/heads/main", "before": BEFORE, "after": SHA}
         self.assertFalse(spec_changed(event, [{"filename": "README.md"}]))
         self.assertEqual(stage("check", event, bot=Bot([{"filename": "README.md"}])), [])
 
     def test_render_and_pr_and_close(self):
+        """Exercise the expected behavior."""
         event = {"ref": "refs/heads/main", "before": BEFORE, "after": SHA}
         checked = stage("check", event, bot=Bot([{"filename": "openapi.yaml"}]))
         rendered = stage("render", checked[0], bot=Bot([]))
@@ -87,9 +96,11 @@ class Flow(unittest.TestCase):
         self.assertEqual(done[0]["closed"], [4])
 
     def test_model_cannot_close_unlisted_prs(self):
+        """Exercise the expected behavior."""
         self.assertEqual(select_closable({"close": [3, "4"]}, [{"number": 3}], None), [3])
 
     def test_dry_run_does_not_close(self):
+        """Exercise the expected behavior."""
         lab = Lab()
         self.assertEqual(
             stage("close-older", {"status": "dry_run", "after": SHA}, homelab=lab, write=False), []
@@ -97,6 +108,7 @@ class Flow(unittest.TestCase):
         self.assertEqual(lab.closed, [])
 
     def test_bad_page_rejected(self):
+        """Exercise the expected behavior."""
         with self.assertRaises(UnsafeInput):
             page_ok("hello")
 

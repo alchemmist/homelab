@@ -5,10 +5,13 @@ from mcp.server.mcpserver import MCPServer
 
 mcp = MCPServer('monori-github-read')
 class NoRedirect(HTTPRedirectHandler):
-    def redirect_request(self, *args): return None
+    def redirect_request(self, *args):
+        """Reject redirects for predictable API responses."""
+        return None
 
 
 def read(path):
+    """Exercise the expected behavior."""
     req = Request('https://api.github.com/repos/alchemmist/monori/' + path,
                   headers={'User-Agent':'socrat-monori-review','Accept':'application/vnd.github+json'})
     with build_opener(ProxyHandler({}), NoRedirect()).open(req, timeout=12) as r:

@@ -15,26 +15,32 @@ SPEC.loader.exec_module(GUARD)
 
 class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
     async def test_success_preserves_page_text(self):
+        """Exercise the expected behavior."""
         with patch.object(GUARD, "FETCH_WORKER", 'import json; print(json.dumps("page text"))'):
             self.assertEqual(await GUARD.bounded_fetch({"url": "https://example.com"}), "page text")
 
     async def test_empty_page_is_explicit_error(self):
+        """Exercise the expected behavior."""
         with patch.object(GUARD, "FETCH_WORKER", 'import json; print(json.dumps(""))'):
             self.assertIn("error", await GUARD.bounded_fetch({"url": "https://example.com"}))
 
     async def test_worker_failure_is_explicit_error(self):
+        """Exercise the expected behavior."""
         with patch.object(GUARD, "FETCH_WORKER", "raise SystemExit(2)"):
             self.assertIn("error", await GUARD.bounded_fetch({"url": "https://example.com"}))
 
     async def test_malformed_worker_response_is_explicit_error(self):
+        """Exercise the expected behavior."""
         with patch.object(GUARD, "FETCH_WORKER", 'print("not json")'):
             self.assertIn("error", await GUARD.bounded_fetch({"url": "https://example.com"}))
 
     async def test_worker_start_failure_is_explicit_error(self):
+        """Exercise the expected behavior."""
         with patch.object(GUARD.asyncio, "create_subprocess_exec", AsyncMock(side_effect=OSError)):
             self.assertIn("error", await GUARD.bounded_fetch({"url": "https://example.com"}))
 
     async def test_upstream_refusal_does_not_start_fetch(self):
+        """Exercise the expected behavior."""
         async def original(form_data, metadata, event_caller, call):
             return {"error": "Tool call was not approved"}
 
@@ -50,6 +56,7 @@ class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
             fetch.assert_not_awaited()
 
     async def check_termination(self, cancel):
+        """Exercise the expected behavior."""
         original = asyncio.create_subprocess_exec
         processes = []
         started = asyncio.Event()
@@ -79,12 +86,15 @@ class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
             self.assertNotEqual(processes[0].returncode, 0)
 
     async def test_deadline_kills_and_reaps_worker(self):
+        """Exercise the expected behavior."""
         await self.check_termination(False)
 
     async def test_stop_kills_and_reaps_worker(self):
+        """Exercise the expected behavior."""
         await self.check_termination(True)
 
     async def test_only_builtin_fetch_is_intercepted(self):
+        """Exercise the expected behavior."""
         async def original(form_data, metadata, event_caller, call):
             tool = metadata["tools"]["fetch_url"]
             result = await tool["callable"](**json.loads(call["function"]["arguments"]))
@@ -114,6 +124,7 @@ class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
             fetch.assert_awaited_once()
 
     async def test_invalid_arguments_use_upstream_validation(self):
+        """Exercise the expected behavior."""
         original = AsyncMock(return_value="upstream")
         original.__globals__ = {}
         execute = GUARD.guarded_execute(original)

@@ -18,6 +18,7 @@ HELM = os.environ.get("HELM_BIN") or shutil.which("helm")
 class XuiWorkloadTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        """Exercise the expected behavior."""
         result = subprocess.run(
             [HELM, "template", "x-ui", str(CHART), "--namespace", "x-ui"],
             check=True,
@@ -31,6 +32,7 @@ class XuiWorkloadTests(unittest.TestCase):
         cls.volumes = {item["name"]: item["hostPath"] for item in cls.pod["volumes"]}
 
     def test_single_workload_cannot_create_concurrent_database_writers(self):
+        """Exercise the expected behavior."""
         self.assertEqual(
             [item["metadata"]["name"] for item in self.documents if item["kind"] == "Deployment"],
             ["x-ui"],
@@ -43,6 +45,7 @@ class XuiWorkloadTests(unittest.TestCase):
         self.assertEqual(self.pod["nodeSelector"], {"kubernetes.io/hostname": "socrat-2"})
 
     def test_existing_database_and_runtime_paths_remain_isolated(self):
+        """Exercise the expected behavior."""
         expected = {
             "primary": {
                 "/etc/x-ui": "/srv/x-ui-lab/db",
@@ -61,6 +64,7 @@ class XuiWorkloadTests(unittest.TestCase):
                 self.assertEqual(self.volumes[database["name"]]["type"], "Directory")
 
     def test_versions_and_probe_endpoints_are_preserved(self):
+        """Exercise the expected behavior."""
         expected = {
             "primary": (
                 "1628adbd9bed680d25d6f714bef4a20f132105f4612ea294952f6665dad32e5b",
@@ -86,6 +90,7 @@ class XuiWorkloadTests(unittest.TestCase):
         self.assertTrue(all(len(name) <= 15 for name in names))
 
     def test_service_selects_unified_pod_and_primary_ports(self):
+        """Exercise the expected behavior."""
         service = next(item for item in self.documents if item["kind"] == "Service")
         self.assertEqual(
             service["spec"]["selector"], self.deployment["spec"]["template"]["metadata"]["labels"]

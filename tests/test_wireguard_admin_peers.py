@@ -12,6 +12,7 @@ TASKS = TEMPLATE_DIR.parent / "tasks/main.yml"
 
 class WireGuardTemplateTests(unittest.TestCase):
     def setUp(self):
+        """Exercise the expected behavior."""
         if shutil.which("ansible-playbook") is None:
             self.skipTest("ansible-playbook is unavailable")
         self.nodes = {
@@ -29,6 +30,7 @@ class WireGuardTemplateTests(unittest.TestCase):
         }
 
     def render(self, host, clients=None, nodes=None, peer_endpoints=None):
+        """Exercise the expected behavior."""
         variables = {
             "inventory_hostname": host,
             "wg_socrat_nodes": nodes or self.nodes,
@@ -72,6 +74,7 @@ class WireGuardTemplateTests(unittest.TestCase):
             return output.read_text()
 
     def test_admin_client_is_rendered_as_a_host_route_without_endpoint(self):
+        """Exercise the expected behavior."""
         config = self.render(
             "socrat-2",
             {
@@ -82,16 +85,19 @@ class WireGuardTemplateTests(unittest.TestCase):
         self.assertNotIn("Endpoint =", config.split("# macbook", 1)[1].split("[Peer]", 1)[0])
 
     def test_local_peer_endpoint_override_can_omit_unreachable_lan_endpoint(self):
+        """Exercise the expected behavior."""
         config = self.render("socrat-2", peer_endpoints={"socrat-2": {"socrat-1": ""}})
         peer = config.split("# socrat-1", 1)[1].split("[Peer]", 1)[0]
         self.assertNotIn("Endpoint =", peer)
 
     def test_existing_peer_endpoint_remains_the_default(self):
+        """Exercise the expected behavior."""
         config = self.render("socrat-2")
         peer = config.split("# socrat-1", 1)[1].split("[Peer]", 1)[0]
         self.assertIn("Endpoint = 192.168.0.24:51830", peer)
 
     def test_selected_key_is_validated_before_configuration_render(self):
+        """Exercise the expected behavior."""
         tasks = TASKS.read_text()
         self.assertLess(
             tasks.index("Verify selected wg-socrat public key before applying changes"),

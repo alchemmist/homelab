@@ -18,12 +18,14 @@ UNIT = (ROLE / "templates/wireguard-private-web.service.j2").read_text()
 
 class WireGuardPrivateWebTests(unittest.TestCase):
     def test_defaults_are_disabled_and_use_nftables(self):
+        """Exercise the expected behavior."""
         self.assertIn("wireguard_private_web_enabled: false", DEFAULTS)
         self.assertIn("Debian: nftables", DEFAULTS)
         self.assertIn("Archlinux: nftables", DEFAULTS)
         self.assertIn("wireguard_private_web_proxy_port: 18443", DEFAULTS)
 
     def test_installs_and_starts_dedicated_unit(self):
+        """Exercise the expected behavior."""
         self.assertIn("ansible.builtin.apt", TASKS)
         self.assertIn("community.general.pacman", TASKS)
         self.assertIn("systemd_service", TASKS)
@@ -35,6 +37,7 @@ class WireGuardPrivateWebTests(unittest.TestCase):
         self.assertNotIn("ExecStop=", UNIT)
 
     def test_owns_only_its_nft_table_and_nat_hooks(self):
+        """Exercise the expected behavior."""
         self.assertIn("table={{ wireguard_private_web_table | quote }}", SCRIPT)
         self.assertIn("delete table ip $table", SCRIPT)
         self.assertIn(
@@ -49,12 +52,14 @@ class WireGuardPrivateWebTests(unittest.TestCase):
         self.assertNotIn("flush ruleset", SCRIPT)
 
     def test_validates_before_apply_and_preserves_an_owned_backup(self):
+        """Exercise the expected behavior."""
         self.assertIn('nft" -c -f "$tmp"', SCRIPT)
         self.assertIn('cp "$old" "$backup"', SCRIPT)
         self.assertIn('nft" -f "$tmp"', SCRIPT)
         self.assertNotIn('nft" -f "$backup"', SCRIPT)
 
     def test_failed_atomic_apply_does_not_append_backup_rules(self):
+        """Exercise the expected behavior."""
         with tempfile.TemporaryDirectory() as directory:
             directory = Path(directory)
             state = directory / "state.json"

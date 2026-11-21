@@ -42,6 +42,7 @@ GOOD = {"path": "/tmp/example", "replacements": [{"target": "old", "replacement"
 
 class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
+        """Exercise the expected behavior."""
         self.metadata = {
             "message_id": "one",
             "tools": {"replace_file_content": {"type": "terminal", "spec": {"parameters": SCHEMA}}},
@@ -62,6 +63,7 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
         self.execute = GUARD.guarded_execute(execute)
 
     async def call(self, params=BAD, raw=None):
+        """Exercise the expected behavior."""
         return await self.execute(
             {},
             self.metadata,
@@ -75,6 +77,7 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_nested_validation_is_concise_and_never_executes(self):
+        """Exercise the expected behavior."""
         result = await self.call()
         error = result[1]["error"]
         self.assertIn("target, replacement", error)
@@ -84,6 +87,7 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
         self.assertLess(len(error), 600)
 
     async def test_third_identical_invalid_call_stops_despite_formatting(self):
+        """Exercise the expected behavior."""
         await self.call()
         await self.call(raw=json.dumps(BAD, sort_keys=True, indent=4))
         self.assertFalse(GUARD.guard_stopped(self.metadata))
@@ -94,11 +98,13 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.calls, 0)
 
     async def test_valid_calls_are_unchanged(self):
+        """Exercise the expected behavior."""
         result = await self.call(GOOD)
         self.assertEqual(result[1], self.result)
         self.assertEqual(self.calls, 1)
 
     async def test_unrelated_success_does_not_hide_same_invalid_call(self):
+        """Exercise the expected behavior."""
         await self.call()
         await self.call(GOOD)
         await self.call()
@@ -108,12 +114,14 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.calls, 2)
 
     async def test_corrected_arguments_allow_recovery(self):
+        """Exercise the expected behavior."""
         await self.call()
         await self.call(GOOD)
         self.assertEqual(self.calls, 1)
         self.assertFalse(GUARD.guard_stopped(self.metadata))
 
     async def test_identical_valid_calls_warn_then_stop(self):
+        """Exercise the expected behavior."""
         await self.call(GOOD)
         await self.call(GOOD)
         warned = await self.call(GOOD)
@@ -127,6 +135,7 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(GUARD.guard_stop_message(self.metadata), GUARD.REPEAT_STOP_MESSAGE)
 
     async def test_alternating_valid_calls_escalate_to_stop(self):
+        """Exercise the expected behavior."""
         other = {"path": "/tmp/other", "replacements": [{"target": "x", "replacement": "y"}]}
         executed = 0
         for _ in range(6):
@@ -143,6 +152,7 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
         self.assertGreaterEqual(self.calls, 4)
 
     async def test_varied_calls_reset_repeat_warning(self):
+        """Exercise the expected behavior."""
         other = {"path": "/tmp/other", "replacements": []}
         await self.call(GOOD)
         await self.call(GOOD)
@@ -165,6 +175,7 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(stopped[1]["error"], GUARD.REPEAT_STOP_MESSAGE)
 
     async def test_alias_resolved_before_validation(self):
+        """Exercise the expected behavior."""
         def resolve(call, tools):
             call["function"]["name"] = "replace_file_content"
             return None
@@ -180,11 +191,13 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.calls, 0)
 
     async def test_non_terminal_is_not_intercepted(self):
+        """Exercise the expected behavior."""
         self.metadata["tools"]["replace_file_content"]["type"] = "external"
         await self.call()
         self.assertEqual(self.calls, 1)
 
     async def test_next_message_resets_guard(self):
+        """Exercise the expected behavior."""
         for _ in range(3):
             await self.call()
         self.metadata["message_id"] = "two"
@@ -193,12 +206,14 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(GUARD.guard_stopped(self.metadata))
 
     async def test_chats_are_isolated(self):
+        """Exercise the expected behavior."""
         for _ in range(3):
             await self.call()
         other = {"message_id": "one", "tools": self.metadata["tools"]}
         self.assertFalse(GUARD.guard_stopped(other))
 
     async def test_malformed_json_and_nonobject_safe(self):
+        """Exercise the expected behavior."""
         result = await self.call(raw='{"unfinished":')
         self.assertIn("complete JSON", result[1]["error"])
         result = await self.call(raw="[]")
@@ -206,6 +221,7 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.calls, 0)
 
     async def test_backend_422_compacted_and_bounded(self):
+        """Exercise the expected behavior."""
         self.result = ({"error": 'HTTP error 422: {"input":"PRIVATE CODE"}'}, None)
         for _ in range(3):
             result = await self.call(GOOD)
@@ -214,6 +230,7 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.calls, 3)
 
     async def test_backend_other_errors_do_not_count(self):
+        """Exercise the expected behavior."""
         self.result = {"error": "HTTP error 503: unavailable"}
         first = await self.call(GOOD)
         second = await self.call(GOOD)
@@ -229,6 +246,7 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(GUARD.guard_state(self.metadata)["failures"], {})
 
     def test_internal_refs_are_validated(self):
+        """Exercise the expected behavior."""
         schema = {
             "$defs": {"value": {"type": "string"}},
             "type": "object",
@@ -237,10 +255,12 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("expected type", GUARD.validation_problem({"name": 1}, schema))
 
     def test_patcher_rejects_changed_upstream(self):
+        """Exercise the expected behavior."""
         with self.assertRaises(ValueError):
             PATCHER.patch("async def changed():\n    pass\n")
 
     def test_patch_preserves_syntax_and_stop_before_continuation(self):
+        """Exercise the expected behavior."""
         source = (
             PATCHER.FUNCTION
             + "    pass\n\nasync def example():\n    while True:\n"
@@ -268,6 +288,7 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
 
 class NoProgressRoundTests(unittest.TestCase):
     def call(self, name, error):
+        """Exercise the expected behavior."""
         return [
             {"type": "message", "status": "in_progress"},
             {
@@ -286,6 +307,7 @@ class NoProgressRoundTests(unittest.TestCase):
         ]
 
     def test_three_identical_unresolved_rounds_stop(self):
+        """Exercise the expected behavior."""
         metadata = {"message_id": "m", "tools": {}}
         for _ in range(2):
             GUARD.record_no_progress_round(
@@ -298,6 +320,7 @@ class NoProgressRoundTests(unittest.TestCase):
         self.assertEqual(GUARD.guard_stop_message(metadata), GUARD.NO_PROGRESS_STOP_MESSAGE)
 
     def test_resolving_call_resets_no_progress(self):
+        """Exercise the expected behavior."""
         metadata = {"message_id": "m", "tools": {}}
         for _ in range(2):
             GUARD.record_no_progress_round(
@@ -318,6 +341,7 @@ class NoProgressRoundTests(unittest.TestCase):
         self.assertFalse(GUARD.guard_stopped(metadata))
 
     def test_alternating_unresolved_rounds_stop(self):
+        """Exercise the expected behavior."""
         metadata = {"message_id": "m", "tools": {}}
         rounds = [
             self.call("a", "Error: Tool not found"),
@@ -329,6 +353,7 @@ class NoProgressRoundTests(unittest.TestCase):
         self.assertEqual(GUARD.guard_stop_message(metadata), GUARD.NO_PROGRESS_STOP_MESSAGE)
 
     def test_changing_errors_do_not_stop(self):
+        """Exercise the expected behavior."""
         metadata = {"message_id": "m", "tools": {}}
         errors = [
             "Error: Tool not found",
@@ -341,12 +366,14 @@ class NoProgressRoundTests(unittest.TestCase):
         self.assertFalse(GUARD.guard_stopped(metadata))
 
     def test_round_without_tool_outputs_is_ignored(self):
+        """Exercise the expected behavior."""
         metadata = {"message_id": "m", "tools": {}}
         GUARD.record_no_progress_round(metadata, [{"type": "message", "content": []}])
         self.assertFalse(GUARD.guard_stopped(metadata))
         self.assertIsNone(GUARD.guard_state(metadata).get("no_progress"))
 
     def test_non_list_output_is_safe(self):
+        """Exercise the expected behavior."""
         metadata = {"message_id": "m", "tools": {}}
         GUARD.record_no_progress_round(metadata, None)
         self.assertFalse(GUARD.guard_stopped(metadata))

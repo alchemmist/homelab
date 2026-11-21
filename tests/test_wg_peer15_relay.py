@@ -17,6 +17,7 @@ class EndpointTests(unittest.TestCase):
     """Synthetic config checks and the static relay service contract."""
 
     def config(self):
+        """Exercise the expected behavior."""
         return (
             "[Interface]\nPrivateKey = SYNTHETIC-NOT-A-KEY\nListenPort = 51830\n\n"
             "[Peer]\nPublicKey = other-peer\nEndpoint = 127.0.0.1:51840\n\n"

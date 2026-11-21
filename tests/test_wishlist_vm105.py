@@ -5,6 +5,7 @@ R = pathlib.Path(__file__).resolve().parents[1]
 
 class WishlistMove(unittest.TestCase):
     def test_new_storage_is_local_retained_prebound_and_not_old_claim(self):
+        """Exercise the expected behavior."""
         pv, pvc = list(yaml.safe_load_all((R / "deploy/storage/wishlist-socrat5.yaml").read_text()))
         self.assertEqual(pv["spec"]["persistentVolumeReclaimPolicy"], "Retain")
         self.assertEqual(pv["spec"]["local"]["path"], "/mnt/files/homelab/wishlist/data")
@@ -15,6 +16,7 @@ class WishlistMove(unittest.TestCase):
         self.assertNotEqual(pvc["metadata"]["name"], "wishlist-data")
 
     def test_production_has_one_writer_exact_image_and_fails_closed_on_empty_data(self):
+        """Exercise the expected behavior."""
         raw = subprocess.check_output(
             [
                 "helm",
@@ -60,6 +62,7 @@ class WishlistMove(unittest.TestCase):
         self.assertEqual(old["metadata"]["name"], "wishlist-data")
 
     def test_shared_defaults_do_not_repoint_existing_data(self):
+        """Exercise the expected behavior."""
         v = yaml.safe_load((R / "charts/wishlist/values.yaml").read_text())
         self.assertEqual(
             v["persistence"], {"existingClaim": "wishlist-data", "requireExistingData": False}

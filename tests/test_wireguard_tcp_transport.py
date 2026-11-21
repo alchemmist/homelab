@@ -20,16 +20,19 @@ CONFIG = "[Interface]\nPrivateKey = secret\n\n[Peer]\nPublicKey = first\nAllowed
 
 class TransportTests(unittest.TestCase):
     def test_preserves_secrets_other_peer_and_routes(self):
+        """Exercise the expected behavior."""
         expected = CONFIG.replace("Endpoint = old:123", "Endpoint = 127.0.0.1:51840")
         self.assertEqual(ENDPOINT.update_config(CONFIG, "first", "127.0.0.1:51840"), expected)
         self.assertEqual(ENDPOINT.update_config(expected, "first", "127.0.0.1:51840"), expected)
 
     def test_server_removes_only_client_endpoint(self):
+        """Exercise the expected behavior."""
         self.assertEqual(
             ENDPOINT.update_config(CONFIG, "first", ""), CONFIG.replace("Endpoint = old:123\n", "")
         )
 
     def test_missing_and_duplicate_peers_fail_closed(self):
+        """Exercise the expected behavior."""
         for original, key in [
             (CONFIG, "missing"),
             (CONFIG + "\n[Peer]\nPublicKey = first\n", "first"),
@@ -38,12 +41,14 @@ class TransportTests(unittest.TestCase):
                 ENDPOINT.update_config(original, key, "")
 
     def test_saveconfig_fails_closed(self):
+        """Exercise the expected behavior."""
         with self.assertRaises(ValueError):
             ENDPOINT.update_config(
                 CONFIG.replace("[Interface]", "[Interface]\nSaveConfig = true"), "first", ""
             )
 
     def test_three_failures_restart_and_cooldown(self):
+        """Exercise the expected behavior."""
         state = {}
         for now in (60, 75):
             state, restart = HEALTH.next_state(state, now, False)
@@ -57,6 +62,7 @@ class TransportTests(unittest.TestCase):
         self.assertTrue(restart)
 
     def test_success_and_boot_grace(self):
+        """Exercise the expected behavior."""
         state, restart = HEALTH.next_state({"failures": 10}, 59, False)
         self.assertFalse(restart)
         state, restart = HEALTH.next_state(state, 70, True)

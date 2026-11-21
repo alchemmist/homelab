@@ -13,6 +13,7 @@ SOURCE = ROOT / "ansible/roles/wiki_editor_client/files/wiki-editor-resolver.sh"
 
 class WikiEditorResolverTests(unittest.TestCase):
     def setUp(self):
+        """Exercise the expected behavior."""
         self.directory = tempfile.TemporaryDirectory(prefix="wiki-resolver-test-")
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name)
@@ -78,12 +79,14 @@ printf '%s\\n' "$FIXTURE_ANSWER"
         self.script.write_text(source)
 
     def fixture(self, name, body):
+        """Exercise the expected behavior."""
         path = self.root / name
         path.write_text("#!/bin/sh\nset -eu\n" + body)
         path.chmod(0o700)
         return path
 
     def run_resolver(self, expected=0, **changes):
+        """Exercise the expected behavior."""
         result = subprocess.run(
             ["/bin/sh", str(self.script)],
             env={**self.environment, **changes},
@@ -95,9 +98,11 @@ printf '%s\\n' "$FIXTURE_ANSWER"
         return result
 
     def commands(self):
+        """Exercise the expected behavior."""
         return self.log.read_text().splitlines() if self.log.exists() else []
 
     def test_private_route_creates_owned_resolver_and_is_idempotent(self):
+        """Exercise the expected behavior."""
         self.run_resolver()
         self.assertEqual(
             self.resolver.read_text(), "nameserver 10.250.0.1\ntimeout 1\noptions attempts:1\n"
@@ -111,6 +116,7 @@ printf '%s\\n' "$FIXTURE_ANSWER"
         self.assertEqual(list(self.resolver_directory.glob(".socrat-wiki.*")), [])
 
     def test_disconnect_removes_owned_override_and_restores_public_dns(self):
+        """Exercise the expected behavior."""
         self.run_resolver()
         self.run_resolver(FIXTURE_INTERFACE="en0")
         self.assertFalse(self.resolver.exists())
@@ -120,6 +126,7 @@ printf '%s\\n' "$FIXTURE_ANSWER"
         self.assertEqual(self.commands().count("flush"), 2)
 
     def test_unmanaged_override_is_preserved_and_rejected(self):
+        """Exercise the expected behavior."""
         contents = "nameserver 192.0.2.1\n"
         self.resolver.write_text(contents)
         self.run_resolver(expected=1)
@@ -130,17 +137,20 @@ printf '%s\\n' "$FIXTURE_ANSWER"
         self.assertEqual(self.resolver.read_text(), contents)
 
     def test_public_dns_answer_does_not_enable_private_route(self):
+        """Exercise the expected behavior."""
         self.run_resolver(FIXTURE_ANSWER="109.173.40.247")
         self.assertFalse(self.resolver.exists())
         self.assertFalse(self.marker.exists())
         self.assertNotIn("flush", self.commands())
 
     def test_private_dns_answer_without_tunnel_does_not_enable_route(self):
+        """Exercise the expected behavior."""
         self.run_resolver(FIXTURE_INTERFACE="en0")
         self.assertFalse(self.resolver.exists())
         self.assertEqual(self.commands(), [])
 
     def test_private_dns_loss_removes_previously_enabled_route(self):
+        """Exercise the expected behavior."""
         self.run_resolver()
         self.run_resolver(FIXTURE_ANSWER="")
         self.assertFalse(self.resolver.exists())
@@ -148,6 +158,7 @@ printf '%s\\n' "$FIXTURE_ANSWER"
         self.assertEqual(self.commands().count("flush"), 2)
 
     def test_unreachable_primary_uses_reachable_secondary(self):
+        """Exercise the expected behavior."""
         self.run_resolver(FIXTURE_PRIMARY_FAILURE="1")
         self.assertIn("nameserver 10.250.0.3\n", self.resolver.read_text())
         self.assertTrue(self.marker.exists())
