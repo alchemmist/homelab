@@ -11,6 +11,7 @@ import socket
 import subprocess
 import urllib.request
 import uuid
+from collections.abc import Sequence
 from typing import Protocol, cast
 
 HOST = "auth.socrat.alchemmist.xyz"
@@ -152,20 +153,12 @@ def _require_versions(api: "ApiCall", container: object) -> None:
         raise RuntimeError("Unreviewed LiteLLM version")
 
 
-def _reviewed_rows(users: object) -> list[dict[str, object]]:
+def _reviewed_rows(users: "Sequence[dict[str, object]]") -> list[dict[str, object]]:
     """Return the reviewed proxy_admin rows, enforcing the capacity gate."""
-    rows = [
-        r
-        for r in cast("list[dict[str, object]]", users)
-        if r["user_id"] == OWNER_ID and r["user_role"] == "proxy_admin"
-    ]
-    if len(rows) != 1 or len(cast("list[object]", users)) > 5:
+    rows = [r for r in users if r["user_id"] == OWNER_ID and r["user_role"] == "proxy_admin"]
+    if len(rows) != 1 or len(users) > 5:
         raise RuntimeError("Reviewed owner identity / free-tier capacity gate failed")
-    if any(
-        r.get("password")
-        for r in cast("list[dict[str, object]]", users)
-        if r["user_id"] != OWNER_ID
-    ):
+    if any(r.get("password") for r in users if r["user_id"] != OWNER_ID):
         raise RuntimeError("Non-owner password identity requires explicit review")
     return rows
 
