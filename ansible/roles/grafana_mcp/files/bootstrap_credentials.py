@@ -17,7 +17,7 @@ KUBECTL = ["k3s", "kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml"]
 
 
 class BootstrapError(Exception):
-    pass
+    """Exception raised when Grafana credential bootstrap fails."""
 
 
 def kubectl(arguments: list[str], payload: object | None = None) -> dict[str, object] | None:
@@ -35,7 +35,10 @@ def kubectl(arguments: list[str], payload: object | None = None) -> dict[str, ob
 
 
 class Grafana:
+    """Minimal Grafana HTTP API client."""
+
     def __init__(self, url: str, username: str, password: str) -> None:
+
         self.url = url
         encoded = base64.b64encode((username + ":" + password).encode()).decode()
         self.authorization = "Basic " + encoded
@@ -47,6 +50,7 @@ class Grafana:
         payload: object | None = None,
         token: str | None = None,
     ) -> dict[str, object]:
+        'Issue a Grafana HTTP request and return the decoded JSON response.'
         request = urllib.request.Request(
             self.url + path,
             data=json.dumps(payload).encode() if payload is not None else None,

@@ -10,7 +10,10 @@ import urllib.parse
 
 
 class DiagnosticFailure(RuntimeError):
+    """Runtime error raised when an observer diagnostic fails."""
+
     def __init__(self, event) -> None:
+
         super().__init__("Observer dependency operation failed")
         self.event = event
 
@@ -70,11 +73,15 @@ def stage(request):
 
 
 class ObservedHTTP:
+    """urllib opener wrapper that records request diagnostics."""
+
     def __init__(self, inner) -> None:
+
         self.inner = inner
 
     @contextlib.contextmanager
     def open(self, request, *args, **kwargs):
+        """Open a URL while recording timing and phase metrics."""
         started = time.monotonic()
         phase = "https_open"
         response = None

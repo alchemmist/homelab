@@ -12,7 +12,11 @@ from pathlib import Path
 from urllib.request import Request, build_opener, ProxyHandler, HTTPRedirectHandler
 
 class NoRedirect(HTTPRedirectHandler):
-    def redirect_request(self,*args):return None
+    """Redirect handler that refuses to follow HTTP redirects."""
+
+    def redirect_request(self,*args):
+                                     'Refuse redirects so credentials are never forwarded.'
+                                     return None
 
 def eligible(status,event):
     return (status=="error" and event.get("kind")=="ConversationErrorEvent" and

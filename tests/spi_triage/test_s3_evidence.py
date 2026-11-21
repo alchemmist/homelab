@@ -27,8 +27,12 @@ class S3ClientHandle(Protocol):
 
 
 class ClientTests(unittest.TestCase):
+    """Tests for the S3 evidence client."""
+
     def client(self, responses: list[object]) -> S3ClientHandle:
+        'Build an S3 client with scripted responses.'
         self.calls: list[tuple[str, str, dict[str, object], bytes]] = []
+
 
         def transport(*args: object) -> object:
             self.calls.append(cast("tuple[str, str, dict[str, object], bytes]", args))
@@ -41,6 +45,7 @@ class ClientTests(unittest.TestCase):
         return result
 
     def test_resolver_capacity_survives_sequential_timeouts(self) -> None:
+        'Verify the resolver capacity survives sequential timeouts.'
         release = threading.Event()
         workers = []
         slots = threading.BoundedSemaphore(s.MAX_RESOLVERS)
@@ -77,11 +82,13 @@ class ClientTests(unittest.TestCase):
             assert not slots.acquire(blocking=False)
 
     def test_existing(self) -> None:
+        'Verify existing objects are fetched unchanged.'
         c = self.client([(200, {}, b"abc")])
         assert c.ensure_object(KEY, b"abc")["verified"]
         assert len(self.calls) == 1
 
     def test_private_bucket_qualified_paths_unchanged(self) -> None:
+        'Verify private bucket paths are not rewritten.'
         for key in (KEY, KEY.rsplit("/", 1)[0] + "/manifest.json"):
             c = self.client([(404, {}, b""), (201, {}, b""), (200, {}, b"abc")])
             receipt = c.ensure_object(key, b"abc")
@@ -92,12 +99,14 @@ class ClientTests(unittest.TestCase):
             assert receipt["sha256"] == hashlib.sha256(b"abc").hexdigest()
 
     def test_conflict(self) -> None:
+        'Verify mismatched objects are reported as conflicts.'
         c = self.client([(200, {}, b"bad")])
         with self.assertRaises(s.StorageConflict):
             c.ensure_object(KEY, b"abc")
         assert len(self.calls) == 1
 
     def test_conditional_and_races(self) -> None:
+        'Verify conditional writes behave under race responses.'
         for status in (200, 201, 204, 409, 412):
             c = self.client([(404, {}, b""), (status, {}, b""), (200, {}, b"abc")])
             c.ensure_object(KEY, b"abc")
@@ -105,12 +114,14 @@ class ClientTests(unittest.TestCase):
             assert self.calls[1][3] == b"abc"
 
     def test_ambiguous_recovery(self) -> None:
+        'Verify ambiguous failures recover safely on retry.'
         c = self.client([(404, {}, b""), TimeoutError(), (200, {}, b"abc"), (200, {}, b"abc")])
         c.ensure_object(KEY, b"abc")
         c.ensure_object(KEY, b"abc")
         assert [x[0] for x in self.calls] == ["GET", "PUT", "GET", "GET"]
 
     def test_status(self) -> None:
+        'Verify retryable statuses are mapped correctly.'
         for status in (408, 429, 500, 503):
             c = self.client([(status, {"Retry-After": "12"}, b"")])
             with self.assertRaises(s.StorageTransient) as ctx:
@@ -122,6 +133,7 @@ class ClientTests(unittest.TestCase):
                 self.client([(status, {}, b"")]).ensure_object(KEY, b"abc")
 
     def test_validation(self) -> None:
+        'Verify origin validation rejects bad hosts and schemes.'
         for origin in ("http://localhost", s.ORIGIN + "/", s.ORIGIN + "?x=1"):
             with self.assertRaises(s.StoragePermanent):
                 s.S3Evidence("a", "b", origin=origin)
@@ -133,6 +145,7 @@ class ClientTests(unittest.TestCase):
                 self.client([]).ensure_object(KEY, body)
 
     def test_readback(self) -> None:
+        'Verify read-backs validate the written content.'
         for body, error in (
             (b"bad", s.StorageConflict),
             (b"x" * (s.MAX_BYTES + 1), s.StoragePermanent),
@@ -143,6 +156,7 @@ class ClientTests(unittest.TestCase):
                 )
 
     def test_retry_date(self) -> None:
+        'Verify retry-after HTTP dates are honored.'
         date = (
             datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=50)
         ).strftime("%a, %d %b %Y %H:%M:%S GMT")
@@ -156,6 +170,7 @@ class ClientTests(unittest.TestCase):
         assert s.retry_after("invalid") is None
 
     def test_signing(self) -> None:
+        'Verify request signatures match the canonical form.'
         now = datetime.datetime(2025, 1, 2, tzinfo=datetime.timezone.utc)
         h = s.sign(
             "PUT",
@@ -187,6 +202,7 @@ class ClientTests(unittest.TestCase):
         )
 
     def test_close_body_deadline_and_cleanup(self) -> None:
+        'Verify body closes under deadline and cleans up sockets.'
         listener = socket.socket()
         listener.bind(("127.0.0.1", 0))
         listener.listen()

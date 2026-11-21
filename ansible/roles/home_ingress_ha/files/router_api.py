@@ -37,7 +37,10 @@ def canonical(rows):
 
 
 class Router:
+    """Router HTTP API client using authenticated requests."""
+
     def __init__(self, credentials, address) -> None:
+
         self.base = "http://" + str(ipaddress.IPv4Address(address))
         self.cookie = None
         page = self.request("/login.htm")
@@ -65,6 +68,7 @@ class Router:
         self.cookie = match.group(1)
 
     def request(self, path, data=None):
+        """GET/POST the router web UI, reusing the session cookie when present."""
         encoded = None if data is None else urllib.parse.urlencode(data).encode()
         headers = {} if self.cookie is None else {"Cookie": self.cookie}
         request = urllib.request.Request(self.base + path, data=encoded, headers=headers)
@@ -72,9 +76,11 @@ class Router:
             return response.read().decode("utf-8")
 
     def forwards(self):
+        """Return the parsed port-forwarding table from the router UI."""
         return parse_forwards(self.request("/portfw.htm"))
 
     def verify(self, expected):
+        """Poll forwards until they match the expected state, then return them."""
         for attempt in range(5):
             rows = self.forwards()
             if canonical(rows) == canonical(expected):
@@ -84,6 +90,7 @@ class Router:
         raise RuntimeError("Router forwarding readback does not match expected state")
 
     def replace(self, expected_rows, old, new):
+        """Replace exactly one existing forward with a new entry after verification."""
         rows = self.verify(expected_rows)
         matching = [row for row in rows if canonical([row]) == canonical([old])]
         if len(matching) != 1:
@@ -111,6 +118,7 @@ class Router:
             raise
 
     def add(self, row):
+        """Add one enabled WAN2 TCP forward through the router form endpoint."""
         if row["protocol"] != "TCP" or row["wan"] != "Wan2" or row["status"] != "Enabled":
             raise ValueError("Only enabled WAN2 TCP forwarding is supported")
         self.request(

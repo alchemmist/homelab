@@ -170,7 +170,10 @@ def local_listeners_respond() -> bool:
 
 
 class Controller:
+    """Failover controller for the VPN transit links."""
+
     def __init__(self) -> None:
+
         self.config = json.loads(CONFIG.read_text())
         self.marker = ROOT / "fallback.active"
         self.state: dict[str, object] = (
@@ -180,14 +183,17 @@ class Controller:
         )
 
     def save(self, **fields):
+        'Persist updated state fields atomically.'
         self.state.update(fields)
         atomic(ROOT / "state.json", self.state)
 
     def receipt(self, action, **fields):
+        'Append a timestamped receipt file for the taken action.'
         v = {"action": action, "at": time.time(), **fields}
         atomic(ROOT / (str(time.time_ns()) + "-" + action + ".json"), v)
 
     def healthy(self) -> bool:
+        'Probe endpoints and update the persistent last-probe results.'
         self.last_probe: dict[str, object] = {}
         try:
             probe(self.config, detail=self.last_probe)
@@ -198,6 +204,7 @@ class Controller:
     def recovery_scope(self) -> Diagnosis:
         # Only after the existing four failures. An upstream outage is not evidence
         # that stopping a still-listening local worker can improve the data path.
+        'Determine the scope of local recovery, if any is warranted.'
         if not active(AGENT):
             return {"recover_local": True, "scope": "local-agent-inactive"}
         if not local_listeners_respond():
@@ -218,6 +225,7 @@ class Controller:
             }
 
     def prerequisites(self) -> None:
+        'Pin the binary hash and validate the native path before use.'
         assert (
             hashlib.sha256(pathlib.Path("/usr/local/libexec/xray-transit").read_bytes()).hexdigest()
             == self.config["binary_sha256"]
@@ -228,6 +236,7 @@ class Controller:
         assert "dev wg-socrat" in r and "src 10.250.0.40" in r
 
     def activate(self, reason: str) -> None:
+        'Enter the xray fallback mode after all prerequisites pass.'
         assert self.state["mode"] != "native-primary", (
             "Native primary cannot be reactivated as fallback"
         )
@@ -284,6 +293,7 @@ class Controller:
         self.receipt("native-primary-demoted")
 
     def failback(self) -> None:
+        'Return to the native primary path after re-validation.'
         self.prerequisites()
         assert self.marker.exists() and self.state["mode"] == "native"
         self.save(mode="transition-to-kubernetes", healthy=False)
@@ -311,6 +321,7 @@ class Controller:
             raise
 
     def tick(self) -> None:
+        'Run one supervision cycle of probe, decide and act.'
         if self.state["mode"] == "prepared":
             return
         if self.marker.exists():
@@ -354,6 +365,7 @@ class Controller:
                 self.activate("four data-path failures; " + diagnosis["scope"])
 
     def status(self) -> dict[str, object]:
+        'Return the current mode, marker and probe summary.'
         return {
             **self.state,
             "native_active": active(NATIVE),

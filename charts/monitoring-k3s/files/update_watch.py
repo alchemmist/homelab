@@ -134,11 +134,15 @@ def render_metrics(samples):
 
 
 class State:
+    """Mutable state collected by the update watcher."""
+
     def __init__(self) -> None:
+
         self.lock = threading.Lock()
         self.body = render_metrics([]).encode()
 
     def update(self, samples):
+        """Regenerate the metrics body from fresh samples under the lock."""
         body = render_metrics(samples).encode()
         with self.lock:
             self.body = body

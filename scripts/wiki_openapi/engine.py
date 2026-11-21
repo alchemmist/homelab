@@ -10,7 +10,7 @@ SHA = re.compile(r"[a-f0-9]{40}")
 
 
 class UnsafeInput(Exception):
-    pass
+    """Exception raised on unsafe wiki OpenAPI input."""
 
 
 def require_sha(value: object):

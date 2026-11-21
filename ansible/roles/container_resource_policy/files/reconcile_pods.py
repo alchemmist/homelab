@@ -271,10 +271,14 @@ def eviction_payload(pod):
 
 
 class Client:
+    """Kubectl client for reading pod state under the reconcile policy."""
+
     def __init__(self, kubectl, kubeconfig) -> None:
+
         self.command = [kubectl, "--kubeconfig", kubeconfig, "--request-timeout=30s"]
 
     def pods(self):
+        """Return the full PodList "items" across all namespaces."""
         result = subprocess.run(
             self.command + ["get", "pods", "--all-namespaces", "-o", "json"],
             capture_output=True,
@@ -285,6 +289,7 @@ class Client:
         return json.loads(result.stdout)["items"]
 
     def evict(self, pod):
+        """Evict the given pod manifest via the kubectl eviction API."""
         metadata = pod["metadata"]
         endpoint = (
             "/api/v1/namespaces/"

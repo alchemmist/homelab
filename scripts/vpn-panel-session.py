@@ -44,8 +44,12 @@ class _Credential(TypedDict, total=False):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
     @typing.override
     def redirect_request(self, *args, **kwargs) -> typing.NoReturn:
+
+        'Refuse API redirects instead of following them.'
         raise ValueError("API redirect refused")
 
 
@@ -146,7 +150,10 @@ def pod_identity() -> "dict[str, object]":
 
 
 class NativeSession:
+    """Panel session reconciler backed by the native VPN database."""
+
     def __init__(self, state, database=DB, worker_scope="node-sync") -> None:
+
         if worker_scope not in ("node-sync", "admin"):
             raise ValueError("Unreviewed worker scope")
         self.worker_scope = worker_scope
@@ -162,6 +169,7 @@ class NativeSession:
         self.lock: TextIO | None = None
 
     def preview(self) -> "dict[str, object]":
+        'Check planned panel tokens against existing names before writing.'
         original = token_rows(self.database)
         if any(r["name"] in self.names.values() for r in original):
             raise ValueError("Temporary token name collision; never rotate")
@@ -234,6 +242,7 @@ class NativeSession:
             raise RuntimeError("Missing created credential")
 
     def open(self, approval) -> "NativeSession":
+        'Create the session tokens once, after explicit root approval.'
         if socket.gethostname() != "socrat-2" or os.geteuid() != 0:
             raise ValueError("Explicit session creation requires root on socrat-2")
         self.state = h.private_directory(self.state)
@@ -308,6 +317,7 @@ class NativeSession:
         return self
 
     def call(self, method, path, body=None) -> object:
+        'Call the unprivileged dashboard token endpoints by exact path.'
         if path.startswith("/setting/"):
             raise ValueError("Worker cannot use administrative token endpoints")
         if self._owned("worker") is None:
@@ -315,6 +325,7 @@ class NativeSession:
         return request(self.base, self.credentials["worker"]["token"], method, path, body)
 
     def cleanup(self) -> None:
+        'Drop generated tokens and log out created sessions.'
         errors = []
         actor = "cleanup" if "cleanup" in self.credentials else "bootstrap"
         if actor in self.credentials:

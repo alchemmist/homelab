@@ -8,14 +8,18 @@ import subprocess
 
 
 class BootstrapError(Exception):
-    pass
+    """Exception raised when the wiki runtime bootstrap fails."""
 
 
 class Kubernetes:
+    """Kubernetes client that shells out to kubectl."""
+
     def __init__(self, command: list[str]) -> None:
+
         self.command = command
 
     def run(self, *args: str, payload: object | None = None) -> str:
+        'Run a kubectl subcommand and return trimmed stdout.'
         result = subprocess.run(
             self.command + list(args),
             input=json.dumps(payload) if payload else None,
@@ -29,6 +33,7 @@ class Kubernetes:
         return result.stdout
 
     def get(self, kind: str, name: str, namespace: str) -> dict[str, object] | None:
+        'Fetch one object if present, or None when not found.'
         value = self.run("-n", namespace, "get", kind, name, "--ignore-not-found", "-o", "json")
         if not value.strip():
             return None
@@ -36,6 +41,7 @@ class Kubernetes:
         return resource_map
 
     def create(self, resource: dict[str, object]) -> None:
+        'Create a resource from the given manifest on stdin.'
         self.run("create", "-f", "-", payload=resource)
 
 

@@ -13,8 +13,11 @@ GOOD = {"issue_number": 0, "reason": "No shared cause established.", "confidence
 
 
 class LargeCatalogTests(unittest.TestCase):
+    """Tests for dispatcher behaviour on large SPI catalogs."""
+
     @staticmethod
     def issues(n) -> list[dict[str, object]]:
+        'Build n synthetic open issues.'
         return [
             {
                 "number": i + 1,
@@ -26,6 +29,7 @@ class LargeCatalogTests(unittest.TestCase):
         ]
 
     def test_121_open_issues_can_be_fingerprinted_without_model_review(self) -> None:
+        'Verify 121 open issues are fingerprinted without model review.'
         g = GitHub(Mock(), "unused")
         fingerprinted_issues = 121
         rows = self.issues(fingerprinted_issues)
@@ -36,6 +40,7 @@ class LargeCatalogTests(unittest.TestCase):
         g.http.request.assert_not_called()
 
     def test_all_241_issues_reviewed_with_unchanged_per_request_bounds(self) -> None:
+        'Verify all 241 issues review with unchanged request bounds.'
         m = Model(Mock(), "test-only", store=Mock())
         seen = []
 
@@ -59,6 +64,7 @@ class LargeCatalogTests(unittest.TestCase):
         m.http.request.assert_not_called()
 
     def test_admission_resume_reuses_existing_v3_paid_batch_receipts(self) -> None:
+        'Verify admission resumes reuse existing paid batch receipts.'
         m = Model(Mock(), "test-only", store=Mock())
         rows = self.issues(121)
         saved = []

@@ -13,7 +13,11 @@ MODEL_CALL_CEILING = 2
 
 
 class ModelBoundaryTests(unittest.TestCase):
+    """Tests for blog update model boundaries and retries."""
+
     def test_retry_schema_failure(self) -> None:
+
+        'Verify schema failures are retried without marking success.'
         calls = []
         valid = {
             "should_update": True,
@@ -29,6 +33,7 @@ class ModelBoundaryTests(unittest.TestCase):
         assert len(calls) == MODEL_CALL_CEILING
 
     def test_bad_output_stays_rejected(self):
+        'Verify malformed stage output stays rejected across retries.'
         calls = []
 
         def model(prompt, data) -> object:

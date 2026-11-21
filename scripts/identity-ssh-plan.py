@@ -246,12 +246,19 @@ def public_keys(value):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
     def redirect_request(self, _req, _fp, _code, _msg, _headers, _newurl):
+
+        'Refuse Authentik redirects instead of following them.'
         raise Refused("Authentik redirect refused")
 
 
 class Authentik:
+    """Authentik HTTP API client used for SSH identity planning."""
+
     def __init__(self, url, token, ca_file=None) -> None:
+
         parsed = urllib.parse.urlsplit(url)
         require(
             parsed.scheme == "https"
@@ -276,6 +283,7 @@ class Authentik:
         )
 
     def user(self, ident):
+        'Fetch the unique user record for a canonical UUID.'
         canonical_uuid(ident)
         query = urllib.parse.urlencode({"uuid": ident, "page_size": 100})
         request = urllib.request.Request(

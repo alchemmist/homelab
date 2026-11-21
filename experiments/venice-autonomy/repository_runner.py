@@ -66,10 +66,12 @@ def invoke_openhands(attempt_module, environment, directory, prompt, base_url, k
 
 
 class CandidateRejected(ValueError):
-    pass
+    """Value error raised when a repository candidate is rejected."""
 
 
 class RepositoryEnvironment:
+    """Sandboxed environment prepared from a repository snapshot."""
+
     def __init__(self, snapshot, directory, image, protocol):
         self.directory = directory
         self.directory.mkdir()
@@ -199,6 +201,7 @@ class RepositoryEnvironment:
             raise
 
     def execute(self, action, **kwargs):
+        """Run one validated command action inside the container."""
         command = action.get("command") if isinstance(action, dict) else None
         if not isinstance(command, str) or len(command.encode()) > 12000:
             raise ValueError("invalid or oversized command")
@@ -233,6 +236,7 @@ class RepositoryEnvironment:
         return result
 
     def snapshot(self, destination):
+        """Pause the container and export a filesystem snapshot to destination."""
         subprocess.run(
             ["docker", "pause", self.container_id], check=True, capture_output=True, timeout=15
         )
@@ -262,6 +266,7 @@ class RepositoryEnvironment:
             (destination / name).write_bytes(data)
 
     def close(self):
+        """Tear down the container, lingering only when snapshots remain."""
         if self.container_id:
             info = json.loads(
                 subprocess.check_output(["docker", "inspect", self.container_id], timeout=15)

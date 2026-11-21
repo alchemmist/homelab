@@ -29,7 +29,10 @@ def load_token(ssh_host):
 
 
 class Client:
+    """Minimal Grafana MCP HTTP client."""
+
     def __init__(self, url: str, token: str) -> None:
+
         self.url = url
         self.headers = {
             "Authorization": "Bearer " + token,
@@ -42,6 +45,7 @@ class Client:
     def request(
         self, method: str, params: dict[str, object], *, notify: bool = False
     ) -> dict[str, object]:
+        'Send one JSON-RPC request to the MCP server.'
         self.sequence += 1
         body = {"jsonrpc": "2.0", "method": method, "params": params}
         if not notify:
@@ -69,6 +73,7 @@ class Client:
         return result["result"]
 
     def tool(self, name: str, arguments: dict[str, object]) -> str:
+        'Call one MCP tool and fail loudly on tool errors.'
         result = self.request("tools/call", {"name": name, "arguments": arguments})
         if result.get("isError"):
             raise RuntimeError("MCP tool failed: " + name)

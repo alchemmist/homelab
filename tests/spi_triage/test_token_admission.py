@@ -11,14 +11,20 @@ GOOD = {"issue_number": 0, "reason": "Distinct cause; no supporting overlap.", "
 
 
 class AdmissionTests(unittest.TestCase):
+    """Tests for token admission rules."""
+
     def setUp(self) -> None:
+
+        'Create the admission store fixture.'
         self.tmp = tempfile.TemporaryDirectory()
         self.store = Store(self.tmp.name + "/db")
 
     def tearDown(self) -> None:
+        'Close the admission store fixture.'
         self.tmp.cleanup()
 
     def test_restart_parallel_and_window(self) -> None:
+        'Verify reservations survive restart, parallelism and windows.'
         r = self.store.reserve_llm(15000, now=100)
         with self.assertRaises(Failure):
             Store(self.store.path).reserve_llm(1, now=101)
@@ -32,6 +38,7 @@ class AdmissionTests(unittest.TestCase):
         s.reserve_llm(1, now=171)
 
     def test_rpm_and_crash_expiry(self) -> None:
+        'Verify RPM limits and crash expiry behavior.'
         for t in (1, 2, 3):
             r = self.store.reserve_llm(1, now=t)
             self.store.finish_llm(r, now=t)
@@ -43,6 +50,7 @@ class AdmissionTests(unittest.TestCase):
         Store(self.store.path).reserve_llm(1, now=135)
 
     def test_no_usage_refund_and_impossible(self) -> None:
+        'Verify unused reservations never refund the impossible.'
         r = self.store.reserve_llm(30000, now=1)
         self.store.finish_llm(r, actual=1, now=2)
         with self.assertRaises(Failure):
@@ -53,6 +61,7 @@ class AdmissionTests(unittest.TestCase):
 
     @patch.dict(os.environ, {"SPI_TOKEN_ACCOUNTING_MODE": "byte-bound-v1"})
     def test_serialized_schema_output_and_analysis(self) -> None:
+        'Verify serialized schema output and analysis admission.'
         m = Model(Mock(), "fake", store=self.store)
         for schema, output in ((MATCH_SCHEMA, 768), (REPORT_SCHEMA, 2500)):
             body = m.payload("task", {"text": '😀"\\' * 100}, schema)
@@ -73,6 +82,7 @@ class AdmissionTests(unittest.TestCase):
         m.http.request.assert_not_called()
 
     def test_local_compressible_and_incompressible_before_http(self) -> None:
+        'Verify local sizing of compressible and incompressible content.'
         if os.environ.get("SPI_TOKEN_ACCOUNTING_MODE") != "local-qwen-v1":
             return  # Local validation image exercises native path; host remains optional.
         h = Mock()
@@ -91,6 +101,7 @@ class AdmissionTests(unittest.TestCase):
         h.request.assert_not_called()
 
     def test_local_computed_cost_durable_clock(self) -> None:
+        'Verify local computed cost uses a durable clock.'
         if os.environ.get("SPI_TOKEN_ACCOUNTING_MODE") != "local-qwen-v1":
             return
         m = Model(Mock(), "fake", store=self.store)
@@ -122,6 +133,7 @@ class AdmissionTests(unittest.TestCase):
         Store(s.path).reserve_llm(1, now=224)
 
     def test_actual_call_uses_shared_admission(self) -> None:
+        'Verify actual calls use the shared admission gates.'
         h = Mock()
         h.request.return_value = {
             "choices": [{"message": {"content": json.dumps(GOOD)}}],
@@ -137,6 +149,7 @@ class AdmissionTests(unittest.TestCase):
         assert h.request.call_count == 3
 
     def test_all120_and_oversized_single_excerpt(self) -> None:
+        'Verify all-120 handling and oversized excerpts.'
         issues = [
             {"number": i, "body": "a" * 6000, "recent_comments": ["b" * 1200] * 3}
             for i in range(120)
@@ -162,6 +175,7 @@ class AdmissionTests(unittest.TestCase):
         assert seen == []
 
     def test_legacy_partition_not_reinterpreted(self) -> None:
+        'Verify legacy partitions are not reinterpreted.'
         issues = [{"number": i} for i in range(25)]
         from core import digest
 
@@ -174,6 +188,7 @@ class AdmissionTests(unittest.TestCase):
         assert m.call.call_count == 3  # Unbound legacy proof must be reviewed again.
 
     def test_reset_delay_not_claim_backoff(self) -> None:
+        'Verify result reset delay is not treated as claim backoff.'
         key = self.store.enqueue(f.event())["job_id"]
         for _ in range(20):
             self.store.fail(key, "LLM_ADMISSION_DEFERRED", retry_after=60)
@@ -185,6 +200,7 @@ class AdmissionTests(unittest.TestCase):
             assert c.execute("select failures from job_failure_budget").fetchone()[0] == 1
 
     def test_final_comparison_resume_and_budget(self) -> None:
+        'Verify final comparisons resume within budget.'
         issues = [{"number": i, "body": "x" * 6000} for i in range(1, 31)]
         m = Model(Mock(), "fake", store=self.store)
         saved = []
@@ -214,6 +230,7 @@ class AdmissionTests(unittest.TestCase):
         assert m.call.call_count == 1
 
     def test_invalid_output_finite_not_hidden_by_admission(self) -> None:
+        'Verify invalid outputs fail finitely despite admission.'
         h = Mock()
         h.request.return_value = {"choices": [{"message": {"content": "bad JSON"}}]}
         m = Model(h, "fake", store=self.store)
@@ -226,6 +243,7 @@ class AdmissionTests(unittest.TestCase):
         assert h.request.call_count == 1
 
     def test_numeric_rate_headers_allowlist_and_durable_metadata(self) -> None:
+        'Verify numeric rate headers pass the allowlist durably.'
         import urllib.error
         from integrations import HTTP
 
@@ -260,6 +278,7 @@ class AdmissionTests(unittest.TestCase):
         assert data["tokens_remaining"] == 4155
 
     def test_local_proxy_modeled_precheck_and_settlement(self) -> None:
+        'Verify local proxy precheck and settlement accounting.'
         if os.environ.get("SPI_TOKEN_ACCOUNTING_MODE") != "local-qwen-v1":
             return
         m = Model(Mock(), "fake", store=self.store)
@@ -291,6 +310,7 @@ class AdmissionTests(unittest.TestCase):
         self.store.reserve_llm(cost, now=262)
 
     def test_local_raw_bound_before_http_and_bpe(self) -> None:
+        'Verify the local raw bound applies before HTTP and BPE.'
         if os.environ.get("SPI_TOKEN_ACCOUNTING_MODE") != "local-qwen-v1":
             return
         m = Model(Mock(), "fake", store=self.store)

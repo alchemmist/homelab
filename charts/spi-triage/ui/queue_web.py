@@ -24,7 +24,11 @@ TOKEN = ""
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
     def redirect_request(self, *_args, **_kwargs):
+
+        'Refuse redirects so credentials are never forwarded.'
         return None
 
 
@@ -39,10 +43,15 @@ def expire(sock):
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
+    """HTTP handler serving the SPI queue web UI."""
+
     def log_message(self, *_args):
+
+        'Silence default request-line logging.'
         pass
 
     def handle(self):
+        'Serve one request under a 20-second expiry timer.'
         timer = threading.Timer(20, expire, (self.request,))
         timer.daemon = True
         timer.start()
@@ -53,9 +62,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
             timer.cancel()
 
     def send_error(self, _code, _message=None, _explain=None):
+        'Override error responses with a bare 400 to avoid leaking details.'
         self.send(400, b"", "text/plain")
 
     def send(self, status, body, mime="application/json; charset=utf-8", location=None):
+        'Write a response from raw bytes with the given status and headers.'
         self.close_connection = True
         self.send_response(status)
         for k, v in {
@@ -77,11 +88,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
             pass
 
     def valid_host(self):
+        'Check that the request targets the expected public host.'
         return self.headers.get_all("Host", []) == ["rustfs.socrat.alchemmist.xyz"]
 
     def authorization(self):
         # Same trusted auth/nginx endpoint as the private evidence Reader.
         # Never trust caller identity headers or forward cookies to the backend.
+        'Validate the session via the trusted auth endpoint and derive roles.'
         cookies = self.headers.get_all("Cookie", [])
         if (
             len(cookies) != 1
@@ -115,6 +128,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return 503
 
     def do_GET(self):
+        'Serve the queue view after host and authorization checks.'
         if not self.valid_host():
             return self.send(400, b"{}")
         auth = self.authorization()
@@ -180,6 +194,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             connection.close()
 
     def do_POST(self):
+        'Handle an authenticated queue action after host and role checks.'
         if not self.valid_host():
             return self.send(400, b"{}")
         auth = self.authorization()
@@ -209,10 +224,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send(502, b'{"code":"QUEUE_UNAVAILABLE"}')
 
     def do_OPTIONS(self):
+        'Reject OPTIONS requests with a 405.'
         self.send(405, b"{}")
 
 
 class Server(http.server.ThreadingHTTPServer):
+    """Threaded HTTP server for the queue web UI."""
+
     daemon_threads = True
 
     def __init__(self, *args) -> None:
@@ -220,6 +238,7 @@ class Server(http.server.ThreadingHTTPServer):
         super().__init__(*args)
 
     def process_request(self, request, client_address):
+        'Admit a request only when a concurrency slot is free.'
         if not self.slots.acquire(False):
             return self.shutdown_request(request)
         try:
@@ -229,12 +248,14 @@ class Server(http.server.ThreadingHTTPServer):
             raise
 
     def process_request_thread(self, request, client_address):
+        'Process an admitted request and always release its slot.'
         try:
             super().process_request_thread(request, client_address)
         finally:
             self.slots.release()
 
     def handle_error(self, request, client_address):
+        'Swallow handler errors without echoing untrusted details to the log.'
         pass
 
 

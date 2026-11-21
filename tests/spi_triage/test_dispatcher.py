@@ -12,16 +12,22 @@ from dispatcher import Dispatcher
 
 
 class DispatchTests(unittest.TestCase):
+    """Tests for SPI dispatch decision logic."""
+
     def setUp(self) -> None:
+
+        'Create a scratch dispatcher store.'
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.store = Store(self.tmp.name + "/queue.sqlite")
 
     def enqueue(self, key: str = "a") -> dict[str, object]:
+        'Enqueue one event and return its key.'
         job: dict[str, object] = self.store.enqueue({"event_key": key, "episode": key})
         return job
 
     def test_empty_disabled_and_coalescing(self) -> None:
+        'Verify empty, disabled, and coalesced dispatch behavior.'
         calls = []
         d = Dispatcher(self.store, "unused", post=lambda: calls.append(1))
         self.enqueue()
@@ -34,10 +40,12 @@ class DispatchTests(unittest.TestCase):
         assert self.store.dispatch_status()["deadline"] > 0
 
     def test_empty(self) -> None:
+        'Verify an empty dispatch ticks without work.'
         d = Dispatcher(self.store, "unused", True, lambda: self.fail("network"))
         assert d.tick() is None
 
     def test_ambiguous_persists_and_ack_race(self) -> None:
+        'Verify ambiguous events persist safely across an ack race.'
         self.enqueue()
 
         def post() -> None:
@@ -49,6 +57,7 @@ class DispatchTests(unittest.TestCase):
         assert self.store.reserve_dispatch()[0] is None
 
     def test_deadlines_recovery_and_terminal_lease(self) -> None:
+        'Verify deadlines, recovery, and terminal lease transitions.'
         self.enqueue()
         self.enqueue("b")
         self.store.claim()
@@ -59,6 +68,7 @@ class DispatchTests(unittest.TestCase):
         assert self.store.reserve_dispatch()[0] is not None
 
     def test_backoff_restart_and_due_retry(self) -> None:
+        'Verify backoff, restart and due retry scheduling.'
         with (
             patch("core.time.time", return_value=100),
             patch("core.random.uniform", return_value=1),
@@ -74,6 +84,7 @@ class DispatchTests(unittest.TestCase):
             assert self.store.reserve_dispatch(101) == (None, 160)
 
     def test_expired_processing_lease(self) -> None:
+        'Verify an expired processing lease is reclaimed.'
         with patch("core.time.time", return_value=100):
             self.enqueue()
             self.store.claim()
@@ -82,7 +93,11 @@ class DispatchTests(unittest.TestCase):
 
 
 class ServiceSafetyTests(unittest.TestCase):
+    """Tests for dispatcher service safety and lease bounds."""
+
     def test_expired_lease_while_stage_busy(self) -> None:
+
+        'Verify lease expiry is deferred while the stage is busy.'
         from service import Engine
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -108,6 +123,7 @@ class ServiceSafetyTests(unittest.TestCase):
             assert engine.claim() == {"job_id": "a"}
 
     def test_body_validation_and_partial_timeout(self) -> None:
+        'Verify webhook body validation and partial-request timeouts.'
         import socket
         from types import SimpleNamespace
         from service import read_request_body
@@ -139,7 +155,11 @@ class ServiceSafetyTests(unittest.TestCase):
 
 
 class DispatchTransportTests(unittest.TestCase):
+    """Tests for dispatch transport interruption handling."""
+
     def test_trickling_headers_are_interrupted_without_body_read(self) -> None:
+
+        'Verify trickling-header requests abort without reading bodies.'
         import socket
         import threading
         import http.client

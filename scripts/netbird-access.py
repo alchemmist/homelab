@@ -468,7 +468,10 @@ def offboard_plan(s, username, expected_uuid):
 
 
 class API:
+    """NetBird and Authentik API client for access checks."""
+
     def __init__(self, nb_credentials, ak_credentials) -> None:
+
         self.nb = json.loads(Path(nb_credentials).read_text())["token"]
         self.ak = json.loads(Path(ak_credentials).read_text())["AUTHENTIK_BOOTSTRAP_TOKEN"]
 
@@ -479,6 +482,7 @@ class API:
         self.opener = urllib.request.build_opener(NoRedirect)
 
     def call(self, system, method, path, body=None):
+        """Call the Authentik or NetBird API with path validation."""
         require(
             system in ("ak", "nb") and not path.startswith("/") and "://" not in path,
             "Invalid owned API path",
@@ -503,6 +507,7 @@ class API:
             return json.loads(content) if content else None
 
     def rows(self, path):
+        """Collect every paginated row of an API path."""
         result = []
         for page in range(1, 1001):
             data = self.call(
@@ -516,6 +521,7 @@ class API:
         raise ValueError("Pagination limit exceeded")
 
     def snapshot(self):
+        """Read the pinned NetBird collections into an inventory snapshot."""
         state = {
             "nb_" + name: self.call("nb", "GET", name)
             for name in ["accounts", "groups", "users", "peers", "policies"]
