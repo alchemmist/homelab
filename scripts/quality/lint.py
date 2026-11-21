@@ -1225,12 +1225,13 @@ def check_actions(names: list[str]) -> tuple[list[Finding], int]:
             command(
                 [
                     "zizmor",
-                    "--offline",
+                    "--no-config",
+                    "--strict-collection",
                     "--persona",
                     "auditor",
                     "--format",
                     "sarif",
-                    ".github/workflows",
+                    *files,
                 ],
                 allowed=(0, 1),
                 timeout=180,
@@ -1243,8 +1244,11 @@ def check_actions(names: list[str]) -> tuple[list[Finding], int]:
 def check_actionlint(names: list[str]) -> tuple[list[Finding], int]:
     """Run the actionlint linter and return findings and target count."""
     files = workflow_files(names)
+    for helper in ("shellcheck", "pyflakes"):
+        if shutil.which(helper) is None:
+            raise LintToolError(f"Missing required actionlint helper: {helper}")
     process = command(
-        ["actionlint", "-shellcheck=", "-pyflakes=", "-format", "{{json .}}"],
+        ["actionlint", "-config-file", os.devnull, "-format", "{{json .}}", *files],
         allowed=(0, 1),
         timeout=180,
     )
@@ -1371,7 +1375,12 @@ def check(tool: str) -> tuple[list[Finding], int]:
     if tool == "workflow":
         security, count = check("actions")
         expressions, _ = check("actionlint")
-        return security + expressions, count
+        directives = []
+        for name in workflow_files(names):
+            for number, line in enumerate((ROOT / name).read_text().splitlines(), 1):
+                if re.search(r"#\s*(?:zizmor:\s*ignore|shellcheck\s+disable=|noqa\b)", line, re.I):
+                    directives.append(finding("workflow-suppression", name, number, "Workflow lint suppression is not allowed."))
+        return security + expressions + directives, count
     if tool == "dependencies":
         return check_dependencies(names)
     tools = {

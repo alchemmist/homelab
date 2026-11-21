@@ -65,7 +65,7 @@ profiles:
   quality-delivery:
     extends: default
     setup:
-    - run: uv run python scripts/quality/install_tools.py --tools actionlint
+    - run: uv run python scripts/quality/install_tools.py --tools actionlint shellcheck
   quality-secrets:
     extends: default
     setup:
@@ -152,4 +152,15 @@ nodes:
       uv run python scripts/quality/lint.py docker
     results:
       native: reports/docker.json
+  workflow:
+    title: Delivery security
+    profile: quality-delivery
+    needs:
+    - graph
+    policy: *id001
+    run: uv run python scripts/quality/lint.py workflow
+    env:
+      GH_TOKEN: ${{ github.token }}
+    results:
+      native: reports/workflow.json
 ...
