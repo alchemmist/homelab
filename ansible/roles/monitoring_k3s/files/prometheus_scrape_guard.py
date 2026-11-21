@@ -1,6 +1,56 @@
 import json
 import sys
+from typing import TypedDict
 
+
+class _Limits(TypedDict, total=False):
+    memory: str | int | float
+
+
+class _Resources(TypedDict, total=False):
+    limits: _Limits
+
+
+class _Container(TypedDict, total=False):
+    name: str
+    resources: _Resources
+
+
+class _ContainerStatus(TypedDict, total=False):
+    name: str
+    ready: bool
+    resources: _Resources
+
+
+class _PodSpec(TypedDict, total=False):
+    containers: list[_Container]
+
+
+class _PodStatus(TypedDict, total=False):
+    phase: str
+    containerStatuses: list[_ContainerStatus]
+
+
+class _Pod(TypedDict, total=False):
+    spec: _PodSpec
+    status: _PodStatus
+
+
+class _PodList(TypedDict, total=False):
+    items: list[_Pod]
+
+
+class _PromSpec(TypedDict, total=False):
+    scrapeInterval: str
+    resources: _Resources
+
+
+class _Prom(TypedDict, total=False):
+    spec: _PromSpec
+    items: list["_Prom"]
+
+
+_Document = _Prom | list[object] | str | int | float | bool | None
 
 MEMORY_FACTORS = (
     ("Ti", 1024**4),
@@ -15,7 +65,7 @@ MEMORY_FACTORS = (
 )
 
 
-def memory_bytes(value):
+def memory_bytes(value: object):
     text = str(value).strip()
     for suffix, factor in MEMORY_FACTORS:
         if text.endswith(suffix):
@@ -23,13 +73,15 @@ def memory_bytes(value):
     return int(float(text))
 
 
-def problems(document, pods=None):
+def problems(document: _Document, pods: _PodList | None = None):
     if not document:
         return ["Prometheus is not installed"]
-    items = (
-        document.get("items") if isinstance(document, dict) and "items" in document else [document]
-    )
-    if not items:
+    if not isinstance(document, dict):
+        return ["Prometheus is not installed"]
+    prom = document
+    raw_items = prom.get("items")
+    items = raw_items if isinstance(raw_items, list) else [prom]
+    if not items or not isinstance(items[0], dict):
         return ["Prometheus is not installed"]
     spec = items[0].get("spec") or {}
     found = []
