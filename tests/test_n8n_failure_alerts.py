@@ -1,3 +1,5 @@
+"""Tests for the n8n failure alert sync script."""
+
 import copy
 import importlib.util
 import json

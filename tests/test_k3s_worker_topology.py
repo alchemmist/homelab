@@ -1,3 +1,5 @@
+"""Tests for the k3s worker topology verification helper."""
+
 import importlib.util
 from pathlib import Path
 import sys

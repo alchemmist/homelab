@@ -1,3 +1,5 @@
+"""Tests for the LMS database high-availability Helm rendering."""
+
 import json
 from pathlib import Path
 import subprocess

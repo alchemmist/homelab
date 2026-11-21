@@ -1,3 +1,5 @@
+"""Tests for the NetBird gitops node sync script."""
+
 import copy
 import importlib.util
 import json

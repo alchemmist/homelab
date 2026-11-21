@@ -1,3 +1,5 @@
+"""Tests for the NetBird host peer provisioning scripts."""
+
 import importlib.util
 from pathlib import Path
 import struct

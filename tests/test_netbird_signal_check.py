@@ -1,3 +1,5 @@
+"""Tests for the NetBird signal reachability check script."""
+
 import importlib.util
 from collections.abc import Iterable
 from pathlib import Path
