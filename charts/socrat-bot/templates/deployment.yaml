@@ -22,6 +22,9 @@ spec:
       app.kubernetes.io/component: {{ $component.component }}
   template:
     metadata:
+      {{- if $.Values.telegramPathProbes.enabled }}
+      annotations: {checksum/telegram-path: {{ $.Files.Get "files/telegram-egress-probe.py" | sha256sum }}}
+      {{- end }}
       labels:
         app.kubernetes.io/name: {{ $component.name }}
         app.kubernetes.io/instance: {{ $.Release.Name }}
@@ -48,8 +51,11 @@ spec:
       securityContext:
         fsGroup: 65532
       {{- end }}
-      {{- if or $.Values.databaseSecret (and $.Values.graphs.enabled (eq $component.component "bot")) }}
+      {{- if or $.Values.databaseSecret $.Values.telegramPathProbes.enabled (and $.Values.graphs.enabled (eq $component.component "bot")) }}
       volumes:
+        {{- if $.Values.telegramPathProbes.enabled }}
+        {{- include "socrat-bot.pathProbeVolumes" $ | nindent 8 }}
+        {{- end }}
         {{- if $.Values.databaseSecret }}
         - name: pg-common-ca
           secret: {secretName: pg-common-ca}
@@ -104,4 +110,7 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+      {{- if $.Values.telegramPathProbes.enabled }}
+        {{- include "socrat-bot.pathProbeContainer" $ | nindent 8 }}
+      {{- end }}
 {{- end }}

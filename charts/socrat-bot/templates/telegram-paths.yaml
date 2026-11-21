@@ -1,0 +1,52 @@
+{{- define "socrat-bot.pathProbeContainer" -}}
+- name: telegram-path
+  image: python:3.13-alpine@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8
+  command: [python, -B, /probe/telegram-egress-probe.py, --periodic]
+  resources:
+    requests: {cpu: 5m, memory: 20Mi}
+    limits: {memory: 64Mi}
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities: {drop: [ALL]}
+    seccompProfile: {type: RuntimeDefault}
+  volumeMounts:
+    - {name: probe-code, mountPath: /probe, readOnly: true}
+    - {name: probe-samples, mountPath: /samples}
+{{- end }}
+{{- define "socrat-bot.pathProbeVolumes" -}}
+- name: probe-code
+  configMap: {name: socrat-telegram-path}
+- name: probe-samples
+  emptyDir: {medium: Memory, sizeLimit: 4Mi}
+{{- end }}
+{{- if .Values.telegramPathProbes.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: socrat-telegram-path}
+data:
+  telegram-egress-probe.py: |
+{{ .Files.Get "files/telegram-egress-probe.py" | indent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: socrat-telegram-path-control}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector: {matchLabels: {app: socrat-telegram-path-control}}
+  template:
+    metadata:
+      labels: {app: socrat-telegram-path-control}
+      annotations: {checksum/telegram-path: {{ .Files.Get "files/telegram-egress-probe.py" | sha256sum }}}
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector: {kubernetes.io/hostname: socrat-3}
+      securityContext: {fsGroup: 65532}
+      containers:
+        {{- include "socrat-bot.pathProbeContainer" . | nindent 8 }}
+      volumes:
+        {{- include "socrat-bot.pathProbeVolumes" . | nindent 8 }}
+{{- end }}

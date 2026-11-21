@@ -1,6 +1,8 @@
 ---
 databaseSecret: socrat-bot-pg-common
 replicaCount: 1
+telegramPathProbes:
+  enabled: true
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/socrat-bot
   tag: 2c289291698a77c198eb38c159ac1754c4b197fc

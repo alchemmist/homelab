@@ -35,3 +35,64 @@ def test_tcp_and_tls_are_distinct():
         ctx.wrap_socket.side_effect = None
         (row,) = samples("example.com", ctx)
         assert row["stage"] == "ok"
+
+
+def test_periodic_chart_isolated_and_bounded():
+    """Only the probe shares the bot network; it gets no bot credentials or ports."""
+    import subprocess
+
+    import yaml
+
+    root = Path(__file__).resolve().parents[1]
+    args = [
+        "helm",
+        "template",
+        "socrat-bot",
+        str(root / "charts/socrat-bot"),
+        "-f",
+        str(root / "deploy/socrat-bot/values.yaml"),
+    ]
+    manifests = list(yaml.safe_load_all(subprocess.check_output(args, text=True)))
+    specs = {
+        d["metadata"]["name"]: d["spec"]["template"]["spec"]
+        for d in manifests
+        if d and d["kind"] == "Deployment"
+    }
+    for name in ("socrat-bot", "socrat-telegram-path-control"):
+        spec = specs[name]
+        probe = next(c for c in spec["containers"] if c["name"] == "telegram-path")
+        assert not {"env", "envFrom", "ports"} & probe.keys()
+        assert {v["name"] for v in probe["volumeMounts"]} == {
+            "probe-code",
+            "probe-samples",
+        }
+        assert spec["automountServiceAccountToken"] is False
+        volume = next(v for v in spec["volumes"] if v["name"] == "probe-samples")
+        assert volume["emptyDir"] == {"medium": "Memory", "sizeLimit": "4Mi"}
+    assert (
+        specs["socrat-bot"]["nodeSelector"]
+        != specs["socrat-telegram-path-control"]["nodeSelector"]
+    )
+
+
+def test_periodic_retains_last_120_batches(tmp_path):
+    """No network, sleeps or pod runtime required."""
+    import json
+
+    rows = iter(range(121))
+    periodic = runpy.run_path(
+        str(Path(__file__).resolve().parents[1] / "scripts/telegram-egress-probe.py")
+    )["periodic"]
+    with patch.dict(
+        periodic.__globals__,
+        {
+            "Path": lambda _: tmp_path / "recent.json",
+            "batch": lambda _: next(rows),
+            "sleep": lambda _: None,
+        },
+    ):
+        try:
+            periodic(None)
+        except StopIteration:
+            pass
+    assert json.loads((tmp_path / "recent.json").read_text()) == list(range(1, 121))
