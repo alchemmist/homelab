@@ -62,7 +62,8 @@ if observer_ready_path.exists():
 
     st = observer_ready_path.stat()
     if observer_ready_path.is_symlink() or st.st_mode & 0o077 or st.st_uid != os.geteuid():
-        raise RuntimeError("Unsafe observer readiness receipt")
+        msg = "Unsafe observer readiness receipt"
+        raise RuntimeError(msg)
     ready = json.loads(observer_ready_path.read_text())
     import hashlib
 
@@ -104,8 +105,9 @@ owner_path = root / "owner-login.json"
 owner = unique("core/users/", "username", "alchemmist")
 if not owner_path.exists():
     if owner:
+        msg = "Owner username already exists without bootstrap journal; review identity manually"
         raise RuntimeError(
-            "Owner username already exists without bootstrap journal; review identity manually"
+            msg
         )
     fd = os.open(owner_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     with os.fdopen(fd, "w") as f:
@@ -137,14 +139,16 @@ if not owner_login["initialized"]:
 # Only the declared owner may inherit this group's superuser rights.
 owner_group = unique("core/groups/", "name", "homelab-owner")
 if set(owner_group.get("users", [])) - set([owner["pk"]]):
-    raise RuntimeError("Unexpected owner group membership; review before granting superuser")
+    msg = "Unexpected owner group membership; review before granting superuser"
+    raise RuntimeError(msg)
 api("PATCH", "core/groups/" + groups["homelab-owner"] + "/", {"is_superuser": True})
 
 # Explicitly reviewed existing identities; no general email-based account merging.
 if account_path.exists():
     for username, account in accounts.items():
         if username != "alchemmist" and "homelab-owner" in account["groups"]:
-            raise RuntimeError("Only the declared owner may receive owner membership")
+            msg = "Only the declared owner may receive owner membership"
+            raise RuntimeError(msg)
         user = unique("core/users/", "username", username)
         login_path = root / (username + "-login.json") if username != "alchemmist" else owner_path
         if not login_path.exists():
@@ -193,7 +197,8 @@ validation = unique(
 )
 totp = unique("stages/authenticator/totp/", "name", "default-authenticator-totp-setup")
 if not validation or not totp:
-    raise RuntimeError("Expected default MFA stages missing")
+    msg = "Expected default MFA stages missing"
+    raise RuntimeError(msg)
 api(
     "PATCH",
     "stages/authenticator/validate/" + validation["pk"] + "/",
@@ -210,7 +215,8 @@ cert = unique("crypto/certificatekeypairs/", "name", "authentik Self-signed Cert
 scopes = api("GET", "propertymappings/provider/scope/?page_size=100")["results"]
 mapping = standard_scope_ids(scopes)
 if len(mapping) != 3 or not cert:
-    raise RuntimeError("OIDC defaults missing")
+    msg = "OIDC defaults missing"
+    raise RuntimeError(msg)
 groups_scope = unique("propertymappings/provider/scope/", "name", "homelab-groups")
 groups_settings = {
     "name": "homelab-groups",
@@ -257,8 +263,9 @@ for slug, service in services.items():
         provider = unique("providers/oauth2/", "name", "homelab-" + slug)
         if slug not in clients:
             if provider:
+                msg = "Provider exists without local client credentials; refusing rotation"
                 raise RuntimeError(
-                    "Provider exists without local client credentials; refusing rotation"
+                    msg
                 )
             clients[slug] = {
                 "client_id": "socrat-" + slug,
@@ -306,7 +313,8 @@ for slug, service in services.items():
         if slug == "grafana":
             offline = next((x for x in scopes if x.get("scope_name") == "offline_access"), None)
             if not offline:
-                raise RuntimeError("offline_access scope missing")
+                msg = "offline_access scope missing"
+                raise RuntimeError(msg)
             service_mapping.append(offline["pk"])
         settings = {
             "name": "homelab-" + slug,
@@ -377,7 +385,8 @@ if proxy_ids:
     outposts = api("GET", "outposts/instances/?page_size=100")["results"]
     embedded = [o for o in outposts if o.get("managed") == "goauthentik.io/outposts/embedded"]
     if len(embedded) != 1:
-        raise RuntimeError("Expected one managed embedded outpost")
+        msg = "Expected one managed embedded outpost"
+        raise RuntimeError(msg)
     outpost = embedded[0]
     config = dict(outpost["config"])
     config["authentik_host"] = "https://auth.socrat.alchemmist.xyz/"

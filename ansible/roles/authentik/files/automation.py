@@ -132,7 +132,8 @@ def exact(token, endpoint, field, value):
     )["results"]
     rows = [r for r in rows if r[field] == value]
     if len(rows) > 1:
-        raise RuntimeError("Ambiguous managed identity")
+        msg = "Ambiguous managed identity"
+        raise RuntimeError(msg)
     return rows[0] if rows else None
 
 
@@ -153,10 +154,12 @@ def verify(token, journal):
         and group["attributes"] == marker
         and set(group["users"]) == {user["pk"]}
     ):
-        raise RuntimeError("Managed account/group drift")
+        msg = "Managed account/group drift"
+        raise RuntimeError(msg)
     t = api(token, "GET", "core/tokens/" + quote(NAME, safe="") + "/")
     if t["user"] != user["pk"] or t["intent"] != "api" or t["expiring"]:
-        raise RuntimeError("Managed token drift")
+        msg = "Managed token drift"
+        raise RuntimeError(msg)
     owner = exact(token, "core/users/", "username", "alchemmist")
     if (
         not owner
@@ -164,7 +167,8 @@ def verify(token, journal):
         or not owner["is_active"]
         or not owner["is_superuser"]
     ):
-        raise RuntimeError("Owner admin prerequisite failed")
+        msg = "Owner admin prerequisite failed"
+        raise RuntimeError(msg)
     for endpoint in [
         "providers/all/",
         "core/applications/",
@@ -177,20 +181,24 @@ def verify(token, journal):
 
 def migrate(root, action):
     if root.stat().st_mode & 0o077:
-        raise RuntimeError("Deployment directory is not private")
+        msg = "Deployment directory is not private"
+        raise RuntimeError(msg)
     path = root / "automation-api.json"
     credentials = root / "credentials.json"
     if credentials.stat().st_mode & 0o077:
-        raise RuntimeError("Credential file is not private")
+        msg = "Credential file is not private"
+        raise RuntimeError(msg)
     values = json.loads(credentials.read_text())
     old = values["AUTHENTIK_BOOTSTRAP_TOKEN"]
     journal = json.loads(path.read_text()) if path.exists() else None
     if journal and journal.get("status") == "active":
         if path.stat().st_mode & 0o077:
-            raise RuntimeError("Journal is not private")
+            msg = "Journal is not private"
+            raise RuntimeError(msg)
         verify(journal["token"], journal)
         if old != journal["token"]:
-            raise RuntimeError("Consumer credential alias drift")
+            msg = "Consumer credential alias drift"
+            raise RuntimeError(msg)
         print("PASS: dedicated machine API identity and consumer alias verified; read-only check")
         return
     if action == "check":
@@ -203,18 +211,22 @@ def migrate(root, action):
         or not owner["is_superuser"]
         or not owner["is_active"]
     ):
-        raise RuntimeError("Owner admin prerequisite failed")
+        msg = "Owner admin prerequisite failed"
+        raise RuntimeError(msg)
     if journal is None:
         if exact(old, "core/users/", "username", NAME) or exact(old, "core/groups/", "name", GROUP):
-            raise RuntimeError("Refusing adoption of existing identity")
+            msg = "Refusing adoption of existing identity"
+            raise RuntimeError(msg)
         # List metadata only; never overwrite an existing token identifier.
         tokens = api(old, "GET", "core/tokens/?page_size=1000")["results"]
         if any(t["identifier"] == NAME for t in tokens):
-            raise RuntimeError("Foreign token identifier")
+            msg = "Foreign token identifier"
+            raise RuntimeError(msg)
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         backup = root / ("credentials-before-automation-" + stamp + ".json")
         if backup.exists():
-            raise RuntimeError("Backup already exists")
+            msg = "Backup already exists"
+            raise RuntimeError(msg)
         save(backup, values)
         journal = {
             "version": 1,
@@ -227,21 +239,25 @@ def migrate(root, action):
     marker = {"homelab_automation_journal": journal["nonce"]}
     group = exact(old, "core/groups/", "name", GROUP)
     if group and group["attributes"] != marker:
-        raise RuntimeError("Foreign group")
+        msg = "Foreign group"
+        raise RuntimeError(msg)
     if group is None:
         group = api(
             old, "POST", "core/groups/", {"name": GROUP, "is_superuser": True, "attributes": marker}
         )
     if not group["is_superuser"]:
-        raise RuntimeError("Group permission drift")
+        msg = "Group permission drift"
+        raise RuntimeError(msg)
     journal["group_pk"] = group["pk"]
     save(path, journal)
     user = exact(old, "core/users/", "username", NAME)
     if user and user["attributes"] != marker:
-        raise RuntimeError("Foreign user")
+        msg = "Foreign user"
+        raise RuntimeError(msg)
     if user is None:
         if group["users"]:
-            raise RuntimeError("Foreign group member")
+            msg = "Foreign group member"
+            raise RuntimeError(msg)
         user = api(
             old,
             "POST",
@@ -266,7 +282,8 @@ def migrate(root, action):
             or matches[0]["user"] != user["pk"]
             or matches[0].get("description") != journal["nonce"]
         ):
-            raise RuntimeError("Foreign token")
+            msg = "Foreign token"
+            raise RuntimeError(msg)
     else:
         api(
             old,
@@ -306,7 +323,8 @@ def retire_default_admin(root):
         and evidence.get("owner_uuid") == OWNER_UUID
         and journal.get("encrypted_backup_sha256")
     ):
-        raise RuntimeError("Recovery and off-node backup prerequisites not recorded")
+        msg = "Recovery and off-node backup prerequisites not recorded"
+        raise RuntimeError(msg)
     env = dict(os.environ, K3S_CONFIG_FILE="/dev/null")
     k = ["kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml", "-n", "identity"]
     secret = json.loads(
@@ -314,7 +332,8 @@ def retire_default_admin(root):
     )
     keys = {"AUTHENTIK_BOOTSTRAP_TOKEN", "AUTHENTIK_BOOTSTRAP_PASSWORD"}
     if keys.intersection(secret.get("data", {})):
-        raise RuntimeError("Runtime Secret still contains bootstrap credentials")
+        msg = "Runtime Secret still contains bootstrap credentials"
+        raise RuntimeError(msg)
     annotation = (
         secret["metadata"]
         .get("annotations", {})
@@ -324,44 +343,53 @@ def retire_default_admin(root):
     if keys.intersection(applied.get("data", {})) or keys.intersection(
         applied.get("stringData", {})
     ):
-        raise RuntimeError("Runtime Secret annotation still contains bootstrap credentials")
+        msg = "Runtime Secret annotation still contains bootstrap credentials"
+        raise RuntimeError(msg)
     for name in ["authentik-server", "authentik-worker"]:
         deploy = json.loads(
             subprocess.check_output(k + ["get", "deploy", name, "-o", "json"], env=env)
         )
         for c in deploy["spec"]["template"]["spec"]["containers"]:
             if keys.intersection(e["name"] for e in c.get("env", [])):
-                raise RuntimeError("Explicit pod bootstrap environment remains")
+                msg = "Explicit pod bootstrap environment remains"
+                raise RuntimeError(msg)
     bootstrap = (root / "bootstrap.py").read_text()
     if not bootstrap_is_migration_aware(bootstrap):
-        raise RuntimeError("Future bootstrap reconciliation is not migration-aware")
+        msg = "Future bootstrap reconciliation is not migration-aware"
+        raise RuntimeError(msg)
     token = journal["token"]
     target = exact(token, "core/users/", "username", "akadmin")
     if target is None:
         if journal.get("akadmin_retired_at"):
             print("PASS: akadmin already retired")
             return
-        raise RuntimeError("Default admin missing without retirement journal")
+        msg = "Default admin missing without retirement journal"
+        raise RuntimeError(msg)
     if target["uuid"] != "fc86d87d-3a72-4cfb-8ba1-aa6bf6b017e7" or target["pk"] != 4:
-        raise RuntimeError("Refusing deletion of an unreviewed identity")
+        msg = "Refusing deletion of an unreviewed identity"
+        raise RuntimeError(msg)
     tokens = api(token, "GET", "core/tokens/?page_size=1000")["results"]
     owned = [t for t in tokens if t["user"] == target["pk"]]
     if any(t["identifier"] != "authentik-bootstrap-token" for t in owned):
-        raise RuntimeError("Unexpected default-admin token dependency")
+        msg = "Unexpected default-admin token dependency"
+        raise RuntimeError(msg)
     journal["retired_user_before"] = target
     save(path, journal)
     api(token, "DELETE", "core/users/" + str(target["pk"]) + "/")
     if exact(token, "core/users/", "username", "akadmin") is not None:
-        raise RuntimeError("Default admin removal not confirmed")
+        msg = "Default admin removal not confirmed"
+        raise RuntimeError(msg)
     if any(
         t["user"] == target["pk"]
         for t in api(token, "GET", "core/tokens/?page_size=1000")["results"]
     ):
-        raise RuntimeError("Default-admin token survived deletion")
+        msg = "Default-admin token survived deletion"
+        raise RuntimeError(msg)
     verify(token, journal)
     values = json.loads((root / "credentials.json").read_text())
     if values["AUTHENTIK_BOOTSTRAP_TOKEN"] != token:
-        raise RuntimeError("Consumer alias changed during retirement")
+        msg = "Consumer alias changed during retirement"
+        raise RuntimeError(msg)
     values.pop("AUTHENTIK_BOOTSTRAP_PASSWORD", None)
     save(root / "credentials.json", values)
     journal["akadmin_retired_at"] = datetime.now(timezone.utc).isoformat()

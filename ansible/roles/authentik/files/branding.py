@@ -79,23 +79,27 @@ def main():
         rows = api("GET", "core/brands/?page_size=100")["results"]
         matches = [row for row in rows if row["domain"] == HOST]
         if len(matches) > 1:
-            raise RuntimeError("Ambiguous domain brand; refusing to change it")
+            msg = "Ambiguous domain brand; refusing to change it"
+            raise RuntimeError(msg)
         return rows, matches[0] if matches else None
 
     if (
         args.action != "rollback"
         and api("GET", "admin/version/").get("version_current") != "2026.8.5"
     ):
-        raise RuntimeError("Theme requires reviewed Authentik 2026.8.5; refusing version drift")
+        msg = "Theme requires reviewed Authentik 2026.8.5; refusing version drift"
+        raise RuntimeError(msg)
     journal_path = args.root / "quiet-mono-brand-journal.json"
     if args.action == "rollback":
         if not args.backup:
-            raise RuntimeError("Explicit --backup required for rollback")
+            msg = "Explicit --backup required for rollback"
+            raise RuntimeError(msg)
         backup = json.loads(args.backup.read_text())
         _, current = exact_brand()
         if backup["brand_before"]:
             if not current or current["brand_uuid"] != backup["brand_before"]["brand_uuid"]:
-                raise RuntimeError("Brand identity changed; manual review required")
+                msg = "Brand identity changed; manual review required"
+                raise RuntimeError(msg)
             api(
                 "PATCH",
                 "core/brands/" + current["brand_uuid"] + "/",
@@ -108,7 +112,8 @@ def main():
         elif current:
             journal = json.loads(journal_path.read_text())
             if current["brand_uuid"] != journal["brand_uuid"]:
-                raise RuntimeError("Refusing to remove an unrelated brand")
+                msg = "Refusing to remove an unrelated brand"
+                raise RuntimeError(msg)
             api("DELETE", "core/brands/" + current["brand_uuid"] + "/")
         flow = backup["flow_before"]
         api("PATCH", "flows/instances/" + flow["slug"] + "/", {"title": flow["title"]})
@@ -155,7 +160,8 @@ def main():
                 if digest not in allowed or "immutable" not in response.headers.get(
                     "Cache-Control", ""
                 ):
-                    raise RuntimeError("Random Nature response failed verification")
+                    msg = "Random Nature response failed verification"
+                    raise RuntimeError(msg)
             urls["NATURE_RANDOM_" + variant.upper()] = url
     if (args.theme / "nature.json").exists():
         scene_url = BASE + "/-/quiet-mono/v1/nature/scene.css"
@@ -168,13 +174,15 @@ def main():
                 hashlib.sha256(response.read()).hexdigest() not in allowed_css
                 or response.headers.get("Cache-Control") != "no-store"
             ):
-                raise RuntimeError("Random scene CSS verification failed")
+                msg = "Random scene CSS verification failed"
+                raise RuntimeError(msg)
         urls["NATURE_SCENE"] = scene_url
     css = (args.theme / "theme.css").read_text()
     for key, url in urls.items():
         css = css.replace("__ASSET_" + key + "__", url)
     if "__ASSET_" in css:
-        raise RuntimeError("Unresolved CSS asset reference")
+        msg = "Unresolved CSS asset reference"
+        raise RuntimeError(msg)
     # DRF trims the textarea value; normalize before comparing for idempotence.
     css = css.strip()
     protected_json(args.root / "quiet-mono-media.json", urls)
@@ -193,24 +201,28 @@ def main():
     base = current or next(row for row in rows if row["default"])
     flow = api("GET", "flows/instances/?slug=default-authentication-flow")["results"]
     if len(flow) != 1:
-        raise RuntimeError("Expected one default authentication flow")
+        msg = "Expected one default authentication flow"
+        raise RuntimeError(msg)
     flow = flow[0]
     ident = api("GET", "stages/identification/?name=default-authentication-identification")[
         "results"
     ]
     password = api("GET", "stages/password/?name=default-authentication-password")["results"]
     if len(ident) != 1 or len(password) != 1:
-        raise RuntimeError("Expected reviewed native identification/password stages")
+        msg = "Expected reviewed native identification/password stages"
+        raise RuntimeError(msg)
     ident, password = ident[0], password[0]
     if ident.get("password_stage") not in (None, password["pk"]):
-        raise RuntimeError("Unexpected inline password stage; refusing to replace it")
+        msg = "Unexpected inline password stage; refusing to replace it"
+        raise RuntimeError(msg)
     # Do not silently overwrite an unrelated existing custom theme.
     if (
         current
         and current.get("branding_custom_css")
         and "Quiet Mono v5" not in current["branding_custom_css"]
     ):
-        raise RuntimeError("Unmanaged domain CSS found; manual review required")
+        msg = "Unmanaged domain CSS found; manual review required"
+        raise RuntimeError(msg)
     payload = {key: base[key] for key in FIELDS if key in base}
     attributes = dict(base.get("attributes") or {})
     attributes["settings"] = {**attributes.get("settings", {}), "locale": "en", "theme": "light"}

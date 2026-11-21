@@ -33,7 +33,8 @@ def main():
         or Path("/sys/class/net/" + INTERFACE).exists()
         or resolver_dir.exists()
     ):
-        raise RuntimeError("Verification namespace or interface already exists")
+        msg = "Verification namespace or interface already exists"
+        raise RuntimeError(msg)
     configuration = run("wg-quick", "strip", options.profile)
     configuration = configuration.replace(
         "Endpoint = socrat.alchemmist.xyz:51830", "Endpoint = 127.0.0.1:51830"
