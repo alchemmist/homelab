@@ -15,6 +15,7 @@ import socket
 import tempfile
 import urllib.request
 from pathlib import Path
+from typing import cast
 
 
 def main():
@@ -36,7 +37,7 @@ def main():
         "109.173.40.247" if h == "auth.socrat.alchemmist.xyz" else h, *a, **kw
     )
 
-    def api(method, path, data=None):
+    def api(method, path, data=None) -> dict[str, object]:
         request = urllib.request.Request(
             "https://auth.socrat.alchemmist.xyz/api/v3/" + path,
             method=method,
@@ -48,16 +49,17 @@ def main():
         )
         with urllib.request.urlopen(request, timeout=40) as response:
             raw = response.read()
-            return json.loads(raw) if raw else None
+            payload: dict[str, object] = json.loads(raw) if raw else {}
+            return payload
 
-    def rows(path):
+    def rows(path) -> list[dict[str, object]]:
         result = []
         for page in range(1, 201):
             data = api(
                 "GET", path + ("&" if "?" in path else "?") + "page_size=100&page=" + str(page)
             )
-            result.extend(data["results"])
-            if not data.get("pagination", {}).get("next"):
+            result.extend(cast("list[dict[str, object]]", data["results"]))
+            if not cast("dict[str, object]", data.get("pagination", {})).get("next"):
                 return result
         raise RuntimeError("Incomplete inventory")
 
@@ -86,16 +88,18 @@ def main():
     journal.write_text(json.dumps(fixture))
     journal.chmod(0o600)
 
-    def check_fixture():
+    def check_fixture() -> dict[str, object]:
         current = api("GET", path)
         assert current["uuid"] == fixture["uuid"] and not current["is_active"]
         assert current["attributes"] == {"homelab_app_access_fixture": marker}
         return current
 
-    def evaluate(name):
+    def evaluate(name) -> dict[str, object]:
         result = api(
             "POST",
-            "propertymappings/all/" + mappings[name]["pk"] + "/test/?format_result=false",
+            "propertymappings/all/"
+            + cast("str", mappings[name]["pk"])
+            + "/test/?format_result=false",
             {"user": fixture["pk"]},
         )
         assert result["successful"], "Native property mapping evaluation failed"
@@ -105,10 +109,10 @@ def main():
                 value = json.loads(value)
             except ValueError:
                 value = ast.literal_eval(value)
-        return value
+        return cast("dict[str, object]", value)
 
-    def admitted(group_pk):
-        result = []
+    def admitted(group_pk) -> list[str]:
+        result: list[str] = []
         for app in apps:
             subset = [b for b in bindings if b["target"] == app["pk"]]
             # Test guarantees only the simple ANY group lanes in this inventory.
@@ -117,7 +121,7 @@ def main():
                 b.get("enabled") and not b.get("negate") and not b.get("policy") for b in subset
             )
             if any(b.get("group") == group_pk for b in subset):
-                result.append(app["slug"])
+                result.append(cast("str", app["slug"]))
         return sorted(result)
 
     cases = [
@@ -160,9 +164,11 @@ def main():
             actual = evaluate(mapping)
             if slug == "litellm":
                 assert actual["litellm_user_role"] == expected
-                assert actual["litellm_user_id"] == "authentik:" + fixture["uuid"]
+                assert actual["litellm_user_id"] == "authentik:" + cast("str", fixture["uuid"])
             else:
-                assert expected in actual["groups"] and "homelab-owner" not in actual["groups"]
+                assert expected in cast("list[str]", actual["groups"]) and (
+                    "homelab-owner" not in cast("list[str]", actual["groups"])
+                )
             # Projection aliases exist only in this client's token, not in IdP membership.
             assert check_fixture()["groups"] == [groups[group]["pk"]]
             successes.append(group)
