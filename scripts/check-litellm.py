@@ -6,7 +6,7 @@ import urllib.error
 import urllib.request
 
 
-def kubectl(*args):
+def kubectl(*args: str) -> str:
     return subprocess.check_output(["kubectl", "-n", "llm", *args], text=True)
 
 

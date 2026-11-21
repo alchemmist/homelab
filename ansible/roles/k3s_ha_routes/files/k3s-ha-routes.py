@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 
-def run(*args):
+def run(*args: str) -> str:
     return subprocess.check_output(args, text=True).strip()
 
 
