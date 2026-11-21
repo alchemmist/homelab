@@ -2,6 +2,7 @@ import asyncio
 import json
 import sqlite3
 import urllib.request
+from collections.abc import Mapping
 from datetime import timedelta
 
 
@@ -30,7 +31,7 @@ def configure():
     )
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
-    def request(path, payload=None):
+    def request(path: str, payload: Mapping[str, object] | None = None):
         req = urllib.request.Request(
             "http://127.0.0.1:8080" + path,
             headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},

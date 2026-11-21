@@ -1,5 +1,7 @@
 """Shared additive application admission contract; no human grants or role elevation."""
 
+from collections.abc import Callable, Mapping, Sequence
+from typing import NotRequired, TypedDict
 from urllib.parse import urlencode
 
 LEGACY_GROUPS = [
@@ -14,7 +16,51 @@ LEGACY_GROUPS = [
 ]
 
 
-def app_groups(services):
+class RoleSettings(TypedDict, total=False):
+    """Per-role admission flag from the service catalog."""
+
+    assignable: bool
+
+
+class AccessManagement(TypedDict, total=False):
+    """Readiness of the native authorization adapter for one service."""
+
+    state: str
+
+
+class Service(TypedDict, total=False):
+    """Catalog record used to derive app groups and admission groups."""
+
+    appRoles: dict[str, RoleSettings]
+    accessManagement: AccessManagement
+    groups: list[str]
+
+
+class Pagination(TypedDict, total=False):
+    """Authentik page link. Absence or a false value ends iteration."""
+
+    next: object
+
+
+class Page(TypedDict):
+    """One Authentik list response."""
+
+    results: list[object]
+    pagination: NotRequired[Pagination]
+
+
+class Group(TypedDict):
+    """Live Authentik group fields the admission check reads."""
+
+    name: str
+    is_superuser: object
+    parents: object
+    roles: object
+    parent: object
+    attributes: object
+
+
+def app_groups(services: Mapping[str, Service]):
     return {
         f"app-{slug}-{role}": {
             **settings,
@@ -26,7 +72,7 @@ def app_groups(services):
     }
 
 
-def admission_groups(slug, service):
+def admission_groups(slug: str, service: Service):
     # Legacy membership remains valid; this is admission, NOT native RBAC.
     return service.get("groups", ["homelab-owner"]) + [
         f"app-{slug}-{role}"
@@ -36,7 +82,7 @@ def admission_groups(slug, service):
     ]
 
 
-def rows(api, path):
+def rows(api: Callable[[str, str], Page], path: str):
     """Follow Authentik page numbers, never arbitrary next URLs with credentials."""
     result = []
     page = 1
@@ -56,7 +102,7 @@ def rows(api, path):
 GROUP_MARKER = {"homelab_app_iam": 1}
 
 
-def validate_group(group):
+def validate_group(group: Group):
     # Authentik 2026.8.5 uses plural parents (M2M), not legacy parent.
     # Missing/null/reduced responses are not evidence of absence of privilege.
     if (
@@ -74,7 +120,10 @@ def validate_group(group):
         raise RuntimeError("Refusing adoption of unmarked app group: " + group["name"])
 
 
-def validate_bindings(bindings, allowed):
+def validate_bindings(
+    bindings: Sequence[Mapping[str, object]],
+    allowed: set[str],
+):
     """Do not silently reset UI policy, or accept bypasses in ANY mode."""
     seen = set()
     for binding in bindings:
@@ -93,7 +142,10 @@ def validate_bindings(bindings, allowed):
     return seen
 
 
-def standard_scope_ids(scopes, required=("openid", "profile", "email")):
+def standard_scope_ids(
+    scopes: Sequence[Mapping[str, str]],
+    required: tuple[str, ...] = ("openid", "profile", "email"),
+):
     """Select exact upstream defaults, never arbitrary same-scope app mappings."""
     result = []
     for scope in required:

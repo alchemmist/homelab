@@ -2,6 +2,7 @@ import base64
 import json
 import subprocess
 import urllib.request
+from collections.abc import Mapping
 
 
 def kubectl(*args):
@@ -20,7 +21,11 @@ urls = {
 }
 
 
-def request(path, payload=None, method=None):
+def request(
+    path: str,
+    payload: Mapping[str, object] | None = None,
+    method: str | None = None,
+):
     req = urllib.request.Request(
         base + path,
         headers=headers,

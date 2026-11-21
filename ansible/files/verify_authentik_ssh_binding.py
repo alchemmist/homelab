@@ -16,12 +16,13 @@ import stat
 import subprocess
 import tempfile
 import uuid
+from typing import cast
 
 DIRECTORY = Path("/var/lib/homelab-authentik-ssh-bindings")
 CONFIG = Path("/etc/ssh/sshd_config")
 
 
-def reject_contextual_config(path=CONFIG, seen=None):
+def reject_contextual_config(path: Path = CONFIG, seen: set[Path] | None = None):
     """We cannot prove all Match contexts via one sshd -T -C probe. Reject them.
 
     Follow OpenSSH Include globs, including inside included files. This deliberately
@@ -60,7 +61,7 @@ def reject_contextual_config(path=CONFIG, seen=None):
                     reject_contextual_config(Path(included), seen)
 
 
-def verify_key_location(name, config=CONFIG):
+def verify_key_location(name: str, config: Path = CONFIG):
     reject_contextual_config(config)
     parsed = subprocess.run(
         [shutil.which("sshd") or "/usr/sbin/sshd", "-T"], text=True, capture_output=True, check=True
@@ -100,7 +101,7 @@ def verify_key_location(name, config=CONFIG):
     return Path("/home") / name / ".ssh/authorized_keys"
 
 
-def verify(name, ident, directory=DIRECTORY):
+def verify(name: str, ident: str, directory: Path = DIRECTORY):
     if not re.fullmatch(r"[a-z_][a-z0-9_-]{0,30}", name) or name in {
         "root",
         "alchemmist",
@@ -139,7 +140,7 @@ def verify(name, ident, directory=DIRECTORY):
     return {"bindingVerified": True, "accountExists": exists}
 
 
-def fingerprints(path):
+def fingerprints(path: Path):
     """Parse every non-comment line; reject options, duplicates and invalid keys."""
     result = []
     for line in path.read_text().splitlines():
@@ -166,7 +167,13 @@ def fingerprints(path):
     return sorted(result)
 
 
-def verify_keys(name, ident, state, expected, directory=DIRECTORY):
+def verify_keys(
+    name: str,
+    ident: str,
+    state: str,
+    expected: object,
+    directory: Path = DIRECTORY,
+):
     if (
         state not in {"present", "disabled"}
         or not isinstance(expected, list)
@@ -182,7 +189,7 @@ def verify_keys(name, ident, state, expected, directory=DIRECTORY):
     if not verify(name, ident, directory)["accountExists"]:
         raise ValueError("Applied account missing")
     actual = fingerprints(verify_key_location(name))
-    if actual != sorted(expected):
+    if actual != sorted(cast("list[str]", expected)):
         raise ValueError("Effective key fingerprints differ from reviewed assignment")
     if state == "disabled" and pwd.getpwnam(name).pw_shell != "/usr/sbin/nologin":
         raise ValueError("Disabled shell mismatch")

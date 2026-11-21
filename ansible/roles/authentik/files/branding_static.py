@@ -7,7 +7,7 @@ from pathlib import Path
 import sys
 
 
-def render(root):
+def render(root: Path):
     assets = json.loads((root / "assets.json").read_text())
     binary = {}
     names = {}

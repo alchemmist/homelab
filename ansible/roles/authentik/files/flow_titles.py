@@ -4,7 +4,9 @@
 import argparse
 import json
 import os
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Protocol
 import socket
 import urllib.request
 
@@ -14,7 +16,24 @@ TITLES = {
 }
 
 
-def reconcile(api, root, rollback=False):
+class TitleApi(Protocol):
+    """GET or PATCH one flow and return its identity fields."""
+
+    def __call__(
+        self,
+        method: str,
+        path: str,
+        value: dict[str, str] | None = None,
+    ) -> Mapping[str, str]:
+        """Issue one Authentik flow request."""
+
+
+def reconcile(
+    api: TitleApi,
+    root: Path,
+    *,
+    rollback: bool = False,
+):
     backup = root / "authorization-flow-titles-original.json"
     current = {slug: api("GET", "flows/instances/" + slug + "/") for slug in TITLES}
     if rollback:
@@ -59,7 +78,7 @@ def main():
     )
     credential = json.loads((args.root / "credentials.json").read_text())
 
-    def api(method, path, value=None):
+    def api(method: str, path: str, value: dict[str, str] | None = None):
         req = urllib.request.Request(
             "https://auth.socrat.alchemmist.xyz/api/v3/" + path,
             method=method,
@@ -74,7 +93,7 @@ def main():
 
     if not args.rollback and api("GET", "admin/version/")["version_current"] != "2026.8.5":
         raise RuntimeError("Unreviewed Authentik version")
-    changed = reconcile(api, args.root, args.rollback)
+    changed = reconcile(api, args.root, rollback=args.rollback)
     print(
         "Authorization flow titles updated"
         if changed
