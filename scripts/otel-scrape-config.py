@@ -40,13 +40,15 @@ def assets(value):
     if isinstance(value, dict):
         for key, item in value.items():
             if key in INLINE_CREDENTIALS and item:
+                msg = "Inline or masked credentials require explicit credential-file translation"
                 raise ValueError(
-                    "Inline or masked credentials require explicit credential-file translation"
+                    msg
                 )
             if key.endswith("_file") and isinstance(item, str) and item:
                 if not item.startswith(ASSET_ROOTS) or ".." in Path(item).parts:
+                    msg = "Unsupported source file dependency requires explicit translation"
                     raise ValueError(
-                        "Unsupported source file dependency requires explicit translation"
+                        msg
                     )
                 result.add(item)
             result.update(assets(item))
@@ -54,7 +56,8 @@ def assets(value):
         for item in value:
             result.update(assets(item))
     elif isinstance(value, str) and "<secret>" in value:
-        raise ValueError("A redacted placeholder cannot be used as live configuration")
+        msg = "A redacted placeholder cannot be used as live configuration"
+        raise ValueError(msg)
     return result
 
 
@@ -66,21 +69,23 @@ def translate_authorization(job, monitors):
         return translated, references
     parts = job["job_name"].split("/")
     if len(parts) != 4 or not parts[-1].isdigit():
-        raise ValueError("Inline authorization has no attributable monitor endpoint")
+        msg = "Inline authorization has no attributable monitor endpoint"
+        raise ValueError(msg)
     monitor = monitors.get("/".join(parts[:-1]))
     if monitor is None:
-        raise ValueError("Authorization monitor was not inventoried")
-    endpoints = monitor["spec"].get(
-        "endpoints", monitor["spec"].get("podMetricsEndpoints", [])
-    )
+        msg = "Authorization monitor was not inventoried"
+        raise ValueError(msg)
+    endpoints = monitor["spec"].get("endpoints", monitor["spec"].get("podMetricsEndpoints", []))
     if int(parts[-1]) >= len(endpoints):
-        raise ValueError("Authorization endpoint was not inventoried")
+        msg = "Authorization endpoint was not inventoried"
+        raise ValueError(msg)
     endpoint = endpoints[int(parts[-1])]
     source = endpoint.get("authorization", {}).get("credentials") or endpoint.get(
         "bearerTokenSecret"
     )
     if not isinstance(source, dict):
-        raise ValueError("Inline authorization requires an explicit SecretKeySelector")
+        msg = "Inline authorization requires an explicit SecretKeySelector"
+        raise ValueError(msg)
     namespace = monitor["metadata"]["namespace"]
     name, key = source.get("name", ""), source.get("key", "")
     if (
@@ -90,16 +95,17 @@ def translate_authorization(job, monitors):
         or key in (".", "..")
         or source.get("optional")
     ):
-        raise ValueError("Invalid or optional authorization secret reference")
+        msg = "Invalid or optional authorization secret reference"
+        raise ValueError(msg)
     expected_type = endpoint.get("authorization", {}).get("type", "Bearer")
     if authorization.get("type", "Bearer") != expected_type:
-        raise ValueError("Effective authorization type differs from monitor")
+        msg = "Effective authorization type differs from monitor"
+        raise ValueError(msg)
     if authorization.get("credentials_file"):
-        raise ValueError("Ambiguous authorization credential sources")
+        msg = "Ambiguous authorization credential sources"
+        raise ValueError(msg)
     authorization.pop("credentials")
-    authorization["credentials_file"] = "/etc/otel/source-auth/" + "/".join(
-        (namespace, name, key)
-    )
+    authorization["credentials_file"] = "/etc/otel/source-auth/" + "/".join((namespace, name, key))
     references.append(
         {
             "namespace": namespace,
@@ -153,9 +159,7 @@ def refresh_public_edge_probe(scrape):
         "serviceProbes"
     ]["targets"]
     tcp_targets = {
-        t["id"]: t["url"]
-        for t in targets
-        if t["id"] in ("edge-vps", "litellm-db", "umami-db")
+        t["id"]: t["url"] for t in targets if t["id"] in ("edge-vps", "litellm-db", "umami-db")
     }
     result = copy.deepcopy(scrape)
     for job in result.get("scrape_configs", []):
@@ -170,7 +174,8 @@ def refresh_public_edge_probe(scrape):
         ]
         if len(identity) == 1 and identity[0] in tcp_targets:
             if job.get("params", {}).get("module") != ["tcp_connect"]:
-                raise ValueError("Unexpected catalog TCP probe module")
+                msg = "Unexpected catalog TCP probe module"
+                raise ValueError(msg)
             job["params"]["target"] = [tcp_targets[identity[0]]]
     return refresh_api_targets(add_moscow_edge_probe(result))
 
@@ -195,20 +200,20 @@ def add_moscow_edge_probe(scrape):
     if not source:
         return result
     if len(source) != 1 or len(existing) > 1:
-        raise ValueError("Ambiguous public edge scrape ownership")
+        msg = "Ambiguous public edge scrape ownership"
+        raise ValueError(msg)
     target = next(t for t in targets if t["id"] == "edge-moscow")
     if existing:
-        if existing[0].get("params") != {
-            "module": ["tcp_connect"],
-            "target": [target["url"]],
-        }:
-            raise ValueError("Moscow probe differs from owned catalog")
+        if existing[0].get("params") != {"module": ["tcp_connect"], "target": [target["url"]]}:
+            msg = "Moscow probe differs from owned catalog"
+            raise ValueError(msg)
         return result
     job = copy.deepcopy(source[0])
     # Frozen bundles retain historical endpoint indices; catalog indices can collide.
     job["job_name"] = prefix + "edge-moscow"
     if any(j["job_name"] == job["job_name"] for j in jobs):
-        raise ValueError("Moscow scrape endpoint index collision")
+        msg = "Moscow scrape endpoint index collision"
+        raise ValueError(msg)
     job["params"] = {"module": ["tcp_connect"], "target": [target["url"]]}
     for rule in job["relabel_configs"]:
         if rule.get("target_label") in ("service_id", "service_group"):
@@ -242,7 +247,8 @@ def add_logging_self_monitoring(scrape):
     }
     existing = [j for j in result["scrape_configs"] if j["job_name"] == job["job_name"]]
     if existing and existing != [job]:
-        raise ValueError("Conflicting Loki self-monitoring target")
+        msg = "Conflicting Loki self-monitoring target"
+        raise ValueError(msg)
     if not existing:
         result["scrape_configs"].append(job)
     return result
@@ -271,7 +277,8 @@ def add_pg_platform_scrape(scrape):
     }
     existing = [x for x in result["scrape_configs"] if x["job_name"] == job["job_name"]]
     if existing and existing != [job]:
-        raise ValueError("Conflicting postgres-platform scrape job")
+        msg = "Conflicting postgres-platform scrape job"
+        raise ValueError(msg)
     if not existing:
         result["scrape_configs"].append(job)
     return result
@@ -298,8 +305,7 @@ def append_local_translations(translated, group, outputs, nodes):
         local = {
             key: copy.deepcopy(value)
             for key, value in translated.items()
-            if not key.endswith("_sd_configs")
-            and key not in ("static_configs", "relabel_configs")
+            if not key.endswith("_sd_configs") and key not in ("static_configs", "relabel_configs")
         }
         local["static_configs"] = [
             {"targets": ["127.0.0.1:19100"], "labels": copy.deepcopy(target["labels"])}
@@ -325,7 +331,8 @@ def distribute_source_pools(source, pools, monitors, contract, outputs, mounts):
         elif jobs <= REGISTRY.LOCAL_JOBS:
             owner = "node-agents"
         else:
-            raise ValueError("Unknown or mixed source ownership")
+            msg = "Unknown or mixed source ownership"
+            raise ValueError(msg)
         translated, secret_keys = translate_authorization(original, monitors)
         for reference in secret_keys:
             if reference not in contract["requiredSecretKeys"]:
@@ -339,9 +346,7 @@ def distribute_source_pools(source, pools, monitors, contract, outputs, mounts):
             "targetCount": len(group),
             "originalConfigSHA256": fingerprint(original),
             "fileDependencies": sorted(references),
-            "targetLabelSHA256": sorted(
-                fingerprint(target["labels"]) for target in group
-            ),
+            "targetLabelSHA256": sorted(fingerprint(target["labels"]) for target in group),
         }
         if owner == "cluster":
             outputs["cluster"]["scrape_configs"].append(translated)
@@ -353,12 +358,7 @@ def distribute_source_pools(source, pools, monitors, contract, outputs, mounts):
                         not references,
                         not any(
                             key in translated
-                            for key in (
-                                "basic_auth",
-                                "authorization",
-                                "oauth2",
-                                "tls_config",
-                            )
+                            for key in ("basic_auth", "authorization", "oauth2", "tls_config")
                         ),
                     ]
                 ),
@@ -415,12 +415,9 @@ def compile_config(source, targets, monitors=None):
         "requiredSecretKeys": [],
     }
     mounts: set[object] = set(assets(global_config))
-    nodes, seen = distribute_source_pools(
-        source, pools, monitors, contract, outputs, mounts
-    )
+    nodes, seen = distribute_source_pools(source, pools, monitors, contract, outputs, mounts)
     require(
-        not (set(pools) - seen),
-        "Active targets are absent from the effective scrape configuration",
+        not (set(pools) - seen), "Active targets are absent from the effective scrape configuration"
     )
     require(
         nodes == set(NODES),
@@ -447,9 +444,7 @@ def compile_config(source, targets, monitors=None):
     contract["dollarEscaping"] = (
         "literal Prometheus dollars escaped before Collector confmap resolution"
     )
-    contract["outputSHA256"] = {
-        name: fingerprint(document) for name, document in outputs.items()
-    }
+    contract["outputSHA256"] = {name: fingerprint(document) for name, document in outputs.items()}
     return outputs, contract
 
 
@@ -487,9 +482,7 @@ def main():
             args.ssh_host, REGISTRY.NAMESPACE, "status/config"
         )["yaml"]
         source = yaml.safe_load(source_yaml)
-        targets = REGISTRY.PREFLIGHT.prometheus(
-            args.ssh_host, REGISTRY.NAMESPACE, "targets"
-        )
+        targets = REGISTRY.PREFLIGHT.prometheus(args.ssh_host, REGISTRY.NAMESPACE, "targets")
         monitor_items = REGISTRY.PREFLIGHT.kube(
             args.ssh_host,
             REGISTRY.NAMESPACE,
@@ -506,9 +499,7 @@ def main():
             for item in monitor_items
         }
         outputs, contract = compile_config(source, targets, monitors)
-        contract["sourceYAMLTextSHA256"] = hashlib.sha256(
-            source_yaml.encode()
-        ).hexdigest()
+        contract["sourceYAMLTextSHA256"] = hashlib.sha256(source_yaml.encode()).hexdigest()
         args.output.mkdir(mode=0o700, exist_ok=False)
         for name, document in outputs.items():
             with (args.output / (name + ".yaml")).open("x") as stream:

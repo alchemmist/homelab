@@ -78,8 +78,9 @@ def main():
     def kubectl(arguments, data=None):
         r = subprocess.run(kube + arguments, input=data, capture_output=True, timeout=90)
         if r.returncode:
+            msg = "Kubernetes operation failed; output suppressed to protect credentials"
             raise RuntimeError(
-                "Kubernetes operation failed; output suppressed to protect credentials"
+                msg
             )
         return r.stdout
 
@@ -99,7 +100,8 @@ def main():
         )["results"]
         found = [r for r in rows if r[field] == value]
         if len(found) > 1:
-            raise RuntimeError("Ambiguous configuration")
+            msg = "Ambiguous configuration"
+            raise RuntimeError(msg)
         return found[0] if found else None
 
     deployment = json.loads(kubectl(["get", "deployment", "litellm", "-o", "json"]))
@@ -148,18 +150,22 @@ asyncio.run(main())
 def _require_versions(api: "ApiCall", container: object) -> None:
     """Refuse to run against unreviewed Authentik or LiteLLM versions."""
     if cast("dict[str, object]", api("GET", "admin/version/"))["version_current"] != "2026.8.5":
-        raise RuntimeError("Unreviewed Authentik version")
+        msg = "Unreviewed Authentik version"
+        raise RuntimeError(msg)
     if cast("dict[str, object]", container)["image"] != "ghcr.io/berriai/litellm:1.105.1":
-        raise RuntimeError("Unreviewed LiteLLM version")
+        msg = "Unreviewed LiteLLM version"
+        raise RuntimeError(msg)
 
 
 def _reviewed_rows(users: "Sequence[dict[str, object]]") -> list[dict[str, object]]:
     """Return the reviewed proxy_admin rows, enforcing the capacity gate."""
     rows = [r for r in users if r["user_id"] == OWNER_ID and r["user_role"] == "proxy_admin"]
     if len(rows) != 1 or len(users) > 5:
-        raise RuntimeError("Reviewed owner identity / free-tier capacity gate failed")
+        msg = "Reviewed owner identity / free-tier capacity gate failed"
+        raise RuntimeError(msg)
     if any(r.get("password") for r in users if r["user_id"] != OWNER_ID):
-        raise RuntimeError("Non-owner password identity requires explicit review")
+        msg = "Non-owner password identity requires explicit review"
+        raise RuntimeError(msg)
     return rows
 
 
@@ -171,16 +177,19 @@ def _require_owner_boundary(owner: object, group: object, reviewed: object) -> N
         != cast("dict[str, object]", reviewed).get("idpUserUuid")
         or cast("dict[str, object]", reviewed).get("litellmUserId") != OWNER_ID
     ):
-        raise RuntimeError("Owner UUID differs from explicit reviewed account mapping")
+        msg = "Owner UUID differs from explicit reviewed account mapping"
+        raise RuntimeError(msg)
     users = cast("list[object]", cast("dict[str, object]", group).get("users", []))
     if not group or cast("dict[str, object]", owner)["pk"] not in users:
-        raise RuntimeError("Reviewed owner group boundary missing")
+        msg = "Reviewed owner group boundary missing"
+        raise RuntimeError(msg)
 
 
 def _granted_subjects(grants: object, owner: object, one: "One") -> list[dict[str, object]]:
     """Verify and return the reviewed internal-user subjects."""
     if not isinstance(grants, dict):
-        raise RuntimeError("Invalid reviewed LiteLLM grants")
+        msg = "Invalid reviewed LiteLLM grants"
+        raise RuntimeError(msg)
     granted = []
     for username, grant in cast("dict[str, object]", grants).items():
         entry = cast("dict[str, object]", grant)
@@ -189,7 +198,8 @@ def _granted_subjects(grants: object, owner: object, one: "One") -> list[dict[st
             "idpUserUuid": uid,
             "litellmRole": "internal_user",
         }:
-            raise RuntimeError("Unreviewed user privilege or owner override")
+            msg = "Unreviewed user privilege or owner override"
+            raise RuntimeError(msg)
         subject = one("core/users/", "username", username)
         if (
             not subject
@@ -197,10 +207,12 @@ def _granted_subjects(grants: object, owner: object, one: "One") -> list[dict[st
             or not subject["is_active"]
             or subject.get("is_superuser")
         ):
-            raise RuntimeError("Reviewed LiteLLM subject missing, inactive, privileged or rebound")
+            msg = "Reviewed LiteLLM subject missing, inactive, privileged or rebound"
+            raise RuntimeError(msg)
         granted.append(subject)
     if len({u["uuid"] for u in granted}) != len(granted):
-        raise RuntimeError("Duplicate LiteLLM subject")
+        msg = "Duplicate LiteLLM subject"
+        raise RuntimeError(msg)
     return granted
 
 
@@ -214,7 +226,8 @@ def _require_access_group(access_group: object) -> None:
         or cast("dict[str, object]", access_group).get("roles") != []
         or cast("dict[str, object]", access_group).get("attributes") != {"homelab_app_iam": 1}
     ):
-        raise RuntimeError("Reviewed non-privileged LiteLLM app group missing or drifted")
+        msg = "Reviewed non-privileged LiteLLM app group missing or drifted"
+        raise RuntimeError(msg)
 
 
 def _sync_owner_binding(binding_path: Path, private: "Private", owner: dict[str, object]) -> None:
@@ -227,7 +240,8 @@ def _sync_owner_binding(binding_path: Path, private: "Private", owner: dict[str,
             private(binding_path.parent / "litellm-owner-hashed-uid-original.json", binding)
             private(binding_path, expected_binding, overwrite=True)
         elif binding != expected_binding:
-            raise RuntimeError("Owner subject drift; refusing automatic rebind")
+            msg = "Owner subject drift; refusing automatic rebind"
+            raise RuntimeError(msg)
     else:
         private(binding_path, expected_binding)
 
@@ -237,7 +251,8 @@ def _register_client(client_path: Path, one: "One", private: "Private") -> dict[
     clients = json.loads(client_path.read_text())
     if "litellm" not in clients:
         if one("providers/oauth2/", "name", "homelab-litellm"):
-            raise RuntimeError("Existing provider without retained client secret")
+            msg = "Existing provider without retained client secret"
+            raise RuntimeError(msg)
         clients["litellm"] = {
             "client_id": "socrat-litellm",
             "client_secret": secrets.token_urlsafe(48),
@@ -287,8 +302,9 @@ def _default_scope_pks(api: "ApiCall") -> list[object]:
             and r.get("name") == "authentik default OAuth Mapping: OpenID '" + scope + "'"
         ]
         if len(matches) != 1:
+            msg = "Missing/ambiguous exact default scope; never mix app profile mappings"
             raise RuntimeError(
-                "Missing/ambiguous exact default scope; never mix app profile mappings"
+                msg
             )
         mappings.append(matches[0]["pk"])
     return mappings
@@ -395,9 +411,11 @@ def _reconcile_bindings(
         )["results"],
     )
     if any(not accepted_binding(b) for b in bindings):
-        raise RuntimeError("Unexpected application admission binding; review before rollout")
+        msg = "Unexpected application admission binding; review before rollout"
+        raise RuntimeError(msg)
     if len({(b.get("group"), b.get("user")) for b in bindings}) != len(bindings):
-        raise RuntimeError("Duplicate application admission binding")
+        msg = "Duplicate application admission binding"
+        raise RuntimeError(msg)
     if not any(b.get("group") == group["pk"] for b in bindings):
         api(
             "POST",
