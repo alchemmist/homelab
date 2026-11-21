@@ -49,7 +49,9 @@
 
     - name: Preserve the baseline Prometheus binary for source comparison
       ansible.builtin.copy:
-        src: "{{ otel_validation_legacy_prometheus | default(otel_validation_prometheus) }}/prometheus"
+        src: >-
+          {{ otel_validation_legacy_prometheus
+          | default(otel_validation_prometheus) }}/prometheus
         dest: "{{ otel_smoke_stage }}/prometheus-legacy"
         owner: root
         group: root
@@ -67,7 +69,10 @@
 
     - name: Render candidate configuration as JSON for the isolated test
       ansible.builtin.copy:
-        content: "{{ lookup('ansible.builtin.file', playbook_dir + '/../../deploy/monitoring/otel/cluster.yaml') | from_yaml | to_nice_json }}\n"
+        content: |
+          {{ lookup('ansible.builtin.file',
+             playbook_dir + '/../../deploy/monitoring/otel/cluster.yaml')
+             | from_yaml | to_nice_json }}
         dest: "{{ otel_smoke_stage }}/source.json"
         owner: root
         group: root

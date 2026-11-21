@@ -56,13 +56,17 @@
   - ansible.builtin.assert:
       that:
       - (relay.stdout | from_json).spec.replicas == 1
-      - (relay.stdout | from_json).spec.template.spec.nodeSelector['kubernetes.io/hostname'] == 'socrat-4'
+      - >-
+        (relay.stdout | from_json).spec.template.spec.nodeSelector['kubernetes.io/hostname']
+        == 'socrat-4'
   - name: Verify inverse boot fences without changing units
     ansible.builtin.shell: |
       set -o pipefail
       set -eu
-      systemctl cat k3s-agent | grep -F 'ExecCondition=/usr/bin/test ! -e /var/lib/homelab-vpn-transit/relay-failover/fallback.active'
-      systemctl cat homelab-vpn-transit-native | grep -F 'ExecCondition=+/usr/bin/test -e /var/lib/homelab-vpn-transit/relay-failover/fallback.active'
+      fallback_active=/var/lib/homelab-vpn-transit/relay-failover/fallback.active
+      systemctl cat k3s-agent | grep -F "ExecCondition=/usr/bin/test ! -e ${fallback_active}"
+      systemctl cat homelab-vpn-transit-native | grep -F \
+        "ExecCondition=+/usr/bin/test -e ${fallback_active}"
       test -s /var/lib/rancher/k3s/agent/client-kubelet.crt
       test -s /var/lib/rancher/k3s/agent/containerd/io.containerd.metadata.v1.bolt/meta.db
     changed_when: false
