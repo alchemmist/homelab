@@ -5,6 +5,7 @@ from mcp.server.mcpserver import MCPServer
 
 mcp = MCPServer('monori-github-read')
 class NoRedirect(HTTPRedirectHandler):
+    """Tests or helper for NoRedirect."""
     def redirect_request(self, *args): return None
 
 

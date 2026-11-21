@@ -4,6 +4,7 @@ R = pathlib.Path(__file__).resolve().parents[1]
 
 
 class WishlistMove(unittest.TestCase):
+    """Tests or helper for WishlistMove."""
     def test_new_storage_is_local_retained_prebound_and_not_old_claim(self):
         pv, pvc = list(yaml.safe_load_all((R / "deploy/storage/wishlist-socrat5.yaml").read_text()))
         self.assertEqual(pv["spec"]["persistentVolumeReclaimPolicy"], "Retain")
