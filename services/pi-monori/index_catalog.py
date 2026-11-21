@@ -8,6 +8,7 @@ import pathlib
 import re
 import sys
 
+
 def extract(root: pathlib.Path):
     families={}
     for meta in sorted(root.rglob("*.py.meta")):
