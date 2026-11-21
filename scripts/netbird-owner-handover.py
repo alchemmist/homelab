@@ -23,6 +23,12 @@ ROOT = Path.home() / ".local/state/netbird-internal-stage/journal"
 BASE = "https://netbird.socrat.alchemmist.xyz/api/"
 
 
+def require(expected: object, message: str) -> None:
+    """Enforce an invariant, failing with the given message."""
+    if not expected:
+        raise ValueError(message)
+
+
 def subject(uuid=UUID, connector=CONNECTOR):
     a, b = uuid.encode(), connector.encode()
     return (
@@ -92,8 +98,7 @@ def main():
     p.add_argument("--confirm-personal-login-and-native-transfer", action="store_true")
     p.add_argument("--allow-existing-owner-device", action="store_true")
     a = p.parse_args()
-    if a.subject != subject():
-        raise ValueError("wrong encoded raw UUID/connector")
+    require(a.subject == subject(), "wrong encoded raw UUID/connector")
     token = json.loads((ROOT / "bootstrap.json").read_text())["personal_access_token"]
 
     class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -115,35 +120,34 @@ def main():
             return payload
 
     accounts = api("accounts")
-    if (
-        len(accounts) != 1
-        or not cast("dict[str, object]", accounts[0]["settings"])["local_auth_disabled"]
-    ):
-        raise ValueError("account/local-auth guard failed")
-    if (
+    require(
+        len(accounts) == 1 and accounts[0]["settings"]["local_auth_disabled"],
+        "account/local-auth guard failed",
+    )
+    require(
         accounts[0]["id"]
-        != json.loads((ROOT / "bootstrap-complete.json").read_text())["account_id"]
-    ):
-        raise ValueError("wrong account")
+        == json.loads((ROOT / "bootstrap-complete.json").read_text())["account_id"],
+        "wrong account",
+    )
     network_before = network_snapshot(api, a.allow_existing_owner_device)
     users = api("users")
     target = target_user(users, a.subject)
     owners = [u for u in users if u["role"] == "owner"]
-    if (
-        len(owners) != 1
-        or owners[0]["id"] != TECHNICAL
-        or owners[0]["email"] != "netbird-bootstrap@internal.invalid"
-    ):
-        raise ValueError("expected technical owner only; no replay")
-    if target["role"] != "user":
-        raise ValueError("unexpected target role")
+    require(
+        len(owners) == 1
+        and owners[0]["id"] == TECHNICAL
+        and owners[0]["email"] == "netbird-bootstrap@internal.invalid",
+        "expected technical owner only; no replay",
+    )
+    require(target["role"] == "user", "unexpected target role")
     if not a.apply:
         print(
             "Exact UUID+connector+email and recent login verified; read-only plan: native user -> owner, technical owner -> admin"
         )
         return
-    if not a.confirm_personal_login_and_native_transfer:
-        raise ValueError("personal owner login attestation required")
+    require(
+        a.confirm_personal_login_and_native_transfer, "personal owner login attestation required"
+    )
     journal = ROOT / "stage4-owner-handover-before.json"
     fd = os.open(journal, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as f:
