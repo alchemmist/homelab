@@ -22,8 +22,8 @@ print(json.dumps(dashboards))
 """
 
 
-def panel_descriptions(dashboard):
-    result = {}
+def panel_descriptions(dashboard) -> dict[str, object]:
+    result: dict[str, object] = {}
     for panel in dashboard.get("panels", []):
         if panel.get("type") not in {"row", "text"}:
             result[str(panel["id"])] = panel.get("description", "")
@@ -31,7 +31,7 @@ def panel_descriptions(dashboard):
     return result
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--ssh-host", default="socrat-0")
     args = parser.parse_args()

@@ -8,7 +8,7 @@ import subprocess
 import time
 
 
-def converged(deployment, pods, node, replicas=1):
+def converged(deployment, pods, node, replicas=1) -> bool:
     spec, status = deployment["spec"], deployment.get("status", {})
     if replicas < 1 or spec.get("replicas") != replicas:
         return False
@@ -37,7 +37,7 @@ def converged(deployment, pods, node, replicas=1):
     return True
 
 
-def owned_by_current_revision(deployment, replica_sets, pods):
+def owned_by_current_revision(deployment, replica_sets, pods) -> bool:
     """Label match and old ReplicaSet ownership alone do not prove current rollout."""
     uid = deployment["metadata"].get("uid")
     revision = (
@@ -63,7 +63,7 @@ def owned_by_current_revision(deployment, replica_sets, pods):
     return all(controller(pod, "ReplicaSet", owned) for pod in pods)
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--namespace", required=True)
     p.add_argument("--deployment", required=True)

@@ -9,9 +9,10 @@ import json
 import subprocess
 import urllib.parse
 from pathlib import Path
+from typing import cast
 
 
-def addresses(explicit=None):
+def addresses(explicit=None) -> list[str]:
     if explicit:
         values = explicit
     else:
@@ -33,10 +34,10 @@ def addresses(explicit=None):
         )
     ):
         raise ValueError("Exactly two distinct public IPv4 entrances required")
-    return values
+    return cast("list[str]", values)
 
 
-def probe(case):
+def probe(case) -> dict[str, object]:
     host, ip, path, expected = case[:4]
     method = case[4] if len(case) > 4 else "GET"
     auth = case[5] if len(case) > 5 else "Bearer intentionally-invalid"
@@ -120,13 +121,13 @@ def probe(case):
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--address", action="append", help="Repeat twice when running outside the repository"
     )
     ips = addresses(parser.parse_args().address)
-    cases = [
+    cases: list[object] = [
         (host, ip, path, code, method, None)
         for ip in ips
         for host, path, code, method in [

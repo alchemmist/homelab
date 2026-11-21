@@ -21,7 +21,7 @@ STATUSES = {
 }
 
 
-def check(root=ROOT):
+def check(root=ROOT) -> tuple[int, int]:
     c = json.loads((root / "deploy/contracts/operational-entrypoints.json").read_text())
     if c["schemaVersion"] != 1:
         raise ValueError("Unsupported entrypoint schema")

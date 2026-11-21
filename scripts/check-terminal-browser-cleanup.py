@@ -9,9 +9,22 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+from types import ModuleType
+from typing import Protocol, cast
 
 
-def load(path):
+class ProcessInfo(Protocol):
+    """Structural type of the browser_watchdog probe's /proc snapshot entries."""
+
+    pid: int
+    ppid: int
+
+    @property
+    def identity(self) -> tuple[int, int]:
+        """Stable (pid, start) identity of a /proc snapshot entry."""
+
+
+def load(path) -> ModuleType:
     spec = importlib.util.spec_from_file_location("browser_watchdog_probe", path)
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
@@ -19,17 +32,20 @@ def load(path):
     return module
 
 
-def tree(module, root):
+def tree(module, root) -> dict[int, ProcessInfo]:
     snapshot = module.snapshot()
     selected = {root}
     while True:
         children = {p.pid for p in snapshot.values() if p.ppid in selected}
         if children <= selected:
-            return {pid: process for pid, process in snapshot.items() if pid in selected}
+            return cast(
+                "dict[int, ProcessInfo]",
+                {pid: process for pid, process in snapshot.items() if pid in selected},
+            )
         selected.update(children)
 
 
-def alive(module, identities):
+def alive(module, identities) -> list[object]:
     snapshot = module.snapshot()
     return [
         identity
@@ -38,7 +54,7 @@ def alive(module, identities):
     ]
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--watchdog", required=True)
     parser.add_argument(

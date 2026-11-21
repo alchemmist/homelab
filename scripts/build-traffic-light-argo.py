@@ -4,6 +4,7 @@
 import copy
 import json
 from pathlib import Path
+from typing import cast
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "charts/monitoring-k3s/dashboards/traffic-light.json"
@@ -19,7 +20,7 @@ STATES = [
 ]
 
 
-def queries(include_root=False):
+def queries(include_root=False) -> tuple[str, list[tuple[str, str, str]], str]:
     selector = 'job="socrat-argocd"' + ("" if include_root else ',name!="root"')
     raw = f"argocd_app_info{{{selector}}}"
     newest = f"max by(name) (timestamp({raw}))"
@@ -74,7 +75,7 @@ def queries(include_root=False):
     return state_expr, result, full_query
 
 
-def application_query():
+def application_query() -> str:
     """One positive status code per fresh Application; NOT a percentage/count."""
     raw = 'argocd_app_info{job="socrat-argocd"}'
     fresh = f"({raw} and (time() - timestamp({raw}) < 90))"
@@ -86,13 +87,17 @@ def application_query():
     return f"(({queries(include_root=True)[0]} + 1) and on() {gate}) and on() {complete}"
 
 
-def build():
-    d = copy.deepcopy(json.loads(SOURCE.read_text()))
-    panel = next(p for p in d["panels"] if p["id"] == 909)
-    had_overrides = "overrides" in panel.get("fieldConfig", {})
+def build() -> dict[str, object]:
+    d: dict[str, object] = copy.deepcopy(json.loads(SOURCE.read_text()))
+    panels = cast("list[dict[str, object]]", d["panels"])
+    panel = next(p for p in panels if p["id"] == 909)
+    had_overrides = "overrides" in cast("dict[str, object]", panel.get("fieldConfig", {}))
     grid = copy.deepcopy(panel["gridPos"])  # Owner geometry is authoritative.
     plugin_version = panel.get("pluginVersion")
-    thresholds = copy.deepcopy(panel["fieldConfig"]["defaults"].get("thresholds"))
+    defaults = cast(
+        "dict[str, object]", cast("dict[str, object]", panel["fieldConfig"])["defaults"]
+    )
+    thresholds = copy.deepcopy(defaults.get("thresholds"))
     panel.clear()
     panel.update(
         {
@@ -187,10 +192,11 @@ def build():
     )
     if plugin_version is not None:
         panel["pluginVersion"] = plugin_version
+    field_config = cast("dict[str, object]", panel["fieldConfig"])
     if thresholds is not None:
-        panel["fieldConfig"]["defaults"]["thresholds"] = thresholds
-    if not had_overrides and not panel["fieldConfig"].get("overrides"):
-        panel["fieldConfig"].pop("overrides", None)
+        cast("dict[str, object]", field_config["defaults"])["thresholds"] = thresholds
+    if not had_overrides and not field_config.get("overrides"):
+        field_config.pop("overrides", None)
     return d
 
 

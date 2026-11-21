@@ -10,7 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def inventory(root, directory):
+def inventory(root, directory) -> dict[str, str]:
     base = root / directory
     if base.is_symlink() or not base.is_dir() or not base.resolve().is_relative_to(root.resolve()):
         raise ValueError("Invalid vendor directory: " + directory)
@@ -25,7 +25,7 @@ def inventory(root, directory):
     return result
 
 
-def check(root=ROOT):
+def check(root=ROOT) -> int:
     contract = json.loads((root / "deploy/contracts/vendors.json").read_text())
     if contract["schemaVersion"] != 1:
         raise ValueError("Unsupported vendor contract schema")

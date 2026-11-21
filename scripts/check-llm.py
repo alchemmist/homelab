@@ -4,6 +4,8 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from http.client import HTTPResponse
+from typing import cast
 
 BASE_URL = os.environ.get("LLM_BASE_URL", "http://127.0.0.1:8000/v1").rstrip("/")
 API_KEY = os.environ.get("LLM_API_KEY", "")
@@ -11,21 +13,22 @@ MODEL = os.environ.get("LLM_MODEL", "qwen3.8-27b")
 TIMEOUT = 180
 
 
-def require(condition, message):
+def require(condition, message) -> None:
     if not condition:
         raise ValueError(message)
 
 
-def request(path, payload=None):
+def request(path, payload=None) -> HTTPResponse:
     data = None if payload is None else json.dumps(payload).encode()
     headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
-    return urllib.request.urlopen(
+    response: HTTPResponse = urllib.request.urlopen(
         urllib.request.Request(f"{BASE_URL}/{path}", data=data, headers=headers),
         timeout=TIMEOUT,
     )
+    return response
 
 
-def report(name, started, usage=None):
+def report(name, started, usage=None) -> None:
     tokens = ""
     if usage:
         tokens = (
@@ -35,7 +38,7 @@ def report(name, started, usage=None):
     print(f"PASS {name}: {time.monotonic() - started:.2f}s{tokens}", flush=True)
 
 
-def complete(messages, **options):
+def complete(messages, **options) -> dict[str, object]:
     payload = {
         "model": MODEL,
         "messages": messages,
@@ -45,13 +48,14 @@ def complete(messages, **options):
         **options,
     }
     with request("chat/completions", payload) as response:
-        result = json.load(response)
+        result: dict[str, object] = json.load(response)
     require(bool(result.get("choices")), "Response has no choices")
-    require(result["choices"][0].get("finish_reason") != "length", "Response was truncated")
+    choices = cast("list[dict[str, object]]", result["choices"])
+    require(choices[0].get("finish_reason") != "length", "Response was truncated")
     return result
 
 
-def main():
+def main() -> None:
     require(bool(API_KEY), "LLM_API_KEY must be set")
     started = time.monotonic()
     try:
@@ -64,19 +68,28 @@ def main():
     started = time.monotonic()
     with request("models") as response:
         models = json.load(response)
-    require(MODEL in {item["id"] for item in models.get("data", [])}, "Requested model is missing")
+    require(
+        MODEL in {cast("dict[str, object]", item)["id"] for item in models.get("data", [])},
+        "Requested model is missing",
+    )
     report("model listing", started)
 
     started = time.monotonic()
-    result = complete(
-        [
-            {
-                "role": "user",
-                "content": "Write a Python function add(a, b) that returns their sum. Return only the function.",
-            }
-        ]
+    messages: list[dict[str, object]] = [
+        {
+            "role": "user",
+            "content": "Write a Python function add(a, b) that returns their sum. "
+            "Return only the function.",
+        }
+    ]
+    result = complete(messages)
+    content = cast(
+        "str",
+        cast(
+            "dict[str, object]", cast("list[dict[str, object]]", result["choices"])[0]["message"]
+        ).get("content")
+        or "",
     )
-    content = result["choices"][0]["message"].get("content") or ""
     require(
         "def add(" in content and "return" in content and "+" in content,
         "Coding response lacks the requested function",
@@ -102,10 +115,10 @@ def main():
         )
         for line in response:
             require(time.monotonic() - started < TIMEOUT, "Streaming exceeded time limit")
-            line = line.decode().strip()
-            if not line.startswith("data:"):
+            text_line = line.decode().strip()
+            if not text_line.startswith("data:"):
                 continue
-            data = line[5:].strip()
+            data = text_line[5:].strip()
             if data == "[DONE]":
                 done = True
                 break
@@ -145,17 +158,18 @@ def main():
     ]
     started = time.monotonic()
     result = complete(messages, tools=tools, tool_choice="auto")
-    choice = result["choices"][0]
-    message = choice["message"]
-    calls = message.get("tool_calls") or []
+    choice = cast("list[dict[str, object]]", result["choices"])[0]
+    message = cast("dict[str, object]", choice["message"])
+    calls = cast("list[dict[str, object]]", message.get("tool_calls") or [])
     require(
         choice.get("finish_reason") == "tool_calls" and len(calls) == 1,
         "Expected one automatic tool call",
     )
     call = calls[0]
     require(bool(call.get("id")) and call.get("type") == "function", "Invalid tool call envelope")
-    require(call["function"]["name"] == "get_weather", "Unexpected tool name")
-    arguments = json.loads(call["function"]["arguments"])
+    function = cast("dict[str, object]", call["function"])
+    require(function["name"] == "get_weather", "Unexpected tool name")
+    arguments = json.loads(cast("str", function["arguments"]))
     require(arguments == {"city": "Moscow"}, "Unexpected weather tool arguments")
     report("automatic tool call", started, result.get("usage"))
 
@@ -176,9 +190,11 @@ def main():
     )
     started = time.monotonic()
     result = complete(messages, tools=tools, tool_choice="none")
-    message = result["choices"][0]["message"]
+    message = cast(
+        "dict[str, object]", cast("list[dict[str, object]]", result["choices"])[0]["message"]
+    )
     require(
-        not message.get("tool_calls") and "17" in (message.get("content") or ""),
+        not message.get("tool_calls") and "17" in cast("str", message.get("content") or ""),
         "Continuation did not use the supplied tool result",
     )
     report("tool result continuation", started, result.get("usage"))
@@ -200,13 +216,16 @@ def main():
             ],
             max_tokens=int(os.environ.get("LLM_LONG_CONTEXT_MAX_OUTPUT_TOKENS", "8192")),
         )
-        usage = result.get("usage") or {}
+        usage = cast("dict[str, object]", result.get("usage") or {})
         require(
-            usage.get("prompt_tokens", 0) > 8192,
+            cast("int", usage.get("prompt_tokens", 0)) > 8192,
             "Long-context check did not exceed the old 8K limit",
         )
+        long_message = cast(
+            "dict[str, object]", cast("list[dict[str, object]]", result["choices"])[0]["message"]
+        )
         require(
-            "violet-river-7291" in (result["choices"][0]["message"].get("content") or ""),
+            "violet-river-7291" in cast("str", long_message.get("content") or ""),
             "Long-context response did not recover the value from the beginning",
         )
         report("long context", started, usage)

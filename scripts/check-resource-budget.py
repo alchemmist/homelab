@@ -4,12 +4,13 @@ import json
 import re
 import sys
 from decimal import Decimal
+from typing import cast
 
 RESOURCES = ("cpu", "memory", "ephemeral-storage")
 QUANTITY = re.compile(r"^([+-]?(?:\d+(?:\.\d*)?|\.\d+))([eE][+-]?\d+|[numkKMGTPE]|[KMGTPE]i)?$")
 
 
-def quantity(value):
+def quantity(value) -> Decimal:
     match = QUANTITY.fullmatch(str(value))
     if not match:
         raise ValueError("Invalid resource quantity: " + str(value))
@@ -42,19 +43,19 @@ def quantity(value):
     return result
 
 
-def vector(values=None):
+def vector(values=None) -> dict[str, Decimal]:
     return {name: quantity((values or {}).get(name, 0)) for name in RESOURCES}
 
 
-def add(left, right):
+def add(left, right) -> dict[str, Decimal]:
     return {name: left[name] + right[name] for name in RESOURCES}
 
 
-def maximum(left, right):
+def maximum(left, right) -> dict[str, Decimal]:
     return {name: max(left[name], right[name]) for name in RESOURCES}
 
 
-def effective_requests(pod):
+def effective_requests(pod) -> dict[str, Decimal]:
     spec = pod.get("spec", {})
     total, sidecars, init_peak = vector(), vector(), vector()
     for container in spec.get("containers", []):
@@ -73,7 +74,7 @@ def effective_requests(pod):
     return add(total, vector(spec.get("overhead")))
 
 
-def proposed_pod(pod, profiles):
+def proposed_pod(pod, profiles) -> dict[str, object]:
     label = pod["metadata"].get("namespace", "default") + "/" + pod["metadata"]["name"]
     owner = next(
         (value for value in pod["metadata"].get("ownerReferences", []) if value.get("controller")),
@@ -108,14 +109,14 @@ def proposed_pod(pod, profiles):
             + ": profile contains absent containers "
             + ", ".join(sorted(set(expected) - present))
         )
-    return result
+    return cast("dict[str, object]", result)
 
 
-def items(value):
-    return value["items"] if isinstance(value, dict) else value
+def items(value) -> object:
+    return cast("object", value["items"] if isinstance(value, dict) else value)
 
 
-def validate_profiles(profiles):
+def validate_profiles(profiles) -> None:
     if not isinstance(profiles, list):
         raise ValueError("Profiles must be a JSON list")
     for profile in profiles:
@@ -139,59 +140,66 @@ def validate_profiles(profiles):
                 raise ValueError("Profile cannot set and remove CPU limit")
 
 
-def budget(pods, nodes, profiles):
+def budget(pods, nodes, profiles) -> dict[str, object]:
     validate_profiles(profiles)
-    report = {
+    errors: list[str] = []
+    unassigned: list[dict[str, object]] = []
+    nodes_report: dict[str, dict[str, object]] = {}
+    report: dict[str, object] = {
         "scope": "Current placement only; not a scheduler simulation or an N-1, rollout, peak-use or memory-safety guarantee. Requests are not actual usage. Unassigned pods are not charged to any node.",
-        "nodes": {},
-        "unassigned": [],
-        "errors": [],
+        "nodes": nodes_report,
+        "unassigned": unassigned,
+        "errors": errors,
     }
-    for node in items(nodes):
-        report["nodes"][node["metadata"]["name"]] = {
-            "allocatable": vector(node["status"]["allocatable"]),
+    for node in cast("list[dict[str, object]]", items(nodes)):
+        nodes_report[cast("str", cast("dict[str, object]", node["metadata"])["name"])] = {
+            "allocatable": vector(cast("dict[str, object]", node["status"])["allocatable"]),
             "current_requests": vector(),
             "proposed_requests": vector(),
             "pods": 0,
         }
-    for pod in items(pods):
-        if pod.get("status", {}).get("phase") in ("Succeeded", "Failed"):
+    for pod in cast("list[dict[str, object]]", items(pods)):
+        if cast("dict[str, object]", pod.get("status", {})).get("phase") in ("Succeeded", "Failed"):
             continue
-        label = pod["metadata"].get("namespace", "default") + "/" + pod["metadata"]["name"]
+        metadata = cast("dict[str, object]", pod["metadata"])
+        label = (
+            cast("str", metadata.get("namespace", "default")) + "/" + cast("str", metadata["name"])
+        )
         try:
             proposed = proposed_pod(pod, profiles)
         except ValueError as error:
-            report["errors"].append(str(error))
+            errors.append(str(error))
             proposed = pod
         current, future = effective_requests(pod), effective_requests(proposed)
-        node_name = pod.get("spec", {}).get("nodeName")
+        node_name = cast("str", cast("dict[str, object]", pod.get("spec", {})).get("nodeName"))
         if not node_name:
-            report["unassigned"].append(
+            unassigned.append(
                 {"pod": label, "current_requests": current, "proposed_requests": future}
             )
             continue
-        if node_name not in report["nodes"]:
-            report["errors"].append(label + ": unknown node " + node_name)
+        if node_name not in nodes_report:
+            errors.append(label + ": unknown node " + node_name)
             continue
-        entry = report["nodes"][node_name]
-        entry["pods"] += 1
+        entry = nodes_report[node_name]
+        entry["pods"] = cast("int", entry["pods"]) + 1
         entry["current_requests"] = add(entry["current_requests"], current)
         entry["proposed_requests"] = add(entry["proposed_requests"], future)
-    for name, node in report["nodes"].items():
+    for name, node in nodes_report.items():
         for mode in ("current", "proposed"):
+            allocatable = cast("dict[str, Decimal]", node["allocatable"])
+            requests = cast("dict[str, Decimal]", node[mode + "_requests"])
             node[mode + "_remaining"] = {
-                resource: node["allocatable"][resource] - node[mode + "_requests"][resource]
-                for resource in RESOURCES
+                resource: allocatable[resource] - requests[resource] for resource in RESOURCES
             }
-        for resource, remaining in node["proposed_remaining"].items():
+        for resource, remaining in cast("dict[str, Decimal]", node["proposed_remaining"]).items():
             if remaining < 0:
-                report["errors"].append(name + ": proposed requests exceed allocatable " + resource)
-    report["ok"] = not report["errors"]
+                errors.append(name + ": proposed requests exceed allocatable " + resource)
+    report["ok"] = not errors
     report["units"] = {"cpu": "cores", "memory": "bytes", "ephemeral-storage": "bytes"}
     return report
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(
         description="Read-only current-placement request budget comparison"
     )
@@ -211,7 +219,7 @@ def main():
                 default=lambda value: str(value) if isinstance(value, Decimal) else value,
             )
         )
-        return 0 if report["ok"] else 1
+        return 0 if cast("bool", report["ok"]) else 1
     except (ValueError, KeyError, TypeError, OSError) as error:
         print(str(error), file=sys.stderr)
         return 2
