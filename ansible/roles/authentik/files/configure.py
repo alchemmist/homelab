@@ -143,8 +143,10 @@ if not owner_login["initialized"]:
     owner_path.write_text(json.dumps(owner_login))
     owner_path.chmod(0o600)
 # Only the declared owner may inherit this group's superuser rights.
-owner_group = cast("dict[str, object]", unique("core/groups/", "name", "homelab-owner"))
-if set(cast("list[object]", owner_group.get("users", []))) - set([owner["pk"]]):
+owner_group = unique("core/groups/", "name", "homelab-owner")
+if owner_group is None:
+    raise RuntimeError("Owner group missing; review before granting superuser")
+if set(cast("list[object]", owner_group.get("users", []))) - {owner["pk"]}:
     raise RuntimeError("Unexpected owner group membership; review before granting superuser")
 api("PATCH", "core/groups/" + cast("str", groups["homelab-owner"]) + "/", {"is_superuser": True})
 
@@ -215,18 +217,16 @@ api(
     },
 )
 
-flows = cast(
-    "list[dict[str, object]]",
-    cast("dict[str, object]", api("GET", "flows/instances/?page_size=100"))["results"],
-)
+flows_document = api("GET", "flows/instances/?page_size=100")
+if flows_document is None:
+    raise RuntimeError("Flow listing returned an empty response")
+flows = cast("list[dict[str, object]]", flows_document["results"])
 flow = {x["slug"]: x["pk"] for x in flows}
 cert = unique("crypto/certificatekeypairs/", "name", "authentik Self-signed Certificate")
-scopes = cast(
-    "list[dict[str, object]]",
-    cast("dict[str, object]", api("GET", "propertymappings/provider/scope/?page_size=100"))[
-        "results"
-    ],
-)
+scopes_document = api("GET", "propertymappings/provider/scope/?page_size=100")
+if scopes_document is None:
+    raise RuntimeError("Scope listing returned an empty response")
+scopes = cast("list[dict[str, object]]", scopes_document["results"])
 mapping = standard_scope_ids(scopes)
 if len(mapping) != 3 or not cert:
     raise RuntimeError("OIDC defaults missing")
