@@ -14,7 +14,7 @@ PATHS = {"/check", "/render", "/create-pr", "/close-older"}
 
 
 class Handler(BaseHTTPRequestHandler):
-    def log_message(self, *args):
+    def log_message(self, *args: object):
         pass
 
     def do_GET(self):
@@ -40,7 +40,7 @@ class Handler(BaseHTTPRequestHandler):
                     self.path[1:], payload, write=os.environ.get("WRITE_ENABLED") == "true"
                 )
             code = 200
-        except Exception as exc:
+        except (OSError, ValueError, KeyError, TypeError, UnsafeInput) as exc:
             result = {"status": "error", "type": type(exc).__name__}
             if isinstance(exc, UnsafeInput):
                 result["reason"] = str(exc)

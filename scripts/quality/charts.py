@@ -341,7 +341,7 @@ def main():
             print(json.dumps(inventory))
             return 0
         return report("manifests", findings, count, output)
-    except Exception as error:
+    except (OSError, RuntimeError, TypeError, ValueError, yaml.YAMLError) as error:
         failure(output, error)
         print(
             f"charts: {type(error).__name__}; no fallback or live access",

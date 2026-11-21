@@ -19,13 +19,13 @@ UNIT = (ROLE / "templates/wireguard-private-web.service.j2").read_text()
 
 
 class WireGuardPrivateWebTests(unittest.TestCase):
-    def test_defaults_are_disabled_and_use_nftables(self):
+    def test_defaults_are_disabled_and_use_nftables(self) -> None:
         self.assertIn("wireguard_private_web_enabled: false", DEFAULTS)
         self.assertIn("Debian: nftables", DEFAULTS)
         self.assertIn("Archlinux: nftables", DEFAULTS)
         self.assertIn("wireguard_private_web_proxy_port: 18443", DEFAULTS)
 
-    def test_installs_and_starts_dedicated_unit(self):
+    def test_installs_and_starts_dedicated_unit(self) -> None:
         self.assertIn("ansible.builtin.apt", TASKS)
         self.assertIn("community.general.pacman", TASKS)
         self.assertIn("systemd_service", TASKS)
@@ -36,7 +36,7 @@ class WireGuardPrivateWebTests(unittest.TestCase):
         self.assertIn("After=network-online.target {{ wireguard_private_web_wg_service }}", UNIT)
         self.assertNotIn("ExecStop=", UNIT)
 
-    def test_owns_only_its_nft_table_and_nat_hooks(self):
+    def test_owns_only_its_nft_table_and_nat_hooks(self) -> None:
         self.assertIn("table={{ wireguard_private_web_table | quote }}", SCRIPT)
         self.assertIn("delete table ip $table", SCRIPT)
         self.assertIn(
@@ -50,13 +50,13 @@ class WireGuardPrivateWebTests(unittest.TestCase):
         self.assertIn("output ip daddr %s tcp dport %s dnat to %s:%s", SCRIPT)
         self.assertNotIn("flush ruleset", SCRIPT)
 
-    def test_validates_before_apply_and_preserves_an_owned_backup(self):
+    def test_validates_before_apply_and_preserves_an_owned_backup(self) -> None:
         self.assertIn('nft" -c -f "$tmp"', SCRIPT)
         self.assertIn('cp "$old" "$backup"', SCRIPT)
         self.assertIn('nft" -f "$tmp"', SCRIPT)
         self.assertNotIn('nft" -f "$backup"', SCRIPT)
 
-    def test_failed_atomic_apply_does_not_append_backup_rules(self):
+    def test_failed_atomic_apply_does_not_append_backup_rules(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             directory = Path(directory)
             state = directory / "state.json"

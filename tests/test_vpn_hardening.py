@@ -6,6 +6,7 @@ import io
 import json
 import os
 from pathlib import Path
+from types import ModuleType
 import sqlite3
 import tempfile
 import unittest
@@ -14,7 +15,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(name, filename):
+def load(name: str, filename: str) -> ModuleType:
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / filename)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -26,7 +27,7 @@ audit = load("counter_test", "vpn-backend-audit.py")
 
 
 class HardeningTests(unittest.TestCase):
-    def fixture(self, path):
+    def fixture(self, path: Path) -> sqlite3.Connection:
         con = sqlite3.connect(path)
         con.executescript("""
         CREATE TABLE inbounds(id INTEGER, port INTEGER, protocol TEXT, enable INTEGER,
@@ -55,7 +56,7 @@ class HardeningTests(unittest.TestCase):
         con.commit()
         return con
 
-    def test_summary_contains_no_client_or_key_material(self):
+    def test_summary_contains_no_client_or_key_material(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp).resolve() / "vpn.db"
             con = self.fixture(path)
@@ -66,7 +67,7 @@ class HardeningTests(unittest.TestCase):
             self.assertEqual(result["client_links"], 1)
             self.assertEqual(result["production_configuration_writes"], 0)
 
-    def test_encrypted_alternative_counts_require_enabled_host(self):
+    def test_encrypted_alternative_counts_require_enabled_host(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp).resolve() / "vpn.db"
             con = self.fixture(path)
@@ -86,7 +87,7 @@ class HardeningTests(unittest.TestCase):
             self.assertTrue(plain["device_compatibility_and_subscription_render_unproven"])
             con.close()
 
-    def test_counters_do_not_change_hash_but_config_does(self):
+    def test_counters_do_not_change_hash_but_config_does(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp).resolve() / "vpn.db"
             con = self.fixture(path)
@@ -99,7 +100,7 @@ class HardeningTests(unittest.TestCase):
             self.assertNotEqual(before, inventory.inspect(path)["configuration_sha256"])
             con.close()
 
-    def test_online_backup_includes_wal_and_is_private(self):
+    def test_online_backup_includes_wal_and_is_private(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp).resolve()
             path = root / "vpn.db"
@@ -119,7 +120,7 @@ class HardeningTests(unittest.TestCase):
                 inventory.inspect(path, state)
             con.close()
 
-    def test_symlink_db_and_public_state_rejected(self):
+    def test_symlink_db_and_public_state_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp).resolve()
             path = root / "vpn.db"
@@ -134,7 +135,7 @@ class HardeningTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 inventory.inspect(path, state)
 
-    def test_rules_only_count_two_ports(self):
+    def test_rules_only_count_two_ports(self) -> None:
         rules = audit.rules()
         self.assertIn("policy accept", rules)
         for forbidden in (
@@ -158,14 +159,14 @@ class HardeningTests(unittest.TestCase):
         self.assertIn("12096:other", rules)
         self.assertIn("32087:other", rules)
 
-    def test_counter_and_handle_changes_do_not_invalidate_hash(self):
+    def test_counter_and_handle_changes_do_not_invalidate_hash(self) -> None:
         left = [{"rule": {"handle": 1, "expr": [{"counter": {"packets": 1, "bytes": 20}}]}}]
         right = [{"rule": {"handle": 2, "expr": [{"counter": {"packets": 7, "bytes": 80}}]}}]
         self.assertEqual(audit.plan(left), audit.plan(right))
         right[0]["rule"]["expr"].append({"drop": None})
         self.assertNotEqual(audit.plan(left), audit.plan(right))
 
-    def test_unowned_table_refused(self):
+    def test_unowned_table_refused(self) -> None:
         payload = {
             "nftables": [
                 {"table": {"family": "inet", "name": audit.TABLE, "comment": "someone else"}}
@@ -175,7 +176,7 @@ class HardeningTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 audit.read_table()
 
-    def test_nft_106_missing_comment_requires_exact_policy(self):
+    def test_nft_106_missing_comment_requires_exact_policy(self) -> None:
         objects = audit.expected_objects()
         # nft 1.0.6 JSON has no table comment, and may reorder anonymous sets.
         objects[-1]["rule"]["expr"][0]["match"]["right"]["set"].reverse()
@@ -185,7 +186,7 @@ class HardeningTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             audit.validate_objects(objects)
 
-    def test_readback_finalizes_without_any_remote_write(self):
+    def test_readback_finalizes_without_any_remote_write(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             state = Path(tmp).resolve()
             (state / "lock").touch()
@@ -204,7 +205,7 @@ class HardeningTests(unittest.TestCase):
                 self.assertEqual(receipt["remote_writes"], 0)
                 self.assertFalse((state / "uncertain.json").exists())
 
-    def test_apply_refuses_wrong_host_and_bad_hash(self):
+    def test_apply_refuses_wrong_host_and_bad_hash(self) -> None:
         with patch.object(audit.socket, "gethostname", return_value="socrat-0"):
             with self.assertRaises(ValueError):
                 audit.apply("bad", None)
@@ -226,7 +227,7 @@ class HardeningTests(unittest.TestCase):
                         audit.apply("wrong", state)
                     run.assert_not_called()
 
-    def test_default_is_preview_and_render_is_offline(self):
+    def test_default_is_preview_and_render_is_offline(self) -> None:
         with (
             patch("sys.argv", ["audit", "--render"]),
             patch.object(audit, "run") as run,
@@ -247,7 +248,7 @@ class HardeningTests(unittest.TestCase):
 
 
 class PathCheckTests(unittest.TestCase):
-    def test_rejects_credentials_queries_and_unapproved_hosts(self):
+    def test_rejects_credentials_queries_and_unapproved_hosts(self) -> None:
         probe = load("path_check_test", "vpn-path-check.py")
         for url in (
             "http://wiki.socrat.alchemmist.xyz/",
@@ -260,7 +261,7 @@ class PathCheckTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 probe.endpoint(url)
 
-    def test_address_control_cannot_scan_arbitrary_destinations(self):
+    def test_address_control_cannot_scan_arbitrary_destinations(self) -> None:
         probe = load("path_check_address", "vpn-path-check.py")
         with self.assertRaises(ValueError):
             probe.check(
@@ -274,7 +275,7 @@ class PathCheckTests(unittest.TestCase):
                 control_address="109.120.141.97",
             )
 
-    def test_records_dns_failure_without_claiming_tunnel_or_recovery(self):
+    def test_records_dns_failure_without_claiming_tunnel_or_recovery(self) -> None:
         probe = load("path_check_failure", "vpn-path-check.py")
         with patch.object(
             probe.socket, "getaddrinfo", side_effect=OSError("PRIVATE_TEST_SENTINEL")
@@ -285,7 +286,7 @@ class PathCheckTests(unittest.TestCase):
         self.assertFalse(result["automatic_recovery"])
         self.assertNotIn("PRIVATE_TEST_SENTINEL", json.dumps(result))
 
-    def test_complete_large_transfer_and_incomplete_transfer_are_distinct(self):
+    def test_complete_large_transfer_and_incomplete_transfer_are_distinct(self) -> None:
         from unittest.mock import MagicMock
 
         probe = load("path_check_body", "vpn-path-check.py")
@@ -313,10 +314,20 @@ class PathCheckTests(unittest.TestCase):
             self.assertFalse(result["native_tunnel_test"])
 
 
+def _text(value: object) -> str:
+    """Narrow a decoded YAML/JSON field to text for typed test callers."""
+    assert isinstance(value, str)
+    return value
+
+
 class RealityPlanTests(unittest.TestCase):
-    def setup_plan(self):
+    def setup_plan(
+        self,
+    ) -> tuple[ModuleType, dict[str, object], dict[str, list[dict[str, object]]]]:
         planner = load("reality_plan", "vpn-reality-plan.py")
-        policy = json.loads((ROOT / "deploy/vpn-hardening/policy.json").read_text())
+        policy_document = json.loads((ROOT / "deploy/vpn-hardening/policy.json").read_text())
+        assert isinstance(policy_document, dict)
+        policy: dict[str, object] = policy_document
         config = {
             "inbounds": [
                 {
@@ -344,7 +355,7 @@ class RealityPlanTests(unittest.TestCase):
         }
         return planner, policy, config
 
-    def test_preview_preserves_input_and_hides_client_material(self):
+    def test_preview_preserves_input_and_hides_client_material(self) -> None:
         planner, policy, config = self.setup_plan()
         before = json.dumps(config, sort_keys=True)
         result = planner.build(config, policy)
@@ -354,9 +365,9 @@ class RealityPlanTests(unittest.TestCase):
         self.assertNotIn("PRIVATE_TEST_SENTINEL", json.dumps(result))
         self.assertEqual(result["production_writes"], 0)
 
-    def test_already_correct_target_is_noop(self):
+    def test_already_correct_target_is_noop(self) -> None:
         planner, policy, config = self.setup_plan()
-        stream = json.loads(config["inbounds"][0]["stream_settings"])
+        stream = json.loads(_text(config["inbounds"][0]["stream_settings"]))
         stream["realitySettings"]["target"] = "www.yahoo.com:443"
         config["inbounds"][0]["stream_settings"] = json.dumps(stream)
         result = planner.build(config, policy)
@@ -365,24 +376,24 @@ class RealityPlanTests(unittest.TestCase):
             result["before_configuration_sha256"], result["planned_configuration_sha256"]
         )
 
-    def test_sni_and_security_drift_stop(self):
+    def test_sni_and_security_drift_stop(self) -> None:
         planner, policy, config = self.setup_plan()
         for field, value in (("security", "none"), ("network", "grpc")):
             changed = json.loads(json.dumps(config))
-            stream = json.loads(changed["inbounds"][0]["stream_settings"])
+            stream = json.loads(_text(changed["inbounds"][0]["stream_settings"]))
             stream[field] = value
             changed["inbounds"][0]["stream_settings"] = json.dumps(stream)
             with self.assertRaises(ValueError):
                 planner.build(changed, policy)
-        stream = json.loads(config["inbounds"][0]["stream_settings"])
+        stream = json.loads(_text(config["inbounds"][0]["stream_settings"]))
         stream["realitySettings"]["serverNames"] = ["www.sony.com"]
         config["inbounds"][0]["stream_settings"] = json.dumps(stream)
         with self.assertRaises(ValueError):
             planner.build(config, policy)
 
-    def test_ambiguous_target_and_scope_changes_stop(self):
+    def test_ambiguous_target_and_scope_changes_stop(self) -> None:
         planner, policy, config = self.setup_plan()
-        stream = json.loads(config["inbounds"][0]["stream_settings"])
+        stream = json.loads(_text(config["inbounds"][0]["stream_settings"]))
         stream["realitySettings"]["dest"] = "www.intel.com:443"
         config["inbounds"][0]["stream_settings"] = json.dumps(stream)
         with self.assertRaises(ValueError):

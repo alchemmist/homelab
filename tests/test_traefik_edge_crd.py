@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class EdgeCrdTests(unittest.TestCase):
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         output = subprocess.check_output(
             [
                 "helm",
@@ -24,7 +24,7 @@ class EdgeCrdTests(unittest.TestCase):
         )
         cls.resources = [d for d in yaml.safe_load_all(output) if d]
 
-    def test_provider_is_namespace_and_label_scoped(self):
+    def test_provider_is_namespace_and_label_scoped(self) -> None:
         d = next(d for d in self.resources if d["kind"] == "Deployment")
         args = d["spec"]["template"]["spec"]["containers"][0]["args"]
         self.assertIn("--providers.kubernetescrd=true", args)
@@ -38,7 +38,7 @@ class EdgeCrdTests(unittest.TestCase):
         self.assertIn("--providers.kubernetescrd.disableclusterscoperesources=true", args)
         self.assertNotIn("--serverstransport.insecureskipverify=true", args)
 
-    def test_vpn_middleware_uses_existing_discovery_without_wider_watches(self):
+    def test_vpn_middleware_uses_existing_discovery_without_wider_watches(self) -> None:
         m = next(
             d
             for d in self.resources
@@ -59,7 +59,7 @@ class EdgeCrdTests(unittest.TestCase):
             "argocd-traefik-edge-vpn-msk-only@kubernetescrd",
         )
 
-    def test_only_trojan_path_is_gated_not_subscription_or_panel(self):
+    def test_only_trojan_path_is_gated_not_subscription_or_panel(self) -> None:
         ingress = next(
             d
             for d in self.resources
@@ -80,7 +80,7 @@ class EdgeCrdTests(unittest.TestCase):
         self.assertEqual(paths[0]["backend"]["service"]["port"]["number"], 32087)
         self.assertEqual(paths[0]["pathType"], "Exact")
 
-    def test_new_rbac_is_argocd_read_only_and_not_cluster_wide(self):
+    def test_new_rbac_is_argocd_read_only_and_not_cluster_wide(self) -> None:
         roles = [
             d
             for d in self.resources

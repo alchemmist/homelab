@@ -16,28 +16,29 @@ SPEC.loader.exec_module(GUARD)
 
 
 class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
-    async def test_success_preserves_page_text(self):
+    async def test_success_preserves_page_text(self) -> None:
         with patch.object(GUARD, "FETCH_WORKER", 'import json; print(json.dumps("page text"))'):
             self.assertEqual(await GUARD.bounded_fetch({"url": "https://example.com"}), "page text")
 
-    async def test_empty_page_is_explicit_error(self):
+    async def test_empty_page_is_explicit_error(self) -> None:
         with patch.object(GUARD, "FETCH_WORKER", 'import json; print(json.dumps(""))'):
             self.assertIn("error", await GUARD.bounded_fetch({"url": "https://example.com"}))
 
-    async def test_worker_failure_is_explicit_error(self):
+    async def test_worker_failure_is_explicit_error(self) -> None:
         with patch.object(GUARD, "FETCH_WORKER", "raise SystemExit(2)"):
             self.assertIn("error", await GUARD.bounded_fetch({"url": "https://example.com"}))
 
-    async def test_malformed_worker_response_is_explicit_error(self):
+    async def test_malformed_worker_response_is_explicit_error(self) -> None:
         with patch.object(GUARD, "FETCH_WORKER", 'print("not json")'):
             self.assertIn("error", await GUARD.bounded_fetch({"url": "https://example.com"}))
 
-    async def test_worker_start_failure_is_explicit_error(self):
+    async def test_worker_start_failure_is_explicit_error(self) -> None:
         with patch.object(GUARD.asyncio, "create_subprocess_exec", AsyncMock(side_effect=OSError)):
             self.assertIn("error", await GUARD.bounded_fetch({"url": "https://example.com"}))
 
-    async def test_upstream_refusal_does_not_start_fetch(self):
-        async def original(form_data, metadata, event_caller, call):
+
+    async def test_upstream_refusal_does_not_start_fetch(self) -> None:
+        async def original(_form_data, _metadata, _event_caller, _call) -> object:
             return {"error": "Tool call was not approved"}
 
         execute = GUARD.guarded_execute(original)
@@ -51,12 +52,12 @@ class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn("not approved", result["error"])
             fetch.assert_not_awaited()
 
-    async def check_termination(self, cancel):
+    async def check_termination(self, *, cancel: bool) -> None:
         original = asyncio.create_subprocess_exec
-        processes = []
+        processes: list[asyncio.subprocess.Process] = []
         started = asyncio.Event()
 
-        async def spawn(*args, **kwargs):
+        async def spawn(*args, **kwargs) -> object:
             process = await original(*args, **kwargs)
             processes.append(process)
             started.set()
@@ -80,14 +81,15 @@ class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
             self.assertIsNotNone(processes[0].returncode)
             self.assertNotEqual(processes[0].returncode, 0)
 
-    async def test_deadline_kills_and_reaps_worker(self):
-        await self.check_termination(False)
+    async def test_deadline_kills_and_reaps_worker(self) -> None:
+        await self.check_termination(cancel=False)
 
-    async def test_stop_kills_and_reaps_worker(self):
-        await self.check_termination(True)
+    async def test_stop_kills_and_reaps_worker(self) -> None:
+        await self.check_termination(cancel=True)
 
-    async def test_only_builtin_fetch_is_intercepted(self):
-        async def original(form_data, metadata, event_caller, call):
+
+    async def test_only_builtin_fetch_is_intercepted(self) -> None:
+        async def original(_form_data, metadata, _event_caller, call) -> object:
             tool = metadata["tools"]["fetch_url"]
             result = await tool["callable"](**json.loads(call["function"]["arguments"]))
             return result
@@ -115,7 +117,7 @@ class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
                 )
             fetch.assert_awaited_once()
 
-    async def test_invalid_arguments_use_upstream_validation(self):
+    async def test_invalid_arguments_use_upstream_validation(self) -> None:
         original = AsyncMock(return_value="upstream")
         original.__globals__ = {}
         execute = GUARD.guarded_execute(original)

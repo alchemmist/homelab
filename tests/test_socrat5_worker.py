@@ -3,6 +3,7 @@
 import unittest
 from pathlib import Path
 import yaml
+from jinja2 import Environment, StrictUndefined
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -89,8 +90,8 @@ class Socrat5WorkerSourceTests(unittest.TestCase):
 
     def test_only_worker5_nl_endpoint_changes_to_existing_relay(self) -> None:
         """Keep worker5's NL endpoint pinned to the existing relay."""
-        group = yaml.safe_load((ROOT / "ansible/inventory/group_vars/Socrat.yml").read_text())
-        peers = group["wg_socrat_peer_endpoints"]
+        group = yaml.safe_load((ROOT / "ansible/inventory/group_vars/Socrat/cluster.yml").read_text())
+        peers = group["wg_socrat_peer_endpoint_overrides"]
         self.assertEqual(peers["socrat-5"]["socrat-2"], peers["socrat-0"]["socrat-2"])
         self.assertEqual(peers["socrat-5"]["socrat-2"], "91.189.82.238:51832")
         self.assertEqual(peers["socrat-5"]["socrat-3"], "46.8.146.172:46559")
@@ -120,7 +121,11 @@ class Socrat5WorkerSourceTests(unittest.TestCase):
         """Keep password tasks private and leave SSH policy untouched."""
         play = yaml.safe_load((ROOT / "ansible/playbooks/socrat-5-headless.yml").read_text())[0]
         users = [t for t in play["pre_tasks"] if "ansible.builtin.user" in t]
-        self.assertEqual({t["ansible.builtin.user"]["name"] for t in users}, {"alchemmist", "root"})
+        registry = yaml.safe_load((ROOT / "ansible/inventory/group_vars/Socrat/users.yml").read_text())
+        env = Environment(undefined=StrictUndefined)
+        names = {env.from_string(t["ansible.builtin.user"]["name"]).render(registry) for t in users}
+        self.assertEqual(names, {"alchemmist", "root"})
+        self.assertIs(registry["homelab_owner_account"]["sudo"], True)
         self.assertTrue(all(t["no_log"] for t in users))
         self.assertTrue(all("password" in t["ansible.builtin.user"] for t in users))
         self.assertNotIn("sshd_config", str(users))
