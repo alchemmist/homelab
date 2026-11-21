@@ -8,7 +8,7 @@ import urllib.request
 
 
 class ConfigurationError(Exception):
-    pass
+    """Exception raised when the Open WebUI model configuration is invalid."""
 
 
 def request_json(opener, base_url, path, token=None, payload=None):

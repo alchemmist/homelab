@@ -35,6 +35,8 @@ def canonical(rows):
 
 
 class Router:
+    """Router HTTP API client using authenticated requests."""
+
     def __init__(self, credentials, address):
         self.base = "http://" + str(ipaddress.IPv4Address(address))
         self.cookie = None

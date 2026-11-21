@@ -12,6 +12,8 @@ from pathlib import Path
 from urllib.request import Request, build_opener, ProxyHandler, HTTPRedirectHandler
 
 class NoRedirect(HTTPRedirectHandler):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
     def redirect_request(self,*args):return None
 
 def eligible(status,event):

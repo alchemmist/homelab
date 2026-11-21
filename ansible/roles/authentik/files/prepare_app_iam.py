@@ -83,6 +83,8 @@ def private(path, directory=False):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         if fp is not None:
             fp.close()

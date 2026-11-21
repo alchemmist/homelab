@@ -9,6 +9,8 @@ from pathlib import Path
 
 
 class JsonFormatter(logging.Formatter):
+    """Logging formatter that emits structured JSON records."""
+
     def format(self, record):
         # Do not render exception text/tracebacks: they can contain process arguments.
         event = getattr(record, "event", "watchdog_error")
@@ -28,6 +30,8 @@ class JsonFormatter(logging.Formatter):
 
 @dataclass(frozen=True)
 class Process:
+    """Immutable record of a managed browser process."""
+
     pid: int
     ppid: int
     start: int
@@ -104,12 +108,16 @@ def signal_process(identity, sig):
 
 @dataclass
 class Browser:
+    """State of a running supervised browser instance."""
+
     started: float
     members: set = field(default_factory=set)
     terminated: float | None = None
 
 
 class Watchdog:
+    """Watchdog that supervises and restarts browser processes."""
+
     def __init__(self, lifetime=900, grace=5, ticks=None, send=signal_process):
         self.lifetime = lifetime
         self.grace = grace

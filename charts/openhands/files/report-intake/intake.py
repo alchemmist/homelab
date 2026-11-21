@@ -54,6 +54,8 @@ def lifecycle(path,x,db,secret,registry):
         return {'event':event,'enrolled':sorted(targets)}
 
 class Handler(BaseHTTPRequestHandler):
+    """HTTP handler that ingests report payloads."""
+
     def do_POST(self):
         try:
             n=int(self.headers.get('Content-Length',0));assert self.path in ('/intake','/review','/review-tick') and 0<n<300000 and not self.headers.get('Transfer-Encoding');x=json.loads(self.rfile.read(n));registry=json.loads(Path('/code/repos.json').read_text());db='/state/reports.db';out=ingest(x,registry,Path('/auth/key').read_bytes(),db) if self.path=='/intake' else lifecycle(self.path,x,db,Path('/review-auth/key').read_bytes(),registry);code=200

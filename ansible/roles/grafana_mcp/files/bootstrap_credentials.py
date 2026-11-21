@@ -14,7 +14,7 @@ KUBECTL = ["k3s", "kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml"]
 
 
 class BootstrapError(Exception):
-    pass
+    """Exception raised when Grafana credential bootstrap fails."""
 
 
 def kubectl(arguments, payload=None):
@@ -32,6 +32,8 @@ def kubectl(arguments, payload=None):
 
 
 class Grafana:
+    """Minimal Grafana HTTP API client."""
+
     def __init__(self, url, username, password):
         self.url = url
         encoded = base64.b64encode((username + ":" + password).encode()).decode()

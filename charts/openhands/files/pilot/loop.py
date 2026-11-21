@@ -186,6 +186,8 @@ def background(action):
         print('stage failure',action,type(ex).__name__,flush=True)
     finally:LOCK.release()
 class Handler(BaseHTTPRequestHandler):
+    """HTTP handler that accepts pilot progress reports."""
+
     def do_POST(self):
         action=self.path.lstrip('/')
         if action not in {*ROUTES.values(),'status','tick'} or self.headers.get('Transfer-Encoding') or int(self.headers.get('Content-Length',0))!=0:self.send_error(400);return

@@ -19,6 +19,8 @@ NATIVE_UNITS = ["homelab-vpn-primary.service", "homelab-vpn-caddy.service"]
 
 
 class Watchdog:
+    """Watchdog that monitors link health and triggers VPN failover."""
+
     def __init__(self, config):
         self.config = config
         self.state = Path(config.get("state_dir", STATE_DIR))
