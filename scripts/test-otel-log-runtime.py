@@ -10,6 +10,7 @@ import tempfile
 import time
 import urllib.request
 import uuid
+from collections.abc import Mapping
 from concurrent import futures
 from typing import cast
 
@@ -126,9 +127,9 @@ def output(name) -> "list[dict[str, object]]":
 
 def ids(records) -> "set[str]":
     return {
-        a["value"]["stringValue"]
+        cast("dict[str, object]", a["value"])["stringValue"]
         for r in records
-        for a in r.get("attributes", [])
+        for a in cast("list[dict[str, object]]", r.get("attributes", []))
         if a["key"] == "test.id"
     }
 
@@ -222,7 +223,7 @@ def main() -> None:
         cast("dict[str, dict[str, object]]", cfg)["service"]["extensions"] = ["file_storage"]
         url = launch(sender, cfg, network, publish=True)
 
-        def retry(i):
+        def retry(i: int):
             deadline = time.monotonic() + 60
             while time.monotonic() < deadline:
                 try:

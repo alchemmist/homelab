@@ -5,11 +5,12 @@ import argparse
 import hashlib
 import json
 import subprocess
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from urllib.parse import urlsplit
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
         "--url-file", required=True, help="Private fetched fully-url.json; token is not logged"
@@ -33,7 +34,14 @@ def main():
     passed = 0
     for ip in ["109.173.40.247", "109.120.141.60"]:
 
-        def check(name, path, status, body=None, headers=(), predicate=None):
+        def check(
+            name: str,
+            path: str,
+            status: int,
+            body: object = None,
+            headers: Sequence[str] = (),
+            predicate: Callable[[bytes], bool] | None = None,
+        ):
             nonlocal passed
             cmd = [
                 "curl",

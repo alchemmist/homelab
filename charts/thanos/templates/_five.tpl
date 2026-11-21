@@ -13,5 +13,5 @@ affinity:
           matchExpressions:
             - key: kubernetes.io/hostname
               operator: In
-              values: [socrat-0]
+              values: [socrat-1]
 {{- end -}}

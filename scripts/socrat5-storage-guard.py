@@ -8,6 +8,7 @@ import os
 import subprocess
 import time
 from pathlib import Path
+from typing import cast
 
 NAME = "homelab-socrat5-local-storage"
 KINDS = ("ValidatingAdmissionPolicy", "ValidatingAdmissionPolicyBinding")

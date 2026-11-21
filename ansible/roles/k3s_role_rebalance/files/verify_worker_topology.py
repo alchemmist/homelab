@@ -8,7 +8,7 @@ from etcd_members import Etcd, require_members
 VOTERS = {"socrat-0", "socrat-1", "socrat-2"}
 
 
-def verify(client):
+def verify(client) -> dict[str, object]:
     members = client.members()
     require_members(members, VOTERS)
     for name in sorted(VOTERS):

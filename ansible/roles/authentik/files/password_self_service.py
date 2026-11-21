@@ -8,6 +8,7 @@ from pathlib import Path
 import socket
 import subprocess
 import tempfile
+from typing import TypedDict
 import urllib.request
 from urllib.parse import quote
 
@@ -15,7 +16,14 @@ SLUG = "socrat-change-password"
 HOST = "auth.socrat.alchemmist.xyz"
 
 
-def route():
+class Route(TypedDict):
+    apiVersion: str
+    kind: str
+    metadata: dict[str, object]
+    spec: dict[str, object]
+
+
+def route() -> list[Route]:
     # Constant destination: user-supplied next/username cannot select another account.
     flow = (
         "/if/flow/"
@@ -23,8 +31,13 @@ def route():
         + "/?next="
         + quote("/if/flow/default-invalidation-flow/?next=/change-password", safe="")
     )
-    login = "https://" + HOST + "/if/flow/default-authentication-flow/?next=" + quote(flow, safe="")
-    meta = {
+    login = (
+        "https://"
+        + HOST
+        + "/if/flow/default-authentication-flow/?next="
+        + quote(flow, safe="")
+    )
+    meta: dict[str, object] = {
         "name": "socrat-password-self-service",
         "namespace": "identity",
         "labels": {"app.kubernetes.io/managed-by": "homelab-password-self-service"},
@@ -80,13 +93,15 @@ def route():
     ]
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("root", type=Path)
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args()
     root = args.root
-    token = json.loads((root / "credentials.json").read_text())["AUTHENTIK_BOOTSTRAP_TOKEN"]
+    token = json.loads((root / "credentials.json").read_text())[
+        "AUTHENTIK_BOOTSTRAP_TOKEN"
+    ]
     original = socket.getaddrinfo
     socket.getaddrinfo = lambda host, *a, **kw: original(
         "109.173.40.247" if host == HOST else host, *a, **kw
@@ -101,13 +116,17 @@ def main():
             "https://" + HOST + "/api/v3/" + path,
             data=json.dumps(data).encode() if data is not None else None,
             method=method,
-            headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
+            headers={
+                "Authorization": "Bearer " + token,
+                "Content-Type": "application/json",
+            },
         )
         with urllib.request.urlopen(request, timeout=30) as response:
             result = json.load(response)
         if method != "GET":
             (
-                journal / ("created-" + str(len(list(journal.glob("created-*")))) + ".json")
+                journal
+                / ("created-" + str(len(list(journal.glob("created-*")))) + ".json")
             ).write_text(json.dumps({"path": path, "result": result}, indent=2))
         return result
 
@@ -141,8 +160,13 @@ def main():
     )
     prompt = exact("stages/prompt/stages/", "default-password-change-prompt")
     write = exact("stages/user_write/", "default-password-change-write")
-    assert write["user_creation_mode"] == "never_create" and write["create_users_group"] is None
-    fields = [p for p in snapshot["stages/prompt/prompts/"] if p["pk"] in prompt["fields"]]
+    assert (
+        write["user_creation_mode"] == "never_create"
+        and write["create_users_group"] is None
+    )
+    fields = [
+        p for p in snapshot["stages/prompt/prompts/"] if p["pk"] in prompt["fields"]
+    ]
     assert {p["field_key"] for p in fields} == {"password", "password_repeat"}
     assert all(p["type"] == "password" and p["required"] for p in fields)
     assert prompt["validation_policies"], "Password policy must be preserved"
@@ -158,12 +182,16 @@ def main():
         assert len(matches) <= 1, "Ambiguous owned object"
         if matches:
             obj = matches[0]
-            assert all(obj.get(k) == v for k, v in spec.items()), "Owned object drift: " + value
+            assert all(obj.get(k) == v for k, v in spec.items()), (
+                "Owned object drift: " + value
+            )
             return obj
         # Absence rechecked immediately before additive create.
         obj = api("POST", path, spec)
         verified = [r for r in all_rows(path) if r.get(key) == value]
-        assert len(verified) == 1 and all(verified[0].get(k) == v for k, v in spec.items())
+        assert len(verified) == 1 and all(
+            verified[0].get(k) == v for k, v in spec.items()
+        )
         return verified[0]
 
     flow = ensure(
@@ -200,11 +228,17 @@ def main():
         "stages/prompt/stages/",
         "name",
         "socrat-password-updated",
-        {"name": "socrat-password-updated", "fields": [success["pk"]], "validation_policies": []},
+        {
+            "name": "socrat-password-updated",
+            "fields": [success["pk"]],
+            "validation_policies": [],
+        },
     )
     expected = [(0, prompt["pk"]), (10, write["pk"]), (20, done_stage["pk"])]
     existing = [b for b in all_rows("flows/bindings/") if b["target"] == flow["pk"]]
-    assert all((b["order"], b["stage"]) in expected for b in existing), "Unexpected flow binding"
+    assert all((b["order"], b["stage"]) in expected for b in existing), (
+        "Unexpected flow binding"
+    )
     for order, stage in expected:
         matches = [b for b in existing if b["order"] == order and b["stage"] == stage]
         assert len(matches) <= 1
@@ -241,7 +275,15 @@ def main():
     for obj in resources:
         result = subprocess.run(
             k
-            + ["-n", "identity", "get", obj["kind"].lower(), obj["metadata"]["name"], "-o", "json"],
+            + [
+                "-n",
+                "identity",
+                "get",
+                obj["kind"].lower(),
+                str(obj["metadata"]["name"]),
+                "-o",
+                "json",
+            ],
             capture_output=True,
             text=True,
             env=env,
@@ -253,12 +295,19 @@ def main():
         else:
             assert "NotFound" in result.stderr, "Route inspection failed"
             subprocess.run(
-                k + ["create", "-f", "-"], input=json.dumps(obj), text=True, env=env, check=True
+                k + ["create", "-f", "-"],
+                input=json.dumps(obj),
+                text=True,
+                env=env,
+                check=True,
             )
     (journal / "verified.json").write_text(
         json.dumps({"flow": flow, "bindings": bindings, "route": resources}, indent=2)
     )
-    print("Verified additive native self-service and exact-path entry route. Receipt:", journal)
+    print(
+        "Verified additive native self-service and exact-path entry route. Receipt:",
+        journal,
+    )
 
 
 if __name__ == "__main__":

@@ -81,38 +81,73 @@ def fixture():
     }
 
 
-def converge(state, operations):
+def _mapping(value: object) -> dict[str, object]:
+    """Narrow a dynamic fixture node to a string-keyed mapping without copying it."""
+    assert isinstance(value, dict)
+    return value
+
+
+def _items(value: object) -> list[object]:
+    """Narrow a dynamic fixture node to a list without copying it."""
+    assert isinstance(value, list)
+    return value
+
+
+def _apply_global_role_patch(state: dict[str, object], op: dict[str, object]) -> None:
+    """Apply a rendered Kubernetes JSON patch to the native Rancher fixtures."""
+    op_path = op["path"]
+    assert isinstance(op_path, str)
+    name = op_path.split("/")[-1]
+    objects = [
+        *(_mapping(role) for role in _items(state["globalRoles"])),
+        _mapping(state["rancherSessionSetting"]),
+        _mapping(state["rancherAuth"]),
+    ]
+    obj = next(o for o in objects if _mapping(_mapping(o)["metadata"])["name"] == name)
+    for change in _items(op["body"]):
+        patch = _mapping(change)
+        if patch["op"] == "add":
+            patch_path = patch["path"]
+            assert isinstance(patch_path, str)
+            obj[patch_path[1:]] = copy.deepcopy(patch["value"])
+
+
+def converge(state: dict[str, object], operations: list[dict[str, object]]):
     for op in operations:
         if op["system"] == "kubernetes":
-            name = op["path"].split("/")[-1]
-            objects = state["globalRoles"] + [state["rancherSessionSetting"], state["rancherAuth"]]
-            obj = next(o for o in objects if o["metadata"]["name"] == name)
-            for change in op["body"]:
-                if change["op"] == "add":
-                    obj[change["path"][1:]] = copy.deepcopy(change["value"])
+            _apply_global_role_patch(state, op)
         elif op["system"] == "harbor" and op["method"] == "PUT":
-            state["harbor"]["projectCreationRestriction"] = op["body"][
+            _mapping(state["harbor"])["projectCreationRestriction"] = _mapping(op["body"])[
                 "project_creation_restriction"
             ]
         elif op["system"] == "harbor" and op["method"] == "DELETE":
-            project = op["path"].split("/")[-3]
-            state["harbor"]["projects"][project] = [
-                m
-                for m in state["harbor"]["projects"][project]
-                if m["id"] != int(op["path"].split("/")[-1])
+            op_path = op["path"]
+            assert isinstance(op_path, str)
+            project = op_path.split("/")[-3]
+            projects = _mapping(_mapping(state["harbor"])["projects"])
+            projects[project] = [
+                member
+                for member in _items(projects[project])
+                if _mapping(member)["id"] != int(op_path.split("/")[-1])
             ]
         elif op["system"] == "authentik" and op["method"] == "DELETE":
-            state["bindings"] = [
-                b
-                for b in state["bindings"]
-                if "policies/bindings/" + b.get("pk", "") + "/" != op["path"]
-            ]
+            remaining = []
+            for binding_entry in _items(state["bindings"]):
+                pk = _mapping(binding_entry).get("pk", "")
+                assert isinstance(pk, str)
+                if "policies/bindings/" + pk + "/" != op["path"]:
+                    remaining.append(binding_entry)
+            state["bindings"] = remaining
         elif op["system"] == "harbor":
-            project = op["path"].split("/")[-2]
-            state["harbor"]["groups"] = [
+            op_path = op["path"]
+            assert isinstance(op_path, str)
+            project = op_path.split("/")[-2]
+            harbor_state = _mapping(state["harbor"])
+            harbor_state["groups"] = [
                 {"id": 101, "group_name": "homelab-observer", "group_type": 3}
             ]
-            state["harbor"]["projects"][project].append(
+            projects = _mapping(harbor_state["projects"])
+            _items(projects[project]).append(
                 {
                     "entity_type": "g",
                     "entity_name": "homelab-observer",
@@ -121,15 +156,21 @@ def converge(state, operations):
                 }
             )
         else:
-            state["bindings"].append(copy.deepcopy(op["body"]))
+            _items(state["bindings"]).append(copy.deepcopy(op["body"]))
 
 
-def permits(rules, group, resource, verb, name=None):
+def permits(
+    rules: list[dict[str, object]],
+    group: str,
+    resource: str,
+    verb: str,
+    name: str | None = None,
+):
     return any(
-        group in r["apiGroups"]
-        and resource in r["resources"]
-        and verb in r["verbs"]
-        and ("resourceNames" not in r or name in r["resourceNames"])
+        group in _items(_mapping(r)["apiGroups"])
+        and resource in _items(_mapping(r)["resources"])
+        and verb in _items(_mapping(r)["verbs"])
+        and ("resourceNames" not in r or (name is not None and name in _items(r["resourceNames"])))
         for r in rules
     )
 
@@ -463,10 +504,16 @@ class BootstrapSafetyTests(unittest.TestCase):
         outer = self
 
         class FakeClient:
-            def __init__(self, credentials):
+            def __init__(self, credentials: Path):
                 pass
 
-            def call(self, system, method, path, body=None):
+            def call(
+                self,
+                system: str,
+                method: str,
+                path: str,
+                body: dict[str, object] | None = None,
+            ):
                 outer.calls.append((system, method, path))
                 converge(
                     outer.state, [{"system": system, "method": method, "path": path, "body": body}]
@@ -474,7 +521,7 @@ class BootstrapSafetyTests(unittest.TestCase):
 
         self.fake_client = FakeClient
 
-    def run_main(self, *args):
+    def run_main(self, *args: str):
         with (
             patch.object(self.bootstrap, "Client", self.fake_client),
             patch.object(
@@ -589,7 +636,7 @@ class LegacyChatMigrationTests(unittest.TestCase):
         self.migration = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.migration)
 
-        def binding(pk, group):
+        def binding(pk: str, group: str):
             return {
                 "pk": pk,
                 "target": "chat-app",
@@ -629,7 +676,7 @@ class LegacyChatMigrationTests(unittest.TestCase):
         outer = self
 
         class FakeClient:
-            def rows(self, path):
+            def rows(self, path: str):
                 if path.startswith("core/groups/"):
                     return copy.deepcopy(outer.state["groups"])
                 if path.startswith("core/applications/"):
@@ -640,24 +687,36 @@ class LegacyChatMigrationTests(unittest.TestCase):
                     return copy.deepcopy(outer.state["users"])
                 raise AssertionError("Unexpected API read")
 
-            def call(self, system, method, path, body=None):
+            def call(
+                self,
+                system: str,
+                method: str,
+                path: str,
+                body: dict[str, object] | None = None,
+            ):
+                state = _mapping(outer.state)
                 outer.calls.append((system, method, path, body))
                 if method == "POST" and path == "core/groups/":
-                    outer.state["groups"].append({"pk": "new-chat-group", "users": [], **body})
+                    assert isinstance(body, dict)
+                    _items(state["groups"]).append({"pk": "new-chat-group", "users": [], **body})
                 elif method == "POST" and path.endswith("/add_user/"):
-                    outer.state["users"][0]["groups"].append("new-chat-group")
-                    outer.state["groups"][-1]["users"].append(92)
+                    users = _items(state["users"])
+                    _items(_mapping(users[0])["groups"]).append("new-chat-group")
+                    _items(_mapping(_items(state["groups"])[-1])["users"]).append(92)
                 elif method == "POST" and path == "policies/bindings/":
-                    outer.state["bindings"].append({"pk": "new-binding", **body})
+                    assert isinstance(body, dict)
+                    _items(state["bindings"]).append({"pk": "new-binding", **body})
                 elif method == "DELETE":
-                    outer.state["bindings"] = [
-                        b for b in outer.state["bindings"] if b["pk"] != path.split("/")[-2]
+                    bindings = _items(state["bindings"])
+                    state["bindings"] = [
+                        b for b in bindings if _mapping(b)["pk"] != path.split("/")[-2]
                     ]
                 elif method == "GET" and path.startswith("core/users/"):
-                    return copy.deepcopy(outer.state["users"][0])
+                    return copy.deepcopy(_items(state["users"])[0])
                 elif method == "GET" and path.startswith("policies/bindings/"):
+                    bindings = _items(state["bindings"])
                     return copy.deepcopy(
-                        next(b for b in outer.state["bindings"] if b["pk"] == path.split("/")[-2])
+                        next(b for b in bindings if _mapping(b)["pk"] == path.split("/")[-2])
                     )
                 else:
                     raise AssertionError("Unexpected API mutation")

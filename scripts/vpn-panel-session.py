@@ -18,6 +18,7 @@ import subprocess
 import time
 import typing
 import urllib.request
+from collections.abc import Sequence
 from contextlib import closing
 from pathlib import Path
 from typing import cast

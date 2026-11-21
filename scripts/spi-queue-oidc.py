@@ -39,11 +39,11 @@ def require(ok, message) -> None:
 def private(path) -> None:
     info = path.lstat()
     require(
-        not path.is_symlink()
+        "Private regular operator-owned file required",
+        ok=not path.is_symlink()
         and stat.S_ISREG(info.st_mode)
         and info.st_uid == os.getuid()
         and not info.st_mode & 0o077,
-        "Private regular operator-owned file required",
     )
 
 
@@ -61,13 +61,13 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 class API:
-    def __init__(self, credentials, write=False):
+    def __init__(self, credentials: Path, *, write: bool = False):
         private(credentials)
         value = json.loads(credentials.read_text())
         self.token = value.get("AUTHENTIK_API_TOKEN") or value.get("AUTHENTIK_BOOTSTRAP_TOKEN")
         require(
-            isinstance(self.token, str) and bool(self.token),
             "Existing automation credential required",
+            ok=isinstance(self.token, str) and bool(self.token),
         )
         self.write = write
         self.http = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
@@ -91,14 +91,14 @@ class API:
         try:
             with self.http.open(req, timeout=15) as response:
                 body = response.read(1048577)
-            require(len(body) <= 1048576, "Oversized native response")
+            require("Oversized native response", ok=len(body) <= 1048576)
             result = json.loads(body) if body else None
             if method == "POST":
                 require(
-                    isinstance(result, dict)
+                    "Malformed native create response; inspect uncertain marker before retry",
+                    ok=isinstance(result, dict)
                     and type(result.get("pk")) in (str, int)
                     and bool(result["pk"]),
-                    "Malformed native create response; inspect uncertain marker before retry",
                 )
             return result
         except urllib.error.HTTPError as error:
@@ -118,25 +118,24 @@ class API:
                 path + ("&" if "?" in path else "?") + f"page_size=100&page={page}",
             )
             require(
-                isinstance(data, dict)
+                "Malformed native list response",
+                ok=isinstance(data, dict)
                 and isinstance(data.get("results"), list)
                 and all(isinstance(row, dict) for row in data["results"]),
-                "Malformed native list response",
             )
             if not isinstance(data, dict):
                 reason = "Malformed native list response"
                 raise TypeError(reason)
             pagination = data.get("pagination")
             require(
-                pagination is None or isinstance(pagination, dict),
-                "Malformed native pagination",
+                "Malformed native pagination", ok=pagination is None or isinstance(pagination, dict)
             )
             next_page = (pagination or {}).get("next")
             require(
-                next_page is None or (type(next_page) is int and next_page in (0, page + 1)),
                 "Malformed native pagination cursor",
+                ok=next_page is None or (type(next_page) is int and next_page in (0, page + 1)),
             )
-            result.extend(data["results"])
+            result.extend(cast("list[dict[str, object]]", row_data["results"]))
             if not next_page:
                 return result
         raise RuntimeError("Bounded native pagination exceeded")
@@ -147,17 +146,17 @@ def one(api, path, field, value) -> "dict[str, object] | None":
     if path == "core/applications/":
         query += "&superuser_full_list=true"
     found = [row for row in api.rows(path + "?" + query) if row.get(field) == value]
-    require(len(found) <= 1, "Ambiguous native object: " + value)
+    require("Ambiguous native object: " + cast("str", value), ok=len(found) <= 1)
     return found[0] if found else None
 
 
 def group_valid(row) -> None:
     require(
-        row.get("is_superuser") is False
+        "SPI app group has unexpected inheritance/privilege/ownership",
+        ok=row.get("is_superuser") is False
         and row.get("parents") == []
         and row.get("roles") == []
         and row.get("attributes") == MARKER,
-        "SPI app group has unexpected inheritance/privilege/ownership",
     )
 
 
@@ -179,9 +178,9 @@ def inspect(
     if groups["app-spi-triage-operator"]:
         group_valid(groups["app-spi-triage-operator"])
     flow = {field: one(api, "flows/instances/", "slug", slug) for field, slug in FLOWS.items()}
-    require(all(flow.values()), "Native MFA/consent/invalidation flows missing")
+    require("Native MFA/consent/invalidation flows missing", ok=all(flow.values()))
     signing = one(api, "crypto/certificatekeypairs/", "name", "authentik Self-signed Certificate")
-    require(signing and signing.get("pk"), "Reviewed signing key missing")
+    require("Reviewed signing key missing", ok=signing and signing.get("pk"))
     scopes = api.rows("propertymappings/provider/scope/")
     openid = [
         row
@@ -194,13 +193,12 @@ def inspect(
         if row.get("name") == "homelab-groups" and row.get("scope_name") == "groups"
     ]
     require(
-        len(openid) == len(claims) == 1,
-        "Reviewed openid/groups mappings missing or ambiguous",
+        "Reviewed openid/groups mappings missing or ambiguous", ok=len(openid) == len(claims) == 1
     )
     require(
-        claims[0].get("expression")
-        == 'return {"groups": [group.name for group in request.user.ak_groups.all()]}',
         "Reviewed groups claim expression drift",
+        ok=claims[0].get("expression")
+        == 'return {"groups": [group.name for group in request.user.ak_groups.all()]}',
     )
     settings = {
         **catalog["provider"],
@@ -218,53 +216,64 @@ def canonical_redirects(rows) -> "list[tuple[object, object]]":
 def validate_existing(api, catalog, state, provider, app, groups, settings) -> None:
     if provider or app:
         require(
-            state is not None,
             "Existing SPI identity without private client journal; stop, no adoption/rotation",
+            ok=state is not None,
         )
-        require(all(groups.values()), "SPI admission group missing; manual review required")
+        require("SPI admission group missing; manual review required", ok=all(groups.values()))
         require(
-            provider and app and app.get("provider") == provider["pk"],
             "Partial native identity; manual review required",
+            ok=bool(provider and app and app.get("provider") == provider["pk"]),
         )
+        provider_row = cast("dict[str, object]", provider)
+        app_row = cast("dict[str, object]", app)
+        state_row = cast("dict[str, object]", state)
         for key, value in settings.items():
-            actual = provider.get(key)
+            actual = provider_row.get(key)
             if key == "redirect_uris":
                 require(
-                    canonical_redirects(actual) == canonical_redirects(value),
                     "Strict callback drift",
+                    ok=canonical_redirects(cast("list[dict[str, object]]", actual))
+                    == canonical_redirects(cast("list[dict[str, object]]", value)),
                 )
             elif key == "property_mappings":
-                require(sorted(actual) == sorted(value), "Scope mapping drift")
+                require(
+                    "Scope mapping drift",
+                    ok=sorted(cast("list[str]", actual)) == sorted(cast("list[str]", value)),
+                )
             else:
-                require(actual == value, "Provider settings drift: " + key)
+                require("Provider settings drift: " + key, ok=actual == value)
         require(
-            secrets.compare_digest(provider.get("client_secret", ""), state["client_secret"]),
             "Client credential drift",
+            ok=secrets.compare_digest(
+                cast("str", provider_row.get("client_secret", "")),
+                cast("str", state_row["client_secret"]),
+            ),
         )
+        application = cast("dict[str, object]", catalog["application"])
         require(
-            all(app.get(k) == v for k, v in catalog["application"].items()),
             "SPI application drift",
+            ok=all(app_row.get(k) == v for k, v in application.items()),
         )
-        allowed = {g["pk"] for g in groups.values() if g}
-        bindings = api.rows("policies/bindings/?target=" + str(app["pk"]))
-        require(len(bindings) == len(allowed), "SPI binding count drift")
+        allowed = {cast("dict[str, object]", g)["pk"] for g in groups.values() if g}
+        bindings = api.rows("policies/bindings/?target=" + str(app_row["pk"]))
+        require("SPI binding count drift", ok=len(bindings) == len(allowed))
         seen = set()
         for binding in bindings:
             require(
-                binding.get("group") in allowed
+                "Unexpected permissive/disabled SPI binding",
+                ok=binding.get("group") in allowed
                 and binding["group"] not in seen
                 and not binding.get("user")
                 and not binding.get("policy")
                 and binding.get("enabled") is True
                 and not binding.get("negate")
                 and not binding.get("failure_result"),
-                "Unexpected permissive/disabled SPI binding",
             )
             seen.add(binding["group"])
     else:
         require(
-            state is None,
             "Private journal without live provider; inspect previous attempt first",
+            ok=state is None,
         )
 
 
@@ -280,11 +289,15 @@ def main() -> None:
     args.state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     info = args.state_dir.lstat()
     require(
-        not args.state_dir.is_symlink() and info.st_uid == os.getuid() and not info.st_mode & 0o077,
         "Private state directory required",
+        ok=(
+            not args.state_dir.is_symlink()
+            and info.st_uid == os.getuid()
+            and not info.st_mode & 0o077
+        ),
     )
     uncertain = args.state_dir / "uncertain.json"
-    require(not uncertain.exists(), "Uncertain previous write: stop for native GET review")
+    require("Uncertain previous write: stop for native GET review", ok=not uncertain.exists())
     journal = args.state_dir / "credentials.json"
     state = None
     if journal.exists():
@@ -313,22 +326,22 @@ def main() -> None:
             )
         )
         return
-    require(args.approve_plan_hash == digest, "Fresh plan approval required")
-    require(args.backup_receipt is not None, "Fresh encrypted IdP backup receipt required")
+    require("Fresh plan approval required", ok=args.approve_plan_hash == digest)
+    require("Fresh encrypted IdP backup receipt required", ok=args.backup_receipt is not None)
     private(args.backup_receipt)
     backup = json.loads(args.backup_receipt.read_text())
     from datetime import datetime
 
     observed = datetime.fromisoformat(backup["observedAt"])
     require(
-        0 <= (datetime.now(UTC) - observed).total_seconds() <= 3600,
         "Fresh backup receipt required (at most one hour old)",
+        ok=0 <= (datetime.now(UTC) - observed).total_seconds() <= 3600,
     )
     archive = Path(backup["encryptedBackup"])
     private(archive)
     require(
-        hashlib.sha256(archive.read_bytes()).hexdigest() == backup["sha256"],
         "Backup hash mismatch",
+        ok=hashlib.sha256(archive.read_bytes()).hexdigest() == backup["sha256"],
     )
     save(args.state_dir / "before.json", context)
     save(uncertain, {"plan_hash": digest, "backup_sha256": backup["sha256"]})

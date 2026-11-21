@@ -7,13 +7,35 @@ import os
 import re
 import subprocess
 from pathlib import Path
+from typing import TypedDict
 from urllib.parse import urlsplit
 
 BASE = Path(__file__).resolve().parents[2]
 CONFIG = Path.home() / ".config/n8n"
 
 
-def api(method, path, body=None):
+class _Parameters(TypedDict, total=False):
+    url: str
+    method: str
+    genericAuthType: str
+    jsCode: str
+
+
+class _Node(TypedDict, total=False):
+    name: str
+    type: str
+    parameters: _Parameters
+    credentials: dict[str, dict[str, object]]
+
+
+class _Workflow(TypedDict):
+    name: str
+    nodes: list[_Node]
+    connections: object
+    settings: object
+
+
+def api(method: str, path: str, body: object | None = None):
     cmd = [
         "curl",
         "--fail-with-body",
@@ -42,7 +64,12 @@ def api(method, path, body=None):
     return json.loads(r.stdout) if r.stdout else {}
 
 
-def render_workflow(template, creds, calendar, cloud=None):
+def render_workflow(
+    template: _Workflow,
+    creds: dict[str, dict[str, object]],
+    calendar: dict[str, object],
+    cloud: str | None = None,
+):
     for kind in {k for n in template["nodes"] for k in n.get("credentials", {})}:
         if not creds.get(kind, {}).get("id"):
             raise RuntimeError("Missing credential mapping: " + kind)
@@ -61,7 +88,7 @@ def render_workflow(template, creds, calendar, cloud=None):
     return w
 
 
-def require_yandex_policy(workflow):
+def require_yandex_policy(workflow: _Workflow):
     for node in workflow["nodes"]:
         if node["type"] == "CUSTOM.yandexStation":
             if set(node.get("credentials", {})) != {"yandexStationApi"}:

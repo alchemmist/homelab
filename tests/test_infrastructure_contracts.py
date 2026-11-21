@@ -52,7 +52,7 @@ class InfrastructureContracts(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     contract.check(root)
 
-    def fixture(self, directory):
+    def fixture(self, directory: str) -> Path:
         root = Path(directory)
         c = json.loads((ROOT / "deploy/contracts/infrastructure.json").read_text())
         names = ["deploy/contracts/infrastructure.json", c["meshRegistry"], c["ansibleInventory"]]
