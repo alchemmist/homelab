@@ -16,6 +16,7 @@ spec.loader.exec_module(c)
 
 class CredentialTest(unittest.TestCase):
     def setup_runtime(self, folder, days):
+        """Install an old credential and a fake runtime factory."""
         old = {
             "user_id": "service-id",
             "token_id": "old-id",
@@ -63,6 +64,7 @@ class CredentialTest(unittest.TestCase):
         return Runtime, calls, users
 
     def test_valid_long_lived_token_does_not_rotate_each_run(self):
+        """A valid long-lived token is not rotated on every run."""
         with tempfile.TemporaryDirectory() as t:
             folder = Path(t)
             runtime, calls, users = self.setup_runtime(folder, 300)
@@ -71,6 +73,7 @@ class CredentialTest(unittest.TestCase):
             self.assertEqual(calls, [("GET", "users")])
 
     def test_renew_verify_atomic_switch_then_revoke_old(self):
+        """Renewal verifies, switches atomically, then revokes the old token."""
         with tempfile.TemporaryDirectory() as t:
             folder = Path(t)
             runtime, calls, users = self.setup_runtime(folder, 10)
@@ -81,6 +84,7 @@ class CredentialTest(unittest.TestCase):
             self.assertEqual((folder / "credential.json").stat().st_mode & 0o777, 0o600)
 
     def test_human_blocked_or_lowered_account_not_repaired(self):
+        """Human, blocked or lowered accounts are never repaired."""
         for field, value in [("is_service_user", False), ("is_blocked", True), ("role", "user")]:
             with tempfile.TemporaryDirectory() as t:
                 folder = Path(t)
@@ -91,6 +95,7 @@ class CredentialTest(unittest.TestCase):
                 self.assertEqual(calls, [("GET", "users")])
 
     def test_uncertain_issuance_never_retries(self):
+        """An uncertain issuance never retries."""
         with tempfile.TemporaryDirectory() as t:
             folder = Path(t)
             (folder / "credential-intent.json").write_text("{}")
@@ -98,6 +103,7 @@ class CredentialTest(unittest.TestCase):
                 c.renew(folder, {})
 
     def test_missing_credential_needs_explicit_bootstrap(self):
+        """A missing credential requires explicit bootstrap."""
         with tempfile.TemporaryDirectory() as t:
             with self.assertRaises(ValueError):
                 c.renew(Path(t), {})

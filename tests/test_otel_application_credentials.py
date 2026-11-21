@@ -20,6 +20,7 @@ def load(name):
 
 class ApplicationCredentialTests(unittest.TestCase):
     def test_cross_namespace_or_ca_key_mirror_is_rejected(self):
+        """Cross-namespace or CA-key mirrors are rejected."""
         module = load("otel-application-credentials")
         good = {"application": "litellm", "namespace": "llm", "secret": "otel-app-tls-litellm"}
         module.validate_destination(good)
@@ -33,6 +34,7 @@ class ApplicationCredentialTests(unittest.TestCase):
                 module.validate_destination(bad)
 
     def test_unrelated_workload_cannot_be_reloaded(self):
+        """Unrelated workloads cannot trigger a reload."""
         module = load("otel-application-credentials")
         with self.assertRaises(ValueError):
             module.validate_destination(
@@ -45,6 +47,7 @@ class ApplicationCredentialTests(unittest.TestCase):
             )
 
     def test_rendered_mirror_code_matches_maintained_source(self):
+        """The rendered mirror code matches the maintained source."""
         resources = list(
             yaml.safe_load_all(
                 (ROOT / "deploy/monitoring/otel-application-credentials.yaml").read_text()
@@ -75,6 +78,7 @@ class ApplicationCredentialTests(unittest.TestCase):
                 )
 
     def test_native_ingress_has_no_second_sampler_or_other_signal_owner(self):
+        """The native ingress has no second sampler or other signal owner."""
         config = yaml.safe_load(
             (ROOT / "deploy/monitoring/otel/application-ingress.yaml").read_text()
         )
@@ -91,6 +95,7 @@ class ApplicationCredentialTests(unittest.TestCase):
         self.assertNotIn("insecure", str(config).lower())
 
     def test_privacy_is_identical_and_runs_before_persistent_export_queue(self):
+        """Privacy is identical and runs before the persistent export queue."""
         config = yaml.safe_load(
             (ROOT / "deploy/monitoring/otel/application-ingress.yaml").read_text()
         )
@@ -104,6 +109,7 @@ class ApplicationCredentialTests(unittest.TestCase):
         )
 
     def test_backend_sdk_proof_requires_child_and_negative_content_test(self):
+        """Backend SDK proof requires a child span and a negative content test."""
         module = load("otel-application-trace-verify")
         trace_id = "ab" * 16
         parent_id = "cd" * 8

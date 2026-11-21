@@ -21,6 +21,7 @@ owner = load("nb_owner", "netbird-owner-handover.py")
 
 class PublicEntryTests(unittest.TestCase):
     def test_scoped_identity_entry(self):
+        """The public entry is scoped to the identity namespace."""
         docs = entry.manifests()
         self.assertTrue(
             all(d["metadata"]["namespace"] in ["identity", "netbird-pilot"] for d in docs)
@@ -64,6 +65,7 @@ class PublicEntryTests(unittest.TestCase):
         )
 
     def test_invite_list_read_does_not_enable_local_signup(self):
+        """Invite-list reads never enable local signup."""
         cm = next(d for d in entry.manifests() if d["kind"] == "ConfigMap")
         dynamic = yaml.safe_load(cm["data"]["dynamic.yaml"])
         deny = dynamic["http"]["routers"]["deny-setup"]
@@ -80,6 +82,7 @@ class PublicEntryTests(unittest.TestCase):
         self.assertNotIn("invite-list", dynamic["http"]["routers"])
 
     def test_grpc_scheme_is_on_dedicated_service_not_ingress(self):
+        """The gRPC scheme lives on a dedicated Service, not the Ingress."""
         docs = entry.manifests()
         by_name = {(d["kind"], d["metadata"]["name"]): d for d in docs}
         key = "traefik.ingress.kubernetes.io/service.serversscheme"
@@ -105,6 +108,7 @@ class PublicEntryTests(unittest.TestCase):
             )
 
     def fixture(self):
+        """Build the owner user fixture."""
         return {
             "id": owner.subject(),
             "email": owner.EMAIL,
@@ -118,6 +122,7 @@ class PublicEntryTests(unittest.TestCase):
         }
 
     def test_exact_subject_matches_upstream_protobuf(self):
+        """The exact subject matches the upstream protobuf encoding."""
         data = base64.b64decode(owner.subject() + "==")
         self.assertEqual(
             data,
@@ -132,6 +137,7 @@ class PublicEntryTests(unittest.TestCase):
         )
 
     def test_no_uuid_connector_email_fallback(self):
+        """No UUID, connector or email fallbacks are allowed."""
         for candidate in [
             owner.EMAIL,
             owner.UUID,

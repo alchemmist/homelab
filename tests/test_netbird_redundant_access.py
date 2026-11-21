@@ -23,6 +23,7 @@ base = load("netbird-host-peer")
 
 class IndependentAccessTest(unittest.TestCase):
     def test_four_exact_hosts_opt_in_no_implicit_enrollment(self):
+        """Four exact hosts opt in with no implicit enrollment."""
         docs = mesh.manifests()
         self.assertEqual(len(docs), 8)
         for host in mesh.HOSTS:
@@ -42,6 +43,7 @@ class IndependentAccessTest(unittest.TestCase):
             mesh.peer("new-vm")
 
     def test_native_group_router_not_single_peer_or_default_route(self):
+        """Routers use native groups, not single peers or default routes."""
         self.assertEqual(
             mesh.router_body("exact-node-group"),
             {
@@ -60,6 +62,7 @@ class IndependentAccessTest(unittest.TestCase):
                 mesh.router_body(bad)
 
     def test_distinct_input_policies_keep_pilot_tcp_only(self):
+        """Distinct input policies keep the pilot TCP-only."""
         admin = mesh.admin_input_policy("jwt-admin", "nodes")["rules"][0]
         pilot = mesh.pilot_input_policy("jwt-pilot", "only-node2")["rules"][0]
         self.assertEqual(admin["sources"], ["jwt-admin"])
@@ -76,6 +79,7 @@ class IndependentAccessTest(unittest.TestCase):
                     fn(*args)
 
     def test_relay_pinned_vps_and_no_secret_values_or_management(self):
+        """The relay is pinned to the VPS with no secret values or management."""
         docs = relay.manifests()
         self.assertEqual(
             [d["kind"] for d in docs],
@@ -100,6 +104,7 @@ class IndependentAccessTest(unittest.TestCase):
         self.assertNotIn("/api", yaml.safe_dump(docs))
 
     def test_native_self_health_bootstrap_and_actual_vps_cni(self):
+        """Self-health uses the native LB with the actual VPS CNI."""
         service, policy = relay.manifests()[1:3]
         self.assertTrue(service["spec"]["publishNotReadyAddresses"])
         self.assertEqual(
@@ -114,6 +119,7 @@ class IndependentAccessTest(unittest.TestCase):
         self.assertEqual(ingress["ports"], [{"protocol": "TCP", "port": 33080}])
 
     def test_home_relay_is_separate_and_reuses_existing_tls(self):
+        """The home relay is separate and reuses existing TLS."""
         deploy, service, policy, ingress = relay.home_manifests()
         self.assertEqual(
             deploy["spec"]["template"]["spec"]["nodeSelector"],
@@ -137,6 +143,7 @@ class IndependentAccessTest(unittest.TestCase):
         self.assertNotIn("relay", relay.advertised_relays())
 
     def test_mac_bootstrap_does_not_depend_on_internal_dns(self):
+        """The macOS bootstrap does not depend on internal DNS."""
         self.assertEqual(len(dns.HOSTS), 3)
         self.assertIn("auth.socrat.alchemmist.xyz", dns.HOSTS)
         body = dns.render().decode()

@@ -19,6 +19,7 @@ oidc = load("net_oidc", "ansible/roles/identity_integrations/files/netbird_oidc.
 
 class InternalNetworkTests(unittest.TestCase):
     def test_single_gateway_exact_resources_and_separate_local_input_gate(self):
+        """A single gateway serves exact resources behind a separate input gate."""
         expected = {"10.250.0.1/32", "10.250.0.2/32", "10.250.0.3/32", "10.250.0.5/32"}
         actual = {a for _, addresses in net.NETWORKS.values() for a in addresses}
         self.assertEqual(actual, expected)
@@ -41,6 +42,7 @@ class InternalNetworkTests(unittest.TestCase):
                 net.resource_body("socrat-0", address)
 
     def test_clients_do_not_import_routes_but_serve_explicit_networks(self):
+        """Clients import no routes but serve the explicit networks."""
         docs = net.peers()
         self.assertEqual(
             [o["metadata"]["name"] for o in docs if o["kind"] == "Deployment"], ["machine-socrat-0"]
@@ -62,6 +64,7 @@ class InternalNetworkTests(unittest.TestCase):
         self.assertTrue(net.router_body("exact-peer")["masquerade"])
 
     def test_fake_api_admin_group_or_observer_group_never_accepted(self):
+        """Fake API or observer groups never satisfy the admin check."""
         for groups in [
             [],
             [{"name": net.ADMIN_GROUP, "issued": "api", "id": "fake"}],
@@ -80,11 +83,13 @@ class InternalNetworkTests(unittest.TestCase):
         self.assertNotIn("All", str(rule))
 
     def test_admin_claim_not_part_of_automatic_pilot_human_grants(self):
+        """The admin claim is never granted automatically to pilot humans."""
         self.assertNotIn(net.ADMIN_GROUP, oidc.GROUP_NAMES)
         self.assertIn(net.ADMIN_GROUP, oidc.PROFILE_GROUP_NAMES)
         self.assertIn(net.ADMIN_GROUP, oidc.profile_expression())
 
     def test_owner_handover_accepts_only_one_exact_owner_device_explicitly(self):
+        """Owner handover accepts only one exact owner device, explicitly."""
         p = {
             "id": "mac",
             "user_id": owner.subject(),

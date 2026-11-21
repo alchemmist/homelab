@@ -9,9 +9,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class AgentLoggingTests(unittest.TestCase):
     def setUp(self):
+        """Load the agent collector configuration."""
         self.agent = yaml.safe_load((ROOT / "deploy/monitoring/otel/agent.yaml").read_text())
 
     def test_self_log_exclusion_does_not_drop_backends_or_adjacent_containers(self):
+        """Self-log exclusion keeps backends and adjacent containers."""
         from fnmatch import fnmatchcase
 
         patterns = self.agent["receivers"]["filelog"]["exclude"]
@@ -31,6 +33,7 @@ class AgentLoggingTests(unittest.TestCase):
             self.assertFalse(excluded(pod, container), (pod, container))
 
     def test_rotation_and_restart_contract(self):
+        """Rotation and restart settings follow the durable contract."""
         receiver = self.agent["receivers"]["filelog"]
         self.assertEqual(receiver["operators"][0]["type"], "container")
         self.assertEqual(receiver["start_at"], "beginning")
@@ -44,6 +47,7 @@ class AgentLoggingTests(unittest.TestCase):
         self.assertTrue(self.agent["extensions"]["file_storage"]["fsync"])
 
     def test_privacy_precedes_durable_log_queue_without_async_batch(self):
+        """Privacy precedes a durable log queue without async batching."""
         pipeline = self.agent["service"]["pipelines"]["logs"]
         self.assertIn("transform/log-privacy", pipeline["processors"])
         self.assertNotIn("batch/logs", pipeline["processors"])
@@ -56,6 +60,7 @@ class AgentLoggingTests(unittest.TestCase):
         self.assertEqual(self.agent["service"]["pipelines"]["metrics"]["exporters"], ["otlp"])
 
     def test_common_schema_and_priority_mapping(self):
+        """The common schema keeps severity and identity mappings."""
         identity = str(self.agent["processors"]["transform/log-identity"])
         for field in ["service.name", "k8s.namespace.name", "severity", "unknown"]:
             self.assertIn(field, identity)
@@ -69,6 +74,7 @@ class AgentLoggingTests(unittest.TestCase):
         self.assertIn("host.name", str(self.agent["processors"]["resource"]))
 
     def test_journal_identity_is_split_before_shared_resource_promotion(self):
+        """Journal identity is split before shared resource promotion."""
         processors = self.agent["processors"]
         identity = str(processors["transform/journal-identity"])
         self.assertIn('set(attributes["service.name"], body["_SYSTEMD_UNIT"])', identity)
@@ -84,6 +90,7 @@ class AgentLoggingTests(unittest.TestCase):
         )
 
     def test_serial_rollout_validates_before_handler_flush(self):
+        """A serial rollout validates before flushing handlers."""
         play = yaml.safe_load((ROOT / "ansible/playbooks/otel-production-agents.yml").read_text())[
             0
         ]

@@ -13,6 +13,7 @@ spec.loader.exec_module(registry)
 
 class ApplicationRegistryTests(unittest.TestCase):
     def deployment(self):
+        """Build a deployment fixture with sensitive values."""
         return {
             "kind": "Deployment",
             "metadata": {"name": "app", "namespace": "apps"},
@@ -40,6 +41,7 @@ class ApplicationRegistryTests(unittest.TestCase):
         }
 
     def test_no_environment_or_argument_values_saved(self):
+        """No environment or argument values are saved."""
         report = registry.summarize([self.deployment()])
         text = json.dumps(report)
         self.assertNotIn("never-save-", text)
@@ -49,6 +51,7 @@ class ApplicationRegistryTests(unittest.TestCase):
         self.assertFalse(report["internalSdkCoverageComplete"])
 
     def test_enable_otel_switch_is_only_a_hint_even_when_value_false(self):
+        """The enable switch stays a hint even when explicitly false."""
         obj = self.deployment()
         obj["spec"]["template"]["spec"]["containers"][0]["env"] = [
             {"name": "ENABLE_OTEL_TRACES", "value": "False"}
@@ -58,6 +61,7 @@ class ApplicationRegistryTests(unittest.TestCase):
         self.assertFalse(report["sources"][0]["internalSdkTraceDeliveryVerified"])
 
     def test_owned_job_not_double_counted_but_standalone_job_included(self):
+        """Owned jobs are not double-counted, standalone jobs are included."""
         obj = self.deployment()
         job = {
             "kind": "Job",
@@ -69,6 +73,7 @@ class ApplicationRegistryTests(unittest.TestCase):
         self.assertEqual(registry.summarize([job])["sourceCount"], 0)
 
     def test_managed_pod_image_digest_retained_without_template_double_count(self):
+        """Managed pod digests are retained without template double-counting."""
         pod = {
             "kind": "Pod",
             "metadata": {

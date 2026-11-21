@@ -115,6 +115,7 @@ def fixtures():
 
 class NodeThrottlingTileTest(unittest.TestCase):
     def test_not_applicable_and_no_telemetry_are_distinct(self):
+        """Not-applicable and no-telemetry states render distinctly."""
         defaults = panel()["fieldConfig"]["defaults"]
         mapping = next(item for item in defaults["mappings"] if item["type"] == "value")
         self.assertEqual(mapping["options"]["-1"]["text"], "N/A")
@@ -123,6 +124,7 @@ class NodeThrottlingTileTest(unittest.TestCase):
 
     @unittest.skipUnless(PROMTOOL, "promtool is not installed; use --generate for remote execution")
     def test_promql_semantics(self):
+        """The PromQL tile semantics hold under promtool tests."""
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "node-throttling.test.yml"
             path.write_text(json.dumps(fixtures()))

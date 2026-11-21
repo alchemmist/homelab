@@ -34,6 +34,7 @@ def load_frontend(source):
 
 class HostRouterTests(unittest.TestCase):
     def test_default_check_is_render_only_and_blocked(self):
+        """The default check is render-only and blocked."""
         result = subprocess.run(
             [os.sys.executable, str(ROOT / "scripts/netbird-host-router.py"), "check"],
             capture_output=True,
@@ -47,6 +48,7 @@ class HostRouterTests(unittest.TestCase):
         self.assertTrue(any("runtime not proven" in item for item in payload["blockers"]))
 
     def test_plan_refuses_the_git_worktree(self):
+        """Planning refuses to write inside the git worktree."""
         target = ROOT / "deploy/netbird/host-router-out"
         result = subprocess.run(
             [
@@ -64,6 +66,7 @@ class HostRouterTests(unittest.TestCase):
         self.assertFalse(target.exists())
 
     def test_default_plan_records_memory_and_ssh_split(self):
+        """The default plan records memory headroom and the SSH split."""
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary) / "plan"
             result = subprocess.run(
@@ -105,6 +108,7 @@ class HostRouterTests(unittest.TestCase):
         )
 
     def test_firewall_uses_forward_on_socrat0_and_input_on_socrat2(self):
+        """The firewall uses forward on socrat-0 and input on socrat-2."""
         _plan, rendered = hr.build(hr.default_facts())
         home = rendered["socrat-0"]["table.nft.sh"]
         vps = rendered["socrat-2"]["table.nft.sh"]
@@ -141,6 +145,7 @@ class HostRouterTests(unittest.TestCase):
         self.assertLess(home.index('"$nft" -c -f'), home.index('"$nft" -f "$tmp"'))
 
     def test_ssh_port_must_be_one_observed_choice(self):
+        """The SSH port must be one of the observed choices."""
         for port in (22, 2222):
             facts = ready()
             facts["ssh_port"] = port
@@ -161,6 +166,7 @@ class HostRouterTests(unittest.TestCase):
                 hr.validate(facts)
 
     def test_destination_host_cannot_be_a_second_router(self):
+        """The destination host cannot double as a second router."""
         facts = hr.default_facts()
         facts["hosts"][1]["owned"] = ["109.120.141.60"]
         with self.assertRaisesRegex(ValueError, "own 10.250.0.2"):
@@ -170,6 +176,7 @@ class HostRouterTests(unittest.TestCase):
         self.assertTrue(hr.roles(hr.default_facts())["socrat-0"]["ssh_routing_peer"])
 
     def test_grafana_frontend_denies_other_names_and_binds(self):
+        """The Grafana frontend denies other names and stray binds."""
         _plan, rendered = hr.build(hr.default_facts())
         frontend = load_frontend(rendered["socrat-0"]["grafana-frontend.py"])
         self.assertEqual(frontend["UPSTREAM_IP"], "10.250.0.3")
@@ -211,6 +218,7 @@ class HostRouterTests(unittest.TestCase):
             self.assertFalse(frontend["bind_allowed"](address), address)
 
     def test_client_unit_is_pinned_and_constrained(self):
+        """The client unit is image-pinned and capability-constrained."""
         _plan, rendered = hr.build(hr.default_facts())
         home = rendered["socrat-0"]["netbird-host-router.service"]
         vps = rendered["socrat-2"]["netbird-host-router.service"]
@@ -243,6 +251,7 @@ class HostRouterTests(unittest.TestCase):
         )
 
     def test_memory_cap_above_vps_headroom_blocks_apply(self):
+        """A memory cap above VPS headroom blocks apply."""
         facts = hr.default_facts()
         facts["client_memory"] = "256m"
         plan, _rendered = hr.build(facts)
@@ -251,6 +260,7 @@ class HostRouterTests(unittest.TestCase):
         self.assertIn("446 MiB", plan["notes"][0])
 
     def test_shared_vip_and_existing_interfaces_fail_closed(self):
+        """Shared VIPs and existing interfaces fail closed."""
         facts = hr.default_facts()
         facts["upstream_address"] = "10.250.0.1"
         with self.assertRaisesRegex(ValueError, "upstream"):
@@ -269,6 +279,7 @@ class HostRouterTests(unittest.TestCase):
             hr.validate(facts)
 
     def test_apply_copies_only_owned_files_after_blockers_clear(self):
+        """Apply copies only owned files, only after blockers clear."""
         with tempfile.TemporaryDirectory() as temporary:
             base = Path(temporary)
             facts_path = base / "facts.json"
@@ -402,6 +413,7 @@ class HostRouterTests(unittest.TestCase):
             self.assertIn("digest mismatch", again.stderr)
 
     def test_apply_refuses_a_symlink_outside_root(self):
+        """Apply refuses a symlink pointing outside the root."""
         with tempfile.TemporaryDirectory() as temporary:
             base = Path(temporary)
             out = base / "plan"

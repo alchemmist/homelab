@@ -73,9 +73,10 @@ class Fake(n.Runtime):
         self.fail_restart = False
 
     def save(self):
-        pass
+        """Persist nothing; the fake tracks state in memory."""
 
     def api(self, method, path, body=None):
+        """Serve canned API reads and record writes."""
         if method == "GET":
             if path == "groups":
                 return [self.admin, self.group, {"name": "All", "id": "all", "issued": "api"}]
@@ -119,6 +120,7 @@ class Fake(n.Runtime):
         raise AssertionError(path)
 
     def get(self, kind, name, ns=n.NS, optional=False):
+        """Serve canned Kubernetes object reads."""
         if kind == "application":
             return {
                 "metadata": {"labels": {"app.kubernetes.io/instance": "root"}},
@@ -144,13 +146,16 @@ class Fake(n.Runtime):
         raise AssertionError(kind)
 
     def status(self, host):
+        """Return the fixture peer status output."""
         return {"ip": self.peer["ip"], "key": "fixture-public-key"}
 
     def restart_without_key(self, host, deployment):
+        """Optionally simulate a failing keyless restart."""
         if self.fail_restart:
             raise ValueError("simulated restart failure")
 
     def kub(self, args, obj=None, optional=False, stdin=None):
+        """Handle kubectl-style calls, including enrollment and status."""
         if stdin is not None:
             assert args[-4:] == ["netbird", "up", "--setup-key-file", "/dev/stdin"]
             self.enrolled = True
@@ -173,9 +178,11 @@ class Fake(n.Runtime):
 
 class ReconcileTest(unittest.TestCase):
     def seed(self):
+        """Build a seeded state with the enrolled node."""
         return {"nodes": {"socrat-4": {"id": "peer4"}}}
 
     def test_kernel_only_daemon_has_no_tun_or_interactive_sso(self):
+        """The kernel-only daemon has no TUN or interactive SSO."""
         pvc, deployment = n.manifests("socrat-5", IMAGE, kernel_only=True)
         spec = deployment["spec"]["template"]["spec"]
         self.assertEqual(spec["containers"][0]["command"], ["netbird"])
@@ -185,6 +192,7 @@ class ReconcileTest(unittest.TestCase):
         self.assertNotIn("privileged", spec["containers"][0]["securityContext"])
 
     def test_inventory_is_generic_but_not_arbitrary_network_access(self):
+        """The inventory is generic but not arbitrary network access."""
         for values in [
             {"socrat-4": "10.250.0.4"},
             {"other": "10.250.0.9"},
@@ -210,6 +218,7 @@ class ReconcileTest(unittest.TestCase):
             n.validate_config({"image": "latest", "nodes": {"socrat-4": "10.250.0.9"}})
 
     def test_render_has_persistent_identity_and_no_human_or_dns_permissions(self):
+        """Rendered manifests keep identity persistent without human or DNS permissions."""
         pvc, deploy = n.manifests("socrat-28", IMAGE)
         pod = deploy["spec"]["template"]["spec"]
         env = {e["name"]: e.get("value") for e in pod["containers"][0]["env"]}
@@ -222,6 +231,7 @@ class ReconcileTest(unittest.TestCase):
         self.assertFalse(pod["automountServiceAccountToken"])
 
     def test_adopt_requires_trusted_exact_peer_not_name(self):
+        """Adoption requires the trusted exact peer, not a name."""
         for seed in [None, {"nodes": {"socrat-4": {"id": "wrong"}}}]:
             f = Fake()
             with self.assertRaises(ValueError):
@@ -229,6 +239,7 @@ class ReconcileTest(unittest.TestCase):
             self.assertEqual(f.writes, [])
 
     def test_adopt_and_second_run_are_idempotent(self):
+        """Adoption and the second run are idempotent."""
         f = Fake()
         self.assertTrue(f.reconcile("socrat-4", self.seed())["changed"])
         self.assertEqual(len(f.resources), 1)
@@ -238,22 +249,26 @@ class ReconcileTest(unittest.TestCase):
         self.assertEqual(len(f.writes), writes)
 
     def test_plan_never_enrolls_or_writes(self):
+        """Plan never enrolls or writes."""
         f = Fake(apply=False, existing=False)
         self.assertEqual(f.reconcile("socrat-4")["status"], "awaiting-argocd-workloads")
         self.assertEqual(f.writes, [])
 
     def test_missing_git_workloads_are_deferred_without_kubernetes_or_api_writes(self):
+        """Missing git workloads defer without Kubernetes or API writes."""
         f = Fake(existing=False)
         self.assertEqual(f.reconcile("socrat-4")["status"], "awaiting-argocd-workloads")
         self.assertEqual(f.writes, [])
 
     def test_fresh_argocd_agent_plan_has_no_setup_key(self):
+        """A fresh Argo CD agent plan contains no setup key."""
         f = Fake(apply=False)
         f.enrolled = False
         self.assertEqual(f.reconcile("socrat-4")["status"], "would-enroll-and-authorize")
         self.assertEqual(f.writes, [])
 
     def test_unmanaged_workloads_cannot_be_adopted_by_controller(self):
+        """Unmanaged workloads cannot be adopted by the controller."""
         f = Fake()
         f.dep["metadata"].pop("labels")
         with self.assertRaises(ValueError):
@@ -261,12 +276,14 @@ class ReconcileTest(unittest.TestCase):
         self.assertEqual(f.writes, [])
 
     def test_missing_not_ready_node_is_deferred(self):
+        """A missing or unready node is deferred."""
         f = Fake()
         f.cluster_node = None
         self.assertEqual(f.reconcile("socrat-4")["status"], "deferred-node-not-ready")
         self.assertEqual(f.writes, [])
 
     def test_simulated_new_node_flow_retires_key_and_second_run_no_writes(self):
+        """The new-node flow retires the key and the second run writes nothing."""
         f = Fake()
         f.enrolled = False
         self.assertTrue(f.reconcile("socrat-4")["changed"])
@@ -284,6 +301,7 @@ class ReconcileTest(unittest.TestCase):
         self.assertEqual(len(f.writes), writes)
 
     def test_failed_enrollment_revokes_known_key_and_never_auto_reissues(self):
+        """A failed enrollment revokes the known key and never reissues automatically."""
         f = Fake()
         f.enrolled = False
         f.fail_restart = True
@@ -297,6 +315,7 @@ class ReconcileTest(unittest.TestCase):
         self.assertEqual(len(f.writes), writes)
 
     def test_node_uid_pvc_peer_address_and_image_drift_are_not_repaired(self):
+        """Identity drift on node, PVC, peer, address or image is never repaired."""
         for kind in ["node", "pvc", "peer", "address", "image", "key", "deleted-volume"]:
             f = Fake()
             f.reconcile("socrat-4", self.seed())
@@ -321,6 +340,7 @@ class ReconcileTest(unittest.TestCase):
             self.assertEqual(len(f.writes), before)
 
     def test_fake_jwt_broad_acl_or_wrong_router_fail_before_writes(self):
+        """Fake JWTs, broad ACLs or wrong routers fail before writes."""
         for kind in ["jwt", "input", "member"]:
             f = Fake()
             if kind == "jwt":
@@ -334,6 +354,7 @@ class ReconcileTest(unittest.TestCase):
             self.assertEqual(f.writes, [])
 
     def test_removed_or_broadened_grants_are_not_resurrected(self):
+        """Removed or broadened grants are never resurrected."""
         for kind in ["resource", "policy", "disabled", "broadened", "membership"]:
             f = Fake()
             f.reconcile("socrat-4", self.seed())
@@ -353,6 +374,7 @@ class ReconcileTest(unittest.TestCase):
             self.assertEqual(len(f.writes), before)
 
     def test_uncertain_write_remains_blocking(self):
+        """An uncertain write remains blocking."""
         f = Fake()
         f.state["pending"] = {"method": "POST", "path": "policies"}
         with self.assertRaises(ValueError):
