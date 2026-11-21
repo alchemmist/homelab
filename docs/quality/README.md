@@ -49,7 +49,7 @@ Independent fast nodes collect failures together. Ownership is a real source-con
 
 ## Exceptions: small, explicit, not a debt waiver
 
-- Ruff ignores only four documented conflicting rule choices: D203/D213/ISC001/COM812. Tests additionally allow S101 because pytest rewrites assertions. Other test/style/security findings are not ignored.
+- Ruff ignores only four documented conflicting rule choices: D203/D213/ISC001/COM812. Test directories (`test/` and `tests/`) do not require method docstrings (D102); `tests/` also allows S101 because pytest rewrites assertions. Other test/style/security findings are not ignored.
 - YAML key-ordering conflicts with semantic Ansible task ordering. Compatible implicit-null and quoted-string checks are enabled. Cross-schema truthy key handling preserves GitHub `on`.
 - Installed Ansible/Kubernetes optional rules are either enabled or have precise applicability/architecture reasons in `strict-policy.md` and `strict-policy.json`; replica/scheduler/single-writer identities are not rewritten to satisfy arbitrary optional rules.
 - Hadolint's single DL3064 false-positive exception binds one exact public ENV line. Reviewed non-secret contexts are immutable and exact, not secret waivers. Drift fails.
