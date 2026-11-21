@@ -36,10 +36,11 @@ class GitHubReadTimeoutTests(unittest.TestCase):
                         with self.assertRaises(Failure) as caught:
                             github.request(method, "/issues")
                         if method == "GET" and code == "UPSTREAM_TIMEOUT":
-                            self.assertEqual(caught.exception.code, "GITHUB_READ_TIMEOUT")
-                            self.assertEqual(caught.exception.retry_after, 60)
+                            read_timeout_retry_after = 60
+                            assert caught.exception.code == "GITHUB_READ_TIMEOUT"
+                            assert caught.exception.retry_after == read_timeout_retry_after
                         else:
-                            self.assertIs(caught.exception, original)
+                            assert caught.exception is original
             http.request.side_effect = TimeoutError("not a typed Failure")
             with self.assertRaises(TimeoutError):
                 github.request("GET", "/issues")
@@ -80,24 +81,27 @@ class GitHubReadTimeoutTests(unittest.TestCase):
                 store.fail(key, error.code, error.retry_after, error.rate_metadata)
                 store = Store(store.path)
                 row = store.get(key)
-                self.assertEqual(row["result"], old["result"])
-                self.assertEqual(row["attempts"], old["attempts"])
-                self.assertEqual(row["error"], "GITHUB_READ_TIMEOUT")
-                self.assertEqual(row["state"], "retry")
-                self.assertTrue(61 <= row["available"] - row["updated"] <= 63)
-                self.assertEqual(preserved(), before)
-                self.assertFalse(store.claim().get("job_id"))
+                assert row["result"] == old["result"]
+                assert row["attempts"] == old["attempts"]
+                assert row["error"] == "GITHUB_READ_TIMEOUT"
+                assert row["state"] == "retry"
+                # The 60s retry backoff lands within 61-63s once jitter is added.
+                retry_delay_floor = 61
+                retry_delay_ceiling = 63
+                assert retry_delay_floor <= row["available"] - row["updated"] <= retry_delay_ceiling
+                assert preserved() == before
+                assert not store.claim().get("job_id")
                 with store.db() as c:
                     c.execute("UPDATE jobs SET available=0 WHERE id=?", (key,))
-                self.assertEqual(store.claim()["job_id"], key)
+                assert store.claim()["job_id"] == key
             http.request.side_effect = None
             http.request.return_value = []
-            self.assertEqual(github.snapshot(), [])
+            assert github.snapshot() == []
             model = Mock()
             model.analyze.return_value = f.report()
             model.analyze(f.event(), store.get(key)["result"])
             model.analyze.assert_called_once()
-            self.assertEqual(preserved(), before)
+            assert preserved() == before
 
     def test_write_timeout_is_finite_and_intent_preserved(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -108,9 +112,9 @@ class GitHubReadTimeoutTests(unittest.TestCase):
                 c.execute("UPDATE jobs SET intent=? WHERE id=?", ("durable-intent", key))
             for _ in range(8):
                 store.fail(key, "UPSTREAM_TIMEOUT")
-            self.assertNotIn("UPSTREAM_TIMEOUT", PATIENT_TRANSIENT)
-            self.assertEqual(store.get(key)["state"], "dead")
-            self.assertEqual(store.get(key)["intent"], "durable-intent")
+            assert "UPSTREAM_TIMEOUT" not in PATIENT_TRANSIENT
+            assert store.get(key)["state"] == "dead"
+            assert store.get(key)["intent"] == "durable-intent"
 
 
 class EngineReadRecoveryTests(unittest.TestCase):
@@ -135,22 +139,24 @@ class EngineReadRecoveryTests(unittest.TestCase):
         try:
             with self.assertRaises(Failure) as caught:
                 self.engine.run("analyze", key)
-            self.assertEqual(caught.exception.code, "GITHUB_READ_TIMEOUT")
+            assert caught.exception.code == "GITHUB_READ_TIMEOUT"
             self.store.fail(key, caught.exception.code, caught.exception.retry_after)
         finally:
             if hasattr(REQUEST_DEADLINE, "at"):
                 del REQUEST_DEADLINE.at
-        self.assertEqual(self.store.get(key)["result"], old)
+        assert self.store.get(key)["result"] == old
         self.model.analyze.assert_not_called()
         # Another job can acquire while the read patiently waits.
         other = self.store.enqueue(f.event(start="2026-11-03T15:00:00Z"))["job_id"]
-        self.assertEqual(self.store.claim()["job_id"], other)
+        assert self.store.claim()["job_id"] == other
         self.store.fail(other, "HTTP_403")
         with self.store.db() as c:
             c.execute("UPDATE jobs SET available=0 WHERE id=?", (key,))
-        self.assertEqual(self.store.claim()["job_id"], key)
+        assert self.store.claim()["job_id"] == key
         http.request.side_effect = None
         http.request.return_value = []
         self.engine.run("analyze", key)
         self.model.analyze.assert_called_once()
-        self.assertEqual(self.store.get(key)["stage"], 3)
+        # The analysis stage is the third pipeline stage.
+        analysis_stage = 3
+        assert self.store.get(key)["stage"] == analysis_stage

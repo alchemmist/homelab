@@ -16,6 +16,9 @@ spec = importlib.util.spec_from_file_location("spi_event_sync", ROOT / "scripts/
 sync = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sync)
 
+# The rendered triage workflow has exactly this many nodes.
+WORKFLOW_NODE_COUNT = 10
+
 
 class EventWorkflowTests(unittest.TestCase):
     def setUp(self):
@@ -25,14 +28,14 @@ class EventWorkflowTests(unittest.TestCase):
     def test_authenticated_immediate_webhook_and_linear_pipeline(self):
         w = self.workflow
         nodes = {n["name"]: n for n in w["nodes"]}
-        self.assertFalse(any("schedule" in n["type"].lower() for n in w["nodes"]))
+        assert not any("schedule" in n["type"].lower() for n in w["nodes"])
         trigger = nodes["Dispatch Triage Job"]
-        self.assertEqual(trigger["id"], "9c393df1-a66f-41bf-acaf-b2b66f31a393")
-        self.assertEqual(
-            trigger["webhookId"], trigger["id"]
+        assert trigger["id"] == "9c393df1-a66f-41bf-acaf-b2b66f31a393"
+        assert (
+            trigger["webhookId"] == trigger["id"]
         )  # n8n otherwise reports active but registers no production hook
-        self.assertEqual(trigger["type"], "CUSTOM.socratSpiDispatchWebhook")
-        self.assertEqual(trigger["parameters"], {"path": "spi-incident-triage-dispatch"})
+        assert trigger["type"] == "CUSTOM.socratSpiDispatchWebhook"
+        assert trigger["parameters"] == {"path": "spi-incident-triage-dispatch"}
         chain = [
             "Dispatch Triage Job",
             "Claim Triage Job",
@@ -42,11 +45,12 @@ class EventWorkflowTests(unittest.TestCase):
             "Analyze Incident",
             "Publish SPI",
         ]
-        self.assertEqual(
-            set(nodes),
-            set(chain) | {"Route Stage Outcome", "Wait For Admission", "Resume Pinned Stage"},
-        )
-        self.assertEqual(len(nodes), 10)
+        assert set(nodes) == set(chain) | {
+            "Route Stage Outcome",
+            "Wait For Admission",
+            "Resume Pinned Stage",
+        }
+        assert len(nodes) == WORKFLOW_NODE_COUNT
         original_ids = [
             "9c393df1-a66f-41bf-acaf-b2b66f31a393",
             "ace6035e-4fe4-4742-a2ac-e48d24fecf04",
@@ -56,25 +60,21 @@ class EventWorkflowTests(unittest.TestCase):
             "10869f3b-8aa7-4ba2-b185-3a35c921cabf",
             "656d32a2-5cdd-475b-b9a4-53d6f289832b",
         ]
-        self.assertEqual([nodes[n]["id"] for n in chain], original_ids)
+        assert [nodes[n]["id"] for n in chain] == original_ids
 
         def targets(name):
             return [[x["node"] for x in output] for output in w["connections"][name]["main"]]
 
-        self.assertEqual(targets("Dispatch Triage Job"), [["Claim Triage Job"]])
-        self.assertEqual(targets("Claim Triage Job"), [["Select Claimed Job"]])
-        self.assertEqual(targets("Select Claimed Job"), [["Route Stage Outcome"]])
-        self.assertEqual(
-            targets("Route Stage Outcome"), [["Wait For Admission"], ["Resume Pinned Stage"]]
-        )
-        self.assertEqual(targets("Wait For Admission"), [["Resume Pinned Stage"]])
-        self.assertEqual(targets("Resume Pinned Stage"), [[n] for n in chain[3:]] + [[]])
+        assert targets("Dispatch Triage Job") == [["Claim Triage Job"]]
+        assert targets("Claim Triage Job") == [["Select Claimed Job"]]
+        assert targets("Select Claimed Job") == [["Route Stage Outcome"]]
+        assert targets("Route Stage Outcome") == [["Wait For Admission"], ["Resume Pinned Stage"]]
+        assert targets("Wait For Admission") == [["Resume Pinned Stage"]]
+        assert targets("Resume Pinned Stage") == [[n] for n in chain[3:]] + [[]]
         for name in chain[3:]:
-            self.assertEqual(targets(name), [["Select Claimed Job"]])
-        self.assertEqual(nodes["Wait For Admission"]["type"], "n8n-nodes-base.wait")
-        self.assertIn(
-            "INVALID_SPI_WAIT_ENVELOPE", nodes["Select Claimed Job"]["parameters"]["jsCode"]
-        )
+            assert targets(name) == [["Select Claimed Job"]]
+        assert nodes["Wait For Admission"]["type"] == "n8n-nodes-base.wait"
+        assert "INVALID_SPI_WAIT_ENVELOPE" in nodes["Select Claimed Job"]["parameters"]["jsCode"]
         for name, endpoint in [
             ("Claim Triage Job", "claim"),
             ("Match Open SPI", "match"),
@@ -84,40 +84,36 @@ class EventWorkflowTests(unittest.TestCase):
         ]:
             node = nodes[name]
             p = node["parameters"]
-            self.assertEqual(p["url"], "http://spi-triage.automation.svc:8080/" + endpoint)
-            self.assertEqual(p["method"], "POST")
-            self.assertEqual(p["genericAuthType"], "httpHeaderAuth")
-            self.assertEqual(p["authentication"], "genericCredentialType")
-            self.assertEqual(p["options"]["timeout"], 20000 if endpoint == "claim" else 1920000)
-            self.assertEqual(
-                p["jsonBody"],
+            assert p["url"] == "http://spi-triage.automation.svc:8080/" + endpoint
+            assert p["method"] == "POST"
+            assert p["genericAuthType"] == "httpHeaderAuth"
+            assert p["authentication"] == "genericCredentialType"
+            assert p["options"]["timeout"] == (20000 if endpoint == "claim" else 1920000)
+            assert p["jsonBody"] == (
                 "={{ JSON.stringify({execution_id: String($execution.id), workflow_revision: 'durable-v1'}) }}"
                 if endpoint == "claim"
-                else "={{ JSON.stringify($json) }}",
+                else "={{ JSON.stringify($json) }}"
             )
-            self.assertEqual(node["credentials"], trigger["credentials"])
-            self.assertFalse(node.get("retryOnFail", False))
-        self.assertEqual(
-            w["settings"],
-            {
-                "errorWorkflow": "iZn7biFh6321a1w8",
-                "executionOrder": "v1",
-                "timezone": "Europe/Moscow",
-                "executionTimeout": 21600,
-                "saveExecutionProgress": True,
-                "saveDataSuccessExecution": "all",
-                "saveDataErrorExecution": "all",
-                "saveManualExecutions": True,
-            },
-        )
+            assert node["credentials"] == trigger["credentials"]
+            assert not node.get("retryOnFail", False)
+        assert w["settings"] == {
+            "errorWorkflow": "iZn7biFh6321a1w8",
+            "executionOrder": "v1",
+            "timezone": "Europe/Moscow",
+            "executionTimeout": 21600,
+            "saveExecutionProgress": True,
+            "saveDataSuccessExecution": "all",
+            "saveDataErrorExecution": "all",
+            "saveManualExecutions": True,
+        }
 
     def test_dispatch_execution_persistence_defense_in_depth(self):
         """Authenticated trigger strips secret headers; requested history stays enabled."""
         settings = self.workflow["settings"]
         for key in ("saveDataSuccessExecution", "saveDataErrorExecution"):
-            self.assertEqual(settings[key], "all")
+            assert settings[key] == "all"
         for key in ("saveManualExecutions", "saveExecutionProgress"):
-            self.assertIs(settings[key], True)
+            assert settings[key] is True
 
     def test_actual_envelope_validator_rejects_unknown_and_early_terminal(self):
         import subprocess, time
@@ -157,15 +153,15 @@ class EventWorkflowTests(unittest.TestCase):
             + ';console.log(JSON.stringify(inputs.map(x=>{try{return run([{json:x}],{id:"1234"}).length}catch(e){return "error"}})));'
         )
         results = json.loads(subprocess.check_output(["node", "-e", js], text=True))
-        self.assertEqual(results, [1, 1, 1, "error", "error", "error", "error", "error", 1, 0])
+        assert results == [1, 1, 1, "error", "error", "error", "error", "error", 1, 0]
 
     def test_render_reuses_worker_identity_without_mutating_template(self):
         original = copy.deepcopy(self.workflow)
         rendered = sync.render(self.workflow, self.mapping)
         for node in rendered["nodes"]:
             if "credentials" in node:
-                self.assertEqual(node["credentials"], {"httpHeaderAuth": self.mapping["worker"]})
-        self.assertEqual(self.workflow, original)
+                assert node["credentials"] == {"httpHeaderAuth": self.mapping["worker"]}
+        assert self.workflow == original
         with self.assertRaisesRegex(RuntimeError, "Missing private SPI credential mapping: worker"):
             sync.render(self.workflow, {})
 
@@ -187,12 +183,12 @@ class EventWorkflowTests(unittest.TestCase):
                 {"id": "original-id", "name": self.workflow["name"]},
             ]
         )
-        self.assertEqual(result["id"], "original-id")
-        self.assertEqual(calls[1].args, ("GET", "workflows?limit=250&cursor=next%2Fpage"))
+        assert result["id"] == "original-id"
+        assert calls[1].args == ("GET", "workflows?limit=250&cursor=next%2Fpage")
         method, path, body = calls[-1].args
-        self.assertEqual((method, path), ("PUT", "workflows/original-id"))
-        self.assertEqual(set(body), {"name", "nodes", "connections", "settings"})
-        self.assertEqual(body["nodes"], sync.render(self.workflow, self.mapping)["nodes"])
+        assert (method, path) == ("PUT", "workflows/original-id")
+        assert set(body) == {"name", "nodes", "connections", "settings"}
+        assert body["nodes"] == sync.render(self.workflow, self.mapping)["nodes"]
 
     def test_sync_refuses_active_or_ambiguous_workflows_before_write(self):
         for entries in [
@@ -213,8 +209,10 @@ class EventWorkflowTests(unittest.TestCase):
             ):
                 with self.assertRaisesRegex(RuntimeError, "refusing creation"):
                     sync.sync(RELATIVE)
-                self.assertEqual(api.call_count, 2)
-                self.assertTrue(all(call.args[0] == "GET" for call in api.call_args_list))
+                # The sync walks both pages before giving up.
+                pages_walked = 2
+                assert api.call_count == pages_walked
+                assert all(call.args[0] == "GET" for call in api.call_args_list)
 
     def test_sync_refuses_duplicate_names_across_pages(self):
         entry = {"name": self.workflow["name"], "id": "original-id", "active": False}

@@ -23,18 +23,18 @@ class WaitTests(unittest.TestCase):
         owner = self.owner
         for now in (100, 200, 300):
             waiting = self.owners.defer(owner, "LLM_ADMISSION_DEFERRED", 61, now)
-            self.assertEqual(waiting["due"], now + 66)
-            self.assertEqual(
-                self.owners.defer(owner, "LLM_ADMISSION_DEFERRED", 61, now + 1), waiting
-            )
+            assert waiting["due"] == now + 66
+            assert self.owners.defer(owner, "LLM_ADMISSION_DEFERRED", 61, now + 1) == waiting
             restarted = WaitOwners(Store(self.store.path, minute_token_limit=60000))
             owner = restarted.resume(waiting, now + 66)
             with self.assertRaises(Failure):
                 restarted.resume(waiting, now + 66)
-        self.assertEqual(owner["deadline"], 21700)
+        # The final resume (at now=300+66) keeps the owner's original slot deadline.
+        resumed_deadline = 21700
+        assert owner["deadline"] == resumed_deadline
         with self.store.db() as c:
-            self.assertEqual(c.execute("SELECT count(*) FROM job_failure_budget").fetchone()[0], 0)
-            self.assertEqual(c.execute("SELECT count(*) FROM llm_admission").fetchone()[0], 0)
+            assert c.execute("SELECT count(*) FROM job_failure_budget").fetchone()[0] == 0
+            assert c.execute("SELECT count(*) FROM llm_admission").fetchone()[0] == 0
 
     def test_strict_errors_and_owners(self):
         for code in ("LLM_INVALID_EVIDENCE_REFERENCE", "LLM_HTTP_401", "UNKNOWN"):
@@ -69,7 +69,7 @@ class WaitTests(unittest.TestCase):
         restarted.reserve_llm(1, now=162)
 
     def test_idempotent_bind_and_invalid_wait_bounds(self):
-        self.assertEqual(self.owner, self.owners.bind(self.key, "1234", "revision1", "match", 101))
+        assert self.owner == self.owners.bind(self.key, "1234", "revision1", "match", 101)
         for value in (float("nan"), float("inf"), -1, True, "61"):
             with self.assertRaises(Failure):
                 self.owners.defer(self.owner, "LLM_ADMISSION_DEFERRED", value, 100)
@@ -84,10 +84,10 @@ class WaitTests(unittest.TestCase):
             self.store.finish_llm(reservation, now=now)
         with self.assertRaises(Failure) as error:
             self.store.reserve_llm(1, now=102)
-        self.assertEqual(error.exception.code, "LLM_ADMISSION_DEFERRED")
+        assert error.exception.code == "LLM_ADMISSION_DEFERRED"
         with self.assertRaises(Failure) as error:
             self.store.reserve_llm(30001, now=200)
-        self.assertEqual(error.exception.code, "LLM_REQUEST_TOO_LARGE")
+        assert error.exception.code == "LLM_REQUEST_TOO_LARGE"
         with self.assertRaises(ValueError):
             Store(self.store.path, minute_token_limit=True)
 

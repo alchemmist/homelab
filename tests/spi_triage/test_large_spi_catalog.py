@@ -27,13 +27,12 @@ class LargeCatalogTests(unittest.TestCase):
 
     def test_121_open_issues_can_be_fingerprinted_without_model_review(self):
         g = GitHub(Mock(), "unused")
-        rows = self.issues(121)
+        fingerprinted_issues = 121
+        rows = self.issues(fingerprinted_issues)
         g.pages = Mock(side_effect=lambda path: iter(copy.deepcopy(rows)))
         actual = g.issues()
-        self.assertEqual(len(actual), 121)
-        self.assertEqual(
-            g.open_signature(), f.digest([(x["number"], x["updated_at"]) for x in rows])
-        )
+        assert len(actual) == fingerprinted_issues
+        assert g.open_signature() == f.digest([(x["number"], x["updated_at"]) for x in rows])
         g.http.request.assert_not_called()
 
     def test_all_241_issues_reviewed_with_unchanged_per_request_bounds(self):
@@ -42,17 +41,21 @@ class LargeCatalogTests(unittest.TestCase):
 
         def call(task, data, schema, deadline):
             batch = data["open_issues"]
-            self.assertLessEqual(len(batch), 12)
-            self.assertLessEqual(m.budget_reservation(m.payload(task, data, schema)), 30000)
-            self.assertLessEqual(deadline - time.monotonic(), 1800)
+            # Match batches are capped: at most 12 issues, 30k reserved tokens, 30 min.
+            batch_size_limit = 12
+            reservation_limit = 30000
+            deadline_window_seconds = 1800
+            assert len(batch) <= batch_size_limit
+            assert m.budget_reservation(m.payload(task, data, schema)) <= reservation_limit
+            assert deadline - time.monotonic() <= deadline_window_seconds
             seen.extend(x["number"] for x in batch)
             return dict(GOOD)
 
         m.call = call
         result = m.match(f.event(), self.issues(241))
-        self.assertEqual(seen, list(range(1, 242)))
-        self.assertEqual(result["reviewed_numbers"], seen)
-        self.assertEqual(result["candidates"], [])
+        assert seen == list(range(1, 242))
+        assert result["reviewed_numbers"] == seen
+        assert result["candidates"] == []
         m.http.request.assert_not_called()
 
     def test_admission_resume_reuses_existing_v3_paid_batch_receipts(self):
@@ -60,18 +63,23 @@ class LargeCatalogTests(unittest.TestCase):
         rows = self.issues(121)
         saved = []
         calls = []
+        # The third batch defers admission; the resumed receipt keeps version 3
+        # with two reviewed batches.
+        deferred_batch = 3
+        receipt_version = 3
+        reviewed_batches = 2
 
         def first(task, data, schema, deadline):
             calls.append([x["number"] for x in data["open_issues"]])
-            if len(calls) == 3:
+            if len(calls) == deferred_batch:
                 raise Failure("LLM_ADMISSION_DEFERRED", 61)
             return dict(GOOD)
 
         m.call = first
         with self.assertRaisesRegex(Failure, "LLM_ADMISSION_DEFERRED"):
             m.match(f.event(), rows, on_progress=lambda p: saved.append(copy.deepcopy(p)))
-        self.assertEqual(saved[-1]["version"], 3)
-        self.assertEqual(len(saved[-1]["reviews"]), 2)
+        assert saved[-1]["version"] == receipt_version
+        assert len(saved[-1]["reviews"]) == reviewed_batches
         completed = [x for batch in calls[:2] for x in batch]
         resumed = []
 
@@ -81,9 +89,9 @@ class LargeCatalogTests(unittest.TestCase):
 
         m.call = second
         result = m.match(f.event(), rows, progress=saved[-1])
-        self.assertEqual(result["reviewed_numbers"], list(range(1, 122)))
-        self.assertFalse(set(completed) & set(resumed))
-        self.assertEqual(completed + resumed, list(range(1, 122)))
+        assert result["reviewed_numbers"] == list(range(1, 122))
+        assert not set(completed) & set(resumed)
+        assert completed + resumed == list(range(1, 122))
 
 
 if __name__ == "__main__":
