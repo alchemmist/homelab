@@ -20,3 +20,4 @@
     content: |
       # Managed by k3s_storage_owner. Do not delete: Git Application storage-tiers
       # owns provisioner/RBAC/config/classes. Never disable/uninstall local-storage.
+...

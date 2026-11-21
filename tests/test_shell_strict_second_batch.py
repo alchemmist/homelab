@@ -12,9 +12,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SUCCESS_EXIT = 0
 TOOL_TIMEOUT_SECONDS = 15
-DYNAMIC_SOURCE = 1090
-DYNAMIC_SOURCE_LINE = 27
-DYNAMIC_SOURCE_COLUMN = 12
 CAFFEINE_IGNORES = 2
 NIGHTNODE_IGNORES = 4
 STATUS_DEFAULT_ARMS = 3
@@ -205,8 +202,8 @@ def test_clean_scripts_match_quality_shellcheck() -> None:
     assert result.stdout.strip() == "[]"
 
 
-def test_nightnode_keeps_the_dynamic_source_visible() -> None:
-    """SC1090 stays because the config path is not a constant ShellCheck can follow."""
+def test_nightnode_parser_passes_shellcheck_without_dynamic_source() -> None:
+    """The config parser is static and does not hide a ShellCheck finding."""
     result = _run(
         [
             _executable("shellcheck"),
@@ -218,22 +215,70 @@ def test_nightnode_keeps_the_dynamic_source_visible() -> None:
         env=_shell_env(),
         cwd=ROOT,
     )
-    assert result.returncode == 1
-    items = _items(result.stdout)
-    assert len(items) == 1
-    item = items[0]
-    assert item["code"] == DYNAMIC_SOURCE
-    assert item["line"] == DYNAMIC_SOURCE_LINE
-    assert item["column"] == DYNAMIC_SOURCE_COLUMN
-    file_name = item["file"]
-    message = item["message"]
-    assert isinstance(file_name, str)
-    assert isinstance(message, str)
-    assert file_name.endswith("scripts/nightnode/nightnode")
-    assert "non-constant" in message
+    assert result.returncode == SUCCESS_EXIT
+    assert _items(result.stdout) == []
     source = _text(NIGHTNODE)
-    assert 'source "${CONFIG_FILE}"' in source
-    assert "shellcheck" not in source
+    assert 'source "${CONFIG_FILE}"' not in source
+    assert 'export "${key}=${value}"' in source
+
+
+def test_nightnode_config_loads_values_without_executing_them() -> None:
+    """Documented KEY=VALUE entries load while shell syntax stays inert."""
+    with tempfile.TemporaryDirectory() as raw:
+        home = Path(raw)
+        config_dir = home / "config"
+        config_dir.mkdir()
+        marker = home / "executed"
+        (config_dir / "config.env").write_text(
+            "\n".join(
+                (
+                    "  # ignored=not-a-setting",
+                    " NIGHTNODE_ALLOW_JOIN = 1 ",
+                    "K3S_URL = https://k3s.example.invalid:6443?x=a=b ",
+                    f"NIGHTNODE_UNSAFE = $(touch {marker})",
+                    "",
+                )
+            ),
+            encoding="utf-8",
+        )
+        bin_dir = home / "bin"
+        bin_dir.mkdir()
+        _install(
+            bin_dir,
+            "limactl",
+            """#!/bin/sh
+if [ "$1" = list ]; then
+  printf '%s\n' "$NIGHTNODE_NAME Stopped"
+fi
+""",
+        )
+        env = _fixture_env(bin_dir, home)
+        env["NIGHTNODE_CONFIG_DIR"] = str(config_dir)
+        result = _run([*_widget(NIGHTNODE), "status"], env=env, cwd=ROOT)
+        _assert_ok(result)
+        assert "join: allowed (https://k3s.example.invalid:6443?x=a=b)" in result.stdout
+        assert not marker.exists()
+
+
+def test_nightnode_config_rejects_malformed_or_invalid_keys() -> None:
+    """Malformed lines and non-identifiers fail closed before command calls."""
+    with tempfile.TemporaryDirectory() as raw:
+        home = Path(raw)
+        config_dir = home / "config"
+        config_dir.mkdir()
+        bin_dir = home / "bin"
+        bin_dir.mkdir()
+        _install(bin_dir, "limactl", "#!/bin/sh\nexit 99\n")
+        env = _fixture_env(bin_dir, home)
+        env["NIGHTNODE_CONFIG_DIR"] = str(config_dir)
+        for entry, message in (
+            ("NIGHTNODE_ALLOW_JOIN", "config line is not KEY=VALUE"),
+            ("NIGHTNODE-ALLOW_JOIN=1", "config key is not a shell identifier"),
+        ):
+            (config_dir / "config.env").write_text(entry + "\n", encoding="utf-8")
+            result = _run([*_widget(NIGHTNODE), "status"], env=env, cwd=ROOT)
+            assert result.returncode == 1
+            assert message in result.stderr
 
 
 def test_owned_scripts_pass_syntax_check_without_executing() -> None:
