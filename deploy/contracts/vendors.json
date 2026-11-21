@@ -231,7 +231,7 @@
       "files": {
         "Chart.yaml": "3da852d1b8b108c6d95b5485ceaa5fe2dfdfcb7ce83e075f5bfbd2f3b32a6f1b",
         "README.md": "2ac117441cdb7d59241dcdd462f447bb1b7eac3183430952c65713eb91f2b810",
-        "files/observer_membership.py": "cf23e453cfdfcc73c1ff54bb6f4ced51fca0dbaa445d3a95bf6fd4adf976282c",
+        "files/observer_membership.py": "12f41053729d564c48ba8162a80d91bdc65d7c5ba8c6a62c8159960cdec638a3",
         "files/observer_oidc.py": "cc716e7a60c68010610a07092678d7da1652af3c49f6184613f2cf819b912b01",
         "templates/_helpers.tpl": "156c1eb1f18643779370c8bb893f13ce779da5b64fe241040b5294b38d371134",
         "templates/configmap.yaml": "b679f734fffc06ce22b1c0fd3ea19f9f4c52c8f508ac7695c813b2ec8393ff6c",
