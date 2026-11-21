@@ -5,6 +5,7 @@ import importlib.util
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import tempfile
@@ -14,6 +15,9 @@ from unittest.mock import patch
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
+
+BLOCKED_EXIT_CODE = 2
+
 SPEC = importlib.util.spec_from_file_location("netbird_pilot", ROOT / "scripts/netbird-pilot.py")
 nb = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(nb)
@@ -120,9 +124,9 @@ class PilotTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
-            self.assertEqual(result.returncode, 2)
-            self.assertIn("BLOCKED", result.stderr)
-            self.assertFalse(target.exists())
+            assert result.returncode == BLOCKED_EXIT_CODE
+            assert "BLOCKED" in result.stderr
+            assert not target.exists()
 
     def test_cli_refuses_render_into_git_worktree(self):
         with tempfile.TemporaryDirectory() as d:
@@ -142,9 +146,9 @@ class PilotTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
-            self.assertEqual(result.returncode, 2)
-            self.assertIn("outside the Git worktree", result.stderr)
-            self.assertFalse(target.exists())
+            assert result.returncode == BLOCKED_EXIT_CODE
+            assert "outside the Git worktree" in result.stderr
+            assert not target.exists()
 
     def test_required_inputs_and_reviews_fail_closed(self):
         nb.validate(inputs())
@@ -230,42 +234,44 @@ class PilotTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 nb.render(allowed, Path(directory) / "routers")
         compose = nb.router_compose(allowed, allowed["routing_peers"][0])
-        self.assertEqual(set(compose["services"]), {"routing-peer"})
+        assert set(compose["services"]) == {"routing-peer"}
 
     def test_internal_manifest_has_no_service_and_isolates_signup(self):
         cidrs = ["203.0.113.10/32", "10.42.0.1/32"]
         docs = nb.manifests(inputs(), "internal", cidrs)
-        self.assertEqual(
-            [doc["kind"] for doc in docs],
-            ["Namespace", "PersistentVolumeClaim", "Deployment", "Deployment", "NetworkPolicy"],
-        )
-        self.assertEqual(
-            {doc["metadata"]["namespace"] for doc in docs if doc["kind"] != "Namespace"},
-            {"netbird-pilot"},
-        )
+        assert [doc["kind"] for doc in docs] == [
+            "Namespace",
+            "PersistentVolumeClaim",
+            "Deployment",
+            "Deployment",
+            "NetworkPolicy",
+        ]
+        assert {doc["metadata"]["namespace"] for doc in docs if doc["kind"] != "Namespace"} == {
+            "netbird-pilot"
+        }
         text = yaml.safe_dump_all(docs)
-        self.assertNotIn("kind: Service", text)
-        self.assertNotIn("kind: Ingress", text)
-        self.assertNotIn("NodePort", text)
-        self.assertNotIn("nodePort", text)
+        assert "kind: Service" not in text
+        assert "kind: Ingress" not in text
+        assert "NodePort" not in text
+        assert "nodePort" not in text
         server = next(doc for doc in docs if doc["metadata"]["name"] == "server")
         container = server["spec"]["template"]["spec"]["containers"][0]
-        self.assertEqual(
-            container["readinessProbe"]["httpGet"],
-            {"path": "/oauth2/.well-known/openid-configuration", "port": 80},
-        )
-        self.assertEqual(container["livenessProbe"]["tcpSocket"], {"port": 9000})
-        self.assertNotIn("httpGet", container["livenessProbe"])
+        assert container["readinessProbe"]["httpGet"] == {
+            "path": "/oauth2/.well-known/openid-configuration",
+            "port": 80,
+        }
+        assert container["livenessProbe"]["tcpSocket"] == {"port": 9000}
+        assert "httpGet" not in container["livenessProbe"]
         secret = server["spec"]["template"]["spec"]["volumes"][0]["secret"]
-        self.assertEqual(secret["items"], [{"key": "config.yaml", "path": "config.yaml"}])
+        assert secret["items"] == [{"key": "config.yaml", "path": "config.yaml"}]
         policy = docs[-1]
-        self.assertTrue(nb.ingress_allowed(policy, "203.0.113.10", 80))
-        self.assertTrue(nb.ingress_allowed(policy, "10.42.0.1", 80))
-        self.assertFalse(nb.ingress_allowed(policy, "10.42.0.20", 80))
-        self.assertFalse(nb.ingress_allowed(policy, "10.43.0.10", 80))
-        self.assertTrue(nb.ingress_allowed(policy, "10.42.0.20", 9000))
-        self.assertFalse(nb.ingress_allowed(policy, "10.42.0.20", 9090))
-        self.assertFalse(nb.ingress_allowed(policy, "203.0.113.10", 3478, "UDP"))
+        assert nb.ingress_allowed(policy, "203.0.113.10", 80)
+        assert nb.ingress_allowed(policy, "10.42.0.1", 80)
+        assert not nb.ingress_allowed(policy, "10.42.0.20", 80)
+        assert not nb.ingress_allowed(policy, "10.43.0.10", 80)
+        assert nb.ingress_allowed(policy, "10.42.0.20", 9000)
+        assert not nb.ingress_allowed(policy, "10.42.0.20", 9090)
+        assert not nb.ingress_allowed(policy, "203.0.113.10", 3478, "UDP")
         with self.assertRaises(ValueError):
             nb.manifests(inputs(), "internal", ["10.43.0.1/32"])
         with self.assertRaises(ValueError):
@@ -273,112 +279,106 @@ class PilotTests(unittest.TestCase):
 
     def test_manifest_pins_runtime_secret_singleton_no_argo(self):
         docs = nb.manifests(inputs(), "edge")
-        self.assertFalse(
-            any(x["kind"] in ["Secret", "Application", "DaemonSet", "IngressRoute"] for x in docs)
+        assert not any(
+            x["kind"] in ["Secret", "Application", "DaemonSet", "IngressRoute"] for x in docs
         )
         deployments = [x for x in docs if x["kind"] == "Deployment"]
-        self.assertEqual(
-            sorted(x["metadata"]["name"] for x in deployments),
-            ["dashboard", "edge-forwarder", "server"],
-        )
+        assert sorted(x["metadata"]["name"] for x in deployments) == [
+            "dashboard",
+            "edge-forwarder",
+            "server",
+        ]
         for doc in deployments:
-            self.assertEqual(doc["spec"]["replicas"], 1)
-            self.assertEqual(doc["spec"]["strategy"]["type"], "Recreate")
+            assert doc["spec"]["replicas"] == 1
+            assert doc["spec"]["strategy"]["type"] == "Recreate"
             pod = doc["spec"]["template"]["spec"]
-            self.assertFalse(pod["automountServiceAccountToken"])
-            self.assertNotIn("hostNetwork", pod)
-            self.assertRegex(pod["containers"][0]["image"], r"@sha256:[a-f0-9]{64}$")
+            assert not pod["automountServiceAccountToken"]
+            assert "hostNetwork" not in pod
+            assert re.search(r"@sha256:[a-f0-9]{64}$", pod["containers"][0]["image"])
         text = yaml.safe_dump_all(docs)
-        self.assertIn("netbird-runtime", text)
-        self.assertNotIn("wg-socrat", text)
-        self.assertNotIn("syncPolicy", text)
-        self.assertNotIn("NB_SETUP_PAT", text)
-        self.assertNotIn("client_secret", text)
+        assert "netbird-runtime" in text
+        assert "wg-socrat" not in text
+        assert "syncPolicy" not in text
+        assert "NB_SETUP_PAT" not in text
+        assert "client_secret" not in text
         grpc = next(x for x in docs if x["metadata"].get("name") == "netbird-grpc")
         scheme_key = "traefik.ingress.kubernetes.io/service.serversscheme"
-        self.assertNotIn(scheme_key, grpc["metadata"]["annotations"])
+        assert scheme_key not in grpc["metadata"]["annotations"]
         grpc_service = next(
             x
             for x in docs
             if x["kind"] == "Service" and x["metadata"]["name"] == "edge-forwarder-grpc"
         )
-        self.assertEqual(grpc_service["metadata"]["annotations"][scheme_key], "h2c")
-        self.assertEqual(
-            grpc_service["spec"]["ports"], [{"name": "h2c", "port": 8082, "targetPort": "h2c"}]
-        )
-        self.assertTrue(
-            all(
-                p["backend"]["service"]["name"] == "edge-forwarder-grpc"
-                for p in grpc["spec"]["rules"][0]["http"]["paths"]
-            )
+        assert grpc_service["metadata"]["annotations"][scheme_key] == "h2c"
+        assert grpc_service["spec"]["ports"] == [{"name": "h2c", "port": 8082, "targetPort": "h2c"}]
+        assert all(
+            p["backend"]["service"]["name"] == "edge-forwarder-grpc"
+            for p in grpc["spec"]["rules"][0]["http"]["paths"]
         )
         web_service = next(
             x for x in docs if x["kind"] == "Service" and x["metadata"]["name"] == "edge-forwarder"
         )
-        self.assertNotIn(scheme_key, web_service["metadata"].get("annotations", {}))
-        self.assertEqual(
-            [p["path"] for p in grpc["spec"]["rules"][0]["http"]["paths"]],
-            ["/management.ManagementService/", "/signalexchange.SignalExchange/"],
-        )
+        assert scheme_key not in web_service["metadata"].get("annotations", {})
+        assert [p["path"] for p in grpc["spec"]["rules"][0]["http"]["paths"]] == [
+            "/management.ManagementService/",
+            "/signalexchange.SignalExchange/",
+        ]
         http = next(x for x in docs if x["metadata"].get("name") == "netbird-http")
-        self.assertNotIn("serversscheme", http["metadata"]["annotations"])
+        assert "serversscheme" not in http["metadata"]["annotations"]
         config = yaml.safe_load(
             next(x for x in docs if x["kind"] == "ConfigMap")["data"]["dynamic.yaml"]
         )
         routers = config["http"]["routers"]
-        self.assertEqual(routers["grpc-management"]["entryPoints"], ["h2c"])
-        self.assertEqual(routers["websocket-management"]["entryPoints"], ["web"])
-        self.assertEqual(routers["relay"]["entryPoints"], ["web"])
-        self.assertIn("/api/setup", routers["deny-setup"]["rule"])
-        self.assertIn("/oauth2/", text)
+        assert routers["grpc-management"]["entryPoints"] == ["h2c"]
+        assert routers["websocket-management"]["entryPoints"] == ["web"]
+        assert routers["relay"]["entryPoints"] == ["web"]
+        assert "/api/setup" in routers["deny-setup"]["rule"]
+        assert "/oauth2/" in text
         stun = next(x for x in docs if x["metadata"]["name"] == "stun")
-        self.assertEqual(stun["spec"]["ports"][0]["protocol"], "UDP")
-        self.assertEqual(stun["spec"]["ports"][0]["port"], 3478)
-        self.assertTrue(
-            all(
-                port.get("port") != 9090
-                for doc in docs
-                if doc["kind"] == "Service"
-                for port in doc["spec"]["ports"]
-            )
+        assert stun["spec"]["ports"][0]["protocol"] == "UDP"
+        stun_port = 3478
+        assert stun["spec"]["ports"][0]["port"] == stun_port
+        disallowed_port = 9090
+        assert all(
+            port.get("port") != disallowed_port
+            for doc in docs
+            if doc["kind"] == "Service"
+            for port in doc["spec"]["ports"]
         )
-        self.assertEqual(
-            [
-                doc["metadata"].get("namespace")
-                for doc in docs
-                if "netbird-runtime" in yaml.safe_dump(doc)
-            ],
-            ["netbird-pilot"],
-        )
+        assert [
+            doc["metadata"].get("namespace")
+            for doc in docs
+            if "netbird-runtime" in yaml.safe_dump(doc)
+        ] == ["netbird-pilot"]
 
     def test_router_runtime_key_file_and_separate_interface(self):
         c = inputs()
         compose = nb.router_compose(c, c["routing_peers"][0])
         peer = compose["services"]["routing-peer"]
-        self.assertRegex(peer["image"], r"@sha256:[a-f0-9]{64}$")
-        self.assertEqual(peer["environment"]["NB_SETUP_KEY_FILE"], "/run/secrets/setup_key")
-        self.assertNotIn("NB_SETUP_KEY", peer["environment"])
-        self.assertEqual(peer["environment"]["NB_ALLOW_SERVER_SSH"], "false")
-        self.assertEqual(peer["environment"]["NB_INTERFACE_NAME"], "nb-pilot0")
-        self.assertEqual(peer["environment"]["NB_HOSTNAME"], "router-a")
-        self.assertNotIn("hostname", peer)  # host network cannot request a new container hostname
-        self.assertNotIn("privileged", peer)
+        assert re.search(r"@sha256:[a-f0-9]{64}$", peer["image"])
+        assert peer["environment"]["NB_SETUP_KEY_FILE"] == "/run/secrets/setup_key"
+        assert "NB_SETUP_KEY" not in peer["environment"]
+        assert peer["environment"]["NB_ALLOW_SERVER_SSH"] == "false"
+        assert peer["environment"]["NB_INTERFACE_NAME"] == "nb-pilot0"
+        assert peer["environment"]["NB_HOSTNAME"] == "router-a"
+        assert "hostname" not in peer  # host network cannot request a new container hostname
+        assert "privileged" not in peer
 
     def test_policy_compiler_defaults_deny_specific_tcp_only(self):
         requests = nb.access_requests(inputs(), bindings(), snapshot())
         routers = [x for x in requests if x["path"].endswith("/routers")]
-        self.assertEqual(len(routers), 1)
-        self.assertEqual([x["body"]["metric"] for x in routers], [100])
-        self.assertTrue(all(x["body"]["masquerade"] for x in routers))
+        assert len(routers) == 1
+        assert [x["body"]["metric"] for x in routers] == [100]
+        assert all(x["body"]["masquerade"] for x in routers)
         policies = [x["body"] for x in requests if x["path"] == "/api/policies"]
         for policy in policies:
             rule = policy["rules"][0]
-            self.assertEqual(rule["protocol"], "tcp")
-            self.assertFalse(rule["bidirectional"])
-            self.assertEqual(len(rule["sources"]), 1)
-            self.assertEqual(len(rule["destinations"]), 1)
-            self.assertIn(rule["ports"], [["443"], ["2222"]])
-        self.assertFalse(any("/routes" in x["path"] for x in requests))
+            assert rule["protocol"] == "tcp"
+            assert not rule["bidirectional"]
+            assert len(rule["sources"]) == 1
+            assert len(rule["destinations"]) == 1
+            assert rule["ports"] in [["443"], ["2222"]]
+        assert not any("/routes" in x["path"] for x in requests)
 
     def test_default_policy_legacy_route_shared_groups_abort_compilation(self):
         for key in ["policies", "routes"]:
@@ -419,7 +419,7 @@ class PilotTests(unittest.TestCase):
                     nb.access_requests(inputs(), bindings(), s)
 
     def test_destination_group_propagation_and_incomplete_responses_refused(self):
-        self.assertTrue(nb.account_settings(inputs())["groups_propagation_enabled"])
+        assert nb.account_settings(inputs())["groups_propagation_enabled"]
         for field, values in [
             ("issued", ["missing", None, "jwt", "integration", ""]),
             ("peers", ["missing", None, {}, ["propagated-user-peer"]]),
@@ -441,22 +441,22 @@ class PilotTests(unittest.TestCase):
 
     def test_settings_group_propagation_expiry_expose_and_ipv6(self):
         s = nb.account_settings(inputs())
-        self.assertTrue(s["jwt_groups_enabled"])
-        self.assertTrue(s["groups_propagation_enabled"])
-        self.assertEqual(s["jwt_allow_groups"], ["pilot-login"])
-        self.assertEqual(s["peer_login_expiration"], 3600)
-        self.assertFalse(s["peer_expose_enabled"])
-        self.assertEqual(s["ipv6_enabled_groups"], [])
+        assert s["jwt_groups_enabled"]
+        assert s["groups_propagation_enabled"]
+        assert s["jwt_allow_groups"] == ["pilot-login"]
+        login_expiration = 3600
+        assert s["peer_login_expiration"] == login_expiration
+        assert not s["peer_expose_enabled"]
+        assert s["ipv6_enabled_groups"] == []
 
     def test_render_reproducible_and_never_overwrites(self):
         with tempfile.TemporaryDirectory() as d:
             a, b = Path(d) / "a", Path(d) / "b"
             nb.render(inputs(), a)
             nb.render(inputs(), b)
-            self.assertEqual(
-                {p.name: p.read_bytes() for p in a.iterdir()},
-                {p.name: p.read_bytes() for p in b.iterdir()},
-            )
+            assert {p.name: p.read_bytes() for p in a.iterdir()} == {
+                p.name: p.read_bytes() for p in b.iterdir()
+            }
             with self.assertRaises(FileExistsError):
                 nb.render(inputs(), a)
 
@@ -485,21 +485,20 @@ class PilotTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
-            self.assertEqual(missing.returncode, 2)
-            self.assertFalse(target.exists())
+            assert missing.returncode == BLOCKED_EXIT_CODE
+            assert not target.exists()
             result = subprocess.run(command, env=env, capture_output=True, text=True)
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertEqual(target.stat().st_mode & 0o777, 0o600)
+            assert result.returncode == 0, result.stderr
+            owner_only_mode = 0o600
+            assert target.stat().st_mode & 511 == owner_only_mode
             for key in ["NB_RELAY_SECRET", "NB_COOKIE_KEY", "NB_STORE_KEY"]:
-                self.assertNotIn(env[key], result.stdout + result.stderr)
-            self.assertEqual(
-                yaml.safe_load(target.read_text())["server"]["store"]["engine"], "sqlite"
-            )
+                assert env[key] not in result.stdout + result.stderr
+            assert yaml.safe_load(target.read_text())["server"]["store"]["engine"] == "sqlite"
             target.unlink()
             target.symlink_to(source)
             result = subprocess.run(command, env=env, capture_output=True, text=True)
-            self.assertEqual(result.returncode, 2)
-            self.assertEqual(json.loads(source.read_text()), inputs())
+            assert result.returncode == BLOCKED_EXIT_CODE
+            assert json.loads(source.read_text()) == inputs()
 
 
 class UpstreamContractTests(unittest.TestCase):
@@ -511,9 +510,7 @@ class UpstreamContractTests(unittest.TestCase):
 
         path = Path(os.environ["NETBIRD_OPENAPI_FILE"])
         lock = json.loads((ROOT / "deploy/netbird/upstream.lock.json").read_text())
-        self.assertEqual(
-            hashlib.sha256(path.read_bytes()).hexdigest(), lock["sources"]["openapi"]["sha256"]
-        )
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == lock["sources"]["openapi"]["sha256"]
         schemas = yaml.safe_load(path.read_text())["components"]["schemas"]
 
         def check(name, body):
@@ -556,7 +553,7 @@ class ProbeTests(unittest.TestCase):
             self.probes, "probe", return_value={"tcp_connected": True, "tls_verified": False}
         ):
             result = self.probes.run(inputs(), "deny", "revoked")
-        self.assertTrue(all(not r["passed"] for r in result))
+        assert all(not r["passed"] for r in result)
 
     def test_allowed_web_requires_tls_and_exact_dns(self):
         with (
@@ -570,7 +567,7 @@ class ProbeTests(unittest.TestCase):
             ),
         ):
             result = self.probes.run(inputs(), "allow", "baseline")
-        self.assertTrue(all(r["passed"] for r in result))
+        assert all(r["passed"] for r in result)
         with (
             patch.object(
                 self.probes, "probe", return_value={"tcp_connected": True, "tls_verified": True}
@@ -578,7 +575,7 @@ class ProbeTests(unittest.TestCase):
             patch.object(self.probes.socket, "getaddrinfo", side_effect=OSError),
         ):
             result = self.probes.run(inputs(), "allow", "baseline")
-        self.assertFalse(result[0]["passed"])
+        assert not result[0]["passed"]
 
     def test_negative_uses_direct_ip_even_when_dns_broken(self):
         with (
@@ -589,7 +586,7 @@ class ProbeTests(unittest.TestCase):
         ):
             result = self.probes.run(inputs(), "deny", "revoked")
         dns.assert_not_called()
-        self.assertTrue(all(r["passed"] for r in result))
+        assert all(r["passed"] for r in result)
 
 
 if __name__ == "__main__":

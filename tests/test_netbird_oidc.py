@@ -377,19 +377,17 @@ class NetBirdOIDCTests(unittest.TestCase):
         if config:
             args += ["--netbird-config", str(self.config)]
         code, out, err = self.run_tool(*args)
-        self.assertEqual(err, "", err)
-        self.assertEqual(code, 0, out)
+        assert err == "", err
+        assert code == 0, out
         return json.loads(out)
 
     def test_callback_follows_pinned_redirect_algorithm(self):
-        self.assertEqual(oidc.callback_from_issuer(ISSUER), CALLBACK)
-        self.assertEqual(oidc.callback_from_issuer(ISSUER + "/"), CALLBACK)
-        self.assertEqual(
-            oidc.callback_from_issuer("https://netbird.socrat.alchemmist.xyz"), CALLBACK
-        )
-        self.assertEqual(
-            oidc.callback_from_issuer("https://netbird.socrat.alchemmist.xyz/oauth2//"),
-            "https://netbird.socrat.alchemmist.xyz/oauth2//oauth2/callback",
+        assert oidc.callback_from_issuer(ISSUER) == CALLBACK
+        assert oidc.callback_from_issuer(ISSUER + "/") == CALLBACK
+        assert oidc.callback_from_issuer("https://netbird.socrat.alchemmist.xyz") == CALLBACK
+        assert (
+            oidc.callback_from_issuer("https://netbird.socrat.alchemmist.xyz/oauth2//")
+            == "https://netbird.socrat.alchemmist.xyz/oauth2//oauth2/callback"
         )
         with self.assertRaises(RuntimeError):
             oidc.validate_management_issuer("https://example.com/oauth2")
@@ -399,150 +397,137 @@ class NetBirdOIDCTests(unittest.TestCase):
             )
         with self.assertRaises(RuntimeError):
             oidc.validate_management_issuer("http://netbird.socrat.alchemmist.xyz/oauth2")
-        self.assertNotIn("--callback", SOURCE.read_text())
-        self.assertNotIn("configure", SOURCE.read_text())
+        assert "--callback" not in SOURCE.read_text()
+        assert "configure" not in SOURCE.read_text()
 
     def test_profile_expression_is_allowlisted_and_not_a_groups_scope(self):
         expression = oidc.profile_expression()
-        self.assertEqual(
-            expression,
-            expression.strip(),
-            "Expression must survive Authentik serializer round-trip",
+        assert expression == expression.strip(), (
+            "Expression must survive Authentik serializer round-trip"
         )
-        self.assertIn("request.user.ak_groups.all()", expression)
-        self.assertNotIn("request.user.groups.all()", expression)
-        self.assertNotIn("request.user.email", expression)
-        self.assertNotIn('"sub"', expression)
+        assert "request.user.ak_groups.all()" in expression
+        assert "request.user.groups.all()" not in expression
+        assert "request.user.email" not in expression
+        assert '"sub"' not in expression
         for name in oidc.GROUP_NAMES:
-            self.assertIn(repr(name), expression)
-        self.assertNotIn("homelab-owner", expression)
-        self.assertNotIn("authentik Admins", expression)
-        self.assertEqual(oidc.UPSTREAM_SCOPES, ("openid", "profile", "email"))
-        self.assertNotIn("groups", oidc.UPSTREAM_SCOPES)
+            assert repr(name) in expression
+        assert "homelab-owner" not in expression
+        assert "authentik Admins" not in expression
+        assert oidc.UPSTREAM_SCOPES == ("openid", "profile", "email")
+        assert "groups" not in oidc.UPSTREAM_SCOPES
 
     def test_check_and_plan_are_get_only_and_do_not_invent_callback(self):
         code, out, err = self.run_tool("check")
-        self.assertEqual(code, 1, err)
-        self.assertIn("reconciled=false", out)
-        self.assertEqual(self.fake.writes(), [])
-        self.assertFalse((self.root / oidc.JOURNAL_NAME).exists())
-        self.assertFalse((self.root / oidc.RUNTIME_NAME).exists())
+        assert code == 1, err
+        assert "reconciled=false" in out
+        assert self.fake.writes() == []
+        assert not (self.root / oidc.JOURNAL_NAME).exists()
+        assert not (self.root / oidc.RUNTIME_NAME).exists()
         missing = self.plan(config=False)
-        self.assertIsNone(missing["callback"])
-        self.assertIn("missing NetBird issuer config", missing["blockers"][0])
-        self.assertNotIn(
-            "https://netbird.socrat.alchemmist.xyz/oauth2/callback", json.dumps(missing)
-        )
-        self.assertNotIn("relay-secret-must-not-leak", json.dumps(missing))
-        self.assertEqual(self.fake.writes(), [])
+        assert missing["callback"] is None
+        assert "missing NetBird issuer config" in missing["blockers"][0]
+        assert "https://netbird.socrat.alchemmist.xyz/oauth2/callback" not in json.dumps(missing)
+        assert "relay-secret-must-not-leak" not in json.dumps(missing)
+        assert self.fake.writes() == []
         present = self.plan()
-        self.assertEqual(present["callback"], CALLBACK)
-        self.assertEqual(present["user_id_claim"], "sub")
-        self.assertEqual(present["display_claim"], "name")
-        self.assertEqual(present["email_claim"], "email")
-        self.assertFalse(present["get_userinfo"])
-        self.assertFalse(present["dashboard_groups_scope_sufficient"])
-        self.assertEqual(present["sub_mode"], "user_uuid")
-        self.assertEqual(present["sha256"], self.plan()["sha256"])
-        self.assertTrue(
-            any(
-                call[1] == "/api/v3/core/applications/" and "superuser_full_list=true" in call[2]
-                for call in self.fake.calls
-            )
+        assert present["callback"] == CALLBACK
+        assert present["user_id_claim"] == "sub"
+        assert present["display_claim"] == "name"
+        assert present["email_claim"] == "email"
+        assert not present["get_userinfo"]
+        assert not present["dashboard_groups_scope_sufficient"]
+        assert present["sub_mode"] == "user_uuid"
+        assert present["sha256"] == self.plan()["sha256"]
+        assert any(
+            call[1] == "/api/v3/core/applications/" and "superuser_full_list=true" in call[2]
+            for call in self.fake.calls
         )
 
     def test_apply_requires_digest_and_keeps_secret_runtime_only(self):
         code, out, err = self.run_tool("apply", "--netbird-config", str(self.config))
-        self.assertEqual(code, 1)
-        self.assertIn("Plan digest mismatch", err)
-        self.assertEqual(self.fake.writes(), [])
-        self.assertNotIn(TOKEN, out + err)
+        assert code == 1
+        assert "Plan digest mismatch" in err
+        assert self.fake.writes() == []
+        assert TOKEN not in out + err
         approved = self.plan()
         code, out, err = self.run_tool(
             "apply", "--approve-sha256", "0" * 64, "--netbird-config", str(self.config)
         )
-        self.assertEqual(code, 1)
-        self.assertEqual(self.fake.writes(), [])
+        assert code == 1
+        assert self.fake.writes() == []
         code, out, err = self.run_tool(
             "apply", "--approve-sha256", approved["sha256"], "--netbird-config", str(self.config)
         )
-        self.assertEqual(code, 0, err)
-        self.assertNotIn("relay-secret-must-not-leak", out + err)
+        assert code == 0, err
+        assert "relay-secret-must-not-leak" not in out + err
         runtime = json.loads((self.root / oidc.RUNTIME_NAME).read_text())
         secret = runtime["client_secret"]
-        self.assertNotIn(secret, out + err)
-        self.assertNotIn(secret, (self.root / oidc.JOURNAL_NAME).read_text())
-        self.assertEqual((self.root / oidc.RUNTIME_NAME).stat().st_mode & 0o777, 0o600)
-        self.assertEqual((self.root / oidc.JOURNAL_NAME).stat().st_mode & 0o777, 0o600)
+        assert secret not in out + err
+        assert secret not in (self.root / oidc.JOURNAL_NAME).read_text()
+        owner_only_mode = 0o600
+        assert (self.root / oidc.RUNTIME_NAME).stat().st_mode & 511 == owner_only_mode
+        assert (self.root / oidc.JOURNAL_NAME).stat().st_mode & 511 == owner_only_mode
         journal = json.loads((self.root / oidc.JOURNAL_NAME).read_text())
-        self.assertEqual(
-            journal["client_secret_sha256"], hashlib.sha256(secret.encode()).hexdigest()
+        assert journal["client_secret_sha256"] == hashlib.sha256(secret.encode()).hexdigest()
+        assert (
+            journal["pilot_users"]["alchemmist"]["uuid"] == "9e33877a-3eaa-4541-98eb-8cdc10088ef6"
         )
-        self.assertEqual(
-            journal["pilot_users"]["alchemmist"]["uuid"], "9e33877a-3eaa-4541-98eb-8cdc10088ef6"
-        )
-        self.assertEqual(journal["pilot_users"]["antropophag"]["pk"], 6)
-        self.assertEqual(set(journal["groups"]), set(oidc.GROUP_NAMES))
+        expected_pilot_user_pk = 6
+        assert journal["pilot_users"]["antropophag"]["pk"] == expected_pilot_user_pk
+        assert set(journal["groups"]) == set(oidc.GROUP_NAMES)
         for recorded in journal["groups"].values():
-            self.assertIsInstance(recorded["pk"], str)
-            self.assertIsInstance(recorded["num_pk"], int)
-        self.assertIsInstance(journal["provider_pk"], int)
-        self.assertIsInstance(journal["application_pk"], str)
-        self.assertEqual(journal["callback"], CALLBACK)
-        self.assertEqual(
-            journal["marker"], self.fake.groups[-1]["attributes"][oidc.MARKER_ATTRIBUTE]
-        )
+            assert isinstance(recorded["pk"], str)
+            assert isinstance(recorded["num_pk"], int)
+        assert isinstance(journal["provider_pk"], int)
+        assert isinstance(journal["application_pk"], str)
+        assert journal["callback"] == CALLBACK
+        assert journal["marker"] == self.fake.groups[-1]["attributes"][oidc.MARKER_ATTRIBUTE]
         provider = next(item for item in self.fake.providers if item["name"] == oidc.PROVIDER_NAME)
-        self.assertEqual(provider["sub_mode"], "user_uuid")
-        self.assertTrue(provider["include_claims_in_id_token"])
-        self.assertEqual(
-            provider["redirect_uris"],
-            [{"matching_mode": "strict", "url": CALLBACK, "redirect_uri_type": "authorization"}],
-        )
-        self.assertEqual(
-            provider["property_mappings"], ["openid-pk", "email-pk", journal["mapping_pk"]]
-        )
-        self.assertNotIn("profile-pk", provider["property_mappings"])
-        self.assertNotIn("groups-pk", provider["property_mappings"])
-        self.assertNotIn("password", provider["grant_types"])
+        assert provider["sub_mode"] == "user_uuid"
+        assert provider["include_claims_in_id_token"]
+        assert provider["redirect_uris"] == [
+            {"matching_mode": "strict", "url": CALLBACK, "redirect_uri_type": "authorization"}
+        ]
+        assert provider["property_mappings"] == ["openid-pk", "email-pk", journal["mapping_pk"]]
+        assert "profile-pk" not in provider["property_mappings"]
+        assert "groups-pk" not in provider["property_mappings"]
+        assert "password" not in provider["grant_types"]
         mapping = next(item for item in self.fake.scopes if item["pk"] == journal["mapping_pk"])
-        self.assertEqual(mapping["scope_name"], "profile")
-        self.assertNotEqual(mapping["expression"], self.fake.scopes[2]["expression"])
+        assert mapping["scope_name"] == "profile"
+        assert mapping["expression"] != self.fake.scopes[2]["expression"]
         for group in self.fake.groups:
             if group["name"] in oidc.GROUP_NAMES:
-                self.assertFalse(group["is_superuser"])
-                self.assertEqual(group["parents"], [])
-                self.assertEqual(group["roles"], [])
-                self.assertEqual(sorted(group["users"]), [5, 6])
-        self.assertEqual(self.fake.outposts[0]["providers"], [5, 9])
-        self.assertEqual(self.fake.providers[0]["name"], "homelab-grafana")
+                assert not group["is_superuser"]
+                assert group["parents"] == []
+                assert group["roles"] == []
+                assert sorted(group["users"]) == [5, 6]
+        assert self.fake.outposts[0]["providers"] == [5, 9]
+        assert self.fake.providers[0]["name"] == "homelab-grafana"
         owner = self.fake.users[0]
-        self.assertEqual(owner["is_superuser"], True)
-        self.assertTrue(set(OWNER_GROUPS).issubset(owner["groups"]))
-        self.assertEqual(self.fake.users[1]["is_superuser"], False)
-        self.assertIn(TIM_GROUPS[0], self.fake.users[1]["groups"])
+        assert owner["is_superuser"] is True
+        assert set(OWNER_GROUPS).issubset(owner["groups"])
+        assert self.fake.users[1]["is_superuser"] is False
+        assert TIM_GROUPS[0] in self.fake.users[1]["groups"]
         user_writes = [
             call for call in self.fake.writes() if call[1].startswith("/api/v3/core/users/")
         ]
-        self.assertEqual(user_writes, [])
+        assert user_writes == []
         outpost_writes = [call for call in self.fake.writes() if "outposts" in call[1]]
-        self.assertEqual(outpost_writes, [])
+        assert outpost_writes == []
         binding = self.fake.bindings[0]
-        self.assertEqual(binding["group"], journal["groups"][oidc.ADMISSION_GROUP]["pk"])
-        self.assertNotIn("user", binding)
+        assert binding["group"] == journal["groups"][oidc.ADMISSION_GROUP]["pk"]
+        assert "user" not in binding
         code, out, err = self.run_tool("check", "--netbird-config", str(self.config))
-        self.assertEqual(code, 0, err + out)
-        self.assertIn("reconciled=true", out)
+        assert code == 0, err + out
+        assert "reconciled=true" in out
         again = self.plan()
         before = len(self.fake.writes())
         code, out, err = self.run_tool(
             "apply", "--approve-sha256", again["sha256"], "--netbird-config", str(self.config)
         )
-        self.assertEqual(code, 0, err)
-        self.assertEqual(len(self.fake.writes()), before)
-        self.assertEqual(
-            json.loads((self.root / oidc.RUNTIME_NAME).read_text())["client_secret"], secret
-        )
+        assert code == 0, err
+        assert len(self.fake.writes()) == before
+        assert json.loads((self.root / oidc.RUNTIME_NAME).read_text())["client_secret"] == secret
 
     def test_apply_does_not_adopt_or_continue_after_a_foreign_object(self):
         self.fake.providers.append(
@@ -557,14 +542,14 @@ class NetBirdOIDCTests(unittest.TestCase):
             }
         )
         code, out, err = self.run_tool("plan", "--netbird-config", str(self.config))
-        self.assertEqual(code, 0)
+        assert code == 0
         plan = json.loads(out)
-        self.assertTrue(any("adopt" in item for item in plan["blockers"]))
+        assert any("adopt" in item for item in plan["blockers"])
         code, out, err = self.run_tool(
             "apply", "--approve-sha256", plan["sha256"], "--netbird-config", str(self.config)
         )
-        self.assertEqual(code, 1)
-        self.assertEqual(self.fake.writes(), [])
+        assert code == 1
+        assert self.fake.writes() == []
 
     def test_partial_provider_failure_retries_without_a_second_group(self):
         self.fake.fail_provider = True
@@ -572,31 +557,30 @@ class NetBirdOIDCTests(unittest.TestCase):
         code, out, err = self.run_tool(
             "apply", "--approve-sha256", approved["sha256"], "--netbird-config", str(self.config)
         )
-        self.assertEqual(code, 1, out)
-        self.assertEqual(
-            sum(1 for call in self.fake.writes() if call[1] == "/api/v3/core/groups/"), 3
+        assert code == 1, out
+        expected_group_writes = 3
+        assert sum(1 for call in self.fake.writes() if call[1] == "/api/v3/core/groups/") == (
+            expected_group_writes
         )
         journal = json.loads((self.root / oidc.JOURNAL_NAME).read_text())
-        self.assertEqual(len(journal["groups"]), 3)
-        self.assertNotIn("provider_pk", journal)
+        assert len(journal["groups"]) == expected_group_writes
+        assert "provider_pk" not in journal
         retry = self.plan()
         code, out, err = self.run_tool(
             "apply", "--approve-sha256", retry["sha256"], "--netbird-config", str(self.config)
         )
-        self.assertEqual(code, 0, err)
-        self.assertEqual(
-            sum(1 for call in self.fake.writes() if call[1] == "/api/v3/core/groups/"), 3
+        assert code == 0, err
+        assert sum(1 for call in self.fake.writes() if call[1] == "/api/v3/core/groups/") == (
+            expected_group_writes
         )
-        self.assertEqual(
-            sum(1 for item in self.fake.providers if item["name"] == oidc.PROVIDER_NAME), 1
-        )
+        assert sum(1 for item in self.fake.providers if item["name"] == oidc.PROVIDER_NAME) == 1
 
     def test_tim_superuser_group_and_extra_member_block_without_writes(self):
         self.fake.users[1]["groups"].append(OWNER_GROUPS[0])
         code, out, err = self.run_tool("plan", "--netbird-config", str(self.config))
-        self.assertEqual(code, 1)
-        self.assertIn("superuser group", err)
-        self.assertEqual(self.fake.writes(), [])
+        assert code == 1
+        assert "superuser group" in err
+        assert self.fake.writes() == []
         self.fake.users[1]["groups"] = list(TIM_GROUPS)
         group = {
             "pk": "owned-group",
@@ -623,14 +607,14 @@ class NetBirdOIDCTests(unittest.TestCase):
             },
         )
         code, out, err = self.run_tool("plan", "--netbird-config", str(self.config))
-        self.assertEqual(code, 0, err)
+        assert code == 0, err
         plan = json.loads(out)
-        self.assertTrue(any("outside the owner and Tim pilot" in item for item in plan["blockers"]))
+        assert any("outside the owner and Tim pilot" in item for item in plan["blockers"])
         code, out, err = self.run_tool(
             "apply", "--approve-sha256", plan["sha256"], "--netbird-config", str(self.config)
         )
-        self.assertEqual(code, 1)
-        self.assertEqual(self.fake.writes(), [])
+        assert code == 1
+        assert self.fake.writes() == []
 
     def test_legacy_membership_loss_stops_without_a_user_patch(self):
         self.fake.drop_legacy_on_add = True
@@ -638,13 +622,11 @@ class NetBirdOIDCTests(unittest.TestCase):
         code, out, err = self.run_tool(
             "apply", "--approve-sha256", approved["sha256"], "--netbird-config", str(self.config)
         )
-        self.assertEqual(code, 1)
-        self.assertIn("Reviewed legacy group membership is missing", err)
-        self.assertFalse(
-            any(
-                call[1].startswith("/api/v3/core/users/") and call[0] != "GET"
-                for call in self.fake.calls
-            )
+        assert code == 1
+        assert "Reviewed legacy group membership is missing" in err
+        assert not any(
+            call[1].startswith("/api/v3/core/users/") and call[0] != "GET"
+            for call in self.fake.calls
         )
 
     def test_journal_symlink_is_not_followed(self):
@@ -655,10 +637,10 @@ class NetBirdOIDCTests(unittest.TestCase):
         code, out, err = self.run_tool(
             "apply", "--approve-sha256", approved["sha256"], "--netbird-config", str(self.config)
         )
-        self.assertEqual(code, 1)
-        self.assertIn("symlink", err)
-        self.assertEqual(self.fake.writes(), [])
-        self.assertEqual(outside.read_text(), '{"client_secret": "nope"}\n')
+        assert code == 1
+        assert "symlink" in err
+        assert self.fake.writes() == []
+        assert outside.read_text() == '{"client_secret": "nope"}\n'
 
     def test_markerless_nonempty_journal_is_not_replaced_or_used_to_mint_a_secret(self):
         approved = self.plan()
@@ -673,21 +655,21 @@ class NetBirdOIDCTests(unittest.TestCase):
         code, out, err = self.run_tool(
             "apply", "--approve-sha256", approved["sha256"], "--netbird-config", str(self.config)
         )
-        self.assertEqual(code, 1)
-        self.assertIn("markerless journal", err)
-        self.assertEqual((self.root / oidc.JOURNAL_NAME).read_text(), before)
-        self.assertFalse((self.root / oidc.RUNTIME_NAME).exists())
-        self.assertEqual(self.fake.writes(), [])
+        assert code == 1
+        assert "markerless journal" in err
+        assert (self.root / oidc.JOURNAL_NAME).read_text() == before
+        assert not (self.root / oidc.RUNTIME_NAME).exists()
+        assert self.fake.writes() == []
 
     def test_pinned_connector_source_matches_when_present(self):
         repo = Path(os.environ.get("NETBIRD_V082_SRC", "/tmp/netbird-v082-repo"))
         connector = repo / "idp/dex/connector.go"
         if not connector.is_file():
             self.skipTest("pinned NetBird v0.82.0 source is not present")
-        self.assertEqual(hashlib.sha256(connector.read_bytes()).hexdigest(), oidc.CONNECTOR_SHA256)
+        assert hashlib.sha256(connector.read_bytes()).hexdigest() == oidc.CONNECTOR_SHA256
         dex = Path("/tmp/netbird-dex/oidc.go")
         if dex.is_file():
-            self.assertEqual(hashlib.sha256(dex.read_bytes()).hexdigest(), oidc.DEX_OIDC_SHA256)
+            assert hashlib.sha256(dex.read_bytes()).hexdigest() == oidc.DEX_OIDC_SHA256
         test_path = repo / "idp/dex/homelab_upstream_scopes_test.go"
         test_path.write_text(GO_CONNECTOR_TEST)
         env = dict(os.environ)
@@ -700,7 +682,7 @@ class NetBirdOIDCTests(unittest.TestCase):
             capture_output=True,
             timeout=180,
         )
-        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+        assert completed.returncode == 0, completed.stdout + completed.stderr
 
 
 GO_CONNECTOR_TEST = r"""package dex
