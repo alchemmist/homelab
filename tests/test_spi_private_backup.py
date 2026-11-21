@@ -195,7 +195,7 @@ class CleanupBoundaryTests(unittest.TestCase):
                 connect = m.sqlite3.connect
                 count = [0]
 
-                def owned(*a, **kw):
+                def owned(*a: object, **kw: object):
                     result = create(*a, **kw)
                     for suffix in ("-wal", "-shm", "-journal"):
                         Path(result[1] + suffix).touch(mode=0o600)
@@ -212,7 +212,7 @@ class CleanupBoundaryTests(unittest.TestCase):
                         if count[0] == (2 if boundary == "second-close" else 1):
                             raise TimeoutError("synthetic close failure")
 
-                def connected(*a, **kw):
+                def connected(*a: object, **kw: object):
                     return connect(*a, **kw, factory=Conn)
 
                 with (
@@ -234,7 +234,7 @@ class CleanupBoundaryTests(unittest.TestCase):
         handler = signal.getsignal(signal.SIGALRM)
         timer = signal.getitimer(signal.ITIMER_REAL)
 
-        def caller(*args):
+        def caller(*args: object) -> None:
             pass
 
         try:

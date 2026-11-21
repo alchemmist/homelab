@@ -18,7 +18,7 @@ class Deploy(unittest.TestCase):
             tracked = chart / "values.yaml"
             tracked.write_text("enabled: false\n")
 
-            def git(*args):
+            def git(*args: str) -> str:
                 return (
                     subprocess.check_output(["git", "-C", tmp, *args], stderr=subprocess.DEVNULL)
                     .decode()
