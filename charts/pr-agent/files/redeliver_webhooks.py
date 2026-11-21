@@ -7,6 +7,7 @@ that share a guid are retried until one of them succeeds, at most three times.
 
 import json
 import os
+import socket
 import time
 import http.client
 from datetime import UTC, datetime
@@ -65,7 +66,15 @@ def request(method: str, path: str, bearer: str):
 
 def main() -> None:
     bearer = token()
-    deliveries = request("GET", f"/app/hook/deliveries?per_page={LOOKBACK}", bearer)
+    # Retry only the read, and only transient resolver failures. Never replay a POST.
+    for delay in (1, 3, 7, None):
+        try:
+            deliveries = request("GET", f"/app/hook/deliveries?per_page={LOOKBACK}", bearer)
+            break
+        except socket.gaierror as exc:
+            if exc.errno != socket.EAI_AGAIN or delay is None:
+                raise
+            time.sleep(delay)
     grouped: dict[str, list[dict]] = {}
     for delivery in deliveries:
         guid = delivery.get("guid") or str(delivery.get("id"))

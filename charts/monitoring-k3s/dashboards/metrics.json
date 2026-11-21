@@ -1,7 +1,7 @@
 {
   "uid": "socrat-metrics",
   "title": "Metrics",
-  "description": "OTel → Prometheus on socrat-0 → warm S3 on socrat-1 → verified hourly copies on socrat-3. The legacy 5m NFS shelf is separate.",
+  "description": "OTel → Prometheus on socrat-0 → warm S3 on socrat-1 → verified hourly moves on socrat-3. The legacy 5m NFS shelf is separate.",
   "tags": [
     "Primary"
   ],
@@ -1444,7 +1444,7 @@
       "id": 23,
       "title": "Active runs",
       "type": "stat",
-      "description": "Active hourly copy checks. They never delete S3 source blocks; at most one runs at a time.",
+      "description": "Active tier checks. Raw: 5 days; 5m: 90 days; hourly destination: 730 days. Verified sources get deletion marks; the warm compactor releases bytes after 48h.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1521,7 +1521,7 @@
       "id": 24,
       "title": "Since last success",
       "type": "stat",
-      "description": "Time since the last successful check, not since the last block copy. Eligible hourly blocks remain in warm S3 even after publication on socrat-3.",
+      "description": "Time since the last successful check, not since the last block copy. Hourly sources are marked only after verified publication and a Store-only read on socrat-3.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
