@@ -1,15 +1,18 @@
+"""Tests for the identity management helper script."""
+
 import contextlib
 import hashlib
 import io
 import json
-import runpy
-import sys
-import tempfile
-import unittest
 from pathlib import Path
+import runpy
+import tempfile
+import sys
+import unittest
 from unittest.mock import patch
+import urllib.request
+from typing import cast
 from urllib.parse import parse_qs, urlparse
-
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,8 +21,11 @@ from app_iam import admission_groups
 
 
 class FakeAuthentik:
-    def __init__(self):
-        self.data = {
+    """Callable in-memory double for the authentik REST API."""
+
+    def __init__(self) -> None:
+        """Seed the committed authentik bootstrap state."""
+        self.data: dict[str, list[dict[str, object]]] = {
             "core/groups/": [],
             "core/users/": [],
             "providers/oauth2/": [],
@@ -40,34 +46,42 @@ class FakeAuthentik:
             "stages/authenticator/totp/": [
                 {"pk": "totp", "name": "default-authenticator-totp-setup"}
             ],
-            "flows/instances/": [
-                {"pk": s, "slug": s}
-                for s in [
-                    "default-authentication-flow",
-                    "default-provider-authorization-explicit-consent",
-                    "default-provider-invalidation-flow",
-                    "default-provider-authorization-implicit-consent",
-                ]
-            ],
+            "flows/instances/": cast(
+                "list[dict[str, object]]",
+                [
+                    {"pk": s, "slug": s}
+                    for s in [
+                        "default-authentication-flow",
+                        "default-provider-authorization-explicit-consent",
+                        "default-provider-invalidation-flow",
+                        "default-provider-authorization-implicit-consent",
+                    ]
+                ],
+            ),
             "crypto/certificatekeypairs/": [
                 {"pk": "cert", "name": "authentik Self-signed Certificate"}
             ],
-            "propertymappings/provider/scope/": [
-                {
-                    "pk": s,
-                    "scope_name": s,
-                    "name": "authentik default OAuth Mapping: OpenID '" + s + "'",
-                }
-                for s in ["openid", "profile", "email", "offline_access"]
-            ],
+            "propertymappings/provider/scope/": cast(
+                "list[dict[str, object]]",
+                [
+                    {
+                        "pk": s,
+                        "scope_name": s,
+                        "name": "authentik default OAuth Mapping: OpenID '" + s + "'",
+                    }
+                    for s in ["openid", "profile", "email", "offline_access"]
+                ],
+            ),
         }
-        self.requests = []
+        self.requests: list[tuple[str, str, object | None, dict[str, list[str]]]] = []
 
-    def __call__(self, req, timeout=60):
+    def __call__(self, req: urllib.request.Request, timeout: int = 60) -> io.BytesIO:
+        """Answer one authentik API call from the in-memory state."""
         uri = urlparse(req.full_url)
         path = uri.path.split("/api/v3/")[1]
         method = req.get_method()
-        payload = json.loads(req.data) if req.data else None
+        raw = cast("str | bytes", req.data) if req.data else None
+        payload = json.loads(raw) if raw else None
         self.requests.append((method, path, payload, parse_qs(uri.query)))
         if method == "GET":
             rows = self.data[path]
@@ -78,7 +92,10 @@ class FakeAuthentik:
         if path.endswith("/set_password/"):
             return io.BytesIO(b"{}")
         if method == "POST":
-            row = {"pk": len(self.data[path]) + 1, **payload}
+            row: dict[str, object] = {
+                "pk": len(self.data[path]) + 1,
+                **cast("dict[str, object]", payload),
+            }
             if path == "core/groups/":
                 # Current 2026.8.5 GroupSerializer defaults, including M2M parents.
                 row = {
@@ -96,7 +113,7 @@ class FakeAuthentik:
                 row["is_superuser"] = False
                 for g in self.data["core/groups/"]:
                     if g["pk"] in payload.get("groups", []):
-                        g["users"].append(row["pk"])
+                        cast("list[object]", g["users"]).append(row["pk"])
             self.data[path].append(row)
         else:
             parent, pk, _ = path.rsplit("/", 2)
@@ -106,22 +123,26 @@ class FakeAuthentik:
                 for r in self.data[parent]
                 if str(r["slug"] if parent == "core/applications/" else r["pk"]) == pk
             )
-            row.update(payload)
+            row.update(cast("dict[str, object]", payload))
         return io.BytesIO(json.dumps(row).encode())
 
 
 class IdentityTests(unittest.TestCase):
-    def configure(self, root, api):
+    """Run the identity configure script against a fake Authentik."""
+    def configure(self, root: Path, api: FakeAuthentik) -> None:
+        """Run the authentik configure script against the fake API."""
         with (
             patch("sys.argv", ["configure.py", str(root)]),
             patch("urllib.request.urlopen", api),
             contextlib.redirect_stdout(io.StringIO()),
         ):
             runpy.run_path(
-                str(ROOT / "ansible/roles/authentik/files/configure.py"), run_name="__main__"
+                str(ROOT / "ansible/roles/authentik/files/configure.py"),
+                run_name="__main__",
             )
 
-    def setup_root(self, root):
+    def setup_root(self, root: Path) -> None:
+        """Stage the identity input files for a configuration run."""
         (root / "credentials.json").write_text(
             json.dumps({"AUTHENTIK_BOOTSTRAP_TOKEN": "fake-test-token"})
         )
@@ -144,7 +165,8 @@ class IdentityTests(unittest.TestCase):
         )
         receipt.chmod(0o600)
 
-    def setup_reviewed(self, root, api):
+    def setup_reviewed(self, root: Path, api: FakeAuthentik) -> None:
+        """Add the restored reviewed user on top of a configured root."""
         # Restored current identities, not speculative/future users.
         self.configure(root, api)
         accounts = json.loads((ROOT / "deploy/identity/account-mappings.json").read_text())
@@ -160,12 +182,15 @@ class IdentityTests(unittest.TestCase):
                 "groups": [observer["pk"]],
             }
         )
-        observer["users"].append(6)
+        cast("list[object]", observer["users"]).append(6)
         (root / "antropophag-login.json").write_text(json.dumps({"initialized": True}))
         (root / "antropophag-login.json").chmod(0o600)
         (root / "account-mappings.json").write_text(json.dumps(accounts))
 
-    def test_harbor_observer_stays_gated_even_with_native_readiness_receipt(self):
+    def test_harbor_observer_stays_gated_even_with_native_readiness_receipt(
+        self,
+    ) -> None:
+        """Keep the harbor observer gated behind the readiness receipt."""
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             self.setup_root(root)
@@ -202,7 +227,8 @@ class IdentityTests(unittest.TestCase):
                 0,
             )
 
-    def test_configuration_idempotent_and_mfa_required(self):
+    def test_configuration_idempotent_and_mfa_required(self) -> None:
+        """Replay idempotently while keeping MFA required."""
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             self.setup_root(root)
@@ -218,14 +244,15 @@ class IdentityTests(unittest.TestCase):
             privileged = [g["name"] for g in api.data["core/groups/"] if g["is_superuser"]]
             self.assertEqual(privileged, ["homelab-owner"])
             self.assertEqual(
-                api.data["stages/authenticator/validate/"][0]["not_configured_action"], "configure"
+                api.data["stages/authenticator/validate/"][0]["not_configured_action"],
+                "configure",
             )
             for provider in api.data["providers/oauth2/"]:
                 self.assertEqual(provider["grant_types"], ["authorization_code", "refresh_token"])
             grafana = next(
                 p for p in api.data["providers/oauth2/"] if p["name"] == "homelab-grafana"
             )
-            self.assertIn("offline_access", grafana["property_mappings"])
+            self.assertIn("offline_access", cast("list[str]", grafana["property_mappings"]))
             self.assertEqual(len(api.data["core/applications/"]), 6)
             self.assertEqual(
                 len(api.data["policies/bindings/"]),
@@ -235,13 +262,14 @@ class IdentityTests(unittest.TestCase):
                     if slug != "litellm" and not service.get("managedBy")
                 ),
             )
-            for method, path, body, query in api.requests:
+            for method, path, _body, query in api.requests:
                 if method == "GET" and path == "core/applications/":
                     self.assertEqual(query["superuser_full_list"], ["true"])
             self.assertEqual((root / "owner-login.json").stat().st_mode & 0o777, 0o600)
             self.assertEqual((root / "oidc-clients.json").stat().st_mode & 0o777, 0o600)
 
-    def test_existing_litellm_custom_scope_survives_foundation_replay(self):
+    def test_existing_litellm_custom_scope_survives_foundation_replay(self) -> None:
+        """Preserve the custom litellm scope across replays."""
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             self.setup_root(root)
@@ -258,10 +286,11 @@ class IdentityTests(unittest.TestCase):
             provider = next(
                 p for p in api.data["providers/oauth2/"] if p["name"] == "homelab-litellm"
             )
-            self.assertIn("litellm-identity", provider["property_mappings"])
+            self.assertIn("litellm-identity", cast("list[str]", provider["property_mappings"]))
             self.assertEqual(len(api.data["core/applications/"]), 7)
 
-    def test_existing_owner_never_silently_taken_over(self):
+    def test_existing_owner_never_silently_taken_over(self) -> None:
+        """Never take over an existing owner account."""
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             self.setup_root(root)
@@ -271,7 +300,8 @@ class IdentityTests(unittest.TestCase):
                 self.configure(root, api)
             self.assertFalse(any(path.endswith("/set_password/") for _, path, _, _ in api.requests))
 
-    def test_missing_provider_credentials_refuses_rotation(self):
+    def test_missing_provider_credentials_refuses_rotation(self) -> None:
+        """Refuse credential rotation when files are missing."""
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             self.setup_root(root)
@@ -281,20 +311,22 @@ class IdentityTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "refusing rotation"):
                 self.configure(root, api)
 
-    def test_unexpected_owner_member_cannot_be_promoted(self):
+    def test_unexpected_owner_member_cannot_be_promoted(self) -> None:
+        """Refuse to promote an unexpected member of the owner group."""
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             self.setup_root(root)
             api = FakeAuthentik()
             self.configure(root, api)
             group = next(g for g in api.data["core/groups/"] if g["name"] == "homelab-owner")
-            group["users"].append(999)
+            cast("list[object]", group["users"]).append(999)
             group["is_superuser"] = False
             with self.assertRaisesRegex(RuntimeError, "Unexpected owner"):
                 self.configure(root, api)
             self.assertFalse(group["is_superuser"])
 
-    def test_runtime_is_not_a_cluster_administrator(self):
+    def test_runtime_is_not_a_cluster_administrator(self) -> None:
+        """Keep the runtime service account out of cluster administration."""
         values = yaml.safe_load((ROOT / "deploy/authentik/values.yaml").read_text())
         self.assertFalse(values["serviceAccount"]["create"])
         for name in ["server", "worker"]:
@@ -303,21 +335,24 @@ class IdentityTests(unittest.TestCase):
         self.assertFalse(values["postgresql"]["enabled"])
         self.assertNotIn("secret_key", values["authentik"])
 
-    def test_world_readable_primary_kubeconfig_not_reintroduced(self):
+    def test_world_readable_primary_kubeconfig_not_reintroduced(self) -> None:
+        """Keep the primary kubeconfig non-world-readable."""
         source = (ROOT / "ansible/roles/k3s_ha/templates/config.yaml.j2").read_text()
         self.assertNotIn("'0644'", source)
         self.assertIn("write-kubeconfig-group: alchemmist", source)
         install = (ROOT / "ansible/playbooks/k3s.yml").read_text()
         self.assertNotIn("--write-kubeconfig-mode 644", install)
 
-    def test_personal_keys_replaced_not_appended(self):
+    def test_personal_keys_replaced_not_appended(self) -> None:
+        """Replace personal key sets instead of appending."""
         tasks = yaml.safe_load((ROOT / "ansible/roles/users/tasks/main.yml").read_text())
         key_task = next(t for t in tasks if "Replace managed key sets" in t["name"])
         self.assertIn("ansible.builtin.copy", key_task)
         self.assertNotIn("ansible.builtin.lineinfile", key_task)
         self.assertIn("'disabled'", key_task["ansible.builtin.copy"]["content"])
 
-    def test_grafana_keeps_local_login_and_uses_secret_reference(self):
+    def test_grafana_keeps_local_login_and_uses_secret_reference(self) -> None:
+        """Keep local Grafana login with secret references."""
         v = yaml.safe_load((ROOT / "deploy/identity/grafana-oidc-values.yaml").read_text())[
             "grafana"
         ]
@@ -332,9 +367,9 @@ class IdentityTests(unittest.TestCase):
 
 
 class RolloutRegressionTests(unittest.TestCase):
-    def test_pinned_icons_match_local_portal_assets(self):
-        import hashlib
-        import xml.etree.ElementTree as ET
+    def test_pinned_icons_match_local_portal_assets(self) -> None:
+        """Match pinned icons to the committed portal assets."""
+        import hashlib, xml.etree.ElementTree as ET
 
         manifest = json.loads((ROOT / "assets/service-icons/sources.json").read_text())
         services = json.loads((ROOT / "deploy/identity/services.json").read_text())
@@ -351,7 +386,8 @@ class RolloutRegressionTests(unittest.TestCase):
                 self.assertNotIn(node.tag.split("}")[-1], ["script", "foreignObject"])
                 self.assertFalse(any(k.lower().startswith("on") for k in node.attrib))
 
-    def test_reviewed_human_reconciliation_keeps_tim_non_privileged(self):
+    def test_reviewed_human_reconciliation_keeps_tim_non_privileged(self) -> None:
+        """Keep the reviewed human non-privileged after replay."""
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             helper = IdentityTests()
@@ -363,11 +399,12 @@ class RolloutRegressionTests(unittest.TestCase):
             self.assertEqual(len(api.data["core/users/"]), 2)
             owner_group = next(g for g in api.data["core/groups/"] if g["name"] == "homelab-owner")
             tim = next(u for u in api.data["core/users/"] if u["username"] == "antropophag")
-            self.assertNotIn(owner_group["pk"], tim["groups"])
-            self.assertNotIn(tim["pk"], owner_group["users"])
+            self.assertNotIn(owner_group["pk"], cast("list[object]", tim["groups"]))
+            self.assertNotIn(tim["pk"], cast("list[object]", owner_group["users"]))
             self.assertEqual((root / "antropophag-login.json").stat().st_mode & 0o777, 0o600)
 
-    def test_n8n_native_login_and_machine_paths_have_no_idp_gate(self):
+    def test_n8n_native_login_and_machine_paths_have_no_idp_gate(self) -> None:
+        """Keep n8n native paths free of identity gates."""
         services = json.loads((ROOT / "deploy/identity/services.json").read_text())
         self.assertEqual(services["n8n"]["managedBy"], "native-n8n")
         self.assertEqual(services["n8n"]["accessManagement"]["state"], "blocked")
@@ -390,7 +427,8 @@ class RolloutRegressionTests(unittest.TestCase):
             "n8n-gateway", (ROOT / "ansible/roles/authentik/tasks/main.yml").read_text()
         )
 
-    def test_owner_mapping_is_server_admin_only_for_owner_group(self):
+    def test_owner_mapping_is_server_admin_only_for_owner_group(self) -> None:
+        """Grant Grafana server admin only to the owner group."""
         env = yaml.safe_load((ROOT / "deploy/identity/grafana-oidc-values.yaml").read_text())[
             "grafana"
         ]["env"]
@@ -406,35 +444,48 @@ class RolloutRegressionTests(unittest.TestCase):
         self.assertEqual(webui["OAUTH_MERGE_ACCOUNTS_BY_EMAIL"], "False")
         self.assertEqual(webui["OAUTH_ADMIN_ROLES"], "homelab-owner")
 
-    def test_sudo_listing_rc_zero_is_not_a_privilege_grant(self):
-        import subprocess
+    def test_sudo_listing_rc_zero_is_not_a_privilege_grant(self) -> None:
+        """Treat an rc-zero sudo listing as no privilege grant."""
         from types import SimpleNamespace
+        import subprocess
 
         with tempfile.TemporaryDirectory() as d:
             (Path(d) / ".ssh").mkdir()
             (Path(d) / ".ssh/authorized_keys").write_text("key1\nkey2\n")
 
-            def run(args, **kwargs):
+
+            def run(args: list[str], **_kwargs) -> subprocess.CompletedProcess[str]:
+                """Answer sshd -T, sudo, and generic probes with scripted results."""
                 if "-T" in args:
                     return subprocess.CompletedProcess(
-                        args, 0, "\x1b]3008;test\x1b\\pubkeyauthentication yes\nusepam yes\n", ""
+                        args,
+                        0,
+                        "\x1b]3008;test\x1b\\pubkeyauthentication yes\nusepam yes\n",
+                        "",
                     )
                 if args[0] == "sudo":
                     return subprocess.CompletedProcess(
-                        args, 0, "User tim is not allowed to run sudo on socrat-0.\n", ""
+                        args,
+                        0,
+                        "User tim is not allowed to run sudo on socrat-0.\n",
+                        "",
                     )
                 return subprocess.CompletedProcess(args, 1, "", "")
 
             output = io.StringIO()
             with (
                 patch("sys.argv", ["verify.py", "tim"]),
-                patch("pwd.getpwnam", return_value=SimpleNamespace(pw_dir=d, pw_shell="/bin/bash")),
+                patch(
+                    "pwd.getpwnam",
+                    return_value=SimpleNamespace(pw_dir=d, pw_shell="/bin/bash"),
+                ),
                 patch("subprocess.run", run),
                 patch("shutil.which", return_value="/usr/sbin/sshd"),
                 contextlib.redirect_stdout(output),
             ):
                 runpy.run_path(
-                    str(ROOT / "ansible/roles/users/files/verify.py"), run_name="__main__"
+                    str(ROOT / "ansible/roles/users/files/verify.py"),
+                    run_name="__main__",
                 )
             result = json.loads(output.getvalue())
             self.assertFalse(result["hasSudoGrant"])

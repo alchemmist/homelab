@@ -2,7 +2,7 @@
 
 import unittest
 from pathlib import Path
-
+from typing import override
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -11,7 +11,9 @@ ROOT = Path(__file__).resolve().parents[1]
 class HarborConfigurationTests(unittest.TestCase):
     """Load Harbor values and check the published configuration pins."""
 
-    def setUp(self):
+    @override
+    def setUp(self) -> None:
+        """Load the committed Harbor values once for the configuration contracts."""
         self.v = yaml.safe_load((ROOT / "deploy/harbor/values.yaml").read_text())
 
     def test_public_tls_and_no_default_admin_password(self) -> None:

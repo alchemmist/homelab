@@ -1,3 +1,5 @@
+"""Render a Helm release manifest and report whether it changed."""
+
 import argparse
 import json
 import subprocess
