@@ -1,3 +1,4 @@
+---
 image: pragent/pr-agent:0.50.0-github_app
 replicaCount: 1
 nodeName: socrat-5
@@ -78,3 +79,4 @@ tolerations:
     operator: Equal
     value: "true"
     effect: NoSchedule
+...
