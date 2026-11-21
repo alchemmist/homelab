@@ -45,7 +45,7 @@ class API:
             b = r.read()
             return json.loads(b) if b else None
 
-    def rows(self, path):
+    def rows(self, _path):
         rows = []
         for page in range(1, 1001):
             d = self.call(

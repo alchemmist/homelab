@@ -45,7 +45,7 @@ class FakeEtcd:
 
     def call(self, args: list[str], endpoint: str | None = None, structured: object = True) -> None:
         """Apply one etcdctl invocation and record its arguments."""
-        self.calls.append((args, endpoint))
+        self.calls.append((args, endpoint, structured))
         if args[0] == "move-leader":
             self.leader = int(args[1], 16)
         elif args[:2] == ["member", "remove"]:
@@ -74,8 +74,8 @@ class RebalanceTest(unittest.TestCase):
         self.assertEqual(
             client.calls,
             [
-                (["move-leader", "1"], MODULE.ENDPOINTS["socrat-1"]),
-                (["member", "remove", "2"], None),
+                (["move-leader", "1"], MODULE.ENDPOINTS["socrat-1"], False),
+                (["member", "remove", "2"], None, False),
             ],
         )
 
