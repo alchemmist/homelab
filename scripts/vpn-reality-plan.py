@@ -11,42 +11,55 @@ import json
 import sqlite3
 from contextlib import closing
 from pathlib import Path
-from typing import cast
 
 spec = importlib.util.spec_from_file_location(
     "inventory", Path(__file__).with_name("vpn-hardening-inventory.py")
 )
+if spec is None or spec.loader is None or not spec.has_location:
+    reason = "Cannot load inventory helper"
+    raise ValueError(reason)
 inventory = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(inventory)
 
 
-def _validated_inbound(
-    config: dict[str, object], policy: dict[str, object]
-) -> tuple[dict[str, object], dict[str, object]]:
-    """Validate migration policy and return the single matching inbound row."""
+def _inbounds(config: dict[str, object]) -> list[object]:
+    value = config["inbounds"]
+    return value if isinstance(value, list) else []
+
+
+def _retarget(replacement: dict[str, object], key: str, new_target: object) -> None:
+    reality = replacement["realitySettings"]
+    if isinstance(reality, dict):
+        reality[key] = new_target
+
+
+def _restream(config: dict[str, object], row_id: object, canonical: object) -> None:
+    for item in _inbounds(config):
+        if isinstance(item, dict) and item["id"] == row_id:
+            item["stream_settings"] = canonical
+
+
+def build(config: dict[str, object], policy: dict[str, object]) -> dict[str, object]:
     if (
         policy.get("version") != 1
         or policy.get("newVpsOrPublicIp") is not False
         or policy.get("scope") != "existing-socrat-2-only"
     ):
         raise ValueError("Unsupported scope")
-    desired = cast("dict[str, object]", policy["realityCorrection"])
+    desired = policy["realityCorrection"]
+    if not isinstance(desired, dict):
+        reason = "Explicit apply policy required"
+        raise TypeError(reason)
     if (
         not isinstance(desired.get("apiApplyEnabled"), bool)
         or desired.get("preserveClientMaterial") is not True
     ):
         raise ValueError("Explicit apply policy and preserved client material required")
-    rows = cast("list[dict[str, object]]", config["inbounds"])
-    matches = [x for x in rows if x["port"] == desired["port"]]
+    matches = [x for x in _inbounds(config) if isinstance(x, dict) and x["port"] == desired["port"]]
     if len(matches) != 1:
         raise ValueError("Expected exactly one target inbound")
-    return matches[0], desired
-
-
-def _validate_transport(
-    row: dict[str, object], stream: dict[str, object], desired: dict[str, object]
-) -> tuple[str, str]:
-    """Reject transport drift or a disabled inbound before any planning."""
+    row = matches[0]
+    stream: dict[str, object] = json.loads(str(row["stream_settings"]))
     if not row["enable"] or any(
         (
             row["protocol"] != desired["protocol"],
@@ -55,31 +68,25 @@ def _validate_transport(
         )
     ):
         raise ValueError("Unexpected transport or disabled inbound")
-    reality = cast("dict[str, object]", stream["realitySettings"])
+    reality = stream["realitySettings"]
+    if not isinstance(reality, dict):
+        reason = "Expected REALITY settings"
+        raise TypeError(reason)
     if reality["serverNames"] != desired["serverNames"]:
         raise ValueError("Unexpected client-visible SNI; do not migrate it implicitly")
     keys = [key for key in ("target", "dest") if key in reality]
     if len(keys) != 1:
         raise ValueError("Ambiguous REALITY target schema")
-    key: str = keys[0]
-    current: object = reality[key]
-    if current != desired["oldTarget"] and current != desired["newTarget"]:
+    key = keys[0]
+    current = reality[key]
+    if current not in (desired["oldTarget"], desired["newTarget"]):
         raise ValueError("Target drift; stop")
-    return key, str(current)
-
-
-def build(config, policy):
-    row, desired = _validated_inbound(config, policy)
-    stream = json.loads(cast("str", row["stream_settings"]))
-    key, current = _validate_transport(row, stream, desired)
     after = copy.deepcopy(config)
-    operations = []
+    operations: list[dict[str, object]] = []
     if current != desired["newTarget"]:
         replacement = copy.deepcopy(stream)
-        replacement["realitySettings"][key] = desired["newTarget"]
-        for item in after["inbounds"]:
-            if item["id"] == row["id"]:
-                item["stream_settings"] = inventory.canonical(replacement)
+        _retarget(replacement, key, desired["newTarget"])
+        _restream(after, row["id"], inventory.canonical(replacement))
         operations.append(
             {
                 "port": row["port"],
@@ -97,10 +104,11 @@ def build(config, policy):
         "client_material_preserved": True,
         "requires_native_api_and_authenticated_client_acceptance": True,
     }
-    return {**result, "plan_sha256": inventory.digest(result)}
+    plan: dict[str, object] = {**result, "plan_sha256": inventory.digest(result)}
+    return plan
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database", type=Path, default=Path("/srv/x-ui-lab/db/x-ui.db"))
     parser.add_argument("--policy", type=Path, required=True)
@@ -118,7 +126,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
+    except (OSError, ValueError, RuntimeError, ImportError, sqlite3.Error):
         raise SystemExit(
             "Target preview stopped on unsupported state; no writes performed"
         ) from None

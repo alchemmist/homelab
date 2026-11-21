@@ -1,19 +1,63 @@
 """Full report campaign. Trusted scheduler on socrat-0; no agent or pytest on host."""
 import ast,collections,contextlib,difflib,fcntl,gzip,hashlib,json,os,re,sqlite3,subprocess,sys,time
-from pathlib import Path
 from collections.abc import Sequence
+from pathlib import Path
 from typing import TypedDict
 import dispatcher as pilot
 from artifact import artifact_response
+
+class Task(TypedDict):
+ """Queued mutation task loaded from SQLite."""
+
+ id: str
+ fam: str
+ num: int
+ category: str
+ base: str
+ pr: int | None
+
+class Repair(TypedDict):
+ """In-place pull request repair handed to the author."""
+
+ dest: str
+ previous: str
+ head: str
+ fails: list[str]
+
+class GitUser(TypedDict):
+ """GitHub user fields read during reconciliation."""
+
+ login: str
+
+class GitHead(TypedDict):
+ """GitHub ref fields read during reconciliation."""
+
+ ref: str
+ sha: str
+
+class Pull(TypedDict, total=False):
+ """Open pull request fields read from the public GitHub API."""
+
+ number: int
+ title: str
+ state: str
+ merged: bool
+ draft: bool
+ head: GitHead
+ user: GitUser
 R=pilot.ROOT; BASE0=pilot.BASE; D=R/'campaign.sqlite'; A=R/'campaign-artifacts';A.mkdir(exist_ok=True); C=json.load(gzip.open(R/'catalog-full.json.gz')); BACK=json.loads((R/'backlog.json').read_text()); J='/scratch/monori/'; K=pilot.k
 
 ISSUE=509
 
-def query(q: str, a: Sequence[object] = ()) -> list[dict[str, object]]:
+def query(q: str,a: Sequence[object]=()):
  with contextlib.closing(sqlite3.connect(D,timeout=15)) as db,db:
   db.row_factory=sqlite3.Row;return [dict(x) for x in db.execute(q,a)]
-def _seed_backlog() -> None:
- """Queue backlog mutations once, with pinned priority for three root families."""
+def init():
+ global C,A
+ query('create table if not exists tasks(id text primary key,fam text,num integer,category text,ord integer,state text,base text,note text,pr integer,updated real)');query('create table if not exists audit(t real,id text,state text,note text)');query('create table if not exists meta(k text primary key,v text)')
+ wave=query("select v from meta where k='active_census'")
+ if wave:
+  root=R/'waves'/wave[0]['v'];C=json.load(gzip.open(root/'catalog.json.gz'));A=root/'artifacts';A.mkdir(exist_ok=True);return
  with contextlib.closing(sqlite3.connect(D)) as db,db:
   for r in BACK:
    fam,_,single=r['family'].partition('__mutmut_');f=C.get(fam);nums=[single] if single else list(f['diffs']) if f else ['0'];
@@ -23,9 +67,7 @@ def _seed_backlog() -> None:
     if fam.endswith('server.app.importer.x_parse_amount_kop'):priority=-2
     if fam.endswith('server.app.workbook.spec.x_kop_from_rub'):priority=-1
     db.execute('insert or ignore into tasks values(?,?,?,?,?,?,?,?,?,?)',(uid,fam,int(num),r['section'],priority,'queued' if f and num in f['diffs'] else 'catalog_drift','','',None,0))
-
-def _seed_published_pilot() -> None:
- """Seed actual published pilot coverage, never re-publish it."""
+ # Seed actual published pilot coverage, never re-publish it.
  for name in ('integer_value','_amount'):
   proof=R/(name+'-proof.json');
   if proof.exists():
@@ -34,41 +76,33 @@ def _seed_published_pilot() -> None:
     v=json.loads(proof.read_text());uid=next((k for k in C if k.endswith('.x_'+name)),None)
     if uid:query("update tasks set state='published',pr=?,base=?,note=? where id=? and state='queued'",(json.loads(published[0][0])['pr'],v['base'],'pilot proof',uid.rsplit('.',1)[0]+'.'+v['mutmut']))
 
-def init():
- global C,A
- query('create table if not exists tasks(id text primary key,fam text,num integer,category text,ord integer,state text,base text,note text,pr integer,updated real)');query('create table if not exists audit(t real,id text,state text,note text)');query('create table if not exists meta(k text primary key,v text)')
- wave=query("select v from meta where k='active_census'")
- if wave:
-  root=R/'waves'/str(wave[0]['v']);C=json.load(gzip.open(root/'catalog.json.gz'));A=root/'artifacts';A.mkdir(exist_ok=True);return
- _seed_backlog();_seed_published_pilot()
-
-def mark(t,state,note='',base=None,pr=None):
+def mark(t: Task,state: str,note: str='',base: str | None=None,pr: int | None=None):
  q=(state,note[:1500],base or t['base'],pr or t['pr'],time.time(),t['id']);query('update tasks set state=?,note=?,base=?,pr=?,updated=? where id=?',q);query('insert into audit values(?,?,?,?)',(time.time(),t['id'],state,note[:1500]));print(time.strftime('%FT%T%z'),state,t['id'],note[:120].replace('\n',' '),flush=True)
-def key(t):return hashlib.sha256(t['id'].encode()).hexdigest()[:12]
-def remote_json(path):
+def key(t: Task):return hashlib.sha256(t['id'].encode()).hexdigest()[:12]
+def remote_json(path: str):
  # Public GET only; no publisher/host credentials in workers.
  import urllib.request
  with urllib.request.urlopen(urllib.request.Request('https://api.github.com/repos/alchemmist/monori/'+path,headers={'User-Agent':'socrat-campaign'}),timeout=15) as r:return json.load(r)
 def git(*a):return pilot.cmd(['git','--git-dir=base.git',*a]).stdout
-def source(sha,file):return git('show',sha+':'+file)
+def source(sha: str,file: str):return git('show',sha+':'+file)
 
-def patch(t,sha):
+def patch(t: Task,sha: str):
  f=C[t['fam']];file=f['file'];s=source(sha,file);old=''.join(f['old']);start,end,repl=f['diffs'][str(t['num'])];mut=''.join(f['old'][:start]+repl+f['old'][end:]);
  if s.count(old)!=1:raise ValueError('Generated function body not unique/exact on current base; refresh required')
  return file,s,s.replace(old,mut,1),''.join(difflib.unified_diff(old.splitlines(True),mut.splitlines(True),n=3))
 
-def select_suite(t,sha):
+def select_suite(t: Task,sha: str):
  mod=C[t['fam']]['file'];leaf=Path(mod).stem;func=t['fam'].split('.')[-1].split('ǁ')[-1];func=func.removeprefix('x_');area='ci/tests' if mod.startswith('ci/') else 'server/tests/unit';files=git('ls-tree','-r','--name-only',sha,'--',area).splitlines();tests=[p for p in files if Path(p).name.startswith('test_') and p.endswith('.py')];module=mod[:-3].replace('/','.');p=pilot.cmd(['git','--git-dir=base.git','grep','-l','-F',module,sha,'--',area],ok=False);imports={line.split(':',1)[-1] for line in p.stdout.splitlines()};p=pilot.cmd(['git','--git-dir=base.git','grep','-l','-Fw',func,sha,'--',area],ok=False);refs={line.split(':',1)[-1] for line in p.stdout.splitlines()};top=sorted(tests,key=lambda p:(-(10*(p in imports)+6*(p in refs)+4*(leaf in Path(p).stem)),p));direct=[p for p in top if p in imports|refs or leaf in Path(p).stem];return (direct[:6] or [area]),area
 
-def sandbox_write(path,text):pilot.write('judge',J+path,text)
-def reset_source(src,original):sandbox_write(src,original);K('judge',['rm','-rf',J+str(Path(src).parent/'__pycache__')])
-def tests(paths,limit=250):
+def sandbox_write(path: str,text: str):pilot.write('judge',J+path,text)
+def reset_source(src: str,original: str):sandbox_write(src,original);K('judge',['rm','-rf',J+str(Path(src).parent/'__pycache__')])
+def tests(paths: Sequence[str],limit: int=250):
  # Timeout INSIDE the pod, including children, not just the kubectl client.
  r=K('judge',['sh','-ec','cd /scratch/monori; export PYTHONPATH=/scratch PYTHONDONTWRITEBYTECODE=1;exec timeout -k 5 "$1" .venv/bin/python -m pytest -q --tb=short --disable-warnings -m "not integration" "${@:2}"'.replace('"${@:2}"','"$@"').replace('exec timeout -k 5 "$1"','budget=$1;shift;exec timeout -k 5 "$budget"'),'sh',str(limit),*paths],timeout=limit+25,ok=False);return r.returncode,r.stdout[-5000:]
-def green(p):return p[0]==0 and bool(re.search(r'\b[1-9]\d* passed',p[1]))
-def killed(p):return p[0]==1 and bool(re.search(r'\b[1-9]\d* failed',p[1]))
+def green(p: tuple[int, str]):return p[0]==0 and bool(re.search(r'\b[1-9]\d* passed',p[1]))
+def killed(p: tuple[int, str]):return p[0]==1 and bool(re.search(r'\b[1-9]\d* failed',p[1]))
 
-def install_base(sha):
+def install_base(sha: str):
  """Stream tracked files only. No untrusted tar input on the SSH host."""
  for file in ('pyproject.toml','server/pyproject.toml','common/pyproject.toml','ci/pyproject.toml'):
   if source(sha,file)!=source(BASE0,file):raise RuntimeError('dependency drift: rebuild locked offline verifier before admitting this base')
@@ -79,139 +113,76 @@ def install_base(sha):
  # Author fetches public main; no host key or git credential is passed in.
  K('author',['sh','-ec','git --git-dir=/scratch/base.git cat-file -e "$1^{commit}" 2>/dev/null || git --git-dir=/scratch/base.git fetch --depth=1 https://github.com/alchemmist/monori.git main','sh',sha])
 
-def _guard_parse_candidate(text: str) -> ast.Module:
- """Parse the candidate and reject forbidden syntax, dynamic types and missing tests."""
+def candidate_guard(text: str,src: str):
  if not 40<len(text)<20000:raise ValueError('missing/oversized candidate')
  if re.search(r'#\s*(?:type:\s*ignore|noqa|nosec)',text):raise ValueError('repo forbids lint/type suppressions')
  tree=ast.parse(text)
  if any(isinstance(n,ast.arg) and n.annotation and any(isinstance(a,ast.Name) and a.id in {'object','Any'} for a in ast.walk(n.annotation)) for n in ast.walk(tree)):raise ValueError('use a concrete project type, not object/Any')
+ allowed=('monori.'+src.partition('/')[0]+'.','monori.common.');safe={'pytest','datetime','decimal','collections','dataclasses','typing','pathlib','io','json','re','math','unittest.mock','openpyxl','sqlite3','uuid'}
  if not any(isinstance(n,ast.FunctionDef) and n.name.startswith('test_') for n in tree.body):raise ValueError('missing test')
- return tree
-
-def _guard_imports(tree: ast.Module, src: str) -> None:
- """Reject imports outside the offline unit-test scope and dynamic imports."""
- allowed=(f"monori.{src.split(chr(47),maxsplit=1)[0]}.","monori.common.");safe={'pytest','datetime','decimal','collections','dataclasses','typing','pathlib','io','json','re','math','unittest.mock','openpyxl','sqlite3','uuid'}
  for n in ast.walk(tree):
   if isinstance(n,(ast.Import,ast.ImportFrom)):
    mods=[n.module or ''] if isinstance(n,ast.ImportFrom) else [a.name for a in n.names]
    bad=[m for m in mods if not (m.startswith(allowed) or m in {v.rstrip('.') for v in allowed} or any(m==v or m.startswith(v+'.') for v in safe))]
-   if bad:raise ValueError("Outside offline unit-test scope: "+", ".join(bad)+". Use the target module directly: monori."+src[:-3].replace(chr(47),chr(46)))
+   if bad:raise ValueError('Outside offline unit-test scope: '+', '.join(bad)+'. Use the target module directly: monori.'+src[:-3].replace('/','.'))
    if any(a.name.startswith('__') or a.name=='*' for a in n.names):raise ValueError('dynamic import')
-
-def _guard_names(tree: ast.Module) -> None:
- """Reject unsupported introspection, I/O bypasses and environment-dependent strings."""
- for n in ast.walk(tree):
   if isinstance(n,(ast.Name,ast.Attribute)):
    x=n.id if isinstance(n,ast.Name) else n.attr
    if x.startswith('__') or x in {'eval','exec','compile','globals','locals','exit','quit','getattr','setattr','delattr','skip','skipif','xfail','importorskip','open','read_bytes','read_text','write_bytes','write_text','unlink','system','popen','connect_ex','socket','subprocess','os','sys','builtins','importlib','pytest_plugins'}:raise ValueError('test uses unsupported introspection, I/O or bypass')
   if isinstance(n,ast.Constant) and isinstance(n.value,str) and ('/scratch/' in n.value or '/proc/' in n.value or 'PYTEST_CURRENT_TEST' in n.value):raise ValueError('environment-dependent test')
 
-def candidate_guard(text,src):
- tree=_guard_parse_candidate(text);_guard_imports(tree,src);_guard_names(tree)
-
-type _Repair = dict[str, object]
-
-
-def _use_artifact_protocol(repair: _Repair, attempt: int, old: Sequence[str]) -> bool:
- """Print-mode exchange instead of tools from the second attempt onward."""
- return bool(repair) or attempt>=2 or (not repair and len(old)<=16)
-
-class _AttemptCtx(TypedDict):
-    """Per-attempt author context threaded through the pi helper chain."""
-
-    sha: str
-    src: str
-    mid: str
-    detail: str
-    oldtests: list[str]
-    folder: Path
-    dest: str
-    wt: str
-
-
-class _AcceptCtx(TypedDict):
-    """Acceptance context for the proof and archive stage of one attempt."""
-
-    sha: str
-    src: str
-    dest: str
-    oldtests: list[str]
-    wt: str
-    folder: Path
-
-def _pi_attempt(
- t: dict[str, object], ctx: _AttemptCtx, repair: _Repair, attempt: int, feedback: str
-) -> tuple[str, str]:
- """Run one author attempt; return ('done'|'retry'|'fail', feedback)."""
- sha=ctx["sha"]
- src=ctx["src"]
- mid=ctx["mid"]
- detail=ctx["detail"]
- oldtests=ctx["oldtests"]
- folder=ctx["folder"]
- dest=ctx["dest"]
- wt=ctx["wt"]
- prompt=f'''Take one atomic item from alchemmist/monori#{ISSUE}: {t['category']}, {mid}, base {sha}. Work directly in this worktree. Keep this atomic: prefer one direct assertion or a small parametrized test of the assigned symbol, not separate caller/integration tests. Import from monori.{src[:-3].replace(chr(47),chr(46))} or pytest. Write an actual English annotated regression test to {dest} and no other tracked file. Original/mutant diff:\n{detail[:7800]}\nExisting tests {oldtests} passed on both. Read source/dependencies and existing tests, use actual /scratch/monori/.venv/bin/python with PYTHONPATH set to worktree parent, check actual output before proposing. Follow existing formatting and annotation gates: no type: ignore/noqa, no object/Any parameter annotations, prefer the project type alias. No external systems, networking, credentials, exploits, PoCs, bypasses, live banking, gh, merge or dummy PR. Only ordinary offline behavior on fixtures. The independent judge runs your file on original and mutant. If not distinguishable write OUTCOME.md with concrete evidence; not a fictional test. Plans do not count: write your file with tools. Feedback: {feedback[:750]}''';(folder/'prompt.md').write_text(prompt);mark(t,'authoring',f'attempt {attempt}',sha)
- # Print-mode agents sometimes end with plans. The alternate protocol exchanges a typed
- # file, not a tool invocation; the judge and allowlist are identical on both paths.
- artifact=_use_artifact_protocol(repair,attempt,C[t['fam']]['old'])
- if artifact:
-  context=''.join(C[t['fam']]['old'])[:7000]
-  prompt=f"Return exactly one Markdown ```python block containing the complete new English pytest file. No plan or tool calls. Actual source module: monori.{src[:-3].replace('/', '.')}. Test only this function directly using literal ordinary fixture values. One shortest meaningful test, annotated -> None, no suppressions, skips, arbitrary I/O, or unrelated caller imports. Must pass on original and fail on exact mutant. Source:\n{context}\nOriginal-to-mutant diff:\n{detail[:6000]}\nFeedback: {feedback[:700]}"+(("\nExisting test to repair:\n"+str(repair['previous'])[:5000]) if repair else '')
-  (folder/f'artifact-prompt-{attempt}.md').write_text(prompt)
- with (folder/f'pi-{attempt}.log').open('wb') as log:
-  res=subprocess.run(['kubectl','-n','openhands','exec','-i','deploy/pi-monori-author','-c','sandbox','--','sh','-ec','cd "$1";export PYTHONPATH="$(dirname "$1")";exec timeout -k 5 900 /opt/pi/node_modules/.bin/pi --provider litellm --model v-deepseek-uc --no-approve --no-extensions --no-mcp --no-skills --no-prompt-templates --no-context-files --no-session $2 -p "$(cat)"','sh',wt,'--no-tools' if artifact else '--tools read,bash,edit,write'],input=prompt.encode(),stdout=log,stderr=log,timeout=950)
- if res.returncode and re.search(rb'unable to upgrade connection|502 Bad Gateway|error dialing backend|i/o timeout', (folder/f'pi-{attempt}.log').read_bytes()[-2000:], re.I):return 'fail',feedback
- if res.returncode:feedback='executor ended without a verified result, exit '+str(res.returncode);time.sleep(60);return 'retry',feedback
- if artifact:
-  try:
-   proposed=artifact_response((folder/f'pi-{attempt}.log').read_text(errors='replace'));candidate_guard(proposed,src)
-  except (SyntaxError,ValueError) as err:feedback=str(err);mark(t,'rejected',feedback,sha);return 'retry',feedback
-  pilot.write('author',wt+'/'+dest,proposed)
- get="import pathlib,sys;p=pathlib.Path(sys.argv[1]);assert p.is_file() and not p.is_symlink() and p.stat().st_size<20000;sys.stdout.write(p.read_text())";r=K('author',['python','-c',get,wt+'/'+dest],ok=False)
- if r.returncode:
-  outcome=K('author',['python','-c',get,wt+'/OUTCOME.md'],ok=False)
-  if not outcome.returncode:(folder/'outcome.md').write_text(outcome.stdout);mark(t,'needs_triage','Agent supplied explanation; not certified equivalent',sha);return 'done',feedback
-  feedback='No test file exists. Use write tool on exact path now; do not finish with a plan.';return 'retry',feedback
- accept: _AcceptCtx = {"sha":sha,"src":src,"dest":dest,"oldtests":oldtests,"wt":wt,"folder":folder}
- return _pi_accept(t,accept,repair,get,feedback)
-
-def _pi_accept(
- t: dict[str, object], ctx: _AcceptCtx, repair: _Repair, get: str, feedback: str
-) -> tuple[str, str]:
- """Format, guard and prove the written test; update or verify the task."""
- sha=ctx["sha"]
- src=ctx["src"]
- dest=ctx["dest"]
- oldtests=ctx["oldtests"]
- wt=ctx["wt"]
- folder=ctx["folder"]
- # Apply only the repo-pinned formatter to the one proposed file, inside the disposable author sandbox.
- fmt=K('author',['sh','-ec','cd "$1"; f="$2"; r=/scratch/tools/ruff/bin/ruff; test "$("$r" --version)" = "ruff 0.17.5"; "$r" check --fix --no-cache "$f"; "$r" format --no-cache "$f"; "$r" check --no-cache "$f"','sh',wt,dest],ok=False)
- if fmt.returncode:feedback='Project Ruff gate failed: '+fmt.stdout[-550:];mark(t,'rejected',feedback,sha);return 'retry',feedback
- text=K('author',['python','-c',get,wt+'/'+dest]).stdout
- try:
-  candidate_guard(text,src)
-  if repair and text==repair['previous']:raise ValueError('CI repair did not change the failed file')
-  changed=K('author',['git','-C',wt,'diff','--name-only',sha]).stdout.strip();assert changed in ('',dest),'unrelated edits present';receipt=prove(t,sha,dest,text,oldtests)
- except (ValueError,AssertionError,SyntaxError) as ex:feedback=str(ex)[-750:];mark(t,'rejected',feedback,sha);return 'retry',feedback
- (folder/'test.py.txt').write_text(text);(folder/'proof.json').write_text(json.dumps(receipt,indent=2))
- if repair:
-  payload={'action':'update','pr':t['pr'],'head':repair['head'],'title':'test: address current-head CI for #'+str(t['pr']),'files':{dest:text}};mark(t,'update_uncertain','Update in flight; inspect current head if acknowledgement lost',sha)
-  r=pilot.cmd(['kubectl','-n','openhands','exec','-i','openhands-0','-c','mutation-pilot','--','python','-c',pilot.PUBLISH],json.dumps(payload),timeout=95);obj=json.loads(r.stdout);assert obj['pr']==t['pr'];mark(t,'published',obj['head'],sha,obj['pr'])
- else:mark(t,'verified','Independent proof archived; awaiting publisher slot',sha)
- return 'done',feedback
-
-def try_pi(t,sha,mid,detail,oldtests,folder,repair=None):
+def try_pi(
+ t: Task,
+ sha: str,
+ mid: str,
+ detail: str,
+ oldtests: list[str],
+ folder: Path,
+ repair: Repair | None=None,
+):
  src=C[t['fam']]['file'];slug=key(t);dest=('ci/tests/' if src.startswith('ci/') else 'server/tests/unit/')+'test_mutation_'+slug+'.py';wt='/scratch/campaign/'+slug+'/monori';folder.mkdir(exist_ok=True);K('author',['sh','-ec','if test -d "$1";then git --git-dir=/scratch/base.git worktree remove --force "$1";fi;git --git-dir=/scratch/base.git worktree prune;git --git-dir=/scratch/base.git worktree add --detach "$1" "$2"','sh',wt,sha]);feedback=''
  if repair:
   dest=repair['dest'];pilot.write('author',wt+'/'+dest,repair['previous']);feedback='Repair this existing PR test in place, retain the behavioral assertion and remove all lint suppressions. Red current-head checks: '+', '.join(repair['fails'])
  try:
   for attempt in range(1,4):
-   attemptctx: _AttemptCtx = {"sha":sha,"src":src,"mid":mid,"detail":detail,"oldtests":oldtests,"folder":folder,"dest":dest,"wt":wt}
-   status,feedback=_pi_attempt(t,attemptctx,repair,attempt,feedback)
-   if status!='retry':
-    return
+   prompt=f'''Take one atomic item from alchemmist/monori#{ISSUE}: {t['category']}, {mid}, base {sha}. Work directly in this worktree. Keep this atomic: prefer one direct assertion or a small parametrized test of the assigned symbol, not separate caller/integration tests. Import from monori.{src[:-3].replace(chr(47),chr(46))} or pytest. Write an actual English annotated regression test to {dest} and no other tracked file. Original/mutant diff:\n{detail[:7800]}\nExisting tests {oldtests} passed on both. Read source/dependencies and existing tests, use actual /scratch/monori/.venv/bin/python with PYTHONPATH set to worktree parent, check actual output before proposing. Follow existing formatting and annotation gates: no type: ignore/noqa, no object/Any parameter annotations, prefer the project type alias. No external systems, networking, credentials, exploits, PoCs, bypasses, live banking, gh, merge or dummy PR. Only ordinary offline behavior on fixtures. The independent judge runs your file on original and mutant. If not distinguishable write OUTCOME.md with concrete evidence; not a fictional test. Plans do not count: write your file with tools. Feedback: {feedback[:750]}''';(folder/'prompt.md').write_text(prompt);mark(t,'authoring',f'attempt {attempt}',sha)
+   # Print-mode agents sometimes end with plans. The alternate protocol exchanges a typed
+   # file, not a tool invocation; the judge and allowlist are identical on both paths.
+   artifact=bool(repair) or attempt>=2 or (not repair and len(C[t['fam']]['old'])<=16)
+   if artifact:
+    context=''.join(C[t['fam']]['old'])[:7000]
+    prompt=f"Return exactly one Markdown ```python block containing the complete new English pytest file. No plan or tool calls. Actual source module: monori.{src[:-3].replace('/', '.')}. Test only this function directly using literal ordinary fixture values. One shortest meaningful test, annotated -> None, no suppressions, skips, arbitrary I/O, or unrelated caller imports. Must pass on original and fail on exact mutant. Source:\n{context}\nOriginal-to-mutant diff:\n{detail[:6000]}\nFeedback: {feedback[:700]}"+(('\nExisting test to repair:\n'+repair['previous'][:5000]) if repair else '')
+    (folder/f'artifact-prompt-{attempt}.md').write_text(prompt)
+   with (folder/f'pi-{attempt}.log').open('wb') as log:
+    res=subprocess.run(['kubectl','-n','openhands','exec','-i','deploy/pi-monori-author','-c','sandbox','--','sh','-ec','cd "$1";export PYTHONPATH="$(dirname "$1")";exec timeout -k 5 900 /opt/pi/node_modules/.bin/pi --provider litellm --model v-deepseek-uc --no-approve --no-extensions --no-mcp --no-skills --no-prompt-templates --no-context-files --no-session $2 -p "$(cat)"','sh',wt,'--no-tools' if artifact else '--tools read,bash,edit,write'],input=prompt.encode(),stdout=log,stderr=log,timeout=950)
+   if res.returncode and re.search(rb'unable to upgrade connection|502 Bad Gateway|error dialing backend|i/o timeout', (folder/f'pi-{attempt}.log').read_bytes()[-2000:], re.I):
+    mark(t,'transport_wait','kubectl transport unavailable; no model verdict or attempt charged',sha);return
+   if res.returncode:feedback='executor ended without a verified result, exit '+str(res.returncode);time.sleep(60);continue
+   if artifact:
+    try:
+     proposed=artifact_response((folder/f'pi-{attempt}.log').read_text(errors='replace'));candidate_guard(proposed,src)
+    except (SyntaxError,ValueError) as err:feedback=str(err);mark(t,'rejected',feedback,sha);continue
+    pilot.write('author',wt+'/'+dest,proposed)
+   get="import pathlib,sys;p=pathlib.Path(sys.argv[1]);assert p.is_file() and not p.is_symlink() and p.stat().st_size<20000;sys.stdout.write(p.read_text())";r=K('author',['python','-c',get,wt+'/'+dest],ok=False)
+   if r.returncode:
+    outcome=K('author',['python','-c',get,wt+'/OUTCOME.md'],ok=False)
+    if not outcome.returncode:(folder/'outcome.md').write_text(outcome.stdout);mark(t,'needs_triage','Agent supplied explanation; not certified equivalent',sha);return
+    feedback='No test file exists. Use write tool on exact path now; do not finish with a plan.';continue
+   # Apply only the repo-pinned formatter to the one proposed file, inside the disposable author sandbox.
+   fmt=K('author',['sh','-ec','cd "$1"; f="$2"; r=/scratch/tools/ruff/bin/ruff; test "$("$r" --version)" = "ruff 0.17.5"; "$r" check --fix --no-cache "$f"; "$r" format --no-cache "$f"; "$r" check --no-cache "$f"','sh',wt,dest],ok=False)
+   if fmt.returncode:feedback='Project Ruff gate failed: '+fmt.stdout[-550:];mark(t,'rejected',feedback,sha);continue
+   text=K('author',['python','-c',get,wt+'/'+dest]).stdout
+   try:
+    candidate_guard(text,src)
+    if repair and text==repair['previous']:raise ValueError('CI repair did not change the failed file')
+    changed=K('author',['git','-C',wt,'diff','--name-only',sha]).stdout.strip();assert changed in ('',dest),'unrelated edits present';receipt=prove(t,sha,dest,text,oldtests)
+   except (ValueError,AssertionError,SyntaxError) as ex:feedback=str(ex)[-750:];mark(t,'rejected',feedback,sha);continue
+   (folder/'test.py.txt').write_text(text);(folder/'proof.json').write_text(json.dumps(receipt,indent=2))
+   if repair:
+    payload={'action':'update','pr':t['pr'],'head':repair['head'],'title':'test: address current-head CI for #'+str(t['pr']),'files':{dest:text}};mark(t,'update_uncertain','Update in flight; inspect current head if acknowledgement lost',sha)
+    r=pilot.cmd(['kubectl','-n','openhands','exec','-i','openhands-0','-c','mutation-pilot','--','python','-c',pilot.PUBLISH],json.dumps(payload),timeout=95);obj=json.loads(r.stdout);assert obj['pr']==t['pr'];mark(t,'published',obj['head'],sha,obj['pr'])
+   else:mark(t,'verified','Independent proof archived; awaiting publisher slot',sha)
+   return
   mark(t,'needs_triage','No proof after 3 attempts. '+feedback,sha)
  finally:
   if repair:
@@ -219,13 +190,13 @@ def try_pi(t,sha,mid,detail,oldtests,folder,repair=None):
    if event not in ('published','update_uncertain'):mark(t,'published','CI repair attempt did not meet proof; PR remains open',sha,t['pr'])
   K('author',['git','--git-dir=/scratch/base.git','worktree','remove','--force',wt],ok=False)
 
-def prove(t,sha,dest,text,oldtests):
+def prove(t: Task,sha: str,dest: str,text: str,oldtests: list[str]):
  src,orig,mut,_=patch(t,sha);reset_source(src,orig)
  try:
   sandbox_write(dest,text);a=tests([dest]);assert green(a),'original did not pass: '+a[1][-450:];reset_source(src,mut);b=tests(['--ignore='+dest,*oldtests]);assert green(b),'old suite did not survive independently: '+b[1][-260:];red=tests([dest]);assert killed(red) and 'FAILED '+dest+'::test_' in red[1] and re.search(r'AssertionError|^E\s+assert |DID NOT RAISE|Regex pattern did not match',red[1],re.M),'no assertion kill: '+red[1][-450:];reset_source(src,orig);g=tests(oldtests if any(dest.startswith(p.rstrip('/')+'/') for p in oldtests) else oldtests+[dest]);assert green(g),'combined original failed: '+g[1][-450:];return {'base':sha,'mutant':t['id'],'dest':dest,'sha256':hashlib.sha256(text.encode()).hexdigest(),'old_suite':oldtests,'old_on_mutant':b[1].splitlines()[-1],'new_on_mutant':red[1][-2400:],'original':g[1].splitlines()[-1]}
  finally:reset_source(src,orig);K('judge',['rm','-f',J+dest])
 
-def screen(t,sha):
+def screen(t: Task,sha: str):
  try:src,orig,mut,detail=patch(t,sha)
  except (ValueError,KeyError):mark(t,'catalog_drift','Cannot apply exact mutation to current main',sha);return
  oldtests,area=select_suite(t,sha);reset_source(src,orig);cache='baseline:'+sha+':'+hashlib.sha256(json.dumps(oldtests).encode()).hexdigest()
@@ -245,10 +216,10 @@ def screen(t,sha):
   if receipt['base']!=sha:continue
   try:prove(t,sha,receipt['dest'],tf.read_text(),oldtests)
   except (AssertionError,ValueError):continue
-  mark(t,'covered_pending_merge','Covered by '+str(prior['id']),sha,prior['pr']);return
+  mark(t,'covered_pending_merge','Covered by '+prior['id'],sha,prior['pr']);return
  mark(t,'survived',p[1].splitlines()[-1],sha);try_pi(t,sha,t['id'],detail,oldtests,A/key(t))
 
-def publish(t,sha):
+def publish(t: Task,sha: str):
  folder=A/key(t);receipt=json.loads((folder/'proof.json').read_text());text=(folder/'test.py.txt').read_text();assert hashlib.sha256(text.encode()).hexdigest()==receipt['sha256'];dest=receipt['dest']
  if receipt['base']!=sha:
   oldtests,_=select_suite(t,sha)
@@ -257,10 +228,11 @@ def publish(t,sha):
   (folder/'proof.json').write_text(json.dumps(receipt,indent=2))
  title='test: cover '+t['fam'].split('.')[-1].replace('ǁ','.')[:60]+f' [{ISSUE}:'+key(t)+']';payload={'action':'create','issue':ISSUE,'head':sha,'title':title,'files':{dest:text}};mark(t,'publishing','Reconcile this unique title on any ambiguous acknowledgement: '+title,sha)
  try:r=pilot.cmd(['kubectl','-n','openhands','exec','-i','openhands-0','-c','mutation-pilot','--','python','-c',pilot.PUBLISH],json.dumps(payload),timeout=95);obj=json.loads(r.stdout);assert obj['pr'] and obj['head']
- except Exception:mark(t,'publication_uncertain',title,sha);return
+ except (OSError,ValueError,KeyError,subprocess.SubprocessError,AssertionError):
+  mark(t,'publication_uncertain',title,sha);return
  (folder/'publication.json').write_text(json.dumps(obj));mark(t,'published',obj['head'],sha,obj['pr'])
 
-def reconcile(prs,sha):
+def reconcile(prs: Sequence[Pull],sha: str):
  open_by={p['number']:p for p in prs}
  # Repair lost acknowledgements by unique title, never replay a blind create.
  for t in query("select * from tasks where state='publication_uncertain'"):
@@ -272,26 +244,24 @@ def reconcile(prs,sha):
   p=remote_json('pulls/'+str(t['pr']))
   if p['state']=='closed':mark(t,'merged' if p['merged'] else 'closed_unmerged','GitHub reconciliation; full rerun still required',sha,t['pr'])
 
-def repair_one(prs,sha):
+def repair_one(prs: Sequence[Pull],sha: str):
  bynum={p['number']:p for p in prs};now=time.time()
  for t in query("select * from tasks where state='published' and pr is not null order by updated"):
   p=bynum.get(t['pr'])
   if not p or p.get('draft') or not p['head']['ref'].startswith(f'openhands/issue-{ISSUE}/'):continue
   head=p['head']['sha'];cache='checks:'+head;cached=query('select v from meta where k=?',(cache,))
-  if cached and now-float(str(cached[0]['v']))<900:
-   continue
+  if cached and now-float(cached[0]['v'])<900:continue
   query('insert or replace into meta values(?,?)',(cache,str(now)));checks=remote_json('commits/'+head+'/check-runs?per_page=100');fails=[r['name'] for r in checks['check_runs'] if r['conclusion']=='failure']
   if not fails:continue
   keyfix='fix:'+str(p['number']);attempts=query('select v from meta where k=?',(keyfix,))
-  if attempts and int(str(attempts[0]['v']))>=3:
-   continue
+  if attempts and int(attempts[0]['v'])>=3:continue
   files=remote_json('pulls/'+str(p['number'])+'/files?per_page=30')
   if len(files)!=1 or files[0]['status']!='added' or not re.fullmatch(r'(?:ci/tests|server/tests/unit)/test_(?:mutation_[0-9a-f]{12}|pi509_[a-z_]+)\.py',files[0]['filename']):continue
   dest=files[0]['filename'];git('fetch','--depth=1','origin','refs/pull/'+str(p['number'])+'/head');previous=source(head,dest);src,_,_,diff=patch(t,sha);olds,_=select_suite(t,sha)
-  query('insert or replace into meta values(?,?)',(keyfix,str(1+(int(str(attempts[0]['v'])) if attempts else 0))));folder=A/key(t)/('repair-'+head[:10]);folder.mkdir(parents=True,exist_ok=True)
+  query('insert or replace into meta values(?,?)',(keyfix,str(1+(int(attempts[0]['v']) if attempts else 0))));folder=A/key(t)/('repair-'+head[:10]);folder.mkdir(parents=True,exist_ok=True)
   try_pi(t,sha,t['id'],diff,olds,folder,{'dest':dest,'previous':previous,'head':head,'fails':fails});return
 
-def census(sha,prs):
+def census(sha: str,prs: Sequence[Pull]):
  # No blanket merge; only after queued work drained and GitHub writes reconciled.
  if sha==BASE0 or any(p['head']['ref'].startswith(f'openhands/issue-{ISSUE}/') for p in prs):return False
  if query("select id from tasks where state in ('published','verified','publishing','publication_uncertain','update_uncertain') limit 1"):return False
@@ -317,48 +287,30 @@ def census(sha,prs):
    db.execute('delete from tasks');db.executemany('insert into tasks values(?,?,?,?,?,?,?,?,?,?)',rows);db.execute('insert or replace into meta values(?,?)',('active_census',sha));db.execute('update meta set v=? where k=?',('complete',token))
  init();print('census complete; residual tasks',len(rows),flush=True);return True
 
-def _refresh_main(sha: str | None) -> tuple[str, list[object], int]:
- """Fetch upstream main, reconcile PRs and attempt one CI repair."""
- git("fetch","--depth=1","origin","main")
- head=git("rev-parse","FETCH_HEAD").strip()
- install_base(head)
- sha=head
- prs=remote_json("pulls?state=open&per_page=100")
- limit=f"openhands/issue-{ISSUE}/"
- slots=0 if len(prs)>=100 else max(0,5-sum(p['head']['ref'].startswith(limit) for p in prs))
- reconcile(prs,sha)
- try:repair_one(prs,sha)
- except Exception as ex:print('CI repair deferred',type(ex).__name__,str(ex)[:180],flush=True)
- return sha,prs,slots
-
-def _requeue_transport_wait() -> None:
- """Requeue transport-stalled author tasks only while the SANDBOX2083 author is up."""
- if query("select id from tasks where state='transport_wait' and updated<? limit 1",(time.time()-180,)):
-  if K('author',['true'],ok=False).returncode==0:
-   query("update tasks set state='queued' where state='transport_wait' and pr is null and updated<?",(time.time()-180,))
-
-def _census_or_wait(sha: str, prs: object) -> None:
- """Run the full census when eligible, otherwise back off."""
- if not census(sha,prs):time.sleep(90)
-
 def loop():
  lock=(R/'run.lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX);init();
  if not query("select v from meta where k='old_dir_exclusion'"):
   query("update tasks set state='queued',note='Replay: old suite previously included new file' where state='needs_triage' and note like '%old suite no longer survives%'");query("insert into meta values('old_dir_exclusion','1')")
- query("update tasks set state='published' where pr is not null and state in ('authoring','survived','rejected')");query("update tasks set state='queued' where pr is null and state in ('authoring','survived','rejected','screening')");query("update tasks set state='publication_uncertain' where state='publishing'");lastfetch=0;sha=None;slots=0;prs: list[object]=[]
+ query("update tasks set state='published' where pr is not null and state in ('authoring','survived','rejected')");query("update tasks set state='queued' where pr is null and state in ('authoring','survived','rejected','screening')");query("update tasks set state='publication_uncertain' where state='publishing'");lastfetch=0;sha=None;slots=0
  while not (R/'PAUSE-CAMPAIGN').exists():
   try:
    if time.time()-lastfetch>180 or not sha:
-    sha,prs,slots=_refresh_main(sha);lastfetch=time.time()
-   _requeue_transport_wait()
+    git('fetch','--depth=1','origin','main');head=git('rev-parse','FETCH_HEAD').strip();install_base(head);sha=head;prs=remote_json('pulls?state=open&per_page=100');slots=0 if len(prs)>=100 else max(0,5-sum(p['head']['ref'].startswith(f'openhands/issue-{ISSUE}/') for p in prs));reconcile(prs,sha);lastfetch=time.time()
+    try:repair_one(prs,sha)
+    except (OSError,ValueError,RuntimeError,sqlite3.Error,subprocess.SubprocessError) as ex:
+     print('CI repair deferred',type(ex).__name__,str(ex)[:180],flush=True)
+   if query("select id from tasks where state='transport_wait' and updated<? limit 1",(time.time()-180,)):
+    if K('author',['true'],ok=False).returncode==0:
+     query("update tasks set state='queued' where state='transport_wait' and pr is null and updated<?",(time.time()-180,))
    ready=query("select * from tasks where state='verified' order by updated limit 1")
    if slots and ready:publish(ready[0],sha);slots-=1;continue
    ts=query("select * from tasks where state='queued' order by case when ord<0 then ord else 0 end, num, ord, id limit 1")
    if not ts:
-    _census_or_wait(sha,prs)
+    if not census(sha,prs):time.sleep(90)
     continue
    c=ts[0]
    try:mark(c,'screening','Independent old-suite check on current main',sha);screen(c,sha)
    except (subprocess.TimeoutExpired,RuntimeError,ValueError) as ex:mark(c,'infra_triage',str(ex)[:400],sha)
-  except Exception as ex:print('controller backoff',type(ex).__name__,str(ex)[:250],flush=True);time.sleep(60)
+  except (OSError,ValueError,RuntimeError,sqlite3.Error,subprocess.SubprocessError) as ex:
+   print('controller backoff',type(ex).__name__,str(ex)[:250],flush=True);time.sleep(60)
 if __name__=='__main__':loop()

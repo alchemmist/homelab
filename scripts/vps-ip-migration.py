@@ -16,14 +16,14 @@ import stat
 import subprocess
 import sys
 import uuid
+from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TypedDict
 
 HOSTS = ("socrat-0", "socrat-1", "socrat-2", "socrat-3")
 SOURCE_FILES = (
     "ansible/inventory/direct.yml",
-    "ansible/inventory/group_vars/Socrat.yml",
+    "ansible/inventory/group_vars/Socrat/cluster.yml",
     "ansible/inventory/host_vars/socrat-2.yml",
     "ansible/roles/public_authoritative_dns/defaults/main.yml",
     "ansible/roles/wireguard_admin_client/defaults/main.yml",
@@ -86,11 +86,15 @@ VPS_FILES = (
 DATABASES = ("/srv/x-ui-lab/db/x-ui.db", "/etc/x-ui/x-ui.db")
 
 
+type Apply = bool
+type Change = tuple[Path, str, str]
+
+
 class MigrationError(Exception):
     pass
 
 
-def addresses(old, new):
+def addresses(old: str, new: str):
     try:
         parsed = tuple(ipaddress.IPv4Address(v) for v in (old, new))
     except ipaddress.AddressValueError:
@@ -102,11 +106,11 @@ def addresses(old, new):
     return parsed
 
 
-def replace_address(text, old, new):
+def replace_address(text: str, old: str, new: str):
     return re.sub(r"(?<![0-9.])" + re.escape(old) + r"(?![0-9.])", new, text)
 
 
-def run(argv):
+def run(argv: Sequence[str]):
     result = subprocess.run(argv, capture_output=True, text=True, timeout=120)
     if result.returncode:
         # stderr may contain credentials/configuration; never echo it.
@@ -115,7 +119,7 @@ def run(argv):
 
 
 class Preimages:
-    def __init__(self, root, label):
+    def __init__(self, root: str | Path, label: str) -> None:
         raw = Path(root).expanduser()
         if not raw.is_absolute() or raw.is_symlink():
             raise MigrationError("Backup root must be an absolute non-symlink directory")
@@ -128,7 +132,7 @@ class Preimages:
         self.path = root / (label + "-" + stamp + "-" + uuid.uuid4().hex[:8])
         self.path.mkdir(mode=0o700)
 
-    def target(self, relative):
+    def target(self, relative: str | Path):
         relative = Path(relative)
         if relative.is_absolute() or ".." in relative.parts:
             raise MigrationError("Invalid preimage path")
@@ -136,20 +140,20 @@ class Preimages:
         dest.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         return dest
 
-    def save(self, path, relative):
+    def save(self, path: Path, relative: str | Path):
         dest = self.target(relative)
         with dest.open("xb") as stream:
             stream.write(path.read_bytes())
         dest.chmod(0o600)
         return dest
 
-    def receipt(self, report):
+    def receipt(self, report: Mapping[str, object]):
         p = self.path / "receipt.json"
         p.write_text(json.dumps(report, indent=2) + "\n")
         p.chmod(0o600)
 
 
-def refuse_unfinished(root, label):
+def refuse_unfinished(root: str | Path | None, label: str):
     if not root:
         return
     directory = Path(root).expanduser()
@@ -171,7 +175,7 @@ def refuse_unfinished(root, label):
                 )
 
 
-def file_plan(paths, old, new):
+def file_plan(paths: Sequence[Path], old: str, new: str):
     changes = []
     for path in paths:
         if path.is_symlink():
@@ -187,7 +191,11 @@ def file_plan(paths, old, new):
     return changes
 
 
-def write_changes(changes, preimages, relative):
+def write_changes(
+    changes: Sequence[Change],
+    preimages: Preimages,
+    relative: Callable[[Path], str | Path],
+):
     for path, before, after in changes:
         if path.is_symlink() or path.read_text() != before:
             raise MigrationError("Configuration drift after planning; stop and re-audit")
@@ -200,7 +208,7 @@ def write_changes(changes, preimages, relative):
             os.fsync(stream.fileno())
 
 
-def validate_dns_anchor(text, old, new):
+def validate_dns_anchor(text: str, old: str, new: str):
     values = {}
     for name in ("HOME", "VPS"):
         match = re.search(r"^" + name + r' = [\'"]([^\'"]+)[\'"]$', text, re.MULTILINE)
@@ -213,7 +221,13 @@ def validate_dns_anchor(text, old, new):
         raise MigrationError("Refusing to replace the HOME entrance as a VPS address")
 
 
-def repository(root, old, new, apply=False, backup_root=None):
+def repository(
+    root: Path,
+    old: str,
+    new: str,
+    apply: Apply = False,
+    backup_root: str | Path | None = None,
+):
     refuse_unfinished(backup_root, old + "-to-" + new)
     root = Path(root).resolve()
     required = (root / "scripts/public_dns_zone.py", root / "charts/traefik-edge/values.yaml")
@@ -266,11 +280,11 @@ def repository(root, old, new, apply=False, backup_root=None):
     return report
 
 
-def quote_identifier(name):
+def quote_identifier(name: str):
     return '"' + name.replace('"', '""') + '"'
 
 
-def db_state(connection):
+def db_state(connection: sqlite3.Connection):
     names = connection.execute(
         "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
     ).fetchall()
@@ -282,7 +296,7 @@ def db_state(connection):
     }
 
 
-def db_plan(path, old):
+def db_plan(path: Path, old: str):
     if path.is_symlink():
         raise MigrationError("Refusing a symlink database")
     with sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True, timeout=20) as connection:
@@ -305,7 +319,7 @@ def db_plan(path, old):
     return count
 
 
-def backup_database(path, store):
+def backup_database(path: Path, store: Preimages):
     """Consistent private preimage only; production connection is read-only."""
     target = store.target("sqlite/" + str(path).lstrip("/"))
     target.touch(mode=0o600, exist_ok=False)
@@ -317,11 +331,11 @@ def backup_database(path, store):
     return target
 
 
-def migrate_database(path, old, new, store):
+def migrate_database(path: Path, old: str, new: str, store: Preimages):
     raise MigrationError("Production panel writes require native API; SQL migration prohibited")
 
 
-def service_plan(services, reviewed=None):
+def service_plan(services: Sequence[str], reviewed: Mapping[str, str] | None = None):
     reviewed = reviewed or {}
     restart, dormant = [], []
     for service in services:
@@ -345,7 +359,7 @@ def service_plan(services, reviewed=None):
     return restart, dormant
 
 
-def wg_endpoint_changes(text, old, new):
+def wg_endpoint_changes(text: str, old: str, new: str):
     result = []
     for block in text.split("[Peer]")[1:]:
         key = re.search(r"^PublicKey\s*=\s*([A-Za-z0-9+/]{43}=)\s*$", block, re.MULTILINE)
@@ -363,7 +377,7 @@ def wg_endpoint_changes(text, old, new):
     return result
 
 
-def required_services(changes):
+def required_services(changes: Sequence[Change]):
     paths = {str(p) for p, _, _ in changes}
     return [
         unit
@@ -379,7 +393,7 @@ def required_services(changes):
     ]
 
 
-def refresh_guard(old_text, new):
+def refresh_guard(old_text: str, new: str):
     match = re.search(
         r"wireguard-tcp-transport-guard.py\s+([A-Za-z0-9_.:-]{1,15})\s+([0-9.]+)\s+([0-9]+)",
         old_text,
@@ -424,113 +438,42 @@ def refresh_guard(old_text, new):
         raise MigrationError("Unable to inspect old owned guard rule")
 
 
-class _HostPlan(TypedDict):
-    """Reviewed host migration plan fields threaded to the apply stage."""
-
-    hostname: str
-    changes: list[tuple[Path, str, str]]
-    databases: dict[str, int]
-    peers: list[tuple[str, str]]
-    services: list[str]
-    restart_services: list[str]
-    new: str
-    report: dict[str, object]
-
-
-def _require_new_ip_assigned(new: str) -> None:
-    """Refuse to plan a VPS migration whose provider has not assigned the new IPv4."""
-    links = json.loads(run(["ip", "-j", "-4", "addr", "show"]))
-    assigned = [a["local"] for link in links for a in link.get("addr_info", [])]
-    if new not in assigned:
-        raise MigrationError("Provider has not assigned new IPv4 on this VPS")
-
-
-def _apply_host_plan(plan: _HostPlan, store: Preimages) -> None:
-    """Execute the reviewed host migration plan and record preimage receipts."""
-    changes = plan["changes"]
-    report = plan["report"]
-    databases = plan["databases"]
-    peers = plan["peers"]
-    services = plan["services"]
-    restart_services = plan["restart_services"]
-    new = plan["new"]
-    write_changes(changes, store, lambda p: str(p).lstrip("/"))
-    report["database_address_rows_updated"] = {}
-    for path, count in databases.items():
-        if count:
-            backup_database(Path(path), store)
-    for key, endpoint in peers:
-        run(["wg", "set", "wg-socrat", "peer", key, "endpoint", endpoint])
-    if "wireguard-tcp-transport-guard.service" in services:
-        run(["systemctl", "daemon-reload"])
-        if "wireguard-tcp-transport-guard.service" in restart_services:
-            before = next(
-                text
-                for p, text, _ in changes
-                if str(p).endswith("wireguard-tcp-transport-guard.service")
-            )
-            refresh_guard(before, new)
-    for service in restart_services:
-        run(["systemctl", "restart", service])
-    if plan["hostname"] in HOSTS[:3] and any(
-        str(p).startswith("/usr/local/libexec/public") or str(p) == "/etc/hosts"
-        for p, _, _ in changes
-    ):
-        run(["/usr/local/libexec/public-dns-refresh"])
-    report.update(changed=True, state="host-phase-complete-not-acceptance")
-
-
-def _require_local_anchor_paths(hostname: str) -> None:
-    """Ensure site-specific owner scripts and WireGuard config exist before planning."""
-    if not Path("/etc/wireguard/wg-socrat.conf").is_file():
-        raise MigrationError("Required WireGuard configuration is missing")
-    if hostname in HOSTS[:3] and not Path("/usr/local/libexec/public_dns_zone.py").is_file():
-        raise MigrationError("Required authoritative DNS owner is missing")
-
-
-def _planned_peers(
-    changes: list[tuple[Path, str, str]], old: str, new: str
-) -> list[tuple[str, str]]:
-    """Return WireGuard endpoint conversions planned from the changed config."""
-    peers: list[tuple[str, str]] = []
-    for path, before, _ in changes:
-        if str(path) == "/etc/wireguard/wg-socrat.conf":
-            peers += wg_endpoint_changes(before, old, new)
-    return peers
-
-
-def _validate_guard_format(changes: list[tuple[Path, str, str]], old: str) -> None:
-    """Refuse migration when the transport guard unit text is not understood."""
-    for path, before, _ in changes:
-        if str(path).endswith("wireguard-tcp-transport-guard.service") and not re.search(
-            r"wireguard-tcp-transport-guard.py\s+\S+\s+" + re.escape(old) + r"\s+\d+", before
-        ):
-            raise MigrationError("Unknown guard unit format")
-
-
 def host(
-    hostname,
-    old,
-    new,
-    apply=False,
-    backup_root=None,
-    allow_service_restarts=False,
-    require_assigned=False,
-    reviewed_service_states=None,
+    hostname: str,
+    old: str,
+    new: str,
+    *,
+    apply: bool = False,
+    backup_root: str | Path | None = None,
+    allow_service_restarts: bool = False,
+    require_assigned: bool = False,
+    reviewed_service_states: Mapping[str, str] | None = None,
 ):
     if hostname not in HOSTS or socket.gethostname().split(".")[0] != hostname:
         raise MigrationError("Unexpected host identity")
     refuse_unfinished(backup_root, hostname + "-" + old + "-to-" + new)
     if require_assigned and hostname == "socrat-2":
-        _require_new_ip_assigned(new)
+        links = json.loads(run(["ip", "-j", "-4", "addr", "show"]))
+        assigned = [a["local"] for link in links for a in link.get("addr_info", [])]
+        if new not in assigned:
+            raise MigrationError("Provider has not assigned new IPv4 on this VPS")
     paths = [Path(p) for p in COMMON_FILES + (VPS_FILES if hostname == "socrat-2" else ())]
-    _require_local_anchor_paths(hostname)
+    if not Path("/etc/wireguard/wg-socrat.conf").is_file():
+        raise MigrationError("Required WireGuard configuration is missing")
+    if hostname in HOSTS[:3] and not Path("/usr/local/libexec/public_dns_zone.py").is_file():
+        raise MigrationError("Required authoritative DNS owner is missing")
     dns_owner = Path("/usr/local/libexec/public_dns_zone.py")
     if dns_owner.is_file():
         validate_dns_anchor(dns_owner.read_text(), old, new)
     changes = file_plan(paths, old, new)
-    peers = _planned_peers(changes, old, new)
-    _validate_guard_format(changes, old)
+    peers = []
+    for path, before, _ in changes:
+        if str(path) == "/etc/wireguard/wg-socrat.conf":
+            peers += wg_endpoint_changes(before, old, new)
+        if str(path).endswith("wireguard-tcp-transport-guard.service") and not re.search(
+            r"wireguard-tcp-transport-guard.py\s+\S+\s+" + re.escape(old) + r"\s+\d+", before
+        ):
+            raise MigrationError("Unknown guard unit format")
     databases = {}
     if hostname == "socrat-2":
         if not Path(DATABASES[0]).is_file():
@@ -561,19 +504,30 @@ def host(
         report["state"] = "applying"
         store.receipt(report)
         try:
-            _apply_host_plan(
-                {
-                    "hostname": hostname,
-                    "changes": changes,
-                    "databases": databases,
-                    "peers": peers,
-                    "services": services,
-                    "restart_services": restart_services,
-                    "new": new,
-                    "report": report,
-                },
-                store,
-            )
+            write_changes(changes, store, lambda p: str(p).lstrip("/"))
+            report["database_address_rows_updated"] = {}
+            for path, count in databases.items():
+                if count:
+                    backup_database(Path(path), store)
+            for key, endpoint in peers:
+                run(["wg", "set", "wg-socrat", "peer", key, "endpoint", endpoint])
+            if "wireguard-tcp-transport-guard.service" in services:
+                run(["systemctl", "daemon-reload"])
+                if "wireguard-tcp-transport-guard.service" in restart_services:
+                    before = next(
+                        text
+                        for p, text, _ in changes
+                        if str(p).endswith("wireguard-tcp-transport-guard.service")
+                    )
+                    refresh_guard(before, new)
+            for service in restart_services:
+                run(["systemctl", "restart", service])
+            if hostname in HOSTS[:3] and any(
+                str(p).startswith("/usr/local/libexec/public") or str(p) == "/etc/hosts"
+                for p, _, _ in changes
+            ):
+                run(["/usr/local/libexec/public-dns-refresh"])
+            report.update(changed=True, state="host-phase-complete-not-acceptance")
         except Exception:
             report["state"] = "partial-failure-stop-and-investigate"
             store.receipt(report)
@@ -607,17 +561,24 @@ def main():
                 args.host,
                 args.old_ip,
                 args.new_ip,
-                args.apply,
-                args.backup_root,
-                args.allow_service_restarts,
-                args.require_assigned,
-                args.reviewed_service_states,
+                apply=args.apply,
+                backup_root=args.backup_root,
+                allow_service_restarts=args.allow_service_restarts,
+                require_assigned=args.require_assigned,
+                reviewed_service_states=args.reviewed_service_states,
             )
         print(json.dumps(report, sort_keys=True))
     except MigrationError as error:
         print(json.dumps({"ok": False, "error": str(error)}), file=sys.stderr)
         return 1
-    except Exception as error:
+    except (
+        OSError,
+        ValueError,
+        RuntimeError,
+        ImportError,
+        sqlite3.Error,
+        subprocess.SubprocessError,
+    ) as error:
         # Unanticipated errors can include SQL rows, secrets, command arguments.
         print(
             json.dumps(

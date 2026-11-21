@@ -9,11 +9,13 @@ import json
 import http.server
 import http.client
 import socket
+import ssl
 import threading
 import time
 import socketserver
 import os
 import re
+from typing import cast, override
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -28,7 +30,7 @@ MAX_BYTES = 2 * 1024 * 1024
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, request, response, code, message, headers, newurl):
+    def redirect_request(self, _request, response, _code, _message, _headers, _newurl):
         if response is not None:
             response.close()
         raise ValueError("redirect denied")
@@ -56,7 +58,10 @@ def watchdog(sock, seconds):
 
 
 class DeadlineResponse(http.client.HTTPResponse):
-    def close(self):
+    deadline_timer: threading.Timer
+
+    @override
+    def close(self) -> None:
         try:
             super().close()
         finally:
@@ -66,15 +71,17 @@ class DeadlineResponse(http.client.HTTPResponse):
 
 
 class DeadlineConnection:
-    response_class = DeadlineResponse
+    response_class: type[http.client.HTTPResponse] = DeadlineResponse
+    sock: socket.socket | None
+    deadline_timer: threading.Timer
 
-    def connect(self):
+    def connect(self) -> None:
         start = time.monotonic()
         self.deadline_expired = False
         self.response_owns_deadline = False
-        connected_socket = []
+        connected_socket: list[socket.socket | None] = []
 
-        def abort():
+        def abort() -> None:
             self.deadline_expired = True
             sock = (
                 self.sock
@@ -88,7 +95,7 @@ class DeadlineConnection:
         self.deadline_timer.daemon = True
         self.deadline_timer.start()
         try:
-            super().connect()
+            cast("http.client.HTTPConnection", super()).connect()
             connected_socket.append(self.sock)
             if self.deadline_expired or time.monotonic() - start >= UPSTREAM_SECONDS:
                 expire(self.sock)
@@ -97,13 +104,15 @@ class DeadlineConnection:
             self.close()
             raise
 
-    def getresponse(self):
+    def getresponse(self) -> DeadlineResponse:
         # HTTPConnection closes/detaches its socket before returning a response
         # with Connection: close. The response's file still owns the descriptor:
         # keep its watchdog alive until that response is explicitly closed.
         self.transferring_response = True
         try:
-            response = super().getresponse()
+            response = cast(
+                "DeadlineResponse", cast("http.client.HTTPConnection", super()).getresponse()
+            )
             response.deadline_timer = self.deadline_timer
             self.response_owns_deadline = True
             return response
@@ -113,14 +122,14 @@ class DeadlineConnection:
         finally:
             self.transferring_response = False
 
-    def close(self):
+    def close(self) -> None:
         timer = getattr(self, "deadline_timer", None)
         if timer and not (
             getattr(self, "transferring_response", False)
             or getattr(self, "response_owns_deadline", False)
         ):
             timer.cancel()
-        super().close()
+        cast("http.client.HTTPConnection", super()).close()
 
 
 class HTTPConnection(DeadlineConnection, http.client.HTTPConnection):
@@ -141,7 +150,7 @@ class HTTPSHandler(urllib.request.HTTPSHandler):
         return self.do_open(HTTPSConnection, request, context=self._context)
 
 
-def opener():
+def opener() -> urllib.request.OpenerDirector:
     # Environment proxy settings must not redirect private S3/auth traffic.
     return urllib.request.build_opener(
         urllib.request.ProxyHandler({}), NoRedirect(), HTTPHandler(), HTTPSHandler()
@@ -214,7 +223,7 @@ def bounded(response):
 
 
 class Reader:
-    def __init__(self):
+    def __init__(self) -> None:
         self.http = opener()
         self.auth = os.environ["AUTH_URL"]
         if self.auth != ORIGIN + "/outpost.goauthentik.io/auth/nginx":
@@ -352,14 +361,17 @@ def byte_range(value, size):
 class Handler(http.server.BaseHTTPRequestHandler):
     server_version = "ArtifactReader"
     sys_version = ""
+    raw_requestline: bytes
 
-    def setup(self):
+    @override
+    def setup(self) -> None:
         self.request.settimeout(HEADER_SECONDS)
         self.header_timer = watchdog(self.request, HEADER_SECONDS)
         self.request_timer = watchdog(self.request, REQUEST_SECONDS)
         super().setup()
 
-    def finish(self):
+    @override
+    def finish(self) -> None:
         try:
             super().finish()
         finally:
@@ -369,13 +381,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
 
-    def do_GET(self):
+    def do_GET(self) -> None:
         self.answer()
 
-    def do_HEAD(self):
+    def do_HEAD(self) -> None:
         self.answer()
 
-    def do_POST(self):
+    def do_POST(self) -> None:
         self.answer()
 
     do_PUT = do_POST
@@ -383,99 +395,57 @@ class Handler(http.server.BaseHTTPRequestHandler):
     do_OPTIONS = do_POST
     do_PATCH = do_POST
 
-    def _legacy_redirect(self) -> None:
-        if self.command not in ("GET", "HEAD"):
-            self.respond(405)
-            return
-        try:
-            target = self.raw_requestline.split()[1].decode("ascii")
-            if target != self.path:
-                raise ValueError("normalized target denied")
-            valid_key(target)
-        except (ValueError, IndexError):
-            self.respond(404)
-            return
-        self.respond(308, location=ORIGIN + target)
-
-    def _sso_or_challenge(self) -> None:
-        # Browser clicks must enter SSO and return to the exact file, not
-        # stop at an empty 401. Never derive the origin from caller headers
-        # or inspect object existence before authentication.
-        location = None
-        if self.command == "GET" and "text/html" in self.headers.get("Accept", "").lower():
-            try:
-                target = self.raw_requestline.split()[1].decode("ascii")
-                if target != self.path:
-                    raise ValueError("normalized target denied")
-                valid_key(target)
-                location = (
-                    ORIGIN
-                    + "/outpost.goauthentik.io/start?"
-                    + urllib.parse.urlencode({"rd": ORIGIN + target})
-                )
-            except (ValueError, IndexError):
-                pass
-        self.respond(302 if location else 401, location=location)
-
-    def _authenticated(self) -> bool:
-        """Return True on authorization; False after sending the failure response."""
-        # Authentication precedes canonical validation/error responses; never trust X-auth headers.
-        cookies = self.headers.get_all("Cookie", [])
-        auth_status = 401
-        if len(cookies) == 1:
-            reader = self.server.reader
-            auth_status = reader.authorization(cookies[0])
-        if auth_status == 200:
-            return True
-        if auth_status != 401:
-            self.respond(auth_status)
-            return False
-        self._sso_or_challenge()
-        return False
-
-    def _range_response(self, filename: str, body: bytes) -> None:
-        """Serve either the requested single byte range or the whole object."""
-        ranges = self.headers.get_all("Range", []) if self.command == "GET" else []
-        if not ranges:
-            self.respond(200, body, filename)
-            return
-        try:
-            if len(ranges) != 1:
-                raise ValueError("multiple ranges")
-            start, end = byte_range(ranges[0], len(body))
-        except ValueError:
-            self.respond(416, full_length=len(body))
-            return
-        self.respond(
-            206,
-            body[start : end + 1],
-            filename,
-            content_range=f"bytes {start}-{end}/{len(body)}",
-        )
-
-    def _serve_file(self, key: str) -> None:
-        try:
-            body = self.server.reader.read(key)
-        except (OSError, ValueError, urllib.error.URLError) as error:
-            if isinstance(error, urllib.error.HTTPError):
-                error.close()
-            self.respond(502)
-            return
-        self._range_response(key.rsplit("/", 1)[1], body)
-
-    def answer(self):
+    def answer(self) -> None:
         self.close_connection = True
         self.header_timer.cancel()
         # Only a fixed legacy authority may redirect, with an exact validated raw
         # immutable key. Never reflect queries, forwarded headers, or caller hosts.
         hosts = self.headers.get_all("Host", [])
         if hosts == [LEGACY_HOST]:
-            self._legacy_redirect()
+            if self.command not in ("GET", "HEAD"):
+                self.respond(405)
+                return
+            try:
+                target = self.raw_requestline.split()[1].decode("ascii")
+                if target != self.path:
+                    raise ValueError("normalized target denied")
+                valid_key(target)
+            except (ValueError, IndexError):
+                self.respond(404)
+                return
+            self.respond(308, location=ORIGIN + target)
             return
         if hosts != [HOST]:
             self.respond(421)
             return
-        if not self._authenticated():
+        # Authentication precedes canonical validation/error responses; never trust X-auth headers.
+        cookies = self.headers.get_all("Cookie", [])
+        auth_status = 401
+        if len(cookies) == 1:
+            reader = cast("Server", self.server).reader
+            auth_status = reader.authorization(cookies[0])
+        if auth_status != 200:
+            if auth_status != 401:
+                self.respond(auth_status)
+                return
+            # Browser clicks must enter SSO and return to the exact file, not
+            # stop at an empty401. Never derive the origin from caller headers
+            # or inspect object existence before authentication.
+            location = None
+            if self.command == "GET" and "text/html" in self.headers.get("Accept", "").lower():
+                try:
+                    target = self.raw_requestline.split()[1].decode("ascii")
+                    if target != self.path:
+                        raise ValueError("normalized target denied")
+                    valid_key(target)
+                    location = (
+                        ORIGIN
+                        + "/outpost.goauthentik.io/start?"
+                        + urllib.parse.urlencode({"rd": ORIGIN + target})
+                    )
+                except (ValueError, IndexError):
+                    pass
+            self.respond(302 if location else 401, location=location)
             return
         if self.command not in ("GET", "HEAD"):
             self.respond(405)
@@ -493,9 +463,33 @@ class Handler(http.server.BaseHTTPRequestHandler):
         except (ValueError, IndexError):
             self.respond(404)
             return
-        self._serve_file(key)
+        try:
+            body = cast("Server", self.server).reader.read(key)
+        except (OSError, ValueError, urllib.error.URLError) as error:
+            if isinstance(error, urllib.error.HTTPError):
+                error.close()
+            self.respond(502)
+            return
+        filename = key.rsplit("/", 1)[1]
+        ranges = self.headers.get_all("Range", []) if self.command == "GET" else []
+        if ranges:
+            try:
+                if len(ranges) != 1:
+                    raise ValueError("multiple ranges")
+                start, end = byte_range(ranges[0], len(body))
+            except ValueError:
+                self.respond(416, full_length=len(body))
+                return
+            self.respond(
+                206,
+                body[start : end + 1],
+                filename,
+                content_range=f"bytes {start}-{end}/{len(body)}",
+            )
+            return
+        self.respond(200, body, filename)
 
-    def send_error(self, code, message=None, explain=None):
+    def send_error(self, _code, _message=None, _explain=None):
         # Parser/unsupported-method errors must not echo raw request lines or
         # distinguish paths to unauthenticated callers.
         self.close_connection = True
@@ -546,8 +540,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
     daemon_threads = True
+    reader: "Reader"
+    slots: threading.BoundedSemaphore
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         self.slots = threading.BoundedSemaphore(MAX_CONNECTIONS)
         super().__init__(*args, **kwargs)
 

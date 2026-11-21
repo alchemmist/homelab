@@ -11,15 +11,18 @@ import importlib.util
 import json
 import sqlite3
 import time
+import types
 import urllib.parse
 import urllib.request
 from contextlib import closing
 from pathlib import Path
-from typing import Protocol
 
 
-def load(name, filename):
+def load(name: str, filename: str) -> types.ModuleType:
     spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name(filename))
+    if spec is None or spec.loader is None or not spec.has_location:
+        reason = "Cannot load helper module"
+        raise ValueError(reason)
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
     return m
@@ -30,12 +33,16 @@ target = load("target_helpers", "vpn-reality-apply.py")
 h = native.h
 
 
-def select(config):
-    rows = [r for r in config["inbounds"] if r["port"] == 32063]
+def select(config: dict[str, object]) -> dict[str, object]:
+    inbounds = config["inbounds"]
+    if not isinstance(inbounds, list):
+        reason = "Expected one legacy inbound"
+        raise TypeError(reason)
+    rows = [r for r in inbounds if isinstance(r, dict) and r["port"] == 32063]
     if len(rows) != 1:
         raise ValueError("Expected one legacy inbound")
     row = rows[0]
-    stream = json.loads(row["stream_settings"])
+    stream: dict[str, object] = json.loads(str(row["stream_settings"]))
     if (
         not row["enable"]
         or row["protocol"] != "vless"
@@ -45,17 +52,19 @@ def select(config):
         raise ValueError("Legacy transport drift")
     if row.get("exclude_from_sub"):
         raise ValueError("Already withdrawn; do not replay")
-    return row
+    value: dict[str, object] = row
+    return value
 
 
-def desired(config):
+def desired(config: dict[str, object]) -> dict[str, object]:
     result = copy.deepcopy(config)
     row = select(result)
     row["exclude_from_sub"] = True
-    return result
+    value: dict[str, object] = result
+    return value
 
 
-def payload(inbound, expected_id):
+def payload(inbound: dict[str, object], expected_id: str) -> dict[str, object]:
     obj = copy.deepcopy(inbound)
     stream = target.json_field(obj.get("streamSettings"))
     if (
@@ -70,14 +79,15 @@ def payload(inbound, expected_id):
         raise ValueError("API preimage drift")
     obj["excludeFromSub"] = True
     obj.pop("clientStats", None)
-    return obj
+    value: dict[str, object] = obj
+    return value
 
 
-def normalize(body):
+def normalize(body: bytes) -> list[str]:
     text = body.decode("utf-8").strip()
     if "://" not in text:
         text = base64.b64decode(text + "=" * (-len(text) % 4), validate=True).decode("utf-8")
-    result = []
+    result: list[str] = []
     for line in text.splitlines():
         line = line.strip()
         if not line:
@@ -96,34 +106,59 @@ def normalize(body):
     return sorted(result)
 
 
-def normalize_json(value):
+def normalize_json(value: object) -> object:
     if isinstance(value, dict):
         out = {k: normalize_json(v) for k, v in value.items()}
-        if isinstance(out.get("realitySettings"), dict):
-            out["realitySettings"].pop("shortId", None)
+        reality = out.get("realitySettings")
+        if isinstance(reality, dict):
+            reality.pop("shortId", None)
         return out
     if isinstance(value, list):
         return [normalize_json(v) for v in value]
     return value
 
 
-def json_legacy(config):
-    return any(
-        o.get("protocol") == "vless"
-        and (
-            o.get("settings", {}).get("port") == 32063
-            or any(v.get("port") == 32063 for v in o.get("settings", {}).get("vnext", []))
-        )
-        for o in config.get("outbounds", [])
+def _settings_mentions(settings: object, port: int) -> bool:
+    if not isinstance(settings, dict):
+        return False
+    if settings.get("port") == port:
+        return True
+    vnext = settings.get("vnext", [])
+    return isinstance(vnext, list) and any(
+        isinstance(v, dict) and v.get("port") == port for v in vnext
     )
 
 
-def is_legacy(uri):
+def json_legacy(config: object) -> bool:
+    if not isinstance(config, dict):
+        return False
+    outbounds = config.get("outbounds", [])
+    if not isinstance(outbounds, list):
+        return False
+    return any(
+        isinstance(o, dict)
+        and o.get("protocol") == "vless"
+        and isinstance(o.get("settings"), dict)
+        and _settings_mentions(o["settings"], 32063)
+        for o in outbounds
+    )
+
+
+def is_legacy(uri: object) -> bool:
+    if not isinstance(uri, str):
+        return False
     p = urllib.parse.urlsplit(uri)
-    return p.scheme == "vless" and p.port == 32063
+    return bool(p.scheme == "vless" and p.port == 32063)
 
 
-def snapshot(database, state, phase, json_format=False, exclude_client_ids=()):
+def snapshot(
+    database: Path,
+    state: Path,
+    phase: str,
+    *,
+    json_format: bool = False,
+    exclude_client_ids: tuple[object, ...] = (),
+) -> dict[str, list[object]]:
     directory = h.private_directory(state / phase)
     with closing(sqlite3.connect(database.as_uri() + "?mode=ro", uri=True)) as c:
         settings = dict(c.execute("SELECT key,value FROM settings"))
@@ -140,7 +175,7 @@ def snapshot(database, state, phase, json_format=False, exclude_client_ids=()):
     if not prefix.startswith("/") or any(x in prefix for x in ("?", "#", "..", "\\")):
         raise ValueError("Unsafe subscription path")
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), native.NoRedirect())
-    result = {}
+    result: dict[str, list[object]] = {}
     for client_id, sub_id in rows:
         if not sub_id:
             raise ValueError("Missing enabled subscription")
@@ -172,7 +207,9 @@ def snapshot(database, state, phase, json_format=False, exclude_client_ids=()):
     return result
 
 
-def check_delta(before, after):
+def check_delta(
+    before: dict[str, list[object]], after: dict[str, list[object]]
+) -> dict[str, object]:
     if set(before) != set(after):
         raise ValueError("Identity set changed")
     affected = 0
@@ -184,8 +221,10 @@ def check_delta(before, after):
             affected += 1
             removed += legacy
             if not any(
-                urllib.parse.urlsplit(u).scheme == "vless"
-                and dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(u).query)).get("security")
+                urllib.parse.urlsplit(str(u)).scheme == "vless"
+                and dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(str(u)).query)).get(
+                    "security"
+                )
                 == "reality"
                 for u in expected
             ):
@@ -203,79 +242,7 @@ def check_delta(before, after):
     }
 
 
-class _PanelSession(Protocol):
-    """Attributes of the loaded panel session helper used by the extraction."""
-
-    database: Path
-    state: Path
-
-    def call(self, method: str, path: str) -> object: ...
-
-    def open(self, session_hash: str) -> None: ...
-
-    def cleanup(self) -> None: ...
-
-
-def _verify_prospective_publications(
-    s: _PanelSession, before: dict[str, list[str]]
-) -> dict[str, list[str]]:
-    """Snapshot JSON subscriptions and verify the exact prospective publication diff."""
-    json_before: dict[str, list[str]] = snapshot(s.database, s.state, "json-before", True)
-    if set(json_before) != set(before):
-        raise ValueError("JSON identity mismatch")
-    if sum(sum(json_legacy(v) for v in rows) for rows in json_before.values()) != 7:
-        raise ValueError("JSON population drift")
-    # Verify exact publication diff prospectively, before making any write.
-    prospective = {key: [u for u in links if not is_legacy(u)] for key, links in before.items()}
-    check_delta(before, prospective)
-    return json_before
-
-
-def _require_api_db_parity(
-    row: dict[str, object],
-    legacy: dict[str, object],
-    original: object,
-    pre: object,
-    s: _PanelSession,
-) -> None:
-    """Raise unless the native API row matches the DB and the config is unchanged."""
-    if target.semantic(pre) != target.semantic(original) or target.semantic(
-        target.configuration(s.database)
-    ) != target.semantic(original):
-        raise ValueError("Concurrent config change")
-    for api_key, db_key in [
-        ("settings", "settings"),
-        ("streamSettings", "stream_settings"),
-        ("sniffing", "sniffing"),
-    ]:
-        if target.json_field(row[api_key]) != target.json_field(legacy[db_key]):
-            raise ValueError("API/DB drift")
-
-
-def _verify_json_after(json_before: dict[str, list[str]], json_after: dict[str, list[str]]) -> None:
-    """Raise unless the JSON publication matches the expected removals."""
-    if set(json_before) != set(json_after):
-        raise ValueError("JSON identity set changed")
-    for key, rows in json_before.items():
-        if json_after[key] != [v for v in rows if not json_legacy(v)]:
-            raise ValueError("Unexpected JSON publication delta")
-
-
-def _wait_local_listener() -> None:
-    """Wait until the retained legacy listener answers locally."""
-    import socket
-
-    for attempt in range(30):
-        try:
-            with socket.create_connection(("127.0.0.1", 32063), timeout=1):
-                return
-        except OSError:
-            if attempt == 29:
-                raise
-            time.sleep(0.5)
-
-
-def apply(state, session_hash, config_hash):
+def apply(state: Path, session_hash: str, config_hash: str) -> dict[str, object]:
     s = native.NativeSession(state)
     original = target.configuration(s.database)
     legacy = select(original)
@@ -292,14 +259,31 @@ def apply(state, session_hash, config_hash):
             raise ValueError("Config changed opening session")
         h.save(s.state / "proxy-before-private.json", original)
         before = snapshot(s.database, s.state, "subscriptions-before")
-        json_before = _verify_prospective_publications(s, before)
+        json_before = snapshot(s.database, s.state, "json-before", json_format=True)
+        if set(json_before) != set(before):
+            raise ValueError("JSON identity mismatch")
+        if sum(sum(json_legacy(v) for v in rows) for rows in json_before.values()) != 7:
+            raise ValueError("JSON population drift")
+        # Verify exact publication diff prospectively, before making any write.
+        prospective = {key: [u for u in links if not is_legacy(u)] for key, links in before.items()}
+        check_delta(before, prospective)
         pre = target.configuration(s.database)
         rows = s.call("GET", "/inbounds/list")
         matches = [r for r in rows if r["id"] == legacy["id"]]
         if len(matches) != 1:
             raise ValueError("Missing native inbound")
-        dto = payload(matches[0], legacy["id"])
-        _require_api_db_parity(matches[0], legacy, original, pre, s)
+        dto = payload(matches[0], str(legacy["id"]))
+        if target.semantic(pre) != target.semantic(original) or target.semantic(
+            target.configuration(s.database)
+        ) != target.semantic(original):
+            raise ValueError("Concurrent config change")
+        for api_key, db_key in [
+            ("settings", "settings"),
+            ("streamSettings", "stream_settings"),
+            ("sniffing", "sniffing"),
+        ]:
+            if target.json_field(matches[0][api_key]) != target.json_field(legacy[db_key]):
+                raise ValueError("API/DB drift")
         h.save(
             s.state / "subscription-write-uncertain.json",
             {"field": "excludeFromSub", "inbound_id": legacy["id"], "old": False, "new": True},
@@ -311,11 +295,24 @@ def apply(state, session_hash, config_hash):
             raise ValueError("Unexpected native write delta")
         after = snapshot(s.database, s.state, "subscriptions-after")
         proof = check_delta(before, after)
-        json_after = snapshot(s.database, s.state, "json-after", True)
-        _verify_json_after(json_before, json_after)
+        json_after = snapshot(s.database, s.state, "json-after", json_format=True)
+        if set(json_before) != set(json_after):
+            raise ValueError("JSON identity set changed")
+        for key, rows in json_before.items():
+            if json_after[key] != [v for v in rows if not json_legacy(v)]:
+                raise ValueError("Unexpected JSON publication delta")
         proof["json_subscriptions_verified"] = True
         # Listener deliberately remains enabled; no artificial device acceptance.
-        _wait_local_listener()
+        import socket
+
+        for attempt in range(30):
+            try:
+                with socket.create_connection(("127.0.0.1", 32063), timeout=1):
+                    break
+            except OSError:
+                if attempt == 29:
+                    raise
+                time.sleep(0.5)
         proof.update(
             {
                 "only_exclude_from_sub_changed": True,
@@ -335,7 +332,7 @@ def apply(state, session_hash, config_hash):
     return proof
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--state", type=Path, required=True)
     p.add_argument("--apply", action="store_true")
@@ -367,7 +364,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
+    except (OSError, ValueError, RuntimeError, ImportError, sqlite3.Error):
         raise SystemExit(
             "Subscription migration stopped; inspect private receipts, never blindly replay."
         ) from None

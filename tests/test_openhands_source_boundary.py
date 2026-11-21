@@ -627,86 +627,6 @@ def _replace_path(value: object, path: tuple[str | int, ...], replacement: objec
     return mapping
 
 
-def _oidc_target(
-    violation: str, documents: list[dict[str, object]]
-) -> tuple[str, str, tuple[str | int, ...], object]:
-    """Target the OIDC deployment args for the PKCE or bypass violations."""
-    role, kind = "openhands-oidc", "Deployment"
-    container = _mapping(
-        _list(_get(_named(documents, kind, role), "spec", "template", "spec", "containers"))[0]
-    )
-    args = _list(container["args"])
-    replacement = (
-        [
-            "--code-challenge-method=plain" if a == "--code-challenge-method=S256" else a
-            for a in args
-        ]
-        if violation == "oidc-pkce"
-        else [*args, "--skip-auth-regex=.*"]
-    )
-    return role, kind, ("spec", "template", "spec", "containers", 0, "args"), replacement
-
-
-def _violation_target(
-    violation: str, documents: list[dict[str, object]]
-) -> tuple[str, str, tuple[str | int, ...], object] | None:
-    """Locate the one authority edge each violation must mutate."""
-    simple: dict[str, tuple[str, str, tuple[str | int, ...], object]] = {
-        "public-backend": (
-            "openhands-oidc",
-            "Ingress",
-            ("spec", "rules", 0, "http", "paths", 0, "backend", "service", "name"),
-            "openhands",
-        ),
-        "overlay-write": (
-            "openhands",
-            "StatefulSet",
-            ("spec", "template", "spec", "containers", 0, "volumeMounts", 0, "readOnly"),
-            False,
-        ),
-        "session-write": (
-            "openhands",
-            "StatefulSet",
-            ("spec", "template", "spec", "containers", 1, "volumeMounts", 0, "readOnly"),
-            False,
-        ),
-        "publisher-write": (
-            "monori-publisher",
-            "Deployment",
-            ("spec", "template", "spec", "containers", 0, "volumeMounts", 3, "readOnly"),
-            False,
-        ),
-        "registry-write": (
-            "openhands",
-            "StatefulSet",
-            ("spec", "template", "spec", "containers", 1, "volumeMounts", 1, "readOnly"),
-            False,
-        ),
-        "publisher-token": (
-            "monori-publisher",
-            "Deployment",
-            ("spec", "template", "spec", "automountServiceAccountToken"),
-            True,
-        ),
-        "redis-egress": ("openhands-oidc-sessions", "NetworkPolicy", ("spec", "egress"), [{}]),
-    }
-    if violation in simple:
-        return simple[violation]
-    if violation.startswith("oidc-"):
-        return _oidc_target(violation, documents)
-    if violation.startswith("backup-"):
-        path = (
-            ("spec", "template", "spec", "volumes", 0, "persistentVolumeClaim", "readOnly")
-            if violation == "backup-volume-write"
-            else ("spec", "template", "spec", "containers", 0, "volumeMounts", 0, "readOnly")
-        )
-        return "openhands-cold-backup-20261119", "Job", path, False
-    if violation == "duplicate-identity":
-        documents.append(copy.deepcopy(_named(documents, "Ingress", "openhands-oidc")))
-        return None
-    raise AssertionError(violation)
-
-
 @pytest.mark.parametrize(
     "violation",
     [
@@ -730,12 +650,65 @@ def test_current_owner_extensions_reject_targeted_mutations(
     """Prove a passing full baseline before mutating one actual authority edge."""
     _assert_boundary(rendered)
     documents = copy.deepcopy(rendered)
-    target = _violation_target(violation, documents)
-    if target is None:
+    role = "openhands"
+    kind = "StatefulSet"
+    path: tuple[str | int, ...]
+    replacement: object
+    if violation.startswith("oidc-"):
+        role, kind = "openhands-oidc", "Deployment"
+        path = ("spec", "template", "spec", "containers", 0, "args")
+        container = _mapping(
+            _list(_get(_named(documents, kind, role), "spec", "template", "spec", "containers"))[0]
+        )
+        args = _list(container["args"])
+        replacement = (
+            [
+                "--code-challenge-method=plain" if a == "--code-challenge-method=S256" else a
+                for a in args
+            ]
+            if violation == "oidc-pkce"
+            else [*args, "--skip-auth-regex=.*"]
+        )
+    elif violation == "public-backend":
+        role, kind = "openhands-oidc", "Ingress"
+        path = ("spec", "rules", 0, "http", "paths", 0, "backend", "service", "name")
+        replacement = "openhands"
+    elif violation == "overlay-write":
+        path = ("spec", "template", "spec", "containers", 0, "volumeMounts", 0, "readOnly")
+        replacement = False
+    elif violation == "session-write":
+        path = ("spec", "template", "spec", "containers", 1, "volumeMounts", 0, "readOnly")
+        replacement = False
+    elif violation == "publisher-write":
+        role, kind = "monori-publisher", "Deployment"
+        path = ("spec", "template", "spec", "containers", 0, "volumeMounts", 3, "readOnly")
+        replacement = False
+    elif violation.startswith("backup-"):
+        role, kind = "openhands-cold-backup-20261119", "Job"
+        path = (
+            ("spec", "template", "spec", "volumes", 0, "persistentVolumeClaim", "readOnly")
+            if violation == "backup-volume-write"
+            else ("spec", "template", "spec", "containers", 0, "volumeMounts", 0, "readOnly")
+        )
+        replacement = False
+    elif violation == "registry-write":
+        path = ("spec", "template", "spec", "containers", 1, "volumeMounts", 1, "readOnly")
+        replacement = False
+    elif violation == "publisher-token":
+        role, kind = "monori-publisher", "Deployment"
+        path = ("spec", "template", "spec", "automountServiceAccountToken")
+        replacement = True
+    elif violation == "redis-egress":
+        role, kind = "openhands-oidc-sessions", "NetworkPolicy"
+        path = ("spec", "egress")
+        replacement = [{}]
+    elif violation == "duplicate-identity":
+        documents.append(copy.deepcopy(_named(documents, "Ingress", "openhands-oidc")))
         with pytest.raises(AssertionError, match="Unexpected OpenHands resource kind or identity"):
             _assert_boundary(documents)
         return
-    role, kind, path, replacement = target
+    else:
+        raise AssertionError(violation)
     resource = _named(documents, kind, role)
     documents[documents.index(resource)] = _mapping(_replace_path(resource, path, replacement))
     with pytest.raises(AssertionError):
