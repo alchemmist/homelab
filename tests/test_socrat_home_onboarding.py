@@ -9,6 +9,8 @@ HTML = (ROOT / "charts/socrat-home/files/index.html").read_text()
 
 
 class Links(HTMLParser):
+    """HTML parser collecting href links from the onboarding page."""
+
     def __init__(self):
         super().__init__()
         self.urls = []

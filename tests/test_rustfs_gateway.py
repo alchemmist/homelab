@@ -17,6 +17,8 @@ BASE = "/spi/v1/" + "a" * 64 + "/" + "b" * 64 + "/"
 
 
 class Tests(unittest.TestCase):
+    """Validate RustFS gateway key-path handling."""
+
     def test_paths(self):
         self.assertEqual(g.valid_key(BASE + "manifest.json"), (BASE + "manifest.json")[1:])
         self.assertTrue(g.valid_key(BASE + "E001-test.json"))
@@ -177,6 +179,8 @@ class Tests(unittest.TestCase):
 
 
 class Integrity(unittest.TestCase):
+    """Verify lazy readers check manifests and file content."""
+
     def test_reader_checks_manifest_and_file(self):
         import json
 
@@ -301,6 +305,8 @@ class Integrity(unittest.TestCase):
 
 
 class PreservedPreviewTests(unittest.TestCase):
+    """Check preview always serves an allow-listed safe type."""
+
     def test_preview_type_allowlist(self):
         for name, mime in [
             ("E001-file.pdf", "application/pdf"),

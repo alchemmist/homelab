@@ -8,6 +8,8 @@ from tests.test_rustfs_gateway import g, BASE
 
 
 class PrivateAuth(unittest.TestCase):
+    """Verify RustFS private auth fails closed for bad tokens."""
+
     def test_auth_results_are_fail_closed(self):
         reader = object.__new__(g.Reader)
         reader.auth = g.ORIGIN + "/outpost.goauthentik.io/auth/nginx"

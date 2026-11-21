@@ -10,6 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class FullServiceBundleTests(unittest.TestCase):
+    """Render the SPI full-service bundle chart for inspection."""
+
     def render(self, bundled=False):
         args = [
             "helm",

@@ -22,6 +22,8 @@ RealAuthorization = web.Handler.authorization
 
 
 class QueueWebTests(unittest.TestCase):
+    """Exercise the SPI queue web handler against rendered assets."""
+
     @classmethod
     def setUpClass(cls):
         cls.auth_patch = patch.object(web.Handler, "authorization", return_value=200)
@@ -121,6 +123,8 @@ class QueueWebTests(unittest.TestCase):
 
 
 class QueueAuthorizationTests(unittest.TestCase):
+    """Verify callers authorize only with a real session cookie."""
+
     def test_caller_groups_never_authorize_without_real_cookie(self):
         from email.message import Message
 
@@ -153,6 +157,8 @@ class QueueAuthorizationTests(unittest.TestCase):
 
 
 class QueueHelmTests(unittest.TestCase):
+    """Check the queue chart's private routes and identity."""
+
     def test_private_routes_network_identity_and_separate_secret(self):
         raw = subprocess.check_output(
             [

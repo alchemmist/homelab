@@ -14,6 +14,8 @@ spec.loader.exec_module(m)
 
 
 class RetryTests(unittest.TestCase):
+    """Exercise SPI operator retry behaviour in temporary stores."""
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
@@ -262,6 +264,8 @@ if __name__ == "__main__":
 
 
 class ProductionStoreTests(unittest.TestCase):
+    """Check production store reopen and old-writer safety."""
+
     def test_v3_reopen_three_times_and_old_writer(self):
         import sys
 

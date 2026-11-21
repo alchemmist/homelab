@@ -18,6 +18,8 @@ placement = module("placement", "scripts/check_target_placement.py")
 
 
 class Convergence(unittest.TestCase):
+    """Check refactor acceptance fixtures converge to expected state."""
+
     def fixture(self):
         d = {
             "metadata": {"generation": 2},
@@ -71,6 +73,8 @@ class Convergence(unittest.TestCase):
 
 
 class CurrentDocumentation(unittest.TestCase):
+    """Verify current wiki documentation matches canonical values."""
+
     def test_current_wiki_storage_matches_canonical_values(self):
         claim = yaml.safe_load((ROOT / "deploy/wiki-runtime/values.yaml").read_text())[
             "persistence"
@@ -86,6 +90,8 @@ class CurrentDocumentation(unittest.TestCase):
 
 
 class GrafanaStorage(unittest.TestCase):
+    """Check Grafana storage keeps existing data and retained claims."""
+
     def test_explicit_existing_data_and_retained_claims(self):
         v = yaml.safe_load((ROOT / "charts/grafana/values.yaml").read_text())["grafana"]
         self.assertEqual(v["nodeSelector"]["kubernetes.io/hostname"], "socrat-5")

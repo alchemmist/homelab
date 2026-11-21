@@ -24,6 +24,8 @@ with patch.dict(sys.modules, {"dashboard_descriptions": DESCRIPTIONS}):
 
 
 class RancherDashboardFilteringTest(unittest.TestCase):
+    """Verify Rancher dashboard rendering filters disallowed resources."""
+
     def render(self, resources, allowed=()):
         output = io.StringIO()
         with (

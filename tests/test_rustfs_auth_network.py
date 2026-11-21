@@ -33,6 +33,8 @@ def render(enabled):
 
 
 class AuthNetworkTests(unittest.TestCase):
+    """Check RustFS auth network policies change narrowly."""
+
     def test_only_two_policies_change_no_pod_or_stateful_resource(self):
         before, after = render(False), render(True)
         self.assertEqual(set(before), set(after))

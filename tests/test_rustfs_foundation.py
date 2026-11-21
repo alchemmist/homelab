@@ -8,6 +8,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 class Foundation(unittest.TestCase):
+    """Render the RustFS foundation manifests and inspect results."""
+
     def render(self, *args):
         return subprocess.check_output(
             ["helm", "template", "rustfs", str(ROOT / "charts/rustfs"), *args], text=True

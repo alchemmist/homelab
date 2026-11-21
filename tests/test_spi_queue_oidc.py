@@ -43,6 +43,8 @@ def render(native=True):
 
 
 class NativeQueueChartTests(unittest.TestCase):
+    """Validate the native queue chart's TLS and auth setup."""
+
     def test_native_host_tls_and_no_forward_auth(self):
         docs = render()
         entry = docs["Ingress", "automation", "spi-queue-ui"]
@@ -151,6 +153,8 @@ class NativeQueueChartTests(unittest.TestCase):
 
 
 class NativeAPIResponseTests(unittest.TestCase):
+    """Verify native API response shape checks fail closed."""
+
     def test_list_response_shape_fails_closed(self):
         for value in (
             None,
@@ -204,6 +208,8 @@ class NativeAPIResponseTests(unittest.TestCase):
 
 
 class NativeOIDCDefaultTests(unittest.TestCase):
+    """Check partial OIDC overlays keep boolean defaults."""
+
     def test_partial_oidc_overlay_keeps_boolean_default(self):
         import tempfile
 
@@ -244,6 +250,8 @@ class NativeOIDCDefaultTests(unittest.TestCase):
 
 
 class NativeStatePersistenceTests(unittest.TestCase):
+    """Ensure state saves never clobber files or follow symlinks."""
+
     def test_save_never_overwrites_existing_file_or_follows_symlink(self):
         import tempfile
 

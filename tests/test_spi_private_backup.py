@@ -12,6 +12,8 @@ SCRIPT = Path(__file__).resolve().parents[1] / "scripts/n8n/spi_private_backup.p
 
 
 class BackupTests(unittest.TestCase):
+    """Verify SPI private backup streaming and cleanup."""
+
     def test_private_stream_and_cleanup(self):
         with tempfile.TemporaryDirectory() as d:
             src = Path(d) / "source"
@@ -57,6 +59,8 @@ class BackupTests(unittest.TestCase):
 
 
 class BackupDeadlineTests(unittest.TestCase):
+    """Confirm backup failures correctly trigger their deadline kind."""
+
     def run_failure(self, kind):
         import time
 
@@ -177,6 +181,8 @@ except Exception:sys.exit(1)
 
 
 class CleanupBoundaryTests(unittest.TestCase):
+    """Check real ownership and close-failure cleanup boundaries."""
+
     def test_real_ownership_and_close_failures(self):
         import signal
         from unittest.mock import patch
