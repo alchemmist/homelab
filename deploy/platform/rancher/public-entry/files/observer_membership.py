@@ -5,15 +5,48 @@ patch UserAttributes only, not users, roles, workloads, tokens or Secrets.
 Wiki uses the same read-only membership snapshot in its native session/token
 checks, keeping owner, editor and unlinked machine credentials untouched.
 """
+import contextlib
 import json
 import os
-from pathlib import Path
+import sqlite3
 import ssl
 import threading
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Callable, Iterable
+from pathlib import Path
+from typing import Protocol, TypedDict, cast
+
+
+class _AttrMeta(TypedDict):
+    name: str
+    uid: str
+    resourceVersion: str
+
+
+class _SessionUser(TypedDict):
+    id: str
+    role: str
+
+
+class _SessionAuth(TypedDict):
+    user: _SessionUser
+
+
+_SessionFn = Callable[[str], _SessionAuth | None]
+
+
+class _WikiStore(Protocol):
+    """Structural surface of the pinned wiki runtime store guarded here."""
+
+    local_owners: set[str]
+    session: _SessionFn
+    token_session: _SessionFn
+
+    def connect(self) -> contextlib.AbstractContextManager[sqlite3.Connection]: ...
+
 
 ORIGIN = 'https://auth.socrat.alchemmist.xyz/api/v3/'
 PRINCIPAL = 'genericoidc_group://homelab-observer'
@@ -26,21 +59,22 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def opener(context=None):
+def opener(context: ssl.SSLContext | None = None) -> urllib.request.OpenerDirector:
     return urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect(),
                                       urllib.request.HTTPSHandler(context=context or ssl.create_default_context()))
 
 
 class MembershipReader:
-    def __init__(self, token_file, ttl=60):
+    def __init__(self, token_file: str | Path, ttl: float = 60):
         self.token_file, self.ttl = Path(token_file), ttl
-        self.lock, self.expires = threading.Lock(), 0
-        self.users, self.groups = {}, {}
+        self.lock, self.expires = threading.Lock(), 0.0
+        self.users: dict[str, dict[str, object]] = {}
+        self.groups: dict[str, str] = {}
         self.http = opener()
 
-    def rows(self, path):
+    def rows(self, path: str) -> list[dict[str, object]]:
         token = self.token_file.read_text().strip()
-        result = []
+        result: list[dict[str, object]] = []
         for page in range(1, 201):
             request = urllib.request.Request(ORIGIN + path + '?page_size=100&page=' + str(page),
                                              headers={'Authorization': 'Bearer ' + token})
@@ -57,7 +91,7 @@ class MembershipReader:
                 return result
         raise RuntimeError('Incomplete membership pagination')
 
-    def refresh(self):
+    def refresh(self) -> None:
         with self.lock:
             if time.monotonic() < self.expires:
                 return
@@ -70,31 +104,44 @@ class MembershipReader:
                 raise RuntimeError('Malformed user snapshot')
             if len({u['uuid'] for u in users}) != len(users) or len({g['pk'] for g in groups}) != len(groups):
                 raise RuntimeError('Ambiguous membership snapshot')
-            self.groups = {g['pk']: g['name'] for g in groups}
-            self.users = {u['uuid']: u for u in users}
+            self.groups = cast("dict[str, str]", {g['pk']: g['name'] for g in groups})
+            self.users = cast("dict[str, dict[str, object]]", {u['uuid']: u for u in users})
             self.expires = time.monotonic() + self.ttl
 
-    def admitted(self, subject, groups):
+    def admitted(self, subject: str, groups: Iterable[str]) -> bool:
         self.refresh()
         user = self.users.get(subject)
-        return bool(user and user['is_active'] and set(groups) & {self.groups.get(g) for g in user['groups']})
+        return bool(user and user['is_active']
+                    and set(groups) & {self.groups.get(g) for g in cast("list[str]", user['groups'])})
 
 
-def rancher_plan(users, attributes, authconfig, admitted):
-    protected = {OWNER} | {p[len(PREFIX):] for p in authconfig['allowedPrincipalIds'] if p.startswith(PREFIX)}
-    by_name = {u['metadata']['name']: u for u in users}
-    operations = []
+def rancher_plan(
+    users: list[dict[str, object]],
+    attributes: list[dict[str, object]],
+    authconfig: dict[str, object],
+    admitted: Callable[[str, Iterable[str]], bool],
+) -> list[tuple[str, list[dict[str, object]]]]:
+    allowed = cast("list[str]", authconfig['allowedPrincipalIds'])
+    protected = {OWNER} | {p[len(PREFIX):] for p in allowed if p.startswith(PREFIX)}
+    by_name: dict[str, dict[str, object]] = {
+        cast("_AttrMeta", u['metadata'])['name']: u for u in users
+    }
+    operations: list[tuple[str, list[dict[str, object]]]] = []
     for attr in attributes:
-        meta = attr['metadata']
+        meta = cast("_AttrMeta", attr['metadata'])
         user = by_name.get(meta['name'])
         if not user:
             continue
-        external = [p[len(PREFIX):] for p in user.get('principalIds', []) if p.startswith(PREFIX)]
+        external = [p[len(PREFIX):] for p in cast("list[str]", user.get('principalIds') or [])
+                    if p.startswith(PREFIX)]
         if len(external) != 1 or external[0] in protected:
             continue
         subject = external[0]
-        cache = attr.get('GroupPrincipals', {}).get('genericoidc')
-        if attr.get('ExtraByProvider', {}).get('genericoidc', {}).get('principalid') != [PREFIX + subject]:
+        cache = cast("dict[str, object] | None",
+                     cast("dict[str, object]", attr.get('GroupPrincipals', {})).get('genericoidc'))
+        provider_by_extra = cast("dict[str, object]", attr.get('ExtraByProvider', {}))
+        generic = cast("dict[str, object]", provider_by_extra.get('genericoidc', {}))
+        if generic.get('principalid') != [PREFIX + subject]:
             # Historical orphan identities can have no live provider cache. They
             # are not ours to adopt/repair. Never let one block unrelated viewers;
             # a mismatched cache carrying our grant remains a fail-closed error.
@@ -105,20 +152,22 @@ def rancher_plan(users, attributes, authconfig, admitted):
             raise RuntimeError('Native cache identity mismatch')
         if not isinstance(cache, dict) or not isinstance(cache.get('Items'), (list, type(None))):
             raise RuntimeError('Malformed generic OIDC cache')
-        old = cache['Items'] or []
+        old = cast("list[object]", cache['Items'] or [])
         if any(not isinstance(p, dict) or not isinstance(p.get('metadata', {}).get('name'), str) for p in old):
             raise RuntimeError('Malformed cached group principal')
-        matching = [p for p in old if p['metadata']['name'] == PRINCIPAL]
+        matching = [p for p in old if isinstance(p, dict)
+                    and cast("_AttrMeta", p['metadata'])['name'] == PRINCIPAL]
         if len(matching) > 1:
             raise RuntimeError('Duplicate cached observer principal')
-        wanted = PRINCIPAL in authconfig['allowedPrincipalIds'] and admitted(subject, {'homelab-observer'})
+        wanted = PRINCIPAL in allowed and admitted(subject, {'homelab-observer'})
         if bool(matching) == wanted:
             continue
-        new = [p for p in old if p['metadata']['name'] != PRINCIPAL]
+        new = [p for p in old if isinstance(p, dict)
+               and cast("_AttrMeta", p['metadata'])['name'] != PRINCIPAL]
         if wanted:
             new.append({'metadata': {'name': PRINCIPAL}, 'displayName': 'homelab-observer',
                         'provider': 'genericoidc', 'principalType': 'group', 'memberOf': True})
-        patch = [{'op': 'test', 'path': '/metadata/uid', 'value': meta['uid']},
+        patch: list[dict[str, object]] = [{'op': 'test', 'path': '/metadata/uid', 'value': meta['uid']},
                  {'op': 'test', 'path': '/metadata/resourceVersion', 'value': meta['resourceVersion']},
                  {'op': 'test', 'path': '/ExtraByProvider/genericoidc/principalid', 'value': [PREFIX + subject]},
                  {'op': 'test', 'path': '/GroupPrincipals/genericoidc/Items', 'value': cache['Items']},
@@ -127,17 +176,21 @@ def rancher_plan(users, attributes, authconfig, admitted):
     return operations
 
 
-def install_wiki_guard(store):
+def install_wiki_guard(store: _WikiStore) -> None:
     path = os.getenv('OBSERVER_IDP_READ_TOKEN_FILE')
     if not path or not getattr(store, 'oidc_enabled', False):
         return
     reader = MembershipReader(path)
     groups = set(json.loads(os.environ['WIKI_OIDC_GROUP_ROLES']))
     issuer = os.environ['WIKI_OIDC_ISSUER']
-    def wrap(original):
-        def checked(token):
+    def wrap(original: _SessionFn) -> _SessionFn:
+        def checked(token: str) -> _SessionAuth | None:
             auth = original(token)
-            if not auth or auth['user']['role'] != 'reader' or auth['user']['id'] in store.local_owners:
+            if (
+                not auth
+                or auth['user']['role'] != 'reader'
+                or auth['user']['id'] in store.local_owners
+            ):
                 return auth
             with store.connect() as db:
                 account = db.execute('SELECT subject FROM oidc_accounts WHERE issuer=? AND user_id=?',
@@ -162,20 +215,22 @@ def reconcile_rancher():
     token = Path('/var/run/secrets/kubernetes.io/serviceaccount/token').read_text().strip()
     http = opener(ssl.create_default_context(cafile=ca))
     prefix = '/apis/management.cattle.io/v3/'
-    def call(method, path, body=None):
+    def call(method: str, path: str, body: object | None = None) -> dict[str, object]:
         request = urllib.request.Request(base + prefix + path, method=method,
             headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json-patch+json'},
             data=None if body is None else json.dumps(body).encode())
         try:
             with http.open(request, timeout=5) as response:
-                return json.load(response)
+                return cast("dict[str, object]", json.load(response))
         except Exception:
             raise RuntimeError('Native cache API failed; no blind retry') from None
-    def items(path):
-        result, cursor = [], ''
+    def items(path: str) -> list[dict[str, object]]:
+        result: list[dict[str, object]] = []
+        cursor = ''
         for _ in range(201):
             data = call('GET', path + '?limit=100' + ('&continue=' + urllib.parse.quote(cursor, safe='') if cursor else ''))
-            result.extend(data['items']);cursor=data['metadata'].get('continue', '')
+            result.extend(cast("list[dict[str, object]]", data['items']))
+            cursor = cast("str", cast("dict[str, object]", data['metadata']).get('continue', ''))
             if not cursor:
                 return result
         raise RuntimeError('Incomplete native cache pagination')
