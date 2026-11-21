@@ -35,9 +35,11 @@ def request_json(
     except urllib.error.HTTPError as error:
         raise ConfigurationError(f"Open WebUI request failed: HTTP {error.code}") from None
     except (urllib.error.URLError, TimeoutError, OSError):
-        raise ConfigurationError("Open WebUI request failed: connection error") from None
+        msg = "Open WebUI request failed: connection error"
+        raise ConfigurationError(msg) from None
     except (ValueError, UnicodeError):
-        raise ConfigurationError("Open WebUI returned invalid JSON") from None
+        msg = "Open WebUI returned invalid JSON"
+        raise ConfigurationError(msg) from None
 
 
 def _service_base_url(namespace: str) -> str | None:
@@ -58,7 +60,8 @@ def _service_base_url(namespace: str) -> str | None:
         check=False,
     )
     if service.returncode != 0:
-        raise ConfigurationError("Unable to inspect Open WebUI service")
+        msg = "Unable to inspect Open WebUI service"
+        raise ConfigurationError(msg)
     if not service.stdout.strip():
         return None
     try:
@@ -66,9 +69,11 @@ def _service_base_url(namespace: str) -> str | None:
         address = spec["clusterIP"]
         port = next(port["port"] for port in spec["ports"] if port["name"] == "http")
     except (ValueError, KeyError, TypeError, StopIteration):
-        raise ConfigurationError("Open WebUI service has an unsupported configuration") from None
+        msg = "Open WebUI service has an unsupported configuration"
+        raise ConfigurationError(msg) from None
     if not address or address == "None":
-        raise ConfigurationError("Open WebUI service has no cluster IP")
+        msg = "Open WebUI service has no cluster IP"
+        raise ConfigurationError(msg)
     if ":" in address:
         address = f"[{address}]"
     return f"http://{address}:{port}"
@@ -98,7 +103,8 @@ def _sign_in(
     )
     token = session.get("token") if isinstance(session, dict) else None
     if not isinstance(token, str) or not token:
-        raise ConfigurationError("Open WebUI did not return a session token")
+        msg = "Open WebUI did not return a session token"
+        raise ConfigurationError(msg)
     return token
 
 
@@ -162,10 +168,12 @@ def _apply_model_defaults(
 ) -> bool:
     defaults: object = request_json(opener, base_url, "/api/v1/configs/models", token)
     if not isinstance(defaults, dict):
-        raise ConfigurationError("Open WebUI returned invalid model defaults")
+        msg = "Open WebUI returned invalid model defaults"
+        raise ConfigurationError(msg)
     params = defaults.get("DEFAULT_MODEL_PARAMS")
     if params is not None and not isinstance(params, dict):
-        raise ConfigurationError("Open WebUI returned invalid model parameters")
+        msg = "Open WebUI returned invalid model parameters"
+        raise ConfigurationError(msg)
     updated = dict(defaults)
     updated["DEFAULT_MODELS"] = args.model
     updated["DEFAULT_MODEL_PARAMS"] = {**(params or {}), "max_tokens": args.max_output_tokens}
@@ -181,7 +189,8 @@ def _apply_model_defaults(
         or not isinstance(readback.get("DEFAULT_MODEL_PARAMS"), dict)
         or readback["DEFAULT_MODEL_PARAMS"].get("max_tokens") != args.max_output_tokens
     ):
-        raise ConfigurationError("Open WebUI model defaults failed readback validation")
+        msg = "Open WebUI model defaults failed readback validation"
+        raise ConfigurationError(msg)
     return changed
 
 
@@ -201,7 +210,8 @@ def configure(args: argparse.Namespace) -> dict[str, object]:
     config: object = request_json(opener, base_url, "/api/config")
     features = config.get("features") if isinstance(config, dict) else None
     if not isinstance(features, dict):
-        raise ConfigurationError("Open WebUI returned invalid authentication configuration")
+        msg = "Open WebUI returned invalid authentication configuration"
+        raise ConfigurationError(msg)
     token = _sign_in(opener, base_url, args, auth_required=features.get("auth") is not False)
     if token is None:
         result["skipped"] = True
@@ -211,8 +221,9 @@ def configure(args: argparse.Namespace) -> dict[str, object]:
     if not isinstance(available, list) or not any(
         isinstance(model, dict) and model.get("id") == args.model for model in available
     ):
+        msg_0 = "Requested model is absent from the refreshed Open WebUI model list"
         raise ConfigurationError(
-            "Requested model is absent from the refreshed Open WebUI model list"
+            msg_0
         )
     if args.share_with_users and _share_with_users(opener, base_url, token, args):
         result["changed"] = True

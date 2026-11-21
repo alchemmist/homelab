@@ -30,7 +30,8 @@ def reject_contextual_config(path: Path = CONFIG, seen: set[Path] | None = None)
     seen = set() if seen is None else seen
     path = path.resolve(strict=True)
     if path in seen or len(seen) >= 100:
-        raise ValueError("Recursive/oversized SSH configuration unsupported")
+        msg = "Recursive/oversized SSH configuration unsupported"
+        raise ValueError(msg)
     seen.add(path)
     for line in path.read_text().splitlines():
         # Deliberately accept a strict subset rather than emulate OpenSSH with
@@ -40,10 +41,12 @@ def reject_contextual_config(path: Path = CONFIG, seen: set[Path] | None = None)
             continue
         directive = re.fullmatch(r"([A-Za-z][A-Za-z0-9]*)(?:\s*=\s*|\s+)(.*)", stripped)
         if directive is None:
-            raise ValueError("Unsupported SSH directive syntax")
+            msg = "Unsupported SSH directive syntax"
+            raise ValueError(msg)
         keyword, arguments = directive.groups()
         if keyword.lower() == "match":
-            raise ValueError("Contextual SSH configuration unsupported")
+            msg = "Contextual SSH configuration unsupported"
+            raise ValueError(msg)
         if keyword.lower() == "include":
             _reject_included_files(arguments, seen)
 
@@ -55,7 +58,8 @@ def _reject_included_files(arguments: str, seen: set[Path]) -> None:
     # them instead of possibly checking a different effective key file.
     patterns = arguments.split()
     if not patterns or any(not re.fullmatch(r"[A-Za-z0-9_./*?\[\]-]+", p) for p in patterns):
-        raise ValueError("Unsupported SSH Include syntax")
+        msg = "Unsupported SSH Include syntax"
+        raise ValueError(msg)
     for pattern in patterns:
         if not pattern.startswith("/"):
             pattern = "/etc/ssh/" + pattern
@@ -91,7 +95,8 @@ def verify_key_location(name, config=CONFIG):
             ]
         )
     ):
-        raise ValueError("Unsupported effective SSH key source/authentication policy")
+        msg = "Unsupported effective SSH key source/authentication policy"
+        raise ValueError(msg)
     # Do not follow home/key symlinks and then mistake an unrelated file for revocation.
     for path in [
         Path("/home"),
@@ -100,7 +105,8 @@ def verify_key_location(name, config=CONFIG):
         Path("/home") / name / ".ssh/authorized_keys",
     ]:
         if path.is_symlink():
-            raise ValueError("Symlink home/key location unsupported")
+            msg = "Symlink home/key location unsupported"
+            raise ValueError(msg)
     return Path("/home") / name / ".ssh/authorized_keys"
 
 
@@ -110,19 +116,22 @@ def _reject_bad_username(name: str) -> None:
         "alchemmist",
         "ghactions",
     }:
-        raise ValueError("Restricted username required")
+        msg = "Restricted username required"
+        raise ValueError(msg)
 
 
 def _reject_bad_ident(ident: str) -> None:
     if str(uuid.UUID(ident)) != ident or uuid.UUID(ident).int == 0:
-        raise ValueError("Canonical UUID required")
+        msg = "Canonical UUID required"
+        raise ValueError(msg)
 
 
 def _reject_unsafe_directory(directory: Path) -> None:
     if os.path.lexists(directory):
         info = directory.lstat()
         if not stat.S_ISDIR(info.st_mode) or info.st_uid != 0 or info.st_mode & 0o077:
-            raise ValueError("Enrollment directory must be root-owned and private")
+            msg = "Enrollment directory must be root-owned and private"
+            raise ValueError(msg)
 
 
 def _reject_marker_mismatch(marker: Path, name: str, ident: str) -> None:
@@ -134,9 +143,11 @@ def _reject_marker_mismatch(marker: Path, name: str, ident: str) -> None:
             or info.st_mode & 0o077
             or info.st_size > 1024
         ):
-            raise ValueError("Enrollment marker must be a private root-owned regular file")
+            msg = "Enrollment marker must be a private root-owned regular file"
+            raise ValueError(msg)
         if json.loads(marker.read_text()) != {"name": name, "uuid": ident}:
-            raise ValueError("Immutable host binding mismatch")
+            msg = "Immutable host binding mismatch"
+            raise ValueError(msg)
 
 
 def verify(name, ident, directory=DIRECTORY):
@@ -153,9 +164,11 @@ def verify(name, ident, directory=DIRECTORY):
     _reject_unsafe_directory(directory)
     _reject_marker_mismatch(marker, name, ident)
     if not os.path.lexists(marker) and exists:
-        raise ValueError("Existing unbound Linux account: stop for separately reviewed migration")
+        msg = "Existing unbound Linux account: stop for separately reviewed migration"
+        raise ValueError(msg)
     if account is not None and account.pw_dir != "/home/" + name:
-        raise ValueError("Nonstandard passwd home unsupported")
+        msg = "Nonstandard passwd home unsupported"
+        raise ValueError(msg)
     verify_key_location(name)
     return {"bindingVerified": True, "accountExists": exists}
 
@@ -170,7 +183,8 @@ def fingerprints(path):
             r"(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp256|sk-ssh-ed25519@openssh.com|sk-ecdsa-sha2-nistp256@openssh.com) [A-Za-z0-9+/]+={0,3}( .*)?",
             line,
         ):
-            raise ValueError("Unsupported effective key line")
+            msg = "Unsupported effective key line"
+            raise ValueError(msg)
         with tempfile.NamedTemporaryFile(mode="w") as key:
             key.write(line + "\n")
             key.flush()
@@ -182,7 +196,8 @@ def fingerprints(path):
             )
         match = re.fullmatch(r"\d+ (SHA256:[A-Za-z0-9+/]+) .+\n?", parsed.stdout)
         if not match or match[1] in result:
-            raise ValueError("Invalid/duplicate effective key")
+            msg = "Invalid/duplicate effective key"
+            raise ValueError(msg)
         result.append(match[1])
     return sorted(result)
 
@@ -200,14 +215,18 @@ def verify_keys(name, ident, state, expected, directory=DIRECTORY):
         or (state == "disabled" and expected)
         or (state == "present" and not expected)
     ):
-        raise ValueError("Invalid expected key state")
+        msg = "Invalid expected key state"
+        raise ValueError(msg)
     if not verify(name, ident, directory)["accountExists"]:
-        raise ValueError("Applied account missing")
+        msg = "Applied account missing"
+        raise ValueError(msg)
     actual = fingerprints(verify_key_location(name))
     if actual != sorted(expected):
-        raise ValueError("Effective key fingerprints differ from reviewed assignment")
+        msg = "Effective key fingerprints differ from reviewed assignment"
+        raise ValueError(msg)
     if state == "disabled" and pwd.getpwnam(name).pw_shell != "/usr/sbin/nologin":
-        raise ValueError("Disabled shell mismatch")
+        msg = "Disabled shell mismatch"
+        raise ValueError(msg)
     return {"effectiveKeysVerified": True, "keyCount": len(actual)}
 
 
@@ -228,6 +247,7 @@ if __name__ == "__main__":
         print(json.dumps(result))
     except (ValueError, OSError, TypeError, subprocess.SubprocessError) as exc:
         # Never print raw files/exception text from a host.
+        msg = "SSH binding/key verification refused; inspect supported host policy and root enrollment marker"
         raise SystemExit(
-            "SSH binding/key verification refused; inspect supported host policy and root enrollment marker"
+            msg
         ) from exc

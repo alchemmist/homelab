@@ -17,12 +17,14 @@ def configure():
     with sqlite3.connect("file:/app/backend/data/webui.db?mode=ro", uri=True) as db:
         admins = db.execute("SELECT id FROM user WHERE role = 'admin'").fetchall()
     if len(admins) != 1:
-        raise RuntimeError("Expected one administrator for local configuration")
+        msg = "Expected one administrator for local configuration"
+        raise RuntimeError(msg)
     admin_id = admins[0][0]
     auth = asyncio.run(get_auth(admin_id))
     mfa_config = asyncio.run(get_mfa_config())
     if (auth.mfa and auth.mfa.secret) or is_mfa_required("password", mfa_config):
-        raise RuntimeError("An authenticated administrator session is required with MFA")
+        msg = "An authenticated administrator session is required with MFA"
+        raise RuntimeError(msg)
     token = create_token(
         {
             "id": admin_id,
@@ -52,7 +54,8 @@ def configure():
     if changed:
         request("/api/v1/retrieval/config/update", {"web": desired["web"]})
     if request("/api/v1/retrieval/config") != desired:
-        raise RuntimeError("Web loader timeout failed readback or unrelated settings changed")
+        msg = "Web loader timeout failed readback or unrelated settings changed"
+        raise RuntimeError(msg)
     return {"changed": changed, "web_loader_timeout": "15"}
 
 

@@ -52,7 +52,8 @@ def rows(api, path):
             return result
         page += 1
         if page > 1000:
-            raise RuntimeError("Pagination limit exceeded")
+            msg = "Pagination limit exceeded"
+            raise RuntimeError(msg)
 
 
 GROUP_MARKER = {"homelab_app_iam": 1}
@@ -91,7 +92,8 @@ def validate_bindings(bindings, allowed):
             or binding.get("negate", False)
             or binding.get("failure_result", False)
         ):
-            raise RuntimeError("Application binding drift; review UI policy before reconciliation")
+            msg = "Application binding drift; review UI policy before reconciliation"
+            raise RuntimeError(msg)
         seen.add(group)
     return seen
 
