@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 from unittest.mock import patch
 
 import pytest
+from jsonschema import Draft4Validator
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts/quality"))
@@ -43,6 +44,25 @@ def test_strict_report_cannot_exit_success_for_dirty_or_incomplete_audit(
         audit_exit_code(configuration_ready=configuration_ready, source_clean=source_clean)
         == expected
     )
+
+
+@pytest.mark.parametrize(
+    ("api_version", "kind", "spec"),
+    [
+        ("v1", "LimitRange", {"limits": [{"type": "Container"}]}),
+        ("v1", "ResourceQuota", {"hard": {"pods": "10"}}),
+        ("policy/v1", "PodDisruptionBudget", {"minAvailable": 1}),
+    ],
+)
+def test_rendered_budget_and_limit_schemas_are_strict_offline(
+    api_version: str, kind: str, spec: dict[str, object]
+) -> None:
+    """Resolve the renderer's actual schema name and reject a misspelled spec field."""
+    resource = {"apiVersion": api_version, "kind": kind, "metadata": {"name": "sample"}}
+    schema = ROOT / "quality/schemas" / charts.schema_name(resource)
+    validator = Draft4Validator(json.loads(schema.read_bytes()))
+    assert validator.is_valid({**resource, "spec": spec})
+    assert not validator.is_valid({**resource, "spec": {**spec, "typo": 1}})
 
 
 def test_semantic_ids_survive_line_movement_and_do_not_store_source() -> None:
