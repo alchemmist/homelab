@@ -89,13 +89,22 @@ def periodic(context):
     # Per-address diagnostics stay local. No unbounded container logs or IP labels.
     batches = deque(maxlen=120)
     target = Path("/samples/recent.json")
+    storage_failed = False
     while True:
         start = monotonic()
         batches.append(batch(context))
         temp = target.with_suffix(".tmp")
-        temp.write_text(json.dumps(list(batches)))
-        temp.replace(target)
-        sleep(max(0, 30 - (monotonic() - start)))
+        try:
+            temp.write_text(json.dumps(list(batches)))
+            temp.replace(target)
+        except OSError as exc:
+            if not storage_failed:
+                print("sample publication failed:", type(exc).__name__, file=sys.stderr, flush=True)
+            storage_failed = True
+        else:
+            storage_failed = False
+        # Skip missed ticks rather than immediately launching a catch-up batch.
+        sleep(30 - ((monotonic() - start) % 30))
 
 
 if __name__ == "__main__":

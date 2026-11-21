@@ -372,7 +372,7 @@ kubectl -n socrat-bot exec -i deploy/socrat-bot -- python - < scripts/telegram-e
 
 После выпуска периодической диагностики: контейнер `telegram-path` в pod бота
 и отдельный `socrat-telegram-path-control` на `socrat-3` раз в 30 с собирают те же
-прямые измерения. Последние 120 циклов (примерно час) хранятся только в ограниченном
+прямые измерения. Последние 120 циклов (примерно час при нормальной задержке; пропущенные интервалы не наверстываются) хранятся только в ограниченном
 memory-backed volume; рестарт Pod удаляет их. Сохранить окно при повторе, не ждать
 сутки. Прочитать `kubectl -n socrat-bot exec deploy/socrat-bot -c telegram-path -- cat /samples/recent.json`
 и аналогично для `deploy/socrat-telegram-path-control`. Это не доступ к секретам бота.

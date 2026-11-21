@@ -94,9 +94,10 @@ def test_periodic_chart_isolated_and_bounded():
         assert spec["automountServiceAccountToken"] is False
         volume = next(v for v in spec["volumes"] if v["name"] == "probe-samples")
         assert volume["emptyDir"] == {"medium": "Memory", "sizeLimit": "4Mi"}
+    assert specs["socrat-bot"]["nodeSelector"]["kubernetes.io/hostname"] == "socrat-2"
     assert (
-        specs["socrat-bot"]["nodeSelector"]
-        != specs["socrat-telegram-path-control"]["nodeSelector"]
+        specs["socrat-telegram-path-control"]["nodeSelector"]["kubernetes.io/hostname"]
+        == "socrat-3"
     )
 
 
@@ -129,3 +130,37 @@ def test_streamable_probe_matches_helm_payload():
     assert (root / "scripts/telegram-egress-probe.py").read_bytes() == (
         root / "charts/socrat-bot/files/telegram-egress-probe.py"
     ).read_bytes()
+
+
+def test_overrun_skips_ticks_and_transient_write_failure_recovers(tmp_path):
+    import json
+
+    periodic = samples.__globals__["periodic"]
+    rows = iter([1, 2])
+    ticks = iter([0, 38, 60, 65, 90])
+    waits = []
+    write = Path.write_text
+
+    def flaky_write(path, data):
+        if not waits:
+            raise OSError("simulated transient failure")
+        return write(path, data)
+
+    with (
+        patch.object(Path, "write_text", flaky_write),
+        patch.dict(
+            periodic.__globals__,
+            {
+                "Path": lambda _: tmp_path / "recent.json",
+                "batch": lambda _: next(rows),
+                "monotonic": lambda: next(ticks),
+                "sleep": waits.append,
+            },
+        ),
+    ):
+        try:
+            periodic(None)
+        except StopIteration:
+            pass
+    assert waits == [22, 25]
+    assert json.loads((tmp_path / "recent.json").read_text()) == [1, 2]
