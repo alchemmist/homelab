@@ -137,15 +137,17 @@ def permits(rules, group, resource, verb, name=None):
 class ObserverPolicyTests(unittest.TestCase):
     def test_reviewed_activation_enables_native_rancher_roles(self):
         values = (ROOT / "deploy/platform/rancher/public-entry/values.yaml").read_text()
-        self.assertIn("observerAccess:\n  enabled: true", values)
+        assert "observerAccess:\n  enabled: true" in values
 
     def test_native_only_no_user_objects(self):
-        self.assertEqual(
-            [o["kind"] for o in RBAC], ["GlobalRole", "RoleTemplate", "ClusterRoleTemplateBinding"]
-        )
+        assert [o["kind"] for o in RBAC] == [
+            "GlobalRole",
+            "RoleTemplate",
+            "ClusterRoleTemplateBinding",
+        ]
         binding = RBAC[2]
-        self.assertEqual(binding["groupPrincipalName"], "genericoidc_group://homelab-observer")
-        self.assertFalse(any(k in binding for k in ["userName", "userPrincipalName"]))
+        assert binding["groupPrincipalName"] == "genericoidc_group://homelab-observer"
+        assert not any(k in binding for k in ["userName", "userPrincipalName"])
 
     def test_positive_cluster_read_matrix(self):
         for group, resource in [
@@ -160,7 +162,7 @@ class ObserverPolicyTests(unittest.TestCase):
         ]:
             for verb in ["get", "list", "watch"]:
                 with self.subTest(group=group, resource=resource, verb=verb):
-                    self.assertTrue(permits(RBAC[1]["rules"], group, resource, verb))
+                    assert permits(RBAC[1]["rules"], group, resource, verb)
 
     def test_no_sensitive_reads(self):
         for group, resource in [
@@ -174,7 +176,7 @@ class ObserverPolicyTests(unittest.TestCase):
         ]:
             for verb in ["get", "list", "watch"]:
                 with self.subTest(group=group, resource=resource, verb=verb):
-                    self.assertFalse(permits(RBAC[1]["rules"], group, resource, verb))
+                    assert not permits(RBAC[1]["rules"], group, resource, verb)
 
     def test_no_infrastructure_mutations_or_escalation(self):
         rules = RBAC[1]["rules"] + RBAC[0]["rules"]
@@ -206,29 +208,28 @@ class ObserverPolicyTests(unittest.TestCase):
                 "impersonate",
             ]:
                 with self.subTest(group=group, resource=resource, verb=verb):
-                    self.assertFalse(permits(rules, group, resource, verb))
+                    assert not permits(rules, group, resource, verb)
 
     def test_cluster_metadata_is_named_local_only(self):
         rules = RBAC[1]["rules"]
-        self.assertTrue(permits(rules, "management.cattle.io", "clusters", "get", "local"))
-        self.assertFalse(permits(rules, "management.cattle.io", "clusters", "get", "other-cluster"))
-        self.assertFalse(permits(rules, "management.cattle.io", "clusters", "list"))
+        assert permits(rules, "management.cattle.io", "clusters", "get", "local")
+        assert not permits(rules, "management.cattle.io", "clusters", "get", "other-cluster")
+        assert not permits(rules, "management.cattle.io", "clusters", "list")
 
     def test_bounded_minimal_plan_no_secrets_no_machine_ttl(self):
         state = fixture()
         before = copy.deepcopy(state)
         operations = plan.build(state, POLICY)
-        self.assertEqual(state, before)
+        assert state == before
         text = json.dumps(operations)
-        self.assertNotIn("MUST-NOT-APPEAR-IN-PLAN", text)
-        self.assertNotIn("auth-token-max-ttl-minutes", text)
-        self.assertNotIn("core/users/", text)
-        self.assertNotIn("password", text)
-        self.assertTrue(all(o["path"] != "core/groups/group-id/" for o in operations))
-        self.assertEqual(
-            sum(o["system"] == "harbor" and o["method"] == "POST" for o in operations), 0
-        )
-        self.assertEqual(sum(o["system"] == "authentik" for o in operations), 4)
+        assert "MUST-NOT-APPEAR-IN-PLAN" not in text
+        assert "auth-token-max-ttl-minutes" not in text
+        assert "core/users/" not in text
+        assert "password" not in text
+        assert all(o["path"] != "core/groups/group-id/" for o in operations)
+        assert sum(o["system"] == "harbor" and o["method"] == "POST" for o in operations) == 0
+        expected_authentik_creations = 4
+        assert sum(o["system"] == "authentik" for o in operations) == expected_authentik_creations
 
     def test_harbor_gate_removes_only_exact_owned_guest_and_observer_admission(self):
         state = fixture()
@@ -257,49 +258,46 @@ class ObserverPolicyTests(unittest.TestCase):
             }
         ]
         ops = plan.build(state, POLICY)
-        self.assertEqual(sum(o["system"] == "harbor" and o["method"] == "DELETE" for o in ops), 3)
-        self.assertEqual(
-            sum(o["system"] == "authentik" and o["method"] == "DELETE" for o in ops), 1
+        expected_harbor_deletions = 3
+        assert sum(o["system"] == "harbor" and o["method"] == "DELETE" for o in ops) == (
+            expected_harbor_deletions
         )
+        assert sum(o["system"] == "authentik" and o["method"] == "DELETE" for o in ops) == 1
         converge(state, ops)
-        self.assertEqual(plan.build(state, POLICY), [])
+        assert plan.build(state, POLICY) == []
 
     def test_cas_and_preserved_principals(self):
         operations = plan.build(fixture(), POLICY)
         for op in operations:
             if op["system"] == "kubernetes":
-                self.assertEqual(
-                    [p["path"] for p in op["body"][:2]],
-                    ["/metadata/uid", "/metadata/resourceVersion"],
-                )
-                self.assertTrue(all(p["op"] == "test" for p in op["body"][:2]))
+                assert [p["path"] for p in op["body"][:2]] == [
+                    "/metadata/uid",
+                    "/metadata/resourceVersion",
+                ]
+                assert all(p["op"] == "test" for p in op["body"][:2])
         auth = next(o for o in operations if o["path"].endswith("/authconfigs/genericoidc"))
-        self.assertEqual(
-            auth["body"][-1]["value"],
-            fixture()["rancherAuth"]["allowedPrincipalIds"]
-            + ["genericoidc_group://homelab-observer"],
-        )
+        assert auth["body"][-1]["value"] == fixture()["rancherAuth"]["allowedPrincipalIds"] + [
+            "genericoidc_group://homelab-observer"
+        ]
 
     def test_safe_defaults_and_harbor_before_admission(self):
         operations = plan.build(fixture(), POLICY)
         first_auth = next(i for i, o in enumerate(operations) if o["system"] == "authentik")
-        self.assertTrue(all(o["system"] == "authentik" for o in operations[first_auth:]))
-        self.assertEqual(
-            operations[0]["body"][-1], {"op": "add", "path": "/newUserDefault", "value": False}
-        )
+        assert all(o["system"] == "authentik" for o in operations[first_auth:])
+        assert operations[0]["body"][-1] == {"op": "add", "path": "/newUserDefault", "value": False}
         harbor_ops = [o for o in operations if o["system"] == "harbor"]
-        self.assertEqual(harbor_ops[0]["body"], {"project_creation_restriction": "adminonly"})
+        assert harbor_ops[0]["body"] == {"project_creation_restriction": "adminonly"}
 
     def test_idempotent_native_bootstrap(self):
         state = fixture()
         converge(state, plan.build(state, POLICY))
-        self.assertEqual(plan.build(state, POLICY), [])
+        assert plan.build(state, POLICY) == []
 
     def test_multiple_future_users_do_not_change_plan(self):
         state = fixture()
         converge(state, plan.build(state, POLICY))
         state["groups"][0]["users"] = [94, 100, 101, 102]
-        self.assertEqual(plan.build(state, POLICY), [])
+        assert plan.build(state, POLICY) == []
 
     def test_reject_dangerous_live_drift(self):
         mutations = [
@@ -374,11 +372,11 @@ class ObserverPolicyTests(unittest.TestCase):
             ({}, []),
             ({"allowedPrincipalIds": [guard.PRINCIPAL]}, [guard.PRINCIPAL]),
         ]:
-            self.assertEqual(
+            assert (
                 guard.retain_observer(
                     original, [], state["globalRoles"], state["rancherSessionSetting"]
-                ),
-                expected,
+                )
+                == expected
             )
         state["rancherSessionSetting"]["value"] = "960"
         with self.assertRaisesRegex(RuntimeError, "defaults drifted"):
@@ -389,13 +387,10 @@ class ObserverPolicyTests(unittest.TestCase):
                 state["rancherSessionSetting"],
             )
         patch = guard.authconfig_patch(state["rancherAuth"], {"allowedPrincipalIds": ["preserved"]})
-        self.assertEqual(
-            patch[:2],
-            [
-                {"op": "test", "path": "/metadata/uid", "value": "auth-uid"},
-                {"op": "test", "path": "/metadata/resourceVersion", "value": "9"},
-            ],
-        )
+        assert patch[:2] == [
+            {"op": "test", "path": "/metadata/uid", "value": "auth-uid"},
+            {"op": "test", "path": "/metadata/resourceVersion", "value": "9"},
+        ]
 
     def test_malformed_snapshot_is_a_clear_validation_error(self):
         for state, policy in [({}, POLICY), (None, POLICY), (fixture(), {}), (fixture(), None)]:
@@ -425,8 +420,8 @@ class ObserverPolicyTests(unittest.TestCase):
 
     def test_unsupported_services_are_explicit_not_fake_viewers(self):
         for slug in ["n8n", "syncthing", "uptime-kuma", "open-webui", "3x-ui", "litellm"]:
-            self.assertIn(slug, POLICY["unsupported"])
-            self.assertNotIn(slug, POLICY["nativeAdmission"])
+            assert slug in POLICY["unsupported"]
+            assert slug not in POLICY["nativeAdmission"]
 
     def test_scripts_have_no_syntax_errors(self):
         for name in [
@@ -518,13 +513,13 @@ class BootstrapSafetyTests(unittest.TestCase):
         header, path = self.bootstrap.harbor_authorization(
             {"harborJobserviceSecret": "test-machine-only"}
         )
-        self.assertEqual(header, "Harbor-Secret test-machine-only")
-        self.assertEqual(path, "/api/v2.0/internalconfig")
+        assert header == "Harbor-Secret test-machine-only"
+        assert path == "/api/v2.0/internalconfig"
         header, path = self.bootstrap.harbor_authorization(
             {"harborUsername": "admin", "harborPassword": "test-only"}
         )
-        self.assertTrue(header.startswith("Basic "))
-        self.assertEqual(path, "/api/v2.0/configurations")
+        assert header.startswith("Basic ")
+        assert path == "/api/v2.0/configurations"
         with self.assertRaises(ValueError):
             self.bootstrap.harbor_authorization({"harborJobserviceSecret": ""})
 
@@ -544,29 +539,30 @@ class BootstrapSafetyTests(unittest.TestCase):
 
     def test_default_is_no_native_writes(self):
         result = self.run_main()
-        self.assertFalse(result["applied"])
-        self.assertEqual(self.calls, [])
-        self.assertFalse((self.root / "state/uncertain.json").exists())
+        assert not result["applied"]
+        assert self.calls == []
+        assert not (self.root / "state/uncertain.json").exists()
 
     def test_wrong_approval_stops_before_mutation(self):
         with self.assertRaisesRegex(ValueError, "plan hash"):
             self.run_main("--apply", "--approve-plan-hash", "wrong")
-        self.assertEqual(self.calls, [])
+        assert self.calls == []
 
     def test_approved_apply_private_receipts_and_native_convergence(self):
         approved = self.run_main()["plan_hash"]
         result = self.run_main(
             "--apply", "--approve-plan-hash", approved, "--authentik-directory", str(self.root)
         )
-        self.assertTrue(result["applied"])
-        self.assertFalse(result["human_membership_changed"])
-        self.assertEqual(plan.build(self.state, POLICY), [])
-        self.assertFalse((self.root / "state/uncertain.json").exists())
+        assert result["applied"]
+        assert not result["human_membership_changed"]
+        assert plan.build(self.state, POLICY) == []
+        assert not (self.root / "state/uncertain.json").exists()
         ready = self.root / "observer-ready.json"
-        self.assertEqual(ready.stat().st_mode & 0o777, 0o600)
-        self.assertTrue(json.loads(ready.read_text())["nativeObserverReady"])
+        owner_only_mode = 0o600
+        assert ready.stat().st_mode & 511 == owner_only_mode
+        assert json.loads(ready.read_text())["nativeObserverReady"]
         for receipt in (self.root / "state").glob("*/before.json"):
-            self.assertEqual(receipt.stat().st_mode & 0o777, 0o600)
+            assert receipt.stat().st_mode & 511 == owner_only_mode
 
     def test_failed_write_leaves_uncertain_stop_and_no_blind_retry(self):
         approved = self.run_main()["plan_hash"]
@@ -575,10 +571,10 @@ class BootstrapSafetyTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(RuntimeError, "uncertain"):
             self.run_main("--apply", "--approve-plan-hash", approved)
-        self.assertTrue((self.root / "state/uncertain.json").exists())
+        assert (self.root / "state/uncertain.json").exists()
         with self.assertRaisesRegex(ValueError, "Uncertain run"):
             self.run_main("--apply", "--approve-plan-hash", approved)
-        self.assertFalse((self.root / "observer-ready.json").exists())
+        assert not (self.root / "observer-ready.json").exists()
 
 
 class LegacyChatMigrationTests(unittest.TestCase):
@@ -667,29 +663,23 @@ class LegacyChatMigrationTests(unittest.TestCase):
     def test_one_time_migration_preserves_native_subject_and_owner_then_converges(self):
         before = copy.deepcopy(self.state)
         operations = self.migration.build(self.state, POLICY)
-        self.assertEqual(
-            [op["action"] for op in operations],
-            [
-                "create-chat-group",
-                "preserve-chat-user",
-                "admit-chat-group",
-                "remove-observer-chat-admission",
-            ],
-        )
+        assert [op["action"] for op in operations] == [
+            "create-chat-group",
+            "preserve-chat-user",
+            "admit-chat-group",
+            "remove-observer-chat-admission",
+        ]
         for op in operations:
             self.migration.apply(self.client, op, before)
-        self.assertEqual(self.migration.build(self.state, POLICY), [])
-        self.assertEqual(self.state["users"][0]["uuid"], before["users"][0]["uuid"])
-        self.assertIn("observer", self.state["users"][0]["groups"])
-        self.assertEqual(self.state["bindings"][0], before["bindings"][0])
-        self.assertFalse(
-            any("password" in path or "set_password" in path for _, _, path, _ in self.calls)
-        )
-        self.assertFalse(any(system != "authentik" for system, _, _, _ in self.calls))
-        self.assertEqual(
-            [path for _, method, path, _ in self.calls if method == "DELETE"],
-            ["policies/bindings/old-observer-binding/"],
-        )
+        assert self.migration.build(self.state, POLICY) == []
+        assert self.state["users"][0]["uuid"] == before["users"][0]["uuid"]
+        assert "observer" in self.state["users"][0]["groups"]
+        assert self.state["bindings"][0] == before["bindings"][0]
+        assert not any("password" in path or "set_password" in path for _, _, path, _ in self.calls)
+        assert not any(system != "authentik" for system, _, _, _ in self.calls)
+        assert [path for _, method, path, _ in self.calls if method == "DELETE"] == [
+            "policies/bindings/old-observer-binding/"
+        ]
 
     def test_unreviewed_observer_or_subject_change_stops_before_writes(self):
         for modify in [
@@ -705,19 +695,19 @@ class LegacyChatMigrationTests(unittest.TestCase):
             modify(state)
             with self.assertRaises(ValueError):
                 self.migration.build(state, POLICY)
-            self.assertEqual(self.calls, [])
+            assert self.calls == []
 
     def test_cannot_remove_legacy_admission_before_preservation(self):
         operations = self.migration.build(self.state, POLICY)
         self.migration.apply(self.client, operations[0], copy.deepcopy(self.state))
         with self.assertRaisesRegex(ValueError, "not safely admitted"):
             self.migration.apply(self.client, operations[-1], copy.deepcopy(self.state))
-        self.assertFalse(any(method == "DELETE" for _, method, _, _ in self.calls))
+        assert not any(method == "DELETE" for _, method, _, _ in self.calls)
 
     def test_new_observer_is_not_an_ordinary_chat_user(self):
         services = json.loads((ROOT / "deploy/identity/services.json").read_text())
-        self.assertNotIn("homelab-observer", services["open-webui"]["groups"])
-        self.assertIn("homelab-chat-user", services["open-webui"]["groups"])
+        assert "homelab-observer" not in services["open-webui"]["groups"]
+        assert "homelab-chat-user" in services["open-webui"]["groups"]
 
 
 if __name__ == "__main__":

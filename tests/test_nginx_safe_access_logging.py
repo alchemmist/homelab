@@ -34,7 +34,7 @@ class SafeNginxLoggingTests(unittest.TestCase):
                     for v in d.get("data", {}).values()
                     if "log_format safe_json" in v
                 ]
-                self.assertTrue(configs)
+                assert configs
                 for config in configs:
                     fmt = re.search(r"log_format safe_json escape=json '([^']+)';", config).group(1)
                     for forbidden in (
@@ -45,12 +45,12 @@ class SafeNginxLoggingTests(unittest.TestCase):
                         "$remote_addr",
                         "$cookie_",
                     ):
-                        self.assertNotIn(forbidden, fmt)
-                    self.assertIn('"path":"$uri"', fmt)
-                    self.assertIn('"timestamp":"$time_iso8601"', fmt)
-                    self.assertIn("~^4 warn;", config)
-                    self.assertIn("~^5 error;", config)
-                    self.assertIn("access_log /dev/stdout safe_json;", config)
+                        assert forbidden not in fmt
+                    assert '"path":"$uri"' in fmt
+                    assert '"timestamp":"$time_iso8601"' in fmt
+                    assert "~^4 warn;" in config
+                    assert "~^5 error;" in config
+                    assert "access_log /dev/stdout safe_json;" in config
 
     @unittest.skipUnless(shutil.which("docker"), "docker required for nginx syntax validation")
     def test_real_nginx_http_syntax(self):
@@ -88,7 +88,7 @@ class SafeNginxLoggingTests(unittest.TestCase):
                     text=True,
                     capture_output=True,
                 )
-                self.assertEqual(result.returncode, 0, f"{chart}: nginx syntax rejected")
+                assert result.returncode == 0, f"{chart}: nginx syntax rejected"
 
     def test_socrat_mount_without_homepage(self):
         output = subprocess.check_output(
@@ -104,9 +104,8 @@ class SafeNginxLoggingTests(unittest.TestCase):
         )
         deployment = next(d for d in yaml.safe_load_all(output) if d and d["kind"] == "Deployment")
         pod = deployment["spec"]["template"]
-        self.assertIn("checksum/access-logging", pod["metadata"]["annotations"])
-        self.assertEqual(pod["spec"]["volumes"][0]["name"], "access-logging")
-        self.assertIn(
-            "/etc/nginx/conf.d/00-access-logging.conf",
-            [m["mountPath"] for m in pod["spec"]["containers"][0]["volumeMounts"]],
-        )
+        assert "checksum/access-logging" in pod["metadata"]["annotations"]
+        assert pod["spec"]["volumes"][0]["name"] == "access-logging"
+        assert "/etc/nginx/conf.d/00-access-logging.conf" in [
+            m["mountPath"] for m in pod["spec"]["containers"][0]["volumeMounts"]
+        ]

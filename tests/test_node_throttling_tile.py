@@ -15,7 +15,8 @@ PROMTOOL = os.environ.get("PROMTOOL") or shutil.which("promtool")
 
 def panel():
     dashboard = json.loads(DASHBOARD.read_text())
-    return next(item for item in dashboard["panels"] if item.get("id") == 215)
+    throttling_panel_id = 215
+    return next(item for item in dashboard["panels"] if item.get("id") == throttling_panel_id)
 
 
 def fixtures():
@@ -117,9 +118,9 @@ class NodeThrottlingTileTest(unittest.TestCase):
     def test_not_applicable_and_no_telemetry_are_distinct(self):
         defaults = panel()["fieldConfig"]["defaults"]
         mapping = next(item for item in defaults["mappings"] if item["type"] == "value")
-        self.assertEqual(mapping["options"]["-1"]["text"], "N/A")
-        self.assertEqual(defaults["noValue"], "No telemetry")
-        self.assertIn("positive CPU limit", panel()["description"])
+        assert mapping["options"]["-1"]["text"] == "N/A"
+        assert defaults["noValue"] == "No telemetry"
+        assert "positive CPU limit" in panel()["description"]
 
     @unittest.skipUnless(PROMTOOL, "promtool is not installed; use --generate for remote execution")
     def test_promql_semantics(self):
