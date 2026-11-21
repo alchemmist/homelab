@@ -1,3 +1,4 @@
+---
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -16,8 +17,8 @@ spec:
     size: 256
     rotationPolicy: Always
   usages:
-  - digital signature
-  - client auth
+    - digital signature
+    - client auth
   issuerRef:
     name: otel-ca
     kind: Issuer
@@ -40,8 +41,8 @@ spec:
     size: 256
     rotationPolicy: Always
   usages:
-  - digital signature
-  - client auth
+    - digital signature
+    - client auth
   issuerRef:
     name: otel-ca
     kind: Issuer
@@ -64,8 +65,8 @@ spec:
     size: 256
     rotationPolicy: Always
   usages:
-  - digital signature
-  - client auth
+    - digital signature
+    - client auth
   issuerRef:
     name: otel-ca
     kind: Issuer
@@ -88,8 +89,8 @@ spec:
     size: 256
     rotationPolicy: Always
   usages:
-  - digital signature
-  - client auth
+    - digital signature
+    - client auth
   issuerRef:
     name: otel-ca
     kind: Issuer
@@ -112,8 +113,8 @@ spec:
     size: 256
     rotationPolicy: Always
   usages:
-  - digital signature
-  - client auth
+    - digital signature
+    - client auth
   issuerRef:
     name: otel-ca
     kind: Issuer
@@ -136,8 +137,8 @@ spec:
     size: 256
     rotationPolicy: Always
   usages:
-  - digital signature
-  - client auth
+    - digital signature
+    - client auth
   issuerRef:
     name: otel-ca
     kind: Issuer
@@ -161,19 +162,19 @@ metadata:
     app.kubernetes.io/part-of: homelab-otel
     homelab-otel-role: application-client
 rules:
-- apiGroups:
-  - ''
-  resources:
-  - secrets
-  resourceNames:
-  - otel-app-tls-harbor
-  - otel-app-tls-litellm
-  - otel-app-tls-vllm
-  - otel-app-tls-open-webui
-  - otel-app-tls-lms
-  - otel-app-tls-wishlist
-  verbs:
-  - get
+  - apiGroups:
+      - ''
+    resources:
+      - secrets
+    resourceNames:
+      - otel-app-tls-harbor
+      - otel-app-tls-litellm
+      - otel-app-tls-vllm
+      - otel-app-tls-open-webui
+      - otel-app-tls-lms
+      - otel-app-tls-wishlist
+    verbs:
+      - get
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -188,6 +189,6 @@ roleRef:
   kind: Role
   name: otel-application-credentials
 subjects:
-- kind: ServiceAccount
-  name: otel-application-credentials
-  namespace: cattle-monitoring-system
+  - kind: ServiceAccount
+    name: otel-application-credentials
+    namespace: cattle-monitoring-system

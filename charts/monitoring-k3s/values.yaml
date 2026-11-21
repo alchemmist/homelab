@@ -336,3 +336,4 @@ updateWatch:
       namespace: pr-agent
       deployment: pr-agent
       container: pr-agent
+...
