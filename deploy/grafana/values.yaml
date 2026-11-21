@@ -8,7 +8,7 @@ gateway:
 
 # Accepted cold restore required; never initialize an empty replacement database.
 grafana:
-  replicas: 1
+  replicas: 0
   hostAliases:
     - ip: 10.43.218.222
       hostnames: [auth.socrat.alchemmist.xyz]
