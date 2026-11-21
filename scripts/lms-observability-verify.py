@@ -49,7 +49,7 @@ def ready_canary_pod(pods, nodes):
 
 
 def kubepython(code):
-    def inspect(command):
+    def inspect(command) -> dict[str, object]:
         result = subprocess.run(
             ["ssh", "-o", "BatchMode=yes", "socrat-0", command],
             text=True,
@@ -58,7 +58,8 @@ def kubepython(code):
         )
         if result.returncode:
             raise RuntimeError("Canary pod discovery failed; sensitive output suppressed")
-        return json.loads(result.stdout)
+        payload: dict[str, object] = json.loads(result.stdout)
+        return payload
 
     # exec deploy/lms can select a stale Ready/Terminating pod on a lost node.
     pod = ready_canary_pod(
