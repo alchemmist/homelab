@@ -16,10 +16,14 @@ import sqlite3
 import time
 from contextlib import closing
 from pathlib import Path
+from typing import Protocol
 
 _spec = importlib.util.spec_from_file_location(
     "panel_native", Path(__file__).with_name("vpn-panel-session.py")
 )
+if _spec is None or _spec.loader is None or not _spec.has_location:
+    reason = "Cannot load panel session helper"
+    raise ValueError(reason)
 native = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(native)
 h = native.h
@@ -33,22 +37,61 @@ ARRAY_FIELDS = {
 }
 
 
-def configuration(database):
+class _Session(Protocol):
+    """Structural type of the dynamically loaded native panel session."""
+
+    def preview(self) -> object:
+        """Return the native preview document."""
+        ...
+
+    def open(self, token: object) -> None:
+        """Accept one freshly approved migration hash."""
+        ...
+
+    def cleanup(self) -> None:
+        """Revoke the temporary admin worker."""
+        ...
+
+    def call(self, method: str, path: str, body: object = ...) -> object:
+        """Perform a native authenticated API call."""
+        ...
+
+    @property
+    def database(self) -> Path:
+        """Read-only panel database path."""
+        ...
+
+    @property
+    def state(self) -> Path:
+        """Private per-session state directory."""
+        ...
+
+
+def configuration(database: Path) -> dict[str, list[dict[str, object]]]:
     with closing(sqlite3.connect(h.check_path(database).as_uri() + "?mode=ro", uri=True)) as source:
         with closing(sqlite3.connect(":memory:")) as snapshot:
             source.backup(snapshot)
-            return h.projection(snapshot)
+            value: dict[str, list[dict[str, object]]] = h.projection(snapshot)
+            return value
 
 
-def expected_configuration(before, old, new, group_id=None):
+def expected_configuration(
+    before: dict[str, list[dict[str, object]]],
+    old: str,
+    new: str,
+    group_id: object = None,
+) -> dict[str, list[dict[str, object]]]:
     expected = copy.deepcopy(before)
     for row in expected["hosts"]:
         if row["address"] == old and (group_id is None or row["group_id"] == group_id):
             row["address"] = new
-    return expected
+    value: dict[str, list[dict[str, object]]] = expected
+    return value
 
 
-def canonical_projection(config):
+def canonical_projection(
+    config: dict[str, list[dict[str, object]]],
+) -> dict[str, list[dict[str, object]]]:
     config = copy.deepcopy(config)
     for row in config["hosts"]:
         if "sni_shared_random" in row:
@@ -63,7 +106,13 @@ def canonical_projection(config):
     return {key: sorted(rows, key=h.canonical) for key, rows in config.items()}
 
 
-def verify_transition(before, after, old, new, group_id=None):
+def verify_transition(
+    before: dict[str, list[dict[str, object]]],
+    after: dict[str, list[dict[str, object]]],
+    old: str,
+    new: str,
+    group_id: object = None,
+) -> bool:
     expected = expected_configuration(before, old, new, group_id)
     actual = {row["id"]: row for row in after["hosts"]}
     for row in expected["hosts"]:
@@ -81,50 +130,64 @@ def verify_transition(before, after, old, new, group_id=None):
     return canonical_projection(after) == canonical_projection(expected)
 
 
-def payload(group, old, new):
+def payload(group: dict[str, object], old: str, new: str) -> dict[str, object]:
     result = copy.deepcopy(group)
-    if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", result.get("groupId", "")):
+    group_id = result.get("groupId", "")
+    if not isinstance(group_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", group_id):
         raise ValueError("Invalid host group identity")
-    if not isinstance(result.get("hosts"), list) or not result.get("inboundIds"):
+    hosts_value = result.get("hosts")
+    if not isinstance(hosts_value, list) or not result.get("inboundIds"):
         raise ValueError("Unexpected native host DTO")
-    for index, value in enumerate(result["hosts"]):
+    hosts = hosts_value
+    for index, value in enumerate(hosts):
+        if not isinstance(value, str):
+            continue
         if value == old:
-            result["hosts"][index] = new
+            hosts[index] = new
         elif value.startswith(old + ":"):
             port = value[len(old) + 1 :]
             if not port.isdigit() or not 0 < int(port) < 65536:
                 raise ValueError("Unexpected host port")
-            result["hosts"][index] = new + ":" + port
+            hosts[index] = new + ":" + port
     if result["hosts"] == group["hosts"]:
         raise ValueError("Native group does not contain the approved old address")
-    return result
+    payload_value: dict[str, object] = result
+    return payload_value
 
 
-def preview(state, old, new):
+def _rows(value: object) -> list[dict[str, object]]:
+    """Untrusted persisted list-of-records: treat non-list as empty."""
+    return value if isinstance(value, list) else []
+
+
+def preview(
+    state: Path, old: str, new: str
+) -> tuple[_Session, dict[str, list[dict[str, object]]], dict[str, object]]:
     import ipaddress
 
     if old == new or not all(ipaddress.ip_address(v).is_global for v in (old, new)):
         raise ValueError("Require distinct public literal addresses")
-    session = native.NativeSession(state, worker_scope="admin")
+    session: _Session = native.NativeSession(state, worker_scope="admin")
     before = configuration(session.database)
     rows = [r for r in before["hosts"] if r["address"] == old]
     if not rows:
         raise ValueError("No old-address rows; read acceptance instead of replaying")
+    plan: dict[str, object] = {
+        "session": session.preview(),
+        "old": old,
+        "new": new,
+        "configuration_sha256": h.digest(before),
+        "rows": len(rows),
+        "groups": len({r["group_id"] for r in rows}),
+    }
     return (
         session,
         before,
-        {
-            "session": session.preview(),
-            "old": old,
-            "new": new,
-            "configuration_sha256": h.digest(before),
-            "rows": len(rows),
-            "groups": len({r["group_id"] for r in rows}),
-        },
+        plan,
     )
 
 
-def apply(state, old, new, approval):
+def apply(state: Path, old: str, new: str, approval: str) -> dict[str, object]:
     session, before, plan = preview(state, old, new)
     if approval != h.digest(plan):
         raise ValueError("Fresh approved migration hash required")
@@ -132,7 +195,7 @@ def apply(state, old, new, approval):
     try:
         if configuration(session.database) != before:
             raise ValueError("Configuration drift after credential creation")
-        groups = session.call("GET", "/hosts/list")
+        groups = _rows(session.call("GET", "/hosts/list"))
         targets = {r["group_id"] for r in before["hosts"] if r["address"] == old}
         chosen = [g for g in groups if g["groupId"] in targets]
         if len(chosen) != len(targets) or {g["groupId"] for g in chosen} != targets:
@@ -145,7 +208,7 @@ def apply(state, old, new, approval):
                 current
             ):
                 raise ValueError("Configuration drift before native host update")
-            fresh = session.call("GET", "/hosts/get/" + group["groupId"])
+            fresh = session.call("GET", "/hosts/get/" + str(group["groupId"]))
             if fresh != group:
                 raise ValueError("Native host DTO drift before update")
             marker = session.state / ("host-uncertain-" + str(index) + ".json")
@@ -157,7 +220,7 @@ def apply(state, old, new, approval):
                     "state": "attempting",
                 },
             )
-            session.call("POST", "/hosts/update/" + group["groupId"], candidate)
+            session.call("POST", "/hosts/update/" + str(group["groupId"]), candidate)
             after = configuration(session.database)
             expected = expected_configuration(current, old, new, group["groupId"])
             h.save(session.state / ("host-after-private-" + str(index) + ".json"), after)
@@ -184,7 +247,8 @@ def apply(state, old, new, approval):
         h.save(session.state / "host-migration-acceptance.json", proof)
     finally:
         session.cleanup()
-    return dict(proof, temporary_tokens_removed=True)
+    value: dict[str, object] = dict(proof, temporary_tokens_removed=True)
+    return value
 
 
 if __name__ == "__main__":
@@ -199,7 +263,7 @@ if __name__ == "__main__":
         if a.apply:
             print(h.canonical(apply(a.state, a.old_ip, a.new_ip, a.approve_sha256)))
         else:
-            _, _, plan = preview(a.state, a.old_ip, a.new_ip)
+            plan = preview(a.state, a.old_ip, a.new_ip)[2]
             print(
                 h.canonical(
                     {

@@ -5,13 +5,15 @@ import os
 import subprocess
 import tempfile
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
+from typing import Protocol
 
 from engine import UnsafeInput, page_ok, select_closable, spec_changed
 from github import BotRepo, Homelab
 
 
-def model(system, data):
+def model(system: str, data: dict[str, object]) -> dict[str, object]:
     request = urllib.request.Request(
         "http://litellm.llm.svc.cluster.local:4000/v1/chat/completions",
         data=json.dumps(
@@ -47,10 +49,44 @@ def model(system, data):
         },
     )
     with urllib.request.urlopen(request, timeout=360) as response:
-        return json.loads(json.load(response)["choices"][0]["message"]["content"])
+        content = json.load(response)["choices"][0]["message"]["content"]
+        value: dict[str, object] = json.loads(content)
+        return value
 
 
-def render_page(after, bot):
+class _BotRepo(Protocol):
+    """Structural type of the bot repository API used by rendering."""
+
+    def files(self, before: str, after: str) -> list[dict[str, object]]:
+        """Return the changed bot files between two commits."""
+        ...
+
+    def text(self, sha: str, path: str) -> str:
+        """Raw file text at a bot commit."""
+        ...
+
+
+class _Homelab(Protocol):
+    """Structural type of the authenticated homelab GitHub API used here."""
+
+    def api(self, method: str, path: str, body: object = ...) -> object:
+        """Perform an authenticated homelab API call."""
+        ...
+
+    def propose(self, after: str, markdown: str) -> dict[str, object]:
+        """Propose a wiki update pull request."""
+        ...
+
+    def automation_prs(self, keep: object) -> list[dict[str, object]]:
+        """Open automation pull requests older than the survivor."""
+        ...
+
+    def close(self, number: int, survivor: object) -> None:
+        """Close one automation pull request."""
+        ...
+
+
+def render_page(after: str, bot: _BotRepo) -> str:
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
         (root / "openapi.yaml").write_text(bot.text(after, "openapi.yaml"))
@@ -74,19 +110,30 @@ def render_page(after, bot):
         )
         if run.returncode:
             raise UnsafeInput("Wiki renderer failed")
-        return page_ok(target.read_text())
+        value: str = page_ok(target.read_text())
+        return value
 
 
-def stage(name, payload, bot=None, homelab=None, call_model=None, write=False):
+def stage(
+    name: str,
+    payload: dict[str, object],
+    *,
+    bot: _BotRepo | None = None,
+    homelab: _Homelab | None = None,
+    call_model: Callable[[str, dict[str, object]], dict[str, object]] | None = None,
+    write: bool = False,
+) -> list[dict[str, object]]:
     bot = bot or BotRepo()
     if name == "check":
         event = payload.get("body", payload)
         if not isinstance(event, dict) or event.get("ref") != "refs/heads/main":
             return []
-        if not spec_changed(event, bot.files(event.get("before", ""), event.get("after", ""))):
+        if not spec_changed(
+            event, bot.files(str(event.get("before", "")), str(event.get("after", "")))
+        ):
             return []
         return [{"before": event["before"], "after": event["after"]}]
-    after = payload.get("after")
+    after = str(payload.get("after"))
     if name == "render":
         return [{"after": after, "markdown": render_page(after, bot)}]
     homelab = homelab or Homelab(
@@ -118,7 +165,8 @@ def stage(name, payload, bot=None, homelab=None, call_model=None, write=False):
         prompt, {"survivor": keep, "status": payload.get("status"), "candidates": candidates}
     )
     closed = []
-    for number in select_closable(decision, candidates, keep):
+    for number_raw in select_closable(decision, candidates, keep):
+        number = int(number_raw)
         if keep:
             homelab.close(number, keep)
         else:
