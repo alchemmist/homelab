@@ -3,6 +3,7 @@
 import copy
 import importlib.util
 import json
+import types
 from pathlib import Path
 
 import pytest
@@ -10,7 +11,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(name: str):
+def load(name: str) -> types.ModuleType:
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / (name + ".py"))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

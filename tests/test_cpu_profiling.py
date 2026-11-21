@@ -9,7 +9,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
-type Json = "str | int | float | bool | None | Sequence[Json] | Mapping[str, Json]"
+type Json = str | int | float | bool | None | Sequence[Json] | Mapping[str, Json]
 
 
 def child(parent: Mapping[str, Json], key: str) -> Mapping[str, Json]:
