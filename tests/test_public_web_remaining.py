@@ -6,7 +6,7 @@ import pytest, yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def module(name):
+def module(name: str):
     s = importlib.util.spec_from_file_location(name, ROOT / "scripts" / f"{name}.py")
     m = importlib.util.module_from_spec(s)
     s.loader.exec_module(m)
@@ -35,7 +35,7 @@ def test_scoped_web_groups_create_no_users():
         ("children", ["inheritor"]),
     ],
 )
-def test_reject_foreign_or_privileged_web_group(field, value):
+def test_reject_foreign_or_privileged_web_group(field: str, value: object):
     m = module("public-web-role-groups")
     ops = m.plan([])
     ops[0][field] = value
@@ -95,7 +95,7 @@ def test_grafana_only_reviewed_env_changes():
         ("GF_AUTH_OAUTH_ALLOW_INSECURE_EMAIL_LOOKUP", "true"),
     ],
 )
-def test_grafana_drift_stops(key, value):
+def test_grafana_drift_stops(key: str, value: str):
     m = module("grafana-public-sso")
     d = grafana()
     next(e for e in d["spec"]["template"]["spec"]["containers"][1]["env"] if e["name"] == key)[

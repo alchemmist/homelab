@@ -13,7 +13,7 @@ SMOKE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(SMOKE)
 
 
-def series(bound, value="3"):
+def series(bound: str, value: str = "3"):
     return {
         tuple(sorted({"__name__": "smoke_duration_seconds_bucket", "le": bound}.items())): value
     }
