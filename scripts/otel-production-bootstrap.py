@@ -22,7 +22,7 @@ NODES = {
 }
 
 
-def kube(*args, document=None):
+def kube(*args: str, document=None):
     result = subprocess.run(
         [
             "ssh",

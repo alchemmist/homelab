@@ -24,7 +24,7 @@ def fingerprint(value):
     ).hexdigest()
 
 
-def kube(*arguments, document=None):
+def kube(*arguments: str, document=None):
     result = subprocess.run(
         ["kubectl", "-n", NAMESPACE, *arguments],
         input=json.dumps(document) if document is not None else None,

@@ -22,7 +22,7 @@ TAG = "log-test-" + uuid.uuid4().hex[:8]
 NAMES = []
 
 
-def docker(*args, check=True):
+def docker(*args: str, check=True):
     return subprocess.run(["docker", *args], check=check, capture_output=True)
 
 

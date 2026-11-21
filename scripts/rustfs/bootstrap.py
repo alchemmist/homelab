@@ -163,7 +163,7 @@ def main():
             )
         )
 
-        def mc(*a, stdin=None):
+        def mc(*a: str, stdin=None):
             return run(args.mc, tmp, list(a), stdin)
 
         # Inventories must succeed before any mutation. No failure means 'absent'.

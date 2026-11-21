@@ -41,7 +41,7 @@ def replace_endpoint(text, target):
     return "".join(parts)
 
 
-def wg(*args):
+def wg(*args: str):
     return subprocess.check_output(["wg", *args], text=True).strip()
 
 

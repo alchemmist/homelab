@@ -36,7 +36,7 @@ def remote(host, arguments):
     return json.loads(result.stdout)
 
 
-def kube(host, namespace, *arguments):
+def kube(host, namespace, *arguments: str):
     return remote(host, ["kubectl", "-n", namespace, *arguments])
 
 

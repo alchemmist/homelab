@@ -60,7 +60,7 @@ def patch(before, data):
     ]
 
 
-def kubectl(*args, payload=None):
+def kubectl(*args: str, payload=None):
     r = subprocess.run(
         ["k3s", "kubectl", *args], input=payload, capture_output=True, text=True, timeout=30
     )

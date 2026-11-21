@@ -41,7 +41,7 @@ def remote_json(path):
  # Public GET only; no publisher/host credentials in workers.
  import urllib.request
  with urllib.request.urlopen(urllib.request.Request('https://api.github.com/repos/alchemmist/monori/'+path,headers={'User-Agent':'socrat-campaign'}),timeout=15) as r:return json.load(r)
-def git(*a):return pilot.cmd(['git','--git-dir=base.git',*a]).stdout
+def git(*a: str):return pilot.cmd(['git','--git-dir=base.git',*a]).stdout
 def source(sha,file):return git('show',sha+':'+file)
 
 def patch(t,sha):
