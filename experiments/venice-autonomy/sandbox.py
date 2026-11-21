@@ -77,7 +77,7 @@ def _raw_member_name(data, offset):
             return field.decode("utf-8")
         except UnicodeDecodeError as exc:
             message = "invalid archive"
-        raise ValueError(message) from exc
+            raise ValueError(message) from exc
 
     name = take(header[0:100])
     prefix = take(header[345:500]) if header[257:262] == b"ustar" else ""
