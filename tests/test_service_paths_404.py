@@ -102,3 +102,19 @@ def test_prometheus_rules(tmp_path):
     }
     (tmp_path / "suite.yml").write_text(yaml.safe_dump(fixture))
     subprocess.run(["promtool", "test", "rules", "suite.yml"], cwd=tmp_path, check=True)
+
+
+def test_native_scrape_uses_two_independent_targets():
+    import runpy
+
+    refresh = runpy.run_path(str(ROOT / "scripts/otel-scrape-config.py"))[
+        "add_service_path_scrape"
+    ]
+    initial = {"scrape_configs": [{"job_name": "unrelated"}]}
+    new = refresh(initial)
+    assert new == refresh(new)
+    assert initial["scrape_configs"] == new["scrape_configs"][:1]
+    static = new["scrape_configs"][1]["static_configs"]
+    assert {tuple(j["targets"]): j["labels"]["source"] for j in static} == {
+        (f"service-path-{n}.automation.svc:9119",): n for n in ["socrat-3", "socrat-5"]
+    }

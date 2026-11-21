@@ -54,3 +54,24 @@ For bot compare 13:13:34 UTC separately; no historic socket route is known.
    continuity and guest egress/kill-switch behavior. Disable host autostart only
    after owner acceptance. Rollback stops guest, never reenables whole-host VPN.
    For Kubernetes consumers use `llm-wiki/service-vpn-egress.md`, not a desktop VM.
+
+### Scrape activation is not just Argo Sync
+
+The native OTel receiver in the Prometheus pod owns collection; the legacy
+Prometheus selectors are deliberately retired. Do not enable them. Reconcile
+`otel-cluster-config` with the updated native scrape builder using the existing
+owner's private captured bundle and guarded Collector-only reload/restart procedure.
+Diff before applying: preserve auth/TLS, all other jobs, pipelines and data.
+Only the API keep rule from #445 and one `socrat-service-path` job are expected
+for this work. Abort on unrelated changes. Verify fresh `up` for both headless
+per-source targets and three API targets, plus six successful ready/read series;
+GitOps Healthy alone does not satisfy acceptance.
+
+The disposable harness is `scripts/lab/service-failover-404.py --local-disposable`.
+Use a dedicated local Docker VM with cached `rancher/k3s:v1.36.5-k3s1` and
+`nginx:1.27-alpine`, registry access for the stock K3s system images and sufficient
+RAM for four servers. No host kubeconfig, host ports, host-directory mounts or
+external cluster credentials. Its temporary K3s containers need privileged mode
+**inside the disposable VM**. Never point this at a shared production daemon.
+It checks that traffic actually hit the fault rule, fails closed if it cannot
+identify the active peer and cleans up the randomly named containers/network.
