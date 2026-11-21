@@ -17,17 +17,20 @@ STATE = Path("/var/lib/homelab-kuma-account-recovery")
 
 
 def need(ok, message: object) -> None:
+    """Raise an error when a required condition is not met."""
     if not ok:
         raise RuntimeError(message)
 
 
 def k(*args, input=None) -> str:
+    """Perform the k operation."""
     return subprocess.check_output(
         ["kubectl", "-n", "uptime-kuma", *args], input=input, text=True, stderr=subprocess.DEVNULL
     )
 
 
 def sql(statement: str) -> str:
+    """Perform the sql operation."""
     return k(
         "exec",
         "-i",
@@ -41,6 +44,7 @@ def sql(statement: str) -> str:
 
 
 def main() -> None:
+    """Run the command-line entry point."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")

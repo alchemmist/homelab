@@ -41,10 +41,12 @@ CODE_WORDS = (
 
 
 def make_code():
+    """Perform the make code operation."""
     return secrets.choice(CODE_WORDS)
 
 
 def make_image(code, large=False):
+    """Perform the make image operation."""
     if large:
         image = Image.frombytes("RGB", (1280, 1024), os.urandom(1280 * 1024 * 3))
     else:
@@ -61,6 +63,7 @@ def make_image(code, large=False):
 
 
 def complete(name, messages, expected, minimum_request_bytes=0):
+    """Perform the complete operation."""
     started = time.monotonic()
     payload = {
         "model": MODEL,
@@ -96,6 +99,7 @@ def complete(name, messages, expected, minimum_request_bytes=0):
 
 
 def main():
+    """Run the command-line entry point."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--large", action="store_true", help="Also test nine images in a request exceeding 4 MiB"

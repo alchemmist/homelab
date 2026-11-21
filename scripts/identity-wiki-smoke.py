@@ -36,6 +36,7 @@ runtime = json.loads(
 
 
 def admin(method, path, data=None):
+    """Perform the admin operation."""
     req = urllib.request.Request(
         base + "/api/v3/" + path,
         method=method,
@@ -64,6 +65,7 @@ opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar), No
 
 
 def browser(url, data=None):
+    """Perform the HTTP request and return its response."""
     headers = {"Content-Type": "application/json", "Referer": base + "/"}
     for c in jar:
         if "csrf" in c.name and c.domain in [

@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def main():
+    """Run the command-line entry point."""
     p=argparse.ArgumentParser(description=__doc__);
     p.add_argument("--apply",action="store_true");
     a=p.parse_args()
