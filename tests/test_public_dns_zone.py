@@ -143,13 +143,3 @@ def test_lms_and_issuer_prefer_home_without_changing_other_failover_names(home, 
         assert [line for line in lines if line.startswith(name + " IN A ")] == [
             f"{name} IN A {ip}" for ip in expected
         ]
-
-
-@pytest.mark.parametrize("home,vps", [(True, True), (True, False), (False, True), (False, False)])
-def test_moscow_relay_changes_only_lms_and_issuer_when_home_is_down(home, vps):
-    old = zone.render(1, home, vps).splitlines()
-    new = zone.render(1, home, vps, moscow_up=True).splitlines()
-    prefixes = ("lms IN A ", "auth.socrat IN A ")
-    assert [x for x in new if not x.startswith(prefixes)] == [x for x in old if not x.startswith(prefixes)]
-    for prefix in prefixes:
-        assert [x for x in new if x.startswith(prefix)] == [prefix + (zone.HOME if home else "91.189.82.238")]

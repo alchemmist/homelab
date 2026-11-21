@@ -82,7 +82,7 @@ def healthy_addresses(home_up, vps_up):
     return chosen
 
 
-def render(serial, home_up, vps_up, moscow_up=False):
+def render(serial, home_up, vps_up):
     addresses = healthy_addresses(home_up, vps_up)
     lines = [
         "$ORIGIN alchemmist.xyz.",
@@ -102,12 +102,7 @@ def render(serial, home_up, vps_up, moscow_up=False):
         # The VPS can answer its own health probe while external TCP/443 is
         # unreachable from some networks. Keep the LMS/OIDC path on HOME
         # while HOME is healthy; retain VPS failover and the both-down policy.
-        selected = addresses
-        if name in {"lms", "auth.socrat"}:
-            if home_up:
-                selected = [HOME]
-            elif moscow_up:
-                selected = ["91.189.82.238"]  # Moscow TCP relay to the NL ingress.
+        selected = [HOME] if home_up and name in {"lms", "auth.socrat"} else addresses
         for address in selected:
             lines.append("%s IN A %s" % (name, address))
     for name in sorted(STATIC_A):
@@ -154,8 +149,7 @@ def main():
         if args.assume_vps == "down"
         else probe(args.vps_target, args.port, args.timeout)
     )
-    moscow_up = not home_up and probe("91.189.82.238", args.port, args.timeout)
-    text = render(args.serial, home_up, vps_up, moscow_up)
+    text = render(args.serial, home_up, vps_up)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     previous = args.output.read_text() if args.output.exists() else ""
     if previous != text:
