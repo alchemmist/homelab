@@ -78,33 +78,40 @@ def _raw_member_name(data, offset):
     return prefix + "/" + name if prefix else name
 
 
+def _validated_member(
+    archive: tarfile.TarFile, data: bytes, member: tarfile.TarInfo, result: dict[str, str]
+) -> None:
+    """Record one member or raise; unsafe entries never pass through."""
+    raw_name = _raw_member_name(data, member.offset)
+    if raw_name != member.name:
+        raise ValueError("unsafe archive path")
+    if member.name == "." and member.isdir():
+        return
+    if member.name not in ("lib.cjs", "test.cjs") or member.type not in (
+        tarfile.REGTYPE,
+        tarfile.AREGTYPE,
+    ):
+        raise ValueError("unexpected workspace entry or file type")
+    if member.size > MAX_FILE or member.name in result:
+        raise ValueError("oversized or duplicate workspace entry")
+    extracted = archive.extractfile(member)
+    if extracted is None:
+        raise ValueError("invalid archive")
+    try:
+        result[member.name] = extracted.read().decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ValueError("invalid archive") from exc
+
+
 def inspect_archive(data):
-    result = {}
+    result: dict[str, str] = {}
     try:
         archive = tarfile.open(fileobj=io.BytesIO(data), mode="r:*")
     except (tarfile.ReadError, OSError, EOFError) as exc:
         raise ValueError("invalid archive") from exc
     try:
         for member in archive:
-            raw_name = _raw_member_name(data, member.offset)
-            if raw_name != member.name:
-                raise ValueError("unsafe archive path")
-            if member.name == "." and member.isdir():
-                continue
-            if member.name not in ("lib.cjs", "test.cjs") or member.type not in (
-                tarfile.REGTYPE,
-                tarfile.AREGTYPE,
-            ):
-                raise ValueError("unexpected workspace entry or file type")
-            if member.size > MAX_FILE or member.name in result:
-                raise ValueError("oversized or duplicate workspace entry")
-            extracted = archive.extractfile(member)
-            if extracted is None:
-                raise ValueError("invalid archive")
-            try:
-                result[member.name] = extracted.read().decode("utf-8")
-            except UnicodeDecodeError as exc:
-                raise ValueError("invalid archive") from exc
+            _validated_member(archive, data, member, result)
     except (tarfile.ReadError, OSError, EOFError) as exc:
         raise ValueError("invalid archive") from exc
     finally:

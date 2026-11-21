@@ -51,7 +51,7 @@ def build(state, policy):
         ) from None
 
 
-def _build(state, policy):
+def _build(state, policy) -> list[dict[str, object]]:
     require(policy["version"] == 1 and policy["group"] == "homelab-observer", "Unreviewed profile")
     require(
         set(policy["nativeAdmission"]) == {"grafana", "wiki", "rancher", "argocd"}
@@ -168,7 +168,7 @@ def _build(state, policy):
     definitions = json.loads(
         (ROOT / "deploy/platform/rancher/public-entry/files/observer-rbac.json").read_text()
     )
-    for actual, desired in zip([login, role, binding], definitions):
+    for actual, desired in zip([login, role, binding], definitions, strict=True):
         for key, value in desired.items():
             if key == "metadata":
                 require(

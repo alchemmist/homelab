@@ -1,21 +1,40 @@
 """Offline source boundaries. No kube/credentials/workflow/model calls."""
 
-import copy, pathlib, subprocess, tempfile, unittest, yaml
+import copy, pathlib, subprocess, tempfile, typing, unittest, yaml
+from typing import Mapping
 
 R = pathlib.Path(__file__).resolve().parents[1]
 BASE = "ba7a1f34"
 
 
+def _mapping(value: object) -> dict[str, object]:
+    """Narrow decoded document fields to mappings for typed test callers."""
+    assert isinstance(value, dict)
+    return value
+
+
+def _sequence(value: object) -> list[object]:
+    """Narrow decoded document fields to sequences for typed test callers."""
+    assert isinstance(value, list)
+    return list(value)
+
+
+def _text(value: object) -> str:
+    """Narrow decoded document fields to text for typed test callers."""
+    assert isinstance(value, str)
+    return value
+
+
 def render(
-    root,
-    chart,
-    values,
-    ns,
-    release,
+    root: pathlib.Path,
+    chart: str,
+    values: str | None,
+    ns: str,
+    release: str,
     *,
     release_image: dict[str, str] | None = None,
     monori_images: dict[str, dict[str, str]] | None = None,
-):
+) -> dict[tuple[str, str], dict[str, object]]:
     cmd = ["helm", "template", release, str(root / chart), "-n", ns]
     if values:
         cmd += ["-f", str(root / values)]
@@ -35,7 +54,9 @@ def render(
     }
 
 
-def assert_monori_release_images(documents, images):
+def assert_monori_release_images(
+    documents: Mapping[tuple[str, str], object], images: dict[str, dict[str, str]]
+) -> None:
     """Check actual current images independently from before-render CLI overrides."""
     for component in ("front", "back", "sync"):
         matches = [
@@ -47,14 +68,18 @@ def assert_monori_release_images(documents, images):
         assert len(matches) == 1
         image = images[component]
         expected = image["repository"] + "@" + image["digest"]
-        pod = matches[0]["spec"]["template"]["spec"]
-        for container in pod["containers"] + pod.get("initContainers", []):
-            assert container["image"] == expected, "Current Monori release image differs"
+        doc = _mapping(matches[0])
+        pod = _mapping(_mapping(_mapping(doc["spec"])["template"])["spec"])
+        for container in _sequence(pod["containers"]) + _sequence(pod.get("initContainers", [])):
+            assert _mapping(container)["image"] == expected, "Current Monori release image differs"
 
 
 class StatefulBoundaries(unittest.TestCase):
+    tmp: tempfile.TemporaryDirectory[str]
+    old: pathlib.Path
+
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         cls.tmp = tempfile.TemporaryDirectory()
         cls.old = pathlib.Path(cls.tmp.name)
         archive = subprocess.check_output(
@@ -74,7 +99,7 @@ class StatefulBoundaries(unittest.TestCase):
         subprocess.run(["tar", "-xf", "-", "-C", str(cls.old)], input=archive, check=True)
 
     @classmethod
-    def tearDownClass(cls):
+    def tearDownClass(cls) -> None:
         cls.tmp.cleanup()
 
     def _historical_inputs(
@@ -151,6 +176,7 @@ class StatefulBoundaries(unittest.TestCase):
         self.assertEqual(x, y)
 
     def test_only_intended_deployments_and_retention_annotation_change(self):
+
         cases = [
             (
                 "deploy/wiki-runtime/chart",
@@ -185,6 +211,7 @@ class StatefulBoundaries(unittest.TestCase):
         for chart, values, ns, release, allowed in cases:
             with self.subTest(chart=chart):
                 release_image, monori_images = self._historical_inputs(chart, values)
+
                 a, b = (
                     render(
                         self.old,
@@ -205,7 +232,8 @@ class StatefulBoundaries(unittest.TestCase):
                         continue
                     self._assert_changed_document(k, a[k], b[k], allowed)
 
-    def test_all_new_claims_are_prebound_local_retained_and_node5_only(self):
+
+    def test_all_new_claims_are_prebound_local_retained_and_node5_only(self) -> None:
         count = 0
         for file in [
             "wishlist",
@@ -218,7 +246,7 @@ class StatefulBoundaries(unittest.TestCase):
             docs = list(
                 yaml.safe_load_all((R / "deploy/storage" / (file + "-socrat5.yaml")).read_text())
             )
-            for pv, pvc in zip(docs[::2], docs[1::2]):
+            for pv, pvc in zip(docs[::2], docs[1::2], strict=False):
                 count += 1
                 self.assertEqual(pv["spec"]["persistentVolumeReclaimPolicy"], "Retain")
                 self.assertTrue(pv["spec"]["local"]["path"].startswith("/mnt/files/homelab/"))
@@ -232,7 +260,7 @@ class StatefulBoundaries(unittest.TestCase):
                 )
         self.assertEqual(count, 9)
 
-    def test_no_paused_ingress_or_zero_replica_left_in_final_sources(self):
+    def test_no_paused_ingress_or_zero_replica_left_in_final_sources(self) -> None:
         spi = yaml.safe_load((R / "deploy/spi-triage/values.yaml").read_text())
         self.assertFalse(spi["maintenanceIngressPaused"])
         self.assertEqual(spi["workerReplicas"], 1)
@@ -247,7 +275,7 @@ class StatefulBoundaries(unittest.TestCase):
         self.assertNotIn("pacman", legacy)
         self.assertIn("argocd.argoproj.io/refresh=hard", legacy)
 
-    def test_idle_controller_never_runs_or_cancels_a_business_job(self):
+    def test_idle_controller_never_runs_or_cancels_a_business_job(self) -> None:
         s = (R / "scripts/vm105-spi-idle-handoff.py").read_text()
         for word in [
             "/claim",
@@ -273,13 +301,14 @@ if __name__ == "__main__":
 
 
 class CurrentMonoriRelease(unittest.TestCase):
-    def test_current_image_mutation_is_not_hidden_by_historical_input(self):
+    def test_current_image_mutation_is_not_hidden_by_historical_input(self) -> None:
         images = yaml.safe_load((R / "deploy/monori/values.yaml").read_text())["images"]
         documents = render(R, "charts/monori", "deploy/monori/values.yaml", "monori", "monori")
         assert_monori_release_images(documents, images)
         changed = copy.deepcopy(documents)
-        changed[("Deployment", "monori-back")]["spec"]["template"]["spec"]["containers"][0][
-            "image"
-        ] = "unreviewed:latest"
+        back = _mapping(changed[("Deployment", "monori-back")])
+        pod = _mapping(_mapping(_mapping(back["spec"])["template"])["spec"])
+        container = _mapping(_sequence(pod["containers"])[0])
+        container["image"] = "unreviewed:latest"
         with self.assertRaisesRegex(AssertionError, "Current Monori release image differs"):
             assert_monori_release_images(changed, images)

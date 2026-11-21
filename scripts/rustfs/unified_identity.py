@@ -138,8 +138,8 @@ def run(action="plan", nonce=None):
             **FLOWS,
         )
 
-        def state(provider, app):
-            actual = {key: str(getattr(provider, key)) for key in settings}
+        def state(provider, app) -> dict[str, object]:
+            actual: dict[str, object] = {key: str(getattr(provider, key)) for key in settings}
             actual["property_mappings"] = sorted(
                 str(x) for x in provider.property_mappings.values_list("pk", flat=True)
             )
