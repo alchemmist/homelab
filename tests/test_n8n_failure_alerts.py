@@ -41,20 +41,18 @@ class FailureAlertsTests(unittest.TestCase):
         }
         result = self.notification(p)
         text = json.dumps(result)
-        self.assertNotIn("secret", text)
-        self.assertNotIn("private", text)
-        self.assertNotIn("evil.invalid", text)
-        self.assertEqual(
-            result["alert"]["generatorURL"],
-            "https://n8n.socrat.alchemmist.xyz/workflow/abc123/executions/123",
+        assert "secret" not in text
+        assert "private" not in text
+        assert "evil.invalid" not in text
+        assert (
+            result["alert"]["generatorURL"]
+            == "https://n8n.socrat.alchemmist.xyz/workflow/abc123/executions/123"
         )
-        self.assertEqual(
-            result["alert"]["fingerprint"], self.notification(p, "9999")["alert"]["fingerprint"]
+        assert (
+            result["alert"]["fingerprint"] == self.notification(p, "9999")["alert"]["fingerprint"]
         )
         p["execution"]["id"] = "124"
-        self.assertNotEqual(
-            result["alert"]["fingerprint"], self.notification(p)["alert"]["fingerprint"]
-        )
+        assert result["alert"]["fingerprint"] != self.notification(p)["alert"]["fingerprint"]
 
     def test_trigger_failure_without_execution_id(self):
         p = {
@@ -62,23 +60,21 @@ class FailureAlertsTests(unittest.TestCase):
             "trigger": {"error": {"message": "password"}},
         }
         result = self.notification(p)
-        self.assertIn("Trigger failure", result["alert"]["annotations"]["description"])
-        self.assertNotIn("password", json.dumps(result))
-        self.assertNotEqual(
-            result["alert"]["fingerprint"], self.notification(p, "9999")["alert"]["fingerprint"]
+        assert "Trigger failure" in result["alert"]["annotations"]["description"]
+        assert "password" not in json.dumps(result)
+        assert (
+            result["alert"]["fingerprint"] != self.notification(p, "9999")["alert"]["fingerprint"]
         )
 
     def test_no_message_storage_retries_recursion_or_spi_ingress(self):
-        self.assertNotIn("errorWorkflow", TEMPLATE["settings"])
-        self.assertEqual(TEMPLATE["settings"]["saveDataErrorExecution"], "none")
-        self.assertEqual(TEMPLATE["settings"]["saveDataSuccessExecution"], "none")
-        self.assertEqual(TEMPLATE["nodes"][0]["type"], "n8n-nodes-base.errorTrigger")
+        assert "errorWorkflow" not in TEMPLATE["settings"]
+        assert TEMPLATE["settings"]["saveDataErrorExecution"] == "none"
+        assert TEMPLATE["settings"]["saveDataSuccessExecution"] == "none"
+        assert TEMPLATE["nodes"][0]["type"] == "n8n-nodes-base.errorTrigger"
         last = TEMPLATE["nodes"][-1]
-        self.assertFalse(last.get("retryOnFail", False))
-        self.assertNotIn("onError", last)
-        self.assertEqual(
-            last["parameters"]["url"], "http://socrat-bot.socrat-bot.svc:8080/v1/messages"
-        )
+        assert not last.get("retryOnFail", False)
+        assert "onError" not in last
+        assert last["parameters"]["url"] == "http://socrat-bot.socrat-bot.svc:8080/v1/messages"
 
     def wf(self, active=True):
         return {
@@ -117,22 +113,20 @@ class FailureAlertsTests(unittest.TestCase):
             def api(method, path, body=None):
                 calls.append((method, path, body))
                 if method == "PUT":
-                    self.assertEqual(body["nodes"], original["nodes"])
-                    self.assertEqual(body["connections"], original["connections"])
+                    assert body["nodes"] == original["nodes"]
+                    assert body["connections"] == original["connections"]
                     current["settings"] = body["settings"]
                     current["versionId"] = "v2"
                 if method == "POST":
-                    self.assertTrue(path.endswith("/activate"))
+                    assert path.endswith("/activate")
                     current["activeVersionId"] = "v2"
                 return copy.deepcopy(current)
 
             result = sync.bind(api, original, "handler")
-            self.assertEqual(result["active"], active)
-            self.assertEqual(
-                result["settings"], {"executionTimeout": 1800, "errorWorkflow": "handler"}
-            )
-            self.assertEqual(sum(m == "POST" for m, _, _ in calls), int(active))
-            self.assertFalse(any("execute" in path or "deactivate" in path for _, path, _ in calls))
+            assert result["active"] == active
+            assert result["settings"] == {"executionTimeout": 1800, "errorWorkflow": "handler"}
+            assert sum(m == "POST" for m, _, _ in calls) == int(active)
+            assert not any("execute" in path or "deactivate" in path for _, path, _ in calls)
 
     def test_idempotent_and_concurrent_drift_stops(self):
         w = self.wf()
@@ -144,7 +138,7 @@ class FailureAlertsTests(unittest.TestCase):
             return copy.deepcopy(w)
 
         sync.bind(api, w, "handler")
-        self.assertEqual(len(calls), 1)
+        assert len(calls) == 1
         before = self.wf()
         w["name"] = "Changed"
         with self.assertRaises(RuntimeError):

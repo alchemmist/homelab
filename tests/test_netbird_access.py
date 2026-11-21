@@ -89,16 +89,16 @@ class AdmissionTests(unittest.TestCase):
         s = snapshot()
         before = copy.deepcopy(s)
         plan = M.reconcile_plan(s)
-        self.assertEqual(s, before)
-        self.assertEqual(len(plan), 4)
-        self.assertEqual(
-            plan[0]["body"]["property_mappings"], ["openid", "email", "profile", "groups"]
-        )
+        assert s == before
+        expected_steps = 4
+        assert len(plan) == expected_steps
+        assert plan[0]["body"]["property_mappings"] == ["openid", "email", "profile", "groups"]
         account = next(p for p in plan if p["purpose"] == "trusted-group-sso-admission")
-        self.assertEqual(account["body"]["settings"]["peer_login_expiration"], 28800)
-        self.assertEqual(account["body"]["settings"]["jwt_allow_groups"], [M.LEGACY_LOGIN, M.ADMIN])
+        login_expiration = 28800
+        assert account["body"]["settings"]["peer_login_expiration"] == login_expiration
+        assert account["body"]["settings"]["jwt_allow_groups"] == [M.LEGACY_LOGIN, M.ADMIN]
         dns = next(p for p in plan if p["purpose"] == "server-side-dns-management-off")
-        self.assertEqual(dns["body"]["disabled_management_groups"], ["all"])
+        assert dns["body"]["disabled_management_groups"] == ["all"]
 
     def test_reconcile_noop_after_expected_readback(self):
         s = snapshot()
@@ -107,22 +107,22 @@ class AdmissionTests(unittest.TestCase):
         s["nb_accounts"][0]["settings"]["jwt_allow_groups"].append(M.ADMIN)
         s["nb_accounts"][0]["settings"]["extra"]["user_approval_required"] = False
         s["nb_dns"]["disabled_management_groups"] = ["all"]
-        self.assertEqual(M.reconcile_plan(s), [])
+        assert M.reconcile_plan(s) == []
 
     def test_vendor_scope_gap_creates_profile_mapping_without_fake_groups(self):
         s = snapshot()
         s["ak_scopes"] = []
         plan = M.reconcile_plan(s)
-        self.assertEqual(plan[0]["body"]["scope_name"], "profile")
-        self.assertEqual(plan[0]["body"]["expression"], M.EXPRESSION)
-        self.assertEqual(plan[1]["body"]["property_mappings"][-1], "$profile_mapping")
+        assert plan[0]["body"]["scope_name"] == "profile"
+        assert plan[0]["body"]["expression"] == M.EXPRESSION
+        assert plan[1]["body"]["property_mappings"][-1] == "$profile_mapping"
 
     def test_auto_admission_remains_group_restricted_and_preserves_peer_policy(self):
         s = snapshot()
         plan = M.reconcile_plan(s)
         change = next(p for p in plan if p["purpose"] == "trusted-group-sso-admission")
-        self.assertFalse(change["body"]["settings"]["extra"]["user_approval_required"])
-        self.assertFalse(change["body"]["settings"]["extra"]["peer_approval_enabled"])
+        assert not change["body"]["settings"]["extra"]["user_approval_required"]
+        assert not change["body"]["settings"]["extra"]["peer_approval_enabled"]
         s["nb_accounts"][0]["settings"]["jwt_allow_groups"].append("unreviewed-public-signup")
         with self.assertRaises(ValueError):
             M.reconcile_plan(s)
@@ -179,10 +179,10 @@ class AdmissionTests(unittest.TestCase):
     def test_membership_action_never_replaces_other_groups_or_grants_superuser(self):
         s = snapshot()
         plan = M.membership_plan(s, "new-admin", "exact-reviewed-uuid")
-        self.assertEqual(plan[0]["path"], "core/groups/admins/add_user/")
-        self.assertEqual(plan[0]["body"], {"pk": 2})
-        self.assertEqual(s["ak_users"][0]["groups"], ["unrelated"])
-        self.assertEqual(len(plan), 1)
+        assert plan[0]["path"] == "core/groups/admins/add_user/"
+        assert plan[0]["body"] == {"pk": 2}
+        assert s["ak_users"][0]["groups"] == ["unrelated"]
+        assert len(plan) == 1
 
     def test_no_email_fallback_or_ambiguous_adoption(self):
         s = snapshot()
@@ -205,11 +205,12 @@ class AdmissionTests(unittest.TestCase):
 
     def test_membership_grant_revoke_idempotence(self):
         s = snapshot()
-        self.assertEqual(M.membership_plan(s, "new-admin", "exact-reviewed-uuid", True), [])
+        assert M.membership_plan(s, "new-admin", "exact-reviewed-uuid", True) == []
         s["ak_groups"][0]["users"].append(2)
-        self.assertEqual(M.membership_plan(s, "new-admin", "exact-reviewed-uuid"), [])
-        self.assertIn(
-            "remove_user", M.membership_plan(s, "new-admin", "exact-reviewed-uuid", True)[0]["path"]
+        assert M.membership_plan(s, "new-admin", "exact-reviewed-uuid") == []
+        assert (
+            "remove_user"
+            in M.membership_plan(s, "new-admin", "exact-reviewed-uuid", True)[0]["path"]
         )
 
     def test_prior_uncertain_receipt_blocks_rerun(self):
@@ -260,10 +261,10 @@ class AdmissionTests(unittest.TestCase):
     def test_offboarding_blocks_login_and_retires_only_exact_subject_devices(self):
         s = self.offboard_state()
         plan = M.offboard_plan(s, "new-admin", "exact-reviewed-uuid")
-        self.assertTrue(plan[0]["body"]["is_blocked"])
-        self.assertEqual(plan[1]["path"], "peers/target-peer")
-        self.assertIn("remove_user", plan[2]["path"])
-        self.assertNotIn("untouched-machine", str(plan))
+        assert plan[0]["body"]["is_blocked"]
+        assert plan[1]["path"] == "peers/target-peer"
+        assert "remove_user" in plan[2]["path"]
+        assert "untouched-machine" not in str(plan)
 
     def test_owner_or_foreign_connector_offboarding_is_refused(self):
         s = self.offboard_state()
@@ -278,14 +279,14 @@ class AdmissionTests(unittest.TestCase):
     def test_already_disabled_authentik_user_can_still_be_offboarded(self):
         s = self.offboard_state()
         s["ak_users"][0]["is_active"] = False
-        self.assertTrue(M.offboard_plan(s, "new-admin", "exact-reviewed-uuid"))
+        assert M.offboard_plan(s, "new-admin", "exact-reviewed-uuid")
 
     def test_offboard_noop_after_readback(self):
         s = self.offboard_state()
         s["nb_users"][0]["is_blocked"] = True
         s["nb_peers"] = []
         s["ak_groups"][0]["users"].remove(2)
-        self.assertEqual(M.offboard_plan(s, "new-admin", "exact-reviewed-uuid"), [])
+        assert M.offboard_plan(s, "new-admin", "exact-reviewed-uuid") == []
 
     def test_no_password_setup_key_or_kubernetes_mutations(self):
         actions = str(M.reconcile_plan(snapshot())) + str(
@@ -299,4 +300,4 @@ class AdmissionTests(unittest.TestCase):
             "kubectl",
             "users/invites",
         ]:
-            self.assertNotIn(forbidden, actions)
+            assert forbidden not in actions

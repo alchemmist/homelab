@@ -32,49 +32,49 @@ class Worker5MigrationTest(unittest.TestCase):
 
     def test_single_writer_local_retained_and_legacy_preserved(self):
         deployment = self.resource("Deployment", "n8n")["spec"]
-        self.assertIn(deployment["replicas"], (0, 1))
-        self.assertEqual(deployment["strategy"]["type"], "Recreate")
+        assert deployment["replicas"] in (0, 1)
+        assert deployment["strategy"]["type"] == "Recreate"
         spec = deployment["template"]["spec"]
-        self.assertEqual(spec["nodeSelector"]["kubernetes.io/hostname"], self.values["nodeName"])
-        self.assertEqual(
-            spec["volumes"][-1]["persistentVolumeClaim"]["claimName"],
-            self.values["persistence"]["claimName"],
+        assert spec["nodeSelector"]["kubernetes.io/hostname"] == self.values["nodeName"]
+        assert (
+            spec["volumes"][-1]["persistentVolumeClaim"]["claimName"]
+            == self.values["persistence"]["claimName"]
         )
         pv = self.resource("PersistentVolume", "n8n-socrat5")["spec"]
-        self.assertEqual(pv["persistentVolumeReclaimPolicy"], "Retain")
-        self.assertEqual(pv["local"]["path"], "/var/lib/rancher/k3s/storage/n8n-socrat5")
+        assert pv["persistentVolumeReclaimPolicy"] == "Retain"
+        assert pv["local"]["path"] == "/var/lib/rancher/k3s/storage/n8n-socrat5"
         self.resource("PersistentVolumeClaim", "n8n")  # rollback PVC stays in desired state
 
     def test_backup_daily_readonly_no_api_access(self):
         cron = self.resource("CronJob", "n8n-backup")["spec"]
-        self.assertEqual(cron["schedule"], "15 3 * * *")
-        self.assertEqual(cron["timeZone"], "Europe/Moscow")
-        self.assertEqual(cron["concurrencyPolicy"], "Forbid")
+        assert cron["schedule"] == "15 3 * * *"
+        assert cron["timeZone"] == "Europe/Moscow"
+        assert cron["concurrencyPolicy"] == "Forbid"
         spec = cron["jobTemplate"]["spec"]["template"]["spec"]
-        self.assertFalse(spec["automountServiceAccountToken"])
-        self.assertTrue(spec["containers"][0]["volumeMounts"][0]["readOnly"])
-        self.assertEqual(spec["nodeSelector"]["kubernetes.io/hostname"], self.values["nodeName"])
-        self.assertEqual(
-            spec["volumes"][0]["persistentVolumeClaim"]["claimName"],
-            self.values["persistence"]["claimName"],
+        assert not spec["automountServiceAccountToken"]
+        assert spec["containers"][0]["volumeMounts"][0]["readOnly"]
+        assert spec["nodeSelector"]["kubernetes.io/hostname"] == self.values["nodeName"]
+        assert (
+            spec["volumes"][0]["persistentVolumeClaim"]["claimName"]
+            == self.values["persistence"]["claimName"]
         )
         env = spec["containers"][0]["env"]
-        self.assertEqual(env[0]["valueFrom"]["fieldRef"]["fieldPath"], "spec.nodeName")
+        assert env[0]["valueFrom"]["fieldRef"]["fieldPath"] == "spec.nodeName"
 
     def test_recovery_is_separate_retained_and_node_affine(self):
         config = self.values["recoveryStorage"]
-        self.assertNotEqual(config["name"], "n8n-socrat5")
+        assert config["name"] != "n8n-socrat5"
         pv = self.resource("PersistentVolume", config["name"])["spec"]
-        self.assertEqual(pv["persistentVolumeReclaimPolicy"], "Retain")
-        self.assertEqual(pv["local"]["path"], config["path"])
-        self.assertEqual(pv["claimRef"]["name"], config["name"])
+        assert pv["persistentVolumeReclaimPolicy"] == "Retain"
+        assert pv["local"]["path"] == config["path"]
+        assert pv["claimRef"]["name"] == config["name"]
         affinity = pv["nodeAffinity"]["required"]["nodeSelectorTerms"][0]["matchExpressions"][0]
-        self.assertEqual(affinity["values"], [config["nodeName"]])
+        assert affinity["values"] == [config["nodeName"]]
         pvc = self.resource("PersistentVolumeClaim", config["name"])
-        self.assertEqual(pvc["spec"]["volumeName"], config["name"])
-        self.assertEqual(
-            pvc["metadata"]["annotations"]["argocd.argoproj.io/sync-options"],
-            "Prune=false,Delete=false",
+        assert pvc["spec"]["volumeName"] == config["name"]
+        assert (
+            pvc["metadata"]["annotations"]["argocd.argoproj.io/sync-options"]
+            == "Prune=false,Delete=false"
         )
 
     def test_legacy_volume_does_not_move_when_deployment_moves(self):
@@ -99,7 +99,7 @@ class Worker5MigrationTest(unittest.TestCase):
             if x and x["kind"] == "PersistentVolume" and x["metadata"]["name"] == "n8n-socrat5"
         )
         expr = pv["spec"]["nodeAffinity"]["required"]["nodeSelectorTerms"][0]["matchExpressions"][0]
-        self.assertEqual(expr["values"], ["socrat-5"])
+        assert expr["values"] == ["socrat-5"]
         recovery = next(
             x
             for x in docs
@@ -110,7 +110,7 @@ class Worker5MigrationTest(unittest.TestCase):
         expr = recovery["spec"]["nodeAffinity"]["required"]["nodeSelectorTerms"][0][
             "matchExpressions"
         ][0]
-        self.assertEqual(expr["values"], [self.values["recoveryStorage"]["nodeName"]])
+        assert expr["values"] == [self.values["recoveryStorage"]["nodeName"]]
 
     def test_receiver_rejects_commands_and_uses_private_append_versions(self):
         receiver = ROOT / "scripts/n8n/backup_receiver.py"
@@ -119,7 +119,7 @@ class Worker5MigrationTest(unittest.TestCase):
             p = subprocess.run(
                 ["python3", str(receiver)], env=env, input=b"not an archive", capture_output=True
             )
-            self.assertNotEqual(p.returncode, 0)
+            assert p.returncode != 0
             env["SSH_ORIGINAL_COMMAND"] = "receive-n8n-backup"
             content = io.BytesIO()
             with tarfile.open(fileobj=content, mode="w:gz") as archive:
@@ -134,21 +134,22 @@ class Worker5MigrationTest(unittest.TestCase):
                     input=content.getvalue(),
                     capture_output=True,
                 )
-                self.assertEqual(p.returncode, 0, p.stderr)
+                assert p.returncode == 0, p.stderr
             archives = list((Path(home) / "backups/n8n").glob("*.tar.gz"))
-            self.assertEqual(len(archives), 2)
-            self.assertTrue(all(p.stat().st_mode & 0o077 == 0 for p in archives))
-            self.assertEqual(len(list(archives[0].parent.glob("*.sha256"))), 2)
+            expected_archive_count = 2
+            assert len(archives) == expected_archive_count
+            assert all(p.stat().st_mode & 63 == 0 for p in archives)
+            assert len(list(archives[0].parent.glob("*.sha256"))) == expected_archive_count
 
     def test_only_named_local_claim_is_admitted(self):
         policy = next(
             yaml.safe_load_all((ROOT / "deploy/admission/socrat5-local-storage.yaml").read_text())
         )
         expression = policy["spec"]["validations"][0]["expression"]
-        self.assertIn("request.namespace == 'automation'", expression)
-        self.assertIn("claimName == 'n8n-socrat5'", expression)
-        self.assertNotIn("has(v.nfs)", expression)
-        self.assertNotIn("has(v.csi)", expression)
+        assert "request.namespace == 'automation'" in expression
+        assert "claimName == 'n8n-socrat5'" in expression
+        assert "has(v.nfs)" not in expression
+        assert "has(v.csi)" not in expression
 
 
 if __name__ == "__main__":
