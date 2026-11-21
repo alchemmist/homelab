@@ -3,7 +3,7 @@ db:
   database: litellm
   deployStandalone: false
   endpoint: pg-common-rw.postgres.svc.cluster.local
-  url: "postgresql://$(DATABASE_USERNAME):$(DATABASE_PASSWORD)@$(DATABASE_HOST)/$(DATABASE_NAME)?sslmode=require&sslaccept=strict&sslcert=/etc/pg-common/ca.crt"
+  url: postgresql://$(DATABASE_USERNAME):$(DATABASE_PASSWORD)@$(DATABASE_HOST)/$(DATABASE_NAME)?sslmode=require&sslaccept=strict&sslcert=/etc/pg-common/ca.crt
   secret:
     name: litellm-pg-common
     passwordKey: password

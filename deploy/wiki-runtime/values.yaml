@@ -3,8 +3,8 @@
 replicaCount: 1
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/wiki-runtime
-  tag: "upstream-f52cf2a-socrat-20261106"
-  digest: "sha256:dc5b15b391cd94fad3db51dc7fa917e138d77ea345e27518371073538c5a78d9"
+  tag: upstream-f52cf2a-socrat-20261106
+  digest: sha256:dc5b15b391cd94fad3db51dc7fa917e138d77ea345e27518371073538c5a78d9
 oidcSecret: socrat-authentik-wiki
 imagePullSecrets:
   - name: wiki-harbor-pull
