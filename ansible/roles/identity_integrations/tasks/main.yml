@@ -13,7 +13,10 @@
 
 - name: Copy non-secret Grafana environment settings
   ansible.builtin.copy:
-    content: "{{ (lookup('file', playbook_dir + '/../../deploy/identity/grafana-oidc-values.yaml') | from_yaml).grafana.env | to_json }}"
+    content: >-
+      {{ (lookup('file', playbook_dir
+      + '/../../deploy/identity/grafana-oidc-values.yaml')
+      | from_yaml).grafana.env | to_json }}
     dest: /home/alchemmist/.cache/homelab-authentik/grafana-public-env.json
     mode: "0600"
 

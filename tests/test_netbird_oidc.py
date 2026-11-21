@@ -172,19 +172,19 @@ class FakeAuthentik(threading.Thread):
         server = self
 
         class Handler(BaseHTTPRequestHandler):
-            def log_message(self, fmt, *args):
+            def log_message(self, fmt, *args) -> None:
                 return
 
-            def do_GET(self):
+            def do_GET(self) -> None:
                 self._handle("GET")
 
-            def do_POST(self):
+            def do_POST(self) -> None:
                 self._handle("POST")
 
-            def do_PATCH(self):
+            def do_PATCH(self) -> None:
                 self._handle("PATCH")
 
-            def _handle(self, method):
+            def _handle(self, method) -> None:
                 length = int(self.headers.get("Content-Length", "0"))
                 raw = self.rfile.read(length) if length else b""
                 payload = json.loads(raw) if raw else None
@@ -198,7 +198,7 @@ class FakeAuthentik(threading.Thread):
                     return self._send(500, {"detail": str(error)})
                 self._send(code, body)
 
-            def _send(self, code, body):
+            def _send(self, code, body) -> None:
                 data = b"" if body is None else json.dumps(body).encode()
                 self.send_response(code)
                 self.send_header("Content-Type", "application/json")

@@ -140,3 +140,5 @@ no daemon/node/network restart. REG.RU delegation/glue unchanged. All three curr
 authoritative NS and Google/Cloudflare answer HOME+VPS; native HTTP-01 Certificate
 Ready, trusted TLS and SSO protection checked on both edges. This is an exact-name
 addition, not a wildcard or permission to expose other services. [App scope](openhands.md).
+
+**LMS и OIDC (20 ноября 2026):** `lms` и `auth.socrat` предпочитают HOME при положительной HOME-пробе. С клиентского маршрута TCP/443 на VPS истекал по таймауту до TLS, хотя другие сети и локальная проверка VPS получали 303. Выбор двух A-записей не обеспечивал пользователю переключения. При отказе HOME и доступном VPS остаётся VPS; при двух отрицательных пробах сохраняется прежнее поведение. Остальные имена и TTL не меняются. Это обход наблюдаемой сетевой проблемы, а не доказательство исправности всех маршрутов.

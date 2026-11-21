@@ -87,7 +87,10 @@
     {{ '--check' if ansible_check_mode else '' }}
   register: homelab_desktop_startup
   check_mode: false
-  when: not ansible_check_mode or (homelab_desktop_startup_helper.stat.exists and not homelab_desktop_startup_install.changed)
+  when: >-
+    not ansible_check_mode
+    or (homelab_desktop_startup_helper.stat.exists
+    and not homelab_desktop_startup_install.changed)
   changed_when: (homelab_desktop_startup.stdout | from_json).changed
 
 - name: Remove the unused Sway compositor and helpers

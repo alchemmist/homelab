@@ -111,7 +111,7 @@ def remove_socrat_1(client: Etcd):
         client.call(
             ["move-leader", members["socrat-0"]["id_hex"]], ENDPOINTS["socrat-1"], structured=False
         )
-        for attempt in range(10):
+        for _attempt in range(10):
             if int(client.status("socrat-0")["leader"]) == members["socrat-0"]["id"]:
                 break
             time.sleep(0.5)
