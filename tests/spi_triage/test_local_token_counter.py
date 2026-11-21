@@ -19,9 +19,10 @@ class CounterContract(unittest.TestCase):
         )
 
     def test_render(self):
-        self.assertEqual(
-            render(self.body()),
-            "<|im_start|>system\ns<|im_end|>\n<|im_start|>user\nu<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n",
+        assert (
+            render(self.body())
+            == "<|im_start|>system\ns<|im_end|>\n<|im_start|>user\nu<|im_end|>\n"
+            "<|im_start|>assistant\n<think>\n\n</think>\n\n"
         )
 
     def test_contract_and_size(self):
@@ -42,7 +43,7 @@ class CounterContract(unittest.TestCase):
 
     def test_modes_and_missing_assets(self):
         with patch.dict(os.environ, {"SPI_TOKEN_ACCOUNTING_MODE": "byte-bound-v1"}):
-            self.assertIsNone(configured_counter())
+            assert configured_counter() is None
         with patch.dict(os.environ, {"SPI_TOKEN_ACCOUNTING_MODE": "unknown"}):
             with self.assertRaises(Failure):
                 configured_counter()
@@ -74,9 +75,9 @@ class ProxyFloor(unittest.TestCase):
             for maximum in (768, 2500):
                 body = self.body(text, maximum)
                 actual = self.counter().reservation(body)
-                self.assertGreaterEqual(actual, (len(text) + 1 + 3) // 4 + maximum)
-                self.assertGreaterEqual(actual, 10 + 2 + 256 + maximum)
-                self.assertEqual(actual, max(268, (len(text) + 4) // 4 + 256) + maximum)
+                assert actual >= (len(text) + 1 + 3) // 4 + maximum
+                assert actual >= 10 + 2 + 256 + maximum
+                assert actual == max(268, (len(text) + 4) // 4 + 256) + maximum
 
     def test_oversize_no_bpe_and_contract_not_masked(self):
         from unittest.mock import Mock
@@ -84,7 +85,9 @@ class ProxyFloor(unittest.TestCase):
         counter = self.counter()
         counter._tokenizer = Mock()
         body = self.body(" " * 600000)
-        self.assertEqual(counter.reservation(body), 30001)
+        # An oversize body claims the whole 30k-token budget plus one.
+        full_reservation = 30001
+        assert counter.reservation(body) == full_reservation
         counter._tokenizer.encode.assert_not_called()
         for key, value in [
             ("metadata", {}),

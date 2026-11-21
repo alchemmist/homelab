@@ -14,7 +14,7 @@ import service
 class Runtime(unittest.TestCase):
     def test_off(self):
         with patch.dict(os.environ, {}, clear=True):
-            self.assertEqual(runtime.load_storage(), (None, "legacy"))
+            assert runtime.load_storage() == (None, "legacy")
 
     def test_projected_file_and_invalid_inputs(self):
         with tempfile.TemporaryDirectory() as d:
@@ -45,8 +45,8 @@ class Runtime(unittest.TestCase):
                     target.write_text(json.dumps({"access": "writer", "secret": "private"}))
                     target.chmod(0o440)
                     client, flag = runtime.load_storage()
-                    self.assertIsInstance(client, runtime.S3Evidence)
-                    self.assertEqual(flag, backend)
+                    assert isinstance(client, runtime.S3Evidence)
+                    assert flag == backend
                     for content, mode in [
                         ("{}", 0o600),
                         ('{"access":"a","secret":"b","secret":"c"}', 0o600),
@@ -89,8 +89,8 @@ class Runtime(unittest.TestCase):
         ):
             with self.assertRaises(Stop):
                 service.serve()
-            self.assertIs(engine.call_args.kwargs["storage"], storage)
-            self.assertEqual(engine.call_args.kwargs["storage_backend"], "legacy")
+            assert engine.call_args.kwargs["storage"] is storage
+            assert engine.call_args.kwargs["storage_backend"] == "legacy"
         with (
             patch.dict(os.environ, {"SPI_EVIDENCE_BACKEND": "s3"}, clear=True),
             patch.object(service, "Dispatcher") as dispatch,
