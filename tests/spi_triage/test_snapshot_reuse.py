@@ -166,7 +166,7 @@ class ReviewReuseTests(unittest.TestCase):
         m = Model(Mock(), "fake")
         saved = []
 
-        def choose(task, data, schema, deadline):
+        def choose(task, data, schema, deadline) -> dict[str, object]:
             return dict(GOOD, issue_number=data["open_issues"][0]["number"])
 
         m.call = Mock(side_effect=choose)
@@ -186,7 +186,7 @@ class ReviewReuseTests(unittest.TestCase):
         saved = []
         calls = [0]
 
-        def choose(task, data, schema, deadline):
+        def choose(task, data, schema, deadline) -> dict[str, object]:
             calls[0] += 1
             if calls[0] == 8:
                 raise Failure("LLM_ADMISSION_DEFERRED")
@@ -319,7 +319,7 @@ class ChurnPublicationTests(unittest.TestCase):
             evidence = Mock()
             bundle_count = [0]
 
-            def collect(event):
+            def collect(event) -> dict[str, object]:
                 bundle_count[0] += 1
                 return {
                     "bundle": prepare_bundle(
@@ -332,7 +332,7 @@ class ChurnPublicationTests(unittest.TestCase):
             evidence.collect.side_effect = collect
             stored = {}
 
-            def upload(key, raw):
+            def upload(key, raw) -> dict[str, object]:
                 if key in stored:
                     self.assertEqual(stored[key], raw)
                 stored[key] = raw
@@ -384,7 +384,7 @@ class ChurnPublicationTests(unittest.TestCase):
                 )
                 jobs.append((key, event))
 
-            def post(method, path, body):
+            def post(method, path, body) -> dict[str, object]:
                 self.assertEqual(method, "POST")
                 self.assertEqual(path, "/issues/1/comments")
                 self.assertNotIn("fake ", body["body"])

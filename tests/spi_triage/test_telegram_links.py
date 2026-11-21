@@ -132,7 +132,7 @@ class OutboxTest(unittest.TestCase):
         self.enqueue()
         self.receipt()
 
-        def fail(*a, **kw):
+        def fail(*a, **kw) -> None:
             raise TimeoutError("X-Internal-Token: secret-value")
 
         self.outbox.request = fail
@@ -173,7 +173,7 @@ class OutboxTest(unittest.TestCase):
         self.receipt()
         original = self.http
 
-        def racing(method, path, **kwargs):
+        def racing(method, path, **kwargs) -> tuple[int, dict[str, object]]:
             if method == "POST":
                 self.outbox.record_primary_publication(
                     "resolved",
@@ -184,7 +184,8 @@ class OutboxTest(unittest.TestCase):
                         html_url="https://github.com/alchemmist/homelab/issues/42#issuecomment-8",
                     ),
                 )
-            return original(method, path, **kwargs)
+            response: tuple[int, dict[str, object]] = original(method, path, **kwargs)
+            return response
 
         self.outbox.request = racing
         self.outbox.once()

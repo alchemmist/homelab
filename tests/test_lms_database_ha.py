@@ -236,7 +236,7 @@ def test_operator_canary_avoids_stale_ready_pod_on_unreachable_node() -> None:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
-    def pod(name, node, deleting=False):
+    def pod(name, node, deleting=False) -> dict[str, object]:
         return {
             "metadata": {"name": name, **({"deletionTimestamp": "now"} if deleting else {})},
             "spec": {"nodeName": node},
@@ -307,7 +307,7 @@ def test_copy_refuses_live_ha_or_unknown_endpoint_before_creating_job(monkeypatc
     ]:
         calls = []
 
-        def kube(*args, **kwargs):
+        def kube(*args, **kwargs) -> str:
             calls.append(args)
             assert args == ("-n", "lms", "get", "secret", "lms-db", "-o", "json")
             return json.dumps({"data": data})

@@ -43,7 +43,7 @@ class ClientTests(unittest.TestCase):
         workers = []
         slots = threading.BoundedSemaphore(s.MAX_RESOLVERS)
 
-        def stuck(*args, **kwargs):
+        def stuck(*args, **kwargs) -> list[tuple[int, int, int, str, tuple[str, int]]]:
             workers.append(threading.current_thread())
             release.wait()
             return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 9))]
@@ -185,7 +185,7 @@ class ClientTests(unittest.TestCase):
         listener.bind(("127.0.0.1", 0))
         listener.listen()
 
-        def serve():
+        def serve() -> None:
             conn, _ = listener.accept()
             with conn:
                 conn.recv(8192)

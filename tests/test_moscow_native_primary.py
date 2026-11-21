@@ -50,14 +50,14 @@ def test_runtime_refuses_unknown_workloads_and_pvc() -> None:
 
     m = runtime_module()
 
-    def pod(ns, name, uid):
+    def pod(ns, name, uid) -> dict[str, dict[str, object]]:
         return {
             "metadata": {"namespace": ns, "name": name, "uid": uid},
             "spec": {"nodeName": "socrat-4"},
             "status": {},
         }
 
-    good = {
+    good: dict[str, list[dict[str, dict[str, object]]]] = {
         "items": [
             pod("vpn-transit", "vpn-transit-a", "a"),
             pod(
