@@ -8,6 +8,8 @@ endif
 
 export PATH := $(CURDIR)/.quality-tools/bin:$(PATH)
 export UV_LOCKED := 1
+# Imports during local checks must not add bytecode to vendored Helm charts.
+export PYTHONDONTWRITEBYTECODE := 1
 
 .PHONY: help check $(NODES)
 help:
