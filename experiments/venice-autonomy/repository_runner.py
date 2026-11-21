@@ -14,8 +14,7 @@ import tarfile
 import time
 import tokenize
 import uuid
-from collections.abc import Mapping, Sequence
-from typing import Protocol, TypedDict, cast
+from typing import TypedDict
 
 from sandbox import bounded_process
 
@@ -120,6 +119,13 @@ def invoke_openhands(
         max_iterations=30,
         language="Python",
     )
+
+
+class _CommandResult(TypedDict, total=False):
+    returncode: int
+    output: str
+    exception_info: None
+    truncated: bool
 
 
 class CandidateRejected(ValueError):
@@ -265,7 +271,7 @@ class RepositoryEnvironment:
             self.close()
             raise
 
-    def execute(self, action: object, **kwargs: object):
+    def execute(self, action: object, **kwargs: object) -> _CommandResult:
         command = action.get("command") if isinstance(action, dict) else None
         if not isinstance(command, str) or len(command.encode()) > 12000:
             raise ValueError("invalid or oversized command")
@@ -279,13 +285,19 @@ class RepositoryEnvironment:
             code, data = bounded_process(
                 ["docker", "exec", self.container_id, "bash", "-lc", wrapped], 24000, 50
             )
-            result = {
+            if not isinstance(code, int) or isinstance(code, bool) or not isinstance(data, bytes):
+                raise TypeError(code)
+            result: _CommandResult = {
                 "returncode": code,
                 "output": data.decode("utf-8", errors="replace"),
                 "exception_info": None,
             }
         except (TimeoutError, ValueError) as error:
-            result = {"returncode": 125, "output": type(error).__name__, "exception_info": None}
+            result = {
+                "returncode": 125,
+                "output": type(error).__name__,
+                "exception_info": None,
+            }
         raw_output = result["output"]
         if len(raw_output.encode()) > 4000:
             result["output"] = (
