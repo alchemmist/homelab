@@ -18,6 +18,7 @@ class ManifestLoader(yaml.SafeLoader):
     """YAML loader that preserves mapping key order."""
 
     def construct_mapping(self, node, deep=False):
+        """Reject duplicate mapping keys while loading YAML manifests."""
         seen = set()
         for key, _value in node.value:
             if key.tag == "tag:yaml.org,2002:merge":

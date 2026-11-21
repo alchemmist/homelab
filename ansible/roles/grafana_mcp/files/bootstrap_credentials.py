@@ -50,6 +50,7 @@ class Grafana:
         payload: object | None = None,
         token: str | None = None,
     ) -> dict[str, object]:
+        'Issue a Grafana HTTP request and return the decoded JSON response.'
         request = urllib.request.Request(
             self.url + path,
             data=json.dumps(payload).encode() if payload is not None else None,

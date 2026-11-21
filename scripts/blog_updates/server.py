@@ -15,13 +15,16 @@ class Handler(BaseHTTPRequestHandler):
     """HTTP handler serving blog update status."""
 
     def log_message(self, *args):
+        """Silence request logging: no bodies, credentials or content in logs."""
         pass  # no request bodies, credentials or content in logs
 
     def do_GET(self):
+        """Answer liveness probes on /healthz and 404 otherwise."""
         self.send_response(200 if self.path == "/healthz" else 404)
         self.end_headers()
 
     def do_POST(self):
+        """Dispatch an authenticated worker action (validate/generate/create-pr)."""
         if self.path not in ("/validate", "/generate", "/create-pr") or not hmac.compare_digest(
             self.headers.get("X-Worker-Token", ""), os.environ["WORKER_TOKEN"]
         ):

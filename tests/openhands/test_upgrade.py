@@ -7,6 +7,7 @@ class UpgradeSafety(unittest.TestCase):
     """Tests for safe offline upgrade backups."""
 
     def test_backup_is_separate_retained_readonly_source_and_offline(self) -> None:
+        'Verify the backup job isolates a read-only source and has no network.'
         r=subprocess.check_output(["helm","template","openhands",str(ROOT/"charts/openhands"),"-n","openhands","-f",str(ROOT/"deploy/openhands/values.yaml")],text=True)
 
         objs=[x for x in yaml.safe_load_all(r) if x]
@@ -22,6 +23,7 @@ class UpgradeSafety(unittest.TestCase):
         assert "PRIVATE KEY" not in (ROOT / "charts/openhands/files/backup-recipient.pem").read_text()
 
     def test_otel_remains_sole_scraper(self) -> None:
+        'Verify OTEL stays the sole Prometheus scraper after upgrades.'
         v=yaml.safe_load((ROOT/"charts/prometheus/values.yaml").read_text())["kube-prometheus-stack"]["prometheus"]["prometheusSpec"]
         assert v["serviceMonitorSelector"]["matchLabels"]["homelab.alchemmist.xyz/scrape-owner"] == "retired-legacy-prometheus"
         c=next(x for x in v["containers"] if x["name"]=="otel-cluster")
