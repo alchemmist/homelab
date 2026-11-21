@@ -28,7 +28,7 @@ def load_token(ssh_host):
 
 
 class Client:
-    def __init__(self, url, token):
+    def __init__(self, url, token) -> None:
         self.url = url
         self.headers = {
             "Authorization": "Bearer " + token,

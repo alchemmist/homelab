@@ -1,5 +1,6 @@
 import copy
 import importlib.util
+import types
 import json
 from pathlib import Path
 import tempfile
@@ -9,7 +10,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load():
+def load() -> types.ModuleType:
     spec = importlib.util.spec_from_file_location(
         "litellm_rollout", ROOT / "scripts/otel-litellm-sdk-rollout.py"
     )
@@ -26,7 +27,10 @@ class LiteLLMRolloutTests(unittest.TestCase):
         module = load()
         before = {
             "model_list": [
-                {"model_name": "existing", "litellm_params": {"api_key": "os.environ.EXISTING"}}
+                {
+                    "model_name": "existing",
+                    "litellm_params": {"api_key": "os.environ.EXISTING"},
+                }
             ],
             "general_settings": {"master_key": "os.environ.MASTER"},
             "litellm_settings": {
@@ -57,10 +61,13 @@ class LiteLLMRolloutTests(unittest.TestCase):
         self.assertEqual(environment["OTEL_LOGS_EXPORTER"], "none")
         self.assertEqual(environment["OTEL_EXPORTER_OTLP_INSECURE"], "false")
         self.assertEqual(
-            environment["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"], "NO_CONTENT"
+            environment["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"],
+            "NO_CONTENT",
         )
 
-    def test_apply_is_blocked_before_cluster_access_without_verified_reload(self) -> None:
+    def test_apply_is_blocked_before_cluster_access_without_verified_reload(
+        self,
+    ) -> None:
         """Refuse apply before any cluster call when SDK reload is not verified."""
         module = load()
         with tempfile.TemporaryDirectory() as directory:

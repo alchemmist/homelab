@@ -126,7 +126,7 @@ def mask_allowed_methods(source: str) -> str:
 def allowed_edit_report(baseline: str, candidate: str) -> dict:
     try:
 
-        def signatures(source):
+        def signatures(source) -> dict[str, tuple[str, str | None, tuple[str, ...], str | None]]:
             tree = ast.parse(source)
             return {
                 child.name: (

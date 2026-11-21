@@ -15,7 +15,10 @@ spec.loader.exec_module(c)
 
 
 class CredentialTest(unittest.TestCase):
-    def setup_runtime(self, folder, days):
+    def setup_runtime(
+        self, folder, days
+    ) -> tuple[type, list[tuple[str, str]], list[dict[str, object]]]:
+        """Install a fixture credential and build a patched API runtime."""
         old = {
             "user_id": "service-id",
             "token_id": "old-id",
@@ -25,8 +28,8 @@ class CredentialTest(unittest.TestCase):
             ).isoformat(),
         }
         c.mod.atomic(folder / "credential.json", old)
-        calls = []
-        users = [
+        calls: list[tuple[str, str]] = []
+        users: list[dict[str, object]] = [
             {
                 "id": "service-id",
                 "name": c.mod.SERVICE,
@@ -37,7 +40,7 @@ class CredentialTest(unittest.TestCase):
         ]
 
         class Runtime:
-            def __init__(self, _root, _config):
+            def __init__(self, root, config) -> None:
                 self.auth = dict(old)
 
             def api(self, method, path, _body=None):
@@ -62,7 +65,7 @@ class CredentialTest(unittest.TestCase):
 
         return Runtime, calls, users
 
-    def test_valid_long_lived_token_does_not_rotate_each_run(self):
+    def test_valid_long_lived_token_does_not_rotate_each_run(self) -> None:
         with tempfile.TemporaryDirectory() as t:
             folder = Path(t)
             runtime, calls, users = self.setup_runtime(folder, 300)
@@ -70,7 +73,7 @@ class CredentialTest(unittest.TestCase):
                 self.assertFalse(c.renew(folder, {}))
             self.assertEqual(calls, [("GET", "users")])
 
-    def test_renew_verify_atomic_switch_then_revoke_old(self):
+    def test_renew_verify_atomic_switch_then_revoke_old(self) -> None:
         with tempfile.TemporaryDirectory() as t:
             folder = Path(t)
             runtime, calls, users = self.setup_runtime(folder, 10)
@@ -80,7 +83,7 @@ class CredentialTest(unittest.TestCase):
             self.assertFalse((folder / "credential-intent.json").exists())
             self.assertEqual((folder / "credential.json").stat().st_mode & 0o777, 0o600)
 
-    def test_human_blocked_or_lowered_account_not_repaired(self):
+    def test_human_blocked_or_lowered_account_not_repaired(self) -> None:
         for field, value in [("is_service_user", False), ("is_blocked", True), ("role", "user")]:
             with tempfile.TemporaryDirectory() as t:
                 folder = Path(t)
@@ -90,14 +93,14 @@ class CredentialTest(unittest.TestCase):
                     c.renew(folder, {})
                 self.assertEqual(calls, [("GET", "users")])
 
-    def test_uncertain_issuance_never_retries(self):
+    def test_uncertain_issuance_never_retries(self) -> None:
         with tempfile.TemporaryDirectory() as t:
             folder = Path(t)
             (folder / "credential-intent.json").write_text("{}")
             with self.assertRaises(ValueError):
                 c.renew(folder, {})
 
-    def test_missing_credential_needs_explicit_bootstrap(self):
+    def test_missing_credential_needs_explicit_bootstrap(self) -> None:
         with tempfile.TemporaryDirectory() as t:
             with self.assertRaises(ValueError):
                 c.renew(Path(t), {})

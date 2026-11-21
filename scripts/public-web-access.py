@@ -24,11 +24,11 @@ def unique(rows, key, value):
 
 
 class API:
-    def __init__(self, path):
+    def __init__(self, path) -> None:
         self.token = json.loads(Path(path).read_text())["AUTHENTIK_BOOTSTRAP_TOKEN"]
 
         class NoRedirect(urllib.request.HTTPRedirectHandler):
-            def redirect_request(self, *_args, **_kwargs):
+            def redirect_request(self, *a, **k) -> None:
                 return None
 
         self.http = urllib.request.build_opener(NoRedirect)
@@ -45,7 +45,7 @@ class API:
             b = r.read()
             return json.loads(b) if b else None
 
-    def rows(self, path):
+    def rows(self, _path):
         rows = []
         for page in range(1, 1001):
             d = self.call(

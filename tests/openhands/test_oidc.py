@@ -13,6 +13,8 @@ m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
 
 
 class NativeOIDC(unittest.TestCase):
+    bindings: "list[dict[str, object]]"
+
     def setUp(self):
         self.owner = {'pk':'owner'}
         self.settings = copy.deepcopy(m.PROVIDER)
@@ -23,7 +25,7 @@ class NativeOIDC(unittest.TestCase):
 
     def validate(self):
         class API:
-            def rows(_, _path): return self.bindings
+            def rows(_, path) -> 'list[dict[str, object]]':return self.bindings
         m.validate(API(),self.owner,self.settings,self.provider,self.app,self.journal)
 
     def test_cookie_secret_uses_go_raw_url_alphabet(self):

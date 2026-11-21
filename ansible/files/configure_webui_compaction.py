@@ -3,6 +3,7 @@ import json
 import sqlite3
 import urllib.request
 from datetime import timedelta
+from typing import cast
 
 
 def configure():
@@ -30,14 +31,15 @@ def configure():
     )
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
-    def request(path, payload=None):
+    def request(path, payload=None) -> dict[str, object]:
         req = urllib.request.Request(
             "http://127.0.0.1:8080" + path,
             headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
             data=None if payload is None else json.dumps(payload).encode(),
         )
         with opener.open(req, timeout=60) as response:
-            return json.load(response)
+            document: dict[str, object] = json.load(response)
+            return document
 
     path = "/api/v1/chats/config"
     before = request(path)

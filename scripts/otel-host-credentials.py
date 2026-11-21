@@ -34,7 +34,7 @@ def run(verify_scope=False):
     token = json.loads((ROOT / "token.json").read_text())
     context = ssl.create_default_context(cafile=str(ROOT / "kubernetes-ca.crt"))
 
-    def api(path, payload=None, method=None):
+    def api(path, payload=None, method=None) -> dict[str, object]:
         headers = {"Authorization": "Bearer " + token["token"]}
         if payload is not None:
             headers["Content-Type"] = (
@@ -47,7 +47,8 @@ def run(verify_scope=False):
             method=method,
         )
         with urllib.request.urlopen(request, context=context, timeout=15) as response:
-            return json.load(response)
+            result: dict[str, object] = json.load(response)
+            return result
 
     namespace = "/api/v1/namespaces/" + cfg["namespace"]
     if verify_scope:

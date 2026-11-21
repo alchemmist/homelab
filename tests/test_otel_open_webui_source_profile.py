@@ -8,7 +8,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def module():
+def module() -> ModuleType:
     spec = importlib.util.spec_from_file_location(
         "webui_profile", ROOT / "scripts/otel-open-webui-source-profile.py"
     )
@@ -17,11 +17,16 @@ def module():
     return result
 
 
-def fixtures():
-    calls = []
+def fixtures() -> tuple[
+    list[str | dict[str, object]],
+    SimpleNamespace,
+    ModuleType,
+    dict[str, ModuleType],
+]:
+    calls: list[str | dict[str, object]] = []
 
     class Native:
-        def __init__(self, app, db_engine):
+        def __init__(self, app, db_engine) -> None:
             self.app = app
             self.db_engine = db_engine
 
@@ -64,7 +69,7 @@ def fixtures():
 
 
 class OpenWebuiProfileTests(unittest.TestCase):
-    def test_only_http_instrumentors_no_body_serializing_or_duplicate_signals(self):
+    def test_only_http_instrumentors_no_body_serializing_or_duplicate_signals(self) -> None:
         calls, native, sdk, modules = fixtures()
         with patch.dict(sys.modules, modules):
             module().activate()
@@ -82,7 +87,7 @@ class OpenWebuiProfileTests(unittest.TestCase):
             profile._uninstrument()
             self.assertEqual(calls[-4:], ["fastapi-stop"] + ["http-stop"] * 3)
 
-    def test_guard_and_before_setup_order_required_no_late_fallback(self):
+    def test_guard_and_before_setup_order_required_no_late_fallback(self) -> None:
         calls, native, sdk, modules = fixtures()
         with patch.dict(sys.modules, modules):
             sdk.TracerProvider._homelab_source_privacy = False

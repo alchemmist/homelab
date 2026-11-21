@@ -47,8 +47,8 @@ def check(root=ROOT, write=False):
             raise ValueError("Inventory endpoint drift: " + name)
     relay = c["relayContract"]
 
-    def literals(path):
-        result = {}
+    def literals(path) -> dict[str, object]:
+        result: dict[str, object] = {}
         for statement in ast.parse((root / path).read_text()).body:
             if (
                 isinstance(statement, ast.Assign)
