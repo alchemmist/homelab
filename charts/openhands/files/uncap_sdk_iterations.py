@@ -11,8 +11,8 @@ def prepare(root, out):
     for name, digest, condition, count in PATCHES:
         original=(root/name).read_bytes()
         if sha256(original).hexdigest()!=digest or original.count(condition.encode())!=count:
-            raise ValueError('Unexpected SDK revision: '+name)
-        result=original.replace(condition.encode(),b'if False:  # Owner policy: no iteration-count stop')
-        compile(result,name,'exec')
+            raise ValueError("Unexpected SDK revision: "+name)
+        result=original.replace(condition.encode(),b"if False:  # Owner policy: no iteration-count stop")
+        compile(result,name,"exec");
         (out/Path(name).name).write_bytes(result)
-if __name__=='__main__':prepare(ROOT,Path('/overlay'))
+if __name__=="__main__":prepare(ROOT,Path("/overlay"))

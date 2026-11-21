@@ -153,7 +153,7 @@ ORACLE_JS += r'''
 '''
 
 _digits="a,b,c=map(int,input()); "
-_yes="'Вы ввели красивое число'"
+_yes="'Вы ввели красивое число'"; 
 _no="'Жаль, вы ввели обычное число'"
 SPECS['builtin-functions/beautiful-number']=('beautiful_digits','','',[
  ('assume middle digit is median',_digits+f'print({_yes} if a+c==2*b else {_no})'),
