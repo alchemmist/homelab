@@ -1,12 +1,6 @@
 """Root-only effective access checks; emit metadata, never hashes or credentials."""
 
-import json
-import os
-import pwd
-import re
-import shutil
-import subprocess
-import sys
+import json, os, pwd, re, shutil, subprocess, sys
 
 name = sys.argv[1]
 user = pwd.getpwnam(name)
@@ -31,12 +25,12 @@ policy = subprocess.run(
     env={**os.environ, "LC_ALL": "C"},
 )
 if policy.returncode not in [0, 1]:
-    msg = "Cannot inspect effective sudo policy"
-    raise SystemExit(msg)
+    message = "Cannot inspect effective sudo policy"
+    raise SystemExit(message)
 denied = ("User " + name + " is not allowed to run sudo on ") in policy.stdout
 if not denied and "may run the following commands" not in policy.stdout:
-    msg = "Unrecognized effective sudo policy output"
-    raise SystemExit(msg)
+    message = "Unrecognized effective sudo policy output"
+    raise SystemExit(message)
 admin_read = (
     subprocess.run(
         ["runuser", "-u", name, "--", "test", "-r", "/etc/rancher/k3s/k3s.yaml"]
