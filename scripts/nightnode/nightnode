@@ -27,10 +27,22 @@ load_config() {
   if [[ -f "${CONFIG_FILE}" ]]; then
     # KEY=VALUE lines only; blank and commented lines are skipped.
     while IFS= read -r line || [[ -n "${line}" ]]; do
+      # Permit the same quoting and parameter expansion as the old shell config,
+      # while rejecting commands and malformed names before evaluating a value.
       [[ -z "${line}" || "${line}" == \#* ]] && continue
       key="${line%%=*}"
       value="${line#*=}"
       [[ "${key}" == "${line}" ]] && die "config line is not KEY=VALUE: ${line}"
+      key="${key#"${key%%[![:space:]]*}"}"
+      key="${key%"${key##*[![:space:]]}"}"
+      [[ "${key}" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]] || die "invalid config key: ${key}"
+      # A comment starts at an unquoted, whitespace-delimited #. Keep # in
+      # quoted values and evaluate only the value, never the key or assignment.
+      if [[ "${value}" != \'*\' && "${value}" != \"*\" ]]; then
+        value="${value%%[[:space:]]#*}"
+      fi
+      # shellcheck disable=SC2294 # config values intentionally retain source semantics
+      eval "value=${value}"
       export "${key}=${value}"
     done < "${CONFIG_FILE}"
   fi

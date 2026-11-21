@@ -130,7 +130,7 @@ class DeadlineConnection:
             or getattr(self, "response_owns_deadline", False)
         ):
             timer.cancel()
-        cast("http.client.HTTPResponse", super()).close()
+        cast("http.client.HTTPConnection", super()).close()
 
 
 class HTTPConnection(DeadlineConnection, http.client.HTTPConnection):

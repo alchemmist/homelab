@@ -317,6 +317,9 @@ This narrow bootstrap exception overrides the general ban on dependency manifest
             validate_changes(changes)
             if any(i["path"] in {"web/package.json", "web/package-lock.json"} for i in changes):
                 validate_dependency_update(changes, original_package)
+    # Keep the result's list synchronized even when proposal data replaces the
+    # local list object during review validation.
+    result["changes"] = changes
     result["command_tail"] = (ART / "commands.log").read_text(errors="replace")[-16000:]
     # No model transcript or shell stdout is streamed into cluster logs.
     print(signed_result(result), flush=True)
