@@ -55,6 +55,11 @@ class _HandoffResource(TypedDict):
     spec: NotRequired[_DeploymentSpec]
 
 
+def _blob_id(data: bytes) -> str:
+    """Calculate the local historical blob identity; do not write or fetch Git objects."""
+    return subprocess.check_output(["git", "hash-object", "--stdin"], input=data).decode().strip()
+
+
 def _project_field(
     document: object, path: tuple[str | int, ...], current: str, original: str
 ) -> None:
@@ -90,9 +95,7 @@ def _status_handoff(resource: _HandoffResource) -> _HandoffResource:
         original = (
             ROOT / "tests/fixtures/public-entry-handoff-inputs/kuma-policy.conf.txt"
         ).read_bytes()
-        assert subprocess.check_output(
-            ["git", "hash-object", "--stdin"], input=original
-        ).decode().strip() == ("40a9cac2fe30cf52ad89785f940c73cc49f5655c")
+        assert _blob_id(original) == "40a9cac2fe30cf52ad89785f940c73cc49f5655c"
         if resource["kind"] == "ConfigMap":
             _project_field(result, ("data", "nginx.conf"), current.decode(), original.decode())
         else:
@@ -152,11 +155,7 @@ def migration_payload(resource: _HandoffResource) -> _HandoffResource:
         "traffic-light-inset.js": "27ec9fe426ee10f74d35bc7be55556a53e72e762",
     }
     for key, data in original.items():
-        # hash-object without -w is local identity calculation, not a write/fetch.
-        assert (
-            subprocess.check_output(["git", "hash-object", "--stdin"], input=data).decode().strip()
-            == pins[key]
-        )
+        assert _blob_id(data) == pins[key]
     result = copy.deepcopy(resource)
     if resource["kind"] == "ConfigMap":
         native = {
