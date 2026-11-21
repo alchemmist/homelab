@@ -29,7 +29,7 @@ ssh = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ssh)
 UUID = "11111111-2222-4333-8444-555555555555"
 OTHER = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
-SSH_PATH = cast("str", shutil.which("sshd"))  # dereferenced only inside the sshd-guarded test
+SSH_PATH = shutil.which("sshd")
 # Existing PUBLIC key, not a private fixture; inventory itself is kept byte-for-byte.
 TIM = yaml.safe_load((ROOT / "ansible/inventory/group_vars/Socrat.yml").read_text())[
     "homelab_users"
@@ -182,7 +182,7 @@ class BindingTests(unittest.TestCase):
             "00000000-0000-0000-0000-000000000000",
         ]:
             if ident == UUID:
-                continue  # UUID above contains digits only.
+                continue  # UUID contains digits only, so upper() is unchanged.
             doc = ledger()
             cast("list[dict[str, object]]", doc["bindings"])[0]["uuid"] = ident
             with self.subTest(ident=ident), self.assertRaises(ssh.Refused):
@@ -691,7 +691,9 @@ class HostBindingTests(unittest.TestCase):
             config = directory / "sshd_config"
             prefix = "HostKey " + str(key) + "\nAuthorizedKeysFile .ssh/authorized_keys\n"
             config.write_text(prefix + "Include " + str(included) + "\n")
-            command = [SSH_PATH, "-T", "-f", str(config)]
+            ssh_path = shutil.which("sshd")
+            assert ssh_path is not None
+            command = [ssh_path, "-T", "-f", str(config)]
             normal = subprocess.run(command, capture_output=True, text=True, check=True).stdout
             matched = subprocess.run(
                 command + ["-C", "user=guest,host=localhost,addr=127.0.0.1"],

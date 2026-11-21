@@ -194,7 +194,9 @@ class RolloutTests(unittest.TestCase):
         """Profile node selector detects bound wrong node."""
         expected = dict(profile(), nodeSelector={"kubernetes.io/hostname": "socrat-1"})
         value = profiled_pod()
-        value["spec"]["nodeSelector"] = cast("dict[str, str]", expected["nodeSelector"])
+        selector = expected["nodeSelector"]
+        assert isinstance(selector, dict)
+        value["spec"]["nodeSelector"] = selector
         value["spec"]["nodeName"] = "socrat-2"
         self.assertIn("nodeName", ROLLOUT.profile_mismatches(value, expected))
         del value["spec"]["nodeName"]
