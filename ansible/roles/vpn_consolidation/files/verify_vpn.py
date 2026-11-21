@@ -1,3 +1,5 @@
+"""Verify VPN clients between the primary and legacy x-ui databases."""
+
 import argparse
 import base64
 import hashlib

@@ -1,3 +1,5 @@
+"""Fetch and reconcile port-forwarding rules on the home router API."""
+
 import argparse
 import html
 import ipaddress

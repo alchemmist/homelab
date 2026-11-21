@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+
+"""Relabel node series in the Rancher Grafana dashboards."""
+
 import json
 import sys
 
