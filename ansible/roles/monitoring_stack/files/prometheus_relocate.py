@@ -1,3 +1,5 @@
+"""Check that the Prometheus data volume claim matches the live pod's node."""
+
 import json
 import sys
 

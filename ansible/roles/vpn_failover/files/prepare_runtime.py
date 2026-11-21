@@ -1,3 +1,5 @@
+"""Prepare the VPN failover runtime image for use on a node."""
+
 import argparse
 import json
 import os

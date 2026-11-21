@@ -1,3 +1,4 @@
+"""Verify that pinned OTEL images publish the accepted manifest media types."""
 import argparse
 import hashlib
 import json

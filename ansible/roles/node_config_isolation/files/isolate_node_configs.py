@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+
+"""Audit that per-node home config files stay isolated per node."""
+
 import argparse
 from datetime import datetime, timezone
 import json

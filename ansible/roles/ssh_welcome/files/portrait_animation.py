@@ -1,3 +1,5 @@
+"""Play a short SSH-login portrait animation between two snapshots."""
+
 import math
 import shutil
 import time
@@ -47,12 +49,12 @@ def portrait_frame(sample, colors, seconds):
             shade = 0.84 + 0.16 * math.cos((nx - 0.4) * 2 + ny * 1.5)
             base = [
                 math.floor(v * 0.8 + tint * 0.2 + 0.5)
-                for v, tint in zip(colors[y][x], (78, 146, 153))
+                for v, tint in zip(colors[y][x], (78, 146, 153), strict=True)
             ]
             opacity = 0.3 + 0.7 * visibility
             rgb = [
                 math.floor((v * shade * (1 - beam) + highlight * beam) * opacity + 0.5)
-                for v, highlight in zip(base, (193, 143, 127))
+                for v, highlight in zip(base, (193, 143, 127), strict=True)
             ]
             row.append(f"\033[38;2;{rgb[0]};{rgb[1]};{rgb[2]}m{glyph}")
         lines.append("".join(row) + "\033[0m")
@@ -64,7 +66,7 @@ def play(initial, final, sample, colors, geometry, output):
     height = sample["rows"]
     resized = False
 
-    def draw(seconds):
+    def draw(seconds) -> None:
         """Execute the draw operation."""
         output.write(f"\033[{height}A\r")
         for line in portrait_frame(sample, colors, seconds):

@@ -23,22 +23,22 @@ class GPUCollectorTests(unittest.TestCase):
         output = COLLECTOR.parse_metrics(
             ROW + ROW.replace("GPU-123", "GPU-456").replace(", 50,", ", N/A,")
         )
-        self.assertIn(
-            'socrat_gpu_memory_used_bytes{uuid="GPU-123",name="NVIDIA RTX 3090",index="0"} 1073741824',
-            output,
+        assert (
+            'socrat_gpu_memory_used_bytes{uuid="GPU-123",name="NVIDIA RTX 3090",index="0"} 1073741824'
+            in output
         )
-        self.assertIn(
-            'socrat_gpu_utilization_ratio{uuid="GPU-123",name="NVIDIA RTX 3090",index="0"} 0.2',
-            output,
+        assert (
+            'socrat_gpu_utilization_ratio{uuid="GPU-123",name="NVIDIA RTX 3090",index="0"} 0.2'
+            in output
         )
-        self.assertEqual(output.count("socrat_gpu_temperature_celsius"), 1)
-        self.assertNotIn('reason="hw_power_brake_slowdown"', output)
-        self.assertIn('reason="sw_thermal_slowdown"} 1', output)
+        assert output.count("socrat_gpu_temperature_celsius") == 1
+        assert 'reason="hw_power_brake_slowdown"' not in output
+        assert 'reason="sw_thermal_slowdown"} 1' in output
 
     def test_nonfinite_values_are_not_published(self) -> None:
         """Omit temperature when the sample is non-finite."""
         output = COLLECTOR.parse_metrics(ROW.replace(", 50,", ", inf,"))
-        self.assertNotIn("temperature_celsius", output)
+        assert "temperature_celsius" not in output
 
     def test_failure_replaces_previous_gpu_values(self) -> None:
         """Replace a previous success text when collection times out."""
@@ -48,12 +48,13 @@ class GPUCollectorTests(unittest.TestCase):
             with patch.object(
                 COLLECTOR.subprocess, "run", side_effect=subprocess.TimeoutExpired("nvidia-smi", 20)
             ):
-                self.assertEqual(COLLECTOR.collect("nvidia-smi", output), 0)
-            self.assertNotIn("temperature", output.read_text())
-            self.assertIn("socrat_gpu_collection_success 0", output.read_text())
-            self.assertIn("socrat_gpu_collection_timestamp_seconds", output.read_text())
-            self.assertEqual(output.stat().st_mode & 0o777, 0o644)
-            self.assertEqual(list(Path(directory).iterdir()), [output])
+                assert COLLECTOR.collect("nvidia-smi", output) == 0
+            assert "temperature" not in output.read_text()
+            assert "socrat_gpu_collection_success 0" in output.read_text()
+            assert "socrat_gpu_collection_timestamp_seconds" in output.read_text()
+            expected_mode = 0o644
+            assert output.stat().st_mode & 511 == expected_mode
+            assert list(Path(directory).iterdir()) == [output]
 
     def test_malformed_result_is_failure_without_partial_metrics(self) -> None:
         """Publish failure instead of partial metrics when a row is malformed."""
@@ -61,8 +62,8 @@ class GPUCollectorTests(unittest.TestCase):
             output = Path(directory) / "nvidia.prom"
             result = subprocess.CompletedProcess([], 0, stdout=ROW + "bad,row\n")
             with patch.object(COLLECTOR.subprocess, "run", return_value=result):
-                self.assertEqual(COLLECTOR.collect("nvidia-smi", output), 0)
-            self.assertNotIn("temperature", output.read_text())
+                assert COLLECTOR.collect("nvidia-smi", output) == 0
+            assert "temperature" not in output.read_text()
 
 
 if __name__ == "__main__":

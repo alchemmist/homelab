@@ -1,3 +1,4 @@
+"""Rewrite the WireGuard config with the current TCP transport endpoint."""
 import json
 import os
 import re
