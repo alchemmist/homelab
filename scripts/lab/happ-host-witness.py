@@ -39,8 +39,6 @@ def sample():
         i["ifname"] == "happ-xray" for i in json.loads(cmd("ip", "-j", "link", "show"))
     ):
         raise RuntimeError("host Happ interface is present")
-    with socket.create_connection(("10.250.0.2", 2380), timeout=2):
-        pass
     return {
         "relay_route": route("91.189.82.238"),
         "mesh_route": route("10.250.0.2"),
@@ -56,6 +54,11 @@ def main():
     seconds = int(sys.argv[1])
     if not 5 <= seconds <= 600:
         raise SystemExit("bounded sample window required")
+    def check_mesh_tcp():
+        with socket.create_connection(("10.250.0.2", 2380), timeout=2):
+            pass
+
+    check_mesh_tcp()
     original = sample()
     survivors = original.pop("flows")
     start = time.monotonic()
@@ -64,10 +67,13 @@ def main():
         time.sleep(2)
         current = sample()
         survivors &= current.pop("flows")
-        if current != original or not survivors:
+        if not survivors:
+            raise SystemExit("no original GOST relay TCP tuple survived")
+        if current != original:
             raise SystemExit(
                 "host witness changed; stop acceptance and investigate, do not alter host routes"
             )
+    check_mesh_tcp()
     print(
         "witness passed: sampled host state and an original relay tuple persisted; guest VPN state must be verified independently"
     )

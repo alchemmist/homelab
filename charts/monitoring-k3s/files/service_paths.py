@@ -144,6 +144,7 @@ def service_loop():
 
 def control_loop(host):
     while True:
+        start = time.monotonic()
         lines = []
         for check, path in [
             ("ready", "/readyz"),
@@ -154,7 +155,7 @@ def control_loop(host):
                 f'socrat_control_path_state{{target="{host}",check="{check}",state="{state}"}} 1'
             )
         observe(host, lines)
-        time.sleep(15)
+        time.sleep(max(0, 15 - (time.monotonic() - start)))
 
 
 class Handler(BaseHTTPRequestHandler):

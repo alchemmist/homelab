@@ -87,3 +87,12 @@ For the November baseline the package `happ-desktop-bin` was installed, the TUN
 was absent, only standard IPv4 rules were visible and a relay TCP session existed.
 A package is not proof of an app needing guest migration. No change to host startup
 until the owner identifies desktop consumers (the named Kubernetes services are NL).
+
+The current single-replica Recreate bot cannot legitimately publish nine ready
+backends. `unsupported_cardinality` is an inconclusive measurement, not health;
+inspect the selector and endpoints rather than sampling arbitrary addresses. A
+conflicting existing native scrape job is also a stop condition: diff it against
+the last approved job, then explicitly migrate the known old configuration. Do
+not let an older bundle overwrite administrator changes. At deployment verify
+both headless DNS entries and the Service ClusterIP used by the narrow pre-DNAT
+policy, especially after Service recreation.

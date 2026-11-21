@@ -285,6 +285,10 @@ spec:
       ports:
         - port: 443
 
+    # Allow the same destination before Service DNAT, on its Service port only.
+    - to: [{ipBlock: {cidr: 10.43.167.29/32}}]
+      ports: [{port: 8080}]
+
     # Native bot hostNetwork is pinned to socrat-2; allow only its internal API port.
     - to:
         - ipBlock: {cidr: 10.250.0.2/32}
