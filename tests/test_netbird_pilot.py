@@ -59,7 +59,7 @@ def inputs():
                 "dns_name": None,
             },
         ],
-        "review": {k: True for k in nb.REVIEWS},
+        "review": dict.fromkeys(nb.REVIEWS, True),
     }
 
 

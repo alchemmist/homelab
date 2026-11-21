@@ -120,9 +120,8 @@ def configure(args):
                             "terminal": True,
                             "builtin_tools": True,
                         },
-                        "builtinTools": {
-                            name: False
-                            for name in [
+                        "builtinTools": dict.fromkeys(
+                            [
                                 "skills",
                                 "tasks",
                                 "notes",
@@ -134,8 +133,9 @@ def configure(args):
                                 "chats",
                                 "memory",
                                 "subagents",
-                            ]
-                        },
+                            ],
+                            False,
+                        ),
                     },
                     "params": {},
                     "access_grants": [
