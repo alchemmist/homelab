@@ -261,4 +261,4 @@ if __name__ == "__main__":
     except Exception:
         raise SystemExit(
             "Identity provisioning stopped; private state may be partial. No automatic rollback or existing identity edits."
-        )
+        ) from None

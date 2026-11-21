@@ -129,7 +129,7 @@ def llm(role, prompt):
                 _wait_budget(detail)
                 continue
             if exc.code in {408, 409, 429, 500, 502, 503, 504}:
-                raise ModelBusy(str(exc.code))
+                raise ModelBusy(str(exc.code)) from exc
             raise
     with response:
         payload = json.load(response)
