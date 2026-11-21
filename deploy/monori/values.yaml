@@ -31,7 +31,7 @@ imagePullSecrets:
   - monori-harbor-pull
 
 # Verified cold restore; single writers, original financial keys preserved.
-backReplicaCount: 1
+backReplicaCount: 0
 syncReplicaCount: 1
 statefulRecreate: true
 
