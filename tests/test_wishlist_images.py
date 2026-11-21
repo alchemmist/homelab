@@ -54,6 +54,8 @@ class WishlistImages(unittest.TestCase):
                 "template",
                 "wishlist",
                 str(ROOT / "charts/wishlist"),
+                "--namespace",
+                "wishlist",
                 "-f",
                 str(ROOT / "deploy/wishlist/values.yaml"),
                 "--show-only",
