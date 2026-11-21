@@ -11,6 +11,7 @@ from pathlib import Path
 
 
 def private_json(path):
+    """Execute private_json."""
     fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     with os.fdopen(fd, "rb") as stream:
         st = os.fstat(stream.fileno())
@@ -28,6 +29,7 @@ def private_json(path):
 
 
 def render(directory):
+    """Execute render."""
     try:
         d = Path(directory)
         st = d.lstat()
@@ -77,6 +79,7 @@ def render(directory):
 
 
 def main():
+    """Execute main."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--private-dir", type=Path, required=True)
     args = parser.parse_args()

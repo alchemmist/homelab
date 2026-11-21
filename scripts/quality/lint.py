@@ -784,6 +784,7 @@ def check_dependencies(names: Sequence[str]) -> tuple[list[Finding], int]:
 
 
 def sarif(data, prefix=""):
+    """Execute sarif."""
     result = []
     for run in data["runs"]:
         for item in run.get("results", []):
@@ -802,6 +803,7 @@ def sarif(data, prefix=""):
 def nonsecret_tokenizer_option(path, item):
     # DL3064 matches TOKENIZERS as though it were a credential. This exact
     # public runtime option line contains no secret; any edit loses the exception.
+    """Execute nonsecret_tokenizer_option."""
     if path != "services/spi-tokenizer/Dockerfile" or item["code"] != "DL3064":
         return False
     line = (ROOT / path).read_text().splitlines()[item["line"] - 1]
@@ -810,6 +812,7 @@ def nonsecret_tokenizer_option(path, item):
 
 def yaml_targets(names):
     # Helm and Ansible templates are Go/Jinja text, not YAML documents.
+    """Execute yaml_targets."""
     return [
         p
         for p in names
@@ -818,6 +821,7 @@ def yaml_targets(names):
 
 
 def shell_targets(names):
+    """Execute shell_targets."""
     result = []
     for name in names:
         if "/templates/" in name or name.endswith(".j2"):
@@ -837,6 +841,7 @@ def shell_targets(names):
 
 
 def shell_dialect(spec):
+    """Execute shell_dialect."""
     token = spec.split()[0]
     if token in {"bash", "sh", "dash", "ksh"}:
         return token
@@ -846,6 +851,7 @@ def shell_dialect(spec):
 
 
 def walk_runs(node, shell="bash"):
+    """Execute walk_runs."""
     if isinstance(node, dict):
         current = node["shell"] if isinstance(node.get("shell"), str) else shell
         script = node.get("run")
@@ -860,6 +866,7 @@ def walk_runs(node, shell="bash"):
 
 
 def workflow_runs(names):
+    """Execute workflow_runs."""
     import yaml
 
     result = []
@@ -878,12 +885,14 @@ def workflow_runs(names):
 
 
 def workflow_files(names):
+    """Execute workflow_files."""
     return [
         p for p in names if p.startswith(".github/workflows/") and p.endswith((".yml", ".yaml"))
     ]
 
 
 def parse_mypy(text):
+    """Execute parse_mypy."""
     result = []
     for line in text.splitlines():
         match = MYPY_ERROR.match(line)
@@ -901,6 +910,7 @@ def parse_mypy(text):
 
 
 def mypy_argv(files):
+    """Execute mypy_argv."""
     return [
         "mypy",
         "--config-file",
@@ -935,6 +945,7 @@ def mypy_status(parsed, code, text):
 
 
 def mypy_invoke(files, timeout):
+    """Execute mypy_invoke."""
     process = command(mypy_argv(files), allowed=(0, 1, 2), timeout=timeout)
     parsed = parse_mypy(process.stdout) + parse_mypy(process.stderr)
     text = process.stdout + "\n" + process.stderr
@@ -965,6 +976,7 @@ def python_syntax_findings(files):
 
 
 def mypy_on(files, timeout):
+    """Execute mypy_on."""
     if not files:
         return []
     parsed, status = mypy_invoke(files, timeout)
@@ -989,6 +1001,7 @@ def mypy_on(files, timeout):
 
 
 def mypy_findings(files):
+    """Execute mypy_findings."""
     syntax, remaining = python_syntax_findings(files)
     syntax_names = {item["location"]["path"] for item in syntax}
     if syntax_names | set(remaining) != set(files) or syntax_names & set(remaining):
@@ -998,6 +1011,7 @@ def mypy_findings(files):
 
 
 def format_findings(files):
+    """Execute format_findings."""
     process = command(
         ["ruff", "format", "--check", "--config", "quality/ruff.toml", *files],
         allowed=(0, 1, 2),
@@ -1039,6 +1053,7 @@ def format_findings(files):
 
 
 def shellcheck_files(files):
+    """Execute shellcheck_files."""
     if not files:
         return []
     process = command(
@@ -1054,6 +1069,7 @@ def shellcheck_files(files):
 
 
 def workflow_script_findings(names, kind):
+    """Execute workflow_script_findings."""
     result = []
     grouped = {"bash": [], "sh": [], "dash": [], "ksh": []}
     with tempfile.TemporaryDirectory(prefix="homelab-shellcheck-") as temp:
@@ -1141,6 +1157,7 @@ def docker_targets(names: list[str]) -> list[str]:
 
 
 def check(tool: str) -> tuple[list[Finding], int]:
+    """Execute check."""
     use_project_tools()
     names = owned(tracked())
     if tool == "workflow":
@@ -1330,6 +1347,7 @@ def check(tool: str) -> tuple[list[Finding], int]:
 
 
 def main():
+    """Execute main."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "tool",

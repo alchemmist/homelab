@@ -15,6 +15,7 @@ ENDPOINT = "91.189.82.238:51830"
 
 
 def main():
+    """Execute main."""
     os.umask(0o077)
     config = Path("/etc/wireguard/wg-socrat.conf")
     old = config.read_bytes()
