@@ -98,7 +98,7 @@ except Exception as error:
 """
 
 
-def main() -> int:
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--ssh-host", default="socrat-0")
     parser.add_argument("--external-ssh-host", default="socrat-2-direct")

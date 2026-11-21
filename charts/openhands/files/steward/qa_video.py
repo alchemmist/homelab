@@ -3,7 +3,7 @@ import base64, io, os, subprocess, tempfile
 from pathlib import Path
 from PIL import Image
 
-def encode(frames: object, binary: str = '/encoder/ffmpeg') -> bytes:
+def encode(frames, binary='/encoder/ffmpeg'):
     if not isinstance(frames,list) or not 12<=len(frames)<=180:raise ValueError('Need 12..180 real consecutive frames at 6fps')
     with tempfile.TemporaryDirectory() as tmp:
         out=Path(tmp)/'repro.mp4';p=None;shape=None

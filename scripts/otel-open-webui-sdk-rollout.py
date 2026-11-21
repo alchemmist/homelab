@@ -10,7 +10,6 @@ import importlib.util
 import json
 import os
 import time
-from collections.abc import Mapping
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -72,13 +71,13 @@ def sdk_environment():
     }
 
 
-def environment_matches(entry: Mapping[str, str] | None, name: str, value: str):
+def environment_matches(entry, name, value):
     # Kubernetes omits explicit empty EnvVar.value in its API representation.
     # Accept only that exact canonical default, never valueFrom or other fields.
     return entry == {"name": name, "value": value} or (value == "" and entry == {"name": name})
 
 
-def run(output: Path, *, apply: bool):
+def run(output, apply):
     os.umask(0o077)
     controller = Path.home() / "Library/Application Support/homelab/otel-controller"
     if not output.resolve().is_relative_to(controller.resolve()):
@@ -282,4 +281,4 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args()
-    run(args.output, apply=args.apply)
+    run(args.output, args.apply)

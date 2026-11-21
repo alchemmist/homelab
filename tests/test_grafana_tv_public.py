@@ -24,7 +24,7 @@ JS = ROOT / "deploy/platform/grafana/public-entry/files/traffic-light-inset.js"
         "public",
     ],
 )
-def test_inset_runtime_scope_and_compacted_layout(mode: str) -> None:
+def test_inset_runtime_scope_and_compacted_layout(mode):
     script = r"""
 const fs=require('fs'),vm=require('vm'),mode=process.argv[1];
 const token='a'.repeat(32), styles={}, calls=[];
@@ -113,7 +113,7 @@ def test_no_dedicated_tv_alias_or_internal_vpn_in_helpers():
     "mode",
     ["public", "normal", "auth_kiosk", "wrong_uid", "horizontal", "missing_fill", "duplicate_name"],
 )
-def test_compact_argo_is_guarded_public_tv_only_and_preserves_native_data(mode: str) -> None:
+def test_compact_argo_is_guarded_public_tv_only_and_preserves_native_data(mode):
     script = r"""
 const fs=require('fs'),vm=require('vm'),mode=process.argv[1],styles={};
 const node=(style={})=>({style,children:[],classes:new Set(),classList:{add(c){this.owner.classes.add(c)}}});

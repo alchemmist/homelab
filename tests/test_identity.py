@@ -8,25 +8,12 @@ import tempfile
 import sys
 import unittest
 from unittest.mock import patch
-import urllib.request
 from urllib.parse import parse_qs, urlparse
-from typing import Literal, Protocol, cast, overload
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "ansible/roles/authentik/files"))
 from app_iam import admission_groups
-
-
-class _GroupUsers(Protocol):
-    def append(self, item: object) -> None: ...
-
-
-class _ObserverGroup(Protocol):
-    @overload
-    def __getitem__(self, key: Literal["users"], /) -> _GroupUsers: ...
-    @overload
-    def __getitem__(self, key: str, /) -> object: ...
 
 
 class FakeAuthentik:
@@ -75,12 +62,11 @@ class FakeAuthentik:
         }
         self.requests = []
 
-    def __call__(self, req: urllib.request.Request, timeout: float = 60) -> io.BytesIO:
+    def __call__(self, req, timeout=60):
         uri = urlparse(req.full_url)
         path = uri.path.split("/api/v3/")[1]
         method = req.get_method()
-        body = req.data
-        payload = json.loads(cast("bytes | str", body)) if body else None
+        payload = json.loads(req.data) if req.data else None
         self.requests.append((method, path, payload, parse_qs(uri.query)))
         if method == "GET":
             rows = self.data[path]
@@ -124,7 +110,7 @@ class FakeAuthentik:
 
 
 class IdentityTests(unittest.TestCase):
-    def configure(self, root: Path, api: FakeAuthentik):
+    def configure(self, root, api):
         with (
             patch("sys.argv", ["configure.py", str(root)]),
             patch("urllib.request.urlopen", api),
@@ -134,7 +120,7 @@ class IdentityTests(unittest.TestCase):
                 str(ROOT / "ansible/roles/authentik/files/configure.py"), run_name="__main__"
             )
 
-    def setup_root(self, root: Path) -> None:
+    def setup_root(self, root):
         (root / "credentials.json").write_text(
             json.dumps({"AUTHENTIK_BOOTSTRAP_TOKEN": "fake-test-token"})
         )
@@ -157,13 +143,12 @@ class IdentityTests(unittest.TestCase):
         )
         receipt.chmod(0o600)
 
-    def setup_reviewed(self, root: Path, api: FakeAuthentik) -> None:
+    def setup_reviewed(self, root, api):
         # Restored current identities, not speculative/future users.
         self.configure(root, api)
         accounts = json.loads((ROOT / "deploy/identity/account-mappings.json").read_text())
-        groups = cast("list[_ObserverGroup]", api.data["core/groups/"])
-        observer = next(group for group in groups if group["name"] == "homelab-observer")
-        cast("list[object]", api.data["core/users/"]).append(
+        observer = next(g for g in api.data["core/groups/"] if g["name"] == "homelab-observer")
+        api.data["core/users/"].append(
             {
                 "pk": 6,
                 "uuid": accounts["antropophag"]["idpUserUuid"],
@@ -427,7 +412,7 @@ class RolloutRegressionTests(unittest.TestCase):
             (Path(d) / ".ssh").mkdir()
             (Path(d) / ".ssh/authorized_keys").write_text("key1\nkey2\n")
 
-            def run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+            def run(args, **kwargs):
                 if "-T" in args:
                     return subprocess.CompletedProcess(
                         args, 0, "\x1b]3008;test\x1b\\pubkeyauthentication yes\nusepam yes\n", ""

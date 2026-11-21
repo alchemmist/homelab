@@ -48,7 +48,7 @@ def test_runtime_refuses_unknown_workloads_and_pvc() -> None:
 
     m = runtime_module()
 
-    def pod(ns: str, name: str, uid: str):
+    def pod(ns, name, uid):
         return {
             "metadata": {"namespace": ns, "name": name, "uid": uid},
             "spec": {"nodeName": "socrat-4"},

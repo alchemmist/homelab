@@ -16,7 +16,6 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from typing import IO, cast
 
 BASE = "https://auth.socrat.alchemmist.xyz/api/v3/"
 GROUPS = ("homelab-owner", "homelab-platform-operator")
@@ -37,21 +36,13 @@ COLLECTIONS = (
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(
-        self,
-        request: urllib.request.Request,
-        response: object,
-        code: int,
-        message: str,
-        headers: object,
-        newurl: str | None,
-    ):
+    def redirect_request(self, request, response, code, message, headers, newurl):
         if response is not None:
-            cast("IO[bytes]", response).close()
+            response.close()
         raise ValueError("redirect refused")
 
 
-def builtin_scope(rows: list[dict[str, object]], name: str):
+def builtin_scope(rows, name):
     matches = [
         r for r in rows if r.get("managed") == "goauthentik.io/providers/oauth2/scope-" + name
     ]
@@ -78,13 +69,7 @@ def main():
     token = json.loads((d / "credentials.json").read_text())["AUTHENTIK_API_TOKEN"]
     http = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
-    def api(
-        method: str,
-        path: str,
-        body: dict[str, object] | None = None,
-        *,
-        allow_missing: bool = False,
-    ):
+    def api(method, path, body=None, allow_missing=False):
         if method != "GET" and not args.apply:
             raise ValueError("writes disabled")
         request = urllib.request.Request(
@@ -106,7 +91,7 @@ def main():
                 return None
             raise ValueError("identity request failed") from None
 
-    def rows(path: str):
+    def rows(path):
         result = []
         for page in range(1, 101):
             data = api("GET", path + "?" + urllib.parse.urlencode({"page_size": 100, "page": page}))
@@ -129,15 +114,15 @@ def main():
                 raise ValueError("application detail identity mismatch")
             inventory["core/applications/"].append(app)
 
-    def one(path: str, key: str, value: object, *, required: bool = False):
+    def one(path, key, value, required=False):
         found = [r for r in inventory[path] if r.get(key) == value]
         if len(found) > 1 or (required and not found):
             raise ValueError("missing/duplicate prerequisite")
         return found[0] if found else None
 
-    groups = [one("core/groups/", "name", name, required=True)["pk"] for name in GROUPS]
+    groups = [one("core/groups/", "name", name, True)["pk"] for name in GROUPS]
     flow = {
-        slug: one("flows/instances/", "slug", slug, required=True)["pk"]
+        slug: one("flows/instances/", "slug", slug, True)["pk"]
         for slug in (
             "default-authentication-flow",
             "default-provider-authorization-explicit-consent",
@@ -145,12 +130,9 @@ def main():
             "default-provider-invalidation-flow",
         )
     }
-    cert = one(
-        "crypto/certificatekeypairs/",
-        "name",
-        "authentik Self-signed Certificate",
-        required=True,
-    )["pk"]
+    cert = one("crypto/certificatekeypairs/", "name", "authentik Self-signed Certificate", True)[
+        "pk"
+    ]
     mappings = [
         builtin_scope(inventory["propertymappings/provider/scope/"], name)
         for name in ("openid", "profile", "email")
@@ -175,7 +157,7 @@ def main():
         )
         return
 
-    def reconcile(path: str, key: str, value: object, settings: dict[str, object]):
+    def reconcile(path, key, value, settings):
         old = one(path, key, value)
         if old:
             for k, v in settings.items():

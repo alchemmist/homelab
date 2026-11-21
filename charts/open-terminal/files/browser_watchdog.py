@@ -1,5 +1,4 @@
 import json
-from collections.abc import Callable
 from datetime import datetime, timezone
 import logging
 import os
@@ -10,7 +9,7 @@ from pathlib import Path
 
 
 class JsonFormatter(logging.Formatter):
-    def format(self, record: logging.LogRecord) -> str:
+    def format(self, record):
         # Do not render exception text/tracebacks: they can contain process arguments.
         event = getattr(record, "event", "watchdog_error")
         result = dict(
@@ -36,11 +35,11 @@ class Process:
     args: tuple[str, ...]
 
     @property
-    def identity(self) -> tuple[int, int]:
+    def identity(self):
         return self.pid, self.start
 
 
-def read_process(pid: int, proc: Path = Path("/proc")) -> Process | None:
+def read_process(pid, proc=Path("/proc")):
     try:
         directory = proc / str(pid)
         stat = (directory / "stat").read_text()
@@ -56,7 +55,7 @@ def read_process(pid: int, proc: Path = Path("/proc")) -> Process | None:
         return None
 
 
-def snapshot(proc: Path = Path("/proc")) -> dict[int, Process]:
+def snapshot(proc=Path("/proc")):
     result = {}
     for directory in proc.iterdir():
         if directory.name.isdigit():
@@ -66,7 +65,7 @@ def snapshot(proc: Path = Path("/proc")) -> dict[int, Process]:
     return result
 
 
-def is_test_browser(process: Process) -> bool:
+def is_test_browser(process):
     return (
         process.executable in {"chrome", "chromium", "headless_shell", "chrome-headless-shell"}
         and any(arg == "--headless" or arg.startswith("--headless=") for arg in process.args)
@@ -76,7 +75,7 @@ def is_test_browser(process: Process) -> bool:
     )
 
 
-def signal_process(identity: tuple[int, int], sig: int) -> bool:
+def signal_process(identity, sig):
     pid, start = identity
     try:
         fd = os.pidfd_open(pid)
@@ -111,20 +110,14 @@ class Browser:
 
 
 class Watchdog:
-    def __init__(
-        self,
-        lifetime: float = 900,
-        grace: float = 5,
-        ticks: int | None = None,
-        send: Callable[[tuple[int, int], int], bool] = signal_process,
-    ) -> None:
+    def __init__(self, lifetime=900, grace=5, ticks=None, send=signal_process):
         self.lifetime = lifetime
         self.grace = grace
         self.ticks = ticks or os.sysconf("SC_CLK_TCK")
         self.send = send
-        self.browsers: dict[tuple[int, int], Browser] = {}
+        self.browsers = {}
 
-    def step(self, processes: dict[int, Process], now: float) -> None:
+    def step(self, processes, now):
         for process in processes.values():
             if is_test_browser(process) and process.identity not in self.browsers:
                 self.browsers[process.identity] = Browser(
@@ -168,7 +161,7 @@ class Watchdog:
                 self.send(identity, sig)
 
 
-def positive_setting(name: str, default: str) -> float:
+def positive_setting(name, default):
     value = float(os.environ.get(name, default))
     if not 0 < value < float("inf"):
         raise ValueError(f"{name} must be finite and positive")

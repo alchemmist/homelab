@@ -1,6 +1,5 @@
 import sys
 from pathlib import Path
-from typing import cast
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts/blog_updates"))
@@ -9,18 +8,12 @@ from engine import UnsafeInput
 
 
 class Fake(GitHub):
-    def __init__(
-        self,
-        existing: list[dict[str, object]] | None = None,
-        main: str | None = None,
-    ) -> None:
-        self.calls: list[tuple[str, str, object | None]] = []
+    def __init__(self, existing=None, main=None):
+        self.calls = []
         self.existing = existing or []
         self.main = main or "a" * 40
 
-    def api(
-        self, method: str, path: str, body: dict[str, object] | None = None
-    ) -> dict[str, object] | list[dict[str, object]]:
+    def api(self, method, path, body=None):
         self.calls.append((method, path, body))
         if path.startswith("pulls?"):
             return self.existing
@@ -30,7 +23,7 @@ class Fake(GitHub):
             return {"html_url": "https://github.com/alchemmist/blog/pull/1"}
         return {}
 
-    def read_updates(self, ref: str) -> tuple[str, str]:
+    def read_updates(self, ref):
         return "original", "file-sha"
 
 
@@ -52,9 +45,7 @@ class WriterTests(unittest.TestCase):
         self.assertEqual(r["status"], "created")
         writes = [c for c in g.calls if c[0] == "PUT"]
         self.assertEqual([c[1] for c in writes], ["contents/site/content/updates.md"])
-        self.assertEqual(
-            cast("dict[str, str]", writes[0][2])["branch"], "automation/blog-updates-" + "a" * 40
-        )
+        self.assertEqual(writes[0][2]["branch"], "automation/blog-updates-" + "a" * 40)
         self.assertFalse(any("merge" in c[1] for c in g.calls))
 
     def test_no_change_no_branch(self):

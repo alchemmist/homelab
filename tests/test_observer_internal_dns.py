@@ -55,7 +55,7 @@ def test_cas_guards_and_no_wholesale_replacement() -> None:
 
 
 @pytest.mark.parametrize("address", ["109.120.141.97", "109.173.40.247", "::1", "bad"])
-def test_refuse_public_or_invalid(address: str) -> None:
+def test_refuse_public_or_invalid(address) -> None:
     """Require public, IPv6, and invalid addresses to be refused."""
     with pytest.raises(ValueError):
         m.zone(address)

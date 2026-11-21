@@ -8,7 +8,6 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from collections.abc import Mapping, Sequence
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -44,7 +43,7 @@ def make_code():
     return secrets.choice(CODE_WORDS)
 
 
-def make_image(code: str, *, large: bool = False):
+def make_image(code, large=False):
     if large:
         image = Image.frombytes("RGB", (1280, 1024), os.urandom(1280 * 1024 * 3))
     else:
@@ -60,12 +59,7 @@ def make_image(code: str, *, large: bool = False):
     return {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{encoded}"}}
 
 
-def complete(
-    name: str,
-    messages: Sequence[Mapping[str, object]],
-    expected: Sequence[str],
-    minimum_request_bytes: int = 0,
-):
+def complete(name, messages, expected, minimum_request_bytes=0):
     started = time.monotonic()
     payload = {
         "model": MODEL,

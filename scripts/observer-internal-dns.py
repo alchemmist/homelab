@@ -11,7 +11,6 @@ import hashlib
 import json
 import os
 import subprocess
-from collections.abc import Mapping
 from pathlib import Path
 
 HOST = "auth.socrat.alchemmist.xyz"
@@ -19,15 +18,7 @@ KEY = "authentik-internal.server"
 INTERNAL_VIP = "192.168.0.250"
 
 
-def as_dict(value: object) -> dict[str, object]:
-    """Return a Kubernetes JSON object, stopping on unexpected structure."""
-    if not isinstance(value, dict):
-        error = "Expected a Kubernetes JSON object"
-        raise TypeError(error)
-    return value
-
-
-def zone(address: str) -> str:
+def zone(address):
     import ipaddress
 
     if not ipaddress.ip_address(address).is_private or ":" in address:
@@ -46,34 +37,30 @@ def zone(address: str) -> str:
 """
 
 
-def desired(
-    before: Mapping[str, object], address: str, owned_value: str | None = None
-) -> dict[str, object]:
+def desired(before, address, owned_value=None):
     value = zone(address)
-    existing = as_dict(before.get("data", {}))
-    old = existing.get(KEY)
+    old = before.get("data", {}).get(KEY)
     if old is not None and old != value and old != owned_value:
         raise RuntimeError("Owned DNS key collision; inspect before changing")
-    data = {**existing}
+    data = dict(before.get("data", {}))
     data[KEY] = value
     return data
 
 
-def patch(before: Mapping[str, object], data: Mapping[str, object]) -> list[dict[str, object]]:
-    metadata = as_dict(before["metadata"])
+def patch(before, data):
     return [
-        {"op": "test", "path": "/metadata/uid", "value": metadata["uid"]},
+        {"op": "test", "path": "/metadata/uid", "value": before["metadata"]["uid"]},
         {
             "op": "test",
             "path": "/metadata/resourceVersion",
-            "value": metadata["resourceVersion"],
+            "value": before["metadata"]["resourceVersion"],
         },
-        *([{"op": "test", "path": "/data", "value": before["data"]}] if "data" in before else []),
-        {"op": "add", "path": "/data", "value": data} if "data" not in before else {"op": "add", "path": "/data/" + KEY, "value": data[KEY]},
+        {"op": "test", "path": "/data", "value": before["data"]},
+        {"op": "add", "path": "/data/" + KEY, "value": data[KEY]},
     ]
 
 
-def kubectl(*args: str, payload: str | None = None):
+def kubectl(*args, payload=None):
     r = subprocess.run(
         ["k3s", "kubectl", *args], input=payload, capture_output=True, text=True, timeout=30
     )
@@ -145,7 +132,7 @@ def main():
     os.umask(0o077)
     a.state.mkdir(mode=0o700, parents=False)
 
-    def save(name: str, obj: object) -> None:
+    def save(name, obj):
         (a.state / name).write_text(json.dumps(obj, sort_keys=True))
 
     save("before.json", before)

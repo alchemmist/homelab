@@ -14,14 +14,14 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def inside(root: Path, path: Path):
+def inside(root, path):
     path = path.resolve()
     if not path.is_relative_to(root.resolve()):
         raise ValueError("Source pointer escapes repository")
     return path
 
 
-def applications(root: Path, directory: str, repo: str):
+def applications(root, directory, repo):
     base = inside(root, root / directory)
     if not base.is_dir():
         raise ValueError("Missing Application directory")
@@ -29,7 +29,7 @@ def applications(root: Path, directory: str, repo: str):
     if not files:
         raise ValueError("Empty Application inventory")
     names = set()
-    values_by_owner: dict[tuple[str, str], set[Path]] = {}
+    values_by_owner = {}
     pointers = 0
     for file in files:
         app = yaml.safe_load(inside(root, file).read_text())
@@ -106,7 +106,7 @@ def applications(root: Path, directory: str, repo: str):
     return len(names), pointers, values_by_owner
 
 
-def check(root: Path = ROOT):
+def check(root=ROOT):
     c = json.loads((root / "deploy/contracts/source-pointers.json").read_text())
     if c["schemaVersion"] != 1:
         raise ValueError("Unsupported source pointer schema")

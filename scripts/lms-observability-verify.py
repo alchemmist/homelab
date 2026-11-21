@@ -17,103 +17,11 @@ import urllib.request
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import NotRequired, TypedDict
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-class Condition(TypedDict):
-    """Kubernetes condition status."""
-
-    type: str
-    status: str
-
-
-class ObjectMeta(TypedDict):
-    """Object metadata used to choose a live canary pod."""
-
-    name: str
-    creationTimestamp: NotRequired[str]
-    deletionTimestamp: NotRequired[str]
-
-
-class NodeStatus(TypedDict, total=False):
-    """Node status fields needed to reject unready nodes."""
-
-    conditions: list[Condition]
-
-
-class NodeItem(TypedDict):
-    """Node from a cluster node list."""
-
-    metadata: ObjectMeta
-    status: NodeStatus
-
-
-class NodeList(TypedDict):
-    """Kubernetes node list."""
-
-    items: list[NodeItem]
-
-
-class PodSpec(TypedDict, total=False):
-    """Pod spec fields needed to see which node it runs on."""
-
-    nodeName: str
-
-
-class PodStatus(TypedDict, total=False):
-    """Pod status fields needed to require a ready running pod."""
-
-    phase: str
-    conditions: list[Condition]
-
-
-class PodItem(TypedDict):
-    """Pod from the LMS workload list."""
-
-    metadata: ObjectMeta
-    spec: PodSpec
-    status: PodStatus
-
-
-class PodList(TypedDict):
-    """Kubernetes pod list."""
-
-    items: list[PodItem]
-
-
-class Span(TypedDict):
-    """Span fields copied into the verification summary."""
-
-    name: str
-    spanId: str
-    parentSpanId: NotRequired[str]
-    endTimeUnixNano: str
-    startTimeUnixNano: str
-
-
-class SpanScope(TypedDict, total=False):
-    """Scope wrapper around spans in a Tempo payload."""
-
-    spans: list[Span]
-
-
-class SpanBatch(TypedDict, total=False):
-    """One resource batch in a Tempo trace."""
-
-    scopeSpans: list[SpanScope]
-    instrumentationLibrarySpans: list[SpanScope]
-
-
-class TraceDocument(TypedDict, total=False):
-    """Tempo trace document, either batches or resourceSpans."""
-
-    batches: list[SpanBatch]
-    resourceSpans: list[SpanBatch]
-
-
-def ready_canary_pod(pods: PodList, nodes: NodeList):
+def ready_canary_pod(pods, nodes):
     ready_nodes = {
         node["metadata"]["name"]
         for node in nodes["items"]
@@ -140,8 +48,8 @@ def ready_canary_pod(pods: PodList, nodes: NodeList):
     ]["name"]
 
 
-def kubepython(code: str):
-    def inspect(command: str):
+def kubepython(code):
+    def inspect(command):
         result = subprocess.run(
             ["ssh", "-o", "BatchMode=yes", "socrat-0", command],
             text=True,
@@ -170,19 +78,19 @@ def kubepython(code: str):
     return json.loads(result.stdout)
 
 
-def get_json(url: str):
+def get_json(url):
     request = urllib.request.Request(url, headers={"Accept": "application/json"})
     with urllib.request.urlopen(request, timeout=30) as response:
         return json.load(response)
 
 
-def hex_id(value: str):
+def hex_id(value):
     if len(value) in (16, 32) and all(c in "0123456789abcdef" for c in value):
         return value
     return base64.b64decode(value).hex()
 
 
-def summarize_trace(document: TraceDocument):
+def summarize_trace(document):
     records = []
     for batch in document.get("batches", document.get("resourceSpans", [])):
         for scope in batch.get("scopeSpans", batch.get("instrumentationLibrarySpans", [])):
@@ -203,7 +111,7 @@ def summarize_trace(document: TraceDocument):
     return records
 
 
-def run(args: argparse.Namespace):
+def run(args):
     if not args.create_canary_session:
         raise ValueError(
             "Explicit --create-canary-session required; temporary privileged test identity will be deleted"

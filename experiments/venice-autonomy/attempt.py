@@ -5,7 +5,6 @@ import os
 import pathlib
 import signal
 import time
-from typing import cast
 
 from fixtures import check_verdict, fixture_files, task_prompt, verifier_command, seal_execution
 from sandbox import Sandbox
@@ -108,7 +107,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
     query = model._query
     calls = []
 
-    def observed_query(messages: object, **kwargs: object) -> object:
+    def observed_query(messages, **kwargs):
         record = {"attempt": len(calls) + 1, "started": time.time()}
         calls.append(record)
         try:
@@ -122,7 +121,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
                     "finish_reason": response.choices[0].finish_reason,
                 }
             )
-            return cast("object", response)
+            return response
         except Exception as error:
             record["error_type"] = type(error).__name__
             raise
@@ -133,7 +132,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
     model._query = observed_query
     execute = sandbox.execute
 
-    def execute_with_submission(action: object, **kwargs: object) -> object:
+    def execute_with_submission(action, **kwargs):
         result = execute(action, **kwargs)
         if mini_submission(result):
             raise Submitted(
@@ -143,7 +142,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
                     "extra": {"exit_status": "Submitted", "submission": result["output"]},
                 }
             )
-        return cast("object", result)
+        return result
 
     sandbox.execute = execute_with_submission
     system = "You are a coding agent in an isolated offline Linux workspace. "
@@ -179,7 +178,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
     }
 
 
-def continue_openhands(conversation, sandbox, directory, acceptance=None) -> str:
+def continue_openhands(conversation, sandbox, directory, acceptance=None):
     limit = 3 if acceptance is not None else 1
     for round_number in range(limit):
         conversation.run()
@@ -227,7 +226,7 @@ def run_openhands(
         name = "bash"
 
         @classmethod
-        def create(cls, conv_state: object = None, **kwargs: object) -> list[object]:
+        def create(cls, conv_state=None, **kwargs):
             return [
                 cls(
                     description="Execute bash inside the isolated offline coding workspace. "

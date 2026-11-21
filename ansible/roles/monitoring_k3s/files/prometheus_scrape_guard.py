@@ -15,7 +15,7 @@ MEMORY_FACTORS = (
 )
 
 
-def memory_bytes(value) -> int:
+def memory_bytes(value):
     text = str(value).strip()
     for suffix, factor in MEMORY_FACTORS:
         if text.endswith(suffix):
@@ -23,13 +23,11 @@ def memory_bytes(value) -> int:
     return int(float(text))
 
 
-def problems(document, pods=None) -> list[str]:
+def problems(document, pods=None):
     if not document:
         return ["Prometheus is not installed"]
     items = (
-        document.get("items")
-        if isinstance(document, dict) and "items" in document
-        else [document]
+        document.get("items") if isinstance(document, dict) and "items" in document else [document]
     )
     if not items:
         return ["Prometheus is not installed"]
@@ -42,17 +40,13 @@ def problems(document, pods=None) -> list[str]:
         found.append("Prometheus memory limit is below 8Gi")
     if pods is not None:
         running = [
-            p
-            for p in pods.get("items", [])
-            if p.get("status", {}).get("phase") == "Running"
+            p for p in pods.get("items", []) if p.get("status", {}).get("phase") == "Running"
         ]
         if not running:
             found.append("No running Prometheus Pod to verify effective memory")
         for pod in running:
             containers = [
-                c
-                for c in pod.get("spec", {}).get("containers", [])
-                if c["name"] == "prometheus"
+                c for c in pod.get("spec", {}).get("containers", []) if c["name"] == "prometheus"
             ]
             statuses = [
                 c
@@ -68,16 +62,14 @@ def problems(document, pods=None) -> list[str]:
                 ("Pod spec", containers[0].get("resources", {})),
                 ("runtime status", statuses[0].get("resources", {})),
             ]:
-                if memory_bytes(
-                    resources.get("limits", {}).get("memory", "0")
-                ) < memory_bytes("8Gi"):
-                    found.append(
-                        "Effective Prometheus " + label + " memory limit is below 8Gi"
-                    )
+                if memory_bytes(resources.get("limits", {}).get("memory", "0")) < memory_bytes(
+                    "8Gi"
+                ):
+                    found.append("Effective Prometheus " + label + " memory limit is below 8Gi")
     return found
 
 
-def main() -> int:
+def main():
     document = json.load(sys.stdin)
     found = (
         problems(document["prometheus"], document["pods"])

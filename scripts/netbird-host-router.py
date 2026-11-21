@@ -12,9 +12,7 @@ import json
 import os
 import re
 import sys
-from collections.abc import Mapping
 from pathlib import Path
-from typing import TypedDict
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCK = ROOT / "deploy/netbird/images.lock.json"
@@ -74,45 +72,7 @@ EXECUTABLE_MARKERS = (
 )
 
 
-class _Probe(TypedDict):
-    address: str
-    accepted_port: int
-    refused_ports: list[int]
-    method: str
-    login: bool
-
-
-class _Host(TypedDict):
-    name: str
-    failure_domain: str
-    owned: list[str]
-    public_addresses: list[str]
-    egress_iface: str
-    snat_address: str
-    routes: list[str]
-    mem_available_kib: int
-    sudo_nopass: bool
-    runtime: str | None
-
-
-class _Facts(TypedDict):
-    schema_version: int
-    overlay_cidr: str
-    interface: str
-    frontend_port: int
-    frontend_name: str
-    upstream_address: str
-    upstream_port: int
-    ssh_address: str
-    ssh_port: int
-    ssh_probe: _Probe | None
-    management_url: str | None
-    client_memory: str
-    frontend_memory: str
-    hosts: list[_Host]
-
-
-def require(ok: object, message: str):
+def require(ok, message):
     if not ok:
         raise ValueError(message)
 
@@ -168,11 +128,9 @@ def default_facts():
     }
 
 
-def parse_mib(value: str):
+def parse_mib(value):
     match = re.fullmatch(r"([1-9][0-9]*)m", value or "")
-    if match is None:
-        message = "memory limit must look like 96m"
-        raise ValueError(message)
+    require(match is not None, "memory limit must look like 96m")
     return int(match.group(1))
 
 
@@ -188,8 +146,8 @@ def client_image():
     return item["repository"] + ":" + item["tag"] + "@" + item["digest"]
 
 
-def _host_map(facts: _Facts):
-    hosts = facts.get("hosts") if isinstance(facts, dict) else None
+def _host_map(facts):
+    hosts = facts["hosts"]
     require(
         isinstance(hosts, list) and [h.get("name") for h in hosts] == list(HOSTS),
         "hosts must be exactly socrat-0 then socrat-2",
@@ -197,7 +155,7 @@ def _host_map(facts: _Facts):
     return {h["name"]: h for h in hosts}
 
 
-def classify(host: _Host, address: str):
+def classify(host, address):
     ip = ipaddress.ip_address(address)
     owned = {ipaddress.ip_address(item) for item in host["owned"]}
     if ip in owned:
@@ -208,10 +166,9 @@ def classify(host: _Host, address: str):
     return "unreachable"
 
 
-def validate(facts: _Facts):
+def validate(facts):
     require(
-        isinstance(facts, dict) and facts.get("schema_version") == 1,
-        "unsupported schema_version",
+        isinstance(facts, dict) and facts.get("schema_version") == 1, "unsupported schema_version"
     )
     allowed = {
         "schema_version",
@@ -232,8 +189,8 @@ def validate(facts: _Facts):
     require(set(facts) == allowed, "unexpected or missing fact keys")
     overlay = ipaddress.ip_network(facts["overlay_cidr"], strict=True)
     require(
-        isinstance(overlay, ipaddress.IPv4Network)
-        and overlay.subnet_of(ipaddress.IPv4Network("100.64.0.0/10"))
+        overlay.version == 4
+        and overlay.subnet_of(ipaddress.ip_network("100.64.0.0/10"))
         and 16 <= overlay.prefixlen <= 24,
         "overlay must be a CGNAT IPv4 /16 through /24",
     )
@@ -276,7 +233,8 @@ def validate(facts: _Facts):
             "ssh_port contradicts the TCP probe",
         )
         require(
-            facts["ssh_port"] not in probe["refused_ports"],
+            isinstance(probe["refused_ports"], list)
+            and facts["ssh_port"] not in probe["refused_ports"],
             "ssh_port was refused by the probe",
         )
         require(
@@ -348,11 +306,11 @@ def validate(facts: _Facts):
     return facts
 
 
-def blockers_for(facts: _Facts):
+def blockers_for(facts):
     facts = validate(facts)
     hosts = _host_map(facts)
-    blockers: list[str] = []
-    notes: list[str] = []
+    blockers = []
+    notes = []
     if facts["management_url"] is None:
         blockers.append("management_url_unpublished")
     for name in HOSTS:
@@ -391,7 +349,7 @@ def blockers_for(facts: _Facts):
     return blockers, notes
 
 
-def bind_allowed(address: str, overlay_cidr: str):
+def bind_allowed(address, overlay_cidr):
     try:
         addr = ipaddress.ip_address(address)
         overlay = ipaddress.ip_network(overlay_cidr, strict=True)
@@ -407,7 +365,7 @@ def bind_allowed(address: str, overlay_cidr: str):
     return True
 
 
-def roles(facts: _Facts):
+def roles(facts):
     facts = validate(facts)
     hosts = _host_map(facts)
     return {
@@ -421,7 +379,7 @@ def roles(facts: _Facts):
     }
 
 
-def _nft(host: _Host, facts: _Facts):
+def _nft(host, facts):
     iface = facts["interface"]
     port = facts["frontend_port"]
     lines = [
@@ -474,7 +432,7 @@ cat >"$tmp" <<'NFT'
 """ % (OVERLAY_TOKEN, TABLE, body)
 
 
-def assign_overlay(script: str, address: str, overlay_cidr: str):
+def assign_overlay(script, address, overlay_cidr):
     require(
         bind_allowed(address, overlay_cidr), "overlay address is not a dedicated NetBird address"
     )
@@ -483,15 +441,15 @@ def assign_overlay(script: str, address: str, overlay_cidr: str):
     return script.replace(OVERLAY_TOKEN, concrete)
 
 
-def firewall_rules(script: str, chain: str):
-    rules: list[str] = []
+def firewall_rules(script, chain):
+    rules = []
     for line in script.splitlines():
         if line.startswith("add rule ip %s %s " % (TABLE, chain)):
             rules.append(line)
     return rules
 
 
-def _up_script(facts: _Facts):
+def _up_script(facts):
     forbidden = "|".join(sorted(FORBIDDEN_IFACES | {"wg-*"}))
     return """#!/bin/sh
 set -eu
@@ -546,7 +504,7 @@ wait "$pid"
 """ % (facts["interface"], forbidden, URL_TOKEN)
 
 
-def _frontend_source(facts: _Facts):
+def _frontend_source(facts):
     return """# Generated listener. Binds only to an enrolled NetBird overlay address.
 import os
 import select
@@ -702,7 +660,7 @@ if __name__ == "__main__":
     )
 
 
-def _unit(host: _Host, facts: _Facts, image: str, runtime: str):
+def _unit(host, facts, image, runtime):
     disable = "true" if host["name"] == "socrat-2" else "false"
     common = [
         "[Unit]",
@@ -743,7 +701,7 @@ def _unit(host: _Host, facts: _Facts, image: str, runtime: str):
     return "\n".join(common)
 
 
-def _frontend_unit(facts: _Facts):
+def _frontend_unit(facts):
     return """[Unit]
 Description=Grafana-only NetBird frontend
 After=netbird-host-router.service
@@ -763,7 +721,7 @@ WantedBy=multi-user.target
 """ % facts["frontend_memory"].upper()
 
 
-def _playbook(host: _Host):
+def _playbook(host):
     tasks = """---
 - name: Install the reviewed NetBird host-router files for %s
   hosts: "%s"
@@ -798,13 +756,13 @@ def _playbook(host: _Host):
     return tasks
 
 
-def _client_env(facts: _Facts):
+def _client_env(facts):
     url = facts["management_url"] or URL_TOKEN
     return "NB_MANAGEMENT_URL=%s\n" % url
 
 
-def assert_clean(filename: str, content: str):
-    markers: tuple[str, ...] = EXECUTABLE_MARKERS
+def assert_clean(filename, content):
+    markers = EXECUTABLE_MARKERS
     if filename == "grafana-frontend.py":
         markers = (
             "/etc/wireguard",
@@ -824,7 +782,7 @@ def assert_clean(filename: str, content: str):
         require(marker not in content, "%s contains forbidden marker %s" % (filename, marker))
 
 
-def render_host(host: _Host, facts: _Facts, image: str):
+def render_host(host, facts, image):
     runtime = host["runtime"] or "docker"
     files = {
         "netbird-host-router.service": _unit(host, facts, image, runtime),
@@ -878,7 +836,7 @@ def render_host(host: _Host, facts: _Facts, image: str):
     return files
 
 
-def build(facts: _Facts):
+def build(facts):
     facts = validate(facts)
     image = client_image()
     blockers, notes = blockers_for(facts)
@@ -921,16 +879,12 @@ def build(facts: _Facts):
     return plan, rendered
 
 
-def _outside_worktree(path: Path):
+def _outside_worktree(path):
     resolved = Path(path).resolve()
     return not resolved.is_relative_to(ROOT.resolve())
 
 
-def write_plan(
-    out: Path,
-    plan: object,
-    rendered: Mapping[str, Mapping[str, str]],
-):
+def write_plan(out, plan, rendered):
     require(_outside_worktree(out), "--out must be outside the Git worktree")
     target = Path(out)
     require(not target.exists(), "--out must be a new directory")
@@ -946,7 +900,7 @@ def write_plan(
                 path.chmod(0o755 if filename.endswith(".sh") else 0o644)
 
 
-def _safe_rel(rel: str):
+def _safe_rel(rel):
     path = Path(rel)
     require(not path.is_absolute() and ".." not in path.parts, "owned path escapes")
     require(
@@ -970,13 +924,13 @@ OWNED = {
 }
 
 
-def apply_tree(plan_dir: Path, root: Path, host: str, overlay_ip: str | None = None):
+def apply_tree(plan_dir, root, host, overlay_ip=None):
     plan_dir = Path(plan_dir)
     root = Path(root)
     plan = json.loads((plan_dir / "plan.json").read_text())
     require(plan.get("apply_allowed") is True, "apply refused: blockers remain")
     require(host in HOSTS, "unknown host")
-    files: dict[str, str] = {}
+    files = {}
     for filename, digest in plan["digests"][host].items():
         content = (plan_dir / host / filename).read_text()
         require(
@@ -993,7 +947,7 @@ def apply_tree(plan_dir: Path, root: Path, host: str, overlay_ip: str | None = N
     mapping = dict(OWNED)
     if host == "socrat-0":
         mapping["etc/sysctl.d/99-netbird-host-router.conf"] = ("99-netbird-host-router.conf", 0o644)
-    written: list[str] = []
+    written = []
     for rel, (filename, mode) in mapping.items():
         rel_path = _safe_rel(rel)
         dest = (root / rel_path).resolve()
@@ -1009,7 +963,7 @@ def apply_tree(plan_dir: Path, root: Path, host: str, overlay_ip: str | None = N
     return written
 
 
-def main(argv: list[str]):
+def main(argv):
     parser = argparse.ArgumentParser(
         description="Plan NetBird peers on existing socrat-0 and socrat-2 hosts"
     )

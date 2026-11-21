@@ -6,65 +6,10 @@ import json
 import os
 import re
 import sys
-from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TypedDict, cast
 
 import yaml
-
-type _Json = None | bool | int | float | str | list[_Json] | dict[str, _Json]
-
-
-class _Relabel(TypedDict, total=False):
-    target_label: str
-    replacement: str
-
-
-class _Job(TypedDict, total=False):
-    job_name: str
-    params: dict[str, list[str]]
-    relabel_configs: list[_Relabel]
-    authorization: dict[str, str]
-    scrape_interval: str
-    scrape_timeout: str
-    scheme: str
-    metrics_path: str
-    tls_config: dict[str, _Json]
-    static_configs: list[dict[str, _Json]]
-    metric_relabel_configs: list[dict[str, str]]
-
-
-_Scrape = TypedDict(
-    "_Scrape",
-    {"scrape_configs": list[_Job], "global": dict[str, _Json]},
-    total=False,
-)
-
-
-class _Target(TypedDict, total=False):
-    health: str
-    scrapePool: str
-    labels: dict[str, str]
-    discoveredLabels: dict[str, str]
-
-
-class _Targets(TypedDict):
-    activeTargets: list[_Target]
-
-
-class _MonitorMeta(TypedDict):
-    namespace: str
-
-
-class _MonitorSpec(TypedDict, total=False):
-    endpoints: list[dict[str, _Json]]
-    podMetricsEndpoints: list[dict[str, _Json]]
-
-
-class _Monitor(TypedDict):
-    metadata: _MonitorMeta
-    spec: _MonitorSpec
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
@@ -82,13 +27,13 @@ ASSET_ROOTS = (
 )
 
 
-def fingerprint(value: object):
+def fingerprint(value):
     return hashlib.sha256(
         json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
 
 
-def assets(value: _Json):
+def assets(value):
     result = set()
     if isinstance(value, dict):
         for key, item in value.items():
@@ -111,7 +56,7 @@ def assets(value: _Json):
     return result
 
 
-def translate_authorization(job: _Job, monitors: Mapping[str, _Monitor]):
+def translate_authorization(job, monitors):
     translated = copy.deepcopy(job)
     references = []
     authorization = translated.get("authorization", {})
@@ -123,20 +68,17 @@ def translate_authorization(job: _Job, monitors: Mapping[str, _Monitor]):
     monitor = monitors.get("/".join(parts[:-1]))
     if monitor is None:
         raise ValueError("Authorization monitor was not inventoried")
-    endpoints = cast(
-        "list[dict[str, object]]",
-        monitor["spec"].get("endpoints", monitor["spec"].get("podMetricsEndpoints", [])),
-    )
+    endpoints = monitor["spec"].get("endpoints", monitor["spec"].get("podMetricsEndpoints", []))
     if int(parts[-1]) >= len(endpoints):
         raise ValueError("Authorization endpoint was not inventoried")
     endpoint = endpoints[int(parts[-1])]
-    authorization_block = cast("dict[str, object]", endpoint.get("authorization", {}))
-    source = authorization_block.get("credentials") or endpoint.get("bearerTokenSecret")
+    source = endpoint.get("authorization", {}).get("credentials") or endpoint.get(
+        "bearerTokenSecret"
+    )
     if not isinstance(source, dict):
         raise ValueError("Inline authorization requires an explicit SecretKeySelector")
     namespace = monitor["metadata"]["namespace"]
-    name = cast("str", source.get("name", ""))
-    key = cast("str", source.get("key", ""))
+    name, key = source.get("name", ""), source.get("key", "")
     if (
         not re.fullmatch(r"[a-z0-9][a-z0-9.-]*", namespace)
         or not re.fullmatch(r"[a-z0-9][a-z0-9.-]*", name)
@@ -145,7 +87,7 @@ def translate_authorization(job: _Job, monitors: Mapping[str, _Monitor]):
         or source.get("optional")
     ):
         raise ValueError("Invalid or optional authorization secret reference")
-    expected_type = cast("str", authorization_block.get("type", "Bearer"))
+    expected_type = endpoint.get("authorization", {}).get("type", "Bearer")
     if authorization.get("type", "Bearer") != expected_type:
         raise ValueError("Effective authorization type differs from monitor")
     if authorization.get("credentials_file"):
@@ -163,7 +105,7 @@ def translate_authorization(job: _Job, monitors: Mapping[str, _Monitor]):
     return translated, references
 
 
-def escape_literals(value: object):
+def escape_literals(value):
     if isinstance(value, dict):
         return {key: escape_literals(item) for key, item in value.items()}
     if isinstance(value, list):
@@ -173,7 +115,7 @@ def escape_literals(value: object):
     return value
 
 
-def refresh_public_edge_probe(scrape: _Scrape):
+def refresh_public_edge_probe(scrape):
     """Keep captured native scrape bundles aligned with the owned VPS probe."""
     targets = yaml.safe_load((ROOT / "charts/monitoring-k3s/values.yaml").read_text())[
         "serviceProbes"
@@ -197,7 +139,7 @@ def refresh_public_edge_probe(scrape: _Scrape):
     return add_moscow_edge_probe(result)
 
 
-def add_moscow_edge_probe(scrape: _Scrape):
+def add_moscow_edge_probe(scrape):
     """Persist new public Moscow probe in otherwise frozen native scrape bundles."""
     result = copy.deepcopy(scrape)
     targets = yaml.safe_load((ROOT / "charts/monitoring-k3s/values.yaml").read_text())[
@@ -205,7 +147,7 @@ def add_moscow_edge_probe(scrape: _Scrape):
     ]["targets"]
     prefix = "serviceMonitor/cattle-monitoring-system/monitoring-service-probes/"
 
-    def owns(job: _Job, identity: str):
+    def owns(job, identity):
         return job.get("job_name", "").startswith(prefix) and any(
             r.get("target_label") == "service_id" and r.get("replacement") == identity
             for r in job.get("relabel_configs", [])
@@ -236,7 +178,7 @@ def add_moscow_edge_probe(scrape: _Scrape):
     return result
 
 
-def add_logging_self_monitoring(scrape: _Scrape):
+def add_logging_self_monitoring(scrape):
     """Add only the native owner's authenticated Loki target, idempotently."""
     result = copy.deepcopy(scrape)
     job = {
@@ -263,11 +205,11 @@ def add_logging_self_monitoring(scrape: _Scrape):
     if existing and existing != [job]:
         raise ValueError("Conflicting Loki self-monitoring target")
     if not existing:
-        result["scrape_configs"].append(cast("_Job", job))
+        result["scrape_configs"].append(job)
     return result
 
 
-def add_pg_platform_scrape(scrape: _Scrape):
+def add_pg_platform_scrape(scrape):
     result = copy.deepcopy(scrape)
     job = {
         "job_name": "postgres-platform", "scrape_interval": "15s", "scrape_timeout": "5s",
@@ -280,13 +222,11 @@ def add_pg_platform_scrape(scrape: _Scrape):
     if existing and existing != [job]:
         raise ValueError("Conflicting postgres-platform scrape job")
     if not existing:
-        result["scrape_configs"].append(cast("_Job", job))
+        result["scrape_configs"].append(job)
     return result
 
 
-def compile_config(
-    source: _Scrape, targets: _Targets, monitors: Mapping[str, _Monitor] | None = None
-):
+def compile_config(source, targets, monitors=None):
     monitors = {} if monitors is None else monitors
     active = targets["activeTargets"]
     if not active or any(target.get("health") != "up" for target in active):
@@ -298,11 +238,8 @@ def compile_config(
     global_config.pop("external_labels", None)
     global_config.pop("evaluation_interval", None)
     global_config.update(scrape_interval="5s", scrape_timeout="4s")
-    outputs: dict[str, _Scrape] = {
-        name: cast(
-            "_Scrape",
-            {"global": copy.deepcopy(global_config), "scrape_configs": []},
-        )
+    outputs = {
+        name: {"global": copy.deepcopy(global_config), "scrape_configs": []}
         for name in ("cluster", *NODES)
     }
     contract = {
@@ -332,7 +269,7 @@ def compile_config(
             raise ValueError("Duplicate scrape pool")
         seen.add(pool)
         if pool not in pools:
-            cast("list[str]", contract["excludedEmptyPools"]).append(pool)
+            contract["excludedEmptyPools"].append(pool)
             continue
         group = pools[pool]
         jobs = {target["labels"].get("job") for target in group}
@@ -344,8 +281,8 @@ def compile_config(
             raise ValueError("Unknown or mixed source ownership")
         translated, secret_keys = translate_authorization(original, monitors)
         for reference in secret_keys:
-            if reference not in cast("list[object]", contract["requiredSecretKeys"]):
-                cast("list[object]", contract["requiredSecretKeys"]).append(reference)
+            if reference not in contract["requiredSecretKeys"]:
+                contract["requiredSecretKeys"].append(reference)
         translated.update(scrape_interval="5s", scrape_timeout="4s")
         references = assets(translated)
         mounts.update(references)
@@ -388,11 +325,11 @@ def compile_config(
                 local["static_configs"] = [
                     {"targets": ["127.0.0.1:19100"], "labels": copy.deepcopy(target["labels"])}
                 ]
-                outputs[node]["scrape_configs"].append(cast("_Job", local))
+                outputs[node]["scrape_configs"].append(local)
             record["labelMode"] = (
                 "legacy target labels retained as explicit compatibility aliases, not host-process runtime metadata"
             )
-        cast("list[object]", contract["pools"]).append(record)
+        contract["pools"].append(record)
     if set(pools) - seen:
         raise ValueError("Active targets are absent from the effective scrape configuration")
     if nodes != set(NODES):
@@ -409,9 +346,7 @@ def compile_config(
         "intervalSeconds": 5,
         "timeoutSeconds": 4,
     }
-    outputs["cluster"] = add_pg_platform_scrape(
-        refresh_public_edge_probe(add_logging_self_monitoring(outputs["cluster"]))
-    )
+    outputs["cluster"] = add_pg_platform_scrape(refresh_public_edge_probe(add_logging_self_monitoring(outputs["cluster"])))
     outputs = escape_literals(outputs)
     contract["dollarEscaping"] = (
         "literal Prometheus dollars escaped before Collector confmap resolution"
@@ -420,7 +355,7 @@ def compile_config(
     return outputs, contract
 
 
-def validation_config(value: _Json):
+def validation_config(value):
     if isinstance(value, dict):
         result = {}
         for key, item in value.items():

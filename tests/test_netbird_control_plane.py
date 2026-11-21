@@ -14,7 +14,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(name: str, filename: str):
+def load(name, filename):
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / filename)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -298,7 +298,7 @@ class BootstrapTests(unittest.TestCase):
     def test_claim_redacts_token_and_requires_setup(self):
         calls = []
 
-        def opener(url: str, body: dict[str, object]):
+        def opener(url, body):
             calls.append((url, body))
             if url.endswith("/api/instance"):
                 return {"setup_required": True}
@@ -320,7 +320,7 @@ class BootstrapTests(unittest.TestCase):
         )
         self.assertNotIn("create_pat", calls[1][1])
 
-        def claimed(url: str, body: dict[str, object]):
+        def claimed(url, body):
             return {"setup_required": False}
 
         with self.assertRaises(ValueError):

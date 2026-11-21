@@ -7,7 +7,7 @@ import tempfile
 import time
 
 
-def main() -> None:
+def main():
     with sqlite3.connect("file:/srv/x-ui-lab/db/x-ui.db?mode=ro", uri=True) as database:
         clients = []
         for row in database.execute(

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import json
 import sys
-from typing import TypedDict, cast
 
 import yaml
 
@@ -56,66 +55,7 @@ CPU_TEMPERATURE_QUERY = (
 )
 
 
-class _GridPos(TypedDict):
-    x: int
-    y: int
-    w: int
-    h: int
-
-
-class _SeriesTarget(TypedDict, total=False):
-    refId: str
-    expr: str
-    legendFormat: str
-    range: bool
-
-
-class _DatasourceRef(TypedDict):
-    type: str
-    uid: str
-
-
-class _QueryDef(TypedDict):
-    query: str
-    refId: str
-
-
-class _TemplateVariable(TypedDict, total=False):
-    name: str
-    label: str
-    type: str
-    hide: int
-    datasource: _DatasourceRef
-    query: _QueryDef
-    definition: str
-    regex: str
-    refresh: int
-    sort: int
-    multi: bool
-    includeAll: bool
-    options: list[object]
-
-
-class _Templating(TypedDict, total=False):
-    list: list[_TemplateVariable]
-
-
-class _Dashboard(TypedDict, total=False):
-    uid: str
-    title: str
-    templating: _Templating
-    panels: list["_Dashboard"]
-    id: int
-    gridPos: _GridPos
-    targets: list[_SeriesTarget]
-    description: str
-    type: str
-    datasource: _DatasourceRef
-    fieldConfig: dict[str, object]
-    options: dict[str, object]
-
-
-def add_cpu_temperature(dashboard: _Dashboard):
+def add_cpu_temperature(dashboard):
     existing = next((p for p in dashboard["panels"] if p["id"] == CPU_TEMPERATURE_PANEL_ID), None)
     position = (
         existing["gridPos"]
@@ -171,7 +111,7 @@ def add_cpu_temperature(dashboard: _Dashboard):
     )
 
 
-def resolve_node_exporter(dashboard: _Dashboard):
+def resolve_node_exporter(dashboard):
     variables = dashboard.setdefault("templating", {}).setdefault("list", [])
     instance = next(variable for variable in variables if variable.get("name") == "instance")
     instance.update(
@@ -211,7 +151,7 @@ def resolve_node_exporter(dashboard: _Dashboard):
                     target["expr"] = "avg(" + target["expr"].strip() + ")"
 
 
-def panels(dashboard: _Dashboard):
+def panels(dashboard):
     for panel in dashboard.get("panels", []):
         yield panel
         yield from panels(panel)
@@ -252,8 +192,8 @@ def main():
                     dashboard, ensure_ascii=False, separators=(",", ":")
                 )
             if uid in NODE_DASHBOARD_UIDS:
-                resolve_node_exporter(cast("_Dashboard", dashboard))
-                add_cpu_temperature(cast("_Dashboard", dashboard))
+                resolve_node_exporter(dashboard)
+                add_cpu_temperature(dashboard)
                 manifest["data"][name] = json.dumps(
                     dashboard, ensure_ascii=False, separators=(",", ":")
                 )
@@ -263,7 +203,7 @@ def main():
                     dashboard, ensure_ascii=False, separators=(",", ":")
                 )
                 continue
-            for panel in panels(cast("_Dashboard", dashboard)):
+            for panel in panels(dashboard):
                 for target in panel.get("targets", []):
                     legend = target.get("legendFormat", "")
                     if "{{instance}}" not in legend:

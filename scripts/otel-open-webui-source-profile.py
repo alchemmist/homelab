@@ -20,7 +20,7 @@ def activate() -> None:
         return
     class SourceSafeHttpInstrumentor(native.Instrumentor):
         _homelab_http_only_profile = True
-        def _instrument(self, **kwargs: object) -> None:
+        def _instrument(self, **kwargs):
             self.instrumentors = []
             native.FastAPIInstrumentor.instrument_app(app=self.app,
                 http_capture_headers_server_request=[], http_capture_headers_server_response=[])
@@ -28,7 +28,7 @@ def activate() -> None:
                 instrumentor = cls()
                 instrumentor.instrument()
                 self.instrumentors.append(instrumentor)
-        def _uninstrument(self, **kwargs: object) -> None:
+        def _uninstrument(self, **kwargs):
             native.FastAPIInstrumentor.uninstrument_app(self.app)
             for instrumentor in getattr(self, 'instrumentors', []):
                 instrumentor.uninstrument()

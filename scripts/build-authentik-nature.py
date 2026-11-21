@@ -11,13 +11,12 @@ import io
 import json
 import subprocess
 from pathlib import Path
-from typing import cast
 
 from PIL import Image, ImageOps, features
 from PIL import __version__ as pillow_version
 
 
-def build(source: Path, output: Path) -> None:
+def build(source, output):
     folder = source / "wallpapers/nature/images"
     files = sorted(
         p for p in folder.iterdir() if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}
@@ -112,11 +111,11 @@ def build(source: Path, output: Path) -> None:
             preview.save(buf, format="WEBP", quality=25, method=6)
             tiny = base64.b64encode(buf.getvalue()).decode()
 
-            def url(key: object):
-                item = manifest[cast("str", key)]
+            def url(key):
+                item = manifest[key]
                 return "/-/quiet-mono/v1/" + item["sha256"][:12] + "-" + Path(item["path"]).name
 
-            def layer(label: str):
+            def layer(label):
                 return (
                     "background-image:url('"
                     + url(record[label])

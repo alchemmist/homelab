@@ -1,66 +1,19 @@
 #!/usr/bin/env python3
 """Audit/create native public sharing for ONE shared-model activity dashboard, no anonymous org."""
 
-import argparse
-import base64
-import fcntl
-import hashlib
-import json
-import os
-import subprocess
-import urllib.error
-import urllib.request
+import argparse, base64, fcntl, hashlib, json, os, subprocess, urllib.request, urllib.error
 from pathlib import Path
-from typing import cast
 
 UID = "socrat-llm-activity-public"
 STATE = Path.home() / ".local/state/homelab-grafana-llm-public"
 
 
-def need(ok: object, msg: str) -> None:
+def need(ok, msg):
     if not ok:
         raise RuntimeError(msg)
 
 
-def _credentials() -> tuple[str, str]:
-    cmd = ["kubectl", "-n", "cattle-monitoring-system"]
-    secret = json.loads(
-        subprocess.check_output(
-            cmd + ["get", "secret", "socrat-grafana-admin", "-o", "json"],
-            stderr=subprocess.DEVNULL,
-        )
-    )["data"]
-    ip = subprocess.check_output(
-        cmd + ["get", "svc", "kube-prometheus-stack-grafana", "-o", "jsonpath={.spec.clusterIP}"],
-        text=True,
-    )
-    auth = base64.b64encode(
-        base64.b64decode(secret["admin-user"]) + b":" + base64.b64decode(secret["admin-password"])
-    ).decode()
-    return ip, auth
-
-
-def _api(
-    ip: str,
-    auth: str,
-    method: str,
-    path: str,
-    data: dict[str, object] | None = None,
-) -> tuple[int, dict[str, object]]:
-    req = urllib.request.Request(
-        "http://" + ip + path,
-        method=method,
-        headers={"Authorization": "Basic " + auth, "Content-Type": "application/json"},
-        data=None if data is None else json.dumps(data).encode(),
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=20) as r:
-            return r.status, cast("dict[str, object]", json.load(r))
-    except urllib.error.HTTPError as e:
-        return e.code, cast("dict[str, object]", json.load(e))
-
-
-def main() -> None:
+def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")
@@ -78,29 +31,51 @@ def main() -> None:
             not (STATE / "uncertain.json").exists(),
             "Uncertain previous publication; inspect privately",
         )
-        ip, auth = _credentials()
+        cmd = ["kubectl", "-n", "cattle-monitoring-system"]
+        secret = json.loads(
+            subprocess.check_output(
+                cmd + ["get", "secret", "socrat-grafana-admin", "-o", "json"],
+                stderr=subprocess.DEVNULL,
+            )
+        )["data"]
+        ip = subprocess.check_output(
+            cmd
+            + ["get", "svc", "kube-prometheus-stack-grafana", "-o", "jsonpath={.spec.clusterIP}"],
+            text=True,
+        )
+        auth = base64.b64encode(
+            base64.b64decode(secret["admin-user"])
+            + b":"
+            + base64.b64decode(secret["admin-password"])
+        ).decode()
 
-        def api(
-            method: str, path: str, data: dict[str, object] | None = None
-        ) -> tuple[int, dict[str, object]]:
-            return _api(ip, auth, method, path, data)
+        def api(method, path, data=None):
+            req = urllib.request.Request(
+                "http://" + ip + path,
+                method=method,
+                headers={"Authorization": "Basic " + auth, "Content-Type": "application/json"},
+                data=None if data is None else json.dumps(data).encode(),
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=20) as r:
+                    return r.status, json.load(r)
+            except urllib.error.HTTPError as e:
+                return e.code, json.load(e)
 
         code, settings = api("GET", "/api/admin/settings")
-        anonymous = cast("dict[str, object]", settings.get("auth.anonymous", {}))
         need(
-            code == 200 and anonymous.get("enabled") in [False, "false"],
+            code == 200 and settings.get("auth.anonymous", {}).get("enabled") in [False, "false"],
             "Organization anonymous access drift; refuse publication",
         )
         code, dashboard = api("GET", "/api/dashboards/uid/" + UID)
-        dash = cast("dict[str, object]", dashboard["dashboard"])
-        need(code == 200 and dash["uid"] == UID, "Unexpected dashboard")
+        need(code == 200 and dashboard["dashboard"]["uid"] == UID, "Unexpected dashboard")
         expected = json.loads(
             (
                 Path(__file__).resolve().parents[1]
                 / "charts/monitoring-k3s/dashboards/llm-activity-public.json"
             ).read_text()
         )
-        live = cast("dict[str, object]", dashboard["dashboard"])
+        live = dashboard["dashboard"]
         need(
             live["panels"] == expected["panels"]
             and live["templating"] == {"list": []}
@@ -148,11 +123,11 @@ def main() -> None:
             )
             code, unchanged = api("GET", "/api/dashboards/uid/" + UID)
             need(
-                code == 200 and unchanged["dashboard"] == dash,
+                code == 200 and unchanged["dashboard"] == dashboard["dashboard"],
                 "Dashboard content changed during publication",
             )
             (STATE / "after.json").write_text(json.dumps(verify))
-            token = cast("str", verify["accessToken"])
+            token = verify["accessToken"]
             need(
                 len(token) == 32 and all(c in "0123456789abcdef" for c in token),
                 "Unexpected public URL identifier",

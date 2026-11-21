@@ -6,14 +6,13 @@ import fcntl
 import hashlib
 import json
 import os
+from pathlib import Path
 import re
 import socket
 import urllib.parse
 import urllib.request
 import uuid
 import xml.etree.ElementTree as ET
-from pathlib import Path
-from typing import cast
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("root", type=Path)
@@ -37,7 +36,7 @@ headers = {"Authorization": "Bearer " + credentials["AUTHENTIK_BOOTSTRAP_TOKEN"]
 base = "https://auth.socrat.alchemmist.xyz/api/v3/"
 
 
-def api(method, path, payload=None) -> dict[str, object] | None:
+def api(method, path, payload=None):
     req = urllib.request.Request(
         base + path,
         method=method,
@@ -46,16 +45,15 @@ def api(method, path, payload=None) -> dict[str, object] | None:
     )
     with urllib.request.urlopen(req, timeout=60) as response:
         body = response.read()
-        document: dict[str, object] | None = json.loads(body) if body else None
-        return document
+        return json.loads(body) if body else None
 
 
-def private_json(path, value) -> None:
+def private_json(path, value):
     with open(path, "x", opener=lambda p, f: os.open(p, f, 0o600)) as out:
         json.dump(value, out)
 
 
-def normalize(value, key="") -> object:
+def normalize(value, key=""):
     if isinstance(value, dict):
         return {k: normalize(v, k) for k, v in value.items()}
     if isinstance(value, list):
@@ -70,7 +68,7 @@ def normalize(value, key="") -> object:
     return value
 
 
-def stable(app) -> object:
+def stable(app):
     # These three fields are the icon and its derived, possibly signed URLs.
     return normalize(
         {
@@ -81,15 +79,11 @@ def stable(app) -> object:
     )
 
 
-inventory = cast(
-    "dict[str, object]",
-    api("GET", "core/applications/?superuser_full_list=true&page_size=100"),
-)
-if cast("dict[str, object]", inventory["pagination"])["total_pages"] != 1:
+inventory = api("GET", "core/applications/?superuser_full_list=true&page_size=100")
+if inventory["pagination"]["total_pages"] != 1:
     raise RuntimeError("Incomplete application inventory; no changes made")
-results = cast("list[dict[str, object]]", inventory["results"])
-applications = {a["slug"]: a for a in results}
-if len(applications) != len(results):
+applications = {a["slug"]: a for a in inventory["results"]}
+if len(applications) != len(inventory["results"]):
     raise RuntimeError("Duplicate application slug")
 if args.expected_inventory:
     expected = {a["slug"]: a for a in json.loads(args.expected_inventory.read_text())}
@@ -134,12 +128,9 @@ run_id = (
     + "-"
     + uuid.uuid4().hex[:8]
 )
-private_json(root / ("portal-icons-before-" + run_id + ".json"), results)
+private_json(root / ("portal-icons-before-" + run_id + ".json"), inventory["results"])
 private_json(uncertain, {"run": run_id, "targets": sorted(seen)})
-files = {
-    f["name"]: f
-    for f in cast("list[dict[str, object]]", api("GET", "admin/file/?usage=media")) or []
-}
+files = {f["name"]: f for f in api("GET", "admin/file/?usage=media")}
 changed = []
 verified = []
 for filename, content, digest, name, targets in plan:
@@ -164,11 +155,8 @@ for filename, content, digest, name, targets in plan:
         )
         with urllib.request.urlopen(req, timeout=60) as response:
             response.read()
-        files = {
-            f["name"]: f
-            for f in cast("list[dict[str, object]]", api("GET", "admin/file/?usage=media")) or []
-        }
-    url = cast("str", files[name]["url"])
+        files = {f["name"]: f for f in api("GET", "admin/file/?usage=media")}
+    url = files[name]["url"]
     parsed = urllib.parse.urlsplit(url)
     if parsed.scheme != "https" or parsed.netloc != "auth.socrat.alchemmist.xyz":
         raise RuntimeError("Unexpected media origin; no credential forwarding")
@@ -182,14 +170,14 @@ for filename, content, digest, name, targets in plan:
             print("Skipped nonexistent application:", slug)
             continue
         before = applications[slug]
-        current = cast("dict[str, object]", api("GET", "core/applications/" + slug + "/"))
+        current = api("GET", "core/applications/" + slug + "/")
         if stable(current) != stable(before) or current["meta_icon"] != before["meta_icon"]:
             raise RuntimeError("Concurrent application change; review required: " + slug)
         if current["meta_icon"] != name:
             # Persist a storage name, never an expiring signed URL.
             api("PATCH", "core/applications/" + slug + "/", {"meta_icon": name})
             changed.append(slug)
-        after = cast("dict[str, object]", api("GET", "core/applications/" + slug + "/"))
+        after = api("GET", "core/applications/" + slug + "/")
         if stable(after) != stable(before) or after["meta_icon"] != name:
             raise RuntimeError("Icon-only postcondition failed: " + slug)
         verified.append(slug)

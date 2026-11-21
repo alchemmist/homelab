@@ -1,12 +1,11 @@
 import importlib.util
 import os
 import pathlib
-import types
 import unittest
 
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 
-def module(name: str) -> types.ModuleType:
+def module(name):
     old=os.getcwd();mask=os.umask(0o077)
     try:
         spec=importlib.util.spec_from_file_location(name,ROOT/'services/pi-monori'/f'{name}.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m

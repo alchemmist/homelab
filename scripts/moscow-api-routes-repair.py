@@ -2,8 +2,6 @@
 """One-shot additive repair, no WG/interface/service restart or key mutation."""
 
 import argparse, fcntl, hashlib, ipaddress, json, os, pathlib, subprocess, time
-from collections.abc import Mapping, Sequence
-from typing import Protocol
 
 CONFIG = pathlib.Path("/etc/wireguard/wg-socrat.conf")
 ROOT = pathlib.Path("/var/lib/homelab-recovery/20261113-moscow-api-routes")
@@ -13,19 +11,11 @@ PEERS = {
 }
 
 
-def run(*args: str) -> str:
+def run(*args):
     return subprocess.run(args, check=True, text=True, capture_output=True, timeout=10).stdout
 
 
-class Truthy(Protocol):
-    """Value whose truthiness can be tested without a positional bool annotation."""
-
-    def __bool__(self) -> bool:
-        """Return the flag's truth value."""
-        ...
-
-
-def allowed_ips(text: str):
+def allowed_ips(text):
     result = {}
     for line in text.splitlines():
         fields = line.split()
@@ -37,7 +27,7 @@ def allowed_ips(text: str):
     return result
 
 
-def project(text: str):
+def project(text):
     blocks = []
     current = []
     for line in text.splitlines(keepends=True):
@@ -63,7 +53,7 @@ def project(text: str):
     return blocks, parsed
 
 
-def candidate(text: str, runtime: Mapping[str, Sequence[str]]):
+def candidate(text, runtime):
     blocks, peers = project(text)
     if peers != runtime:
         raise ValueError("Boot/runtime AllowedIPs drift")
@@ -95,7 +85,7 @@ def candidate(text: str, runtime: Mapping[str, Sequence[str]]):
     return "".join(output), after
 
 
-def atomic(path: pathlib.Path, data: bytes):
+def atomic(path, data):
     temp = path.with_name(path.name + ".repair-tmp")
     with temp.open("xb") as stream:
         stream.write(data)
@@ -108,7 +98,7 @@ def atomic(path: pathlib.Path, data: bytes):
     os.close(fd)
 
 
-def repair(apply: Truthy = False):
+def repair(apply=False):
     if os.geteuid() != 0:
         raise RuntimeError("Root required")
     if os.uname().nodename != "socrat-4":

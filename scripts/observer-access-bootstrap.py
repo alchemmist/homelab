@@ -20,7 +20,6 @@ import ssl
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections.abc import Mapping
 from pathlib import Path
 
 SPEC = importlib.util.spec_from_file_location(
@@ -30,31 +29,7 @@ planner = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(planner)
 
 
-def as_dict(value: object) -> dict[str, object]:
-    """Return a JSON object, stopping on unexpected structure."""
-    if not isinstance(value, dict):
-        error = "Expected a JSON object"
-        raise TypeError(error)
-    return value
-
-
-def as_list(value: object) -> list[object]:
-    """Return a JSON array, stopping on unexpected structure."""
-    if not isinstance(value, list):
-        error = "Expected a JSON list"
-        raise TypeError(error)
-    return value
-
-
-def as_str(value: object) -> str:
-    """Return a JSON string, stopping on unexpected structure."""
-    if not isinstance(value, str):
-        error = "Expected a JSON string"
-        raise TypeError(error)
-    return value
-
-
-def private(path: Path, *, directory: bool = False, owner_uid: int | None = None) -> None:
+def private(path, directory=False, owner_uid=None):
     expected_uid = os.geteuid() if owner_uid is None else owner_uid
     planner.require(
         not path.is_symlink()
@@ -66,7 +41,7 @@ def private(path: Path, *, directory: bool = False, owner_uid: int | None = None
     )
 
 
-def readiness_directory(path: Path) -> None:
+def readiness_directory(path):
     # Foundation is deployed into the existing alchemmist-owned 0700 cache.
     # Keep strict caller ownership everywhere else; do not chown that directory.
     owner_uid = None
@@ -75,9 +50,10 @@ def readiness_directory(path: Path) -> None:
     private(path, directory=True, owner_uid=owner_uid)
 
 
-def validate_path(system: str, path: str) -> None:
+def validate_path(system, path):
     planner.require(
-        path
+        isinstance(path, str)
+        and path
         and not any(c.isspace() for c in path)
         and not any(c in path for c in ["\\", "#"])
         and "://" not in path
@@ -105,18 +81,21 @@ def validate_path(system: str, path: str) -> None:
     )
 
 
-def harbor_authorization(credentials: Mapping[str, object]) -> tuple[str, str]:
+def harbor_authorization(credentials):
     if "harborJobserviceSecret" in credentials:
-        secret = as_str(credentials["harborJobserviceSecret"])
+        secret = credentials["harborJobserviceSecret"]
         planner.require(
-            secret and not any(c.isspace() for c in secret),
+            isinstance(secret, str) and secret and not any(c.isspace() for c in secret),
             "Invalid native Harbor machine credential",
         )
         return "Harbor-Secret " + secret, "/api/v2.0/internalconfig"
-    username = as_str(credentials["harborUsername"])
-    password = as_str(credentials["harborPassword"])
+    username, password = credentials["harborUsername"], credentials["harborPassword"]
     planner.require(
-        username and ":" not in username and password,
+        isinstance(username, str)
+        and username
+        and ":" not in username
+        and isinstance(password, str)
+        and password,
         "Invalid Harbor admin credential",
     )
     return "Basic " + base64.b64encode(
@@ -125,9 +104,9 @@ def harbor_authorization(credentials: Mapping[str, object]) -> tuple[str, str]:
 
 
 class Client:
-    def __init__(self, credentials: Mapping[str, object]) -> None:
+    def __init__(self, credentials):
         class NoRedirect(urllib.request.HTTPRedirectHandler):
-            def redirect_request(self, *args: object, **kwargs: object) -> None:
+            def redirect_request(self, *args, **kwargs):
                 return None
 
         context = ssl.create_default_context(cafile="/var/lib/rancher/k3s/server/tls/server-ca.crt")
@@ -152,11 +131,11 @@ class Client:
         }
         harbor_header, self.harbor_config_path = harbor_authorization(credentials)
         self.auth = {
-            "authentik": "Bearer " + as_str(credentials["authentikToken"]),
+            "authentik": "Bearer " + credentials["authentikToken"],
             "harbor": harbor_header,
         }
 
-    def call(self, system: str, method: str, path: str, body: object | None = None):
+    def call(self, system, method, path, body=None):
         validate_path(system, path)
         headers = {
             "Content-Type": "application/json-patch+json"
@@ -183,7 +162,7 @@ class Client:
                 "Native API request failed or write uncertain: " + system + " HTTP " + str(status)
             ) from None
 
-    def rows(self, path: str):
+    def rows(self, path):
         result = []
         for page in range(1, 101):
             data = self.call(
@@ -196,7 +175,7 @@ class Client:
                 return result
         raise RuntimeError("Incomplete IdP pagination")
 
-    def harbor_members(self, project: str):
+    def harbor_members(self, project):
         result = []
         for page in range(1, 101):
             data = self.call(
@@ -223,12 +202,11 @@ class Client:
         raise RuntimeError("Incomplete Harbor group pagination")
 
 
-def snapshot(client: Client, policy: Mapping[str, object]):
+def snapshot(client, policy):
     kbase = "/apis/management.cattle.io/v3/"
     get = lambda path: client.call("kubernetes", "GET", kbase + path)
     globals_ = get("globalroles")["items"]
-    rancher = as_dict(policy["rancher"])
-    cluster = as_str(rancher["cluster"])
+    cluster = policy["rancher"]["cluster"]
     config = client.call("harbor", "GET", client.harbor_config_path)
     value = lambda key: config[key]["value"]
     apps = client.rows("core/applications/?superuser_full_list=true")
@@ -239,9 +217,9 @@ def snapshot(client: Client, policy: Mapping[str, object]):
         "bindings": client.rows("policies/bindings/"),
         "globalRoles": globals_,
         "rancherLoginRole": next(
-            r for r in globals_ if r["metadata"]["name"] == rancher["globalRole"]
+            r for r in globals_ if r["metadata"]["name"] == policy["rancher"]["globalRole"]
         ),
-        "rancherClusterRole": get("roletemplates/" + as_str(rancher["clusterRole"])),
+        "rancherClusterRole": get("roletemplates/" + policy["rancher"]["clusterRole"]),
         "rancherGroupBinding": get(
             "namespaces/" + cluster + "/clusterroletemplatebindings/homelab-observer-group"
         ),
@@ -253,14 +231,13 @@ def snapshot(client: Client, policy: Mapping[str, object]):
             "oidcAdminGroup": value("oidc_admin_group"),
             "projectCreationRestriction": value("project_creation_restriction"),
             "projects": {
-                name: client.harbor_members(name)
-                for name in [as_str(x) for x in as_list(as_dict(policy["harbor"])["projects"])]
+                name: client.harbor_members(name) for name in policy["harbor"]["projects"]
             },
         },
     }
 
 
-def normalized(value: object) -> object:
+def normalized(value):
     if isinstance(value, dict):
         # Computed signed media URLs do not define group membership or access.
         return {k: normalized(v) for k, v in value.items() if k != "meta_icon_url"}
@@ -269,7 +246,7 @@ def normalized(value: object) -> object:
     return value
 
 
-def digest(state: object, policy: object, operations: object) -> str:
+def digest(state, policy, operations):
     return hashlib.sha256(
         json.dumps(
             {"snapshot": normalized(state), "policy": policy, "operations": operations},
@@ -279,7 +256,7 @@ def digest(state: object, policy: object, operations: object) -> str:
     ).hexdigest()
 
 
-def save(path: Path, value: object) -> None:
+def save(path, value):
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as stream:
         json.dump(value, stream)

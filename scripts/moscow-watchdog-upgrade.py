@@ -17,15 +17,15 @@ ROOT = pathlib.Path("/var/lib/homelab-recovery/20261113-moscow-watchdog-repair")
 OLD = "81fa706264d5d9f5b86f3b7423fc1e9bf3324e955e57594297b1ad25edad35be"
 
 
-def sha(data: bytes):
+def sha(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def unit(name: str):
+def unit(name):
     return subprocess.run(["systemctl", "is-active", "--quiet", name], timeout=5).returncode == 0
 
 
-def install(candidate: pathlib.Path, expected: str):
+def install(candidate, expected):
     if os.geteuid() != 0 or os.uname().nodename != "socrat-4":
         raise RuntimeError("Wrong privilege or host")
     data = candidate.read_bytes()

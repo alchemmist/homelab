@@ -516,7 +516,7 @@ class UpstreamContractTests(unittest.TestCase):
         )
         schemas = yaml.safe_load(path.read_text())["components"]["schemas"]
 
-        def check(name: str, body: object):
+        def check(name, body):
             schema = {"$ref": "#/components/schemas/" + name, "components": {"schemas": schemas}}
             jsonschema.Draft4Validator(schema).validate(body)
 

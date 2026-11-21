@@ -58,7 +58,7 @@ class FakeWatchdog(MODULE.Watchdog):
     def service_active(self, unit):
         return unit in self.running
 
-    def command(self, *args: str) -> str:
+    def command(self, *args):
         self.events.append(args)
         if args[1] == "start":
             self.running.add(args[2])
@@ -227,7 +227,7 @@ class KubernetesFencingTests(unittest.TestCase):
         self.commands = []
         self.watchdog.command = self.command
 
-    def command(self, *args: str) -> str | None:
+    def command(self, *args):
         self.commands.append(args)
         if args[1] == "show":
             if args[3] == "--property=LoadState":
@@ -235,7 +235,6 @@ class KubernetesFencingTests(unittest.TestCase):
             return "active" if args[2] in self.active else "inactive"
         if args[1] == "stop":
             self.active.discard(args[2])
-        return None
 
     def test_fence_stops_both_installed_units(self):
         with mock.patch.object(self.watchdog, "processes", return_value=[]):
@@ -431,7 +430,7 @@ class HardeningTests(unittest.TestCase):
         self.w.activate()
         command = self.w.command
 
-        def failed(*args: str) -> str:
+        def failed(*args):
             if args == ("systemctl", "start", self.w.agent):
                 raise RuntimeError("start failed")
             return command(*args)

@@ -9,9 +9,7 @@ imagePullSecrets:
 
 # Same fingerprint as charts/deeperseeker/values.yaml. Overlay wins on merge.
 browserPlatform: Linux
-browserUserAgent: >-
-  Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0
-  Safari/537.36
+browserUserAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36"
 clientVersion: "2.8.0"
 cookieHeadless: "true"
 warmupNonHeadless: "false"

@@ -39,14 +39,14 @@ FIELDS = (
 )
 
 
-def protected_json(path, value) -> None:
+def protected_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     with open(path, "w", opener=lambda p, flags: os.open(p, flags, 0o600)) as stream:
         json.dump(value, stream, indent=2)
     path.chmod(0o600)
 
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
     parser.add_argument("theme", type=Path)

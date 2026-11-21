@@ -15,9 +15,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
-from http.client import HTTPMessage
 from pathlib import Path
-from typing import IO, cast, override
 
 root = Path.home() / ".cache/homelab-authentik"
 base = "https://auth.socrat.alchemmist.xyz"
@@ -36,7 +34,7 @@ runtime = json.loads(
 )
 
 
-def admin(method: str, path: str, data: dict[str, object] | None = None) -> dict[str, object]:
+def admin(method, path, data=None):
     req = urllib.request.Request(
         base + "/api/v3/" + path,
         method=method,
@@ -47,21 +45,12 @@ def admin(method: str, path: str, data: dict[str, object] | None = None) -> dict
         data=json.dumps(data).encode() if data is not None else None,
     )
     with urllib.request.urlopen(req, timeout=30) as r:
-        raw = r.read()
-        return cast("dict[str, object]", json.loads(raw) if raw else None)
+        data = r.read()
+        return json.loads(data) if data else None
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    @override
-    def redirect_request(
-        self,
-        req: urllib.request.Request,
-        fp: IO[bytes],
-        code: int,
-        msg: str,
-        headers: HTTPMessage,
-        newurl: str,
-    ) -> urllib.request.Request | None:
+    def redirect_request(self, *args):
         return None
 
 
@@ -69,35 +58,34 @@ jar = http.cookiejar.CookieJar()
 opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar), NoRedirect)
 
 
-def browser(url: str, data: dict[str, object] | None = None) -> tuple[int, HTTPMessage, bytes]:
+def browser(url, data=None):
     headers = {"Content-Type": "application/json", "Referer": base + "/"}
     for c in jar:
         if "csrf" in c.name and c.domain in [
             "auth.socrat.alchemmist.xyz",
             ".socrat.alchemmist.xyz",
         ]:
-            headers["X-authentik-CSRF"] = cast("str", c.value)
+            headers["X-authentik-CSRF"] = c.value
     req = urllib.request.Request(
         url, headers=headers, data=json.dumps(data).encode() if data is not None else None
     )
     try:
         with opener.open(req, timeout=30) as r:
-            return r.status, cast("HTTPMessage", r.headers), r.read()
+            return r.status, r.headers, r.read()
     except urllib.error.HTTPError as e:
         if e.code in [301, 302, 303, 307]:
             e.headers.replace_header("Location", urllib.parse.urljoin(url, e.headers["Location"]))
             loc = urllib.parse.urlparse(e.headers["Location"])
             q = urllib.parse.parse_qs(loc.query)
-            return e.code, cast("HTTPMessage", e.headers), b""
+            return e.code, e.headers, b""
         raise RuntimeError("Browser request failed with HTTP " + str(e.code))
 
 
 username = "identity-smoke-" + uuid.uuid4().hex[:10]
 password = secrets.token_urlsafe(32)
-groups_page = admin("GET", "core/groups/?name=homelab-observer")
 group = next(
     g
-    for g in cast("list[dict[str, object]]", groups_page["results"])
+    for g in admin("GET", "core/groups/?name=homelab-observer")["results"]
     if g["name"] == "homelab-observer"
 )
 user = admin(
@@ -143,7 +131,7 @@ try:
                     target = urllib.parse.urljoin(base, challenge.get("to", ""))
                     break
                 if component == "ak-stage-identification":
-                    data: dict[str, object] = {"uid_field": username}
+                    data = {"uid_field": username}
                 elif component == "ak-stage-password":
                     data = {"password": password}
                 elif component == "ak-stage-authenticator-totp":
@@ -184,7 +172,7 @@ try:
             if status in [301, 302, 303, 307]:
                 target = headers["Location"]
             elif "wiki.socrat.alchemmist.xyz" in urllib.parse.urljoin(base, target):
-                _status, _resp, body = browser("https://wiki.socrat.alchemmist.xyz/api/auth/me")
+                _, _, body = browser("https://wiki.socrat.alchemmist.xyz/api/auth/me")
                 profile = json.loads(body)
                 if profile.get("user", {}).get("username") != username:
                     raise RuntimeError("Unexpected Wiki identity")

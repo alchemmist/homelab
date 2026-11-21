@@ -18,7 +18,7 @@ p.add_argument("--model", default="qwen3.8-27b")
 a = p.parse_args()
 
 
-def gh(path: str):
+def gh(path):
     return json.loads(subprocess.check_output(["gh", "api", path], text=True))
 
 

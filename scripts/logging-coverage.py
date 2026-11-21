@@ -11,9 +11,7 @@ import subprocess
 import time
 import urllib.parse
 import urllib.request
-from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import NotRequired, TypedDict
 
 SAFE = re.compile(r"[A-Za-z0-9_.@:-]{1,253}")
 SEVERITIES = {"trace", "debug", "info", "warn", "error", "fatal", "unknown"}
@@ -29,113 +27,7 @@ LABELS = {
 GROUP = ",".join(sorted(LABELS))
 
 
-class MetadataPoint(TypedDict):
-    """Instant-query sample: label dict plus a [timestamp, value] pair."""
-
-    metric: dict[str, object]
-    value: list[str]
-
-
-class MetadataResult(TypedDict):
-    """Instant-query result envelope."""
-
-    resultType: str
-    result: list[MetadataPoint]
-
-
-class QueryDocument(TypedDict):
-    """Loki query API response document."""
-
-    status: str
-    warnings: NotRequired[str]
-    data: MetadataResult
-
-
-class LokiPoint(TypedDict):
-    """Canonical cleaned log point after metadata validation."""
-
-    labels: dict[str, object]
-    count: float
-
-
-class ContainerSpec(TypedDict):
-    """Named container entry inside a pod spec."""
-
-    name: str
-
-
-class PodSpec(TypedDict, total=False):
-    """Pod container lists; any of them may be absent."""
-
-    containers: list[ContainerSpec]
-    initContainers: list[ContainerSpec]
-    ephemeralContainers: list[ContainerSpec]
-
-
-class PodMetadata(TypedDict):
-    """Pod metadata fields used for attribution."""
-
-    namespace: str
-    name: str
-
-
-class PodStatus(TypedDict, total=False):
-    """Pod phase; only present once the scheduler assigns one."""
-
-    phase: str
-
-
-class Pod(TypedDict, total=False):
-    """Kubernetes pod object (metadata/spec/status may be sparse)."""
-
-    metadata: PodMetadata
-    spec: PodSpec
-    status: PodStatus
-
-
-class PodList(TypedDict, total=False):
-    """Kubernetes list response for pods."""
-
-    items: list[Pod]
-
-
-class WorkloadMetadata(TypedDict):
-    """Workload metadata fields used for attribution."""
-
-    namespace: str
-    name: str
-
-
-class Workload(TypedDict):
-    """Controller/workload inventory object."""
-
-    metadata: WorkloadMetadata
-    kind: str
-
-
-class WorkloadList(TypedDict, total=False):
-    """Kubernetes list response for workloads."""
-
-    items: list[Workload]
-
-
-class HostEntry(TypedDict):
-    """Reviewed host unit registry entry."""
-
-    host: str
-    unit: str
-    exists: NotRequired[bool]
-    emission: NotRequired[str]
-
-
-class ServiceSnapshot(TypedDict):
-    """Reviewed Ansible service_facts snapshot for one host."""
-
-    host: object
-    services: Mapping[str, Mapping[str, object]]
-
-
-def query(selector: str, window: int):
+def query(selector, window):
     # Extract structured metadata before aggregation, without returning any log lines.
     return (
         "sum by ("
@@ -148,7 +40,7 @@ def query(selector: str, window: int):
     )
 
 
-def validate(document: QueryDocument) -> list[LokiPoint]:
+def validate(document):
     if (
         document.get("status") != "success"
         or document.get("warnings")
@@ -158,7 +50,7 @@ def validate(document: QueryDocument) -> list[LokiPoint]:
     points = document["data"]["result"]
     if len(points) > 10000:
         raise ValueError("Series budget exceeded")
-    clean: list[LokiPoint] = []
+    clean = []
     for point in points:
         labels = point["metric"]
         if any(
@@ -173,20 +65,12 @@ def validate(document: QueryDocument) -> list[LokiPoint]:
     return clean
 
 
-def inventory(
-    pods: PodList,
-    workloads: WorkloadList,
-    hosts: Sequence[HostEntry],
-):
+def inventory(pods, workloads, hosts):
     sources = []
     for pod in pods.get("items", []):
         meta, spec = pod["metadata"], pod["spec"]
-        for kind, containers in (
-            ("containers", spec.get("containers", [])),
-            ("initContainers", spec.get("initContainers", [])),
-            ("ephemeralContainers", spec.get("ephemeralContainers", [])),
-        ):
-            for container in containers:
+        for kind in ("containers", "initContainers", "ephemeralContainers"):
+            for container in spec.get(kind, []):
                 sources.append(
                     {
                         "kind": "container",
@@ -231,7 +115,7 @@ def inventory(
     return sources
 
 
-def host_registry(snapshots: Sequence[ServiceSnapshot]):
+def host_registry(snapshots):
     """Normalize reviewed Ansible service_facts snapshots, never infer emission.
 
     Input: [{"host": canonical_host_name, "services": ansible_facts.services}].
@@ -253,7 +137,7 @@ def host_registry(snapshots: Sequence[ServiceSnapshot]):
     return registry
 
 
-def canonical_identity(source: Mapping[str, object], labels: Mapping[str, object]):
+def canonical_identity(source, labels):
     required = ("host_name", "service_name")
     if source["kind"] == "container":
         required += ("k8s_namespace_name", "audit_pod", "audit_container")
@@ -267,7 +151,7 @@ def canonical_identity(source: Mapping[str, object], labels: Mapping[str, object
     )
 
 
-def matches(source: Mapping[str, object], labels: Mapping[str, object]):
+def matches(source, labels):
     if source["kind"] == "container":
         return all(
             labels.get(k) == source[v]
@@ -285,11 +169,7 @@ def matches(source: Mapping[str, object], labels: Mapping[str, object]):
     return False
 
 
-def assess(
-    sources: Sequence[Mapping[str, object]],
-    recent: Sequence[LokiPoint],
-    hour: Sequence[LokiPoint],
-):
+def assess(sources, recent, hour):
     rows = []
     for source in sources:
         fresh = [p for p in recent if p["count"] > 0 and matches(source, p["labels"])]
@@ -315,7 +195,7 @@ def assess(
     return rows
 
 
-def kubectl(resource: str):
+def kubectl(resource):
     result = subprocess.run(
         ["kubectl", "get", resource, "--all-namespaces", "-o", "json", "--request-timeout=15s"],
         capture_output=True,
@@ -326,7 +206,7 @@ def kubectl(resource: str):
     return json.loads(result.stdout)
 
 
-def fetch(base: str, context: ssl.SSLContext, selector: str, window: int):
+def fetch(base, context, selector, window):
     url = base + "/loki/api/v1/query?" + urllib.parse.urlencode({"query": query(selector, window)})
     with urllib.request.urlopen(url, context=context, timeout=15) as response:
         body = response.read(8 * 1024 * 1024 + 1)

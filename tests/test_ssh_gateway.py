@@ -37,10 +37,10 @@ class GatewayTests(unittest.TestCase):
             ],
         }
 
-    def response(self, output: str):
+    def response(self, output):
         return subprocess.CompletedProcess([], 0, output, "")
 
-    def listing(self, entry: str = ""):
+    def listing(self, entry=""):
         return self.response("ExternalIPAddress = 203.0.113.1\n" + entry)
 
     def test_existing_mapping_is_unchanged_and_recorded_when_router_rewrites_description(self):

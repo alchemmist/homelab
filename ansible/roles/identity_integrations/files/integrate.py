@@ -14,7 +14,7 @@ kube = ["kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml"]
 clients = json.loads((root / "oidc-clients.json").read_text())
 
 
-def private_save(path, data) -> None:
+def private_save(path, data):
     if path.exists():
         return
     fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
@@ -22,7 +22,7 @@ def private_save(path, data) -> None:
         json.dump(data, f)
 
 
-def kubectl(args, body=None) -> str:
+def kubectl(args, body=None):
     result = subprocess.run(
         kube + args,
         input=json.dumps(body) if body is not None else None,
@@ -36,7 +36,7 @@ def kubectl(args, body=None) -> str:
     return result.stdout
 
 
-def idp(method, path, payload=None) -> dict[str, object] | None:
+def idp(method, path, payload=None):
     runtime = json.loads((root / "credentials.json").read_text())
     request = urllib.request.Request(
         "https://auth.socrat.alchemmist.xyz/api/v3/" + path,
@@ -49,26 +49,17 @@ def idp(method, path, payload=None) -> dict[str, object] | None:
     )
     with urllib.request.urlopen(request, timeout=60) as response:
         data = response.read()
-        payload_result: dict[str, object] | None = json.loads(data) if data else None
-        return payload_result
+        return json.loads(data) if data else None
 
 
-def reviewed_user(username, account) -> dict[str, object]:
+def reviewed_user(username, account):
     from urllib.parse import urlencode
 
-    listing = idp("GET", "core/users/?" + urlencode({"username": username}))
-    if not isinstance(listing, dict):
-        message = "Unexpected Authentik user listing"
-        raise RuntimeError(message)
-    rows = listing["results"]
-    if not isinstance(rows, list):
-        message = "Unexpected Authentik user listing"
-        raise RuntimeError(message)
-    exact = [u for u in rows if u["username"] == username]
+    users = idp("GET", "core/users/?" + urlencode({"username": username}))["results"]
+    exact = [u for u in users if u["username"] == username]
     if len(exact) != 1 or exact[0]["uuid"] != account.get("idpUserUuid"):
         raise RuntimeError("Reviewed Authentik subject mismatch; no relinking allowed")
-    subject: dict[str, object] = exact[0]
-    return subject
+    return exact[0]
 
 
 if service == "harbor":
@@ -94,9 +85,7 @@ if service == "harbor":
         ]
     )
     if users.strip():
-        raise RuntimeError(
-            "Active non-admin Harbor identities require explicit migration review"
-        )
+        raise RuntimeError("Active non-admin Harbor identities require explicit migration review")
     previous = json.loads(
         kubectl(["-n", "harbor", "get", "deployment", "harbor-core", "-o", "json"])
     )
@@ -133,19 +122,14 @@ if service == "harbor":
         {
             "name": "CONFIG_OVERWRITE_JSON",
             "valueFrom": {
-                "secretKeyRef": {
-                    "name": "socrat-authentik-harbor",
-                    "key": "config-json",
-                }
+                "secretKeyRef": {"name": "socrat-authentik-harbor", "key": "config-json"}
             },
         }
     )
     patch = [
         {
             "op": "replace",
-            "path": "/spec/template/spec/containers/"
-            + str(containers.index(core))
-            + "/env",
+            "path": "/spec/template/spec/containers/" + str(containers.index(core)) + "/env",
             "value": env,
         }
     ]
@@ -161,16 +145,7 @@ if service == "harbor":
             json.dumps(patch),
         ]
     )
-    kubectl(
-        [
-            "-n",
-            "harbor",
-            "rollout",
-            "status",
-            "deployment/harbor-core",
-            "--timeout=300s",
-        ]
-    )
+    kubectl(["-n", "harbor", "rollout", "status", "deployment/harbor-core", "--timeout=300s"])
     # Public configuration contains no OIDC client secret.
     with urllib.request.urlopen(
         "https://harbor.socrat.alchemmist.xyz/api/v2.0/systeminfo", timeout=30
@@ -178,9 +153,7 @@ if service == "harbor":
         after = json.load(r)
     if after["auth_mode"] != "oidc_auth":
         raise RuntimeError("Harbor OIDC config did not activate")
-    print(
-        "Harbor OIDC configured via supported override; local admin password unchanged"
-    )
+    print("Harbor OIDC configured via supported override; local admin password unchanged")
 elif service == "grafana":
     # Public key/value settings were generated from the committed YAML by Ansible,
     # avoiding a PyYAML dependency on the remote machine.
@@ -188,52 +161,30 @@ elif service == "grafana":
     secret = {
         "apiVersion": "v1",
         "kind": "Secret",
-        "metadata": {
-            "name": "socrat-authentik-grafana",
-            "namespace": "cattle-monitoring-system",
-        },
+        "metadata": {"name": "socrat-authentik-grafana", "namespace": "cattle-monitoring-system"},
         "type": "Opaque",
         "stringData": {"client-secret": clients["grafana"]["client_secret"]},
     }
     kubectl(["apply", "-f", "-"], secret)
     deployment = "kube-prometheus-stack-grafana"
     previous = json.loads(
-        kubectl(
-            [
-                "-n",
-                "cattle-monitoring-system",
-                "get",
-                "deployment",
-                deployment,
-                "-o",
-                "json",
-            ]
-        )
+        kubectl(["-n", "cattle-monitoring-system", "get", "deployment", deployment, "-o", "json"])
     )
     private_save(root / "grafana-deployment-before-oidc.json", previous)
     container = next(
-        c
-        for c in previous["spec"]["template"]["spec"]["containers"]
-        if c["name"] == "grafana"
+        c for c in previous["spec"]["template"]["spec"]["containers"] if c["name"] == "grafana"
     )
     env = [{"name": k, "value": str(v)} for k, v in public.items()]
     env.append(
         {
             "name": "GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET",
             "valueFrom": {
-                "secretKeyRef": {
-                    "name": "socrat-authentik-grafana",
-                    "key": "client-secret",
-                }
+                "secretKeyRef": {"name": "socrat-authentik-grafana", "key": "client-secret"}
             },
         }
     )
-    spec_patch = {
-        "spec": {
-            "template": {
-                "spec": {"containers": [{"name": container["name"], "env": env}]}
-            }
-        }
+    patch = {
+        "spec": {"template": {"spec": {"containers": [{"name": container["name"], "env": env}]}}}
     }
     kubectl(
         [
@@ -244,7 +195,7 @@ elif service == "grafana":
             deployment,
             "--type=strategic",
             "--patch",
-            json.dumps(spec_patch),
+            json.dumps(patch),
         ]
     )
     kubectl(
@@ -266,11 +217,7 @@ elif service == "open-webui":
     for username, account in accounts.items():
         user = reviewed_user(username, account)
         links.append(
-            {
-                "id": account["openWebuiUserId"],
-                "email": account["email"],
-                "sub": user["uuid"],
-            }
+            {"id": account["openWebuiUserId"], "email": account["email"], "sub": user["uuid"]}
         )
     # Use the application's own model method for reviewed, exact-ID linking.
     code = """import asyncio,json,sys
@@ -307,9 +254,7 @@ asyncio.run(main())"""
         "stringData": {"client-secret": clients["open-webui"]["client_secret"]},
     }
     kubectl(["apply", "-f", "-"], secret)
-    previous = json.loads(
-        kubectl(["-n", "llm", "get", "deployment", "open-webui", "-o", "json"])
-    )
+    previous = json.loads(kubectl(["-n", "llm", "get", "deployment", "open-webui", "-o", "json"]))
     private_save(root / "webui-deployment-before-oidc.json", previous)
     public = json.loads((root / "open-webui-env.json").read_text())
     env = [{"name": k, "value": str(v)} for k, v in public.items()]
@@ -317,18 +262,11 @@ asyncio.run(main())"""
         {
             "name": "OAUTH_CLIENT_SECRET",
             "valueFrom": {
-                "secretKeyRef": {
-                    "name": "socrat-authentik-webui",
-                    "key": "client-secret",
-                }
+                "secretKeyRef": {"name": "socrat-authentik-webui", "key": "client-secret"}
             },
         }
     )
-    spec_patch = {
-        "spec": {
-            "template": {"spec": {"containers": [{"name": "open-webui", "env": env}]}}
-        }
-    }
+    patch = {"spec": {"template": {"spec": {"containers": [{"name": "open-webui", "env": env}]}}}}
     kubectl(
         [
             "-n",
@@ -338,12 +276,10 @@ asyncio.run(main())"""
             "open-webui",
             "--type=strategic",
             "--patch",
-            json.dumps(spec_patch),
+            json.dumps(patch),
         ]
     )
-    kubectl(
-        ["-n", "llm", "rollout", "status", "deployment/open-webui", "--timeout=600s"]
-    )
+    kubectl(["-n", "llm", "rollout", "status", "deployment/open-webui", "--timeout=600s"])
     print(
         "Open WebUI native OIDC configured; exact UUID links preserve users/chats; no email-based merging"
     )
@@ -352,18 +288,14 @@ elif service == "rancher":
 
     accounts = json.loads((root / "account-mappings.json").read_text())
     original = json.loads(
-        kubectl(
-            ["get", "authconfigs.management.cattle.io", "genericoidc", "-o", "json"]
-        )
+        kubectl(["get", "authconfigs.management.cattle.io", "genericoidc", "-o", "json"])
     )
     private_save(root / "rancher-authconfig-before-oidc.json", original)
-    all_users = json.loads(
-        kubectl(["get", "users.management.cattle.io", "-o", "json"])
-    )["items"]
+    all_users = json.loads(kubectl(["get", "users.management.cattle.io", "-o", "json"]))["items"]
     allowed = []
     for username, account in accounts.items():
         user = reviewed_user(username, account)
-        principal = "genericoidc_user://" + str(user["uuid"])
+        principal = "genericoidc_user://" + user["uuid"]
         user_id = account["rancherUserId"]
         # Rancher's webhook correctly makes existing principalIds immutable.
         # Do not bypass it: create a separate external identity and mirror ONLY
@@ -393,18 +325,14 @@ elif service == "rancher":
             }
             kubectl(["create", "-f", "-"], external)
         else:
-            raise RuntimeError(
-                "External Rancher username exists with another principal"
-            )
+            raise RuntimeError("External Rancher username exists with another principal")
         for kind in [
             "globalrolebindings",
             "clusterroletemplatebindings",
             "projectroletemplatebindings",
         ]:
             resource = kind + ".management.cattle.io"
-            bindings = json.loads(kubectl(["get", resource, "-A", "-o", "json"]))[
-                "items"
-            ]
+            bindings = json.loads(kubectl(["get", resource, "-A", "-o", "json"]))["items"]
             desired = set()
             for binding in bindings:
                 if binding.get("userName") != user_id:
@@ -430,21 +358,13 @@ elif service == "rancher":
                 }
                 if namespace:
                     manifest["metadata"]["namespace"] = namespace
-                for field in [
-                    "globalRoleName",
-                    "roleTemplateName",
-                    "clusterName",
-                    "projectName",
-                ]:
+                for field in ["globalRoleName", "roleTemplateName", "clusterName", "projectName"]:
                     if field in binding:
                         manifest[field] = binding[field]
                 kubectl(["apply", "-f", "-"], manifest)
             for binding in bindings:
                 labels = binding["metadata"].get("labels", {})
-                key = (
-                    binding["metadata"].get("namespace"),
-                    binding["metadata"]["name"],
-                )
+                key = (binding["metadata"].get("namespace"), binding["metadata"]["name"])
                 if (
                     labels.get("app.kubernetes.io/managed-by") == "homelab-identity"
                     and labels.get("homelab.alchemmist.xyz/identity-user") == username
@@ -458,10 +378,7 @@ elif service == "rancher":
     secret = {
         "apiVersion": "v1",
         "kind": "Secret",
-        "metadata": {
-            "name": "genericoidcconfig-clientsecret",
-            "namespace": "cattle-global-data",
-        },
+        "metadata": {"name": "genericoidcconfig-clientsecret", "namespace": "cattle-global-data"},
         "type": "Opaque",
         "stringData": {"clientsecret": clients["rancher"]["client_secret"]},
     }
@@ -487,18 +404,10 @@ elif service == "rancher":
     # Re-read dependencies immediately before the write. Kubernetes cannot make
     # this a multi-resource transaction; authconfig UID/RV tests protect its
     # admission list against concurrent edits, including changes since backup.
-    roles = json.loads(
-        kubectl(["get", "globalroles.management.cattle.io", "-o", "json"])
-    )["items"]
+    roles = json.loads(kubectl(["get", "globalroles.management.cattle.io", "-o", "json"]))["items"]
     ttl = json.loads(
         kubectl(
-            [
-                "get",
-                "settings.management.cattle.io",
-                "auth-user-session-ttl-minutes",
-                "-o",
-                "json",
-            ]
+            ["get", "settings.management.cattle.io", "auth-user-session-ttl-minutes", "-o", "json"]
         )
     )
     settings["allowedPrincipalIds"] = retain_observer(original, allowed, roles, ttl)
@@ -519,32 +428,21 @@ elif service == "wiki":
     import secrets
 
     accounts = json.loads((root / "account-mappings.json").read_text())
-    subject_links: dict[str, object] = {}
-    subject_roles: dict[str, object] = {}
+    links = {}
+    roles = {}
     for name, account in accounts.items():
         if "wikiUserId" not in account:
             continue
         user = reviewed_user(name, account)
-        subject = str(user["uuid"])
-        subject_links[subject] = account["wikiUserId"]
-        subject_roles[subject] = account["wikiRole"]
+        subject = user["uuid"]
+        links[subject] = account["wikiUserId"]
+        roles[subject] = account["wikiRole"]
     previous = kubectl(
-        [
-            "-n",
-            "wiki",
-            "get",
-            "secret",
-            "socrat-authentik-wiki",
-            "--ignore-not-found",
-            "-o",
-            "json",
-        ]
+        ["-n", "wiki", "get", "secret", "socrat-authentik-wiki", "--ignore-not-found", "-o", "json"]
     )
     existing = json.loads(previous) if previous.strip() else None
     if existing:
-        state_key = base64.b64decode(
-            existing["data"]["WIKI_OIDC_SESSION_SECRET"]
-        ).decode()
+        state_key = base64.b64decode(existing["data"]["WIKI_OIDC_SESSION_SECRET"]).decode()
     else:
         state_key = secrets.token_urlsafe(48)
     data = {
@@ -563,8 +461,8 @@ elif service == "wiki":
                 "app-wiki-editor": "editor",
             }
         ),
-        "WIKI_OIDC_LINKS": json.dumps(subject_links),
-        "WIKI_OIDC_SUBJECT_ROLES": json.dumps(subject_roles),
+        "WIKI_OIDC_LINKS": json.dumps(links),
+        "WIKI_OIDC_SUBJECT_ROLES": json.dumps(roles),
     }
     kubectl(
         ["apply", "-f", "-"],
@@ -583,18 +481,14 @@ elif service == "wiki":
     )
     if existing and old_data != data:
         deployment = json.loads(
-            kubectl(
-                ["-n", "wiki", "get", "deployment", "wiki-runtime-wiki", "-o", "json"]
-            )
+            kubectl(["-n", "wiki", "get", "deployment", "wiki-runtime-wiki", "-o", "json"])
         )
         if any(
             e.get("secretRef", {}).get("name") == "socrat-authentik-wiki"
             for c in deployment["spec"]["template"]["spec"]["containers"]
             for e in c.get("envFrom", [])
         ):
-            kubectl(
-                ["-n", "wiki", "rollout", "restart", "deployment/wiki-runtime-wiki"]
-            )
+            kubectl(["-n", "wiki", "rollout", "restart", "deployment/wiki-runtime-wiki"])
             kubectl(
                 [
                     "-n",

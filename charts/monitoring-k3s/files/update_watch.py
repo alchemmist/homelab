@@ -9,24 +9,23 @@ import time
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import cast
 
 VERSION_RE = re.compile(r"(\d+)\.(\d+)\.(\d+)")
 UNSTABLE_RE = re.compile(r"(rc|alpha|beta|preview|dev|snapshot)", re.IGNORECASE)
 
 
-def parse_version(text) -> tuple[int, ...] | None:
+def parse_version(text):
     match = VERSION_RE.search(text or "")
     if not match:
         return None
     return tuple(int(part) for part in match.groups())
 
 
-def format_version(version) -> str:
+def format_version(version):
     return ".".join(str(part) for part in version)
 
 
-def latest_stable(releases) -> tuple[tuple[int, ...] | None, str | None]:
+def latest_stable(releases):
     best = None
     best_tag = None
     for release in releases:
@@ -44,11 +43,11 @@ def latest_stable(releases) -> tuple[tuple[int, ...] | None, str | None]:
     return best, best_tag
 
 
-def escape_label(value) -> str:
+def escape_label(value):
     return str(value).replace("\\", r"\\").replace("\n", r"\n").replace('"', r"\"")
 
 
-def fetch_releases(repo, timeout) -> list[dict[str, object]]:
+def fetch_releases(repo, timeout):
     request = urllib.request.Request(
         f"https://api.github.com/repos/{repo}/releases?per_page=30",
         headers={
@@ -57,13 +56,13 @@ def fetch_releases(repo, timeout) -> list[dict[str, object]]:
         },
     )
     with urllib.request.urlopen(request, timeout=timeout) as response:
-        document: object = json.load(response)
-    if not isinstance(document, list):
+        payload = json.load(response)
+    if not isinstance(payload, list):
         raise ValueError(f"unexpected GitHub response for {repo}")
-    return cast("list[dict[str, object]]", document)
+    return payload
 
 
-def version_from_image(image) -> tuple[int, ...] | None:
+def version_from_image(image):
     """Version embedded in a tag. Digest-only references have no tag."""
     if not image:
         return None
@@ -75,7 +74,7 @@ def version_from_image(image) -> tuple[int, ...] | None:
     return parse_version(ref[colon + 1 :])
 
 
-def installed_version(target, images) -> tuple[int, ...] | None:
+def installed_version(target, images):
     image = None if images is None else images.get(target["id"])
     live = version_from_image(image)
     if live is not None:
@@ -83,8 +82,8 @@ def installed_version(target, images) -> tuple[int, ...] | None:
     return parse_version(str(target.get("current", "")))
 
 
-def evaluate(targets, fetch, timeout, images=None) -> list[dict[str, object]]:
-    samples: list[dict[str, object]] = []
+def evaluate(targets, fetch, timeout, images=None):
+    samples = []
     for target in targets:
         app = target["id"]
         current = installed_version(target, images)
@@ -112,7 +111,7 @@ def evaluate(targets, fetch, timeout, images=None) -> list[dict[str, object]]:
     return samples
 
 
-def render_metrics(samples) -> str:
+def render_metrics(samples):
     lines = [
         "# HELP socrat_software_update_available Pinned version is older than the newest stable GitHub release.",
         "# TYPE socrat_software_update_available gauge",
@@ -139,13 +138,13 @@ class State:
         self.lock = threading.Lock()
         self.body = render_metrics([]).encode()
 
-    def update(self, samples) -> None:
+    def update(self, samples):
         body = render_metrics(samples).encode()
         with self.lock:
             self.body = body
 
 
-def serve(state, port) -> None:
+def serve(state, port):
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
             if self.path != "/metrics":
@@ -160,14 +159,14 @@ def serve(state, port) -> None:
             self.end_headers()
             self.wfile.write(body)
 
-        def log_message(self, _fmt: str, *_args: object) -> None:
+        def log_message(self, _fmt, *_args):
             return
 
     server = ThreadingHTTPServer(("0.0.0.0", port), Handler)
     server.serve_forever()
 
 
-def workload_ref(target) -> tuple[str, str]:
+def workload_ref(target):
     if target.get("deployment") and target.get("statefulset"):
         raise ValueError("ambiguous workload target")
     if target.get("statefulset"):
@@ -175,7 +174,7 @@ def workload_ref(target) -> tuple[str, str]:
     return "deployments", target.get("deployment")
 
 
-def deployment_image(target, timeout) -> str | None:
+def deployment_image(target, timeout):
     namespace = target.get("namespace")
     resource, name = workload_ref(target)
     container = target.get("container")
@@ -202,11 +201,11 @@ def deployment_image(target, timeout) -> str | None:
         payload = json.load(response)
     for item in payload["spec"]["template"]["spec"]["containers"]:
         if item.get("name") == container:
-            return cast("str | None", item.get("image"))
+            return item.get("image")
     raise ValueError(f"container {container} not found on {namespace}/{name}")
 
 
-def load_images(targets, timeout) -> dict[str, str | None]:
+def load_images(targets, timeout):
     images = {}
     for target in targets:
         if not (target.get("deployment") or target.get("statefulset")):
@@ -218,7 +217,7 @@ def load_images(targets, timeout) -> dict[str, str | None]:
     return images
 
 
-def main() -> None:
+def main():
     catalog = os.environ.get("UPDATE_WATCH_CATALOG", "/etc/update-watch/targets.json")
     interval = int(os.environ.get("UPDATE_WATCH_INTERVAL_SECONDS", "21600"))
     timeout = int(os.environ.get("UPDATE_WATCH_TIMEOUT_SECONDS", "20"))

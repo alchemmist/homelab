@@ -14,25 +14,19 @@ import urllib.request
 from pathlib import Path
 
 
-def _as_kind[T](value: object, kind: type[T]) -> T:
-    if not isinstance(value, kind):
-        raise TypeError
-    return value
-
-
-def identifier(value: str) -> str:
+def identifier(value):
     if re.fullmatch(r"[0-9a-fA-F]{16}|[0-9a-fA-F]{32}", value):
         return value.lower()
     return base64.b64decode(value, validate=True).hex()
 
 
 def summarize(
-    document: object,
-    trace_id: str,
-    parent_id: str,
-    service_name: str = "homelab-litellm-sdk-canary",
-    root_name: str = "homelab.synthetic.litellm-sdk-validation",
-    child_name: str | None = None,
+    document,
+    trace_id,
+    parent_id,
+    service_name="homelab-litellm-sdk-canary",
+    root_name="homelab.synthetic.litellm-sdk-validation",
+    child_name=None,
 ):
     text = json.dumps(document)
     forbidden = [
@@ -43,7 +37,7 @@ def summarize(
     spans = []
     services = set()
 
-    def walk(value: object) -> None:
+    def walk(value):
         if isinstance(value, dict):
             for entry in value.get("attributes", []):
                 if entry.get("key") == "service.name":
@@ -94,12 +88,10 @@ def summarize(
     return report
 
 
-def summarize_production_litellm(
-    document: object, trace_id: str, parent_id: str, *, inference: bool = False
-):
+def summarize_production_litellm(document, trace_id, parent_id, inference=False):
     records = []
 
-    def walk(value: object, service: str | None = None) -> None:
+    def walk(value, service=None):
         if isinstance(value, dict):
             resource = value.get("resource", {})
             for attribute in resource.get("attributes", []):
@@ -126,19 +118,18 @@ def summarize_production_litellm(
         and span["name"] == "homelab.synthetic.live-sdk-validation"
     ]
 
-    def descendant(span: object) -> bool:
-        current = _as_kind(span, dict)
-        if identifier(current["spanId"]) == parent_id:
+    def descendant(span):
+        if identifier(span["spanId"]) == parent_id:
             return False
-        seen = {identifier(current["spanId"])}
-        while current.get("parentSpanId"):
-            parent = identifier(current["parentSpanId"])
+        seen = {identifier(span["spanId"])}
+        while span.get("parentSpanId"):
+            parent = identifier(span["parentSpanId"])
             if parent == parent_id:
                 return True
             if parent in seen or parent not in by_id:
                 return False
             seen.add(parent)
-            current = _as_kind(by_id[parent], dict)
+            span = by_id[parent]
         return False
 
     children = [span for span, service in records if service == "litellm" and descendant(span)]
@@ -182,19 +173,18 @@ def summarize_production_litellm(
 
 
 def summarize_native_production(
-    document: object,
-    trace_id: str,
-    parent_id: str,
-    root_service: str = "homelab-live-vllm-probe",
-    root_name: str = "homelab.synthetic.production-vllm-request",
-    target_service: str = "vllm",
-    target_name: str = "llm_request",
-    *,
-    require_server_kind: bool = False,
+    document,
+    trace_id,
+    parent_id,
+    root_service="homelab-live-vllm-probe",
+    root_name="homelab.synthetic.production-vllm-request",
+    target_service="vllm",
+    target_name="llm_request",
+    require_server_kind=False,
 ):
     records = []
 
-    def walk(value: object, service: str | None = None) -> None:
+    def walk(value, service=None):
         if isinstance(value, dict):
             for attribute in value.get("resource", {}).get("attributes", []):
                 if attribute.get("key") == "service.name":
@@ -247,13 +237,13 @@ def summarize_native_production(
     }
 
 
-def summarize_production_vllm(document: object, trace_id: str, parent_id: str):
+def summarize_production_vllm(document, trace_id, parent_id):
     report = summarize_native_production(document, trace_id, parent_id)
     report["productionVllmNativeRequestTracingVerified"] = report["success"]
     return report
 
 
-def summarize_production_open_webui(document: object, trace_id: str, parent_id: str):
+def summarize_production_open_webui(document, trace_id, parent_id):
     report = summarize_native_production(
         document,
         trace_id,
@@ -272,17 +262,16 @@ def summarize_production_open_webui(document: object, trace_id: str, parent_id: 
 
 
 def run(
-    trace_id: str,
-    parent_id: str,
-    output: Path,
-    *,
-    production_litellm: bool = False,
-    vllm_canary: bool = False,
-    production_vllm: bool = False,
-    open_webui_canary: bool = False,
-    production_open_webui: bool = False,
-    production_litellm_inference: bool = False,
-) -> None:
+    trace_id,
+    parent_id,
+    output,
+    production_litellm=False,
+    vllm_canary=False,
+    production_vllm=False,
+    open_webui_canary=False,
+    production_open_webui=False,
+    production_litellm_inference=False,
+):
     os.umask(0o077)
     if (
         os.geteuid() != 0
@@ -365,10 +354,10 @@ if __name__ == "__main__":
         args.trace_id,
         args.parent_id,
         args.output,
-        production_litellm=args.production_litellm,
-        vllm_canary=args.vllm_canary,
-        production_vllm=args.production_vllm,
-        open_webui_canary=args.open_webui_canary,
-        production_open_webui=args.production_open_webui,
-        production_litellm_inference=args.production_litellm_inference,
+        args.production_litellm,
+        args.vllm_canary,
+        args.production_vllm,
+        args.open_webui_canary,
+        args.production_open_webui,
+        args.production_litellm_inference,
     )

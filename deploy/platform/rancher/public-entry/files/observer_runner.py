@@ -7,36 +7,15 @@ import ssl
 import time
 import urllib.error
 import urllib.parse
-import urllib.request
-from collections.abc import Iterator
-from typing import Protocol, cast
-
-
-class _Closeable(Protocol):
-    def close(self) -> None: ...
-
-
-class _Opener(Protocol):
-    def open(self, request: object, *args: object, **kwargs: object) -> _Closeable: ...
-
-
-class _OpenerFactory(Protocol):
-    def __call__(self, *args: object, **kwargs: object) -> object: ...
-
-
-class _Controller(Protocol):
-    opener: _OpenerFactory
-
-    def reconcile_rancher(self) -> None: ...
 
 
 class DiagnosticFailure(RuntimeError):
-    def __init__(self, event: dict[str, str | int]) -> None:
+    def __init__(self, event):
         super().__init__("Observer dependency operation failed")
         self.event = event
 
 
-def classify(error: BaseException) -> dict[str, str | int]:
+def classify(error):
     """Never use exception strings, URL, headers, body, subject or request data."""
     if isinstance(error, urllib.error.HTTPError):
         return {"kind": "http_status", "http_status": error.code if 100 <= error.code <= 599 else 0}
@@ -65,7 +44,7 @@ def classify(error: BaseException) -> dict[str, str | int]:
     return {"kind": "validation_or_internal"}
 
 
-def stage(request: urllib.request.Request) -> str:
+def stage(request):
     # Use only fixed labels, never a logged URL or arbitrary path component.
     path = urllib.parse.urlsplit(request.full_url).path
     if path == "/api/v3/core/groups/":
@@ -85,23 +64,18 @@ def stage(request: urllib.request.Request) -> str:
 
 
 class ObservedHTTP:
-    def __init__(self, inner: _Opener) -> None:
+    def __init__(self, inner):
         self.inner = inner
 
     @contextlib.contextmanager
-    def open(
-        self,
-        request: urllib.request.Request,
-        *args: object,
-        **kwargs: object,
-    ) -> Iterator[_Closeable]:
+    def open(self, request, *args, **kwargs):
         started = time.monotonic()
         phase = "https_open"
         response = None
         try:
             response = self.inner.open(request, *args, **kwargs)
             phase = "response_read"
-            yield cast("object", response)
+            yield response
         except Exception as error:
             event = {
                 "event": "observer_reconciliation_failed",
@@ -117,11 +91,11 @@ class ObservedHTTP:
                 response.close()
 
 
-def failure_event(error: BaseException) -> dict[str, str | int | None]:
+def failure_event(error):
     # Existing controller deliberately suppresses exception text, but retains
     # context. Find only our bounded metadata; never render underlying context.
-    current: BaseException | None = error
-    seen: set[int] = set()
+    current = error
+    seen = set()
     for _ in range(12):
         if current is None or id(current) in seen:
             break
@@ -138,11 +112,11 @@ def failure_event(error: BaseException) -> dict[str, str | int | None]:
     }
 
 
-def run(controller: _Controller) -> int:
+def run(controller):
     original = controller.opener
 
-    def observed(*args: object, **kwargs: object) -> ObservedHTTP:
-        return ObservedHTTP(cast("_Opener", original(*args, **kwargs)))
+    def observed(*args, **kwargs):
+        return ObservedHTTP(original(*args, **kwargs))
 
     controller.opener = observed
     started = time.monotonic()
@@ -168,4 +142,4 @@ def run(controller: _Controller) -> int:
 if __name__ == "__main__":
     import observer_membership
 
-    raise SystemExit(run(cast("_Controller", observer_membership)))
+    raise SystemExit(run(observer_membership))

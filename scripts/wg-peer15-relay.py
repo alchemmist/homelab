@@ -9,7 +9,6 @@ import select
 import signal
 import socket
 import time
-from types import FrameType
 
 FRONT = ("10.250.0.1", 51835)
 CLIENT = ("10.250.0.41", 51830)
@@ -20,7 +19,7 @@ TARGET = ("192.168.0.24", 51830)
 def main() -> None:
     alive = True
 
-    def stop(_signum: int, _frame: FrameType | None):
+    def stop(_signum, _frame):
         nonlocal alive
         alive = False
 

@@ -17,12 +17,12 @@ ROOT = Path("/var/lib/homelab-tv-wireguard-retirement")
 CONF = Path("/etc/wireguard/wg-socrat.conf")
 
 
-def need(msg: str, *, ok: bool):
+def need(ok, msg):
     if not ok:
         raise RuntimeError(msg)
 
 
-def digest(b: bytes):
+def digest(b):
     return hashlib.sha256(b).hexdigest()
 
 
@@ -38,20 +38,18 @@ def main():
     a = p.parse_args()
     os.umask(0o077)
     need(
+        socket.gethostname().split(".")[0] in ["socrat-0", "socrat-1", "socrat-2", "socrat-3"],
         "Unexpected node",
-        ok=socket.gethostname().split(".")[0] in ["socrat-0", "socrat-1", "socrat-2", "socrat-3"],
     )
-    need("Unsafe state", ok=not ROOT.is_symlink())
+    need(not ROOT.is_symlink(), "Unsafe state")
     ROOT.mkdir(mode=0o700, exist_ok=True)
-    need("Unsafe state owner/mode", ok=ROOT.stat().st_uid == 0 and not ROOT.stat().st_mode & 0o077)
+    need(ROOT.stat().st_uid == 0 and not ROOT.stat().st_mode & 0o077, "Unsafe state owner/mode")
     with (ROOT / "lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        need("Uncertain previous retirement; stop", ok=not (ROOT / "uncertain.json").exists())
+        need(not (ROOT / "uncertain.json").exists(), "Uncertain previous retirement; stop")
         need(
+            not CONF.is_symlink() and CONF.stat().st_uid == 0 and not CONF.stat().st_mode & 0o077,
             "Unsafe WireGuard config",
-            ok=not CONF.is_symlink()
-            and CONF.stat().st_uid == 0
-            and not CONF.stat().st_mode & 0o077,
         )
         before = CONF.read_bytes()
         kept = []
@@ -61,22 +59,20 @@ def main():
             ips = re.search(r"(?m)^AllowedIPs\s*=\s*([^\n]+)", block)
             if k and (k[1] == KEY or (ips and ips[1].strip() == IP)):
                 need(
+                    k[1] == KEY and ips and ips[1].strip() == IP and "# xiaomi-tv" in block,
                     "Peer ownership mismatch",
-                    ok=bool(
-                        k[1] == KEY and ips and ips[1].strip() == IP and "# xiaomi-tv" in block
-                    ),
                 )
                 count += 1
             else:
                 kept.append(block)
-        need("Duplicate owned peer", ok=count <= 1)
+        need(count <= 1, "Duplicate owned peer")
         after = "".join(kept).encode()
         runtime = peers()
         need(
+            all(k == KEY or v.strip() != IP for k, v in runtime.items()),
             "Address belongs to another identity",
-            ok=all(k == KEY or v.strip() != IP for k, v in runtime.items()),
         )
-        need("Unexpected owned peer routes", ok=KEY not in runtime or runtime[KEY].strip() == IP)
+        need(KEY not in runtime or runtime[KEY].strip() == IP, "Unexpected owned peer routes")
         context = {
             "before_sha": digest(before),
             "after_sha": digest(after),
@@ -86,18 +82,18 @@ def main():
         h = digest(json.dumps(context, sort_keys=True).encode())
         changed = bool(count or KEY in runtime)
         if a.apply and changed:
-            need("Fresh exact approval required", ok=a.approve_plan_hash == h)
+            need(a.approve_plan_hash == h, "Fresh exact approval required")
             need(
+                not (ROOT / "before.conf").exists(),
                 "Existing retirement backup; inspect before retry",
-                ok=not (ROOT / "before.conf").exists(),
             )
             (ROOT / "before.conf").write_bytes(before)
             (ROOT / "before.json").write_text(json.dumps(context))
             (ROOT / "uncertain.json").write_text(json.dumps({"plan_hash": h}))
-            need("Concurrent drift; stop", ok=CONF.read_bytes() == before and peers() == runtime)
+            need(CONF.read_bytes() == before and peers() == runtime, "Concurrent drift; stop")
             if count:
                 temp = CONF.with_name("wg-socrat.conf.tv-retirement")
-                need("Unexpected temporary config", ok=not temp.exists())
+                need(not temp.exists(), "Unexpected temporary config")
                 temp.write_bytes(after)
                 temp.chmod(0o600)
                 temp.replace(CONF)
@@ -108,10 +104,10 @@ def main():
                     capture_output=True,
                 )
             need(
+                peers() == {k: v for k, v in runtime.items() if k != KEY},
                 "Other peer routes changed",
-                ok=peers() == {k: v for k, v in runtime.items() if k != KEY},
             )
-            need("Persistent readback failed", ok=CONF.read_bytes() == after)
+            need(CONF.read_bytes() == after, "Persistent readback failed")
             (ROOT / "after.json").write_text(
                 json.dumps(
                     {"plan_hash": h, "other_peers_unchanged": True, "interface_restarted": False}

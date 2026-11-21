@@ -7,7 +7,6 @@ import shutil
 import socket
 import stat
 import subprocess
-from typing import TypedDict
 import urllib.request
 import xml.etree.ElementTree as ET
 
@@ -17,7 +16,7 @@ KUBELET_CONFIG = Path("/var/lib/rancher/k3s/agent/etc/kubelet.conf.d/99-homelab-
 RESULT = Path("/var/lib/homelab/node-disk-reserve-result.json")
 
 
-def atomic_write(path: Path, content: bytes, mode: int):
+def atomic_write(path, content, mode):
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + ".homelab-tmp")
     descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode)
@@ -31,7 +30,7 @@ def atomic_write(path: Path, content: bytes, mode: int):
         temporary.unlink(missing_ok=True)
 
 
-def pause_folder(config_path: Path, folder_id: str):
+def pause_folder(config_path, folder_id):
     tree = ET.fromstring(config_path.read_bytes())
     folder = next((f for f in tree.findall("folder") if f.get("id") == folder_id), None)
     if folder is None:
@@ -69,21 +68,7 @@ def pause_folder(config_path: Path, folder_id: str):
     return True
 
 
-class _KubeletConfig(TypedDict):
-    kind: str
-    apiVersion: str
-    imageGCLowThresholdPercent: int
-    imageGCHighThresholdPercent: int
-
-
-class _DiskPolicy(TypedDict, total=False):
-    node: str
-    kubelet: _KubeletConfig
-    folder: str
-    service: str
-
-
-def apply(policy: _DiskPolicy):
+def apply(policy):
     if os.geteuid() != 0:
         raise RuntimeError("Root authentication is required")
     if socket.gethostname().split(".")[0] != policy["node"]:

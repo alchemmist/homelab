@@ -23,12 +23,12 @@ DESTINATIONS = ("netbird-machine-grafana", "netbird-machine-ssh-socrat-2")
 GRAFANA = "grafana.socrat.alchemmist.xyz"
 
 
-def require(ok: object, message: str):
+def require(ok, message):
     if not ok:
         raise ValueError(message)
 
 
-def image(name: str):
+def image(name):
     lock = json.loads((ROOT / "deploy/netbird/images.lock.json").read_text())["images"][name]
     if name == "edge_forwarder":
         return lock["reference"]
@@ -40,16 +40,11 @@ def image(name: str):
     return lock["repository"] + ":" + lock["tag"] + "@" + lock["digest"]
 
 
-def preflight(
-    policies: object,
-    groups: list[dict[str, object]],
-    peers: object,
-    mem_available_kib: int,
-):
+def preflight(policies, groups, peers, mem_available_kib):
     """Validate live reads; never synthesise JWT-issued groups using the API."""
     require(policies == [], "policies must be empty before first machine enrollment")
     require(peers == [], "expected no preexisting peers; inspect before any replay")
-    result: list[object] = []
+    result = []
     for name in SOURCES:
         matches = [g for g in groups if g["name"] == name]
         require(
@@ -70,7 +65,7 @@ def preflight(
     return result
 
 
-def setup_key_body(host: str):
+def setup_key_body(host):
     require(host in HOSTS, "unapproved host")
     return {
         "name": "machine-" + host,
@@ -83,7 +78,7 @@ def setup_key_body(host: str):
     }
 
 
-def policies(source_ids: list[object], destination_ids: list[object]):
+def policies(source_ids, destination_ids):
     require(
         len(source_ids) == len(destination_ids) == 2
         and len(set(source_ids + destination_ids)) == 4
@@ -114,7 +109,7 @@ def policies(source_ids: list[object], destination_ids: list[object]):
     ]
 
 
-def peer(host: str, *, admin_mesh: bool = False):
+def peer(host, *, admin_mesh=False):
     reviewed = ("socrat-0", "socrat-1", "socrat-2", "socrat-3") if admin_mesh else HOSTS
     require(host in reviewed, "unapproved host")
     name = "machine-" + host
@@ -210,7 +205,7 @@ def peer(host: str, *, admin_mesh: bool = False):
     ]
 
 
-def overlay_ip(value: str):
+def overlay_ip(value):
     ip = ipaddress.ip_address(value)
     require(
         ip.version == 4 and ip in ipaddress.ip_network("100.64.0.0/10"),
@@ -219,7 +214,7 @@ def overlay_ip(value: str):
     return str(ip)
 
 
-def frontend_config(address: str):
+def frontend_config(address):
     address = overlay_ip(address)
     return {
         "static.yaml": yaml.safe_dump(
@@ -270,7 +265,7 @@ def frontend_config(address: str):
     }
 
 
-def frontend(host: str, address: str):
+def frontend(host, address):
     require(host in HOSTS, "unapproved host")
     name = "grafana-" + host
     labels = {"app": name}

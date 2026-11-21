@@ -20,7 +20,7 @@ kube-prometheus-stack:
                 matchExpressions:
                   - key: kubernetes.io/hostname
                     operator: In
-                    values: [socrat-1]
+                    values: [socrat-0]
       storage:
         volumeClaimTemplate:
           metadata:

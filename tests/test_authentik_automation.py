@@ -35,7 +35,7 @@ class Fake:
         self.tokens = []
         self.writes = []
 
-    def __call__(self, token: str, method: str, path: str, data: dict[str, object] | None = None):
+    def __call__(self, token, method, path, data=None):
         endpoint, _, query = path.partition("?")
         parts = endpoint.strip("/").split("/")
         if method != "GET":
@@ -55,12 +55,12 @@ class Fake:
             return None
         if method == "POST":
             if parts[1] == "groups":
-                r = dict(pk="group-machine", users=[], **(data or {}))
+                r = dict(pk="group-machine", users=[], **data)
             elif parts[1] == "users":
-                r = dict(pk=7, uuid="machine-uuid", is_superuser=True, **(data or {}))
+                r = dict(pk=7, uuid="machine-uuid", is_superuser=True, **data)
                 self.groups[0]["users"].append(r["pk"])
             else:
-                r = dict(data or {})
+                r = dict(data)
             rows.append(r)
             return r
         if len(parts) > 2:
@@ -79,7 +79,7 @@ class Fake:
 
 
 class AutomationTests(unittest.TestCase):
-    def root(self, d: str):
+    def root(self, d):
         p = Path(d)
         p.chmod(0o700)
         a.save(
@@ -154,7 +154,7 @@ class AutomationTests(unittest.TestCase):
             with patch.object(a, "api", fake), self.assertRaises(RuntimeError):
                 a.migrate(p, "check")
 
-    def bootstrap(self, p: Path):
+    def bootstrap(self, p):
         with (
             patch("sys.argv", ["bootstrap.py", str(p)]),
             patch("subprocess.run") as run,
@@ -184,7 +184,7 @@ class AutomationTests(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 self.bootstrap(p)
 
-    def ready_retirement(self, p: Path, fake: Fake):
+    def ready_retirement(self, p, fake):
         with patch.object(a, "api", fake), contextlib.redirect_stdout(io.StringIO()):
             a.migrate(p, "apply")
         j = json.loads((p / "automation-api.json").read_text())
@@ -197,7 +197,7 @@ class AutomationTests(unittest.TestCase):
         a.save(p / "automation-api.json", j)
         (p / "bootstrap.py").write_text((FILES / "bootstrap.py").read_text())
 
-    def kube_read(self, args: list[str], **kwargs: object):
+    def kube_read(self, args, **kwargs):
         if "secret" in args:
             return json.dumps({"data": {}, "metadata": {"annotations": {}}}).encode()
         return json.dumps({"spec": {"template": {"spec": {"containers": [{"env": []}]}}}}).encode()

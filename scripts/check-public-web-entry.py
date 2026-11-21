@@ -8,12 +8,10 @@ import ipaddress
 import json
 import subprocess
 import urllib.parse
-from collections.abc import Sequence
 from pathlib import Path
-from typing import cast
 
 
-def addresses(explicit: list[str] | None = None):
+def addresses(explicit=None):
     if explicit:
         values = explicit
     else:
@@ -38,13 +36,10 @@ def addresses(explicit: list[str] | None = None):
     return values
 
 
-def probe(case: Sequence[object]):
-    host = cast("str", case[0])
-    ip = cast("str", case[1])
-    path = cast("str", case[2])
-    expected = case[3]
-    method = cast("str", case[4]) if len(case) > 4 else "GET"
-    auth = cast("str | None", case[5]) if len(case) > 5 else "Bearer intentionally-invalid"
+def probe(case):
+    host, ip, path, expected = case[:4]
+    method = case[4] if len(case) > 4 else "GET"
+    auth = case[5] if len(case) > 5 else "Bearer intentionally-invalid"
     args = [
         "curl",
         "-sS",

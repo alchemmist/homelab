@@ -48,7 +48,7 @@ def test_staging_does_not_publish_moscow_web_records() -> None:
     zone = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(zone)
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
-        text = zone.render(123, home_up=home, vps_up=vps)
+        text = zone.render(123, home, vps)
         for name in zone.FAILOVER:
             assert f"{name} IN A 91.189.82.238" not in text
         assert "vpn IN A 91.189.82.238" in text

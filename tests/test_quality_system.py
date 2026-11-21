@@ -312,7 +312,7 @@ def test_dependency_audit_uses_installed_environment_and_deduplicates(monkeypatc
     calls = []
     item = {"name": "fixture", "version": "1", "vulns": [{"id": "CVE-2026-1234"}]}
 
-    def run(argv, **kwargs: object):
+    def run(argv, **kwargs):
         calls.append(argv)
         return SimpleNamespace(returncode=1, stdout=json.dumps({"dependencies": [item, item]}))
 

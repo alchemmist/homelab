@@ -16,8 +16,6 @@ from urllib.parse import urlparse
 
 import yaml
 
-type _Json = None | bool | int | float | str | list[_Json] | dict[str, _Json]
-
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
     "production_bootstrap", Path(__file__).with_name("otel-production-bootstrap.py")
@@ -45,7 +43,7 @@ def state():
         return obj["data"]
 
 
-def configure(bundle: Path, *, cutover: bool):
+def configure(bundle, cutover):
     config = yaml.safe_load((ROOT / "deploy/monitoring/otel/cluster.yaml").read_text())
     config["exporters"]["otlp_http/metrics"]["endpoint"] = "http://127.0.0.1:9090/api/v1/otlp"
     config["exporters"]["otlp_http/metrics"]["tls"] = {"insecure": True}
@@ -58,7 +56,7 @@ def configure(bundle: Path, *, cutover: bool):
         for index, ref in enumerate(contract["requiredSecretKeys"])
     }
 
-    def rewrite(value: _Json):
+    def rewrite(value):
         if isinstance(value, dict):
             return {key: rewrite(item) for key, item in value.items()}
         if isinstance(value, list):
@@ -112,7 +110,7 @@ def configure(bundle: Path, *, cutover: bool):
     return contract
 
 
-def run(bundle: Path, output: Path, *, cutover: bool):
+def run(bundle, output, cutover):
     os.umask(0o077)
     output.mkdir(mode=0o700, exist_ok=True)
     current = kube("-n", NS, "get", "prometheus", PROM, "-o", "json")
@@ -120,7 +118,7 @@ def run(bundle: Path, output: Path, *, cutover: bool):
     if not before.exists():
         before.write_text(json.dumps(current))
     boundary = state()["logIngestionStartNs"]
-    contract = configure(bundle, cutover=cutover)
+    contract = configure(bundle, cutover)
     pod = json.loads((output / "pod-before.json").read_text())
     volume = next(
         mount
@@ -303,4 +301,4 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--cutover", action="store_true")
     args = parser.parse_args()
-    run(args.bundle, args.output, cutover=args.cutover)
+    run(args.bundle, args.output, args.cutover)

@@ -11,7 +11,7 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def main() -> None:
+def main():
     records = json.loads((ROOT / "quality/collections.lock.json").read_text())["collections"]
     executable = shutil.which("ansible-galaxy")
     if executable is None:

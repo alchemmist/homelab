@@ -13,12 +13,6 @@ import stat
 import subprocess
 import sys
 import tempfile
-from typing import Optional, Protocol, cast
-
-
-class _Condition(Protocol):
-    def __bool__(self) -> bool: ...
-
 
 PROTECTED = {"root", "alchemmist", "ghactions", "nobody"}
 PRIVILEGED = {
@@ -43,19 +37,19 @@ KEY = re.compile(
 )
 
 
-def require(ok: _Condition, message: str):
+def require(ok, message):
     if not ok:
         raise ValueError(message)
 
 
-def username(name: str):
+def username(name):
     require(
         bool(re.fullmatch(r"[a-z_][a-z0-9_-]{0,30}", name)) and name not in PROTECTED,
         "Invalid or protected Linux username",
     )
 
 
-def fingerprint(line: str):
+def fingerprint(line):
     with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8") as f:
         f.write(line + "\n")
         f.flush()
@@ -71,11 +65,11 @@ def fingerprint(line: str):
     return fields[1]
 
 
-def validate(name: str, text: object):
+def validate(name, text):
     username(name)
     require(isinstance(text, str) and len(text) <= 16384, "Supply one OpenSSH public key")
     # Strip a normal public-file line ending, not arbitrary embedded controls.
-    text = cast("str", text).rstrip("\r\n")
+    text = text.rstrip("\r\n")
     require(
         not any(ord(c) < 32 or ord(c) == 127 for c in text),
         "Multiline/control characters are forbidden",
@@ -89,7 +83,7 @@ def validate(name: str, text: object):
     return {"username": name, "public_key": canonical, "fingerprint": fp}
 
 
-def safe_paths(name: str, account: Optional[pwd.struct_passwd]):
+def safe_paths(name, account):
     home = Path("/home") / name
     require(
         account is None or account.pw_dir == str(home), "Nonstandard home requires separate review"
@@ -125,7 +119,7 @@ def safe_paths(name: str, account: Optional[pwd.struct_passwd]):
     return home
 
 
-def ssh_policy(name: str):
+def ssh_policy(name):
     daemon = shutil.which("sshd") or "/usr/sbin/sshd"
     r = subprocess.run(
         [daemon, "-T", "-C", "user=" + name + ",host=socrat,addr=100.100.240.102"],
@@ -149,7 +143,7 @@ def ssh_policy(name: str):
     )
 
 
-def inspect(name: str, expected: Optional[str] = None, enforce: _Condition = False):
+def inspect(name, expected=None, enforce=False):
     username(name)
     require(os.geteuid() == 0, "Account verification requires root")
     require(

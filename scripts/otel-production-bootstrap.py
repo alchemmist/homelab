@@ -10,17 +10,6 @@ import os
 import shlex
 import subprocess
 from pathlib import Path
-from typing import TypedDict
-
-
-class _SecretRef(TypedDict):
-    namespace: str
-    secret: str
-
-
-class _Contract(TypedDict):
-    requiredSecretKeys: list[_SecretRef]
-
 
 NS = "cattle-monitoring-system"
 LABELS = {"app.kubernetes.io/part-of": "homelab-otel"}
@@ -33,7 +22,7 @@ NODES = {
 }
 
 
-def kube(*args, document: object | None = None):
+def kube(*args, document=None):
     result = subprocess.run(
         [
             "ssh",
@@ -62,8 +51,8 @@ def kube(*args, document: object | None = None):
     return json.loads(result.stdout) if result.stdout.strip() else None
 
 
-def resource(kind: str, name: str, spec: object | None = None, api: str = "cert-manager.io/v1"):
-    obj: dict[str, object] = {
+def resource(kind, name, spec=None, api="cert-manager.io/v1"):
+    obj = {
         "apiVersion": api,
         "kind": kind,
         "metadata": {"name": name, "namespace": NS, "labels": LABELS},
@@ -73,7 +62,7 @@ def resource(kind: str, name: str, spec: object | None = None, api: str = "cert-
     return obj
 
 
-def resources(contract: _Contract, api_server: str, pod: object):
+def resources(contract, api_server, pod):
     out = [
         resource("Issuer", "otel-bootstrap-selfsigned", {"selfSigned": {}}),
         resource(
@@ -188,7 +177,7 @@ def resources(contract: _Contract, api_server: str, pod: object):
     return out
 
 
-def run(bundle: Path, output: Path):
+def run(bundle, output):
     os.umask(0o077)
     output.mkdir(mode=0o700, exist_ok=True)
     if (output / "bootstrap.json").exists():

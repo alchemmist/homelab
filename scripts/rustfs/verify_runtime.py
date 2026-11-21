@@ -14,10 +14,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 
-def load(path: Path, name: str) -> ModuleType:
+def load(path, name):
     spec = importlib.util.spec_from_file_location(name, path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError("cannot load module: " + str(path))
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
     return m
@@ -42,7 +40,7 @@ def main():
         return
     origin = "http://127.0.0.1:19000"
 
-    def request(role: str, method: str, path: str, payload: bytes = b""):
+    def request(role, method, path, payload=b""):
         url = origin + path
         headers = g.sign(method, url, c[role]["access"], c[role]["secret"], payload=payload)
         req = urllib.request.Request(

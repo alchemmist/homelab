@@ -7,60 +7,13 @@ inside the application's SDK; never claim this prevents all in-memory creation.
 Prototype only until pinned-runtime canaries and maintained bootstrap pass.
 """
 import re
-from collections.abc import Mapping, Sequence
-from typing import Protocol
 from urllib.parse import urlsplit, urlunsplit
-
-
-class _ResourceView(Protocol):
-    attributes: Mapping[str, object] | None
-    schema_url: str | None
-
-
-class _EventView(Protocol):
-    name: str
-    attributes: Mapping[str, object] | None
-    timestamp: int
-
-
-class _LinkView(Protocol):
-    context: object
-    attributes: Mapping[str, object] | None
-
-
-class _StatusView(Protocol):
-    status_code: object
-
-
-class _SpanView(Protocol):
-    name: str
-    context: object
-    parent: object
-    resource: _ResourceView
-    attributes: Mapping[str, object] | None
-    events: Sequence[_EventView]
-    links: Sequence[_LinkView]
-    kind: object
-    status: _StatusView
-    start_time: int
-    end_time: int
-    instrumentation_scope: object
-
-
-class _Processor(Protocol):
-    def on_start(self, span: object, parent_context: object | None = None) -> None: ...
-
-    def on_end(self, span: object) -> None: ...
-
-    def shutdown(self) -> None: ...
-
-    def force_flush(self, timeout_millis: int = 30000) -> object: ...
 
 PRIVATE_KEY = re.compile(r'authorization|password|secret|token|cookie|prompt|completion|request[.]body|response[.]body|gen_ai[.](input|output|system_instructions)|db[.](statement|query[.]text)|(?:exception|error)[.](message|stacktrace)', re.I)
 URL_KEYS = {'url.full', 'http.url', 'http.target', 'url.query'}
 
 
-def safe_url(value: object):
+def safe_url(value):
     if not isinstance(value, str):
         return value
     if value.startswith(('http://', 'https://')):
@@ -77,16 +30,16 @@ def safe_url(value: object):
     return value.split('?', 1)[0] + ('?<redacted>' if '?' in value else '')
 
 
-def attributes(values: Mapping[str, object] | None):
+def attributes(values):
     return {key: ('<redacted>' if key == 'url.query' else safe_url(value)) if key in URL_KEYS else value
             for key, value in (values or {}).items() if not PRIVATE_KEY.search(key)}
 
 
-def safe_name(value: str):
+def safe_name(value):
     return re.sub(r'https?://[^\s]+', lambda match: safe_url(match.group()), value)
 
 
-def redact_span(span: _SpanView):
+def redact_span(span):
     from opentelemetry.sdk.resources import Resource
     from opentelemetry.sdk.trace import Event, ReadableSpan
     from opentelemetry.trace import Link, Status
@@ -107,21 +60,21 @@ def activate():
     if not isinstance(trace.get_tracer_provider(), trace.ProxyTracerProvider):
         raise ValueError('Source privacy guard must activate before any real tracer provider')
     class BeforeQueuePrivacy(sdk.SpanProcessor):
-        def __init__(self, downstream: _Processor):
+        def __init__(self, downstream):
             self.downstream = downstream
-        def on_start(self, span: object, parent_context: object | None = None):
+        def on_start(self, span, parent_context=None):
             self.downstream.on_start(span, parent_context=parent_context)
-        def on_end(self, span: _SpanView):
+        def on_end(self, span):
             # No exception fallback: never forward the original unredacted span.
             self.downstream.on_end(redact_span(span))
         def shutdown(self):
             self.downstream.shutdown()
-        def force_flush(self, timeout_millis: int = 30000):
+        def force_flush(self, timeout_millis=30000):
             return self.downstream.force_flush(timeout_millis=timeout_millis)
     original = sdk.TracerProvider
     class SourcePrivateTracerProvider(original):
         _homelab_source_privacy = True
-        def add_span_processor(self, processor: _Processor):
+        def add_span_processor(self, processor):
             super().add_span_processor(BeforeQueuePrivacy(processor))
     # Factory substitution is deliberately explicit and must happen before app
     # imports. This changes application bootstrap, not any installed SDK files.

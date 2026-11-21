@@ -10,7 +10,7 @@ import tempfile
 import urllib.request
 
 
-def validate(spec) -> None:
+def validate(spec):
     assert spec["slug"] == "password-self-service"
     assert spec["provider"] is None
     assert spec["meta_launch_url"] == "https://auth.socrat.alchemmist.xyz/change-password"
@@ -18,7 +18,7 @@ def validate(spec) -> None:
     assert spec["name"] == "Change password" and spec["group"] == "Account"
 
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("root", type=Path)
     parser.add_argument("--apply", action="store_true")

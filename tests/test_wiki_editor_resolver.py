@@ -83,7 +83,7 @@ printf '%s\\n' "$FIXTURE_ANSWER"
         path.chmod(0o700)
         return path
 
-    def run_resolver(self, expected=0, **changes: str):
+    def run_resolver(self, expected=0, **changes):
         result = subprocess.run(
             ["/bin/sh", str(self.script)],
             env={**self.environment, **changes},

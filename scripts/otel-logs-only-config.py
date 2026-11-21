@@ -11,15 +11,7 @@ import pathlib
 import yaml
 
 
-def _as_kind[T](value: object, kind: type[T]) -> T:
-    if not isinstance(value, kind):
-        raise TypeError
-    return value
-
-
-def merge(live: object, desired: object):
-    live = _as_kind(live, dict)
-    desired = _as_kind(desired, dict)
+def merge(live, desired):
     result = copy.deepcopy(live)
     target = desired["service"]["pipelines"]["logs"]
     other = [v for k, v in live["service"]["pipelines"].items() if k != "logs"]

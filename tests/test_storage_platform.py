@@ -37,7 +37,7 @@ class StoragePlatformTest(unittest.TestCase):
         sc = next(d for d in DOCS if d['kind'] == 'StorageClass')
         self.assertEqual(sc['metadata']['annotations']['storageclass.kubernetes.io/is-default-class'], 'false')
 
-    def run_setup(self, device: int, marker: str):
+    def run_setup(self, device, marker):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp); parent = root / 'volumes'; parent.mkdir()
             (parent / '.homelab-filesystem-id').write_text(marker)

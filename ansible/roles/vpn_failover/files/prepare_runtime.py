@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 
 
-def prepare(image: str, destination: str | Path) -> bool:
+def prepare(image, destination):
     destination = Path(destination)
     marker = destination / ".homelab-image"
     if marker.exists() and marker.read_text().strip() == image:

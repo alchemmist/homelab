@@ -58,7 +58,7 @@ def sdk_environment():
     }
 
 
-def trace_arguments(original: list[str]):
+def trace_arguments(original):
     flags = [i for i, arg in enumerate(original) if arg.startswith("--otlp-traces-endpoint")]
     if flags:
         if len(flags) != 1 or original[flags[0] : flags[0] + 2] != [
@@ -70,7 +70,7 @@ def trace_arguments(original: list[str]):
     return list(original) + ["--otlp-traces-endpoint", ENDPOINT]
 
 
-def run(output: Path, *, apply: bool, switcher_receipt: Path | None = None):
+def run(output, apply, switcher_receipt=None):
     os.umask(0o077)
     controller = Path.home() / "Library/Application Support/homelab/otel-controller"
     if not output.resolve().is_relative_to(controller.resolve()):
@@ -300,4 +300,4 @@ if __name__ == "__main__":
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--switcher-receipt", type=Path)
     args = parser.parse_args()
-    run(args.output, apply=args.apply, switcher_receipt=args.switcher_receipt)
+    run(args.output, args.apply, args.switcher_receipt)

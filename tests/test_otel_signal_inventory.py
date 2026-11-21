@@ -69,7 +69,7 @@ if __name__ == "__main__":
 
 
 class PrivilegedJournalTests(unittest.TestCase):
-    def evidence(self, directory, **updates: object):
+    def evidence(self, directory, **updates):
         from datetime import datetime, timezone
 
         document = {

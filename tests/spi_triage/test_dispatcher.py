@@ -10,15 +10,16 @@ from dispatcher import Dispatcher
 
 
 class DispatchTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.store = Store(self.tmp.name + "/queue.sqlite")
 
-    def enqueue(self, key: str = "a") -> object:
-        return self.store.enqueue({"event_key": key, "episode": key})
+    def enqueue(self, key: str = "a") -> dict[str, object]:
+        job: dict[str, object] = self.store.enqueue({"event_key": key, "episode": key})
+        return job
 
-    def test_empty_disabled_and_coalescing(self):
+    def test_empty_disabled_and_coalescing(self) -> None:
         calls = []
         d = Dispatcher(self.store, "unused", post=lambda: calls.append(1))
         self.enqueue()
@@ -30,11 +31,11 @@ class DispatchTests(unittest.TestCase):
         self.assertEqual(calls, [1])
         self.assertGreater(self.store.dispatch_status()["deadline"], 0)
 
-    def test_empty(self):
+    def test_empty(self) -> None:
         d = Dispatcher(self.store, "unused", True, lambda: self.fail("network"))
         self.assertIsNone(d.tick())
 
-    def test_ambiguous_persists_and_ack_race(self):
+    def test_ambiguous_persists_and_ack_race(self) -> None:
         self.enqueue()
 
         def post():
@@ -45,7 +46,7 @@ class DispatchTests(unittest.TestCase):
         self.assertEqual(self.store.dispatch_status()["attempts"], 0)
         self.assertIsNone(self.store.reserve_dispatch()[0])
 
-    def test_deadlines_recovery_and_terminal_lease(self):
+    def test_deadlines_recovery_and_terminal_lease(self) -> None:
         self.enqueue()
         self.enqueue("b")
         self.store.claim()
@@ -55,7 +56,7 @@ class DispatchTests(unittest.TestCase):
         self.assertEqual(self.store.recover_on_start(), 1)
         self.assertIsNotNone(self.store.reserve_dispatch()[0])
 
-    def test_backoff_restart_and_due_retry(self):
+    def test_backoff_restart_and_due_retry(self) -> None:
         with (
             patch("core.time.time", return_value=100),
             patch("core.random.uniform", return_value=1),
@@ -70,7 +71,7 @@ class DispatchTests(unittest.TestCase):
             self.store.fail("a", "INTERNAL_ERROR")
             self.assertEqual(self.store.reserve_dispatch(101), (None, 160))
 
-    def test_expired_processing_lease(self):
+    def test_expired_processing_lease(self) -> None:
         with patch("core.time.time", return_value=100):
             self.enqueue()
             self.store.claim()
@@ -79,7 +80,7 @@ class DispatchTests(unittest.TestCase):
 
 
 class ServiceSafetyTests(unittest.TestCase):
-    def test_expired_lease_while_stage_busy(self):
+    def test_expired_lease_while_stage_busy(self) -> None:
         from service import Engine
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -104,13 +105,13 @@ class ServiceSafetyTests(unittest.TestCase):
             self.assertEqual(calls, [1])
             self.assertEqual(engine.claim(), {"job_id": "a"})
 
-    def test_body_validation_and_partial_timeout(self):
+    def test_body_validation_and_partial_timeout(self) -> None:
         import socket
         from types import SimpleNamespace
         from service import read_request_body
         from core import Failure
 
-        def check(raw: bytes, length: str, code: str, *, shutdown: bool = True) -> None:
+        def check(raw, length, code, shutdown=True):
             left, right = socket.socketpair()
             try:
                 right.sendall(raw)
@@ -129,27 +130,27 @@ class ServiceSafetyTests(unittest.TestCase):
                 right.close()
 
         check(b"{", "2", "INCOMPLETE_BODY")
-        check(b"{", "2", "REQUEST_BODY_TIMEOUT", shutdown=False)
+        check(b"{", "2", "REQUEST_BODY_TIMEOUT", False)
         check(b"[]", "2", "INVALID_REQUEST")
         check(b"", "-1", "INVALID_BODY_SIZE")
         check(b"", "bad", "INVALID_BODY_SIZE")
 
 
 class DispatchTransportTests(unittest.TestCase):
-    def test_trickling_headers_are_interrupted_without_body_read(self):
+    def test_trickling_headers_are_interrupted_without_body_read(self) -> None:
         import socket
         import threading
         import http.client
 
         class Connection:
-            def __init__(self, *args: object, **kwargs: object) -> None:
+            def __init__(self, *args, **kwargs):
                 self.sock, self.peer = socket.socketpair()
                 self.closed = False
 
             def connect(self):
                 pass
 
-            def request(self, *args: object, **kwargs: object) -> None:
+            def request(self, *args, **kwargs):
                 pass
 
             def getresponse(self):

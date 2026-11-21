@@ -58,12 +58,12 @@ def fixture():
 
 
 class FakeAPI:
-    def __init__(self, state: dict[str, list[dict[str, object]]]):
+    def __init__(self, state):
         self.state = copy.deepcopy(state)
-        self.writes: list[tuple[str, str, dict[str, object] | None]] = []
+        self.writes = []
 
-    def __call__(self, method: str, path: str, payload: dict[str, object] | None = None):
-        base = path.partition("?")[0]
+    def __call__(self, method, path, payload=None):
+        base = path.split("?")[0]
         if method == "GET":
             if base.startswith("providers/oauth2/") and base != "providers/oauth2/":
                 return copy.deepcopy(
@@ -75,24 +75,24 @@ class FakeAPI:
                 )
             rows = copy.deepcopy(self.state[base])
             if "?target=" in path:
-                target = path.partition("?target=")[2].partition("&")[0]
+                target = path.split("?target=")[1].split("&")[0]
                 rows = [r for r in rows if r["target"] == target]
             return {"results": rows, "pagination": {"next": None}}
         self.writes.append((method, path, payload))
         if method == "POST":
-            made = dict(payload or {}, pk="created-" + str(len(self.writes)))
+            made = dict(payload, pk="created-" + str(len(self.writes)))
             if base == "policies/bindings/":
                 made.update(user=None, policy=None, expires=None)
             self.state[base].append(made)
             return copy.deepcopy(made)
         pk = int(base.split("/")[2])
         item = next(p for p in self.state["providers/oauth2/"] if p["pk"] == pk)
-        item.update(payload or {})
+        item.update(payload)
         for app in self.state["core/applications/"]:
             if app["provider"] == pk:
                 app["provider_obj"] = copy.deepcopy(item)
         # PATCH may return a reduced serializer; verify with a fresh detail GET.
-        return {"pk": pk, **copy.deepcopy(payload or {})}
+        return {"pk": pk, **copy.deepcopy(payload)}
 
 
 class AppAccessTests(unittest.TestCase):

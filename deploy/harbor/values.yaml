@@ -60,8 +60,7 @@ core:
       ephemeral-storage: 1Gi
   extraEnvVars:
   - name: CONFIG_OVERWRITE_JSON
-    value: >-
-      {"auth_mode":"db_auth","self_registration":false,"project_creation_restriction":"adminonly"}
+    value: '{"auth_mode":"db_auth","self_registration":false,"project_creation_restriction":"adminonly"}'
 jobservice:
   nodeSelector: *id001
   resources:

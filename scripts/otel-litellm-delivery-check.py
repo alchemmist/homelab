@@ -9,7 +9,7 @@ import urllib.request
 from pathlib import Path
 
 
-def run(pod: str, application: str = "litellm") -> None:
+def run(pod, application="litellm"):
     if application not in ("litellm", "vllm") or not re.fullmatch(
         application + r"-[a-z0-9-]+", pod
     ):
@@ -18,7 +18,7 @@ def run(pod: str, application: str = "litellm") -> None:
     context = ssl.create_default_context(cafile=str(root / "ca.crt"))
     context.load_cert_chain(str(root / "client.crt"), str(root / "client.key"))
 
-    def get(url: str, tls: ssl.SSLContext | None = None):
+    def get(url, tls=None):
         with urllib.request.urlopen(url, context=tls, timeout=4) as response:
             result = json.load(response)
         if result.get("status") != "success" or result.get("warnings"):

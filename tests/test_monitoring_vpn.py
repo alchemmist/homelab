@@ -19,7 +19,7 @@ SPEC.loader.exec_module(MODULE)
 HTTP_TIMEOUT = object()
 
 
-def counters_payload(users: dict[str, dict[str, int]]) -> io.BytesIO:
+def counters_payload(users):
     body = json.dumps(
         {
             "cmdline": ["xray"],

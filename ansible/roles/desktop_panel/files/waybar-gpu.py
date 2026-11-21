@@ -6,7 +6,7 @@ import subprocess
 from pathlib import Path
 
 
-def sample() -> dict[str, object]:
+def sample():
     tool = shutil.which("nvidia-smi")
     if tool:
         try:
@@ -36,11 +36,11 @@ def sample() -> dict[str, object]:
             pass
     for path in sorted(Path("/sys/class/drm").glob("card*/device/gpu_busy_percent")):
         try:
-            sys_usage = int(path.read_text().strip())
-            if 0 <= sys_usage <= 100:
+            usage = int(path.read_text().strip())
+            if 0 <= usage <= 100:
                 return {
-                    "text": f"GPU {sys_usage}%",
-                    "percentage": sys_usage,
+                    "text": f"GPU {usage}%",
+                    "percentage": usage,
                     "tooltip": "GPU load",
                     "class": "active",
                 }

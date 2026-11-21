@@ -13,7 +13,7 @@ class Links(HTMLParser):
         super().__init__()
         self.urls = []
 
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]):
+    def handle_starttag(self, tag, attrs):
         if tag == "a":
             self.urls.append(dict(attrs)["href"])
 

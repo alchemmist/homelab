@@ -4,7 +4,6 @@ import copy
 import tempfile
 import time
 import unittest
-from typing import cast
 from unittest.mock import Mock
 import test_triage as f
 from integrations import GitHub, Model
@@ -15,7 +14,7 @@ GOOD = {"issue_number": 0, "reason": "No shared cause established.", "confidence
 
 class LargeCatalogTests(unittest.TestCase):
     @staticmethod
-    def issues(n: int) -> list[dict[str, object]]:
+    def issues(n):
         return [
             {
                 "number": i + 1,
@@ -26,7 +25,7 @@ class LargeCatalogTests(unittest.TestCase):
             for i in range(n)
         ]
 
-    def test_121_open_issues_can_be_fingerprinted_without_model_review(self):
+    def test_121_open_issues_can_be_fingerprinted_without_model_review(self) -> None:
         g = GitHub(Mock(), "unused")
         rows = self.issues(121)
         g.pages = Mock(side_effect=lambda path: iter(copy.deepcopy(rows)))
@@ -37,18 +36,16 @@ class LargeCatalogTests(unittest.TestCase):
         )
         g.http.request.assert_not_called()
 
-    def test_all_241_issues_reviewed_with_unchanged_per_request_bounds(self):
+    def test_all_241_issues_reviewed_with_unchanged_per_request_bounds(self) -> None:
         m = Model(Mock(), "test-only", store=Mock())
         seen = []
 
-        def call(
-            task: str, data: dict[str, object], schema: object, deadline: float
-        ) -> dict[str, object]:
-            batch = cast("list[dict[str, object]]", data["open_issues"])
+        def call(task, data, schema, deadline):
+            batch = data["open_issues"]
             self.assertLessEqual(len(batch), 12)
             self.assertLessEqual(m.budget_reservation(m.payload(task, data, schema)), 30000)
             self.assertLessEqual(deadline - time.monotonic(), 1800)
-            seen.extend(cast("int", x["number"]) for x in batch)
+            seen.extend(x["number"] for x in batch)
             return dict(GOOD)
 
         m.call = call
@@ -58,21 +55,14 @@ class LargeCatalogTests(unittest.TestCase):
         self.assertEqual(result["candidates"], [])
         m.http.request.assert_not_called()
 
-    def test_admission_resume_reuses_existing_v3_paid_batch_receipts(self):
+    def test_admission_resume_reuses_existing_v3_paid_batch_receipts(self) -> None:
         m = Model(Mock(), "test-only", store=Mock())
         rows = self.issues(121)
         saved = []
         calls = []
 
-        def first(
-            task: str, data: dict[str, object], schema: object, deadline: float
-        ) -> dict[str, object]:
-            calls.append(
-                [
-                    cast("int", x["number"])
-                    for x in cast("list[dict[str, object]]", data["open_issues"])
-                ]
-            )
+        def first(task, data, schema, deadline):
+            calls.append([x["number"] for x in data["open_issues"]])
             if len(calls) == 3:
                 raise Failure("LLM_ADMISSION_DEFERRED", 61)
             return dict(GOOD)
@@ -85,13 +75,8 @@ class LargeCatalogTests(unittest.TestCase):
         completed = [x for batch in calls[:2] for x in batch]
         resumed = []
 
-        def second(
-            task: str, data: dict[str, object], schema: object, deadline: float
-        ) -> dict[str, object]:
-            resumed.extend(
-                cast("int", x["number"])
-                for x in cast("list[dict[str, object]]", data["open_issues"])
-            )
+        def second(task, data, schema, deadline):
+            resumed.extend(x["number"] for x in data["open_issues"])
             return dict(GOOD)
 
         m.call = second

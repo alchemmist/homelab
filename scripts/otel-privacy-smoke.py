@@ -7,13 +7,11 @@ import subprocess
 import time
 import urllib.error
 import urllib.request
-from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 
-def isolated_config(source: Mapping[str, Any], output: Path):
+def isolated_config(source, output):
     document = json.loads(json.dumps(source))
     receiver = document["receivers"]["otlp"]["protocols"]["http"]
     receiver["endpoint"] = "127.0.0.1:14318"
@@ -35,7 +33,7 @@ def isolated_config(source: Mapping[str, Any], output: Path):
     return document
 
 
-def send(context: ssl.SSLContext, payload: object):
+def send(context, payload):
     request = urllib.request.Request(
         "https://127.0.0.1:14318/v1/logs",
         data=json.dumps(payload).encode(),
@@ -47,7 +45,7 @@ def send(context: ssl.SSLContext, payload: object):
         raise ValueError("Synthetic logs were rejected")
 
 
-def run(binary: Path, config: Path, tls: Path, workspace: Path):
+def run(binary, config, tls, workspace):
     if os.readlink("/proc/self/ns/net") == os.readlink("/proc/1/ns/net"):
         raise ValueError("A separate network namespace is mandatory")
     workspace.mkdir(mode=0o700, exist_ok=False)

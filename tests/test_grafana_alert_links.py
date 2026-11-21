@@ -118,7 +118,7 @@ class AlertLinksTest(unittest.TestCase):
         }
         calls = []
 
-        def formatter(expression: str) -> str:
+        def formatter(expression):
             calls.append(expression)
             return "up > 0"
 

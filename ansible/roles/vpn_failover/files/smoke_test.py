@@ -26,13 +26,13 @@ WORKLOADS = [
 ]
 
 
-def run(*args: str, timeout: int = 45) -> str:
+def run(*args, timeout=45):
     return subprocess.run(
         args, check=True, capture_output=True, text=True, timeout=timeout
     ).stdout.strip()
 
 
-def copy_directory(source: str | Path, destination: Path) -> None:
+def copy_directory(source, destination):
     source = Path(source)
     if source.is_dir():
         shutil.copytree(source, destination, symlinks=False)
@@ -40,7 +40,7 @@ def copy_directory(source: str | Path, destination: Path) -> None:
         destination.mkdir()
 
 
-def backup_database(source: str | Path, destination: Path) -> None:
+def backup_database(source, destination):
     source = Path(source)
     if not source.is_file() or source.stat().st_size == 0:
         raise RuntimeError("Live database is missing or empty")
@@ -51,7 +51,7 @@ def backup_database(source: str | Path, destination: Path) -> None:
                 raise RuntimeError("Smoke database integrity check failed")
 
 
-def launch(unit: str, properties: list[str], executable: str, *arguments: str) -> None:
+def launch(unit, properties, executable, *arguments):
     command = [
         "systemd-run",
         "--quiet",
@@ -69,7 +69,7 @@ def launch(unit: str, properties: list[str], executable: str, *arguments: str) -
     run(*command, executable, *arguments)
 
 
-def main(runtime_root: Path = ROOT) -> None:
+def main(runtime_root=ROOT):
     if os.geteuid() != 0:
         raise RuntimeError("Smoke test requires root")
     os.umask(0o077)

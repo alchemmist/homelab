@@ -1,6 +1,5 @@
 import os
 import time
-from typing import cast
 
 PROMETHEUS_MARKER = "prometheus-kube-prometheus-stack-prometheus-db"
 ROLES = (
@@ -11,15 +10,15 @@ ROLES = (
 )
 
 
-def allocated(path) -> int:
+def allocated(path):
     stat = os.lstat(path)
     blocks = getattr(stat, "st_blocks", None)
     if blocks is None:
         return stat.st_size
-    return cast("int", blocks * 512)
+    return blocks * 512
 
 
-def directory_bytes(path) -> int:
+def directory_bytes(path):
     total = allocated(path)
     for root, dirs, files in os.walk(path, followlinks=False):
         for name in dirs:
@@ -29,14 +28,14 @@ def directory_bytes(path) -> int:
     return total
 
 
-def host_path(path, host_root) -> str:
+def host_path(path, host_root):
     prefix = host_root.rstrip("/")
     if path == prefix or path.startswith(prefix + "/"):
-        return cast("str", "/var/lib" + path[len(prefix) :])
-    return cast("str", path)
+        return "/var/lib" + path[len(prefix) :]
+    return path
 
 
-def rows(host_root) -> "list[tuple[str, str, int]]":
+def rows(host_root):
     found = []
     storage = os.path.join(host_root, "rancher/k3s/storage")
     if os.path.isdir(storage):
@@ -47,15 +46,13 @@ def rows(host_root) -> "list[tuple[str, str, int]]":
             if os.path.isdir(path):
                 found.append(("prometheus", "/var/lib/prometheus", directory_bytes(path)))
     for role, dirname in ROLES:
-        if dirname == "socrat-thanos-5m" and os.environ.get("SKIP_OLD_FIVE") == "1":
-            continue
         path = os.path.join(host_root, dirname)
         if os.path.isdir(path):
             found.append((role, host_path(path, host_root), directory_bytes(path)))
     return found
 
 
-def render(node, entries) -> str:
+def render(node, entries):
     lines = [
         "# HELP socrat_metrics_directory_bytes Allocated bytes in one metrics cascade directory.",
         "# TYPE socrat_metrics_directory_bytes gauge",
@@ -68,14 +65,14 @@ def render(node, entries) -> str:
     return "\n".join(lines) + "\n"
 
 
-def write(path, body) -> None:
+def write(path, body):
     temporary = path + ".tmp"
     with open(temporary, "w", encoding="utf-8") as handle:
         handle.write(body)
     os.replace(temporary, path)
 
 
-def main() -> None:
+def main():
     node = os.environ["NODE_NAME"]
     host_root = os.environ.get("HOST_VAR_LIB", "/host/var/lib")
     output = os.environ.get("OUTPUT", "/textfile/socrat-metrics-disk.prom")

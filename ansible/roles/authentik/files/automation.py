@@ -14,7 +14,6 @@ import secrets
 import sys
 import urllib.request
 from urllib.parse import quote
-from typing import cast
 
 NAME = "homelab-identity-automation"
 GROUP = "homelab-identity-automation-admin"
@@ -102,7 +101,7 @@ def bootstrap_is_migration_aware(source: str) -> bool:
     return False
 
 
-def save(path, data) -> None:
+def save(path, data):
     tmp = path.with_name(path.name + ".tmp-" + secrets.token_hex(8))
     fd = os.open(tmp, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     try:
@@ -115,7 +114,7 @@ def save(path, data) -> None:
         tmp.unlink(missing_ok=True)
 
 
-def api(token, method, path, data=None) -> dict[str, object] | None:
+def api(token, method, path, data=None):
     req = urllib.request.Request(
         BASE + path,
         method=method,
@@ -124,57 +123,46 @@ def api(token, method, path, data=None) -> dict[str, object] | None:
     )
     with urllib.request.urlopen(req, timeout=45) as r:
         raw = r.read()
-        document: dict[str, object] | None = json.loads(raw) if raw else None
-        return document
+        return json.loads(raw) if raw else None
 
 
-def exact(token, endpoint, field, value) -> dict[str, object] | None:
-    rows = cast(
-        "list[dict[str, object]]",
-        cast(
-            "dict[str, object]",
-            api(
-                token,
-                "GET",
-                endpoint + "?" + field + "=" + quote(value, safe="") + "&page_size=1000",
-            ),
-        )["results"],
-    )
+def exact(token, endpoint, field, value):
+    rows = api(
+        token, "GET", endpoint + "?" + field + "=" + quote(value, safe="") + "&page_size=1000"
+    )["results"]
     rows = [r for r in rows if r[field] == value]
     if len(rows) > 1:
         raise RuntimeError("Ambiguous managed identity")
     return rows[0] if rows else None
 
 
-def verify(token, journal) -> dict[str, object]:
-    user = cast(
-        "dict[str, object]", api(token, "GET", "core/users/" + str(journal["user_pk"]) + "/")
-    )
-    group = cast("dict[str, object]", api(token, "GET", "core/groups/" + journal["group_pk"] + "/"))
+def verify(token, journal):
+    user = api(token, "GET", "core/users/" + str(journal["user_pk"]) + "/")
+    group = api(token, "GET", "core/groups/" + journal["group_pk"] + "/")
     marker = {"homelab_automation_journal": journal["nonce"]}
     if not (
         user["uuid"] == journal["user_uuid"]
         and user["username"] == NAME
         and user["type"] == "service_account"
-        and cast("bool", user["is_active"])
-        and cast("bool", user["is_superuser"])
+        and user["is_active"]
+        and user["is_superuser"]
         and user["attributes"] == marker
         and user["groups"] == [journal["group_pk"]]
         and group["name"] == GROUP
-        and cast("bool", group["is_superuser"])
+        and group["is_superuser"]
         and group["attributes"] == marker
-        and set(cast("list[object]", group["users"])) == {user["pk"]}
+        and set(group["users"]) == {user["pk"]}
     ):
         raise RuntimeError("Managed account/group drift")
-    t = cast("dict[str, object]", api(token, "GET", "core/tokens/" + quote(NAME, safe="") + "/"))
-    if t["user"] != user["pk"] or t["intent"] != "api" or cast("bool", t["expiring"]):
+    t = api(token, "GET", "core/tokens/" + quote(NAME, safe="") + "/")
+    if t["user"] != user["pk"] or t["intent"] != "api" or t["expiring"]:
         raise RuntimeError("Managed token drift")
     owner = exact(token, "core/users/", "username", "alchemmist")
     if (
         not owner
         or owner["uuid"] != OWNER_UUID
-        or not cast("bool", owner["is_active"])
-        or not cast("bool", owner["is_superuser"])
+        or not owner["is_active"]
+        or not owner["is_superuser"]
     ):
         raise RuntimeError("Owner admin prerequisite failed")
     for endpoint in [
@@ -187,7 +175,7 @@ def verify(token, journal) -> dict[str, object]:
     return user
 
 
-def migrate(root, action) -> None:
+def migrate(root, action):
     if root.stat().st_mode & 0o077:
         raise RuntimeError("Deployment directory is not private")
     path = root / "automation-api.json"
@@ -212,18 +200,15 @@ def migrate(root, action) -> None:
     if (
         not owner
         or owner["uuid"] != OWNER_UUID
-        or not cast("bool", owner["is_superuser"])
-        or not cast("bool", owner["is_active"])
+        or not owner["is_superuser"]
+        or not owner["is_active"]
     ):
         raise RuntimeError("Owner admin prerequisite failed")
     if journal is None:
         if exact(old, "core/users/", "username", NAME) or exact(old, "core/groups/", "name", GROUP):
             raise RuntimeError("Refusing adoption of existing identity")
         # List metadata only; never overwrite an existing token identifier.
-        tokens = cast(
-            "list[dict[str, object]]",
-            cast("dict[str, object]", api(old, "GET", "core/tokens/?page_size=1000"))["results"],
-        )
+        tokens = api(old, "GET", "core/tokens/?page_size=1000")["results"]
         if any(t["identifier"] == NAME for t in tokens):
             raise RuntimeError("Foreign token identifier")
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -244,16 +229,10 @@ def migrate(root, action) -> None:
     if group and group["attributes"] != marker:
         raise RuntimeError("Foreign group")
     if group is None:
-        group = cast(
-            "dict[str, object]",
-            api(
-                old,
-                "POST",
-                "core/groups/",
-                {"name": GROUP, "is_superuser": True, "attributes": marker},
-            ),
+        group = api(
+            old, "POST", "core/groups/", {"name": GROUP, "is_superuser": True, "attributes": marker}
         )
-    if not cast("bool", group["is_superuser"]):
+    if not group["is_superuser"]:
         raise RuntimeError("Group permission drift")
     journal["group_pk"] = group["pk"]
     save(path, journal)
@@ -261,31 +240,25 @@ def migrate(root, action) -> None:
     if user and user["attributes"] != marker:
         raise RuntimeError("Foreign user")
     if user is None:
-        if cast("list[object]", group["users"]):
+        if group["users"]:
             raise RuntimeError("Foreign group member")
-        user = cast(
-            "dict[str, object]",
-            api(
-                old,
-                "POST",
-                "core/users/",
-                {
-                    "username": NAME,
-                    "name": "Homelab identity automation",
-                    "type": "service_account",
-                    "path": "service-accounts/homelab",
-                    "is_active": True,
-                    "groups": [group["pk"]],
-                    "attributes": marker,
-                },
-            ),
+        user = api(
+            old,
+            "POST",
+            "core/users/",
+            {
+                "username": NAME,
+                "name": "Homelab identity automation",
+                "type": "service_account",
+                "path": "service-accounts/homelab",
+                "is_active": True,
+                "groups": [group["pk"]],
+                "attributes": marker,
+            },
         )
     journal.update(user_pk=user["pk"], user_uuid=user["uuid"])
     save(path, journal)
-    tokens = cast(
-        "list[dict[str, object]]",
-        cast("dict[str, object]", api(old, "GET", "core/tokens/?page_size=1000"))["results"],
-    )
+    tokens = api(old, "GET", "core/tokens/?page_size=1000")["results"]
     matches = [t for t in tokens if t["identifier"] == NAME]
     if matches:
         if (
@@ -307,9 +280,7 @@ def migrate(root, action) -> None:
                 "description": journal["nonce"],
             },
         )
-    journal["token"] = cast(
-        "dict[str, object]", api(old, "GET", "core/tokens/" + NAME + "/view_key/")
-    )["key"]
+    journal["token"] = api(old, "GET", "core/tokens/" + NAME + "/view_key/")["key"]
     verify(journal["token"], journal)
     # Validate new access before atomically switching any existing consumer.
     values["AUTHENTIK_BOOTSTRAP_TOKEN"] = journal["token"]
@@ -321,7 +292,7 @@ def migrate(root, action) -> None:
     )
 
 
-def retire_default_admin(root) -> None:
+def retire_default_admin(root):
     """Only after an independent node-admin recovery drill and encrypted backup."""
     import subprocess
 
@@ -373,10 +344,7 @@ def retire_default_admin(root) -> None:
         raise RuntimeError("Default admin missing without retirement journal")
     if target["uuid"] != "fc86d87d-3a72-4cfb-8ba1-aa6bf6b017e7" or target["pk"] != 4:
         raise RuntimeError("Refusing deletion of an unreviewed identity")
-    tokens = cast(
-        "list[dict[str, object]]",
-        cast("dict[str, object]", api(token, "GET", "core/tokens/?page_size=1000"))["results"],
-    )
+    tokens = api(token, "GET", "core/tokens/?page_size=1000")["results"]
     owned = [t for t in tokens if t["user"] == target["pk"]]
     if any(t["identifier"] != "authentik-bootstrap-token" for t in owned):
         raise RuntimeError("Unexpected default-admin token dependency")
@@ -387,10 +355,7 @@ def retire_default_admin(root) -> None:
         raise RuntimeError("Default admin removal not confirmed")
     if any(
         t["user"] == target["pk"]
-        for t in cast(
-            "list[dict[str, object]]",
-            cast("dict[str, object]", api(token, "GET", "core/tokens/?page_size=1000"))["results"],
-        )
+        for t in api(token, "GET", "core/tokens/?page_size=1000")["results"]
     ):
         raise RuntimeError("Default-admin token survived deletion")
     verify(token, journal)

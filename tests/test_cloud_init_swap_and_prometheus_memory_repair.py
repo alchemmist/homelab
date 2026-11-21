@@ -3,7 +3,6 @@
 import copy
 import importlib.util
 import json
-import types
 from pathlib import Path
 
 import pytest
@@ -11,7 +10,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(name: str) -> types.ModuleType:
+def load(name):
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / (name + ".py"))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -35,7 +34,7 @@ def test_swap_repair_accepts_existing_persistent_active_swap():
 
 
 @pytest.mark.parametrize("change", ["provider", "competitor", "inactive", "fstab", "size"])
-def test_swap_repair_refuses_unknown_conditions(change: str):
+def test_swap_repair_refuses_unknown_conditions(change):
     base, others, swaps, fstab, size = (
         {"bootcmd": CLOUD.EXPECTED},
         [],
@@ -57,7 +56,7 @@ def test_swap_repair_refuses_unknown_conditions(change: str):
         CLOUD.validate(base, others, swaps, fstab, size)
 
 
-def test_cloud_atomic_permissions_and_no_active_swap_mutation(tmp_path: Path):
+def test_cloud_atomic_permissions_and_no_active_swap_mutation(tmp_path):
     target = tmp_path / "receipt"
     CLOUD.atomic(target, CLOUD.OVERRIDE, 0o600)
     assert target.read_text() == CLOUD.OVERRIDE
@@ -96,7 +95,7 @@ def expression():
 
 
 @pytest.mark.parametrize("indent", [0, 6, 12])
-def test_only_prometheus_memory_scalars_change(indent: int):
+def test_only_prometheus_memory_scalars_change(indent):
     before = "\n".join(
         line[indent:] if line.startswith(" " * indent) else line
         for line in expression().split("\n")
@@ -127,7 +126,7 @@ def test_only_prometheus_memory_scalars_change(indent: int):
         "[]",
     ],
 )
-def test_policy_drift_refused(expr: str):
+def test_policy_drift_refused(expr):
     with pytest.raises(RuntimeError):
         PROM.expression_change(expr)
 
@@ -189,7 +188,7 @@ def test_resize_only_ram_and_has_uid_rv_and_resource_guards():
 
 
 @pytest.mark.parametrize("change", ["node", "controller", "restart", "memory", "name"])
-def test_resize_refuses_unknown_or_disruptive_conditions(change: str):
+def test_resize_refuses_unknown_or_disruptive_conditions(change):
     value = pod()
     if change == "node":
         value["spec"]["nodeName"] = "socrat-1"
@@ -223,7 +222,7 @@ def test_capacity_gate_stops_before_mutation_if_request_growth_does_not_fit():
         PROM.memory_capacity({"status": {"allocatable": {"memory": "2500Mi"}}}, [pod()])
 
 
-def test_admission_cache_propagation_is_bounded_and_verified(monkeypatch: pytest.MonkeyPatch):
+def test_admission_cache_propagation_is_bounded_and_verified(monkeypatch):
     responses = iter(
         [
             {"requests": {"memory": "2Gi"}, "limits": {"memory": "3Gi"}},
@@ -239,7 +238,7 @@ def test_admission_cache_propagation_is_bounded_and_verified(monkeypatch: pytest
     assert samples == [{"request": "2Gi", "limit": "3Gi"}, {"request": "3Gi", "limit": "8Gi"}]
 
 
-def test_admission_nonconvergence_is_failure(monkeypatch: pytest.MonkeyPatch):
+def test_admission_nonconvergence_is_failure(monkeypatch):
     monkeypatch.setattr(PROM, "probe", lambda sts: {})
     monkeypatch.setattr(
         PROM,

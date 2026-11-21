@@ -4,35 +4,25 @@ import argparse
 import datetime
 import json
 import subprocess
-from collections.abc import Sequence
-from typing import TypedDict, Unpack
 
 
-class _TextRun(TypedDict, total=False):
-    input: str
-
-
-def run(
-    args: Sequence[str], **kwargs: Unpack[_TextRun]
-) -> subprocess.CompletedProcess[str]:
+def run(args, **kwargs):
     return subprocess.run(args, text=True, capture_output=True, timeout=120, **kwargs)
 
 
-def kub(resource: str):
+def kub(resource):
     result = run(['kubectl', 'get', resource, '-A', '-o', 'json'])
     result.check_returncode()
     return json.loads(result.stdout)['items']
 
 
-def inventory(pvs: list[dict[str, object]], pods: list[dict[str, object]]):
-    pv_items = json.loads(json.dumps(pvs))
-    pod_items = json.loads(json.dumps(pods))
+def inventory(pvs, pods):
     rows = []
-    for pv in pv_items:
+    for pv in pvs:
         spec = pv['spec']
         claim = spec.get('claimRef', {})
         consumers = []
-        for pod in pod_items:
+        for pod in pods:
             if pod['metadata']['namespace'] != claim.get('namespace'):
                 continue
             if any(v.get('persistentVolumeClaim', {}).get('claimName') == claim.get('name')
@@ -50,7 +40,7 @@ def inventory(pvs: list[dict[str, object]], pods: list[dict[str, object]]):
     return rows
 
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser(__doc__)
     parser.add_argument('--node', default='socrat-5', choices=[f'socrat-{i}' for i in range(6)])
     args = parser.parse_args()

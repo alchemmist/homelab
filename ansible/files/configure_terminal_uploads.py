@@ -7,7 +7,7 @@ import urllib.request
 from datetime import timedelta
 
 
-def configure(terminal_id) -> dict[str, object]:
+def configure(terminal_id):
     from open_webui.utils.auth import create_token
     from open_webui.utils.mfa import get_auth, get_mfa_config, is_mfa_required
 

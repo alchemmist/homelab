@@ -8,7 +8,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(name: str, file: str):
+def load(name, file):
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / file)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)

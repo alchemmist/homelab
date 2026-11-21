@@ -14,8 +14,8 @@ ANSIBLE = shutil.which("ansible-playbook")
 @unittest.skipUnless(ANSIBLE, "ansible-playbook is required")
 class WorkerAdmissionSafetyTests(unittest.TestCase):
     def assert_rejected_before_host_changes(
-        self, hostname: str, os_family: str = "Debian", address: str = "10.250.0.5"
-    ) -> None:
+        self, hostname, os_family="Debian", address="10.250.0.5"
+    ):
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)
             inventory = directory / "inventory.json"

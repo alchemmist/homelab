@@ -18,19 +18,13 @@ defaultRules:
     KubeCPUOvercommit:
       rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer
     KubePodNotReady:
-      rancher_url: >-
-        https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/{{ $labels.namespace
-        }}/{{ $labels.pod }}
+      rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/{{ $labels.namespace }}/{{ $labels.pod }}
     KubePodCrashLooping:
-      rancher_url: >-
-        https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/{{ $labels.namespace
-        }}/{{ $labels.pod }}
+      rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/{{ $labels.namespace }}/{{ $labels.pod }}
     KubeNodeNotReady:
-      rancher_url: >-
-        https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ $labels.node }}
+      rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ $labels.node }}
     KubeNodeUnreachable:
-      rancher_url: >-
-        https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ $labels.node }}
+      rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ $labels.node }}
   rules:
     etcd: false
     kubeControllerManager: false
@@ -58,8 +52,7 @@ kubelet:
     metricRelabelings:
       - action: drop
         sourceLabels: [instance, __name__]
-        regex: >-
-          (192\.168\.0\.(23|24)|10\.250\.0\.5):10250;(apiserver|etcd|scheduler|workqueue|kubeproxy)_.*
+        regex: (192\.168\.0\.(23|24)|10\.250\.0\.5):10250;(apiserver|etcd|scheduler|workqueue|kubeproxy)_.*
 prometheus:
   prometheusSpec:
     replicas: 1

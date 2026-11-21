@@ -17,7 +17,7 @@ import urllib.parse
 import urllib.request
 
 
-def kube_secret(ns: str, name: str):
+def kube_secret(ns, name):
     raw = subprocess.check_output(
         ["kubectl", "-n", ns, "get", "secret", name, "-o", "json", "--ignore-not-found"],
         stderr=subprocess.DEVNULL,

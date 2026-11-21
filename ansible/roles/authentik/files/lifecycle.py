@@ -7,27 +7,20 @@ import fcntl
 import hashlib
 import json
 import os
+from pathlib import Path
 import re
 import sys
 import urllib.error
 import urllib.request
-from pathlib import Path
-from typing import cast
 from uuid import UUID
 
-from app_iam import (
-    admission_groups,
-    app_groups,
-    rows,
-    validate_bindings,
-    validate_group,
-)
+from app_iam import app_groups, rows, validate_bindings, validate_group, admission_groups
 
 BASE = "https://auth.socrat.alchemmist.xyz/api/v3/"
 OWNER = "alchemmist"
 
 
-def api_for(root) -> object:
+def api_for(root):
     path = root / "credentials.json"
     if root.stat().st_mode & 0o077 or path.stat().st_mode & 0o077:
         raise RuntimeError("Deployment directory/credentials must be private")
@@ -37,10 +30,7 @@ def api_for(root) -> object:
         req = urllib.request.Request(
             BASE + endpoint,
             method=method,
-            headers={
-                "Authorization": "Bearer " + token,
-                "Content-Type": "application/json",
-            },
+            headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
             data=json.dumps(payload).encode() if payload is not None else None,
         )
         with urllib.request.urlopen(req, timeout=45) as response:
@@ -50,17 +40,16 @@ def api_for(root) -> object:
     return api
 
 
-def unique(items, field) -> dict[object, dict[str, object]]:
-    result: dict[object, dict[str, object]] = {}
+def unique(items, field):
+    result = {}
     for item in items:
-        record = cast("dict[str, object]", item)
-        if record[field] in result:
+        if item[field] in result:
             raise RuntimeError("Ambiguous live object")
-        result[record[field]] = record
+        result[item[field]] = item
     return result
 
 
-def build_plan(api, services, manifest, reviewed) -> dict[str, object]:
+def build_plan(api, services, manifest, reviewed):
     if set(manifest) != {"version", "users"} or manifest["version"] != 1:
         raise RuntimeError("Unsupported lifecycle schema")
     declared = app_groups(services)
@@ -69,9 +58,7 @@ def build_plan(api, services, manifest, reviewed) -> dict[str, object]:
         if name not in groups:
             raise RuntimeError("Missing app group; deploy foundation first: " + name)
         validate_group(groups[name])
-    applications = unique(
-        rows(api, "core/applications/?superuser_full_list=true"), "slug"
-    )
+    applications = unique(rows(api, "core/applications/?superuser_full_list=true"), "slug")
     for slug, service in services.items():
         # Portal-only apps and subject-only integrations do not become generic SSO.
         if service.get("managedBy") or not service.get("appRoles"):
@@ -89,9 +76,7 @@ def build_plan(api, services, manifest, reviewed) -> dict[str, object]:
         if actual != {groups[n]["pk"] for n in allowed}:
             raise RuntimeError("Missing admission binding: " + slug)
     live = unique(rows(api, "core/users/"), "username")
-    pk_to_group = {
-        cast("str", g["pk"]): cast("str", name) for name, g in groups.items()
-    }
+    pk_to_group = {g["pk"]: name for name, g in groups.items()}
     operations = []
     snapshot = []
     seen_uuids = set()
@@ -116,41 +101,29 @@ def build_plan(api, services, manifest, reviewed) -> dict[str, object]:
             raise RuntimeError("Human lifecycle refuses service/external accounts")
         state = desired["state"]
         wanted = desired["appGroups"]
-        if state not in ("preserve", "active", "disabled") or not isinstance(
-            wanted, list
-        ):
+        if state not in ("preserve", "active", "disabled") or not isinstance(wanted, list):
             raise RuntimeError("Invalid lifecycle state/groups")
         if len(set(wanted)) != len(wanted) or any(g not in declared for g in wanted):
             raise RuntimeError("Only declared app groups may be managed")
         if state == "disabled" and wanted:
             raise RuntimeError("Disabled users must have empty appGroups")
-        user_groups = cast("list[str]", user["groups"])
-        current = {pk_to_group[g] for g in user_groups if g in pk_to_group}
+        current = {pk_to_group[g] for g in user["groups"] if g in pk_to_group}
         unknown = [
             pk_to_group[g]
-            for g in user_groups
+            for g in user["groups"]
             if g in pk_to_group
             and pk_to_group[g].startswith("app-")
             and pk_to_group[g] not in declared
         ]
         if unknown:
-            raise RuntimeError(
-                "Unknown app membership requires separate controller review"
-            )
+            raise RuntimeError("Unknown app membership requires separate controller review")
         managed = current & set(declared)
         added = set(wanted) - managed
-        if any(
-            not cast("bool", cast("dict[str, object]", declared[g])["assignable"])
-            for g in added
-        ):
-            raise RuntimeError(
-                "Native authorization not ready; group assignment blocked"
-            )
+        if any(not declared[g]["assignable"] for g in added):
+            raise RuntimeError("Native authorization not ready; group assignment blocked")
         if name == OWNER and (state != "preserve" or set(wanted) != managed):
             raise RuntimeError("Owner state/membership is protected")
-        if name != OWNER and (
-            cast("bool", user.get("is_superuser")) or "homelab-owner" in current
-        ):
+        if name != OWNER and (user.get("is_superuser") or "homelab-owner" in current):
             raise RuntimeError("Human lifecycle refuses elevated identity")
         snapshot.append(
             {
@@ -158,11 +131,11 @@ def build_plan(api, services, manifest, reviewed) -> dict[str, object]:
                 "uuid": user["uuid"],
                 "pk": user["pk"],
                 "active": user["is_active"],
-                "groups": sorted(cast("list[str]", user["groups"])),
+                "groups": sorted(user["groups"]),
             }
         )
         # Disable FIRST, before membership removals. Never enable on preserve.
-        if state == "disabled" and cast("bool", user["is_active"]):
+        if state == "disabled" and user["is_active"]:
             operations.append({"action": "disable", "username": name, "pk": user["pk"]})
         for group in sorted(managed - set(wanted)):
             operations.append(
@@ -184,7 +157,7 @@ def build_plan(api, services, manifest, reviewed) -> dict[str, object]:
                     "groupPk": groups[group]["pk"],
                 }
             )
-        if state == "active" and not cast("bool", user["is_active"]):
+        if state == "active" and not user["is_active"]:
             operations.append({"action": "enable", "username": name, "pk": user["pk"]})
     # Hash covers reviewed input + complete current membership/state, not only writes.
     context = {
@@ -202,7 +175,7 @@ def build_plan(api, services, manifest, reviewed) -> dict[str, object]:
     }
 
 
-def apply_plan(api, plan, approval) -> None:
+def apply_plan(api, plan, approval):
     if approval != plan["sha256"]:
         raise RuntimeError("Plan approval hash mismatch; review a fresh plan")
     for operation in plan["operations"]:
@@ -223,19 +196,15 @@ def apply_plan(api, plan, approval) -> None:
             )
 
 
-def main() -> int:
+def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
-    parser.add_argument(
-        "action", choices=["plan", "check", "apply"], default="plan", nargs="?"
-    )
+    parser.add_argument("action", choices=["plan", "check", "apply"], default="plan", nargs="?")
     parser.add_argument("--approve-sha256")
     args = parser.parse_args()
     root = args.root
     # A local lock serializes THIS lifecycle tool, not UI/other controllers.
-    with os.fdopen(
-        os.open(root / ".lifecycle.lock", os.O_CREAT | os.O_WRONLY, 0o600), "w"
-    ) as lock:
+    with os.fdopen(os.open(root / ".lifecycle.lock", os.O_CREAT | os.O_WRONLY, 0o600), "w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         api = api_for(root)
         services = json.loads((root / "services.json").read_text())
@@ -246,17 +215,12 @@ def main() -> int:
             apply_plan(api, plan, args.approve_sha256)
             # A partial failure is safe to replan; there is no distributed transaction.
             after = build_plan(api, services, manifest, reviewed)
-            if cast("list[object]", after["operations"]):
-                raise RuntimeError(
-                    "Post-apply drift; replan without resetting credentials"
-                )
-            print(
-                "PASS: IdP lifecycle reconciled; native session revocation remains separate"
-            )
+            if after["operations"]:
+                raise RuntimeError("Post-apply drift; replan without resetting credentials")
+            print("PASS: IdP lifecycle reconciled; native session revocation remains separate")
         else:
             print(json.dumps(plan, indent=2))
-        operations = cast("list[object]", plan["operations"])
-        return 1 if args.action == "check" and operations else 0
+        return 1 if args.action == "check" and plan["operations"] else 0
 
 
 if __name__ == "__main__":
@@ -264,8 +228,6 @@ if __name__ == "__main__":
         raise SystemExit(main())
     except (urllib.error.URLError, OSError, KeyError, ValueError, TypeError):
         # Do not emit provider response bodies, token-bearing requests or tracebacks.
-        raise SystemExit(
-            "Lifecycle failed: API/private input unavailable or invalid"
-        ) from None
+        raise SystemExit("Lifecycle failed: API/private input unavailable or invalid") from None
     except RuntimeError as error:
         raise SystemExit(str(error)) from None

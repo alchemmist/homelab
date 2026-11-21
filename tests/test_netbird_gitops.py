@@ -113,7 +113,7 @@ class GitOpsTests(unittest.TestCase):
             env["NB_EXPOSED_ADDRESS"]["value"], "rels://netbird.socrat.alchemmist.xyz:443"
         )
 
-    def inventory(self, address: str = "10.250.0.9"):
+    def inventory(self, address="10.250.0.9"):
         return {
             "Socrat": {"hosts": ["socrat-4"]},
             "_meta": {

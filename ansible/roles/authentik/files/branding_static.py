@@ -3,12 +3,11 @@
 
 import hashlib
 import json
-import sys
 from pathlib import Path
-from typing import cast
+import sys
 
 
-def render(root) -> dict[str, object]:
+def render(root):
     assets = json.loads((root / "assets.json").read_text())
     binary = {}
     names = {}
@@ -347,6 +346,6 @@ http {
 if __name__ == "__main__":
     # JSON documents are valid YAML. Separate resources avoid kubectl's List-kind
     # OpenAPI-v2 fallback; each built-in resource keeps Strict v3 validation.
-    for item in cast("list[dict[str, object]]", render(Path(sys.argv[1]))["items"]):
+    for item in render(Path(sys.argv[1]))["items"]:
         print("---")
         print(json.dumps(item))

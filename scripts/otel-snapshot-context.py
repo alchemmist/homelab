@@ -13,7 +13,7 @@ import subprocess
 from pathlib import Path
 
 
-def bind(source: Path, output: Path, proof_path: Path, expected_path: Path, binary: Path):
+def bind(source, output, proof_path, expected_path, binary):
     os.umask(0o077)
     with binary.open("rb") as stream:
         if (

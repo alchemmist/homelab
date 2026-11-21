@@ -40,7 +40,7 @@ class KumaPrivateMonitorTests(unittest.TestCase):
             db.execute("INSERT INTO heartbeat VALUES (7, 0)")
             db.execute("INSERT INTO monitor_group VALUES (7, 4)")
 
-    def snapshot(self, path: Path | str | None = None):
+    def snapshot(self, path=None):
         with closing(sqlite3.connect(path or self.path)) as db, db:
             return {
                 table: db.execute(f"SELECT * FROM {table}").fetchall()

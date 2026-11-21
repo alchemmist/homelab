@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class Namespace(unittest.TestCase):
     """Rendered RustFS namespace boundaries and the fixed S3 destination."""
 
-    def render(self, namespace: str):
+    def render(self, namespace):
         return subprocess.check_output(
             [
                 "helm",

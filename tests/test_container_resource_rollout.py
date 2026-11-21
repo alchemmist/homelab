@@ -19,9 +19,7 @@ ROLLOUT = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(ROLLOUT)
 
 
-def pod(
-    uid: str = "old", kind: str = "ReplicaSet", node: str = "socrat-1", *, compliant: bool = False
-):
+def pod(uid="old", kind="ReplicaSet", node="socrat-1", compliant=False):
     limits = (
         {"cpu": "500m", "memory": "512Mi", "ephemeral-storage": "1Gi"}
         if compliant

@@ -25,13 +25,13 @@ SSH = [
 HEADER = b"SOCRAT-IDENTITY-BACKUP-v1\n"
 
 
-def save(path: Path, data: bytes) -> None:
+def save(path, data):
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "wb") as f:
         f.write(data)
 
 
-def main() -> None:
+def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--output", type=Path, required=True)
     p.add_argument(

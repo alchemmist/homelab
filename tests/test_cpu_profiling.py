@@ -3,17 +3,12 @@
 import json
 from pathlib import Path
 import subprocess
-from typing import TYPE_CHECKING
-
 import yaml
-
-if TYPE_CHECKING:
-    from _typeshed import Incomplete
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def render(chart: str, *args: str) -> "list[Incomplete]":
+def render(chart, *args):
     return [
         d
         for d in yaml.safe_load_all(
