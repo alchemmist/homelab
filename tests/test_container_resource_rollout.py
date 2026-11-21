@@ -4,14 +4,13 @@ import copy
 import importlib.util
 import io
 import json
-from pathlib import Path
+import tempfile
+import unittest
 from contextlib import redirect_stdout
+from pathlib import Path
 from types import SimpleNamespace
 from typing import TypedDict, cast
-import unittest
-import tempfile
 from unittest.mock import Mock, patch
-
 
 PATH = (
     Path(__file__).resolve().parents[1]

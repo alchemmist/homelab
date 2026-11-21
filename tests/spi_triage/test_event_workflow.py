@@ -3,13 +3,12 @@
 import copy
 import importlib.util
 import json
-from pathlib import Path
 import sys
 import tempfile
-from typing import cast
 import unittest
+from pathlib import Path
+from typing import Protocol, cast
 from unittest.mock import patch
-from typing import Protocol
 
 
 class SyncCall(Protocol):
@@ -131,7 +130,8 @@ class EventWorkflowTests(unittest.TestCase):
 
     def test_actual_envelope_validator_rejects_unknown_and_early_terminal(self) -> None:
         'Verify the envelope validator rejects unknown or early terminal entries.'
-        import subprocess, time
+        import subprocess
+        import time
 
         code = next(n for n in self.workflow["nodes"] if n["name"] == "Select Claimed Job")[
             "parameters"
