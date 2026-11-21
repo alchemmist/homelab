@@ -1,3 +1,4 @@
+---
 rule_files:
 - node-certificates.rules.yml
 evaluation_interval: 30s
