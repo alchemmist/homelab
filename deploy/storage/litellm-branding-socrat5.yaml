@@ -5,13 +5,13 @@ kind: PersistentVolume
 metadata:
   name: litellm-branding-socrat5
 spec:
-  capacity: { storage: 1Gi }
+  capacity: {storage: 1Gi}
   accessModes: [ReadWriteOnce]
   persistentVolumeReclaimPolicy: Retain
   storageClassName: ""
   volumeMode: Filesystem
-  local: { path: /mnt/files/homelab/litellm-branding/data }
-  claimRef: { namespace: llm, name: litellm-branding-socrat5 }
+  local: {path: /mnt/files/homelab/litellm-branding/data}
+  claimRef: {namespace: llm, name: litellm-branding-socrat5}
   nodeAffinity:
     required:
       nodeSelectorTerms:
@@ -29,6 +29,6 @@ metadata:
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
 spec:
   accessModes: [ReadWriteOnce]
-  resources: { requests: { storage: 1Gi } }
+  resources: {requests: {storage: 1Gi}}
   storageClassName: ""
   volumeName: litellm-branding-socrat5

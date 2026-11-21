@@ -13,8 +13,8 @@
     mode: "{{ item.mode }}"
   become: true
   loop:
-    - { path: /etc/starship, mode: "0755" }
-    - { path: /etc/starship/bin, mode: "0755" }
+    - {path: /etc/starship, mode: "0755"}
+    - {path: /etc/starship/bin, mode: "0755"}
 
 - name: Deploy machine-wide starship.toml
   ansible.builtin.template:
