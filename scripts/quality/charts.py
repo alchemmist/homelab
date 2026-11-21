@@ -7,7 +7,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import TypedDict, cast
+from typing import NotRequired, TypedDict, cast
 
 import yaml
 
@@ -60,6 +60,7 @@ class HelmParameter(TypedDict, total=False):
 class HelmOverrides(TypedDict, total=False):
     """Helm value overrides the offline renderer explicitly supports."""
 
+    valuesObject: dict[str, object]
     releaseName: str
     valueFiles: list[str]
     parameters: list[HelmParameter]
@@ -91,6 +92,7 @@ class RenderTarget(TypedDict):
 
     id: str
     source: str
+    inline_values: NotRequired[dict[str, object]]
     chart: Path
     namespace: str
     release: str
@@ -132,8 +134,10 @@ def argocd_targets() -> tuple[list[RenderTarget], set[str]]:
                 continue  # Plain-manifest Application, checked by source/ownership contracts.
             consumed.add(str(chart.relative_to(ROOT)))
             helm = source.get("helm", {})
-            if set(helm) - {"releaseName", "valueFiles", "parameters"}:
+            if set(helm) - {"releaseName", "valueFiles", "parameters", "valuesObject"}:
                 raise ValueError("Unsupported Helm override: extend the renderer explicitly")
+            if not isinstance(helm.get("valuesObject", {}), dict):
+                raise ValueError("Helm valuesObject must be a mapping")
             result.append(
                 {
                     "id": app["metadata"]["name"] + f"-{index}",
@@ -141,6 +145,7 @@ def argocd_targets() -> tuple[list[RenderTarget], set[str]]:
                     "chart": chart,
                     "namespace": spec["destination"].get("namespace", "default"),
                     "release": helm.get("releaseName", app["metadata"]["name"]),
+                    "inline_values": helm.get("valuesObject", {}),
                     "values": resolve_values(helm, chart, refs),
                     "parameters": helm.get("parameters", []),
                 }
@@ -184,6 +189,8 @@ def arguments(target):
     args = ["--kube-version", KUBE_VERSION, "--namespace", target["namespace"]]
     for value in target["values"]:
         args += ["--values", str(value)]
+    if target.get("inline_values"):
+        args += ["--values", "-"]
     for parameter in target["parameters"]:
         if set(parameter) - {"name", "value", "forceString"}:
             raise ValueError("Unsupported Helm parameter")
@@ -206,7 +213,9 @@ def render(target):
     ]
     for version in API_VERSIONS:
         args += ["--api-versions", version]
-    process = command(args, allowed=(0, 1), timeout=180)
+    process = command(
+        args, stdin=json.dumps(target.get("inline_values", {})), allowed=(0, 1), timeout=180
+    )
     if process.returncode:
         return None
     try:
@@ -302,6 +311,8 @@ def contract_hash(target):
     """Execute contract_hash."""
     # A previously broken render is accepted ONLY while its entire source stays identical.
     parts = [target["id"], json.dumps(target["parameters"], sort_keys=True)]
+    if target.get("inline_values"):
+        parts.append(json.dumps(target["inline_values"], sort_keys=True))
     for path in sorted(target["chart"].rglob("*")):
         if path.is_file():
             if not path.resolve().is_relative_to(ROOT):
@@ -390,6 +401,7 @@ def check(*, validate=True):
         source = target["source"]
         lint = command(
             ["helm", "lint", str(target["chart"]), *arguments(target)],
+            stdin=json.dumps(target.get("inline_values", {})),
             allowed=(0, 1),
             timeout=180,
         )

@@ -52,7 +52,7 @@ receive mode не переигрывает существующие firing; но
 `X-Internal-Token`. Публичный адрес `https://bot.socrat.alchemmist.xyz` принимает
 только `POST /telegram/webhook` и заголовок `X-Telegram-Bot-Api-Secret-Token`.
 
-Команды `/start`, `/mailing`, `/clients`, `/alerts` и `/alertlevel` в этот API не входят: их нажимают люди
+Команды `/start`, `/mailing`, `/users`, `/alerts` и `/alertlevel` в этот API не входят: их нажимают люди
 в Telegram. Sudo и обновление 3X-UI живут в отдельных процессах и сюда тоже не входят.
 
 ## Методы
@@ -224,10 +224,10 @@ text_stored=false значит текст карточки ещё не сохр�
 
 ### `GET /v1/audience`
 
-Получатели групп VPN, Alerts и LLM
+Получатели групп VPN, Alerts, LLM и Cluster
 
 username без символа @. Его может не быть, тогда остаётся telegram_id.
-Списки VPN и LLM — по выбранным интересам; Alerts — выбранный интерес и одобрение владельца.
+Списки VPN, LLM и Cluster — по выбранным интересам; Alerts — выбранный интерес и одобрение владельца.
 
 Доступ: internalToken.
 
@@ -331,6 +331,7 @@ username без символа @. Его может не быть, тогда о
 
 ### Audience
 
+- `cluster`: список Person
 - `llm`: список Person
 - `vpn`: список Person
 - `alerts`: список Person

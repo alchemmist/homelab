@@ -4,7 +4,7 @@ import importlib.util
 import json
 from pathlib import Path
 import subprocess
-from typing import cast
+from typing import Protocol, cast
 from urllib.parse import urlparse
 from uuid import uuid4
 
