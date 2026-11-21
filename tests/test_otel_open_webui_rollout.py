@@ -5,6 +5,7 @@ import json
 import unittest
 from pathlib import Path
 from types import ModuleType
+from unittest.mock import Mock
 
 import pytest
 import yaml
@@ -22,16 +23,20 @@ def module() -> ModuleType:
     return result
 
 
+@pytest.mark.parametrize(
+    "filename", ["sitecustomize.py", "source_privacy.py", "open_webui_source_profile.py"]
+)
 def test_stale_source_receipt_refuses_candidate_before_cluster_access(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, filename: str
 ) -> None:
     """An offline candidate digest is not proof that the runtime may change."""
     helper = module()
     candidate = helper.source_data()
-    previous = {**candidate, "sitecustomize.py": candidate["sitecustomize.py"] + "# stale\n"}
+    previous = {**candidate, filename: candidate[filename] + "# stale\n"}
     evidence = tmp_path / "deploy/monitoring/migration-evidence"
     evidence.mkdir(parents=True)
-    (evidence / "open-webui-sdk-early-bootstrap-20261101.json").write_text(
+    bootstrap = evidence / "open-webui-sdk-early-bootstrap-20261101.json"
+    bootstrap.write_text(
         json.dumps(
             {
                 "sourceConfigMapData": previous,
@@ -61,10 +66,22 @@ def test_stale_source_receipt_refuses_candidate_before_cluster_access(
     monkeypatch.setattr(helper, "source_data", lambda: candidate)
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     monkeypatch.setattr(helper.os, "umask", lambda _mask: None)
-    monkeypatch.setattr(helper.BOOTSTRAP, "kube", lambda *_args: pytest.fail("cluster access"))
+    trapped = Mock(side_effect=ConnectionRefusedError("synthetic transport boundary"))
+    monkeypatch.setattr(helper.BOOTSTRAP, "kube", trapped)
     output = tmp_path / "Library/Application Support/homelab/otel-controller/candidate"
     with pytest.raises(ValueError, match="Exact source/profile/bootstrap/renewal/backend gates"):
         helper.run(output, apply=False)
+    trapped.assert_not_called()
+    assert not output.exists()
+
+    # Positive control: change only the stale source bytes. The same proof now
+    # reaches the first (trapped) read; neither branch ever connects or applies.
+    receipt = json.loads(bootstrap.read_text())
+    receipt["sourceConfigMapData"] = candidate
+    bootstrap.write_text(json.dumps(receipt))
+    with pytest.raises(ConnectionRefusedError, match="synthetic transport boundary"):
+        helper.run(output, apply=False)
+    trapped.assert_called_once_with("-n", "llm", "get", "deployment", "open-webui", "-o", "json")
     assert not output.exists()
 
 
