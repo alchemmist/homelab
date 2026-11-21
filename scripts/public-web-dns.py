@@ -22,6 +22,8 @@ def require(ok, message) -> None:
 
 def load(path, name) -> ModuleType:
     s = importlib.util.spec_from_file_location(name, path)
+    if s is None or s.loader is None:
+        raise RuntimeError("cannot load module: " + str(path))
     m = importlib.util.module_from_spec(s)
     s.loader.exec_module(m)
     return m

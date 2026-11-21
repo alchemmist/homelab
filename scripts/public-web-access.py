@@ -57,6 +57,10 @@ class API:
             document = cast("dict[str, object]", d)
             results = document["results"]
             require(isinstance(results, list), "Authentik returned invalid results")
+            require(
+                all(isinstance(row, dict) for row in results),
+                "Authentik returned a non-object result",
+            )
             rows.extend(cast("list[dict[str, object]]", results))
             pagination = document.get("pagination", {})
             require(isinstance(pagination, dict), "Authentik returned invalid pagination")
