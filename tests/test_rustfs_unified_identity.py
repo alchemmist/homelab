@@ -16,7 +16,7 @@ class IdentityGuards(unittest.TestCase):
             for node in ast.walk(tree)
             if isinstance(node, ast.Constant) and type(node.value) is int
         }
-        self.assertTrue({0o600, 0o700} <= integers)
+        assert {384, 448} <= integers
         for guard in (
             "with transaction.atomic():",
             "select_for_update()",
@@ -33,7 +33,7 @@ class IdentityGuards(unittest.TestCase):
             "outpost.providers.remove(provider)",
             "no adoption/overwrite",
         ):
-            self.assertIn(guard, source)
+            assert guard in source
         tree = ast.parse(source)
         # No writes to native user/groups/scope; only newly created proxy/app.
         for node in ast.walk(tree):
@@ -44,12 +44,12 @@ class IdentityGuards(unittest.TestCase):
                     "scope",
                     "app_native",
                 ):
-                    self.assertNotIn(node.func.attr, ("save", "delete", "update"))
-        self.assertNotIn("if __name__", source)  # import does not run provisioner
-        self.assertIn("hashlib.sha256(provider.client_secret.encode()).hexdigest()", source)
-        self.assertNotIn("cookie_secret", source)
-        self.assertIn("PolicyBinding.objects.create(target_id=app.pk", source)
-        self.assertNotIn("PolicyBinding.objects.create(target=app.pk", source)
+                    assert node.func.attr not in ("save", "delete", "update")
+        assert "if __name__" not in source  # import does not run provisioner
+        assert "hashlib.sha256(provider.client_secret.encode()).hexdigest()" in source
+        assert "cookie_secret" not in source
+        assert "PolicyBinding.objects.create(target_id=app.pk" in source
+        assert "PolicyBinding.objects.create(target=app.pk" not in source
 
     def test_normalized_authority_guard(self) -> None:
         """Equivalent origins share one authority and unsafe URLs are refused."""
@@ -66,15 +66,14 @@ class IdentityGuards(unittest.TestCase):
             "https://RUSTFS.socrat.alchemmist.xyz:443/",
             "https://rustfs.socrat.alchemmist.xyz./",
         ):
-            self.assertEqual(module.authority(url), expected)
-        self.assertNotEqual(module.authority("https://rustfs.socrat.alchemmist.xyz:444/"), expected)
+            assert module.authority(url) == expected
+        assert module.authority("https://rustfs.socrat.alchemmist.xyz:444/") != expected
         for url in (
             "//rustfs.socrat.alchemmist.xyz",
             "https://user:secret@rustfs.socrat.alchemmist.xyz",
         ):
             with self.assertRaises(ValueError):
                 module.authority(url)
-        self.assertIn(
-            "actual['client_id']",
-            ast.unparse(ast.parse((ROOT / "scripts/rustfs/unified_identity.py").read_text())),
+        assert "actual['client_id']" in ast.unparse(
+            ast.parse((ROOT / "scripts/rustfs/unified_identity.py").read_text())
         )

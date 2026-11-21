@@ -13,6 +13,11 @@ import urllib.error
 
 ROOT = Path(__file__).resolve().parents[1]
 
+SECRET_FILE_COUNT = 4
+SECRET_FILE_MODE = 0o600
+POLICY_BINDING_COUNT = 2
+LAUNCHER_PROVIDER_PK = 17
+
 
 def module(name):
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts/rustfs" / f"{name}.py")
@@ -29,11 +34,11 @@ def put(path, data):
 class Provisioning(unittest.TestCase):
     def test_policies_exact(self):
         b = module("bootstrap")
-        self.assertEqual(b.POLICIES["spi-reader"]["Statement"][0]["Action"], ["s3:GetObject"])
+        assert b.POLICIES["spi-reader"]["Statement"][0]["Action"] == ["s3:GetObject"]
         for p in b.POLICIES.values():
-            self.assertEqual(p["Statement"][0]["Resource"], ["arn:aws:s3:::spi-evidence/spi/v1/*"])
-            self.assertNotIn("s3:DeleteObject", p["Statement"][0]["Action"])
-            self.assertNotIn("*", p["Statement"][0]["Action"])
+            assert p["Statement"][0]["Resource"] == ["arn:aws:s3:::spi-evidence/spi/v1/*"]
+            assert "s3:DeleteObject" not in p["Statement"][0]["Action"]
+            assert "*" not in p["Statement"][0]["Action"]
 
     def test_policy_normalization_is_not_scope_widening(self):
         b = module("bootstrap")
@@ -47,9 +52,9 @@ class Provisioning(unittest.TestCase):
                 "Resource": "arn:aws:s3:::spi-evidence/spi/v1/*",
             },
         }
-        self.assertEqual(b.canonical_policy(p), b.canonical_policy(equivalent))
+        assert b.canonical_policy(p) == b.canonical_policy(equivalent)
         equivalent["Statement"]["Action"] = "s3:*"
-        self.assertNotEqual(b.canonical_policy(p), b.canonical_policy(equivalent))
+        assert b.canonical_policy(p) != b.canonical_policy(equivalent)
         equivalent["Statement"]["Principal"] = "*"
         with self.assertRaises(ValueError):
             b.canonical_policy(equivalent)
@@ -98,7 +103,7 @@ class Provisioning(unittest.TestCase):
                 return []
             if args[:3] == ["admin", "user", "add"]:
                 access, secret = stdin.decode().splitlines()
-                self.assertNotIn(secret, " ".join(args))
+                assert secret not in " ".join(args)
                 users[access] = {"userStatus": "enabled", "policyName": ""}
                 return []
             if args[:3] == ["admin", "policy", "attach"]:
@@ -134,7 +139,7 @@ class Provisioning(unittest.TestCase):
                 contextlib.redirect_stdout(io.StringIO()),
             ):
                 b.main()
-            self.assertEqual(calls, [])
+            assert calls == []
             with (
                 patch("sys.argv", argv + ["--apply"]),
                 patch.object(b, "run", fake),
@@ -148,10 +153,8 @@ class Provisioning(unittest.TestCase):
                 contextlib.redirect_stdout(io.StringIO()),
             ):
                 b.main()
-            self.assertTrue(
-                all(a[0] in ("ls", "anonymous") or a[2] in ("list", "info") for a in calls)
-            )
-            self.assertEqual(set(users), {creds[x]["access"] for x in ("reader", "writer")})
+            assert all(a[0] in ("ls", "anonymous") or a[2] in ("list", "info") for a in calls)
+            assert set(users) == {creds[x]["access"] for x in ("reader", "writer")}
             users[creds["reader"]["access"]]["policyName"] = "consoleAdmin"
             with (
                 patch("sys.argv", argv + ["--apply"]),
@@ -180,15 +183,15 @@ class Provisioning(unittest.TestCase):
                 with patch("sys.argv", argv), contextlib.redirect_stdout(io.StringIO()):
                     m.main()
             outputs = list(d.glob("*.secret.json"))
-            self.assertEqual(len(outputs), 4)
+            assert len(outputs) == SECRET_FILE_COUNT
             for path in outputs:
-                self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+                assert path.stat().st_mode & 0o777 == SECRET_FILE_MODE
                 doc = json.loads(path.read_text())
-                self.assertEqual(doc["metadata"]["namespace"], "rustfs")
-                self.assertEqual(doc["metadata"]["name"], path.name.removesuffix(".secret.json"))
-            self.assertNotEqual(
-                json.loads((d / "rustfs-reader.secret.json").read_text())["data"],
-                json.loads((d / "rustfs-root.secret.json").read_text())["data"],
+                assert doc["metadata"]["namespace"] == "rustfs"
+                assert doc["metadata"]["name"] == path.name.removesuffix(".secret.json")
+            assert (
+                json.loads((d / "rustfs-reader.secret.json").read_text())["data"]
+                != json.loads((d / "rustfs-root.secret.json").read_text())["data"]
             )
 
     def test_identity_additive_idempotent(self):
@@ -220,7 +223,11 @@ class Provisioning(unittest.TestCase):
             {"pk": "unrelated-netbird", "scope_name": "profile", "managed": None}
         )
         tables["outposts/instances/"] = [
-            {"pk": "outpost", "managed": "goauthentik.io/outposts/embedded", "providers": [17]}
+            {
+                "pk": "outpost",
+                "managed": "goauthentik.io/outposts/embedded",
+                "providers": [LAUNCHER_PROVIDER_PK],
+            }
         ]
 
         class Response:
@@ -263,10 +270,10 @@ class Provisioning(unittest.TestCase):
                 data = json.loads(request.data)
                 writes.append((method, path, data))
                 if method == "PATCH":
-                    self_outer.assertEqual(path, "outposts/instances/outpost/")
+                    assert path == "outposts/instances/outpost/"
                     tables["outposts/instances/"][0].update(data)
                     return Response(tables["outposts/instances/"][0])
-                self_outer.assertNotIn(path, ("core/users/", "core/groups/"))
+                assert path not in ("core/users/", "core/groups/")
                 data["pk"] = (
                     100 + len(writes)
                     if path.startswith("providers/")
@@ -275,7 +282,6 @@ class Provisioning(unittest.TestCase):
                 tables[path].append(data)
                 return Response(data)
 
-        self_outer = self
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
             put(d / "credentials.json", {"AUTHENTIK_API_TOKEN": "private-token"})
@@ -286,19 +292,19 @@ class Provisioning(unittest.TestCase):
                 contextlib.redirect_stdout(io.StringIO()),
             ):
                 m.main()
-            self.assertEqual(writes, [])
-            self.assertFalse((d / "rustfs-client.json").exists())
+            assert writes == []
+            assert not (d / "rustfs-client.json").exists()
             with (
                 patch("sys.argv", argv + ["--apply"]),
                 patch.object(m.urllib.request, "build_opener", return_value=HTTP()),
                 contextlib.redirect_stdout(io.StringIO()),
             ):
                 m.main()
-            self.assertEqual(len(tables["policies/bindings/"]), 2)
-            self.assertEqual(len(tables["providers/oauth2/"]), 1)
-            self.assertEqual(tables["providers/proxy/"], [])
-            self.assertEqual(len(tables["core/applications/"]), 1)
-            self.assertIn(17, tables["outposts/instances/"][0]["providers"])
+            assert len(tables["policies/bindings/"]) == POLICY_BINDING_COUNT
+            assert len(tables["providers/oauth2/"]) == 1
+            assert tables["providers/proxy/"] == []
+            assert len(tables["core/applications/"]) == 1
+            assert LAUNCHER_PROVIDER_PK in tables["outposts/instances/"][0]["providers"]
             writes.clear()
             with (
                 patch("sys.argv", argv + ["--apply"]),
@@ -306,7 +312,7 @@ class Provisioning(unittest.TestCase):
                 contextlib.redirect_stdout(io.StringIO()),
             ):
                 m.main()
-            self.assertEqual(writes, [])
+            assert writes == []
             for code in (401, 403, 500):
                 detail_error[0] = code
                 with (
@@ -315,10 +321,10 @@ class Provisioning(unittest.TestCase):
                     self.assertRaises(ValueError),
                 ):
                     m.main()
-                self.assertEqual(writes, [])
+                assert writes == []
             detail_error[0] = None
             callback = tables["providers/oauth2/"][0]["redirect_uris"][0]
-            self.assertEqual(callback["redirect_uri_type"], "authorization")
+            assert callback["redirect_uri_type"] == "authorization"
             for key, value in [
                 ("redirect_uri_type", "logout"),
                 ("matching_mode", "regex"),
@@ -358,11 +364,11 @@ class Provisioning(unittest.TestCase):
                 },
             )["rustfs_policy"]
 
-        self.assertEqual(claim(), ["consoleAdmin"])
+        assert claim() == ["consoleAdmin"]
         for changed in ({"pk": 6}, {"uuid": "other"}, {"username": "robot"}):
-            self.assertEqual(claim(**changed), [])
-            self.assertEqual(claim(**changed, member=True), ["spi-console-reader"])
-        self.assertEqual(claim(pk=99, username="spi-writer", member=True), ["spi-console-reader"])
+            assert claim(**changed) == []
+            assert claim(**changed, member=True) == ["spi-console-reader"]
+        assert claim(pk=99, username="spi-writer", member=True) == ["spi-console-reader"]
 
     def test_builtin_scope_exact_managed_identity(self):
         m = module("provision_identity")
@@ -372,7 +378,7 @@ class Provisioning(unittest.TestCase):
             "managed": "goauthentik.io/providers/oauth2/scope-profile",
         }
         custom = {"pk": "netbird", "scope_name": "profile", "managed": None}
-        self.assertEqual(m.builtin_scope([official, custom], "profile"), "official")
+        assert m.builtin_scope([official, custom], "profile") == "official"
         for rows in ([custom], [official, dict(official)], [dict(official, scope_name="groups")]):
             with self.assertRaises(ValueError):
                 m.builtin_scope(rows, "profile")
