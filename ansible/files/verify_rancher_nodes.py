@@ -4,28 +4,47 @@ import socket
 import ssl
 import subprocess
 import urllib.request
+from typing import cast
 
 
-def kubectl(*arguments):
-    return json.loads(
+def kubectl(*arguments) -> dict[str, object]:
+    document: dict[str, object] = json.loads(
         subprocess.check_output(
             ["kubectl", *arguments, "-o", "json"],
             stderr=subprocess.DEVNULL,
         )
     )
+    return document
 
 
-def verify():
-    expected = sorted(node["metadata"]["name"] for node in kubectl("get", "nodes")["items"])
-    tokens = kubectl("get", "tokens.management.cattle.io")["items"]
+def verify() -> None:
+    nodes = cast("list[dict[str, object]]", kubectl("get", "nodes")["items"])
+    expected = sorted(
+        cast("str", cast("dict[str, object]", node["metadata"])["name"]) for node in nodes
+    )
+    tokens = cast("list[dict[str, object]]", kubectl("get", "tokens.management.cattle.io")["items"])
     token = next(
         item
         for item in tokens
         if not item.get("expired") and item.get("token") and item.get("enabled") is not False
     )
-    authorization = "Bearer " + token["metadata"]["name"] + ":" + token["token"]
-    pods = kubectl("-n", "cattle-system", "get", "pods", "-l", "app=rancher")["items"]
-    endpoints = [(pod["metadata"]["name"], "http://" + pod["status"]["podIP"]) for pod in pods]
+    authorization = (
+        "Bearer "
+        + cast("str", cast("dict[str, object]", token["metadata"])["name"])
+        + ":"
+        + cast("str", token["token"])
+    )
+    pods = cast(
+        "list[dict[str, object]]",
+        kubectl("-n", "cattle-system", "get", "pods", "-l", "app=rancher")["items"],
+    )
+    endpoints = [
+        (
+            cast("str", cast("dict[str, object]", pod["metadata"])["name"]),
+            "http://" + cast("str", cast("dict[str, object]", pod["status"])["podIP"]),
+        )
+        for pod in pods
+    ]
     endpoints.extend(("gateway-" + address, address) for address in ("10.250.0.1", "10.250.0.3"))
     for name, endpoint in endpoints:
         headers = {

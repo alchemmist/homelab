@@ -4,6 +4,7 @@ import hashlib
 import json
 import subprocess
 import urllib.request
+from typing import cast
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", action="append")
@@ -11,10 +12,11 @@ args = parser.parse_args()
 desired_models = args.model or ["qwen3.8-27b"]
 
 
-def kubectl(*argv, data=None):
-    return subprocess.run(
+def kubectl(*argv, data=None) -> str:
+    output: str = subprocess.run(
         ["kubectl", "-n", "llm", *argv], input=data, capture_output=True, text=True, check=True
     ).stdout
+    return output
 
 
 secret = json.loads(kubectl("get", "secret", "litellm-env", "-o", "json"))
@@ -23,14 +25,15 @@ ip = kubectl("get", "svc", "litellm", "-o", "jsonpath={.spec.clusterIP}")
 opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
-def request(path, data=None):
+def request(path, data=None) -> dict[str, object]:
     req = urllib.request.Request(
         "http://" + ip + ":4000" + path,
         data=None if data is None else json.dumps(data).encode(),
         headers={"Authorization": "Bearer " + master, "Content-Type": "application/json"},
     )
     with opener.open(req, timeout=30) as response:
-        return json.load(response)
+        document: dict[str, object] = json.load(response)
+        return document
 
 
 existing = kubectl(
@@ -39,15 +42,21 @@ existing = kubectl(
 if existing:
     client = json.loads(kubectl("get", "secret", "open-webui-litellm", "-o", "json"))
     key = base64.b64decode(client["data"]["api-key"]).decode()
-    info = request("/key/info?key=" + hashlib.sha256(key.encode()).hexdigest())["info"]
-    models = info.get("models") or []
+    info = cast(
+        "dict[str, object]",
+        request("/key/info?key=" + hashlib.sha256(key.encode()).hexdigest())["info"],
+    )
+    models = cast("list[str]", info.get("models") or [])
     if models and "*" not in models and not set(desired_models) <= set(models):
         request(
             "/key/update", {"key": key, "models": list(dict.fromkeys([*models, *desired_models]))}
         )
         print("updated")
 else:
-    key = request("/key/generate", {"key_alias": "open-webui", "models": desired_models})["key"]
+    key = cast(
+        "str",
+        request("/key/generate", {"key_alias": "open-webui", "models": desired_models})["key"],
+    )
     obj = {
         "apiVersion": "v1",
         "kind": "Secret",

@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import sys
 import urllib.request
+from typing import cast
 from app_iam import (
     LEGACY_GROUPS,
     GROUP_MARKER,
@@ -20,7 +21,7 @@ credentials = json.loads((root / "credentials.json").read_text())
 base = "https://auth.socrat.alchemmist.xyz/api/v3/"
 
 
-def api(method, path, payload=None):
+def api(method, path, payload=None) -> dict[str, object] | None:
     req = urllib.request.Request(
         base + path,
         method=method,
@@ -32,20 +33,24 @@ def api(method, path, payload=None):
     )
     with urllib.request.urlopen(req, timeout=60) as response:
         body = response.read()
-        return json.loads(body) if body else None
+        document: dict[str, object] | None = json.loads(body) if body else None
+        return document
 
 
 import os
 import secrets
 
 
-def unique(path, field, value):
+def unique(path, field, value) -> dict[str, object] | None:
     from urllib.parse import urlencode
 
     query = {field: value}
     if path == "core/applications/":
         query["superuser_full_list"] = "true"
-    rows = api("GET", path + "?" + urlencode(query))["results"]
+    rows = cast(
+        "list[dict[str, object]]",
+        cast("dict[str, object]", api("GET", path + "?" + urlencode(query)))["results"],
+    )
     exact = [x for x in rows if x[field] == value]
     if len(exact) > 1:
         raise RuntimeError("Ambiguous identity/configuration: " + value)
@@ -93,7 +98,7 @@ for name in LEGACY_GROUPS + list(managed_app_groups):
         settings = {"name": name, "is_superuser": False}
         if name in managed_app_groups:
             settings["attributes"] = GROUP_MARKER
-        group = api("POST", "core/groups/", settings)
+        group = cast("dict[str, object]", api("POST", "core/groups/", settings))
     if name in managed_app_groups:
         validate_group(group)
     groups[name] = group["pk"]
@@ -101,7 +106,7 @@ for name in LEGACY_GROUPS + list(managed_app_groups):
 # Bootstrap a personal owner account; never auto-link or import another service's
 # human accounts. The initial password is private and never silently reset.
 owner_path = root / "owner-login.json"
-owner = unique("core/users/", "username", "alchemmist")
+owner = cast("dict[str, object]", unique("core/users/", "username", "alchemmist"))
 if not owner_path.exists():
     if owner:
         raise RuntimeError(
@@ -116,15 +121,18 @@ if not owner_path.exists():
 owner_login = json.loads(owner_path.read_text())
 if not owner_login["initialized"]:
     if not owner:
-        owner = api(
-            "POST",
-            "core/users/",
-            {
-                "username": "alchemmist",
-                "name": "alchemmist",
-                "is_active": True,
-                "groups": [groups["homelab-owner"]],
-            },
+        owner = cast(
+            "dict[str, object]",
+            api(
+                "POST",
+                "core/users/",
+                {
+                    "username": "alchemmist",
+                    "name": "alchemmist",
+                    "is_active": True,
+                    "groups": [groups["homelab-owner"]],
+                },
+            ),
         )
     api(
         "POST",
@@ -135,17 +143,17 @@ if not owner_login["initialized"]:
     owner_path.write_text(json.dumps(owner_login))
     owner_path.chmod(0o600)
 # Only the declared owner may inherit this group's superuser rights.
-owner_group = unique("core/groups/", "name", "homelab-owner")
-if set(owner_group.get("users", [])) - set([owner["pk"]]):
+owner_group = cast("dict[str, object]", unique("core/groups/", "name", "homelab-owner"))
+if set(cast("list[object]", owner_group.get("users", []))) - set([owner["pk"]]):
     raise RuntimeError("Unexpected owner group membership; review before granting superuser")
-api("PATCH", "core/groups/" + groups["homelab-owner"] + "/", {"is_superuser": True})
+api("PATCH", "core/groups/" + cast("str", groups["homelab-owner"]) + "/", {"is_superuser": True})
 
 # Explicitly reviewed existing identities; no general email-based account merging.
 if account_path.exists():
     for username, account in accounts.items():
         if username != "alchemmist" and "homelab-owner" in account["groups"]:
             raise RuntimeError("Only the declared owner may receive owner membership")
-        user = unique("core/users/", "username", username)
+        user = cast("dict[str, object]", unique("core/users/", "username", username))
         login_path = root / (username + "-login.json") if username != "alchemmist" else owner_path
         if not login_path.exists():
             if user:
@@ -163,16 +171,19 @@ if account_path.exists():
         journal = json.loads(login_path.read_text())
         if not journal["initialized"]:
             if not user:
-                user = api(
-                    "POST",
-                    "core/users/",
-                    {
-                        "username": username,
-                        "name": account["name"],
-                        "email": account["email"],
-                        "groups": [groups[g] for g in account["groups"]],
-                        "is_active": True,
-                    },
+                user = cast(
+                    "dict[str, object]",
+                    api(
+                        "POST",
+                        "core/users/",
+                        {
+                            "username": username,
+                            "name": account["name"],
+                            "email": account["email"],
+                            "groups": [groups[g] for g in account["groups"]],
+                            "is_active": True,
+                        },
+                    ),
                 )
             api(
                 "POST",
@@ -184,7 +195,7 @@ if account_path.exists():
             login_path.chmod(0o600)
         if user.get("email") not in ["", None, account["email"]]:
             raise RuntimeError("Existing email differs from reviewed account mapping: " + username)
-        if not user.get("email"):
+        if user.get("email") in (None, ""):
             api("PATCH", "core/users/" + str(user["pk"]) + "/", {"email": account["email"]})
 
 # Enforce enrollment rather than the upstream default of silently skipping MFA.
@@ -196,7 +207,7 @@ if not validation or not totp:
     raise RuntimeError("Expected default MFA stages missing")
 api(
     "PATCH",
-    "stages/authenticator/validate/" + validation["pk"] + "/",
+    "stages/authenticator/validate/" + cast("str", validation["pk"]) + "/",
     {
         "not_configured_action": "configure",
         "device_classes": ["totp", "webauthn", "static"],
@@ -204,10 +215,18 @@ api(
     },
 )
 
-flows = api("GET", "flows/instances/?page_size=100")["results"]
+flows = cast(
+    "list[dict[str, object]]",
+    cast("dict[str, object]", api("GET", "flows/instances/?page_size=100"))["results"],
+)
 flow = {x["slug"]: x["pk"] for x in flows}
 cert = unique("crypto/certificatekeypairs/", "name", "authentik Self-signed Certificate")
-scopes = api("GET", "propertymappings/provider/scope/?page_size=100")["results"]
+scopes = cast(
+    "list[dict[str, object]]",
+    cast("dict[str, object]", api("GET", "propertymappings/provider/scope/?page_size=100"))[
+        "results"
+    ],
+)
 mapping = standard_scope_ids(scopes)
 if len(mapping) != 3 or not cert:
     raise RuntimeError("OIDC defaults missing")
@@ -218,10 +237,17 @@ groups_settings = {
     "expression": 'return {"groups": [group.name for group in request.user.ak_groups.all()]}',
 }
 if not groups_scope:
-    groups_scope = api("POST", "propertymappings/provider/scope/", groups_settings)
+    groups_scope = cast(
+        "dict[str, object]", api("POST", "propertymappings/provider/scope/", groups_settings)
+    )
 elif groups_scope.get("expression") != groups_settings["expression"]:
-    groups_scope = api(
-        "PATCH", "propertymappings/provider/scope/" + str(groups_scope["pk"]) + "/", groups_settings
+    groups_scope = cast(
+        "dict[str, object]",
+        api(
+            "PATCH",
+            "propertymappings/provider/scope/" + str(groups_scope["pk"]) + "/",
+            groups_settings,
+        ),
     )
 clients_path = root / "oidc-clients.json"
 clients = json.loads(clients_path.read_text()) if clients_path.exists() else {}
@@ -249,9 +275,12 @@ for slug, service in services.items():
             "basic_auth_enabled": False,
         }
         if provider:
-            provider = api("PATCH", "providers/proxy/" + str(provider["pk"]) + "/", settings)
+            provider = cast(
+                "dict[str, object]",
+                api("PATCH", "providers/proxy/" + str(provider["pk"]) + "/", settings),
+            )
         else:
-            provider = api("POST", "providers/proxy/", settings)
+            provider = cast("dict[str, object]", api("POST", "providers/proxy/", settings))
         proxy_ids.append(provider["pk"])
     elif "redirect" in service:
         provider = unique("providers/oauth2/", "name", "homelab-" + slug)
@@ -328,9 +357,12 @@ for slug, service in services.items():
             "refresh_token_validity": "hours=8",
         }
         if provider:
-            provider = api("PATCH", "providers/oauth2/" + str(provider["pk"]) + "/", settings)
+            provider = cast(
+                "dict[str, object]",
+                api("PATCH", "providers/oauth2/" + str(provider["pk"]) + "/", settings),
+            )
         else:
-            provider = api("POST", "providers/oauth2/", settings)
+            provider = cast("dict[str, object]", api("POST", "providers/oauth2/", settings))
     # Portal links for non-OIDC services are explicitly not native SSO.
     application = unique("core/applications/", "slug", slug)
     settings = {
@@ -348,11 +380,16 @@ for slug, service in services.items():
     if application:
         if application.get("policy_engine_mode") != "any":
             raise RuntimeError("Application policy mode drift: " + slug)
-        bindings = rows(api, "policies/bindings/?target=" + str(application["pk"]))
+        bindings = cast(
+            "list[dict[str, object]]",
+            rows(api, "policies/bindings/?target=" + str(application["pk"])),
+        )
         validate_bindings(bindings, {groups[name] for name in allowed})
-        application = api("PATCH", "core/applications/" + slug + "/", settings)
+        application = cast(
+            "dict[str, object]", api("PATCH", "core/applications/" + slug + "/", settings)
+        )
     else:
-        application = api("POST", "core/applications/", settings)
+        application = cast("dict[str, object]", api("POST", "core/applications/", settings))
     # Additive bindings only. Unknown/disabled/negated UI policy is a blocker.
     for order, name in enumerate(allowed):
         if (
@@ -374,18 +411,24 @@ for slug, service in services.items():
                 },
             )
 if proxy_ids:
-    outposts = api("GET", "outposts/instances/?page_size=100")["results"]
+    outposts = cast(
+        "list[dict[str, object]]",
+        cast("dict[str, object]", api("GET", "outposts/instances/?page_size=100"))["results"],
+    )
     embedded = [o for o in outposts if o.get("managed") == "goauthentik.io/outposts/embedded"]
     if len(embedded) != 1:
         raise RuntimeError("Expected one managed embedded outpost")
     outpost = embedded[0]
-    config = dict(outpost["config"])
+    config = dict(cast("dict[str, object]", outpost["config"]))
     config["authentik_host"] = "https://auth.socrat.alchemmist.xyz/"
     config["authentik_host_browser"] = "https://auth.socrat.alchemmist.xyz/"
     api(
         "PATCH",
-        "outposts/instances/" + outpost["pk"] + "/",
-        {"providers": list(set(outpost["providers"]) | set(proxy_ids)), "config": config},
+        "outposts/instances/" + cast("str", outpost["pk"]) + "/",
+        {
+            "providers": list(set(cast("list[object]", outpost["providers"])) | set(proxy_ids)),
+            "config": config,
+        },
     )
 print(
     "Owner bootstrap, role groups, mandatory MFA and restricted providers reconciled; no existing service accounts auto-linked"

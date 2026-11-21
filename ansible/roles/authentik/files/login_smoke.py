@@ -1,5 +1,6 @@
 import http.cookiejar, json, urllib.request
 from pathlib import Path
+from typing import cast
 
 root = Path.home() / ".cache/homelab-authentik"
 owner = json.loads((root / "owner-login.json").read_text())
@@ -9,7 +10,7 @@ base = "https://auth.socrat.alchemmist.xyz"
 endpoint = base + "/api/v3/flows/executor/default-authentication-flow/"
 
 
-def call(data=None):
+def call(data=None) -> dict[str, object]:
     headers = {
         "Content-Type": "application/json",
         "Referer": base + "/if/flow/default-authentication-flow/",
@@ -20,7 +21,9 @@ def call(data=None):
     req = urllib.request.Request(
         endpoint, data=json.dumps(data).encode() if data is not None else None, headers=headers
     )
-    return json.load(opener.open(req, timeout=30))
+    with opener.open(req, timeout=30) as response:
+        document: dict[str, object] = json.load(response)
+        return document
 
 
 for i in range(6):
@@ -38,7 +41,7 @@ for i in range(6):
         )
         break
     elif kind == "redirect":
-        target = response.get("to", "")
+        target = cast("str", response.get("to", ""))
         if "default-authenticator-totp-setup" in target:
             print("MFA setup redirect required")
             break
