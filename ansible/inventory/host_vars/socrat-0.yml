@@ -61,7 +61,7 @@ homelab_desktop_profile: desktop
 homelab_waybar_profile: desktop
 homelab_hide_flameshot_tray: true
 homelab_hypr_monitors:
-- HDMI-A-1, 3840x2160@30, 0x0, 1.5
+  - HDMI-A-1, 3840x2160@30, 0x0, 1.5
 homelab_hypr_polkit_agent: /usr/lib/x86_64-linux-gnu/libexec/polkit-kde-authentication-agent-1
 homelab_hypr_autostart: []
 
@@ -78,8 +78,8 @@ homelab_shutdown_nfs_server: true
 homelab_ssh_private_host: 192.168.0.23
 homelab_boot_k3s_service: k3s.service
 homelab_boot_services:
-- networking.service
-- ssh.service
-- wg-quick@wg-socrat.service
-- k3s.service
+  - networking.service
+  - ssh.service
+  - wg-quick@wg-socrat.service
+  - k3s.service
 ...

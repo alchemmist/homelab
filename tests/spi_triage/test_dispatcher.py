@@ -168,7 +168,7 @@ class DispatchTransportTests(unittest.TestCase):
             patch("dispatcher.http.client.HTTPConnection", return_value=connection),
             patch(
                 "dispatcher.threading.Timer",
-                side_effect=lambda seconds, callback: real_timer(0.02, callback),
+                side_effect=lambda _seconds, callback: real_timer(0.02, callback),
             ),
         ):
             with self.assertRaises(http.client.RemoteDisconnected):

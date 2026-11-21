@@ -28,7 +28,7 @@ class LargeCatalogTests(unittest.TestCase):
     def test_121_open_issues_can_be_fingerprinted_without_model_review(self):
         g = GitHub(Mock(), "unused")
         rows = self.issues(121)
-        g.pages = Mock(side_effect=lambda path: iter(copy.deepcopy(rows)))
+        g.pages = Mock(side_effect=lambda _path: iter(copy.deepcopy(rows)))
         actual = g.issues()
         self.assertEqual(len(actual), 121)
         self.assertEqual(

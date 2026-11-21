@@ -19,7 +19,7 @@ class ProductionSdkTraceTests(unittest.TestCase):
     def fixture(self):
         trace_id, parent_id = "ab" * 16, "cd" * 8
 
-        def batch(service: str, spans: list[dict[str, str]]):
+        def batch(service, spans) -> dict[str, object]:
             return {
                 "resource": {
                     "attributes": [{"key": "service.name", "value": {"stringValue": service}}]

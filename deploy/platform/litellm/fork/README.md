@@ -20,3 +20,5 @@ budgets on virtual keys. Group labels `socrat-group-local` and `socrat-group-ext
 are static `model_info.access_groups`, without wildcard routes. No virtual keys are
 updated on release. Current local/subscription model prices are zero: a dollar cap
 cannot limit token usage on zero-priced routes. Do not invent token prices.
+
+Source fetches require GitHub CLI access to the private `alchemmist/litellm` repository (Contents: read). No source credential belongs in the runtime deployment. Every file is still verified by SHA-256 before packaging.

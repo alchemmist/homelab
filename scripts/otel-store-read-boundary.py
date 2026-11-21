@@ -121,7 +121,7 @@ def run(output):
             stamp: {"dedupTrue": query(stamp, True), "dedupFalse": query(stamp, False)}
             for stamp in stamps
         }
-        for stamp, result in after.items():
+        for _stamp, result in after.items():
             for rows in result.values():
                 if len(rows) != 1 or float(rows[0]["value"][1]) != 78:
                     raise ValueError("Native historical series count changed or was doubled")

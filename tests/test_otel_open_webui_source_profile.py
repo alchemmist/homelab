@@ -26,10 +26,10 @@ def fixtures():
             self.db_engine = db_engine
 
     class Http:
-        def instrument(self):
+        def instrument(self) -> None:
             calls.append("http")
 
-        def uninstrument(self):
+        def uninstrument(self) -> None:
             calls.append("http-stop")
 
     class FastApi:

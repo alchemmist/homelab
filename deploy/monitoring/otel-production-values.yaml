@@ -14,7 +14,7 @@ prometheus:
       - name: OTEL_SCRAPE_CONFIG
         value: /etc/otel/config/scrape.yaml
       - name: OTEL_LOG_INGESTION_START_NS
-        value: '1793447920650563000'
+        value: "1793447920650563000"
       - name: OTEL_LOKI_ENDPOINT
         value: https://otel-loki.cattle-monitoring-system.svc:3100/otlp
       - name: OTEL_TRACE_GATEWAY_ENDPOINT
@@ -22,7 +22,7 @@ prometheus:
       - name: GOMEMLIMIT
         value: 768MiB
       - name: GOMAXPROCS
-        value: '2'
+        value: "2"
       image: docker.io/otel/opentelemetry-collector-contrib@sha256:ac0bb9cdc844b55d2fd2655d03e596243787d6a8c52dd408b1dc96dd1bd372ee
       imagePullPolicy: IfNotPresent
       livenessProbe:
@@ -160,5 +160,5 @@ prometheus:
         homelab.alchemmist.xyz/otel-config-sha256: 90be50a866f9e26f8b01675af1af421ab3d880ab91baee80fad1cb36c34b5a93
 prometheus-node-exporter:
   nodeSelector:
-    homelab.alchemmist.xyz/legacy-node-exporter-enabled: 'true'
+    homelab.alchemmist.xyz/legacy-node-exporter-enabled: "true"
 ...

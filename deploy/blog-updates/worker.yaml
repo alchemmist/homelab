@@ -1,3 +1,4 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -35,7 +36,7 @@ spec:
             - name: PROMPT_FILE
               value: /app/docs/n8n/blog-updates/prompt.md
             - name: WRITE_ENABLED
-              value: 'false'
+              value: "false"
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -66,6 +67,7 @@ spec:
         - name: prompt
           configMap:
             name: blog-updates-prompt
+...
 ---
 apiVersion: v1
 kind: Service
@@ -78,3 +80,4 @@ spec:
   ports:
     - port: 8080
       targetPort: 8080
+...

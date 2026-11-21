@@ -16,7 +16,8 @@
 - name: Preserve unmanaged resolvers
   ansible.builtin.assert:
     that: not wiki_editor_resolver.stat.exists or wiki_editor_resolver_marker.stat.exists
-    fail_msg: An unmanaged exact-host wiki resolver exists; inspect and migrate it before installing the lifecycle service.
+    fail_msg: An unmanaged exact-host wiki resolver exists; inspect and migrate
+      it before installing the lifecycle service.
 
 - name: Create executable directory
   ansible.builtin.file:
@@ -24,7 +25,7 @@
     state: directory
     owner: root
     group: wheel
-    mode: '0755'
+    mode: "0755"
 
 - name: Install resolver updater
   ansible.builtin.copy:
@@ -32,7 +33,7 @@
     dest: /usr/local/libexec/socrat-wiki-resolver
     owner: root
     group: wheel
-    mode: '0755'
+    mode: "0755"
 
 - name: Install launch daemon
   ansible.builtin.copy:
@@ -40,7 +41,7 @@
     dest: /Library/LaunchDaemons/xyz.alchemmist.wiki-resolver.plist
     owner: root
     group: wheel
-    mode: '0644'
+    mode: "0644"
   register: wiki_editor_resolver_launch
 
 - name: Inspect launch daemon
@@ -54,7 +55,9 @@
   when: wiki_editor_resolver_launch.changed and wiki_editor_resolver_loaded.rc == 0
 
 - name: Load launch daemon
-  ansible.builtin.command: launchctl bootstrap system /Library/LaunchDaemons/xyz.alchemmist.wiki-resolver.plist
+  ansible.builtin.command: >-
+    launchctl bootstrap system
+    /Library/LaunchDaemons/xyz.alchemmist.wiki-resolver.plist
   when: wiki_editor_resolver_launch.changed or wiki_editor_resolver_loaded.rc != 0
 
 - name: Reconcile resolver immediately
