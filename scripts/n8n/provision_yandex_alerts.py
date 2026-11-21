@@ -31,6 +31,7 @@ print(json.dumps({'status':status,'body':body}))
 
 
 def api(method, path, body=None) -> dict[str, object]:
+    """Run one authenticated n8n API call through the private host and return parsed JSON."""
     r = subprocess.run(
         ["ssh", "socrat-0", "python3 -c " + shlex.quote(REMOTE)],
         input=json.dumps({"method": method, "path": path, "body": body}),
@@ -43,6 +44,7 @@ def api(method, path, body=None) -> dict[str, object]:
 
 
 def main() -> None:
+    """Provision the reviewed Grafana alert definition from a local JSON file."""
     definition = json.loads(
         (
             BASE / (sys.argv[1] if len(sys.argv) > 1 else "docs/n8n/yandex-session-alerts.json")

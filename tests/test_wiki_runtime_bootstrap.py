@@ -15,6 +15,7 @@ SPEC.loader.exec_module(BOOTSTRAP)
 
 
 class BootstrapTests(unittest.TestCase):
+    """Tests for BootstrapTests."""
     def setUp(self) -> None:
         self.resources = {
             ("secret", "wiki-editor-git", "wiki"): {

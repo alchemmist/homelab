@@ -4,11 +4,12 @@ import ast
 import http.client
 import importlib.util
 import json
-from pathlib import Path
 import subprocess
 import threading
 import unittest
+from pathlib import Path
 from unittest.mock import Mock, patch
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]

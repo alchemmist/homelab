@@ -1,11 +1,16 @@
 """Tests for the remaining public web access paths."""
 
 import ast
+import copy
+import importlib.util
+import json
+import subprocess
+from pathlib import Path
 from types import ModuleType
 from typing import NotRequired, TypedDict
-import importlib.util, json, subprocess, copy
-from pathlib import Path
-import pytest, yaml
+
+import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
