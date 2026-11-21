@@ -16,6 +16,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from typing import cast
 
 BASE = "https://auth.socrat.alchemmist.xyz/api/v3/"
 GROUPS = ("homelab-owner", "homelab-platform-operator")
@@ -36,7 +37,7 @@ COLLECTIONS = (
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, request, response, code, message, headers, newurl):
+    def redirect_request(self, _request, response, _code, _message, _headers, _newurl):
         if response is not None:
             response.close()
         raise ValueError("redirect refused")
@@ -69,7 +70,7 @@ def main():
     token = json.loads((d / "credentials.json").read_text())["AUTHENTIK_API_TOKEN"]
     http = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
-    def api(method, path, body=None, allow_missing=False):
+    def api(method, path, body=None, allow_missing=False) -> dict[str, object] | None:
         if method != "GET" and not args.apply:
             raise ValueError("writes disabled")
         request = urllib.request.Request(
@@ -83,7 +84,8 @@ def main():
                 data = r.read(2 * 1024 * 1024 + 1)
                 if len(data) > 2 * 1024 * 1024:
                     raise ValueError("oversized inventory")
-                return json.loads(data)
+                document: dict[str, object] = json.loads(data)
+                return document
         except urllib.error.HTTPError as e:
             code = e.code
             e.close()
@@ -91,12 +93,15 @@ def main():
                 return None
             raise ValueError("identity request failed") from None
 
-    def rows(path):
-        result = []
+    def rows(path) -> list[dict[str, object]]:
+        result: list[dict[str, object]] = []
         for page in range(1, 101):
-            data = api("GET", path + "?" + urllib.parse.urlencode({"page_size": 100, "page": page}))
-            result.extend(data["results"])
-            nxt = data["pagination"]["next"]
+            data = cast(
+                "dict[str, object]",
+                api("GET", path + "?" + urllib.parse.urlencode({"page_size": 100, "page": page})),
+            )
+            result.extend(cast("list[dict[str, object]]", data["results"]))
+            nxt = cast("dict[str, object]", data["pagination"])["next"]
             if nxt is None or nxt == 0:
                 return result
             if type(nxt) is not int or nxt != page + 1:
@@ -114,15 +119,17 @@ def main():
                 raise ValueError("application detail identity mismatch")
             inventory["core/applications/"].append(app)
 
-    def one(path, key, value, required=False):
+    def one(path, key, value, required=False) -> dict[str, object] | None:
         found = [r for r in inventory[path] if r.get(key) == value]
         if len(found) > 1 or (required and not found):
             raise ValueError("missing/duplicate prerequisite")
         return found[0] if found else None
 
-    groups = [one("core/groups/", "name", name, True)["pk"] for name in GROUPS]
+    groups = [
+        cast("dict[str, object]", one("core/groups/", "name", name, True))["pk"] for name in GROUPS
+    ]
     flow = {
-        slug: one("flows/instances/", "slug", slug, True)["pk"]
+        slug: cast("dict[str, object]", one("flows/instances/", "slug", slug, True))["pk"]
         for slug in (
             "default-authentication-flow",
             "default-provider-authorization-explicit-consent",
@@ -130,9 +137,10 @@ def main():
             "default-provider-invalidation-flow",
         )
     }
-    cert = one("crypto/certificatekeypairs/", "name", "authentik Self-signed Certificate", True)[
-        "pk"
-    ]
+    cert = cast(
+        "dict[str, object]",
+        one("crypto/certificatekeypairs/", "name", "authentik Self-signed Certificate", True),
+    )["pk"]
     mappings = [
         builtin_scope(inventory["propertymappings/provider/scope/"], name)
         for name in ("openid", "profile", "email")
@@ -157,13 +165,13 @@ def main():
         )
         return
 
-    def reconcile(path, key, value, settings):
+    def reconcile(path, key, value, settings) -> dict[str, object]:
         old = one(path, key, value)
         if old:
             for k, v in settings.items():
                 actual = old.get(k)
                 if isinstance(v, list) and all(isinstance(x, (str, int)) for x in v):
-                    if sorted(actual or []) != sorted(v):
+                    if sorted(cast("list[str | int]", actual or [])) != sorted(v):
                         raise ValueError("existing object drift: " + path)
                 elif k == "client_secret":
                     # Some serializers redact secrets. Never rotate implicitly.
@@ -171,7 +179,7 @@ def main():
                 elif actual != v:
                     raise ValueError("existing object drift: " + path)
             return old
-        new = api("POST", path, settings)
+        new = cast("dict[str, object]", api("POST", path, settings))
         inventory[path].append(new)
         return new
 
@@ -258,7 +266,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
+    except (ImportError, OSError, RuntimeError, ValueError):
         raise SystemExit(
             "Identity provisioning stopped; private state may be partial. No automatic rollback or existing identity edits."
-        )
+        ) from None

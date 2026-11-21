@@ -12,9 +12,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SUCCESS_EXIT = 0
 TOOL_TIMEOUT_SECONDS = 15
-DYNAMIC_SOURCE = 1090
-DYNAMIC_SOURCE_LINE = 27
-DYNAMIC_SOURCE_COLUMN = 12
 CAFFEINE_IGNORES = 2
 NIGHTNODE_IGNORES = 4
 STATUS_DEFAULT_ARMS = 3
@@ -205,8 +202,8 @@ def test_clean_scripts_match_quality_shellcheck() -> None:
     assert result.stdout.strip() == "[]"
 
 
-def test_nightnode_keeps_config_parser_shellcheck_clean() -> None:
-    """The config parser stays explicit and does not execute config files."""
+def test_nightnode_parses_config_without_dynamic_source() -> None:
+    """Config parsing is shellcheck-clean and does not execute config files."""
     result = _run(
         [
             _executable("shellcheck"),

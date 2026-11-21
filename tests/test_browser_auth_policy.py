@@ -6,11 +6,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ExistingHumanBrowserAuthPolicyTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.policy = json.loads((ROOT / "deploy/identity/browser-auth-policy.json").read_text())
         self.people = json.loads((ROOT / "deploy/identity/account-mappings.json").read_text())
 
-    def test_only_reviewed_nonowner_is_targeted(self):
+    def test_only_reviewed_nonowner_is_targeted(self) -> None:
         self.assertTrue(self.policy["preserveOwnerRecoveryAndMachineIdentities"])
         self.assertNotIn(self.policy["protectedOwner"], self.policy["humans"])
         self.assertTrue(set(self.policy["humans"]).issubset(self.people))
@@ -18,7 +18,7 @@ class ExistingHumanBrowserAuthPolicyTests(unittest.TestCase):
             self.policy["humans"]["antropophag"]["desiredBrowserAuthentication"], "authentik-only"
         )
 
-    def test_disable_legacy_rancher_not_the_oidc_account(self):
+    def test_disable_legacy_rancher_not_the_oidc_account(self) -> None:
         target = self.policy["humans"]["antropophag"]
         self.assertFalse(target["rancher"]["legacyLocalUserEnabled"])
         self.assertTrue(target["rancher"]["currentExternalUserEnabled"])
@@ -26,13 +26,13 @@ class ExistingHumanBrowserAuthPolicyTests(unittest.TestCase):
         self.assertFalse(target["grafana"]["emailAccountMerging"])
         self.assertFalse(target["grafana"]["localPasswordPresent"])
 
-    def test_webui_active_row_is_required_for_oauth(self):
+    def test_webui_active_row_is_required_for_oauth(self) -> None:
         target = self.policy["humans"]["antropophag"]["openWebui"]
         self.assertTrue(target["authRowActiveForOAuth"])
         self.assertTrue(target["legacyPasswordReplacedWithDiscardedRandomCredential"])
         self.assertTrue(target["legacySessionStampRevoked"])
 
-    def test_fresh_native_user_without_custom_activation(self):
+    def test_fresh_native_user_without_custom_activation(self) -> None:
         enrollment = self.policy["humans"]["antropophag"]["idpEnrollment"]
         self.assertTrue(enrollment["nativeCreateUser"])
         self.assertFalse(enrollment["passwordAssigned"])
@@ -44,7 +44,7 @@ class ExistingHumanBrowserAuthPolicyTests(unittest.TestCase):
             self.people["antropophag"]["idpUserUuid"], "6015c85b-82e9-49ce-a4e3-0270c676e26d"
         )
 
-    def test_native_rancher_replacement_preserves_retired_identity_and_grants(self):
+    def test_native_rancher_replacement_preserves_retired_identity_and_grants(self) -> None:
         rancher = self.policy["humans"]["antropophag"]["rancher"]
         self.assertTrue(rancher["nativePrincipalIsImmutable"])
         self.assertFalse(rancher["retiredExternalUserEnabled"])
@@ -54,7 +54,7 @@ class ExistingHumanBrowserAuthPolicyTests(unittest.TestCase):
         self.assertEqual(self.people["antropophag"]["rancherBindingPrefix"], "identity-tim-v2-")
         self.assertTrue(rancher["retainDisabledLegacyRecordAndInertGrantHistory"])
 
-    def test_umami_is_explicitly_suspended_not_false_oidc_success(self):
+    def test_umami_is_explicitly_suspended_not_false_oidc_success(self) -> None:
         target = self.policy["humans"]["antropophag"]["umami"]
         self.assertEqual(target["state"], "suspended-pending-native-oidc")
         self.assertTrue(target["softDisabledWithoutDeletingData"])

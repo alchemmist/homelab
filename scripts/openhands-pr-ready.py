@@ -201,7 +201,15 @@ def main():
         report["checked_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0 if report["ready_to_review"] else 1
-    except Exception as exc:
+    except (
+        ValueError,
+        KeyError,
+        TypeError,
+        RuntimeError,
+        OSError,
+        subprocess.SubprocessError,
+        IndexError,
+    ) as exc:
         return _error_report(type(exc).__name__)
 
 

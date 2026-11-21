@@ -231,7 +231,7 @@ if args.delay_hq:
                     release = asyncio.Event()
                     pending = []
 
-                    async def hold(route):
+                    async def hold(route) -> None:
                         pending.append(True)
                         await release.wait()
                         await route.continue_()
