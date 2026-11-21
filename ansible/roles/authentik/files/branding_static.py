@@ -258,7 +258,7 @@ http {
                 "selector": {"matchLabels": labels},
                 "strategy": {
                     "type": "RollingUpdate",
-                    "rollingUpdate": {"maxSurge": 1, "maxUnavailable": 0},
+                    "rollingUpdate": {"maxSurge": 1, "maxUnavailable": 1},
                 },
                 "template": {
                     "metadata": {"labels": labels},
@@ -266,33 +266,29 @@ http {
                         "automountServiceAccountToken": False,
                         "affinity": {
                             "nodeAffinity": {
-                                "preferredDuringSchedulingIgnoredDuringExecution": [
-                                    {
-                                        "weight": 80,
-                                        "preference": {
+                                "requiredDuringSchedulingIgnoredDuringExecution": {
+                                    "nodeSelectorTerms": [
+                                        {
                                             "matchExpressions": [
                                                 {
                                                     "key": "kubernetes.io/hostname",
                                                     "operator": "In",
                                                     "values": [
                                                         "socrat-0",
+                                                        "socrat-1",
                                                         "socrat-5",
-                                                        "socrat-2",
                                                     ],
                                                 }
                                             ]
-                                        },
-                                    }
-                                ]
+                                        }
+                                    ]
+                                }
                             },
                             "podAntiAffinity": {
-                                "preferredDuringSchedulingIgnoredDuringExecution": [
+                                "requiredDuringSchedulingIgnoredDuringExecution": [
                                     {
-                                        "weight": 100,
-                                        "podAffinityTerm": {
-                                            "topologyKey": "kubernetes.io/hostname",
-                                            "labelSelector": {"matchLabels": labels},
-                                        },
+                                        "topologyKey": "kubernetes.io/hostname",
+                                        "labelSelector": {"matchLabels": labels},
                                     }
                                 ]
                             },

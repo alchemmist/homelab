@@ -16,15 +16,15 @@ global:
       valueFrom: {secretKeyRef: {name: authentik-pg-critical, key: password}}
   deploymentStrategy:
     type: RollingUpdate
-    rollingUpdate: {maxUnavailable: 0, maxSurge: 1}
+    rollingUpdate: {maxUnavailable: 1, maxSurge: 1}
   image:
     tag: 2026.8.5
   affinity:
-    podAntiAffinity: soft
+    podAntiAffinity: hard
     nodeAffinity:
-      type: soft
+      type: hard
       matchExpressions:
-      - {key: kubernetes.io/hostname, operator: In, values: [socrat-0, socrat-5, socrat-2]}
+      - {key: kubernetes.io/hostname, operator: In, values: [socrat-0, socrat-1, socrat-5]}
   securityContext:
     fsGroup: 1000
   volumeMounts:
@@ -60,8 +60,9 @@ server:
 serviceAccount:
   create: false
 worker:
+  pdb: {enabled: true, minAvailable: 1}
   automountServiceAccountToken: false
-  replicas: 1
+  replicas: 2
   resources:
     limits:
       ephemeral-storage: 1Gi
