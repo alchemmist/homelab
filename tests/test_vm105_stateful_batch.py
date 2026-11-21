@@ -3,6 +3,7 @@
 import copy, pathlib, subprocess, tempfile, unittest, yaml
 
 R = pathlib.Path(__file__).resolve().parents[1]
+LOCAL_STORAGE_CLAIM_PAIR_COUNT = 9
 BASE = "ba7a1f34"
 
 
@@ -117,17 +118,17 @@ class StatefulBoundaries(unittest.TestCase):
                     # Do not freeze the SPI application version at the migration
                     # date or revert a subsequent canonical release from main.
                     release_image = yaml.safe_load((R / values).read_text())["image"]
-                    self.assertEqual(set(release_image), {"repository", "tag", "digest"})
-                    self.assertTrue(all(isinstance(value, str) for value in release_image.values()))
+                    assert set(release_image) == {"repository", "tag", "digest"}
+                    assert all(isinstance(value, str) for value in release_image.values())
                 if chart == "charts/monori":
                     # The owner release is independent of the placement handoff.
                     # Inject only before-render inputs; retain all current-render
                     # image/strategy/PVC/identity and full payload comparisons.
                     monori_images = yaml.safe_load((R / values).read_text())["images"]
-                    self.assertEqual(set(monori_images), {"front", "back", "sync"})
+                    assert set(monori_images) == {"front", "back", "sync"}
                     for fields in monori_images.values():
-                        self.assertEqual(set(fields), {"repository", "tag", "digest", "fallback"})
-                        self.assertTrue(all(isinstance(v, str) for v in fields.values()))
+                        assert set(fields) == {"repository", "tag", "digest", "fallback"}
+                        assert all(isinstance(v, str) for v in fields.values())
                 a, b = (
                     render(
                         self.old,
@@ -142,20 +143,20 @@ class StatefulBoundaries(unittest.TestCase):
                 )
                 if monori_images is not None:
                     assert_monori_release_images(b, monori_images)
-                self.assertEqual(set(a), set(b))
+                assert set(a) == set(b)
                 for k in a:
                     if a[k] == b[k]:
                         continue
                     if k == ("PersistentVolumeClaim", "litellm-branding"):
                         x = copy.deepcopy(b[k])
                         x["metadata"].pop("annotations", None)
-                        self.assertEqual(x, a[k])
+                        assert x == a[k]
                         continue
-                    self.assertEqual(k[0], "Deployment")
-                    self.assertIn(k[1], allowed)
+                    assert k[0] == "Deployment"
+                    assert k[1] in allowed
                     x, y = copy.deepcopy(a[k]), copy.deepcopy(b[k])
-                    self.assertEqual(y["spec"]["replicas"], 1)
-                    self.assertEqual(y["spec"]["strategy"], {"type": "Recreate"})
+                    assert y["spec"]["replicas"] == 1
+                    assert y["spec"]["strategy"] == {"type": "Recreate"}
                     for o in [x, y]:
                         o["spec"].pop("strategy", None)
                         p = o["spec"]["template"]["spec"]
@@ -177,7 +178,7 @@ class StatefulBoundaries(unittest.TestCase):
                                 "config-history",
                             ]:
                                 v.clear()
-                    self.assertEqual(x, y)
+                    assert x == y
 
     def test_all_new_claims_are_prebound_local_retained_and_node5_only(self):
         count = 0
@@ -194,32 +195,29 @@ class StatefulBoundaries(unittest.TestCase):
             )
             for pv, pvc in zip(docs[::2], docs[1::2]):
                 count += 1
-                self.assertEqual(pv["spec"]["persistentVolumeReclaimPolicy"], "Retain")
-                self.assertTrue(pv["spec"]["local"]["path"].startswith("/mnt/files/homelab/"))
-                self.assertEqual(pvc["spec"]["volumeName"], pv["metadata"]["name"])
-                self.assertEqual(pvc["spec"]["storageClassName"], "")
-                self.assertEqual(
-                    pv["spec"]["nodeAffinity"]["required"]["nodeSelectorTerms"][0][
-                        "matchExpressions"
-                    ][0]["values"],
-                    ["socrat-5"],
-                )
-        self.assertEqual(count, 9)
+                assert pv["spec"]["persistentVolumeReclaimPolicy"] == "Retain"
+                assert pv["spec"]["local"]["path"].startswith("/mnt/files/homelab/")
+                assert pvc["spec"]["volumeName"] == pv["metadata"]["name"]
+                assert pvc["spec"]["storageClassName"] == ""
+                assert pv["spec"]["nodeAffinity"]["required"]["nodeSelectorTerms"][0][
+                    "matchExpressions"
+                ][0]["values"] == ["socrat-5"]
+        assert count == LOCAL_STORAGE_CLAIM_PAIR_COUNT
 
     def test_no_paused_ingress_or_zero_replica_left_in_final_sources(self):
         spi = yaml.safe_load((R / "deploy/spi-triage/values.yaml").read_text())
-        self.assertFalse(spi["maintenanceIngressPaused"])
-        self.assertEqual(spi["workerReplicas"], 1)
+        assert not spi["maintenanceIngressPaused"]
+        assert spi["workerReplicas"] == 1
         mono = yaml.safe_load((R / "deploy/monori/values.yaml").read_text())
-        self.assertEqual(mono["backReplicaCount"], 1)
-        self.assertEqual(mono["syncReplicaCount"], 1)
-        self.assertTrue(mono["statefulRecreate"])
+        assert mono["backReplicaCount"] == 1
+        assert mono["syncReplicaCount"] == 1
+        assert mono["statefulRecreate"]
         for path in ["deploy/wiki-runtime/values.yaml", "deploy/format-quorum/values.yaml"]:
-            self.assertEqual(yaml.safe_load((R / path).read_text())["replicaCount"], 1)
+            assert yaml.safe_load((R / path).read_text())["replicaCount"] == 1
         legacy = (R / "ansible/playbooks/format-quorum.yml").read_text()
-        self.assertNotIn("helm upgrade", legacy)
-        self.assertNotIn("pacman", legacy)
-        self.assertIn("argocd.argoproj.io/refresh=hard", legacy)
+        assert "helm upgrade" not in legacy
+        assert "pacman" not in legacy
+        assert "argocd.argoproj.io/refresh=hard" in legacy
 
     def test_idle_controller_never_runs_or_cancels_a_business_job(self):
         s = (R / "scripts/vm105-spi-idle-handoff.py").read_text()
@@ -231,7 +229,7 @@ class StatefulBoundaries(unittest.TestCase):
             "--force",
             "--grace-period=0",
         ]:
-            self.assertNotIn(word, s)
+            assert word not in s
         for word in [
             "finally:",
             "newWorkWonRaceRestoringImmediately",
@@ -239,7 +237,7 @@ class StatefulBoundaries(unittest.TestCase):
             "liveLinkLeases",
             "skip-reconcile-",
         ]:
-            self.assertIn(word, s)
+            assert word in s
 
 
 if __name__ == "__main__":
