@@ -147,5 +147,6 @@ class Handler(BaseHTTPRequestHandler):
             self.connection.settimeout(10);check(self.path=='/v1' and not self.headers.get('Transfer-Encoding'));n=int(self.headers['Content-Length']);check(0<n<=20000000);x=json.loads(self.rfile.read(n));check(x.get('action')=='qa_issue' or n<=250000);self.send(200,dispatch(x))
         except HTTPError as e:self.send(502,{'github_status':e.code,'retry':'Inspect existing branch/PR before retrying'})
         except (ValueError,TypeError):self.send(400,{'error':'Invalid request, stale head or operation outside policy'})
-        except Exception:self.send(503,{'error':'Publisher unavailable; inspect GitHub before retrying'})
+        except (KeyError, OSError):
+            self.send(503, {'error': 'Publisher unavailable; inspect GitHub before retrying'})
 if __name__=='__main__':HTTPServer(('0.0.0.0',8081),Handler).serve_forever()

@@ -10,7 +10,7 @@
     authentik_directory: /home/alchemmist/.cache/homelab-authentik
     authentik_branding_action: prepare
     authentik_branding_public_edge: 109.173.40.247
-    authentik_branding_backup: ''
+    authentik_branding_backup: ""
   tasks:
     - name: Validate explicit operation
       ansible.builtin.assert:
@@ -20,9 +20,9 @@
 
     - name: Create protected theme directory
       ansible.builtin.file:
-        path: '{{ authentik_directory }}/quiet-mono'
+        path: "{{ authentik_directory }}/quiet-mono"
         state: directory
-        mode: '0700'
+        mode: "0700"
 
     # One archive transfer avoids per-file SSH/stat roundtrips for the photo set.
     - name: Transfer the reviewed public theme bundle in one operation
@@ -39,33 +39,33 @@
             argv:
               - tar
               - -cf
-              - '{{ authentik_theme_archive.path }}'
+              - "{{ authentik_theme_archive.path }}"
               - -C
-              - '{{ playbook_dir }}/../../deploy/authentik/quiet-mono'
+              - "{{ playbook_dir }}/../../deploy/authentik/quiet-mono"
               - .
           environment:
-            COPYFILE_DISABLE: '1'
+            COPYFILE_DISABLE: "1"
           delegate_to: localhost
           changed_when: false
 
         - name: Unpack theme assets with owner-only permissions
           ansible.builtin.unarchive:
-            src: '{{ authentik_theme_archive.path }}'
-            dest: '{{ authentik_directory }}/quiet-mono/'
-            mode: 'u=rwX,go='
+            src: "{{ authentik_theme_archive.path }}"
+            dest: "{{ authentik_directory }}/quiet-mono/"
+            mode: u=rwX,go=
       always:
         - name: Remove only the generated local transfer archive
           ansible.builtin.file:
-            path: '{{ authentik_theme_archive.path }}'
+            path: "{{ authentik_theme_archive.path }}"
             state: absent
           delegate_to: localhost
           when: authentik_theme_archive is defined and authentik_theme_archive.path is defined
 
     - name: Copy narrow reconciliation tools
       ansible.builtin.copy:
-        src: '{{ playbook_dir }}/../roles/authentik/files/{{ item }}'
-        dest: '{{ authentik_directory }}/{{ item }}'
-        mode: '0600'
+        src: "{{ playbook_dir }}/../roles/authentik/files/{{ item }}"
+        dest: "{{ authentik_directory }}/{{ item }}"
+        mode: "0600"
       loop: [branding.py, branding_static.py, flow_titles.py]
 
     - name: Render the static-only resource bundle
@@ -87,7 +87,7 @@
                --server-side,
                --field-manager=quiet-mono-brand,
                -f,
-               '{{ authentik_directory }}/quiet-mono-static.yaml']
+               "{{ authentik_directory }}/quiet-mono-static.yaml"]
       changed_when: false
       no_log: true
       when: authentik_branding_action != 'rollback'

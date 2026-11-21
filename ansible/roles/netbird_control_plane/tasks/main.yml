@@ -6,7 +6,9 @@
       - not (netbird_deploy_routers | bool)
       - not (netbird_touch_wireguard | bool)
       - not (netbird_touch_k3s | bool)
-    fail_msg: Deployment is exclusively root-managed Argo CD; this legacy role supports check/plan only.
+    fail_msg: >-
+      Deployment is exclusively root-managed Argo CD;
+      this legacy role supports check/plan only.
 
 - name: Check the control plane and print blockers
   ansible.builtin.command:

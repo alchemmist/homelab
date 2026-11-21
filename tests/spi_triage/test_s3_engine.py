@@ -66,7 +66,7 @@ class EngineStorageTests(unittest.TestCase):
             r"\]\((https://(?:rustfs|spi-evidence)\.socrat\.alchemmist\.xyz/[^\s)]+)\)", body
         )
         self.assertEqual(len(urls), len(objects))
-        for url, (key, raw) in zip(urls, objects):
+        for url, (key, _raw) in zip(urls, objects):
             parsed = urlsplit(url)
             self.assertEqual(parsed.scheme, "https")
             self.assertEqual(parsed.netloc, urlsplit(gateway.ORIGIN).netloc)

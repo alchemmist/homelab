@@ -1,3 +1,4 @@
+---
 fullnameOverride: openhands
 image:
   repository: ghcr.io/openhands/agent-canvas
@@ -54,7 +55,7 @@ oidc:
   # Same existing S5 IdP route as SPI: retain public issuer/SNI/verified TLS,
   # avoid the unreachable split-DNS HA VIP; no global/public DNS changes.
   hostAliases:
-    - ip: 10.43.218.222 # Existing traefik.kube-system Service clusterIP.
+    - ip: 10.43.218.222  # Existing traefik.kube-system Service clusterIP.
       hostnames: [auth.socrat.alchemmist.xyz]
   image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.6@sha256:01da265f8e371e6d3043b97829e171f3e4d53f9dc3817be15fb4fc29c92fe2a6
 
@@ -82,3 +83,4 @@ workerRegistries:
 monoriPilot: true
 
 piMonori: true
+...
