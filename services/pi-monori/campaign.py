@@ -1,5 +1,18 @@
 """Full report campaign. Trusted scheduler on socrat-0; no agent or pytest on host."""
-import ast,collections,contextlib,difflib,fcntl,gzip,hashlib,json,os,re,sqlite3,subprocess,sys,time
+import ast
+import collections
+import contextlib
+import difflib
+import fcntl
+import gzip
+import hashlib
+import json
+import os
+import re
+import sqlite3
+import subprocess
+import sys
+import time
 from collections.abc import Sequence
 from pathlib import Path
 from typing import TypedDict

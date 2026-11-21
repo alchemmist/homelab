@@ -1,6 +1,9 @@
 """Tests for the OpenHands upgrade safety checks."""
 
-import pathlib,subprocess,unittest,yaml
+import pathlib
+import subprocess
+import unittest
+import yaml
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 
 class UpgradeSafety(unittest.TestCase):

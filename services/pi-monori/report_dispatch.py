@@ -1,5 +1,12 @@
 """Trusted systemd consumer. Only enrolled repo adapters; never execute issue text here."""
-import fcntl, json, os, re, sqlite3, subprocess, sys, time
+import fcntl
+import json
+import os
+import re
+import sqlite3
+import subprocess
+import sys
+import time
 import campaign as c
 import restore_worker
 import lifecycle_worker
