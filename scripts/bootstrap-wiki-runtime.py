@@ -15,6 +15,7 @@ class Kubernetes:
     """Kubernetes client that shells out to kubectl."""
 
     def __init__(self, command: list[str]) -> None:
+        """Initialize the Kubernetes client."""
 
         self.command = command
 

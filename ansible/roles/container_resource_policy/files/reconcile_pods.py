@@ -288,6 +288,7 @@ class Client:
     """Kubectl client for reading pod state under the reconcile policy."""
 
     def __init__(self, kubectl, kubeconfig) -> None:
+        """Initialize the kubectl client."""
 
         self.command = [kubectl, "--kubeconfig", kubeconfig, "--request-timeout=30s"]
 

@@ -42,6 +42,7 @@ class Router:
     """Router HTTP API client using authenticated requests."""
 
     def __init__(self, credentials, address) -> None:
+        """Initialize the router client."""
 
         self.base = "http://" + str(ipaddress.IPv4Address(address))
         self.cookie = None

@@ -33,6 +33,7 @@ class Client:
     """Minimal Grafana MCP HTTP client."""
 
     def __init__(self, url: str, token: str) -> None:
+        """Initialize the Grafana MCP client."""
 
         self.url = url
         self.headers = {
