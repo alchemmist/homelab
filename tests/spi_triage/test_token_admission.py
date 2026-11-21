@@ -1,6 +1,10 @@
 """SPI-only synthetic payloads and deterministic ledger clocks; no live inference."""
 
-import json, tempfile, time, unittest, os
+import json
+import tempfile
+import time
+import unittest
+import os
 from unittest.mock import patch
 from unittest.mock import Mock
 import test_triage as f
@@ -83,7 +87,8 @@ class AdmissionTests(unittest.TestCase):
         )
         h.request.assert_called_once()
         h.reset_mock()
-        import random, string
+        import random
+        import string
 
         rng = random.Random(419)
         noise = "".join(rng.choice(string.ascii_letters + string.digits) for _ in range(60000))

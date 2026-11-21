@@ -1,5 +1,10 @@
 """Verify a completed cold-archive receipt using the operator's recovery key (never sent to pod)."""
-import base64, hashlib, json, os, pathlib, subprocess
+import base64
+import hashlib
+import json
+import os
+import pathlib
+import subprocess
 
 os.umask(0o077);ns='openhands';job='openhands-cold-backup-20261119';home=pathlib.Path.home()/'.config/homelab/openhands/backups'
 def k(*args):return subprocess.check_output(['kubectl','-n',ns,*args])

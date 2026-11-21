@@ -120,7 +120,8 @@ class EventWorkflowTests(unittest.TestCase):
             self.assertIs(settings[key], True)
 
     def test_actual_envelope_validator_rejects_unknown_and_early_terminal(self):
-        import subprocess, time
+        import subprocess
+        import time
 
         code = next(n for n in self.workflow["nodes"] if n["name"] == "Select Claimed Job")[
             "parameters"

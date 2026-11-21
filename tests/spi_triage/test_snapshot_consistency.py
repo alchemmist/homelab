@@ -48,7 +48,8 @@ class SnapshotConsistencyTests(unittest.TestCase):
         self.assertEqual(len(current), 62)
         self.assertEqual(len({x["number"] for x in current}), 61)
         # Execute the exact clean pre-fix matcher, not an approximation.
-        import subprocess, types
+        import subprocess
+        import types
 
         baseline = types.ModuleType("baseline_integrations")
         exec(

@@ -1,6 +1,9 @@
 """Validated byte-bound contract; fixtures contain no production evidence."""
 
-import copy, json, time, unittest
+import copy
+import json
+import time
+import unittest
 from unittest.mock import Mock
 import test_triage as f
 from core import Failure, MATCH_SCHEMA, REPORT_SCHEMA

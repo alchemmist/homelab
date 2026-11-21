@@ -281,7 +281,8 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(result["stage"], "collect")
 
     def test_concurrent_same_claim_and_duplicate_stage_do_not_double_pay(self):
-        import concurrent.futures, threading
+        import concurrent.futures
+        import threading
 
         with concurrent.futures.ThreadPoolExecutor(2) as pool:
             results = list(

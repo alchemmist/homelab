@@ -1,5 +1,16 @@
 """Trusted tmux dispatcher. Never run agent code on the SSH host or in publisher."""
-import ast,contextlib,fcntl,hashlib,json,os,pathlib,re,sqlite3,subprocess,sys,time
+import ast
+import contextlib
+import fcntl
+import hashlib
+import json
+import os
+import pathlib
+import re
+import sqlite3
+import subprocess
+import sys
+import time
 ROOT=pathlib.Path(__file__).resolve().parent;os.chdir(ROOT);os.umask(0o077)
 BASE='61ca009312ee850c70cd87ed4c60296e2a78abcc';CAT=json.loads((ROOT/'catalog.json').read_text());
 CARDS={'integer_value':('common/json_values.py',['server/tests/unit/test_db_records.py']), '_amount':('server/app/workbook/parser.py',['server/tests/unit/test_workbook_parser.py','server/tests/unit/test_workbook_parser_mutation.py'])}

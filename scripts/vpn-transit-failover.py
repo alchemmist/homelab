@@ -4,7 +4,17 @@ The worker agent is fenced before native start; fallback marker fences its boot.
 No API availability-only failover. Native mode is sticky until explicit failback.
 """
 
-import argparse, fcntl, hashlib, json, os, pathlib, signal, socket, ssl, subprocess, time
+import argparse
+import fcntl
+import hashlib
+import json
+import os
+import pathlib
+import signal
+import socket
+import ssl
+import subprocess
+import time
 
 ROOT = pathlib.Path("/var/lib/homelab-vpn-transit/relay-failover")
 CONFIG = pathlib.Path("/etc/homelab-vpn-transit/failover.json")

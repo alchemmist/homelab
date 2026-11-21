@@ -392,7 +392,8 @@ class EngineStorageTests(unittest.TestCase):
         self.s.ensure_object.assert_not_called()
 
     def test_legacy_intent_reconciles_before_snapshot_each_checkpoint(self):
-        import copy, json
+        import copy
+        import json
 
         for field in ("pending", "done", "index_pending", "index_done"):
             with self.subTest(field=field):
