@@ -126,9 +126,10 @@ class EngineCheckpointTests(unittest.TestCase):
         def matching(
             event: object,
             issues: object,
-            progress: object,
-            on_progress: Callable[[dict[str, object]], None],
+            progress: object | None = None,
+            on_progress: Callable[[dict[str, object]], None] | None = None,
         ) -> None:
+            assert on_progress is not None
             on_progress({"signature": "test", "decisions": []})
             raise Failure("LLM_HTTP_429")
 

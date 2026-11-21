@@ -24,7 +24,7 @@ class NativeOIDC(unittest.TestCase):
 
     def validate(self):
         class API:
-            def rows(_, path: str) -> list[dict[str, object]]:
+            def rows(_: object, path: str) -> list[dict[str, object]]:
                 return cast("list[dict[str, object]]", self.bindings)
         m.validate(API(),self.owner,self.settings,self.provider,self.app,self.journal)
 

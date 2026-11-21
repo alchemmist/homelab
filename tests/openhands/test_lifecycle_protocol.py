@@ -17,7 +17,7 @@ def check(v: object) -> None:
 
 
 def owned(n: object, h: object) -> dict[str, object]:
-    return {"head": {"ref": "openhands/issue-509/" + "a" * 32}, "labels": [{"name": "mutation-pr"}]}
+    return {"head": {"ref": str(h)}, "labels": [{"name": "mutation-pr"}]}
 
 
 def snapshot(*, author: str = "Bot", reply: bool = False) -> dict[str, object]:
