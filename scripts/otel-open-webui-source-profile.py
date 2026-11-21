@@ -9,7 +9,7 @@ SDK source privacy guard must already be active before this module installs.
 import sys
 
 
-def activate():
+def activate() -> None:
     from opentelemetry.sdk.trace import TracerProvider
     if not getattr(TracerProvider, '_homelab_source_privacy', False):
         raise ValueError('Early before-export source guard must be active first')

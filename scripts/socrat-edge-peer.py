@@ -14,7 +14,7 @@ ADDRESS = "10.250.0.40/32"
 ENDPOINT = "91.189.82.238:51830"
 
 
-def main():
+def main() -> None:
     os.umask(0o077)
     config = Path("/etc/wireguard/wg-socrat.conf")
     old = config.read_bytes()

@@ -23,11 +23,11 @@ RULES = """table inet homelab_msk_exit_fence {
 """
 
 
-def command(args):
+def command(args) -> str:
     return subprocess.check_output(args, text=True, stderr=subprocess.PIPE)
 
 
-def projection():
+def projection() -> object:
     value = json.loads(command(["nft", "-j", "list", "table", "inet", TABLE]))
 
     def clean(v):
@@ -40,7 +40,7 @@ def projection():
     return clean(value)
 
 
-def run(boot=False):
+def run(boot=False) -> None:
     assert os.geteuid() == 0 and socket.gethostname() == "socrat-2"
     os.umask(0o077)
     route = json.loads(command(["ip", "-j", "route", "get", "91.189.82.238"]))
