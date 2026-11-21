@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "3bd03eaded11dfc674e0707a0633e3cc6604faafa5dff3e26956323729efc72b",
+  "graphDigest": "1a9ba6faeb48d21cb83bf2037d7972a3c20719ee0763bec36d9cc727df01b547",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -120,6 +120,34 @@
       },
       "timeoutMinutes": 10,
       "title": "Ownership contracts"
+    },
+    {
+      "env": {},
+      "id": "docker",
+      "needs": [
+        "graph"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-docker",
+      "result": {
+        "adapter": "native",
+        "path": "reports/docker.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/lint.py docker"
+      },
+      "timeoutMinutes": 5,
+      "title": "Container recipes"
     }
   ],
   "profiles": {
