@@ -4,10 +4,8 @@
 import base64
 import hashlib
 import json
-from pathlib import Path
-import re
 import sys
-from typing import cast
+from pathlib import Path
 
 
 def _collect_assets(root: Path) -> tuple[dict[str, str], dict[str, str]]:

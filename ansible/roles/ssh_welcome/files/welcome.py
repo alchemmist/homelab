@@ -3,12 +3,12 @@
 import argparse
 import json
 import os
-from pathlib import Path
 import platform
 import shutil
 import sys
 import textwrap
 import unicodedata
+from pathlib import Path
 from urllib.parse import quote, urlencode, urlsplit
 
 ROOT = Path("/etc/homelab-welcome")

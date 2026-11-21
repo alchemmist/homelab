@@ -6,9 +6,7 @@ import json
 import sys
 
 import yaml
-
 from dashboard_descriptions import apply_descriptions
-
 
 DASHBOARD_UID = "rancher-cluster-nodes-1"
 RANCHER_DASHBOARD_UIDS = {

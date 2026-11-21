@@ -6,12 +6,11 @@ import argparse
 import ipaddress
 import json
 import os
-from pathlib import Path
 import re
 import socket
 import subprocess
 import sys
-
+from pathlib import Path
 
 CONFIG = Path.home() / ".config/homelab/ssh-gateway.json"
 STATE = Path.home() / ".local/state/homelab/ssh-mappings.json"

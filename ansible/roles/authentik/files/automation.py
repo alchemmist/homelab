@@ -7,15 +7,15 @@ apply/check never delete humans; retire-akadmin is a separate explicit guarded a
 import argparse
 import ast
 import fcntl
-from datetime import datetime, timezone
 import json
 import os
-from pathlib import Path
 import secrets
 import sys
 import urllib.request
-from urllib.parse import quote
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import cast
+from urllib.parse import quote
 
 NAME = "homelab-identity-automation"
 GROUP = "homelab-identity-automation-admin"
