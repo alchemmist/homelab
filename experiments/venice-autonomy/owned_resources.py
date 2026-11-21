@@ -36,13 +36,15 @@ def _run(args, timeout) -> subprocess.CompletedProcess[str]:
 
 def remove_container(container_id, expected):
     if not container_id or any(part in container_id for part in ("/", "..", " ")):
-        raise ValueError("refusing to clean an unsafe container id")
+        message = "refusing to clean an unsafe container id"
+        raise ValueError(message)
     inspection = _run(["docker", "inspect", container_id], 15)
     if inspection.returncode != 0:
         if _already_gone(inspection):
             return
         detail = _result_text(inspection).strip() or "inspect failed"
-        raise ValueError("refusing to clean a container that cannot be inspected: " + detail)
+        message = "refusing to clean a container that cannot be inspected: " + detail
+        raise ValueError(message)
     info = json.loads(inspection.stdout)[0]
     labels = (info.get("Config") or {}).get("Labels") or {}
     name = str(info.get("Name") or "")
@@ -51,30 +53,36 @@ def remove_container(container_id, expected):
         or labels.get("venice-autonomy-run") != expected
         or not name.startswith("/venice-lab-")
     ):
-        raise ValueError("refusing to clean a container without this run ownership")
+        message = "refusing to clean a container without this run ownership"
+        raise ValueError(message)
     removal = _run(["docker", "rm", "-f", container_id], 25)
     if removal.returncode != 0 and not _already_gone(removal):
         detail = _result_text(removal).strip() or "rm failed"
-        raise ValueError("container removal failed: " + detail)
+        message = "container removal failed: " + detail
+        raise ValueError(message)
 
 
 def remove_volume(volume, expected):
     if not volume.startswith("venice-lab-") or any(part in volume for part in ("/", " ")):
-        raise ValueError("refusing to clean an unrelated volume")
+        message = "refusing to clean an unrelated volume"
+        raise ValueError(message)
     inspection = _run(["docker", "volume", "inspect", volume], 15)
     if inspection.returncode != 0:
         if _already_gone(inspection):
             return
         detail = _result_text(inspection).strip() or "inspect failed"
-        raise ValueError("refusing to clean a volume that cannot be inspected: " + detail)
+        message = "refusing to clean a volume that cannot be inspected: " + detail
+        raise ValueError(message)
     info = json.loads(inspection.stdout)[0]
     labels = info.get("Labels") or {}
     if labels.get("venice-autonomy-lab") != "true" or labels.get("venice-autonomy-run") != expected:
-        raise ValueError("refusing to clean a volume without this run ownership")
+        message = "refusing to clean a volume without this run ownership"
+        raise ValueError(message)
     removal = _run(["docker", "volume", "rm", volume], 20)
     if removal.returncode != 0 and not _already_gone(removal):
         detail = _result_text(removal).strip() or "rm failed"
-        raise ValueError("volume removal failed: " + detail)
+        message = "volume removal failed: " + detail
+        raise ValueError(message)
 
 
 def cleanup_role(root):

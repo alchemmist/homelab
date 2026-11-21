@@ -83,7 +83,8 @@ def checked_model(call_model, prompt, data, context):
             return validate_decision(call_model(prompt, data), context)
         except (UnsafeInput, json.JSONDecodeError):
             if attempt:
-                raise UnsafeInput("Model response failed validation after two attempts") from None
+                message = "Model response failed validation after two attempts"
+                raise UnsafeInput(message) from None
             prompt += "\nPrevious response failed validation. Return only the exact JSON schema, plain text without URLs or Markdown, and supplied changed file paths."
 
 
@@ -114,7 +115,8 @@ def _generate_stage(
     decision = checked_model(runner, prompt, {"context": context, "selected": selection}, context)
     allowed = {p for e in selection["entries"] for p in e["source_paths"]}
     if any(p not in allowed for e in decision["entries"] for p in e["source_paths"]):
-        raise UnsafeInput("Generation introduced an unselected source")
+        message = "Generation introduced an unselected source"
+        raise UnsafeInput(message)
     if not decision["should_update"]:
         return []
     return [{"event": event, "decision": decision}]
@@ -133,13 +135,15 @@ def stage(name, payload, github=None, call_model=None, write=False):
     if name == "generate":
         return _generate_stage(call_model, payload, event, context)
     if name != "create-pr":
-        raise UnsafeInput("Unknown stage")
+        message = "Unknown stage"
+        raise UnsafeInput(message)
     decision = validate_decision(payload["decision"], context)
     if not decision["should_update"]:
         return []
     head = next((c for c in comparison["commits"] if c["sha"] == event["after"]), None)
     if not head:
-        raise UnsafeInput("Missing head commit")
+        message = "Missing head commit"
+        raise UnsafeInput(message)
     content = render(updates, decision["entries"], head["commit"]["committer"]["date"])
     if content == updates:
         return [{"status": "no_change"}]

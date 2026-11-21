@@ -69,10 +69,12 @@ def provider_settings():
     provider = json.loads(source.read_text())["providers"]["litellm"]
     reference = provider["apiKey"]
     if not reference.startswith("$"):
-        raise ValueError("only an environment-backed API key is supported")
+        message = "only an environment-backed API key is supported"
+        raise ValueError(message)
     key = os.environ.get(reference.lstrip("$").strip("{}"), "").strip()
     if not key or "\r" in key or "\n" in key:
-        raise ValueError("missing or unsafe API key")
+        message = "missing or unsafe API key"
+        raise ValueError(message)
     return provider["baseUrl"], key
 
 

@@ -317,7 +317,8 @@ class ControllerFaultTests(unittest.TestCase):
             try:
                 raise BadGatewayError("502")
             except BadGatewayError as inner:
-                raise SDKError("wrapper text mentions InternalServerError") from inner
+                message = "wrapper text mentions InternalServerError"
+                raise SDKError(message) from inner
         except SDKError as error:
             summary = {}
             record_exception(summary, error, "", "run_error")
@@ -797,7 +798,8 @@ class ControllerFaultTests(unittest.TestCase):
             controller.save_state(root / "state.json", state)
 
             def boom(record) -> None:
-                raise ValueError("docker daemon refused")
+                message = "docker daemon refused"
+                raise ValueError(message)
 
             original = controller.cleanup_interrupted
             controller.cleanup_interrupted = boom

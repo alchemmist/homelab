@@ -52,15 +52,18 @@ def main():
     dashboards = json.loads(result.stdout)
     actual = {dashboard["uid"]: panel_descriptions(dashboard) for dashboard in dashboards}
     if actual.keys() != expected.keys():
-        raise RuntimeError(f"Dashboard catalog differs: {sorted(actual.keys() ^ expected.keys())}")
+        message = f"Dashboard catalog differs: {sorted(actual.keys() ^ expected.keys())}"
+        raise RuntimeError(message)
     total = 0
     for dashboard in dashboards:
         uid = dashboard["uid"]
         if actual[uid] != expected[uid]:
-            raise RuntimeError(f"Descriptions differ from the repository: {dashboard['title']}")
+            message = f"Descriptions differ from the repository: {dashboard['title']}"
+            raise RuntimeError(message)
         for panel_id, description in actual[uid].items():
             if not isinstance(description, str) or not description.strip():
-                raise RuntimeError(f"Missing description: {uid}, panel {panel_id}")
+                message = f"Missing description: {uid}, panel {panel_id}"
+                raise RuntimeError(message)
         total += len(actual[uid])
     print(
         f"PASS: {total} panels across {len(dashboards)} dashboards have provisioned descriptions matching the repository"

@@ -18,7 +18,8 @@ class Conversation:
         """Run once, failing while the configured failure budget lasts."""
         self.runs += 1
         if self.runs <= self.failures:
-            raise RuntimeError("provider failed")
+            message = "provider failed"
+            raise RuntimeError(message)
 
     def send_message(self, message):
         """Record a follow-up message sent to the conversation."""

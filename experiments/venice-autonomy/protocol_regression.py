@@ -45,7 +45,8 @@ def resolve_repo(explicit: Path | None) -> Path:
         return explicit
     raw = os.environ.get("PROTOCOL_REGRESSION_REPO")
     if not raw:
-        raise ValueError("pass --repo or set PROTOCOL_REGRESSION_REPO")
+        message = "pass --repo or set PROTOCOL_REGRESSION_REPO"
+        raise ValueError(message)
     return Path(raw)
 
 
@@ -60,7 +61,8 @@ def resolve_python(explicit: Path | None) -> Path:
 
 def git_show(repo: Path, rev_path: str) -> bytes:
     if rev_path.startswith("-") or ".." in rev_path.split(":", 1)[-1]:
-        raise ValueError(f"refused path {rev_path}")
+        message = f"refused path {rev_path}"
+        raise ValueError(message)
     completed = subprocess.run(
         ["git", "-C", str(repo), "show", "--no-textconv", rev_path],
         check=True,
@@ -96,10 +98,12 @@ def method_spans(source: str) -> dict[str, tuple[int, int]]:
         for child in node.body:
             if isinstance(child, ast.AsyncFunctionDef) and child.name in ALLOWED_METHODS:
                 if child.name in spans:
-                    raise ValueError("duplicate allowed method")
+                    message = "duplicate allowed method"
+                    raise ValueError(message)
                 spans[child.name] = (child.lineno, child.end_lineno or child.lineno)
     if tuple(sorted(spans)) != tuple(sorted(ALLOWED_METHODS)):
-        raise ValueError("snapshot is missing BrowserSession._answer or _generate_on_page")
+        message = "snapshot is missing BrowserSession._answer or _generate_on_page"
+        raise ValueError(message)
     return spans
 
 
@@ -289,7 +293,8 @@ def bounded_test_process(args, cwd=None, env=None, timeout=120, limit=131072):
         while selector.get_map():
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                raise TimeoutError("test process deadline exceeded")
+                message = "test process deadline exceeded"
+                raise TimeoutError(message)
             for key, _ in selector.select(min(remaining, 1)):
                 data = os.read(key.fileobj.fileno(), 65536)
                 if not data:
@@ -297,7 +302,8 @@ def bounded_test_process(args, cwd=None, env=None, timeout=120, limit=131072):
                     continue
                 output[key.data].extend(data)
                 if len(output[key.data]) > limit:
-                    raise ValueError("test process output limit exceeded")
+                    message = "test process output limit exceeded"
+                    raise ValueError(message)
         code = process.wait(timeout=max(0.01, deadline - time.monotonic()))
         return subprocess.CompletedProcess(
             args,
@@ -431,9 +437,11 @@ def pinned_base_digest(dockerfile: Path) -> str:
             image = line.split()[1]
             marker = "@sha256:"
             if marker not in image or not image.startswith(BASE_IMAGE + marker):
-                raise ValueError(f"worker base is not a pinned {BASE_IMAGE} digest")
+                message = f"worker base is not a pinned {BASE_IMAGE} digest"
+                raise ValueError(message)
             return image.split("@", 1)[1]
-    raise ValueError("worker Dockerfile has no FROM")
+    message = "worker Dockerfile has no FROM"
+    raise ValueError(message)
 
 
 def verify_pinned_base(docker: str, dockerfile: Path) -> dict:
@@ -441,7 +449,8 @@ def verify_pinned_base(docker: str, dockerfile: Path) -> dict:
     completed = docker_run(docker, ["manifest", "inspect", BASE_IMAGE], check=False, text=True)
     if completed.returncode != 0:
         detail = (completed.stderr or completed.stdout or "").strip()
-        raise RuntimeError(f"docker manifest inspect {BASE_IMAGE} failed: {detail}")
+        message = f"docker manifest inspect {BASE_IMAGE} failed: {detail}"
+        raise RuntimeError(message)
     document = json.loads(completed.stdout)
     matches = []
     for item in document.get("manifests", []):
@@ -449,9 +458,8 @@ def verify_pinned_base(docker: str, dockerfile: Path) -> dict:
         if digest == pinned:
             matches.append(item.get("platform"))
     if not matches:
-        raise RuntimeError(
-            f"pinned digest {pinned} is absent from registry manifest for {BASE_IMAGE}"
-        )
+        message = f"pinned digest {pinned} is absent from registry manifest for {BASE_IMAGE}"
+        raise RuntimeError(message)
     return {
         "base_image": BASE_IMAGE,
         "pinned_digest": pinned,
@@ -482,7 +490,8 @@ def copy_into(docker: str, container: str, dest: str, files: list[tuple[str, byt
     )
     if completed.returncode != 0:
         detail = completed.stderr.decode("utf-8", errors="replace").strip()
-        raise RuntimeError(f"docker cp into {dest} failed: {detail}")
+        message = f"docker cp into {dest} failed: {detail}"
+        raise RuntimeError(message)
 
 
 def container_limits() -> list[str]:
@@ -556,7 +565,8 @@ def run_container(
     )
     if create.returncode != 0:
         detail = (create.stderr or create.stdout or "").strip()
-        raise RuntimeError(f"docker create failed: {detail}")
+        message = f"docker create failed: {detail}"
+        raise RuntimeError(message)
     try:
         for dest, files in copies:
             copy_into(docker, name, dest, files)
@@ -587,7 +597,8 @@ def candidate_files(candidate: Path) -> list[tuple[str, bytes]]:
     for name in WHITELIST:
         path = candidate / name
         if not path.is_file():
-            raise ValueError(f"candidate is missing {name}")
+            message = f"candidate is missing {name}"
+            raise ValueError(message)
         files.append((name, path.read_bytes()))
     return files
 
@@ -673,10 +684,12 @@ def image_facts(docker: str, image: str) -> dict:
     )
     if ran.returncode != 0:
         detail = (ran.stderr or ran.stdout or "").strip()
-        raise RuntimeError(f"image probe failed: {detail}")
+        message = f"image probe failed: {detail}"
+        raise RuntimeError(message)
     version, imports, baked_main, pip_present, baked_grader = ran.stdout.splitlines()
     if baked_main != "False" or baked_grader != "False" or pip_present != "False":
-        raise RuntimeError("image contains a solution, grader, or pip")
+        message = "image contains a solution, grader, or pip"
+        raise RuntimeError(message)
     return {
         "image_id": document["Id"],
         "created": document.get("Created"),

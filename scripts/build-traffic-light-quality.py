@@ -389,9 +389,8 @@ def build(source=None):
         for x in range(g["x"], g["x"] + g["w"]):
             for y in range(g["y"], g["y"] + g["h"]):
                 if (x, y) in occupied or not (0 <= x < 24 and 0 <= y < 20):
-                    raise ValueError(
-                        "Quality panel overlaps owner layout; stop rather than move panels"
-                    )
+                    message = "Quality panel overlaps owner layout; stop rather than move panels"
+                    raise ValueError(message)
                 occupied.add((x, y))
     replacements = {p["id"]: p for p in additions}
     d["panels"] = [replacements.get(p["id"], p) for p in d["panels"]]
