@@ -24,8 +24,8 @@ class LaunchGuard(unittest.TestCase):
         self.runtime = Path(self.id().replace(".", "_"))
         self.runtime.mkdir(exist_ok=True)
         app.RUNTIME = self.runtime
-        app.pid_alive = lambda pid: False
-        app.pids_named = lambda executable: []
+        app.pid_alive = lambda _pid: False
+        app.pids_named = lambda _executable: []
         self.spawned = []
 
     def spawn(self, command):
@@ -40,7 +40,7 @@ class LaunchGuard(unittest.TestCase):
 
     def test_click_during_cooldown_does_not_spawn_even_if_the_process_exited(self):
         app.open_shortcut("browser", now=1000, spawn=self.spawn)
-        app.pid_alive = lambda pid: False
+        app.pid_alive = lambda _pid: False
         app.open_shortcut("browser", now=1009, spawn=self.spawn)
         self.assertEqual(len(self.spawned), 1)
 
@@ -79,7 +79,7 @@ class GraphicsWake(unittest.TestCase):
     def test_space_brings_graphics_up_once(self):
         calls = []
         spawned = []
-        graphics.command_running = lambda command: False
+        graphics.command_running = lambda _command: False
         graphics.graphics_up(
             blank=lambda *args: calls.append(args), spawn=lambda command: spawned.append(command)
         )

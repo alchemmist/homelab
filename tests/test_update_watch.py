@@ -141,7 +141,7 @@ def test_openhands_uses_running_canvas_tag_not_sdk_version():
     assert target["container"] == "agent-canvas"
     samples = watch.evaluate(
         [target],
-        lambda repo, t: [{"tag_name": "v1.42.0"}],
+        lambda _repo, _t: [{"tag_name": "v1.42.0"}],
         1,
         {"openhands": "ghcr.io/openhands/agent-canvas:1.41.0@sha256:fixture"},
     )
