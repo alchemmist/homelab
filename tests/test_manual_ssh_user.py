@@ -16,7 +16,7 @@ spec.loader.exec_module(check)
 
 class ManualSSHTests(unittest.TestCase):
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         cls.temp = tempfile.TemporaryDirectory(prefix="manual-ssh-test-")
         cls.key = Path(cls.temp.name) / "fixture"
         subprocess.run(
@@ -25,7 +25,7 @@ class ManualSSHTests(unittest.TestCase):
         cls.public = cls.key.with_suffix(".pub").read_text()
 
     @classmethod
-    def tearDownClass(cls):
+    def tearDownClass(cls) -> None:
         cls.temp.cleanup()
 
     def test_real_parser_canonicalizes_public_key_and_reports_fingerprint(self) -> None:
