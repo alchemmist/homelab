@@ -173,7 +173,8 @@ def _digest(name: str) -> str:
                 # 0cfe2545 narrowed only the caught error types; verify the exact
                 # tuple before comparing the rest against the original fingerprint.
                 handlers = [item for item in ast.walk(node) if isinstance(item, ast.ExceptHandler)]
-                assert len(handlers) == 1 and handlers[0].type is not None
+                assert len(handlers) == 1
+                assert handlers[0].type is not None
                 assert ast.dump(handlers[0].type) == ast.dump(
                     ast.parse("(OSError, RuntimeError, TypeError, ValueError)", mode="eval").body
                 )
