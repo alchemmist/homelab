@@ -17,6 +17,7 @@ ENTRIES = ("home", "vps")
 
 
 def initial(published):
+    """Execute initial."""
     if not published or not set(published) <= set(ENTRIES):
         raise ValueError("Nonempty known publication required")
     return {
@@ -134,6 +135,7 @@ def decision_of(hold: bool, nxt, state) -> str:
 def plan(state, batch, required, now, max_age=90, threshold=3):
     # The exact same accepted result must be distributed to ALL authorities;
     # neither local loopback nor independent per-authority rendering is consensus.
+    """Execute plan."""
     require_valid_policy(now, max_age, threshold)
     require_valid_inputs(state, required)
     if type(batch.get("round")) is not int or len(batch.get("observations", [])) > 32:
@@ -182,6 +184,7 @@ def plan(state, batch, required, now, max_age=90, threshold=3):
 
 
 def main():
+    """Execute main."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("input", type=Path)
     args = p.parse_args()

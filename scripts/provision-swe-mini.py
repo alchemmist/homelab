@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Explicit private prerequisites for the GitOps SWE Mini app; never prints values.
+
 Run only after Argo creates swe-mini. Does not modify existing keys or accounts.
 """
 

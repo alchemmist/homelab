@@ -1,10 +1,10 @@
 """Tests for OpenTelemetry read boundaries and PKI wiring."""
 
 import importlib.util
-from pathlib import Path
-from types import ModuleType
 import tempfile
 import unittest
+from pathlib import Path
+from types import ModuleType
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]

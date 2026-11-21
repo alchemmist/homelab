@@ -178,6 +178,7 @@ def configure_project_files(project: Path, *, target: Path, folder: Path) -> Non
 
 
 def main():
+    """Execute main."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--ssh-host", default="socrat-0")
     p.add_argument(

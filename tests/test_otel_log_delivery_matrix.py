@@ -1,9 +1,9 @@
 """Offline checks for bounded native log-count selection; no network client."""
 
 import importlib.util
+import unittest
 from pathlib import Path
 from types import ModuleType
-import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 

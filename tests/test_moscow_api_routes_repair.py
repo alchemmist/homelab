@@ -2,7 +2,9 @@
 
 import importlib.util
 from pathlib import Path
-import pytest, yaml
+
+import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(

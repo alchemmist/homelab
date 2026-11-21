@@ -35,17 +35,20 @@ COLLECTIONS = (
 
 
 def require(ok: object, message: str) -> None:
+    """Document the require operation."""
     if not ok:
         raise RuntimeError(message)
 
 
 def digest(value):
+    """Document the digest operation."""
     return hashlib.sha256(
         json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
 
 
 def unique(items, key):
+    """Document the unique operation."""
     found = {}
     for item in items:
         require(item[key] not in found, "Ambiguous " + key)
@@ -54,6 +57,7 @@ def unique(items, key):
 
 
 def group_expression(aliases):
+    """Document the group expression operation."""
     require(isinstance(aliases, dict), "Invalid claim aliases")
     for name, values in aliases.items():
         require(
@@ -78,6 +82,7 @@ def group_expression(aliases):
 
 
 def profile_expression(base_expression, aliases):
+    """Document the profile expression operation."""
     # Only transform the reviewed upstream profile groups entry. Preserve all
     # identity/avatar behavior and never mutate the global/default scope mapping.
     old = '"groups": [group.name for group in request.user.groups.all()],'
@@ -86,6 +91,7 @@ def profile_expression(base_expression, aliases):
 
 
 def contracts(services, applications):
+    """Document the contracts operation."""
     result = {}
     for slug in sorted(set(services) | set(applications)):
         require(SLUG.fullmatch(slug), "Unsafe application slug")
@@ -112,6 +118,7 @@ def contracts(services, applications):
 
 
 def inventory(api):
+    """Document the inventory operation."""
     return {
         p: sorted(
             rows(api, p + ("?superuser_full_list=true" if p == "core/applications/" else "")),
@@ -217,6 +224,7 @@ def _plan_scope_migration(
 
 
 def build_plan(state, services):
+    """Document the build plan operation."""
     groups = unique(state["core/groups/"], "name")
     apps = unique(state["core/applications/"], "slug")
     providers = unique(state["providers/oauth2/"], "pk")
@@ -262,6 +270,7 @@ def build_plan(state, services):
 
 
 def execute(api, state, services, expected, receipt):
+    """Document the execute operation."""
     fresh = inventory(api)
     plan = build_plan(fresh, services)
     require(plan["sha256"] == expected and fresh == state, "Inventory/approval drift; no retry")
@@ -397,6 +406,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def api_for(root):
+    """Document the api for operation."""
     credential = root / "credentials.json"
     for path in (root, credential):
         require(

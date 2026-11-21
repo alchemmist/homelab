@@ -4,12 +4,12 @@ import hashlib
 import importlib.util
 import json
 import re
-from pathlib import Path
-import tempfile
 import subprocess
 import sys
-from types import ModuleType
+import tempfile
 import unittest
+from pathlib import Path
+from types import ModuleType
 
 ROOT = Path(__file__).resolve().parents[1]
 THEME = ROOT / "deploy/authentik/quiet-mono"

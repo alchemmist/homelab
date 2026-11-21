@@ -2,9 +2,9 @@
 
 import importlib.util
 import os
-from pathlib import Path
 import sys
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -53,7 +53,10 @@ class PublicationOrigin(unittest.TestCase):
 
     def test_live_activation_is_only_publication_origin(self) -> None:
         """Render the live-off chart and reject an unreviewed public origin."""
-        import subprocess, yaml, copy
+        import copy
+        import subprocess
+
+        import yaml
 
         raw = subprocess.check_output(
             [

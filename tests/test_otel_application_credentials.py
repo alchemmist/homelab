@@ -1,12 +1,13 @@
 """Tests for OpenTelemetry application credential handling."""
 
-import importlib.util
 import base64
-import types
 import copy
+import importlib.util
 import json
-from pathlib import Path
+import types
 import unittest
+from pathlib import Path
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
