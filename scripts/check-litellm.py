@@ -63,7 +63,7 @@ try:
         cast(
             "dict[str, object]",
             cast("list[dict[str, object]]", result["choices"])[0]["message"],
-        )["content"],
+        )["content"] or "",
     )
     assert content.strip() == "4", "Unexpected arithmetic response"
     print("virtual key inference:", content)
