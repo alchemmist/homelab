@@ -4,7 +4,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from typing import NotRequired, TypedDict, cast
+from typing import TypedDict, cast
 from unittest.mock import Mock
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -24,13 +24,13 @@ class Event(TypedDict):
     startsAt: str
     endsAt: str | None
     generatorURL: str
-    episode: NotRequired[str]
+    episode: str
     event_key: str
 
 
 def event(status="firing", start="2026-11-03T13:00:00Z") -> Event:
     return cast(
-        "Event",
+        Event,
         normalize(
             {
                 "source": "test",
