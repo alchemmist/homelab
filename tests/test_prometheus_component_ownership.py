@@ -57,6 +57,13 @@ class _ResourceMeta(TypedDict, total=False):
     namespace: str
 
 
+class _ConfigMap(TypedDict):
+    apiVersion: str
+    kind: str
+    metadata: _ResourceMeta
+    data: dict[str, str]
+
+
 class _KeyedResource(TypedDict):
     kind: str
     metadata: _ResourceMeta
@@ -95,9 +102,9 @@ def key(d: _KeyedResource):
     )
 
 
-def software_update_extension(document: _Tree):
+def software_update_extension(document: _ConfigMap):
     """Review the one additive receiver without refreshing any handoff hash."""
-    collector_yaml = cast("str", document["data"]["collector.yaml"])
+    collector_yaml = document["data"]["collector.yaml"]
     assert document == {
         "apiVersion": "v1",
         "kind": "ConfigMap",

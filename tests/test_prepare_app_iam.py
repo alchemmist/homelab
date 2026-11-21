@@ -96,6 +96,8 @@ class FakeAPI:
                 "pagination": {"next": page + 1 if start + self.page_size < len(data) else 0},
             }
         assert method == "POST" and path in ("core/groups/", "policies/bindings/")
+        if payload is None:
+            raise ValueError("POST payload required")
         self.writes += 1
         if self.fail_write == self.writes:
             raise RuntimeError("simulated private failure")
