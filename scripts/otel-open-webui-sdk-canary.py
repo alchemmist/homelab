@@ -95,7 +95,7 @@ def run():
         original_exporter = native.HttpOTLPSpanExporter
 
         class ObservedExporter(original_exporter):
-            def __init__(self, *args, **kwargs):
+            def __init__(self, *args: object, **kwargs: object):
                 super().__init__(*args, **kwargs)
                 constructed.append(self._session.headers.get("Connection", "").lower() == "close")
 
@@ -104,7 +104,7 @@ def run():
         import threading
 
         class Backend(http.server.BaseHTTPRequestHandler):
-            def log_message(self, *args):
+            def log_message(self, *args: object):
                 pass
 
             def do_POST(self):

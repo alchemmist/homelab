@@ -222,7 +222,10 @@ def test_nightnode_config_parser_is_shellcheck_clean() -> None:
     assert _items(result.stdout) == []
     source = _text(NIGHTNODE)
     assert 'source "${CONFIG_FILE}"' not in source
-    assert 'eval "export ${key}=${value}"' in source
+    assert 'export "${key}=${value}"' in source
+    assert 'eval "export ${key}=${value}"' not in source
+    assert 'line="${line#"${line%%[![:space:]]*}"}"' in source
+    assert 'value="${value:1:${#value}-2}"' in source
 
 
 def test_owned_scripts_pass_syntax_check_without_executing() -> None:

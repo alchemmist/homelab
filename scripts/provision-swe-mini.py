@@ -15,7 +15,7 @@ import urllib.request
 NS = "swe-mini"
 
 
-def kubectl(*args):
+def kubectl(*args: str):
     return subprocess.check_output(["kubectl", *args], stderr=subprocess.DEVNULL)
 
 
