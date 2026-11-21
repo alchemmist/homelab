@@ -12,7 +12,9 @@ from pathlib import Path
 import sqlite3
 import threading
 import time
+from typing import cast
 import uuid
+import zlib
 
 import jwt
 import requests
@@ -44,7 +46,7 @@ SESSION = requests.Session()
 SESSION.headers["Accept"] = "application/vnd.github+json"
 TOKEN = {"value": "", "expires": 0}
 STATUS = {"state": "starting", "last_tick": time.time(), "error": ""}
-NEXT_IDLE_CHECK = 0
+NEXT_IDLE_CHECK: float = 0
 
 
 def signing_key(run_id, phase):
@@ -54,7 +56,7 @@ def signing_key(run_id, phase):
 def github(path, method="GET", data=None, auth=True):
     headers = {}
     if auth:
-        if TOKEN["expires"] < time.time():
+        if cast("float", TOKEN["expires"]) < time.time():
             app_id = Path("/github/github-app-id").read_text().strip()
             key = Path("/github/github-private-key").read_text()
             signed = jwt.encode(
@@ -79,7 +81,7 @@ def github(path, method="GET", data=None, auth=True):
             )
             r.raise_for_status()
             TOKEN.update(value=r.json()["token"], expires=time.time() + 3000)
-        headers["Authorization"] = "Bearer " + TOKEN["value"]
+        headers["Authorization"] = "Bearer " + cast("str", TOKEN["value"])
     response = SESSION.request(
         method, "https://api.github.com/" + path, headers=headers, json=data, timeout=40
     )
@@ -100,8 +102,8 @@ def save(run_id, **fields):
 def start_job(run, phase):
     run_id, lane, revision = run["id"], run["lane"], run["revision"]
     name = f"swe-{run_id}-{phase}"
-    volumes = [{"name": "work", "emptyDir": {"sizeLimit": "8Gi"}}]
-    mounts = [{"name": "work", "mountPath": "/workspace"}]
+    volumes: list[dict[str, object]] = [{"name": "work", "emptyDir": {"sizeLimit": "8Gi"}}]
+    mounts: list[dict[str, object]] = [{"name": "work", "mountPath": "/workspace"}]
     if phase == "review":
         cm_name = name + "-proposal"
         payload = json.loads(run["result"])
@@ -233,7 +235,8 @@ def publish(run, result, review):
             f"repos/{REPO}/git/refs", "POST", {"ref": "refs/heads/" + branch, "sha": commit["sha"]}
         )
     except requests.HTTPError as exc:
-        if exc.response.status_code != 422:
+        response = exc.response
+        if response is None or response.status_code != 422:
             raise
         # Never force-update a branch that might have acquired human edits.
         ref = github(f"repos/{REPO}/git/ref/heads/" + branch)
@@ -241,7 +244,7 @@ def publish(run, result, review):
         if current["tree"]["sha"] != tree["sha"] or [p["sha"] for p in current["parents"]] != [
             run["revision"]
         ]:
-            raise ValueError("Existing candidate branch differs; refusing publication")
+            raise ValueError("Existing candidate branch differs; refusing publication") from exc
     body = (
         "Automated by mini-swe-agent v2.4.6; owner approval required. No production access or merge.\n\n"
         + result["report"][:16000]
@@ -251,35 +254,38 @@ def publish(run, result, review):
         + str(review["review"].get("reason", ""))[:7000]
         + f"\n\nRun `{run['id']}`, base `{run['revision']}`. Model review is not a security guarantee. Full private run record is retained in the queue database."
     )
-    pr = github(
-        f"repos/{REPO}/pulls",
-        "POST",
-        {
-            "title": f"[mini] {run['lane']}: tested small improvement",
-            "head": branch,
-            "base": "main",
-            "body": body,
-            "draft": False,
-        },
+    pr = cast(
+        "dict[str, object]",
+        github(
+            f"repos/{REPO}/pulls",
+            "POST",
+            {
+                "title": f"[mini] {run['lane']}: tested small improvement",
+                "head": branch,
+                "base": "main",
+                "body": body,
+                "draft": False,
+            },
+        ),
     )
     return pr["html_url"]
 
 
-def tick():
+def tick() -> bool | None:
     global NEXT_IDLE_CHECK
     active = DB.execute(
         "SELECT * FROM runs WHERE state IN ('queued','work','review','publishing') ORDER BY created LIMIT 1"
     ).fetchone()
     if active:
         columns = [r[1] for r in DB.execute("PRAGMA table_info(runs)")]
-        run = dict(zip(columns, active))
+        run = dict(zip(columns, active, strict=True))
         if run["state"] == "queued":
             start_job(run, "work")
-            return
+            return None
         if run["state"] == "publishing":
             url = publish(run, json.loads(run["result"]), json.loads(run["review"]))
             save(run["id"], state="published", pr=url)
-            return
+            return None
         try:
             job = BATCH.read_namespaced_job(run["job"], NS)
         except client.ApiException as exc:
@@ -297,9 +303,9 @@ def tick():
                     )
                 },
             )
-            return
+            return None
         if not job.status.succeeded and not job.status.failed:
-            return
+            return None
         pods = CORE.list_namespaced_pod(NS, label_selector="job-name=" + run["job"]).items
         if len(pods) != 1:
             save(
@@ -307,11 +313,11 @@ def tick():
                 state="failed",
                 review=json.dumps({"error": "Missing or ambiguous worker Pod; no publication"}),
             )
-            return
+            return None
         log = CORE.read_namespaced_pod_log(pods[0].metadata.name, NS, limit_bytes=2_000_000)
         try:
             result = decode_result(log, signing_key(run["id"], run["state"]))
-        except Exception:
+        except (KeyError, TypeError, ValueError, OSError, zlib.error):
             if run["state"] == "review":
                 try:
                     CORE.delete_namespaced_config_map(run["job"] + "-proposal", NS)
@@ -323,7 +329,7 @@ def tick():
                 state="failed",
                 review=json.dumps({"error": "Missing worker result; inspect job status"}),
             )
-            return
+            return None
         if run["state"] == "review":
             try:
                 CORE.delete_namespaced_config_map(run["job"] + "-proposal", NS)
@@ -350,13 +356,19 @@ def tick():
             if candidate:
                 validate_changes(candidate)
             if any(i["path"] in {"web/package.json", "web/package-lock.json"} for i in candidate):
-                base = github(
-                    f"repos/{REPO}/contents/web/package.json?ref={run['revision']}", auth=True
+                base = cast(
+                    "dict[str, object]",
+                    github(
+                        f"repos/{REPO}/contents/web/package.json?ref={run['revision']}", auth=True
+                    ),
+                )
+                validate_dependency_update(
+                    candidate, json.loads(base64.b64decode(cast("str", base["content"])))
                 )
                 validate_dependency_update(candidate, json.loads(base64.b64decode(base["content"])))
         except (ValueError, KeyError, TypeError):
             save(run["id"], state="rejected")
-            return
+            return None
         # Only a narrowly validated dependency repair may start from a red frontend install.
         baseline_ok = not any(result.get("baseline", {"missing": 1}).values())
         bootstrap_ok = (
@@ -370,7 +382,7 @@ def tick():
             or not (baseline_ok or bootstrap_ok)
         ):
             save(run["id"], state="rejected")
-            return
+            return None
         if run["state"] == "work":
             if not result.get("changes"):
                 save(run["id"], state="done")
@@ -387,10 +399,10 @@ def tick():
                 save(run["id"], state="rejected")
             else:
                 save(run["id"], state="publishing")
-        return
+        return None
     if os.getenv("PAUSED", "false") == "true":
         STATUS["state"] = "paused"
-        return
+        return None
     previous = DB.execute("SELECT created,lane FROM runs ORDER BY created DESC LIMIT 1").fetchone()
     latest = previous[0] if previous else 0
     if (
@@ -398,7 +410,7 @@ def tick():
         and previous[1] != "smoke"
         and time.time() - latest < int(os.getenv("MIN_INTERVAL_SECONDS", "1800"))
     ):
-        return
+        return None
     # Waiting is healthy; external discovery is bounded, including after failures.
     if time.monotonic() < NEXT_IDLE_CHECK:
         return False
@@ -416,7 +428,7 @@ def tick():
     ):
         if pr in open_urls and dependency_repair(json.loads(payload or "{}").get("changes", [])):
             STATUS["state"] = "waiting_for_dependency_merge"
-            return
+            return None
     index = DB.execute("SELECT count(*) FROM runs").fetchone()[0]
     lane = "smoke" if index == 0 else list(LANES)[(index - 1) % len(LANES)]
     run_id = time.strftime("%y%m%d%H%M%S") + "-" + uuid.uuid4().hex[:5]
@@ -427,13 +439,17 @@ def tick():
     DB.commit()
     STATUS["state"] = "running"
     logging.info("Queued run %s lane=%s revision=%s", run_id, lane, revision[:12])
+    return None
 
 
 class Health(BaseHTTPRequestHandler):
-    def do_GET(self):
+    """HTTP handler exposing swe-mini health endpoints."""
+
+    def do_GET(self) -> None:
+
         if self.path in ("/healthz", "/livez", "/dependencies"):
             # External API failures cannot be repaired by restarting this process.
-            alive = time.time() - STATUS["last_tick"] < 180
+            alive = time.time() - cast("float", STATUS["last_tick"]) < 180
             ready = alive and (self.path != "/dependencies" or not STATUS["error"])
             self.send_response(200 if ready else 503)
             payload = json.dumps(STATUS).encode()
@@ -455,11 +471,19 @@ class Health(BaseHTTPRequestHandler):
         pass
 
 
-def run_once():
+def run_once() -> None:
     try:
         if tick() is not False:
             STATUS["error"] = ""
-    except Exception as exc:
+    except (
+        client.ApiException,
+        requests.RequestException,
+        sqlite3.OperationalError,
+        ValueError,
+        KeyError,
+        TypeError,
+        OSError,
+    ) as exc:
         # Never log bodies, tokens or raw third-party error responses.
         STATUS["error"] = type(exc).__name__
         response = getattr(exc, "response", None)

@@ -3,7 +3,7 @@ No new assignment, worktree or git operations. Preserve history and record linea
 """
 import fcntl,json,pathlib,runpy,sys,uuid,os
 
-def main(lane):
+def main(lane) -> None:
  d=runpy.run_path(str(pathlib.Path(__file__).with_name('worker-dispatch.py')))
  api=d['api']
  parent=d['M']

@@ -1,8 +1,30 @@
 """Rehydrate only the empty worker pod's scratch volume. Never import worker files on host."""
 import hashlib, subprocess
+from collections.abc import Sequence
+from pathlib import Path
+from typing import Protocol
+
+class _Completed(Protocol):
+ returncode: int
+ stderr: str
+
+class _Runner(Protocol):
+ def __call__(
+  self,
+  role: str,
+  args: Sequence[str],
+  data: str | bytes | None = None,
+  timeout: int = 60,
+  *,
+  ok: bool = ...,
+ ) -> _Completed: ...
+
+class _Pilot(Protocol):
+ R: Path
+ K: _Runner
 PIN='5446e880afaaf2e640fa4e1f7fac54b3100aa67e20adc8327e744fd8fd7aa46e'
 
-def ensure(c):
+def ensure(c: _Pilot):
  for role in ('judge','author'):
   args=['kubectl','-n','openhands','exec','-i','deploy/pi-monori-'+role,'-c','sandbox','--']
   p=c.K(role,['test','-x','/scratch/monori/.venv/bin/python'],ok=False)

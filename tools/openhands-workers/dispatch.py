@@ -4,11 +4,11 @@ H=pathlib.Path.home()
 M='1ab3985a-2193-4177-8dd2-8ec7d54dbfeb'
 Q='51a35822-a870-43cc-a775-fd5e662f0039'
 key=(H/'.openhands/agent-canvas/api-key.txt').read_text().strip()
-def api(p,b=None,method=None):
+def api(p,b=None,method=None) -> dict[str, object]:
  r=urllib.request.Request('http://127.0.0.1:8000/api/'+p,headers={'X-Session-API-Key':key,'Content-Type':'application/json'},method=method,data=None if b is None else json.dumps(b).encode())
  return json.load(urllib.request.urlopen(r,timeout=30))
-def git(path,*args):return subprocess.check_output(['git','-C',str(path),*args],text=True).strip()
-def main():
+def git(p,*args)->str:return subprocess.check_output(["git","-C",str(p),*args],text=True).strip()
+def main() -> None:
  mode=sys.argv[1]
  assert mode in ('mutation','qa')
  parent=M if mode=='mutation' else Q

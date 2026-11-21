@@ -4,6 +4,8 @@ from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from pathlib import Path
 slot=threading.BoundedSemaphore(1)
 class Handler(BaseHTTPRequestHandler):
+ """HTTP handler relaying chat completions to the in-cluster model."""
+
  def log_message(self,*a):pass
  def do_POST(self):
   if self.path!='/v1/chat/completions' or self.headers.get('Transfer-Encoding'):

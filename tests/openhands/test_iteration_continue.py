@@ -1,9 +1,12 @@
+"""Tests for OpenHands max-iteration resume eligibility logic."""
 import importlib.util,pathlib,unittest
 p=pathlib.Path(__file__).resolve().parents[2]/'charts/openhands/files/continue_iterations.py'
 s=importlib.util.spec_from_file_location('resume',p)
 m=importlib.util.module_from_spec(s)
 s.loader.exec_module(m)
 class Resume(unittest.TestCase):
+ """Tests for iteration resume behavior at boundaries."""
+
  def test_exact_boundary(self):
   e=dict(kind='ConversationErrorEvent',source='environment',code='MaxIterationsReached',id='one')
   self.assertTrue(m.eligible('error',e))
@@ -21,11 +24,11 @@ class Resume(unittest.TestCase):
   self.assertIsNone(m.final_message([ev('agent','[БЛОКЕР #509] нужна авторизация')]))
  def test_quoted_stop_in_qa_plan_is_not_a_stop(self):
   def event(text):return [{'kind':'MessageEvent','source':'agent','id':'qa-turn','llm_message':{'content':[{'type':'text','text':text}]}}]
-  self.assertEqual(m.final_message(event('Ограничение внутреннее, не [БЛОКЕР QA]. Следующий шаг — пагинация.'),True),'qa-turn')
+  assert m.final_message(event('Ограничение внутреннее, не [БЛОКЕР QA]. Следующий шаг — пагинация.'), True) == 'qa-turn'
   for marker in ('[ИТОГ QA]','[БЛОКЕР QA]'):
-   self.assertIsNone(m.final_message(event('\n'+marker+' Причина или доказательства.'),True))
+   assert m.final_message(event('\n' + marker + ' Причина или доказательства.'), True) is None
  def test_read_probe_is_narrow(self):
-  def event(t):return dict(id='qa',kind='MessageEvent',source='agent',llm_message={'content':[{'text':t}]})
+  def event(t):return {'id': 'qa','kind': 'MessageEvent','source': 'agent','llm_message': {'content':[{'text':t}]}}
   msg='[БЛОКЕР QA] Жду разрешения хост-рантайма на чтение QA_PROGRESS.md'
   self.assertEqual(m.ledger_probe([event(msg)]),'qa')
   self.assertIsNone(m.ledger_probe([event(msg+' EACCES')]))
@@ -37,10 +40,10 @@ class Resume(unittest.TestCase):
   self.assertFalse(m.bridge_disconnected(dict(e,code='LLMAuthenticationError')))
   self.assertFalse(m.bridge_disconnected(dict(e,detail="Connection error. model group 'v-deepseek-uc'")))
  def test_worker_resume(self):
-  def ev(t):return dict(kind='MessageEvent',source='agent',id='p',llm_message={'content':[{'text':t}]})
-  self.assertEqual(m.pending_worker('finished',[ev('I need to look at the tests.')],0),('plan','p'))
-  for t in ['I need to get permission.', 'Done: https://github.com/example', '[БЛОКЕР QA]','Tests passed.']:self.assertIsNone(m.pending_worker('finished',[ev(t)],0))
-  self.assertIsNone(m.pending_worker('paused',[ev('I need to read tests.')],0))
+  def ev(t):return {'kind': 'MessageEvent','source': 'agent','id': 'p','llm_message': {'content':[{'text':t}]}}
+  assert m.pending_worker('finished', [ev('I need to look at the tests.')], 0) == ('plan', 'p')
+  for t in ['I need to get permission.', 'Done: https://github.com/example', '[БЛОКЕР QA]','Tests passed.']:assert m.pending_worker('finished', [ev(t)], 0) is None
+  assert m.pending_worker('paused', [ev('I need to read tests.')], 0) is None
  def test_capacity_restart_release_and_pause(self):
   import tempfile
   with tempfile.TemporaryDirectory() as d:

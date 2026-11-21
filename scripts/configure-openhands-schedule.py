@@ -44,7 +44,7 @@ else:
 assert result['state']=='INACTIVE' and result['setup_script_path'] is None and result['entrypoint']=='python main.py'
 print(json.dumps({'id':result['id'],'state':result['state'],'trigger':result['trigger'],'model_calls_started':False}))
 '''
-    subprocess.run(['kubectl','-n','openhands','exec','-i','openhands-0','--','python','-c',code],input=json.dumps({'desired':desired,'apply':a.apply}),text=True,check=True)
+    subprocess.run(["kubectl","-n","openhands","exec","-i","openhands-0","--","python","-c",code],input=json.dumps({"desired":desired,"apply":a.apply}),text=True,check=True)
 
 
-if __name__=='__main__':main()
+if __name__=="__main__":main()

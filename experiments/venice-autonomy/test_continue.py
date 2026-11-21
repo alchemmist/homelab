@@ -1,3 +1,4 @@
+"""Tests for the continuation policy of the repository runner."""
 import unittest
 
 from attempt import continue_openhands
@@ -5,10 +6,13 @@ from repository_runner import apply_continuation_policy
 
 
 class Conversation:
-    def __init__(self, failures=0):
+    """Fake agent conversation with scriptable failures."""
+
+    def __init__(self, failures=0) -> None:
+
         self.failures = failures
         self.runs = 0
-        self.messages = []
+        self.messages: list[str] = []
 
     def run(self):
         self.runs += 1
@@ -20,7 +24,7 @@ class Conversation:
 
 
 def facts(continue_value):
-    def acceptance(sandbox, directory, round_number):
+    def acceptance(sandbox, directory, round_number) -> dict[str, object]:
         return {
             "round": round_number,
             "continue": continue_value,
@@ -31,6 +35,8 @@ def facts(continue_value):
 
 
 class ContinueOpenHandsTests(unittest.TestCase):
+    """Tests for the continue_openhands acceptance handshake."""
+
     def test_acceptance_none_runs_once_without_messages(self):
         conversation = Conversation()
         continue_openhands(conversation, None, None, None)
@@ -47,7 +53,7 @@ class ContinueOpenHandsTests(unittest.TestCase):
         conversation = Conversation()
         decisions = iter([True, False])
 
-        def acceptance(sandbox, directory, round_number):
+        def acceptance(sandbox, directory, round_number) -> dict[str, object]:
             return {"round": round_number, "continue": next(decisions)}
 
         continue_openhands(conversation, None, None, acceptance)
@@ -90,6 +96,8 @@ class ContinueOpenHandsTests(unittest.TestCase):
 
 
 class ContinuationPolicyTests(unittest.TestCase):
+    """Tests for apply_continuation_policy decisions."""
+
     def test_real_rejection_continues_until_two_unchanged_rounds(self):
         first = apply_continuation_policy({"accepted": False, "consecutive_no_progress": 0}, 0)
         second = apply_continuation_policy({"accepted": False, "consecutive_no_progress": 1}, 1)

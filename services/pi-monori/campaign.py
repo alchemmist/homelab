@@ -1,6 +1,8 @@
 """Full report campaign. Trusted scheduler on socrat-0; no agent or pytest on host."""
 import ast,collections,contextlib,difflib,fcntl,gzip,hashlib,json,os,re,sqlite3,subprocess,sys,time
+from collections.abc import Sequence
 from pathlib import Path
+from typing import TypedDict
 import dispatcher as pilot
 from artifact import artifact_response
 R=pilot.ROOT
@@ -15,7 +17,7 @@ K=pilot.k
 
 ISSUE=509
 
-def query(q,a=()):
+def query(q: str,a: Sequence[object]=()):
  with contextlib.closing(sqlite3.connect(D,timeout=15)) as db,db:
   db.row_factory=sqlite3.Row
   return [dict(x) for x in db.execute(q,a)]
@@ -53,20 +55,20 @@ def init():
     uid=next((k for k in C if k.endswith('.x_'+name)),None)
     if uid:query("update tasks set state='published',pr=?,base=?,note=? where id=? and state='queued'",(json.loads(published[0][0])['pr'],v['base'],'pilot proof',uid.rsplit('.',1)[0]+'.'+v['mutmut']))
 
-def mark(t,state,note='',base=None,pr=None):
+def mark(t: Task,state: str,note: str='',base: str | None=None,pr: int | None=None):
  q=(state,note[:1500],base or t['base'],pr or t['pr'],time.time(),t['id'])
  query('update tasks set state=?,note=?,base=?,pr=?,updated=? where id=?',q)
  query('insert into audit values(?,?,?,?)',(time.time(),t['id'],state,note[:1500]))
  print(time.strftime('%FT%T%z'),state,t['id'],note[:120].replace('\n',' '),flush=True)
-def key(t):return hashlib.sha256(t['id'].encode()).hexdigest()[:12]
-def remote_json(path):
+def key(t: Task):return hashlib.sha256(t['id'].encode()).hexdigest()[:12]
+def remote_json(path: str):
  # Public GET only; no publisher/host credentials in workers.
  import urllib.request
  with urllib.request.urlopen(urllib.request.Request('https://api.github.com/repos/alchemmist/monori/'+path,headers={'User-Agent':'socrat-campaign'}),timeout=15) as r:return json.load(r)
 def git(*a):return pilot.cmd(['git','--git-dir=base.git',*a]).stdout
-def source(sha,file):return git('show',sha+':'+file)
+def source(sha: str,file: str):return git('show',sha+':'+file)
 
-def patch(t,sha):
+def patch(t: Task,sha: str):
  f=C[t['fam']]
  file=f['file']
  s=source(sha,file)
@@ -76,7 +78,7 @@ def patch(t,sha):
  if s.count(old)!=1:raise ValueError('Generated function body not unique/exact on current base; refresh required')
  return file,s,s.replace(old,mut,1),''.join(difflib.unified_diff(old.splitlines(True),mut.splitlines(True),n=3))
 
-def select_suite(t,sha):
+def select_suite(t: Task,sha: str):
  mod=C[t['fam']]['file']
  leaf=Path(mod).stem
  func=t['fam'].split('.')[-1].split('ǁ')[-1]
@@ -93,18 +95,18 @@ def select_suite(t,sha):
  direct=[p for p in top if p in imports|refs or leaf in Path(p).stem]
  return (direct[:6] or [area]),area
 
-def sandbox_write(path,text):pilot.write('judge',J+path,text)
+def sandbox_write(path: str,text: str):pilot.write('judge',J+path,text)
 def reset_source(src,original):
  sandbox_write(src,original)
  K('judge',['rm','-rf',J+str(Path(src).parent/'__pycache__')])
-def tests(paths,limit=250):
+def tests(paths: Sequence[str],limit: int=250):
  # Timeout INSIDE the pod, including children, not just the kubectl client.
  r=K('judge',['sh','-ec','cd /scratch/monori; export PYTHONPATH=/scratch PYTHONDONTWRITEBYTECODE=1;exec timeout -k 5 "$1" .venv/bin/python -m pytest -q --tb=short --disable-warnings -m "not integration" "${@:2}"'.replace('"${@:2}"','"$@"').replace('exec timeout -k 5 "$1"','budget=$1;shift;exec timeout -k 5 "$budget"'),'sh',str(limit),*paths],timeout=limit+25,ok=False)
  return r.returncode,r.stdout[-5000:]
-def green(p):return p[0]==0 and bool(re.search(r'\b[1-9]\d* passed',p[1]))
-def killed(p):return p[0]==1 and bool(re.search(r'\b[1-9]\d* failed',p[1]))
+def green(p: tuple[int, str]):return p[0]==0 and bool(re.search(r'\b[1-9]\d* passed',p[1]))
+def killed(p: tuple[int, str]):return p[0]==1 and bool(re.search(r'\b[1-9]\d* failed',p[1]))
 
-def install_base(sha):
+def install_base(sha: str):
  """Stream tracked files only. No untrusted tar input on the SSH host."""
  for file in ('pyproject.toml','server/pyproject.toml','common/pyproject.toml','ci/pyproject.toml'):
   if source(sha,file)!=source(BASE0,file):raise RuntimeError('dependency drift: rebuild locked offline verifier before admitting this base')
@@ -116,7 +118,7 @@ def install_base(sha):
  # Author fetches public main; no host key or git credential is passed in.
  K('author',['sh','-ec','git --git-dir=/scratch/base.git cat-file -e "$1^{commit}" 2>/dev/null || git --git-dir=/scratch/base.git fetch --depth=1 https://github.com/alchemmist/monori.git main','sh',sha])
 
-def candidate_guard(text,src):
+def candidate_guard(text: str,src: str):
  if not 40<len(text)<20000:raise ValueError('missing/oversized candidate')
  if re.search(r'#\s*(?:type:\s*ignore|noqa|nosec)',text):raise ValueError('repo forbids lint/type suppressions')
  tree=ast.parse(text)
@@ -222,7 +224,7 @@ def try_pi(t,sha,mid,detail,oldtests,folder,repair=None):
    if event not in ('published','update_uncertain'):mark(t,'published','CI repair attempt did not meet proof; PR remains open',sha,t['pr'])
   K('author',['git','--git-dir=/scratch/base.git','worktree','remove','--force',wt],ok=False)
 
-def prove(t,sha,dest,text,oldtests):
+def prove(t: Task,sha: str,dest: str,text: str,oldtests: list[str]):
  src,orig,mut,_=patch(t,sha)
  reset_source(src,orig)
  try:
@@ -242,7 +244,7 @@ def prove(t,sha,dest,text,oldtests):
   reset_source(src,orig)
   K('judge',['rm','-f',J+dest])
 
-def screen(t,sha):
+def screen(t: Task,sha: str):
  try:src,orig,mut,detail=patch(t,sha)
  except (ValueError,KeyError):
   mark(t,'catalog_drift','Cannot apply exact mutation to current main',sha)
@@ -281,7 +283,7 @@ def screen(t,sha):
  mark(t,'survived',p[1].splitlines()[-1],sha)
  try_pi(t,sha,t['id'],detail,oldtests,A/key(t))
 
-def publish(t,sha):
+def publish(t: Task,sha: str):
  folder=A/key(t)
  receipt=json.loads((folder/'proof.json').read_text())
  text=(folder/'test.py.txt').read_text()
@@ -307,7 +309,7 @@ def publish(t,sha):
  (folder/'publication.json').write_text(json.dumps(obj))
  mark(t,'published',obj['head'],sha,obj['pr'])
 
-def reconcile(prs,sha):
+def reconcile(prs: Sequence[Pull],sha: str):
  open_by={p['number']:p for p in prs}
  # Repair lost acknowledgements by unique title, never replay a blind create.
  for t in query("select * from tasks where state='publication_uncertain'"):
@@ -319,7 +321,7 @@ def reconcile(prs,sha):
   p=remote_json('pulls/'+str(t['pr']))
   if p['state']=='closed':mark(t,'merged' if p['merged'] else 'closed_unmerged','GitHub reconciliation; full rerun still required',sha,t['pr'])
 
-def repair_one(prs,sha):
+def repair_one(prs: Sequence[Pull],sha: str):
  bynum={p['number']:p for p in prs}
  now=time.time()
  for t in query("select * from tasks where state='published' and pr is not null order by updated"):
@@ -349,7 +351,7 @@ def repair_one(prs,sha):
   try_pi(t,sha,t['id'],diff,olds,folder,{'dest':dest,'previous':previous,'head':head,'fails':fails})
   return
 
-def census(sha,prs):
+def census(sha: str,prs: Sequence[Pull]):
  # No blanket merge; only after queued work drained and GitHub writes reconciled.
  if sha==BASE0 or any(p['head']['ref'].startswith(f'openhands/issue-{ISSUE}/') for p in prs):return False
  if query("select id from tasks where state in ('published','verified','publishing','publication_uncertain','update_uncertain') limit 1"):return False
@@ -416,7 +418,8 @@ def loop():
     reconcile(prs,sha)
     lastfetch=time.time()
     try:repair_one(prs,sha)
-    except Exception as ex:print('CI repair deferred',type(ex).__name__,str(ex)[:180],flush=True)
+    except (OSError,ValueError,RuntimeError,sqlite3.Error,subprocess.SubprocessError) as ex:
+     print('CI repair deferred',type(ex).__name__,str(ex)[:180],flush=True)
    if query("select id from tasks where state='transport_wait' and updated<? limit 1",(time.time()-180,)):
     if K('author',['true'],ok=False).returncode==0:
      query("update tasks set state='queued' where state='transport_wait' and pr is null and updated<?",(time.time()-180,))

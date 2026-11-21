@@ -1,15 +1,56 @@
 """Closed set of GitHub actions. Never execute candidate code or accept URLs/refs."""
+
+import base64
+import hashlib
 import hmac
-import base64, json, re, uuid
+import json
+import re
+import uuid
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from urllib.request import Request, build_opener, HTTPRedirectHandler
+from typing import TYPE_CHECKING, cast
 from urllib.error import HTTPError
+from urllib.request import HTTPRedirectHandler, Request, build_opener
+
+if TYPE_CHECKING:
+    import types
+
+REPO = "alchemmist/monori"
+PREFIX = "openhands/issue-509/"
+
+
+REPO = "alchemmist/monori"
+PREFIX = "openhands/issue-509/"
+
 
 REPO='alchemmist/monori'
 PREFIX='openhands/issue-509/'
 class NoRedirect(HTTPRedirectHandler):
-    def redirect_request(self,*args):return None
+    """Redirect handler that refuses to follow HTTP redirects."""
+
+    def redirect_request(self, *args):
+        return None
+
+
+def api(path, data=None, method=None):
+    url = "https://api.github.com/" + (
+        "graphql" if path == "graphql" else "repos/" + REPO + "/" + path
+    )
+    token = Path("/credential/token").read_text().strip()
+    req = Request(
+        url,
+        method=method,
+        data=json.dumps(data).encode() if data is not None else None,
+        headers={
+            "Authorization": "Bearer " + token,
+            "Content-Type": "application/json",
+            "User-Agent": "openhands-scoped-publisher",
+        },
+    )
+    with build_opener(NoRedirect).open(req, timeout=20) as resp:
+        raw = resp.read()
+        return json.loads(raw) if raw else {}
+
 
 def api(path, data=None,method=None):
     url='https://api.github.com/'+('graphql' if path=='graphql' else 'repos/'+REPO+'/'+path)
@@ -20,10 +61,14 @@ def api(path, data=None,method=None):
         return json.loads(raw) if raw else {}
 
 def check(condition):
-    if not condition:raise ValueError('Invalid or disallowed operation')
+    if not condition:
+        raise ValueError("Invalid or disallowed operation")
 
-QA='openhands/qa-issue-'
-MUT='openhands/issue-'
+
+QA = "openhands/qa-issue-"
+MUT = "openhands/issue-"
+
+
 def mutation_target(issue):
     check(type(issue) is int and 0<issue<2**31)
     i=api('issues/'+str(issue))
@@ -36,7 +81,7 @@ def clean_text(t,lo,hi):
     return t
 
 def qa_issue(x):
-    import io,hashlib
+    import io, hashlib
     from PIL import Image
     check(set(x)-{'frames'}=={'action','key','title','kind','head','steps','expected','actual','pngs','reviewed_synthetic'} and x['reviewed_synthetic'] is True)
     key=x['key']
@@ -62,12 +107,17 @@ def qa_issue(x):
     video=None
     if 'frames' in x:
         import sys
-        if '/code' not in sys.path:sys.path.insert(0,'/code')
+
+        if "/code" not in sys.path:
+            sys.path.insert(0, "/code")
         from qa_video import encode
-        video=encode(x['frames'])
+
+        video = encode(x["frames"])
     # Stable marker; check open AND closed issues before writing. Fail closed on pagination ceiling.
-    for page in range(1,21):
-        items=api(f'issues?state=all&sort=created&direction=desc&per_page=100&page={page}')
+    for page in range(1, 21):
+        items = api(
+            f"issues?state=all&sort=created&direction=desc&per_page=100&page={page}"
+        )
         for item in items:
             if 'pull_request' not in item and item['user']['login']=='alchemmist' and marker in (item['body'] or ''):
                 return {'issue':item['number'],'url':item['html_url'],'existing':True}
@@ -108,6 +158,7 @@ def owned_pr(n,sha):
     p=api('pulls/'+str(n))
     check(p['state']=='open' and p['base']['ref']=='main' and p['head']['repo']['full_name']==REPO and p['user']['login']=='alchemmist' and re.fullmatch('(?:'+MUT+'[1-9][0-9]*/|'+QA+'[0-9]+/)[a-f0-9]{32}',p['head']['ref']) and p['head']['sha']==sha)
     return p
+
 
 def review(x):
     p=owned_pr(x['pr'],x['head'])

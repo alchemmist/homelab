@@ -14,9 +14,9 @@ DB='openhands/automation/automations.db'
 CONV='openhands/agent-canvas/conversations/'
 IDS=('1ab3985a219341778dd28ec7d54dbfeb','51a35822a87043cca775fd5e662f0039')
 HAND='workspace/the-loop-demo/HANDOFF.md'
-def b64(b):return base64.b64encode(b).decode('ascii')
+def b64(b):return base64.b64encode(b).decode("ascii")
 def file_digest(p):
-    with p.open('rb') as f:return hashlib.file_digest(f,'sha256').hexdigest()
+    with p.open("rb") as f:return hashlib.file_digest(f,"sha256").hexdigest()
 
 def main():
     os.umask(0o077)
@@ -50,7 +50,7 @@ def main():
             self.hash=hashlib.sha256()
             self.done=False
         def read(self,size):
-            if self.done:return b''
+            if self.done:return b""
             buf=self.f.read(size)
             if not buf:
                 self.decrypt.finalize()
@@ -60,7 +60,7 @@ def main():
             self.hash.update(data)
             return data
     # First authenticate the complete persisted ciphertext BEFORE decoding its archive.
-    with part.open('rb') as f:
+    with part.open("rb") as f:
         r=Reader(f)
         while r.read(CHUNK):pass
         assert r.done and r.hash.digest()==digest.digest()
@@ -70,7 +70,7 @@ def main():
     count=0
     with part.open('rb') as f:
         r=Reader(f)
-        with tarfile.open(fileobj=r,mode='r|gz',bufsize=256*1024) as tf:
+        with tarfile.open(fileobj=r,mode="r|gz",bufsize=256*1024) as tf:
             for m in tf:
                 count+=1
                 if not m.isfile():continue
@@ -99,4 +99,4 @@ def main():
         dst.flush()
         os.fsync(dst.fileno())
     print(json.dumps(report),flush=True)
-if __name__=='__main__':main()
+if __name__=="__main__":main()

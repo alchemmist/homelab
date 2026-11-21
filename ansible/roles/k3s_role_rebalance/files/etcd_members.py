@@ -1,3 +1,5 @@
+"""Reconcile k3s HA etcd membership across the cluster nodes."""
+
 import argparse
 import json
 import subprocess
@@ -16,6 +18,8 @@ TLS = "/var/lib/rancher/k3s/server/tls/etcd/"
 
 
 class Etcd:
+    """etcd member client that shells out to etcdctl."""
+
     def call(self, args, endpoint="https://127.0.0.1:2379", structured=True):
         command = [
             "etcdctl",

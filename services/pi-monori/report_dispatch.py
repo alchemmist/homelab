@@ -1,5 +1,5 @@
 """Trusted systemd consumer. Only enrolled repo adapters; never execute issue text here."""
-import fcntl, json, os, re, subprocess, sys, time
+import fcntl, json, os, re, sqlite3, subprocess, sys, time
 import campaign as c
 import restore_worker
 import lifecycle_worker
@@ -54,7 +54,7 @@ def main():
  c.query("update tasks set state='publication_uncertain' where state='publishing'")
  cache=0
  nextrepair=0
- def sync(active=''):
+ def sync(active='') -> None:
   tasks={x['id']:x for x in c.query('select id,state,pr from tasks')}
   changes=[]
   for row in rows:

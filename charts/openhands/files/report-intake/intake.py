@@ -4,23 +4,23 @@ from contextlib import closing
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
-SECTIONS = {'Survivors by area', 'No coverage by area', 'Timeouts'}
+SECTIONS = {"Survivors by area", "No coverage by area", "Timeouts"}
 
 def families(body):
     section = None
     for line in body.splitlines():
-        if line.startswith('#'):
-            section = line.removeprefix('### ').split(' (')[0]
+        if line.startswith("#"):
+            section = line.removeprefix("### ").split(" (")[0]
         if section not in SECTIONS:
             continue
-        hit = re.fullmatch(r'(?:(\d{1,6}) )?([\wǁ]+(?:\.[\wǁ]+)+)', line.strip())
-        if hit and (hit[1] or section == 'Timeouts' and re.search(r'__mutmut_\d+$', hit[2])):
+        hit = re.fullmatch(r"(?:(\d{1,6}) )?([\wǁ]+(?:\.[\wǁ]+)+)", line.strip())
+        if hit and (hit[1] or section == "Timeouts" and re.search(r"__mutmut_\d+$", hit[2])):
             yield section, hit[2], int(hit[1] or 1)
 
 def ingest(envelope, registry, secret, db):
-    raw = base64.b64decode(envelope['raw'], validate=True)
-    sig = 'sha256=' + hmac.new(secret, raw, hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(sig, envelope['signature']):
+    raw = base64.b64decode(envelope["raw"], validate=True)
+    sig = "sha256=" + hmac.new(secret, raw, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(sig, envelope["signature"]):
         raise PermissionError
     e = json.loads(raw)
     r = e['repository']
@@ -70,9 +70,11 @@ def lifecycle(path,x,db,secret,registry):
         known={r[0] for r in c.execute("select distinct pr from outputs where state='published' and pr is not null")}
         targets=known if ids is None else known.intersection(ids)
         for n in targets:c.execute("insert into review_queue values(?,?,'pending','','',0) on conflict(pr) do update set dirty=excluded.dirty",(n,time.time()))
-        return {'event':event,'enrolled':sorted(targets)}
+        return {"event":event,"enrolled":sorted(targets)}
 
 class Handler(BaseHTTPRequestHandler):
+    """HTTP handler that ingests report payloads."""
+
     def do_POST(self):
         try:
             n=int(self.headers.get('Content-Length',0))
@@ -90,4 +92,4 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(out).encode())
     def log_message(self,*args):pass
-if __name__=='__main__': HTTPServer(('',8091),Handler).serve_forever()
+if __name__=="__main__": HTTPServer(("",8091),Handler).serve_forever()

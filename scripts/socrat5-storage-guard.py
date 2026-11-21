@@ -8,9 +8,54 @@ import os
 import subprocess
 import time
 from pathlib import Path
+from typing import TypedDict
 
 NAME = "homelab-socrat5-local-storage"
 KINDS = ("ValidatingAdmissionPolicy", "ValidatingAdmissionPolicyBinding")
+
+
+class ManifestDoc(TypedDict):
+    """Minimal typed view of one parsed admission-policy manifest object."""
+
+    kind: str
+    metadata: dict[str, object]
+    spec: object
+
+
+def require_expected_scope(docs: list[ManifestDoc]) -> None:
+    """Refuse manifests outside the two owned admission-policy objects."""
+    if [o["kind"] for o in docs] != list(KINDS) or any(o["metadata"]["name"] != NAME for o in docs):
+        raise ValueError("Unexpected scope")
+
+
+def apply_missing(
+    missing: list[ManifestDoc], before: list[object], docs: list[ManifestDoc]
+) -> None:
+    """Create absent objects once under a private recovery receipt directory."""
+    os.umask(0o077)
+    receipt = Path("/var/lib/homelab-recovery") / (
+        "socrat5-storage-guard-" + datetime.datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%S%f")
+    )
+    receipt.mkdir(mode=0o700)
+    with (receipt / "before-and-desired.json").open("x") as f:
+        json.dump({"before": before, "desired": docs}, f)
+        f.flush()
+        os.fsync(f.fileno())
+    for o in missing:
+        # Native create is the absent-object CAS; never apply/replace a foreign live policy.
+        actual = kub(["create", "-f", "-", "-o", "json"], o)
+        (receipt / (o["kind"] + ".accepted.json")).write_text(json.dumps(actual))
+        if o["kind"] == KINDS[0]:
+            current = None
+            for _ in range(15):
+                current = kub(["get", KINDS[0], NAME, "-o", "json"])
+                if "typeChecking" in current.get("status", {}):
+                    break
+                time.sleep(1)
+            if "typeChecking" not in current.get("status", {}):
+                raise ValueError("CEL type checking not complete; binding not created")
+            if current.get("status", {}).get("typeChecking", {}).get("expressionWarnings"):
+                raise ValueError("CEL type warnings; binding not created")
 
 
 def kub(args, document=None):
@@ -55,8 +100,7 @@ def main():
     p.add_argument("--apply", action="store_true")
     args = p.parse_args()
     docs = json.loads(args.manifest.read_text())
-    if [o["kind"] for o in docs] != list(KINDS) or any(o["metadata"]["name"] != NAME for o in docs):
-        raise ValueError("Unexpected scope")
+    require_expected_scope(docs)
     before = [kub(["get", o["kind"], NAME, "--ignore-not-found", "-o", "json"]) for o in docs]
     for want, have in zip(docs, before):
         if have:
@@ -65,30 +109,7 @@ def main():
     if before[1] and not before[0]:
         raise ValueError("Partial live binding: inspect first")
     if args.apply and missing:
-        os.umask(0o077)
-        receipt = Path("/var/lib/homelab-recovery") / (
-            "socrat5-storage-guard-"
-            + datetime.datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%S%f")
-        )
-        receipt.mkdir(mode=0o700)
-        with (receipt / "before-and-desired.json").open("x") as f:
-            json.dump({"before": before, "desired": docs}, f)
-            f.flush()
-            os.fsync(f.fileno())
-        for o in missing:
-            # Native create is the absent-object CAS; never apply/replace a foreign live policy.
-            actual = kub(["create", "-f", "-", "-o", "json"], o)
-            (receipt / (o["kind"] + ".accepted.json")).write_text(json.dumps(actual))
-            if o["kind"] == KINDS[0]:
-                for _ in range(15):
-                    current = kub(["get", KINDS[0], NAME, "-o", "json"])
-                    if "typeChecking" in current.get("status", {}):
-                        break
-                    time.sleep(1)
-                if "typeChecking" not in current.get("status", {}):
-                    raise ValueError("CEL type checking not complete; binding not created")
-                if current.get("status", {}).get("typeChecking", {}).get("expressionWarnings"):
-                    raise ValueError("CEL type warnings; binding not created")
+        apply_missing(missing, before, docs)
     print(
         json.dumps(
             {"operations": len(missing), "apply": args.apply, "policy": NAME, "live_overwrites": 0}

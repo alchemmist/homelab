@@ -6,24 +6,27 @@ import types
 import unittest
 from unittest.mock import patch
 
-CODE = pathlib.Path(__file__).resolve().parents[2] / 'charts/openhands/files/pilot'
+CODE = pathlib.Path(__file__).resolve().parents[2] / "charts/openhands/files/pilot"
 
 
-def load():
-    m = types.ModuleType('pilot')
-    with patch.object(pathlib.Path, 'read_text', return_value=(CODE/'mutants.json').read_text()):
-        exec(compile((CODE/'loop.py').read_bytes(), 'loop.py', 'exec'), m.__dict__)
+def load() -> types.ModuleType:
+    m = types.ModuleType("pilot")
+    with patch.object(pathlib.Path, "read_text", return_value=(CODE/"mutants.json").read_text()):
+        exec(compile((CODE/"loop.py").read_bytes(), "loop.py", "exec"), m.__dict__)
     return m
 
 
 class Pilot(unittest.TestCase):
-    def test_restart_moves_to_second_card_once(self):
+    """Tests for the monori pilot restart behaviour."""
+
+    def test_restart_moves_to_second_card_once(self) -> None:
+
         with tempfile.TemporaryDirectory() as d:
             db = str(pathlib.Path(d)/'cards.db')
             published=[]
             prompts=[]
             chats={}
-            def api(path, body=None):
+            def api(path, body=None) -> "dict[str, object]":
                 if path.startswith('agent-profiles'):return {'profile':{'id':'p','llm_profile_ref':'v-deepseek-uc'}}
                 if path=='conversations':
                     chats[body['conversation_id']]='idle'
@@ -40,7 +43,7 @@ class Pilot(unittest.TestCase):
                 m=load()
                 m.DB=db
                 m.init()
-                def screen(c):
+                def screen(c, m=m) -> None:
                     mid=next(iter(m.CAT[c['name']]))
                     m.sql('insert into scans values(?,?,?)',(c['name'],mid,'survived'))
                     m.save(c,'queued',mid)
@@ -49,12 +52,12 @@ class Pilot(unittest.TestCase):
             self.assertEqual(len(set(prompts)),2)
             self.assertEqual(len(published),2)
 
-    def test_case_is_data_not_python(self):
+    def test_case_is_data_not_python(self) -> None:
         m=load()
         self.assertRaises(AssertionError,m.render,'day_number',{'input':{},'expected':1,'why':'candidate input'})
         self.assertRaises(ValueError,m.render,'_amount',{'input':2,'expected':2,'why':'candidate input','code':'assert True'})
 
-    def test_proleptic_gregorian_and_rejection_identity(self):
+    def test_proleptic_gregorian_and_rejection_identity(self) -> None:
         m=load()
         case={'input':'0000-02-29','expected':2,'why':'calendar fixture'}
         self.assertIn('0000-02-29',m.render('day_number',case))

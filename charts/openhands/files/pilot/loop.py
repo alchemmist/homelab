@@ -18,13 +18,13 @@ RUN='mutation-pilot-v2'
 ENV={'PATH':os.environ['PATH'],'HOME':'/scratch','UV_CACHE_DIR':'/scratch/uv-cache','PYTHONPATH':'/scratch','PYTHONDONTWRITEBYTECODE':'1','TZ':'UTC','LANG':'C.UTF-8'}
 
 def http(url,body=None,key=None):
-    headers={'Content-Type':'application/json','User-Agent':'monori-pilot'}
-    if key:headers['X-Session-API-Key']=key
+    headers={"Content-Type":"application/json","User-Agent":"monori-pilot"}
+    if key:headers["X-Session-API-Key"]=key
     with urlopen(Request(url,headers=headers,data=None if body is None else json.dumps(body).encode()),timeout=25) as r:return json.load(r)
-def api(route,body=None):return http('http://localhost:8000/api/'+route,body,Path('/session-key').read_text().strip())
+def api(route,body=None):return http("http://localhost:8000/api/"+route,body,Path("/session-key").read_text().strip())
 def run(cmd,success=True,timeout=150):
-    p=subprocess.run(cmd,cwd=REPO if REPO.exists() else '/scratch',env=ENV,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,timeout=timeout)
-    if success and p.returncode:raise RuntimeError(str(cmd[0])+' failed: '+p.stdout[-450:])
+    p=subprocess.run(cmd,cwd=REPO if REPO.exists() else "/scratch",env=ENV,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,timeout=timeout)
+    if success and p.returncode:raise RuntimeError(str(cmd[0])+" failed: "+p.stdout[-450:])
     return p
 
 def init():
@@ -39,7 +39,7 @@ def state():
     with contextlib.closing(sqlite3.connect(DB)) as d, d:
         d.row_factory=sqlite3.Row
         return [dict(r) for r in d.execute('select * from cards order by rowid')]
-def save(c,phase,note='',**kw):
+def save(c,phase,note="",**kw):
     fields={'state':phase,'detail':note[:1000],**kw}
     assert fields.keys()<={'state','detail','pr','due','cid','attempt'}
     with contextlib.closing(sqlite3.connect(DB)) as d, d:
@@ -79,10 +79,10 @@ def render(name,data):
         setup=f'    cell = Workbook().active.cell(1, 1, value={json.dumps(x,ensure_ascii=False) if isinstance(x,str) else repr(x)})\n'
     return f'# Copyright (c) 2026\n"""Regression coverage for {name.strip("_")}."""\n\n{imp}\n\n\ndef test_{name.strip("_")}_regression() -> None:\n{setup}    assert {call}'+(' is None' if y is None else f' == {y}')+'\n'
 
-def pair(data):return json.dumps([data['input'],data['expected']],ensure_ascii=False,separators=(',',':'))
+def pair(data):return json.dumps([data["input"],data["expected"]],ensure_ascii=False,separators=(",",":"))
 
 def rejected(name,mid,data):
-    return sql('select reason from rejections where name=? and mid=? and pair=?',(name,mid,pair(data)))
+    return sql("select reason from rejections where name=? and mid=? and pair=?",(name,mid,pair(data)))
 
 def measured(name,data):
     # Fixed trusted program; case data is passed as JSON argv, never as code.
@@ -113,7 +113,7 @@ def verify(c,data,chosen):
     testname='test_'+name.strip('_')+'_regression';
     def test(args):return run(pytest+args,False,timeout=120)
     try:
-        if test([dest]).returncode:raise ValueError('unmodified main returned '+measured(name,data)+'; expected '+json.dumps(data['expected']))
+        if test([dest]).returncode:raise ValueError("unmodified main returned "+measured(name,data)+"; expected "+json.dumps(data["expected"]))
         for mid,(a,b) in CAT[name].items():
             if mid!=chosen or fn.splitlines().count(a)!=1:continue
             mutated=fn.replace(a+'\n',b+'\n',1)
@@ -152,7 +152,7 @@ def screen(c):
     n=next(n for n in ast.parse(orig).body if isinstance(n,ast.FunctionDef) and n.name==name)
     fn=''.join(lines[n.lineno-1:n.end_lineno])
     seen=dict(sql('select mid,verdict from scans where name=?',(name,)))
-    def test():return run(['.venv/bin/python','-m','pytest','-q','--tb=no',*suite],False,120)
+    def test():return run([".venv/bin/python","-m","pytest","-q","--tb=no",*suite],False,120)
     baseline=test()
     if baseline.returncode or not re.search(r'\d+ passed',baseline.stdout):raise RuntimeError('baseline suite not green')
     if target(c):
@@ -180,11 +180,11 @@ def screen(c):
         file.write_text(orig)
         shutil.rmtree(file.parent/'__pycache__',ignore_errors=True)
 
-def current():return next((c for c in state() if c['state'] not in ('published','blocked','exhausted')),None)
+def current():return next((c for c in state() if c["state"] not in ("published","blocked","exhausted")),None)
 ROUTES={'screen':'screen','queued':'assign','authoring':'collect','proposed':'verify','verified':'publish'}
 def decision():
     c=current()
-    return ROUTES.get(c['state'],'hold') if c and c['due']<=time.time() and not LOCK.locked() else 'hold'
+    return ROUTES.get(c["state"],"hold") if c and c["due"]<=time.time() and not LOCK.locked() else "hold"
 
 def step(action):
     c=current()
@@ -278,10 +278,12 @@ def background(action):
     try:step(action)
     except Exception as ex:
         c=current()
-        if c and c['state']!='publishing':save(c,'blocked','Stage '+action+' failed: '+type(ex).__name__+' '+str(ex)[:250])
-        print('stage failure',action,type(ex).__name__,flush=True)
+        if c and c["state"]!="publishing":save(c,"blocked","Stage "+action+" failed: "+type(ex).__name__+" "+str(ex)[:250])
+        print("stage failure",action,type(ex).__name__,flush=True)
     finally:LOCK.release()
 class Handler(BaseHTTPRequestHandler):
+    """HTTP handler that accepts pilot progress reports."""
+
     def do_POST(self):
         action=self.path.lstrip('/')
         if action not in {*ROUTES.values(),'status','tick'} or self.headers.get('Transfer-Encoding') or int(self.headers.get('Content-Length',0))!=0:

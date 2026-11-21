@@ -1,7 +1,7 @@
 """Compile #509 report into durable assignments. Backlog != passed or admitted."""
 import json,re,pathlib,sys
 
-def plan(text):
+def plan(text: str):
     rows=[]
     section=None
     for line in text.splitlines():

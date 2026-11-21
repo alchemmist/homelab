@@ -1,3 +1,5 @@
+"""Tests for the wiki runtime bootstrap module."""
+
 import importlib.util
 import json
 from pathlib import Path
@@ -13,7 +15,7 @@ SPEC.loader.exec_module(BOOTSTRAP)
 
 
 class BootstrapTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.resources = {
             ("secret", "wiki-editor-git", "wiki"): {
                 "data": {"id_ed25519": BOOTSTRAP.encoded("private fixture")}
@@ -25,37 +27,35 @@ class BootstrapTests(unittest.TestCase):
         self.kube = Mock()
         self.kube.get.side_effect = lambda *key: self.resources.get(key)
 
-    def test_creates_only_isolated_resources_without_registry_credentials(self):
+    def test_creates_only_isolated_resources_without_registry_credentials(self) -> None:
         messages = BOOTSTRAP.bootstrap(self.kube)
         all_created = [call.args[0] for call in self.kube.create.call_args_list]
-        self.assertEqual(
-            [item["kind"] for item in all_created],
-            ["Namespace", "PersistentVolumeClaim", "Secret", "Secret"],
+        assert [item["kind"] for item in all_created] == [
+            "Namespace",
+            "PersistentVolumeClaim",
+            "Secret",
+            "Secret",
+        ]
+        assert [item["metadata"]["name"] for item in all_created] == [
+            "wiki",
+            "wiki-runtime-data",
+            "wiki-runtime-bootstrap",
+            "wiki-runtime-git",
+        ]
+        assert all_created[1]["metadata"]["annotations"]["helm.sh/resource-policy"] == "keep"
+        assert BOOTSTRAP.decoded(all_created[3]["data"]["known_hosts"]) == "github.com fixture"
+        assert not any(
+            item["kind"] in {"ServiceAccount", "Role", "RoleBinding"} for item in all_created
         )
-        self.assertEqual(
-            [item["metadata"]["name"] for item in all_created],
-            ["wiki", "wiki-runtime-data", "wiki-runtime-bootstrap", "wiki-runtime-git"],
+        assert not any(
+            "clusters.fleet.cattle.io" in call.args
+            or "ghcr-pull" in call.args
+            or "wiki-runtime-registry" in call.args
+            for call in self.kube.get.call_args_list
         )
-        self.assertEqual(
-            all_created[1]["metadata"]["annotations"]["helm.sh/resource-policy"], "keep"
-        )
-        self.assertEqual(
-            BOOTSTRAP.decoded(all_created[3]["data"]["known_hosts"]), "github.com fixture"
-        )
-        self.assertFalse(
-            any(item["kind"] in {"ServiceAccount", "Role", "RoleBinding"} for item in all_created)
-        )
-        self.assertFalse(
-            any(
-                "clusters.fleet.cattle.io" in call.args
-                or "ghcr-pull" in call.args
-                or "wiki-runtime-registry" in call.args
-                for call in self.kube.get.call_args_list
-            )
-        )
-        self.assertNotIn("token:with:colons", str(messages))
+        assert "token:with:colons" not in str(messages)
 
-    def test_repeated_run_never_rotates_bootstrap_or_existing_resources(self):
+    def test_repeated_run_never_rotates_bootstrap_or_existing_resources(self) -> None:
         BOOTSTRAP.bootstrap(self.kube)
         for call in self.kube.create.call_args_list:
             item = call.args[0]
@@ -67,25 +67,25 @@ class BootstrapTests(unittest.TestCase):
         self.kube.create.reset_mock()
         BOOTSTRAP.bootstrap(self.kube)
         self.kube.create.assert_not_called()
-        self.assertEqual(
-            self.resources["secret", "wiki-runtime-bootstrap", "wiki"]["data"]["token"], original
+        assert (
+            self.resources["secret", "wiki-runtime-bootstrap", "wiki"]["data"]["token"] == original
         )
 
-    def test_clean_install_can_skip_legacy_git(self):
+    def test_clean_install_can_skip_legacy_git(self) -> None:
         del self.resources["secret", "wiki-editor-git", "wiki"]
         del self.resources["configmap", "wiki-editor-hosts", "wiki"]
         messages = BOOTSTRAP.bootstrap(self.kube, skip_legacy_git=True)
-        self.assertIn("wiki/wiki-runtime-git: skipped", messages)
+        assert "wiki/wiki-runtime-git: skipped" in messages
         names = [call.args[0]["metadata"]["name"] for call in self.kube.create.call_args_list]
-        self.assertNotIn("wiki-runtime-git", names)
+        assert "wiki-runtime-git" not in names
 
-    def test_missing_sources_fail_before_any_creation(self):
+    def test_missing_sources_fail_before_any_creation(self) -> None:
         del self.resources["configmap", "wiki-editor-hosts", "wiki"]
         with self.assertRaises(BOOTSTRAP.BootstrapError):
             BOOTSTRAP.bootstrap(self.kube)
         self.kube.create.assert_not_called()
 
-    def test_invalid_existing_bootstrap_is_not_overwritten(self):
+    def test_invalid_existing_bootstrap_is_not_overwritten(self) -> None:
         self.resources["secret", "wiki-runtime-bootstrap", "wiki"] = {
             "data": {"token": BOOTSTRAP.encoded("short")}
         }

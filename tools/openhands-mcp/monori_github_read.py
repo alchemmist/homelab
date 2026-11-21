@@ -3,22 +3,22 @@ import json
 from urllib.request import Request, build_opener, HTTPRedirectHandler, ProxyHandler
 from mcp.server.mcpserver import MCPServer
 
-mcp = MCPServer('monori-github-read')
+mcp = MCPServer("monori-github-read")
 class NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, *args): return None
 
 
-def read(path):
-    req = Request('https://api.github.com/repos/alchemmist/monori/' + path,
-                  headers={'User-Agent':'socrat-monori-review','Accept':'application/vnd.github+json'})
+def read(path: str):
+    req = Request("https://api.github.com/repos/alchemmist/monori/" + path,
+                  headers={"User-Agent":"socrat-monori-review","Accept":"application/vnd.github+json"})
     with build_opener(ProxyHandler({}), NoRedirect()).open(req, timeout=12) as r:
         b = r.read(2_000_001)
-        if len(b)>2_000_000: raise ValueError('Response too large; not complete')
-        return json.loads(b), 'rel="next"' in r.headers.get('Link','')
+        if len(b)>2_000_000: raise ValueError("Response too large; not complete")
+        return json.loads(b), 'rel="next"' in r.headers.get("Link","")
 
 
-def positive(n):
-    if type(n) is not int or not 1<=n<=1_000_000_000: raise ValueError('Positive ID/page required')
+def positive(n: object) -> int:
+    if type(n) is not int or not 1<=n<=1_000_000_000: raise ValueError("Positive ID/page required")
     return n
 
 
@@ -31,7 +31,7 @@ def issue(number:int)->dict:
 
 
 @mcp.tool()
-def pr(number:int, section:str='summary', page:int=1)->dict:
+def pr(number:int, section:str="summary", page:int=1)->dict:
     """Read a Monori PR: summary, files, reviews, comments, checks or statuses. Pages of five. Not a readiness verdict."""
     n=positive(number)
     pg=positive(page)

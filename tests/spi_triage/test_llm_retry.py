@@ -8,29 +8,34 @@ from integrations import Model, HTTP
 
 
 class DurableRetryTests(unittest.TestCase):
+    """Tests for durable LLM retry behavior."""
+
     setUp = f.CoreTests.setUp
     tearDown = f.CoreTests.tearDown
 
-    def test_many_transient_failures_survive_restart_then_complete(self):
+    def test_many_transient_failures_survive_restart_then_complete(self) -> None:
         e = f.event()
         key = self.store.enqueue(e)["job_id"]
+        # The Retry-After hint is preserved verbatim across restarts.
+        retry_hint_seconds = 7200
+        expected_attempts = 21
         for _ in range(20):
-            self.assertEqual(self.store.claim()["job_id"], key)
-            self.store.fail(key, "LLM_HTTP_429", retry_after=7200)
+            assert self.store.claim()["job_id"] == key
+            self.store.fail(key, "LLM_HTTP_429", retry_after=retry_hint_seconds)
             r = self.store.get(key)
-            self.assertEqual(r["state"], "retry")
-            self.assertEqual(r["lease"], 0)
-            self.assertGreaterEqual(r["available"] - r["updated"], 7200)
-            self.assertEqual(self.store.claim()["job_id"], "")
+            assert r["state"] == "retry"
+            assert r["lease"] == 0
+            assert r["available"] - r["updated"] >= retry_hint_seconds
+            assert self.store.claim()["job_id"] == ""
             self.store = Store(self.store.path)
             with self.store.db() as c:
                 c.execute("update jobs set available=0 where id=?", (key,))
         self.store.claim()
         self.store.save(key, 4, {"done": True}, state="complete")
-        self.assertEqual(self.store.get(key)["state"], "complete")
-        self.assertEqual(self.store.get(key)["attempts"], 21)
+        assert self.store.get(key)["state"] == "complete"
+        assert self.store.get(key)["attempts"] == expected_attempts
 
-    def test_permanent_and_ambiguous_errors_still_stop(self):
+    def test_permanent_and_ambiguous_errors_still_stop(self) -> None:
         for index, code in enumerate(
             ["HTTP_429", "LLM_HTTP_400", "LLM_HTTP_401", "LLM_HTTP_403", "WRITE_NEEDS_REVIEW"]
         ):
@@ -39,31 +44,42 @@ class DurableRetryTests(unittest.TestCase):
                 c.execute("update jobs set attempts=50 where id=?", (key,))
             for i in range(8):
                 self.store.fail(key, code)
-                expected = "dead" if code == "WRITE_NEEDS_REVIEW" or i == 7 else "retry"
-                self.assertEqual(self.store.get(key)["state"], expected)
+                # Attempt indices are zero-based: the 8th attempt is the last.
+                last_attempt = 7
+                expected = "dead" if code == "WRITE_NEEDS_REVIEW" or i == last_attempt else "retry"
+                assert self.store.get(key)["state"] == expected
             self.store = Store(self.store.path)
             with self.store.db() as c:
-                self.assertEqual(
+                failure_budget_spent = 8
+                assert (
                     c.execute(
                         "select failures from job_failure_budget where job_id=?", (key,)
-                    ).fetchone()[0],
-                    8,
+                    ).fetchone()[0]
+                    == failure_budget_spent
                 )
 
-    def test_jitter_cap_and_retry_hint_validation(self):
+    def test_jitter_cap_and_retry_hint_validation(self) -> None:
         key = self.store.enqueue(f.event())["job_id"]
         with self.store.db() as c:
             c.execute("update jobs set attempts=10000 where id=?", (key,))
         self.store.fail(key, "LLM_UPSTREAM_TIMEOUT")
         r = self.store.get(key)
-        self.assertGreaterEqual(r["available"] - r["updated"], 3000)
-        self.assertLessEqual(r["available"] - r["updated"], 3600)
-        self.assertIsNone(Failure("x", float("nan")).retry_after)
-        self.assertEqual(Failure("x", 999999).retry_after, 86400)
+        # Jittered backoff stays within the bounded 50-60 minute window.
+        jittered_delay_floor = 3000
+        jittered_delay_ceiling = 3600
+        assert r["available"] - r["updated"] >= jittered_delay_floor
+        assert r["available"] - r["updated"] <= jittered_delay_ceiling
+        assert Failure("x", float("nan")).retry_after is None
+        # Retry-After hints are capped at one day.
+        retry_after_cap = 86400
+        assert Failure("x", 999999).retry_after == retry_after_cap
 
 
 class ModelRetryTests(unittest.TestCase):
-    def test_transport_classification_and_hint_preserved(self):
+    """Tests for model retry classification hints."""
+
+    def test_transport_classification_and_hint_preserved(self) -> None:
+
         for code in [
             "HTTP_429",
             "HTTP_503",
@@ -72,16 +88,17 @@ class ModelRetryTests(unittest.TestCase):
             "UPSTREAM_NETWORK_ERROR",
         ]:
             http = Mock()
-            http.request.side_effect = Failure(code, retry_after=91)
+            hint_seconds = 91
+            http.request.side_effect = Failure(code, retry_after=hint_seconds)
             with self.assertRaises(Failure) as caught:
                 Model(http, "fake", min_interval=0, store=Mock()).call(
                     "test", {}, MATCH_SCHEMA, time.monotonic() + 30
                 )
-            self.assertIn(caught.exception.code, LLM_TRANSIENT)
-            self.assertEqual(caught.exception.retry_after, 91)
-            self.assertEqual(http.request.call_count, 1)  # durable queue retry, no busy loop
+            assert caught.exception.code in LLM_TRANSIENT
+            assert caught.exception.retry_after == hint_seconds
+            assert http.request.call_count == 1  # durable queue retry, no busy loop
 
-    def test_retry_after_seconds_and_date(self):
+    def test_retry_after_seconds_and_date(self) -> None:
         from email.utils import formatdate
 
         for value in ["120", formatdate(time.time() + 180, usegmt=True), "invalid", "NaN"]:
@@ -93,11 +110,13 @@ class ModelRetryTests(unittest.TestCase):
             with self.assertRaises(Failure) as caught:
                 h.request("GET", "http://internal")
             if value in ["invalid", "NaN"]:
-                self.assertIsNone(caught.exception.retry_after)
+                assert caught.exception.retry_after is None
             else:
-                self.assertGreater(caught.exception.retry_after, 100)
+                # A Retry-After above two minutes survives parsing into the hint.
+                minimum_hint_seconds = 100
+                assert caught.exception.retry_after > minimum_hint_seconds
 
-    def test_batch_checkpoint_resumes_and_changed_snapshot_invalidates(self):
+    def test_batch_checkpoint_resumes_and_changed_snapshot_invalidates(self) -> None:
         good = {"issue_number": 0, "reason": "Different", "confidence": "low"}
         issues = [{"number": i} for i in range(25)]
         m = Model(Mock(), "fake")
@@ -107,22 +126,25 @@ class ModelRetryTests(unittest.TestCase):
             m.match(
                 f.event(), issues, on_progress=lambda p: saved.append(json.loads(json.dumps(p)))
             )
-        self.assertEqual(len(saved[-1]["reviews"]), 1)
+        assert len(saved[-1]["reviews"]) == 1
         m.call = Mock(return_value=good)
         r = m.match(f.event(), issues, progress=saved[-1])
-        self.assertEqual(m.call.call_count, 2)
-        self.assertEqual(r["reviewed_numbers"], list(range(25)))
+        remaining_batches = 2
+        assert m.call.call_count == remaining_batches
+        assert r["reviewed_numbers"] == list(range(25))
         m.call.reset_mock()
         m.match(f.event(), issues + [{"number": 25}], progress=saved[-1])
-        self.assertEqual(m.call.call_count, 2)
+        assert m.call.call_count == remaining_batches
 
 
 class EngineCheckpointTests(unittest.TestCase):
+    """Tests for engine retry checkpoints."""
+
     setUp = f.EngineTests.setUp
     tearDown = f.EngineTests.tearDown
 
-    def test_partial_matching_checkpoint_saved_before_busy_failure(self):
-        def matching(event, issues, progress=None, on_progress=None):
+    def test_partial_matching_checkpoint_saved_before_busy_failure(self) -> None:
+        def matching(event, issues, progress=None, on_progress=None) -> None:
             on_progress({"signature": "test", "decisions": []})
             raise Failure("LLM_HTTP_429")
 
@@ -132,18 +154,18 @@ class EngineCheckpointTests(unittest.TestCase):
         with self.assertRaises(Failure):
             self.engine.run("match", key)
         r = self.store.get(key)
-        self.assertEqual(r["result"]["match_progress_v3"]["signature"], "test")
-        self.assertEqual(r["state"], "retry")
+        assert r["result"]["match_progress_v3"]["signature"] == "test"
+        assert r["state"] == "retry"
         self.github.request.assert_not_called()
 
-    def test_many_llm_deferrals_do_not_exhaust_github_reconciliation(self):
+    def test_many_llm_deferrals_do_not_exhaust_github_reconciliation(self) -> None:
         key = self.store.enqueue(f.event())["job_id"]
         self.model.match.side_effect = Failure("LLM_HTTP_429")
         for _ in range(20):
             self.store.claim()
             with self.assertRaises(Failure):
                 self.engine.run("match", key)
-            self.assertEqual(self.store.get(key)["state"], "retry")
+            assert self.store.get(key)["state"] == "retry"
             with self.store.db() as c:
                 c.execute("update jobs set available=0 where id=?", (key,))
         self.model.match.side_effect = None
@@ -155,20 +177,20 @@ class EngineCheckpointTests(unittest.TestCase):
         with self.assertRaises(Failure):
             self.engine.run("publish", key)
         r = self.store.get(key)
-        self.assertEqual(r["state"], "retry")
-        self.assertIsNotNone(r["intent"])
+        assert r["state"] == "retry"
+        assert r["intent"] is not None
         self.store = Store(self.store.path)
         self.engine.store = self.store
         with self.store.db() as c:
-            self.assertEqual(
+            assert (
                 c.execute(
                     "select failures from job_failure_budget where job_id=?", (key,)
-                ).fetchone()[0],
-                1,
+                ).fetchone()[0]
+                == 1
             )
             c.execute("update jobs set available=0 where id=?", (key,))
         self.github.reconcile.return_value = 7
         self.store.claim()
         self.engine.run("publish", key)
-        self.assertEqual(self.store.get(key)["state"], "complete")
+        assert self.store.get(key)["state"] == "complete"
         self.github.request.assert_called_once()

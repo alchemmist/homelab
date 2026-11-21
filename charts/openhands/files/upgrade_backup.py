@@ -14,7 +14,7 @@ snapshot=sqlite3.connect('/tmp/snapshot.db')
 deadline=time.monotonic()+90
 
 def progress(status,left,total):
-    if time.monotonic()>deadline:raise RuntimeError('SQLite snapshot deadline')
+    if time.monotonic()>deadline:raise RuntimeError("SQLite snapshot deadline")
 
 source.backup(snapshot,pages=64,progress=progress)
 assert snapshot.execute('pragma integrity_check').fetchone()[0]=='ok'
@@ -22,8 +22,8 @@ snapshot.close()
 source.close()
 
 def filt(info):
-    if info.name.startswith('.openhands/automation/automations.db'):return None
-    if info.name.startswith('.openhands/workspaces/automation-runs/') and '.venv' in pathlib.Path(info.name).parts:return None
+    if info.name.startswith(".openhands/automation/automations.db"):return None
+    if info.name.startswith(".openhands/workspaces/automation-runs/") and ".venv" in pathlib.Path(info.name).parts:return None
     return info
 
 buf=io.BytesIO()
@@ -46,6 +46,6 @@ with tarfile.open(fileobj=io.BytesIO(restored),mode='r:gz') as tar:
     assert tar.getmember('workspace/the-loop-demo/HANDOFF.md').size>0
 public=serialization.load_pem_public_key(pathlib.Path('/config/recipient.pem').read_bytes())
 wrapped=public.encrypt(key,padding.OAEP(mgf=padding.MGF1(hashes.SHA256()),algorithm=hashes.SHA256(),label=None))
-report={'format':'openhands-pre142-v1','encrypted_sha256':hashlib.sha256(check).hexdigest(),'bytes':len(check),'decrypt_verified':True,'sqlite_integrity':'ok','handoff_present':True,'wrapped_key':base64.b64encode(wrapped).decode(),'key_sha256':hashlib.sha256(key).hexdigest(),'excluded':'regenerable automation .venv only'}
-with receipt.open('x') as f:json.dump(report,f)
+report={"format":"openhands-pre142-v1","encrypted_sha256":hashlib.sha256(check).hexdigest(),"bytes":len(check),"decrypt_verified":True,"sqlite_integrity":"ok","handoff_present":True,"wrapped_key":base64.b64encode(wrapped).decode(),"key_sha256":hashlib.sha256(key).hexdigest(),"excluded":"regenerable automation .venv only"}
+with receipt.open("x") as f:json.dump(report,f)
 print(json.dumps(report))

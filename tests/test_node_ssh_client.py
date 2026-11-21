@@ -1,3 +1,5 @@
+"""Tests for the node SSH client helper."""
+
 import getpass
 from pathlib import Path
 import subprocess
@@ -10,7 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class NodeSshClientTests(unittest.TestCase):
-    def setUp(self):
+    """Exercise the node SSH client helper against temporary state."""
+    def setUp(self) -> None:
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name)
@@ -31,44 +34,44 @@ class NodeSshClientTests(unittest.TestCase):
         self.config = self.root / "config"
         self.config.write_text(f"Include {self.snippet}\nServerAliveCountMax 7\n")
 
-    def resolve(self, host, *args):
+    def resolve(self, host: str, *args: str) -> dict[str, str]:
         result = subprocess.run(
             ["ssh", "-G", "-F", str(self.config), *args, host],
             text=True,
             capture_output=True,
             check=True,
         )
-        return dict(line.split(" ", 1) for line in result.stdout.splitlines() if " " in line)
+        options: dict[str, str] = {}
+        for line in result.stdout.splitlines():
+            if " " not in line:
+                continue
+            key, value = line.split(" ", 1)
+            options[key] = value
+        return options
 
-    def test_alias_keeps_current_user_and_default_identity_policy(self):
+    def test_alias_keeps_current_user_and_default_identity_policy(self) -> None:
         node = self.resolve("socrat-1")
         baseline = self.resolve("example.invalid")
-        self.assertEqual(
-            (node["hostname"], node["port"], node["user"]),
-            ("10.250.0.3", "2222", getpass.getuser()),
-        )
+        assert (node["hostname"], node["port"], node["user"]) == ("10.250.0.3", "2222", getpass.getuser())
         for key in ("identityfile", "identitiesonly", "forwardagent", "stricthostkeychecking"):
-            self.assertEqual(node[key], baseline[key])
+            assert node[key] == baseline[key]
 
-    def test_explicit_user_override_remains_supported(self):
-        self.assertEqual(self.resolve("socrat-1", "-l", "tim")["user"], "tim")
+    def test_explicit_user_override_remains_supported(self) -> None:
+        assert self.resolve("socrat-1", "-l", "tim")["user"] == "tim"
 
-    def test_per_node_port_override(self):
+    def test_per_node_port_override(self) -> None:
         node = self.resolve("socrat-3")
-        self.assertEqual((node["hostname"], node["port"]), ("10.250.0.5", "2200"))
+        assert (node["hostname"], node["port"]) == ("10.250.0.5", "2200")
 
-    def test_include_does_not_leak_host_scope(self):
+    def test_include_does_not_leak_host_scope(self) -> None:
         node = self.resolve("example.invalid")
-        self.assertEqual(
-            (node["hostname"], node["port"], node["serveralivecountmax"]),
-            ("example.invalid", "22", "7"),
-        )
+        assert (node["hostname"], node["port"], node["serveralivecountmax"]) == ("example.invalid", "22", "7")
 
-    def test_personal_settings_have_priority(self):
+    def test_personal_settings_have_priority(self) -> None:
         self.config.write_text(
             f"Host socrat-1\n    User custom-account\nHost *\n    Include {self.snippet}\n"
         )
-        self.assertEqual(self.resolve("socrat-1")["user"], "custom-account")
+        assert self.resolve("socrat-1")["user"] == "custom-account"
 
 
 if __name__ == "__main__":
