@@ -1,3 +1,5 @@
+"""Tests for the VPN panel session management script."""
+
 import hashlib
 import importlib.util
 import json

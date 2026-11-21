@@ -1,3 +1,5 @@
+"""Tests for the wireguard private web service files."""
+
 from pathlib import Path
 import json
 import os

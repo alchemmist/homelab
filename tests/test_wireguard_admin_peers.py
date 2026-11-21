@@ -1,3 +1,5 @@
+"""Tests for the wireguard admin peers configuration."""
+
 import json
 import shutil
 import subprocess

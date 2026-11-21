@@ -1,3 +1,5 @@
+"""Tests for the socrat0 wiki placement rules."""
+
 from pathlib import Path
 import shutil
 import subprocess

@@ -1,3 +1,5 @@
+"""Tests for the WebUI fetch timeout handling."""
+
 import asyncio
 import importlib.util
 import json
