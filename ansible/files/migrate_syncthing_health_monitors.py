@@ -9,6 +9,7 @@ from pathlib import Path
 
 
 def migrate(database, plan, check=False):
+    """Migrate."""
     if not database.is_file():
         raise FileNotFoundError(database)
     connection = sqlite3.connect(f"file:{database}?mode=ro", uri=True)
@@ -51,6 +52,7 @@ def migrate(database, plan, check=False):
 
 
 def main():
+    """Main."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--database", type=Path, required=True)
     parser.add_argument("--plan", type=Path, required=True)

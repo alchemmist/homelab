@@ -11,6 +11,7 @@ import urllib.request
 
 
 def get_secret(name):
+    """Get secret."""
     result = subprocess.run(
         ["kubectl", "-n", "wiki", "get", "secret", name, "--ignore-not-found", "-o", "json"],
         text=True,
@@ -21,6 +22,7 @@ def get_secret(name):
 
 
 def apply(kind, namespace, name, data):
+    """Apply."""
     payload = {
         "apiVersion": "v1",
         "kind": kind,
