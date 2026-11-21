@@ -25,6 +25,7 @@ def test_snapshot_turnover_and_failures():
         ([a, a], ["failed", "ok"], "service_only_failed"),
     ]:
         with (
+            patch("socket.gethostbyname", return_value="10.43.167.29"),
             patch.object(probe, "snapshot", Mock(side_effect=snapshots)),
             patch.object(probe, "health", Mock(side_effect=results)),
         ):

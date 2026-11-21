@@ -63,8 +63,12 @@ def main():
     survivors = original.pop("flows")
     start = time.monotonic()
     print("baseline verified; start guest-only cycles now", flush=True)
+    next_connect = start + 15
     while time.monotonic() - start < seconds:
         time.sleep(2)
+        if time.monotonic() >= next_connect:
+            check_mesh_tcp()
+            next_connect = time.monotonic() + 15
         current = sample()
         survivors &= current.pop("flows")
         if not survivors:

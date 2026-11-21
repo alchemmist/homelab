@@ -81,6 +81,12 @@ def pair():
             return "no_endpoint"
         if len(targets) > 8:
             return "unsupported_cardinality"
+        try:
+            vip = socket.gethostbyname(SERVICE)
+        except socket.gaierror:
+            return "service_dns"
+        if vip != "10.43.167.29":
+            return "service_vip_policy_mismatch"
         via = health(SERVICE, 8080)
         direct = [health(*addr) for addr in targets]
         if (version, targets) != snapshot():
