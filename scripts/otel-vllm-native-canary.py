@@ -31,7 +31,7 @@ MARKERS = [
 ]
 
 
-def run():
+def run() -> None:
     logging.disable(logging.CRITICAL)
     if os.environ.get("OTEL_EXPORTER_OTLP_TRACES_PROTOCOL") != "http/protobuf":
         raise ValueError(

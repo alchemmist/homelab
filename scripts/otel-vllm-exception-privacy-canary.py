@@ -10,7 +10,7 @@ import json
 import logging
 
 
-def run():
+def run() -> None:
     logging.disable(logging.CRITICAL)
     with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
         from opentelemetry import trace
