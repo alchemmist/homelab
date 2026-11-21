@@ -61,8 +61,9 @@ def canonical_uuid(value: object):
     if not isinstance(value, str):
         refuse("Canonical UUID required")
     try:
-        require(str(uuid.UUID(value)) == value, "Canonical UUID required")
-        require(uuid.UUID(value).int != 0, "Nonzero UUID required")
+        parsed = uuid.UUID(value)
+        require(str(parsed) == value, "Canonical UUID required")
+        require(parsed.int != 0, "Nonzero UUID required")
     except ValueError:
         raise Refused("Canonical UUID required") from None
     return value
@@ -87,7 +88,6 @@ def bindings_map(document: Mapping[str, object]):
     fields(document, ["version", "bindings"])
     entries = document["bindings"]
     require(document["version"] == 1, "Invalid binding ledger")
-    entries = document["bindings"]
     if not isinstance(entries, list):
         refuse("Invalid binding ledger")
     result = {}

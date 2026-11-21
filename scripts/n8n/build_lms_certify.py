@@ -416,8 +416,7 @@ if (verdict !== 'accepted') {{
 return {{json: {{phase:next,data}}}};'''
             label = 'Route public example verdict' if phase == 'public' else 'Route private test verdict'
         chain(route, req, reducer(label, route, logic, x+220, y))
-        if i == len(phase_specs) - 1:
-            link(previous, terminal, 1)
+link(previous, terminal, 1)
 
 assert len({n['name'] for n in nodes}) == len(nodes) == len({n['id'] for n in nodes}), 'Duplicate node names or IDs'
 workflow = dict(name='LMS certification — reviewed queue', nodes=nodes, connections=edges,

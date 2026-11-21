@@ -4,7 +4,7 @@ import subprocess
 from collections.abc import Mapping
 
 
-def kube(*args, document: Mapping[str, object] | None = None) -> object:
+def kube(*args, document: Mapping[str, object] | None = None) -> Mapping[str, object]:
     r = subprocess.run(
         ["kubectl", *args],
         input=json.dumps(document) if document else None,

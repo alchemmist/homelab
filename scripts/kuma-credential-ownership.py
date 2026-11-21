@@ -8,27 +8,19 @@ import json
 import os
 import subprocess
 from pathlib import Path
-from typing import Protocol
+from typing import Any
 
 NS = "uptime-kuma"
 NAME = "uptime-kuma-db"
 TRACK = "uptime-kuma:/Secret:uptime-kuma/uptime-kuma-db"
 
 
-class Truthy(Protocol):
-    """Value whose truthiness can be tested without a positional bool annotation."""
-
-    def __bool__(self) -> bool:
-        """Return the flag's truth value."""
-        ...
-
-
-def require(ok: Truthy, message: str):
+def require(ok: object, message: str):
     if not ok:
         raise RuntimeError(message)
 
 
-def get(kind: str, name: str, ns: str = NS):
+def get(kind: str, name: str, ns: str = NS) -> dict[str, Any]:
     return json.loads(
         subprocess.check_output(["kubectl", "-n", ns, "get", kind, name, "-o", "json"])
     )
