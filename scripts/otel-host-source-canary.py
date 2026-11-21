@@ -86,7 +86,8 @@ def run(directory):
             try:
                 with urllib.request.urlopen("http://127.0.0.1:19100/", timeout=2) as response:
                     if response.status != 200:
-                        raise ValueError("Native exporter is not healthy")
+                        message = "Native exporter is not healthy"
+                        raise ValueError(message)
                 break
             except Exception:
                 if time.monotonic() >= deadline:
@@ -142,9 +143,8 @@ def run(directory):
         or not result.get("sourceCompatibilityPassed")
         or not result.get("candidateStopped")
     ):
-        raise RuntimeError(
-            "Native host source canary did not pass; retain private hash-only result"
-        )
+        message = "Native host source canary did not pass; retain private hash-only result"
+        raise RuntimeError(message)
     return result
 
 

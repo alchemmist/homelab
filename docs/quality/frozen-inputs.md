@@ -1,5 +1,14 @@
 # Exact frozen compatibility inputs, not a lint-debt exemption
 
+Local compatibility update: commits `a6c666af` and `dec487d0` changed card
+discovery, the guarded POST timeout and its retry lease. `telegram_delivery.py`
+and `telegram_links.py` are therefore **local patches**, not pristine upstream
+files. All 17 deployed inputs still have pinned SHA-256 digests; only the 15
+unpatched modules are excluded from owned-source checks. The original boundary
+below describes the snapshot before those two commits.
+
+## Original snapshot
+
 `charts/spi-triage/LEGACY-SOURCE-MANIFEST.json` predates this strict cleanup
 (commit `de6f81e8`). It declares the separate canonical repository
 `https://github.com/alchemmist/spi-triage`, says these are frozen compatibility

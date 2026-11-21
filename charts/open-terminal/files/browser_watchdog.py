@@ -177,7 +177,8 @@ class Watchdog:
 def positive_setting(name, default):
     value = float(os.environ.get(name, default))
     if not 0 < value < float("inf"):
-        raise ValueError(f"{name} must be finite and positive")
+        message = f"{name} must be finite and positive"
+        raise ValueError(message)
     return value
 
 

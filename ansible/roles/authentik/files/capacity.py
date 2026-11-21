@@ -1,9 +1,9 @@
 """Conservative gate for a single-node IdP; reserves existing OTel plan headroom."""
 
+from decimal import Decimal
 import json
 import os
 import subprocess
-from decimal import Decimal
 
 
 def quantity(x):
@@ -50,14 +50,14 @@ if (
     or conditions.get("Ready") != "True"
     or any(conditions.get(x) != "False" for x in ["MemoryPressure", "DiskPressure", "PIDPressure"])
 ):
-    msg = "Node is not healthy/schedulable"
-    raise SystemExit(msg)
+    message = "Node is not healthy/schedulable"
+    raise SystemExit(message)
 # 1792 MiB app requests, 2304 MiB outstanding OTel envelope, 2048 MiB host reserve.
 if available < (1792 + 2304 + 2048) * 1024**2 or free < (1792 + 2304) * 1024**2:
-    msg = "Insufficient memory for identity staging and reserved OTel budget"
-    raise SystemExit(msg)
+    message = "Insufficient memory for identity staging and reserved OTel budget"
+    raise SystemExit(message)
 disk = os.statvfs("/var/lib/rancher/k3s/storage")
 if disk.f_bavail * disk.f_frsize < 30 * 1024**3:
-    msg = "Insufficient storage staging reserve"
-    raise SystemExit(msg)
+    message = "Insufficient storage staging reserve"
+    raise SystemExit(message)
 print("Capacity gate passed: single-node identity staging only, not HA certification")

@@ -14,8 +14,8 @@ def connect(host, port, context, name):
 def require_rejection(host, port, context, name):
     try:
         with connect(host, port, context, name):
-            msg = "Untrusted TLS connection unexpectedly succeeded"
-            raise RuntimeError(msg)
+            message = "Untrusted TLS connection unexpectedly succeeded"
+            raise RuntimeError(message)
     except ssl.SSLCertVerificationError:
         pass
 
@@ -41,8 +41,8 @@ def main():
                     break
                 reply += chunk
             if reply != b"\x01\x02\x00\x00":
-                msg = "Relay did not explicitly reject invalid authentication"
-                raise RuntimeError(msg)
+                message = "Relay did not explicitly reject invalid authentication"
+                raise RuntimeError(message)
     print("TLS trust, hostname verification and relay authentication verified")
 
 

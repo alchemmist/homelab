@@ -6,13 +6,13 @@ import fcntl
 import hashlib
 import json
 import os
+from pathlib import Path
 import re
 import socket
 import urllib.parse
 import urllib.request
 import uuid
 import xml.etree.ElementTree as ET
-from pathlib import Path
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("root", type=Path)
@@ -30,8 +30,8 @@ lock = open(root / "portal-icons.lock", "a", opener=lambda p, f: os.open(p, f, 0
 fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
 uncertain = root / "portal-icons-uncertain.json"
 if uncertain.exists():
-    msg = "Prior icon operation requires explicit receipt/state review"
-    raise RuntimeError(msg)
+    message = "Prior icon operation requires explicit receipt/state review"
+    raise RuntimeError(message)
 credentials = json.loads((root / "credentials.json").read_text())
 headers = {"Authorization": "Bearer " + credentials["AUTHENTIK_BOOTSTRAP_TOKEN"]}
 base = "https://auth.socrat.alchemmist.xyz/api/v3/"
@@ -86,27 +86,27 @@ def stable(app):
 
 inventory = api("GET", "core/applications/?superuser_full_list=true&page_size=100")
 if inventory["pagination"]["total_pages"] != 1:
-    msg = "Incomplete application inventory; no changes made"
-    raise RuntimeError(msg)
+    message = "Incomplete application inventory; no changes made"
+    raise RuntimeError(message)
 applications = {a["slug"]: a for a in inventory["results"]}
 if len(applications) != len(inventory["results"]):
-    msg = "Duplicate application slug"
-    raise RuntimeError(msg)
+    message = "Duplicate application slug"
+    raise RuntimeError(message)
 if args.expected_inventory:
     expected = {a["slug"]: a for a in json.loads(args.expected_inventory.read_text())}
     if set(expected) != set(applications) or any(
         stable(expected[s]) != stable(a) or expected[s]["meta_icon"] != a["meta_icon"]
         for s, a in applications.items()
     ):
-        msg = "Application inventory differs from reviewed audit; no changes made"
-        raise RuntimeError(msg)
+        message = "Application inventory differs from reviewed audit; no changes made"
+        raise RuntimeError(message)
 
 plan = []
 seen = set()
 for filename, source in json.loads((assets / "sources.json").read_text())["files"].items():
     if Path(filename).name != filename or not filename.endswith(".svg"):
-        msg = "Invalid asset name"
-        raise RuntimeError(msg)
+        message = "Invalid asset name"
+        raise RuntimeError(message)
     content = (assets / filename).read_bytes()
     digest = hashlib.sha256(content).hexdigest()
     if digest != source["sha256"]:
@@ -123,13 +123,13 @@ for filename, source in json.loads((assets / "sources.json").read_text())["files
                 raise RuntimeError("External SVG resource: " + filename)
     targets = source.get("applications", [Path(filename).stem])
     if not isinstance(targets, list):
-        msg = "Invalid icon application targets"
-        raise RuntimeError(msg)
+        message = "Invalid icon application targets"
+        raise RuntimeError(message)
     name = "service-icons/" + Path(filename).stem + "-" + digest[:12] + ".svg"
     for slug in targets:
         if not re.fullmatch(r"[a-z0-9-]+", slug) or slug in seen:
-            msg = "Invalid or duplicate application target"
-            raise RuntimeError(msg)
+            message = "Invalid or duplicate application target"
+            raise RuntimeError(message)
         seen.add(slug)
     if targets:
         plan.append((filename, content, digest, name, targets))
@@ -170,8 +170,8 @@ for filename, content, digest, name, targets in plan:
     url = files[name]["url"]
     parsed = urllib.parse.urlsplit(url)
     if parsed.scheme != "https" or parsed.netloc != "auth.socrat.alchemmist.xyz":
-        msg = "Unexpected media origin; no credential forwarding"
-        raise RuntimeError(msg)
+        message = "Unexpected media origin; no credential forwarding"
+        raise RuntimeError(message)
     # Media fetch carries no API credential, and signed URLs are never logged.
     with urllib.request.urlopen(url, timeout=60) as response:
         fetched = response.read()

@@ -58,7 +58,8 @@ def fetch_releases(repo, timeout):
     with urllib.request.urlopen(request, timeout=timeout) as response:
         payload = json.load(response)
     if not isinstance(payload, list):
-        raise ValueError(f"unexpected GitHub response for {repo}")
+        message = f"unexpected GitHub response for {repo}"
+        raise ValueError(message)
     return payload
 
 
@@ -97,13 +98,13 @@ def evaluate(targets, fetch, timeout, images=None):
         }
         try:
             if current is None:
-                msg = "current version is not a dotted triple"
-                raise ValueError(msg)
+                message = "current version is not a dotted triple"
+                raise ValueError(message)
             releases = fetch(target["github"], timeout)
             latest, _tag = latest_stable(releases)
             if latest is None:
-                msg = "no stable release"
-                raise ValueError(msg)
+                message = "no stable release"
+                raise ValueError(message)
             sample["latest"] = format_version(latest)
             sample["available"] = 1 if latest > current else 0
             sample["success"] = 1
@@ -139,7 +140,7 @@ class State:
     """Mutable state collected by the update watcher."""
 
     def __init__(self) -> None:
-        """Initialize empty metric state."""
+
         self.lock = threading.Lock()
         self.body = render_metrics([]).encode()
 
@@ -174,8 +175,8 @@ def serve(state, port):
 
 def workload_ref(target):
     if target.get("deployment") and target.get("statefulset"):
-        msg = "ambiguous workload target"
-        raise ValueError(msg)
+        message = "ambiguous workload target"
+        raise ValueError(message)
     if target.get("statefulset"):
         return "statefulsets", target["statefulset"]
     return "deployments", target.get("deployment")
@@ -209,7 +210,8 @@ def deployment_image(target, timeout):
     for item in payload["spec"]["template"]["spec"]["containers"]:
         if item.get("name") == container:
             return item.get("image")
-    raise ValueError(f"container {container} not found on {namespace}/{name}")
+    message = f"container {container} not found on {namespace}/{name}"
+    raise ValueError(message)
 
 
 def load_images(targets, timeout):

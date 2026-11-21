@@ -13,6 +13,7 @@ SPEC.loader.exec_module(SMOKE)
 
 
 def series(bound, value="3") -> dict[tuple[tuple[str, object], ...], str]:
+    """Test behavior for series."""
     return {
         tuple(sorted({"__name__": "smoke_duration_seconds_bucket", "le": bound}.items())): value
     }

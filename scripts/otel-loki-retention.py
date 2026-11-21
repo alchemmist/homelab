@@ -23,7 +23,8 @@ def require(expected: object, message: str) -> None:
 
 def rules(policy):
     if policy.get("schemaVersion") != 1:
-        raise ValueError("Unsupported policy schema")
+        message = "Unsupported policy schema"
+        raise ValueError(message)
     fallback = policy["fallbackHours"]
 
     def hours(value, level):
@@ -135,7 +136,8 @@ def render(text, policy):
         r"  retention_period:.*?\n(?=  allow_structured_metadata:)", block, text, flags=re.DOTALL
     )
     if count != 1:
-        raise ValueError("Expected one bounded limits retention stanza")
+        message = "Expected one bounded limits retention stanza"
+        raise ValueError(message)
     return text
 
 
@@ -149,7 +151,8 @@ def main():
     for path in COPIES:
         if args.check:
             if path.read_text() != rendered:
-                raise SystemExit(f"Retention/config drift: {path.relative_to(ROOT)}")
+                message = f"Retention/config drift: {path.relative_to(ROOT)}"
+                raise SystemExit(message)
         else:
             path.write_text(rendered)
 

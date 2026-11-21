@@ -45,6 +45,7 @@ class Deployment(TypedDict):
 
 
 def deployment() -> Deployment:
+    """Test behavior for deployment."""
     return {
         "metadata": {
             "namespace": "cattle-fleet-system",

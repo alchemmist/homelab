@@ -16,14 +16,14 @@ def _create_admin_token() -> str:
     with sqlite3.connect("file:/app/backend/data/webui.db?mode=ro", uri=True) as db:
         admins = db.execute("SELECT id FROM user WHERE role = 'admin'").fetchall()
     if len(admins) != 1:
-        msg = "Expected one administrator for local configuration"
-        raise RuntimeError(msg)
+        message = "Expected one administrator for local configuration"
+        raise RuntimeError(message)
     admin_id = admins[0][0]
     auth = asyncio.run(get_auth(admin_id))
     mfa_config = asyncio.run(get_mfa_config())
     if (auth.mfa and auth.mfa.secret) or is_mfa_required("password", mfa_config):
-        msg = "An authenticated administrator session is required with MFA"
-        raise RuntimeError(msg)
+        message = "An authenticated administrator session is required with MFA"
+        raise RuntimeError(message)
     return str(
         create_token(
             {
@@ -60,14 +60,14 @@ def _apply_web_settings(request: Request) -> bool:
     expected_retrieval = copy.deepcopy(retrieval)
     expected_retrieval["web"].update(web_settings)
     if after_retrieval != expected_retrieval:
-        msg = "Unrelated retrieval settings changed"
-        raise RuntimeError(msg)
+        message = "Unrelated retrieval settings changed"
+        raise RuntimeError(message)
     if any(
         cast("dict[str, dict[str, object]]", after_retrieval)["web"].get(key) != value
         for key, value in web_settings.items()
     ):
-        msg = "Web search configuration failed readback validation"
-        raise RuntimeError(msg)
+        message = "Web search configuration failed readback validation"
+        raise RuntimeError(message)
     return web_changed
 
 
@@ -80,8 +80,8 @@ def _apply_default_permissions(request: Request) -> tuple[bool, dict[str, object
     if permissions_changed:
         request("/api/v1/users/default/permissions", desired_permissions)
     if request("/api/v1/users/default/permissions") != desired_permissions:
-        msg = "User search permissions failed readback validation"
-        raise RuntimeError(msg)
+        message = "User search permissions failed readback validation"
+        raise RuntimeError(message)
     return permissions_changed, desired_permissions
 
 
@@ -124,12 +124,12 @@ def _apply_model_settings(request: Request) -> tuple[bool, dict[str, object], di
         request("/api/v1/models/model/update", desired)
     after = cast("dict[str, object]", request(path))
     if after["meta"] != desired["meta"] or after["params"] != desired["params"]:
-        msg = "Qwen search settings failed readback validation"
-        raise RuntimeError(msg)
+        message = "Qwen search settings failed readback validation"
+        raise RuntimeError(message)
     for key in ("id", "user_id", "base_model_id", "name", "is_active"):
         if after.get(key) != before.get(key):
-            msg = "Unrelated model settings changed"
-            raise RuntimeError(msg)
+            message = "Unrelated model settings changed"
+            raise RuntimeError(message)
 
     def grant_key(model: dict[str, object]) -> list[tuple[object, object, object]]:
         return sorted(
@@ -138,12 +138,10 @@ def _apply_model_settings(request: Request) -> tuple[bool, dict[str, object], di
         )
 
     if grant_key(after) != grant_key(desired):
-        msg = "Model access grants changed"
-        raise RuntimeError(msg)
+        message = "Model access grants changed"
+        raise RuntimeError(message)
     return model_changed, before, after
 
-    async def verify_users():
-        pass
 
 async def _verify_users(desired_permissions: dict[str, object], after_access_grants: object) -> int:
     from open_webui.utils.access_control import has_access, has_permission
@@ -152,11 +150,11 @@ async def _verify_users(desired_permissions: dict[str, object], after_access_gra
         users = db.execute("SELECT id FROM user WHERE role IN ('admin', 'user')").fetchall()
     for (user_id,) in users:
         if not await has_permission(user_id, "features.web_search", desired_permissions):
-            msg = "A user does not have web search permission"
-            raise RuntimeError(msg)
+            message = "A user does not have web search permission"
+            raise RuntimeError(message)
         if not await has_access(user_id, "read", after_access_grants):
-            msg = "A user does not have Qwen model access"
-            raise RuntimeError(msg)
+            message = "A user does not have Qwen model access"
+            raise RuntimeError(message)
     return len(users)
 
 
