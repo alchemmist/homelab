@@ -151,6 +151,7 @@
       "tests/test_rustfs_gateway.py",
       "tests/test_rustfs_namespace.py",
       "tests/test_rustfs_unified_origin.py",
+      "tests/test_service_paths_404.py",
       "tests/test_shell_strict_regressions.py",
       "tests/test_shell_strict_second_batch.py",
       "tests/test_socrat4_contention.py",

@@ -111,9 +111,9 @@ def snapshot() -> dict[str, object]:
 
 class AdmissionTests(unittest.TestCase):
     """Verify NetBird admission stays additive and session-safe."""
+
     def test_reconcile_is_additive_and_preserves_session_policy(self) -> None:
         """Reconcile is additive and preserves session policy."""
-
         s = snapshot()
         before = copy.deepcopy(s)
         plan = M.reconcile_plan(s)
@@ -128,7 +128,6 @@ class AdmissionTests(unittest.TestCase):
 
     def test_reconcile_noop_after_expected_readback(self) -> None:
         """Reconcile is a no-op after the expected readback."""
-
         s = snapshot()
         _sequence(
             _mapping(_documents(s["ak_providers"])[0])["property_mappings"]
@@ -145,7 +144,6 @@ class AdmissionTests(unittest.TestCase):
 
     def test_vendor_scope_gap_creates_profile_mapping_without_fake_groups(self) -> None:
         """A scope gap creates the profile mapping without fake groups."""
-
         s = snapshot()
         s["ak_scopes"] = []
         plan = M.reconcile_plan(s)
@@ -155,7 +153,6 @@ class AdmissionTests(unittest.TestCase):
 
     def test_auto_admission_remains_group_restricted_and_preserves_peer_policy(self) -> None:
         """Auto admission stays group-restricted and preserves peer policy."""
-
         s = snapshot()
         plan = M.reconcile_plan(s)
         change = next(p for p in plan if p["purpose"] == "trusted-group-sso-admission")
@@ -169,7 +166,6 @@ class AdmissionTests(unittest.TestCase):
 
     def test_missing_or_skipping_mfa_blocks_admission(self) -> None:
         """Missing or skipped MFA blocks admission."""
-
         s = snapshot()
         s["ak_flow_bindings"] = []
         with self.assertRaises(ValueError):
@@ -181,7 +177,6 @@ class AdmissionTests(unittest.TestCase):
 
     def test_default_all_policy_blocks_onboarding(self) -> None:
         """A default all-policy blocks onboarding."""
-
         s = snapshot()
         _mapping(_documents(_documents(s["nb_policies"])[0]["rules"])[0])["sources"] = ["all"]
         with self.assertRaises(ValueError):
@@ -195,7 +190,6 @@ class AdmissionTests(unittest.TestCase):
 
     def test_fake_jwt_source_rejected(self) -> None:
         """A faked JWT source is rejected."""
-
         s = snapshot()
         _documents(s["nb_groups"])[1]["issued"] = "api"
         with self.assertRaises(ValueError):
@@ -203,7 +197,6 @@ class AdmissionTests(unittest.TestCase):
 
     def test_superuser_or_parent_group_rejected(self) -> None:
         """Superuser or otherwise privileged groups are rejected."""
-
         for key, value in [
             ("is_superuser", True),
             ("parents", ["owner"]),
@@ -217,7 +210,6 @@ class AdmissionTests(unittest.TestCase):
 
     def test_unexpected_app_bypass_rejected(self) -> None:
         """Unexpected app bypasses are rejected."""
-
         for binding in [
             {"group": "unknown", "enabled": True},
             {"group": "login", "enabled": True, "user": 12},
@@ -230,7 +222,6 @@ class AdmissionTests(unittest.TestCase):
 
     def test_membership_action_never_replaces_other_groups_or_grants_superuser(self) -> None:
         """Membership actions never replace groups or grant superuser."""
-
         s = snapshot()
         plan = M.membership_plan(s, "new-admin", "exact-reviewed-uuid")
         assert plan[0]["path"] == "core/groups/admins/add_user/"
@@ -240,7 +231,6 @@ class AdmissionTests(unittest.TestCase):
 
     def test_no_email_fallback_or_ambiguous_adoption(self) -> None:
         """No email fallback and no ambiguous adoptions."""
-
         s = snapshot()
         with self.assertRaises(ValueError):
             M.membership_plan(s, "new-admin", "wrong-uuid")
@@ -251,7 +241,6 @@ class AdmissionTests(unittest.TestCase):
 
     def test_nonhuman_inactive_superuser_rejected(self) -> None:
         """Non-human, inactive or superuser members are rejected."""
-
         for key, value in [
             ("type", "service_account"),
             ("is_active", False),
@@ -264,7 +253,6 @@ class AdmissionTests(unittest.TestCase):
 
     def test_membership_grant_revoke_idempotence(self) -> None:
         """Membership grants and revokes are idempotent."""
-
         s = snapshot()
         assert M.membership_plan(s, "new-admin", "exact-reviewed-uuid", True) == []
         _sequence(_mapping(_documents(s["ak_groups"])[0])["users"]).append(2)
@@ -273,7 +261,6 @@ class AdmissionTests(unittest.TestCase):
 
     def test_prior_uncertain_receipt_blocks_rerun(self) -> None:
         """A prior uncertain receipt blocks reruns."""
-
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             root.chmod(0o700)
@@ -321,7 +308,6 @@ class AdmissionTests(unittest.TestCase):
 
     def test_offboarding_blocks_login_and_retires_only_exact_subject_devices(self) -> None:
         """Offboarding blocks login and retires only exact subject devices."""
-
         s = self.offboard_state()
         plan = M.offboard_plan(s, "new-admin", "exact-reviewed-uuid")
         assert plan[0]["body"]["is_blocked"]
@@ -331,7 +317,6 @@ class AdmissionTests(unittest.TestCase):
 
     def test_owner_or_foreign_connector_offboarding_is_refused(self) -> None:
         """Owners or foreign connectors cannot offboard."""
-
         s = self.offboard_state()
         _documents(s["nb_users"])[0]["role"] = "owner"
         with self.assertRaises(ValueError):
@@ -343,14 +328,12 @@ class AdmissionTests(unittest.TestCase):
 
     def test_already_disabled_authentik_user_can_still_be_offboarded(self) -> None:
         """A disabled Authentik user can still be offboarded."""
-
         s = self.offboard_state()
         _documents(s["ak_users"])[0]["is_active"] = False
         assert M.offboard_plan(s, "new-admin", "exact-reviewed-uuid")
 
     def test_offboard_noop_after_readback(self) -> None:
         """Offboarding is a no-op after readback."""
-
         s = self.offboard_state()
         _documents(s["nb_users"])[0]["is_blocked"] = True
         s["nb_peers"] = []
@@ -361,7 +344,6 @@ class AdmissionTests(unittest.TestCase):
 
     def test_no_password_setup_key_or_kubernetes_mutations(self) -> None:
         """No password, setup-key or Kubernetes mutations."""
-
         actions = str(M.reconcile_plan(snapshot())) + str(
             M.membership_plan(snapshot(), "new-admin", "exact-reviewed-uuid")
         )

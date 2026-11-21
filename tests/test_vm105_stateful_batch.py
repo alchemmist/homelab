@@ -1,7 +1,13 @@
 """Offline source boundaries. No kube/credentials/workflow/model calls."""
 
-import copy, pathlib, subprocess, tempfile, typing, unittest, yaml
-from typing import Mapping
+import copy
+import pathlib
+import subprocess
+import tempfile
+import unittest
+from collections.abc import Mapping
+
+import yaml
 
 R = pathlib.Path(__file__).resolve().parents[1]
 LOCAL_STORAGE_CLAIM_PAIR_COUNT = 9
@@ -77,6 +83,7 @@ def assert_monori_release_images(
 
 class StatefulBoundaries(unittest.TestCase):
     """Tests for StatefulBoundaries."""
+
     tmp: tempfile.TemporaryDirectory[str]
     old: pathlib.Path
 
@@ -348,6 +355,7 @@ if __name__ == "__main__":
 
 class CurrentMonoriRelease(unittest.TestCase):
     """Tests for CurrentMonoriRelease."""
+
     def test_current_image_mutation_is_not_hidden_by_historical_input(self) -> None:
         images = yaml.safe_load((R / "deploy/monori/values.yaml").read_text())["images"]
         documents = render(R, "charts/monori", "deploy/monori/values.yaml", "monori", "monori")

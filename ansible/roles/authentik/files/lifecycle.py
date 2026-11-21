@@ -1,5 +1,4 @@
 """Existing-user app membership lifecycle. Default plan/check are GET-only.
-
 Never creates/deletes/merges humans, resets passwords/MFA or manages legacy groups.
 """
 
@@ -9,20 +8,13 @@ import hashlib
 import json
 import os
 import re
-import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Protocol, cast
 from uuid import UUID
 
-from app_iam import (
-    admission_groups,
-    app_groups,
-    rows,
-    validate_bindings,
-    validate_group,
-)
+from app_iam import admission_groups, app_groups, rows, validate_bindings, validate_group
 
 BASE = "https://auth.socrat.alchemmist.xyz/api/v3/"
 OWNER = "alchemmist"
@@ -38,11 +30,11 @@ class Api(Protocol):
 
 
 def api_for(root: Path) -> Api:
-    'Api for.'
+    """Api for."""
     path = root / "credentials.json"
     if root.stat().st_mode & 0o077 or path.stat().st_mode & 0o077:
-        msg = "Deployment directory/credentials must be private"
-        raise RuntimeError(msg)
+        message = "Deployment directory/credentials must be private"
+        raise RuntimeError(message)
     token = cast(
         "str", cast("dict[str, object]", json.loads(path.read_text()))["AUTHENTIK_BOOTSTRAP_TOKEN"]
     )
@@ -66,8 +58,8 @@ def unique(items: list[dict[str, object]], field: str) -> dict[object, dict[str,
     result = {}
     for item in items:
         if item[field] in result:
-            msg = "Ambiguous live object"
-            raise RuntimeError(msg)
+            message = "Ambiguous live object"
+            raise RuntimeError(message)
         result[item[field]] = item
     return result
 
@@ -97,8 +89,8 @@ def _verify_applications(
             raise RuntimeError("Missing application or admission mode drift: " + slug)
         allowed = admission_groups(slug, service)
         if any(n not in groups for n in allowed):
-            msg = "Missing legacy admission group"
-            raise RuntimeError(msg)
+            message = "Missing legacy admission group"
+            raise RuntimeError(message)
         actual = validate_bindings(
             rows(api, "policies/bindings/?target=" + str(app["pk"])),
             {groups[n]["pk"] for n in allowed},
@@ -116,18 +108,18 @@ def _validated_user(
 ) -> dict[str, object]:
     """Validate one manifest entry and return the matching exact live user."""
     if not re.fullmatch(r"[a-z][a-z0-9_-]{0,63}", name):
-        msg_0 = "Invalid username"
-        raise RuntimeError(msg_0)
+        message = "Invalid username"
+        raise RuntimeError(message)
     if set(desired) != {"uuid", "state", "appGroups"}:
         raise RuntimeError("Unsupported user schema: " + name)
     try:
         UUID(cast("str", desired["uuid"]))
     except (ValueError, TypeError, AttributeError):
-        msg_0 = "Invalid reviewed UUID"
-        raise RuntimeError(msg_0) from None
+        message = "Invalid reviewed UUID"
+        raise RuntimeError(message) from None
     if desired["uuid"] in seen_uuids:
-        msg_0 = "Duplicate UUID"
-        raise RuntimeError(msg_0)
+        message = "Duplicate UUID"
+        raise RuntimeError(message)
     seen_uuids.add(cast("str", desired["uuid"]))
     user = live.get(name)
     if not user or user["uuid"] != desired["uuid"]:
@@ -136,8 +128,8 @@ def _validated_user(
     if isinstance(reviewed_entry, dict) and user["uuid"] != reviewed_entry.get("idpUserUuid"):
         raise RuntimeError("Reviewed subject changed: " + name)
     if user.get("type", "internal") != "internal":
-        msg_0 = "Human lifecycle refuses service/external accounts"
-        raise RuntimeError(msg_0)
+        message = "Human lifecycle refuses service/external accounts"
+        raise RuntimeError(message)
     return user
 
 
@@ -146,15 +138,15 @@ def _validated_state(desired: dict[str, object], declared: set[str]) -> tuple[st
     state = cast("str", desired["state"])
     wanted = desired["appGroups"]
     if state not in ("preserve", "active", "disabled") or not isinstance(wanted, list):
-        msg_0 = "Invalid lifecycle state/groups"
-        raise RuntimeError(msg_0)
+        message = "Invalid lifecycle state/groups"
+        raise RuntimeError(message)
     groups = cast("list[str]", wanted)
     if len(set(groups)) != len(groups) or any(g not in declared for g in groups):
-        msg_0 = "Only declared app groups may be managed"
-        raise RuntimeError(msg_0)
+        message = "Only declared app groups may be managed"
+        raise RuntimeError(message)
     if state == "disabled" and groups:
-        msg_0 = "Disabled users must have empty appGroups"
-        raise RuntimeError(msg_0)
+        message = "Disabled users must have empty appGroups"
+        raise RuntimeError(message)
     return state, groups
 
 
@@ -169,16 +161,16 @@ def _require_known_membership(
         if g in pk_to_group and pk_to_group[g].startswith("app-") and pk_to_group[g] not in declared
     ]
     if unknown:
-        msg_0 = "Unknown app membership requires separate controller review"
-        raise RuntimeError(msg_0)
+        message = "Unknown app membership requires separate controller review"
+        raise RuntimeError(message)
     return current
 
 
 def _require_assignable(added: set[str], declared: dict[str, dict[str, object]]) -> None:
     """Refuse assignments into groups whose native authorization is not ready."""
     if any(not declared[g]["assignable"] for g in added):
-        msg_0 = "Native authorization not ready; group assignment blocked"
-        raise RuntimeError(msg_0)
+        message = "Native authorization not ready; group assignment blocked"
+        raise RuntimeError(message)
 
 
 def _require_unprotected(
@@ -192,11 +184,11 @@ def _require_unprotected(
     state = cast("str", desired["state"])
     wanted = cast("list[str]", desired["appGroups"])
     if name == OWNER and (state != "preserve" or set(wanted) != managed):
-        msg_0 = "Owner state/membership is protected"
-        raise RuntimeError(msg_0)
+        message = "Owner state/membership is protected"
+        raise RuntimeError(message)
     if name != OWNER and (user.get("is_superuser") or "homelab-owner" in current):
-        msg_0 = "Human lifecycle refuses elevated identity"
-        raise RuntimeError(msg_0)
+        message = "Human lifecycle refuses elevated identity"
+        raise RuntimeError(message)
 
 
 def _user_operations(
@@ -258,8 +250,8 @@ def build_plan(
 ) -> dict[str, object]:
     """Compute a reviewed lifecycle plan: validated reads only, no writes."""
     if set(manifest) != {"version", "users"} or manifest["version"] != 1:
-        msg = "Unsupported lifecycle schema"
-        raise RuntimeError(msg)
+        message = "Unsupported lifecycle schema"
+        raise RuntimeError(message)
     declared = app_groups(services)
     groups = unique(rows(api, "core/groups/"), "name")
     _require_declared(set(declared), groups)
@@ -302,8 +294,8 @@ def build_plan(
 def apply_plan(api: Api, plan: dict[str, object], approval: object) -> None:
     """Apply an approved lifecycle plan; every operation is idempotent."""
     if approval != plan["sha256"]:
-        msg = "Plan approval hash mismatch; review a fresh plan"
-        raise RuntimeError(msg)
+        message = "Plan approval hash mismatch; review a fresh plan"
+        raise RuntimeError(message)
     for operation in cast("list[dict[str, object]]", plan["operations"]):
         if operation["action"] in ("disable", "enable"):
             api(
@@ -323,7 +315,7 @@ def apply_plan(api: Api, plan: dict[str, object], approval: object) -> None:
 
 
 def main():
-    'Main.'
+    """Main."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
     parser.add_argument("action", choices=["plan", "check", "apply"], default="plan", nargs="?")
@@ -343,8 +335,8 @@ def main():
             # A partial failure is safe to replan; there is no distributed transaction.
             after = build_plan(api, services, manifest, reviewed)
             if after["operations"]:
-                msg = "Post-apply drift; replan without resetting credentials"
-                raise RuntimeError(msg)
+                message = "Post-apply drift; replan without resetting credentials"
+                raise RuntimeError(message)
             print("PASS: IdP lifecycle reconciled; native session revocation remains separate")
         else:
             print(json.dumps(plan, indent=2))
@@ -356,7 +348,7 @@ if __name__ == "__main__":
         raise SystemExit(main())
     except (urllib.error.URLError, OSError, KeyError, ValueError, TypeError):
         # Do not emit provider response bodies, token-bearing requests or tracebacks.
-        msg = "Lifecycle failed: API/private input unavailable or invalid"
-        raise SystemExit(msg) from None
+        message = "Lifecycle failed: API/private input unavailable or invalid"
+        raise SystemExit(message) from None
     except RuntimeError as error:
         raise SystemExit(str(error)) from None

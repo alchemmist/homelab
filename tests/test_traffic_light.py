@@ -44,6 +44,7 @@ def cells(grid):
 
 class TrafficLightLayoutTest(unittest.TestCase):
     """Tests for TrafficLightLayoutTest."""
+
     def setUp(self):
         self.dashboard = load()
 
@@ -147,6 +148,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
 
 class TrafficLightQueriesTest(unittest.TestCase):
     """Tests for TrafficLightQueriesTest."""
+
     def setUp(self):
         self.dashboard = load()
 

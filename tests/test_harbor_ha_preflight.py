@@ -5,7 +5,7 @@ import importlib.util
 import json
 import tempfile
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TypedDict, cast, override
 
@@ -56,7 +56,7 @@ class HarborHAPreflightTests(unittest.TestCase):
         """Load the committed policy and build a healthy shared observation."""
         self.policy = json.loads((ROOT / "deploy/harbor/ha-policy.json").read_text())
         self.otel: dict[str, object] = {"nodes": {}}  # floor works without in-progress OTel files
-        self.now = datetime.now(timezone.utc)
+        self.now = datetime.now(UTC)
         self.observation: Observation = {
             "collectedAt": self.now.isoformat(),
             "nodes": {

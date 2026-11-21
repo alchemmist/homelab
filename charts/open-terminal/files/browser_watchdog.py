@@ -5,7 +5,7 @@ import os
 import signal
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -17,7 +17,7 @@ class JsonFormatter(logging.Formatter):
         # Do not render exception text/tracebacks: they can contain process arguments.
         event = getattr(record, "event", "watchdog_error")
         result = {
-            "ts": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "ts": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             "level": {10: "debug", 20: "info", 30: "warn"}.get(record.levelno, "error"),
             "service": "open-terminal-browser-watchdog",
             "msg": event,
@@ -123,7 +123,6 @@ class Watchdog:
 
     def __init__(self, lifetime=900, grace=5, ticks=None, send=signal_process) -> None:
         """Initialize watchdog timing and process handling."""
-
         self.lifetime = lifetime
         self.grace = grace
         self.ticks = ticks or os.sysconf("SC_CLK_TCK")
@@ -178,7 +177,8 @@ class Watchdog:
 def positive_setting(name, default):
     value = float(os.environ.get(name, default))
     if not 0 < value < float("inf"):
-        raise ValueError(f"{name} must be finite and positive")
+        message = f"{name} must be finite and positive"
+        raise ValueError(message)
     return value
 
 

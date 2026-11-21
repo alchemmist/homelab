@@ -1,10 +1,11 @@
 """Contracts for the owner-approved four-app handoff; legacy volumes stay intact."""
 
+import subprocess
+import unittest
 from collections.abc import Iterable
 from pathlib import Path
-import subprocess
 from typing import TypedDict, cast
-import unittest
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]

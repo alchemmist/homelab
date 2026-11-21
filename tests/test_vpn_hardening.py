@@ -5,11 +5,11 @@ import importlib.util
 import io
 import json
 import os
-from pathlib import Path
-from types import ModuleType
 import sqlite3
 import tempfile
 import unittest
+from pathlib import Path
+from types import ModuleType
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -23,6 +23,7 @@ RECEIVED_BYTES_SENTINEL = 40000
 
 
 def load(name: str, filename: str) -> ModuleType:
+    """Test behavior for load."""
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / filename)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -35,6 +36,7 @@ audit = load("counter_test", "vpn-backend-audit.py")
 
 class HardeningTests(unittest.TestCase):
     """Tests for HardeningTests."""
+
     def fixture(self, path: Path) -> sqlite3.Connection:
         con = sqlite3.connect(path)
         con.executescript("""
@@ -264,6 +266,7 @@ class HardeningTests(unittest.TestCase):
 
 class PathCheckTests(unittest.TestCase):
     """Tests for PathCheckTests."""
+
     def test_rejects_credentials_queries_and_unapproved_hosts(self) -> None:
         probe = load("path_check_test", "vpn-path-check.py")
         for url in (
@@ -338,6 +341,7 @@ def _text(value: object) -> str:
 
 class RealityPlanTests(unittest.TestCase):
     """Tests for RealityPlanTests."""
+
     def setup_plan(
         self,
     ) -> tuple[ModuleType, dict[str, object], dict[str, list[dict[str, object]]]]:

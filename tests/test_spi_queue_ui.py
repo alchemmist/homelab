@@ -3,7 +3,6 @@
 import ast
 import http.client
 import importlib.util
-import json
 import subprocess
 import threading
 import unittest

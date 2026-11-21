@@ -10,7 +10,6 @@ class Conversation:
 
     def __init__(self, failures=0) -> None:
         """Initialize the conversation fixture."""
-
         self.failures = failures
         self.runs = 0
         self.messages: list[str] = []

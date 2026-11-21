@@ -23,7 +23,6 @@ class PauseFolderTests(unittest.TestCase):
 
     def setUp(self) -> None:
         """Create a local Syncthing config fixture."""
-
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.config = Path(self.directory.name) / "config.xml"

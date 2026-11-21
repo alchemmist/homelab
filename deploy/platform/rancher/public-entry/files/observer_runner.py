@@ -14,7 +14,6 @@ class DiagnosticFailure(RuntimeError):
 
     def __init__(self, event) -> None:
         """Initialize the diagnostic failure."""
-
         super().__init__("Observer dependency operation failed")
         self.event = event
 

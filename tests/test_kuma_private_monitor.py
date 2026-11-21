@@ -1,13 +1,12 @@
 """Tests for the private Uptime Kuma monitoring configuration script."""
 
-from contextlib import closing
 import importlib.util
-from pathlib import Path
 import sqlite3
 import tempfile
-from typing import cast, override
 import unittest
-
+from contextlib import closing
+from pathlib import Path
+from typing import cast, override
 
 MODULE_PATH = (
     Path(__file__).resolve().parents[1]
@@ -20,6 +19,7 @@ SPEC.loader.exec_module(MODULE)
 
 class KumaPrivateMonitorTests(unittest.TestCase):
     """Validate Uptime Kuma's private monitoring database."""
+
     @override
     def setUp(self) -> None:
         """Seed a copied kuma.db with one control-plane monitor and history."""

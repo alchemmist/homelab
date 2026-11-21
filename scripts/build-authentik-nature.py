@@ -51,14 +51,16 @@ def _collect_files(source: Path) -> list[Path]:
         p for p in folder.iterdir() if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}
     )
     if not files:
-        raise ValueError("No Nature images found")
+        message = "No Nature images found"
+        raise ValueError(message)
     return files
 
 
 def _ensure_single_frame(image: PILImage) -> None:
     """Reject animated sources so scenes cannot become scripted or multi-state."""
     if getattr(image, "n_frames", 1) != 1:
-        raise ValueError("Animated images are not allowed")
+        message = "Animated images are not allowed"
+        raise ValueError(message)
 
 
 def _encode_webp(derivative: PILImage, cap: int, name: str) -> tuple[bytes, int]:
@@ -69,7 +71,8 @@ def _encode_webp(derivative: PILImage, cap: int, name: str) -> tuple[bytes, int]
         content = buf.getvalue()
         if len(content) <= cap:
             return content, quality
-    raise ValueError("Derivative too large: " + name)
+    message = "Derivative too large: " + name
+    raise ValueError(message)
 
 
 def _encode_avif(derivative: PILImage, label: str) -> tuple[bytes, int]:
@@ -81,14 +84,16 @@ def _encode_avif(derivative: PILImage, label: str) -> tuple[bytes, int]:
         avif_content = buf.getvalue()
         if len(avif_content) <= cap:
             return avif_content, avif_quality
-    raise ValueError("AVIF derivative exceeds transfer budget")
+    message = "AVIF derivative exceeds transfer budget"
+    raise ValueError(message)
 
 
 def _reject_metadata(avif_content: bytes) -> None:
     """Ensure the AVIF encoder did not inherit EXIF/XMP/ICC from the source."""
     with Image.open(io.BytesIO(avif_content)) as decoded:
         if any(decoded.info.get(k) for k in ["exif", "xmp", "icc_profile"]):
-            raise ValueError("AVIF output must not inherit source metadata")
+            message = "AVIF output must not inherit source metadata"
+            raise ValueError(message)
 
 
 def _add_derivative(
@@ -159,7 +164,8 @@ def build(source, output):
         raw = path.read_bytes()
         source_hash = hashlib.sha256(raw).hexdigest()
         if source_hash in seen:
-            raise ValueError("Duplicate source image: review selection weights")
+            message = "Duplicate source image: review selection weights"
+            raise ValueError(message)
         seen.add(source_hash)
         ident = source_hash[:12]
         with Image.open(io.BytesIO(raw)) as image:

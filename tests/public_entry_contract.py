@@ -1,8 +1,9 @@
 """Render app-owned public access, without an aggregate chart/Application."""
 
-from pathlib import Path
 import subprocess
+from pathlib import Path
 from typing import cast
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]

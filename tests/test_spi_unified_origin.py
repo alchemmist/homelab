@@ -53,7 +53,6 @@ class PublicationOrigin(unittest.TestCase):
 
     def test_live_activation_is_only_publication_origin(self) -> None:
         """Render the live-off chart and reject an unreviewed public origin."""
-        import copy
         import subprocess
 
         import yaml

@@ -292,7 +292,6 @@ def test_remote_canary_programs_are_valid_python_including_finally_cleanup() -> 
 def test_copy_refuses_live_ha_or_unknown_endpoint_before_creating_job(monkeypatch) -> None:
     import base64
     import importlib.util
-    import json
     from types import SimpleNamespace
 
     import pytest

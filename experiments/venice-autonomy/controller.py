@@ -103,12 +103,14 @@ def classify_result(result):
     if any(name in CLIENT_INPUT_ERRORS for name in names):
         return "client_input"
     if result.get("infrastructure_error_type"):
-        raise ValueError("unknown error type: " + str(result.get("infrastructure_error_type")))
+        message = "unknown error type: " + str(result.get("infrastructure_error_type"))
+        raise ValueError(message)
     if not names:
         return "none"
     if any(name in RUNNER_ERRORS for name in names):
         return "runner"
-    raise ValueError("unknown error type: " + names[0])
+    message = "unknown error type: " + names[0]
+    raise ValueError(message)
 
 
 def resolve_mini_exit(trajectory):
@@ -251,9 +253,11 @@ def save_state(path, state):
 def initial_state(duration, rounds, engines=DEFAULT_ENGINES):
     selected = tuple(engines)
     if not selected or any(engine not in ENGINES for engine in selected):
-        raise ValueError("unknown engine selection")
+        message = "unknown engine selection"
+        raise ValueError(message)
     if not 1 <= duration <= 7200 or not 1 <= rounds <= 10:
-        raise ValueError("experiment must have 1..7200 seconds and 1..10 rounds")
+        message = "experiment must have 1..7200 seconds and 1..10 rounds"
+        raise ValueError(message)
     now = time.time()
     tasks = [
         {
@@ -362,7 +366,8 @@ def cleanup_interrupted(running):
         except (OSError, ValueError, subprocess.SubprocessError) as error:
             errors.append(f"{role}: {error}")
     if errors:
-        raise ValueError("cleanup errors: " + "; ".join(errors))
+        message = "cleanup errors: " + "; ".join(errors)
+        raise ValueError(message)
 
 
 def render_report(state):
@@ -538,7 +543,8 @@ def _validate_source_hashes(state: dict[str, object]) -> None:
         )
     }
     if state.get("source_hashes", source_hashes) != source_hashes:
-        raise ValueError("runner source changed; refusing an incomparable resume")
+        message = "runner source changed; refusing an incomparable resume"
+        raise ValueError(message)
     state["source_hashes"] = source_hashes
 
 
@@ -564,7 +570,8 @@ def _read_result(directory: pathlib.Path, process: "subprocess.Popen[bytes]") ->
     try:
         result = json.loads(summary_path.read_text())
         if not isinstance(result, dict) or type(result.get("accepted")) is not bool:
-            raise ValueError("invalid summary")
+            message = "invalid summary"
+            raise ValueError(message)
     except (OSError, ValueError):
         result = {
             "accepted": False,
@@ -676,7 +683,8 @@ def run(root, mini_python, openhands_python, duration, rounds, include_text=Fals
     root = pathlib.Path(root)
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
     if root.is_symlink() or root.stat().st_mode & 0o077:
-        raise ValueError("controller root must be a private real directory")
+        message = "controller root must be a private real directory"
+        raise ValueError(message)
     with (root / "controller.lock").open("w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         path = root / "state.json"

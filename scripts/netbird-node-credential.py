@@ -7,8 +7,8 @@ Never create/modify a human, emit a token, or keep the bootstrap credential.
 
 import argparse
 import datetime as dt
-import http.client
 import fcntl
+import http.client
 import importlib.util
 import json
 import os

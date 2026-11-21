@@ -23,13 +23,21 @@ if TYPE_CHECKING:
     import types
 
 
+_EXTERNAL_WATCHDOG_REQUIRED = "external process watchdog is required"
+_WORKER_IMAGE_REQUIRED = "AUTONOMY_WORKER_IMAGE is required"
+_EXTERNAL_DEADLINE_EXCEEDED = "external end-to-end deadline exceeded"
+_DEADLINE_ALREADY_PASSED = "deadline already passed"
+
+
 def require_path(name):
     value = os.environ.get(name, "").strip()
     if not value:
-        raise RuntimeError(name + " is required")
+        message = name + " is required"
+        raise RuntimeError(message)
     path = pathlib.Path(value)
     if not path.is_dir():
-        raise RuntimeError(name + " is not a directory")
+        message = name + " is not a directory"
+        raise RuntimeError(message)
     return path
 
 
@@ -175,13 +183,15 @@ class RepositoryEnvironment:
             )[0]
             host = info["HostConfig"]
             if host["NetworkMode"] != "none" or host["ReadonlyRootfs"] is not True:
-                raise RuntimeError("worker isolation check failed")
+                message = "worker isolation check failed"
+                raise RuntimeError(message)
             if (
                 host["Memory"] != 512 * 1024 * 1024
                 or host["PidsLimit"] != 128
                 or info["Config"]["User"] != "nobody"
             ):
-                raise RuntimeError("worker limit check failed")
+                message = "worker limit check failed"
+                raise RuntimeError(message)
             self.security = {
                 "user": info["Config"]["User"],
                 "network": host["NetworkMode"],
@@ -196,7 +206,8 @@ class RepositoryEnvironment:
                 }
             )
             if result["returncode"] != 0 or "WORKER_READY" not in result["output"]:
-                raise RuntimeError("worker preflight failed")
+                message = "worker preflight failed"
+                raise RuntimeError(message)
         except BaseException:
             self.close()
             raise
@@ -205,7 +216,8 @@ class RepositoryEnvironment:
         """Run one validated command action inside the container."""
         command = action.get("command") if isinstance(action, dict) else None
         if not isinstance(command, str) or len(command.encode()) > 12000:
-            raise ValueError("invalid or oversized command")
+            message = "invalid or oversized command"
+            raise ValueError(message)
         started = time.monotonic()
         try:
             wrapped = (
@@ -245,7 +257,8 @@ class RepositoryEnvironment:
             ["docker", "cp", self.container_id + ":/workspace/.", "-"], 512 * 1024, 30
         )
         if code:
-            raise RuntimeError("candidate archive failed")
+            message = "candidate archive failed"
+            raise RuntimeError(message)
         files = {}
         with tarfile.open(fileobj=io.BytesIO(data)) as archive:
             for member in archive:
@@ -258,10 +271,12 @@ class RepositoryEnvironment:
                     or member.size > 128 * 1024
                     or name in files
                 ):
-                    raise CandidateRejected("unexpected candidate member: " + repr(name)[:160])
+                    message = "unexpected candidate member: " + repr(name)[:160]
+                    raise CandidateRejected(message)
                 files[name] = archive.extractfile(member).read()
         if set(files) != set(self.protocol.WHITELIST):
-            raise CandidateRejected("incomplete candidate")
+            message = "incomplete candidate"
+            raise CandidateRejected(message)
         destination.mkdir()
         for name, data in files.items():
             (destination / name).write_bytes(data)
@@ -273,7 +288,8 @@ class RepositoryEnvironment:
                 subprocess.check_output(["docker", "inspect", self.container_id], timeout=15)
             )[0]
             if info["Config"]["Labels"].get("venice-e2e-run") != self.nonce:
-                raise ValueError("refusing foreign cleanup")
+                message = "refusing foreign cleanup"
+                raise ValueError(message)
             subprocess.run(
                 ["docker", "rm", "-f", self.container_id],
                 check=True,
@@ -288,7 +304,8 @@ class RepositoryEnvironment:
                 )
             )[0]
             if info["Labels"].get("venice-e2e-run") != self.nonce:
-                raise ValueError("refusing foreign volume cleanup")
+                message = "refusing foreign volume cleanup"
+                raise ValueError(message)
             subprocess.run(
                 ["docker", "volume", "rm", self.volume_name],
                 check=True,
@@ -494,9 +511,11 @@ def _check_wiring() -> int:
     attempt = load_local("attempt")
     source = inspect.getsource(invoke_openhands)
     if "exec(" in source or "acceptance=acceptance" not in source:
-        raise SystemExit("openhands adapter is not wired to continue_openhands")
+        message = "openhands adapter is not wired to continue_openhands"
+        raise SystemExit(message)
     if "continue_openhands" not in inspect.getsource(attempt.run_openhands):
-        raise SystemExit("run_openhands does not call continue_openhands")
+        message = "run_openhands does not call continue_openhands"
+        raise SystemExit(message)
     print("wiring-ok")
     return 0
 
@@ -548,7 +567,8 @@ def _visible_repro_check(
             }
         )
         if check["returncode"] != 0 or not check["output"].startswith(expected):
-            raise RuntimeError("visible reproduction check failed")
+            message = "visible reproduction check failed"
+            raise RuntimeError(message)
         summary["visible_reproducer_sha256"] = expected
 
 
@@ -558,14 +578,14 @@ def main(argv=None):
     if args.check_wiring:
         return _check_wiring()
     if os.getenv("AUTONOMY_EXTERNAL_WATCHDOG") != "1":
-        raise RuntimeError("external process watchdog is required")
+        raise RuntimeError(_EXTERNAL_WATCHDOG_REQUIRED)
     protocol = load_protocol()
     output_root, snapshot = (
         require_path("AUTONOMY_OUTPUT_ROOT"),
         require_path("AUTONOMY_SNAPSHOT"),
     )
     if not (image := os.environ.get("AUTONOMY_WORKER_IMAGE", "").strip()):
-        raise RuntimeError("AUTONOMY_WORKER_IMAGE is required")
+        raise RuntimeError(_WORKER_IMAGE_REQUIRED)
     protocol.PILOT_LABEL = "venice-e2e-run=" + os.environ["AUTONOMY_RUN_NONCE"]
     protocol.verify_snapshot(snapshot)
     attempt = load_local("attempt")
@@ -576,11 +596,11 @@ def main(argv=None):
     environment = None
 
     def deadline(*_):
-        raise TimeoutError("external end-to-end deadline exceeded")
+        raise TimeoutError(_EXTERNAL_DEADLINE_EXCEEDED)
 
     signal.signal(signal.SIGALRM, deadline)
     if (remaining := float(os.environ["AUTONOMY_DEADLINE"]) - time.time()) <= 0:
-        raise TimeoutError("deadline already passed")
+        raise TimeoutError(_DEADLINE_ALREADY_PASSED)
     signal.alarm(int(remaining))
     try:
         environment = RepositoryEnvironment(snapshot, directory / "agent", image, protocol)

@@ -6,7 +6,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import test_triage
 from core import Failure
 from integrations import Model
 from local_token_counter import MAX_BYTES, LocalCounter
@@ -17,8 +16,7 @@ class Lifecycle(unittest.TestCase):
     """Tests for local token model retention and isolation."""
 
     def test_retained_models_and_request_isolation(self) -> None:
-
-        'Verify retained models are reused with strict request isolation.'
+        """Verify retained models are reused with strict request isolation."""
         with patch.dict(os.environ, SPI_TOKEN_ACCOUNTING_MODE="local-qwen-v1"):
             models = [Model(Mock(), "unused") for _ in range(24)]
         assert len({id(m.counter.tokenizer) for m in models}) == 1
@@ -56,7 +54,7 @@ class Lifecycle(unittest.TestCase):
             m.http.request.assert_not_called()
 
     def test_invalid_native_contract_before_recovery_or_http(self) -> None:
-        'Verify invalid native contracts fail before recovery or HTTP.'
+        """Verify invalid native contracts fail before recovery or HTTP."""
         from contextlib import ExitStack
 
         import local_token_counter as lc
@@ -109,7 +107,7 @@ class Lifecycle(unittest.TestCase):
         m.http.request.assert_not_called()
 
     def test_cached_native_does_not_bypass_validation(self) -> None:
-        'Verify a cached native counter still validates every request.'
+        """Verify a cached native counter still validates every request."""
         LocalCounter()
         with self.assertRaises(Failure):
             LocalCounter("/nonexistent/spi-tokenizer")

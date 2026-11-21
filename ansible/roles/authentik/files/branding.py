@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Reconcile Quiet Mono Brand assets/CSS only; never replace authentication code.
-
 Run as the owner with credentials in the protected Authentik deployment directory.
 """
 
@@ -75,8 +74,8 @@ def exact_brand(
     )
     matches = [row for row in rows if row["domain"] == HOST]
     if len(matches) > 1:
-        msg = "Ambiguous domain brand; refusing to change it"
-        raise RuntimeError(msg)
+        message = "Ambiguous domain brand; refusing to change it"
+        raise RuntimeError(message)
     return rows, matches[0] if matches else None
 
 
@@ -87,8 +86,8 @@ def _rollback(headers: dict[str, str], journal_path: Path, backup_arg: Path) -> 
     before = cast("dict[str, object]", backup["brand_before"])
     if before:
         if not current or current["brand_uuid"] != before["brand_uuid"]:
-            msg = "Brand identity changed; manual review required"
-            raise RuntimeError(msg)
+            message = "Brand identity changed; manual review required"
+            raise RuntimeError(message)
         api(
             "PATCH",
             "core/brands/" + cast("str", current["brand_uuid"]) + "/",
@@ -98,8 +97,8 @@ def _rollback(headers: dict[str, str], journal_path: Path, backup_arg: Path) -> 
     elif current:
         journal = cast("dict[str, object]", json.loads(journal_path.read_text()))
         if current["brand_uuid"] != journal["brand_uuid"]:
-            msg = "Refusing to remove an unrelated brand"
-            raise RuntimeError(msg)
+            message = "Refusing to remove an unrelated brand"
+            raise RuntimeError(message)
         api("DELETE", "core/brands/" + cast("str", current["brand_uuid"]) + "/", headers)
     flow = cast("dict[str, object]", backup["flow_before"])
     api(
@@ -171,8 +170,8 @@ def _verify_nature_responses(
             if digest not in allowed or "immutable" not in response.headers.get(
                 "Cache-Control", ""
             ):
-                msg = "Random Nature response failed verification"
-                raise RuntimeError(msg)
+                message = "Random Nature response failed verification"
+                raise RuntimeError(message)
         urls["NATURE_RANDOM_" + variant.upper()] = url
     scene_url = BASE + "/-/quiet-mono/v1/nature/scene.css"
     with urllib.request.urlopen(scene_url, timeout=60) as response:
@@ -181,8 +180,8 @@ def _verify_nature_responses(
             not in _nature_photo_hashes(theme, assets, "sceneCss")
             or response.headers.get("Cache-Control") != "no-store"
         ):
-            msg = "Random scene CSS verification failed"
-            raise RuntimeError(msg)
+            message = "Random scene CSS verification failed"
+            raise RuntimeError(message)
     urls["NATURE_SCENE"] = scene_url
 
 
@@ -192,8 +191,8 @@ def _render_css(theme: Path, urls: dict[str, str]) -> str:
     for key, url in urls.items():
         css = css.replace("__ASSET_" + key + "__", url)
     if "__ASSET_" in css:
-        msg = "Unresolved CSS asset reference"
-        raise RuntimeError(msg)
+        message = "Unresolved CSS asset reference"
+        raise RuntimeError(message)
     return css.strip()
 
 
@@ -210,8 +209,8 @@ def _resolve_native_stages(headers: dict[str, str]) -> tuple[dict[str, object], 
         api("GET", "stages/password/?name=default-authentication-password", headers)["results"],
     )
     if len(ident) != 1 or len(password) != 1:
-        msg = "Expected reviewed native identification/password stages"
-        raise RuntimeError(msg)
+        message = "Expected reviewed native identification/password stages"
+        raise RuntimeError(message)
     return ident[0], password[0]
 
 
@@ -269,21 +268,21 @@ def _apply_brand(
         api("GET", "flows/instances/?slug=default-authentication-flow", headers)["results"],
     )
     if len(flows) != 1:
-        msg = "Expected one default authentication flow"
-        raise RuntimeError(msg)
+        message = "Expected one default authentication flow"
+        raise RuntimeError(message)
     flow = flows[0]
     ident, password = _resolve_native_stages(headers)
     if ident.get("password_stage") not in (None, password["pk"]):
-        msg = "Unexpected inline password stage; refusing to replace it"
-        raise RuntimeError(msg)
+        message = "Unexpected inline password stage; refusing to replace it"
+        raise RuntimeError(message)
     # Do not silently overwrite an unrelated existing custom theme.
     if (
         current
         and current.get("branding_custom_css")
         and "Quiet Mono v5" not in cast("str", current["branding_custom_css"])
     ):
-        msg = "Unmanaged domain CSS found; manual review required"
-        raise RuntimeError(msg)
+        message = "Unmanaged domain CSS found; manual review required"
+        raise RuntimeError(message)
     payload = {key: base[key] for key in FIELDS if key in base}
     base_attributes = base.get("attributes")
     attributes = cast(
@@ -317,7 +316,7 @@ def _apply_brand(
     ):
         print("Quiet Mono Brand already reconciled; no changes")
         return
-    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
+    stamp = datetime.datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%S.%fZ")
     backup_path = root / "theme-backups" / ("before-quiet-mono-" + stamp + ".json")
     protected_json(
         backup_path,
@@ -373,7 +372,7 @@ def _apply_brand(
 
 
 def main():
-    'Main.'
+    """Main."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
     parser.add_argument("theme", type=Path)
@@ -396,13 +395,13 @@ def main():
         args.action != "rollback"
         and api("GET", "admin/version/", headers).get("version_current") != "2026.8.5"
     ):
-        msg = "Theme requires reviewed Authentik 2026.8.5; refusing version drift"
-        raise RuntimeError(msg)
+        message = "Theme requires reviewed Authentik 2026.8.5; refusing version drift"
+        raise RuntimeError(message)
     journal_path = args.root / "quiet-mono-brand-journal.json"
     if args.action == "rollback":
         if not args.backup:
-            msg = "Explicit --backup required for rollback"
-            raise RuntimeError(msg)
+            message = "Explicit --backup required for rollback"
+            raise RuntimeError(message)
         _rollback(headers, journal_path, args.backup)
         return
     urls, assets = _collect_asset_urls(args.theme)

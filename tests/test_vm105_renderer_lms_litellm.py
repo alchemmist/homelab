@@ -1,9 +1,15 @@
 """Native auth/storage-preserving VM105 application-only placement contracts."""
 
 import ast
+import hashlib
+import json
 import re
+import subprocess
+import tempfile
+import unittest
 from pathlib import Path
-import hashlib, json, subprocess, tempfile, unittest, yaml
+
+import yaml
 
 R = Path(__file__).resolve().parents[1]
 LITELLM_GRACE_PERIOD_SECONDS = 7260
@@ -38,6 +44,7 @@ def render(chart, values, release, ns):
 
 class MigrationTests(unittest.TestCase):
     """Tests for MigrationTests."""
+
     def test_renderer_retry_after_transport_repair_preserves_grafana_and_adapter_placement(self):
         v = load("charts/grafana/alert-graphs.runtime.values.yaml")
         assert v["grafana"]["imageRenderer"]["nodeSelector"] == {

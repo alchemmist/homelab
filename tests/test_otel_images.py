@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def module(name: str, filename: str) -> types.ModuleType:
+    """Test behavior for module."""
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / filename)
     result = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(result)
@@ -26,10 +27,12 @@ BINARIES = module("validation_binaries", "otel-validation-binaries.py")
 
 
 def digest(body: bytes) -> str:
+    """Test behavior for digest."""
     return "sha256:" + hashlib.sha256(body).hexdigest()
 
 
 def response(body: bytes, headers: dict[str, str] | None = None) -> io.BytesIO:
+    """Test behavior for response."""
     result = io.BytesIO(body)
     result.headers = headers or {}
     return result
@@ -42,7 +45,6 @@ class ImageLockTests(unittest.TestCase):
         self, entries: list[dict[str, object]], *, bad_digest: bool = False
     ) -> dict[str, object]:
         """Resolve a fixture index through the registry token flow."""
-
         body = json.dumps({"manifests": entries}).encode()
         responses = [
             response(b'{"token":"private-fixture"}'),
@@ -100,7 +102,6 @@ class ValidationBinaryTests(unittest.TestCase):
         absent: bool = False,
     ) -> dict[str, object]:
         """Extract the fixture image layer with optional tampering."""
-
         layer = io.BytesIO()
         with tarfile.open(fileobj=layer, mode="w:gz") as archive:
             directory = tarfile.TarInfo("etc/loki")

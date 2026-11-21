@@ -1,6 +1,5 @@
 """Offline interface-language regressions; incoming alert data is not rewritten."""
 
-import json
 import subprocess
 import unittest
 from html.parser import HTMLParser
@@ -11,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class EnglishUITests(unittest.TestCase):
     """Confirm every owned queue UI asset is English."""
+
     def test_all_owned_interface_assets_are_english(self) -> None:
         class HTML(HTMLParser):
             language = None

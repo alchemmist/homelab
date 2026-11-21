@@ -4,9 +4,9 @@
 import argparse
 import json
 import os
+from pathlib import Path
 import socket
 import urllib.request
-from pathlib import Path
 
 TITLES = {
     "default-provider-authorization-explicit-consent": "Redirecting",
@@ -22,8 +22,8 @@ def reconcile(api, root, rollback=False):
         original = json.loads(backup.read_text())
         desired = {slug: original[slug]["title"] for slug in TITLES}
         if any(current[slug]["pk"] != original[slug]["pk"] for slug in TITLES):
-            msg = "Flow identity changed; refusing automatic rollback"
-            raise RuntimeError(msg)
+            message = "Flow identity changed; refusing automatic rollback"
+            raise RuntimeError(message)
     else:
         desired = TITLES
         if not backup.exists():
@@ -77,8 +77,8 @@ def main():
             return document
 
     if not args.rollback and api("GET", "admin/version/")["version_current"] != "2026.8.5":
-        msg = "Unreviewed Authentik version"
-        raise RuntimeError(msg)
+        message = "Unreviewed Authentik version"
+        raise RuntimeError(message)
     changed = reconcile(api, args.root, args.rollback)
     print(
         "Authorization flow titles updated"

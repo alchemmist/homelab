@@ -18,6 +18,7 @@ P = next(
 
 
 def component(c, runtime=0, check=1, off=0, success=1, observed="0+15x20", extra=""):
+    """Test behavior for component."""
     ip = "10.250.0.40" if c == "relay" else "10.250.0.2"
     labels = f'job="node-exporter",instance="{ip}:9100",component="{c}"' + extra
     data = {
@@ -35,6 +36,7 @@ def component(c, runtime=0, check=1, off=0, success=1, observed="0+15x20", extra
 
 class CompositeModeTest(unittest.TestCase):
     """Tests for CompositeModeTest."""
+
     def test_contract_and_geometry(self):
         assert P["gridPos"] == {"x": 4, "y": 0, "w": 2, "h": 2}
         mapping = P["fieldConfig"]["defaults"]["mappings"][0]["options"]

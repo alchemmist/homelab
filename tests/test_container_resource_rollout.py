@@ -166,6 +166,7 @@ def profiled_pod() -> Pod:
 
 class RolloutTests(unittest.TestCase):
     """Check container resource rollout reconciliation decisions."""
+
     def test_profile_node_selector_requires_reconciliation_when_missing_or_different(
         self,
     ) -> None:
@@ -337,10 +338,9 @@ class RolloutTests(unittest.TestCase):
         client.evict.return_value = SimpleNamespace(returncode=0)
         with (
             patch.object(ROLLOUT.time, "monotonic", side_effect=[0, 0, 0, 11]),
-            patch.object(ROLLOUT.time, "sleep"),
+            patch.object(ROLLOUT.time, "sleep"),self.assertRaisesRegex(TimeoutError, "Replacement")
         ):
-            with self.assertRaisesRegex(TimeoutError, "Replacement"):
-                ROLLOUT.reconcile_one(client, old, 10, 0.01, [profile()])
+            ROLLOUT.reconcile_one(client, old, 10, 0.01, [profile()])
 
     def test_unlimited_profile_accepts_absent_cpu_limit(self) -> None:
         """Unlimited profile accepts absent cpu limit."""
@@ -564,10 +564,9 @@ class RolloutTests(unittest.TestCase):
         client.evict.return_value = SimpleNamespace(returncode=0)
         with (
             patch.object(ROLLOUT.time, "monotonic", side_effect=[0, 0, 0, 11]),
-            patch.object(ROLLOUT.time, "sleep"),
+            patch.object(ROLLOUT.time, "sleep"),self.assertRaisesRegex(TimeoutError, "Replacement")
         ):
-            with self.assertRaisesRegex(TimeoutError, "Replacement"):
-                ROLLOUT.reconcile_one(client, old, 10, 0.01)
+            ROLLOUT.reconcile_one(client, old, 10, 0.01)
 
     def test_ready_replacement_without_limits_times_out(self) -> None:
         """Ready replacement without limits times out."""
@@ -577,10 +576,9 @@ class RolloutTests(unittest.TestCase):
         client.evict.return_value = SimpleNamespace(returncode=0)
         with (
             patch.object(ROLLOUT.time, "monotonic", side_effect=[0, 0, 0, 11]),
-            patch.object(ROLLOUT.time, "sleep"),
+            patch.object(ROLLOUT.time, "sleep"),self.assertRaisesRegex(TimeoutError, "Replacement")
         ):
-            with self.assertRaisesRegex(TimeoutError, "Replacement"):
-                ROLLOUT.reconcile_one(client, old, 10, 0.01)
+            ROLLOUT.reconcile_one(client, old, 10, 0.01)
 
     def test_eviction_uses_stdin_and_uid(self) -> None:
         """Eviction uses stdin and uid."""

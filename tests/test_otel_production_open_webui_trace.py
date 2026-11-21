@@ -35,6 +35,7 @@ class _ResourceSpan(TypedDict):
 
 
 def module() -> ModuleType:
+    """Test behavior for module."""
     spec = importlib.util.spec_from_file_location(
         "trace_verify", ROOT / "scripts/otel-application-trace-verify.py"
     )
@@ -44,7 +45,9 @@ def module() -> ModuleType:
 
 
 def document() -> dict[str, list[_ResourceSpan]]:
+    """Test behavior for document."""
     def resource(service, span) -> _ResourceSpan:
+        """Build a resource span for the requested service."""
         return {
             "resource": {
                 "attributes": [{"key": "service.name", "value": {"stringValue": service}}]
@@ -78,9 +81,9 @@ def document() -> dict[str, list[_ResourceSpan]]:
 
 class OpenWebuiProductionTraceTests(unittest.TestCase):
     """Verify production Open WebUI trace summaries require real resources."""
+
     def test_real_application_server_resource_and_parent_are_required(self) -> None:
         """Real application server resource and parent are required."""
-
         result = module().summarize_production_open_webui(document(), TRACE, PARENT)
         assert result["success"]
         assert not result["productionOpenWebuiInferencePathVerified"]

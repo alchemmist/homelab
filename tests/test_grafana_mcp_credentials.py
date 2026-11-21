@@ -23,6 +23,7 @@ def secret(**values: str) -> dict[str, dict[str, str]]:
 
 class CredentialsTests(unittest.TestCase):
     """Validate Grafana MCP service-account credential handling."""
+
     def test_existing_valid_secret_is_preserved(self) -> None:
         """Keep a valid committed secret without persisting anything."""
         grafana = Mock()

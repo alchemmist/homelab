@@ -128,7 +128,8 @@ def run():
                 break
             time.sleep(2)
         else:
-            raise ValueError("Projected mirror leaf did not change before deadline")
+            message = "Projected mirror leaf did not change before deadline"
+            raise ValueError(message)
         # The provider/exporter/session was not recreated between batches.
         completion()
         require(

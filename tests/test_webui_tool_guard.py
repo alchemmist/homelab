@@ -10,6 +10,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 def load(name):
+    """Test behavior for load."""
     spec = importlib.util.spec_from_file_location(
         name, ROOT / "charts/open-webui/files" / f"{name}.py"
     )
@@ -52,6 +53,7 @@ GOOD = {"path": "/tmp/example", "replacements": [{"target": "old", "replacement"
 
 class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
     """Tests for ToolGuardTests."""
+
     def setUp(self):
         self.metadata = {
             "message_id": "one",
@@ -178,7 +180,6 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
     async def test_alias_resolved_before_validation(self):
         def resolve(call, tools):
             call["function"]["name"] = "replace_file_content"
-            return None
 
         with patch.dict(self.execute.__wrapped__.__globals__, {"resolve_tool_call": resolve}):
             result = await self.execute(
@@ -279,6 +280,7 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
 
 class NoProgressRoundTests(unittest.TestCase):
     """Tests for NoProgressRoundTests."""
+
     def call(self, name, error):
         return [
             {"type": "message", "status": "in_progress"},

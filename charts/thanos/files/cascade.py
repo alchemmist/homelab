@@ -259,8 +259,8 @@ def wait_compactor_idle(namespace, name, timeout=180):
         if spec == 0 and ready == 0 and current == 0:
             return
         if time.monotonic() >= deadline:
-            msg = "compactor did not scale to zero"
-            raise TimeoutError(msg)
+            message = "compactor did not scale to zero"
+            raise TimeoutError(message)
         time.sleep(2)
 
 
@@ -279,8 +279,7 @@ def default_runner(argv):
 def disk_free_bytes(prometheus_url):
     query = (
         'max(node_filesystem_avail_bytes{job="node-exporter",mountpoint="/",fstype=~"ext4|xfs"}'
-        ' * on(instance) group_left(nodename) node_uname_info{'
-        'job="node-exporter",nodename="socrat-1"})'
+        ' * on(instance) group_left(nodename) node_uname_info{job="node-exporter",nodename="socrat-1"})'
     )
     url = prometheus_url.rstrip("/") + "/api/v1/query?" + urllib.parse.urlencode({"query": query})
     try:

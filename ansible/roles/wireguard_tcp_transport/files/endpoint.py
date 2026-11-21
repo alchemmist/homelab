@@ -11,21 +11,20 @@ from pathlib import Path
 
 
 def update_config(original, public_key, endpoint):
-    """Execute the update_config operation."""
-    if re.search(r"^\s*SaveConfig\s*=\s*true\s*$", original, re.M | re.I):
-        msg = "SaveConfig must be disabled"
-        raise ValueError(msg)
-    blocks = re.split(r"(?=^\s*\[Peer\]\s*$)", original, flags=re.M)
+    if re.search(r"^\s*SaveConfig\s*=\s*true\s*$", original, re.MULTILINE | re.IGNORECASE):
+        message = "SaveConfig must be disabled"
+        raise ValueError(message)
+    blocks = re.split(r"(?=^\s*\[Peer\]\s*$)", original, flags=re.MULTILINE)
     found = 0
     for index, block in enumerate(blocks):
-        key = re.search(r"^\s*PublicKey\s*=\s*(\S+)\s*$", block, re.M)
+        key = re.search(r"^\s*PublicKey\s*=\s*(\S+)\s*$", block, re.MULTILINE)
         if not key or key[1] != public_key:
             continue
         found += 1
-        entries = list(re.finditer(r"^[ \t]*Endpoint[ \t]*=[^\n]*(?:\n|$)", block, re.M))
+        entries = list(re.finditer(r"^[ \t]*Endpoint[ \t]*=[^\n]*(?:\n|$)", block, re.MULTILINE))
         if len(entries) > 1:
-            msg = "Duplicate peer endpoint"
-            raise ValueError(msg)
+            message = "Duplicate peer endpoint"
+            raise ValueError(message)
         replacement = "Endpoint = " + endpoint + "\n" if endpoint else ""
         if entries:
             entry = entries[0]
@@ -34,20 +33,19 @@ def update_config(original, public_key, endpoint):
             block = block.rstrip("\n") + "\n" + replacement + "\n"
         blocks[index] = block
     if found != 1:
-        msg = "Expected exactly one matching peer"
-        raise ValueError(msg)
+        message = "Expected exactly one matching peer"
+        raise ValueError(message)
     return "".join(blocks)
 
 
 def main():
-    """Execute the main operation."""
     interface, public_key, endpoint = sys.argv[1:]
     if not re.fullmatch(r"[a-zA-Z0-9_=+.-]{1,15}", interface):
-        msg = "Invalid interface"
-        raise ValueError(msg)
+        message = "Invalid interface"
+        raise ValueError(message)
     if endpoint not in ("", "127.0.0.1:51840"):
-        msg = "Unexpected transport endpoint"
-        raise ValueError(msg)
+        message = "Unexpected transport endpoint"
+        raise ValueError(message)
     config = Path("/etc/wireguard") / (interface + ".conf")
     original = config.read_text()
     updated = update_config(original, public_key, endpoint)
@@ -58,8 +56,8 @@ def main():
         ).splitlines()
     )
     if public_key not in live:
-        msg = "Peer missing from live interface"
-        raise ValueError(msg)
+        message = "Peer missing from live interface"
+        raise ValueError(message)
     changed = updated != original
     if changed:
         backup = str(config) + ".before-tcp-transport-" + str(time.time_ns())

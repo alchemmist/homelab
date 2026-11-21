@@ -18,7 +18,6 @@ class ScopedRolloutTests(unittest.TestCase):
 
     def setUp(self) -> None:
         """Load the desired agent config and a live variant."""
-
         self.desired = yaml.safe_load((ROOT / "deploy/monitoring/otel/agent.yaml").read_text())
         self.live = copy.deepcopy(self.desired)
         self.live["service"]["pipelines"]["logs"]["exporters"] = ["otlp"]

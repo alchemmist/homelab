@@ -16,7 +16,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def log_message(self, *args):
         """Silence request logging: no bodies, credentials or content in logs."""
-        pass  # no request bodies, credentials or content in logs
+        # no request bodies, credentials or content in logs
 
     def do_GET(self):
         """Answer liveness probes on /healthz and 404 otherwise."""

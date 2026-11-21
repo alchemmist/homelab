@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[1] / "ansible/roles/wireguard_tcp_transp
 
 
 def load(name):
+    """Test behavior for load."""
     spec = importlib.util.spec_from_file_location(name, ROOT / (name + ".py"))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -21,6 +22,7 @@ CONFIG = "[Interface]\nPrivateKey = secret\n\n[Peer]\nPublicKey = first\nAllowed
 
 class TransportTests(unittest.TestCase):
     """Tests or helper for TransportTests."""
+
     def test_preserves_secrets_other_peer_and_routes(self):
         expected = CONFIG.replace("Endpoint = old:123", "Endpoint = 127.0.0.1:51840")
         assert ENDPOINT.update_config(CONFIG, "first", "127.0.0.1:51840") == expected

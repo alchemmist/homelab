@@ -8,7 +8,6 @@ import tempfile
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from typing import override
 
 import worker
 
@@ -33,8 +32,7 @@ class Handler(BaseHTTPRequestHandler):
     """HTTP handler accepting swe-mini selftest jobs."""
 
     def do_POST(self) -> None:
-
-        'Execute one self-test step from the request body.'
+        """Execute one self-test step from the request body."""
         request = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         assert not request.get("tools"), "Venice route must not use tool-call emulation"
         calls.append(request)
@@ -64,8 +62,7 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps(payload).encode())
 
     def log_message(self, *args):
-        'Suppress default request-line logging.'
-        pass
+        """Suppress default request-line logging."""
 
 
 server = HTTPServer(("127.0.0.1", 0), Handler)

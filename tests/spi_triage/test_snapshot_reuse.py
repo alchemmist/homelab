@@ -66,8 +66,7 @@ class ReviewReuseTests(unittest.TestCase):
     """Tests for review snapshot reuse."""
 
     def issues(self) -> list[IssueRow]:
-
-        'Build the canonical issue fixture list.'
+        """Build the canonical issue fixture list."""
         return [
             {
                 "number": i,
@@ -82,7 +81,7 @@ class ReviewReuseTests(unittest.TestCase):
     def prepare(
         self, issues: list[IssueRow], event: object | None = None
     ) -> tuple[PreparedModel, ProofProgress]:
-        'Set the model snapshot and run one matching step.'
+        """Set the model snapshot and run one matching step."""
         m: PreparedModel = Model(Mock(), "fake")
         m.call = Mock(return_value=GOOD)
         saved: list[ProofProgress] = []
@@ -91,7 +90,7 @@ class ReviewReuseTests(unittest.TestCase):
         return m, saved[-1]
 
     def test_four_jobs_exact_partitions_survive_updates_inserts_deletes_reordering(self) -> None:
-        'Verify partitions survive updates, inserts, deletes and reordering.'
+        """Verify partitions survive updates, inserts, deletes and reordering."""
         original = self.issues()
         for index in range(4):
             m, proof = self.prepare(original, f.event(start="2026-11-03T13:00:0%dZ" % index))
@@ -120,7 +119,7 @@ class ReviewReuseTests(unittest.TestCase):
             assert proof["snapshot"] == original
 
     def test_owner_model_prompt_and_content_proofs_fail_closed(self) -> None:
-        'Verify owner, prompt and content proofs fail closed.'
+        """Verify owner, prompt and content proofs fail closed."""
         issues = self.issues()
         m, proof = self.prepare(issues)
         m.call.reset_mock()
@@ -155,7 +154,7 @@ class ReviewReuseTests(unittest.TestCase):
             m.call.assert_not_called()
 
     def test_transfer_persisted_before_admission_and_legacy_never_rebound(self) -> None:
-        'Verify transfers persist before admission and never rebind legacy.'
+        """Verify transfers persist before admission and never rebind legacy."""
         issues = self.issues()
         m, proof = self.prepare(issues)
         current = copy.deepcopy(issues)
@@ -170,7 +169,7 @@ class ReviewReuseTests(unittest.TestCase):
         assert m.call.call_count == 6
 
     def test_closed_nominee_is_removed_and_semantic_final_recomputed(self) -> None:
-        'Verify closed nominees are removed and semantics recomputed.'
+        """Verify closed nominees are removed and semantics recomputed."""
         issues = self.issues()
         m = Model(Mock(), "fake")
         saved = []
@@ -189,7 +188,7 @@ class ReviewReuseTests(unittest.TestCase):
         assert m.call.call_count > 1  # invalidated batch plus semantic nominee reduction
 
     def test_selection_proof_survives_repeated_restart_deferral(self) -> None:
-        'Verify selection proofs survive repeated restart deferrals.'
+        """Verify selection proofs survive repeated restart deferrals."""
         issues = self.issues()
         m = Model(Mock(), "fake")
         saved = []
@@ -220,7 +219,7 @@ class ReviewReuseTests(unittest.TestCase):
         assert m.call.call_count == 4
 
     def test_cheap_signature_same_universe_without_comments(self) -> None:
-        'Verify cheap signatures agree without comment data.'
+        """Verify cheap signatures agree without comment data."""
         g = GitHub(Mock(), "unused")
         g.issues = Mock(return_value=self.issues())
         g.comments = Mock()
@@ -236,7 +235,7 @@ class EarlyFenceTests(unittest.TestCase):
     tearDown = f.EngineTests.tearDown
 
     def test_twenty_safe_deferrals_zero_analysis_preserve_cache_and_budget(self) -> None:
-        'Verify safe deferrals preserve cache and budget at zero analysis.'
+        """Verify safe deferrals preserve cache and budget at zero analysis."""
         key = self.store.enqueue(f.event())["job_id"]
         self.store.claim()
         proof = {"private": "fake-proof"}
@@ -264,7 +263,7 @@ class EarlyFenceTests(unittest.TestCase):
             assert c.execute("select count(*) from job_failure_budget").fetchone()[0] == 0
 
     def test_rollback_result_reset_retains_separate_checkpoint(self) -> None:
-        'Verify rollback resets results but retains checkpoints.'
+        """Verify rollback resets results but retains checkpoints."""
         from core import Store
 
         model = Model(Mock(), "fake")
@@ -286,7 +285,7 @@ class EarlyFenceTests(unittest.TestCase):
         assert self.store.match_checkpoint(key) == proof
 
     def test_unsafe_intent_not_cleared_or_patient(self) -> None:
-        'Verify unsafe intent is never cleared or made patient.'
+        """Verify unsafe intent is never cleared or made patient."""
         key = self.store.enqueue(f.event())["job_id"]
         self.store.claim()
         self.store.save(key, 3, {"publication_backend": "legacy"}, intent='{"number":7}')
@@ -307,7 +306,7 @@ class ChurnPublicationTests(unittest.TestCase):
     tearDown = f.EngineTests.tearDown
 
     def test_four_prepared_jobs_eventually_publish_after_own_bot_updates(self) -> None:
-        'Verify four prepared jobs publish after their own bot updates.'
+        """Verify four prepared jobs publish after their own bot updates."""
         import hashlib
         from types import SimpleNamespace
 

@@ -19,29 +19,35 @@ NODES = ["socrat-0", "socrat-1"]
 def placement(document):
     metadata, spec = document["metadata"], document["spec"]
     if (metadata["namespace"], metadata["name"]) not in TARGETS:
-        raise ValueError("Deployment outside the explicit stateless-controller allowlist")
+        message = "Deployment outside the explicit stateless-controller allowlist"
+        raise ValueError(message)
     if (
         spec.get("paused")
         or spec.get("strategy", {}).get("type", "RollingUpdate") != "RollingUpdate"
     ):
-        raise ValueError("Paused or non-rolling deployment needs separate handling")
+        message = "Paused or non-rolling deployment needs separate handling"
+        raise ValueError(message)
     desired = spec.get("replicas", 1)
     if desired < 1 or document.get("status", {}).get("readyReplicas", 0) < desired:
-        raise ValueError("Controller is not healthy before capacity placement")
+        message = "Controller is not healthy before capacity placement"
+        raise ValueError(message)
     pod = spec["template"]["spec"]
     if any(
         any(key in volume for key in ("persistentVolumeClaim", "hostPath", "nfs"))
         for volume in pod.get("volumes", [])
     ):
-        raise ValueError("Refusing to relocate a controller with persistent/local data")
+        message = "Refusing to relocate a controller with persistent/local data"
+        raise ValueError(message)
     if any(
         c.get("imagePullPolicy", "IfNotPresent") != "IfNotPresent"
         for c in pod["containers"] + pod.get("initContainers", [])
     ):
-        raise ValueError("Warm-image-only rollout requires IfNotPresent")
+        message = "Warm-image-only rollout requires IfNotPresent"
+        raise ValueError(message)
     pin = pod.get("nodeSelector", {}).get("kubernetes.io/hostname")
     if pin is not None and pin not in NODES:
-        raise ValueError("Existing hostname pin conflicts with the large-node placement")
+        message = "Existing hostname pin conflicts with the large-node placement"
+        raise ValueError(message)
     original = copy.deepcopy(pod.get("affinity"))
     affinity = copy.deepcopy(original or {})
     required = {
@@ -56,7 +62,8 @@ def placement(document):
         }
     }
     if affinity.get("nodeAffinity") not in (None, required):
-        raise ValueError("Existing node affinity requires explicit reconciliation")
+        message = "Existing node affinity requires explicit reconciliation"
+        raise ValueError(message)
     affinity["nodeAffinity"] = required
     if original == affinity:
         return None, None
@@ -94,7 +101,8 @@ def run(kubeconfig, state_directory):
         and any(c["type"] == "Ready" and c["status"] == "True" for c in n["status"]["conditions"])
     }
     if not set(NODES) <= ready:
-        raise ValueError("Both large nodes must be Ready and schedulable")
+        message = "Both large nodes must be Ready and schedulable"
+        raise ValueError(message)
     result = []
     for namespace, name in TARGETS:
         get = ["-n", namespace, "get", "deployment", name, "-o", "json"]
@@ -138,7 +146,8 @@ def run(kubeconfig, state_directory):
                 and any(o["uid"] in owners for o in p["metadata"].get("ownerReferences", []))
             ]
             if not active or any(p["spec"].get("nodeName") not in NODES for p in active):
-                raise ValueError("Controller has not moved entirely to the large nodes")
+                message = "Controller has not moved entirely to the large nodes"
+                raise ValueError(message)
             result.append(
                 {
                     "namespace": namespace,
@@ -153,7 +162,8 @@ def run(kubeconfig, state_directory):
                 live["metadata"]["uid"] != rollback["uid"]
                 or live["spec"]["template"]["spec"].get("affinity") != rollback["appliedAffinity"]
             ):
-                raise RuntimeError("Concurrent placement change: manual rollback required") from exc
+                message = "Concurrent placement change: manual rollback required"
+                raise RuntimeError(message) from exc
             restore = {
                 "metadata": {"resourceVersion": live["metadata"]["resourceVersion"]},
                 "spec": {

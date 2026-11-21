@@ -5,10 +5,10 @@ opened/synchronize, so a timed-out delivery drops the review. Failed deliveries
 that share a guid are retried until one of them succeeds, at most three times.
 """
 
-import http.client
 import json
 import os
 import time
+import http.client
 from datetime import UTC, datetime
 
 import jwt
@@ -38,8 +38,8 @@ def token() -> str:
 
 def request(method: str, path: str, bearer: str):
     if not path.startswith("/app/hook/deliveries") or "\r" in path or "\n" in path:
-        msg = "Only GitHub App delivery paths are allowed"
-        raise ValueError(msg)
+        message = "Only GitHub App delivery paths are allowed"
+        raise ValueError(message)
     # HTTPSConnection verifies TLS and never follows redirects with the bearer.
     connection = http.client.HTTPSConnection("api.github.com", timeout=30)
     try:
@@ -55,7 +55,8 @@ def request(method: str, path: str, bearer: str):
         )
         response = connection.getresponse()
         if not 200 <= response.status < 300:
-            raise RuntimeError(f"GitHub delivery request failed: HTTP {response.status}")
+            message = f"GitHub delivery request failed: HTTP {response.status}"
+            raise RuntimeError(message)
         raw = response.read()
         return json.loads(raw) if raw else {}
     finally:

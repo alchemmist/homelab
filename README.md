@@ -11,15 +11,12 @@ for one node, and `make check` to attempt every node and return failure if any
 fails. Local targets execute the commands from the generated graph manifest;
 individual targets do not run upstream nodes or GitHub Actions setup steps.
 
-Start with Make, jq, Bash and `uv sync --locked`. For the full suite use a
-Linux x86_64 runner with Helm 3.19.0, Node 24.11.1, a Kind-compatible container
-runtime and passwordless `sudo -n unshare --net` for isolated tests. Install
-the standalone tools and Ansible collections with:
-
-```sh
-uv run python scripts/quality/install_tools.py
-uv run python scripts/quality/install_collections.py
-```
+Install Make, jq, Bash, uv, Helm 3.19.0 and Node 24.11.1, then run
+`make setup` for locked Python dependencies, standalone tools and Ansible
+collections (Linux x86_64 or Apple Silicon). `tests-fast` and `tests-medium`
+use loopback-only isolation: Linux requires passwordless `sudo -n unshare --net`;
+macOS uses `/usr/bin/sandbox-exec`. `tests-cluster` needs a running local
+Kind-compatible container runtime. Findings fail the check even after setup.
 
 See [Quality Graph](docs/quality/README.md) for check scope and CI ordering.
 

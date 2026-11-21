@@ -37,7 +37,7 @@ backup = load("netbird_backup", "netbird-backup.py")
 
 def control_inputs() -> dict[str, object]:
     """Build the reviewed control-plane input document."""
-    review = {key: False for key in nb.REVIEWS}
+    review = dict.fromkeys(nb.REVIEWS, False)
     for key in nb.CONTROL_REVIEWS:
         review[key] = True
     result: dict[str, object] = {
@@ -70,9 +70,9 @@ def cleared_audit() -> dict[str, object]:
 
 class ControlPlaneTests(unittest.TestCase):
     """Check the NetBird control-plane deploy tooling in check mode."""
+
     def test_repo_check_reports_concrete_blockers_without_applying(self) -> None:
         """The repo check reports concrete blockers without applying."""
-
         result = subprocess.run(
             [os.sys.executable, str(ROOT / "scripts/netbird-deploy.py"), "check"],
             capture_output=True,
@@ -106,7 +106,6 @@ class ControlPlaneTests(unittest.TestCase):
 
     def test_chart_candidate_is_not_marked_verified(self) -> None:
         """The chart candidate stays unverified in the repository."""
-
         chart = yaml.safe_load((ROOT / "charts/traefik-edge/values.yaml").read_text())
         candidates = json.loads((ROOT / "deploy/netbird/candidates.json").read_text())
         assert "netbird-edge" not in chart["watchNamespaces"]
@@ -128,7 +127,6 @@ class ControlPlaneTests(unittest.TestCase):
 
     def test_control_plane_does_not_require_routers_or_grant_resources(self) -> None:
         """The control plane does not require routers or grant resources."""
-
         inputs = control_inputs()
         nb.validate_control_plane(inputs)
         with self.assertRaises(ValueError):
@@ -149,7 +147,6 @@ class ControlPlaneTests(unittest.TestCase):
 
     def test_cleared_audit_cannot_hide_the_unpatched_chart(self) -> None:
         """A cleared audit cannot hide the unpatched chart."""
-
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             inputs = root / "inputs.json"
@@ -178,7 +175,6 @@ class ControlPlaneTests(unittest.TestCase):
 
     def test_internal_stage_does_not_wait_for_edge_or_a_listening_udp_port(self) -> None:
         """The internal stage does not wait for edge or a listening UDP port."""
-
         audit = cleared_audit()
         audit.update(
             traefik_watches_netbird_edge=False,
@@ -201,7 +197,6 @@ class ControlPlaneTests(unittest.TestCase):
 
     def test_in_memory_scope_can_clear_only_after_the_watch_exists(self) -> None:
         """An in-memory scope clears only after the watch exists."""
-
         chart = yaml.safe_load((ROOT / "charts/traefik-edge/values.yaml").read_text())
         candidates = json.loads((ROOT / "deploy/netbird/candidates.json").read_text())
         delta = json.loads((ROOT / "deploy/netbird/traefik-scope-delta.json").read_text())
@@ -215,7 +210,6 @@ class ControlPlaneTests(unittest.TestCase):
 
     def test_apply_argv_is_explicit_and_rejects_default_context(self) -> None:
         """The apply argv is explicit and rejects the default context."""
-
         with tempfile.TemporaryDirectory() as directory:
             out = Path(directory) / "rendered"
             nb.render_control_plane(control_inputs(), out, ["203.0.113.10/32"])
@@ -228,7 +222,6 @@ class ControlPlaneTests(unittest.TestCase):
 
     def test_auth_modes_match_upstream_startup_rules(self) -> None:
         """Auth modes match the upstream startup rules."""
-
         secrets = {
             "NB_RELAY_SECRET": "relay-secret-" * 3,
             "NB_COOKIE_KEY": "cookie",
@@ -257,7 +250,6 @@ class ControlPlaneTests(unittest.TestCase):
 
     def test_idp_only_cli_refuses_missing_witness_without_writing(self) -> None:
         """The idp-only CLI refuses a missing witness without writing."""
-
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / "inputs.json"
             target = Path(directory) / "config.yaml"
@@ -271,7 +263,7 @@ class ControlPlaneTests(unittest.TestCase):
                         "login_group": "pilot-login",
                         "routing_peers": [],
                         "resources": [],
-                        "review": {key: True for key in nb.REVIEWS},
+                        "review": dict.fromkeys(nb.REVIEWS, True),
                     }
                 )
             )
@@ -313,9 +305,9 @@ class ControlPlaneTests(unittest.TestCase):
 
 class BootstrapTests(unittest.TestCase):
     """Verify NetBird bootstrap refuses public origins and PAT auth."""
+
     def test_public_origin_and_pat_are_refused(self) -> None:
         """Public origins and PAT creation are refused."""
-
         for origin in [
             "https://netbird.socrat.alchemmist.xyz",
             "http://netbird.socrat.alchemmist.xyz",
@@ -330,7 +322,6 @@ class BootstrapTests(unittest.TestCase):
 
     def test_claim_redacts_token_and_requires_setup(self) -> None:
         """Claim redacts the token and requires setup."""
-
         calls = []
 
         def opener(url, body) -> dict[str, object]:
@@ -368,7 +359,6 @@ class BootstrapTests(unittest.TestCase):
     )
     def test_setup_body_matches_pinned_openapi(self) -> None:
         """The setup body matches the pinned OpenAPI schema."""
-
         import hashlib
 
         path = Path("/tmp/netbird-v082-repo/shared/management/http/api/openapi.yml")
@@ -414,9 +404,9 @@ class BootstrapTests(unittest.TestCase):
 
 class BackupTests(unittest.TestCase):
     """Ensure the NetBird backup plan is quiesced and read-only."""
+
     def test_plan_is_quiesced_readonly_and_does_not_call_kubectl(self) -> None:
         """The backup plan is quiesced, read-only and never calls kubectl."""
-
         image = nb.image("server")
         body = backup.plan("test-node", image)
         assert body["quiesce_required"]
@@ -473,9 +463,9 @@ class BackupTests(unittest.TestCase):
 
 class AnsibleGuardTests(unittest.TestCase):
     """Guard the NetBird Ansible role's local check defaults."""
+
     def test_role_defaults_to_local_check_without_transport_changes(self) -> None:
         """The role defaults to a local check without transport changes."""
-
         text = "\n".join(
             path.read_text()
             for path in [

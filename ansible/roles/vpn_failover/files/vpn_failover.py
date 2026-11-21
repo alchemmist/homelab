@@ -24,7 +24,6 @@ class Watchdog:
 
     def __init__(self, config) -> None:
         """Initialize the failover watchdog."""
-
         self.config = config
         self.state = Path(config.get("state_dir", STATE_DIR))
         self.agent = config.get("agent_unit", "k3s.service")
@@ -37,7 +36,7 @@ class Watchdog:
         self.timeout = config.get("timeout_seconds", 4)
 
     def write(self, name, data):
-        'Persist state data atomically to the state directory.'
+        """Persist state data atomically to the state directory."""
         target = self.state / name
         temporary = target.with_suffix(".tmp")
         with temporary.open("w") as stream:
@@ -54,7 +53,7 @@ class Watchdog:
 
     def command(self, *args):
         # A rejoining etcd voter may need longer than ordinary unit operations.
-        'Run a command with the configured timeout and return its stdout.'
+        """Run a command with the configured timeout and return its stdout."""
         timeout = (
             self.config.get("kubernetes_start_timeout_seconds", 180)
             if len(args) == 3
@@ -67,7 +66,7 @@ class Watchdog:
         ).stdout.strip()
 
     def service_installed(self, unit):
-        'Report whether a systemd unit is installed on this host.'
+        """Report whether a systemd unit is installed on this host."""
         state = self.command("systemctl", "show", unit, "--property=LoadState", "--value")
         if state == "not-found":
             return False
@@ -76,18 +75,18 @@ class Watchdog:
         return True
 
     def service_active(self, unit):
-        'Report whether a systemd unit is currently active.'
+        """Report whether a systemd unit is currently active."""
         return self.command("systemctl", "show", unit, "--property=ActiveState", "--value") not in (
             "inactive",
             "failed",
         )
 
     def kubernetes_group(self, group):
-        'Check whether a cgroup belongs to Kubernetes or a fenced unit.'
+        """Check whether a cgroup belongs to Kubernetes or a fenced unit."""
         return "kubepods" in group or any("/" + unit in group for unit in self.fenced_units)
 
     def processes(self):
-        'Enumerate Kubernetes processes with their cgroup and cmdline.'
+        """Enumerate Kubernetes processes with their cgroup and cmdline."""
         result = []
         for entry in Path("/proc").iterdir():
             if not entry.name.isdigit():
@@ -102,7 +101,7 @@ class Watchdog:
         return result
 
     def terminate(self, pid, sig):
-        'Signal a PID and wait for it to exit via pidfd.'
+        """Signal a PID and wait for it to exit via pidfd."""
         try:
             descriptor = os.pidfd_open(pid)
         except ProcessLookupError:
@@ -122,7 +121,7 @@ class Watchdog:
             os.close(descriptor)
 
     def fence(self):
-        'Stop and mask the fenced services, then kill Kubernetes processes.'
+        """Stop and mask the fenced services, then kill Kubernetes processes."""
         installed = [unit for unit in self.fenced_units if self.service_installed(unit)]
         for unit in installed:
             self.command("systemctl", "stop", unit)
@@ -139,7 +138,7 @@ class Watchdog:
         raise RuntimeError("Kubernetes processes remain; refusing native startup")
 
     def guard(self):
-        'Validate state consistency before any failover action is taken.'
+        """Validate state consistency before any failover action is taken."""
         if (
             not (self.state / "active").exists()
             or any(
@@ -151,7 +150,7 @@ class Watchdog:
             raise RuntimeError("Native startup requires verified Kubernetes fencing")
 
     def occupied(self):
-        'Report which configured listen ports are already bound on this host.'
+        """Report which configured listen ports are already bound on this host."""
         wanted = {(item["protocol"], int(item["port"])) for item in self.config["listen_ports"]}
         found = set()
         for protocol in ("tcp", "udp"):
@@ -166,7 +165,7 @@ class Watchdog:
         return sorted(found)
 
     def preflight(self):
-        'Verify required preflight files exist and are non-empty.'
+        """Verify required preflight files exist and are non-empty."""
         for name in self.config.get("preflight_files", []):
             path = Path(name)
             if not path.is_file() or path.stat().st_size == 0:
@@ -182,7 +181,7 @@ class Watchdog:
                     raise RuntimeError("VPN database integrity check failed")
 
     def health(self):
-        'Probe configured TCP endpoints and collect per-host failures.'
+        """Probe configured TCP endpoints and collect per-host failures."""
         errors = []
         for host, port in self.config["tcp_endpoints"]:
             try:
@@ -245,13 +244,13 @@ class Watchdog:
         return {"healthy": not errors, "errors": errors}
 
     def clock(self):
-        'Return the boot identifier and current uptime in seconds.'
+        """Return the boot identifier and current uptime in seconds."""
         return Path("/proc/sys/kernel/random/boot_id").read_text().strip(), float(
             Path("/proc/uptime").read_text().split()[0]
         )
 
     def counters(self, boot):
-        'Load accumulated failure counters if they belong to this boot.'
+        """Load accumulated failure counters if they belong to this boot."""
         try:
             saved = json.loads((self.state / "failures.json").read_text())
         except (FileNotFoundError, ValueError):
@@ -268,7 +267,7 @@ class Watchdog:
 
     def confirm_failure(self):
         # Independent samples, under the existing lock, before destructive action.
-        'Re-check health independently before any destructive action.'
+        """Re-check health independently before any destructive action."""
         for _ in range(max(1, int(self.config.get("confirmation_checks", 2)))):
             time.sleep(max(0, self.config.get("confirmation_interval_seconds", 1)))
             health = self.health()
@@ -277,7 +276,7 @@ class Watchdog:
         return True, health
 
     def native_warmup(self):
-        'Record bootstrap evidence that native WireGuard came up cleanly.'
+        """Record bootstrap evidence that native WireGuard came up cleanly."""
         boot, uptime = self.clock()
         self.write(
             "native_warmup.json",
@@ -314,7 +313,7 @@ class Watchdog:
         return {"mode": "fallback", "restarted": True, **self.health()}
 
     def activate(self):
-        'Enter fallback mode after preflight, arming the active marker.'
+        """Enter fallback mode after preflight, arming the active marker."""
         self.preflight()
         if not (self.state / "active").exists():
             self.write("active", {"activated_at": time.time()})
@@ -353,7 +352,7 @@ class Watchdog:
         return {"mode": "fallback", "failures": failures, **health}
 
     def tick(self):
-        'Run one supervision cycle and return the resulting mode summary.'
+        """Run one supervision cycle and return the resulting mode summary."""
         if (self.state / "inhibit").exists():
             return {"mode": "inhibited"}
         if (self.state / "active").exists():
@@ -380,7 +379,7 @@ class Watchdog:
         return {"mode": "kubernetes", "failures": saved["failures"], **health}
 
     def failback(self):
-        'Exit fallback mode and restart the primary Kubernetes path.'
+        """Exit fallback mode and restart the primary Kubernetes path."""
         if not (self.state / "active").exists():
             raise RuntimeError("Fallback is not active")
         if not self.service_installed(self.agent):
@@ -420,7 +419,7 @@ class Watchdog:
         return {"mode": "kubernetes", "grace": True}
 
     def status(self):
-        'Return the current failover mode and inhibition summary.'
+        """Return the current failover mode and inhibition summary."""
         return {
             "mode": "fallback" if (self.state / "active").exists() else "kubernetes",
             "inhibited": (self.state / "inhibit").exists(),

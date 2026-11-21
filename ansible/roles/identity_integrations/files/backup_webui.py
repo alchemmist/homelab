@@ -1,6 +1,5 @@
 """Consistent SQLite plus auth secrets snapshot; stream only into encryption."""
 
-import json
 import os
 import subprocess
 import sys

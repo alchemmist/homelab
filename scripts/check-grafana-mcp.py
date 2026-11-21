@@ -34,7 +34,6 @@ class Client:
 
     def __init__(self, url: str, token: str) -> None:
         """Initialize the Grafana MCP client."""
-
         self.url = url
         self.headers = {
             "Authorization": "Bearer " + token,
@@ -47,7 +46,7 @@ class Client:
     def request(
         self, method: str, params: dict[str, object], *, notify: bool = False
     ) -> dict[str, object]:
-        'Send one JSON-RPC request to the MCP server.'
+        """Send one JSON-RPC request to the MCP server."""
         self.sequence += 1
         body = {"jsonrpc": "2.0", "method": method, "params": params}
         if not notify:
@@ -71,11 +70,12 @@ class Client:
             ]
             result = next(message for message in messages if message.get("id") == self.sequence)
         if "error" in result:
-            raise RuntimeError("MCP protocol error")
+            message = "MCP protocol error"
+            raise RuntimeError(message)
         return result["result"]
 
     def tool(self, name: str, arguments: dict[str, object]) -> str:
-        'Call one MCP tool and fail loudly on tool errors.'
+        """Call one MCP tool and fail loudly on tool errors."""
         result = self.request("tools/call", {"name": name, "arguments": arguments})
         if result.get("isError"):
             raise RuntimeError("MCP tool failed: " + name)
@@ -92,19 +92,23 @@ def _rejection_checks(client: Client, url: str) -> None:
             client.opener.open(urllib.request.Request(url, headers=headers), timeout=15)
         except urllib.error.HTTPError as error:
             if error.code != 401:
-                raise RuntimeError("Unexpected unauthenticated response") from None
+                message = "Unexpected unauthenticated response"
+                raise RuntimeError(message) from None
         else:
-            raise RuntimeError("MCP accepted invalid authentication")
+            message = "MCP accepted invalid authentication"
+            raise RuntimeError(message)
 
 
 def _check_dashboards(client: Client) -> None:
     """Search the overview dashboard and verify a full read returns its panels."""
     result = client.tool("search_dashboards", {"query": "Overview"})
     if "socrat-overview" not in result:
-        raise RuntimeError("Overview was not found")
+        message = "Overview was not found"
+        raise RuntimeError(message)
     result = client.tool("get_dashboard_by_uid", {"uid": "socrat-overview"})
     if "Cluster health" not in result:
-        raise RuntimeError("Overview panels were not returned")
+        message = "Overview panels were not returned"
+        raise RuntimeError(message)
     print("PASS: dashboard search and full dashboard read")
 
 
@@ -122,7 +126,8 @@ def _check_prometheus(client: Client) -> None:
     parsed = json.loads(result)
     samples = parsed.get("data", [])
     if len(samples) != 1 or float(samples[0]["value"][1]) <= 0:
-        raise RuntimeError("Prometheus returned no data")
+        message = "Prometheus returned no data"
+        raise RuntimeError(message)
     print("PASS: live Prometheus query returned data")
 
 
@@ -157,7 +162,8 @@ def main():
     client.request("notifications/initialized", {}, notify=True)
     tools = client.request("tools/list", {})["tools"]
     if not tools or any(not tool.get("annotations", {}).get("readOnlyHint") for tool in tools):
-        raise RuntimeError("Unexpected non-read-only tool")
+        message = "Unexpected non-read-only tool"
+        raise RuntimeError(message)
     print(f"PASS: MCP initialized with {len(tools)} read-only tools")
     _check_dashboards(client)
     _check_prometheus(client)

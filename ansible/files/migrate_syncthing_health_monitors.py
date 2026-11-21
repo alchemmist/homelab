@@ -4,7 +4,7 @@ import argparse
 import json
 import os
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -34,7 +34,7 @@ def migrate(database, plan, check=False):
         return {"changed": bool(updates), "updated": len(updates)}
     backup_dir = database.parent / "backups"
     backup_dir.mkdir(mode=0o700, exist_ok=True)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
     backup_path = backup_dir / f"kuma-before-syncthing-private-ui-{stamp}.db"
     descriptor = os.open(backup_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     os.close(descriptor)

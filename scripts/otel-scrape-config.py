@@ -254,6 +254,29 @@ def add_logging_self_monitoring(scrape):
     return result
 
 
+def add_service_path_scrape(scrape):
+    """One native static DNS target per source; headless Services avoid VIP indirection."""
+    result = copy.deepcopy(scrape)
+    job = {
+        "job_name": "socrat-service-path",
+        "scrape_interval": "15s",
+        "scrape_timeout": "4s",
+        "static_configs": [
+            {
+                "targets": [f"service-path-{node}.automation.svc:9119"],
+                "labels": {"source": node},
+            }
+            for node in ("socrat-3", "socrat-5")
+        ],
+    }
+    existing = [j for j in result["scrape_configs"] if j["job_name"] == job["job_name"]]
+    if existing and existing != [job]:
+        raise ValueError("Conflicting service path scrape owner")
+    if not existing:
+        result["scrape_configs"].append(job)
+    return result
+
+
 def add_pg_platform_scrape(scrape):
     result = copy.deepcopy(scrape)
     job = {
@@ -440,6 +463,7 @@ def compile_config(source, targets, monitors=None):
     outputs["cluster"] = add_pg_platform_scrape(
         refresh_public_edge_probe(add_logging_self_monitoring(outputs["cluster"]))
     )
+    outputs["cluster"] = add_service_path_scrape(outputs["cluster"])
     outputs = escape_literals(outputs)
     contract["dollarEscaping"] = (
         "literal Prometheus dollars escaped before Collector confmap resolution"

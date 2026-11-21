@@ -2,7 +2,6 @@
 
 import importlib.util
 import json
-import os
 import tempfile
 import threading
 import unittest

@@ -23,7 +23,6 @@ class ManualSSHTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         """Generate a throwaway SSH keypair for the tests."""
-
         cls.temp = tempfile.TemporaryDirectory(prefix="manual-ssh-test-")
         cls.key = Path(cls.temp.name) / "fixture"
         subprocess.run(
@@ -34,19 +33,16 @@ class ManualSSHTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls) -> None:
         """Discard the throwaway key directory."""
-
         cls.temp.cleanup()
 
     def test_real_parser_canonicalizes_public_key_and_reports_fingerprint(self) -> None:
         """The real parser canonicalizes the key and reports its fingerprint."""
-
         result = check.validate("guest", self.public)
         assert result["public_key"] == " ".join(self.public.split()[:2])
         assert result["fingerprint"].startswith("SHA256:")
 
     def test_private_key_options_certificates_multiline_and_controls_are_rejected(self) -> None:
         """Private keys, options, duplicates and certificates are rejected."""
-
         for bad in [
             self.key.read_text(),
             'command="id" ' + self.public,
@@ -59,13 +55,11 @@ class ManualSSHTests(unittest.TestCase):
 
     def test_invalid_base64_ssh_wire_data_is_rejected_by_actual_parser(self) -> None:
         """Malformed wire data is rejected by the actual parser."""
-
         with self.assertRaises(ValueError):
             check.validate("guest", "ssh-ed25519 AAAA")
 
     def test_protected_and_injectable_names_are_rejected_before_parsing_key(self) -> None:
         """Protected or injectable usernames never reach the key parser."""
-
         with patch.object(check, "fingerprint") as parser:
             for name in [
                 "root",
@@ -85,7 +79,6 @@ class ManualSSHTests(unittest.TestCase):
 
     def test_play_scope_and_all_host_preflight(self) -> None:
         """The play is scoped to Socrat hosts with fatal preflight ordering."""
-
         play = yaml.safe_load((ROOT / "ansible/playbooks/ssh-user.yml").read_text())[0]
         assert play["hosts"] == "Socrat"
         assert play["any_errors_fatal"]
@@ -95,7 +88,6 @@ class ManualSSHTests(unittest.TestCase):
 
     def test_additive_keys_not_exact_replacement_and_no_existing_group_stripping(self) -> None:
         """Keys are additive and existing groups and shells are preserved."""
-
         tasks = yaml.safe_load((ROOT / "ansible/roles/ssh_user/tasks/main.yml").read_text())
         key = next(t for t in tasks if "ansible.posix.authorized_key" in t)
         assert not key["ansible.posix.authorized_key"]["exclusive"]
@@ -112,7 +104,6 @@ class ManualSSHTests(unittest.TestCase):
 
     def test_preflight_precedes_account_and_key_mutations(self) -> None:
         """Preflight validation precedes any account or key mutation."""
-
         tasks = yaml.safe_load((ROOT / "ansible/roles/ssh_user/tasks/main.yml").read_text())
         before = next(i for i, t in enumerate(tasks) if t["name"].startswith("Preflight account"))
         mutate = next(i for i, t in enumerate(tasks) if "ansible.builtin.user" in t)
@@ -126,7 +117,6 @@ class ManualSSHTests(unittest.TestCase):
 
     def test_missing_inputs_stop_without_contacting_a_host(self) -> None:
         """Missing inputs abort the play without contacting any host."""
-
         # Fake local inventory: if the input guard fails, no account action runs.
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "inventory.yml"

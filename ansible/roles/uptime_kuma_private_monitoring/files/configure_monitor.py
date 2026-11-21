@@ -7,7 +7,7 @@ import sqlite3
 import sys
 import tempfile
 from contextlib import closing
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -26,15 +26,14 @@ DESIRED = {
 
 
 def configure(db_path, check=False):
-    """Execute the configure operation."""
     db_path = Path(db_path).resolve()
     mode = "ro" if check else "rw"
     with closing(sqlite3.connect(f"{db_path.as_uri()}?mode={mode}", uri=True)) as connection:
         connection.row_factory = sqlite3.Row
         columns = {row[1] for row in connection.execute("PRAGMA table_info(monitor)")}
         if not {"id", *DESIRED}.issubset(columns):
-            msg = "Unsupported monitor schema: required columns are missing"
-            raise ValueError(msg)
+            message = "Unsupported monitor schema: required columns are missing"
+            raise ValueError(message)
         matches = []
         for row in connection.execute("SELECT id, url FROM monitor"):
             try:
@@ -44,7 +43,8 @@ def configure(db_path, check=False):
             if hostname == HOSTNAME:
                 matches.append(row["id"])
         if len(matches) != 1:
-            raise ValueError(f"Expected exactly one Rancher monitor; found {len(matches)}")
+            message = f"Expected exactly one Rancher monitor; found {len(matches)}"
+            raise ValueError(message)
         monitor_id = matches[0]
         selection = ", ".join(f'"{name}"' for name in DESIRED)
         current = connection.execute(
@@ -57,7 +57,7 @@ def configure(db_path, check=False):
         backup_dir = db_path.parent / "backups"
         backup_dir.mkdir(mode=0o700, exist_ok=True)
         backup_dir.chmod(0o700)
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
         fd, backup_path = tempfile.mkstemp(
             prefix=f"rancher-monitor-{timestamp}-", suffix=".db", dir=backup_dir
         )
@@ -72,15 +72,14 @@ def configure(db_path, check=False):
             (*DESIRED.values(), monitor_id),
         )
         if cursor.rowcount != 1:
-            msg = "Rancher monitor changed during migration"
-            raise ValueError(msg)
+            message = "Rancher monitor changed during migration"
+            raise ValueError(message)
         connection.commit()
         result["backup"] = backup_path
         return result
 
 
 def main():
-    """Execute the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--db", required=True)
     parser.add_argument("--check", action="store_true")

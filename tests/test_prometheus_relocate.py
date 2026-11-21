@@ -1,7 +1,6 @@
 """Tests for relocating Prometheus storage and configuration."""
 
 import importlib.util
-import json
 import unittest
 from pathlib import Path
 from types import ModuleType
@@ -54,9 +53,9 @@ def volume(
 
 class RelocateTests(unittest.TestCase):
     """Check the Prometheus relocate decision logic."""
+
     def test_same_node_proceeds_without_the_flag(self) -> None:
         """Same node proceeds without the flag."""
-
         decision = RELOCATE.evaluate(
             {"desired": "socrat-0", "relocate": False, "pods": [pod("socrat-0")], "volumes": []}
         )
@@ -64,7 +63,6 @@ class RelocateTests(unittest.TestCase):
 
     def test_socrat_1_volume_is_refused_even_with_the_legacy_flag(self) -> None:
         """Socrat 1 volume is refused even with the legacy flag."""
-
         payload = {
             "desired": "socrat-0",
             "relocate": False,
@@ -79,7 +77,6 @@ class RelocateTests(unittest.TestCase):
 
     def test_monitoring_roles_do_not_delete_history(self) -> None:
         """Monitoring roles do not delete history."""
-
         root = Path(__file__).resolve().parents[1]
         stack = (root / "ansible/roles/monitoring_stack/tasks/main.yml").read_text()
         thanos = (root / "ansible/roles/monitoring_thanos/tasks/main.yml").read_text()
@@ -90,7 +87,6 @@ class RelocateTests(unittest.TestCase):
 
     def test_grafana_volume_is_not_selected(self) -> None:
         """Grafana volume is not selected."""
-
         grafana = volume("socrat-1", claim="kube-prometheus-stack-grafana")
         decision = RELOCATE.evaluate(
             {"desired": "socrat-0", "relocate": True, "pods": [], "volumes": [grafana]}
@@ -101,9 +97,9 @@ class RelocateTests(unittest.TestCase):
 
 class ScrapeGuardTests(unittest.TestCase):
     """Verify scrape interval and memory limits pass the guard."""
+
     def test_five_second_scrape_and_eight_gib_limit_pass(self) -> None:
         """Five second scrape and eight gib limit pass."""
-
         document = {
             "items": [
                 {"spec": {"scrapeInterval": "5s", "resources": {"limits": {"memory": "8Gi"}}}}
@@ -113,7 +109,6 @@ class ScrapeGuardTests(unittest.TestCase):
 
     def test_old_prometheus_is_rejected(self) -> None:
         """Old prometheus is rejected."""
-
         document = {
             "items": [
                 {"spec": {"scrapeInterval": "30s", "resources": {"limits": {"memory": "3Gi"}}}}
@@ -123,7 +118,6 @@ class ScrapeGuardTests(unittest.TestCase):
 
     def test_missing_prometheus_is_rejected(self) -> None:
         """Missing prometheus is rejected."""
-
         assert GUARD.problems({"items": []}) == ["Prometheus is not installed"]
 
 
@@ -133,11 +127,11 @@ if __name__ == "__main__":
 
 class EffectiveMemoryGuardTests(unittest.TestCase):
     """Check the effective memory guard across spec and runtime limits."""
+
     def documents(
         self, spec_limit="8Gi", runtime_limit="8Gi"
     ) -> tuple[dict[str, object], dict[str, object]]:
         """Build spec and runtime limit documents."""
-
         cr: dict[str, object] = {
             "items": [
                 {"spec": {"scrapeInterval": "5s", "resources": {"limits": {"memory": "8Gi"}}}}
@@ -168,21 +162,17 @@ class EffectiveMemoryGuardTests(unittest.TestCase):
 
     def test_eight_gib_cr_cannot_hide_three_gib_admission(self) -> None:
         """Eight gib cr cannot hide three gib admission."""
-
         assert GUARD.problems(*self.documents("3Gi", "3Gi"))
 
     def test_resize_spec_without_effective_runtime_is_not_acceptance(self) -> None:
         """Resize spec without effective runtime is not acceptance."""
-
         assert GUARD.problems(*self.documents("8Gi", "3Gi"))
 
     def test_eight_gib_effective_runtime_passes(self) -> None:
         """Eight gib effective runtime passes."""
-
         assert GUARD.problems(*self.documents()) == []
 
     def test_missing_runtime_does_not_pass(self) -> None:
         """Missing runtime does not pass."""
-
         cr, _ = self.documents()
         assert GUARD.problems(cr, {"items": []})

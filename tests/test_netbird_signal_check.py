@@ -31,6 +31,7 @@ class ProbeState(TypedDict, total=False):
 
 class ProbeTests(unittest.TestCase):
     """Exercise the NetBird signal probe with fake responders."""
+
     def fake(self, registered=True, fail=False) -> tuple[SimpleNamespace, ProbeState]:
         """Build a fake grpc module and observable call state."""
 
@@ -48,7 +49,7 @@ class ProbeTests(unittest.TestCase):
 
         def metadata():
             if fail:
-                raise RPCError()
+                raise RPCError
             return [("x-wiretrustee-peer-registered", "1")] if registered else []
 
         call = SimpleNamespace(
@@ -83,7 +84,6 @@ class ProbeTests(unittest.TestCase):
 
     def test_trusted_tls_header_only_stream_and_cleanup(self) -> None:
         """The probe uses trusted TLS, a header-only stream and cleanup."""
-
         grpc, state = self.fake()
         result = check.probe(check.ENTRANCES[0], grpc_module=grpc)
         assert result["registered_header"]
@@ -101,7 +101,6 @@ class ProbeTests(unittest.TestCase):
 
     def test_missing_header_and_rpc_error_fail_closed_and_release_stream(self) -> None:
         """Missing headers and RPC errors fail closed with the stream released."""
-
         for registered, fail in [(False, False), (False, True)]:
             grpc, state = self.fake(registered, fail)
             result = check.probe(check.ENTRANCES[0], grpc_module=grpc)
@@ -112,7 +111,6 @@ class ProbeTests(unittest.TestCase):
 
     def test_unreviewed_destination_or_unbounded_deadline_refused(self) -> None:
         """Unreviewed destinations and unbounded deadlines are refused."""
-
         for address, deadline in [
             ("127.0.0.1", 6),
             (check.ENTRANCES[0], 0),

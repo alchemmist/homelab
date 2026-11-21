@@ -4,7 +4,6 @@ import json
 import tempfile
 import time
 import unittest
-from pathlib import Path
 from unittest.mock import Mock, patch
 
 import test_triage as f
@@ -17,8 +16,7 @@ class IntegrationTests(unittest.TestCase):
     """Integration tests for wait and admission flow."""
 
     def setUp(self) -> None:
-
-        'Create the wait integration fixture.'
+        """Create the wait integration fixture."""
         self.now = 1000
         self.clock = patch("time.time", lambda: self.now)
         self.clock.start()
@@ -39,12 +37,12 @@ class IntegrationTests(unittest.TestCase):
         self.data = self.engine.claim(self.identity)
 
     def tearDown(self) -> None:
-        'Stop the wait integration clock.'
+        """Stop the wait integration clock."""
         self.clock.stop()
         self.tmp.cleanup()
 
     def test_consecutive_deferrals_same_execution_then_published(self) -> None:
-        'Verify repeated deferrals still publish under the same execution.'
+        """Verify repeated deferrals still publish under the same execution."""
         self.model.match.side_effect = [
             Failure("LLM_ADMISSION_DEFERRED", 61),
             Failure("LLM_ADMISSION_DEFERRED", 180),
@@ -83,7 +81,7 @@ class IntegrationTests(unittest.TestCase):
             self.engine.run_v1("match", original)
 
     def test_finite_reference_error_retained_no_rewait(self) -> None:
-        'Verify finite reference errors are retained without re-waiting.'
+        """Verify finite reference errors are retained without re-waiting."""
         self.data = self.engine.run_v1("match", self.data)
         self.data = self.engine.run_v1("collect", self.data)
         self.model.analyze.side_effect = Failure("LLM_INVALID_EVIDENCE_REFERENCE")
@@ -99,7 +97,7 @@ class IntegrationTests(unittest.TestCase):
         self.github.request.assert_not_called()
 
     def test_early_wrong_stale_resume_and_legacy_cannot_bypass(self) -> None:
-        'Verify early, wrong, stale resumes and legacy paths cannot bypass.'
+        """Verify early, wrong, stale resumes and legacy paths cannot bypass."""
         self.model.match.side_effect = Failure("LLM_ADMISSION_DEFERRED", 61)
         waiting = self.engine.run_v1("match", self.data)
         for bad in (
@@ -118,7 +116,7 @@ class IntegrationTests(unittest.TestCase):
                 self.engine.claim({**self.identity, "execution_id": bad})
 
     def test_cancelled_wait_expiry_reclaims_progress_fences_old_execution(self) -> None:
-        'Verify wait expiry reclaims progress and fences old executions.'
+        """Verify wait expiry reclaims progress and fences old executions."""
         self.data = self.engine.run_v1("match", self.data)
         self.data = self.engine.run_v1("collect", self.data)
         self.model.analyze.side_effect = Failure("LLM_ADMISSION_DEFERRED", 61)
@@ -134,7 +132,7 @@ class IntegrationTests(unittest.TestCase):
         assert "evidence" in self.store.get(self.key)["result"]
 
     def test_owned_completion_priority_analysis_due_and_publish_ready(self) -> None:
-        'Verify owned completion priority, due analysis and publishing.'
+        """Verify owned completion priority, due analysis and publishing."""
         a = self.engine.run_v1("match", self.data)
         a = self.engine.run_v1("collect", a)
         # A pre-upgrade cohort can contain multiple owners. Seed B explicitly;
@@ -187,7 +185,7 @@ class IntegrationTests(unittest.TestCase):
         assert self.model.match.call_count == 2
 
     def test_priority_hold_is_bounded_and_rejects_invalid_higher_owner(self) -> None:
-        'Verify priority holds stay bounded and reject invalid owners.'
+        """Verify priority holds stay bounded and reject invalid owners."""
         a = self.engine.run_v1("match", self.data)
         a = self.engine.run_v1("collect", a)
         self.model.analyze.side_effect = Failure("LLM_ADMISSION_DEFERRED", 180)
@@ -211,7 +209,7 @@ class IntegrationTests(unittest.TestCase):
         assert self.store.get(self.key)["state"] == "retry"
 
     def test_fresh_queued_match_waits_for_short_owned_analysis_slot(self) -> None:
-        'Verify fresh matches wait for a short owned analysis slot.'
+        """Verify fresh matches wait for a short owned analysis slot."""
         a = self.engine.run_v1("match", self.data)
         a = self.engine.run_v1("collect", a)
         self.model.analyze.side_effect = Failure("LLM_ADMISSION_DEFERRED", 61)
@@ -229,7 +227,7 @@ class IntegrationTests(unittest.TestCase):
         assert next_job["stage"] == "analyze"
 
     def test_fresh_v1_claim_acks_dispatch_replay_does_not_erase_new_wake(self) -> None:
-        'Verify dispatch replay does not erase a new wake.'
+        """Verify dispatch replay does not erase a new wake."""
         data = self.data
         for stage in ("match", "collect", "analyze", "publish"):
             data = self.engine.run_v1(stage, data)
@@ -266,7 +264,7 @@ class IntegrationTests(unittest.TestCase):
         assert self.store.dispatch_status()["attempts"] == 1
 
     def test_busy_worker_30min_renews_wait_without_http_queue(self) -> None:
-        'Verify a 30-minute busy worker renews waits without HTTP queueing.'
+        """Verify a 30-minute busy worker renews waits without HTTP queueing."""
         reservation = self.store.reserve_llm(1, timeout=1800, now=self.now)
         self.engine.lock.acquire()
         try:
@@ -292,7 +290,7 @@ class IntegrationTests(unittest.TestCase):
         assert result["stage"] == "collect"
 
     def test_concurrent_same_claim_and_duplicate_stage_do_not_double_pay(self) -> None:
-        'Verify duplicate concurrent claims never double-pay.'
+        """Verify duplicate concurrent claims never double-pay."""
         import concurrent.futures
         import threading
 
@@ -327,7 +325,7 @@ class IntegrationTests(unittest.TestCase):
         assert self.engine.run_v1("match", self.data) == result
 
     def test_running_crash_no_blind_model_replay(self) -> None:
-        'Verify running crashes never trigger blind model replays.'
+        """Verify running crashes never trigger blind model replays."""
         _, owner = self.store.owners.begin("match", self.data, self.now)
         restored = Store(self.store.path)
         assert restored.recover_on_start() == 0
@@ -337,7 +335,7 @@ class IntegrationTests(unittest.TestCase):
         assert restored.get(self.key)["error"] == "WRITE_NEEDS_REVIEW"
 
     def test_wait_releases_http_lock_but_retains_logical_owner(self) -> None:
-        'Verify waits release the HTTP lock but keep the logical owner.'
+        """Verify waits release the HTTP lock but keep the logical owner."""
         self.model.match.side_effect = Failure("LLM_ADMISSION_DEFERRED", 61)
         self.engine.run_v1("match", self.data)
         other = self.store.enqueue(f.event(start="2026-11-03T14:00:00Z"))["job_id"]
@@ -353,7 +351,7 @@ class ModelTimerTests(unittest.TestCase):
 
     @patch.dict("os.environ", {"SPI_TOKEN_ACCOUNTING_MODE": "byte-bound-v1"})
     def test_active_reservation_survives_old_661_second_expiry(self) -> None:
-        'Verify active reservations survive the old 661-second expiry.'
+        """Verify active reservations survive the old 661-second expiry."""
         with tempfile.TemporaryDirectory() as tmp:
             store = Store(tmp + "/db", minute_token_limit=60000)
             http = Mock()

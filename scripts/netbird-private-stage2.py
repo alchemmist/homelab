@@ -268,7 +268,7 @@ def main():
             )
             print("Authentik connector configured; real owner login/transfer not yet accepted")
     finally:
-        if process_slot.get("process"): 
+        if process_slot.get("process"):
             process_slot["process"].terminate()
             process_slot["process"].wait(timeout=10)
         if enabled:

@@ -300,12 +300,12 @@ def digest(value):
 
 def run(action="plan", nonce=None):
     """Execute run."""
-    from django.db import transaction
     from authentik.core.models import Application, Group, User
     from authentik.outposts.models import Outpost
     from authentik.policies.models import PolicyBinding
     from authentik.providers.oauth2.models import OAuth2Provider, ScopeMapping
     from authentik.providers.proxy.models import ProxyProvider
+    from django.db import transaction
 
     require_valid_action(action, nonce)
     root = Path("/tmp/rustfs-private-migration-" + nonce)
