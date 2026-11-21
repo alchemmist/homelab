@@ -17,7 +17,7 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Protocol, cast
+from typing import Protocol
 
 
 class _RecordedSpan(Protocol):
@@ -48,12 +48,9 @@ def run():
         keyfile: str | bytes | os.PathLike[str] | os.PathLike[bytes] | None = None,
         password: Callable[[], str | bytes | bytearray] | str | bytes | bytearray | None = None,
     ) -> None:
-        public_hash = hashlib.sha256(
-            Path(cast("str | os.PathLike[str]", certfile)).read_bytes()
-        ).hexdigest()
-        result = original_loader(self, certfile, keyfile, password)
+        public_hash = hashlib.sha256(Path(os.fsdecode(certfile)).read_bytes()).hexdigest()
+        original_loader(self, certfile, keyfile, password)
         loaded.append(public_hash)
-        return result
 
     if renewal:
         if os.environ.get("OTEL_EXPORTER_OTLP_HEADERS", "").lower() != "connection=close":

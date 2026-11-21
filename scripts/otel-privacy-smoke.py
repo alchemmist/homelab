@@ -7,28 +7,13 @@ import subprocess
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TypedDict
+from typing import Any
 
 
-class _LogsPipeline(TypedDict):
-    processors: list[str]
-
-
-class _Pipelines(TypedDict):
-    logs: _LogsPipeline
-
-
-class _Service(TypedDict):
-    pipelines: _Pipelines
-
-
-class _Collector(TypedDict):
-    service: _Service
-
-
-def isolated_config(source: _Collector, output: Path):
+def isolated_config(source: Mapping[str, Any], output: Path):
     document = json.loads(json.dumps(source))
     receiver = document["receivers"]["otlp"]["protocols"]["http"]
     receiver["endpoint"] = "127.0.0.1:14318"
