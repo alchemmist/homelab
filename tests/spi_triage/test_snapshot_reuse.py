@@ -63,7 +63,10 @@ class PreparedModel(Protocol):
 
 
 class ReviewReuseTests(unittest.TestCase):
+    """Tests for review snapshot reuse."""
+
     def issues(self) -> list[IssueRow]:
+
         return [
             {
                 "number": i,
@@ -219,6 +222,8 @@ class ReviewReuseTests(unittest.TestCase):
 
 
 class EarlyFenceTests(unittest.TestCase):
+    """Tests for the early publication fence."""
+
     setUp = f.EngineTests.setUp
     tearDown = f.EngineTests.tearDown
 
@@ -285,6 +290,8 @@ class EarlyFenceTests(unittest.TestCase):
 
 
 class ChurnPublicationTests(unittest.TestCase):
+    """Tests for publication under catalog churn."""
+
     setUp = f.EngineTests.setUp
     tearDown = f.EngineTests.tearDown
 

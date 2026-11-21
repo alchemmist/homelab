@@ -14,6 +14,8 @@ import urllib.request
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None  # Never forward an authorization header to a redirected host.
 

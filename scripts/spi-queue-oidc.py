@@ -56,12 +56,18 @@ def save(path, value) -> None:
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
     def redirect_request(self, *args, **kwargs) -> None:
+
         return None
 
 
 class API:
+    """SPI queue OIDC provider API client."""
+
     def __init__(self, credentials: Path, *, write: bool = False) -> None:
+
         private(credentials)
         value = json.loads(credentials.read_text())
         self.token = value.get("AUTHENTIK_API_TOKEN") or value.get("AUTHENTIK_BOOTSTRAP_TOKEN")

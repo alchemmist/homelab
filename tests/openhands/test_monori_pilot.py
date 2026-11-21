@@ -17,7 +17,10 @@ def load() -> types.ModuleType:
 
 
 class Pilot(unittest.TestCase):
+    """Tests for the monori pilot restart behaviour."""
+
     def test_restart_moves_to_second_card_once(self) -> None:
+
         with tempfile.TemporaryDirectory() as d:
             db = str(pathlib.Path(d)/"cards.db"); published=[]; prompts=[]; chats={}
             def api(path, body=None) -> "dict[str, object]":

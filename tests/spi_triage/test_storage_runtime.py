@@ -14,7 +14,10 @@ import service
 
 
 class Runtime(unittest.TestCase):
+    """Tests for the storage runtime configuration."""
+
     def test_off(self) -> None:
+
         with patch.dict(os.environ, {}, clear=True):
             assert runtime.load_storage() == (None, "legacy")
 

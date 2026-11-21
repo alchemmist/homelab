@@ -12,6 +12,8 @@ from local_token_counter import configured_counter, render, LocalCounter
 
 
 class CounterContract(unittest.TestCase):
+    """Tests for the local token counter contract."""
+
     def body(self):
         return {
             "model": "qwen3.8-27b",
@@ -54,6 +56,8 @@ class CounterContract(unittest.TestCase):
 
 
 class ProxyFloor(unittest.TestCase):
+    """Tests for the proxy token-count floor."""
+
     def counter(self):
         from types import SimpleNamespace
 

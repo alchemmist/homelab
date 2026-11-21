@@ -3,10 +3,13 @@ import importlib.util,pathlib,unittest
 from unittest.mock import patch
 p=pathlib.Path(__file__).resolve().parents[2]/"charts/openhands/files/steward/publisher.py";s=importlib.util.spec_from_file_location("publisher",p);m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
 class Publisher(unittest.TestCase):
+ """Tests for the steward publisher PR rules."""
+
  def test_no_generic_or_merge(self) -> None:
   with patch.object(m,"api") as api:
    for a in ["merge","push","delete","request","approve","resolve","workflow_dispatch"]:
     with self.assertRaises(ValueError):m.dispatch({"action":a})
+
    api.assert_not_called()
  def test_path(self) -> None:
   for p in ["server/tests/../a.py",".github/workflows/a.yml","server/tests/x.sh","server/app/.git/a.py"]:

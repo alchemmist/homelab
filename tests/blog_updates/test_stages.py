@@ -13,7 +13,10 @@ MODEL_CALL_CEILING = 2
 
 
 class ModelBoundaryTests(unittest.TestCase):
+    """Tests for blog update model boundaries and retries."""
+
     def test_retry_schema_failure(self) -> None:
+
         calls = []
         valid = {
             "should_update": True,

@@ -18,7 +18,10 @@ HANDOFF_TIMEOUT_MS = 5000
 
 
 class CorrelationTests(unittest.TestCase):
+    """Tests for SPI card correlation across reports."""
+
     def setUp(self) -> None:
+
         self.tmp = tempfile.TemporaryDirectory()
         self.store = Store(Path(self.tmp.name) / "jobs.sqlite")
         self.payload = {

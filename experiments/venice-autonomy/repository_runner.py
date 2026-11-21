@@ -66,10 +66,12 @@ def invoke_openhands(attempt_module, environment, directory, prompt, base_url, k
 
 
 class CandidateRejected(ValueError):
-    pass
+    """Value error raised when a repository candidate is rejected."""
 
 
 class RepositoryEnvironment:
+    """Sandboxed environment prepared from a repository snapshot."""
+
     def __init__(self, snapshot, directory, image, protocol):
         self.directory = directory
         self.directory.mkdir()

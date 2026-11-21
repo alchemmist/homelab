@@ -8,6 +8,8 @@ from integrations import Model, HTTP
 
 
 class DurableRetryTests(unittest.TestCase):
+    """Tests for durable LLM retry behavior."""
+
     setUp = f.CoreTests.setUp
     tearDown = f.CoreTests.tearDown
 
@@ -74,7 +76,10 @@ class DurableRetryTests(unittest.TestCase):
 
 
 class ModelRetryTests(unittest.TestCase):
+    """Tests for model retry classification hints."""
+
     def test_transport_classification_and_hint_preserved(self) -> None:
+
         for code in [
             "HTTP_429",
             "HTTP_503",
@@ -133,6 +138,8 @@ class ModelRetryTests(unittest.TestCase):
 
 
 class EngineCheckpointTests(unittest.TestCase):
+    """Tests for engine retry checkpoints."""
+
     setUp = f.EngineTests.setUp
     tearDown = f.EngineTests.tearDown
 

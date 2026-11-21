@@ -18,7 +18,10 @@ class WaitClaim(TypedDict):
 
 
 class OwnerAdmissionTests(unittest.TestCase):
+    """Tests for wait owner admission rules."""
+
     def setUp(self) -> None:
+
         self.now = 1000
         self.clock = patch("time.time", lambda: self.now)
         self.clock.start()

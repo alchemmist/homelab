@@ -12,7 +12,10 @@ from dispatcher import Dispatcher
 
 
 class DispatchTests(unittest.TestCase):
+    """Tests for SPI dispatch decision logic."""
+
     def setUp(self) -> None:
+
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.store = Store(self.tmp.name + "/queue.sqlite")
@@ -82,7 +85,10 @@ class DispatchTests(unittest.TestCase):
 
 
 class ServiceSafetyTests(unittest.TestCase):
+    """Tests for dispatcher service safety and lease bounds."""
+
     def test_expired_lease_while_stage_busy(self) -> None:
+
         from service import Engine
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -139,7 +145,10 @@ class ServiceSafetyTests(unittest.TestCase):
 
 
 class DispatchTransportTests(unittest.TestCase):
+    """Tests for dispatch transport interruption handling."""
+
     def test_trickling_headers_are_interrupted_without_body_read(self) -> None:
+
         import socket
         import threading
         import http.client

@@ -12,6 +12,8 @@ from stages import stage
 
 
 class Handler(BaseHTTPRequestHandler):
+    """HTTP handler serving blog update status."""
+
     def log_message(self, *args):
         pass  # no request bodies, credentials or content in logs
 

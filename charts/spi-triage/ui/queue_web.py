@@ -24,7 +24,10 @@ TOKEN = ""
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
     def redirect_request(self, *_args, **_kwargs):
+
         return None
 
 
@@ -39,7 +42,10 @@ def expire(sock):
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
+    """HTTP handler serving the SPI queue web UI."""
+
     def log_message(self, *_args):
+
         pass
 
     def handle(self):
@@ -213,6 +219,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 
 class Server(http.server.ThreadingHTTPServer):
+    """Threaded HTTP server for the queue web UI."""
+
     daemon_threads = True
 
     def __init__(self, *args) -> None:

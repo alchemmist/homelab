@@ -73,8 +73,11 @@ class TelemetryResult(TypedDict):
 
 
 class ArtifactTests(unittest.TestCase):
+    """Tests for evidence v2 artifact bundling."""
+
     def bundle(self, text: str = "diagnostic") -> Bundle:
         result: Bundle = prepare_bundle(
+
             event(),
             {"window": {"start": 1, "end": 2}},
             [{"name": "logs.json", "content": text, "source": {"query": "test"}}],
@@ -208,7 +211,10 @@ class ArtifactTests(unittest.TestCase):
 
 
 class TelemetryTests(unittest.TestCase):
+    """Tests for evidence upload telemetry."""
+
     def response(self, method: str, url: str, *args: object, **kw: object) -> dict[str, object]:
+
         if "/api/search?" in url:
             return {"traces": [{"traceID": "a" * 32}]}
         if "/api/traces/" in url:
@@ -341,7 +347,10 @@ class TelemetryTests(unittest.TestCase):
 
 
 class ProvenanceTests(unittest.TestCase):
+    """Tests for evidence provenance boundaries."""
+
     def test_project_does_not_export_env_or_secret(self) -> None:
+
         obj = {
             "kind": "Pod",
             "metadata": {"name": "test", "annotations": {"secret": "hidden"}},
@@ -521,7 +530,10 @@ class ProvenanceTests(unittest.TestCase):
 
 
 class EngineArtifactTests(unittest.TestCase):
+    """Tests for engine artifact timeout handling."""
+
     def test_primary_is_not_repeated_after_artifact_timeout(self) -> None:
+
         import tempfile
 
         from core import Store
@@ -574,7 +586,10 @@ class EngineArtifactTests(unittest.TestCase):
 
 
 class DownloadTests(unittest.TestCase):
+    """Tests for evidence downloads and checksums."""
+
     def test_roundtrip_and_checksum(self) -> None:
+
         import importlib.util
 
         path = Path(__file__).resolve().parents[2] / "scripts/n8n/download_spi_evidence.py"
@@ -613,8 +628,11 @@ class DownloadTests(unittest.TestCase):
 
 
 class ModelEvidenceTests(unittest.TestCase):
+    """Tests for model evidence fact validation."""
+
     def test_facts_require_valid_existing_evidence_ids(self) -> None:
         import time
+
 
         from core import REPORT_SCHEMA
         from integrations import Model
@@ -640,7 +658,10 @@ class ModelEvidenceTests(unittest.TestCase):
 
 
 class PrimaryReconciliationTests(unittest.TestCase):
+    """Tests for primary issue reconciliation."""
+
     def test_issue_without_app_metadata_uses_immutable_bot_id(self) -> None:
+
         from evidence_bundle import trusted_comment
 
         assert trusted_comment({"user": {"id": 351189559, "type": "Bot", "login": "renamed"}})
@@ -659,7 +680,10 @@ class PrimaryReconciliationTests(unittest.TestCase):
 
 
 class SQLiteTempStoreTests(unittest.TestCase):
+    """Tests that SQLite uses an in-memory temp store."""
+
     def test_all_connections_use_memory_temp_store(self) -> None:
+
         import tempfile
 
         from core import Store
@@ -679,7 +703,10 @@ if __name__ == "__main__":
 
 
 class GrafanaLoginLinkTests(unittest.TestCase):
+    """Tests for generated Grafana login links."""
+
     def test_generator_requests_native_login_and_keeps_absolute_state(self) -> None:
+
         for uid, field, query in [
             ("prometheus", "expr", 'up{job="x"}'),
             ("loki", "expr", '{unit="a.service"} |= "error"'),

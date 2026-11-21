@@ -45,7 +45,10 @@ with (
 
 
 class QueueTransitions(unittest.TestCase):
+    """Tests for swe-mini queue state transitions."""
+
     def setUp(self) -> None:
+
         # A transition regression must never reach credential files or the real API.
         github_guard = patch.object(
             c,

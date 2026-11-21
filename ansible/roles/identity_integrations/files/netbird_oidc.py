@@ -168,6 +168,8 @@ def _private_read(path):
 
 
 class Authentik:
+    """Authentik HTTP API client for OIDC provider setup."""
+
     def __init__(self, base, token, get_only):
         self.base = base.rstrip("/")
         self.token = token

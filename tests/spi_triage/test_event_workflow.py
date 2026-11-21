@@ -30,7 +30,10 @@ WORKFLOW_NODE_COUNT = 10
 
 
 class EventWorkflowTests(unittest.TestCase):
+    """Tests for the SPI event workflow."""
+
     def setUp(self) -> None:
+
         self.workflow = json.loads((ROOT / RELATIVE).read_text())
         self.mapping = {"worker": {"id": "existing-worker-id", "name": "SPI worker internal"}}
 

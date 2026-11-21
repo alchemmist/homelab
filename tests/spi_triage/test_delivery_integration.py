@@ -43,7 +43,10 @@ COMPLETE_STAGE = 4
 
 
 class DeliveryIntegrationTests(unittest.TestCase):
+    """Tests for end-to-end SPI delivery integration."""
+
     def setUp(self) -> None:
+
         fixture.EngineTests.setUp(self)
         self.links = Links(self.store, Mock(), guarded_protocol=True)
         self.engine.delivery = SimpleNamespace(links=self.links, signal=Mock())

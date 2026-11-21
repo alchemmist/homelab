@@ -123,6 +123,8 @@ def inspect_archive(data):
 
 
 class Sandbox:
+    """Docker sandbox hosting a persistent working directory."""
+
     def __init__(self, files, directory, verifier=False):
         self.directory = pathlib.Path(directory)
         self.directory.mkdir(parents=True, exist_ok=True)

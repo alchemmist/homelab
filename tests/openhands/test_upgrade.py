@@ -4,8 +4,11 @@ import pathlib,subprocess,unittest,yaml
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 
 class UpgradeSafety(unittest.TestCase):
+    """Tests for safe offline upgrade backups."""
+
     def test_backup_is_separate_retained_readonly_source_and_offline(self) -> None:
         r=subprocess.check_output(["helm","template","openhands",str(ROOT/"charts/openhands"),"-n","openhands","-f",str(ROOT/"deploy/openhands/values.yaml")],text=True)
+
         objs=[x for x in yaml.safe_load_all(r) if x]
         j=next(x for x in objs if x["kind"]=="Job" and x["metadata"]["name"]=="openhands-cold-backup-20261119")
         p=j["spec"]["template"]["spec"];assert not p["automountServiceAccountToken"]

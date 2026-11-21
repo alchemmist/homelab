@@ -44,8 +44,11 @@ class _Credential(TypedDict, total=False):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
     @typing.override
     def redirect_request(self, *args, **kwargs) -> typing.NoReturn:
+
         raise ValueError("API redirect refused")
 
 
@@ -146,7 +149,10 @@ def pod_identity() -> "dict[str, object]":
 
 
 class NativeSession:
+    """Panel session reconciler backed by the native VPN database."""
+
     def __init__(self, state, database=DB, worker_scope="node-sync") -> None:
+
         if worker_scope not in ("node-sync", "admin"):
             raise ValueError("Unreviewed worker scope")
         self.worker_scope = worker_scope

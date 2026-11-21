@@ -19,6 +19,8 @@ core, links = load("core"), load("telegram_links")
 
 
 class OutboxTest(unittest.TestCase):
+    """Tests for Telegram outbox link generation."""
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)

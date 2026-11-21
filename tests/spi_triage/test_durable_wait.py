@@ -8,7 +8,10 @@ from durable_wait import WaitOwners
 
 
 class WaitTests(unittest.TestCase):
+    """Tests for durable wait persistence."""
+
     def setUp(self) -> None:
+
         self.tmp = tempfile.TemporaryDirectory()
         self.store = Store(self.tmp.name + "/db", minute_token_limit=60000)
         self.key = self.store.enqueue(fixtures.event())["job_id"]

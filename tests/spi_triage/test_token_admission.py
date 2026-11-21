@@ -11,7 +11,10 @@ GOOD = {"issue_number": 0, "reason": "Distinct cause; no supporting overlap.", "
 
 
 class AdmissionTests(unittest.TestCase):
+    """Tests for token admission rules."""
+
     def setUp(self) -> None:
+
         self.tmp = tempfile.TemporaryDirectory()
         self.store = Store(self.tmp.name + "/db")
 

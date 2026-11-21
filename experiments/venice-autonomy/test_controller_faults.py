@@ -45,6 +45,8 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
 
 
 class ControllerFaultTests(unittest.TestCase):
+    """Tests for controller behaviour under injected faults."""
+
     def setup_case(self, directory, behavior):
         root = pathlib.Path(directory)
         code = root / "code"
@@ -793,6 +795,8 @@ class ControllerFaultTests(unittest.TestCase):
 
 
 class ReportErrorStateTests(unittest.TestCase):
+    """Tests for report error-state classification."""
+
     def test_accepted_artifact_with_any_error_is_not_a_clean_finish(self):
         import controller
 

@@ -11,8 +11,11 @@ from engine import UnsafeInput
 
 
 class Fake(GitHub):
+    """In-memory GitHub stub recording API calls."""
+
     def __init__(self, existing=None, main=None) -> None:
         self.calls: list[tuple[str, str, object]] = []
+
         self.existing = existing or []
         self.main = main or "a" * 40
 
@@ -31,7 +34,10 @@ class Fake(GitHub):
 
 
 class WriterTests(unittest.TestCase):
+    """Tests for the blog update PR writer."""
+
     def test_closed_pr_not_reopened(self) -> None:
+
         g = Fake(existing=[{"html_url": "closed-pr", "state": "closed"}])
         assert g.propose("a" * 40, "new", "why")["status"] == "existing"
         assert all(c[0] == "GET" for c in g.calls)

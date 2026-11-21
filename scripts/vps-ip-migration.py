@@ -91,7 +91,7 @@ type Change = tuple[Path, str, str]
 
 
 class MigrationError(Exception):
-    pass
+    """Exception raised when the VPS IP migration fails."""
 
 
 def addresses(old: str, new: str):
@@ -119,7 +119,10 @@ def run(argv: Sequence[str]):
 
 
 class Preimages:
+    """Store of preimage artifacts keyed by label under a root."""
+
     def __init__(self, root: str | Path, label: str) -> None:
+
         raw = Path(root).expanduser()
         if not raw.is_absolute() or raw.is_symlink():
             raise MigrationError("Backup root must be an absolute non-symlink directory")

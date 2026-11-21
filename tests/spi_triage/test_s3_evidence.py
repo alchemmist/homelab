@@ -27,8 +27,11 @@ class S3ClientHandle(Protocol):
 
 
 class ClientTests(unittest.TestCase):
+    """Tests for the S3 evidence client."""
+
     def client(self, responses: list[object]) -> S3ClientHandle:
         self.calls: list[tuple[str, str, dict[str, object], bytes]] = []
+
 
         def transport(*args: object) -> object:
             self.calls.append(cast("tuple[str, str, dict[str, object], bytes]", args))

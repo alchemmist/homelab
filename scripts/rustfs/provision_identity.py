@@ -87,6 +87,8 @@ class Page(TypedDict):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
     def redirect_request(self, request, response, code, message, headers, newurl):
         if response is not None:
             response.close()

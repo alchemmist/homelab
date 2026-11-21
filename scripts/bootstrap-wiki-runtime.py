@@ -8,11 +8,14 @@ import subprocess
 
 
 class BootstrapError(Exception):
-    pass
+    """Exception raised when the wiki runtime bootstrap fails."""
 
 
 class Kubernetes:
+    """Kubernetes client that shells out to kubectl."""
+
     def __init__(self, command: list[str]) -> None:
+
         self.command = command
 
     def run(self, *args: str, payload: object | None = None) -> str:

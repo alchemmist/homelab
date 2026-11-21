@@ -13,7 +13,10 @@ from email.message import Message
 
 
 class QueueAdminTests(unittest.TestCase):
+    """Tests for SPI queue administration."""
+
     def setUp(self) -> None:
+
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.store = Store(Path(self.temp.name) / "queue.sqlite")

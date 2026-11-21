@@ -443,7 +443,10 @@ def tick() -> bool | None:
 
 
 class Health(BaseHTTPRequestHandler):
+    """HTTP handler exposing swe-mini health endpoints."""
+
     def do_GET(self) -> None:
+
         if self.path in ("/healthz", "/livez", "/dependencies"):
             # External API failures cannot be repaired by restarting this process.
             alive = time.time() - cast("float", STATUS["last_tick"]) < 180

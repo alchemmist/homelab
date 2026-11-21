@@ -13,7 +13,7 @@ HOME = "alchemmist/homelab"
 
 
 class GitHubError(Exception):
-    pass
+    """Exception raised when the GitHub API request fails."""
 
 
 def _request(url, token=None, method="GET", body=None) -> "dict[str, object] | None":
@@ -43,6 +43,8 @@ def _request(url, token=None, method="GET", body=None) -> "dict[str, object] | N
 
 
 class BotRepo:
+    """GitHub repository client for bot-managed files."""
+
     def files(self, before, after):
         require_sha(after)
         if before == "0" * 40:
@@ -69,7 +71,10 @@ class BotRepo:
 
 
 class Homelab:
+    """GitHub client for the homelab wiki repository."""
+
     def __init__(self, token) -> None:
+
         self.token = token
 
     def api(self, method, path, body=None):

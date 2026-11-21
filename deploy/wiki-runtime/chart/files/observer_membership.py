@@ -25,6 +25,8 @@ OWNER = "9e33877a-3eaa-4541-98eb-8cdc10088ef6"
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
     def redirect_request(self, *args, **kwargs):
         return None
 
@@ -38,6 +40,8 @@ def opener(context=None):
 
 
 class MembershipReader:
+    """Cached reader for the observer membership token file."""
+
     def __init__(self, token_file, ttl=60):
         self.token_file, self.ttl = Path(token_file), ttl
         self.lock, self.expires = threading.Lock(), 0

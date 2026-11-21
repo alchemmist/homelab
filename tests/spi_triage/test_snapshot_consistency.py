@@ -9,6 +9,8 @@ from core import Failure, digest
 
 
 class SnapshotConsistencyTests(unittest.TestCase):
+    """Tests for snapshot row consistency."""
+
     def rows(self, n=61):
         return [
             {"number": i, "title": "[SPI] fake", "updated_at": "first", "body": "", "comments": 0}
@@ -131,6 +133,8 @@ class SnapshotConsistencyTests(unittest.TestCase):
 
 
 class PatientBudgetTests(unittest.TestCase):
+    """Tests for the patient snapshot budget."""
+
     setUp = f.EngineTests.setUp
     tearDown = f.EngineTests.tearDown
 

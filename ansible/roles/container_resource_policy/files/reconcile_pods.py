@@ -271,7 +271,10 @@ def eviction_payload(pod):
 
 
 class Client:
+    """Kubectl client for reading pod state under the reconcile policy."""
+
     def __init__(self, kubectl, kubeconfig) -> None:
+
         self.command = [kubectl, "--kubeconfig", kubeconfig, "--request-timeout=30s"]
 
     def pods(self):

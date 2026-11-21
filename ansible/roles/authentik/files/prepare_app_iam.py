@@ -84,7 +84,10 @@ def private(path, directory=False):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
     def redirect_request(self, _req, fp, _code, _msg, _headers, _newurl):
+
         if fp is not None:
             fp.close()
         raise RuntimeError("API redirect refused")

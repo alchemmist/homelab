@@ -13,6 +13,8 @@ GOOD = {"issue_number": 0, "reason": "No shared cause established.", "confidence
 
 
 class LargeCatalogTests(unittest.TestCase):
+    """Tests for dispatcher behaviour on large SPI catalogs."""
+
     @staticmethod
     def issues(n) -> list[dict[str, object]]:
         return [

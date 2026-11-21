@@ -170,7 +170,10 @@ def local_listeners_respond() -> bool:
 
 
 class Controller:
+    """Failover controller for the VPN transit links."""
+
     def __init__(self) -> None:
+
         self.config = json.loads(CONFIG.read_text())
         self.marker = ROOT / "fallback.active"
         self.state: dict[str, object] = (

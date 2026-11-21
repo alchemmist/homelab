@@ -6,10 +6,13 @@ from pathlib import Path
 from contextlib import closing
 ROOT=Path(__file__).resolve().parents[2]; src=ROOT/"charts/openhands/files/report-intake";sp=importlib.util.spec_from_file_location("report_intake",src/"intake.py");intake=importlib.util.module_from_spec(sp);sp.loader.exec_module(intake)
 class Reports(unittest.TestCase):
+ """Tests for report consumption and replayed transports."""
+
  def test_observed_report_and_replayed_transport(self) -> None:
   registry=json.loads((src/"repos.json").read_text());rid,cfg=next(iter(registry.items()));owner={"id":cfg["reporters"][0]};label={"name":cfg["label"]}; e={"repository":{"id":int(rid),"full_name":cfg["name"]},"issue":{"state":"open","number":509,"user":owner,"labels":[label],"body":(ROOT/"services/pi-monori/issue509.md").read_text()},"label":label,"action":"labeled","sender":owner}
   def envelope() -> "dict[str, str]":
    b=json.dumps(e).encode();return {"raw":base64.b64encode(b).decode(),"signature":"sha256="+hmac.new(b"test",b,hashlib.sha256).hexdigest()}
+
   with tempfile.TemporaryDirectory() as td:
    d=Path(td)/"db";call=lambda:intake.ingest(envelope(),registry,b"test",d)
    with self.assertRaises(PermissionError):intake.ingest(envelope(),registry,b"bad",d)

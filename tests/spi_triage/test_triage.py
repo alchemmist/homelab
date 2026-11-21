@@ -69,7 +69,10 @@ def report(number=0) -> dict[str, object]:
 
 
 class CoreTests(unittest.TestCase):
+    """Core tests for SPI triage state transitions."""
+
     def setUp(self) -> None:
+
         self.tmp = tempfile.TemporaryDirectory()
         self.store = Store(Path(self.tmp.name) / "jobs.sqlite")
 
@@ -171,7 +174,10 @@ class CoreTests(unittest.TestCase):
 
 
 class AdapterTests(unittest.TestCase):
+    """Tests for the GitHub adapter pagination rules."""
+
     def test_github_paginates_all_open_and_excludes_pr(self) -> None:
+
         http = Mock()
         http.request.side_effect = [
             [
@@ -219,7 +225,10 @@ class AdapterTests(unittest.TestCase):
 
 
 class EvidenceTests(unittest.TestCase):
+    """Tests for evidence metric summaries."""
+
     def test_metric_summary_preserves_transient_peak_and_empty_data(self) -> None:
+
         data = {
             "data": {
                 "resultType": "matrix",
@@ -302,7 +311,10 @@ class EvidenceTests(unittest.TestCase):
 
 
 class EngineTests(unittest.TestCase):
+    """Tests for the triage engine end to end."""
+
     def setUp(self) -> None:
+
         self.tmp = tempfile.TemporaryDirectory()
         self.store = Store(Path(self.tmp.name) / "db")
         self.github = Mock()

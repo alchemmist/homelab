@@ -6,7 +6,10 @@ from repository_runner import apply_continuation_policy
 
 
 class Conversation:
+    """Fake agent conversation with scriptable failures."""
+
     def __init__(self, failures=0) -> None:
+
         self.failures = failures
         self.runs = 0
         self.messages: list[str] = []
@@ -32,6 +35,8 @@ def facts(continue_value):
 
 
 class ContinueOpenHandsTests(unittest.TestCase):
+    """Tests for the continue_openhands acceptance handshake."""
+
     def test_acceptance_none_runs_once_without_messages(self):
         conversation = Conversation()
         continue_openhands(conversation, None, None, None)
@@ -91,6 +96,8 @@ class ContinueOpenHandsTests(unittest.TestCase):
 
 
 class ContinuationPolicyTests(unittest.TestCase):
+    """Tests for apply_continuation_policy decisions."""
+
     def test_real_rejection_continues_until_two_unchanged_rounds(self):
         first = apply_continuation_policy({"accepted": False, "consecutive_no_progress": 0}, 0)
         second = apply_continuation_policy({"accepted": False, "consecutive_no_progress": 1}, 1)

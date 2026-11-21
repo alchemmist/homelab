@@ -24,6 +24,8 @@ PREFIX = "openhands/issue-509/"
 
 
 class NoRedirect(HTTPRedirectHandler):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
     def redirect_request(self, *args):
         return None
 
@@ -46,6 +48,7 @@ def api(path, data=None, method=None):
     with build_opener(NoRedirect).open(req, timeout=20) as resp:
         raw = resp.read()
         return json.loads(raw) if raw else {}
+
 
 
 def check(condition):
@@ -507,6 +510,8 @@ def dispatch(x):
 
 
 class Handler(BaseHTTPRequestHandler):
+    """HTTP handler that records published steward updates."""
+
     def log_message(self, *args):
         pass
 
@@ -517,6 +522,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(raw)))
         self.end_headers()
         self.wfile.write(raw)
+
 
     def do_POST(self):
         try:

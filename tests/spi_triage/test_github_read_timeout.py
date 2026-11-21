@@ -11,7 +11,10 @@ from integrations import GitHub
 
 
 class GitHubReadTimeoutTests(unittest.TestCase):
+    """Tests for semantic GitHub read timeout handling."""
+
     def test_only_known_semantic_get_timeout(self) -> None:
+
         with tempfile.TemporaryDirectory() as tmp:
             token = Path(tmp) / "token"
             token.write_text("test-only")
@@ -118,6 +121,8 @@ class GitHubReadTimeoutTests(unittest.TestCase):
 
 
 class EngineReadRecoveryTests(unittest.TestCase):
+    """Tests for engine recovery from GitHub read timeouts."""
+
     setUp = f.EngineTests.setUp
     tearDown = f.EngineTests.tearDown
 

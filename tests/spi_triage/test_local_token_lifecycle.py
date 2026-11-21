@@ -13,7 +13,10 @@ from local_token_counter import LocalCounter, MAX_BYTES
 
 @unittest.skipUnless(Path("/opt/spi-tokenizer/tokenizer.json").exists(), "optional pinned runtime")
 class Lifecycle(unittest.TestCase):
+    """Tests for local token model retention and isolation."""
+
     def test_retained_models_and_request_isolation(self) -> None:
+
         with patch.dict(os.environ, SPI_TOKEN_ACCOUNTING_MODE="local-qwen-v1"):
             models = [Model(Mock(), "unused") for _ in range(24)]
         assert len({id(m.counter.tokenizer) for m in models}) == 1
