@@ -22,6 +22,7 @@ SPEC.loader.exec_module(MODULE)
 
 
 class FakeWatchdog(MODULE.Watchdog):
+    """Tests for FakeWatchdog."""
     def __init__(self, directory):
         super().__init__(
             {
@@ -78,6 +79,7 @@ class FakeWatchdog(MODULE.Watchdog):
 
 
 class FailoverTests(unittest.TestCase):
+    """Tests for FailoverTests."""
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
@@ -224,6 +226,7 @@ class FailoverTests(unittest.TestCase):
 
 
 class KubernetesFencingTests(unittest.TestCase):
+    """Tests for KubernetesFencingTests."""
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
@@ -311,6 +314,7 @@ class KubernetesFencingTests(unittest.TestCase):
 
 
 class ProbeDiagnosticsTests(unittest.TestCase):
+    """Tests for ProbeDiagnosticsTests."""
     def watchdog(self):
         return MODULE.Watchdog(
             {
@@ -347,6 +351,7 @@ class ProbeDiagnosticsTests(unittest.TestCase):
 
 
 class CommandDeadlineTests(unittest.TestCase):
+    """Tests for CommandDeadlineTests."""
     def test_rejoining_kubernetes_has_separate_deadline(self):
         w = MODULE.Watchdog({})
         with mock.patch.object(MODULE.subprocess, "run") as run:
@@ -367,6 +372,7 @@ class CommandDeadlineTests(unittest.TestCase):
 
 
 class HardeningTests(unittest.TestCase):
+    """Tests for HardeningTests."""
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
@@ -459,6 +465,7 @@ class HardeningTests(unittest.TestCase):
 
 
 class ServiceIdentityContractTests(unittest.TestCase):
+    """Tests for ServiceIdentityContractTests."""
     def test_python_and_ansible_defaults_use_current_server(self):
         assert MODULE.Watchdog({}).agent == "k3s.service"
         import yaml

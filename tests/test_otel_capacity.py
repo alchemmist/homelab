@@ -2,8 +2,8 @@
 
 import copy
 import importlib.util
-from pathlib import Path
 import unittest
+from pathlib import Path
 from typing import TypedDict
 
 spec = importlib.util.spec_from_file_location(

@@ -26,6 +26,7 @@ OLD, NEW = "1.1.1.1", "8.8.8.8"
 
 
 class AddressTests(unittest.TestCase):
+    """Tests for AddressTests."""
     def test_distinct_canonical_public_ipv4(self) -> None:
         M.addresses(OLD, NEW)
         for old, new in [
@@ -49,6 +50,7 @@ class AddressTests(unittest.TestCase):
 
 
 class RepositoryTests(unittest.TestCase):
+    """Tests for RepositoryTests."""
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -177,6 +179,7 @@ class RepositoryTests(unittest.TestCase):
 
 
 class DatabaseTests(unittest.TestCase):
+    """Tests for DatabaseTests."""
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -220,6 +223,7 @@ class DatabaseTests(unittest.TestCase):
 
 
 class RuntimeTests(unittest.TestCase):
+    """Tests for RuntimeTests."""
     def test_only_old_peer_endpoint_is_selected(self) -> None:
         a, b = "A" * 43 + "=", "B" * 43 + "="
         text = f"[Peer]\nPublicKey = {a}\nEndpoint = {OLD}:51830\nAllowedIPs = 10.250.0.2/32\n[Peer]\nPublicKey = {b}\nEndpoint = 127.0.0.1:51840\n"
@@ -297,6 +301,7 @@ class RuntimeTests(unittest.TestCase):
 
 
 class OrchestrationTests(unittest.TestCase):
+    """Tests for OrchestrationTests."""
     def test_audit_default_and_explicit_restart_gate(self) -> None:
         defaults = yaml.safe_load(
             (ROOT / "ansible/roles/vps_ip_migration/defaults/main.yml").read_text()
