@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
 @unittest.skipUnless(SOURCE and COMPILER, "ALX_SOURCE and a C compiler are required")
 class AlxTxGuardTests(unittest.TestCase):
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         source = Path(SOURCE).read_text()
         match = re.search(r"static bool alx_clean_tx_irq\(struct alx_tx_queue \*txq\)\s*\{", source)
         if match is None:

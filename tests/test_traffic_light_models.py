@@ -10,10 +10,10 @@ M = runpy.run_path(str(ROOT/'scripts/build-traffic-light-models.py'))
 
 
 class Models(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.d = json.loads((ROOT/'charts/monitoring-k3s/dashboards/traffic-light.json').read_text())
 
-    def test_idempotent_and_owner_exact(self):
+    def test_idempotent_and_owner_exact(self) -> None:
         self.assertEqual(M['build'](self.d), self.d)
         for p in self.d['panels']:
             if p['id'] == 938:
@@ -27,19 +27,19 @@ class Models(unittest.TestCase):
         self.assertIn('sum by (requested_model)', next(p for p in self.d['panels'] if p['id']==938)['targets'][0]['expr'])
         self.assertNotIn(930,{p['id'] for p in self.d['panels']})
 
-    def test_overlap_rejected(self):
+    def test_overlap_rejected(self) -> None:
         d = copy.deepcopy(self.d)
         next(p for p in d['panels'] if p['id']==938)['gridPos']['y']=10
         with self.assertRaises(ValueError): M['build'](d)
 
-    def test_bottom_rejected(self):
+    def test_bottom_rejected(self) -> None:
         d = copy.deepcopy(self.d)
         next(p for p in d['panels'] if p['id']==938)['gridPos']['h']=7
         with self.assertRaises(ValueError): M['build'](d)
 
 
 class SplitCascade(unittest.TestCase):
-    def test_split_preserves_query_semantics_and_boundary(self):
+    def test_split_preserves_query_semantics_and_boundary(self) -> None:
         d = json.loads((ROOT/'charts/monitoring-k3s/dashboards/traffic-light.json').read_text())
         p = {p['id']: p for p in d['panels']}
         for pid,x,name in [(936,2,'Cascade age'),(939,0,'Samples/s')]:

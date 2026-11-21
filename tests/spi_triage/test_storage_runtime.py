@@ -12,18 +12,18 @@ import service
 
 
 class Runtime(unittest.TestCase):
-    def test_off(self):
+    def test_off(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
             self.assertEqual(runtime.load_storage(), (None, "legacy"))
 
-    def test_projected_file_and_invalid_inputs(self):
+    def test_projected_file_and_invalid_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             target = Path(d) / "real"
             link = Path(d) / "credentials.json"
             link.symlink_to(target)
             real_open = os.open
 
-            def opened(path, flags, *args):
+            def opened(path, flags, *args) -> int:
                 return real_open(
                     link if str(path) == "/s3-writer/credentials.json" else path, flags, *args
                 )
@@ -61,7 +61,7 @@ class Runtime(unittest.TestCase):
                         ):
                             runtime.load_storage()
 
-    def test_serve_wires_engine_before_dispatch(self):
+    def test_serve_wires_engine_before_dispatch(self) -> None:
         class Stop(Exception):
             pass
 

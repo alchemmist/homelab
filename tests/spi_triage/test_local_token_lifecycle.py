@@ -13,7 +13,7 @@ from local_token_counter import LocalCounter, MAX_BYTES
 
 @unittest.skipUnless(Path("/opt/spi-tokenizer/tokenizer.json").exists(), "optional pinned runtime")
 class Lifecycle(unittest.TestCase):
-    def test_retained_models_and_request_isolation(self):
+    def test_retained_models_and_request_isolation(self) -> None:
         with patch.dict(os.environ, SPI_TOKEN_ACCOUNTING_MODE="local-qwen-v1"):
             models = [Model(Mock(), "unused") for _ in range(24)]
         self.assertEqual(len({id(m.counter.tokenizer) for m in models}), 1)
@@ -30,10 +30,13 @@ class Lifecycle(unittest.TestCase):
             }
             for i in range(24)
         ]
-        expected = [m.counter.reservation(b) for m, b in zip(models, bodies)]
+        expected = [m.counter.reservation(b) for m, b in zip(models, bodies, strict=True)]
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
             actual = list(
-                pool.map(lambda pair: pair[0].counter.reservation(pair[1]), zip(models, bodies))
+                pool.map(
+                    lambda pair: pair[0].counter.reservation(pair[1]),
+                    zip(models, bodies, strict=True),
+                )
             )
         self.assertEqual(actual, expected)
         body = bodies[0]
@@ -45,7 +48,7 @@ class Lifecycle(unittest.TestCase):
         for m in models:
             m.http.request.assert_not_called()
 
-    def test_invalid_native_contract_before_recovery_or_http(self):
+    def test_invalid_native_contract_before_recovery_or_http(self) -> None:
         import local_token_counter as lc
         from contextlib import ExitStack
 
@@ -96,7 +99,7 @@ class Lifecycle(unittest.TestCase):
                 m.counter.reservation(dict(base, **{key: value}))
         m.http.request.assert_not_called()
 
-    def test_cached_native_does_not_bypass_validation(self):
+    def test_cached_native_does_not_bypass_validation(self) -> None:
         LocalCounter()
         with self.assertRaises(Failure):
             LocalCounter("/nonexistent/spi-tokenizer")

@@ -15,7 +15,7 @@ OLD, NEW = "1.1.1.1", "8.8.8.8"
 
 
 class HostMigrationTests(unittest.TestCase):
-    def test_only_exact_address_and_its_port_change(self):
+    def test_only_exact_address_and_its_port_change(self) -> None:
         group = {
             "groupId": "group-1",
             "inboundIds": [1],
@@ -30,7 +30,7 @@ class HostMigrationTests(unittest.TestCase):
         self.assertEqual(m.payload(group, OLD, NEW), expected)
         self.assertEqual(group["hosts"][0], OLD)
 
-    def test_bad_group_and_port_refuse_before_network(self):
+    def test_bad_group_and_port_refuse_before_network(self) -> None:
         for group in [
             {"groupId": "../bad", "inboundIds": [1], "hosts": [OLD]},
             {"groupId": "good", "inboundIds": [1], "hosts": [OLD + ":bad"]},
@@ -40,7 +40,7 @@ class HostMigrationTests(unittest.TestCase):
             with self.subTest(group=group), self.assertRaises(ValueError):
                 m.payload(group, OLD, NEW)
 
-    def test_id_binding_credentials_and_retirement_preserved(self):
+    def test_id_binding_credentials_and_retirement_preserved(self) -> None:
         before = {
             "hosts": [
                 {"id": 1, "group_id": "one", "address": OLD, "is_disabled": 0},
@@ -57,14 +57,14 @@ class HostMigrationTests(unittest.TestCase):
         for k in ["inbounds", "clients", "client_inbounds"]:
             self.assertEqual(after[k], before[k])
 
-    def test_only_known_array_encoding_is_normalized(self):
+    def test_only_known_array_encoding_is_normalized(self) -> None:
         a = {"hosts": [{"id": 1, "tags": "[]", "snis": None, "path": "/keep", "sni": "keep"}]}
         b = {"hosts": [{"id": 1, "tags": [], "snis": [], "path": "/keep", "sni": "keep"}]}
         self.assertEqual(m.canonical_projection(a), m.canonical_projection(b))
         b["hosts"][0]["path"] = "/changed"
         self.assertNotEqual(m.canonical_projection(a), m.canonical_projection(b))
 
-    def test_admin_scope_must_be_explicit_and_bound_to_preview(self):
+    def test_admin_scope_must_be_explicit_and_bound_to_preview(self) -> None:
         self.assertEqual(
             m.native.NativeSession("/tmp/vpn83-20261109-default").worker_scope, "node-sync"
         )
@@ -77,7 +77,7 @@ class HostMigrationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             m.native.NativeSession("/tmp/vpn83-20261109-deny", worker_scope="unknown")
 
-    def test_host_methods_and_other_mutations_refused(self):
+    def test_host_methods_and_other_mutations_refused(self) -> None:
         for method, path in [
             ("GET", "/hosts/update/one"),
             ("POST", "/hosts/list"),
@@ -88,14 +88,14 @@ class HostMigrationTests(unittest.TestCase):
             with self.subTest(path=path), self.assertRaises(ValueError):
                 m.native.request("http://127.0.0.1:18082/panel/api", "A" * 48, method, path, {})
 
-    def test_wrong_approval_refuses_session_open(self):
+    def test_wrong_approval_refuses_session_open(self) -> None:
         session = unittest.mock.Mock()
         with patch.object(m, "preview", return_value=(session, {}, {"bound": "plan"})):
             with self.assertRaises(ValueError):
                 m.apply("/tmp/unneeded", OLD, NEW, "wrong")
         session.open.assert_not_called()
 
-    def test_native_null_false_and_current_updated_at_only(self):
+    def test_native_null_false_and_current_updated_at_only(self) -> None:
         import time
 
         before = {
@@ -121,7 +121,7 @@ class HostMigrationTests(unittest.TestCase):
         after["hosts"][0]["updated_at"] = 1
         self.assertFalse(m.verify_transition(before, after, OLD, NEW, "g"))
 
-    def test_single_sni_fallback_native_pool_is_semantically_equal(self):
+    def test_single_sni_fallback_native_pool_is_semantically_equal(self) -> None:
         a = {"hosts": [{"sni": "keep.example", "snis": None, "sni_shared_random": None}]}
         b = {"hosts": [{"sni": "keep.example", "snis": '["keep.example"]', "sni_shared_random": 0}]}
         self.assertEqual(m.canonical_projection(a), m.canonical_projection(b))

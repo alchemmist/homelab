@@ -20,9 +20,13 @@ import time
 import uuid
 from contextlib import closing
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import types
 
 
-def load(name, filename):
+def load(name, filename) -> "types.ModuleType":
     spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name(filename))
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
@@ -35,7 +39,7 @@ backend = load("backend", "vpn-backend-enforce.py")
 h = native.h
 
 
-def restore(state):
+def restore(state) -> object:
     if os.geteuid() != 0 or socket.gethostname() != "socrat-2":
         raise ValueError("Requires VPS root")
     s = native.NativeSession(state)
@@ -53,7 +57,7 @@ def restore(state):
     return s
 
 
-def finish(s):
+def finish(s) -> "dict[str, object]":
     marker = s.state / "home-fixture-private.json"
     try:
         if marker.exists():
@@ -82,7 +86,7 @@ def finish(s):
         raise ValueError("Proxy preservation failed")
     for name in ["home-configs-private.json", "xray-probe"]:
         (s.state / name).unlink(missing_ok=True)
-    proof = {
+    proof: dict[str, object] = {
         "fixture_removed": True,
         "temporary_tokens_removed": True,
         "original_tokens_preserved": True,
@@ -92,7 +96,9 @@ def finish(s):
     return proof
 
 
-def prepare(state, approval, endpoint="91.189.82.238", include_udp=False, include_all_vless=False):
+def prepare(
+    state, approval, endpoint="91.189.82.238", include_udp=False, include_all_vless=False
+) -> "dict[str, object]":
     import ipaddress
 
     if not ipaddress.ip_address(endpoint).is_global:
@@ -216,7 +222,7 @@ def prepare(state, approval, endpoint="91.189.82.238", include_udp=False, includ
         executable = s.state / "xray-probe"
         shutil.copyfile(target.server_executable(), executable)
         executable.chmod(0o700)
-        proof = {
+        proof: dict[str, object] = {
             "prepared": True,
             "expires_within_minutes": 20,
             "binary_sha256": hashlib.sha256(executable.read_bytes()).hexdigest(),
@@ -263,7 +269,14 @@ if __name__ == "__main__":
         else:
             s = native.NativeSession(a.state)
             print(h.canonical({"session_sha256": h.digest(s.preview()), "writes": 0}))
-    except Exception:
+    except (
+        OSError,
+        ValueError,
+        RuntimeError,
+        ImportError,
+        sqlite3.Error,
+        subprocess.SubprocessError,
+    ):
         raise SystemExit(
             "Home native session stopped; inspect private receipts, no blind replay."
         ) from None

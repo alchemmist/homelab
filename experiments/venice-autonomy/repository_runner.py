@@ -14,6 +14,7 @@ import tarfile
 import time
 import tokenize
 import uuid
+from typing import NoReturn
 
 from sandbox import bounded_process
 
@@ -193,7 +194,7 @@ class RepositoryEnvironment:
             self.close()
             raise
 
-    def execute(self, action, **kwargs):
+    def execute(self, action, **_kwargs):
         command = action.get("command") if isinstance(action, dict) else None
         if not isinstance(command, str) or len(command.encode()) > 12000:
             raise ValueError("invalid or oversized command")
@@ -288,7 +289,7 @@ class RepositoryEnvironment:
 
 
 def comment_delta(snapshot, candidate):
-    def comments(path):
+    def comments(path) -> collections.Counter[str]:
         return collections.Counter(
             token.string
             for token in tokenize.generate_tokens(io.StringIO(path.read_text()).readline)
@@ -504,7 +505,7 @@ def main(argv=None):
         }
     environment = None
 
-    def deadline(*_):
+    def deadline(*_) -> NoReturn:
         raise TimeoutError("external end-to-end deadline exceeded")
 
     signal.signal(signal.SIGALRM, deadline)
@@ -536,7 +537,15 @@ def main(argv=None):
                 result.get("exit_status") == "ConversationExecutionStatus.FINISHED"
                 and "run_error" not in summary
             )
-        except Exception as error:
+        except (
+            OSError,
+            ValueError,
+            KeyError,
+            TypeError,
+            RuntimeError,
+            tokenize.TokenError,
+            subprocess.SubprocessError,
+        ) as error:
             attempt.record_exception(summary, error, key, "run_error")
             summary["clean_finish"] = False
         candidate = directory / "candidate"
@@ -551,10 +560,19 @@ def main(argv=None):
         summary["accepted"] = artifact_accepted(summary["verdict"], snapshot, candidate)
         try:
             environment.close()
-        except Exception as error:
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
             summary["cleanup_error_type"] = type(error).__name__
             environment.container_id = None
-    except BaseException as error:
+    except (
+        KeyboardInterrupt,
+        SystemExit,
+        OSError,
+        ValueError,
+        KeyError,
+        TypeError,
+        RuntimeError,
+        subprocess.SubprocessError,
+    ) as error:
         if isinstance(error, (KeyboardInterrupt, SystemExit)):
             raise
         load_local("attempt").record_exception(summary, error, key, "infrastructure_error")
@@ -564,7 +582,7 @@ def main(argv=None):
         if environment is not None and environment.container_id:
             try:
                 environment.close()
-            except Exception as error:
+            except (OSError, ValueError, subprocess.SubprocessError) as error:
                 summary["cleanup_error_type"] = type(error).__name__
         summary["elapsed_seconds"] = round(time.time() - started, 3)
         (directory / "summary.json").write_text(json.dumps(summary, indent=2))

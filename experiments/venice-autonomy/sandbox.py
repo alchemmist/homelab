@@ -9,6 +9,7 @@ import tarfile
 import tempfile
 import time
 import uuid
+from typing import Self, cast
 
 IMAGE = (
     "docker.io/library/node@sha256:1f70dfa8d7be2321da1247e671217c11a555cd005edf4ccb014af28c9e8f78ca"
@@ -18,7 +19,9 @@ MAX_FILE = 65536
 MAX_OUTPUT = 24000
 
 
-def bounded_process(args, limit, timeout=55, input_bytes=None):
+def bounded_process(
+    args: list[str], limit: int, timeout: int = 55, input_bytes: bytes | None = None
+) -> tuple[int, bytes]:
     source = None
     try:
         if input_bytes is not None:
@@ -57,12 +60,12 @@ def bounded_process(args, limit, timeout=55, input_bytes=None):
         process.stdout.close()
 
 
-def _raw_member_name(data, offset):
+def _raw_member_name(data, offset) -> str:
     if not isinstance(offset, int) or offset < 0 or offset + 512 > len(data):
         raise ValueError("invalid archive")
     header = data[offset : offset + 512]
 
-    def take(field):
+    def take(field: bytes) -> str:
         if b"\0" in field:
             head, tail = field.split(b"\0", 1)
             if tail.replace(b"\0", b""):
@@ -78,8 +81,8 @@ def _raw_member_name(data, offset):
     return prefix + "/" + name if prefix else name
 
 
-def inspect_archive(data):
-    result = {}
+def inspect_archive(data: bytes) -> dict[str, str]:
+    result: dict[str, str] = {}
     try:
         archive = tarfile.open(fileobj=io.BytesIO(data), mode="r:*")
     except (tarfile.ReadError, OSError, EOFError) as exc:
@@ -115,11 +118,11 @@ def inspect_archive(data):
 
 
 class Sandbox:
-    def __init__(self, files, directory, verifier=False):
+    def __init__(self, files, directory, verifier=False) -> None:
         self.directory = pathlib.Path(directory)
         self.directory.mkdir(parents=True, exist_ok=True)
-        self.events = []
-        self.container_id = None
+        self.events: list[dict[str, object]] = []
+        self.container_id: str | None = None
         self.volume_name = "venice-lab-" + uuid.uuid4().hex[:12]
         self.verifier = verifier
         self.config = {"image": IMAGE, "network": "none", "read_only": True}
@@ -255,7 +258,7 @@ class Sandbox:
             [
                 "docker",
                 "exec",
-                self.container_id,
+                cast("str", self.container_id),
                 "bash",
                 "-lc",
                 "grep -E '^(Cap(Inh|Prm|Eff|Bnd|Amb)|NoNewPrivs):' /proc/self/status",
@@ -291,7 +294,9 @@ class Sandbox:
             raise ValueError("sandbox security preflight failed")
         return result
 
-    def execute(self, action, input_bytes=None, **kwargs):
+    def execute(
+        self, action: dict[str, object], input_bytes: bytes | None = None, **_kwargs: object
+    ) -> dict[str, object]:
         command = action["command"]
         wrapped = (
             "timeout -k 2 40 bash -lc "
@@ -318,7 +323,7 @@ class Sandbox:
             stream.write(json.dumps(event) + "\n")
         return {"returncode": code, "output": text, "exception_info": None}
 
-    def snapshot(self):
+    def snapshot(self) -> dict[str, str]:
         subprocess.run(
             ["docker", "pause", self.container_id], capture_output=True, check=True, timeout=15
         )
@@ -343,22 +348,22 @@ class Sandbox:
         if self.container_id:
             try:
                 owned_resources.remove_container(self.container_id, expected)
-            except Exception as error:
+            except (OSError, ValueError, subprocess.SubprocessError) as error:
                 errors.append(str(error))
             else:
                 self.container_id = None
         if self.volume_name:
             try:
                 owned_resources.remove_volume(self.volume_name, expected)
-            except Exception as error:
+            except (OSError, ValueError, subprocess.SubprocessError) as error:
                 errors.append(str(error))
             else:
                 self.volume_name = None
         if errors:
             raise ValueError("; ".join(errors))
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, *args) -> None:
         self.close()

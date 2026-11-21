@@ -7,7 +7,9 @@ When enabled, legacy passwords and pre-migration sessions are owner-only.
 import json
 import os
 import secrets
+import sqlite3
 import time
+from typing import cast
 
 from fastapi import HTTPException, Request
 from fastapi.responses import RedirectResponse
@@ -89,6 +91,7 @@ def external_login(store, issuer, subject, username, role, links):
 
 
 def install_oidc(app, store, origin, prefix, cookie_path, session_seconds):
+    from authlib.integrations.base_client import AuthlibBaseError
     from authlib.integrations.starlette_client import OAuth
     from starlette.middleware.sessions import SessionMiddleware
 
@@ -122,15 +125,15 @@ def install_oidc(app, store, origin, prefix, cookie_path, session_seconds):
     )
 
     @app.get("/api/auth/oidc/login")
-    async def start(request: Request):
+    async def start(request: Request) -> object:
         response = await client.authorize_redirect(
             request, origin + prefix + "/api/auth/oidc/callback"
         )
         response.headers["Cache-Control"] = "no-store"
-        return response
+        return cast("object", response)
 
     @app.get("/api/auth/oidc/callback")
-    async def callback(request: Request):
+    async def callback(request: Request) -> object:
         try:
             token = await client.authorize_access_token(request)
             claims = token.get("userinfo")
@@ -150,7 +153,7 @@ def install_oidc(app, store, origin, prefix, cookie_path, session_seconds):
             )
         except HTTPException:
             raise
-        except Exception:
+        except (ValueError, KeyError, TypeError, RuntimeError, OSError, sqlite3.Error, AuthlibBaseError):
             # Do not expose codes, JWTs, credentials or provider exception URLs.
             raise HTTPException(401, "OIDC verification failed") from None
         request.session.clear()
@@ -168,4 +171,4 @@ def install_oidc(app, store, origin, prefix, cookie_path, session_seconds):
             samesite="lax",
             path=cookie_path,
         )
-        return response
+        return cast("object", response)

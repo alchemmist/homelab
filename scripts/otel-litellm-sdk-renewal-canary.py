@@ -40,13 +40,16 @@ def run():
     loaded = []
     original_loader = ssl.SSLContext.load_cert_chain
 
-    def observe_loader(context, certfile, keyfile=None, password=None):
+    def observe_loader(context, certfile, keyfile=None, password=None) -> None:
         public_hash = hashlib.sha256(Path(certfile).read_bytes()).hexdigest()
         result = original_loader(context, certfile, keyfile, password)
         loaded.append(public_hash)
         return result
 
-    ssl.SSLContext.load_cert_chain = observe_loader
+    def wrapped_loader(*args: object, **kwargs: object) -> None:
+        observe_loader(*args, **kwargs)
+
+    ssl.SSLContext.load_cert_chain = wrapped_loader
     with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
         import litellm
         from litellm.integrations.opentelemetry import OpenTelemetry
@@ -62,18 +65,18 @@ def run():
         audit = {"endedSpans": 0, "sensitiveSyntheticContentFoundAtSource": False}
 
         class PrivacyAudit(SpanProcessor):
-            def on_start(self, span, parent_context=None):
+            def on_start(self, span, parent_context=None) -> None:
                 pass
 
-            def on_end(self, span):
+            def on_end(self, span) -> None:
                 audit["endedSpans"] += 1
                 if any(marker in span.to_json() for marker in MARKERS):
                     audit["sensitiveSyntheticContentFoundAtSource"] = True
 
-            def shutdown(self):
+            def shutdown(self) -> None:
                 pass
 
-            def force_flush(self, timeout_millis=30000):
+            def force_flush(self, timeout_millis=30000) -> bool:
                 return True
 
         provider = handler._tracer_provider
@@ -82,7 +85,7 @@ def run():
         tracer = trace.get_tracer("homelab.synthetic.sdk-leaf-renewal")
         traces = []
 
-        def completion():
+        def completion() -> None:
             with tracer.start_as_current_span("homelab.synthetic.litellm-sdk-validation") as parent:
                 parent.set_attribute("homelab.synthetic", True)
                 parent.set_status(Status(StatusCode.ERROR, "synthetic mandatory-sampling canary"))
@@ -147,7 +150,7 @@ def run():
 if __name__ == "__main__":
     try:
         run()
-    except Exception as error:
+    except (ImportError, OSError, RuntimeError, ValueError) as error:
         result = {
             "success": False,
             "errorType": type(error).__name__,
@@ -156,4 +159,4 @@ if __name__ == "__main__":
         }
         record(result)
         print(json.dumps(result))
-        raise SystemExit(1)
+        raise SystemExit(1) from error

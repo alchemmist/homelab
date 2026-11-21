@@ -34,7 +34,7 @@ def run(verify_scope=False):
     token = json.loads((ROOT / "token.json").read_text())
     context = ssl.create_default_context(cafile=str(ROOT / "kubernetes-ca.crt"))
 
-    def api(path, payload=None, method=None):
+    def api(path, payload=None, method=None) -> dict[str, object]:
         headers = {"Authorization": "Bearer " + token["token"]}
         if payload is not None:
             headers["Content-Type"] = (
@@ -47,7 +47,8 @@ def run(verify_scope=False):
             method=method,
         )
         with urllib.request.urlopen(request, context=context, timeout=15) as response:
-            return json.load(response)
+            result: dict[str, object] = json.load(response)
+            return result
 
     namespace = "/api/v1/namespaces/" + cfg["namespace"]
     if verify_scope:
@@ -240,7 +241,7 @@ if __name__ == "__main__":
         parser = argparse.ArgumentParser()
         parser.add_argument("--verify-scope", action="store_true")
         run(parser.parse_args().verify_scope)
-    except Exception as error:
+    except (ImportError, OSError, RuntimeError, ValueError) as error:
         # Do not include HTTP response bodies, private key material, or bearer tokens.
         print(json.dumps({"credentialRefreshSucceeded": False, "errorType": type(error).__name__}))
-        raise SystemExit(1)
+        raise SystemExit(1) from error

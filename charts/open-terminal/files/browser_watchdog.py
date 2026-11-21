@@ -110,12 +110,12 @@ class Browser:
 
 
 class Watchdog:
-    def __init__(self, lifetime=900, grace=5, ticks=None, send=signal_process):
+    def __init__(self, lifetime=900, grace=5, ticks=None, send=signal_process) -> None:
         self.lifetime = lifetime
         self.grace = grace
         self.ticks = ticks or os.sysconf("SC_CLK_TCK")
         self.send = send
-        self.browsers = {}
+        self.browsers: dict[tuple[int, int], Browser] = {}
 
     def step(self, processes, now):
         for process in processes.values():

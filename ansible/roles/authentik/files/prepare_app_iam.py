@@ -84,7 +84,7 @@ def private(path, directory=False):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
+    def redirect_request(self, _req, fp, _code, _msg, _headers, _newurl):
         if fp is not None:
             fp.close()
         raise RuntimeError("API redirect refused")
@@ -108,7 +108,7 @@ def api_for(root):
     token = tokens[0]
     opener = urllib.request.build_opener(NoRedirect())  # default verified HTTPS context
 
-    def api(method, endpoint, payload=None):
+    def api(method, endpoint, payload=None) -> dict[str, object]:
         require(
             method in ("GET", "POST")
             and endpoint.split("?")[0] in COLLECTIONS
@@ -123,7 +123,8 @@ def api_for(root):
         )
         try:
             with opener.open(request, timeout=45) as response:
-                return json.loads(response.read())
+                document: dict[str, object] = json.loads(response.read())
+                return document
         except urllib.error.HTTPError as error:
             # Close without reading/logging: unclosed HTTPError ResourceWarnings can
             # echo an untrusted server reason phrase during garbage collection.
