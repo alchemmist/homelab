@@ -5,9 +5,9 @@ import json
 import socket
 import struct
 import subprocess
-from typing import cast, override
 import unittest
 from pathlib import Path
+from typing import cast, override
 from unittest.mock import Mock, patch
 
 MODULE_PATH = (
