@@ -27,10 +27,13 @@ def resolve(host):
         raise TimeoutError("DNS deadline") from exc
     if result.returncode:
         raise socket.gaierror("resolution failed")
-    return [
-        (socket.AddressFamily(f), k, p, n, tuple(a))
-        for f, k, p, n, a in json.loads(result.stdout)
-    ]
+    try:
+        return [
+            (socket.AddressFamily(f), k, p, n, tuple(a))
+            for f, k, p, n, a in json.loads(result.stdout)
+        ]
+    except (ValueError, TypeError) as exc:
+        raise socket.gaierror("invalid resolver response") from exc
 
 
 def samples(host, context):
