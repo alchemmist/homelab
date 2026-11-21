@@ -46,8 +46,6 @@ def rows(host_root):
             if os.path.isdir(path):
                 found.append(("prometheus", "/var/lib/prometheus", directory_bytes(path)))
     for role, dirname in ROLES:
-        if dirname == "socrat-thanos-5m" and os.environ.get("SKIP_OLD_FIVE") == "1":
-            continue
         path = os.path.join(host_root, dirname)
         if os.path.isdir(path):
             found.append((role, host_path(path, host_root), directory_bytes(path)))

@@ -1,12 +1,17 @@
 import json
 from pathlib import Path
 import subprocess
+from typing import TYPE_CHECKING
+
 import yaml
+
+if TYPE_CHECKING:
+    from _typeshed import Incomplete
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def rendered(chart, *args):
+def rendered(chart: str, *args: str) -> "list[Incomplete]":
     return [
         d
         for d in yaml.safe_load_all(
@@ -254,7 +259,7 @@ def test_copy_refuses_live_ha_or_unknown_endpoint_before_creating_job(monkeypatc
     ]:
         calls = []
 
-        def kube(*args, **kwargs):
+        def kube(*args: str, **kwargs: object) -> str:
             calls.append(args)
             assert args == ("-n", "lms", "get", "secret", "lms-db", "-o", "json")
             return json.dumps({"data": data})

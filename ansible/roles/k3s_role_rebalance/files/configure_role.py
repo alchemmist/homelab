@@ -9,7 +9,7 @@ import tempfile
 import yaml
 
 
-def configure(args):
+def configure(args: argparse.Namespace):
     path = Path(args.config)
     if path.is_symlink():
         raise ValueError("config must not be a symlink")

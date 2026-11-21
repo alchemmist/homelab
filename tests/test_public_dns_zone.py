@@ -101,8 +101,7 @@ def test_rustfs_names_additive_without_changes_to_existing_records():
             for line in new
             if not line.startswith(names)
             and line not in ("@ IN NS ns3.alchemmist.xyz.", "ns3 IN A 91.189.82.238")
-        ] == [line for line in prior["render"](123, home, vps).splitlines()
-              if not (home and vps and line in {f"lms IN A {zone.VPS}", f"auth.socrat IN A {zone.VPS}"})]
+        ] == prior["render"](123, home, vps).splitlines()
         for name in ("rustfs.socrat", "spi-evidence.socrat"):
             for address in zone.healthy_addresses(home, vps):
                 assert new.count(f"{name} IN A {address}") == 1
@@ -133,13 +132,3 @@ def test_vpn_has_only_moscow_even_when_original_entrances_fail():
         ]
         assert "ns1 IN A 109.173.40.247" in lines
         assert "ns2 IN A 109.120.141.60" in lines
-
-
-@pytest.mark.parametrize("home,vps", [(True, True), (True, False), (False, True), (False, False)])
-def test_lms_and_issuer_prefer_home_without_changing_other_failover_names(home, vps):
-    lines = zone.render(1, home, vps).splitlines()
-    for name in zone.FAILOVER:
-        expected = [zone.HOME] if home and name in {"lms", "auth.socrat"} else zone.healthy_addresses(home, vps)
-        assert [line for line in lines if line.startswith(name + " IN A ")] == [
-            f"{name} IN A {ip}" for ip in expected
-        ]

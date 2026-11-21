@@ -36,8 +36,6 @@ metadata:
   labels:
     app: thanos-cascade
 spec:
-  {{- if not (has .Values.fivePhase (list "local" "local-hold" "cold" "shared-hold" "shared")) }}{{ fail "invalid fivePhase" }}{{- end }}
-  suspend: {{ has .Values.fivePhase (list "local-hold" "cold" "shared-hold") }}
   schedule: "30 * * * *"
   timeZone: Europe/Moscow
   concurrencyPolicy: Forbid
@@ -88,10 +86,6 @@ spec:
                   value: http://thanos-shelf-1h.{{ .Release.Namespace }}.svc.cluster.local:8080
                 - name: SHELF_TOKEN_FILE
                   value: /etc/shelf/token
-                {{- if has .Values.fivePhase (list "shared" "shared-hold") }}
-                - name: FIVE_SHARED
-                  value: "1"
-                {{- end }}
                 - name: PROMETHEUS_URL
                   value: {{ .Values.prometheusURL | quote }}
               resources:

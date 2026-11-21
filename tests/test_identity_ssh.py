@@ -182,7 +182,7 @@ class HistoryTests(unittest.TestCase):
             root = Path(d)
             binding_path, policy_path = root / "bindings.json", root / "policy.json"
 
-            def git(*args):
+            def git(*args: str) -> str:
                 return subprocess.run(
                     ["git", "-C", str(root), *args], check=True, text=True, capture_output=True
                 ).stdout
@@ -616,7 +616,13 @@ class HostBindingTests(unittest.TestCase):
 
 @unittest.skipUnless(shutil.which("ansible-playbook"), "ansible-playbook unavailable")
 class AnsibleIntentTests(unittest.TestCase):
-    def run_play(self, payload, *flags, manual=False, review=None):
+    def run_play(
+        self,
+        payload: object,
+        *flags: str,
+        manual: bool = False,
+        review: str | None = None,
+    ) -> subprocess.CompletedProcess[str]:
         with tempfile.TemporaryDirectory() as d:
             path = Path(d)
             (path / "inventory.yml").write_text(
