@@ -79,8 +79,6 @@ def complete(messages: object, **options: object) -> dict[str, object]:
     }
     choices = result.get("choices")
     require(isinstance(choices, list) and bool(choices), "Response has no choices")
-    if not isinstance(choices, list) or not choices:
-        raise TypeError(choices)
     first = choices[0]
     if not isinstance(first, dict):
         raise TypeError(first)
