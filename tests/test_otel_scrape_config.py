@@ -4,6 +4,7 @@ import copy
 import importlib.util
 import json
 from pathlib import Path
+from typing import NotRequired, TypedDict
 import unittest
 import yaml
 
@@ -16,8 +17,31 @@ SCRAPE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(SCRAPE)
 
 
-def fixtures():
-    cluster = {
+class _Target(TypedDict):
+    scrapePool: str
+    health: str
+    labels: dict[str, str]
+    discoveredLabels: NotRequired[dict[str, str]]
+
+
+class _ScrapeJob(TypedDict, total=False):
+    job_name: str
+    scrape_interval: str
+    kubernetes_sd_configs: list[dict[str, object]]
+    relabel_configs: list[dict[str, object]]
+    metric_relabel_configs: list[dict[str, object]]
+    authorization: NotRequired[dict[str, object]]
+
+
+_Source = TypedDict("_Source", {"global": dict[str, object], "scrape_configs": list[_ScrapeJob]})
+
+
+class _Targets(TypedDict):
+    activeTargets: list[_Target]
+
+
+def fixtures() -> tuple[_Source, _Targets]:
+    cluster: _ScrapeJob = {
         "job_name": "serviceMonitor/llm/vllm/0",
         "scrape_interval": "30s",
         "kubernetes_sd_configs": [{"role": "pod"}],
@@ -33,19 +57,19 @@ def fixtures():
             {"source_labels": ["__name__"], "regex": "junk.*", "action": "drop"}
         ],
     }
-    node = {
+    node: _ScrapeJob = {
         "job_name": "serviceMonitor/monitoring/nodes/0",
         "kubernetes_sd_configs": [{"role": "endpoints"}],
         "relabel_configs": [{"target_label": "job", "replacement": "node-exporter"}],
     }
-    source = {
+    source: _Source = {
         "global": {
             "external_labels": {"prometheus": "legacy-context"},
             "evaluation_interval": "30s",
         },
         "scrape_configs": [cluster, node, {"job_name": "empty-pool"}],
     }
-    active = [
+    active: list[_Target] = [
         {
             "scrapePool": cluster["job_name"],
             "health": "up",
@@ -69,7 +93,7 @@ def fixtures():
 
 
 class ScrapeConfigTests(unittest.TestCase):
-    def test_public_edge_refresh_is_narrow_and_preserves_original(self):
+    def test_public_edge_refresh_is_narrow_and_preserves_original(self) -> None:
         job = {
             "job_name": "serviceMonitor/cattle-monitoring-system/monitoring-service-probes/26",
             "params": {"module": ["tcp_connect"], "target": ["192.0.2.1:443"]},
@@ -90,7 +114,7 @@ class ScrapeConfigTests(unittest.TestCase):
         )
         self.assertEqual(SCRAPE.refresh_public_edge_probe(result), result)
 
-    def test_moscow_job_does_not_reuse_frozen_numeric_endpoint_indices(self):
+    def test_moscow_job_does_not_reuse_frozen_numeric_endpoint_indices(self) -> None:
         targets = yaml.safe_load((SCRAPE.ROOT / "charts/monitoring-k3s/values.yaml").read_text())[
             "serviceProbes"
         ]["targets"]
@@ -108,7 +132,7 @@ class ScrapeConfigTests(unittest.TestCase):
         self.assertEqual(result["scrape_configs"][2]["job_name"], prefix + "edge-moscow")
         self.assertEqual(SCRAPE.add_moscow_edge_probe(result), result)
 
-    def test_ownership_discovery_labels_and_relabeling_are_preserved(self):
+    def test_ownership_discovery_labels_and_relabeling_are_preserved(self) -> None:
         source, targets = fixtures()
         before = copy.deepcopy(source)
         outputs, contract = SCRAPE.compile_config(source, targets)
@@ -137,7 +161,7 @@ class ScrapeConfigTests(unittest.TestCase):
         self.assertTrue(contract["legacyTargetIdentityAliasesRequireAcceptance"])
         self.assertFalse(contract["readyForCutover"])
 
-    def test_secret_selector_becomes_a_file_not_a_masked_credential(self):
+    def test_secret_selector_becomes_a_file_not_a_masked_credential(self) -> None:
         source, targets = fixtures()
         source["scrape_configs"][0]["authorization"] = {"type": "Bearer", "credentials": "<secret>"}
         monitors = {
@@ -168,13 +192,13 @@ class ScrapeConfigTests(unittest.TestCase):
         self.assertEqual(contract["requiredSecretKeys"][0]["secret"], "metrics-auth")
         self.assertFalse(contract["secretAssetSynchronizationRuntimeVerified"])
 
-    def test_unattributed_inline_secret_is_rejected(self):
+    def test_unattributed_inline_secret_is_rejected(self) -> None:
         source, targets = fixtures()
         source["scrape_configs"][0]["authorization"] = {"credentials": "<secret>"}
         with self.assertRaisesRegex(ValueError, "monitor"):
             SCRAPE.compile_config(source, targets)
 
-    def test_unknown_owner_and_missing_node_fail_closed(self):
+    def test_unknown_owner_and_missing_node_fail_closed(self) -> None:
         for mutate in ["owner", "node"]:
             source, targets = fixtures()
             if mutate == "owner":
@@ -184,7 +208,7 @@ class ScrapeConfigTests(unittest.TestCase):
             with self.subTest(mutate=mutate), self.assertRaises(ValueError):
                 SCRAPE.compile_config(source, targets)
 
-    def test_validation_assets_are_inert_and_do_not_mutate_the_real_config(self):
+    def test_validation_assets_are_inert_and_do_not_mutate_the_real_config(self) -> None:
         document = {
             "authorization": {"credentials_file": "/etc/otel/source-auth/ns/name/token"},
             "tls_config": {"ca_file": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"},
@@ -199,7 +223,7 @@ class ScrapeConfigTests(unittest.TestCase):
         self.assertEqual(result["replacement"], "$$1")
         self.assertEqual(document, before)
 
-    def test_unsafe_file_dependency_is_rejected(self):
+    def test_unsafe_file_dependency_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
             SCRAPE.assets({"credentials_file": "/etc/otel/source-auth/../outside"})
         with self.assertRaises(ValueError):

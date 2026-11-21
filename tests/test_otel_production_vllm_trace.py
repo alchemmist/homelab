@@ -2,15 +2,44 @@
 
 import copy
 import importlib.util
-from pathlib import Path
 import unittest
+from pathlib import Path
+from types import ModuleType
+from typing import NotRequired, TypedDict
 
 ROOT = Path(__file__).resolve().parents[1]
 TRACE = "1" * 32
 PARENT = "2" * 16
 
 
-def module():
+class _Attribute(TypedDict):
+    key: str
+    value: dict[str, str]
+
+
+class _Resource(TypedDict):
+    attributes: list[_Attribute]
+
+
+class _Span(TypedDict, total=False):
+    traceId: str
+    spanId: str
+    parentSpanId: str
+    name: str
+    kind: str
+
+
+class _ResourceSpan(TypedDict):
+    resource: _Resource
+    scopeSpans: list[dict[str, list[_Span]]]
+
+
+class _Document(TypedDict):
+    resourceSpans: list[_ResourceSpan]
+    private: NotRequired[str]
+
+
+def module() -> ModuleType:
     spec = importlib.util.spec_from_file_location(
         "trace_verify", ROOT / "scripts/otel-application-trace-verify.py"
     )
@@ -19,8 +48,8 @@ def module():
     return result
 
 
-def document():
-    def resource(service, span):
+def document() -> _Document:
+    def resource(service, span) -> _ResourceSpan:
         return {
             "resource": {
                 "attributes": [{"key": "service.name", "value": {"stringValue": service}}]
@@ -52,7 +81,7 @@ def document():
 
 
 class VllmProductionTraceTests(unittest.TestCase):
-    def test_real_application_resource_and_parent_are_required(self):
+    def test_real_application_resource_and_parent_are_required(self) -> None:
         self.assertTrue(module().summarize_production_vllm(document(), TRACE, PARENT)["success"])
         for kind in ["service", "parent", "name", "duplicate"]:
             data = document()
@@ -69,7 +98,7 @@ class VllmProductionTraceTests(unittest.TestCase):
                 data["resourceSpans"].append(copy.deepcopy(data["resourceSpans"][1]))
             self.assertFalse(module().summarize_production_vllm(data, TRACE, PARENT)["success"])
 
-    def test_synthetic_prompt_in_backend_fails_privacy(self):
+    def test_synthetic_prompt_in_backend_fails_privacy(self) -> None:
         data = document()
         data["private"] = "OTEL_CANARY_PRIVATE_CONTENT_MUST_NOT_BE_CAPTURED"
         result = module().summarize_production_vllm(data, TRACE, PARENT)

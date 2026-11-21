@@ -91,7 +91,7 @@ def main():
                 check=True,
                 stdout=subprocess.DEVNULL,
             )
-        except Exception:
+        except (OSError, KeyError, TypeError, ValueError, subprocess.SubprocessError):
             if created:
                 request = urllib.request.Request(
                     f"http://127.0.0.1:{port}/key/delete",

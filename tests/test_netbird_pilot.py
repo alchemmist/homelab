@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+from typing import TypedDict
 import unittest
 from unittest.mock import patch
 
@@ -19,7 +20,26 @@ nb = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(nb)
 
 
-def inputs():
+class Inputs(TypedDict):
+    """Synthetic passing pilot input document shape."""
+
+    schema_version: int
+    management_fqdn: str
+    management_node: str
+    tls_secret_name: str
+    ingress_class: str
+    stun_node_port: int
+    storage_class: str
+    overlay_cidr: str
+    authentik_issuer: str
+    oidc_client_id: str
+    login_group: str
+    routing_peers: list[dict[str, object]]
+    resources: list[dict[str, object]]
+    review: dict[str, bool]
+
+
+def inputs() -> Inputs:
     # Synthetic TEST fixtures only, not discovered or proposed production addresses.
     return {
         "schema_version": 1,
@@ -63,7 +83,16 @@ def inputs():
     }
 
 
-def bindings():
+class Bindings(TypedDict):
+    """Identifier bindings that the pilot compiler already covers upstream."""
+
+    network_id: str
+    source_groups: dict[str, str]
+    resource_groups: dict[str, str]
+    peer_ids: dict[str, str]
+
+
+def bindings() -> Bindings:
     return {
         "network_id": "network00001",
         "source_groups": {"pilot-web": "source000001", "pilot-ssh": "source000002"},
@@ -72,8 +101,21 @@ def bindings():
     }
 
 
-def snapshot():
+def snapshot() -> dict[str, list[dict[str, object]]]:
     b = bindings()
+    groups: list[dict[str, object]] = []
+    for name, value in b["source_groups"].items():
+        groups.append({"id": value, "name": name, "issued": "jwt", "peers": [], "resources": []})
+    for name, value in b["resource_groups"].items():
+        groups.append(
+            {
+                "id": value,
+                "name": "pilot-resource-" + name,
+                "issued": "api",
+                "peers": [],
+                "resources": [],
+            }
+        )
     return {
         "policies": [],
         "routes": [],
@@ -87,26 +129,13 @@ def snapshot():
                 "routing_peers_count": 0,
             }
         ],
-        "groups": [
-            {"id": value, "name": name, "issued": "jwt", "peers": [], "resources": []}
-            for name, value in b["source_groups"].items()
-        ]
-        + [
-            {
-                "id": value,
-                "name": "pilot-resource-" + name,
-                "issued": "api",
-                "peers": [],
-                "resources": [],
-            }
-            for name, value in b["resource_groups"].items()
-        ],
+        "groups": groups,
         "peers": [{"id": value, "name": name} for name, value in b["peer_ids"].items()],
     }
 
 
 class PilotTests(unittest.TestCase):
-    def test_checked_in_inputs_fail_closed_without_output(self):
+    def test_checked_in_inputs_fail_closed_without_output(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             target = Path(d) / "rendered"
             result = subprocess.run(
@@ -124,7 +153,7 @@ class PilotTests(unittest.TestCase):
             self.assertIn("BLOCKED", result.stderr)
             self.assertFalse(target.exists())
 
-    def test_cli_refuses_render_into_git_worktree(self):
+    def test_cli_refuses_render_into_git_worktree(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             source = Path(d) / "inputs.json"
             source.write_text(json.dumps(inputs()))
@@ -146,26 +175,25 @@ class PilotTests(unittest.TestCase):
             self.assertIn("outside the Git worktree", result.stderr)
             self.assertFalse(target.exists())
 
-    def test_required_inputs_and_reviews_fail_closed(self):
+    def test_required_inputs_and_reviews_fail_closed(self) -> None:
         nb.validate(inputs())
         for key in inputs():
-            c = inputs()
-            c.pop(key)
+            c = {k: v for k, v in inputs().items() if k != key}
             with self.subTest(key=key), self.assertRaises(ValueError):
                 nb.validate(c)
         for key in nb.REVIEWS:
-            c = inputs()
-            c["review"][key] = False
+            document = inputs()
+            document["review"][key] = False
             if key == "existing_node_router_mode_reviewed":
-                nb.validate(c)
-                c["routing_peers"][0]["host"] = "socrat-2"
+                nb.validate(document)
+                document["routing_peers"][0]["host"] = "socrat-2"
                 with self.subTest(review=key), self.assertRaises(ValueError):
-                    nb.validate(c)
+                    nb.validate(document)
                 continue
             with self.subTest(review=key), self.assertRaises(ValueError):
-                nb.validate(c)
+                nb.validate(document)
 
-    def test_no_broad_networks_ports_or_all_to_all(self):
+    def test_no_broad_networks_ports_or_all_to_all(self) -> None:
         for address in [
             "0.0.0.0/0",
             "192.168.0.0/24",
@@ -188,7 +216,7 @@ class PilotTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             nb.validate(c)
 
-    def test_mesh_k3s_transport_never_selected_as_overlay(self):
+    def test_mesh_k3s_transport_never_selected_as_overlay(self) -> None:
         for network in [
             "10.250.0.0/24",
             "10.42.0.0/16",
@@ -201,7 +229,7 @@ class PilotTests(unittest.TestCase):
             with self.subTest(network=network), self.assertRaises(ValueError):
                 nb.validate(c)
 
-    def test_one_ssh_router_is_not_a_second_ha_peer(self):
+    def test_one_ssh_router_is_not_a_second_ha_peer(self) -> None:
         empty = inputs()
         empty["routing_peers"] = []
         with self.assertRaises(ValueError):
@@ -232,7 +260,7 @@ class PilotTests(unittest.TestCase):
         compose = nb.router_compose(allowed, allowed["routing_peers"][0])
         self.assertEqual(set(compose["services"]), {"routing-peer"})
 
-    def test_internal_manifest_has_no_service_and_isolates_signup(self):
+    def test_internal_manifest_has_no_service_and_isolates_signup(self) -> None:
         cidrs = ["203.0.113.10/32", "10.42.0.1/32"]
         docs = nb.manifests(inputs(), "internal", cidrs)
         self.assertEqual(
@@ -271,7 +299,7 @@ class PilotTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             nb.manifests(inputs(), "internal", None)
 
-    def test_manifest_pins_runtime_secret_singleton_no_argo(self):
+    def test_manifest_pins_runtime_secret_singleton_no_argo(self) -> None:
         docs = nb.manifests(inputs(), "edge")
         self.assertFalse(
             any(x["kind"] in ["Secret", "Application", "DaemonSet", "IngressRoute"] for x in docs)
@@ -351,7 +379,7 @@ class PilotTests(unittest.TestCase):
             ["netbird-pilot"],
         )
 
-    def test_router_runtime_key_file_and_separate_interface(self):
+    def test_router_runtime_key_file_and_separate_interface(self) -> None:
         c = inputs()
         compose = nb.router_compose(c, c["routing_peers"][0])
         peer = compose["services"]["routing-peer"]
@@ -364,7 +392,7 @@ class PilotTests(unittest.TestCase):
         self.assertNotIn("hostname", peer)  # host network cannot request a new container hostname
         self.assertNotIn("privileged", peer)
 
-    def test_policy_compiler_defaults_deny_specific_tcp_only(self):
+    def test_policy_compiler_defaults_deny_specific_tcp_only(self) -> None:
         requests = nb.access_requests(inputs(), bindings(), snapshot())
         routers = [x for x in requests if x["path"].endswith("/routers")]
         self.assertEqual(len(routers), 1)
@@ -380,7 +408,7 @@ class PilotTests(unittest.TestCase):
             self.assertIn(rule["ports"], [["443"], ["2222"]])
         self.assertFalse(any("/routes" in x["path"] for x in requests))
 
-    def test_default_policy_legacy_route_shared_groups_abort_compilation(self):
+    def test_default_policy_legacy_route_shared_groups_abort_compilation(self) -> None:
         for key in ["policies", "routes"]:
             s = snapshot()
             s[key] = [{"id": "default"}]
@@ -404,7 +432,7 @@ class PilotTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             nb.access_requests(inputs(), b, snapshot())
 
-    def test_network_current_schema_empty_required_no_partial_replay(self):
+    def test_network_current_schema_empty_required_no_partial_replay(self) -> None:
         for field in ["routers", "resources", "policies", "routing_peers_count"]:
             for value in [None, "missing", False, {}, "", ["existing-id"], 1]:
                 s = snapshot()
@@ -418,7 +446,7 @@ class PilotTests(unittest.TestCase):
                 ):
                     nb.access_requests(inputs(), bindings(), s)
 
-    def test_destination_group_propagation_and_incomplete_responses_refused(self):
+    def test_destination_group_propagation_and_incomplete_responses_refused(self) -> None:
         self.assertTrue(nb.account_settings(inputs())["groups_propagation_enabled"])
         for field, values in [
             ("issued", ["missing", None, "jwt", "integration", ""]),
@@ -439,7 +467,7 @@ class PilotTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "group ID/name mismatch"):
             nb.access_requests(inputs(), bindings(), s)
 
-    def test_settings_group_propagation_expiry_expose_and_ipv6(self):
+    def test_settings_group_propagation_expiry_expose_and_ipv6(self) -> None:
         s = nb.account_settings(inputs())
         self.assertTrue(s["jwt_groups_enabled"])
         self.assertTrue(s["groups_propagation_enabled"])
@@ -448,7 +476,7 @@ class PilotTests(unittest.TestCase):
         self.assertFalse(s["peer_expose_enabled"])
         self.assertEqual(s["ipv6_enabled_groups"], [])
 
-    def test_render_reproducible_and_never_overwrites(self):
+    def test_render_reproducible_and_never_overwrites(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             a, b = Path(d) / "a", Path(d) / "b"
             nb.render(inputs(), a)
@@ -460,7 +488,7 @@ class PilotTests(unittest.TestCase):
             with self.assertRaises(FileExistsError):
                 nb.render(inputs(), a)
 
-    def test_runtime_config_secrets_not_printed_and_mode_0600(self):
+    def test_runtime_config_secrets_not_printed_and_mode_0600(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             source, target = Path(d) / "inputs.json", Path(d) / "config.yaml"
             source.write_text(json.dumps(inputs()))
@@ -506,7 +534,7 @@ class UpstreamContractTests(unittest.TestCase):
     @unittest.skipUnless(
         os.environ.get("NETBIRD_OPENAPI_FILE"), "optional pinned upstream schema not supplied"
     )
-    def test_generated_requests_against_official_v082_openapi(self):
+    def test_generated_requests_against_official_v082_openapi(self) -> None:
         import jsonschema
 
         path = Path(os.environ["NETBIRD_OPENAPI_FILE"])
@@ -544,21 +572,21 @@ class UpstreamContractTests(unittest.TestCase):
 
 class ProbeTests(unittest.TestCase):
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         spec = importlib.util.spec_from_file_location(
             "netbird_probe", ROOT / "scripts/netbird-pilot-probe.py"
         )
         cls.probes = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(cls.probes)
 
-    def test_denial_requires_tcp_block_not_merely_tls_failure(self):
+    def test_denial_requires_tcp_block_not_merely_tls_failure(self) -> None:
         with patch.object(
             self.probes, "probe", return_value={"tcp_connected": True, "tls_verified": False}
         ):
             result = self.probes.run(inputs(), "deny", "revoked")
         self.assertTrue(all(not r["passed"] for r in result))
 
-    def test_allowed_web_requires_tls_and_exact_dns(self):
+    def test_allowed_web_requires_tls_and_exact_dns(self) -> None:
         with (
             patch.object(
                 self.probes, "probe", return_value={"tcp_connected": True, "tls_verified": True}
@@ -580,7 +608,7 @@ class ProbeTests(unittest.TestCase):
             result = self.probes.run(inputs(), "allow", "baseline")
         self.assertFalse(result[0]["passed"])
 
-    def test_negative_uses_direct_ip_even_when_dns_broken(self):
+    def test_negative_uses_direct_ip_even_when_dns_broken(self) -> None:
         with (
             patch.object(
                 self.probes, "probe", return_value={"tcp_connected": False, "tls_verified": False}
