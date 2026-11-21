@@ -9,24 +9,30 @@ import json
 import os
 import subprocess
 from pathlib import Path
+from typing import Protocol
 
 CURRENT = Path("/usr/local/libexec/public_dns_zone.py")
 ROOT = Path("/var/lib/homelab-grafana-tv-dns-retirement")
 
 
-def require(ok, message):
+class _ZoneRenderer(Protocol):
+    def render(self, serial: int, home_up: object, vps_up: object) -> str: ...
+
+
+
+def require(ok: object, message: str):
     if not ok:
         raise RuntimeError(message)
 
 
-def load(path, name):
+def load(path: Path, name: str):
     s = importlib.util.spec_from_file_location(name, path)
     m = importlib.util.module_from_spec(s)
     s.loader.exec_module(m)
     return m
 
 
-def delta(old, new):
+def delta(old: _ZoneRenderer, new: _ZoneRenderer):
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
         before = old.render(123, home, vps).splitlines()
         after = new.render(123, home, vps).splitlines()

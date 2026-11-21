@@ -5,6 +5,7 @@ Requires Playwright + Chromium. Run from the owner Mac with --run.
 """
 
 import argparse
+from typing import Protocol, cast
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
@@ -26,16 +27,48 @@ BASE = "https://auth.socrat.alchemmist.xyz"
 # Process-local public-edge resolution; keep verified TLS/SNI, no system DNS changes.
 import socket
 
-_original_getaddrinfo = socket.getaddrinfo
+
+class _ObservedResponse(Protocol):
+    @property
+    def url(self) -> str: ...
+
+    @property
+    def status(self) -> int: ...
+
+    @property
+    def headers(self) -> dict[str, str]: ...
+
+    def json(self) -> dict[str, object]: ...
 
 
-def public_auth(host, *params, **kwargs):
-    return _original_getaddrinfo(
-        args.public_edge if host == "auth.socrat.alchemmist.xyz" else host, *params, **kwargs
+class _Resolver(Protocol):
+    def __call__(
+        self,
+        host: bytes | str | None,
+        port: bytes | str | int | None,
+        *args: object,
+        **kwargs: object,
+    ) -> list[object]: ...
+
+
+_original_resolver = cast("_Resolver", socket.getaddrinfo)
+
+
+def public_auth(
+    host: bytes | str | None,
+    port: bytes | str | int | None,
+    *params: object,
+    **kwargs: object,
+) -> list[object]:
+    return _original_resolver(
+        args.public_edge if host == "auth.socrat.alchemmist.xyz" else host,
+        port,
+        *params,
+        **kwargs,
     )
 
 
-socket.getaddrinfo = public_auth
+socket.__dict__["getaddrinfo"] = public_auth
 SSH = [
     "ssh",
     "-o",
@@ -51,7 +84,7 @@ credential = json.loads(
 )
 
 
-def api(method, path, data=None):
+def api(method: str, path: str, data: object | None = None):
     req = urllib.request.Request(
         BASE + "/api/v3/" + path,
         method=method,
@@ -107,7 +140,7 @@ try:
         components = []
         errors = []
 
-        def observe(response):
+        def observe(response: _ObservedResponse):
             if "/api/v3/flows/executor/" in response.url and response.status in [200, 400]:
                 try:
                     data = response.json()

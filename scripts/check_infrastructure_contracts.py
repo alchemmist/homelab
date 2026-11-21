@@ -9,24 +9,33 @@ import configparser
 import ipaddress
 import json
 from pathlib import Path
+from typing import Protocol, cast
 
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(path):
+class _YamlScalar(Protocol):
+    value: object
+
+
+class _YamlNode(Protocol):
+    value: list[tuple[_YamlScalar, object]]
+
+
+def load(path: Path):
     return yaml.safe_load(path.read_text())
 
 
-def scalar_node(node, key):
+def scalar_node(node: _YamlNode, key: str):
     for k, value in node.value:
         if k.value == key:
             return value
     raise ValueError("Missing registered YAML field: " + key)
 
 
-def check(root=ROOT, write=False):
+def check(root: Path = ROOT, *, write: bool = False):
     c = json.loads((root / "deploy/contracts/infrastructure.json").read_text())
     if c["schemaVersion"] != 1:
         raise ValueError("Unsupported contract schema")
@@ -47,7 +56,7 @@ def check(root=ROOT, write=False):
             raise ValueError("Inventory endpoint drift: " + name)
     relay = c["relayContract"]
 
-    def literals(path):
+    def literals(path: str):
         result = {}
         for statement in ast.parse((root / path).read_text()).body:
             if (
@@ -121,7 +130,7 @@ def check(root=ROOT, write=False):
         text = target.read_text()
         value, tree = yaml.safe_load(text), yaml.compose(text)
         for key in consumer["path"]:
-            value, tree = value[key], scalar_node(tree, key)
+            value, tree = value[key], scalar_node(cast("_YamlNode", tree), key)
         matches = [
             (entry, node)
             for entry, node in zip(value, tree.value)

@@ -14,6 +14,7 @@ import secrets
 import socket
 import tempfile
 import urllib.request
+from collections.abc import Mapping
 from pathlib import Path
 
 
@@ -36,7 +37,7 @@ def main():
         "109.173.40.247" if h == "auth.socrat.alchemmist.xyz" else h, *a, **kw
     )
 
-    def api(method, path, data=None):
+    def api(method: str, path: str, data: Mapping[str, object] | None = None):
         request = urllib.request.Request(
             "https://auth.socrat.alchemmist.xyz/api/v3/" + path,
             method=method,
@@ -50,7 +51,7 @@ def main():
             raw = response.read()
             return json.loads(raw) if raw else None
 
-    def rows(path):
+    def rows(path: str):
         result = []
         for page in range(1, 201):
             data = api(
@@ -92,7 +93,7 @@ def main():
         assert current["attributes"] == {"homelab_app_access_fixture": marker}
         return current
 
-    def evaluate(name):
+    def evaluate(name: str):
         result = api(
             "POST",
             "propertymappings/all/" + mappings[name]["pk"] + "/test/?format_result=false",
@@ -107,7 +108,7 @@ def main():
                 value = ast.literal_eval(value)
         return value
 
-    def admitted(group_pk):
+    def admitted(group_pk: object):
         result = []
         for app in apps:
             subset = [b for b in bindings if b["target"] == app["pk"]]

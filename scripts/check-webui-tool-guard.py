@@ -1,6 +1,7 @@
 import asyncio
 import json
 import uuid
+from collections.abc import Mapping
 
 from open_webui.utils.homelab_tool_guard import REPEAT_STOP_MESSAGE, guard_stopped
 from open_webui.utils.middleware import build_terminal_file_tool_result, execute_tool_call
@@ -13,7 +14,7 @@ from open_webui.utils.tools import (
 )
 
 
-def serialize(result):
+def serialize(result: object):
     if isinstance(result, tuple):
         result = result[0]
     return result if isinstance(result, str) else json.dumps(result)
@@ -46,7 +47,7 @@ async def main():
     changed = "GUARD_AFTER_" + uuid.uuid4().hex
     dispatches = 0
 
-    async def raw(name, params):
+    async def raw(name: str, params: Mapping[str, object]):
         return await execute_tool_server(
             url=server["url"],
             headers=headers,
@@ -73,7 +74,7 @@ async def main():
         },
     }
 
-    async def call(params):
+    async def call(params: Mapping[str, object]):
         return await execute_tool_call(
             {"messages": []},
             metadata,
@@ -123,7 +124,7 @@ async def main():
         metadata["message_id"] = str(uuid.uuid4())
         metadata["tools"]["read_file"] = {"type": "terminal", "spec": specs["read_file"]}
 
-        async def read(params):
+        async def read(params: Mapping[str, object]):
             async def dispatch(**kwargs):
                 return await raw("read_file", params)
 

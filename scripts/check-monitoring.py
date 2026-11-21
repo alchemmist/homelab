@@ -4,13 +4,15 @@ import shlex
 import subprocess
 import time
 import urllib.parse
+from collections.abc import Sequence
 from pathlib import Path
+from typing import cast
 
 NAMESPACE = "cattle-monitoring-system"
 PROMETHEUS_SERVICE = "kube-prometheus-stack-prometheus:9090"
 
 
-def kubectl(host, *args):
+def kubectl(host: str, *args: str):
     result = subprocess.run(
         ["ssh", "-o", "BatchMode=yes", host, shlex.join(["kubectl", *args])],
         capture_output=True,
@@ -22,7 +24,7 @@ def kubectl(host, *args):
     return json.loads(result.stdout)
 
 
-def prometheus(host, endpoint, params=None):
+def prometheus(host: str, endpoint: str, params: dict[str, object] | None = None):
     path = (
         f"/api/v1/namespaces/{NAMESPACE}/services/http:{PROMETHEUS_SERVICE}/proxy/api/v1/{endpoint}"
     )
@@ -34,30 +36,38 @@ def prometheus(host, endpoint, params=None):
     return result["data"]
 
 
-def query(host, expression, timestamp=None):
-    params = {"query": expression}
+def query(host: str, expression: str, timestamp: int | None = None):
+    params: dict[str, object] = {"query": expression}
     if timestamp is not None:
         params["time"] = timestamp
     return prometheus(host, "query", params)["result"]
 
 
-def require(condition, description):
+def require(condition: object, description: str):
     if not condition:
         raise RuntimeError(description)
     print("PASS:", description)
 
 
-def target_summary(targets):
-    summary = {}
+def target_summary(targets: Sequence[object]):
+    summary: dict[str, dict[str, int]] = {}
     for target in targets:
-        job = target.get("labels", {}).get("job", "<unknown>")
+        entry = cast("dict[str, object]", target)
+        labels = cast("dict[str, object]", entry.get("labels", {}))
+        job = cast("str", labels.get("job", "<unknown>"))
         counts = summary.setdefault(job, {"up": 0, "down": 0})
-        counts["up" if target.get("health") == "up" else "down"] += 1
+        counts["up" if cast("str", entry.get("health")) == "up" else "down"] += 1
     return summary
 
 
 def remote_http_status(
-    host, url, resolve_address=None, forwarded_for=None, interface=None, public_absence=False
+    host: str,
+    url: str,
+    resolve_address: str | None = None,
+    forwarded_for: str | None = None,
+    interface: str | None = None,
+    *,
+    public_absence: bool = False,
 ):
     command = [
         "curl",
