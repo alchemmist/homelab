@@ -1,3 +1,5 @@
+"""Tests for the k3s etcd rebalance helpers."""
+
 import importlib.util
 from pathlib import Path
 import unittest

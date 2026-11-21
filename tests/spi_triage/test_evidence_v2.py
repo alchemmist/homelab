@@ -1,3 +1,5 @@
+"""Tests for the SPI triage evidence pipeline (v2)."""
+
 import json
 import sys
 import unittest
