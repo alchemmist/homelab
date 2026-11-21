@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Build reviewed, metadata-free WebP derivatives from the owner's dotfiles Nature set.
+
 Local source changes only; never modifies dotfiles or deploys anything.
 Requires Pillow with WebP support. Re-run with the same Pillow/libwebp versions for byte parity.
 """

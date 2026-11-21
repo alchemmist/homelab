@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Anonymous, read-only Nature performance/branding checks. No login/owner factors.
+
 No screenshots, private HTML, traces or cookies are persisted. --run required.
 """
 

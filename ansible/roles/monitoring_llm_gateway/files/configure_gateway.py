@@ -1,4 +1,5 @@
 """Read-only verification of an EXISTING Git-owned gateway and metrics key.
+
 No Helm fallback, inference, key creation, Secret apply or rollout on any path.
 """
 

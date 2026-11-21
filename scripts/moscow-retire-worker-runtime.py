@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """One-time owned-runtime retirement, not k3s-killall/uninstall or a table flush.
+
 Default is preview. Requires an accepted native-primary and the reviewed pod plan.
 Never removes keys, runtime state, interfaces, routes, or cluster objects.
 """

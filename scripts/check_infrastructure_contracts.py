@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Offline contracts. Default checks; --write changes ONLY registered IP scalars.
+
 Never contacts Kubernetes, runs workflows, reads credentials, or executes tools.
 """
 

@@ -106,6 +106,7 @@ def read_registered_clients(db_path):
 
 def active_users(counters, state, now, window):
     """Merge new counters into the state, refresh per-user last-activity
+
     timestamps, and return accounts that transferred traffic within the window."""
     last_active = state.setdefault("last_active", {})
     previous = state.setdefault("counters", {})

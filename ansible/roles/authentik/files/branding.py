@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Reconcile Quiet Mono Brand assets/CSS only; never replace authentication code.
+
 Run as the owner with credentials in the protected Authentik deployment directory.
 """
 

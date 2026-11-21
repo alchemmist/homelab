@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Exact-subject native handover, ONLY after the owner personally completes OIDC.
+
 Run on socrat-0; reads the existing private one-day PAT. Default is read-only.
 No password, MFA, email lookup/merge, user creation, DB writes or watcher. PUT
 once only: upstream atomically demotes the previous owner to admin. No retries.

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Explicit live branding acceptance: temporary observer, real MFA/OIDC, cleanup.
+
 No real owner password/MFA is read or reset. No QR/secret/session traces are saved.
 Requires Playwright + Chromium. Run from the owner Mac with --run.
 """

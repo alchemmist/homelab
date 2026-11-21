@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Offline classification gate for literal Helm entrypoints in Ansible YAML.
+
 Not an execution allowlist or a semantic audit of every operational script.
 """
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Explicit acceptance test: temporary observer, real MFA/OIDC, then fixture cleanup.
+
 Run from the owner Mac with private DNS/WireGuard. Never tests as the real owner.
 """
 

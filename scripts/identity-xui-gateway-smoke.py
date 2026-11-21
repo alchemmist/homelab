@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Live MFA gateway acceptance, NOT a 3x-ui login or native SSO test.
+
 Explicit temporary observer/admission writes; never reads/resets owner factors or
 native panel passwords. No screenshots, traces, HTML, cookies or OTPs are saved.
 """

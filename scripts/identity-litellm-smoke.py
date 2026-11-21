@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Explicit LiteLLM native OIDC acceptance with a temporary read-only observer.
+
 No real owner password/MFA is read or reset. No QR/secret/session traces are saved.
 Requires Playwright + Chromium. Run from the owner Mac with --run.
 """
