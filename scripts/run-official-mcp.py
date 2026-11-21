@@ -16,6 +16,7 @@ BASE = Path.home() / ".local/share/homelab/mcp"
 
 
 def command(name):
+    """Execute command."""
     env = dict(os.environ)
     if name == "argocd":
         env.update(
@@ -51,6 +52,7 @@ def command(name):
 
 
 def main():
+    """Execute main."""
     if len(sys.argv) != 2 or sys.argv[1] not in ("argocd", "metrics", "umami"):
         raise SystemExit("Usage: run-official-mcp.py {argocd|metrics|umami}")
     try:

@@ -43,6 +43,7 @@ class Command(Protocol):
 
 
 def policy(actions):
+    """Execute policy."""
     return {
         "Version": "2012-10-17",
         "Statement": [
@@ -63,6 +64,7 @@ POLICIES = {
 
 
 def canonical_policy(document):
+    """Execute canonical_policy."""
     if not isinstance(document, dict) or set(document) - {"Version", "Statement", "Id"}:
         raise ValueError("unexpected policy fields")
     statements = document.get("Statement")
@@ -95,18 +97,21 @@ def canonical_policy(document):
 
 
 def private_directory(path):
+    """Execute private_directory."""
     s = path.lstat()
     if not stat.S_ISDIR(s.st_mode) or s.st_uid != os.getuid() or s.st_mode & 0o077:
         raise ValueError("private owned directory required")
 
 
 def private(path):
+    """Execute private."""
     s = path.lstat()
     if not stat.S_ISREG(s.st_mode) or s.st_uid != os.getuid() or s.st_mode & 0o077:
         raise ValueError("private owned regular credentials file required")
 
 
 def run(mc, config, args, stdin=None):
+    """Execute run."""
     result = subprocess.run(
         [mc, "--config-dir", config, "--json", *args],
         input=stdin,
@@ -223,6 +228,7 @@ def attach_spi_users(
 
 
 def main():
+    """Execute main."""
     p = argparse.ArgumentParser()
     p.add_argument("--credentials", type=Path, required=True)
     p.add_argument("--mc", required=True)

@@ -57,6 +57,7 @@ def scan_existing_peers(
 
 
 def main():
+    """Execute main."""
     os.umask(0o077)
     config = Path("/etc/wireguard/wg-socrat.conf")
     old = config.read_bytes()

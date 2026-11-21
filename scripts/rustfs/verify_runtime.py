@@ -18,6 +18,7 @@ Request = Callable[[str, str, str, bytes], tuple[int, bytes]]
 
 
 def load(path, name):
+    """Execute load."""
     spec = importlib.util.spec_from_file_location(name, path)
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
@@ -25,6 +26,7 @@ def load(path, name):
 
 
 def main():
+    """Execute main."""
     p = argparse.ArgumentParser()
     p.add_argument("--machine-credentials", type=Path, required=True)
     p.add_argument("--apply-fixture", action="store_true")
