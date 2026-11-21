@@ -21,6 +21,29 @@ spec.loader.exec_module(m)
 SHA256_HEX_LENGTH = 64
 
 
+def _verify_read_only_sort(database: Path) -> None:
+    """The old sort must genuinely run out of disk, not fail for a different reason."""
+    with closing(
+        sqlite3.connect(database.resolve().as_uri() + "?mode=ro", uri=True, isolation_level=None)
+    ) as c:
+        c.row_factory = sqlite3.Row
+        assert c.execute("PRAGMA temp_store").fetchone()[0] == 0
+        c.execute("BEGIN IMMEDIATE")
+        try:
+            for _ in c.execute("SELECT * FROM payload ORDER BY 1,2"):
+                pass
+        except sqlite3.OperationalError as error:
+            assert error.sqlite_errorcode == sqlite3.SQLITE_FULL
+            assert "database or disk is full" in str(error)
+        else:
+            message = "The full-row sort did not exhaust the temporary filesystem"
+            raise AssertionError(message)
+        first = m.table_hashes(c)["payload"]
+        assert len(first) == SHA256_HEX_LENGTH
+        assert m.table_hashes(c)["payload"] == first
+        c.rollback()
+
+
 def _linux_sort_reproduction() -> None:
     """Run only this regression with a real 1 MiB SQLite temp filesystem, not the whole suite."""
     if not sys.platform.startswith("linux") or os.getuid() == 0:
@@ -63,14 +86,15 @@ def _linux_sort_reproduction() -> None:
                 "KUBECONFIG=/dev/null",
                 "SQLITE_TMPDIR=/dev/shm",
                 "PYTHONDONTWRITEBYTECODE=1",
-                "SPI_SORT_FIXTURE=" + str(database),
                 "/usr/bin/timeout",
                 "--kill-after=3s",
                 "45s",
                 sys.executable,
-                "-m",
-                "unittest",
-                "tests.test_spi_operator_hash.HashTests.test_disk_full_sort_reproduction",
+                "-c",
+                "import sys; from pathlib import Path; "
+                "from tests.test_spi_operator_hash import _verify_read_only_sort; "
+                "_verify_read_only_sort(Path(sys.argv[1]))",
+                str(database),
             ],
             timeout=60,
         )
@@ -141,21 +165,7 @@ class HashTests(unittest.TestCase):
         if os.environ.get("QUALITY_SYNTHETIC_SPI_SORT") == "1":
             _linux_sort_reproduction()
             return
-        c = sqlite3.connect(
-            "file:" + os.environ["SPI_SORT_FIXTURE"] + "?mode=ro", uri=True, isolation_level=None
-        )
-        self.addCleanup(c.close)
-        c.row_factory = sqlite3.Row
-        assert c.execute("PRAGMA temp_store").fetchone()[0] == 0
-        c.execute("BEGIN IMMEDIATE")
-        with self.assertRaisesRegex(sqlite3.OperationalError, "database or disk is full") as caught:
-            for _ in c.execute("SELECT * FROM payload ORDER BY 1,2"):
-                pass
-        assert caught.exception.sqlite_errorcode == sqlite3.SQLITE_FULL
-        first = m.table_hashes(c)["payload"]
-        assert len(first) == SHA256_HEX_LENGTH
-        assert m.table_hashes(c)["payload"] == first
-        c.rollback()
+        _verify_read_only_sort(Path(os.environ["SPI_SORT_FIXTURE"]))
 
 
 if __name__ == "__main__":
