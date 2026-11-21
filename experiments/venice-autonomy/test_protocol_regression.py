@@ -1,3 +1,4 @@
+"""Regression tests for the protocol_regression pilot batch runner."""
 import hashlib
 import json
 import os

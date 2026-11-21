@@ -28,7 +28,8 @@ ENTRANCES = ["109.173.40.247", "109.120.141.60"]
 class WS:
     """Client for the NetBird WebSocket management API."""
 
-    def __init__(self, address):
+    def __init__(self, address) -> None:
+
         self.s = ssl.create_default_context().wrap_socket(
             socket.create_connection((address, 443), timeout=10), server_hostname=HOST
         )
@@ -119,7 +120,7 @@ def main():
     sessions = []
     result = {"management_enrollment": False, "trusted_TLS": True, "relay": {}, "stun": {}}
     try:
-        for address, identity in zip(ENTRANCES, ids):
+        for address, identity in zip(ENTRANCES, ids, strict=True):
             ws = WS(address)
             sessions.append(ws)
             ws.send(b"\x01\x06\x21\x12\xa4\x42" + identity + token)
@@ -167,10 +168,10 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception as exc:
+    except (ValueError, KeyError, TypeError, RuntimeError, OSError, yaml.YAMLError) as exc:
         print(
             "BLOCKED: transport check stopped: "
             + type(exc).__name__
             + "; inspect implementation, never blindly retry"
         )
-        raise SystemExit(2)
+        raise SystemExit(2) from exc

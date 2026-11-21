@@ -40,7 +40,7 @@ class Handler(BaseHTTPRequestHandler):
                     self.path[1:], event, write=os.environ.get("WRITE_ENABLED") == "true"
                 )
             self.send_response(200)
-        except Exception as exc:
+        except (ValueError, KeyError, TypeError, RuntimeError, OSError) as exc:
             result = {"status": "error", "type": type(exc).__name__}
             if isinstance(exc, UnsafeInput):
                 result["reason"] = str(exc)

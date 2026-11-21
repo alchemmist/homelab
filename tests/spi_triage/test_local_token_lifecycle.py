@@ -15,39 +15,45 @@ from local_token_counter import LocalCounter, MAX_BYTES
 class Lifecycle(unittest.TestCase):
     """Tests for local token model retention and isolation."""
 
-    def test_retained_models_and_request_isolation(self):
+    def test_retained_models_and_request_isolation(self) -> None:
+
         with patch.dict(os.environ, SPI_TOKEN_ACCOUNTING_MODE="local-qwen-v1"):
             models = [Model(Mock(), "unused") for _ in range(24)]
-        self.assertEqual(len({id(m.counter.tokenizer) for m in models}), 1)
+        assert len({id(m.counter.tokenizer) for m in models}) == 1
         bodies = [
-            dict(
-                model="qwen3.8-27b",
-                messages=[
-                    dict(role="system", content="system"),
-                    dict(role="user", content=("hello " + str(i)) * 10),
+            {
+                "model": "qwen3.8-27b",
+                "messages": [
+                    {"role": "system", "content": "system"},
+                    {"role": "user", "content": ("hello " + str(i)) * 10},
                 ],
-                chat_template_kwargs={"enable_thinking": False},
-                max_tokens=768,
-                response_format={},
-            )
+                "chat_template_kwargs": {"enable_thinking": False},
+                "max_tokens": 768,
+                "response_format": {},
+            }
             for i in range(24)
         ]
-        expected = [m.counter.reservation(b) for m, b in zip(models, bodies)]
+        expected = [m.counter.reservation(b) for m, b in zip(models, bodies, strict=True)]
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
             actual = list(
-                pool.map(lambda pair: pair[0].counter.reservation(pair[1]), zip(models, bodies))
+                pool.map(
+                    lambda pair: pair[0].counter.reservation(pair[1]),
+                    zip(models, bodies, strict=True),
+                )
             )
-        self.assertEqual(actual, expected)
+        assert actual == expected
         body = bodies[0]
         body["messages"][0]["content"] = ""
         body["messages"][1]["content"] = "a" * (MAX_BYTES - 128)
         models[0].counter.reservation(body)
         body["messages"][1]["content"] += "a"
-        self.assertEqual(models[0].counter.reservation(body), 30001)
+        # Once the byte ceiling is crossed the body claims the full budget plus one.
+        full_reservation = 30001
+        assert models[0].counter.reservation(body) == full_reservation
         for m in models:
             m.http.request.assert_not_called()
 
-    def test_invalid_native_contract_before_recovery_or_http(self):
+    def test_invalid_native_contract_before_recovery_or_http(self) -> None:
         import local_token_counter as lc
         from contextlib import ExitStack
 
@@ -81,24 +87,24 @@ class Lifecycle(unittest.TestCase):
         if m.counter is None:
             with patch.dict(os.environ, SPI_TOKEN_ACCOUNTING_MODE="local-qwen-v1"):
                 m = Model(Mock(), "unused")
-        base = dict(
-            model="qwen3.8-27b",
-            messages=[dict(role="system", content="s"), dict(role="user", content="u")],
-            chat_template_kwargs={"enable_thinking": False},
-            max_tokens=768,
-            response_format={},
-        )
+        base = {
+            "model": "qwen3.8-27b",
+            "messages": [{"role": "system", "content": "s"}, {"role": "user", "content": "u"}],
+            "chat_template_kwargs": {"enable_thinking": False},
+            "max_tokens": 768,
+            "response_format": {},
+        }
         for key, value in [
             ("model", "wrong"),
             ("tools", []),
             ("chat_template_kwargs", {"enable_thinking": True}),
-            ("messages", [dict(role="assistant", content="x")]),
+            ("messages", [{"role": "assistant", "content": "x"}]),
         ]:
             with self.assertRaises(Failure):
                 m.counter.reservation(dict(base, **{key: value}))
         m.http.request.assert_not_called()
 
-    def test_cached_native_does_not_bypass_validation(self):
+    def test_cached_native_does_not_bypass_validation(self) -> None:
         LocalCounter()
         with self.assertRaises(Failure):
             LocalCounter("/nonexistent/spi-tokenizer")

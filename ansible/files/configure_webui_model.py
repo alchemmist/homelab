@@ -1,3 +1,5 @@
+"""Set the default chat model and its limits across WebUI users."""
+
 import argparse
 import getpass
 import json
@@ -11,7 +13,13 @@ class ConfigurationError(Exception):
     """Exception raised when the Open WebUI model configuration is invalid."""
 
 
-def request_json(opener, base_url, path, token=None, payload=None):
+def request_json(
+    opener: urllib.request.OpenerDirector,
+    base_url: str,
+    path: str,
+    token: str | None = None,
+    payload: object | None = None,
+) -> object:
     headers = {"Accept": "application/json"}
     if token is not None:
         headers["Authorization"] = f"Bearer {token}"
@@ -31,18 +39,12 @@ def request_json(opener, base_url, path, token=None, payload=None):
         raise ConfigurationError("Open WebUI returned invalid JSON") from None
 
 
-def configure(args):
-    result = {
-        "changed": False,
-        "skipped": False,
-        "model": args.model,
-        "max_output": args.max_output_tokens,
-    }
+def _service_base_url(namespace: str) -> str | None:
     service = subprocess.run(
         [
             "kubectl",
             "--namespace",
-            args.namespace,
+            namespace,
             "get",
             "service",
             "open-webui",
@@ -57,8 +59,7 @@ def configure(args):
     if service.returncode != 0:
         raise ConfigurationError("Unable to inspect Open WebUI service")
     if not service.stdout.strip():
-        result["skipped"] = True
-        return result
+        return None
     try:
         spec = json.loads(service.stdout)["spec"]
         address = spec["clusterIP"]
@@ -69,16 +70,19 @@ def configure(args):
         raise ConfigurationError("Open WebUI service has no cluster IP")
     if ":" in address:
         address = f"[{address}]"
-    base_url = f"http://{address}:{port}"
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-    config = request_json(opener, base_url, "/api/config")
-    features = config.get("features") if isinstance(config, dict) else None
-    if not isinstance(features, dict):
-        raise ConfigurationError("Open WebUI returned invalid authentication configuration")
-    if features.get("auth") is not False:
+    return f"http://{address}:{port}"
+
+
+def _sign_in(
+    opener: urllib.request.OpenerDirector,
+    base_url: str,
+    args: argparse.Namespace,
+    *,
+    auth_required: bool,
+) -> str | None:
+    if auth_required:
         if not args.admin_email:
-            result["skipped"] = True
-            return result
+            return None
         credentials = {
             "email": args.admin_email,
             "password": getpass.getpass("Open WebUI password: "),
@@ -94,57 +98,68 @@ def configure(args):
     token = session.get("token") if isinstance(session, dict) else None
     if not isinstance(token, str) or not token:
         raise ConfigurationError("Open WebUI did not return a session token")
-    models = request_json(opener, base_url, "/api/models?refresh=true", token)
-    available = models.get("data") if isinstance(models, dict) else None
-    if not isinstance(available, list) or not any(
-        isinstance(model, dict) and model.get("id") == args.model for model in available
+    return token
+
+
+def _share_with_users(
+    opener: urllib.request.OpenerDirector,
+    base_url: str,
+    token: str,
+    args: argparse.Namespace,
+) -> bool:
+    records: object = request_json(opener, base_url, "/api/v1/models/all", token)
+    if isinstance(records, list) and any(
+        isinstance(model, dict) and model.get("id") == args.model for model in records
     ):
-        raise ConfigurationError(
-            "Requested model is absent from the refreshed Open WebUI model list"
-        )
-    if args.share_with_users:
-        records = request_json(opener, base_url, "/api/v1/models/all", token)
-        if not any(model.get("id") == args.model for model in records):
-            request_json(
-                opener,
-                base_url,
-                "/api/v1/models/create",
-                token,
-                {
-                    "id": args.model,
-                    "name": args.display_name or args.model,
-                    "base_model_id": None,
-                    "meta": {
-                        "capabilities": {
-                            "code_interpreter": False,
-                            "terminal": True,
-                            "builtin_tools": True,
-                        },
-                        "builtinTools": {
-                            name: False
-                            for name in [
-                                "skills",
-                                "tasks",
-                                "notes",
-                                "automations",
-                                "calendar",
-                                "channels",
-                                "notifications",
-                                "knowledge",
-                                "chats",
-                                "memory",
-                                "subagents",
-                            ]
-                        },
-                    },
-                    "params": {},
-                    "access_grants": [
-                        {"principal_type": "user", "principal_id": "*", "permission": "read"}
-                    ],
+        return False
+    request_json(
+        opener,
+        base_url,
+        "/api/v1/models/create",
+        token,
+        {
+            "id": args.model,
+            "name": args.display_name or args.model,
+            "base_model_id": None,
+            "meta": {
+                "capabilities": {
+                    "code_interpreter": False,
+                    "terminal": True,
+                    "builtin_tools": True,
                 },
-            )
-            result["changed"] = True
-    defaults = request_json(opener, base_url, "/api/v1/configs/models", token)
+                "builtinTools": dict.fromkeys(
+                    [
+                        "skills",
+                        "tasks",
+                        "notes",
+                        "automations",
+                        "calendar",
+                        "channels",
+                        "notifications",
+                        "knowledge",
+                        "chats",
+                        "memory",
+                        "subagents",
+                    ],
+                    False,
+                ),
+            },
+            "params": {},
+            "access_grants": [
+                {"principal_type": "user", "principal_id": "*", "permission": "read"}
+            ],
+        },
+    )
+    return True
+
+
+def _apply_model_defaults(
+    opener: urllib.request.OpenerDirector,
+    base_url: str,
+    token: str,
+    args: argparse.Namespace,
+) -> bool:
+    defaults: object = request_json(opener, base_url, "/api/v1/configs/models", token)
     if not isinstance(defaults, dict):
         raise ConfigurationError("Open WebUI returned invalid model defaults")
     params = defaults.get("DEFAULT_MODEL_PARAMS")
@@ -155,8 +170,10 @@ def configure(args):
     updated["DEFAULT_MODEL_PARAMS"] = {**(params or {}), "max_tokens": args.max_output_tokens}
     if updated != defaults:
         request_json(opener, base_url, "/api/v1/configs/models", token, updated)
-        result["changed"] = True
-    readback = request_json(opener, base_url, "/api/v1/configs/models", token)
+        changed = True
+    else:
+        changed = False
+    readback: object = request_json(opener, base_url, "/api/v1/configs/models", token)
     if (
         not isinstance(readback, dict)
         or readback.get("DEFAULT_MODELS") != args.model
@@ -164,10 +181,45 @@ def configure(args):
         or readback["DEFAULT_MODEL_PARAMS"].get("max_tokens") != args.max_output_tokens
     ):
         raise ConfigurationError("Open WebUI model defaults failed readback validation")
+    return changed
+
+
+def configure(args: argparse.Namespace) -> dict[str, object]:
+    result: dict[str, object] = {
+        "changed": False,
+        "skipped": False,
+        "model": args.model,
+        "max_output": args.max_output_tokens,
+    }
+    base_url = _service_base_url(args.namespace)
+    if base_url is None:
+        result["skipped"] = True
+        return result
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    config: object = request_json(opener, base_url, "/api/config")
+    features = config.get("features") if isinstance(config, dict) else None
+    if not isinstance(features, dict):
+        raise ConfigurationError("Open WebUI returned invalid authentication configuration")
+    token = _sign_in(opener, base_url, args, auth_required=features.get("auth") is not False)
+    if token is None:
+        result["skipped"] = True
+        return result
+    models: object = request_json(opener, base_url, "/api/models?refresh=true", token)
+    available = models.get("data") if isinstance(models, dict) else None
+    if not isinstance(available, list) or not any(
+        isinstance(model, dict) and model.get("id") == args.model for model in available
+    ):
+        raise ConfigurationError(
+            "Requested model is absent from the refreshed Open WebUI model list"
+        )
+    if args.share_with_users and _share_with_users(opener, base_url, token, args):
+        result["changed"] = True
+    if _apply_model_defaults(opener, base_url, token, args):
+        result["changed"] = True
     return result
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", required=True)
     parser.add_argument("--max-output-tokens", type=int, default=16384)

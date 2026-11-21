@@ -51,7 +51,8 @@ os.umask(0o077)
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     """Redirect handler that refuses to follow HTTP redirects."""
 
-    def redirect_request(self, *a, **kw):
+    def redirect_request(self, *_a, **_kw):
+
         return None
 
 

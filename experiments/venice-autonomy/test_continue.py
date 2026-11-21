@@ -1,3 +1,4 @@
+"""Tests for the continuation policy of the repository runner."""
 import unittest
 
 from attempt import continue_openhands
@@ -7,10 +8,11 @@ from repository_runner import apply_continuation_policy
 class Conversation:
     """Fake agent conversation with scriptable failures."""
 
-    def __init__(self, failures=0):
+    def __init__(self, failures=0) -> None:
+
         self.failures = failures
         self.runs = 0
-        self.messages = []
+        self.messages: list[str] = []
 
     def run(self):
         self.runs += 1
@@ -22,7 +24,7 @@ class Conversation:
 
 
 def facts(continue_value):
-    def acceptance(sandbox, directory, round_number):
+    def acceptance(sandbox, directory, round_number) -> dict[str, object]:
         return {
             "round": round_number,
             "continue": continue_value,
@@ -51,7 +53,7 @@ class ContinueOpenHandsTests(unittest.TestCase):
         conversation = Conversation()
         decisions = iter([True, False])
 
-        def acceptance(sandbox, directory, round_number):
+        def acceptance(sandbox, directory, round_number) -> dict[str, object]:
             return {"round": round_number, "continue": next(decisions)}
 
         continue_openhands(conversation, None, None, acceptance)

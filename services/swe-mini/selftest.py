@@ -9,8 +9,9 @@ import threading
 import subprocess
 import sys
 import worker
+from typing import override
 
-calls = []
+calls: list[dict[str, object]] = []
 if sys.platform == "linux":
     worker.RESULT_KEY = "a" * 64  # synthetic fixture, not a real job key
     worker.harden_parent()
@@ -30,7 +31,8 @@ else:
 class Handler(BaseHTTPRequestHandler):
     """HTTP handler accepting swe-mini selftest jobs."""
 
-    def do_POST(self):
+    def do_POST(self) -> None:
+
         request = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         assert not request.get("tools"), "Venice route must not use tool-call emulation"
         calls.append(request)

@@ -1,3 +1,5 @@
+"""Smoke-test an Authentik login flow against the local identity service."""
+
 import http.cookiejar, json, urllib.request
 from pathlib import Path
 

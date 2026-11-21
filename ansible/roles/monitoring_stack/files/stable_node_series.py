@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+
+"""Normalize node series names in Grafana dashboards for stability."""
+
 import json
 import sys
 

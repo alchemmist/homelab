@@ -1,3 +1,4 @@
+"""Watchdog that monitors open-terminal browser processes and reaps stale sessions."""
 import json
 from datetime import datetime, timezone
 import logging
@@ -14,13 +15,13 @@ class JsonFormatter(logging.Formatter):
     def format(self, record):
         # Do not render exception text/tracebacks: they can contain process arguments.
         event = getattr(record, "event", "watchdog_error")
-        result = dict(
-            ts=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-            level={10: "debug", 20: "info", 30: "warn"}.get(record.levelno, "error"),
-            service="open-terminal-browser-watchdog",
-            msg=event,
-            event=event,
-        )
+        result = {
+            "ts": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "level": {10: "debug", 20: "info", 30: "warn"}.get(record.levelno, "error"),
+            "service": "open-terminal-browser-watchdog",
+            "msg": event,
+            "event": event,
+        }
         for key in ("pid", "age_seconds", "processes", "signal"):
             value = getattr(record, key, None)
             if isinstance(value, (int, float)):
@@ -118,12 +119,13 @@ class Browser:
 class Watchdog:
     """Watchdog that supervises and restarts browser processes."""
 
-    def __init__(self, lifetime=900, grace=5, ticks=None, send=signal_process):
+    def __init__(self, lifetime=900, grace=5, ticks=None, send=signal_process) -> None:
+
         self.lifetime = lifetime
         self.grace = grace
         self.ticks = ticks or os.sysconf("SC_CLK_TCK")
         self.send = send
-        self.browsers = {}
+        self.browsers: dict[tuple[int, int], Browser] = {}
 
     def step(self, processes, now):
         for process in processes.values():
