@@ -12,7 +12,7 @@
         dest: /tmp/bootstrap-wiki-runtime.py
         owner: root
         group: root
-        mode: '0700'
+        mode: "0700"
 
     - name: Bootstrap isolated runtime prerequisites
       ansible.builtin.command:

@@ -26,7 +26,7 @@
         state: directory
         owner: root
         group: root
-        mode: '0700'
+        mode: "0700"
     - name: Preserve initial account and SSH configuration without overwriting a preimage
       ansible.builtin.shell: |
         set -eu
@@ -51,7 +51,7 @@
         shell: /usr/bin/zsh
         groups: sudo
         append: true
-        password: '{{ edge_owner_password_hash }}'
+        password: "{{ edge_owner_password_hash }}"
       no_log: true
     - name: Create the owner SSH directory
       ansible.builtin.file:
@@ -59,11 +59,11 @@
         state: directory
         owner: alchemmist
         group: alchemmist
-        mode: '0700'
+        mode: "0700"
     - name: Add the standard public owner keys without removing other keys
       ansible.posix.authorized_key:
         user: alchemmist
-        key: '{{ edge_owner_public_keys }}'
+        key: "{{ edge_owner_public_keys }}"
         exclusive: false
       no_log: true
     - name: Validate the system sudo policy
@@ -71,7 +71,7 @@
       changed_when: false
     - name: Pass the final port separately from the provider bootstrap endpoint
       ansible.builtin.set_fact:
-        ansible_port: '{{ homelab_ssh_port | default(2222) }}'
+        ansible_port: "{{ homelab_ssh_port | default(2222) }}"
   roles:
     - ssh
     - base
