@@ -11,6 +11,7 @@ import socket
 import subprocess
 import urllib.request
 import uuid
+from typing import cast
 
 HOST = "auth.socrat.alchemmist.xyz"
 BASE = "https://" + HOST
@@ -59,7 +60,7 @@ def main():
     kube = ["kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml", "-n", "llm"]
     credentials = json.loads((args.root / "credentials.json").read_text())
 
-    def api(method, path, payload=None):
+    def api(method, path, payload=None) -> dict[str, object] | None:
         req = urllib.request.Request(
             BASE + "/api/v3/" + path,
             method=method,
@@ -71,36 +72,47 @@ def main():
         )
         with urllib.request.urlopen(req, timeout=60) as r:
             body = r.read()
-            return json.loads(body) if body else None
+            document: dict[str, object] | None = json.loads(body) if body else None
+            return document
 
-    def kubectl(arguments, data=None):
-        r = subprocess.run(kube + arguments, input=data, capture_output=True, timeout=90)
-        if r.returncode:
+    def kubectl(arguments, data=None) -> bytes:
+        completed = subprocess.run(
+            kube + arguments, input=data, capture_output=True, timeout=90
+        )
+        if completed.returncode:
             raise RuntimeError(
                 "Kubernetes operation failed; output suppressed to protect credentials"
             )
-        return r.stdout
+        output: bytes = completed.stdout
+        return output
 
-    def private(path, data, overwrite=False):
+    def private(path, data, overwrite=False) -> None:
         if path.exists() and not overwrite:
             return
         with open(path, "w", opener=lambda p, f: os.open(p, f, 0o600)) as out:
             json.dump(data, out, indent=2)
         path.chmod(0o600)
 
-    def one(path, field, value):
-        rows = api(
-            "GET",
-            path
-            + "?page_size=100"
-            + ("&superuser_full_list=true" if path == "core/applications/" else ""),
-        )["results"]
+    def one(path, field, value) -> dict[str, object] | None:
+        rows = cast(
+            "list[dict[str, object]]",
+            cast(
+                "dict[str, object]",
+                api(
+                    "GET",
+                    path
+                    + "?page_size=100"
+                    + ("&superuser_full_list=true" if path == "core/applications/" else ""),
+                ),
+            )["results"],
+        )
         found = [r for r in rows if r[field] == value]
         if len(found) > 1:
             raise RuntimeError("Ambiguous configuration")
         return found[0] if found else None
 
-    if api("GET", "admin/version/")["version_current"] != "2026.8.5":
+    api_result = cast("dict[str, object]", api("GET", "admin/version/"))
+    if api_result["version_current"] != "2026.8.5":
         raise RuntimeError("Unreviewed Authentik version")
     deployment = json.loads(kubectl(["get", "deployment", "litellm", "-o", "json"]))
     container = deployment["spec"]["template"]["spec"]["containers"][0]
@@ -132,7 +144,7 @@ asyncio.run(main())
         or reviewed.get("litellmUserId") != OWNER_ID
     ):
         raise RuntimeError("Owner UUID differs from explicit reviewed account mapping")
-    if not group or owner["pk"] not in group.get("users", []):
+    if not group or owner["pk"] not in cast("list[object]", group.get("users", [])):
         raise RuntimeError("Reviewed owner group boundary missing")
     grants = json.loads((args.root / "litellm-users.json").read_text())
     if not isinstance(grants, dict):
@@ -206,10 +218,16 @@ asyncio.run(main())
     if not mapping or any(mapping.get(k) != v for k, v in settings.items()):
         mapping = api(
             "PATCH" if mapping else "POST",
-            "propertymappings/provider/scope/" + (mapping["pk"] + "/" if mapping else ""),
+            "propertymappings/provider/scope/"
+            + (cast("str", mapping["pk"]) + "/" if mapping else ""),
             settings,
         )
-    scopes = api("GET", "propertymappings/provider/scope/?page_size=100")["results"]
+    scopes = cast(
+        "list[dict[str, object]]",
+        cast(
+            "dict[str, object]", api("GET", "propertymappings/provider/scope/?page_size=100")
+        )["results"],
+    )
     mappings = []
     for scope in ["openid", "profile", "email"]:
         matches = [
@@ -223,8 +241,14 @@ asyncio.run(main())
                 "Missing/ambiguous exact default scope; never mix app profile mappings"
             )
         mappings.append(matches[0]["pk"])
-    mappings.append(mapping["pk"])
-    flows = {r["slug"]: r["pk"] for r in api("GET", "flows/instances/?page_size=100")["results"]}
+    mappings.append(cast("dict[str, object]", mapping)["pk"])
+    flows = {
+        r["slug"]: r["pk"]
+        for r in cast(
+            "list[dict[str, object]]",
+            cast("dict[str, object]", api("GET", "flows/instances/?page_size=100"))["results"],
+        )
+    }
     cert = one("crypto/certificatekeypairs/", "name", "authentik Self-signed Certificate")
     provider = one("providers/oauth2/", "name", "homelab-litellm")
     settings = {
@@ -237,7 +261,7 @@ asyncio.run(main())
         "authorization_flow": flows["default-provider-authorization-explicit-consent"],
         "invalidation_flow": flows["default-provider-invalidation-flow"],
         "property_mappings": mappings,
-        "signing_key": cert["pk"],
+        "signing_key": cast("dict[str, object]", cert)["pk"],
         "redirect_uris": [
             {"matching_mode": "strict", "url": "https://llm.alchemmist.xyz/sso/callback"}
         ],
@@ -256,7 +280,7 @@ asyncio.run(main())
     settings = {
         "name": "LiteLLM",
         "slug": "litellm",
-        "provider": provider["pk"],
+        "provider": cast("dict[str, object]", provider)["pk"],
         "meta_launch_url": "https://llm.alchemmist.xyz/sso/key/generate",
         "meta_icon": icon,
         "meta_description": "LLM gateway administration. Machine API keys remain separate.",
@@ -266,14 +290,25 @@ asyncio.run(main())
     app = api(
         "PATCH" if app else "POST", "core/applications/" + ("litellm/" if app else ""), settings
     )
-    bindings = api("GET", "policies/bindings/?target=" + app["pk"] + "&page_size=100")["results"]
+    bindings = cast(
+        "list[dict[str, object]]",
+        cast(
+            "dict[str, object]",
+            api(
+                "GET",
+                "policies/bindings/?target="
+                + cast("str", cast("dict[str, object]", app)["pk"])
+                + "&page_size=100",
+            ),
+        )["results"],
+    )
     approved_pks = {u["pk"] for u in granted_users}
 
-    def accepted_binding(b):
+    def accepted_binding(b) -> bool:
         target_ok = (
             b.get("group") in {group["pk"], access_group["pk"]} and b.get("user") is None
         ) or (b.get("group") is None and b.get("user") in approved_pks)
-        return (
+        accepted: bool = (
             target_ok
             and b.get("policy") is None
             and b.get("enabled") is True
@@ -281,6 +316,7 @@ asyncio.run(main())
             and b.get("failure_result") is False
             and not b.get("expires")
         )
+        return accepted
 
     if any(not accepted_binding(b) for b in bindings):
         raise RuntimeError("Unexpected application admission binding; review before rollout")
@@ -291,7 +327,7 @@ asyncio.run(main())
             "POST",
             "policies/bindings/",
             {
-                "target": app["pk"],
+                "target": cast("dict[str, object]", app)["pk"],
                 "group": group["pk"],
                 "order": 0,
                 "enabled": True,
@@ -303,7 +339,7 @@ asyncio.run(main())
             "POST",
             "policies/bindings/",
             {
-                "target": app["pk"],
+                "target": cast("dict[str, object]", app)["pk"],
                 "group": access_group["pk"],
                 "order": 100,
                 "enabled": True,
@@ -317,7 +353,7 @@ asyncio.run(main())
                 "POST",
                 "policies/bindings/",
                 {
-                    "target": app["pk"],
+                    "target": cast("dict[str, object]", app)["pk"],
                     "user": subject["pk"],
                     "order": 90,
                     "enabled": True,
@@ -350,7 +386,7 @@ asyncio.run(main())
     old_data = json.loads(old).get("data", {}) if old else {}
     changed_secret = any(
         old_data.get(k) != base64.b64encode(v.encode()).decode()
-        for k, v in secret["stringData"].items()
+        for k, v in cast("dict[str, str]", secret["stringData"]).items()
     )
     kubectl(["apply", "-f", "-"], json.dumps(secret).encode())
     env_from = container.get("envFrom", [])
