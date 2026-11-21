@@ -17,6 +17,7 @@ import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
+from typing import cast
 from uuid import uuid4
 
 BASE = "https://auth.socrat.alchemmist.xyz/api/v3/"
@@ -54,7 +55,7 @@ COLLECTIONS = (
 )
 
 
-def require(condition, message):
+def require(condition: object, message: str) -> None:
     if not condition:
         raise RuntimeError(message)
 
@@ -248,6 +249,32 @@ def evidence_input(path):
     return evidence
 
 
+def _require_pinned(
+    users: dict[str, dict[str, object]],
+    groups: dict[str, dict[str, object]],
+    reviewed: dict[str, object],
+) -> None:
+    """Require every pinned identity to be present and unchanged with legacy groups."""
+    for name, uuid in PINNED.items():
+        entry = users.get(name)
+        require(
+            entry is not None
+            and entry.get("uuid") == uuid
+            and entry.get("is_active") is True
+            and entry.get("type") == "internal",
+            "Pinned active owner/Tim missing or changed",
+        )
+        require(
+            all(
+                g in groups
+                and groups[g]["pk"]
+                in cast("list[object]", cast("dict[str, object]", entry)["groups"])
+                for g in cast("list[str]", cast("dict[str, object]", reviewed[name])["groups"])
+            ),
+            "Pinned legacy membership missing",
+        )
+
+
 def build_plan(api, services, reviewed, stage="groups-only", evidence=None):
     require(stage in ("groups-only", "groups+empty-bindings"), "Unknown stage")
     actual = {slug: set(s.get("appRoles", {})) for slug, s in services.items() if s.get("appRoles")}
@@ -275,21 +302,7 @@ def build_plan(api, services, reviewed, stage="groups-only", evidence=None):
             type(user.get("groups")) is list and not app_pks.intersection(user["groups"]),
             "App membership present or user inventory incomplete",
         )
-    for name, uuid in PINNED.items():
-        user = users.get(name)
-        require(
-            user is not None
-            and user.get("uuid") == uuid
-            and user.get("is_active") is True
-            and user.get("type") == "internal",
-            "Pinned active owner/Tim missing or changed",
-        )
-        require(
-            all(
-                g in groups and groups[g]["pk"] in user["groups"] for g in reviewed[name]["groups"]
-            ),
-            "Pinned legacy membership missing",
-        )
+    _require_pinned(users, groups, reviewed)
     require(
         users["antropophag"].get("is_superuser") is False
         and groups["homelab-owner"]["pk"] not in users["antropophag"]["groups"],

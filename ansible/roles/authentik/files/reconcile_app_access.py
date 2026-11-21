@@ -18,6 +18,8 @@ import tempfile
 import urllib.error
 import urllib.request
 
+from typing import cast
+
 from app_iam import GROUP_MARKER, rows, validate_group
 
 BASE = "https://auth.socrat.alchemmist.xyz/api/v3/"
@@ -31,7 +33,7 @@ COLLECTIONS = (
 )
 
 
-def require(ok, message):
+def require(ok: object, message: str) -> None:
     if not ok:
         raise RuntimeError(message)
 
@@ -118,6 +120,101 @@ def inventory(api):
     }
 
 
+def _existing_admission_pks(
+    bindings: list[dict[str, object]], admissible: set[object], slug: str
+) -> set[object]:
+    """Verify each existing application binding and return the wired group PK set."""
+    seen = set()
+    for b in bindings:
+        require(
+            b.get("enabled") is True
+            and b.get("negate") is False
+            and b.get("failure_result") is False
+            and b.get("policy") is None
+            and not b.get("expires"),
+            "Complex/disabled/expiring policy needs review: " + slug,
+        )
+        if b.get("group"):
+            require(b["group"] in admissible, "Unexpected admission group: " + slug)
+            require(b["group"] not in seen, "Duplicate admission group")
+            seen.add(b["group"])
+        else:
+            # Existing exact human bindings are preserved, never broadened,
+            # adopted, deleted or created by this generic reconciler.
+            require(b.get("user") is not None, "Empty admission binding")
+    return seen
+
+
+def _plan_scope_migration(
+    aliases: object,
+    mappings: object,
+    provider: dict[str, object],
+    slug: str,
+    operations: list[dict[str, object]],
+) -> None:
+    """Plan the reviewed per-app profile/groups scope migration for one service."""
+    known = cast("dict[str, dict[str, object]]", mappings)
+    default = known.get("authentik default OAuth Mapping: OpenID 'profile'")
+    require(
+        default is not None and default["scope_name"] == "profile",
+        "Default profile missing",
+    )
+    safe_default = cast("dict[str, object]", default)
+    prefix = "homelab-app-" + slug + "-"
+
+    wanted = [
+        {
+            "name": prefix + "profile",
+            "scope_name": "profile",
+            "expression": profile_expression(safe_default["expression"], aliases),
+        },
+        {
+            "name": prefix + "groups",
+            "scope_name": "groups",
+            "expression": group_expression(aliases) + 'return {"groups": names}',
+        },
+    ]
+    for want in wanted:
+        have = known.get(cast("str", want["name"]))
+        if have:
+            require(have.get("scope_name") == want["scope_name"], "Scope ownership mismatch")
+            require(
+                cast("str", have.get("expression", "")).rstrip("\n")
+                == cast("str", want["expression"]).rstrip("\n"),
+                "Managed scope drift; explicit migration required",
+            )
+        else:
+            operations.append({"kind": "mapping", "settings": want})
+    pks = cast("list[object]", provider["property_mappings"])
+    by_pk = {m["pk"]: m for m in known.values()}
+    require(all(pk in by_pk for pk in pks), "Unknown provider scope")
+    retained = [pk for pk in pks if by_pk[pk]["scope_name"] not in ("profile", "groups")]
+    # Preserve ONLY the reviewed default scopes on first migration.
+    for pk in pks:
+        m = by_pk[pk]
+        if m["scope_name"] in ("profile", "groups"):
+            require(
+                m["name"]
+                in (
+                    safe_default["name"],
+                    "homelab-groups",
+                    prefix + "profile",
+                    prefix + "groups",
+                ),
+                "Unreviewed custom profile/groups mapping",
+            )
+    wanted_pks = [known[cast("str", w["name"])]["pk"] for w in wanted if w["name"] in known]
+    if len(wanted_pks) != 2 or set(pks) != set(retained + wanted_pks):
+        operations.append(
+            {
+                "kind": "provider",
+                "slug": slug,
+                "retained": retained,
+                "mappingNames": [w["name"] for w in wanted],
+            }
+        )
+
+
 def build_plan(state, services):
     groups = unique(state["core/groups/"], "name")
     apps = unique(state["core/applications/"], "slug")
@@ -147,98 +244,16 @@ def build_plan(state, services):
         require(provider["name"] == "homelab-" + slug, "Provider ownership mismatch: " + slug)
         expected_group_names = set(service.get("groups", [])) | set(active)
         bindings = [b for b in state["policies/bindings/"] if b["target"] == app["pk"]]
-        seen = set()
-        for b in bindings:
-            require(
-                b.get("enabled") is True
-                and b.get("negate") is False
-                and b.get("failure_result") is False
-                and b.get("policy") is None
-                and not b.get("expires"),
-                "Complex/disabled/expiring policy needs review: " + slug,
-            )
-            if b.get("group"):
-                require(
-                    b["group"] in {groups[n]["pk"] for n in expected_group_names if n in groups},
-                    "Unexpected admission group: " + slug,
-                )
-                require(b["group"] not in seen, "Duplicate admission group")
-                seen.add(b["group"])
-            else:
-                # Existing exact human bindings are preserved, never broadened,
-                # adopted, deleted or created by this generic reconciler.
-                require(b.get("user") is not None, "Empty admission binding")
+        admissible = {groups[n]["pk"] for n in expected_group_names if n in groups}
+        seen = _existing_admission_pks(bindings, admissible, slug)
         for name in active:
             if name not in groups or groups[name]["pk"] not in seen:
                 operations.append({"kind": "binding", "slug": slug, "group": name})
         aliases = service.get("accessManagement", {}).get("claimAliases")
         if aliases:
-            default = mappings.get("authentik default OAuth Mapping: OpenID 'profile'")
-            require(
-                default is not None and default["scope_name"] == "profile",
-                "Default profile missing",
-            )
-            prefix = "homelab-app-" + slug + "-"
-            wanted = [
-                {
-                    "name": prefix + "profile",
-                    "scope_name": "profile",
-                    "expression": profile_expression(default["expression"], aliases),
-                },
-                {
-                    "name": prefix + "groups",
-                    "scope_name": "groups",
-                    "expression": group_expression(aliases) + 'return {"groups": names}',
-                },
-            ]
-            for want in wanted:
-                have = mappings.get(want["name"])
-                if have:
-                    require(
-                        have.get("scope_name") == want["scope_name"], "Scope ownership mismatch"
-                    )
-                    require(
-                        have.get("expression", "").rstrip("\n") == want["expression"].rstrip("\n"),
-                        "Managed scope drift; explicit migration required",
-                    )
-                else:
-                    operations.append({"kind": "mapping", "settings": want})
-            by_pk = {m["pk"]: m for m in mappings.values()}
-            require(
-                all(pk in by_pk for pk in provider["property_mappings"]), "Unknown provider scope"
-            )
-            retained = [
-                pk
-                for pk in provider["property_mappings"]
-                if by_pk[pk]["scope_name"] not in ("profile", "groups")
-            ]
-            # Preserve ONLY the reviewed default scopes on first migration.
-            for pk in provider["property_mappings"]:
-                m = by_pk[pk]
-                if m["scope_name"] in ("profile", "groups"):
-                    require(
-                        m["name"]
-                        in (
-                            default["name"],
-                            "homelab-groups",
-                            prefix + "profile",
-                            prefix + "groups",
-                        ),
-                        "Unreviewed custom profile/groups mapping",
-                    )
-            wanted_pks = [mappings[w["name"]]["pk"] for w in wanted if w["name"] in mappings]
-            if len(wanted_pks) != 2 or set(provider["property_mappings"]) != set(
-                retained + wanted_pks
-            ):
-                operations.append(
-                    {
-                        "kind": "provider",
-                        "slug": slug,
-                        "retained": retained,
-                        "mappingNames": [w["name"] for w in wanted],
-                    }
-                )
-    # Native claims must exist BEFORE group bindings open admission.
+            _plan_scope_migration(
+                aliases, mappings, provider, slug, operations
+            )  # Native claims must exist BEFORE group bindings open admission.
     order = {"group": 0, "mapping": 1, "provider": 2, "binding": 3}
     operations.sort(key=lambda op: order[op["kind"]])
     payload = {"services": services, "state": state, "operations": operations}
