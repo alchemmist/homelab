@@ -77,7 +77,7 @@ class DNSPreflightSafetyTests(unittest.TestCase):
         previous_umask = guard.os.umask(0o077)
         self.addCleanup(guard.os.umask, previous_umask)
 
-        def fixture_permissions(ok: object, message: str):
+        def fixture_permissions(message: str, *, ok: object):
             # Fixture files are user-owned; retain every non-ownership safety check.
             if message not in ("Unsafe renderer", "Unsafe state directory"):
                 require(message, ok=bool(ok))
