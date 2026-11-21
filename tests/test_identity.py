@@ -19,16 +19,11 @@ from app_iam import admission_groups
 
 
 class FakeAuthentik:
-<<<<<<< ours
     """Callable in-memory double for the authentik REST API."""
 
     def __init__(self) -> None:
         """Seed the committed authentik bootstrap state."""
         self.data: dict[str, list[dict[str, object]]] = {
-=======
-    def __init__(self) -> None:
-        self.data = {
->>>>>>> theirs
             "core/groups/": [],
             "core/users/": [],
             "providers/oauth2/": [],
@@ -78,12 +73,8 @@ class FakeAuthentik:
         }
         self.requests: list[tuple[str, str, object | None, dict[str, list[str]]]] = []
 
-<<<<<<< ours
     def __call__(self, req: urllib.request.Request, timeout: int = 60) -> io.BytesIO:
         """Answer one authentik API call from the in-memory state."""
-=======
-    def __call__(self, req, timeout=60) -> io.BytesIO:
->>>>>>> theirs
         uri = urlparse(req.full_url)
         path = uri.path.split("/api/v3/")[1]
         method = req.get_method()

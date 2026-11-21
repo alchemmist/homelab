@@ -11,16 +11,11 @@ SPEC.loader.exec_module(MODULE)
 
 
 class FakeEtcd:
-<<<<<<< ours
     """In-memory etcd double for the rebalance contracts."""
 
     def __init__(self) -> None:
         """Seed the committed membership as healthy and agreeing."""
         self.membership: dict[str, dict[str, object]] = {
-=======
-    def __init__(self) -> None:
-        self.membership = {
->>>>>>> theirs
             name: {
                 "id": index + 1,
                 "id_hex": format(index + 1, "x"),
@@ -29,7 +24,6 @@ class FakeEtcd:
             }
             for index, name in enumerate(MODULE.ENDPOINTS)
         }
-<<<<<<< ours
         self.leader: int = 2
         self.healthy: set[str] = {"socrat-0", "socrat-1", "socrat-3"}
         self.calls: list[tuple[list[str], str | None]] = []
@@ -38,15 +32,6 @@ class FakeEtcd:
 
     def members(self) -> dict[str, dict[str, object]]:
         """Return the member map like an etcd client would."""
-=======
-        self.leader = 2
-        self.healthy = {"socrat-0", "socrat-1", "socrat-3"}
-        self.calls: list[tuple[list[str], str | None]] = []
-        self.fail_remove = False
-        self.ambiguous_remove = False
-
-    def members(self):
->>>>>>> theirs
         return dict(self.membership)
 
     def health(self, name: str) -> None:

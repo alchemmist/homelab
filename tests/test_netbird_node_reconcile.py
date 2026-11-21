@@ -41,13 +41,8 @@ class Fake(n.Runtime):
         )
         self.state = {"nodes": {}}
         self.changed = False
-<<<<<<< ours
         self.writes = []
         self.cluster_node: object = node("socrat-4")
-=======
-        self.writes: list[tuple[str, str, object]] = []
-        self.cluster_node = node("socrat-4")
->>>>>>> theirs
         self.peer = {
             "id": "peer4",
             "ip": "100.100.1.4",

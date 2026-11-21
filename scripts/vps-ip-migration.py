@@ -119,11 +119,7 @@ def run(argv: Sequence[str]):
 
 
 class Preimages:
-<<<<<<< ours
-    def __init__(self, root: str | Path, label: str):
-=======
-    def __init__(self, root, label) -> None:
->>>>>>> theirs
+    def __init__(self, root: str | Path, label: str) -> None:
         raw = Path(root).expanduser()
         if not raw.is_absolute() or raw.is_symlink():
             raise MigrationError("Backup root must be an absolute non-symlink directory")

@@ -7,11 +7,7 @@ from pathlib import Path
 import runpy
 import shutil
 import sys
-<<<<<<< ours
 from typing import Literal, Self
-=======
-from typing import Self
->>>>>>> theirs
 from unittest.mock import patch
 from urllib.parse import urlsplit
 
@@ -58,27 +54,19 @@ class Response:
     def __enter__(self) -> Self:
         return self
 
-<<<<<<< ours
     def __exit__(self, *args) -> Literal[False]:
         return False
-=======
-    def __exit__(self, *args) -> None:
-        return
->>>>>>> theirs
 
     def read(self) -> bytes:
         return self.body
 
 
 class FakeAPI:
-<<<<<<< ours
     apps: dict[str, dict[str, object]]
     patches: list[str]
     files: list[dict[str, str]]
     content: dict[str, bytes]
 
-=======
->>>>>>> theirs
     def __init__(self) -> None:
         self.apps = {
             s: {
@@ -108,11 +96,7 @@ class FakeAPI:
             self.files.append({"name": name, "url": url})
             self.content[url] = (ASSETS / filename).read_bytes()
 
-<<<<<<< ours
     def __call__(self, request, timeout=None) -> Response:
-=======
-    def __call__(self, request, timeout=None) -> "Response":
->>>>>>> theirs
         if isinstance(request, str):
             # No API bearer token is sent when reading media.
             return Response(self.content[request])

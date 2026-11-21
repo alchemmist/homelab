@@ -61,11 +61,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 class API:
-<<<<<<< ours
-    def __init__(self, credentials: Path, *, write: bool = False):
-=======
-    def __init__(self, credentials, write=False) -> None:
->>>>>>> theirs
+    def __init__(self, credentials: Path, *, write: bool = False) -> None:
         private(credentials)
         value = json.loads(credentials.read_text())
         self.token = value.get("AUTHENTIK_API_TOKEN") or value.get("AUTHENTIK_BOOTSTRAP_TOKEN")

@@ -21,11 +21,7 @@ import urllib.request
 from collections.abc import Sequence
 from contextlib import closing
 from pathlib import Path
-<<<<<<< ours
 from typing import cast
-=======
-from typing import Self, TextIO, TypedDict
->>>>>>> theirs
 
 spec = importlib.util.spec_from_file_location(
     "inventory", Path(__file__).with_name("vpn-hardening-inventory.py")
@@ -320,13 +316,8 @@ class NativeSession:
             raise RuntimeError("Worker credential unavailable")
         return request(self.base, self.credentials["worker"]["token"], method, path, body)
 
-<<<<<<< ours
     def cleanup(self) -> None:
         errors = []
-=======
-    def cleanup(self):
-        errors: list[str] = []
->>>>>>> theirs
         actor = "cleanup" if "cleanup" in self.credentials else "bootstrap"
         if actor in self.credentials:
             for kind in ("worker", "bootstrap", "cleanup"):
@@ -359,14 +350,9 @@ class NativeSession:
             self.lock.close()
             self.lock = None
 
-<<<<<<< ours
     def __enter__(self) -> typing.Self:
         enter: typing.Self = self
         return enter
-=======
-    def __enter__(self) -> Self:
-        return self
->>>>>>> theirs
 
     def __exit__(self, *args) -> None:
         self.cleanup()

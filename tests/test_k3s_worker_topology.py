@@ -14,7 +14,6 @@ spec.loader.exec_module(module)
 
 
 class FakeEtcd:
-<<<<<<< ours
     """In-memory etcd double for topology verification unit tests."""
 
     def __init__(self) -> None:
@@ -24,14 +23,6 @@ class FakeEtcd:
         }
         self.checked: list[str] = []
         self.mismatch: bool = False
-=======
-    def __init__(self) -> None:
-        self.data = {
-            name: {"id": i, "learner": False} for i, name in enumerate(sorted(module.VOTERS), 1)
-        }
-        self.checked: list[str] = []
-        self.mismatch = False
->>>>>>> theirs
         self.unhealthy: str | None = None
 
     def members(self) -> dict[str, dict[str, object]]:

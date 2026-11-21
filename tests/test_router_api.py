@@ -58,11 +58,7 @@ def existing_forwards() -> list[dict[str, str]]:
 class SimulatedRouter(ROUTER.Router):
     def __init__(self, rows=None, fail_add_port=None) -> None:
         self.rows = copy.deepcopy(existing_forwards() if rows is None else rows)
-<<<<<<< ours
         self.mutations: list[dict[str, str]] = []
-=======
-        self.mutations: list[dict[str, object]] = []
->>>>>>> theirs
         self.fail_add_port = fail_add_port
         self.failed = False
 

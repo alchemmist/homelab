@@ -7,12 +7,8 @@ import json
 from pathlib import Path
 import sys
 import tempfile
-<<<<<<< ours
 from collections.abc import Callable
 from typing import TypedDict, cast
-=======
-from typing import TYPE_CHECKING, cast
->>>>>>> theirs
 import unittest
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
@@ -27,7 +23,6 @@ if TYPE_CHECKING:
 
 
 class FakeAPI:
-<<<<<<< ours
     data: dict[str, list[dict[str, object]]]
     requests: list[tuple[str, str, object]]
     page_size: int
@@ -35,8 +30,6 @@ class FakeAPI:
     after_get: Callable[[object], object] | None
     writes: int
 
-=======
->>>>>>> theirs
     def __init__(self, services, reviewed) -> None:
         self.data = {p: [] for p in prep.COLLECTIONS}
         self.requests: list[tuple[str, str, object]] = []
@@ -429,12 +422,8 @@ class PreparationTests(unittest.TestCase):
         def api(method, path, payload=None):
             result = original(method, path, payload)
             if "core/users/" in path:
-<<<<<<< ours
                 results = cast(list[object], result["results"])
                 results *= 2
-=======
-                result["results"] = cast("list[object]", result["results"]) * 2
->>>>>>> theirs
             return result
 
         with self.assertRaisesRegex(RuntimeError, "ambiguous"):
