@@ -35,8 +35,13 @@ load_config() {
       key="${key%"${key##*[![:space:]]}"}"
       [[ "${key}" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]] || die "config key is not a shell identifier: ${key}"
       value="${value%$'\r'}"
-      if [[ "${value}" == \"*\" && "${value}" == *\" || "${value}" == \'*\' && "${value}" == *\' ]]; then
+      if [[ "${value}" == \"*\" && "${value}" == *\" ]]; then
         value="${value:1:${#value}-2}"
+      elif [[ "${value}" == \'*\' && "${value}" == *\' ]]; then
+        value="${value:1:${#value}-2}"
+      else
+        value="${value#"${value%%[![:space:]]*}"}"
+        value="${value%"${value##*[![:space:]]}"}"
       fi
       export "${key}=${value}"
     done < "${CONFIG_FILE}"
