@@ -65,7 +65,5 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
-        raise SystemExit(
-            "Secret preparation refused; inspect private inputs; nothing printed."
-        ) from None
+    except (ImportError, OSError, RuntimeError, ValueError):
+        raise SystemExit("Secret preparation refused; inspect private inputs; nothing printed.")

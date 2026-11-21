@@ -241,7 +241,7 @@ if __name__ == "__main__":
         parser = argparse.ArgumentParser()
         parser.add_argument("--verify-scope", action="store_true")
         run(parser.parse_args().verify_scope)
-    except Exception as error:
+    except (ImportError, OSError, RuntimeError, ValueError) as error:
         # Do not include HTTP response bodies, private key material, or bearer tokens.
         print(json.dumps({"credentialRefreshSucceeded": False, "errorType": type(error).__name__}))
         raise SystemExit(1) from error

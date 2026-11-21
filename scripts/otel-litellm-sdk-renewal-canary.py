@@ -150,7 +150,7 @@ def run():
 if __name__ == "__main__":
     try:
         run()
-    except Exception as error:
+    except (ImportError, OSError, RuntimeError, ValueError) as error:
         result = {
             "success": False,
             "errorType": type(error).__name__,
