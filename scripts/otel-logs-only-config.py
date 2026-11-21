@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Merge log-only Collector changes; refuse any shared component mutation.
+
 Reads YAML files, emits YAML (config may contain credentials: keep output private).
 Never changes metric/trace pipelines, existing exporters, TLS, storage or receivers.
 """

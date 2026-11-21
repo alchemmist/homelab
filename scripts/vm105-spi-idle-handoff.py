@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Wait natural SPI drain, briefly quiesce Service, recheck before stopping.
+
 No claim/dispatch/cancel/stage/model operation. Active work => immediate restore.
 Use existing operator SSH; no credentials printed. Canonical source is committed
 before reconcile is released; temporary selector hold is an explicit migration

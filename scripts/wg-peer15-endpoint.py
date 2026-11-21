@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Change only node5's peer1 endpoint, without wg-quick/network restarts.
+
 Private config preimage remains root-only on node5. Never emit config/key data.
 """
 

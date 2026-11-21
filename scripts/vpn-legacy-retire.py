@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Retire only excluded plaintext32063 after explicit owner cutover approval.
+
 Update exact watchdog dependencies under its lock BEFORE native API disable.
 Never delete clients/keys/bindings or stop K3s/native recovery services.
 """

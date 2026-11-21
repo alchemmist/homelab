@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Node-local Moscow relay watchdog. Never manages control-plane or management relay.
+
 The worker agent is fenced before native start; fallback marker fences its boot.
 No API availability-only failover. Native mode is sticky until explicit failback.
 """

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Keyless, fixed-endpoint WG ciphertext relay; no general UDP forwarding.
+
 Only node5 inside authenticated WG can send; only node1 fixed UDP can reply.
 Never inspect/log/store payload, and never possess either peer's WG private key.
 """

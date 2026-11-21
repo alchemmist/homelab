@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """One-time CAS admission after source-scoped guard. Never blindly replay.
+
 Existing private config/runtime snapshot stays root-only; stdout is sanitized.
 """
 
