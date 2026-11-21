@@ -9,6 +9,8 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+from collections.abc import Callable, Mapping
+from typing import TypedDict, cast
 from urllib.parse import parse_qs, urlsplit
 from urllib.error import HTTPError
 
@@ -17,8 +19,19 @@ sys.path.insert(0, str(ROOT / "ansible/roles/authentik/files"))
 import prepare_app_iam as prep
 
 
+class _Grouped(TypedDict, total=False):
+    groups: list[str]
+
+
 class FakeAPI:
-    def __init__(self, services, reviewed):
+    data: dict[str, list[dict[str, object]]]
+    requests: list[tuple[str, str, object]]
+    page_size: int
+    fail_write: int | None
+    after_get: Callable[[str], object] | None
+    writes: int
+
+    def __init__(self, services: Mapping[str, _Grouped], reviewed: Mapping[str, _Grouped]):
         self.data = {p: [] for p in prep.COLLECTIONS}
         self.requests = []
         self.page_size = 2
@@ -68,7 +81,7 @@ class FakeAPI:
             if p.startswith(("stages/", "flows/", "outposts/", "propertymappings/")):
                 self.data[p] = [{"pk": "protected-" + p, "setting": "unchanged"}]
 
-    def __call__(self, method, endpoint, payload=None):
+    def __call__(self, method: str, endpoint: str, payload: Mapping[str, object] | None = None):
         self.requests.append((method, endpoint, copy.deepcopy(payload)))
         parsed = urlsplit(endpoint)
         path = parsed.path
@@ -86,7 +99,7 @@ class FakeAPI:
         self.writes += 1
         if self.fail_write == self.writes:
             raise RuntimeError("simulated private failure")
-        created = dict(payload, pk="created-" + str(self.writes))
+        created = dict(cast("dict[str, object]", payload), pk="created-" + str(self.writes))
         if path == "policies/bindings/":
             created.update(user=None, policy=None)
         self.data[path].append(created)
@@ -106,7 +119,10 @@ class PreparationTests(unittest.TestCase):
             for slug, roles in prep.ALLOWLIST.items()
         }
         self.reviewed = json.loads((ROOT / "deploy/identity/account-mappings.json").read_text())
-        self.api = FakeAPI(self.services, self.reviewed)
+        self.api = FakeAPI(
+            cast("Mapping[str, _Grouped]", self.services),
+            cast("Mapping[str, _Grouped]", self.reviewed),
+        )
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
@@ -122,10 +138,10 @@ class PreparationTests(unittest.TestCase):
             "writers_paused": True,
         }
 
-    def plan(self, stage="groups-only", evidence=None):
+    def plan(self, stage: str = "groups-only", evidence: Mapping[str, object] | None = None):
         return prep.build_plan(self.api, self.services, self.reviewed, stage, evidence)[0]
 
-    def apply(self, stage="groups-only", approval=None):
+    def apply(self, stage: str = "groups-only", approval: str | None = None):
         if approval is None:
             approval = self.plan(stage, self.evidence)["sha256"]
         with prep.locked(self.root):
@@ -189,7 +205,9 @@ class PreparationTests(unittest.TestCase):
 
     def test_group_schema_all_relations_required_and_no_adoption(self):
         self.apply()
-        group = next(g for g in self.api.data["core/groups/"] if g["name"].startswith("app-"))
+        group = next(
+            g for g in self.api.data["core/groups/"] if cast("str", g["name"]).startswith("app-")
+        )
         good = copy.deepcopy(group)
         for field in ("parents", "children", "users", "roles", "is_superuser", "attributes"):
             for value in ("missing", None, ["unexpected"], True):
@@ -204,7 +222,7 @@ class PreparationTests(unittest.TestCase):
                         self.plan()
         group.clear()
         group.update(good)
-        self.api.data["core/users/"][0]["groups"].append(group["pk"])
+        cast("list[object]", self.api.data["core/users/"][0]["groups"]).append(group["pk"])
         with self.assertRaisesRegex(RuntimeError, "membership"):
             self.plan()
 
@@ -280,7 +298,7 @@ class PreparationTests(unittest.TestCase):
     def test_drift_during_second_snapshot_prevents_first_write(self):
         approval = self.plan(evidence=self.evidence)["sha256"]
 
-        def drift(path):
+        def drift(path: str):
             # One page per empty proxy collection: second pass is pre-write revalidation.
             if path == "providers/proxy/":
                 drift.count += 1
@@ -312,7 +330,7 @@ class PreparationTests(unittest.TestCase):
     def test_uncertain_accepted_post_is_not_retried_or_adopted(self):
         original = self.api.__call__
 
-        def uncertain(method, path, payload=None):
+        def uncertain(method: str, path: str, payload: Mapping[str, object] | None = None):
             result = original(method, path, payload)
             if method == "POST":
                 raise RuntimeError("connection lost after server accepted POST")
@@ -340,7 +358,7 @@ class PreparationTests(unittest.TestCase):
     def test_journal_intent_failure_prevents_post(self):
         original = prep.atomic_json
 
-        def fail_intent(path, value):
+        def fail_intent(path: Path, value: object):
             if path.name == "01.json":
                 raise OSError("disk full")
             return original(path, value)
@@ -352,7 +370,7 @@ class PreparationTests(unittest.TestCase):
     def test_post_create_drift_stops_after_one_post(self):
         original = self.api.__call__
 
-        def api(method, path, payload=None):
+        def api(method: str, path: str, payload: Mapping[str, object] | None = None):
             result = original(method, path, payload)
             if method == "POST":
                 self.api.data["outposts/instances/"][0]["setting"] = "drift"
@@ -376,7 +394,7 @@ class PreparationTests(unittest.TestCase):
                 prep.rows(lambda *args: response, "core/users/")
         original = self.api.__call__
 
-        def api(method, path, payload=None):
+        def api(method: str, path: str, payload: Mapping[str, object] | None = None):
             result = original(method, path, payload)
             if "core/users/" in path:
                 result["results"] *= 2

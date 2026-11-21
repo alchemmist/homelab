@@ -1,7 +1,9 @@
 """Exactly the same 77 resources, split between five single-service Applications."""
 
+from collections.abc import Iterator
 from functools import lru_cache
 import copy
+from typing import Protocol, TypedDict, cast, override
 from unittest.mock import patch
 
 import pytest
@@ -32,8 +34,36 @@ yaml.SafeLoader.add_constructor(
 )
 
 
+class _Tree(Protocol):
+    @override
+    def __eq__(self, other: object) -> bool: ...
+
+    @override
+    def __hash__(self) -> int: ...
+
+    def __getitem__(self, key: str) -> "_Tree": ...
+
+    def __iter__(self) -> Iterator["_Tree"]: ...
+
+    def count(self, value: object) -> int: ...
+
+    def pop(self, key: str) -> "_Tree": ...
+
+    def remove(self, value: object) -> None: ...
+
+
+class _ResourceMeta(TypedDict, total=False):
+    name: str
+    namespace: str
+
+
+class _KeyedResource(TypedDict):
+    kind: str
+    metadata: _ResourceMeta
+
+
 @lru_cache(maxsize=None)
-def render(name):
+def render(name: str):
     text = subprocess.check_output(
         [
             "helm",
@@ -53,7 +83,7 @@ def render(name):
     ]
 
 
-def key(d):
+def key(d: _KeyedResource):
     return "/".join(
         [
             d["kind"],
@@ -65,15 +95,16 @@ def key(d):
     )
 
 
-def software_update_extension(document):
+def software_update_extension(document: _Tree):
     """Review the one additive receiver without refreshing any handoff hash."""
+    collector_yaml = cast("str", document["data"]["collector.yaml"])
     assert document == {
         "apiVersion": "v1",
         "kind": "ConfigMap",
         "metadata": {"name": "software-update-otel", "namespace": "cattle-monitoring-system"},
-        "data": {"collector.yaml": document["data"]["collector.yaml"]},
+        "data": {"collector.yaml": collector_yaml},
     }
-    assert yaml.safe_load(document["data"]["collector.yaml"]) == {
+    assert yaml.safe_load(collector_yaml) == {
         "receivers": {
             "prometheus/software_updates": {
                 "config": {
@@ -106,7 +137,7 @@ def software_update_extension(document):
     }, "Software update receiver scope changed"
 
 
-def migration_payload(document):
+def migration_payload(document: _Tree):
     """Check declared runtime overrides before comparing the unchanged handoff payload."""
     if document["kind"] != "Prometheus":
         return document
@@ -260,7 +291,7 @@ def test_aggregate_application_and_values_are_gone():
 @pytest.mark.parametrize(
     "violation", ["scrape-target", "second-owner", "otel-image", "otel-mount", "probe", "service"]
 )
-def test_current_extension_projection_rejects_mutations(violation):
+def test_current_extension_projection_rejects_mutations(violation: str):
     """The historical comparison stays strict after validating each new input."""
     test_disjoint_complete_payload_identical_handoff()
     graphs = {name: copy.deepcopy(render(name)) for name in COMPONENTS}
