@@ -3,7 +3,7 @@ No new assignment, worktree or git operations. Preserve history and record linea
 """
 import fcntl,json,pathlib,runpy,sys,uuid,os
 
-def main(lane):
+def main(lane) -> None:
  d=runpy.run_path(str(pathlib.Path(__file__).with_name('worker-dispatch.py')));api=d['api'];parent=d['M'];assert lane in ('transfer-buckets','workbook-month-range');pc=api('conversations/'+parent);root=pathlib.Path(pc['workspace']['working_dir']);reg=root/'.worker-registry';lock=(reg/'lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX);f=reg/(lane+'.json');rec=json.loads(f.read_text());old=rec['id'];c='conversations/'+old;j=api(c);tree=root/'worker-trees'/lane/'monori';assert tree.is_dir() and str(tree)==rec['worktree'];assert j['execution_status']=='error' and j['agent']['condenser']['llm']['model']=='openai/o-deepseek';ev=api(c+'/events/search?sort_order=TIMESTAMP_DESC&limit=6')['items'];assert any(e.get('code')=='NoCondensationAvailableException' and 'o-deepseek' in e.get('detail','') for e in ev)
  name='socrat-mutation-worker-qwen';ps=api('agent-profiles')['profiles'];
  if not any(p['name']==name for p in ps):api('agent-profiles/'+name,{'agent_kind':'openhands','llm_profile_ref':'qwen3.8-27b','tools':[{'name':'terminal'},{'name':'file_editor'}],'mcp_server_refs':[],'secret_refs':[],'integration_refs':[],'public_skills':[],'system_message_suffix':'One assigned worktree only. Use compact tool results. No merge. Keep an evidence checkpoint.','condenser':{'enabled':True,'max_size':32,'max_tokens':9000,'keep_first':1}})

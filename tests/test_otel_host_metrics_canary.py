@@ -14,11 +14,11 @@ canary = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(canary)
 
 
-def log(message, **fields):
+def log(message: str, **fields: object) -> str:
     return "2026-10-30T20:33:41.405+0300\terror\t" + message + "\t" + json.dumps(fields)
 
 
-def shutdown():
+def shutdown() -> str:
     return log(
         "Exporting failed. Dropping data.",
         resource={"service.version": "0.164.0"},
@@ -31,7 +31,9 @@ def shutdown():
 
 
 class HostMetricsCanaryTests(unittest.TestCase):
-    def test_only_exact_pinned_shutdown_errors_with_actual_replay_are_accounted(self):
+    def test_only_exact_pinned_shutdown_errors_with_actual_replay_are_accounted(
+        self,
+    ) -> None:
         text = shutdown() + "\n" + log("Moved items for dispatching back to queue", numberOfItems=1)
         result = canary.classify_shutdown_replay(text)
         self.assertTrue(result["shutdownReplayAccounted"])
@@ -39,7 +41,7 @@ class HostMetricsCanaryTests(unittest.TestCase):
         self.assertEqual(result["restoredInFlightRequests"], 1)
         self.assertFalse(canary.classify_shutdown_replay(shutdown())["shutdownReplayAccounted"])
 
-    def test_generic_or_different_version_drop_is_never_exempted(self):
+    def test_generic_or_different_version_drop_is_never_exempted(self) -> None:
         for text in [
             shutdown().replace("interrupted due to shutdown:", "permanent error:"),
             shutdown().replace("0.164.0", "0.163.0"),
@@ -48,7 +50,7 @@ class HostMetricsCanaryTests(unittest.TestCase):
         ]:
             self.assertFalse(canary.classify_shutdown_replay(text)["shutdownReplayAccounted"])
 
-    def test_persistent_metadata_error_or_replay_mismatch_fails(self):
+    def test_persistent_metadata_error_or_replay_mismatch_fails(self) -> None:
         for suffix in [
             "\nFailed getting metadata",
             "\nError deleting item from queue",
@@ -64,7 +66,7 @@ class HostMetricsCanaryTests(unittest.TestCase):
         text = shutdown() + "\n" + log("Moved items for dispatching back to queue", numberOfItems=2)
         self.assertFalse(canary.classify_shutdown_replay(text)["shutdownReplayAccounted"])
 
-    def test_metrics_only_configs_preserve_native_limits_and_queue_fsync(self):
+    def test_metrics_only_configs_preserve_native_limits_and_queue_fsync(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)
             for role in ("agent", "cluster"):
@@ -85,7 +87,9 @@ class HostMetricsCanaryTests(unittest.TestCase):
             self.assertIn("client_ca_file", grpc["tls"])
             self.assertNotIn("insecure", json.dumps(agent))
 
-    def test_backend_cleanup_is_after_all_agent_barrier_and_never_delegated(self):
+    def test_backend_cleanup_is_after_all_agent_barrier_and_never_delegated(
+        self,
+    ) -> None:
         plays = yaml.safe_load(
             (ROOT / "ansible/playbooks/otel-host-metrics-canary.yml").read_text()
         )
@@ -98,7 +102,7 @@ class HostMetricsCanaryTests(unittest.TestCase):
         for task in plays[1]["tasks"][0]["block"] + cleanup:
             self.assertNotEqual(task.get("delegate_to"), "socrat-1")
 
-    def test_outage_proof_uses_raw_range_vector_not_query_range_lookback(self):
+    def test_outage_proof_uses_raw_range_vector_not_query_range_lookback(self) -> None:
         text = (ROOT / "scripts/otel-host-metrics-canary.py").read_text()
         self.assertIn("query(root, 'up[10m]')", text)
         self.assertIn("stops < float(timestamp) < restart", text)
@@ -106,7 +110,7 @@ class HostMetricsCanaryTests(unittest.TestCase):
         self.assertIn("'User=65534'", text)
         self.assertIn("queueSaturationOrFullHighWaterVerified", text)
 
-    def test_native_contract_is_fresh_and_content_bound(self):
+    def test_native_contract_is_fresh_and_content_bound(self) -> None:
         import datetime
         import hashlib
         import socket
@@ -133,7 +137,7 @@ class HostMetricsCanaryTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 canary.validate_contract(directory, request, now)
 
-    def test_request_binary_receipt_requires_image_and_executable_digest(self):
+    def test_request_binary_receipt_requires_image_and_executable_digest(self) -> None:
         import hashlib
 
         spec = importlib.util.spec_from_file_location(
@@ -158,7 +162,7 @@ class HostMetricsCanaryTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 request.pinned_binary(directory, "collector", "binary", images)
 
-    def test_request_refuses_public_backend_before_source_access(self):
+    def test_request_refuses_public_backend_before_source_access(self) -> None:
         spec = importlib.util.spec_from_file_location(
             "host_request", ROOT / "scripts/otel-host-metrics-request.py"
         )
@@ -166,5 +170,9 @@ class HostMetricsCanaryTests(unittest.TestCase):
         spec.loader.exec_module(request)
         with self.assertRaises(ValueError):
             request.create(
-                Path("/missing"), Path("/missing"), Path("/missing"), Path("/missing"), "0.0.0.0"
+                Path("/missing"),
+                Path("/missing"),
+                Path("/missing"),
+                Path("/missing"),
+                "0.0.0.0",
             )

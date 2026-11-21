@@ -1,3 +1,4 @@
+"""Tests for sandbox archive inspection and fixture verdict checks."""
 import io
 import json
 import tarfile
