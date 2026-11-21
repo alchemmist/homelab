@@ -8,7 +8,7 @@ from engine import UnsafeInput
 
 
 class ModelBoundaryTests(unittest.TestCase):
-    def test_retry_schema_failure(self):
+    def test_retry_schema_failure(self) -> None:
         calls = []
         valid = {
             "should_update": True,
@@ -23,7 +23,7 @@ class ModelBoundaryTests(unittest.TestCase):
         self.assertEqual(checked_model(model, "prompt", {}, {"files": [{"filename": "a"}]}), valid)
         self.assertEqual(len(calls), 2)
 
-    def test_bad_output_stays_rejected(self):
+    def test_bad_output_stays_rejected(self) -> None:
         calls = []
 
         def model(prompt, data):

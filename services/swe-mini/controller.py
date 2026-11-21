@@ -12,6 +12,7 @@ from pathlib import Path
 import sqlite3
 import threading
 import time
+from typing import cast
 import uuid
 
 import jwt
@@ -44,17 +45,17 @@ SESSION = requests.Session()
 SESSION.headers["Accept"] = "application/vnd.github+json"
 TOKEN = {"value": "", "expires": 0}
 STATUS = {"state": "starting", "last_tick": time.time(), "error": ""}
-NEXT_IDLE_CHECK = 0
+NEXT_IDLE_CHECK: float = 0
 
 
-def signing_key(run_id, phase):
+def signing_key(run_id, phase) -> str:
     return hmac.new(RESULT_MASTER, f"{run_id}:{phase}".encode(), hashlib.sha256).hexdigest()
 
 
-def github(path, method="GET", data=None, auth=True):
+def github(path, method="GET", data=None, auth=True) -> dict[str, object] | list[dict[str, object]]:
     headers = {}
     if auth:
-        if TOKEN["expires"] < time.time():
+        if cast("float", TOKEN["expires"]) < time.time():
             app_id = Path("/github/github-app-id").read_text().strip()
             key = Path("/github/github-private-key").read_text()
             signed = jwt.encode(
@@ -79,7 +80,7 @@ def github(path, method="GET", data=None, auth=True):
             )
             r.raise_for_status()
             TOKEN.update(value=r.json()["token"], expires=time.time() + 3000)
-        headers["Authorization"] = "Bearer " + TOKEN["value"]
+        headers["Authorization"] = "Bearer " + cast("str", TOKEN["value"])
     response = SESSION.request(
         method, "https://api.github.com/" + path, headers=headers, json=data, timeout=40
     )
@@ -87,7 +88,7 @@ def github(path, method="GET", data=None, auth=True):
     return response.json() if response.content else {}
 
 
-def save(run_id, **fields):
+def save(run_id, **fields) -> None:
     DB.execute(
         "UPDATE runs SET " + ",".join(key + "=?" for key in fields) + " WHERE id=?",
         [*fields.values(), run_id],
@@ -97,11 +98,11 @@ def save(run_id, **fields):
         logging.info("Run %s state=%s", run_id, fields["state"])
 
 
-def start_job(run, phase):
+def start_job(run, phase) -> None:
     run_id, lane, revision = run["id"], run["lane"], run["revision"]
     name = f"swe-{run_id}-{phase}"
-    volumes = [{"name": "work", "emptyDir": {"sizeLimit": "8Gi"}}]
-    mounts = [{"name": "work", "mountPath": "/workspace"}]
+    volumes: list[dict[str, object]] = [{"name": "work", "emptyDir": {"sizeLimit": "8Gi"}}]
+    mounts: list[dict[str, object]] = [{"name": "work", "mountPath": "/workspace"}]
     if phase == "review":
         cm_name = name + "-proposal"
         payload = json.loads(run["result"])
@@ -202,43 +203,62 @@ def start_job(run, phase):
     save(run_id, state=phase, job=name)
 
 
-def publish(run, result, review):
+def publish(run, result, review) -> str:
     changes = validate_changes(result["changes"])
     branch = "swe-mini/" + run["id"]
     # Deterministic branch is recovery journal: reconcile existing PR after a controller crash.
-    existing = github(f"repos/{REPO}/pulls?state=all&head=alchemmist:{branch}")
-    if existing:
-        return existing[0]["html_url"]
-    base = github(f"repos/{REPO}/git/commits/" + run["revision"])
-    tree = []
-    for item in changes:
-        blob = github(
-            f"repos/{REPO}/git/blobs", "POST", {"content": item["content"], "encoding": "base64"}
-        )
-        tree.append({"path": item["path"], "mode": "100644", "type": "blob", "sha": blob["sha"]})
-    tree = github(
-        f"repos/{REPO}/git/trees", "POST", {"base_tree": base["tree"]["sha"], "tree": tree}
+    existing = cast(
+        "list[dict[str, object]]",
+        github(f"repos/{REPO}/pulls?state=all&head=alchemmist:{branch}"),
     )
-    commit = github(
-        f"repos/{REPO}/git/commits",
-        "POST",
-        {
-            "message": f"fix: autonomous {run['lane']} improvement ({run['id']})",
-            "tree": tree["sha"],
-            "parents": [run["revision"]],
-        },
+    if existing:
+        return cast("str", existing[0]["html_url"])
+    base_commit = cast("dict[str, object]", github(f"repos/{REPO}/git/commits/" + run["revision"]))
+    base_tree = cast("dict[str, str]", base_commit["tree"])
+    entries = []
+    for item in changes:
+        blob = cast(
+            "dict[str, object]",
+            github(
+                f"repos/{REPO}/git/blobs",
+                "POST",
+                {"content": item["content"], "encoding": "base64"},
+            ),
+        )
+        entries.append({"path": item["path"], "mode": "100644", "type": "blob", "sha": blob["sha"]})
+    tree = cast(
+        "dict[str, object]",
+        github(f"repos/{REPO}/git/trees", "POST", {"base_tree": base_tree["sha"], "tree": entries}),
+    )
+    commit = cast(
+        "dict[str, object]",
+        github(
+            f"repos/{REPO}/git/commits",
+            "POST",
+            {
+                "message": f"fix: autonomous {run['lane']} improvement ({run['id']})",
+                "tree": tree["sha"],
+                "parents": [run["revision"]],
+            },
+        ),
     )
     try:
         github(
             f"repos/{REPO}/git/refs", "POST", {"ref": "refs/heads/" + branch, "sha": commit["sha"]}
         )
     except requests.HTTPError as exc:
-        if exc.response.status_code != 422:
+        response = exc.response
+        if response is None or response.status_code != 422:
             raise
         # Never force-update a branch that might have acquired human edits.
-        ref = github(f"repos/{REPO}/git/ref/heads/" + branch)
-        current = github(f"repos/{REPO}/git/commits/" + ref["object"]["sha"])
-        if current["tree"]["sha"] != tree["sha"] or [p["sha"] for p in current["parents"]] != [
+        ref = cast("dict[str, object]", github(f"repos/{REPO}/git/ref/heads/" + branch))
+        ref_commit = cast("dict[str, str]", ref["object"])
+        current = cast(
+            "dict[str, object]", github(f"repos/{REPO}/git/commits/" + ref_commit["sha"])
+        )
+        current_tree = cast("dict[str, str]", current["tree"])
+        current_parents = cast("list[dict[str, object]]", current["parents"])
+        if current_tree["sha"] != tree["sha"] or [p["sha"] for p in current_parents] != [
             run["revision"]
         ]:
             raise ValueError("Existing candidate branch differs; refusing publication")
@@ -251,21 +271,24 @@ def publish(run, result, review):
         + str(review["review"].get("reason", ""))[:7000]
         + f"\n\nRun `{run['id']}`, base `{run['revision']}`. Model review is not a security guarantee. Full private run record is retained in the queue database."
     )
-    pr = github(
-        f"repos/{REPO}/pulls",
-        "POST",
-        {
-            "title": f"[mini] {run['lane']}: tested small improvement",
-            "head": branch,
-            "base": "main",
-            "body": body,
-            "draft": False,
-        },
+    pr = cast(
+        "dict[str, object]",
+        github(
+            f"repos/{REPO}/pulls",
+            "POST",
+            {
+                "title": f"[mini] {run['lane']}: tested small improvement",
+                "head": branch,
+                "base": "main",
+                "body": body,
+                "draft": False,
+            },
+        ),
     )
-    return pr["html_url"]
+    return cast("str", pr["html_url"])
 
 
-def tick():
+def tick() -> bool | None:
     global NEXT_IDLE_CHECK
     active = DB.execute(
         "SELECT * FROM runs WHERE state IN ('queued','work','review','publishing') ORDER BY created LIMIT 1"
@@ -275,11 +298,11 @@ def tick():
         run = dict(zip(columns, active))
         if run["state"] == "queued":
             start_job(run, "work")
-            return
+            return None
         if run["state"] == "publishing":
             url = publish(run, json.loads(run["result"]), json.loads(run["review"]))
             save(run["id"], state="published", pr=url)
-            return
+            return None
         try:
             job = BATCH.read_namespaced_job(run["job"], NS)
         except client.ApiException as exc:
@@ -297,9 +320,9 @@ def tick():
                     )
                 },
             )
-            return
+            return None
         if not job.status.succeeded and not job.status.failed:
-            return
+            return None
         pods = CORE.list_namespaced_pod(NS, label_selector="job-name=" + run["job"]).items
         if len(pods) != 1:
             save(
@@ -307,7 +330,7 @@ def tick():
                 state="failed",
                 review=json.dumps({"error": "Missing or ambiguous worker Pod; no publication"}),
             )
-            return
+            return None
         log = CORE.read_namespaced_pod_log(pods[0].metadata.name, NS, limit_bytes=2_000_000)
         try:
             result = decode_result(log, signing_key(run["id"], run["state"]))
@@ -323,7 +346,7 @@ def tick():
                 state="failed",
                 review=json.dumps({"error": "Missing worker result; inspect job status"}),
             )
-            return
+            return None
         if run["state"] == "review":
             try:
                 CORE.delete_namespaced_config_map(run["job"] + "-proposal", NS)
@@ -339,7 +362,7 @@ def tick():
             or result.get("agent_rc") != 0
         ):
             save(run["id"], state="failed")
-            return
+            return None
         candidate = (
             result.get("changes", [])
             if run["state"] == "work"
@@ -350,13 +373,18 @@ def tick():
             if candidate:
                 validate_changes(candidate)
             if any(i["path"] in {"web/package.json", "web/package-lock.json"} for i in candidate):
-                base = github(
-                    f"repos/{REPO}/contents/web/package.json?ref={run['revision']}", auth=True
+                base = cast(
+                    "dict[str, object]",
+                    github(
+                        f"repos/{REPO}/contents/web/package.json?ref={run['revision']}", auth=True
+                    ),
                 )
-                validate_dependency_update(candidate, json.loads(base64.b64decode(base["content"])))
+                validate_dependency_update(
+                    candidate, json.loads(base64.b64decode(cast("str", base["content"])))
+                )
         except (ValueError, KeyError, TypeError):
             save(run["id"], state="rejected")
-            return
+            return None
         # Only a narrowly validated dependency repair may start from a red frontend install.
         baseline_ok = not any(result.get("baseline", {"missing": 1}).values())
         bootstrap_ok = (
@@ -370,11 +398,11 @@ def tick():
             or not (baseline_ok or bootstrap_ok)
         ):
             save(run["id"], state="rejected")
-            return
+            return None
         if run["state"] == "work":
             if not result.get("changes"):
                 save(run["id"], state="done")
-                return
+                return None
             validate_changes(result["changes"])
             run["result"] = json.dumps(result)
             start_job(run, "review")
@@ -387,10 +415,10 @@ def tick():
                 save(run["id"], state="rejected")
             else:
                 save(run["id"], state="publishing")
-        return
+        return None
     if os.getenv("PAUSED", "false") == "true":
         STATUS["state"] = "paused"
-        return
+        return None
     previous = DB.execute("SELECT created,lane FROM runs ORDER BY created DESC LIMIT 1").fetchone()
     latest = previous[0] if previous else 0
     if (
@@ -398,17 +426,23 @@ def tick():
         and previous[1] != "smoke"
         and time.time() - latest < int(os.getenv("MIN_INTERVAL_SECONDS", "1800"))
     ):
-        return
+        return None
     # Waiting is healthy; external discovery is bounded, including after failures.
     if time.monotonic() < NEXT_IDLE_CHECK:
         return False
     NEXT_IDLE_CHECK = time.monotonic() + 300
     # Backpressure: bounded open PRs. Never keep creating PRs faster than a human can review.
-    prs = github(f"repos/{REPO}/pulls?state=open&per_page=100")
-    if sum(p["head"]["ref"].startswith("swe-mini/") for p in prs) >= 5:
+    prs = cast("list[dict[str, object]]", github(f"repos/{REPO}/pulls?state=open&per_page=100"))
+    open_swe_prs = 0
+    for pull in prs:
+        head = cast("dict[str, str]", pull["head"])
+        if head["ref"].startswith("swe-mini/"):
+            open_swe_prs += 1
+    if open_swe_prs >= 5:
         STATUS["state"] = "waiting_for_pr_review"
-        return
-    revision = github(f"repos/{REPO}/commits/main", auth=True)["sha"]
+        return None
+    main_commit = cast("dict[str, str]", github(f"repos/{REPO}/commits/main", auth=True))
+    revision = main_commit["sha"]
     open_urls = {p["html_url"] for p in prs}
     for pr, payload in DB.execute(
         "SELECT pr,result FROM runs WHERE state='published' AND revision=? ORDER BY created DESC LIMIT 100",
@@ -416,7 +450,7 @@ def tick():
     ):
         if pr in open_urls and dependency_repair(json.loads(payload or "{}").get("changes", [])):
             STATUS["state"] = "waiting_for_dependency_merge"
-            return
+            return None
     index = DB.execute("SELECT count(*) FROM runs").fetchone()[0]
     lane = "smoke" if index == 0 else list(LANES)[(index - 1) % len(LANES)]
     run_id = time.strftime("%y%m%d%H%M%S") + "-" + uuid.uuid4().hex[:5]
@@ -427,13 +461,14 @@ def tick():
     DB.commit()
     STATUS["state"] = "running"
     logging.info("Queued run %s lane=%s revision=%s", run_id, lane, revision[:12])
+    return None
 
 
 class Health(BaseHTTPRequestHandler):
-    def do_GET(self):
+    def do_GET(self) -> None:
         if self.path in ("/healthz", "/livez", "/dependencies"):
             # External API failures cannot be repaired by restarting this process.
-            alive = time.time() - STATUS["last_tick"] < 180
+            alive = time.time() - cast("float", STATUS["last_tick"]) < 180
             ready = alive and (self.path != "/dependencies" or not STATUS["error"])
             self.send_response(200 if ready else 503)
             payload = json.dumps(STATUS).encode()
@@ -451,11 +486,11 @@ class Health(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
 
-    def log_message(self, *args):
+    def log_message(self, *args) -> None:
         pass
 
 
-def run_once():
+def run_once() -> None:
     try:
         if tick() is not False:
             STATUS["error"] = ""

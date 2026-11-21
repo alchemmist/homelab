@@ -13,13 +13,14 @@ import subprocess
 import tempfile
 import time
 import uuid
+from typing import cast
 
 ROOT = Path(__file__).resolve().parents[3]
 IMAGE = "homelab-ssh-user-fixture:local"
 USER = "ssh_fixture"
 
 
-def run(args, expected=0, **kw):
+def run(args: list[str], expected: int = 0, **kw) -> str:
     p = subprocess.run(args, capture_output=True, text=True, timeout=kw.pop("timeout", 180), **kw)
     if p.returncode != expected:
         # Fixture output contains public data only, but keep it private to avoid
@@ -33,10 +34,10 @@ def run(args, expected=0, **kw):
             + p.stdout[-2500:]
             + p.stderr[-1000:]
         )
-    return p.stdout
+    return cast("str", p.stdout)
 
 
-def main():
+def main() -> None:
     run(["docker", "info", "--format", "{{.ServerVersion}}"])
     run(["docker", "build", "-q", "-t", IMAGE, str(Path(__file__).parent)], timeout=300)
     containers = []

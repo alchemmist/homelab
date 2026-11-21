@@ -8,6 +8,7 @@ from pathlib import Path
 import subprocess
 import sys
 import time
+from typing import cast
 
 from policy import (
     LANES,
@@ -23,11 +24,11 @@ ART = Path("/workspace/artifacts")
 RESULT_KEY = os.environ.pop("RESULT_KEY", "")
 
 
-def signed_result(result):
+def signed_result(result) -> str:
     return encode_result(result, RESULT_KEY)
 
 
-def command(args, *, cwd=ROOT, timeout=900):
+def command(args, *, cwd=ROOT, timeout=900) -> int:
     with open(ART / "commands.log", "a") as log:
         log.write("\nCOMMAND " + repr(args) + "\n")
         log.flush()
@@ -40,7 +41,7 @@ def command(args, *, cwd=ROOT, timeout=900):
     return rc
 
 
-def checks():
+def checks() -> dict[str, int]:
     return {
         "backend": command(
             [
@@ -63,7 +64,7 @@ def checks():
     }
 
 
-def agent_main():
+def agent_main() -> None:
     import yaml
     from minisweagent import package_dir
     from minisweagent.agents.default import DefaultAgent
@@ -95,7 +96,7 @@ def agent_main():
     (ART / "agent-exit.json").write_text(json.dumps(result))
 
 
-def harden_parent():
+def harden_parent() -> None:
     import ctypes
 
     # Deny same-UID children /proc/<parent>/{environ,mem,fd}, including Pod stdout.
@@ -105,7 +106,7 @@ def harden_parent():
         raise RuntimeError("Authenticated non-dumpable worker wrapper required")
 
 
-def main():
+def main() -> None:
     harden_parent()
     ART.mkdir(parents=True, exist_ok=True)
     Path("/workspace/tmp").mkdir(exist_ok=True)
@@ -188,9 +189,12 @@ def main():
         }
     )
     bootstrap = bool(setup["node"])
-    candidate_checks = None
+    candidate_checks: dict[str, int] | None = None
+    proposal: dict[str, object] | None = None
+    proposal_data: dict[str, object] = {}
     if phase == "review":
         proposal = json.loads(Path("/proposal/proposal.json").read_text())
+        proposal_data = cast("dict[str, object]", proposal)
         for item in validate_changes(proposal["changes"]):
             p = ROOT / item["path"]
             p.parent.mkdir(parents=True, exist_ok=True)
@@ -209,9 +213,9 @@ Read AGENTS.md. Reproduce claims, inspect regression tests and look for security
 You have NO authority over production. Use local synthetic fixtures only.
 Write /workspace/artifacts/review.json as {"approved": true/false, "reason": "specific evidence and commands"}.
 Approve only a concrete narrow improvement with convincing executable evidence. Otherwise reject.
-Then submit using the standard completion command. Original report follows:\n""" + proposal[
-            "report"
-        ]
+Then submit using the standard completion command. Original report follows:\n""" + cast(
+            "str", proposal_data["report"]
+        )
     else:
         task = f"""Work on Monori in {ROOT}. Direction: {LANES[lane]}
 Read AGENTS.md, README.md, Makefile and relevant docs first. Pick ONE narrow concrete finding.
@@ -243,6 +247,7 @@ This narrow bootstrap exception overrides the general ban on dependency manifest
     if bootstrap:
         command(["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], cwd=ROOT / "web")
     after = checks()
+    changes: list[dict[str, str]] = []
     result = dict(
         lane=lane,
         phase=phase,
@@ -252,7 +257,7 @@ This narrow bootstrap exception overrides the general ban on dependency manifest
         setup=setup,
         agent_rc=rc,
         started=int(time.time()),
-        changes=[],
+        changes=changes,
         report="",
     )
     exit_file = ART / "agent-exit.json"
@@ -278,7 +283,8 @@ This narrow bootstrap exception overrides the general ban on dependency manifest
                 .split("\0"),
             )
         )
-        expected = {item["path"]: base64.b64decode(item["content"]) for item in proposal["changes"]}
+        changes = cast("list[dict[str, str]]", proposal_data["changes"])
+        expected = {item["path"]: base64.b64decode(item["content"]) for item in changes}
         if actual_paths != set(expected) or any(
             (ROOT / path).is_symlink() or (ROOT / path).read_bytes() != data
             for path, data in expected.items()
@@ -300,20 +306,17 @@ This narrow bootstrap exception overrides the general ban on dependency manifest
             p = ROOT / path
             if not p.is_file() or p.is_symlink():
                 raise ValueError("Deletion/symlink not permitted")
-            result["changes"].append(
+            changes.append(
                 {
                     "path": path,
                     "mode": "100644",
                     "content": base64.b64encode(p.read_bytes()).decode(),
                 }
             )
-        if result["changes"]:
-            validate_changes(result["changes"])
-            if any(
-                i["path"] in {"web/package.json", "web/package-lock.json"}
-                for i in result["changes"]
-            ):
-                validate_dependency_update(result["changes"], original_package)
+        if changes:
+            validate_changes(changes)
+            if any(i["path"] in {"web/package.json", "web/package-lock.json"} for i in changes):
+                validate_dependency_update(changes, original_package)
     result["command_tail"] = (ART / "commands.log").read_text(errors="replace")[-16000:]
     # No model transcript or shell stdout is streamed into cluster logs.
     print(signed_result(result), flush=True)

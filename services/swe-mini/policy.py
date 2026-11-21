@@ -7,6 +7,7 @@ import hmac
 import json
 import re
 from pathlib import PurePosixPath
+from typing import TypedDict
 
 LANES = {
     "backend": "Find and reproduce a backend correctness bug; add a regression test and a small fix.",
@@ -19,7 +20,27 @@ MAX_BYTES = 600_000
 DEPENDENCY_PATHS = {"web/package.json", "web/package-lock.json"}
 
 
-def validate_changes(changes):
+class Result(TypedDict, total=False):
+    """Shape of a worker result envelope (worker.py is the only producer)."""
+
+    error: str
+    revision: str
+    changes: list[dict[str, str]]
+    agent_status: str
+    agent_rc: int
+    baseline: dict[str, int]
+    setup: dict[str, int]
+    checks: dict[str, int]
+    candidate_checks: dict[str, int]
+    review: dict[str, object]
+    report: str
+    command_tail: str
+    started: int
+    lane: str
+    phase: str
+
+
+def validate_changes(changes) -> list[dict[str, str]]:
     if not changes or len(changes) > 20:
         raise ValueError("Expected 1..20 changed files")
     if any(i["path"] in DEPENDENCY_PATHS for i in changes) and not dependency_repair(changes):
@@ -46,10 +67,11 @@ def validate_changes(changes):
             raise ValueError("Oversize or binary patch")
     if len({item["path"] for item in changes}) != len(changes):
         raise ValueError("Duplicate paths")
-    return changes
+    validated: list[dict[str, str]] = changes
+    return validated
 
 
-def encode_result(result, key=None):
+def encode_result(result, key=None) -> str:
     raw = json.dumps(result).encode()
     if len(raw) > 900_000:
         raise ValueError("Result too large")
@@ -59,7 +81,7 @@ def encode_result(result, key=None):
     return "SWE_RESULT:" + payload
 
 
-def decode_result(log, key=None):
+def decode_result(log, key=None) -> Result:
     lines = [
         line.removeprefix("SWE_RESULT:")
         for line in log.splitlines()
@@ -79,14 +101,15 @@ def decode_result(log, key=None):
         raw = f.read(900_001)
     if len(raw) > 900_000:
         raise ValueError("Result exceeds limit")
-    return json.loads(raw)
+    decoded: Result = json.loads(raw)
+    return decoded
 
 
-def dependency_repair(changes):
+def dependency_repair(changes) -> bool:
     return {item["path"] for item in changes} == DEPENDENCY_PATHS
 
 
-def validate_dependency_update(changes, original):
+def validate_dependency_update(changes, original) -> list[dict[str, str]]:
     if not dependency_repair(changes):
         raise ValueError(
             "Dependency repair must contain exactly manifest and lock, no source changes"
@@ -119,4 +142,5 @@ def validate_dependency_update(changes, original):
         url = entry.get("resolved", "")
         if url and not url.startswith("https://registry.npmjs.org/"):
             raise ValueError("Nonstandard dependency registry")
-    return changes
+    validated: list[dict[str, str]] = changes
+    return validated

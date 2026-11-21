@@ -9,11 +9,13 @@ import json
 import http.server
 import http.client
 import socket
+import ssl
 import threading
 import time
 import socketserver
 import os
 import re
+from typing import NoReturn, cast, override
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -28,7 +30,8 @@ MAX_BYTES = 2 * 1024 * 1024
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, request, response, code, message, headers, newurl):
+    @override
+    def redirect_request(self, request, response, code, message, headers, newurl) -> NoReturn:
         if response is not None:
             response.close()
         raise ValueError("redirect denied")
@@ -41,14 +44,14 @@ UPSTREAM_SECONDS = 10
 MAX_CONNECTIONS = 8
 
 
-def expire(sock):
+def expire(sock) -> None:
     try:
         sock.shutdown(socket.SHUT_RDWR)
     except OSError:
         pass
 
 
-def watchdog(sock, seconds):
+def watchdog(sock, seconds) -> threading.Timer:
     timer = threading.Timer(seconds, expire, (sock,))
     timer.daemon = True
     timer.start()
@@ -56,7 +59,10 @@ def watchdog(sock, seconds):
 
 
 class DeadlineResponse(http.client.HTTPResponse):
-    def close(self):
+    deadline_timer: threading.Timer
+
+    @override
+    def close(self) -> None:
         try:
             super().close()
         finally:
@@ -66,15 +72,17 @@ class DeadlineResponse(http.client.HTTPResponse):
 
 
 class DeadlineConnection:
-    response_class = DeadlineResponse
+    response_class: type[http.client.HTTPResponse] = DeadlineResponse
+    sock: socket.socket | None
+    deadline_timer: threading.Timer
 
-    def connect(self):
+    def connect(self) -> None:
         start = time.monotonic()
         self.deadline_expired = False
         self.response_owns_deadline = False
-        connected_socket = []
+        connected_socket: list[socket.socket | None] = []
 
-        def abort():
+        def abort() -> None:
             self.deadline_expired = True
             sock = (
                 self.sock
@@ -88,7 +96,7 @@ class DeadlineConnection:
         self.deadline_timer.daemon = True
         self.deadline_timer.start()
         try:
-            super().connect()
+            cast("http.client.HTTPConnection", super()).connect()
             connected_socket.append(self.sock)
             if self.deadline_expired or time.monotonic() - start >= UPSTREAM_SECONDS:
                 expire(self.sock)
@@ -97,13 +105,15 @@ class DeadlineConnection:
             self.close()
             raise
 
-    def getresponse(self):
+    def getresponse(self) -> DeadlineResponse:
         # HTTPConnection closes/detaches its socket before returning a response
         # with Connection: close. The response's file still owns the descriptor:
         # keep its watchdog alive until that response is explicitly closed.
         self.transferring_response = True
         try:
-            response = super().getresponse()
+            response = cast(
+                "DeadlineResponse", cast("http.client.HTTPConnection", super()).getresponse()
+            )
             response.deadline_timer = self.deadline_timer
             self.response_owns_deadline = True
             return response
@@ -113,14 +123,14 @@ class DeadlineConnection:
         finally:
             self.transferring_response = False
 
-    def close(self):
+    def close(self) -> None:
         timer = getattr(self, "deadline_timer", None)
         if timer and not (
             getattr(self, "transferring_response", False)
             or getattr(self, "response_owns_deadline", False)
         ):
             timer.cancel()
-        super().close()
+        cast("http.client.HTTPResponse", super()).close()
 
 
 class HTTPConnection(DeadlineConnection, http.client.HTTPConnection):
@@ -132,29 +142,33 @@ class HTTPSConnection(DeadlineConnection, http.client.HTTPSConnection):
 
 
 class HTTPHandler(urllib.request.HTTPHandler):
-    def http_open(self, request):
+    @override
+    def http_open(self, request) -> http.client.HTTPResponse:
         return self.do_open(HTTPConnection, request)
 
 
 class HTTPSHandler(urllib.request.HTTPSHandler):
-    def https_open(self, request):
+    _context: ssl.SSLContext
+
+    @override
+    def https_open(self, request) -> http.client.HTTPResponse:
         return self.do_open(HTTPSConnection, request, context=self._context)
 
 
-def opener():
+def opener() -> urllib.request.OpenerDirector:
     # Environment proxy settings must not redirect private S3/auth traffic.
     return urllib.request.build_opener(
         urllib.request.ProxyHandler({}), NoRedirect(), HTTPHandler(), HTTPSHandler()
     )
 
 
-def valid_key(path):
+def valid_key(path: str) -> str:
     if not KEY.fullmatch(path) or ".." in path:
         raise ValueError("invalid key")
     return path[1:]
 
 
-def sign(method, url, access, secret, now=None, region="us-east-1", payload=b""):
+def sign(method, url, access, secret, now=None, region="us-east-1", payload=b"") -> dict[str, str]:
     """AWS SigV4, unsigned query unsupported; canonical URI encoded exactly once."""
     u = urllib.parse.urlsplit(url)
     if u.query or u.fragment or u.username or u.password:
@@ -201,7 +215,7 @@ def sign(method, url, access, secret, now=None, region="us-east-1", payload=b"")
     return headers
 
 
-def bounded(response):
+def bounded(response: http.client.HTTPResponse) -> bytes:
     if response.status != 200 or response.headers.get("Content-Encoding", "identity") != "identity":
         raise ValueError("invalid response")
     length = response.headers.get("Content-Length", "")
@@ -214,7 +228,7 @@ def bounded(response):
 
 
 class Reader:
-    def __init__(self):
+    def __init__(self) -> None:
         self.http = opener()
         self.auth = os.environ["AUTH_URL"]
         if self.auth != ORIGIN + "/outpost.goauthentik.io/auth/nginx":
@@ -225,10 +239,10 @@ class Reader:
         self.access = os.environ["S3_ACCESS_KEY"]
         self.secret = os.environ["S3_SECRET_KEY"]
 
-    def authorized(self, cookie):
+    def authorized(self, cookie) -> bool:
         return self.authorization(cookie) == 200
 
-    def authorization(self, cookie):
+    def authorization(self, cookie) -> int:
         if not cookie or len(cookie) > 8192 or "\r" in cookie or "\n" in cookie:
             return 401
         request = urllib.request.Request(
@@ -254,13 +268,13 @@ class Reader:
                 return code if code in (401, 403) else 503
             return 503
 
-    def object(self, key):
+    def object(self, key) -> bytes:
         url = self.s3 + "/spi-evidence/" + key
         request = urllib.request.Request(url, headers=sign("GET", url, self.access, self.secret))
         with self.http.open(request, timeout=10) as response:
             return bounded(response)
 
-    def read(self, key):
+    def read(self, key) -> bytes:
         valid_key("/" + key)
         prefix, filename = key.rsplit("/", 1)
         event, manifest_hash = prefix.split("/")[-2:]
@@ -326,13 +340,13 @@ PREVIEW_TYPES = {
 }
 
 
-def presentation(filename):
+def presentation(filename) -> tuple[str, bool]:
     suffix = (filename or "").rsplit(".", 1)[-1].lower()
     mime = PREVIEW_TYPES.get(suffix)
     return (mime, True) if mime else ("application/octet-stream", False)
 
 
-def byte_range(value, size):
+def byte_range(value, size) -> tuple[int, int]:
     match = re.fullmatch(r"bytes=([0-9]{0,20})-([0-9]{0,20})", value)
     if not match or not size or not any(match.groups()):
         raise ValueError("invalid range")
@@ -352,30 +366,34 @@ def byte_range(value, size):
 class Handler(http.server.BaseHTTPRequestHandler):
     server_version = "ArtifactReader"
     sys_version = ""
+    raw_requestline: bytes
 
-    def setup(self):
+    @override
+    def setup(self) -> None:
         self.request.settimeout(HEADER_SECONDS)
         self.header_timer = watchdog(self.request, HEADER_SECONDS)
         self.request_timer = watchdog(self.request, REQUEST_SECONDS)
         super().setup()
 
-    def finish(self):
+    @override
+    def finish(self) -> None:
         try:
             super().finish()
         finally:
             self.header_timer.cancel()
             self.request_timer.cancel()
 
-    def log_message(self, *args):
+    @override
+    def log_message(self, *args) -> None:
         pass
 
-    def do_GET(self):
+    def do_GET(self) -> None:
         self.answer()
 
-    def do_HEAD(self):
+    def do_HEAD(self) -> None:
         self.answer()
 
-    def do_POST(self):
+    def do_POST(self) -> None:
         self.answer()
 
     do_PUT = do_POST
@@ -383,7 +401,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
     do_OPTIONS = do_POST
     do_PATCH = do_POST
 
-    def answer(self):
+    def answer(self) -> None:
         self.close_connection = True
         self.header_timer.cancel()
         # Only a fixed legacy authority may redirect, with an exact validated raw
@@ -410,7 +428,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         cookies = self.headers.get_all("Cookie", [])
         auth_status = 401
         if len(cookies) == 1:
-            reader = self.server.reader
+            reader = cast("Server", self.server).reader
             auth_status = reader.authorization(cookies[0])
         if auth_status != 200:
             if auth_status != 401:
@@ -452,7 +470,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.respond(404)
             return
         try:
-            body = self.server.reader.read(key)
+            body = cast("Server", self.server).reader.read(key)
         except (OSError, ValueError, urllib.error.URLError) as error:
             if isinstance(error, urllib.error.HTTPError):
                 error.close()
@@ -477,7 +495,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
         self.respond(200, body, filename)
 
-    def send_error(self, code, message=None, explain=None):
+    @override
+    def send_error(self, code, message=None, explain=None) -> None:
         # Parser/unsupported-method errors must not echo raw request lines or
         # distinguish paths to unauthenticated callers.
         self.close_connection = True
@@ -485,7 +504,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def respond(
         self, status, body=b"", filename=None, content_range=None, full_length=None, location=None
-    ):
+    ) -> None:
         mime, inline = presentation(filename) if filename else ("text/plain; charset=utf-8", True)
         self.send_response(status)
         self.send_header("Content-Type", mime)
@@ -528,12 +547,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
     daemon_threads = True
+    reader: "Reader"
+    slots: threading.BoundedSemaphore
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, server_address: tuple[str, int], handler_class: type[Handler]) -> None:
         self.slots = threading.BoundedSemaphore(MAX_CONNECTIONS)
-        super().__init__(*args, **kwargs)
+        super().__init__(server_address, handler_class)
 
-    def process_request(self, request, client_address):
+    @override
+    def process_request(self, request, client_address) -> None:
         if not self.slots.acquire(blocking=False):
             self.shutdown_request(request)
             return
@@ -543,13 +565,15 @@ class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
             self.slots.release()
             raise
 
-    def process_request_thread(self, request, client_address):
+    @override
+    def process_request_thread(self, request, client_address) -> None:
         try:
             super().process_request_thread(request, client_address)
         finally:
             self.slots.release()
 
-    def handle_error(self, request, client_address):
+    @override
+    def handle_error(self, request, client_address) -> None:
         # Network resets/timeouts must not emit request context or upstream errors.
         pass
 
