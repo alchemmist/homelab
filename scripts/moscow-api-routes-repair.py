@@ -11,11 +11,11 @@ PEERS = {
 }
 
 
-def run(*args):
+def run(*args) -> str:
     return subprocess.run(args, check=True, text=True, capture_output=True, timeout=10).stdout
 
 
-def allowed_ips(text):
+def allowed_ips(text) -> dict[str, list[str]]:
     result = {}
     for line in text.splitlines():
         fields = line.split()
@@ -27,9 +27,9 @@ def allowed_ips(text):
     return result
 
 
-def project(text):
-    blocks = []
-    current = []
+def project(text) -> tuple[list[list[str]], dict[str, list[str]]]:
+    blocks: list[list[str]] = []
+    current: list[str] = []
     for line in text.splitlines(keepends=True):
         if line.strip().startswith("[") and current:
             blocks.append(current)
@@ -53,7 +53,7 @@ def project(text):
     return blocks, parsed
 
 
-def candidate(text, runtime):
+def candidate(text, runtime) -> tuple[str, dict[str, list[str]]]:
     blocks, peers = project(text)
     if peers != runtime:
         raise ValueError("Boot/runtime AllowedIPs drift")
@@ -77,15 +77,15 @@ def candidate(text, runtime):
             for line in block
             if "=" in line and not line.lstrip().startswith(("#", ";"))
         }
-        key = fields.get("PublicKey")
+        pub = fields.get("PublicKey")
         for line in block:
-            if key in PEERS and line.split("=", 1)[0].strip() == "AllowedIPs":
-                line = "AllowedIPs = " + ", ".join(after[key]) + "\n"
+            if pub in PEERS and line.split("=", 1)[0].strip() == "AllowedIPs":
+                line = "AllowedIPs = " + ", ".join(after[pub]) + "\n"
             output.append(line)
     return "".join(output), after
 
 
-def atomic(path, data):
+def atomic(path, data) -> None:
     temp = path.with_name(path.name + ".repair-tmp")
     with temp.open("xb") as stream:
         stream.write(data)
@@ -98,7 +98,7 @@ def atomic(path, data):
     os.close(fd)
 
 
-def repair(apply=False):
+def repair(apply=False) -> dict[str, object]:
     if os.geteuid() != 0:
         raise RuntimeError("Root required")
     if os.uname().nodename != "socrat-4":

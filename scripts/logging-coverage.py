@@ -13,6 +13,7 @@ import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from typing import cast
 
 SAFE = re.compile(r"[A-Za-z0-9_.@:-]{1,253}")
 SEVERITIES = {"trace", "debug", "info", "warn", "error", "fatal", "unknown"}
@@ -28,7 +29,7 @@ LABELS = {
 GROUP = ",".join(sorted(LABELS))
 
 
-def query(selector, window):
+def query(selector: str, window: int) -> str:
     # Extract structured metadata before aggregation, without returning any log lines.
     return (
         "sum by ("
@@ -41,7 +42,7 @@ def query(selector, window):
     )
 
 
-def validate(document):
+def validate(document) -> list[dict[str, object]]:
     if (
         document.get("status") != "success"
         or document.get("warnings")
@@ -66,7 +67,7 @@ def validate(document):
     return clean
 
 
-def inventory(pods, workloads, hosts):
+def inventory(pods, workloads, hosts) -> list[dict[str, object]]:
     sources = []
     for pod in pods.get("items", []):
         meta, spec = pod["metadata"], pod["spec"]
@@ -116,7 +117,7 @@ def inventory(pods, workloads, hosts):
     return sources
 
 
-def host_registry(snapshots):
+def host_registry(snapshots) -> list[dict[str, object]]:
     """Normalize reviewed Ansible service_facts snapshots, never infer emission.
 
     Input: [{"host": canonical_host_name, "services": ansible_facts.services}].
@@ -138,8 +139,8 @@ def host_registry(snapshots):
     return registry
 
 
-def canonical_identity(source, labels):
-    required = ("host_name", "service_name")
+def canonical_identity(source, labels) -> bool:
+    required: tuple[str, ...] = ("host_name", "service_name")
     if source["kind"] == "container":
         required += ("k8s_namespace_name", "audit_pod", "audit_container")
     elif source["kind"] != "host":
@@ -152,7 +153,7 @@ def canonical_identity(source, labels):
     )
 
 
-def matches(source, labels):
+def matches(source, labels) -> bool:
     if source["kind"] == "container":
         return all(
             labels.get(k) == source[v]
@@ -170,7 +171,7 @@ def matches(source, labels):
     return False
 
 
-def assess(sources, recent, hour):
+def assess(sources, recent, hour) -> list[dict[str, object]]:
     rows = []
     for source in sources:
         fresh = [p for p in recent if p["count"] > 0 and matches(source, p["labels"])]
@@ -196,7 +197,7 @@ def assess(sources, recent, hour):
     return rows
 
 
-def kubectl(resource):
+def kubectl(resource) -> dict[str, object]:
     result = subprocess.run(
         ["kubectl", "get", resource, "--all-namespaces", "-o", "json", "--request-timeout=15s"],
         capture_output=True,
@@ -204,10 +205,10 @@ def kubectl(resource):
     )
     if result.returncode:
         raise ValueError("Read-only inventory request failed")
-    return json.loads(result.stdout)
+    return cast("dict[str, object]", json.loads(result.stdout))
 
 
-def fetch(base, context, selector, window):
+def fetch(base, context, selector, window) -> list[dict[str, object]]:
     url = base + "/loki/api/v1/query?" + urllib.parse.urlencode({"query": query(selector, window)})
     with urllib.request.urlopen(url, context=context, timeout=15) as response:
         body = response.read(8 * 1024 * 1024 + 1)
@@ -216,7 +217,7 @@ def fetch(base, context, selector, window):
     return validate(json.loads(body))
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     hosts = parser.add_mutually_exclusive_group(required=True)
     hosts.add_argument(

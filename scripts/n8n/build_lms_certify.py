@@ -10,12 +10,13 @@ PROM = 'http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.clu
 MODEL = 'qwen3.8-27b'
 RUNNER = 'http://REPLACE_RUNNER:9000/certification/check-suite'
 LLM = 'http://litellm.llm.svc.cluster.local:4000/v1/chat/completions'
-nodes, edges = [], {}
+nodes: list[dict[str, object]] = []
+edges: dict[str, dict[str, list[list[dict[str, object]]]]] = {}
 
 
-def node(name, kind, version, params, x, y, credential=None):
-    out = {'id': str(uuid5(NAMESPACE_URL, 'lms-certification/' + name)), 'name': name,
-               'type': 'n8n-nodes-base.' + kind, 'typeVersion': version, 'position': [x, y], 'parameters': params}
+def node(name: str, kind, version, params, x, y, credential=None) -> str:
+    out = dict(id=str(uuid5(NAMESPACE_URL, 'lms-certification/' + name)), name=name,
+               type='n8n-nodes-base.' + kind, typeVersion=version, position=[x, y], parameters=params)
     if credential:
         typ, role = credential
         out['credentials'] = {typ: {'id': 'REPLACE_' + role, 'name': role}}
@@ -23,30 +24,30 @@ def node(name, kind, version, params, x, y, credential=None):
     return name
 
 
-def link(a, b, port=0):
-    branches = edges.setdefault(a, {'main': []})['main']
+def link(a, b, port=0) -> None:
+    branches: list[list[dict[str, object]]] = edges.setdefault(a, {'main': []})['main']
     while len(branches) <= port:
         branches.append([])
     branches[port].append({'node': b, 'type': 'main', 'index': 0})
 
 
-def chain(*names):
+def chain(*names) -> None:
     for a, b in zip(names, names[1:], strict=False):
         link(a, b)
 
 
-def code(name, js, x, y):
+def code(name, js, x, y) -> str:
     return node(name, 'code', 2, {'jsCode': js}, x, y)
 
 
-def check(name, expr, x, y):
+def check(name, expr, x, y) -> str:
     return node(name, 'if', 2.2, {'conditions': {'options': {'version': 2, 'typeValidation': 'strict'},
                 'conditions': [{'id': 'yes', 'leftValue': '={{ ' + expr + ' }}', 'rightValue': '',
                                 'operator': {'type': 'boolean', 'operation': 'true', 'singleValue': True}}],
                 'combinator': 'and'}}, x, y)
 
 
-def http(name, url, x, y, *, body=None, role=None, query=None):
+def http(name, url, x, y, *, body=None, role=None, query=None) -> str:
     params = {'url': url, 'options': {'timeout': 180000 if role=='LITELLM' else 90000 if body else 8000,
               'response': {'response': {'fullResponse': True, 'neverError': True, 'responseFormat': 'json'}}}}
     credential = None
@@ -61,12 +62,12 @@ def http(name, url, x, y, *, body=None, role=None, query=None):
     return result
 
 
-def pg(name, sql, args, x, y):
+def pg(name, sql, args, x, y) -> str:
     return node(name, 'postgres', 2.6, {'operation': 'executeQuery', 'query': sql,
                 'options': {'queryReplacement': '={{ ' + args + ' }}'}}, x, y, ('postgres', 'CERTIFICATION_DB'))
 
 
-def idle(prefix, x, y):
+def idle(prefix, x, y) -> tuple[str, str]:
     # Timestamp the original samples, not the Prometheus query evaluation.
     selector = '{__name__=~"vllm:num_requests_(running|waiting)",model_name="' + MODEL + '"}'
     values = http(prefix + ' queue depth', PROM, x, y, query=selector)
@@ -222,11 +223,11 @@ terminal = pg('Private outcome recorded', '''SELECT phase, count(*)::int AS task
 
 
 
-def ref(name):
+def ref(name) -> str:
     return '$(' + json.dumps(name) + ').item.json'
 
 
-def reducer(name, route, js, x, y):
+def reducer(name, route, js, x, y) -> str:
     n = code(name, f'''const {{phase,data}} = {ref(route)};
 const status = $json.statusCode;
 if ($json.error || status === 429 || status >= 500) return {{json: {{pause:true,reason:$json.error?'transport':'http_'+status}}}};
