@@ -16,10 +16,8 @@ import time
 import threading
 import urllib.error
 import urllib.request
-from collections.abc import Mapping, Sequence
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import TypedDict
 
 sys.path.insert(0, "/app")
 from certify_loop import certify
@@ -36,63 +34,33 @@ PROMETHEUS = os.environ.get(
 LOCK = ROOT / "step.lock"
 
 
-class QueueItem(TypedDict):
-    """One queued certification task."""
-
-    id: str
-    statement: str
-
-
-class CertState(TypedDict):
-    """Persisted loop progress keyed by task id."""
-
-    tasks: dict[str, dict[str, object]]
-
-
-class LoopRecord(TypedDict, total=False):
-    """Fields the loop hook reads from one round record."""
-
-    phase: str
-    reason: str
-    rounds: int
-    cases: list[object]
-    mutation: dict[str, object]
-
-
-def log(event: str, **fields: object):
+def log(event, **fields):
     print(
         json.dumps({"service": "lms-certify", "event": event, **fields}, ensure_ascii=False),
         flush=True,
     )
 
 
-def load_json(path: Path, default: object):
+def load_json(path, default):
     if not path.exists():
         return default
     return json.loads(path.read_text())
 
 
-def load_state() -> CertState:
-    value = load_json(ROOT / "state.json", {"tasks": {}})
-    if not isinstance(value, dict) or not isinstance(value.get("tasks"), dict):
-        raise ValueError("invalid certification state")
-    return {"tasks": value["tasks"]}
-
-
-def save_json(path: Path, value: object):
+def save_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps(value, ensure_ascii=False))
     tmp.replace(path)
 
 
-def _limits():
+def _limits() -> None:
     resource.setrlimit(resource.RLIMIT_CPU, (2, 2))
     resource.setrlimit(resource.RLIMIT_AS, (256 * 1024 * 1024, 256 * 1024 * 1024))
     resource.setrlimit(resource.RLIMIT_NOFILE, (32, 32))
 
 
-def run_python(source: str, stdin: str):
+def run_python(source, stdin):
     """Isolated student process: fresh directory, no secrets, CPU and memory caps."""
     with tempfile.TemporaryDirectory(prefix="lms-") as folder:
         path = Path(folder) / "main.py"
@@ -121,7 +89,7 @@ class ModelBusy(Exception):
     pass
 
 
-def _wait_budget(detail: str):
+def _wait_budget(detail) -> None:
     match = re.search(r"resets at: ([0-9-]{10} [0-9:]{8}) UTC", detail)
     delay = 20
     if match:
@@ -133,7 +101,7 @@ def _wait_budget(detail: str):
     time.sleep(delay)
 
 
-def llm(role: str, prompt: str):
+def llm(role, prompt):
     body = {
         "model": MODEL,
         "temperature": 0,
@@ -186,7 +154,7 @@ def others_waiting():
     return waiting > 0
 
 
-def open_task(queue: Sequence[QueueItem], state: CertState):
+def open_task(queue, state):
     for item in queue:
         record = state["tasks"].get(item["id"], {})
         if record.get("loop") == "v2" and record.get("phase") in {"certified", "needs_review"}:
@@ -195,12 +163,12 @@ def open_task(queue: Sequence[QueueItem], state: CertState):
     return None
 
 
-def run_loop(task_id: str, statement: str):
+def run_loop(task_id, statement):
     try:
-        state = load_state()
+        state = load_json(ROOT / "state.json", {"tasks": {}})
 
-        def hook(record: LoopRecord):
-            current = load_state()
+        def hook(record) -> None:
+            current = load_json(ROOT / "state.json", {"tasks": {}})
             current["tasks"][task_id] = record
             save_json(ROOT / "state.json", current)
             log(
@@ -220,7 +188,7 @@ def run_loop(task_id: str, statement: str):
             pause=others_waiting,
             hook=hook,
         )
-        state = load_state()
+        state = load_json(ROOT / "state.json", {"tasks": {}})
         state["tasks"][task_id] = record
         save_json(ROOT / "state.json", state)
         log(
@@ -277,7 +245,7 @@ class Handler(BaseHTTPRequestHandler):
             log("error", kind=type(exc).__name__)
             self._send({"action": "error", "kind": type(exc).__name__}, 500)
 
-    def _send(self, payload: Mapping[str, object], status: int = 200):
+    def _send(self, payload, status=200) -> None:
         raw = json.dumps(payload).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
@@ -285,7 +253,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(raw)
 
-    def log_message(self, fmt: str, *args: object):
+    def log_message(self, fmt, *args):
         return
 
 

@@ -4,6 +4,7 @@ import importlib.util
 import json
 from pathlib import Path
 import subprocess
+from typing import cast
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -66,18 +67,21 @@ def cluster(tmp_path_factory):
         )
         config.chmod(0o600)
 
-        def kube(*args, **kwargs):
-            return run(
-                [
-                    "kubectl",
-                    "--kubeconfig",
-                    str(config),
-                    "--context",
-                    context,
-                    "--request-timeout=30s",
-                    *args,
-                ],
-                **kwargs,
+        def kube(*args, **kwargs) -> "subprocess.CompletedProcess[str]":
+            return cast(
+                "subprocess.CompletedProcess[str]",
+                run(
+                    [
+                        "kubectl",
+                        "--kubeconfig",
+                        str(config),
+                        "--context",
+                        context,
+                        "--request-timeout=30s",
+                        *args,
+                    ],
+                    **kwargs,
+                ),
             )
 
         view = json.loads(kube("config", "view", "-o", "json").stdout)

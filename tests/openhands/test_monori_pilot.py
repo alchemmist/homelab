@@ -20,7 +20,7 @@ class Pilot(unittest.TestCase):
     def test_restart_moves_to_second_card_once(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             db = str(pathlib.Path(d)/'cards.db'); published=[]; prompts=[]; chats={}
-            def api(path, body=None):
+            def api(path, body=None) -> 'dict[str, object]':
                 if path.startswith('agent-profiles'):return {'profile':{'id':'p','llm_profile_ref':'v-deepseek-uc'}}
                 if path=='conversations':chats[body['conversation_id']]='idle';return {}
                 cid=path.split('/')[1]
@@ -30,7 +30,7 @@ class Pilot(unittest.TestCase):
                 return {'execution_status':chats[cid],'agent':{'llm':{'model':'openai/v-deepseek-uc'}}}
             for step in range(10):
                 m=load();m.DB=db;m.init()
-                def screen(c):
+                def screen(c) -> None:
                     mid=next(iter(m.CAT[c['name']]));m.sql('insert into scans values(?,?,?)',(c['name'],mid,'survived'));m.save(c,'queued',mid)
                 with patch.object(m,'screen',side_effect=screen), patch.object(pathlib.Path,'read_text',return_value=json.dumps({'day_number':'facts','_amount':'facts'})), patch.object(m,'api',side_effect=api), patch.object(m,'verify',return_value=('test.py','test','receipt')), patch.object(m,'http',side_effect=lambda *a: published.append(1) or {'pr':len(published)}),patch.object(pathlib.Path,'read_bytes',return_value=b'test'),patch.object(m.time,'time',return_value=100*step):m.step(m.decision())
             self.assertEqual([r['state'] for r in m.state()],['published','published']);self.assertEqual(len(set(prompts)),2);self.assertEqual(len(published),2)
