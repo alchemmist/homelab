@@ -34,6 +34,7 @@ def pinned_binary(directory, key, filename, images):
 
 
 def create(bundle, binaries, prometheus, exporter_path, backend_ip):
+    exporter_path = Path(exporter_path)
     if ipaddress.ip_address(backend_ip) not in ipaddress.ip_network("10.250.0.0/24"):
         message = "Backend must use an existing private WireGuard address"
         raise ValueError(message)
