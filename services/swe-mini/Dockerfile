@@ -3,8 +3,8 @@ FROM python:3.12-slim-bookworm@sha256:935c3c5b12357a7e10caa9c1e6ca5692344d97cf22
 RUN set -eux; \
     rm -f /etc/apt/sources.list.d/debian.sources; \
     printf '%s\n' \
-      'deb [check-valid-until=no] https://snapshot.debian.org/archive/debian/20251120T000000Z bookworm main' \
-      'deb [check-valid-until=no] https://snapshot.debian.org/archive/debian-security/20251120T000000Z bookworm-security main' \
+      'deb [check-valid-until=no] https://snapshot.debian.org/archive/debian/20260101T000000Z bookworm main' \
+      'deb [check-valid-until=no] https://snapshot.debian.org/archive/debian-security/20260101T000000Z bookworm-security main' \
       > /etc/apt/sources.list; \
     apt-get -o Acquire::Retries=3 update; \
     DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 install -y --no-install-recommends \
