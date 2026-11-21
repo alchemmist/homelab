@@ -1,3 +1,4 @@
+"""Fixture definitions, prompts, and verifiers for Venice autonomy benchmark tasks."""
 import copy
 import html
 import json

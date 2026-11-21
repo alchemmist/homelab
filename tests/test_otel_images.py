@@ -1,3 +1,5 @@
+"""Tests for the OpenTelemetry image build and publishing tooling."""
+
 import hashlib
 import importlib.util
 import io

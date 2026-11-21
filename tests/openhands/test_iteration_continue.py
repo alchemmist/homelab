@@ -1,3 +1,4 @@
+"""Tests for OpenHands max-iteration resume eligibility logic."""
 import importlib.util,pathlib,unittest
 p=pathlib.Path(__file__).resolve().parents[2]/'charts/openhands/files/continue_iterations.py';s=importlib.util.spec_from_file_location('resume',p);m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
 class Resume(unittest.TestCase):

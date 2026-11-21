@@ -1,3 +1,5 @@
+"""Tests for PR readiness evaluation in the scripts/openhands-pr-ready module."""
+
 import copy
 from typing import cast
 import importlib.util

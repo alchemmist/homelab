@@ -9,7 +9,7 @@ import runpy
 import tempfile
 import unittest
 from unittest.mock import patch
-from typing import cast
+from typing import TypedDict, cast
 from urllib.parse import parse_qs
 
 import pytest
@@ -80,8 +80,14 @@ class Fake:
         return {"results": rows}
 
 
+class BootstrapManifest(TypedDict):
+    """Manifest captured by bootstrap.py via stdin."""
+
+    stringData: dict[str, str]
+
+
 class AutomationTests(unittest.TestCase):
-    def root(self, d):
+    def root(self, d) -> Path:
         p = Path(d)
         p.chmod(0o700)
         a.save(
@@ -94,7 +100,7 @@ class AutomationTests(unittest.TestCase):
         )
         return p
 
-    def test_apply_and_repeat_do_not_delete_or_change_humans(self):
+    def test_apply_and_repeat_do_not_delete_or_change_humans(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             fake = Fake()
@@ -120,7 +126,7 @@ class AutomationTests(unittest.TestCase):
                 json.loads(before[0].read_text())["AUTHENTIK_BOOTSTRAP_TOKEN"], "unit-old-token"
             )
 
-    def test_check_without_migration_does_not_write(self):
+    def test_check_without_migration_does_not_write(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             with patch.object(a, "api") as api, contextlib.redirect_stdout(io.StringIO()):
@@ -128,7 +134,7 @@ class AutomationTests(unittest.TestCase):
             api.assert_not_called()
             self.assertFalse((p / "automation-api.json").exists())
 
-    def test_foreign_account_refused(self):
+    def test_foreign_account_refused(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             fake = Fake()
@@ -137,7 +143,7 @@ class AutomationTests(unittest.TestCase):
                 a.migrate(p, "apply")
             self.assertEqual(fake.writes, [])
 
-    def test_wrong_owner_uuid_refused(self):
+    def test_wrong_owner_uuid_refused(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             fake = Fake()
@@ -146,7 +152,7 @@ class AutomationTests(unittest.TestCase):
                 a.migrate(p, "apply")
             self.assertEqual(fake.writes, [])
 
-    def test_alias_drift_refused(self):
+    def test_alias_drift_refused(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             fake = Fake()
@@ -156,16 +162,16 @@ class AutomationTests(unittest.TestCase):
             with patch.object(a, "api", fake), self.assertRaises(RuntimeError):
                 a.migrate(p, "check")
 
-    def bootstrap(self, p):
+    def bootstrap(self, p) -> BootstrapManifest:
         with (
             patch("sys.argv", ["bootstrap.py", str(p)]),
             patch("subprocess.run") as run,
             contextlib.redirect_stdout(io.StringIO()),
         ):
             runpy.run_path(str(FILES / "bootstrap.py"), run_name="__main__")
-        return json.loads(run.call_args.kwargs["input"])
+        return cast("BootstrapManifest", json.loads(run.call_args.kwargs["input"]))
 
-    def test_runtime_excludes_admin_secrets_after_migration(self):
+    def test_runtime_excludes_admin_secrets_after_migration(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             a.save(p / "automation-api.json", {"status": "active", "token": "unit-old-token"})
@@ -174,19 +180,19 @@ class AutomationTests(unittest.TestCase):
             self.assertNotIn("AUTHENTIK_BOOTSTRAP_PASSWORD", manifest)
             self.assertEqual(manifest["AUTHENTIK_SECRET_KEY"], "unit-signing-key")
 
-    def test_fresh_install_still_has_initial_bootstrap(self):
+    def test_fresh_install_still_has_initial_bootstrap(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             self.assertIn("AUTHENTIK_BOOTSTRAP_TOKEN", self.bootstrap(p)["stringData"])
 
-    def test_incomplete_journal_refuses_secret_apply(self):
+    def test_incomplete_journal_refuses_secret_apply(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             a.save(p / "automation-api.json", {"status": "preparing"})
             with self.assertRaises(SystemExit):
                 self.bootstrap(p)
 
-    def ready_retirement(self, p, fake):
+    def ready_retirement(self, p, fake) -> None:
         with patch.object(a, "api", fake), contextlib.redirect_stdout(io.StringIO()):
             a.migrate(p, "apply")
         j = json.loads((p / "automation-api.json").read_text())
@@ -204,7 +210,7 @@ class AutomationTests(unittest.TestCase):
             return json.dumps({"data": {}, "metadata": {"annotations": {}}}).encode()
         return json.dumps({"spec": {"template": {"spec": {"containers": [{"env": []}]}}}}).encode()
 
-    def test_retirement_requires_recovery_and_backup(self):
+    def test_retirement_requires_recovery_and_backup(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             fake = Fake()
@@ -218,7 +224,7 @@ class AutomationTests(unittest.TestCase):
                 a.retire_default_admin(p)
             self.assertFalse(any(m == "DELETE" for m, _, _ in fake.writes))
 
-    def test_retirement_refuses_different_default_admin_uuid(self):
+    def test_retirement_refuses_different_default_admin_uuid(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             fake = Fake()
@@ -233,7 +239,7 @@ class AutomationTests(unittest.TestCase):
                 a.retire_default_admin(p)
             self.assertFalse(any(m == "DELETE" for m, _, _ in fake.writes))
 
-    def test_retirement_refuses_runtime_bootstrap_secret(self):
+    def test_retirement_refuses_runtime_bootstrap_secret(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             fake = Fake()
@@ -250,7 +256,7 @@ class AutomationTests(unittest.TestCase):
                 a.retire_default_admin(p)
             self.assertFalse(any(m == "DELETE" for m, _, _ in fake.writes))
 
-    def test_retirement_exact_identity_and_idempotence(self):
+    def test_retirement_exact_identity_and_idempotence(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             p = self.root(d)
             fake = Fake()

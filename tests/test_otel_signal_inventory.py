@@ -1,3 +1,5 @@
+"""Tests for the OpenTelemetry signal inventory."""
+
 import importlib.util
 import json
 from pathlib import Path
