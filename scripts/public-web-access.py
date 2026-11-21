@@ -25,6 +25,7 @@ def unique(rows, key, value):
 
 class API:
     def __init__(self, path):
+        """Initialize the public API client."""
         self.token = json.loads(Path(path).read_text())["AUTHENTIK_BOOTSTRAP_TOKEN"]
 
         class NoRedirect(urllib.request.HTTPRedirectHandler):

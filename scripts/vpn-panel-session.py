@@ -132,6 +132,7 @@ def pod_identity():
 
 class NativeSession:
     def __init__(self, state, database=DB, worker_scope="node-sync"):
+        """Initialize the native panel session."""
         if worker_scope not in ("node-sync", "admin"):
             raise ValueError("Unreviewed worker scope")
         self.worker_scope = worker_scope

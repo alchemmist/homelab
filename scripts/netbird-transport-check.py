@@ -27,6 +27,7 @@ ENTRANCES = ["109.173.40.247", "109.120.141.60"]
 
 class WS:
     def __init__(self, address):
+        """Initialize the secure WebSocket connection."""
         self.s = ssl.create_default_context().wrap_socket(
             socket.create_connection((address, 443), timeout=10), server_hostname=HOST
         )

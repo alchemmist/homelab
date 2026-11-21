@@ -11,6 +11,7 @@ from engine import REPO, UPDATES, UnsafeInput
 
 class GitHub:
     def __init__(self, token):
+        """Initialize the GitHub client."""
         self.token = token
 
     def api(self, method, path, body=None):

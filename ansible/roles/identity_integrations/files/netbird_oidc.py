@@ -169,6 +169,7 @@ def _private_read(path):
 
 class Authentik:
     def __init__(self, base, token, get_only):
+        """Initialize the Authentik client."""
         self.base = base.rstrip("/")
         self.token = token
         self.get_only = get_only

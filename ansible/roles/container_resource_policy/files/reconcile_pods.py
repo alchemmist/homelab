@@ -242,6 +242,7 @@ def eviction_payload(pod):
 
 class Client:
     def __init__(self, kubectl, kubeconfig):
+        """Initialize the kubectl client."""
         self.command = [kubectl, "--kubeconfig", kubeconfig, "--request-timeout=30s"]
 
     def pods(self):

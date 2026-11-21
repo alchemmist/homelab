@@ -33,6 +33,7 @@ def kubectl(arguments, payload=None):
 
 class Grafana:
     def __init__(self, url, username, password):
+        """Initialize the Grafana client."""
         self.url = url
         encoded = base64.b64encode((username + ":" + password).encode()).decode()
         self.authorization = "Basic " + encoded

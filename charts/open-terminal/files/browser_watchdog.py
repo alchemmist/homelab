@@ -111,6 +111,7 @@ class Browser:
 
 class Watchdog:
     def __init__(self, lifetime=900, grace=5, ticks=None, send=signal_process):
+        """Initialize watchdog timing and process handling."""
         self.lifetime = lifetime
         self.grace = grace
         self.ticks = ticks or os.sysconf("SC_CLK_TCK")

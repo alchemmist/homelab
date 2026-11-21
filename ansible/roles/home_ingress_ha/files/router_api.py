@@ -36,6 +36,7 @@ def canonical(rows):
 
 class Router:
     def __init__(self, credentials, address):
+        """Initialize the router client."""
         self.base = "http://" + str(ipaddress.IPv4Address(address))
         self.cookie = None
         page = self.request("/login.htm")

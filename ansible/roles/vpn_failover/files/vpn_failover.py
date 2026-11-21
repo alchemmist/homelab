@@ -20,6 +20,7 @@ NATIVE_UNITS = ["homelab-vpn-primary.service", "homelab-vpn-caddy.service"]
 
 class Watchdog:
     def __init__(self, config):
+        """Initialize the failover watchdog."""
         self.config = config
         self.state = Path(config.get("state_dir", STATE_DIR))
         self.agent = config.get("agent_unit", "k3s.service")

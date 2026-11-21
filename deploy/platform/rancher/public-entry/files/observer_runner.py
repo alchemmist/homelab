@@ -11,6 +11,7 @@ import urllib.parse
 
 class DiagnosticFailure(RuntimeError):
     def __init__(self, event):
+        """Initialize the diagnostic failure."""
         super().__init__("Observer dependency operation failed")
         self.event = event
 
@@ -65,6 +66,7 @@ def stage(request):
 
 class ObservedHTTP:
     def __init__(self, inner):
+        """Initialize the observed HTTP wrapper."""
         self.inner = inner
 
     @contextlib.contextmanager

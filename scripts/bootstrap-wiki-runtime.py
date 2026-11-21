@@ -12,6 +12,7 @@ class BootstrapError(Exception):
 
 class Kubernetes:
     def __init__(self, command):
+        """Initialize the Kubernetes client."""
         self.command = command
 
     def run(self, *args, payload=None):

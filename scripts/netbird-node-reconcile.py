@@ -240,6 +240,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 class Runtime:
     def __init__(self, folder, config, apply=False):
+        """Initialize the reconciliation runtime."""
         self.folder, self.config, self.apply = folder, validate_config(config), apply
         self.k = [
             "env",

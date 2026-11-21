@@ -252,6 +252,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 class Authentik:
     def __init__(self, url, token, ca_file=None):
+        """Initialize the Authentik client."""
         parsed = urllib.parse.urlsplit(url)
         require(
             parsed.scheme == "https"

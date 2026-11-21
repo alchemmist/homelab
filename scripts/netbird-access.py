@@ -336,6 +336,7 @@ def offboard_plan(s, username, expected_uuid):
 
 class API:
     def __init__(self, nb_credentials, ak_credentials):
+        """Initialize API credentials."""
         self.nb = json.loads(Path(nb_credentials).read_text())["token"]
         self.ak = json.loads(Path(ak_credentials).read_text())["AUTHENTIK_BOOTSTRAP_TOKEN"]
 

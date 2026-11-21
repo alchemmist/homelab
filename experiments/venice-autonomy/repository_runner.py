@@ -66,6 +66,7 @@ class CandidateRejected(ValueError):
 
 class RepositoryEnvironment:
     def __init__(self, snapshot, directory, image, protocol):
+        """Initialize the repository environment."""
         self.directory = directory
         self.directory.mkdir()
         self.events = []

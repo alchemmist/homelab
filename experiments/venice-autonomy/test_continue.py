@@ -6,6 +6,7 @@ from repository_runner import apply_continuation_policy
 
 class Conversation:
     def __init__(self, failures=0):
+        """Initialize the conversation fixture."""
         self.failures = failures
         self.runs = 0
         self.messages = []
