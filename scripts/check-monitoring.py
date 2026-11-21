@@ -101,20 +101,16 @@ def remote_http_status(
     return int(status)
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--ssh-host", default="socrat-0")
-    parser.add_argument("--grafana-url", default="https://grafana.socrat.alchemmist.xyz")
-    parser.add_argument("--external-ssh-host", default="socrat-2-direct")
-    parser.add_argument("--grafana-private-address", default="10.250.0.3")
-    parser.add_argument("--grafana-private-source", default="10.250.0.1")
-    parser.add_argument("--grafana-public-address", default="109.173.40.247")
-    parser.add_argument("--snapshot", type=Path)
-    parser.add_argument("--compare", type=Path)
-    parser.add_argument("--wait-seconds", type=int, default=120)
-    args = parser.parse_args()
-    nodes = kubectl(args.ssh_host, "get", "nodes", "-o", "json")["items"]
+def _check_nodes(host: str) -> tuple[set[object], dict[str, str], int, int]:
+    """Verify every cluster node is Ready and return per-node identities."""
+    nodes = kubectl(host, "get", "nodes", "-o", "json")["items"]
     names = {node["metadata"]["name"] for node in nodes}
+    node_addresses = {
+        node["metadata"]["name"]: next(
+            a["address"] for a in node["status"]["addresses"] if a["type"] == "InternalIP"
+        )
+        for node in nodes
+    }
     etcd_count = sum(
         "node-role.kubernetes.io/etcd" in node["metadata"].get("labels", {}) for node in nodes
     )
@@ -127,14 +123,25 @@ def main():
         ),
         f"all {len(nodes)} nodes Ready",
     )
-    deadline = time.monotonic() + max(0, args.wait_seconds)
+    return names, node_addresses, len(nodes), etcd_count
+
+
+def _wait_for_targets(host: str, wait_seconds: int) -> object:
+    """Wait until every Prometheus scrape target reports up."""
+    deadline = time.monotonic() + max(0, wait_seconds)
     while True:
-        targets = prometheus(args.ssh_host, "targets")["activeTargets"]
+        targets = prometheus(host, "targets")["activeTargets"]
         if targets and all(target.get("health") == "up" for target in targets):
             break
         if time.monotonic() >= deadline:
             break
         time.sleep(min(5, max(0, deadline - time.monotonic())))
+    return targets
+
+
+def _check_targets(host: str, wait_seconds: int) -> None:
+    """Report scrape target health and require every target to be up."""
+    targets = _wait_for_targets(host, wait_seconds)
     require(bool(targets), "Prometheus discovered scrape targets")
     print("Target counts:", json.dumps(target_summary(targets), sort_keys=True))
     failures = [
@@ -145,9 +152,13 @@ def main():
     require(
         not failures, "all active targets UP" + (": " + json.dumps(failures) if failures else "")
     )
+
+
+def _check_queries(host: str, names: set[object], node_count: int, etcd_count: int) -> None:
+    """Verify exporter, kubelet, etcd and kube-state-metrics coverage queries."""
     checks = [
-        ("count(node_uname_info)", len(nodes), "node exporter coverage"),
-        ('count(kubelet_node_name{job="kubelet"})', len(nodes), "kubelet coverage"),
+        ("count(node_uname_info)", node_count, "node exporter coverage"),
+        ('count(kubelet_node_name{job="kubelet"})', node_count, "kubelet coverage"),
         (
             'count(etcd_server_has_leader{job="kube-etcd"} == 1)',
             etcd_count,
@@ -155,12 +166,12 @@ def main():
         ),
     ]
     for expression, expected, label in checks:
-        values = query(args.ssh_host, expression)
+        values = query(host, expression)
         require(
             len(values) == 1 and float(values[0]["value"][1]) == expected,
             f"{label}: expected {expected}",
         )
-    reported = {item["metric"].get("node") for item in query(args.ssh_host, "kube_node_info")}
+    reported = {item["metric"].get("node") for item in query(host, "kube_node_info")}
     require(reported == names, "kube-state-metrics covers current node names")
     for metric in [
         "node_memory_MemAvailable_bytes",
@@ -171,12 +182,17 @@ def main():
         "scheduler_pending_pods",
         "workqueue_depth",
     ]:
-        require(bool(query(args.ssh_host, metric)), metric + " present")
-    pvcs = kubectl(args.ssh_host, "-n", NAMESPACE, "get", "pvc", "-o", "json")["items"]
+        require(bool(query(host, metric)), metric + " present")
+
+
+def _check_storage(host: str) -> dict[str, str]:
+    """Verify the monitoring PVCs and their local-path node pinning."""
+    pvcs = kubectl(host, "-n", NAMESPACE, "get", "pvc", "-o", "json")["items"]
+    pvc_uids = {pvc["metadata"]["name"]: pvc["metadata"]["uid"] for pvc in pvcs}
     require(len(pvcs) >= 3, "Prometheus, Grafana and Alertmanager persistent claims exist")
     volumes = {
         volume["metadata"]["name"]: volume
-        for volume in kubectl(args.ssh_host, "get", "pv", "-o", "json")["items"]
+        for volume in kubectl(host, "get", "pv", "-o", "json")["items"]
     }
     for pvc in pvcs:
         name = pvc["metadata"]["name"]
@@ -202,7 +218,12 @@ def main():
             ),
             name + " pinned to " + expected,
         )
-    pods = kubectl(args.ssh_host, "-n", NAMESPACE, "get", "pods", "-o", "json")["items"]
+    return pvc_uids
+
+
+def _check_pods(host: str) -> None:
+    """Require Ready monitoring pods with explicit memory requests and limits."""
+    pods = kubectl(host, "-n", NAMESPACE, "get", "pods", "-o", "json")["items"]
     for pod in pods:
         if pod["status"].get("phase") in ["Succeeded", "Failed"]:
             continue
@@ -220,8 +241,12 @@ def main():
                 and bool(resources.get("limits", {}).get("memory")),
                 pod["metadata"]["name"] + "/" + container["name"] + " has memory request and limit",
             )
+
+
+def _check_overview_dashboard(host: str) -> None:
+    """Verify the provisioned Overview dashboard and its health panel."""
     dashboard = kubectl(
-        args.ssh_host,
+        host,
         "get",
         "--raw",
         f"/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/dashboards/uid/socrat-overview",
@@ -238,8 +263,12 @@ def main():
         and health["options"]["colorMode"] == "background_solid",
         "Cluster health shows alert counts in colored cards",
     )
+
+
+def _check_alert_rules(host: str) -> None:
+    """Verify alerting rules, Rancher links and description accuracy."""
     rules = kubectl(
-        args.ssh_host,
+        host,
         "get",
         "--raw",
         f"/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/prometheus/prometheus/api/v1/rules",
@@ -280,8 +309,12 @@ def main():
             == "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer",
             f"{name} links to the Rancher cluster",
         )
+
+
+def _check_catalog(host: str) -> None:
+    """Verify only the curated primary and embedded Rancher dashboards exist."""
     catalog = kubectl(
-        args.ssh_host,
+        host,
         "get",
         "--raw",
         f"/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/search?limit=1000",
@@ -314,9 +347,13 @@ def main():
         ),
         "Only primary and embedded Rancher dashboards are installed",
     )
+
+
+def _check_rancher_node_dashboards(host: str, node_addresses: dict[str, str]) -> None:
+    """Verify the embedded Rancher node dashboards resolve and query every node."""
     for uid in ["rancher-node-1", "rancher-node-detail-1"]:
         node_dashboard = kubectl(
-            args.ssh_host,
+            host,
             "get",
             "--raw",
             f"/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/dashboards/uid/{uid}",
@@ -331,12 +368,8 @@ def main():
             if p.get("title") == "CPU Utilization"
             for t in p["targets"]
         )
-        for node in nodes:
-            name = node["metadata"]["name"]
-            address = next(
-                a["address"] for a in node["status"]["addresses"] if a["type"] == "InternalIP"
-            )
-            resolved = query(args.ssh_host, expression.replace("$instance", address + ":9796"))
+        for name, address in node_addresses.items():
+            resolved = query(host, expression.replace("$instance", address + ":9796"))
             require(
                 len(resolved) == 1 and resolved[0]["metric"].get("nodename") == name,
                 f"{uid} resolves Rancher instance for {name}",
@@ -345,13 +378,16 @@ def main():
             require(
                 bool(
                     query(
-                        args.ssh_host,
+                        host,
                         cpu.replace("$exporter_instance", actual).replace("$__rate_interval", "2m"),
                     )
                 ),
                 f"{uid} CPU query returns data for {name}",
             )
 
+
+def _check_public_absence(args: argparse.Namespace) -> None:
+    """Confirm Grafana stays unreachable from the public address with any source."""
     url = args.grafana_url.rstrip("/") + "/api/search"
     require(
         remote_http_status(
@@ -397,8 +433,12 @@ def main():
             "external public address has no Grafana route"
             + (f" with spoofed X-Forwarded-For: {forwarded_for}" if forwarded_for else ""),
         )
+
+
+def _check_anonymous_viewer(host: str) -> None:
+    """Verify the internal anonymous Grafana Viewer can find the Overview."""
     search = kubectl(
-        args.ssh_host,
+        host,
         "get",
         "--raw",
         f"/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/search",
@@ -407,11 +447,15 @@ def main():
         isinstance(search, list) and any(item.get("uid") == "socrat-overview" for item in search),
         "internal anonymous Grafana Viewer can find Overview",
     )
+
+
+def _persist_snapshots(host: str, args: argparse.Namespace, pvc_uids: dict[str, str]) -> None:
+    """Write or compare the persistence baseline snapshots as requested."""
     timestamp = int(time.time()) - 60
     snapshot = {
         "timestamp": timestamp,
-        "samples": query(args.ssh_host, "node_uname_info", timestamp),
-        "pvc_uids": {pvc["metadata"]["name"]: pvc["metadata"]["uid"] for pvc in pvcs},
+        "samples": query(host, "node_uname_info", timestamp),
+        "pvc_uids": pvc_uids,
     }
     if args.snapshot:
         require(bool(snapshot["samples"]), "historical samples available for persistence baseline")
@@ -427,13 +471,39 @@ def main():
             baseline["samples"], key=lambda item: json.dumps(item["metric"], sort_keys=True)
         )
         current = sorted(
-            query(args.ssh_host, "node_uname_info", baseline["timestamp"]),
+            query(host, "node_uname_info", baseline["timestamp"]),
             key=lambda item: json.dumps(item["metric"], sort_keys=True),
         )
         require(
             bool(saved) and current == saved,
             "historical Prometheus samples survived controlled restart",
         )
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--ssh-host", default="socrat-0")
+    parser.add_argument("--grafana-url", default="https://grafana.socrat.alchemmist.xyz")
+    parser.add_argument("--external-ssh-host", default="socrat-2-direct")
+    parser.add_argument("--grafana-private-address", default="10.250.0.3")
+    parser.add_argument("--grafana-private-source", default="10.250.0.1")
+    parser.add_argument("--grafana-public-address", default="109.173.40.247")
+    parser.add_argument("--snapshot", type=Path)
+    parser.add_argument("--compare", type=Path)
+    parser.add_argument("--wait-seconds", type=int, default=120)
+    args = parser.parse_args()
+    names, node_addresses, node_count, etcd_count = _check_nodes(args.ssh_host)
+    _check_targets(args.ssh_host, args.wait_seconds)
+    _check_queries(args.ssh_host, names, node_count, etcd_count)
+    pvc_uids = _check_storage(args.ssh_host)
+    _check_pods(args.ssh_host)
+    _check_overview_dashboard(args.ssh_host)
+    _check_alert_rules(args.ssh_host)
+    _check_catalog(args.ssh_host)
+    _check_rancher_node_dashboards(args.ssh_host, node_addresses)
+    _check_public_absence(args)
+    _check_anonymous_viewer(args.ssh_host)
+    _persist_snapshots(args.ssh_host, args, pvc_uids)
 
 
 if __name__ == "__main__":
