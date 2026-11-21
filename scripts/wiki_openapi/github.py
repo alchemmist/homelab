@@ -15,7 +15,9 @@ class GitHubError(Exception):
     pass
 
 
-def _request(url, token=None, method="GET", body=None):
+def _request(
+    url: str, token: str | None = None, method: str = "GET", body: object = None
+) -> object:
     headers = {
         "Accept": "application/vnd.github+json",
         "User-Agent": "socrat-wiki-openapi",
@@ -42,7 +44,7 @@ def _request(url, token=None, method="GET", body=None):
 
 
 class BotRepo:
-    def files(self, before, after):
+    def files(self, before: object, after: object):
         require_sha(after)
         if before == "0" * 40:
             commit = _request(f"https://api.github.com/repos/{BOT}/commits/{after}")
@@ -57,7 +59,7 @@ class BotRepo:
             raise GitHubError("Compare file list truncated")
         return compared.get("files") or []
 
-    def text(self, sha, path):
+    def text(self, sha: object, path: str):
         require_sha(sha)
         if path not in ("openapi.yaml", "scripts/render_wiki.py"):
             raise GitHubError("Unexpected bot path")
@@ -68,13 +70,13 @@ class BotRepo:
 
 
 class Homelab:
-    def __init__(self, token):
+    def __init__(self, token: str):
         self.token = token
 
-    def api(self, method, path, body=None):
+    def api(self, method: str, path: str, body: object = None):
         return _request(f"https://api.github.com/repos/{HOME}/{path}", self.token, method, body)
 
-    def read_page(self, ref="main"):
+    def read_page(self, ref: str = "main"):
         item = self.api("GET", f"contents/{PAGE}?ref={ref}")
         if item is None:
             return None, None
@@ -82,7 +84,7 @@ class Homelab:
             raise GitHubError("Unexpected page encoding")
         return base64.b64decode(item["content"]).decode(), item["sha"]
 
-    def propose(self, after, markdown):
+    def propose(self, after: object, markdown: str):
         branch = branch_for(after)
         existing = self.api("GET", f"pulls?state=open&head=alchemmist:{branch}&per_page=20") or []
         if existing:
@@ -119,7 +121,7 @@ class Homelab:
         )
         return {"status": "created", "number": pr["number"], "url": pr["html_url"]}
 
-    def automation_prs(self, keep):
+    def automation_prs(self, keep: object):
         found, page = [], 1
         while page <= 5:
             batch = self.api("GET", f"pulls?state=open&per_page=50&page={page}") or []
@@ -145,7 +147,7 @@ class Homelab:
             page += 1
         return found
 
-    def close(self, number, survivor):
+    def close(self, number: object, survivor: object):
         self.api(
             "POST",
             f"issues/{number}/comments",

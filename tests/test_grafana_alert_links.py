@@ -27,30 +27,36 @@ RULE = {
 class AlertLinksTest(unittest.TestCase):
     # 0fd62090 changed the annotation (part of the hash), leaving its golden stale.
     # This fixed definition is not a claim about the current live rules API.
-    def test_known_native_definition_fingerprint(self):
+    def test_known_native_definition_fingerprint(self) -> None:
+        """Pin the native definition fingerprint of the known rule."""
         self.assertEqual(LINKS.rule_hash(RULE), "-381316856")
 
-    def test_runtime_state_does_not_change_url(self):
+    def test_runtime_state_does_not_change_url(self) -> None:
+        """Ignore runtime state when fingerprinting a rule."""
         changed = dict(RULE, state="firing", alerts=[{"value": "100"}], lastEvaluation="now")
         self.assertEqual(LINKS.rule_hash(RULE), LINKS.rule_hash(changed))
 
-    def test_expression_change_changes_fingerprint(self):
+    def test_expression_change_changes_fingerprint(self) -> None:
+        """Treat expression changes as fingerprint changes only with provenance."""
         self.assertNotEqual(LINKS.rule_hash(RULE), LINKS.rule_hash(dict(RULE, query="up == 0")))
         self.assertEqual(
             LINKS.rule_hash(RULE, True), LINKS.rule_hash(dict(RULE, query="up == 0"), True)
         )
 
-    def test_javascript_utf16_hash(self):
+    def test_javascript_utf16_hash(self) -> None:
+        """Match the JavaScript string hash over UTF-16 code units."""
         self.assertEqual(LINKS.js_hash("😀"), 1772899)
         self.assertEqual(LINKS.js_hash("hello world"), 1794106052)
 
-    def test_native_escaping(self):
+    def test_native_escaping(self) -> None:
+        """Escape file and group names the same way as upstream."""
         group = {"file": "/etc/rules/a.yaml", "name": "group$one"}
         url = LINKS.rule_url(group, RULE)
         self.assertIn("pri$Prometheus$\x1fetc\x1frules\x1fa.yaml$group_DOLLAR_one$", unquote(url))
         self.assertTrue(url.endswith("%24-381316856/view"))
 
-    def test_grouped_selectors_keep_severity_variants_and_ignore_other_metrics(self):
+    def test_grouped_selectors_keep_severity_variants_and_ignore_other_metrics(self) -> None:
+        """Keep severity variants and ignore metrics that are not ALERTS."""
         other = dict(RULE, name="Other", labels={"severity": "critical"})
         warning = dict(other, labels={"severity": "warning"})
         dashboard = {
@@ -73,12 +79,14 @@ class AlertLinksTest(unittest.TestCase):
         self.assertEqual(len({link["url"] for link in links}), 3)
         self.assertIn("Other · critical", [link["title"] for link in links])
 
-    def test_missing_rule_fails_instead_of_incomplete_links(self):
+    def test_missing_rule_fails_instead_of_incomplete_links(self) -> None:
+        """Fail instead of rendering incomplete links for missing rules."""
         dashboard = {"panels": [{"id": 2, "targets": [{"expr": 'ALERTS{alertname="Missing"}'}]}]}
         with self.assertRaisesRegex(ValueError, "Missing"):
             LINKS.resolve(dashboard, {"data": {"groups": []}}, {})
 
-    def test_convergence_rejects_old_expression_and_accepts_current(self):
+    def test_convergence_rejects_old_expression_and_accepts_current(self) -> None:
+        """Refuse stale rule expressions during convergence."""
         group = {"name": "group", "file": "/rules/ns-resource-uid.yaml", "rules": [RULE]}
         expected = [("ns-resource-uid.yaml", "group", RULE)]
         LINKS.require_convergence({"data": {"groups": [group]}}, expected)
@@ -86,7 +94,8 @@ class AlertLinksTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "current rule definitions"):
             LINKS.require_convergence({"data": {"groups": [stale]}}, expected)
 
-    def test_convergence_checks_annotations_and_resource_uid(self):
+    def test_convergence_checks_annotations_and_resource_uid(self) -> None:
+        """Check annotations and the resource UID during convergence."""
         expected = [("ns-resource-uid.yaml", "group", RULE)]
         for rule, filename in [
             (dict(RULE, annotations={}), "ns-resource-uid.yaml"),
@@ -96,7 +105,8 @@ class AlertLinksTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 LINKS.require_convergence({"data": {"groups": [group]}}, expected)
 
-    def test_expected_rule_formatting_is_cached(self):
+    def test_expected_rule_formatting_is_cached(self) -> None:
+        """Cache formatted expressions by their raw text."""
         rule = {
             "alert": RULE["name"],
             "expr": "(up > 0)",
@@ -116,9 +126,10 @@ class AlertLinksTest(unittest.TestCase):
                 {"id": 1, "targets": [{"expr": 'ALERTS{alertname="SocratNodeResourceContention"}'}]}
             ]
         }
-        calls = []
+        calls: list[str] = []
 
-        def formatter(expression) -> str:
+        def formatter(expression: str) -> str:
+            """Format one expression while recording every raw call."""
             calls.append(expression)
             return "up > 0"
 
@@ -127,7 +138,8 @@ class AlertLinksTest(unittest.TestCase):
         self.assertEqual(expected[0][0], "ns-resource-uid.yaml")
         self.assertEqual(expected[0][2]["query"], "up > 0")
 
-    def test_overview_service_links_preserve_other_panel_navigation(self):
+    def test_overview_service_links_preserve_other_panel_navigation(self) -> None:
+        """Scope service links to matching panels only."""
         service = dict(RULE, name="SocratServiceBlogUnavailable")
         dashboard = {
             "panels": [
@@ -156,13 +168,15 @@ class AlertLinksTest(unittest.TestCase):
         self.assertEqual(set(result["overviewAlertLinks"]), {"301"})
         self.assertIn("SocratServiceBlogUnavailable", result["overviewAlertLinks"]["301"][0]["url"])
 
-    def test_generic_alert_regex_is_not_a_literal_rule_name(self):
+    def test_generic_alert_regex_is_not_a_literal_rule_name(self) -> None:
+        """Do not treat a generic regex as a literal rule name."""
         panel = {
             "targets": [{"expr": 'ALERTS{alertname=~".*"} or ALERTS{alertname=~"SocratService.*"}'}]
         }
         self.assertEqual(LINKS.panel_rules(panel), set())
 
-    def test_expected_rules_apply_same_service_filter(self):
+    def test_expected_rules_apply_same_service_filter(self) -> None:
+        """Apply the same service filter while discovering rules."""
         service = {"alert": "SocratServiceBlogUnavailable", "expr": "up == 0"}
         resources = {
             "items": [
@@ -191,7 +205,8 @@ class AlertLinksTest(unittest.TestCase):
             [rule["name"] for _, _, rule in expected], ["SocratServiceBlogUnavailable"]
         )
 
-    def test_query_normalization(self):
+    def test_query_normalization(self) -> None:
+        """Normalize comments and formatting before comparing queries."""
         self.assertEqual(
             LINKS.query_fingerprint('(up{foo="bar",} > 0) # comment'),
             LINKS.query_fingerprint('up{foo="bar"}>0'),

@@ -22,7 +22,7 @@ def main():
     class Reader:
         def __init__(self,f):
             self.f=f;self.decrypt=Cipher(algorithms.AES(key),modes.GCM(iv,crypt.tag)).decryptor();self.decrypt.authenticate_additional_data(AAD);self.hash=hashlib.sha256();self.done=False
-        def read(self,size):
+        def read(self,size) -> bytes:
             if self.done:return b''
             buf=self.f.read(size)
             if not buf:self.decrypt.finalize();self.done=True;return b''

@@ -1,4 +1,5 @@
 from pathlib import Path
+import types
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -31,7 +32,8 @@ def test_enrollment_cannot_release_native_fence() -> None:
     )
 
 
-def runtime_module():
+def runtime_module() -> types.ModuleType:
+    """Load the offline worker-retirement runtime module."""
     import importlib.util
 
     s = importlib.util.spec_from_file_location(

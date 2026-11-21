@@ -2,16 +2,68 @@
 
 import copy
 import unittest
+from typing import Protocol, TypedDict
 from unittest.mock import Mock, patch
+
 import test_triage as f
 from core import Failure, digest
-from integrations import Model, GitHub
+from integrations import GitHub, Model
 
 GOOD = {"issue_number": 0, "reason": "Different problem", "confidence": "low"}
 
 
+class IssueRow(TypedDict):
+    """Fake GitHub issue row served by the issues fixture."""
+
+    number: int
+    updated_at: str
+    title: str
+    body: str
+    recent_comments: list[str]
+
+
+class ReviewItem(TypedDict):
+    """Single LLM review entry stored in a match proof."""
+
+    content: str
+    decision: dict[str, object]
+
+
+class ProofProgress(TypedDict, total=False):
+    """Progress payload captured from the matcher via on_progress."""
+
+    reviews: list[ReviewItem]
+    snapshot: list[dict[str, object]]
+    selection: dict[str, object]
+
+
+class MatchResult(TypedDict, total=False):
+    """Result payload returned by the matcher after analysis."""
+
+    reviewed_numbers: list[int]
+
+
+class PayloadFn(Protocol):
+    """Callable building matcher request payloads."""
+
+    def __call__(self, *args: object, **kwargs: object) -> dict[str, object]:
+        """Return a request payload for the matcher."""
+        ...
+
+
+class PreparedModel(Protocol):
+    """Duck-type of integrations.Model produced by the prepare fixture."""
+
+    call: Mock
+    payload: PayloadFn
+
+    def match(self, event: object, issues: object, *args: object, **kwargs: object) -> MatchResult:
+        """Run the matcher; return its result payload."""
+        ...
+
+
 class ReviewReuseTests(unittest.TestCase):
-    def issues(self):
+    def issues(self) -> list[IssueRow]:
         return [
             {
                 "number": i,
@@ -23,15 +75,17 @@ class ReviewReuseTests(unittest.TestCase):
             for i in range(1, 62)
         ]
 
-    def prepare(self, issues, event=None):
-        m = Model(Mock(), "fake")
+    def prepare(
+        self, issues: list[IssueRow], event: object | None = None
+    ) -> tuple[PreparedModel, ProofProgress]:
+        m: PreparedModel = Model(Mock(), "fake")
         m.call = Mock(return_value=GOOD)
-        saved = []
+        saved: list[ProofProgress] = []
         m.match(event or f.event(), issues, on_progress=lambda p: saved.append(copy.deepcopy(p)))
         self.assertEqual(m.call.call_count, 6)
         return m, saved[-1]
 
-    def test_four_jobs_exact_partitions_survive_updates_inserts_deletes_reordering(self):
+    def test_four_jobs_exact_partitions_survive_updates_inserts_deletes_reordering(self) -> None:
         original = self.issues()
         for index in range(4):
             m, proof = self.prepare(original, f.event(start="2026-11-03T13:00:0%dZ" % index))
@@ -39,7 +93,7 @@ class ReviewReuseTests(unittest.TestCase):
             if index == 0:
                 current[15]["recent_comments"].append("bot publication")
             elif index == 1:
-                current.insert(0, dict(current[0], number=99))
+                current.insert(0, {**current[0], "number": 99})
             elif index == 2:
                 current.pop(15)
             else:
@@ -59,7 +113,7 @@ class ReviewReuseTests(unittest.TestCase):
             self.assertEqual(len(retained), 5 if index in (0, 2) else 6)
             self.assertEqual(proof["snapshot"], original)
 
-    def test_owner_model_prompt_and_content_proofs_fail_closed(self):
+    def test_owner_model_prompt_and_content_proofs_fail_closed(self) -> None:
         issues = self.issues()
         m, proof = self.prepare(issues)
         m.call.reset_mock()
@@ -93,7 +147,7 @@ class ReviewReuseTests(unittest.TestCase):
                 m.match(f.event(), issues, bad)
             m.call.assert_not_called()
 
-    def test_transfer_persisted_before_admission_and_legacy_never_rebound(self):
+    def test_transfer_persisted_before_admission_and_legacy_never_rebound(self) -> None:
         issues = self.issues()
         m, proof = self.prepare(issues)
         current = copy.deepcopy(issues)
@@ -107,7 +161,7 @@ class ReviewReuseTests(unittest.TestCase):
         m.match(f.event(), current, {"version": 2, **proof, "contract": "unknown"})
         self.assertEqual(m.call.call_count, 6)
 
-    def test_closed_nominee_is_removed_and_semantic_final_recomputed(self):
+    def test_closed_nominee_is_removed_and_semantic_final_recomputed(self) -> None:
         issues = self.issues()
         m = Model(Mock(), "fake")
         saved = []
@@ -126,7 +180,7 @@ class ReviewReuseTests(unittest.TestCase):
             m.call.call_count, 1
         )  # invalidated batch plus semantic nominee reduction
 
-    def test_selection_proof_survives_repeated_restart_deferral(self):
+    def test_selection_proof_survives_repeated_restart_deferral(self) -> None:
         issues = self.issues()
         m = Model(Mock(), "fake")
         saved = []
@@ -155,7 +209,7 @@ class ReviewReuseTests(unittest.TestCase):
         m.match(f.event(), issues, saved[-1])
         self.assertEqual(m.call.call_count, 4)
 
-    def test_cheap_signature_same_universe_without_comments(self):
+    def test_cheap_signature_same_universe_without_comments(self) -> None:
         g = GitHub(Mock(), "unused")
         g.issues = Mock(return_value=self.issues())
         g.comments = Mock()
@@ -170,7 +224,7 @@ class EarlyFenceTests(unittest.TestCase):
     setUp = f.EngineTests.setUp
     tearDown = f.EngineTests.tearDown
 
-    def test_twenty_safe_deferrals_zero_analysis_preserve_cache_and_budget(self):
+    def test_twenty_safe_deferrals_zero_analysis_preserve_cache_and_budget(self) -> None:
         key = self.store.enqueue(f.event())["job_id"]
         self.store.claim()
         proof = {"private": "fake-proof"}
@@ -197,7 +251,7 @@ class EarlyFenceTests(unittest.TestCase):
         with self.store.db() as c:
             self.assertEqual(c.execute("select count(*) from job_failure_budget").fetchone()[0], 0)
 
-    def test_rollback_result_reset_retains_separate_checkpoint(self):
+    def test_rollback_result_reset_retains_separate_checkpoint(self) -> None:
         from core import Store
 
         model = Model(Mock(), "fake")
@@ -218,7 +272,7 @@ class EarlyFenceTests(unittest.TestCase):
         model.call.assert_not_called()
         self.assertEqual(self.store.match_checkpoint(key), proof)
 
-    def test_unsafe_intent_not_cleared_or_patient(self):
+    def test_unsafe_intent_not_cleared_or_patient(self) -> None:
         key = self.store.enqueue(f.event())["job_id"]
         self.store.claim()
         self.store.save(key, 3, {"publication_backend": "legacy"}, intent='{"number":7}')
@@ -236,13 +290,14 @@ class ChurnPublicationTests(unittest.TestCase):
     setUp = f.EngineTests.setUp
     tearDown = f.EngineTests.tearDown
 
-    def test_four_prepared_jobs_eventually_publish_after_own_bot_updates(self):
+    def test_four_prepared_jobs_eventually_publish_after_own_bot_updates(self) -> None:
+        import hashlib
         from types import SimpleNamespace
-        from service import Engine
+
         from core import Store
         from evidence_bundle import prepare_bundle, storage_objects
+        from service import Engine
         from telegram_links import Links
-        import hashlib
 
         now = [1000]
         with patch("core.time.time", side_effect=lambda: now[0]):

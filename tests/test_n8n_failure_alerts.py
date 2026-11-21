@@ -13,11 +13,25 @@ import sync_failure_alerts as sync
 TEMPLATE = json.loads((ROOT / "docs/n8n/workflow-failure-alerts.json").read_text())
 
 
+def _mapping(value: object) -> dict[str, object]:
+    """Return the assert-verified mapping view of a parsed JSON value."""
+    assert isinstance(value, dict)
+    result: dict[str, object] = value
+    return result
+
+
+def _text(value: object) -> str:
+    """Return the assert-verified string view of a parsed JSON value."""
+    assert isinstance(value, str)
+    return value
+
+
 class FailureAlertsTests(unittest.TestCase):
-    def notification(self, payload, handler="4321"):
+    def notification(self, payload, handler="4321") -> dict[str, object]:
+        """Run the alert template's JS code against a payload via node:vm."""
         code = TEMPLATE["nodes"][1]["parameters"]["jsCode"]
         js = 'const vm=require("node:vm");const x=JSON.parse(process.argv[1]);const fn=vm.runInNewContext("(function(){"+x.code+"})",{items:[{json:x.payload}],$execution:{id:x.handler}});console.log(JSON.stringify(fn()));'
-        return json.loads(
+        result: dict[str, object] = json.loads(
             subprocess.check_output(
                 [
                     "node",
@@ -27,8 +41,9 @@ class FailureAlertsTests(unittest.TestCase):
                 ]
             )
         )[0]["json"]
+        return result
 
-    def test_metadata_only_and_trusted_url(self):
+    def test_metadata_only_and_trusted_url(self) -> None:
         p = {
             "workflow": {"id": "abc123", "name": "Calendar"},
             "execution": {
@@ -45,30 +60,36 @@ class FailureAlertsTests(unittest.TestCase):
         self.assertNotIn("private", text)
         self.assertNotIn("evil.invalid", text)
         self.assertEqual(
-            result["alert"]["generatorURL"],
+            _mapping(result["alert"])["generatorURL"],
             "https://n8n.socrat.alchemmist.xyz/workflow/abc123/executions/123",
         )
         self.assertEqual(
-            result["alert"]["fingerprint"], self.notification(p, "9999")["alert"]["fingerprint"]
+            _mapping(result["alert"])["fingerprint"],
+            _mapping(self.notification(p, "9999")["alert"])["fingerprint"],
         )
         p["execution"]["id"] = "124"
         self.assertNotEqual(
-            result["alert"]["fingerprint"], self.notification(p)["alert"]["fingerprint"]
+            _mapping(result["alert"])["fingerprint"],
+            _mapping(self.notification(p)["alert"])["fingerprint"],
         )
 
-    def test_trigger_failure_without_execution_id(self):
+    def test_trigger_failure_without_execution_id(self) -> None:
         p = {
             "workflow": {"id": "abc", "name": "Calendar"},
             "trigger": {"error": {"message": "password"}},
         }
         result = self.notification(p)
-        self.assertIn("Trigger failure", result["alert"]["annotations"]["description"])
+        self.assertIn(
+            "Trigger failure",
+            _text(_mapping(_mapping(result["alert"])["annotations"])["description"]),
+        )
         self.assertNotIn("password", json.dumps(result))
         self.assertNotEqual(
-            result["alert"]["fingerprint"], self.notification(p, "9999")["alert"]["fingerprint"]
+            _mapping(result["alert"])["fingerprint"],
+            _mapping(self.notification(p, "9999")["alert"])["fingerprint"],
         )
 
-    def test_no_message_storage_retries_recursion_or_spi_ingress(self):
+    def test_no_message_storage_retries_recursion_or_spi_ingress(self) -> None:
         self.assertNotIn("errorWorkflow", TEMPLATE["settings"])
         self.assertEqual(TEMPLATE["settings"]["saveDataErrorExecution"], "none")
         self.assertEqual(TEMPLATE["settings"]["saveDataSuccessExecution"], "none")
@@ -80,7 +101,8 @@ class FailureAlertsTests(unittest.TestCase):
             last["parameters"]["url"], "http://socrat-bot.socrat-bot.svc:8080/v1/messages"
         )
 
-    def wf(self, active=True):
+    def wf(self, active=True) -> dict[str, object]:
+        """Build an example workflow document in the requested active state."""
         return {
             "id": "abc",
             "name": "Calendar",
@@ -98,17 +120,17 @@ class FailureAlertsTests(unittest.TestCase):
             else None,
         }
 
-    def test_guard_rejects_unpublished_changes_and_other_handler(self):
+    def test_guard_rejects_unpublished_changes_and_other_handler(self) -> None:
         w = self.wf()
-        w["activeVersion"]["nodes"] = []
+        _mapping(w["activeVersion"])["nodes"] = []
         with self.assertRaises(RuntimeError):
             sync.guard(w, "handler")
         w = self.wf()
-        w["settings"]["errorWorkflow"] = "other"
+        _mapping(w["settings"])["errorWorkflow"] = "other"
         with self.assertRaises(RuntimeError):
             sync.guard(w, "handler")
 
-    def test_only_settings_change_and_active_state_preserved(self):
+    def test_only_settings_change_and_active_state_preserved(self) -> None:
         for active in (True, False):
             original = self.wf(active)
             current = copy.deepcopy(original)
@@ -134,9 +156,9 @@ class FailureAlertsTests(unittest.TestCase):
             self.assertEqual(sum(m == "POST" for m, _, _ in calls), int(active))
             self.assertFalse(any("execute" in path or "deactivate" in path for _, path, _ in calls))
 
-    def test_idempotent_and_concurrent_drift_stops(self):
+    def test_idempotent_and_concurrent_drift_stops(self) -> None:
         w = self.wf()
-        w["settings"]["errorWorkflow"] = "handler"
+        _mapping(w["settings"])["errorWorkflow"] = "handler"
         calls = []
 
         def api(*args) -> dict[str, object]:
@@ -150,7 +172,7 @@ class FailureAlertsTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             sync.bind(api, before, "handler")
 
-    def test_only_native_github_registration_may_change(self):
+    def test_only_native_github_registration_may_change(self) -> None:
         before = self.wf()
         before["nodes"] = [{"id": "n", "name": "Push", "type": "n8n-nodes-base.githubTrigger"}]
         before["staticData"] = {
@@ -158,32 +180,34 @@ class FailureAlertsTests(unittest.TestCase):
             "global": {"checkpoint": "preserved"},
         }
         after = copy.deepcopy(before)
-        after["settings"]["errorWorkflow"] = "handler"
-        after["staticData"]["node:Push"].update(webhookId=2, webhookSecret="new")
+        _mapping(after["settings"])["errorWorkflow"] = "handler"
+        _mapping(_mapping(after["staticData"])["node:Push"]).update(
+            webhookId=2, webhookSecret="new"
+        )
         sync.check(before, after, "handler")
-        after["staticData"]["global"]["checkpoint"] = "changed"
+        _mapping(_mapping(after["staticData"])["global"])["checkpoint"] = "changed"
         with self.assertRaises(RuntimeError):
             sync.check(before, after, "handler")
         after = copy.deepcopy(before)
-        after["settings"]["errorWorkflow"] = "handler"
-        after["staticData"]["node:Push"]["webhookEvents"] = ["issues"]
+        _mapping(after["settings"])["errorWorkflow"] = "handler"
+        _mapping(_mapping(after["staticData"])["node:Push"])["webhookEvents"] = ["issues"]
         with self.assertRaises(RuntimeError):
             sync.check(before, after, "handler")
 
-    def test_transient_put_state_requires_authoritative_readback(self):
+    def test_transient_put_state_requires_authoritative_readback(self) -> None:
         before = self.wf()
         before["staticData"] = {"checkpoint": "must-remain"}
         transient = copy.deepcopy(before)
-        transient["settings"]["errorWorkflow"] = "handler"
+        _mapping(transient["settings"])["errorWorkflow"] = "handler"
         transient["staticData"] = None
         sync.check(before, transient, "handler", verify_static=False)
         with self.assertRaises(RuntimeError):
             sync.check(before, transient, "handler")
         stable = copy.deepcopy(before)
-        stable["settings"]["errorWorkflow"] = "handler"
+        _mapping(stable["settings"])["errorWorkflow"] = "handler"
         sync.check(before, stable, "handler")
 
-    def test_unexpected_settings_drift_stops(self):
+    def test_unexpected_settings_drift_stops(self) -> None:
         before = self.wf()
         after = copy.deepcopy(before)
         after["settings"] = {"errorWorkflow": "handler"}

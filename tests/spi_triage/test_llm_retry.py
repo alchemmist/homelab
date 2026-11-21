@@ -11,7 +11,7 @@ class DurableRetryTests(unittest.TestCase):
     setUp = f.CoreTests.setUp
     tearDown = f.CoreTests.tearDown
 
-    def test_many_transient_failures_survive_restart_then_complete(self):
+    def test_many_transient_failures_survive_restart_then_complete(self) -> None:
         e = f.event()
         key = self.store.enqueue(e)["job_id"]
         for _ in range(20):
@@ -30,7 +30,7 @@ class DurableRetryTests(unittest.TestCase):
         self.assertEqual(self.store.get(key)["state"], "complete")
         self.assertEqual(self.store.get(key)["attempts"], 21)
 
-    def test_permanent_and_ambiguous_errors_still_stop(self):
+    def test_permanent_and_ambiguous_errors_still_stop(self) -> None:
         for index, code in enumerate(
             ["HTTP_429", "LLM_HTTP_400", "LLM_HTTP_401", "LLM_HTTP_403", "WRITE_NEEDS_REVIEW"]
         ):
@@ -50,7 +50,7 @@ class DurableRetryTests(unittest.TestCase):
                     8,
                 )
 
-    def test_jitter_cap_and_retry_hint_validation(self):
+    def test_jitter_cap_and_retry_hint_validation(self) -> None:
         key = self.store.enqueue(f.event())["job_id"]
         with self.store.db() as c:
             c.execute("update jobs set attempts=10000 where id=?", (key,))
@@ -63,7 +63,7 @@ class DurableRetryTests(unittest.TestCase):
 
 
 class ModelRetryTests(unittest.TestCase):
-    def test_transport_classification_and_hint_preserved(self):
+    def test_transport_classification_and_hint_preserved(self) -> None:
         for code in [
             "HTTP_429",
             "HTTP_503",
@@ -81,7 +81,7 @@ class ModelRetryTests(unittest.TestCase):
             self.assertEqual(caught.exception.retry_after, 91)
             self.assertEqual(http.request.call_count, 1)  # durable queue retry, no busy loop
 
-    def test_retry_after_seconds_and_date(self):
+    def test_retry_after_seconds_and_date(self) -> None:
         from email.utils import formatdate
 
         for value in ["120", formatdate(time.time() + 180, usegmt=True), "invalid", "NaN"]:
@@ -97,7 +97,7 @@ class ModelRetryTests(unittest.TestCase):
             else:
                 self.assertGreater(caught.exception.retry_after, 100)
 
-    def test_batch_checkpoint_resumes_and_changed_snapshot_invalidates(self):
+    def test_batch_checkpoint_resumes_and_changed_snapshot_invalidates(self) -> None:
         good = {"issue_number": 0, "reason": "Different", "confidence": "low"}
         issues = [{"number": i} for i in range(25)]
         m = Model(Mock(), "fake")
@@ -121,7 +121,7 @@ class EngineCheckpointTests(unittest.TestCase):
     setUp = f.EngineTests.setUp
     tearDown = f.EngineTests.tearDown
 
-    def test_partial_matching_checkpoint_saved_before_busy_failure(self):
+    def test_partial_matching_checkpoint_saved_before_busy_failure(self) -> None:
         def matching(event, issues, progress=None, on_progress=None) -> None:
             on_progress({"signature": "test", "decisions": []})
             raise Failure("LLM_HTTP_429")
@@ -136,7 +136,7 @@ class EngineCheckpointTests(unittest.TestCase):
         self.assertEqual(r["state"], "retry")
         self.github.request.assert_not_called()
 
-    def test_many_llm_deferrals_do_not_exhaust_github_reconciliation(self):
+    def test_many_llm_deferrals_do_not_exhaust_github_reconciliation(self) -> None:
         key = self.store.enqueue(f.event())["job_id"]
         self.model.match.side_effect = Failure("LLM_HTTP_429")
         for _ in range(20):

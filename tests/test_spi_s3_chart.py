@@ -8,14 +8,14 @@ import yaml
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
-def render(chart, *values):
+def render(chart, *values) -> list[dict[str, object]]:
     cmd = ["helm", "template", "test", str(ROOT / "charts" / chart)]
     for value in values:
         cmd += ["--set", value]
     return list(yaml.safe_load_all(subprocess.check_output(cmd, text=True)))
 
 
-def resource(docs, kind, name):
+def resource(docs, kind, name) -> dict[str, object]:
     return next(d for d in docs if d and d["kind"] == kind and d["metadata"]["name"] == name)
 
 

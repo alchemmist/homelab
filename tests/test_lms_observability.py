@@ -9,44 +9,78 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def render(*args):
-    return list(
+def render(*args) -> list[dict[str, object]]:
+    docs: list[dict[str, object]] = list(
         yaml.safe_load_all(
             subprocess.check_output(
                 ["helm", "template", "lms", str(ROOT / "charts/lms"), *args], text=True
             )
         )
     )
+    return docs
 
 
-def test_live_values_enable_mtls_without_secret_contents():
+def _mapping(value: object) -> dict[str, object]:
+    """Return the assert-verified mapping view of a parsed YAML value."""
+    assert isinstance(value, dict)
+    result: dict[str, object] = value
+    return result
+
+
+def _documents(value: object) -> list[dict[str, object]]:
+    """Return the assert-verified list-of-documents view of a parsed YAML value."""
+    assert isinstance(value, list)
+    documents: list[dict[str, object]] = value
+    return documents
+
+
+def _mapping_path(document: dict[str, object], *keys: str) -> dict[str, object]:
+    """Walk nested mappings of a parsed document and return the final mapping."""
+    value: object = document
+    for key in keys:
+        value = _mapping(value)[key]
+    return _mapping(value)
+
+
+def _name(document: dict[str, object]) -> str:
+    """Return the metadata name of a parsed Kubernetes document."""
+    return _text(_mapping(document["metadata"])["name"])
+
+
+def _text(value: object) -> str:
+    """Return the assert-verified string view of a parsed YAML value."""
+    assert isinstance(value, str)
+    return value
+
+
+def test_live_values_enable_mtls_without_secret_contents() -> None:
     docs = render("-f", str(ROOT / "deploy/lms/values.yaml"))
-    dep = next(
-        x for x in docs if x and x["kind"] == "Deployment" and x["metadata"]["name"] == "lms"
-    )
-    pod = dep["spec"]["template"]["spec"]
-    env = {e["name"]: e.get("value") for e in pod["containers"][0]["env"]}
+    dep = next(x for x in docs if x and x["kind"] == "Deployment" and _name(x) == "lms")
+    pod = _mapping_path(dep, "spec", "template", "spec")
+    env = {
+        e["name"]: e.get("value")
+        for e in _documents(_documents(pod["containers"])[0]["env"])
+    }
     assert env["LMS_TRACING_ENABLED"] == "1"
     assert env["LMS_TRACE_SAMPLE_RATIO"] == "1"
     assert env["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] == "https://10.250.0.3:44318/v1/traces"
     assert env["OTEL_EXPORTER_OTLP_TRACES_CLIENT_KEY"] == "/etc/otel-client/tls.key"
-    volume = next(x for x in pod["volumes"] if x["name"] == "otel-client")
+    volume = next(x for x in _documents(pod["volumes"]) if x["name"] == "otel-client")
     assert volume["secret"] == {"secretName": "otel-app-tls-lms", "defaultMode": 0o440}
-    assert pod["securityContext"]["fsGroup"] == 10001
-    assert next(x for x in pod["containers"][0]["volumeMounts"] if x["name"] == "otel-client")[
-        "readOnly"
-    ]
+    assert _mapping(pod["securityContext"])["fsGroup"] == 10001
+    mounts = _documents(_documents(pod["containers"])[0]["volumeMounts"])
+    assert next(x for x in mounts if x["name"] == "otel-client")["readOnly"]
 
 
-def test_dashboard_is_gitops_provisioned_and_uses_real_log_labels():
+def test_dashboard_is_gitops_provisioned_and_uses_real_log_labels() -> None:
     docs = render("-f", str(ROOT / "deploy/lms/values.yaml"))
     cm = next(
         x
         for x in docs
-        if x and x["kind"] == "ConfigMap" and x["metadata"]["name"] == "lms-performance-dashboard"
+        if x and x["kind"] == "ConfigMap" and _name(x) == "lms-performance-dashboard"
     )
-    assert cm["metadata"]["labels"]["grafana_dashboard"] == "1"
-    dashboard = json.loads(cm["data"]["lms-performance.json"])
+    assert _mapping(_mapping(cm["metadata"])["labels"])["grafana_dashboard"] == "1"
+    dashboard = json.loads(_text(_mapping(cm["data"])["lms-performance.json"]))
     assert dashboard["uid"] == "lms-performance"
     assert any(p["type"] == "traces" for p in dashboard["panels"])
     variable = next(x for x in dashboard["templating"]["list"] if x["name"] == "trace_id")
@@ -59,15 +93,14 @@ def test_dashboard_is_gitops_provisioned_and_uses_real_log_labels():
     assert "trace_id:regex" not in recent["targets"][0]["expr"]
 
 
-def test_disabled_chart_does_not_mount_credentials():
+def test_disabled_chart_does_not_mount_credentials() -> None:
     docs = render("--set", "tracing.enabled=false")
-    dep = next(
-        x for x in docs if x and x["kind"] == "Deployment" and x["metadata"]["name"] == "lms"
-    )
-    assert not any(x["name"] == "otel-client" for x in dep["spec"]["template"]["spec"]["volumes"])
+    dep = next(x for x in docs if x and x["kind"] == "Deployment" and _name(x) == "lms")
+    volumes = _mapping_path(dep, "spec", "template", "spec")["volumes"]
+    assert not any(x["name"] == "otel-client" for x in _documents(volumes))
 
 
-def test_renewal_scope_is_only_lms_leaf_and_lms_deployment():
+def test_renewal_scope_is_only_lms_leaf_and_lms_deployment() -> None:
     docs = list(
         yaml.safe_load_all(
             (ROOT / "deploy/monitoring/otel-application-credentials.yaml").read_text()
@@ -108,14 +141,14 @@ def test_renewal_scope_is_only_lms_leaf_and_lms_deployment():
     ]
 
 
-def test_trace_id_panel_uses_supported_traceql_id_query():
+def test_trace_id_panel_uses_supported_traceql_id_query() -> None:
     dashboard = json.loads((ROOT / "charts/lms/files/lms-performance.json").read_text())
     panel = next(x for x in dashboard["panels"] if x["type"] == "traces")
     assert panel["targets"][0]["queryType"] == "traceql"
     assert panel["targets"][0]["query"] == "${trace_id}"
 
 
-def test_correlations_preserve_credentials_and_survive_refresh():
+def test_correlations_preserve_credentials_and_survive_refresh() -> None:
     spec = importlib.util.spec_from_file_location(
         "correlations", ROOT / "scripts/lms-grafana-correlations.py"
     )
@@ -145,7 +178,7 @@ def test_correlations_preserve_credentials_and_survive_refresh():
         assert "$${__value.raw}" in source
 
 
-def test_dashboard_pins_existing_datasources_without_redundant_selectors():
+def test_dashboard_pins_existing_datasources_without_redundant_selectors() -> None:
     dashboard = json.loads((ROOT / "charts/lms/files/lms-performance.json").read_text())
     assert [variable["name"] for variable in dashboard["templating"]["list"]] == ["trace_id"]
     assert dashboard["templating"]["list"][0]["datasource"] == {"type": "tempo", "uid": "tempo"}
@@ -157,7 +190,7 @@ def test_dashboard_pins_existing_datasources_without_redundant_selectors():
     assert "${loki}" not in json.dumps(dashboard)
 
 
-def test_selected_trace_logs_cover_tempo_retention_not_only_narrow_dashboard_range():
+def test_selected_trace_logs_cover_tempo_retention_not_only_narrow_dashboard_range() -> None:
     dashboard = json.loads((ROOT / "charts/lms/files/lms-performance.json").read_text())
     logs = next(panel for panel in dashboard["panels"] if panel["id"] == 4)
     assert logs["timeFrom"] == "7d"
@@ -166,7 +199,7 @@ def test_selected_trace_logs_cover_tempo_retention_not_only_narrow_dashboard_ran
     assert "timeFrom" not in recent
 
 
-def test_waterfall_is_the_primary_panel_before_trace_table():
+def test_waterfall_is_the_primary_panel_before_trace_table() -> None:
     dashboard = json.loads((ROOT / "charts/lms/files/lms-performance.json").read_text())
     waterfall = next(p for p in dashboard["panels"] if p["id"] == 3)
     table = next(p for p in dashboard["panels"] if p["id"] == 2)
@@ -175,18 +208,23 @@ def test_waterfall_is_the_primary_panel_before_trace_table():
     assert waterfall["gridPos"]["w"] == 24
 
 
-def test_dashboard_starts_with_waterfall_without_instruction_text_panel():
+def test_dashboard_starts_with_waterfall_without_instruction_text_panel() -> None:
     dashboard = json.loads((ROOT / "charts/lms/files/lms-performance.json").read_text())
     assert not any(panel["type"] == "text" or panel["id"] == 1 for panel in dashboard["panels"])
     first = min(dashboard["panels"], key=lambda panel: panel["gridPos"]["y"])
     assert first["id"] == 3 and first["gridPos"]["y"] == 0
 
 
-def test_hibernated_database_alerts_do_not_page_for_production_lms():
-    def rules(*override) -> set[str]:
+def test_hibernated_database_alerts_do_not_page_for_production_lms() -> None:
+    def rules(*override):
         docs = render('-f', str(ROOT / 'deploy/lms/values.yaml'), *override)
-        group = next(d for d in docs if d and d['kind'] == 'PrometheusRule' and d['metadata']['name'] == 'lms-availability')['spec']['groups'][0]
-        return {r['alert'] for r in group['rules']}
+        rule = next(
+            d
+            for d in docs
+            if d and d['kind'] == 'PrometheusRule' and _name(d) == 'lms-availability'
+        )
+        groups = _documents(_mapping(rule['spec'])['groups'])
+        return {r['alert'] for r in _documents(groups[0]['rules'])}
 
     assert rules() == {'LMSWebUnavailable'}
     assert rules('--set', 'lms-database-ha.hibernate=false') == {

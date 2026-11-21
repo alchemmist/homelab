@@ -146,7 +146,7 @@ class State:
 
 def serve(state, port):
     class Handler(BaseHTTPRequestHandler):
-        def do_GET(self):
+        def do_GET(self) -> None:
             if self.path != "/metrics":
                 self.send_response(404)
                 self.end_headers()
@@ -159,7 +159,7 @@ def serve(state, port):
             self.end_headers()
             self.wfile.write(body)
 
-        def log_message(self, _fmt, *_args):
+        def log_message(self, _fmt, *_args) -> None:
             return
 
     server = ThreadingHTTPServer(("0.0.0.0", port), Handler)
@@ -226,7 +226,7 @@ def main():
         targets = json.load(handle)
     state = State()
 
-    def refresh():
+    def refresh() -> None:
         while True:
             state.update(evaluate(targets, fetch_releases, timeout, load_images(targets, timeout)))
             time.sleep(interval)

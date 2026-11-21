@@ -57,12 +57,12 @@ def bounded_process(args, limit, timeout=55, input_bytes=None):
         process.stdout.close()
 
 
-def _raw_member_name(data, offset):
+def _raw_member_name(data, offset) -> str:
     if not isinstance(offset, int) or offset < 0 or offset + 512 > len(data):
         raise ValueError("invalid archive")
     header = data[offset : offset + 512]
 
-    def take(field):
+    def take(field: bytes) -> str:
         if b"\0" in field:
             head, tail = field.split(b"\0", 1)
             if tail.replace(b"\0", b""):
