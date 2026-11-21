@@ -35,6 +35,14 @@ DB = Path("/srv/x-ui-lab/db/x-ui.db")
 KUBE = ["/usr/local/bin/kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml"]
 
 
+class _Credential(TypedDict, total=False):
+    """Machine credential fields consumed by this tool (JSON payloads stay dynamic)."""
+
+    id: object
+    scope: str
+    token: str
+
+
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     @typing.override
     def redirect_request(self, *args, **kwargs) -> typing.NoReturn:
@@ -138,7 +146,7 @@ def pod_identity() -> "dict[str, object]":
 
 
 class NativeSession:
-    def __init__(self, state, database=DB, worker_scope="node-sync"):
+    def __init__(self, state, database=DB, worker_scope="node-sync") -> None:
         if worker_scope not in ("node-sync", "admin"):
             raise ValueError("Unreviewed worker scope")
         self.worker_scope = worker_scope
@@ -149,9 +157,9 @@ class NativeSession:
             raise ValueError("Use a fresh explicit vpn83-* session name")
         self.names = {kind: label + "-" + kind for kind in ("bootstrap", "cleanup", "worker")}
         self.base = None
-        self.credentials = {}
-        self.original = []
-        self.lock = None
+        self.credentials: dict[str, _Credential] = {}
+        self.original: list[dict[str, object]] = []
+        self.lock: TextIO | None = None
 
     def preview(self) -> "dict[str, object]":
         original = token_rows(self.database)
