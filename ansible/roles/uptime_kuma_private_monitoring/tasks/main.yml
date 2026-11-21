@@ -26,8 +26,7 @@
 - name: Locate the active database and evaluate DNS drift
   ansible.builtin.set_fact:
     kuma_private_node: >-
-      {{ (kuma_private_current.stdout | from_json).spec.template.spec
-         .nodeSelector['kubernetes.io/hostname'] }}
+      {{ (kuma_private_current.stdout | from_json).spec.template.spec.nodeSelector['kubernetes.io/hostname'] }}
     kuma_private_data: >-
       {{ ((kuma_private_current.stdout | from_json).spec.template.spec.volumes
           | selectattr('name', 'equalto', 'data') | first).hostPath.path }}
