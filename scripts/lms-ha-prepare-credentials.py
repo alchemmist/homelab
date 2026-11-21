@@ -1,3 +1,4 @@
+"""Prepare high-availability failover credentials for the LMS deployment."""
 import json
 import secrets
 import subprocess

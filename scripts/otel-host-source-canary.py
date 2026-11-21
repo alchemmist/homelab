@@ -1,3 +1,4 @@
+"""Validate the OpenTelemetry host source canary configuration."""
 import argparse
 import hashlib
 import json

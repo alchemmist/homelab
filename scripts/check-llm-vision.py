@@ -1,3 +1,4 @@
+"""Check an LLM vision model by having it read code words from an image."""
 import argparse
 import base64
 import io

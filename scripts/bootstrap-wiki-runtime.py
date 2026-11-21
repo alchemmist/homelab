@@ -1,3 +1,4 @@
+"""Bootstrap the wiki runtime resources on the Kubernetes cluster."""
 import argparse
 import base64
 import json

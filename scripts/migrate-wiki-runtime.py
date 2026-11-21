@@ -1,3 +1,4 @@
+"""Migrate wiki runtime content to the current format version."""
 import argparse
 import hashlib
 import json

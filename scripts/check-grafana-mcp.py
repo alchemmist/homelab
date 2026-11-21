@@ -1,3 +1,4 @@
+"""Smoke-check the public Grafana MCP proxy endpoint."""
 import argparse
 import base64
 import json

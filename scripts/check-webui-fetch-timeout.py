@@ -1,3 +1,4 @@
+"""Check the web fetch timeout setting and fetch tool call behaviour."""
 import asyncio
 import json
 import time
