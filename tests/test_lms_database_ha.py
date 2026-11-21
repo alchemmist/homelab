@@ -252,9 +252,14 @@ def test_copy_refuses_live_ha_or_unknown_endpoint_before_creating_job(monkeypatc
         {"LMS_DATABASE_URL": "invalid-base64!"},
         {"LMS_DATABASE_URL": base64.b64encode(b"").decode()},
     ]:
-        calls = []
+        calls: list[tuple[object, ...]] = []
 
-        def kube(*args, **kwargs):
+        def kube(
+            *args: object,
+            data: dict[str, str] = data,
+            calls: "list[tuple[object, ...]]" = calls,
+            **kwargs: object,
+        ) -> str:
             calls.append(args)
             assert args == ("-n", "lms", "get", "secret", "lms-db", "-o", "json")
             return json.dumps({"data": data})

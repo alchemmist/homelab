@@ -394,6 +394,7 @@ class EngineStorageTests(unittest.TestCase):
     def test_legacy_intent_reconciles_before_snapshot_each_checkpoint(self):
         import copy, json
 
+        original_save = self.store.save
         for field in ("pending", "done", "index_pending", "index_done"):
             with self.subTest(field=field):
                 progress = {
@@ -423,7 +424,6 @@ class EngineStorageTests(unittest.TestCase):
                     }
                     for marker in [self.bundle["parts"][0]["marker"], index_marker(self.bundle)]
                 ]
-                original_save = self.store.save
 
                 def checkpoint(*args, **kwargs):
                     original_save(*args, **kwargs)

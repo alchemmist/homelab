@@ -181,22 +181,23 @@ class CleanupBoundaryTests(unittest.TestCase):
         import signal
         from unittest.mock import patch
 
+        spec = importlib.util.spec_from_file_location("backup", SCRIPT)
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        create = m.tempfile.mkstemp
+        connect = m.sqlite3.connect
+        count: list[int] = [0]
         for boundary in ("creation", "first-close", "second-close", "pending-close"):
             with self.subTest(boundary=boundary), tempfile.TemporaryDirectory() as d:
-                spec = importlib.util.spec_from_file_location("backup", SCRIPT)
-                m = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(m)
                 src = Path(d) / "source"
                 c = sqlite3.connect(src)
                 c.execute("CREATE TABLE x(a)")
                 c.close()
                 old = signal.getsignal(signal.SIGALRM)
-                create = m.tempfile.mkstemp
-                connect = m.sqlite3.connect
-                count = [0]
+                count[0] = 0
 
-                def owned(*a, **kw):
-                    result = create(*a, **kw)
+                def owned(*a: object, boundary: str = boundary, **kw: object) -> tuple[int, str]:
+                    result: tuple[int, str] = create(*a, **kw)
                     for suffix in ("-wal", "-shm", "-journal"):
                         Path(result[1] + suffix).touch(mode=0o600)
                     if boundary == "creation":
@@ -204,7 +205,7 @@ class CleanupBoundaryTests(unittest.TestCase):
                     return result
 
                 class Conn(sqlite3.Connection):
-                    def close(self):
+                    def close(self, boundary: str = boundary) -> None:
                         super().close()
                         count[0] += 1
                         if boundary == "pending-close":

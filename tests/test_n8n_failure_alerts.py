@@ -1,6 +1,7 @@
 import copy
 import importlib.util
 import json
+from collections.abc import Callable
 from pathlib import Path
 import subprocess
 import sys
@@ -109,14 +110,17 @@ class FailureAlertsTests(unittest.TestCase):
             sync.guard(w, "handler")
 
     def test_only_settings_change_and_active_state_preserved(self):
-        for active in (True, False):
-            original = self.wf(active)
-            current = copy.deepcopy(original)
-            calls = []
-
-            def api(method, path, body=None):
+        def make_api(
+            original: dict[str, object],
+            current: dict[str, object],
+            calls: list[tuple[str, str, dict[str, object] | None]],
+        ) -> Callable[[str, str, dict[str, object] | None], dict[str, object]]:
+            def api(
+                method: str, path: str, body: dict[str, object] | None = None
+            ) -> dict[str, object]:
                 calls.append((method, path, body))
                 if method == "PUT":
+                    assert body is not None
                     self.assertEqual(body["nodes"], original["nodes"])
                     self.assertEqual(body["connections"], original["connections"])
                     current["settings"] = body["settings"]
@@ -126,6 +130,13 @@ class FailureAlertsTests(unittest.TestCase):
                     current["activeVersionId"] = "v2"
                 return copy.deepcopy(current)
 
+            return api
+
+        for active in (True, False):
+            original = self.wf(active)
+            current = copy.deepcopy(original)
+            calls: list[tuple[str, str, dict[str, object] | None]] = []
+            api = make_api(original, current, calls)
             result = sync.bind(api, original, "handler")
             self.assertEqual(result["active"], active)
             self.assertEqual(

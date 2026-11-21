@@ -4,6 +4,7 @@ No screenshots, private HTML, traces or cookies are persisted. --run required.
 """
 
 import argparse
+from typing import Protocol
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--run", action="store_true")
@@ -22,6 +23,28 @@ from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
+
+class SceneResponse(Protocol):
+    """Minimal HTTP response shape sampled from the live entrance."""
+
+    url: str
+    status: int
+    headers: dict[str, str]
+
+    def body(self) -> bytes:
+        """Return the raw payload of the response."""
+
+
+class ScenePage(Protocol):
+    """Minimal page surface needed to sample the chosen scene."""
+
+    def wait_for_function(self, expression: str) -> None:
+        """Wait until the page satisfies the given expression."""
+
+    def evaluate(self, expression: str) -> object:
+        """Evaluate the expression in the page and return its result."""
+
+
 root = Path(__file__).resolve().parents[1] / "deploy/authentik/quiet-mono"
 assets = json.loads((root / "assets.json").read_text())
 photos = json.loads((root / "nature.json").read_text())["photos"]
@@ -35,12 +58,15 @@ with sync_playwright() as p:
         for width, height, variant in [(1440, 960, "desktop"), (390, 844, "mobile")]:
             context = browser.new_context(viewport={"width": width, "height": height})
             page = context.new_page()
-            responses = []
-            errors = []
+            responses: list[SceneResponse] = []
+            errors: list[bool] = []
             page.on(
-                "response", lambda r: responses.append(r) if "/-/quiet-mono/v1/" in r.url else None
+                "response",
+                lambda r, responses=responses: (
+                    responses.append(r) if "/-/quiet-mono/v1/" in r.url else None
+                ),
             )
-            page.on("pageerror", lambda e: errors.append(True))
+            page.on("pageerror", lambda e, errors=errors: errors.append(True))
             page.goto(BASE + "/if/flow/default-authentication-flow/")
             page.locator("input[name=uidField]").wait_for()
             page.wait_for_timeout(600)
@@ -101,12 +127,14 @@ with sync_playwright() as p:
                 + "/if/flow/default-authentication-flow/?next=%2Fapplication%2Fo%2Fauthorize%2F%3Fclient_id%3Dlayout-only%26state%3Dread-only-journey"
             )
 
-            def current_scene():
+            def current_scene(page: ScenePage = page) -> str:
                 page.wait_for_function(
                     "getComputedStyle(document.body,'::before').getPropertyValue('--qm-scene').trim().length===12"
                 )
-                return page.evaluate(
-                    "getComputedStyle(document.body,'::before').getPropertyValue('--qm-scene').trim()"
+                return str(
+                    page.evaluate(
+                        "getComputedStyle(document.body,'::before').getPropertyValue('--qm-scene').trim()"
+                    )
                 )
 
             page.goto(journey)
@@ -142,15 +170,15 @@ with sync_playwright() as p:
             context.close()
         context = browser.new_context()
         page = context.new_page()
-        scenes = set()
+        seen_scenes = set()
         for i in range(12):
             r = page.goto(BASE + "/-/quiet-mono/v1/nature/scene.css")
             assert r.status == 200 and hashlib.sha256(r.body()).hexdigest() in css_hashes
-            scenes.add(r.headers["x-quiet-mono-scene"])
-        assert len(scenes) == 1, (
+            seen_scenes.add(r.headers["x-quiet-mono-scene"])
+        assert len(seen_scenes) == 1, (
             "Repeated CSS requests must not rotate a working-session background"
         )
-        chosen = next(iter(scenes))
+        chosen = next(iter(seen_scenes))
         cookie = next(
             c
             for c in context.cookies(BASE + "/-/quiet-mono/v1/nature/scene.css")
@@ -174,7 +202,7 @@ with sync_playwright() as p:
                 BASE + "/-/quiet-mono/v1/nature/scene.css", headers={"Referer": ref}
             )
             scene = r.headers["x-quiet-mono-scene"]
-            scenes.add(scene)
+            seen_scenes.add(scene)
             for slug in [
                 "default-authentication-flow",
                 "default-provider-authorization-implicit-consent",
@@ -186,7 +214,7 @@ with sync_playwright() as p:
                 assert repeated.headers["x-quiet-mono-scene"] == scene
             fallback = context.request.get(BASE + "/-/quiet-mono/v1/nature/scene.css")
             assert fallback.headers["x-quiet-mono-scene"] == scene
-        assert len(scenes) >= 4, "New OIDC journeys resample the full collection"
+        assert len(seen_scenes) >= 4, "New OIDC journeys resample the full collection"
         for path in ["scene.css", "desktop", "mobile"]:
             assert context.request.post(BASE + "/-/quiet-mono/v1/nature/" + path).status == 403
         # Backward-compatible non-AVIF native clients receive the original pinned WebP.
@@ -205,7 +233,7 @@ with sync_playwright() as p:
             "PASS",
             edge,
             "stable journeys; new-journey choices:",
-            len(scenes),
+            len(seen_scenes),
             "/12; scoped cookie; POST denied; pinned WebP fallback",
             flush=True,
         )
@@ -215,8 +243,15 @@ with sync_playwright() as p:
 
 if args.delay_hq:
     import asyncio
+    from collections.abc import Awaitable
 
     from playwright.async_api import async_playwright
+
+    class AsyncRoute(Protocol):
+        """Minimal routed-request surface used to hold AVIF transfers."""
+
+        def continue_(self) -> Awaitable[None]:
+            """Resume the held route."""
 
     async def preview_only():
         async with async_playwright() as p:
@@ -229,9 +264,13 @@ if args.delay_hq:
                 for width in [1440, 390]:
                     page = await browser.new_page(viewport={"width": width, "height": 960})
                     release = asyncio.Event()
-                    pending = []
+                    pending: list[bool] = []
 
-                    async def hold(route):
+                    async def hold(
+                        route: AsyncRoute,
+                        pending: list[bool] = pending,
+                        release: asyncio.Event = release,
+                    ) -> None:
                         pending.append(True)
                         await release.wait()
                         await route.continue_()

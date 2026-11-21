@@ -55,7 +55,7 @@ def build(source, output):
             # AVIF inherits ICC from im.info by default; WebP does not. Strip all
             # metadata explicitly so both formats/preview share the same RGB data.
             image.info.clear()
-            record = {
+            record: dict[str, object] = {
                 "id": ident,
                 "source": str(path.relative_to(source)),
                 "sourceSha256": source_hash,
@@ -111,21 +111,30 @@ def build(source, output):
             preview.save(buf, format="WEBP", quality=25, method=6)
             tiny = base64.b64encode(buf.getvalue()).decode()
 
-            def url(key):
+            def url(key: str) -> str:
                 item = manifest[key]
-                return "/-/quiet-mono/v1/" + item["sha256"][:12] + "-" + Path(item["path"]).name
+                return (
+                    "/-/quiet-mono/v1/"
+                    + str(item["sha256"])[:12]
+                    + "-"
+                    + Path(str(item["path"])).name
+                )
 
-            def layer(label):
+            def layer(
+                label: str,
+                record: dict[str, object] = record,
+                tiny: str = tiny,
+            ) -> str:
                 return (
                     "background-image:url('"
-                    + url(record[label])
+                    + url(str(record[label]))
                     + "'),url('data:image/webp;base64,"
                     + tiny
                     + "')!important;"
                     + "background-image:image-set(url('"
-                    + url(record[label + "Avif"])
+                    + url(str(record[label + "Avif"]))
                     + "') type('image/avif'),url('"
-                    + url(record[label])
+                    + url(str(record[label]))
                     + "') type('image/webp')),url('data:image/webp;base64,"
                     + tiny
                     + "')!important;"

@@ -352,7 +352,9 @@ def execute(api, state, services, expected, receipt):
     for path in ("core/groups/", "core/applications/", "policies/bindings/"):
         after_by = unique(after[path], "pk")
 
-        def owned_fields(value):
+        def owned_fields(
+            value: dict[str, object] | None, path: str = path
+        ) -> dict[str, object] | None:
             # ApplicationSerializer embeds a read-only provider_obj which changes
             # when we update that provider's scopes; it is not an app write.
             if path == "core/applications/" and value is not None:
