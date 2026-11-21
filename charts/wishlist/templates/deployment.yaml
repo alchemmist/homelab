@@ -31,7 +31,22 @@ spec:
       hostAliases:
 {{ toYaml . | indent 8 }}
       {{- end }}
-      {{- if .Values.persistence.requireExistingData }}
+      {{- if .Values.postgresEnabled }}
+      initContainers:
+        - name: require-imported-wishlist
+          image: {{ .Values.image.repository }}@{{ .Values.image.digest }}
+          command: [python, -c]
+          args:
+            - |
+              import os, psycopg
+              with psycopg.connect(os.environ['WISHLIST_DATABASE_URL'], connect_timeout=5) as c:
+                  assert c.execute('SELECT EXISTS(SELECT FROM users)').fetchone()[0]
+          env:
+            - name: WISHLIST_DATABASE_URL
+              valueFrom: {secretKeyRef: {name: wishlist-postgres, key: url}}
+          volumeMounts:
+            - {name: pg-ca, mountPath: /pg-ca, readOnly: true}
+      {{- else if .Values.persistence.requireExistingData }}
       initContainers:
         - name: require-existing-wishlist
           image: {{ .Values.image.repository }}@{{ .Values.image.digest }}
@@ -59,6 +74,10 @@ spec:
               containerPort: {{ .Values.observability.metricsPort }}
           {{- end }}
           env:
+          {{- if .Values.postgresEnabled }}
+            - name: WISHLIST_DATABASE_URL
+              valueFrom: {secretKeyRef: {name: wishlist-postgres, key: url}}
+          {{- end }}
           {{- if .Values.observability.enabled }}
             - name: METRICS_PORT
               value: {{ .Values.observability.metricsPort | quote }}
@@ -90,6 +109,9 @@ spec:
           resources:
 {{ toYaml .Values.resources | indent 12 }}
           volumeMounts:
+          {{- if .Values.postgresEnabled }}
+            - {name: pg-ca, mountPath: /pg-ca, readOnly: true}
+          {{- end }}
             - name: data
               mountPath: /data
             - name: media-cache
@@ -100,6 +122,9 @@ spec:
               readOnly: true
           {{- end }}
       volumes:
+      {{- if .Values.postgresEnabled }}
+        - {name: pg-ca, configMap: {name: pg-common-ca}}
+      {{- end }}
         - name: media-cache
           emptyDir:
             sizeLimit: 2Gi

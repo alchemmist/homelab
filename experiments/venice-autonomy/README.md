@@ -34,6 +34,14 @@ No paid provider or OpenHands Cloud backend is configured.
 - No automatic commits, pushes, deployments, credential requests or permissions
   changes. Only containers/volumes recorded as belonging to this lab are removed.
 
+## Worker dependencies
+
+Edit the exact direct pins in `worker-requirements.in`. From the repository root,
+regenerate the Python 3.12 Linux lock with the `uv pip compile` command in the
+header of `worker-requirements.txt`. The image installs that transitive lock
+with hash verification. `make dependencies` audits it without building the
+image, installing the worker, or contacting any model provider.
+
 ## Task and continuation model
 
 There are three small synthetic repair contracts: median, clamp and HTML escaping.

@@ -42,3 +42,7 @@ Keep `grafana-socrat5` for plugins/files; its SQLite file is stale, not a rollba
 ## Open WebUI cutover — 2026-11-21
 
 `1cf4d2ed` starts Open WebUI on `pg-common/open_webui` after a cold SQLite transfer. PostgreSQL-native Alembic schema at `0bd252b206fb`; all 48 tables / 802 retained rows matched before startup. Only approved FK orphans excluded: 4 OAuth sessions without users and 14 file links without chats. Production readback: 6 users, 24 chats, 129 chat messages, 117 file links, 4 notes and 131/131 referenced files on `open-webui-socrat5`. Runtime PostgreSQL sessions from the app pod used TLS 1.3 with verify-full configured. `/health/db` and `/api/config` returned 200; anonymous chat access returned 401. No interactive user login or model generation was performed. Keep the PVC for uploads; its SQLite file is stale after cutover. Do not roll back onto that file without reconciling newer writes.
+
+## Wishlist cutover — 2026-11-21
+
+App `da985ad` and GitOps `4af380e3` run Wishlist on `pg-common/wishlist`, verify-full TLS, with the SQLite PVC retained but no longer authoritative. After quiescence, the importer checked integrity and every retained field across all 100 rows / six tables, added Unicode lookup keys, and reset identity sequences. Production public wishlist API returned 19 items and 69 photo references; inventory metrics read the new backend successfully. Synthetic competing reservations on a separate PostgreSQL test returned 200/409. Do not revert to stale SQLite after new writes.

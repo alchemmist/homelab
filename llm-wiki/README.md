@@ -46,6 +46,7 @@ Research is not a pending deployment task. Private recovery evidence remains off
 | Theme, native UI и recovery | [Frontend](identity-frontend.md), [backup/recovery](identity-recovery.md) |
 | Registry, robots, scoped push/pull | [Harbor](harbor.md) |
 | Wiki runtime/content | [Процесс](../docs/wiki-process-lifecycle.md), [upgrade](../docs/wiki-upgrade-20261107.md), [public onboarding source](../wiki/README.md) |
+| Сбор и хранение метрик по нодам | [OTel → Prometheus → Thanos: raw, 5m, 1h и границы удаления](observability-current.md#метрики-сбор-прореживание-и-перенос-между-нодами--21-ноября-2026) |
 | Logs/metrics/traces/profiles | [Мониторинг](observability-current.md), [monitoring](../docs/monitoring.md) |
 | Инциденты, уведомления, workflow integration | [Socrat bot](socrat-bot.md), [SPI: frontend/backend и эксплуатация; актуальное размещение — в context](spi-incident-triage.md), [n8n](n8n-workflows.md) |
 | TV/public dashboard, адресный Argo CSS и отдельный YouTube VPN | [Android TV](android-tv.md), [сопровождение TV-CSS](android-tv.md#сопровождение-кастомного-tv-css-для-argo) |
