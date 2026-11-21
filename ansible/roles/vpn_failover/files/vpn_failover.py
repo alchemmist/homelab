@@ -5,13 +5,13 @@ import fcntl
 import hashlib
 import json
 import os
-from pathlib import Path
 import signal
 import socket
 import sqlite3
 import ssl
 import subprocess
 import time
+from pathlib import Path
 
 CONFIG_PATH = "/etc/homelab-vpn-failover/config.json"
 STATE_DIR = "/var/lib/homelab-vpn-failover"
@@ -263,15 +263,8 @@ class Watchdog:
             {"boot_id": boot, "until": uptime + self.config.get("native_start_grace_seconds", 30)},
         )
 
-    def activate(self):
-        self.preflight()
-        if not (self.state / "active").exists():
-            self.write("active", {"activated_at": time.time()})
-        self.fence()
-        running = [unit for unit in self.units if self.service_active(unit)]
-        if not running and self.occupied():
-            raise RuntimeError("VPN ports still occupied; refusing native startup")
-        self.guard()
+    def start_native_units(self) -> None:
+        """Start every non-running native unit after a port warmup marker."""
         started = False
         for unit in self.units:
             if not self.service_active(unit):
@@ -285,6 +278,30 @@ class Watchdog:
                     self.native_warmup()
                 started = True
                 self.command("systemctl", "start", unit)
+
+    def restart_recovery(self, boot: str) -> dict[str, object]:
+        """Stop, re-guard and restart every native unit after a confirmed failure."""
+        self.write("fallback_failures.json", {"boot_id": boot, "failures": 0})
+        for unit in reversed(self.units):
+            self.command("systemctl", "stop", unit)
+        if any(self.service_active(unit) for unit in self.units) or self.occupied():
+            raise RuntimeError("Native VPN did not release ports for recovery restart")
+        self.guard()
+        self.native_warmup()
+        for unit in self.units:
+            self.command("systemctl", "start", unit)
+        return {"mode": "fallback", "restarted": True, **self.health()}
+
+    def activate(self):
+        self.preflight()
+        if not (self.state / "active").exists():
+            self.write("active", {"activated_at": time.time()})
+        self.fence()
+        running = [unit for unit in self.units if self.service_active(unit)]
+        if not running and self.occupied():
+            raise RuntimeError("VPN ports still occupied; refusing native startup")
+        self.guard()
+        self.start_native_units()
         health = self.health()
         boot, uptime = self.clock()
         try:
@@ -309,16 +326,7 @@ class Watchdog:
             if not confirmed:
                 self.write("fallback_failures.json", {"boot_id": boot, "failures": 0})
                 return {"mode": "fallback", "restart_cancelled": True, "failures": 0, **health}
-            self.write("fallback_failures.json", {"boot_id": boot, "failures": 0})
-            for unit in reversed(self.units):
-                self.command("systemctl", "stop", unit)
-            if any(self.service_active(unit) for unit in self.units) or self.occupied():
-                raise RuntimeError("Native VPN did not release ports for recovery restart")
-            self.guard()
-            self.native_warmup()
-            for unit in self.units:
-                self.command("systemctl", "start", unit)
-            return {"mode": "fallback", "restarted": True, **self.health()}
+            return self.restart_recovery(boot)
         self.write("fallback_failures.json", {"boot_id": boot, "failures": failures})
         return {"mode": "fallback", "failures": failures, **health}
 
