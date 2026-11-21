@@ -11,24 +11,30 @@
       {{ '-o ProxyJump=socrat-4 -o HostKeyAlias=[socrat.alchemmist.xyz]:2224 -o UserKnownHostsFile=~/.ssh/known_hosts.d/homelab -o StrictHostKeyChecking=yes'
          if inventory_hostname == 'socrat-2' else '-o ProxyJump=none -o StrictHostKeyChecking=yes' }}
   tasks:
-    - ansible.builtin.file:
+    - name: Create the NS3 public DNS staging directory
+      ansible.builtin.file:
         path: /var/lib/homelab-ns3-public-dns
         state: directory
         mode: '0700'
-    - ansible.builtin.copy:
+    - name: Install the NS3 public DNS plan and apply tool
+      ansible.builtin.copy:
         src: ../../scripts/ns3-public-dns.py
         dest: /usr/local/sbin/homelab-ns3-public-dns
         mode: '0700'
-    - ansible.builtin.copy:
+    - name: Stage the proposed zone renderer for NS3 public DNS
+      ansible.builtin.copy:
         src: ../../scripts/public_dns_zone.py
         dest: /var/lib/homelab-ns3-public-dns/proposed.py
         mode: '0700'
-    - ansible.builtin.command: /usr/local/sbin/homelab-ns3-public-dns
+    - name: Compute the NS3 public DNS plan
+      ansible.builtin.command: /usr/local/sbin/homelab-ns3-public-dns
       register: dns_plan
       changed_when: false
-    - ansible.builtin.debug:
+    - name: Display the NS3 public DNS plan
+      ansible.builtin.debug:
         var: dns_plan.stdout
-    - ansible.builtin.assert:
+    - name: Require the approved NS3 public DNS plan hash
+      ansible.builtin.assert:
         that: (dns_plan.stdout | from_json).plan_hash == ns3_public_dns_hash
       when: ns3_public_dns_apply | default(false) | bool
 - name: Serial approved owned-zone refresh
@@ -44,7 +50,8 @@
       {{ '-o ProxyJump=socrat-4 -o HostKeyAlias=[socrat.alchemmist.xyz]:2224 -o UserKnownHostsFile=~/.ssh/known_hosts.d/homelab -o StrictHostKeyChecking=yes'
          if inventory_hostname == 'socrat-2' else '-o ProxyJump=none -o StrictHostKeyChecking=yes' }}
   tasks:
-    - ansible.builtin.command:
+    - name: Apply the approved NS3 public DNS plan
+      ansible.builtin.command:
         argv: [/usr/local/sbin/homelab-ns3-public-dns,
                --apply,
                --approve-plan-hash,

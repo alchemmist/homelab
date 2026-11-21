@@ -5,24 +5,30 @@
   become: true
   any_errors_fatal: true
   tasks:
-    - ansible.builtin.file:
+    - name: Create the OpenHands public DNS staging directory
+      ansible.builtin.file:
         path: /var/lib/homelab-openhands-public-dns
         state: directory
         mode: '0700'
-    - ansible.builtin.copy:
+    - name: Install the OpenHands public DNS plan and apply tool
+      ansible.builtin.copy:
         src: ../../scripts/openhands-public-dns.py
         dest: /usr/local/sbin/homelab-openhands-public-dns
         mode: '0700'
-    - ansible.builtin.copy:
+    - name: Stage the proposed zone renderer for OpenHands public DNS
+      ansible.builtin.copy:
         src: ../../scripts/public_dns_zone.py
         dest: /var/lib/homelab-openhands-public-dns/proposed.py
         mode: '0700'
-    - ansible.builtin.command: /usr/local/sbin/homelab-openhands-public-dns
+    - name: Compute the OpenHands public DNS plan
+      ansible.builtin.command: /usr/local/sbin/homelab-openhands-public-dns
       register: dns_plan
       changed_when: false
-    - ansible.builtin.debug:
+    - name: Display the OpenHands public DNS plan
+      ansible.builtin.debug:
         var: dns_plan.stdout
-    - ansible.builtin.assert:
+    - name: Require the approved OpenHands public DNS plan hash
+      ansible.builtin.assert:
         that: (dns_plan.stdout | from_json).plan_hash == openhands_public_dns_hash
       when: openhands_public_dns_apply | default(false) | bool
 - name: Serial approved owned-zone refresh
@@ -32,7 +38,8 @@
   become: true
   any_errors_fatal: true
   tasks:
-    - ansible.builtin.command:
+    - name: Apply the approved OpenHands public DNS plan
+      ansible.builtin.command:
         argv: [/usr/local/sbin/homelab-openhands-public-dns, --apply, --approve-plan-hash, "{{ openhands_public_dns_hash }}"]
       when: openhands_public_dns_apply | default(false) | bool
       register: dns_apply

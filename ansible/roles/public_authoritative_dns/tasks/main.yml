@@ -41,18 +41,22 @@
 - name: Order the private listener after its owned WireGuard address exists
   when: public_dns_transit_listener_enabled | default(false) | bool
   block:
-    - ansible.builtin.stat:
+    - name: Check for the owned WireGuard configuration
+      ansible.builtin.stat:
         path: /etc/wireguard/wg-socrat.conf
       register: dns_transit_config
-    - ansible.builtin.assert:
+    - name: Require the expected transit node and configuration
+      ansible.builtin.assert:
         that:
           - inventory_hostname == 'socrat-2'
           - dns_transit_config.stat.exists
-    - ansible.builtin.file:
+    - name: Create the Knot service override directory
+      ansible.builtin.file:
         path: /etc/systemd/system/knot.service.d
         state: directory
         mode: "0755"
-    - ansible.builtin.copy:
+    - name: Order Knot after the WireGuard service
+      ansible.builtin.copy:
         dest: /etc/systemd/system/knot.service.d/30-vpn-transit-listener.conf
         mode: "0644"
         content: |
