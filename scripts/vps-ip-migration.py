@@ -16,7 +16,7 @@ import stat
 import subprocess
 import sys
 import uuid
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -86,17 +86,13 @@ VPS_FILES = (
 DATABASES = ("/srv/x-ui-lab/db/x-ui.db", "/etc/x-ui/x-ui.db")
 
 
-type Apply = bool
-type Change = tuple[Path, str, str]
-
-
 class MigrationError(Exception):
     pass
 
 
-def addresses(old: str, new: str):
+def addresses(old: str, new: str) -> tuple[ipaddress.IPv4Address, ipaddress.IPv4Address]:
     try:
-        parsed = tuple(ipaddress.IPv4Address(v) for v in (old, new))
+        parsed = (ipaddress.IPv4Address(old), ipaddress.IPv4Address(new))
     except ipaddress.AddressValueError:
         raise MigrationError("Both addresses must be canonical IPv4 literals") from None
     if old == new or tuple(str(v) for v in parsed) != (old, new):
@@ -106,11 +102,12 @@ def addresses(old: str, new: str):
     return parsed
 
 
-def replace_address(text: str, old: str, new: str):
-    return re.sub(r"(?<![0-9.])" + re.escape(old) + r"(?![0-9.])", new, text)
+def replace_address(text: str, old: str, new: str) -> str:
+    value: str = re.sub(r"(?<![0-9.])" + re.escape(old) + r"(?![0-9.])", new, text)
+    return value
 
 
-def run(argv: Sequence[str]):
+def run(argv: list[str]) -> str:
     result = subprocess.run(argv, capture_output=True, text=True, timeout=120)
     if result.returncode:
         # stderr may contain credentials/configuration; never echo it.
@@ -119,7 +116,7 @@ def run(argv: Sequence[str]):
 
 
 class Preimages:
-    def __init__(self, root: str | Path, label: str):
+    def __init__(self, root: str | Path, label: str) -> None:
         raw = Path(root).expanduser()
         if not raw.is_absolute() or raw.is_symlink():
             raise MigrationError("Backup root must be an absolute non-symlink directory")
@@ -129,31 +126,31 @@ class Preimages:
         if info.st_uid != os.geteuid() or stat.S_IMODE(info.st_mode) & 0o077:
             raise MigrationError("Backup root must be owned by caller and mode 0700")
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-        self.path = root / (label + "-" + stamp + "-" + uuid.uuid4().hex[:8])
+        self.path: Path = root / (label + "-" + stamp + "-" + uuid.uuid4().hex[:8])
         self.path.mkdir(mode=0o700)
 
-    def target(self, relative: str | Path):
+    def target(self, relative: str | Path) -> Path:
         relative = Path(relative)
         if relative.is_absolute() or ".." in relative.parts:
             raise MigrationError("Invalid preimage path")
-        dest = self.path / relative
+        dest: Path = self.path / relative
         dest.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         return dest
 
-    def save(self, path: Path, relative: str | Path):
+    def save(self, path: Path, relative: str | Path) -> Path:
         dest = self.target(relative)
         with dest.open("xb") as stream:
             stream.write(path.read_bytes())
         dest.chmod(0o600)
         return dest
 
-    def receipt(self, report: Mapping[str, object]):
+    def receipt(self, report: dict[str, object]) -> None:
         p = self.path / "receipt.json"
         p.write_text(json.dumps(report, indent=2) + "\n")
         p.chmod(0o600)
 
 
-def refuse_unfinished(root: str | Path | None, label: str):
+def refuse_unfinished(root: str | None, label: str) -> None:
     if not root:
         return
     directory = Path(root).expanduser()
@@ -175,8 +172,8 @@ def refuse_unfinished(root: str | Path | None, label: str):
                 )
 
 
-def file_plan(paths: Sequence[Path], old: str, new: str):
-    changes = []
+def file_plan(paths: list[Path], old: str, new: str) -> list[tuple[Path, str, str]]:
+    changes: list[tuple[Path, str, str]] = []
     for path in paths:
         if path.is_symlink():
             raise MigrationError("Refusing a symlink configuration file")
@@ -192,10 +189,10 @@ def file_plan(paths: Sequence[Path], old: str, new: str):
 
 
 def write_changes(
-    changes: Sequence[Change],
+    changes: list[tuple[Path, str, str]],
     preimages: Preimages,
     relative: Callable[[Path], str | Path],
-):
+) -> None:
     for path, before, after in changes:
         if path.is_symlink() or path.read_text() != before:
             raise MigrationError("Configuration drift after planning; stop and re-audit")
@@ -208,8 +205,8 @@ def write_changes(
             os.fsync(stream.fileno())
 
 
-def validate_dns_anchor(text: str, old: str, new: str):
-    values = {}
+def validate_dns_anchor(text: str, old: str, new: str) -> None:
+    values: dict[str, str] = {}
     for name in ("HOME", "VPS"):
         match = re.search(r"^" + name + r' = [\'"]([^\'"]+)[\'"]$', text, re.MULTILINE)
         if not match:
@@ -222,12 +219,13 @@ def validate_dns_anchor(text: str, old: str, new: str):
 
 
 def repository(
-    root: Path,
+    root: str | Path,
     old: str,
     new: str,
-    apply: Apply = False,
-    backup_root: str | Path | None = None,
-):
+    *,
+    apply: bool = False,
+    backup_root: str | None = None,
+) -> dict[str, object]:
     refuse_unfinished(backup_root, old + "-to-" + new)
     root = Path(root).resolve()
     required = (root / "scripts/public_dns_zone.py", root / "charts/traefik-edge/values.yaml")
@@ -280,11 +278,12 @@ def repository(
     return report
 
 
-def quote_identifier(name: str):
-    return '"' + name.replace('"', '""') + '"'
+def quote_identifier(name: str) -> str:
+    value: str = '"' + name.replace('"', '""') + '"'
+    return value
 
 
-def db_state(connection: sqlite3.Connection):
+def db_state(connection: sqlite3.Connection) -> dict[str, list[object]]:
     names = connection.execute(
         "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
     ).fetchall()
@@ -296,7 +295,7 @@ def db_state(connection: sqlite3.Connection):
     }
 
 
-def db_plan(path: Path, old: str):
+def db_plan(path: Path, old: str) -> int:
     if path.is_symlink():
         raise MigrationError("Refusing a symlink database")
     with sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True, timeout=20) as connection:
@@ -316,10 +315,13 @@ def db_plan(path: Path, old: str):
             raise MigrationError(
                 "Non-literal host address contains old IP; do not rewrite automatically"
             )
+    unexpected = "Unexpected host address count"
+    if not isinstance(count, int):
+        raise MigrationError(unexpected)
     return count
 
 
-def backup_database(path: Path, store: Preimages):
+def backup_database(path: Path, store: Preimages) -> Path:
     """Consistent private preimage only; production connection is read-only."""
     target = store.target("sqlite/" + str(path).lstrip("/"))
     target.touch(mode=0o600, exist_ok=False)
@@ -328,16 +330,20 @@ def backup_database(path: Path, store: Preimages):
             source.backup(backup)
             if backup.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
                 raise MigrationError("Database preimage failed integrity; stop")
-    return target
+    value: Path = target
+    return value
 
 
-def migrate_database(path: Path, old: str, new: str, store: Preimages):
+def migrate_database(path: Path, old: str, new: str, store: Preimages) -> None:
     raise MigrationError("Production panel writes require native API; SQL migration prohibited")
 
 
-def service_plan(services: Sequence[str], reviewed: Mapping[str, str] | None = None):
+def service_plan(
+    services: list[str], reviewed: dict[str, str] | None = None
+) -> tuple[list[str], list[str]]:
     reviewed = reviewed or {}
-    restart, dormant = [], []
+    restart: list[str] = []
+    dormant: list[str] = []
     for service in services:
         state = run(["systemctl", "show", service, "-p", "ActiveState", "--value"]).strip()
         if service in reviewed and reviewed[service] != state:
@@ -359,8 +365,8 @@ def service_plan(services: Sequence[str], reviewed: Mapping[str, str] | None = N
     return restart, dormant
 
 
-def wg_endpoint_changes(text: str, old: str, new: str):
-    result = []
+def wg_endpoint_changes(text: str, old: str, new: str) -> list[tuple[str, str]]:
+    result: list[tuple[str, str]] = []
     for block in text.split("[Peer]")[1:]:
         key = re.search(r"^PublicKey\s*=\s*([A-Za-z0-9+/]{43}=)\s*$", block, re.MULTILINE)
         endpoint = re.search(r"^Endpoint\s*=\s*([^\s#]+)", block, re.MULTILINE)
@@ -377,7 +383,7 @@ def wg_endpoint_changes(text: str, old: str, new: str):
     return result
 
 
-def required_services(changes: Sequence[Change]):
+def required_services(changes: list[tuple[Path, str, str]]) -> list[str]:
     paths = {str(p) for p, _, _ in changes}
     return [
         unit
@@ -393,7 +399,7 @@ def required_services(changes: Sequence[Change]):
     ]
 
 
-def refresh_guard(old_text: str, new: str):
+def refresh_guard(old_text: str, new: str) -> None:
     match = re.search(
         r"wireguard-tcp-transport-guard.py\s+([A-Za-z0-9_.:-]{1,15})\s+([0-9.]+)\s+([0-9]+)",
         old_text,
@@ -444,11 +450,11 @@ def host(
     new: str,
     *,
     apply: bool = False,
-    backup_root: str | Path | None = None,
+    backup_root: str | None = None,
     allow_service_restarts: bool = False,
     require_assigned: bool = False,
-    reviewed_service_states: Mapping[str, str] | None = None,
-):
+    reviewed_service_states: dict[str, str] | None = None,
+) -> dict[str, object]:
     if hostname not in HOSTS or socket.gethostname().split(".")[0] != hostname:
         raise MigrationError("Unexpected host identity")
     refuse_unfinished(backup_root, hostname + "-" + old + "-to-" + new)
@@ -466,7 +472,7 @@ def host(
     if dns_owner.is_file():
         validate_dns_anchor(dns_owner.read_text(), old, new)
     changes = file_plan(paths, old, new)
-    peers = []
+    peers: list[tuple[str, str]] = []
     for path, before, _ in changes:
         if str(path) == "/etc/wireguard/wg-socrat.conf":
             peers += wg_endpoint_changes(before, old, new)
@@ -474,7 +480,7 @@ def host(
             r"wireguard-tcp-transport-guard.py\s+\S+\s+" + re.escape(old) + r"\s+\d+", before
         ):
             raise MigrationError("Unknown guard unit format")
-    databases = {}
+    databases: dict[str, int] = {}
     if hostname == "socrat-2":
         if not Path(DATABASES[0]).is_file():
             raise MigrationError("Primary 3x-ui database missing")
@@ -506,9 +512,9 @@ def host(
         try:
             write_changes(changes, store, lambda p: str(p).lstrip("/"))
             report["database_address_rows_updated"] = {}
-            for path, count in databases.items():
+            for db_path, count in databases.items():
                 if count:
-                    backup_database(Path(path), store)
+                    backup_database(Path(db_path), store)
             for key, endpoint in peers:
                 run(["wg", "set", "wg-socrat", "peer", key, "endpoint", endpoint])
             if "wireguard-tcp-transport-guard.service" in services:
@@ -536,7 +542,7 @@ def host(
     return report
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("component", choices=["repository", "host"])
     parser.add_argument("--old-ip", required=True)
@@ -555,7 +561,13 @@ def main():
         if args.component == "repository":
             if args.root is None:
                 raise MigrationError("Repository root is required")
-            report = repository(args.root, args.old_ip, args.new_ip, args.apply, args.backup_root)
+            report = repository(
+                args.root,
+                args.old_ip,
+                args.new_ip,
+                apply=args.apply,
+                backup_root=args.backup_root,
+            )
         else:
             report = host(
                 args.host,
