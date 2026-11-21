@@ -309,8 +309,13 @@ class IdentityTests(unittest.TestCase):
 
             with self.assertRaisesRegex(RuntimeError, "simulated interruption"):
                 configure_monori(root, interrupted)
-            redirect = fake.data["providers/oauth2/"][0]["redirect_uris"][0]
-            redirect.setdefault("redirect_uri_type", "authorization")
+            sent = [body for method, path, body, _ in fake.requests
+                    if (method, path) == ("POST", "providers/oauth2/")]
+            self.assertEqual(len(sent), 1)
+            self.assertEqual(sent[0]["redirect_uris"], [{
+                "matching_mode": "strict", "url": "https://monori.alchemmist.xyz/oidc/callback",
+                "redirect_uri_type": "authorization",
+            }])
             secret_path = root / "monori-client-secret"
             secret = secret_path.read_text()
             self.assertEqual(secret_path.stat().st_mode & 0o777, 0o600)
