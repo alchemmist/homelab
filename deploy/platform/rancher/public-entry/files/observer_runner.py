@@ -1,6 +1,7 @@
 """Observer CronJob diagnostics only. No auth/cache policy, retries or secrets logged."""
 
 import contextlib
+import http.client
 import json
 import socket
 import ssl
@@ -76,7 +77,7 @@ class ObservedHTTP:
             response = self.inner.open(request, *args, **kwargs)
             phase = "response_read"
             yield response
-        except Exception as error:
+        except (OSError, ValueError, KeyError, TypeError, http.client.HTTPException) as error:
             event = {
                 "event": "observer_reconciliation_failed",
                 "stage": stage(request),
@@ -122,7 +123,7 @@ def run(controller):
     started = time.monotonic()
     try:
         controller.reconcile_rancher()
-    except Exception as error:
+    except (RuntimeError, ValueError, KeyError, TypeError, OSError) as error:
         print(json.dumps(failure_event(error), sort_keys=True), flush=True)
         return 1
     finally:

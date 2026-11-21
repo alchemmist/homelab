@@ -1,0 +1,82 @@
+{{- if .Values.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: pg-dr-metrics, labels: {cnpg.io/reload: "true"}}
+data:
+  queries: |
+    dr:
+      primary: true
+      query: |
+        SELECT count(*) FILTER (WHERE application_name ~ '^pg-(common|critical)-[0-9]+$' AND state='streaming') AS standbys,
+               count(*) FILTER (WHERE application_name='dr_wal_receiver' AND state='streaming') AS receivers
+        FROM pg_catalog.pg_stat_replication
+      metrics:
+        - standbys: {usage: GAUGE, description: Streaming CNPG database standbys only}
+        - receivers: {usage: GAUGE, description: Connected WAL archive consumers}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: pg-wal-receiver}
+data:
+  receiver.sh: |
+{{ .Files.Get "files/receive-wal.sh" | indent 4 }}
+  recipient.crt: |
+{{ .Files.Get "files/wal-recipient.crt" | indent 4 }}
+{{- range $tier := list "pg-common" "pg-critical" }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: {name: {{ $tier }}-wal-archive}
+spec:
+  storageClassName: pg-local-retain
+  accessModes: [ReadWriteOnce]
+  resources: {requests: {storage: 40Gi}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: {{ $tier }}-wal-receiver}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector: {matchLabels: {pg-wal-receiver: {{ $tier }}}}
+  template:
+    metadata:
+      labels: {pg-wal-receiver: {{ $tier }}}
+      annotations: {receiver-sha256: {{ $.Files.Get "files/receive-wal.sh" | sha256sum | quote }}}
+    spec:
+      nodeSelector: {kubernetes.io/hostname: socrat-3}
+      automountServiceAccountToken: false
+      securityContext: {runAsNonRoot: true, runAsUser: 26, runAsGroup: 26, fsGroup: 26, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: receiver
+          image: {{ $.Values.imageName | quote }}
+          command: [bash, /config/receiver.sh]
+          env: [{name: TIER, value: {{ $tier }}}]
+          resources: {requests: {cpu: 20m, memory: 48Mi}, limits: {memory: 192Mi}}
+          readinessProbe:
+            exec: {command: [bash, -ec, 'test -n "$(find /archive/sealed -name "????????????????????????.cms" -mmin -15 -print -quit)"']}
+            periodSeconds: 30
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          volumeMounts:
+            - {name: store, mountPath: /archive}
+            - {name: tmp, mountPath: /tmp}
+            - {name: cfg, mountPath: /config, readOnly: true}
+            - {name: tls, mountPath: /tls, readOnly: true}
+            - {name: ca, mountPath: /ca, readOnly: true}
+      volumes:
+        - {name: store, persistentVolumeClaim: {claimName: {{ $tier }}-wal-archive}}
+        - {name: tmp, emptyDir: {medium: Memory, sizeLimit: 2Mi}}
+        - {name: cfg, configMap: {name: pg-wal-receiver}}
+        - {name: tls, secret: {secretName: {{ $tier }}-replication, defaultMode: 288}}
+        - name: ca
+          secret: {secretName: {{ $tier }}-ca, items: [{key: ca.crt, path: ca.crt}]}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: {{ $tier }}-wal-receiver}
+spec:
+  podSelector: {matchLabels: {pg-wal-receiver: {{ $tier }}}}
+  policyTypes: [Ingress]
+  ingress: []
+{{- end }}
+{{- end }}

@@ -17,7 +17,7 @@
         content: "options rtl8723ae ips=0 fwlps=0 swlps=0 msi=1\n"
         owner: root
         group: root
-        mode: '0644'
+        mode: "0644"
 
     - name: Enable wireless reconnection after the guarded driver starts
       ansible.builtin.command: nmcli connection modify homelab-wifi connection.autoconnect yes

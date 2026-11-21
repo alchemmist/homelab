@@ -8,15 +8,15 @@
     - ansible.builtin.file:
         path: /var/lib/homelab-openhands-public-dns
         state: directory
-        mode: '0700'
+        mode: "0700"
     - ansible.builtin.copy:
         src: ../../scripts/openhands-public-dns.py
         dest: /usr/local/sbin/homelab-openhands-public-dns
-        mode: '0700'
+        mode: "0700"
     - ansible.builtin.copy:
         src: ../../scripts/public_dns_zone.py
         dest: /var/lib/homelab-openhands-public-dns/proposed.py
-        mode: '0700'
+        mode: "0700"
     - ansible.builtin.command: /usr/local/sbin/homelab-openhands-public-dns
       register: dns_plan
       changed_when: false
@@ -37,3 +37,4 @@
       when: openhands_public_dns_apply | default(false) | bool
       register: dns_apply
       changed_when: (dns_apply.stdout | from_json).applied
+...

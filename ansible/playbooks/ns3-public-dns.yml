@@ -14,15 +14,15 @@
     - ansible.builtin.file:
         path: /var/lib/homelab-ns3-public-dns
         state: directory
-        mode: '0700'
+        mode: "0700"
     - ansible.builtin.copy:
         src: ../../scripts/ns3-public-dns.py
         dest: /usr/local/sbin/homelab-ns3-public-dns
-        mode: '0700'
+        mode: "0700"
     - ansible.builtin.copy:
         src: ../../scripts/public_dns_zone.py
         dest: /var/lib/homelab-ns3-public-dns/proposed.py
-        mode: '0700'
+        mode: "0700"
     - ansible.builtin.command: /usr/local/sbin/homelab-ns3-public-dns
       register: dns_plan
       changed_when: false

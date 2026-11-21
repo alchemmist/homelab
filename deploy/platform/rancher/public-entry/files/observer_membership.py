@@ -50,7 +50,7 @@ class MembershipReader:
                     if len(raw) > 8 * 1024 * 1024:
                         raise RuntimeError('Membership response bound exceeded')
                     data = json.loads(raw)
-            except Exception:
+            except (OSError, ValueError):
                 raise RuntimeError('Membership read unavailable; no stale-access extension') from None
             result.extend(data['results'])
             if not data.get('pagination', {}).get('next'):
@@ -147,7 +147,7 @@ def install_wiki_guard(store):
                 return auth
             try:
                 return auth if reader.admitted(account['subject'], groups) else None
-            except Exception:
+            except (RuntimeError, OSError, ValueError, KeyError, TypeError):
                 return None
         return checked
     store.session = wrap(store.session)
@@ -169,7 +169,7 @@ def reconcile_rancher():
         try:
             with http.open(request, timeout=5) as response:
                 return json.load(response)
-        except Exception:
+        except (OSError, ValueError):
             raise RuntimeError('Native cache API failed; no blind retry') from None
     def items(path):
         result, cursor = [], ''
@@ -188,5 +188,5 @@ def reconcile_rancher():
 if __name__ == '__main__':
     try:
         reconcile_rancher()
-    except Exception:
+    except (RuntimeError, ValueError, KeyError, TypeError, OSError):
         raise SystemExit('Observer membership reconciliation failed safely; inspect native state')
