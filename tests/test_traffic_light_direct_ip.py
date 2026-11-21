@@ -9,14 +9,17 @@ import unittest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
+
+PROBE_RUN_AS_UID = 19091
+PUBLIC_IP_TARGET_COUNT = 3
 DASH = json.loads((ROOT / "charts/monitoring-k3s/dashboards/traffic-light.json").read_text())
 
 
-def panel(n):
+def panel(n) -> dict[str, object]:
     return next(p for p in DASH["panels"] if p["id"] == n)
 
 
-def series(name, value, labels='job="node-exporter",node="socrat-4"', samples=20):
+def series(name, value, labels='job="node-exporter",node="socrat-4"', samples=20) -> dict[str, str]:
     return {
         "series": name + "{" + labels + "}",
         "values": str(value) + ("x" + str(samples) if samples else ""),
@@ -24,7 +27,8 @@ def series(name, value, labels='job="node-exporter",node="socrat-4"', samples=20
 
 
 class DirectIpTest(unittest.TestCase):
-    def test_rendered_probe_and_existing_authenticated_pipeline(self):
+    """Tests for DirectIpTest."""
+    def test_rendered_probe_and_existing_authenticated_pipeline(self) -> None:
         rendered = subprocess.check_output(
             [
                 "helm",
@@ -42,52 +46,54 @@ class DirectIpTest(unittest.TestCase):
             return next(d for d in docs if d["kind"] == kind and d["metadata"]["name"] == name)
 
         pod = obj("Deployment", "socrat-public-ip-probes")["spec"]["template"]["spec"]
-        self.assertTrue(pod["hostNetwork"])
-        self.assertFalse(pod["automountServiceAccountToken"])
-        self.assertEqual(pod["securityContext"]["runAsUser"], 19091)
-        self.assertEqual(pod["nodeSelector"], {"kubernetes.io/hostname": "socrat-0"})
+        assert pod["hostNetwork"]
+        assert not pod["automountServiceAccountToken"]
+        assert pod["securityContext"]["runAsUser"] == PROBE_RUN_AS_UID
+        assert pod["nodeSelector"] == {"kubernetes.io/hostname": "socrat-0"}
         c = pod["containers"][0]
-        self.assertIn("--web.listen-address=192.168.0.23:19116", c["args"])
-        self.assertEqual(c["securityContext"]["capabilities"], {"drop": ["ALL"]})
-        self.assertFalse(c["securityContext"]["allowPrivilegeEscalation"])
+        assert "--web.listen-address=192.168.0.23:19116" in c["args"]
+        assert c["securityContext"]["capabilities"] == {"drop": ["ALL"]}
+        assert not c["securityContext"]["allowPrivilegeEscalation"]
         cfg = yaml.safe_load(obj("ConfigMap", "socrat-public-ip-probes")["data"]["blackbox.yml"])
-        self.assertEqual(cfg["modules"]["direct_tcp"]["tcp"]["source_ip_address"], "192.168.0.23")
-        self.assertNotIn("http", cfg["modules"]["direct_tcp"])
+        assert cfg["modules"]["direct_tcp"]["tcp"]["source_ip_address"] == "192.168.0.23"
+        assert "http" not in cfg["modules"]["direct_tcp"]
         native = yaml.safe_load(
             obj("ConfigMap", "socrat-tv-native-metrics")["data"]["collector.yaml"]
         )
         jobs = native["receivers"]["prometheus"]["config"]["scrape_configs"]
         direct = [j for j in jobs if j["job_name"].startswith("public-ip-")]
-        self.assertEqual(len(direct), 3)
-        self.assertEqual(
-            {j["params"]["target"][0] for j in direct},
-            {"109.173.40.247:443", "109.120.141.60:443", "91.189.82.238:443"},
-        )
-        self.assertTrue(
-            all(j["static_configs"][0]["targets"] == ["192.168.0.23:19116"] for j in direct)
-        )
-        self.assertEqual(native["exporters"]["otlp"]["tls"]["cert_file"], "/tls/tls.crt")
-        self.assertEqual(
-            {j["job_name"] for j in jobs if j not in direct},
-            {"socrat-n8n-activity", "socrat-argocd", "wishlist"},
-        )
-        self.assertIn(
-            "checksum/native-pipeline",
-            obj("Deployment", "socrat-n8n-activity")["spec"]["template"]["metadata"]["annotations"],
+        assert len(direct) == PUBLIC_IP_TARGET_COUNT
+        assert {j["params"]["target"][0] for j in direct} == {
+            "109.173.40.247:443",
+            "109.120.141.60:443",
+            "91.189.82.238:443",
+        }
+        assert all(j["static_configs"][0]["targets"] == ["192.168.0.23:19116"] for j in direct)
+        assert native["exporters"]["otlp"]["tls"]["cert_file"] == "/tls/tls.crt"
+        assert {j["job_name"] for j in jobs if j not in direct} == {
+            "socrat-n8n-activity",
+            "socrat-argocd",
+            "wishlist",
+        }
+        assert (
+            "checksum/native-pipeline"
+            in obj("Deployment", "socrat-n8n-activity")["spec"]["template"]["metadata"][
+                "annotations"
+            ]
         )
 
-    def test_host4_is_a_real_kubernetes_worker_again(self):
+    def test_host4_is_a_real_kubernetes_worker_again(self) -> None:
         e = panel(926)["targets"][0]["expr"]
-        self.assertIn("kube_node_status_condition", e)
-        self.assertIn('node="socrat-4"', e)
-        self.assertIn("timestamp(", e)
-        self.assertIn("or vector(-2)", e)
+        assert "kube_node_status_condition" in e
+        assert 'node="socrat-4"' in e
+        assert "timestamp(" in e
+        assert "or vector(-2)" in e
 
     @unittest.skipUnless(shutil.which("promtool"), "promtool required")
-    def test_actual_panel_expressions_down_pressure_stale_and_no_vpn_coupling(self):
+    def test_actual_panel_expressions_down_pressure_stale_and_no_vpn_coupling(self) -> None:
         cases = []
 
-        def add(expr, data, value, when="3m"):
+        def add(expr, data, value, when="3m") -> None:
             cases.append(
                 {
                     "interval": "15s",
@@ -158,13 +164,13 @@ class DirectIpTest(unittest.TestCase):
             r = subprocess.run(
                 ["promtool", "test", "rules", str(p)], capture_output=True, text=True
             )
-            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            assert r.returncode == 0, r.stdout + r.stderr
 
     @unittest.skipUnless(shutil.which("promtool"), "promtool required")
-    def test_mode_missing_is_not_off(self):
+    def test_mode_missing_is_not_off(self) -> None:
         e = panel(9)["targets"][0]["expr"]
 
-        def case(data, value):
+        def case(data, value) -> dict[str, object]:
             return {
                 "interval": "15s",
                 "input_series": data,
@@ -189,4 +195,4 @@ class DirectIpTest(unittest.TestCase):
             r = subprocess.run(
                 ["promtool", "test", "rules", str(p)], capture_output=True, text=True
             )
-            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            assert r.returncode == 0, r.stdout + r.stderr

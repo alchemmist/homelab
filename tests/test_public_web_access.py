@@ -1,22 +1,21 @@
-import copy
-import importlib.util
-import json
+"""Tests for public web access through the entry charts."""
+
+import copy, importlib.util, json
+from collections.abc import Callable
 from pathlib import Path
-
 import pytest
-
-from tests.public_entry_contract import CHARTS, render
-from tests.public_entry_contract import values as entry_values
+from tests.public_entry_contract import CHARTS, render, values as entry_values
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
     "public_web_access", ROOT / "scripts/public-web-access.py"
 )
+assert spec is not None
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 
 
-def state():
+def state() -> dict[str, object]:
     return {
         "flows": [
             {"slug": "default-authentication-flow", "pk": "auth"},
@@ -45,7 +44,7 @@ def state():
     }
 
 
-def services():
+def services() -> dict[str, dict[str, str]]:
     return {
         "grafana": {
             "host": "grafana.socrat.alchemmist.xyz",
@@ -55,7 +54,7 @@ def services():
     }
 
 
-def test_legacy_proxy_creation_is_retired_without_mutation():
+def test_legacy_proxy_creation_is_retired_without_mutation() -> None:
     s = state()
     before = copy.deepcopy(s)
     with pytest.raises(ValueError, match="retired"):
@@ -74,14 +73,14 @@ def test_legacy_proxy_creation_is_retired_without_mutation():
         lambda s: s["apps"][0].update(policy_engine_mode="all"),
     ],
 )
-def test_reject_unsafe_baseline(change):
+def test_reject_unsafe_baseline(change: Callable[[dict[str, object]], None]) -> None:
     s = state()
     change(s)
     with pytest.raises(ValueError):
         m.plan(s, services())
 
 
-def test_no_arbitrary_bypass_or_upstream():
+def test_no_arbitrary_bypass_or_upstream() -> None:
     for key, value in [
         ("machinePathRegex", "^/"),
         ("upstream", "https://example.org"),
@@ -93,14 +92,14 @@ def test_no_arbitrary_bypass_or_upstream():
             m.plan(state(), v)
 
 
-def test_no_foreign_provider_adoption():
+def test_no_foreign_provider_adoption() -> None:
     s = state()
     s["providers"] = [{"name": "public-web-grafana", "pk": 7}]
     with pytest.raises(ValueError):
         m.plan(s, services())
 
 
-def test_catalog_is_empty_and_routes_use_native_or_explicit_public_access():
+def test_catalog_is_empty_and_routes_use_native_or_explicit_public_access() -> None:
     catalog = json.loads((ROOT / "deploy/public-web/services.json").read_text())
     assert catalog == {}
     ingresses = [d for d in render() if d and d["kind"] == "Ingress"]
@@ -118,7 +117,7 @@ def test_catalog_is_empty_and_routes_use_native_or_explicit_public_access():
                 assert not d["metadata"]["name"].startswith("public-web-")
 
 
-def test_public_probe_reuses_migration_owned_addresses():
+def test_public_probe_reuses_migration_owned_addresses() -> None:
     spec = importlib.util.spec_from_file_location(
         "public_entry_check", ROOT / "scripts/check-public-web-entry.py"
     )
@@ -142,10 +141,8 @@ def test_public_probe_reuses_migration_owned_addresses():
         ("grafana", "service", "grafana"),
     ],
 )
-def test_chart_rejects_mislabeled_authorization(owner, key, value, tmp_path):
-    import subprocess
-
-    import yaml
+def test_chart_rejects_mislabeled_authorization(owner, key, value, tmp_path) -> None:
+    import yaml, subprocess
 
     values = copy.deepcopy(entry_values(owner))
     values["routes"][0][key] = value
@@ -160,10 +157,8 @@ def test_chart_rejects_mislabeled_authorization(owner, key, value, tmp_path):
     assert result.returncode != 0
 
 
-def test_rancher_public_proxy_denies_local_password_without_changing_private_backend():
-    import subprocess
-
-    import yaml
+def test_rancher_public_proxy_denies_local_password_without_changing_private_backend() -> None:
+    import yaml, subprocess
 
     docs = render("rancher")
     config = next(

@@ -39,18 +39,49 @@ OWNERS.update({name: ("charts/" + name, "kube-prometheus-stack") for name in COM
 
 
 @lru_cache(maxsize=None)
-def render(path, release):
+def render(path, release) -> list[dict[str, object]]:
+    """Render a monitoring chart with helm and return its claimable documents."""
     text = subprocess.check_output(
         ["helm", "template", release, str(ROOT / path), "-n", NS, "--include-crds"], text=True
     )
-    return [
+    docs: list[dict[str, object]] = [
         d
         for d in yaml.safe_load_all(text)
         if d and not (d["metadata"].get("annotations") or {}).get("helm.sh/hook")
     ]
+    return docs
 
 
-def key(d):
+def _mapping(value: object) -> dict[str, object]:
+    """Return the assert-verified mapping view of a parsed YAML value."""
+    assert isinstance(value, dict)
+    result: dict[str, object] = value
+    return result
+
+
+def _documents(value: object) -> list[dict[str, object]]:
+    """Return the assert-verified list-of-documents view of a parsed YAML value."""
+    assert isinstance(value, list)
+    documents: list[dict[str, object]] = value
+    return documents
+
+
+def _mapping_path(document: dict[str, object], *keys: str) -> dict[str, object]:
+    """Walk nested mappings of a parsed document and return the final mapping."""
+    value: object = document
+    for key in keys:
+        value = _mapping(value)[key]
+    return _mapping(value)
+
+
+def _text(value: object) -> str:
+    """Return the assert-verified string view of a parsed YAML value."""
+    assert isinstance(value, str)
+    return value
+
+
+def key(d) -> str:
+    """Return the ownership identity key of a rendered document."""
     return "/".join(
         [
             d["kind"],
@@ -60,29 +91,38 @@ def key(d):
     )
 
 
-def digest(d):
+def digest(d) -> str:
+    """Return the stable sha256 digest of a rendered document."""
     return hashlib.sha256(json.dumps(d, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
-def normalized(d):
-    d = json.loads(json.dumps(d))
-    name = d["metadata"]["name"]
+def normalized(source) -> dict[str, object]:
+    """Normalize a rendered document for owner comparison."""
+    d: dict[str, object] = json.loads(json.dumps(source))
+    name = _mapping(d["metadata"])["name"]
     if d["kind"] == "Deployment" and name == "kube-prometheus-stack-grafana":
-        d["spec"]["template"]["metadata"]["annotations"].pop("checksum/config", None)
-        for c in d["spec"]["template"]["spec"]["containers"]:
-            c["env"] = [e for e in c.get("env", []) if not e["name"].startswith("GF_AUTH_")]
+        _mapping_path(d, "spec", "template", "metadata", "annotations").pop("checksum/config", None)
+        spec = _mapping_path(d, "spec", "template", "spec")
+        for c in _documents(spec["containers"]):
+            c["env"] = [
+                e
+                for e in _documents(c.get("env", []))
+                if not _text(_mapping(e)["name"]).startswith("GF_AUTH_")
+            ]
     if d["kind"] == "ConfigMap" and name == "kube-prometheus-stack-grafana":
-        d["data"]["grafana.ini"] = d["data"]["grafana.ini"].replace(
+        data = _mapping(d["data"])
+        data["grafana.ini"] = _text(data["grafana.ini"]).replace(
             "[auth.anonymous]\nenabled = false", "[auth.anonymous]\nenabled = true"
         )
     if d["kind"] == "Deployment" and name in ("otel-loki", "otel-tempo"):
-        for v in d["spec"]["template"]["spec"]["volumes"]:
+        spec = _mapping_path(d, "spec", "template", "spec")
+        for v in _documents(spec["volumes"]):
             if v["name"] == "config":
-                v["configMap"]["name"] = "otel-backends"
+                _mapping(v["configMap"])["name"] = "otel-backends"
     return d
 
 
-def test_existing_resources_have_one_service_owner_and_preserved_payload():
+def test_existing_resources_have_one_service_owner_and_preserved_payload() -> None:
     fixture = json.loads((ROOT / "tests/fixtures/monitoring-split-contract.json").read_text())
     actual = {}
     for owner, (path, release) in OWNERS.items():
@@ -101,7 +141,7 @@ def test_existing_resources_have_one_service_owner_and_preserved_payload():
         assert digest(normalized(d)) == expected.get("normalizedSha256", expected["sha256"]), k
 
 
-def test_grafana_native_sso_and_no_anonymous_access_are_declarative():
+def test_grafana_native_sso_and_no_anonymous_access_are_declarative() -> None:
     v = yaml.safe_load((ROOT / "charts/grafana/values.yaml").read_text())["grafana"]
     assert v["admin"]["existingSecret"] == "socrat-grafana-admin"
     assert v["grafana.ini"]["auth.anonymous"]["enabled"] is False
@@ -121,24 +161,30 @@ def test_grafana_native_sso_and_no_anonymous_access_are_declarative():
     assert dependency["version"] == "14.0.0"
 
 
-def test_each_backend_owns_its_config_without_changing_config_bytes():
+def test_each_backend_owns_its_config_without_changing_config_bytes() -> None:
     for name in ("loki", "tempo"):
         docs = render("charts/" + name, name)
         config = next(d for d in docs if d["kind"] == "ConfigMap")
-        assert config["metadata"]["name"] == "otel-" + name + "-config"
+        assert _mapping(config["metadata"])["name"] == "otel-" + name + "-config"
         assert (
-            config["data"][name + ".yaml"]
+            _text(_mapping(config["data"])[name + ".yaml"])
             == (ROOT / f"deploy/monitoring/otel/{name}.yaml").read_text()
         )
         dep = next(d for d in docs if d["kind"] == "Deployment")
-        volumes = {v["name"]: v for v in dep["spec"]["template"]["spec"]["volumes"]}
-        assert volumes["config"]["configMap"]["name"] == config["metadata"]["name"]
-        assert volumes["tls"]["secret"]["secretName"] == "otel-tls-backends"
-        assert volumes["data"]["hostPath"]["path"] == "/var/lib/private/homelab-otel-" + name
+        spec = _mapping_path(dep, "spec", "template", "spec")
+        volumes = {v["name"]: v for v in _documents(spec["volumes"])}
+        assert (
+            _mapping(volumes["config"]["configMap"])["name"]
+            == _mapping(config["metadata"])["name"]
+        )
+        assert _mapping(volumes["tls"]["secret"])["secretName"] == "otel-tls-backends"
+        assert (
+            _mapping(volumes["data"]["hostPath"])["path"] == "/var/lib/private/homelab-otel-" + name
+        )
         assert not any(d["kind"] in ("Certificate", "Secret") for d in docs)
 
 
-def test_prometheus_components_preserve_release_names_and_matching_labels():
+def test_prometheus_components_preserve_release_names_and_matching_labels() -> None:
     for name in COMPONENTS:
         a = yaml.safe_load((ROOT / f"deploy/argocd/apps/{name}.yaml").read_text())
         source = a["spec"]["source"]
@@ -160,7 +206,7 @@ def test_prometheus_components_preserve_release_names_and_matching_labels():
     )
 
 
-def test_retired_aggregate_owners_and_charts_are_not_reintroduced():
+def test_retired_aggregate_owners_and_charts_are_not_reintroduced() -> None:
     for name in ("kube-prometheus-stack", "prometheus-stack", "otel-backends", "profiling"):
         assert not (ROOT / f"deploy/argocd/apps/{name}.yaml").exists()
     for name in ("otel-backends", "profiling"):
@@ -173,7 +219,7 @@ def test_retired_aggregate_owners_and_charts_are_not_reintroduced():
         assert app["spec"]["syncPolicy"]["automated"]["selfHeal"] is True
 
 
-def test_legacy_monitoring_installer_fails_before_roles_under_gitops():
+def test_legacy_monitoring_installer_fails_before_roles_under_gitops() -> None:
     play = yaml.safe_load((ROOT / "ansible/playbooks/monitoring.yml").read_text())[1]
     guard = play["pre_tasks"][0]
     assert guard["ansible.builtin.include_role"] == {
@@ -193,7 +239,7 @@ def test_legacy_monitoring_installer_fails_before_roles_under_gitops():
     assert checks[0]["tags"] == ["always"]
 
 
-def test_existing_rancher_postdelete_finalizers_are_declared_not_ignored():
+def test_existing_rancher_postdelete_finalizers_are_declared_not_ignored() -> None:
     app = yaml.safe_load((ROOT / "deploy/argocd/apps/rancher.yaml").read_text())
     assert app["metadata"]["finalizers"] == [
         "resources-finalizer.argocd.argoproj.io",

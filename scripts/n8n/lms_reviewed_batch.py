@@ -74,10 +74,10 @@ for slug, contract, stop, wrong_stop, alternate in [
  ('round-numbers','until_nonmultiple','int(s)%10!=0','int(s)%10!=0 or int(s)==0','int(s)%2!=0'),
  ('strings-to-empty','until_empty',"s==''","s.strip()==''","len(s)<=1"),
 ]:
- def probe(condition, inclusive=False):
+ def probe(condition: str, *, inclusive: bool = False) -> str:
   return 'import sys\nfor line in sys.stdin:\n s=line.rstrip("\\n")\n if '+condition+':\n  '+('print(s); ' if inclusive else '')+'break\n print(s)'
  SPECS['while-intro/'+slug]=(contract,'','',[
-  ('include terminator',probe(stop,True)),('wrong stopping condition',probe(wrong_stop)),('alternate terminator',probe(alternate))])
+  ('include terminator',probe(stop,inclusive=True)),('wrong stopping condition',probe(wrong_stop)),('alternate terminator',probe(alternate))])
 ORACLE_JS += r'''
  if(['until_zero','until_nonmultiple','until_empty'].includes(data.contract)) {
   if(!lines.length || input.includes('\r'))return null;
@@ -95,11 +95,12 @@ ORACLE_JS += r'''
 for version in (2,3):
  contract=f'xmas{version}'
  valid=[['раз','два','три'],['1','2','3']]+([['один','два','три']] if version==3 else [])
- def probe(expr):return "a=[input() for _ in range(3)];print('ГОРИ' if "+expr+" else 'НЕ ГОРИ')"
+ def probe_expr(expr: str) -> str:
+  return "a=[input() for _ in range(3)];print('ГОРИ' if "+expr+" else 'НЕ ГОРИ')"
  SPECS[f'conditionals/xmas-tree-{version}']=(contract,'','',[
- ('accept mixed encodings',probe("all(any(x==v[i] for v in "+repr(valid)+") for i,x in enumerate(a))")),
- ('ignore order',probe('any(sorted(a)==sorted(v) for v in '+repr(valid)+')')),
- ('strip significant spaces',probe('[x.strip() for x in a] in '+repr(valid)))])
+ ('accept mixed encodings',probe_expr("all(any(x==v[i] for v in "+repr(valid)+") for i,x in enumerate(a))")),
+ ('ignore order',probe_expr('any(sorted(a)==sorted(v) for v in '+repr(valid)+')')),
+ ('strip significant spaces',probe_expr('[x.strip() for x in a] in '+repr(valid)))])
 ORACLE_JS += r'''
  if(data.contract==='xmas2'||data.contract==='xmas3') {
   if(lines.length!==3 || input.includes('\r'))return null;
@@ -109,8 +110,9 @@ ORACLE_JS += r'''
 '''
 
 _fb_value="'FizzBuzz' if i%15==0 else 'Fizz' if i%3==0 else 'Buzz' if i%5==0 else i"
-def _fb_loop(bounds, value):
- return 'a=int(input()); b=int(input())\nfor i in range('+bounds+'):\n print('+value+')'
+def _fb_loop(bounds: str, value: str) -> str:
+ program: str = 'a=int(input()); b=int(input())\nfor i in range('+bounds+'):\n print('+value+')'
+ return program
 SPECS['break-continue/fizzbuzz']=('fizzbuzz','','',[
  ('skip right endpoint',_fb_loop('a,b',_fb_value)),
  ('miss common multiple',_fb_loop('a,b+1',"'Fizz' if i%3==0 else 'Buzz' if i%5==0 else i")),
@@ -124,14 +126,14 @@ ORACLE_JS += r'''
  }
 '''
 
-def count_probe(initial, condition):
+def count_probe(initial, condition) -> str:
  return f'n={initial}\nwhile True:\n s=input(); n+=1\n if {condition}: break\nprint(n)'
 SPECS['while-intro/count-lines']=('thank_count','','',[
  ('exclude final line',count_probe(-1,"s=='Спасибо.'")),
  ('ignore case',count_probe(0,"s.lower()=='спасибо.'")),
  ('ignore spaces',count_probe(0,"s.strip()=='Спасибо.'"))])
 
-def table_probe(i,j,value):
+def table_probe(i,j,value) -> str:
  return f'n=int(input())\nfor i in {i}:\n for j in {j}:\n  print(f"{{i}} * {{j}} = {{{value}}}")'
 SPECS['nested-loops/table-as-list']=('mult_table','','',[
  ('omit last row',table_probe('range(1,n)','range(1,n+1)','i*j')),
@@ -151,7 +153,8 @@ ORACLE_JS += r'''
 '''
 
 _digits="a,b,c=map(int,input()); "
-_yes="'Вы ввели красивое число'"; _no="'Жаль, вы ввели обычное число'"
+_yes="'Вы ввели красивое число'"; 
+_no="'Жаль, вы ввели обычное число'"
 SPECS['builtin-functions/beautiful-number']=('beautiful_digits','','',[
  ('assume middle digit is median',_digits+f'print({_yes} if a+c==2*b else {_no})'),
  ('round the mean down',_digits+f'x,y,z=sorted((a,b,c)); print({_yes} if (x+z)//2==y else {_no})'),

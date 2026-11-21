@@ -19,29 +19,34 @@ class SignalSmokeTests(unittest.TestCase):
         """Require 232 unique traces and the fixed category counts."""
         body, groups = SMOKE.trace_fixtures(10**18)
         spans = body["resourceSpans"][0]["scopeSpans"][0]["spans"]
-        self.assertEqual(len(spans), 232)
-        self.assertEqual(len({span["traceId"] for span in spans}), 232)
-        self.assertEqual(
-            {key: len(value) for key, value in groups.items()},
-            {"error": 8, "http5xx": 8, "legacy5xx": 8, "slow": 8, "normal": 200},
+        expected_spans = 232
+        assert len(spans) == expected_spans
+        assert len({span["traceId"] for span in spans}) == expected_spans
+        assert {key: len(value) for key, value in groups.items()} == {
+            "error": 8,
+            "http5xx": 8,
+            "legacy5xx": 8,
+            "slow": 8,
+            "normal": 200,
+        }
+        error_status_code = 2
+        expected_error_spans = 8
+        assert (
+            sum(span["status"]["code"] == error_status_code for span in spans)
+            == expected_error_spans
         )
-        self.assertEqual(sum(span["status"]["code"] == 2 for span in spans), 8)
 
     def test_slow_trace_duration_exceeds_the_native_sampling_threshold(self) -> None:
         """Require slow traces to last three seconds and the rest one tenth."""
         body, groups = SMOKE.trace_fixtures(10**18)
         for span in body["resourceSpans"][0]["scopeSpans"][0]["spans"]:
             duration = int(span["endTimeUnixNano"]) - int(span["startTimeUnixNano"])
-            self.assertEqual(
-                duration, 3_000_000_000 if span["traceId"] in groups["slow"] else 100_000_000
-            )
+            assert duration == (3000000000 if span["traceId"] in groups["slow"] else 100000000)
 
     def test_logs_include_separate_zero_historical_and_fresh_cases(self) -> None:
         """Require fresh, zero, and one-hour-old log timestamps in that order."""
         now = 10**18
         records = SMOKE.logs_fixture(now)["resourceLogs"][0]["scopeLogs"][0]["logRecords"]
-        self.assertEqual(
-            [int(record["timeUnixNano"]) for record in records], [now, 0, now - 3600 * 10**9]
-        )
-        self.assertIn(SMOKE.SECRET, records[0]["body"]["stringValue"])
-        self.assertTrue(SMOKE.SERVICE.startswith("otel-isolated-"))
+        assert [int(record["timeUnixNano"]) for record in records] == [now, 0, now - 3600 * 10**9]
+        assert SMOKE.SECRET in records[0]["body"]["stringValue"]
+        assert SMOKE.SERVICE.startswith("otel-isolated-")

@@ -1,3 +1,4 @@
+"""Migrate wiki runtime content to the current format version."""
 import argparse
 import hashlib
 import json
@@ -10,12 +11,12 @@ from pathlib import Path
 FORMAT_VERSION = 1
 
 
-def digest(path):
+def digest(path) -> str:
     with path.open("rb") as stream:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
-def link_target(root, path):
+def link_target(root, path) -> Path:
     target = Path(os.readlink(path))
     if target.is_absolute():
         try:
@@ -30,8 +31,8 @@ def link_target(root, path):
     return target
 
 
-def inventory(root):
-    result = {}
+def inventory(root) -> dict[str, dict[str, object]]:
+    result: dict[str, dict[str, object]] = {}
     for path in sorted(root.rglob("*")):
         name = path.relative_to(root).as_posix()
         if path.is_symlink():
@@ -46,7 +47,7 @@ def inventory(root):
     return result
 
 
-def validate(root):
+def validate(root) -> dict[str, object]:
     if not (root / "repository" / ".git").is_dir():
         raise ValueError("Missing repository/.git")
     current = root / "live" / "current"
@@ -96,7 +97,7 @@ def validate(root):
     return {"commit": head, "pending_publications": pending}
 
 
-def copy_data(source, destination):
+def copy_data(source, destination) -> None:
     shutil.copytree(source, destination, symlinks=True)
     for path in destination.rglob("*"):
         if path.is_symlink():
@@ -106,7 +107,7 @@ def copy_data(source, destination):
             path.symlink_to(os.path.relpath(target, path.parent))
 
 
-def export_data(source, bundle):
+def export_data(source, bundle) -> dict[str, object]:
     source, bundle = source.resolve(), bundle.absolute()
     if bundle.exists() or bundle.is_relative_to(source):
         raise ValueError("Bundle must be a new path outside source data")
@@ -128,7 +129,7 @@ def export_data(source, bundle):
     return summary
 
 
-def verify(bundle):
+def verify(bundle) -> dict[str, object]:
     bundle = bundle.resolve()
     manifest = json.loads((bundle / "manifest.json").read_text())
     if manifest.get("format") != FORMAT_VERSION:
@@ -141,7 +142,7 @@ def verify(bundle):
     return summary
 
 
-def restore(bundle, destination):
+def restore(bundle, destination) -> dict[str, object]:
     bundle, destination = bundle.resolve(), destination.absolute()
     summary = verify(bundle)
     if destination.exists() or destination.is_symlink():
@@ -160,7 +161,7 @@ def restore(bundle, destination):
     return summary
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Offline backup and restore of a stopped wiki runtime data directory"
     )

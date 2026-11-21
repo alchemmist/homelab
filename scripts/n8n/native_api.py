@@ -5,6 +5,7 @@ import re
 import shlex
 import subprocess
 from pathlib import Path
+from typing import cast
 
 JS = r"""let b='';process.stdin.on('data',x=>b+=x);process.stdin.on('end',async()=>{try{
 const x=JSON.parse(b);const r=await fetch('http://127.0.0.1:5678/api/v1/'+x.path,
@@ -14,7 +15,7 @@ if(!r.ok)throw Error('HTTP_'+r.status);const t=await r.text();if(t.length>419430
 console.log(t||'{}');}catch(e){console.error(/^HTTP_[0-9]+$|^SIZE_BOUND$/.test(e.message)?e.message:'NATIVE_API_FAILED');process.exitCode=1;}});"""
 
 
-def api(method, path, body=None):
+def api(method, path, body=None) -> dict[str, object]:
     if method not in {"GET", "POST", "PUT"} or not re.fullmatch(
         r"workflows(?:/[A-Za-z0-9_-]+(?:/activate)?)?(?:\?limit=250)?", path
     ):
@@ -43,4 +44,4 @@ def api(method, path, body=None):
         raise RuntimeError(
             "Native n8n API failed; stop and inspect private receipts, no automatic retry"
         )
-    return json.loads(p.stdout)
+    return cast("dict[str, object]", json.loads(p.stdout))

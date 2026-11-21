@@ -6,14 +6,18 @@ import importlib.util
 import io
 import json
 import os
+from os import stat_result
+from pathlib import Path
 import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 import urllib.error
 import urllib.parse
-from pathlib import Path
-from unittest.mock import patch
+import urllib.request
+from types import ModuleType
+from typing import Protocol, TypedDict, cast, override
 
 import yaml
 
@@ -25,18 +29,88 @@ ssh = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ssh)
 UUID = "11111111-2222-4333-8444-555555555555"
 OTHER = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+SSH_PATH = shutil.which("sshd")
 # Existing PUBLIC key, not a private fixture; inventory itself is kept byte-for-byte.
-TIM = yaml.safe_load((ROOT / "ansible/inventory/group_vars/Socrat.yml").read_text())[
+TIM = yaml.safe_load((ROOT / "ansible/inventory/group_vars/Socrat/users.yml").read_text())[
     "homelab_users"
 ][0]
 KEY = TIM["authorized_keys"][0]
 
 
-def ledger(name="guest"):
+class Assignment(TypedDict, total=False):
+    """One ssh binding assignment entry."""
+
+    uuid: str
+    state: str
+    hosts: list[str]
+    revoked_hosts: list[str]
+    sudo: bool
+
+
+class PolicyDoc(TypedDict, total=False):
+    """Committed ssh binding policy document."""
+
+    version: int
+    public_key_attribute: str
+    assignments: list[Assignment]
+
+
+class Entry(TypedDict, total=False):
+    """One per-host plan entry."""
+
+    name: str
+    hosts: list[str]
+    sudo: bool
+    groups: list[str]
+    state: str
+    authorized_keys: list[str]
+    key_fingerprints: list[str]
+
+
+class Payload(TypedDict, total=False):
+    """Exported ssh payload produced by the planner."""
+
+    by_host: dict[str, list[Entry]]
+    required_hosts: list[str]
+
+
+class PolicyChange(Protocol):
+    """One scripted policy mutation for the fail-closed tests."""
+
+    def __call__(self, p: PolicyDoc) -> None: ...
+
+
+class OpenerCall(Protocol):
+    """Minimal scripted opener call shape."""
+
+    def __call__(self, req: urllib.request.Request, timeout: int) -> io.BytesIO: ...
+
+
+class OpenerLike(Protocol):
+    """Minimal opener shape used by the tests."""
+
+    handlers: list[object]
+    open: OpenerCall
+
+
+class ApiLike(Protocol):
+    """Minimal authentik client shape used by the tests."""
+
+    opener: OpenerLike
+
+    def user(self, uuid: str) -> dict[str, object]: ...
+
+
+def ledger(name: str = "guest") -> dict[str, object]:
     return {"version": 1, "bindings": [{"uuid": UUID, "name": name}]}
 
 
-def policy(state="present", hosts=None, revoked=None):
+def policy(
+    state: str = "present",
+    hosts: list[str] | None = None,
+    revoked: list[str] | None = None,
+) -> PolicyDoc:
+    """Return one committed policy document with the requested overrides."""
     return {
         "version": 1,
         "public_key_attribute": "ssh_public_keys",
@@ -51,7 +125,8 @@ def policy(state="present", hosts=None, revoked=None):
     }
 
 
-def user():
+def user() -> dict[str, object]:
+    """Return one IdP identity payload."""
     return {
         "uuid": UUID,
         "is_active": True,
@@ -68,12 +143,21 @@ def user():
     }
 
 
-def plan(p=None, u=None):
-    return ssh.build_plan(ssh.bindings_map(ledger()), p or policy(), lambda ident: u or user())
+def plan(
+    p: PolicyDoc | None = None, u: dict[str, object] | None = None
+) -> tuple[Payload, list[dict[str, object]]]:
+    """Build the export payload for the given policy and identity."""
+    return cast(
+        "tuple[Payload, list[dict[str, object]]]",
+        ssh.build_plan(ssh.bindings_map(ledger()), p or policy(), lambda ident: u or user()),
+    )
 
 
 class BindingTests(unittest.TestCase):
-    def test_append_only_both_directions(self):
+    """Contracts for the binding history invariants."""
+
+    def test_append_only_both_directions(self) -> None:
+        """Accept only append-only history edits in both directions."""
         current = ssh.bindings_map(ledger())
         ssh.validate_history(current, [ledger()])
         added = {**current, OTHER: "another"}
@@ -82,19 +166,25 @@ class BindingTests(unittest.TestCase):
             with self.subTest(invalid=invalid), self.assertRaises(ssh.Refused):
                 ssh.validate_history(invalid, [ledger()])
         duplicate = ledger()
-        duplicate["bindings"].append({"uuid": OTHER, "name": "guest"})
+        cast("list[object]", duplicate["bindings"]).append({"uuid": OTHER, "name": "guest"})
         with self.assertRaises(ssh.Refused):
             ssh.bindings_map(duplicate)
 
-    def test_missing_or_mutable_identity_and_reserved_names_rejected(self):
+    def test_missing_or_mutable_identity_and_reserved_names_rejected(self) -> None:
+        """Reject mutable identities and reserved names."""
         for name in ["root", "alchemmist", "ghactions", "bad;cmd", "-option", "Aname"]:
             with self.subTest(name=name), self.assertRaises(ssh.Refused):
                 ssh.bindings_map(ledger(name))
-        for ident in ["", "username", UUID.upper(), "00000000-0000-0000-0000-000000000000"]:
+        for ident in [
+            "",
+            "username",
+            UUID.upper(),
+            "00000000-0000-0000-0000-000000000000",
+        ]:
             if ident == UUID:
-                continue  # UUID above contains digits only.
+                continue  # UUID contains digits only, so upper() is unchanged.
             doc = ledger()
-            doc["bindings"][0]["uuid"] = ident
+            cast("list[dict[str, object]]", doc["bindings"])[0]["uuid"] = ident
             with self.subTest(ident=ident), self.assertRaises(ssh.Refused):
                 ssh.bindings_map(doc)
         u = user()
@@ -106,7 +196,8 @@ class BindingTests(unittest.TestCase):
         with self.assertRaises(ssh.Refused):
             plan(u=u)
 
-    def test_never_matches_names_groups_or_attributes(self):
+    def test_never_matches_names_groups_or_attributes(self) -> None:
+        """Never copy names, groups, or attributes into the plan."""
         payload, summary = plan()
         entry = payload["by_host"]["socrat-1"][0]
         self.assertEqual(entry["name"], "guest")
@@ -115,27 +206,32 @@ class BindingTests(unittest.TestCase):
         self.assertEqual(entry["groups"], [])
         self.assertNotIn("arbitrary", json.dumps(payload))
         self.assertNotIn("homelab-owner", json.dumps(payload))
-        self.assertTrue(summary[0]["fingerprints"][0].startswith("SHA256:"))
+        self.assertTrue(cast("list[str]", summary[0]["fingerprints"])[0].startswith("SHA256:"))
         self.assertEqual(entry["key_fingerprints"], summary[0]["fingerprints"])
 
-    def test_policy_fields_hosts_and_uuid_fail_closed(self):
-        for change in [
-            lambda p: p["assignments"][0].pop("hosts"),
-            lambda p: p["assignments"][0].update(hosts=[]),
-            lambda p: p["assignments"][0].update(hosts="socrat-1"),
-            lambda p: p["assignments"][0].update(hosts=["socrat-1;id"]),
-            lambda p: p["assignments"][0].update(hosts=["socrat-1", "socrat-1"]),
-            lambda p: p["assignments"][0].update(revoked_hosts=["socrat-1"]),
-            lambda p: p["assignments"][0].update(uuid=OTHER),
-            lambda p: p["assignments"][0].update(sudo=True),
-            lambda p: p["assignments"].append(copy.deepcopy(p["assignments"][0])),
-        ]:
+    def test_policy_fields_hosts_and_uuid_fail_closed(self) -> None:
+        """Fail closed on invalid policy fields, hosts, and UUIDs."""
+        for change in cast(
+            "list[PolicyChange]",
+            [
+                lambda p: p["assignments"][0].pop("hosts"),
+                lambda p: p["assignments"][0].update(hosts=[]),
+                lambda p: p["assignments"][0].update(hosts="socrat-1"),
+                lambda p: p["assignments"][0].update(hosts=["socrat-1;id"]),
+                lambda p: p["assignments"][0].update(hosts=["socrat-1", "socrat-1"]),
+                lambda p: p["assignments"][0].update(revoked_hosts=["socrat-1"]),
+                lambda p: p["assignments"][0].update(uuid=OTHER),
+                lambda p: p["assignments"][0].update(sudo=True),
+                lambda p: p["assignments"].append(copy.deepcopy(p["assignments"][0])),
+            ],
+        ):
             p = policy()
             change(p)
             with self.assertRaises(ssh.Refused):
                 plan(p=p)
 
-    def test_transition_requires_retained_revocation_tombstones(self):
+    def test_transition_requires_retained_revocation_tombstones(self) -> None:
+        """Require retained revocation tombstones across transitions."""
         old = policy(hosts=["socrat-1", "socrat-2"])
         with self.assertRaises(ssh.Refused):
             ssh.validate_transition(policy(), [old])
@@ -147,11 +243,15 @@ class BindingTests(unittest.TestCase):
         with self.assertRaises(ssh.Refused):
             ssh.validate_transition(policy(), [moved])
 
-    def test_disabled_and_removed_hosts_need_no_live_identity(self):
+    def test_disabled_and_removed_hosts_need_no_live_identity(self) -> None:
+        """Skip the IdP for disabled and removed hosts."""
         p = policy("disabled", hosts=["socrat-1"], revoked=["socrat-2"])
 
-        def unavailable(ident):
-            raise AssertionError("Must not call IdP for revocation")
+
+        def unavailable(_ident) -> None:
+            """Refuse any IdP lookup for the revocation path."""
+            refusal = "Must not call IdP for revocation"
+            raise AssertionError(refusal)
 
         payload, _ = ssh.build_plan(ssh.bindings_map(ledger()), p, unavailable)
         for entries in payload["by_host"].values():
@@ -162,14 +262,18 @@ class BindingTests(unittest.TestCase):
         self.assertEqual(payload["by_host"]["socrat-2"][0]["state"], "disabled")
         self.assertEqual(payload["by_host"]["socrat-1"][0]["state"], "present")
 
-    def test_inactive_service_and_missing_keys_refuse_active_export(self):
-        for update in [
-            {"is_active": False},
-            {"type": "service_account"},
-            {"attributes": {}},
-            {"attributes": {"ssh_public_keys": []}},
-            {"attributes": {"ssh_public_keys": KEY}},
-        ]:
+    def test_inactive_service_and_missing_keys_refuse_active_export(self) -> None:
+        """Refuse active export for inactive accounts or missing keys."""
+        for update in cast(
+            "list[dict[str, object]]",
+            [
+                {"is_active": False},
+                {"type": "service_account"},
+                {"attributes": {}},
+                {"attributes": {"ssh_public_keys": []}},
+                {"attributes": {"ssh_public_keys": KEY}},
+            ],
+        ):
             u = user()
             u.update(update)
             with self.subTest(update=update), self.assertRaises(ssh.Refused):
@@ -177,14 +281,21 @@ class BindingTests(unittest.TestCase):
 
 
 class HistoryTests(unittest.TestCase):
-    def test_real_committed_history_catches_rebinding_and_removed_scope(self):
+    """Contracts over the real committed git history."""
+
+    def test_real_committed_history_catches_rebinding_and_removed_scope(self) -> None:
+        """Catch rebinding and scope removal using the committed git history."""
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             binding_path, policy_path = root / "bindings.json", root / "policy.json"
 
-            def git(*args):
+            def git(*args: str) -> str:
+                """Run one git command inside the temporary root."""
                 return subprocess.run(
-                    ["git", "-C", str(root), *args], check=True, text=True, capture_output=True
+                    ["git", "-C", str(root), *args],
+                    check=True,
+                    text=True,
+                    capture_output=True,
                 ).stdout
 
             git("init", "-q")
@@ -208,13 +319,19 @@ class HistoryTests(unittest.TestCase):
                 moved = policy(revoked=["socrat-2"])
                 ssh.validate_transition(moved, ssh.policy_history())
             (root / ".git/shallow").write_text(git("rev-parse", "HEAD").strip() + "\n")
-            with patch.object(ssh, "ROOT", root), patch.object(ssh, "BINDINGS", binding_path):
+            with (
+                patch.object(ssh, "ROOT", root),
+                patch.object(ssh, "BINDINGS", binding_path),
+            ):
                 with self.assertRaisesRegex(ssh.Refused, "Shallow"):
                     ssh.binding_history()
 
 
 class KeyTests(unittest.TestCase):
-    def test_real_openssh_parser_strips_comments_and_handles_two_tim_keys(self):
+    """Contracts for the offline OpenSSH key parser."""
+
+    def test_real_openssh_parser_strips_comments_and_handles_two_tim_keys(self) -> None:
+        """Parse the committed public keys with the real OpenSSH tooling."""
         keys, fingerprints = ssh.public_keys(TIM["authorized_keys"])
         self.assertEqual(len(keys), 2)
         self.assertEqual(len(set(fingerprints)), 2)
@@ -224,7 +341,10 @@ class KeyTests(unittest.TestCase):
             [KEY.rsplit(" ", 1)[0]],
         )
 
-    def test_invalid_private_cert_options_multiline_and_fake_base64_rejected(self):
+    def test_invalid_private_cert_options_multiline_and_fake_base64_rejected(
+        self,
+    ) -> None:
+        """Reject private keys, certificates, options, and fake base64."""
         for line in [
             "-----BEGIN OPENSSH PRIVATE KEY-----",
             'command="id" ' + KEY,
@@ -247,20 +367,27 @@ class KeyTests(unittest.TestCase):
 
 
 class ApiTests(unittest.TestCase):
-    def api(self, doc=None):
+    """Contracts for the authentik API client."""
+
+    def api(self, doc: dict[str, object] | None = None) -> ApiLike:
+        """Build the real client with a scripted opener response."""
         api = ssh.Authentik("https://auth.example.invalid", "fake-test-token")
         api.opener.open = lambda req, timeout: io.BytesIO(
             json.dumps(
                 doc if doc is not None else {"pagination": {"next": None}, "results": [user()]}
             ).encode()
         )
-        return api
+        return cast("ApiLike", api)
 
-    def test_fixed_get_uuid_tls_and_no_redirects(self):
+    def test_fixed_get_uuid_tls_and_no_redirects(self) -> None:
+        """Pin GET, UUID queries, TLS verification, and redirect refusal."""
         api = self.api()
-        seen = []
+        seen: list[urllib.request.Request] = []
 
-        def opened(req, timeout):
+
+        def opened(req: urllib.request.Request, timeout: int) -> io.BytesIO:
+            """Record one opener request and return the scheduled page."""
+            del timeout
             seen.append(req)
             return io.BytesIO(
                 json.dumps({"pagination": {"next": None}, "results": [user()]}).encode()
@@ -272,7 +399,8 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(req.get_method(), "GET")
         self.assertIsNone(req.data)
         self.assertEqual(
-            urllib.parse.parse_qs(urllib.parse.urlsplit(req.full_url).query)["uuid"], [UUID]
+            urllib.parse.parse_qs(urllib.parse.urlsplit(req.full_url).query)["uuid"],
+            [UUID],
         )
         with self.assertRaises(ssh.Refused):
             ssh.NoRedirect().redirect_request(req, None, 302, "", {}, "https://elsewhere.invalid")
@@ -284,7 +412,10 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(handler._context.verify_mode, ssl.CERT_REQUIRED)
         self.assertTrue(handler._context.check_hostname)
 
-    def test_http_credentials_bad_tokens_and_incomplete_uuid_lookups_refused(self):
+    def test_http_credentials_bad_tokens_and_incomplete_uuid_lookups_refused(
+        self,
+    ) -> None:
+        """Refuse http, credentials, bad tokens, and incomplete lookups."""
         for url in [
             "http://auth.invalid",
             "https://user:pass@auth.invalid",
@@ -296,22 +427,35 @@ class ApiTests(unittest.TestCase):
         for token in [None, "", "token\nInjected: yes"]:
             with self.assertRaises(ssh.Refused):
                 ssh.Authentik("https://auth.invalid", token)
-        for rows in [[], [user(), user()], [{**user(), "uuid": OTHER}], [{"uid": UUID}]]:
+        for rows in [
+            [],
+            [user(), user()],
+            [{**user(), "uuid": OTHER}],
+            [{"uid": UUID}],
+        ]:
             with self.assertRaises(ssh.Refused):
                 self.api({"results": rows, "pagination": {"next": None}}).user(UUID)
         with self.assertRaises(ssh.Refused):
             self.api({"results": [user()], "pagination": {"next": 2}}).user(UUID)
         api = self.api()
-        api.opener.open = lambda *a, **kw: (_ for _ in ()).throw(
-            urllib.error.URLError("sensitive-response")
-        )
+
+        def exploding(req: urllib.request.Request, timeout: int) -> io.BytesIO:
+            """Fail the opener without leaking the response."""
+            del req, timeout
+            refusal = "sensitive-response"
+            raise urllib.error.URLError(refusal)
+
+        api.opener.open = exploding
         with self.assertRaises(ssh.Refused) as caught:
             api.user(UUID)
         self.assertNotIn("sensitive", str(caught.exception))
 
 
 class ExportTests(unittest.TestCase):
-    def test_explicit_digest_private_new_file_and_public_only_payload(self):
+    """Contracts for the export file writer."""
+
+    def test_explicit_digest_private_new_file_and_public_only_payload(self) -> None:
+        """Require the digest, private new files, and a public-only payload."""
         payload, _ = plan()
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "ssh.json"
@@ -334,15 +478,22 @@ class ExportTests(unittest.TestCase):
         with self.assertRaises(ssh.Refused):
             ssh.export(ROOT / "unsafe-export.json", payload, ssh.digest(payload))
 
-    def test_default_empty_plan_no_api_no_files_and_snapshots_never_export(self):
+    def test_default_empty_plan_no_api_no_files_and_snapshots_never_export(
+        self,
+    ) -> None:
+        """Export nothing for the empty default plan."""
         with patch.object(ssh, "Authentik", side_effect=AssertionError("No API for empty policy")):
             with contextlib.redirect_stdout(io.StringIO()) as out:
                 self.assertEqual(ssh.main([]), 0)
         self.assertEqual(json.loads(out.getvalue())["assignments"], [])
-        with contextlib.redirect_stderr(io.StringIO()), contextlib.redirect_stdout(io.StringIO()):
+        with (
+            contextlib.redirect_stderr(io.StringIO()),
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
             self.assertEqual(ssh.main(["--snapshot", "/not-read", "--export", "/not-written"]), 1)
 
-    def test_duplicate_json_fields_fail_closed_without_value_echo(self):
+    def test_duplicate_json_fields_fail_closed_without_value_echo(self) -> None:
+        """Fail closed on duplicate JSON fields without echoing values."""
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "bad.json"
             path.write_text('{"uuid":"SECRET", "uuid":"OTHER"}')
@@ -352,7 +503,13 @@ class ExportTests(unittest.TestCase):
 
 
 class HostBindingTests(unittest.TestCase):
-    def setUp(self):
+    """Contracts for the per-host binding verifier script."""
+
+    host: ModuleType
+
+    @override
+    def setUp(self) -> None:
+        """Stub the effective key location for offline verification."""
         self.real_location = self.host.verify_key_location
         self.location = patch.object(
             self.host, "verify_key_location", return_value=Path("/unused-test-key-path")
@@ -360,14 +517,17 @@ class HostBindingTests(unittest.TestCase):
         self.addCleanup(patch.stopall)
 
     @classmethod
-    def setUpClass(cls):
+    @override
+    def setUpClass(cls) -> None:
+        """Load the committed host binding verifier once."""
         spec = importlib.util.spec_from_file_location(
             "host_binding", ROOT / "ansible/files/verify_authentik_ssh_binding.py"
         )
         cls.host = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(cls.host)
 
-    def test_no_existing_account_is_automatically_adopted(self):
+    def test_no_existing_account_is_automatically_adopted(self) -> None:
+        """Never adopt an existing account automatically."""
         with tempfile.TemporaryDirectory() as d:
             directory = Path(d) / "bindings"
             with patch.object(self.host.pwd, "getpwnam", side_effect=KeyError):
@@ -381,14 +541,19 @@ class HostBindingTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     self.host.verify(name, UUID, directory)
 
-    def test_root_marker_is_immutable_private_and_not_symlink(self):
+    def test_root_marker_is_immutable_private_and_not_symlink(self) -> None:
+        """Keep the root marker immutable, private, and not a symlink."""
         from types import SimpleNamespace
 
         original_stat = Path.lstat
 
-        def root_stat(path):
+        def root_stat(path: Path) -> stat_result:
+            """Report any path as root-owned without changing the mode."""
             info = original_stat(path)
-            return SimpleNamespace(st_uid=0, st_mode=info.st_mode, st_size=info.st_size)
+            return cast(
+                "stat_result",
+                SimpleNamespace(st_uid=0, st_mode=info.st_mode, st_size=info.st_size),
+            )
 
         with tempfile.TemporaryDirectory() as d:
             directory = Path(d) / "bindings"
@@ -415,7 +580,8 @@ class HostBindingTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     self.host.verify("guest", UUID, directory)
 
-    def test_marked_nonstandard_home_rejected_before_key_writes(self):
+    def test_marked_nonstandard_home_rejected_before_key_writes(self) -> None:
+        """Reject nonstandard homes before any key writes."""
         from types import SimpleNamespace
 
         with tempfile.TemporaryDirectory() as d:
@@ -423,9 +589,13 @@ class HostBindingTests(unittest.TestCase):
             # Metadata is mocked only to allow a non-root offline test process.
             original = Path.lstat
 
-            def root_stat(path):
+            def root_stat(path: Path) -> stat_result:
+                """Report any path as root-owned without changing the mode."""
                 info = original(path)
-                return SimpleNamespace(st_uid=0, st_mode=info.st_mode, st_size=info.st_size)
+                return cast(
+                    "stat_result",
+                    SimpleNamespace(st_uid=0, st_mode=info.st_mode, st_size=info.st_size),
+                )
 
             directory.chmod(0o700)
             marker = directory / "guest.json"
@@ -443,7 +613,8 @@ class HostBindingTests(unittest.TestCase):
                     self.host.verify("guest", UUID, directory)
                 self.location.assert_not_called()
 
-    def test_effective_key_sources_and_contextual_configs_fail_closed(self):
+    def test_effective_key_sources_and_contextual_configs_fail_closed(self) -> None:
+        """Fail closed on unexpected key sources and contextual configs."""
         settings = {
             "authorizedkeysfile": ".ssh/authorized_keys",
             "authorizedkeyscommand": "none",
@@ -456,7 +627,8 @@ class HostBindingTests(unittest.TestCase):
             "kerberosauthentication": "no",
         }
 
-        def response(values):
+        def response(values: dict[str, str]) -> subprocess.CompletedProcess[str]:
+            """Return one scripted sshd -T result."""
             return subprocess.CompletedProcess(
                 [], 0, "\n".join(k + " " + v for k, v in values.items()), ""
             )
@@ -469,7 +641,8 @@ class HostBindingTests(unittest.TestCase):
             config.write_text("# synthetic test config\n")
             with patch.object(self.host.subprocess, "run", return_value=response(settings)):
                 self.assertEqual(
-                    self.real_location("guest", config), Path("/home/guest/.ssh/authorized_keys")
+                    self.real_location("guest", config),
+                    Path("/home/guest/.ssh/authorized_keys"),
                 )
             for field, value in [
                 ("authorizedkeysfile", ".ssh/authorized_keys .ssh/authorized_keys2"),
@@ -504,7 +677,8 @@ class HostBindingTests(unittest.TestCase):
                 self.real_location("guest", config)
 
     @unittest.skipUnless(shutil.which("sshd"), "actual OpenSSH sshd required")
-    def test_real_openssh_hash_include_cannot_hide_match(self):
+    def test_real_openssh_hash_include_cannot_hide_match(self) -> None:
+        """Prove hashed includes cannot hide a contextual match."""
         # Real daemon parsing demonstrates why shell comments are not adequate.
         with tempfile.TemporaryDirectory() as d:
             directory = Path(d)
@@ -519,7 +693,9 @@ class HostBindingTests(unittest.TestCase):
             config = directory / "sshd_config"
             prefix = "HostKey " + str(key) + "\nAuthorizedKeysFile .ssh/authorized_keys\n"
             config.write_text(prefix + "Include " + str(included) + "\n")
-            command = [shutil.which("sshd"), "-T", "-f", str(config)]
+            ssh_path = shutil.which("sshd")
+            assert ssh_path is not None
+            command = [ssh_path, "-T", "-f", str(config)]
             normal = subprocess.run(command, capture_output=True, text=True, check=True).stdout
             matched = subprocess.run(
                 command + ["-C", "user=guest,host=localhost,addr=127.0.0.1"],
@@ -550,7 +726,8 @@ class HostBindingTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Contextual"):
                 self.host.reject_contextual_config(config)
 
-    def test_exact_fingerprints_rotation_and_disabled_zero_keys(self):
+    def test_exact_fingerprints_rotation_and_disabled_zero_keys(self) -> None:
+        """Verify exact fingerprints, rotation, and disabled zero keys."""
         from types import SimpleNamespace
 
         _, expected = ssh.public_keys([KEY])
@@ -567,7 +744,8 @@ class HostBindingTests(unittest.TestCase):
             ):
                 keyfile.write_text(KEY + "\n")
                 self.assertEqual(
-                    self.host.verify_keys("guest", UUID, "present", expected)["keyCount"], 1
+                    self.host.verify_keys("guest", UUID, "present", expected)["keyCount"],
+                    1,
                 )
                 # Rotation cannot pass while an old extra effective key remains.
                 keyfile.write_text("\n".join(TIM["authorized_keys"]) + "\n")
@@ -584,7 +762,10 @@ class HostBindingTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     self.host.verify_keys("guest", UUID, "present", expected)
 
-    def test_apply_lock_is_exclusive_and_spans_preflight_to_exact_verification(self):
+    def test_apply_lock_is_exclusive_and_spans_preflight_to_exact_verification(
+        self,
+    ) -> None:
+        """Keep the apply lock exclusive from preflight to verification."""
         play = yaml.safe_load((ROOT / "ansible/playbooks/authentik-ssh-users.yml").read_text())[0]
         outer = play["tasks"][-1]["block"]
         acquire, protected = outer
@@ -616,7 +797,15 @@ class HostBindingTests(unittest.TestCase):
 
 @unittest.skipUnless(shutil.which("ansible-playbook"), "ansible-playbook unavailable")
 class AnsibleIntentTests(unittest.TestCase):
-    def run_play(self, payload, *flags, manual=False, review=None):
+    """Run the Ansible intent playbooks against generated inventories."""
+    def run_play(
+        self,
+        payload: object,
+        *flags: str,
+        manual: bool = False,
+        review: str | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        """Run the committed playbook with intent-only or check flags."""
         with tempfile.TemporaryDirectory() as d:
             path = Path(d)
             (path / "inventory.yml").write_text(
@@ -671,7 +860,8 @@ class AnsibleIntentTests(unittest.TestCase):
                 },
             )
 
-    def test_default_and_check_are_local_no_mutations(self):
+    def test_default_and_check_are_local_no_mutations(self) -> None:
+        """Keep default and check runs local and mutation-free."""
         payload, _ = plan(p=policy(revoked=["socrat-2"]))
         for flags in [
             [],
@@ -691,7 +881,8 @@ class AnsibleIntentTests(unittest.TestCase):
             self.assertNotIn("Manage personal accounts", result.stdout)
             self.assertNotIn(KEY.split()[1], result.stdout)
 
-    def test_unknown_hosts_limits_overlap_and_unguarded_apply_refused(self):
+    def test_unknown_hosts_limits_overlap_and_unguarded_apply_refused(self) -> None:
+        """Refuse unknown hosts, limits, and unguarded apply."""
         payload, _ = plan(p=policy(revoked=["socrat-2"]))
         result = self.run_play(payload, review="0" * 64)
         self.assertNotEqual(result.returncode, 0, result.stdout)
