@@ -53,7 +53,8 @@ load_config() {
       fi
       # Preserve assignment expansion from the historical source-based loader.
       # shellcheck disable=SC2086
-      eval "export ${key}=${raw_value}"
+      # Quote the evaluated assignment so expansions retain embedded spaces.
+      eval "export ${key}=\"${value}\""
     done < "${CONFIG_FILE}"
   fi
 }
