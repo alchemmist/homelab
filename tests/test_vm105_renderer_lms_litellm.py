@@ -1,10 +1,12 @@
 """Native auth/storage-preserving VM105 application-only placement contracts."""
 
 import ast
+import re
 from pathlib import Path
 import hashlib, json, subprocess, tempfile, unittest, yaml
 
 R = Path(__file__).resolve().parents[1]
+LITELLM_GRACE_PERIOD_SECONDS = 7260
 
 
 def load(p):
@@ -35,13 +37,14 @@ def render(chart, values, release, ns):
 
 
 class MigrationTests(unittest.TestCase):
+    """Tests for MigrationTests."""
     def test_renderer_retry_after_transport_repair_preserves_grafana_and_adapter_placement(self):
         v = load("charts/grafana/alert-graphs.runtime.values.yaml")
-        self.assertEqual(
-            v["grafana"]["imageRenderer"]["nodeSelector"], {"kubernetes.io/hostname": "socrat-5"}
-        )
-        self.assertEqual(v["alertGraphs"]["nodeSelector"], {"kubernetes.io/hostname": "socrat-1"})
-        self.assertEqual(v["grafana"]["imageRenderer"]["existingSecret"], "socrat-grafana-renderer")
+        assert v["grafana"]["imageRenderer"]["nodeSelector"] == {
+            "kubernetes.io/hostname": "socrat-5"
+        }
+        assert v["alertGraphs"]["nodeSelector"] == {"kubernetes.io/hostname": "socrat-1"}
+        assert v["grafana"]["imageRenderer"]["existingSecret"] == "socrat-grafana-renderer"
 
     def test_lms_single_worker_and_original_database_and_identity(self):
         v = load("charts/lms/values.yaml")
@@ -52,25 +55,22 @@ class MigrationTests(unittest.TestCase):
         old["webNodes"] = ["socrat-0", "socrat-1", "socrat-3"]
         old["hostAliases"] = []
         baseline = render("charts/lms", old, "lms", "lms")
-        self.assertEqual([k for k in docs if docs[k] != baseline[k]], [("Deployment", "lms")])
-        self.assertEqual(d["spec"]["strategy"], {"type": "Recreate"})
-        self.assertEqual(d["spec"]["replicas"], 1)
+        assert [k for k in docs if docs[k] != baseline[k]] == [("Deployment", "lms")]
+        assert d["spec"]["strategy"] == {"type": "Recreate"}
+        assert d["spec"]["replicas"] == 1
         s = d["spec"]["template"]["spec"]
-        self.assertEqual(
-            s["affinity"]["nodeAffinity"]["requiredDuringSchedulingIgnoredDuringExecution"][
-                "nodeSelectorTerms"
-            ][0]["matchExpressions"][0]["values"],
-            ["socrat-5"],
-        )
-        self.assertEqual(
-            s["hostAliases"], [{"ip": "10.43.218.222", "hostnames": ["auth.socrat.alchemmist.xyz"]}]
-        )
-        self.assertFalse(any("persistentVolumeClaim" in x for x in s["volumes"]))
+        assert s["affinity"]["nodeAffinity"]["requiredDuringSchedulingIgnoredDuringExecution"][
+            "nodeSelectorTerms"
+        ][0]["matchExpressions"][0]["values"] == ["socrat-5"]
+        assert s["hostAliases"] == [
+            {"ip": "10.43.218.222", "hostnames": ["auth.socrat.alchemmist.xyz"]}
+        ]
+        assert not any("persistentVolumeClaim" in x for x in s["volumes"])
         env = {e["name"]: e for e in s["containers"][0]["env"]}
-        self.assertEqual(env["LMS_DATABASE_URL"]["valueFrom"]["secretKeyRef"]["name"], "lms-db")
-        self.assertEqual(
-            env["LMS_OIDC_CLIENT_SECRET"]["valueFrom"]["secretKeyRef"]["name"],
-            "socrat-authentik-lms",
+        assert env["LMS_DATABASE_URL"]["valueFrom"]["secretKeyRef"]["name"] == "lms-db"
+        assert (
+            env["LMS_OIDC_CLIENT_SECRET"]["valueFrom"]["secretKeyRef"]["name"]
+            == "socrat-authentik-lms"
         )
 
     def test_vendor_preserves_every_upstream_file_except_two_minimal_extensions(self):
@@ -85,7 +85,7 @@ class MigrationTests(unittest.TestCase):
                 )
             if name == "templates/migrations-job.yaml":
                 s = s[s.index(b"{{- if .Values.migrationJob.enabled }}") :]
-            self.assertEqual(hashlib.sha256(s).hexdigest(), digest, name)
+            assert hashlib.sha256(s).hexdigest() == digest, name
 
     def test_litellm_only_deployment_changes_no_migration_job_or_config_or_secrets(self):
         v = load("deploy/platform/litellm/values.yaml")
@@ -100,46 +100,51 @@ class MigrationTests(unittest.TestCase):
         old["envVars"].pop("DISABLE_SCHEMA_UPDATE", None)
         before = render("charts/litellm", old, "litellm", "llm")
         changed = [k for k in before if k in after and before[k] != after[k]]
-        self.assertEqual(changed, [("Deployment", "litellm")])
+        assert changed == [("Deployment", "litellm")]
         d = after[("Deployment", "litellm")]
-        self.assertEqual(d["spec"]["replicas"], 1)
-        self.assertEqual(d["spec"]["template"]["spec"]["terminationGracePeriodSeconds"], 7260)
-        s = d["spec"]["template"]["spec"]
-        self.assertEqual(s["nodeSelector"], {"kubernetes.io/hostname": "socrat-5"})
-        self.assertEqual(
-            s["hostAliases"], [{"ip": "10.43.218.222", "hostnames": ["auth.socrat.alchemmist.xyz"]}]
+        assert d["spec"]["replicas"] == 1
+        assert (
+            d["spec"]["template"]["spec"]["terminationGracePeriodSeconds"]
+            == LITELLM_GRACE_PERIOD_SECONDS
         )
-        self.assertTrue(any(k[0] == "Job" for k in before))
-        self.assertFalse(any(k[0] == "Job" for k in after))
+        s = d["spec"]["template"]["spec"]
+        assert s["nodeSelector"] == {"kubernetes.io/hostname": "socrat-5"}
+        assert s["hostAliases"] == [
+            {"ip": "10.43.218.222", "hostnames": ["auth.socrat.alchemmist.xyz"]}
+        ]
+        assert any(k[0] == "Job" for k in before)
+        assert not any(k[0] == "Job" for k in after)
         broken = dict(v)
         broken["image"] = dict(v["image"])
         broken["image"]["tag"] = "not-reviewed-next-version"
         with self.assertRaises(subprocess.CalledProcessError):
             render("charts/litellm", broken, "litellm", "llm")
-        self.assertEqual(v["envVars"]["DISABLE_SCHEMA_UPDATE"].lower(), "true")
-        self.assertRegex(v["image"]["tag"], r"^a691e23abfac6dd0f2b69f9f5b4f714241f39ac4@sha256:[a-f0-9]{64}$")
-        self.assertEqual(v["masterkeySecretName"], "litellm-env")
+        assert v["envVars"]["DISABLE_SCHEMA_UPDATE"].lower() == "true"
+        assert re.search(
+            r"^a691e23abfac6dd0f2b69f9f5b4f714241f39ac4@sha256:[a-f0-9]{64}$", v["image"]["tag"]
+        )
+        assert v["masterkeySecretName"] == "litellm-env"
 
     def test_app_source_keeps_version_and_selective_sync_safety(self):
         a = load("deploy/argocd/apps/litellm.yaml")["spec"]
-        self.assertEqual(a["sources"][0]["path"], "charts/litellm")
-        self.assertFalse(a["syncPolicy"]["automated"]["prune"])
-        self.assertIn("ApplyOutOfSyncOnly=true", a["syncPolicy"]["syncOptions"])
-        self.assertEqual(load("charts/litellm/Chart.yaml")["version"], "1.105.1")
+        assert a["sources"][0]["path"] == "charts/litellm"
+        assert not a["syncPolicy"]["automated"]["prune"]
+        assert "ApplyOutOfSyncOnly=true" in a["syncPolicy"]["syncOptions"]
+        assert load("charts/litellm/Chart.yaml")["version"] == "1.105.1"
 
     def test_ansible_cannot_silently_revert_to_old_node_or_oci_chart(self):
         s = (R / "ansible/playbooks/litellm.yml").read_text()
         p = yaml.safe_load(s)
-        self.assertEqual(len(p), 1)
-        self.assertEqual(len(p[0]["tasks"]), 1)
-        self.assertIn("ansible.builtin.fail", p[0]["tasks"][0])
-        self.assertNotIn("helm upgrade", s)
-        self.assertIn("deploy/platform/litellm/values.yaml", s)
+        assert len(p) == 1
+        assert len(p[0]["tasks"]) == 1
+        assert "ansible.builtin.fail" in p[0]["tasks"][0]
+        assert "helm upgrade" not in s
+        assert "deploy/platform/litellm/values.yaml" in s
         g = ast.unparse(
             ast.parse(
                 (R / "ansible/roles/monitoring_llm_gateway/files/configure_gateway.py").read_text()
             )
         )
-        self.assertIn("s.get('path') == 'charts/litellm'", g)
-        self.assertNotIn("['upgrade'", g)
-        self.assertNotIn("/key/generate", g)
+        assert "s.get('path') == 'charts/litellm'" in g
+        assert "['upgrade'" not in g
+        assert "/key/generate" not in g

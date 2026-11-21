@@ -7,7 +7,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
     "monitor_migration", ROOT / "ansible/files/migrate_syncthing_health_monitors.py"
@@ -15,11 +14,13 @@ SPEC = importlib.util.spec_from_file_location(
 MIGRATION = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MIGRATION)
 
+MIGRATED_DB_MODE = 0o600
+
 
 class SyncthingMonitorMigrationTests(unittest.TestCase):
     """Migrate one named monitor and leave every other stored row unchanged."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.database = Path(self.directory.name) / "kuma.db"
@@ -47,7 +48,7 @@ class SyncthingMonitorMigrationTests(unittest.TestCase):
         connection.close()
         self.plan = [{"name": "Syncthing sync-0", "url": "http://10.250.0.1:18444/healthz"}]
 
-    def read_rows(self, database=None):
+    def read_rows(self, database=None) -> list[tuple[int, str, str, str, str, str, int, int]]:
         connection = sqlite3.connect(database or self.database)
         rows = connection.execute("SELECT * FROM monitor ORDER BY id").fetchall()
         connection.close()
@@ -57,31 +58,31 @@ class SyncthingMonitorMigrationTests(unittest.TestCase):
         """Report a pending change without writing the database or a backup."""
         before = self.read_rows()
         result = MIGRATION.migrate(self.database, self.plan, check=True)
-        self.assertTrue(result["changed"])
-        self.assertEqual(self.read_rows(), before)
-        self.assertFalse((self.database.parent / "backups").exists())
+        assert result["changed"]
+        assert self.read_rows() == before
+        assert not (self.database.parent / "backups").exists()
 
     def test_migration_preserves_unrelated_data_and_original_backup(self) -> None:
         """Update only the Syncthing URL and method and keep a private original backup."""
         before = self.read_rows()
         result = MIGRATION.migrate(self.database, self.plan)
         after = self.read_rows()
-        self.assertEqual(self.read_rows(Path(result["backup"])), before)
-        self.assertEqual(after[1], before[1])
-        self.assertEqual(after[0][6:], before[0][6:])
-        self.assertEqual(after[0][2], self.plan[0]["url"])
-        self.assertEqual(after[0][3], "GET")
-        self.assertEqual(json.loads(after[0][4]), ["200"])
-        self.assertEqual(Path(result["backup"]).stat().st_mode & 0o777, 0o600)
+        assert self.read_rows(Path(result["backup"])) == before
+        assert after[1] == before[1]
+        assert after[0][6:] == before[0][6:]
+        assert after[0][2] == self.plan[0]["url"]
+        assert after[0][3] == "GET"
+        assert json.loads(after[0][4]) == ["200"]
+        assert Path(result["backup"]).stat().st_mode & 0o777 == MIGRATED_DB_MODE
 
     def test_repeat_and_unknown_monitor_are_noops(self) -> None:
         """Leave an already migrated database unchanged when an unknown monitor appears."""
         MIGRATION.migrate(self.database, self.plan)
         before = self.read_rows()
         plan = self.plan + [{"name": "Not configured", "url": "http://10.250.0.3:18444/healthz"}]
-        self.assertFalse(MIGRATION.migrate(self.database, plan)["changed"])
-        self.assertEqual(self.read_rows(), before)
-        self.assertEqual(len(list((self.database.parent / "backups").glob("*.db"))), 1)
+        assert not MIGRATION.migrate(self.database, plan)["changed"]
+        assert self.read_rows() == before
+        assert len(list((self.database.parent / "backups").glob("*.db"))) == 1
 
 
 if __name__ == "__main__":

@@ -1,3 +1,5 @@
+"""Ensure the monitoring admin credentials secret exists in Kubernetes."""
+
 import json
 import secrets
 import subprocess

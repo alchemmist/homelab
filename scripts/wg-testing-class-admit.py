@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """One-time CAS admission after source-scoped guard. Never blindly replay.
+
 Existing private config/runtime snapshot stays root-only; stdout is sanitized.
 """
 
@@ -15,7 +16,7 @@ IP = "10.250.0.41/32"
 EXPECTED = "ea9e5dc22fabfe13af8e65fae5944846f8ac11d1d69eb62dc6b301cfbde3d503"
 
 
-def run(*args):
+def run(*args: str):
     return subprocess.check_output(args, text=True).strip()
 
 

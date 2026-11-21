@@ -10,6 +10,7 @@ from pathlib import Path
 
 
 def main():
+    """Execute main."""
     p = argparse.ArgumentParser()
     p.add_argument("--private-dir", type=Path, required=True)
     a = p.parse_args()
@@ -65,5 +66,5 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
+    except (ImportError, OSError, RuntimeError, ValueError):
         raise SystemExit("Secret preparation refused; inspect private inputs; nothing printed.")

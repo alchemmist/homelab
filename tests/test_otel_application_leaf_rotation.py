@@ -3,15 +3,40 @@
 import base64
 import copy
 import importlib.util
-from pathlib import Path
 import subprocess
+import types
 import unittest
+from pathlib import Path
+from typing import TypedDict
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load():
+class Condition(TypedDict, total=False):
+    """Condition entries of a cert-manager Certificate document."""
+
+    type: str
+    status: str
+    reason: str
+    observedGeneration: int
+
+
+class CertificateStatus(TypedDict):
+    """Status section of a cert-manager Certificate document."""
+
+    conditions: list[Condition]
+
+
+class Certificate(TypedDict):
+    """cert-manager Certificate shape the renewal script inspects."""
+
+    metadata: dict[str, object]
+    spec: dict[str, object]
+    status: CertificateStatus
+
+
+def load() -> types.ModuleType:
     spec = importlib.util.spec_from_file_location(
         "leaf_rotation", ROOT / "scripts/otel-application-leaf-rotation.py"
     )
@@ -23,7 +48,9 @@ def load():
 class LeafRotationTests(unittest.TestCase):
     """Manual renewal keeps the existing spec and refuses private material."""
 
-    def certificate(self):
+    def certificate(self) -> Certificate:
+        """Build the reviewed LiteLLM leaf certificate fixture."""
+
         return {
             "metadata": {
                 "name": "otel-app-tls-litellm",
@@ -40,11 +67,11 @@ class LeafRotationTests(unittest.TestCase):
         before = self.certificate()
         untouched = copy.deepcopy(before)
         conditions = module.renewal_conditions(before)
-        self.assertEqual(before, untouched)
-        self.assertEqual(conditions[0], before["status"]["conditions"][0])
-        self.assertEqual(conditions[1]["type"], "Issuing")
-        self.assertEqual(conditions[1]["reason"], "ManuallyTriggered")
-        self.assertEqual(conditions[1]["observedGeneration"], 1)
+        assert before == untouched
+        assert conditions[0] == before["status"]["conditions"][0]
+        assert conditions[1]["type"] == "Issuing"
+        assert conditions[1]["reason"] == "ManuallyTriggered"
+        assert conditions[1]["observedGeneration"] == 1
 
     def test_wrong_identity_unready_and_overlapping_issuance_are_rejected(self) -> None:
         """Verify identity, readiness, and overlapping issuance each fail closed."""
@@ -76,26 +103,30 @@ class LeafRotationTests(unittest.TestCase):
             }
 
         response = subprocess.CompletedProcess(
-            [], 0, b"-----BEGIN PUBLIC KEY-----\nsynthetic\n-----END PUBLIC KEY-----", b""
+            [],
+            0,
+            b"-----BEGIN PUBLIC KEY-----\nsynthetic\n-----END PUBLIC KEY-----",
+            b"",
         )
         with patch.object(module.subprocess, "run", return_value=response):
             identity = module.public_certificate_identity(kube, "llm")
-        self.assertEqual(len(identity["publicKeySHA256"]), 64)
-        self.assertIn("tls.crt", calls[0][-1])
-        self.assertNotIn("tls.key", calls[0][-1])
-        self.assertTrue(calls[0][-1].startswith("go-template="))
+        expected_sha256_length = 64
+        assert len(identity["publicKeySHA256"]) == expected_sha256_length
+        assert "tls.crt" in calls[0][-1]
+        assert "tls.key" not in calls[0][-1]
+        assert calls[0][-1].startswith("go-template=")
 
     def test_explicit_vllm_identity_and_default_litellm_are_separate(self) -> None:
         """Verify vLLM and LiteLLM leaves stay distinct and unknown names fail."""
         module = load()
         cert = self.certificate()
         cert["metadata"]["name"] = "otel-app-tls-vllm"
-        self.assertEqual(module.renewal_conditions(cert, "vllm")[-1]["type"], "Issuing")
+        assert module.renewal_conditions(cert, "vllm")[-1]["type"] == "Issuing"
         with self.assertRaises(ValueError):
             module.renewal_conditions(cert)
         with self.assertRaises(ValueError):
             module.leaf_name("otel-root-ca")
-        self.assertEqual(module.leaf_name("litellm"), "otel-app-tls-litellm")
+        assert module.leaf_name("litellm") == "otel-app-tls-litellm"
 
     def test_private_key_is_never_accepted_as_public_certificate(self) -> None:
         """Verify a private key payload is rejected before it is treated as public."""

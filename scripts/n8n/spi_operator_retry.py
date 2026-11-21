@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Offline-reviewed, private operator CLI. Default dry-run; never a public API.
+
 No allowance reset: one subsequent unsafe failure can kill a selected job again.
 """
 
@@ -116,6 +117,138 @@ def authorize(a):
     datetime.datetime.fromisoformat(a["recorded_at"].replace("Z", "+00:00"))
 
 
+def _require_retryable(row: dict[str, object], error: str) -> None:
+    """Refuse unless the row is dead, unleased, and matches the reviewed failure."""
+    if row["state"] == "complete" and row["stage"] == 2:
+        raise ValueError("already complete: skip, never rerun")
+    if (
+        row["state"] != "dead"
+        or row["stage"] != 2
+        or row["lease"] != 0
+        or row["error"] != error
+        or row["intent"] is not None
+    ):
+        raise ValueError("unexpected state/stage/lease/error/intent")
+
+
+def _reviewed_selected_rows(c: sqlite3.Connection, rows: list[dict[str, object]]) -> list[dict]:
+    """Validate the exact selected rows and their episode isolation."""
+    selected = []
+    for key, error in TARGETS.items():
+        matches = list(c.execute("SELECT * FROM jobs WHERE id=?", (key,)))
+        if len(matches) != 1:
+            raise ValueError("missing exact full ID")
+        row = dict(matches[0])
+        if row != next(r for r in rows if r["id"] == key):
+            raise ValueError("reviewed full row drift")
+        _require_retryable(row, error)
+        if c.execute(
+            "SELECT 1 FROM jobs WHERE episode=? AND (intent IS NOT NULL OR state='complete') "
+            "LIMIT 1",
+            (row["episode"],),
+        ).fetchone():
+            raise ValueError("episode publication or active intent")
+        selected.append(row)
+    return selected
+
+
+def _require_fresh_audit(c: sqlite3.Connection) -> None:
+    """Refuse execution if the once-only authorization nonce is already recorded."""
+    if AUDIT in {r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'")}:
+        if c.execute(
+            "SELECT 1 FROM operator_retry_audit WHERE nonce=? LIMIT 1", (NONCE,)
+        ).fetchone():
+            raise ValueError("authorization nonce already consumed")
+
+
+def _prepare_audit(c: sqlite3.Connection) -> tuple[list[object], list[tuple]]:
+    """Create the immutable audit table/triggers and snapshot the prior state."""
+    c.execute(
+        "CREATE TABLE IF NOT EXISTS operator_retry_audit (nonce TEXT NOT NULL, job_id TEXT NOT NULL, authorization_hash TEXT NOT NULL, pre_row_hash TEXT NOT NULL, executed_at REAL NOT NULL, reason TEXT NOT NULL, explicit_change TEXT NOT NULL, manifest_digest TEXT NOT NULL, post_row_hash TEXT NOT NULL, PRIMARY KEY(nonce,job_id))"
+    )
+    for action in ("UPDATE", "DELETE"):
+        name = "operator_retry_audit_no_" + action.lower()
+        sql = (
+            "CREATE TRIGGER "
+            + name
+            + " BEFORE "
+            + action
+            + " ON operator_retry_audit BEGIN SELECT RAISE(ABORT,'immutable audit'); END"
+        )
+        existing = c.execute("SELECT sql FROM sqlite_master WHERE name=?", (name,)).fetchone()
+        if existing is None:
+            c.execute(sql)
+        elif existing[0] != sql:
+            raise ValueError("audit immutability schema mismatch")
+    if c.execute("SELECT count(*) FROM operator_retry_audit").fetchone()[0] + 2 > 2:
+        raise ValueError("bounded audit full")
+    audit_schema = list(
+        c.execute("SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name")
+    )
+    audit_before = [
+        tuple(r) for r in c.execute("SELECT * FROM operator_retry_audit ORDER BY nonce,job_id")
+    ]
+    return audit_schema, audit_before
+
+
+def _mutate_reviewed_rows(
+    c: sqlite3.Connection,
+    rows: list[dict],
+    authorization: dict[str, object],
+    bound: object,
+    expected_audit: list[tuple],
+) -> float:
+    """Apply the retry UPDATE and audit INSERT for each reviewed row."""
+    now = time.time()
+    for row in rows:
+        change = {"state": "retry", "available": now, "updated": now}
+        c.execute(
+            "UPDATE jobs SET state=?,available=?,updated=? WHERE id=?",
+            ("retry", now, now, row["id"]),
+        )
+        entry = (
+            NONCE,
+            row["id"],
+            digest(authorization),
+            digest(row),
+            now,
+            authorization["reason"],
+            packed(change),
+            bound,
+            digest(dict(row, **change)),
+        )
+        c.execute("INSERT INTO operator_retry_audit VALUES(?,?,?,?,?,?,?,?,?)", entry)
+        expected_audit.append(entry)
+        actual = dict(c.execute("SELECT * FROM jobs WHERE id=?", (row["id"],)).fetchone())
+        if actual != dict(row, **change):
+            raise ValueError("unexpected selected row mutation")
+    return now
+
+
+def _verify_targets(c: sqlite3.Connection, rows: list[dict], now: float) -> None:
+    """Confirm only the two reviewed rows now hold the retry state."""
+    expected = {r["id"]: dict(r, state="retry", available=now, updated=now) for r in rows}
+    for key, row in expected.items():
+        if dict(c.execute("SELECT * FROM jobs WHERE id=?", (key,)).fetchone()) != row:
+            raise ValueError("final target mismatch")
+
+
+def _verify_audit_state(
+    c: sqlite3.Connection, expected_audit: list[tuple], audit_schema: list[object]
+) -> None:
+    """Confirm the audit content and schema changed exactly as authorized."""
+    actual_audit = [
+        tuple(r) for r in c.execute("SELECT * FROM operator_retry_audit ORDER BY nonce,job_id")
+    ]
+    actual_schema = list(
+        c.execute("SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name")
+    )
+    if actual_audit != sorted(expected_audit, key=lambda r: (r[0], r[1])) or (
+        actual_schema != audit_schema
+    ):
+        raise ValueError("audit content/schema mismatch")
+
+
 def retry(path, authorization, execute=False, manifest=None):
     authorize(authorization)
     bound = manifest_digest(manifest)
@@ -126,35 +259,8 @@ def retry(path, authorization, execute=False, manifest=None):
     try:
         c.execute("BEGIN IMMEDIATE")
         before = table_hashes(c)
-        rows = []
-        for key, error in TARGETS.items():
-            matches = list(c.execute("SELECT * FROM jobs WHERE id=?", (key,)))
-            if len(matches) != 1:
-                raise ValueError("missing exact full ID")
-            row = dict(matches[0])
-            if row != next(r for r in manifest["rows"] if r["id"] == key):
-                raise ValueError("reviewed full row drift")
-            if row["state"] == "complete" and row["stage"] == 2:
-                raise ValueError("already complete: skip, never rerun")
-            if (
-                row["state"] != "dead"
-                or row["stage"] != 2
-                or row["lease"] != 0
-                or row["error"] != error
-                or row["intent"] is not None
-            ):
-                raise ValueError("unexpected state/stage/lease/error/intent")
-            if c.execute(
-                "SELECT 1 FROM jobs WHERE episode=? AND (intent IS NOT NULL OR state='complete') LIMIT 1",
-                (row["episode"],),
-            ).fetchone():
-                raise ValueError("episode publication or active intent")
-            rows.append(row)
-        if AUDIT in {r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'")}:
-            if c.execute(
-                "SELECT 1 FROM operator_retry_audit WHERE nonce=? LIMIT 1", (NONCE,)
-            ).fetchone():
-                raise ValueError("authorization nonce already consumed")
+        rows = _reviewed_selected_rows(c, manifest["rows"])
+        _require_fresh_audit(c)
         if not execute:
             c.rollback()
             return {
@@ -162,69 +268,15 @@ def retry(path, authorization, execute=False, manifest=None):
                 "eligible": 2,
                 "row_hashes": {r["id"]: digest(r) for r in rows},
             }
-        c.execute(
-            "CREATE TABLE IF NOT EXISTS operator_retry_audit (nonce TEXT NOT NULL, job_id TEXT NOT NULL, authorization_hash TEXT NOT NULL, pre_row_hash TEXT NOT NULL, executed_at REAL NOT NULL, reason TEXT NOT NULL, explicit_change TEXT NOT NULL, manifest_digest TEXT NOT NULL, post_row_hash TEXT NOT NULL, PRIMARY KEY(nonce,job_id))"
-        )
-        for action in ("UPDATE", "DELETE"):
-            name = "operator_retry_audit_no_" + action.lower()
-            sql = (
-                "CREATE TRIGGER "
-                + name
-                + " BEFORE "
-                + action
-                + " ON operator_retry_audit BEGIN SELECT RAISE(ABORT,'immutable audit'); END"
-            )
-            existing = c.execute("SELECT sql FROM sqlite_master WHERE name=?", (name,)).fetchone()
-            if existing is None:
-                c.execute(sql)
-            elif existing[0] != sql:
-                raise ValueError("audit immutability schema mismatch")
-        if c.execute("SELECT count(*) FROM operator_retry_audit").fetchone()[0] + 2 > 2:
-            raise ValueError("bounded audit full")
-        audit_schema = list(
-            c.execute("SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name")
-        )
-        audit_before = [
-            tuple(r) for r in c.execute("SELECT * FROM operator_retry_audit ORDER BY nonce,job_id")
-        ]
+        audit_schema, audit_before = _prepare_audit(c)
         expected_audit = list(audit_before)
-        now = time.time()
-        for row in rows:
-            change = {"state": "retry", "available": now, "updated": now}
-            c.execute(
-                "UPDATE jobs SET state=?,available=?,updated=? WHERE id=?",
-                ("retry", now, now, row["id"]),
-            )
-            entry = (
-                NONCE,
-                row["id"],
-                digest(authorization),
-                digest(row),
-                now,
-                authorization["reason"],
-                packed(change),
-                bound,
-                digest(dict(row, **change)),
-            )
-            c.execute("INSERT INTO operator_retry_audit VALUES(?,?,?,?,?,?,?,?,?)", entry)
-            expected_audit.append(entry)
-            actual = dict(c.execute("SELECT * FROM jobs WHERE id=?", (row["id"],)).fetchone())
-            if actual != dict(row, **change):
-                raise ValueError("unexpected selected row mutation")
         # Normalize only the two already-verified selected rows while hashing;
         # no compensating UPDATEs or history rewrites are performed.
+        now = _mutate_reviewed_rows(c, rows, authorization, bound, expected_audit)
         if table_hashes(c, {r["id"]: r for r in rows}) != before:
             raise ValueError("non-authorized row/table mutation")
-        expected = {r["id"]: dict(r, state="retry", available=now, updated=now) for r in rows}
-        for key, row in expected.items():
-            if dict(c.execute("SELECT * FROM jobs WHERE id=?", (key,)).fetchone()) != row:
-                raise ValueError("final target mismatch")
-        if [
-            tuple(r) for r in c.execute("SELECT * FROM operator_retry_audit ORDER BY nonce,job_id")
-        ] != sorted(expected_audit, key=lambda r: (r[0], r[1])) or list(
-            c.execute("SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name")
-        ) != audit_schema:
-            raise ValueError("audit content/schema mismatch")
+        _verify_targets(c, rows, now)
+        _verify_audit_state(c, expected_audit, audit_schema)
         c.commit()
         return {"mode": "EXECUTED", "changed": 2, "authorization_hash": digest(authorization)}
     except BaseException:
