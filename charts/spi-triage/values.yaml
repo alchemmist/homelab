@@ -1,5 +1,5 @@
 ---
-serviceClusterIP: "" # Optional fixed existing Service VIP; never a Pod/public address.
+serviceClusterIP: ""  # Optional fixed existing Service VIP; never a Pod/public address.
 # Full-service image is activated only after a protected, naturally drained release.
 tokenAccountingMode: byte-bound-v1
 brokerImage: >-
@@ -37,7 +37,7 @@ image:
   tag: 8c89246b64c9903d14b4474a24ce7daa5cca5902
   digest: sha256:185bd5cdd5dda2381283e95bd57338ebfd7d6597b30a15d2238dde60aec71e6d
 imagePullSecrets:
-- name: spi-triage-harbor-pull
+  - name: spi-triage-harbor-pull
 
 # Requires the full-service image and a scoped client token; opt-in after acceptance.
 graphs:

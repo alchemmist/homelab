@@ -91,9 +91,9 @@ kube-prometheus-stack:
     env:
       DBUS_SYSTEM_BUS_ADDRESS: unix:path=/host/root/run/dbus/system_bus_socket
     extraArgs:
-    - --collector.textfile.directory=/host/root/var/lib/node_exporter/textfile_collector
-    - --collector.systemd
-    - --collector.systemd.enable-restarts-metrics
+      - --collector.textfile.directory=/host/root/var/lib/node_exporter/textfile_collector
+      - --collector.systemd
+      - --collector.systemd.enable-restarts-metrics
     resources:
       limits:
         memory: 64Mi

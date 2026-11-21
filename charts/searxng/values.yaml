@@ -20,10 +20,10 @@ resources:
 publicEntry:
   issuer: letsencrypt-http01
   routes:
-  - name: search
-    host: search.socrat.alchemmist.xyz
-    namespace: llm
-    service: searxng
-    port: 8080
-    authorization: public
+    - name: search
+      host: search.socrat.alchemmist.xyz
+      namespace: llm
+      service: searxng
+      port: 8080
+      authorization: public
 ...
