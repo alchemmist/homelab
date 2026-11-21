@@ -38,20 +38,20 @@ class RetentionTests(unittest.TestCase):
                     m.rules(self.policy)
 
     def approval(self):
-        return dict(
-            measuredAt="2026-11-04",
-            evidence="reviewed 7d report",
-            approvedBy="operator",
-            budgetBytes=100000,
-            projectedBytes=10000,
-            measuredAllocatedBytes=1000,
-            filesystemCapacityBytes=1000000,
-            filesystemAvailableBytes=800000,
-            otherWorkloadsReserveBytes=10000,
-            transientReserveBytes=1000,
-            dailyGrowthUpperBytes=100,
-            sampleSeconds=604800,
-        )
+        return {
+            "measuredAt": "2026-11-04",
+            "evidence": "reviewed 7d report",
+            "approvedBy": "operator",
+            "budgetBytes": 100000,
+            "projectedBytes": 10000,
+            "measuredAllocatedBytes": 1000,
+            "filesystemCapacityBytes": 1000000,
+            "filesystemAvailableBytes": 800000,
+            "otherWorkloadsReserveBytes": 10000,
+            "transientReserveBytes": 1000,
+            "dailyGrowthUpperBytes": 100,
+            "sampleSeconds": 604800,
+        }
 
     def test_any_extension_needs_approval(self):
         for level in m.LEVELS - {"unknown"}:

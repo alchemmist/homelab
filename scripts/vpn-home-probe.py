@@ -15,7 +15,7 @@ import urllib.request
 from pathlib import Path
 
 
-def exclusive(path, value):
+def exclusive(path: Path, value: object):
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
     with os.fdopen(fd, "w") as f:
         json.dump(value, f)
@@ -23,7 +23,7 @@ def exclusive(path, value):
         os.fsync(f.fileno())
 
 
-def network(endpoint="91.189.82.238"):
+def network(endpoint: str = "91.189.82.238"):
     r = subprocess.run(
         ["ip", "-j", "route", "get", endpoint], capture_output=True, text=True, timeout=10
     )
@@ -45,7 +45,7 @@ def network(endpoint="91.189.82.238"):
     }
 
 
-def run(state, approved_binary, endpoint="91.189.82.238"):
+def run(state: Path, approved_binary: str, endpoint: str = "91.189.82.238"):
     import ipaddress
 
     if not ipaddress.ip_address(endpoint).is_global:

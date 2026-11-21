@@ -21,7 +21,7 @@
     state: directory
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
 
 - name: Install additive WireGuard route helper
   ansible.builtin.copy:
@@ -29,7 +29,7 @@
     dest: /usr/local/libexec/k3s-ha-routes.py
     owner: root
     group: root
-    mode: '0700'
+    mode: "0700"
 
 - name: Persist and activate home node routes without restarting WireGuard
   ansible.builtin.command:
@@ -72,9 +72,9 @@
     argv:
       - ping
       - -c
-      - '2'
+      - "2"
       - -W
-      - '5'
+      - "5"
       - "{{ hostvars[k3s_ha_routes_peers[1]].homelab_ssh_private_host }}"
   changed_when: false
   when: not ansible_check_mode

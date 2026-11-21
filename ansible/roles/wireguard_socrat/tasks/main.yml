@@ -21,7 +21,7 @@
     state: directory
     owner: root
     group: root
-    mode: '0700'
+    mode: "0700"
 
 - name: Check existing wg-socrat config
   ansible.builtin.stat:
@@ -120,7 +120,7 @@
     dest: /etc/wireguard/wg-socrat.conf
     owner: root
     group: root
-    mode: '0600'
+    mode: "0600"
   register: wg_socrat_config
   no_log: true
 

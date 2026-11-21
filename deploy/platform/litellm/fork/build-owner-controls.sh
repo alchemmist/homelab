@@ -8,7 +8,7 @@ base=sha256:e982dddf6a3da10ea76fa4c9b5f05ab166a128b83f653cd0e07e96493e6506d9
 root=app/.venv/lib/python3.13/site-packages
 fetch() {
   mkdir -p "$(dirname "${root}/$1")"
-  curl -fsSL "https://raw.githubusercontent.com/alchemmist/litellm/${rev}/$1" -o "${root}/$1"
+  gh api -H "Accept: application/vnd.github.raw+json" "repos/alchemmist/litellm/contents/$1?ref=${rev}" > "${root}/$1"
   echo "$2  ${root}/$1" | shasum -a 256 -c -
 }
 fetch litellm/proxy/socrat_owner.py b1d6665d916395b20c7bde2cf4bf1b848cda990b7d403cc53b6f01ddbb9edbbe

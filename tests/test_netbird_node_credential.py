@@ -40,7 +40,7 @@ class CredentialTest(unittest.TestCase):
             def __init__(self, root, config):
                 self.auth = dict(old)
 
-            def api(self, method, path, body=None):
+            def api(self, method, path, body=None) -> object:
                 calls.append((method, path))
                 if method == "GET":
                     return users
@@ -59,6 +59,7 @@ class CredentialTest(unittest.TestCase):
                     assert (
                         json.loads((folder / "credential.json").read_text())["token_id"] == "new-id"
                     )
+                return None
 
         return Runtime, calls, users
 

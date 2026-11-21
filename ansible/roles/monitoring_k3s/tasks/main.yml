@@ -88,7 +88,7 @@
     - --kubeconfig
     - "{{ monitoring_k3s_kubeconfig }}"
     - --set-string
-    - "prometheusRelease={{ monitoring_k3s_prometheus_release }}"
+    - prometheusRelease={{ monitoring_k3s_prometheus_release }}
     - "{{ '--wait' if monitoring_k3s_wait | bool else '--wait=false' }}"
     - --timeout
     - 5m
@@ -98,7 +98,7 @@
   ansible.builtin.copy:
     src: resolve_alert_links.py
     dest: "{{ monitoring_k3s_remote_dir }}/resolve_alert_links.py"
-    mode: '0600'
+    mode: "0600"
 
 - name: Resolve rule detail links after Prometheus loads the rules
   ansible.builtin.command:
@@ -110,7 +110,7 @@
     - --output
     - "{{ monitoring_k3s_remote_dir }}/node-alert-links.json"
     - --timeout
-    - '180'
+    - "180"
   changed_when: false
 
 - name: Resolve service rule detail links after Prometheus loads the rules
@@ -127,7 +127,7 @@
     - --alert-name-prefix
     - SocratService
     - --timeout
-    - '180'
+    - "180"
   changed_when: false
 
 - name: Publish native alert detail links on the Nodes and Overview dashboards

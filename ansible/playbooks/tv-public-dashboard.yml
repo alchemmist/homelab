@@ -9,7 +9,11 @@
     tv_adb: 192.168.0.19:5555
     tv_state: /var/lib/homelab-grafana-tv-public
     tv_candidate: /home/alchemmist/.cache/homelab-tv/public-url-once-settings.json
-    tv_network_guard: "settings get global private_dns_mode; settings get secure always_on_vpn_app; settings get secure always_on_vpn_lockdown; dumpsys connectivity | grep 'NetworkAgentInfo.*VPN' || true"
+    tv_network_guard: >-
+      settings get global private_dns_mode;
+      settings get secure always_on_vpn_app;
+      settings get secure always_on_vpn_lockdown;
+      dumpsys connectivity | grep 'NetworkAgentInfo.*VPN' || true
   tasks:
     - name: Refuse an uncertain prior URL import
       become: true
@@ -32,7 +36,10 @@
       no_log: true
     - name: Require the approved public dashboard URL
       ansible.builtin.assert:
-        that: tv_start_url is match('^https://grafana\.socrat\.alchemmist\.xyz/public-dashboards/[a-f0-9]{32}\?kiosk=1&hideLogo=1&autofitpanels=true&socratTv=1$')
+        that: >-
+          tv_start_url is match(
+          '^https://grafana\.socrat\.alchemmist\.xyz/public-dashboards/'
+          ~ '[a-f0-9]{32}\?kiosk=1&hideLogo=1&autofitpanels=true&socratTv=1$')
       no_log: true
     - name: Verify the already-authorized TV (never reconnect or change VPN)
       ansible.builtin.command:
@@ -67,12 +74,17 @@
       no_log: true
     - name: Record the plan digest and receipt id
       ansible.builtin.set_fact:
-        tv_plan_hash: "{{ ({'target':tv_adb,'url':tv_start_url,'model':tv_model.stdout,'focus':tv_focus.stdout,'network':tv_network_before.stdout} | to_json) | hash('sha256') }}"
+        tv_plan_hash: >-
+          {{ ({'target':tv_adb,'url':tv_start_url,'model':tv_model.stdout,
+          'focus':tv_focus.stdout,'network':tv_network_before.stdout}
+          | to_json) | hash('sha256') }}
         tv_receipt_id: "{{ now(utc=true,fmt='%Y%m%dT%H%M%SZ') }}"
       no_log: true
     - name: Report the URL-only plan digest
       ansible.builtin.debug:
-        msg: "URL-only operation=1, plan_hash={{ tv_plan_hash }}; existing Fully scale/fonts, APKs, keys, VPN, DNS and HDMI are not configured."
+        msg: >-
+          URL-only operation=1, plan_hash={{ tv_plan_hash }}; existing Fully
+          scale/fonts, APKs, keys, VPN, DNS and HDMI are not configured.
     - name: Require the approved plan digest before apply
       ansible.builtin.assert:
         that: tv_public_hash == tv_plan_hash
@@ -84,7 +96,10 @@
           become: true
           ansible.builtin.copy:
             dest: "{{ tv_state }}/tv-before-{{ tv_receipt_id }}.json"
-            content: "{{ {'plan_hash':tv_plan_hash,'network':tv_network_before.stdout,'focus':tv_focus.stdout,'url_sha256':tv_start_url | hash('sha256')} | to_nice_json }}"
+            content: >-
+              {{ {'plan_hash':tv_plan_hash,'network':tv_network_before.stdout,
+              'focus':tv_focus.stdout,'url_sha256':tv_start_url | hash('sha256')}
+              | to_nice_json }}
             mode: '0600'
           no_log: true
         - name: Mark the import uncertain until consumption is proven
@@ -141,7 +156,11 @@
           become: true
           ansible.builtin.copy:
             dest: "{{ tv_state }}/tv-after-{{ tv_receipt_id }}.json"
-            content: "{{ {'plan_hash':tv_plan_hash,'url_sha256':tv_start_url | hash('sha256'),'import_consumed':true,'network_unchanged':true,'preference_keys':['startURL']} | to_nice_json }}"
+            content: >-
+              {{ {'plan_hash':tv_plan_hash,
+              'url_sha256':tv_start_url | hash('sha256'),
+              'import_consumed':true,'network_unchanged':true,
+              'preference_keys':['startURL']} | to_nice_json }}
             mode: '0600'
           no_log: true
         - name: Clear the uncertain import marker after success

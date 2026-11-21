@@ -8,11 +8,11 @@
   vars:
     ansible_host: socrat-4
     ansible_port: 2222
-    ansible_ssh_common_args: '-o ProxyJump=none -o StrictHostKeyChecking=yes'
-    phase: '{{ moscow_watchdog_repair_phase | default("preflight") }}'
+    ansible_ssh_common_args: -o ProxyJump=none -o StrictHostKeyChecking=yes
+    phase: "{{ moscow_watchdog_repair_phase | default('preflight') }}"
     stage: /var/lib/homelab-recovery/20261113-moscow-watchdog-staging
-    source: '{{ playbook_dir }}/../../scripts/vpn-transit-failover.py'
-    new_sha: '{{ lookup("file", source, rstrip=False) | hash("sha256") }}'
+    source: "{{ playbook_dir }}/../../scripts/vpn-transit-failover.py"
+    new_sha: "{{ lookup('file', source, rstrip=False) | hash('sha256') }}"
   tasks:
   - name: Require a known phase and explicit confirmation
     ansible.builtin.assert:
@@ -26,7 +26,7 @@
     vars:
       ansible_host: socrat-0
       ansible_port: 2222
-      ansible_ssh_common_args: '-o StrictHostKeyChecking=yes'
+      ansible_ssh_common_args: -o StrictHostKeyChecking=yes
     register: voters
     changed_when: false
   - name: Require each voter node to be Ready
@@ -34,9 +34,9 @@
       that: >-
         item.status.conditions | selectattr('type','equalto','Ready') |
         selectattr('status','equalto','True') | list | length == 1
-    loop: '{{ (voters.stdout | from_json)["items"] }}'
+    loop: "{{ (voters.stdout | from_json)['items'] }}"
     loop_control:
-      label: '{{ item.metadata.name }}'
+      label: "{{ item.metadata.name }}"
   - name: Read native transit status before changes
     ansible.builtin.command: python3 /usr/local/libexec/vpn-transit-failover.py status
     register: before
@@ -54,8 +54,10 @@
       set -o pipefail
       set -eu
       systemctl is-enabled --quiet k3s-agent
-      systemctl cat k3s-agent | grep -F 'ExecCondition=/usr/bin/test ! -e /var/lib/homelab-vpn-transit/relay-failover/fallback.active'
-      systemctl cat homelab-vpn-transit-native | grep -F 'ExecCondition=+/usr/bin/test -e /var/lib/homelab-vpn-transit/relay-failover/fallback.active'
+      fallback_active=/var/lib/homelab-vpn-transit/relay-failover/fallback.active
+      systemctl cat k3s-agent | grep -F "ExecCondition=/usr/bin/test ! -e ${fallback_active}"
+      systemctl cat homelab-vpn-transit-native | grep -F \
+        "ExecCondition=+/usr/bin/test -e ${fallback_active}"
       test -s /var/lib/rancher/k3s/agent/client-kubelet.crt
       test -s /var/lib/rancher/k3s/agent/containerd/io.containerd.metadata.v1.bolt/meta.db
     changed_when: false
@@ -68,27 +70,29 @@
     vars:
       ansible_host: socrat-0
       ansible_port: 2222
-      ansible_ssh_common_args: '-o StrictHostKeyChecking=yes'
+      ansible_ssh_common_args: -o StrictHostKeyChecking=yes
     register: relay
     changed_when: false
   - name: Require the singleton relay to stay on the Moscow worker
     ansible.builtin.assert:
       that:
       - (relay.stdout | from_json).spec.replicas == 1
-      - (relay.stdout | from_json).spec.template.spec.nodeSelector['kubernetes.io/hostname'] == 'socrat-4'
+      - >-
+        (relay.stdout | from_json).spec.template.spec.nodeSelector['kubernetes.io/hostname']
+        == 'socrat-4'
   - name: Stage repair helpers for preflight and apply
     when: phase in ['preflight','apply']
     block:
     - name: Create the private staging directory
       ansible.builtin.file:
-        path: '{{ stage }}'
+        path: "{{ stage }}"
         state: directory
-        mode: '0700'
+        mode: "0700"
     - name: Copy the reviewed repair helpers into staging
       ansible.builtin.copy:
-        src: '{{ playbook_dir }}/../../scripts/{{ item }}.py'
-        dest: '{{ stage }}/{{ item }}.py'
-        mode: '0700'
+        src: "{{ playbook_dir }}/../../scripts/{{ item }}.py"
+        dest: "{{ stage }}/{{ item }}.py"
+        mode: "0700"
       loop: [moscow-api-routes-repair, moscow-watchdog-upgrade, vpn-transit-failover]
     - name: Additive route preflight; no network mutation
       ansible.builtin.command: python3 {{ stage }}/moscow-api-routes-repair.py
@@ -99,7 +103,10 @@
       - name: Apply the additive API route repair
         ansible.builtin.command: python3 {{ stage }}/moscow-api-routes-repair.py --apply
       - name: Install the reviewed watchdog candidate by digest
-        ansible.builtin.command: python3 {{ stage }}/moscow-watchdog-upgrade.py --candidate {{ stage }}/vpn-transit-failover.py --sha256 {{ new_sha }}
+        ansible.builtin.command: >-
+          python3 {{ stage }}/moscow-watchdog-upgrade.py
+          --candidate {{ stage }}/vpn-transit-failover.py
+          --sha256 {{ new_sha }}
   - name: Return only in the explicit return phase
     when: phase == 'return'
     block:

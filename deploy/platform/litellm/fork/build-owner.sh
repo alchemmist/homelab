@@ -8,7 +8,7 @@ base=sha256:f1bc742715223bf9a16236670493c7d6b75b4e7f995764f7c678cb6ca60ad174
 root=app/.venv/lib/python3.13/site-packages
 fetch() {
   mkdir -p "$(dirname "${root}/$1")"
-  curl -fsSL "https://raw.githubusercontent.com/alchemmist/litellm/${rev}/$1" -o "${root}/$1"
+  gh api -H "Accept: application/vnd.github.raw+json" "repos/alchemmist/litellm/contents/$1?ref=${rev}" > "${root}/$1"
   echo "$2  ${root}/$1" | shasum -a 256 -c -
 }
 fetch litellm/proxy/management_endpoints/key_management_endpoints.py e8a4e7bddc095af840b439ecb3edc14c512759ab31328c0cdb618f6350621a02

@@ -16,7 +16,7 @@ for role in judge author;do
  dest=(kubectl -n openhands exec -i deploy/pi-monori-"${role}" -c sandbox --)
  "${dest[@]}" sh -ec 'mkdir -p /scratch/monori /scratch/home; : >/scratch/incoming.tmp' </dev/null
  for ((i=0;i*2097152<bytes;i++));do dd if=deps.tar.gz bs=2097152 skip="${i}" count=1 status=none | "${dest[@]}" sh -c 'cat >>/scratch/incoming.tmp';done
- "${dest[@]}" sh -ec 'echo "$1  /scratch/incoming.tmp" | sha256sum -c -; tar xzf /scratch/incoming.tmp -C /scratch/monori; rm /scratch/incoming.tmp' sh "${expected}" </dev/null
+ "${dest[@]}" sh -ec "echo \"\$1  /scratch/incoming.tmp\" | sha256sum -c -; tar xzf /scratch/incoming.tmp -C /scratch/monori; rm /scratch/incoming.tmp" sh "${expected}" </dev/null
 done
 tar czf - base.git | kubectl -n openhands exec -i deploy/pi-monori-author -c sandbox -- sh -ec 'tar xzf - -C /scratch;mkdir -p /scratch/home/.pi/agent; cp /code/models.json /scratch/home/.pi/agent/models.json; /opt/pi/node_modules/.bin/pi --version'
 git --git-dir=base.git archive HEAD | kubectl -n openhands exec -i deploy/pi-monori-judge -c sandbox -- sh -ec 'tar xf - -C /scratch/monori'
