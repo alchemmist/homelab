@@ -61,13 +61,10 @@ processors:
     - context: log
       error_mode: silent
       statements:
-      - set(body, ParseJSON(body)) where IsString(body) and IsMatch(body, "^[ \\t]*(\\{|\\[[
-        \\t]*(\\{|\\[|\"))")
+      - set(body, ParseJSON(body)) where IsString(body) and IsMatch(body, "^[ \\t]*(\\{|\\[[ \\t]*(\\{|\\[|\"))")
     - context: log
       statements:
-      - set(body, "<redacted-invalid-json>") where IsString(body) and IsMatch(body,
-        "^[ \\t]*(\\{|\\[[ \\t]*(\\{|\\[|\"))")
-      - set(body, "<redacted-unstructured-array>") where IsList(body)
+        set(body, "<redacted-invalid-json>") where IsString(body) and IsMatch(body, "^[ \\t]*(\\{|\\[[ \\t]*(\\{|\\[|\"))")
       - flatten(body, resolveConflicts=true) where IsMap(body)
       - >-
         delete_matching_keys(body,
@@ -77,15 +74,11 @@ processors:
       - flatten(attributes, resolveConflicts=true)
       - >-
         delete_matching_keys(attributes,
-        "(?i).*(authorization|password|secret|token|api[._-]?key|cookie|headers?|prompt|completion|request[._-]?body|response[._-]?body).*")
-      - replace_pattern(body, "(?is)(prompt|completion|request[._ -]?body|response[._
-        -]?body|cookie|headers?)[ \t:=]+.*", "sensitive-payload=<redacted>") where
+        replace_pattern(body, "(?is)(prompt|completion|request[._ -]?body|response[._-]?body|cookie|headers?)[ \t:=]+.*", "sensitive-payload=<redacted>") where IsString(body)
         IsString(body)
       - replace_pattern(body, "(?i)Bearer[ \\t]+[A-Za-z0-9._~+/=-]+", "Bearer <redacted>")
         where IsString(body)
-      - replace_pattern(body, "(?i)(password|secret|token|api[_-]?key|authorization)[\\\"'
-        \\t:=]+[^ \\t,;\\\"']+", "credential=<redacted>") where IsString(body)
-      - replace_pattern(body, "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}", "<redacted-email>")
+        replace_pattern(body, "(?i)(password|secret|token|api[_-]?key|authorization)[\"' \t:=]+[^ \t,;\"']+", "credential=<redacted>") where IsString(body)
         where IsString(body)
       - replace_pattern(body, "\\?[^ \\t\\\"]+", "?<redacted-query>") where IsString(body)
 exporters:
