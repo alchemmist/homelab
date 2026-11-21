@@ -14,7 +14,9 @@ wg_socrat_port: 51830
 wg_socrat_keepalive: 25
 wireguard_private_web_enabled: true
 wg_tcp_client_address: 91.189.82.238
-wg_socrat_peer_endpoints:
+# Source node -> destination peer -> endpoint used instead of the peer default.
+# An override may be direct, relayed, or empty (omit Endpoint); it is not a reachability test.
+wg_socrat_peer_endpoint_overrides:
   socrat-0:
     socrat-2: 91.189.82.238:51832
   socrat-3:
