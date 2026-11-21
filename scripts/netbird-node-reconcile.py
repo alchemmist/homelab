@@ -16,7 +16,9 @@ import re
 import subprocess
 import sys
 import urllib.request
+from collections.abc import Mapping
 from pathlib import Path
+from typing import NotRequired, TypedDict, cast
 
 NS = "netbird-host-peers"
 ADMIN = "netbird-internal-admins"
@@ -26,12 +28,21 @@ SERVICE = "homelab-netbird-node-automation"
 BASE = "https://netbird.socrat.alchemmist.xyz/api/"
 
 
-def require(ok, message):
+class NodeConfig(TypedDict):
+    """Inventory document accepted by validate_config."""
+
+    image: str
+    nodes: dict[str, str]
+    reserved_addresses: list[str]
+    kernel_only_nodes: NotRequired[list[str]]
+
+
+def require(ok, message) -> None:
     if not ok:
         raise ValueError(message)
 
 
-def atomic(path, value):
+def atomic(path, value) -> None:
     tmp = path.with_suffix(".tmp")
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
     with os.fdopen(fd, "w") as f:
@@ -41,7 +52,7 @@ def atomic(path, value):
     os.replace(tmp, path)
 
 
-def validate_config(c):
+def validate_config(c) -> NodeConfig:
     require(
         re.fullmatch(r"netbirdio/netbird:0\.82\.0@sha256:[a-f0-9]{64}", c["image"]),
         "pinned client required",
@@ -68,10 +79,10 @@ def validate_config(c):
         set(c.get("kernel_only_nodes", [])) <= set(c["nodes"]),
         "kernel-only nodes must be admitted inventory nodes",
     )
-    return c
+    return cast("NodeConfig", c)
 
 
-def manifests(host, image, enrollment=False, kernel_only=False):
+def manifests(host, image, enrollment=False, kernel_only=False) -> list[Mapping[str, object]]:
     require(re.fullmatch(r"socrat-[0-9]+", host), "invalid node")
     name = "machine-" + host
     labels = {"app": name}
@@ -123,7 +134,7 @@ def manifests(host, image, enrollment=False, kernel_only=False):
                 "valueFrom": {"secretKeyRef": {"name": name + "-enrollment", "key": "setup-key"}},
             }
         )
-    documents = [
+    documents: list[Mapping[str, object]] = [
         {
             "apiVersion": "v1",
             "kind": "PersistentVolumeClaim",
@@ -172,9 +183,14 @@ def manifests(host, image, enrollment=False, kernel_only=False):
     ]
 
     if kernel_only:
-        spec = documents[1]["spec"]["template"]["spec"]
-        spec["volumes"] = [v for v in spec["volumes"] if v["name"] != "tun"]
-        spec["tolerations"].append(
+        deployment_doc = cast("dict[str, object]", documents[1])
+        deployment_spec = cast("dict[str, object]", deployment_doc["spec"])
+        deployment_template = cast("dict[str, object]", deployment_spec["template"])
+        kernel_spec = cast("dict[str, object]", deployment_template["spec"])
+        kernel_spec["volumes"] = [
+            v for v in cast("list[dict[str, object]]", kernel_spec["volumes"]) if v["name"] != "tun"
+        ]
+        cast("list[dict[str, object]]", kernel_spec["tolerations"]).append(
             {
                 "key": "homelab.io/no-nfs",
                 "operator": "Equal",
@@ -185,7 +201,7 @@ def manifests(host, image, enrollment=False, kernel_only=False):
     return documents
 
 
-def policy_body(source, resource):
+def policy_body(source, resource) -> dict[str, object]:
     return {
         "name": "admin-wg-" + resource,
         "enabled": True,
@@ -204,17 +220,18 @@ def policy_body(source, resource):
     }
 
 
-def member_ids(group):
+def member_ids(group) -> set[str]:
     return {p["id"] if isinstance(p, dict) else p for p in (group.get("peers") or [])}
 
 
-def unique(items, key, value):
+def unique(items, key, value) -> dict[str, object]:
     found = [v for v in items if v.get(key) == value]
     require(len(found) == 1, "missing or ambiguous " + key)
-    return found[0]
+    match: dict[str, object] = found[0]
+    return match
 
 
-def policy_ok(p, admin, resource=None, group=None):
+def policy_ok(p, admin, resource=None, group=None) -> bool:
     rules = p.get("rules") or []
     if not p.get("enabled") or len(rules) != 1:
         return False
@@ -235,11 +252,16 @@ def policy_ok(p, admin, resource=None, group=None):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *_a, **_kw):
+    def redirect_request(self, *a, **kw) -> None:
         return None
 
 
 class Runtime:
+    """Typed runtime state: validated inventory plus on-disk identity/policy bindings."""
+
+    config: NodeConfig
+    state: dict[str, dict[str, object]]
+
     def __init__(self, folder, config, apply=False) -> None:
         self.folder, self.config, self.apply = folder, validate_config(config), apply
         self.k = [
@@ -256,8 +278,9 @@ class Runtime:
         require(not self.auth_path.stat().st_mode & 0o077, "credential permissions")
         self.state_path = folder / "bindings.json"
         require(not self.state_path.is_symlink(), "bindings symlink refused")
-        self.state = (
-            json.loads(self.state_path.read_text()) if self.state_path.exists() else {"nodes": {}}
+        self.state = cast(
+            "dict[str, dict[str, object]]",
+            json.loads(self.state_path.read_text()) if self.state_path.exists() else {"nodes": {}},
         )
         require(
             not self.state.get("pending"),
@@ -265,7 +288,7 @@ class Runtime:
         )
         self.changed = False
 
-    def api(self, method, path, body=None):
+    def api(self, method, path, body=None) -> object:
         req = urllib.request.Request(
             BASE + path,
             method=method,
@@ -279,7 +302,7 @@ class Runtime:
             b = response.read()
             return json.loads(b) if b else None
 
-    def kub(self, args, obj=None, optional=False, stdin=None):
+    def kub(self, args, obj=None, optional=False, stdin=None) -> bytes:
         args = list(args)
         operation = args[2] if args[:1] == ["-n"] else args[0]
         require(
@@ -316,16 +339,17 @@ class Runtime:
             p.returncode == 0,
             "Kubernetes operation failed; inspect locally without dumping secrets",
         )
-        return p.stdout
+        out: bytes = p.stdout
+        return out
 
-    def get(self, kind, name, ns=NS, optional=False):
+    def get(self, kind, name, ns=NS, optional=False) -> object:
         out = self.kub(["-n", ns, "get", kind, name, "-o", "json"], optional=optional)
         return json.loads(out) if out.strip() else None
 
-    def save(self):
+    def save(self) -> None:
         atomic(self.state_path, self.state)
 
-    def write(self, method, path, body):
+    def write(self, method, path, body) -> object:
         require(self.apply, "plan attempted mutation")
         require(not self.state.get("pending"), "uncertain previous write")
         self.state["pending"] = {"method": method, "path": path}
@@ -347,7 +371,7 @@ class Runtime:
             "workload/PVC must already be owned by the root-managed netbird Argo CD Application",
         )
 
-    def restart_without_key(self, host, deployment):
+    def restart_without_key(self, host, deployment) -> None:
         # Operational acceptance restart only: never edit/create a workload spec.
         pods = json.loads(
             self.kub(["-n", NS, "get", "pods", "-l", "app=machine-" + host, "-o", "json"])
@@ -359,14 +383,15 @@ class Runtime:
             len(owners) == 1 and owners[0]["kind"] == "ReplicaSet" and owners[0].get("controller"),
             "unexpected agent pod owner",
         )
-        rs = self.get("replicaset", owners[0]["name"])
+        rs = cast("dict[str, object]", self.get("replicaset", owners[0]["name"]))
+        rs_metadata = cast("dict[str, object]", rs["metadata"])
         require(
-            rs["metadata"]["uid"] == owners[0]["uid"]
+            rs_metadata["uid"] == owners[0]["uid"]
             and any(
                 v["kind"] == "Deployment"
                 and v["uid"] == deployment["metadata"]["uid"]
                 and v.get("controller")
-                for v in rs["metadata"].get("ownerReferences", [])
+                for v in cast("list[dict[str, object]]", rs_metadata.get("ownerReferences", []))
             ),
             "pod/deployment UID binding changed",
         )
@@ -404,10 +429,12 @@ class Runtime:
             ]
         )
 
-    def enroll_argocd_agent(self, host, node, deployment, pvc):
+    def enroll_argocd_agent(
+        self, host, node, deployment, pvc
+    ) -> tuple[dict[str, object], dict[str, str]] | None:
         self.require_argocd(deployment)
         self.require_argocd(pvc)
-        peers = self.api("GET", "peers")
+        peers = cast("list[dict[str, object]]", self.api("GET", "peers"))
         require(
             not any(p.get("hostname") == host or p.get("name") == "machine-" + host for p in peers),
             "orphan existing peer: no name adoption",
@@ -440,20 +467,24 @@ class Runtime:
             "pvc_uid": pvc["metadata"]["uid"],
         }
         self.save()
-        key = self.write(
-            "POST",
-            "setup-keys",
-            {
-                "name": "inventory-" + host,
-                "type": "one-off",
-                "expires_in": 600,
-                "usage_limit": 1,
-                "auto_groups": [],
-                "ephemeral": False,
-                "allow_extra_dns_labels": False,
-            },
+        key = cast(
+            "dict[str, object]",
+            self.write(
+                "POST",
+                "setup-keys",
+                {
+                    "name": "inventory-" + host,
+                    "type": "one-off",
+                    "expires_in": 600,
+                    "usage_limit": 1,
+                    "auto_groups": [],
+                    "ephemeral": False,
+                    "allow_extra_dns_labels": False,
+                },
+            ),
         )
-        self.state["nodes"][host]["setup_key_id"] = key["id"]
+        enrolled = cast("dict[str, object]", self.state["nodes"][host])
+        enrolled["setup_key_id"] = key["id"]
         self.save()
         try:
             # v0.82 reads --setup-key-file using os.ReadFile. Send bytes over the
@@ -471,7 +502,7 @@ class Runtime:
                     "--setup-key-file",
                     "/dev/stdin",
                 ],
-                stdin=key["key"].encode(),
+                stdin=cast("str", key["key"]).encode(),
             )
             self.kub(
                 [
@@ -489,8 +520,13 @@ class Runtime:
         finally:
             self.state["cleanup"] = {"setup_key_id": key["id"], "node": host, "revoked": False}
             self.save()
-            retired = self.api(
-                "PUT", "setup-keys/" + key["id"], {"revoked": True, "auto_groups": []}
+            retired = cast(
+                "dict[str, object]",
+                self.api(
+                    "PUT",
+                    "setup-keys/" + cast("str", key["id"]),
+                    {"revoked": True, "auto_groups": []},
+                ),
             )
             require(retired["revoked"], "setup-key retirement failed")
             self.state["cleanup"]["revoked"] = True
@@ -500,28 +536,33 @@ class Runtime:
         require(
             peer["id"] == again["id"] and status == second, "identity changed on key-free restart"
         )
+        current_deployment = cast("dict[str, object]", self.get("deployment", "machine-" + host))
+        current_pvc = cast("dict[str, object]", self.get("pvc", "machine-" + host))
         require(
-            self.get("deployment", "machine-" + host)["metadata"]["uid"]
+            cast("dict[str, object]", current_deployment["metadata"])["uid"]
             == deployment["metadata"]["uid"]
-            and self.get("pvc", "machine-" + host)["metadata"]["uid"] == pvc["metadata"]["uid"],
+            and cast("dict[str, object]", current_pvc["metadata"])["uid"] == pvc["metadata"]["uid"],
             "Argo CD workload or storage replaced during enrollment",
         )
         return peer, status
 
-    def guard(self):
-        app = self.get("application", "netbird", ns="argocd")
-        source = app["spec"].get("source", {})
+    def guard(self) -> list[dict[str, object]]:
+        app = cast("dict[str, object]", self.get("application", "netbird", ns="argocd"))
+        spec = cast("dict[str, object]", app["spec"])
+        source = cast("dict[str, object]", spec.get("source", {}))
+        app_metadata = cast("dict[str, object]", app["metadata"])
+        annotations = cast("dict[str, object]", app_metadata.get("annotations", {}))
+        labels = cast("dict[str, object]", app_metadata.get("labels", {}))
         require(
-            app["spec"]["project"] == "default"
+            spec["project"] == "default"
             and source.get("path") == "charts/netbird"
             and source.get("targetRevision") == "main"
             and source.get("repoURL") == "https://github.com/alchemmist/homelab.git"
             and (
-                app["metadata"]
-                .get("annotations", {})
-                .get("argocd.argoproj.io/tracking-id", "")
-                .startswith("root:")
-                or app["metadata"].get("labels", {}).get("app.kubernetes.io/instance") == "root"
+                cast("str", annotations.get("argocd.argoproj.io/tracking-id", "")).startswith(
+                    "root:"
+                )
+                or labels.get("app.kubernetes.io/instance") == "root"
             ),
             "root-managed GitOps Application required; do not create one manually",
         )
@@ -537,8 +578,10 @@ class Runtime:
             "dedicated machine destinations required",
         )
         net = unique(self.api("GET", "networks"), "name", NETWORK)
-        self.network = net["id"]
-        routers = self.api("GET", "networks/" + self.network + "/routers")
+        self.network = cast("str", net["id"])
+        routers = cast(
+            "list[dict[str, object]]", self.api("GET", "networks/" + self.network + "/routers")
+        )
         require(
             len(routers) == 1
             and not routers[0].get("peer")
@@ -548,11 +591,11 @@ class Runtime:
             and routers[0]["metric"] == 80,
             "native group-router drift",
         )
-        cluster = self.get("namespace", "kube-system", ns="default")["metadata"]["uid"]
-        namespace = self.get("namespace", NS, ns="default")["metadata"]["uid"]
+        kube_system = cast("dict[str, object]", self.get("namespace", "kube-system", ns="default"))
+        target_namespace = cast("dict[str, object]", self.get("namespace", NS, ns="default"))
         binding = {
-            "cluster_uid": cluster,
-            "namespace_uid": namespace,
+            "cluster_uid": cast("dict[str, object]", kube_system["metadata"])["uid"],
+            "namespace_uid": cast("dict[str, object]", target_namespace["metadata"])["uid"],
             "network_id": self.network,
             "router_id": routers[0]["id"],
             "admin_id": self.admin["id"],
@@ -562,12 +605,14 @@ class Runtime:
             self.state.get("scope", binding) == binding, "cluster/account/scope binding changed"
         )
         self.state["scope"] = binding
-        policies = self.api("GET", "policies")
+        policies = cast("list[dict[str, object]]", self.api("GET", "policies"))
         all_id = unique(groups, "name", "All")["id"]
         for policy in policies:
-            for rule in policy.get("rules", []):
+            for rule in cast("list[dict[str, object]]", policy.get("rules", [])):
                 if policy.get("enabled") and rule.get("enabled") and rule.get("action") == "accept":
-                    endpoints = (rule.get("sources") or []) + (rule.get("destinations") or [])
+                    endpoints = cast("list[object]", rule.get("sources") or []) + cast(
+                        "list[object]", rule.get("destinations") or []
+                    )
                     require(
                         all_id not in {g["id"] if isinstance(g, dict) else g for g in endpoints},
                         "All-device grant violates enrollment default deny",
@@ -578,7 +623,7 @@ class Runtime:
         )
         return policies
 
-    def status(self, host):
+    def status(self, host) -> dict[str, str]:
         value = json.loads(
             self.kub(
                 [
@@ -596,7 +641,7 @@ class Runtime:
         require(value["daemonStatus"] == "Connected", "agent not connected")
         return {"ip": str(ipaddress.ip_interface(value["netbirdIp"]).ip), "key": value["publicKey"]}
 
-    def peer_for_status(self, host):
+    def peer_for_status(self, host) -> tuple[dict[str, object], dict[str, str]]:
         status = self.status(host)
         p = unique(self.api("GET", "peers"), "ip", status["ip"])
         require(
@@ -610,12 +655,14 @@ class Runtime:
         )
         return p, status
 
-    def verify_deployment(self, host, d):
+    def verify_deployment(self, host, d) -> None:
         expected = manifests(
             host, self.config["image"], kernel_only=host in self.config.get("kernel_only_nodes", [])
         )[1]
         spec = d["spec"]["template"]["spec"]
-        want = expected["spec"]["template"]["spec"]
+        expected_spec = cast("dict[str, object]", expected["spec"])
+        expected_template = cast("dict[str, object]", expected_spec["template"])
+        want = cast("dict[str, object]", expected_template["spec"])
         require(
             d["spec"]["replicas"] == 1
             and spec["nodeSelector"] == want["nodeSelector"]
@@ -624,7 +671,8 @@ class Runtime:
             and len(spec["containers"]) == 1,
             "agent placement/config drift",
         )
-        c, wc = spec["containers"][0], want["containers"][0]
+        c = spec["containers"][0]
+        wc = cast("dict[str, object]", cast("list[object]", want["containers"])[0])
         require(
             c["image"] == wc["image"]
             and c["env"] == wc["env"]
@@ -634,34 +682,44 @@ class Runtime:
         )
         require(spec["volumes"] == want["volumes"], "persistent identity volumes drift")
 
-    def reconcile(self, host, seed=None):
+    def reconcile(self, host, seed=None) -> dict[str, object]:
         require(host in self.config["nodes"], "host not enabled in inventory")
         policies = self.guard()
-        known = {v["peer_id"] for v in self.state["nodes"].values() if v.get("peer_id")}
+        known = {
+            v["peer_id"]
+            for v in cast("dict[str, dict[str, object]]", self.state["nodes"]).values()
+            if v.get("peer_id")
+        }
         known |= {v["id"] for v in (seed or {}).get("nodes", {}).values() if v.get("id")}
         require(
             member_ids(self.group) <= known,
             "unbound machine-group member: explicit initial adoption required",
         )
-        node = self.get("node", host, ns="default", optional=True)
+        node = cast("dict[str, object] | None", self.get("node", host, ns="default", optional=True))
         if node is None or not any(
             c["type"] == "Ready" and c["status"] == "True"
-            for c in node.get("status", {}).get("conditions", [])
+            for c in cast(
+                "list[dict[str, object]]",
+                cast("dict[str, object]", node.get("status", {})).get("conditions", []),
+            )
         ):
             return {"changed": False, "status": "deferred-node-not-ready", "node": host}
         address = self.config["nodes"][host]
-        entry = self.state["nodes"].get(host)
+        entry = cast("dict[str, object] | None", self.state["nodes"].get(host))
         if entry:
             require(
                 entry["phase"] == "ready",
                 "incomplete enrollment: inspect private state, never reissue automatically",
             )
             require(
-                entry["node_uid"] == node["metadata"]["uid"] and entry["address"] == address,
+                entry["node_uid"] == cast("dict[str, object]", node["metadata"])["uid"]
+                and entry["address"] == address,
                 "node reinstallation/address change requires explicit retirement",
             )
-        d = self.get("deployment", "machine-" + host, optional=True)
-        pvc = self.get("pvc", "machine-" + host, optional=True)
+        d = cast(
+            "dict[str, object] | None", self.get("deployment", "machine-" + host, optional=True)
+        )
+        pvc = cast("dict[str, object] | None", self.get("pvc", "machine-" + host, optional=True))
         if d or pvc:
             require(
                 d is not None and pvc is not None,
@@ -690,17 +748,19 @@ class Runtime:
             require(
                 not any(
                     p.get("hostname") == host or p.get("name") == "machine-" + host
-                    for p in self.api("GET", "peers")
+                    for p in cast("list[dict[str, object]]", self.api("GET", "peers"))
                 ),
                 "orphan existing peer: no name adoption",
             )
             return {"changed": False, "status": "awaiting-argocd-workloads", "node": host}
+        d_document = cast("dict[str, object]", d)
+        pvc_document = cast("dict[str, object]", pvc)
         binding = {
             "phase": "ready",
-            "node_uid": node["metadata"]["uid"],
+            "node_uid": cast("dict[str, object]", node["metadata"])["uid"],
             "address": address,
-            "deployment_uid": d["metadata"]["uid"],
-            "pvc_uid": pvc["metadata"]["uid"],
+            "deployment_uid": cast("dict[str, object]", d_document["metadata"])["uid"],
+            "pvc_uid": cast("dict[str, object]", pvc_document["metadata"])["uid"],
             "peer_id": p["id"],
             "ip": status["ip"],
             "public_key": status["key"],
@@ -759,7 +819,7 @@ class Runtime:
                     ]
                 )
         resources_path = "networks/" + self.network + "/resources"
-        resources = self.api("GET", resources_path)
+        resources = cast("list[dict[str, object]]", self.api("GET", resources_path))
         found = [r for r in resources if r["address"] == address + "/32"]
         require(len(found) <= 1, "duplicate WG host resources")
         resource = found[0] if found else None
@@ -777,10 +837,11 @@ class Runtime:
                 v
                 for v in policies
                 if any(
-                    (r.get("destinationResource") or {}).get("id") == resource["id"]
-                    for r in v["rules"]
+                    cast("dict[str, object]", r.get("destinationResource") or {}).get("id")
+                    == resource["id"]
+                    for r in cast("list[dict[str, object]]", v["rules"])
                 )
-                and v["name"].startswith("admin-wg-")
+                and cast("str", v["name"]).startswith("admin-wg-")
             ]
             require(len(matching) <= 1, "duplicate managed resource policies")
             if matching:
@@ -788,7 +849,7 @@ class Runtime:
                     policy_ok(matching[0], self.admin["id"], resource=resource["id"]),
                     "admin resource policy drift",
                 )
-        grant = self.state.get("grants", {}).get(host)
+        grant = cast("dict[str, object] | None", self.state.get("grants", {}).get(host))
         if grant:
             require(
                 resource is not None
@@ -811,7 +872,8 @@ class Runtime:
             if entry is None or grant is None:
                 self.changed = True
             if p["id"] not in member_ids(self.group):
-                fresh = self.api("GET", "groups/" + self.group["id"])
+                group_id = cast("str", self.group["id"])
+                fresh = cast("dict[str, object]", self.api("GET", "groups/" + group_id))
                 require(
                     member_ids(fresh) == member_ids(self.group)
                     and not fresh.get("resources")
@@ -821,7 +883,7 @@ class Runtime:
                 )
                 self.write(
                     "PUT",
-                    "groups/" + self.group["id"],
+                    "groups/" + group_id,
                     {
                         "name": DEST,
                         "resources": [],
@@ -829,20 +891,29 @@ class Runtime:
                     },
                 )
             if resource is None:
-                resource = self.write(
-                    "POST",
-                    resources_path,
-                    {
-                        "name": "wg-" + host,
-                        "description": "Inventory WG node; no broader prefix",
-                        "address": address + "/32",
-                        "enabled": True,
-                    },
+                resource = cast(
+                    "dict[str, object]",
+                    self.write(
+                        "POST",
+                        resources_path,
+                        {
+                            "name": "wg-" + host,
+                            "description": "Inventory WG node; no broader prefix",
+                            "address": address + "/32",
+                            "enabled": True,
+                        },
+                    ),
                 )
         if self.apply:
+            resource = cast("dict[str, object]", resource)
             if not matching:
                 matching = [
-                    self.write("POST", "policies", policy_body(self.admin["id"], resource["id"]))
+                    cast(
+                        "dict[str, object]",
+                        self.write(
+                            "POST", "policies", policy_body(self.admin["id"], resource["id"])
+                        ),
+                    )
                 ]
             self.state.setdefault("grants", {})[host] = {
                 "resource_id": resource["id"],
@@ -857,7 +928,7 @@ class Runtime:
         }
 
 
-def main():
+def main() -> None:
     os.umask(0o077)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state-dir", required=True, type=Path)

@@ -18,6 +18,7 @@ import urllib.parse
 import urllib.request
 import uuid
 from pathlib import Path
+from typing import cast
 
 ADMIN = "netbird-internal-admins"
 LEGACY_LOGIN = "netbird-pilot-login"
@@ -26,18 +27,19 @@ PROFILE_MAPPING = "homelab-netbird-profile-groups"
 EXPRESSION = 'return {"groups": [group.name for group in request.user.ak_groups.all()]}'
 
 
-def require(value, message):
+def require(value, message) -> None:
     if not value:
         raise ValueError(message)
 
 
-def unique(items, key, value):
+def unique(items, key, value) -> dict[str, object]:
     matches = [x for x in items if x.get(key) == value]
     require(len(matches) == 1, "Missing or ambiguous reviewed object")
-    return matches[0]
+    match: dict[str, object] = matches[0]
+    return match
 
 
-def safe_group(group):
+def safe_group(group) -> None:
     require(
         group.get("is_superuser") is False
         and group.get("parents") == []
@@ -46,7 +48,7 @@ def safe_group(group):
     )
 
 
-def reconcile_plan(s):
+def reconcile_plan(s) -> list[dict[str, object]]:
     accounts = s["nb_accounts"]
     require(len(accounts) == 1, "Exactly one reviewed NetBird account required")
     account = accounts[0]
@@ -107,7 +109,7 @@ def reconcile_plan(s):
             )
             admin_rules += jwt_group["id"] in sources
     require(admin_rules > 0, "No effective policy uses the genuine administrator JWT source")
-    operations = []
+    operations: list[dict[str, object]] = []
     if scope is None:
         operations.append(
             {
@@ -124,7 +126,7 @@ def reconcile_plan(s):
                 "result_ref": "profile_mapping",
             }
         )
-    mappings = provider.get("property_mappings") or []
+    mappings = cast("list[object]", provider.get("property_mappings") or [])
     unused = {
         p["pk"]
         for p in s["ak_scopes"]
@@ -212,7 +214,7 @@ def reconcile_plan(s):
     return operations
 
 
-def membership_plan(s, username, expected_uuid, revoke=False):
+def membership_plan(s, username, expected_uuid, revoke=False) -> list[dict[str, object]]:
     require(
         username and expected_uuid,
         "Explicit username and independently reviewed Authentik UUID required",
@@ -233,7 +235,7 @@ def membership_plan(s, username, expected_uuid, revoke=False):
     )
     group = unique(s["ak_groups"], "name", ADMIN)
     safe_group(group)
-    present = user["pk"] in group.get("users", [])
+    present = user["pk"] in cast("list[object]", group.get("users", []))
     if present != revoke:
         return []
     action = "remove_user" if revoke else "add_user"
@@ -241,14 +243,14 @@ def membership_plan(s, username, expected_uuid, revoke=False):
         {
             "system": "ak",
             "method": "POST",
-            "path": "core/groups/" + group["pk"] + "/" + action + "/",
+            "path": "core/groups/" + cast("str", group["pk"]) + "/" + action + "/",
             "body": {"pk": user["pk"]},
             "purpose": "revoke-human-admission" if revoke else "grant-human-admission",
         }
     ]
 
 
-def subject_identity(value):
+def subject_identity(value) -> tuple[str, ...]:
     """Decode Dex's exact protobuf (subject, connector); never match by email."""
     raw = base64.b64decode(value + "=" * (-len(value) % 4), validate=True)
     offset = 0
@@ -273,7 +275,7 @@ def subject_identity(value):
     return tuple(fields)
 
 
-def offboard_plan(s, username, expected_uuid):
+def offboard_plan(s, username, expected_uuid) -> list[dict[str, object]]:
     membership = membership_plan(s, username, expected_uuid, True)
     app = unique(s["ak_apps"], "slug", APP)
     provider = unique(s["ak_providers"], "pk", app["provider"])
@@ -288,9 +290,9 @@ def offboard_plan(s, username, expected_uuid):
         "type",
         "authentik",
     )
-    connector = idp["id"]
+    connector = cast("str", idp["id"])
     require(connector.startswith("authentik-"), "Unexpected native Authentik connector identifier")
-    matches = []
+    matches: list[dict[str, object]] = []
     for user in s["nb_users"]:
         if user.get("is_service_user") or user.get("idp_id") != connector:
             continue
@@ -304,8 +306,8 @@ def offboard_plan(s, username, expected_uuid):
         return membership
     user = matches[0]
     require(user.get("role") == "user", "Owner/admin NetBird account needs explicit owner review")
-    path = "users/" + urllib.parse.quote(user["id"], safe="")
-    plan = []
+    path = "users/" + urllib.parse.quote(cast("str", user["id"]), safe="")
+    plan: list[dict[str, object]] = []
     if not user.get("is_blocked"):
         plan.append(
             {
@@ -345,7 +347,7 @@ class API:
 
         self.opener = urllib.request.build_opener(NoRedirect)
 
-    def call(self, system, method, path, body=None):
+    def call(self, system, method, path, body=None) -> object:
         require(
             system in ("ak", "nb") and not path.startswith("/") and "://" not in path,
             "Invalid owned API path",
@@ -369,20 +371,23 @@ class API:
             content = response.read()
             return json.loads(content) if content else None
 
-    def rows(self, path):
-        result = []
+    def rows(self, path) -> list[object]:
+        result: list[object] = []
         for page in range(1, 1001):
-            data = self.call(
-                "ak",
-                "GET",
-                path + ("&" if "?" in path else "?") + "page_size=100&page=" + str(page),
+            data = cast(
+                "dict[str, object]",
+                self.call(
+                    "ak",
+                    "GET",
+                    path + ("&" if "?" in path else "?") + "page_size=100&page=" + str(page),
+                ),
             )
-            result.extend(data["results"])
-            if not data.get("pagination", {}).get("next"):
+            result.extend(cast("list[object]", data["results"]))
+            if not cast("dict[str, object]", data.get("pagination", {})).get("next"):
                 return result
         raise ValueError("Pagination limit exceeded")
 
-    def snapshot(self):
+    def snapshot(self) -> dict[str, object]:
         state = {
             "nb_" + name: self.call("nb", "GET", name)
             for name in ["accounts", "groups", "users", "peers", "policies"]
@@ -401,13 +406,13 @@ class API:
         provider = unique(state["ak_providers"], "pk", app["provider"])
         state["ak_mfa"] = self.rows("stages/authenticator/validate/")
         state["ak_flow_bindings"] = self.rows(
-            "flows/bindings/?target=" + provider["authentication_flow"]
+            "flows/bindings/?target=" + cast("str", provider["authentication_flow"])
         )
-        state["ak_bindings"] = self.rows("policies/bindings/?target=" + app["pk"])
+        state["ak_bindings"] = self.rows("policies/bindings/?target=" + cast("str", app["pk"]))
         return state
 
 
-def atomic(path, value):
+def atomic(path, value) -> None:
     temp = path.with_suffix(".tmp")
     fd = os.open(temp, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
     with os.fdopen(fd, "w") as f:
@@ -417,7 +422,7 @@ def atomic(path, value):
     os.replace(temp, path)
 
 
-def check_state_folder(folder):
+def check_state_folder(folder) -> None:
     require(
         folder.is_absolute() and not folder.is_symlink(),
         "Absolute private state directory required",
@@ -435,7 +440,7 @@ def check_state_folder(folder):
             )
 
 
-def build_plan(state, action, username=None, expected_uuid=None):
+def build_plan(state, action, username=None, expected_uuid=None) -> list[dict[str, object]]:
     infrastructure = reconcile_plan(state)
     if action == "reconcile":
         return infrastructure
@@ -447,7 +452,7 @@ def build_plan(state, action, username=None, expected_uuid=None):
     )
 
 
-def main():
+def main() -> None:
     os.umask(0o077)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=["reconcile", "grant", "revoke", "offboard"])
@@ -494,10 +499,15 @@ def main():
     )
     folder.mkdir(mode=0o700)
     atomic(folder / "before.json", before)
-    receipt = {"state": "applying", "plan_sha256": digest, "completed": 0, "plan": plan}
+    receipt: dict[str, object] = {
+        "state": "applying",
+        "plan_sha256": digest,
+        "completed": 0,
+        "plan": plan,
+    }
     atomic(folder / "receipt.json", receipt)
     try:
-        references = {}
+        references: dict[str, object] = {}
         for operation in plan:
             body = json.loads(json.dumps(operation["body"]))
             if body is not None and "property_mappings" in body:
@@ -510,8 +520,10 @@ def main():
                 )
             result = api.call(operation["system"], operation["method"], operation["path"], body)
             if operation.get("result_ref"):
-                references["$" + operation["result_ref"]] = result["pk"]
-            receipt["completed"] += 1
+                references["$" + cast("str", operation["result_ref"])] = cast(
+                    "dict[str, object]", result
+                )["pk"]
+            receipt["completed"] = cast("int", receipt["completed"]) + 1
             atomic(folder / "receipt.json", receipt)
         after = api.snapshot()
         remaining = build_plan(after, args.action, args.username, args.expected_user_uuid)
