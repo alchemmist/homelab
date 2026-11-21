@@ -12,6 +12,8 @@ spec.loader.exec_module(p)
 
 
 class PublicationPolicy(unittest.TestCase):
+    """Tests for the swe-mini publication policy."""
+
     def item(self, path="server/app/test.py", mode="100644", content=b"hello\n"):
         return {"path": path, "mode": mode, "content": base64.b64encode(content).decode()}
 

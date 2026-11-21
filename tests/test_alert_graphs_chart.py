@@ -10,6 +10,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 @unittest.skipUnless(shutil.which("helm"), "helm unavailable")
 class AlertGraphsChartTests(unittest.TestCase):
+    """Tests for the alert graphs chart template."""
+
     def render(self, enabled=False, extra=()):
         args = [
             "helm",

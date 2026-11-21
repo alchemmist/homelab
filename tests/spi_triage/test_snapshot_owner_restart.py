@@ -8,6 +8,8 @@ from core import Failure, Store
 
 
 class SnapshotOwnerRestartTests(unittest.TestCase):
+    """Tests for snapshot ownership across restarts."""
+
     setUp = integration_fixtures.IntegrationTests.setUp
     tearDown = integration_fixtures.IntegrationTests.tearDown
 

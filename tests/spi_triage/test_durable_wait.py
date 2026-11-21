@@ -8,6 +8,8 @@ from durable_wait import WaitOwners
 
 
 class WaitTests(unittest.TestCase):
+    """Tests for durable wait persistence."""
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.store = Store(self.tmp.name + "/db", minute_token_limit=60000)

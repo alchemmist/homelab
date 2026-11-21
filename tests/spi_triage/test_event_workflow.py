@@ -18,6 +18,8 @@ spec.loader.exec_module(sync)
 
 
 class EventWorkflowTests(unittest.TestCase):
+    """Tests for the SPI event workflow."""
+
     def setUp(self):
         self.workflow = json.loads((ROOT / RELATIVE).read_text())
         self.mapping = {"worker": {"id": "existing-worker-id", "name": "SPI worker internal"}}

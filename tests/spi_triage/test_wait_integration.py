@@ -13,6 +13,8 @@ from service import Engine
 
 
 class IntegrationTests(unittest.TestCase):
+    """Integration tests for wait and admission flow."""
+
     def setUp(self):
         self.now = 1000
         self.clock = patch("time.time", lambda: self.now)
@@ -333,6 +335,8 @@ class IntegrationTests(unittest.TestCase):
 
 
 class ModelTimerTests(unittest.TestCase):
+    """Tests for model timer accounting under patching."""
+
     @patch.dict("os.environ", {"SPI_TOKEN_ACCOUNTING_MODE": "byte-bound-v1"})
     def test_active_reservation_survives_old_661_second_expiry(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -21,6 +21,8 @@ from test_triage import event
 
 
 class ArtifactTests(unittest.TestCase):
+    """Tests for evidence v2 artifact bundling."""
+
     def bundle(self, text="diagnostic"):
         return prepare_bundle(
             event(),
@@ -155,6 +157,8 @@ class ArtifactTests(unittest.TestCase):
 
 
 class TelemetryTests(unittest.TestCase):
+    """Tests for evidence upload telemetry."""
+
     def response(self, method, url, *args, **kw):
         if "/api/search?" in url:
             return {"traces": [{"traceID": "a" * 32}]}
@@ -288,6 +292,8 @@ class TelemetryTests(unittest.TestCase):
 
 
 class ProvenanceTests(unittest.TestCase):
+    """Tests for evidence provenance boundaries."""
+
     def test_project_does_not_export_env_or_secret(self):
         obj = {
             "kind": "Pod",
@@ -468,6 +474,8 @@ class ProvenanceTests(unittest.TestCase):
 
 
 class EngineArtifactTests(unittest.TestCase):
+    """Tests for engine artifact timeout handling."""
+
     def test_primary_is_not_repeated_after_artifact_timeout(self):
         import tempfile
         from core import Store
@@ -520,6 +528,8 @@ class EngineArtifactTests(unittest.TestCase):
 
 
 class DownloadTests(unittest.TestCase):
+    """Tests for evidence downloads and checksums."""
+
     def test_roundtrip_and_checksum(self):
         import importlib.util
 
@@ -559,6 +569,8 @@ class DownloadTests(unittest.TestCase):
 
 
 class ModelEvidenceTests(unittest.TestCase):
+    """Tests for model evidence fact validation."""
+
     def test_facts_require_valid_existing_evidence_ids(self):
         from integrations import Model
         from core import REPORT_SCHEMA
@@ -585,6 +597,8 @@ class ModelEvidenceTests(unittest.TestCase):
 
 
 class PrimaryReconciliationTests(unittest.TestCase):
+    """Tests for primary issue reconciliation."""
+
     def test_issue_without_app_metadata_uses_immutable_bot_id(self):
         from evidence_bundle import trusted_comment
 
@@ -608,6 +622,8 @@ class PrimaryReconciliationTests(unittest.TestCase):
 
 
 class SQLiteTempStoreTests(unittest.TestCase):
+    """Tests that SQLite uses an in-memory temp store."""
+
     def test_all_connections_use_memory_temp_store(self):
         import tempfile
         from core import Store
@@ -627,6 +643,8 @@ if __name__ == "__main__":
 
 
 class GrafanaLoginLinkTests(unittest.TestCase):
+    """Tests for generated Grafana login links."""
+
     def test_generator_requests_native_login_and_keeps_absolute_state(self):
         for uid, field, query in [
             ("prometheus", "expr", 'up{job="x"}'),

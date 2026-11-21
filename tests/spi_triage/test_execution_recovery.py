@@ -12,6 +12,8 @@ from test_wait_integration import IntegrationTests
 
 
 class ReadWaitTests(IntegrationTests):
+    """Tests for read-timeout recovery after restart."""
+
     def test_read_timeout_replays_receipt_then_resumes_after_restart(self):
         self.github.snapshot.side_effect = [Failure("GITHUB_READ_TIMEOUT", 60), []]
         sent = self.data
@@ -33,6 +35,8 @@ class ReadWaitTests(IntegrationTests):
 
 @patch.dict("os.environ", {"SPI_TOKEN_ACCOUNTING_MODE": "byte-bound-v1"})
 class RepairTests(unittest.TestCase):
+    """Tests for repair budget survival across restarts."""
+
     def test_repair_budget_survives_admission_and_restart(self):
         with tempfile.TemporaryDirectory() as tmp:
             store = Store(tmp + "/db")

@@ -14,6 +14,8 @@ from s3_evidence import StorageTransient
 
 
 class EngineStorageTests(unittest.TestCase):
+    """Tests for the S3-backed evidence engine."""
+
     def setUp(self):
         origin = patch.dict(
             "os.environ", {"SPI_EVIDENCE_PUBLIC_ORIGIN": "https://rustfs.socrat.alchemmist.xyz"}

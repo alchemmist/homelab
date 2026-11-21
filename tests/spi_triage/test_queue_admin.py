@@ -12,6 +12,8 @@ from email.message import Message
 
 
 class QueueAdminTests(unittest.TestCase):
+    """Tests for SPI queue administration."""
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

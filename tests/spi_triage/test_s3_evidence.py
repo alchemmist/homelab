@@ -15,6 +15,8 @@ KEY = "spi/v1/" + "a" * 64 + "/" + "b" * 64 + "/E001-test.json"
 
 
 class ClientTests(unittest.TestCase):
+    """Tests for the S3 evidence client."""
+
     def client(self, responses):
         self.calls = []
 

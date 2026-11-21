@@ -10,6 +10,8 @@ from service import Engine
 
 
 class OwnerAdmissionTests(unittest.TestCase):
+    """Tests for wait owner admission rules."""
+
     def setUp(self):
         self.now = 1000
         self.clock = patch("time.time", lambda: self.now)
