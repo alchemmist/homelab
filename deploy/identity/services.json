@@ -249,5 +249,23 @@
       "state": "blocked",
       "reason": "No reviewed native OIDC/JIT provisioning; app group does not create an n8n account"
     }
+  },
+  "monori": {
+    "name": "Monori",
+    "url": "https://monori.alchemmist.xyz/",
+    "description": "Personal budgets. Link an existing account in Monori Settings before signing in with SSO.",
+    "redirect": "https://monori.alchemmist.xyz/oidc/callback",
+    "groups": [
+      "homelab-owner"
+    ],
+    "migration": "native-oidc-with-local-fallback",
+    "admission": "native-oidc",
+    "appRoles": {},
+    "accessManagement": {
+      "state": "blocked",
+      "reason": "Admission only; budget ownership is managed in Monori."
+    },
+    "icon": "https://auth.socrat.alchemmist.xyz/-/quiet-mono/v1/d2ecda88620e-monori.svg",
+    "managedBy": "native-monori"
   }
 }

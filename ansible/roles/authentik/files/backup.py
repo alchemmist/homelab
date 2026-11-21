@@ -69,6 +69,7 @@ with tempfile.TemporaryDirectory(dir=root) as work:
         # Include machine-identity journal and guarded rollback credentials when present.
         for extra in [
             root / "automation-api.json",
+            root / "monori-client-secret",
             *root.glob("credentials-before-automation-*.json"),
         ]:
             if extra.exists():

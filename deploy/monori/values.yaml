@@ -1,4 +1,9 @@
 ---
+oidc:
+  enabled: true
+  issuer: https://auth.socrat.alchemmist.xyz/application/o/monori/
+  clientId: socrat-monori
+  secretName: monori-oidc
 frontNodeName: socrat-5
 images:
   front:

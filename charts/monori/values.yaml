@@ -5,6 +5,8 @@ tlsSecret: monori-tls
 clusterIssuer: letsencrypt-http01
 hostPath: /srv/monori
 secretName: monori-env
+oidc:
+  enabled: false
 images:
   front:
     repository: harbor.socrat.alchemmist.xyz/homelab/monori
