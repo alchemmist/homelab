@@ -141,7 +141,7 @@ def main():
     evidence(ROOT, "netbird-pre-stage2")
     journal = ROOT / "journal"
     token = None
-    process_slot = {}
+    process_slot = {"process": None}
 
     def api(method, path, body=None) -> dict[str, object] | list[object] | None:
         headers = {"Content-Type": "application/json"}
@@ -268,7 +268,7 @@ def main():
             )
             print("Authentik connector configured; real owner login/transfer not yet accepted")
     finally:
-        if process_slot["process"]:
+        if process_slot.get("process"): 
             process_slot["process"].terminate()
             process_slot["process"].wait(timeout=10)
         if enabled:
