@@ -13,7 +13,8 @@ from pathlib import Path
 def update_config(original, public_key, endpoint):
     """Execute the update_config operation."""
     if re.search(r"^\s*SaveConfig\s*=\s*true\s*$", original, re.M | re.I):
-        raise ValueError("SaveConfig must be disabled")
+        msg = "SaveConfig must be disabled"
+        raise ValueError(msg)
     blocks = re.split(r"(?=^\s*\[Peer\]\s*$)", original, flags=re.M)
     found = 0
     for index, block in enumerate(blocks):
@@ -23,7 +24,8 @@ def update_config(original, public_key, endpoint):
         found += 1
         entries = list(re.finditer(r"^[ \t]*Endpoint[ \t]*=[^\n]*(?:\n|$)", block, re.M))
         if len(entries) > 1:
-            raise ValueError("Duplicate peer endpoint")
+            msg = "Duplicate peer endpoint"
+            raise ValueError(msg)
         replacement = "Endpoint = " + endpoint + "\n" if endpoint else ""
         if entries:
             entry = entries[0]
@@ -32,7 +34,8 @@ def update_config(original, public_key, endpoint):
             block = block.rstrip("\n") + "\n" + replacement + "\n"
         blocks[index] = block
     if found != 1:
-        raise ValueError("Expected exactly one matching peer")
+        msg = "Expected exactly one matching peer"
+        raise ValueError(msg)
     return "".join(blocks)
 
 
@@ -40,9 +43,11 @@ def main():
     """Execute the main operation."""
     interface, public_key, endpoint = sys.argv[1:]
     if not re.fullmatch(r"[a-zA-Z0-9_=+.-]{1,15}", interface):
-        raise ValueError("Invalid interface")
+        msg = "Invalid interface"
+        raise ValueError(msg)
     if endpoint not in ("", "127.0.0.1:51840"):
-        raise ValueError("Unexpected transport endpoint")
+        msg = "Unexpected transport endpoint"
+        raise ValueError(msg)
     config = Path("/etc/wireguard") / (interface + ".conf")
     original = config.read_text()
     updated = update_config(original, public_key, endpoint)
@@ -53,7 +58,8 @@ def main():
         ).splitlines()
     )
     if public_key not in live:
-        raise ValueError("Peer missing from live interface")
+        msg = "Peer missing from live interface"
+        raise ValueError(msg)
     changed = updated != original
     if changed:
         backup = str(config) + ".before-tcp-transport-" + str(time.time_ns())
