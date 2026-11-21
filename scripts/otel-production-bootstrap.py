@@ -41,7 +41,8 @@ def kube(*args, document=None):
         timeout=90,
     )
     if result.returncode:
-        raise RuntimeError("Kubernetes bootstrap operation failed; sensitive response omitted")
+        msg = "Kubernetes bootstrap operation failed; sensitive response omitted"
+        raise RuntimeError(msg)
     # kubectl wait/delete emit human-readable output, not resource JSON.
     # Their exit status is checked above; never mistake a successful deletion
     # for a parser failure or retry it solely because its text was not JSON.
@@ -181,7 +182,8 @@ def run(bundle, output):
     os.umask(0o077)
     output.mkdir(mode=0o700, exist_ok=True)
     if (output / "bootstrap.json").exists():
-        raise ValueError("Completed bootstrap exists; inspect before reissuing credentials")
+        msg = "Completed bootstrap exists; inspect before reissuing credentials"
+        raise ValueError(msg)
     contract = json.loads((bundle / "contract.json").read_text())
     service = kube("-n", NS, "get", "service", "kube-prometheus-stack-prometheus", "-o", "json")
     pod = kube(

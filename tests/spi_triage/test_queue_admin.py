@@ -5,11 +5,12 @@ import sqlite3
 import tempfile
 import time
 import unittest
+from email.message import Message
 from pathlib import Path
+
 import test_triage as f
 from core import Failure, Store
 from queue_admin import QueueAdmin, authorized
-from email.message import Message
 
 
 class QueueAdminTests(unittest.TestCase):

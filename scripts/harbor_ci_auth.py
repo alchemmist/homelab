@@ -5,20 +5,21 @@ public registry. Its isolated Go TLS setting is configured by the workflow.
 """
 
 import argparse
-import http.client
 import base64
+import http.client
 import json
 import os
-from pathlib import Path
 import re
 import tempfile
 import urllib.parse
 import urllib.request
+from pathlib import Path
 
 HOST = "harbor.socrat.alchemmist.xyz"
 
 
 def configure(repository):
+    """Perform the configure operation."""
     if not re.fullmatch(r"homelab/[a-z0-9-]+", repository):
         raise ValueError("INVALID_REPOSITORY")
     username, password = os.environ["HARBOR_USERNAME"], os.environ["HARBOR_PASSWORD"]

@@ -30,10 +30,12 @@ EVENT_GUARD = "    if not event_emitter or _is_tool_result_error(tool_result):\n
 
 def patch(source):
     if IMPORT in source:
-        raise ValueError("Tool guard already present; expected pristine middleware")
+        msg = "Tool guard already present; expected pristine middleware"
+        raise ValueError(msg)
     for anchor in (FUNCTION, CONTINUATION, FILE_RESULT, EVENT):
         if source.count(anchor) != 1:
-            raise ValueError("Unsupported WebUI middleware; tool guard anchor count differs")
+            msg = "Unsupported WebUI middleware; tool guard anchor count differs"
+            raise ValueError(msg)
     result = IMPORT + source.replace(FUNCTION, "@guarded_execute\n" + FUNCTION).replace(
         CONTINUATION, GUARDED_CONTINUATION
     ).replace(FILE_RESULT, FILE_RESULT_GUARD).replace(EVENT, EVENT_GUARD)

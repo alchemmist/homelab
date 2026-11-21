@@ -19,12 +19,14 @@ from open_webui.utils.tools import (
 
 
 def serialize(result):
+    """Perform the serialize operation."""
     if isinstance(result, tuple):
         result = result[0]
     return result if isinstance(result, str) else json.dumps(result)
 
 
 async def main():
+    """Run the command-line entry point."""
     connections = await Config.get("terminal_server.connections", [])
     connection = next(
         c for c in connections if c.get("id") == "socrat-terminal" and c.get("enabled", True)

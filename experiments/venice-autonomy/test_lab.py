@@ -250,7 +250,8 @@ class NodeVerifierTests(unittest.TestCase):
         import pathlib
         import subprocess
         import tempfile
-        from fixtures import verifier_command, seal_execution
+
+        from fixtures import seal_execution, verifier_command
 
         command, nonce, cases = verifier_command(task, seed)
         with tempfile.TemporaryDirectory() as directory:
@@ -378,6 +379,7 @@ class ControllerTests(unittest.TestCase):
         """Verify checkpoint writes are atomic and crash-safe."""
         import pathlib
         import tempfile
+
         from controller import save_state
 
         with tempfile.TemporaryDirectory() as directory:
@@ -407,11 +409,12 @@ class MiniAdapterTests(unittest.TestCase):
             from minisweagent.models.litellm_model import LitellmModel
         except ModuleNotFoundError as error:
             self.skipTest(f"mini-swe-agent is not installed: {error}")
-        from unittest.mock import patch
-        from minisweagent.models.litellm_textbased_model import LitellmTextbasedModel
-        from sandbox import Sandbox
         import pathlib
         import tempfile
+        from unittest.mock import patch
+
+        from minisweagent.models.litellm_textbased_model import LitellmTextbasedModel
+        from sandbox import Sandbox
 
         with tempfile.TemporaryDirectory() as directory:
             sandbox = Sandbox.__new__(Sandbox)

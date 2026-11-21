@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Explicit temporary native 3x-ui machine access. Never edits SQLite or human auth.
+
 CLI bootstrap uses a collision-checked NEW name; normal operations use node-sync.
 A TTL admin token exists only to issue/revoke our tokens. All secrets stay private.
 The CLI bootstrap cannot have a native TTL: an interrupted issuance must be treated
@@ -153,6 +154,7 @@ class NativeSession:
     """Panel session reconciler backed by the native VPN database."""
 
     def __init__(self, state, database=DB, worker_scope="node-sync") -> None:
+        """Initialize the native panel session."""
 
         if worker_scope not in ("node-sync", "admin"):
             raise ValueError("Unreviewed worker scope")

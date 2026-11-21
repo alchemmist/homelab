@@ -1,17 +1,24 @@
 """Trusted systemd consumer. Only enrolled repo adapters; never execute issue text here."""
-import fcntl, json, os, re, sqlite3, subprocess, sys, time
+import fcntl
+import json
+import os
+import re
+import sqlite3
+import subprocess
+import sys
+import time
 import campaign as c
 import restore_worker
 import lifecycle_worker
 # Remote RPC via the existing operator transport. No pod gets kube credentials.
-RPC='''import json,sqlite3,sys
+RPC="""import json,sqlite3,sys
 m=json.load(sys.stdin); db=sqlite3.connect('/state/reports.db',timeout=10);db.row_factory=sqlite3.Row
 with db:
  if m['op']=='list':print(json.dumps([x[0] for x in db.execute("select issue from reports where repo=? and state not in ('unsupported_report','closed','adapter_required') order by issue",(m['repo'],))]));sys.exit()
  key=(m['repo'],m['issue']); r=db.execute('select digest,state from reports where repo=? and issue=?',key).fetchone()
  if not r: print('null');sys.exit()
  if m['op']=='get':print(json.dumps({'digest':r['digest'],'cards':[dict(x) for x in db.execute('select section,target,reported from cards where repo=? and issue=?',key)]}));sys.exit()
- assert m['digest']==r['digest'];db.execute('create table if not exists outputs(repo integer,issue integer,mutant text,state text,pr integer,base text,primary key(repo,issue,mutant))');db.executemany('insert or replace into outputs values(?,?,?,?,?,?)',[(*key,*row) for row in m['outputs']]);db.executemany('update cards set state=? where repo=? and issue=? and section=? and target=?',[(s,*key,section,t) for section,t,s in m['rows']]);db.execute('update reports set state=? where repo=? and issue=?',(m['state'],*key));print('true')'''
+ assert m['digest']==r['digest'];db.execute('create table if not exists outputs(repo integer,issue integer,mutant text,state text,pr integer,base text,primary key(repo,issue,mutant))');db.executemany('insert or replace into outputs values(?,?,?,?,?,?)',[(*key,*row) for row in m['outputs']]);db.executemany('update cards set state=? where repo=? and issue=? and section=? and target=?',[(s,*key,section,t) for section,t,s in m['rows']]);db.execute('update reports set state=? where repo=? and issue=?',(m['state'],*key));print('true')"""
 
 ADAPTER=json.loads((c.R/'worker_adapter.json').read_text())
 # Publisher is intentionally not a generic GitHub token. Never silently route another repo to it.

@@ -5,11 +5,11 @@ import argparse
 import gzip
 import lzma
 import os
-from pathlib import Path
 import platform
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 DKMS_NAME = "homelab-alx"
 DKMS_VERSION = "6.12.111-1"
@@ -19,10 +19,12 @@ WIFI_PARAMETERS = Path("/sys/module/rtl8723ae/parameters")
 
 
 def run(arguments):
+    """Document the run operation."""
     return subprocess.run(arguments, check=True, capture_output=True, timeout=30).stdout
 
 
 def module_note(path):
+    """Document the module note operation."""
     data = path.read_bytes()
     if path.suffix == ".xz":
         data = lzma.decompress(data)
@@ -46,15 +48,19 @@ def module_note(path):
         )
         value = note.read_bytes()
         if not value:
-            raise RuntimeError("ALX module has no GNU build-id note")
+            msg = "ALX module has no GNU build-id note"
+            raise RuntimeError(msg)
         return value
 
 
 def validate():
+    """Document the validate operation."""
     if os.geteuid() != 0:
-        raise RuntimeError("This guard must run as root")
+        msg = "This guard must run as root"
+        raise RuntimeError(msg)
     if BOARD_PATH.read_text().strip() != "MS-16GP":
-        raise RuntimeError("Unexpected motherboard")
+        msg = "Unexpected motherboard"
+        raise RuntimeError(msg)
     kernel = platform.release()
     status = run(["dkms", "status", "-m", DKMS_NAME, "-v", DKMS_VERSION, "-k", kernel]).decode()
     expected = f"{DKMS_NAME}/{DKMS_VERSION}, {kernel}, {platform.machine()}: installed"
@@ -69,16 +75,19 @@ def validate():
         "alx.ko.zst",
         "alx.ko.gz",
     ):
-        raise RuntimeError("ALX resolves outside the current kernel DKMS directory")
+        msg = "ALX resolves outside the current kernel DKMS directory"
+        raise RuntimeError(msg)
     expected_note = module_note(path)
     run(["modprobe", "alx"])
     if LOADED_NOTE.read_bytes() != expected_note:
+        msg_0 = "Loaded ALX build-id differs from the guarded DKMS module; reboot required"
         raise RuntimeError(
-            "Loaded ALX build-id differs from the guarded DKMS module; reboot required"
+            msg_0
         )
 
 
 def main():
+    """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
     arguments = parser.parse_args()

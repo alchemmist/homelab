@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Guarded source-only worker handoff. No workflow calls or credentials emitted.
+
 Run with the controller Ansible Python (PyYAML), existing SSH socrat-0 identity.
 Only one selected worker Deployment/Service is ever applied; broker/RBAC/code
 ConfigMaps and n8n are not reconciled. Service pause is deliberate maintenance.

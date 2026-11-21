@@ -38,11 +38,13 @@ KEY = re.compile(
 
 
 def require(ok, message):
+    """Execute the require operation."""
     if not ok:
         raise ValueError(message)
 
 
 def username(name):
+    """Execute the username operation."""
     require(
         bool(re.fullmatch(r"[a-z_][a-z0-9_-]{0,30}", name)) and name not in PROTECTED,
         "Invalid or protected Linux username",
@@ -50,6 +52,7 @@ def username(name):
 
 
 def fingerprint(line):
+    """Execute the fingerprint operation."""
     with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8") as f:
         f.write(line + "\n")
         f.flush()
@@ -66,6 +69,7 @@ def fingerprint(line):
 
 
 def validate(name, text):
+    """Execute the validate operation."""
     username(name)
     require(isinstance(text, str) and len(text) <= 16384, "Supply one OpenSSH public key")
     # Strip a normal public-file line ending, not arbitrary embedded controls.
@@ -84,6 +88,7 @@ def validate(name, text):
 
 
 def safe_paths(name, account):
+    """Execute the safe_paths operation."""
     home = Path("/home") / name
     require(
         account is None or account.pw_dir == str(home), "Nonstandard home requires separate review"
@@ -120,6 +125,7 @@ def safe_paths(name, account):
 
 
 def ssh_policy(name):
+    """Execute the ssh_policy operation."""
     daemon = shutil.which("sshd") or "/usr/sbin/sshd"
     r = subprocess.run(
         [daemon, "-T", "-C", "user=" + name + ",host=socrat,addr=100.100.240.102"],
@@ -166,6 +172,7 @@ def login_defs_uid_min() -> int:
 
 
 def inspect(name, expected=None, enforce=False):
+    """Execute the inspect operation."""
     username(name)
     require(os.geteuid() == 0, "Account verification requires root")
     require(
@@ -247,6 +254,7 @@ def inspect(name, expected=None, enforce=False):
 
 
 def main():
+    """Execute the main operation."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("mode", choices=["validate", "inspect", "as-user"])
     p.add_argument("--username", required=True)

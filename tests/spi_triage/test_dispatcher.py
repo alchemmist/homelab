@@ -126,8 +126,9 @@ class ServiceSafetyTests(unittest.TestCase):
         'Verify webhook body validation and partial-request timeouts.'
         import socket
         from types import SimpleNamespace
-        from service import read_request_body
+
         from core import Failure
+        from service import read_request_body
 
         def check(raw, length, code, shutdown=True) -> None:
             left, right = socket.socketpair()
@@ -160,9 +161,9 @@ class DispatchTransportTests(unittest.TestCase):
     def test_trickling_headers_are_interrupted_without_body_read(self) -> None:
 
         'Verify trickling-header requests abort without reading bodies.'
+        import http.client
         import socket
         import threading
-        import http.client
 
         class Connection:
             def __init__(self, *args, **kwargs) -> None:

@@ -4,7 +4,6 @@ import json
 from functools import lru_cache
 from pathlib import Path
 
-
 PANEL_UNITS = {
     "3e97d1d02672cdd0861f4c97c64f89b2": {9: "pps", 12: "short"},
     "fac67cfbe174d3ef53eb473d73d9212f": {9: "pps", 12: "short"},
