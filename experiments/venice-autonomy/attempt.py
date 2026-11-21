@@ -230,7 +230,7 @@ def run_openhands(
         name = "bash"
 
         @classmethod
-        def create(cls, conv_state: object = None, **kwargs: object) -> "list[BashTool]":
+        def create(cls, **_kwargs):
             return [
                 cls(
                     description="Execute bash inside the isolated offline coding workspace. "
