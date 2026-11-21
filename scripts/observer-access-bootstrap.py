@@ -29,7 +29,7 @@ planner = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(planner)
 
 
-def private(path, directory=False, owner_uid=None):
+def private(path, directory=False, owner_uid=None) -> None:
     expected_uid = os.geteuid() if owner_uid is None else owner_uid
     planner.require(
         not path.is_symlink()
@@ -41,7 +41,7 @@ def private(path, directory=False, owner_uid=None):
     )
 
 
-def readiness_directory(path):
+def readiness_directory(path) -> None:
     # Foundation is deployed into the existing alchemmist-owned 0700 cache.
     # Keep strict caller ownership everywhere else; do not chown that directory.
     owner_uid = None
@@ -50,7 +50,7 @@ def readiness_directory(path):
     private(path, directory=True, owner_uid=owner_uid)
 
 
-def validate_path(system, path):
+def validate_path(system, path) -> None:
     planner.require(
         isinstance(path, str)
         and path
@@ -81,7 +81,7 @@ def validate_path(system, path):
     )
 
 
-def harbor_authorization(credentials):
+def harbor_authorization(credentials) -> tuple[str, str]:
     if "harborJobserviceSecret" in credentials:
         secret = credentials["harborJobserviceSecret"]
         planner.require(
@@ -135,7 +135,7 @@ class Client:
             "harbor": harbor_header,
         }
 
-    def call(self, system, method, path, body=None):
+    def call(self, system, method, path, body=None) -> object | None:
         validate_path(system, path)
         headers = {
             "Content-Type": "application/json-patch+json"
@@ -154,7 +154,8 @@ class Client:
             with self.openers[system].open(request, timeout=30) as response:
                 data = response.read(8 * 1024 * 1024 + 1)
                 planner.require(len(data) <= 8 * 1024 * 1024, "API response bound exceeded")
-                return json.loads(data) if data else None
+                payload: object = json.loads(data) if data else None
+                return payload
         except urllib.error.HTTPError as error:
             status = error.code
             error.close()
@@ -162,7 +163,7 @@ class Client:
                 "Native API request failed or write uncertain: " + system + " HTTP " + str(status)
             ) from None
 
-    def rows(self, path):
+    def rows(self, path) -> list[object]:
         result = []
         for page in range(1, 101):
             data = self.call(
@@ -170,12 +171,15 @@ class Client:
                 "GET",
                 path + ("&" if "?" in path else "?") + "page_size=100&page=" + str(page),
             )
+            if not isinstance(data, dict):
+                reason = "IdP pagination returned a non-object page"
+                raise TypeError(reason)
             result.extend(data["results"])
             if not data["pagination"].get("next"):
                 return result
         raise RuntimeError("Incomplete IdP pagination")
 
-    def harbor_members(self, project):
+    def harbor_members(self, project) -> list[object]:
         result = []
         for page in range(1, 101):
             data = self.call(
@@ -183,12 +187,15 @@ class Client:
                 "GET",
                 "/api/v2.0/projects/" + project + "/members?page_size=100&page=" + str(page),
             )
+            if not isinstance(data, list):
+                reason = "Harbor members returned a non-list page"
+                raise TypeError(reason)
             result.extend(data)
             if len(data) < 100:
                 return result
         raise RuntimeError("Incomplete Harbor pagination")
 
-    def harbor_groups(self):
+    def harbor_groups(self) -> list[object]:
         result = []
         for page in range(1, 101):
             data = self.call(
@@ -196,13 +203,16 @@ class Client:
                 "GET",
                 "/api/v2.0/usergroups?group_name=homelab-observer&page_size=100&page=" + str(page),
             )
+            if not isinstance(data, list):
+                reason = "Harbor groups returned a non-list page"
+                raise TypeError(reason)
             result.extend(g for g in data if g.get("group_name") == "homelab-observer")
             if len(data) < 100:
                 return result
         raise RuntimeError("Incomplete Harbor group pagination")
 
 
-def snapshot(client, policy):
+def snapshot(client, policy) -> dict[str, object]:
     kbase = "/apis/management.cattle.io/v3/"
     get = lambda path: client.call("kubernetes", "GET", kbase + path)
     globals_ = get("globalroles")["items"]
@@ -237,16 +247,17 @@ def snapshot(client, policy):
     }
 
 
-def normalized(value):
+def normalized(value) -> object:
     if isinstance(value, dict):
         # Computed signed media URLs do not define group membership or access.
         return {k: normalized(v) for k, v in value.items() if k != "meta_icon_url"}
     if isinstance(value, list):
         return [normalized(v) for v in value]
-    return value
+    leaf: object = value
+    return leaf
 
 
-def digest(state, policy, operations):
+def digest(state, policy, operations) -> str:
     return hashlib.sha256(
         json.dumps(
             {"snapshot": normalized(state), "policy": policy, "operations": operations},
@@ -256,13 +267,13 @@ def digest(state, policy, operations):
     ).hexdigest()
 
 
-def save(path, value):
+def save(path, value) -> None:
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as stream:
         json.dump(value, stream)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--credentials", required=True, type=Path)
     parser.add_argument("--state", type=Path, default=Path("/var/lib/homelab-observer-bootstrap"))

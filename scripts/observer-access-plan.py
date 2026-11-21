@@ -10,24 +10,26 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+from typing import cast
 
 ROOT = Path(__file__).resolve().parents[1]
 READ = {"get", "list", "watch"}
 OWNER = "observer-v1"
 
 
-def require(value, message):
+def require(value, message) -> None:
     if not value:
         raise ValueError(message)
 
 
-def exact(rows, key, value):
+def exact(rows, key, value) -> dict[str, object]:
     result = [row for row in rows if row.get(key) == value]
     require(len(result) == 1, "Missing/ambiguous reviewed object: " + value)
-    return result[0]
+    found: dict[str, object] = result[0]
+    return found
 
 
-def kpatch(obj, path, changes):
+def kpatch(obj, path, changes) -> dict[str, object]:
     meta = obj["metadata"]
     patch = [
         {"op": "test", "path": "/metadata/uid", "value": meta["uid"]},
@@ -38,13 +40,13 @@ def kpatch(obj, path, changes):
     return {"system": "kubernetes", "method": "PATCH", "path": path, "body": patch}
 
 
-def build(state, policy):
+def build(state, policy) -> list[dict[str, object]]:
     require(
         isinstance(state, dict) and isinstance(policy, dict),
         "Observer state and policy must be objects",
     )
     try:
-        return _build(state, policy)
+        return cast("list[dict[str, object]]", _build(state, policy))
     except (KeyError, TypeError, AttributeError, IndexError):
         raise ValueError(
             "Malformed observer state/policy: missing field or incorrect nested structure"
@@ -373,7 +375,7 @@ def _build(state, policy):
     return ops
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--snapshot", required=True, type=Path)
     parser.add_argument(

@@ -26,13 +26,13 @@ NS = "cattle-monitoring-system"
 APPLICATIONS = ("litellm", "vllm", "open-webui")
 
 
-def leaf_name(application):
+def leaf_name(application) -> str:
     if application not in APPLICATIONS:
         raise ValueError("Only explicitly allowed application client leaves may be renewed")
-    return "otel-app-tls-" + application
+    return "otel-app-tls-" + str(application)
 
 
-def renewal_conditions(certificate, application="litellm"):
+def renewal_conditions(certificate, application="litellm") -> list[dict[str, object]]:
     if (
         certificate["metadata"]["name"] != leaf_name(application)
         or certificate["metadata"]["namespace"] != NS
@@ -57,7 +57,7 @@ def renewal_conditions(certificate, application="litellm"):
     return result
 
 
-def public_certificate_identity(kube, namespace, application="litellm"):
+def public_certificate_identity(kube, namespace, application="litellm") -> dict[str, object]:
     # kubectl emits only the public certificate field, never tls.key or the Secret.
     template = '{{printf "{\\"certificatePemBase64\\":%q}" (index .data "tls.crt")}}'
     selected = kube(
@@ -81,11 +81,12 @@ def public_certificate_identity(kube, namespace, application="litellm"):
     }
 
 
-def public_certificate_hash(kube, namespace, application="litellm"):
-    return public_certificate_identity(kube, namespace, application)["certificateSHA256"]
+def public_certificate_hash(kube, namespace, application="litellm") -> str:
+    identity: dict[str, object] = public_certificate_identity(kube, namespace, application)
+    return str(identity["certificateSHA256"])
 
 
-def run(output, application="litellm"):
+def run(output, application="litellm") -> None:
     leaf_name(application)
     os.umask(0o077)
     controller = Path.home() / "Library/Application Support/homelab/otel-controller"

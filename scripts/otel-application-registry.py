@@ -9,6 +9,7 @@ import json
 import os
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
@@ -19,7 +20,9 @@ SPEC.loader.exec_module(BOOTSTRAP)
 PREFIXES = ("OTEL_", "ENABLE_OTEL", "LITELLM_OTEL", "JAEGER_", "ZIPKIN_", "TRACING_")
 
 
-def container_record(namespace, workload, kind, template, container, init=False):
+def container_record(
+    namespace, workload, kind, template, container, init=False
+) -> dict[str, object]:
     names = sorted(
         {
             entry["name"]
@@ -62,7 +65,7 @@ def container_record(namespace, workload, kind, template, container, init=False)
     }
 
 
-def summarize(objects):
+def summarize(objects) -> dict[str, object]:
     records = []
     incarnations = []
     for obj in objects:
@@ -111,11 +114,14 @@ def summarize(objects):
                     )
                 )
     records.sort(
-        key=lambda record: (
-            record["namespace"],
-            record["kind"],
-            record["workload"],
-            record["container"],
+        key=lambda record: cast(
+            "tuple[str, str, str, str]",
+            (
+                record["namespace"],
+                record["kind"],
+                record["workload"],
+                record["container"],
+            ),
         )
     )
     return {
@@ -125,19 +131,25 @@ def summarize(objects):
         "environmentValuesSaved": False,
         "logBodiesRead": False,
         "sourceCount": len(records),
-        "configurationHintCount": sum(record["configurationHintPresent"] for record in records),
+        "configurationHintCount": sum(
+            bool(record["configurationHintPresent"]) for record in records
+        ),
         "internalSdkCoverageComplete": False,
         "hostServiceRegistryStillRequired": True,
         "managedPodIncarnationDeliveryStillRequiresSeparateEvidence": True,
         "configurationIsNotDeliveryEvidence": True,
         "sources": records,
         "podIncarnations": sorted(
-            incarnations, key=lambda row: (row["namespace"], row["pod"], row["container"])
+            incarnations,
+            key=lambda row: cast(
+                "tuple[str, str, str]",
+                (row["namespace"], row["pod"], row["container"]),
+            ),
         ),
     }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()

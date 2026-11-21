@@ -10,7 +10,7 @@ import urllib.request
 from pathlib import Path
 
 
-def run(output):
+def run(output) -> None:
     os.umask(0o077)
     if os.geteuid() != 0:
         raise ValueError("Protected native TLS files require root")

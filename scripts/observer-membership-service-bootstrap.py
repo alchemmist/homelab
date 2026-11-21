@@ -49,14 +49,14 @@ os.umask(0o077)
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *a, **kw):
+    def redirect_request(self, *a, **kw) -> None:
         return None
 
 
 http = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
 
-def api(method, path, body=None):
+def api(method, path, body=None) -> object | None:
     req = urllib.request.Request(
         "https://auth.socrat.alchemmist.xyz/api/v3/" + path,
         method=method,
@@ -69,7 +69,8 @@ def api(method, path, body=None):
     try:
         with http.open(req, timeout=30) as r:
             data = r.read()
-            return json.loads(data) if data else None
+            payload: object = json.loads(data) if data else None
+            return payload
     except urllib.error.HTTPError as e:
         data = e.read()
         p = root / "idp-service-last-error.json"
@@ -80,10 +81,13 @@ def api(method, path, body=None):
         ) from None
 
 
-def rows(path):
+def rows(path) -> list[dict[str, object]]:
     out = []
     for page in range(1, 101):
         d = api("GET", path + ("&" if "?" in path else "?") + "page_size=100&page=" + str(page))
+        if not isinstance(d, dict):
+            reason = "IdP pagination returned a non-object page"
+            raise TypeError(reason)
         out += d["results"]
         if not d.get("pagination", {}).get("next"):
             return out
@@ -103,10 +107,13 @@ assert not [
     if u["username"] == "svc-observer-membership"
 ], "Service identity collision"
 p = root / "idp-service-progress.json"
-state = {"state": "applying"}
+state: dict[str, object] = {"state": "applying"}
 p.write_text(json.dumps(state))
 p.chmod(0o600)
 role = api("POST", "rbac/roles/", {"name": name})
+if not isinstance(role, dict):
+    reason = "IdP role creation returned a non-object response"
+    raise TypeError(reason)
 state["role"] = role["pk"]
 p.write_text(json.dumps(state))
 api(
@@ -125,6 +132,9 @@ g = api(
         "attributes": {"homelab_observer_membership_reader": 1},
     },
 )
+if not isinstance(g, dict):
+    reason = "IdP group creation returned a non-object response"
+    raise TypeError(reason)
 state["group"] = g["pk"]
 p.write_text(json.dumps(state))
 u = api(
@@ -140,6 +150,9 @@ u = api(
         "attributes": {"homelab_observer_membership_reader": 1},
     },
 )
+if not isinstance(u, dict):
+    reason = "IdP user creation returned a non-object response"
+    raise TypeError(reason)
 state["user"] = u["pk"]
 p.write_text(json.dumps(state))
 t = api(
@@ -153,7 +166,11 @@ t = api(
         "description": "Read users/groups only for native observer membership freshness",
     },
 )
-key = api("GET", "core/tokens/homelab-observer-membership/view_key/")["key"]
+key_result = api("GET", "core/tokens/homelab-observer-membership/view_key/")
+if not isinstance(key_result, dict):
+    reason = "IdP token view_key returned a non-object response"
+    raise TypeError(reason)
+key: str = key_result["key"]
 p2 = root / "membership-reader-token"
 p2.write_text(key)
 p2.chmod(0o600)

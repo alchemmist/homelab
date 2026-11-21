@@ -24,7 +24,7 @@ require = bootstrap.planner.require
 CHAT = "homelab-chat-user"
 
 
-def snapshot(client, policy):
+def snapshot(client, policy) -> dict[str, object]:
     users = []
     for identity in policy["legacyChatPreservation"]:
         found = client.rows(
@@ -44,7 +44,7 @@ def snapshot(client, policy):
     }
 
 
-def build(state, policy):
+def build(state, policy) -> list[dict[str, object]]:
     require(
         policy["legacyChatPreservation"]
         == [{"username": "antropophag", "uuid": "6015c85b-82e9-49ce-a4e3-0270c676e26d"}],
@@ -82,7 +82,7 @@ def build(state, policy):
             and group.get("parents") == [],
             "Chat group carries inherited/IdP administration privileges",
         )
-    operations = []
+    operations: list[dict[str, object]] = []
     if not group:
         operations.append({"action": "create-chat-group"})
     for user in state["users"]:
@@ -131,7 +131,7 @@ def build(state, policy):
     return operations
 
 
-def apply(client, operation, state):
+def apply(client, operation, state) -> None:
     action = operation["action"]
     if action == "create-chat-group":
         client.call(
@@ -210,7 +210,7 @@ def apply(client, operation, state):
         raise ValueError("Unreviewed migration operation")
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--credentials", required=True, type=Path)
     parser.add_argument(

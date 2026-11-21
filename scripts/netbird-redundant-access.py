@@ -8,6 +8,7 @@ resource FORWARD ACL for remote WG addresses. No WG configuration/AllowedIPs edi
 import importlib.util
 import re
 from pathlib import Path
+from typing import cast
 
 import yaml
 
@@ -23,7 +24,7 @@ DESTINATION_GROUP = "netbird-node-agents"
 ADMIN_SOURCE = "netbird-internal-admins"
 
 
-def peer(host):
+def peer(host) -> list[dict[str, object]]:
     if host not in HOSTS:
         raise ValueError("existing reviewed node required")
     spec = importlib.util.spec_from_file_location(
@@ -35,24 +36,24 @@ def peer(host):
     for entry in docs[1]["spec"]["template"]["spec"]["containers"][0]["env"]:
         if entry["name"] == "NB_DISABLE_SERVER_ROUTES":
             entry["value"] = "false"
-    return docs
+    return cast("list[dict[str, object]]", docs)
 
 
-def reviewed_id(value):
+def reviewed_id(value) -> bool:
     return (
         isinstance(value, str)
-        and re.fullmatch(r"[A-Za-z0-9_-]+", value)
+        and re.fullmatch(r"[A-Za-z0-9_-]+", value) is not None
         and value.lower() not in ("all", "default")
     )
 
 
-def router_body(node_group):
+def router_body(node_group) -> dict[str, object]:
     if not reviewed_id(node_group):
         raise ValueError("dedicated API group containing exact node agents required")
     return {"peer_groups": [node_group], "enabled": True, "masquerade": True, "metric": 80}
 
 
-def admin_input_policy(jwt_group, node_group):
+def admin_input_policy(jwt_group, node_group) -> dict[str, object]:
     if not reviewed_id(jwt_group) or not reviewed_id(node_group) or jwt_group == node_group:
         raise ValueError("separate genuine admin JWT and exact node destinations required")
     return {
@@ -73,7 +74,7 @@ def admin_input_policy(jwt_group, node_group):
     }
 
 
-def pilot_input_policy(jwt_group, node2_destination):
+def pilot_input_policy(jwt_group, node2_destination) -> dict[str, object]:
     if (
         not reviewed_id(jwt_group)
         or not reviewed_id(node2_destination)
@@ -99,7 +100,7 @@ def pilot_input_policy(jwt_group, node2_destination):
     }
 
 
-def manifests():
+def manifests() -> list[dict[str, object]]:
     return [doc for host in HOSTS for doc in peer(host)]
 
 

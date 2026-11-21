@@ -10,6 +10,7 @@ import datetime
 import json
 import re
 import subprocess
+from typing import cast
 
 QUERY = """query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$number){
 url headRefOid state isDraft mergeable
@@ -35,7 +36,7 @@ def _complete_connection(value: object, direction: str) -> bool:
     )
 
 
-def assess(pr, reviewers, handlers):
+def assess(pr, reviewers, handlers) -> dict[str, object]:
     blockers = []
     if pr.get("state") != "OPEN":
         blockers.append("PR is not open")
@@ -139,7 +140,7 @@ def assess(pr, reviewers, handlers):
     }
 
 
-def fetch(repo, number):
+def fetch(repo, number) -> dict[str, object]:
     owner, name = repo.split("/")
     out = subprocess.check_output(
         [
@@ -164,7 +165,8 @@ def fetch(repo, number):
     pr["statusCheckRollup"] = (
         pr.get("tip", {}).get("nodes", [{}])[-1].get("commit", {}).get("statusCheckRollup")
     )
-    return pr
+    bundle: dict[str, object] = pr
+    return bundle
 
 
 _HANDOFF_SNAPSHOT_COUNT = 2
@@ -176,7 +178,7 @@ def _error_report(error_name: str) -> int:
     return 2
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", default="alchemmist/monori")
     parser.add_argument("--pr", type=int, required=True)
@@ -189,12 +191,12 @@ def main():
             snapshot = fetch(args.repo, args.pr)
             if report is not None and snapshot["headRefOid"] != report["head"]:
                 report["ready_to_review"] = False
-                report["blockers"].append("Head changed during audit")
+                cast("list[str]", report["blockers"]).append("Head changed during audit")
                 break
             fresh_report = assess(snapshot, set(args.reviewer), set(args.handler))
             if report is not None and fresh_report != report:
                 fresh_report["ready_to_review"] = False
-                fresh_report["blockers"].append("PR state changed during audit")
+                cast("list[str]", fresh_report["blockers"]).append("PR state changed during audit")
             report = fresh_report
         if report is None:
             return _error_report("RuntimeError")

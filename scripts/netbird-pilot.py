@@ -11,6 +11,7 @@ import re
 import sys
 import urllib.request
 from pathlib import Path
+from typing import cast
 
 import yaml
 
@@ -57,16 +58,16 @@ STUN_PORT = 3478
 HEALTH_PORT = 9000
 
 
-def require(ok, message):
+def require(ok, message) -> None:
     if not ok:
         raise ValueError(message)
 
 
-def text(value):
+def text(value) -> bool:
     return isinstance(value, str) and bool(value.strip())
 
 
-def hostname(value):
+def hostname(value) -> bool:
     return (
         text(value)
         and len(value) < 254
@@ -76,11 +77,11 @@ def hostname(value):
     )
 
 
-def identifier(value):
-    return text(value) and re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", value)
+def identifier(value) -> bool:
+    return text(value) and re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", value) is not None
 
 
-def existing_node_host(value):
+def existing_node_host(value) -> bool:
     """True for an existing socrat node name. This is not a placement approval."""
     if not text(value):
         return False
@@ -92,7 +93,7 @@ def existing_node_host(value):
     return len(labels) > 1 and labels[0] in {"0", "1", "2", "3"} and labels[1] == "socrat"
 
 
-def validate(c):
+def validate(c) -> dict[str, object]:
     expected = {
         "schema_version",
         "management_fqdn",
@@ -225,17 +226,18 @@ def validate(c):
         )
         require((r["address"], tuple(r["ports"])) not in seen, "duplicate IP/port resource")
         seen.add((r["address"], tuple(r["ports"])))
-    return c
+    checked: dict[str, object] = c
+    return checked
 
 
-def image(name):
-    item = json.loads(LOCK.read_text())["images"][name]
+def image(name) -> str:
+    item: dict[str, str] = json.loads(LOCK.read_text())["images"][name]
     if item.get("reference"):
         return item["reference"]
     return item["repository"] + ":" + item["tag"] + "@" + item["digest"]
 
 
-def witness_ready(path):
+def witness_ready(path) -> None:
     """Proof that Dex already has an external connector. localAuthDisabled fails closed without one."""
     data = json.loads(path.read_text())
     require(set(data) == {"external_connectors"}, "witness must contain only external_connectors")
@@ -245,7 +247,7 @@ def witness_ready(path):
     )
 
 
-def server_config(c, secrets, auth_mode="bootstrap"):
+def server_config(c, secrets, auth_mode="bootstrap") -> dict[str, object]:
     """Runtime config for v0.82.0 combined server.
 
     Simplified YAML only exposes `server`. Management.DisableDefaultPolicy is not
@@ -289,10 +291,10 @@ def server_config(c, secrets, auth_mode="bootstrap"):
         "owner" not in config["server"]["auth"],
         "local owner credentials are not part of runtime config",
     )
-    return config
+    return cast("dict[str, object]", config)
 
 
-def account_settings(c):
+def account_settings(c) -> dict[str, object]:
     require(
         c["review"].get("authentik_groups_claim_verified") is True,
         "Authentik groups claim is not verified",
@@ -317,7 +319,7 @@ def account_settings(c):
     }
 
 
-def port_forward_sources(cidrs):
+def port_forward_sources(cidrs) -> list[str]:
     """Node and CNI-bridge addresses that may open a port-forward. Not pod or Service CIDRs."""
     require(isinstance(cidrs, list) and 1 <= len(cidrs) <= 8, "port-forward sources required")
     cleaned = []
@@ -336,7 +338,7 @@ def port_forward_sources(cidrs):
     return cleaned
 
 
-def ingress_allowed(policy, source, port, protocol="TCP"):
+def ingress_allowed(policy, source, port, protocol="TCP") -> bool:
     """True when one ingress rule matches. An empty ingress list denies every source."""
     source_ip = ipaddress.ip_address(source)
     for rule in policy["spec"].get("ingress") or []:
@@ -364,7 +366,7 @@ def ingress_allowed(policy, source, port, protocol="TCP"):
     return False
 
 
-def manifests(c, publication="internal", port_forward_cidrs=None):
+def manifests(c, publication="internal", port_forward_cidrs=None) -> list[dict[str, object]]:
     """Control plane only. No router, Secret, or Argo Application.
 
     Internal publication is the first apply: namespace, data PVC, server and
@@ -453,7 +455,8 @@ def manifests(c, publication="internal", port_forward_cidrs=None):
                     "periodSeconds": 20,
                 },
             )
-            container["ports"] += [
+            ports = cast("list[dict[str, object]]", container["ports"])
+            ports += [
                 {"name": "stun", "containerPort": STUN_PORT, "protocol": "UDP"},
                 {"name": "health", "containerPort": HEALTH_PORT},
                 {"name": "metrics", "containerPort": 9090},
@@ -545,7 +548,7 @@ def manifests(c, publication="internal", port_forward_cidrs=None):
     return result
 
 
-def forwarder_files(c):
+def forwarder_files(c) -> dict[str, str]:
     """In-namespace proxy. ipAllowList uses the socket address, not X-Forwarded-For."""
     server = "server." + NS + ".svc.cluster.local:80"
     dashboard = "dashboard." + NS + ".svc.cluster.local:80"
@@ -657,7 +660,7 @@ def forwarder_files(c):
     }
 
 
-def edge_manifests(c):
+def edge_manifests(c) -> list[dict[str, object]]:
     files = forwarder_files(c)
     labels = {"app": "netbird-edge-forwarder"}
     docs = [obj_edge("ConfigMap", "edge-forwarder", data=files)]
@@ -726,7 +729,7 @@ def edge_manifests(c):
         "edge-forwarder-grpc",
         spec={"selector": labels, "ports": [{"name": "h2c", "port": 8082, "targetPort": "h2c"}]},
     )
-    grpc_service["metadata"]["annotations"] = {
+    cast("dict[str, dict[str, object]]", grpc_service)["metadata"]["annotations"] = {
         "traefik.ingress.kubernetes.io/service.serversscheme": "h2c"
     }
     docs.append(grpc_service)
@@ -740,7 +743,7 @@ def edge_manifests(c):
     return docs
 
 
-def obj_edge(kind, name, api="v1", **fields):
+def obj_edge(kind, name, api="v1", **fields) -> dict[str, object]:
     return {
         "apiVersion": api,
         "kind": kind,
@@ -753,7 +756,7 @@ def obj_edge(kind, name, api="v1", **fields):
     }
 
 
-def ingress(c, name, paths, port, scheme, priority):
+def ingress(c, name, paths, port, scheme, priority) -> dict[str, object]:
     annotations = {
         "traefik.ingress.kubernetes.io/router.entrypoints": "websecure",
         "traefik.ingress.kubernetes.io/router.priority": priority,
@@ -784,11 +787,11 @@ def ingress(c, name, paths, port, scheme, priority):
             ],
         },
     )
-    body["metadata"]["annotations"] = annotations
+    cast("dict[str, dict[str, object]]", body)["metadata"]["annotations"] = annotations
     return body
 
 
-def validate_internal(c):
+def validate_internal(c) -> dict[str, object]:
     """First-stage inputs. DNS, STUN, and Ingress reviews belong to edge publication."""
     require(isinstance(c, dict) and c.get("schema_version") == 1, "unsupported schema_version")
     require(hostname(c.get("management_fqdn")), "management_fqdn: approved public FQDN required")
@@ -798,10 +801,11 @@ def validate_internal(c):
     require(isinstance(reviews, dict), "review gates required")
     for key in INTERNAL_REVIEWS:
         require(reviews.get(key) is True, "internal review not explicitly true: " + key)
-    return c
+    checked: dict[str, object] = c
+    return checked
 
 
-def validate_control_plane(c):
+def validate_control_plane(c) -> dict[str, object]:
     """Edge publication inputs. Router placement and resource grants are not required."""
     require(isinstance(c, dict) and c.get("schema_version") == 1, "unsupported schema_version")
     require(hostname(c.get("management_fqdn")), "management_fqdn: approved public FQDN required")
@@ -815,10 +819,11 @@ def validate_control_plane(c):
     require(isinstance(reviews, dict), "review gates required")
     for key in CONTROL_REVIEWS:
         require(reviews.get(key) is True, "control-plane review not explicitly true: " + key)
-    return c
+    checked: dict[str, object] = c
+    return checked
 
 
-def router_compose(c, peer):
+def router_compose(c, peer) -> dict[str, object]:
     return {
         "services": {
             "routing-peer": {
@@ -851,7 +856,7 @@ def router_compose(c, peer):
     }
 
 
-def access_requests(c, bindings, snapshot):
+def access_requests(c, bindings, snapshot) -> list[dict[str, object]]:
     """Compile only against reviewed IDs from an EMPTY, dedicated pilot account/network."""
     require(
         set(snapshot) == {"policies", "routes", "groups", "peers", "networks"},
@@ -988,7 +993,7 @@ def access_requests(c, bindings, snapshot):
     return requests
 
 
-def dump(path, value, yaml_format=False, private=False):
+def dump(path, value, yaml_format=False, private=False) -> None:
     # No overwrites or symlink following; runtime output must be on a protected local tmpfs.
     flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY
     fd = os.open(path, flags, 0o600 if private else 0o644)
@@ -1000,7 +1005,7 @@ def dump(path, value, yaml_format=False, private=False):
         )
 
 
-def render_control_plane(c, out, port_forward_cidrs):
+def render_control_plane(c, out, port_forward_cidrs) -> None:
     """Write the internal-only manifests. Does not write Services, Ingress, or routers."""
     validate_internal(c)
     out.mkdir(mode=0o700, parents=True, exist_ok=False)
@@ -1008,7 +1013,7 @@ def render_control_plane(c, out, port_forward_cidrs):
         yaml.safe_dump_all(manifests(c, "internal", port_forward_cidrs), f, sort_keys=False)
 
 
-def render(c, out):
+def render(c, out) -> None:
     # Host-router generation is a separate artifact. router_compose stays the old interface.
     require(
         not any(existing_node_host(p["host"]) for p in c["routing_peers"]),
@@ -1035,7 +1040,7 @@ def render(c, out):
         dump(out / (p["name"] + ".compose.yaml"), router_compose(c, p), yaml_format=True)
 
 
-def verify_images():
+def verify_images() -> None:
     for name, item in json.loads(LOCK.read_text())["images"].items():
         if item.get("skip_registry_verify"):
             require(
@@ -1080,7 +1085,7 @@ def verify_images():
         print(name + ": verified registry index and Linux amd64/arm64 pins")
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
         "command",

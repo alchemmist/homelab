@@ -18,7 +18,7 @@ HOST = "netbird.socrat.alchemmist.xyz"
 ENTRANCES = ("109.173.40.247", "109.120.141.60")
 
 
-def probe(address, timeout=6, grpc_module=None):
+def probe(address, timeout=6, grpc_module=None) -> dict[str, object]:
     if address not in ENTRANCES or not 1 <= timeout <= 10:
         raise ValueError("approved entrance and bounded timeout required")
     if grpc_module is None:
@@ -67,7 +67,7 @@ def probe(address, timeout=6, grpc_module=None):
         channel.close()
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--entrance", action="append", choices=ENTRANCES)
     parser.add_argument("--timeout", type=int, choices=range(1, 11), default=6)

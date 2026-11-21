@@ -20,7 +20,7 @@ DESTINATIONS = {'harbor': 'harbor', 'litellm': 'llm', 'vllm': 'llm', 'open-webui
 OBSERVED_PHASE = {'stage': 'bootstrap', 'application': None}
 
 
-def validate_destination(entry):
+def validate_destination(entry) -> None:
     app = entry['application']
     if app not in DESTINATIONS or entry['namespace'] != DESTINATIONS[app] or entry['secret'] != 'otel-app-tls-' + app:
         raise ValueError('Unexpected application leaf destination')
@@ -30,7 +30,7 @@ def validate_destination(entry):
         raise ValueError('Unexpected application reload target')
 
 
-def run():
+def run() -> None:
     token_root = Path('/var/run/secrets/kubernetes.io/serviceaccount')
     token = (token_root / 'token').read_text().strip()
     context = ssl.create_default_context(cafile=str(token_root / 'ca.crt'))

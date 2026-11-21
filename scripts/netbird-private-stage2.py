@@ -30,19 +30,19 @@ KUBE = [
 ]
 
 
-def require(ok, message):
+def require(ok, message) -> None:
     if not ok:
         raise ValueError(message)
 
 
-def private(path, data):
+def private(path, data) -> None:
     require(not path.is_symlink(), "private path is a symlink")
     fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     with os.fdopen(fd, "w") as f:
         json.dump(data, f)
 
 
-def evidence(root, name):
+def evidence(root, name) -> None:
     data = json.loads((root / "journal" / (name + ".evidence.json")).read_text())
     age = datetime.datetime.now(datetime.UTC) - datetime.datetime.fromisoformat(data["created_at"])
     require(
@@ -54,7 +54,7 @@ def evidence(root, name):
     )
 
 
-def settings_body(account):
+def settings_body(account) -> dict[str, dict[str, object]]:
     settings = dict(account["settings"])
     settings.update(
         jwt_groups_enabled=True,
@@ -70,7 +70,7 @@ def settings_body(account):
     return {"settings": settings}
 
 
-def default_policy(policies):
+def default_policy(policies) -> str:
     require(
         isinstance(policies, list) and len(policies) == 1, "expected only native Default policy"
     )
@@ -89,14 +89,15 @@ def default_policy(policies):
         and [g["name"] for g in rule["destinations"]] == ["All"],
         "unexpected default groups",
     )
-    return p["id"]
+    policy_id: str = p["id"]
+    return policy_id
 
 
-def run(command):
+def run(command) -> bytes:
     return subprocess.check_output(KUBE + command, stderr=subprocess.DEVNULL)
 
 
-def main():
+def main() -> None:
     os.umask(0o077)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=["bootstrap", "configure-idp"])

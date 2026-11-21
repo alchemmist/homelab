@@ -23,7 +23,7 @@ nb = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(nb)
 
 
-def probe(ip, port, dns_name=None, tls=False, timeout=4):
+def probe(ip, port, dns_name=None, tls=False, timeout=4) -> dict[str, object]:
     started = time.monotonic()
     result = {"ip": ip, "port": port, "tcp_connected": False, "tls_verified": False}
     try:
@@ -40,7 +40,7 @@ def probe(ip, port, dns_name=None, tls=False, timeout=4):
     return result
 
 
-def run(c, expect, phase, attempts=1, interval=2, negative=None):
+def run(c, expect, phase, attempts=1, interval=2, negative=None) -> list[dict[str, object]]:
     results = []
     for attempt in range(attempts):
         for r in c["resources"] if negative is None else [negative]:
@@ -78,7 +78,7 @@ def run(c, expect, phase, attempts=1, interval=2, negative=None):
     return results
 
 
-def main():
+def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--inputs", required=True, type=Path)
     p.add_argument("--expect", choices=["allow", "deny"], required=True)

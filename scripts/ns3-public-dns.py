@@ -8,18 +8,19 @@ import importlib.util
 import json
 import os
 import subprocess
+import types
 from pathlib import Path
 
 CURRENT = Path("/usr/local/libexec/public_dns_zone.py")
 ROOT = Path("/var/lib/homelab-ns3-public-dns")
 
 
-def require(ok, message):
+def require(ok, message) -> None:
     if not ok:
         raise RuntimeError(message)
 
 
-def load(path, name):
+def load(path, name) -> types.ModuleType:
     require(path.is_file() and not path.is_symlink(), "Unsafe renderer")
     try:
         spec = importlib.util.spec_from_file_location(name, path)
@@ -31,7 +32,7 @@ def load(path, name):
         raise RuntimeError("Invalid DNS renderer: " + path.name) from None
 
 
-def stage_renderer(path, content):
+def stage_renderer(path, content) -> None:
     """Create a new inode exclusively; never follow/overwrite an existing path."""
     try:
         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -47,7 +48,7 @@ def stage_renderer(path, content):
 ADDED = ["@ IN NS ns3.alchemmist.xyz.", "ns3 IN A 91.189.82.238"]
 
 
-def delta(old, new):
+def delta(old, new) -> None:
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
         before = old.render(123, home, vps).splitlines()
         after = new.render(123, home, vps).splitlines()
@@ -63,7 +64,7 @@ def delta(old, new):
         )
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")
