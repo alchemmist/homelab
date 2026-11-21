@@ -64,6 +64,8 @@ int main(int argc, char **argv) {
 
 @unittest.skipUnless(SOURCE and COMPILER, "ALX_SOURCE and a C compiler are required")
 class AlxTxGuardTests(unittest.TestCase):
+    """Verify the ALX driver keeps its transmit interrupt handling intact."""
+
     @classmethod
     def setUpClass(cls) -> None:
         source = Path(SOURCE).read_text()

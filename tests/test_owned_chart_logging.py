@@ -16,6 +16,7 @@ sys.path.insert(0, str(ROOT / "charts/spi-triage/files"))
 
 
 class OwnedLoggingTests(unittest.TestCase):
+    """Enforce the owned-chart logging contract per service."""
     def contract(self, row, service) -> None:
         assert row["service"] == service
         assert row["level"] in ["info", "warn", "error", "debug"]

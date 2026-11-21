@@ -24,6 +24,7 @@ def _text(value: object) -> str:
 
 
 class AgentLoggingTests(unittest.TestCase):
+    """Validate the OpenTelemetry agent's logging configuration."""
     def setUp(self) -> None:
         document: object = yaml.safe_load((ROOT / "deploy/monitoring/otel/agent.yaml").read_text())
         assert isinstance(document, dict)

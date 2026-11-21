@@ -19,6 +19,7 @@ SPEC.loader.exec_module(MODULE)
 
 
 class KumaPrivateMonitorTests(unittest.TestCase):
+    """Validate Uptime Kuma's private monitoring database."""
     @override
     def setUp(self) -> None:
         """Seed a copied kuma.db with one control-plane monitor and history."""

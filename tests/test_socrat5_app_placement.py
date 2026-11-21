@@ -12,6 +12,8 @@ def document(path):
 
 
 class VMApplicationPlacementTests(unittest.TestCase):
+    """Verify vm application placement keeps original claims."""
+
     def test_n8n_uses_original_vm_claim_without_repointing_recovery_storage(self):
         values = document("charts/n8n/values.yaml")
         assert values["nodeName"] == "socrat-5"

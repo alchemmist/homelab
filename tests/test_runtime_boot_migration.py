@@ -8,6 +8,7 @@ SCRIPT = Path(__file__).resolve().parents[1] / "scripts/socrat5-runtime-boot-mig
 
 
 class RuntimeBootMigrationTest(unittest.TestCase):
+    """Validate the runtime boot migration script stays valid."""
     def test_python_parses(self) -> None:
         ast.parse(SCRIPT.read_text())
 

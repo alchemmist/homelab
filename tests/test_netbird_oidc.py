@@ -57,6 +57,7 @@ def _string(value: object) -> str:
 
 
 class FakeAuthentik(threading.Thread):
+    """Threaded fake Authentik server recording OIDC requests."""
     def __init__(self) -> None:
         """Serve the reviewed offline contract fixtures over localhost HTTP."""
         super().__init__(daemon=True)
@@ -364,6 +365,7 @@ class FakeAuthentik(threading.Thread):
 
 
 class NetBirdOIDCTests(unittest.TestCase):
+    """Verify NetBird OIDC flows against a fake Authentik server."""
     @override
     def setUp(self) -> None:
         """Start the offline contract server and write fixture documents."""

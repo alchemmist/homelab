@@ -14,6 +14,7 @@ ROLE = ROOT / "ansible/roles/homelab_private_dns"
 
 
 class PrivateDnsRoleTests(unittest.TestCase):
+    """Validate the private DNS Ansible role defaults."""
     def setUp(self) -> None:
         self.defaults = (ROLE / "defaults/main.yml").read_text()
         self.tasks = (ROLE / "tasks/main.yml").read_text()

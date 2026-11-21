@@ -12,6 +12,8 @@ spec.loader.exec_module(m)
 
 
 class RetentionTests(unittest.TestCase):
+    """Check Loki retention policy against the deployed configuration."""
+
     def setUp(self):
         self.policy = json.loads(m.POLICY.read_text())
 

@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 
 
 class FakeAPI:
+    """Fake preparation API seeded with services and reviewed state."""
     data: dict[str, list[dict[str, object]]]
     requests: list[tuple[str, str, object]]
     page_size: int
@@ -122,6 +123,7 @@ class _Plan(TypedDict):
 
 
 class PreparationTests(unittest.TestCase):
+    """Run the frozen app IAM preparation tool against the fake API."""
     def setUp(self) -> None:
         # Frozen historical migration tool, NOT the current dynamic reconciler.
         # Its hard allowlist must continue rejecting the expanded live catalog.

@@ -48,6 +48,7 @@ def test_current_application_coverage_and_asset_checksums() -> None:
 
 
 class Response:
+    """Minimal fake HTTP response carrying a JSON or byte body."""
     def __init__(self, body) -> None:
         self.body = body if isinstance(body, bytes) else json.dumps(body).encode()
 
@@ -62,6 +63,7 @@ class Response:
 
 
 class FakeAPI:
+    """Fake application API serving canned service catalogue data."""
     apps: dict[str, dict[str, object]]
     patches: list[str]
     files: list[dict[str, str]]

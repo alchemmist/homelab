@@ -15,6 +15,8 @@ ANSIBLE = shutil.which("ansible-playbook")
 
 @unittest.skipUnless(ANSIBLE, "ansible-playbook is required")
 class WorkerAdmissionSafetyTests(unittest.TestCase):
+    """Ensure worker admission fails before any host is changed."""
+
     def assert_rejected_before_host_changes(
         self, hostname: str, *, os_family: str = "Debian", address: str = "10.250.0.5"
     ) -> None:

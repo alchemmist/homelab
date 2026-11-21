@@ -33,6 +33,7 @@ def _mapping(value: object) -> dict[str, object]:
 
 
 class WorkflowPolicyTests(unittest.TestCase):
+    """Validate n8n workflow policy gating alert deployments."""
     @override
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()

@@ -33,6 +33,7 @@ def shutdown() -> str:
 
 
 class HostMetricsCanaryTests(unittest.TestCase):
+    """Verify only exact pinned host-metrics canary errors count."""
     def test_only_exact_pinned_shutdown_errors_with_actual_replay_are_accounted(
         self,
     ) -> None:

@@ -11,6 +11,7 @@ ROLE = ROOT / "ansible/roles/home_ingress_ha"
 
 
 class KeepalivedStartupTest(unittest.TestCase):
+    """Exercise the keepalived startup wait template."""
     def run_wait(self, appear_at: int) -> tuple[subprocess.CompletedProcess[str], int]:
         """Run the wait template against a fake ip tool and count its attempts."""
         script = (ROLE / "templates/wait-home-ingress-interface.sh.j2").read_text()

@@ -38,6 +38,7 @@ def process(pid=10, ppid=1, start=100, executable="chrome", args=None) -> Browse
 
 
 class BrowserWatchdogTests(unittest.TestCase):
+    """Cover the browser watchdog's timing and guard behaviour."""
     def setUp(self) -> None:
         self.sent: list[tuple[tuple[int, int], signal.Signals]] = []
         self.guard = MODULE.Watchdog(

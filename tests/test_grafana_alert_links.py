@@ -27,6 +27,8 @@ RULE = {
 
 
 class AlertLinksTest(unittest.TestCase):
+    """Check the grafana alert link helper's rule fingerprints."""
+
     # 0fd62090 changed the annotation (part of the hash), leaving its golden stale.
     # This fixed definition is not a claim about the current live rules API.
     def test_known_native_definition_fingerprint(self) -> None:

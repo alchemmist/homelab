@@ -37,6 +37,8 @@ def _mapping_path(document: dict[str, object], *keys: str) -> dict[str, object]:
 
 
 class Worker5MigrationTest(unittest.TestCase):
+    """Check the n8n migration to worker node 5 renders safely."""
+
     @classmethod
     @override
     def setUpClass(cls) -> None:

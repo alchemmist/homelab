@@ -39,6 +39,7 @@ def module() -> ModuleType:
 
 
 class ProductionSdkTraceTests(unittest.TestCase):
+    """Check the production SDK trace summarizer against fixtures."""
     def fixture(self) -> tuple[_Document, str, str]:
         trace_id, parent_id = "ab" * 16, "cd" * 8
 

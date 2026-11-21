@@ -29,6 +29,7 @@ spec.loader.exec_module(a)
 
 
 class Fake:
+    """Fake application state driven by the automation module's API."""
     def __init__(self) -> None:
         self.users = [
             {
@@ -96,6 +97,7 @@ class BootstrapManifest(TypedDict):
 
 
 class AutomationTests(unittest.TestCase):
+    """Validate the Authentik automation playbook behaviour on fake state."""
     def root(self, d) -> Path:
         p = Path(d)
         p.chmod(0o700)
