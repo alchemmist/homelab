@@ -54,6 +54,22 @@ spec:
         - name: n8n
           image: {{ .Values.image | quote }}
           env:
+            {{- if .Values.database.postgresEnabled }}
+            - {name: DB_TYPE, value: postgresdb}
+            - {name: DB_POSTGRESDB_HOST, value: pg-common-rw.postgres.svc.cluster.local}
+            - {name: DB_POSTGRESDB_DATABASE, value: n8n}
+            - {name: DB_POSTGRESDB_SSL_ENABLED, value: 'true'}
+            - {name: DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED, value: 'true'}
+            - name: DB_POSTGRESDB_SSL_CA
+              valueFrom:
+                configMapKeyRef: {name: {{ required "postgresCaConfigMap required for PostgreSQL" .Values.postgresCaConfigMap | quote }}, key: ca.crt}
+            - name: DB_POSTGRESDB_USER
+              valueFrom:
+                secretKeyRef: {name: {{ .Values.database.secretName | quote }}, key: username}
+            - name: DB_POSTGRESDB_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: {{ .Values.database.secretName | quote }}, key: password}
+            {{- end }}
             {{- if .Values.postgresCaConfigMap }}
             - name: NODE_EXTRA_CA_CERTS
               value: /etc/pg-common/ca.crt

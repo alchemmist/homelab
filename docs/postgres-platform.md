@@ -24,3 +24,5 @@ LiteLLM and Umami keep separate TCP probe identities but both check `pg-common-r
 The native otel-cluster Prometheus receiver scrapes primary-only services; `up{job="postgres-platform"}` must report two live targets. Six `socrat-postgres-platform` rules cover missing data, replica availability, delay/retained WAL, required sync observations and host root disks (0/1). Existing socrat-storage rules cover root and the HDD on node 5. Confirm rule health in Prometheus, not only a green Argo application. These are availability signals, not proof of backup integrity or a tested page to the operator.
 
 Retention follow-up: [issue #216](https://github.com/alchemmist/homelab/issues/216). Hold is intentional; the issue is a review, not a deletion timer.
+
+`pg-critical-async` is a single-instance CNPG replica cluster pinned to socrat-3. It follows `pg-critical-rw` over verified TLS, outside the two local quorum candidates. Expect three streaming peers on the source primary. The extra peer is neither a synchronous acknowledgement nor an independent backup.

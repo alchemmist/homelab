@@ -11,6 +11,10 @@ kind: CronJob
 metadata:
   name: n8n-backup
 spec:
+  {{- if .Values.database.postgresEnabled }}
+  # This job reads SQLite; it must not report success against a retired source.
+  suspend: true
+  {{- end }}
   schedule: "15 3 * * *"
   timeZone: Europe/Moscow
   concurrencyPolicy: Forbid
