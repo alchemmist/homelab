@@ -46,7 +46,7 @@ def source(sha,file):return git("show",sha+":"+file)
 
 def patch(t,sha):
  f=C[t["fam"]];file=f["file"];s=source(sha,file);old="".join(f["old"]);start,end,repl=f["diffs"][str(t["num"])];mut="".join(f["old"][:start]+repl+f["old"][end:]);
- if s.count(old)!=1:raise ValueError("Generated function body not unique/exact on current base; refresh required")
+ if not old or s.count(old)!=1:raise ValueError("Generated function body not unique/exact on current base; refresh required")
  return file,s,s.replace(old,mut,1),"".join(difflib.unified_diff(old.splitlines(True),mut.splitlines(True),n=3))
 
 def select_suite(t,sha):
@@ -137,7 +137,7 @@ def try_pi(t,sha,mid,detail,oldtests,folder,repair=None):
  finally:
   if repair:
    event=query("select state from tasks where id=?",(t["id"],))[0]["state"]
-   if event not in ("published","update_uncertain"):mark(t,"published","CI repair attempt did not meet proof; PR remains open",sha,t["pr"])
+   if event not in ("published","update_uncertain","rejected","needs_triage"):mark(t,"published","CI repair attempt did not meet proof; PR remains open",sha,t["pr"])
   K("author",["git","--git-dir=/scratch/base.git","worktree","remove","--force",wt],ok=False)
 
 def prove(t,sha,dest,text,oldtests):
