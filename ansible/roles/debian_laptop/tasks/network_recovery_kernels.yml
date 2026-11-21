@@ -2,7 +2,7 @@
 - name: Discover installed bootable kernel images
   ansible.builtin.find:
     paths: /boot
-    patterns: '^vmlinuz-[0-9]+[.][0-9]+[.][0-9]+[+]deb13-amd64$'
+    patterns: ^vmlinuz-[0-9]+[.][0-9]+[.][0-9]+[+]deb13-amd64$
     use_regex: true
     file_type: file
     recurse: false
@@ -24,11 +24,11 @@
 
 - name: Preserve each existing normal initramfs once
   ansible.builtin.copy:
-    src: "/boot/initrd.img-{{ item }}"
-    dest: "/boot/initrd.img-{{ item }}-before-homelab-alx"
+    src: /boot/initrd.img-{{ item }}
+    dest: /boot/initrd.img-{{ item }}-before-homelab-alx
     remote_src: true
     force: false
-    mode: '0600'
+    mode: "0600"
   loop: "{{ homelab_alx_boot_kernels }}"
 
 - name: Install matching headers for every bootable kernel
@@ -97,7 +97,7 @@
     path: /etc/initramfs-tools/modules
     line: alx
     create: true
-    mode: '0644'
+    mode: "0644"
 
 - name: Rebuild every bootable kernel initramfs with the guard
   ansible.builtin.command:

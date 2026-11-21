@@ -38,6 +38,6 @@ homelab_waybar_profiles:
   - custom/noscreenshare
   - custom/notifications-manager
   - custom/pinglo
-homelab_waybar_modules_right: '{{ homelab_waybar_profiles[homelab_waybar_profile]
-  }}'
+homelab_waybar_modules_right: "{{ homelab_waybar_profiles[homelab_waybar_profile]
+  }}"
 ...

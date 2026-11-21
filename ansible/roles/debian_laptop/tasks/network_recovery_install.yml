@@ -25,7 +25,7 @@
     dest: /boot/initrd.img-6.12.111+deb13-amd64-before-homelab-alx
     remote_src: true
     force: false
-    mode: '0600'
+    mode: "0600"
 
 - name: Install DKMS and automatic matching header updates
   ansible.builtin.apt:
@@ -39,14 +39,14 @@
   ansible.builtin.file:
     path: /usr/src/homelab-alx-6.12.111-1
     state: directory
-    mode: '0755'
+    mode: "0755"
 
 - name: Copy only the validated driver source into DKMS
   ansible.builtin.copy:
-    src: "/usr/local/src/homelab-network-recovery/6.12.111+deb13-amd64/alx/{{ item }}"
-    dest: "/usr/src/homelab-alx-6.12.111-1/{{ item }}"
+    src: /usr/local/src/homelab-network-recovery/6.12.111+deb13-amd64/alx/{{ item }}
+    dest: /usr/src/homelab-alx-6.12.111-1/{{ item }}
     remote_src: true
-    mode: '0644'
+    mode: "0644"
   loop:
   - Makefile
   - main.c
@@ -61,7 +61,7 @@
   ansible.builtin.template:
     src: "{{ playbook_dir }}/../roles/debian_laptop/templates/alx-dkms.conf.j2"
     dest: /usr/src/homelab-alx-6.12.111-1/dkms.conf
-    mode: '0644'
+    mode: "0644"
   register: homelab_alx_dkms_config
 
 - name: Inspect the installed DKMS module
@@ -96,7 +96,7 @@
     path: /etc/initramfs-tools/modules
     line: alx
     create: true
-    mode: '0644'
+    mode: "0644"
   register: homelab_alx_initramfs_module
 
 - name: Rebuild the normal initramfs with the installed driver

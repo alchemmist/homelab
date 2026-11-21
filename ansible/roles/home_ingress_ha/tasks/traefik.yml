@@ -70,7 +70,7 @@
       - "{{ home_ingress_ha_kubeconfig }}"
       - replace
       - -f
-      - '-'
+      - "-"
     stdin: >-
       {{ home_ingress_ha_original_config
       | combine({'spec':
@@ -120,7 +120,7 @@
       - traefik
       - --type=merge
       - -p
-      - '{"spec":{"template":{"spec":{"nodeSelector":null}}}}'
+      - "{\"spec\":{\"template\":{\"spec\":{\"nodeSelector\":null}}}}"
   when: >-
     ((home_ingress_ha_traefik_deployment.stdout | from_json).spec.template.spec.nodeSelector
     | default({})) | length > 0
