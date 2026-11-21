@@ -14,6 +14,7 @@ import os
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from typing import cast
 
 UUID = "9e33877a-3eaa-4541-98eb-8cdc10088ef6"
 CONNECTOR = "authentik-dbkcr0p119kc73917k1g"
@@ -23,7 +24,13 @@ ROOT = Path.home() / ".local/state/netbird-internal-stage/journal"
 BASE = "https://netbird.socrat.alchemmist.xyz/api/"
 
 
-def subject(uuid=UUID, connector=CONNECTOR):
+def require(expected: object, message: str) -> None:
+    """Enforce an invariant, failing with the given message."""
+    if not expected:
+        raise ValueError(message)
+
+
+def subject(uuid=UUID, connector=CONNECTOR) -> str:
     a, b = uuid.encode(), connector.encode()
     return (
         base64.b64encode(b"\x0a" + bytes([len(a)]) + a + b"\x12" + bytes([len(b)]) + b)
@@ -32,7 +39,7 @@ def subject(uuid=UUID, connector=CONNECTOR):
     )
 
 
-def target_user(users, expected):
+def target_user(users, expected) -> dict[str, object]:
     if expected != subject():
         raise ValueError(
             "refusing subject: requires encoded raw owner UUID plus exact connector, never email"
@@ -56,10 +63,11 @@ def target_user(users, expected):
     age = datetime.datetime.now(datetime.UTC) - stamp
     if not 0 <= age.total_seconds() < 86400:
         raise ValueError("no recent genuine owner OIDC login evidence")
-    return u
+    owner: dict[str, object] = u
+    return owner
 
 
-def network_snapshot(api, allow_owner_device=False):
+def network_snapshot(api, allow_owner_device=False) -> list[dict[str, object]]:
     for name in ["setup-keys", "policies", "networks"]:
         if api(name) != []:
             raise ValueError("unexpected network grants; stop")
@@ -84,7 +92,7 @@ def network_snapshot(api, allow_owner_device=False):
     ]
 
 
-def main():
+def main() -> None:
     os.umask(0o077)
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--subject", required=True)
@@ -92,17 +100,16 @@ def main():
     p.add_argument("--confirm-personal-login-and-native-transfer", action="store_true")
     p.add_argument("--allow-existing-owner-device", action="store_true")
     a = p.parse_args()
-    if a.subject != subject():
-        raise ValueError("wrong encoded raw UUID/connector")
+    require(a.subject == subject(), "wrong encoded raw UUID/connector")
     token = json.loads((ROOT / "bootstrap.json").read_text())["personal_access_token"]
 
     class NoRedirect(urllib.request.HTTPRedirectHandler):
-        def redirect_request(self, req, fp, code, msg, headers, newurl):
+        def redirect_request(self, _req, _fp, _code, _msg, _headers, _newurl) -> None:
             return None  # Never forward a private PAT to a redirect destination.
 
     opener = urllib.request.build_opener(NoRedirect)
 
-    def api(path, body=None):
+    def api(path, body=None) -> list[dict[str, object]]:
         request = urllib.request.Request(
             BASE + path,
             headers={"Authorization": "Token " + token, "Content-Type": "application/json"},
@@ -111,41 +118,44 @@ def main():
         )
         # Standard trusted TLS, no certificate bypass, redirect or mutation retries.
         with opener.open(request, timeout=20) as r:
-            return json.load(r)
+            payload: list[dict[str, object]] = json.load(r)
+            return payload
 
     accounts = api("accounts")
-    if len(accounts) != 1 or not accounts[0]["settings"]["local_auth_disabled"]:
-        raise ValueError("account/local-auth guard failed")
-    if (
+    require(
+        len(accounts) == 1 and accounts[0]["settings"]["local_auth_disabled"],
+        "account/local-auth guard failed",
+    )
+    require(
         accounts[0]["id"]
-        != json.loads((ROOT / "bootstrap-complete.json").read_text())["account_id"]
-    ):
-        raise ValueError("wrong account")
+        == json.loads((ROOT / "bootstrap-complete.json").read_text())["account_id"],
+        "wrong account",
+    )
     network_before = network_snapshot(api, a.allow_existing_owner_device)
     users = api("users")
     target = target_user(users, a.subject)
     owners = [u for u in users if u["role"] == "owner"]
-    if (
-        len(owners) != 1
-        or owners[0]["id"] != TECHNICAL
-        or owners[0]["email"] != "netbird-bootstrap@internal.invalid"
-    ):
-        raise ValueError("expected technical owner only; no replay")
-    if target["role"] != "user":
-        raise ValueError("unexpected target role")
+    require(
+        len(owners) == 1
+        and owners[0]["id"] == TECHNICAL
+        and owners[0]["email"] == "netbird-bootstrap@internal.invalid",
+        "expected technical owner only; no replay",
+    )
+    require(target["role"] == "user", "unexpected target role")
     if not a.apply:
         print(
             "Exact UUID+connector+email and recent login verified; read-only plan: native user -> owner, technical owner -> admin"
         )
         return
-    if not a.confirm_personal_login_and_native_transfer:
-        raise ValueError("personal owner login attestation required")
+    require(
+        a.confirm_personal_login_and_native_transfer, "personal owner login attestation required"
+    )
     journal = ROOT / "stage4-owner-handover-before.json"
     fd = os.open(journal, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as f:
         json.dump({"users": users, "account_id": accounts[0]["id"]}, f)
     api(
-        "users/" + urllib.parse.quote(target["id"], safe=""),
+        "users/" + urllib.parse.quote(cast("str", target["id"]), safe=""),
         {"role": "owner", "auto_groups": target["auto_groups"], "is_blocked": False},
     )
     after = api("users")
@@ -167,10 +177,10 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception as exc:
+    except (ValueError, KeyError, TypeError, RuntimeError, OSError) as exc:
         print(
             "BLOCKED: "
             + (str(exc) if isinstance(exc, ValueError) else type(exc).__name__)
             + ". Inspect private journal; never blindly retry."
         )
-        raise SystemExit(2)
+        raise SystemExit(2) from exc

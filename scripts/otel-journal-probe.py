@@ -1,3 +1,5 @@
+"""Probe the system journal via journalctl and emit a bounded, redacted summary."""
+
 import json
 import os
 import subprocess

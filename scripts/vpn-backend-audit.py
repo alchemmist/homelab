@@ -13,7 +13,9 @@ import json
 import os
 import socket
 import subprocess
+from collections.abc import Sequence
 from pathlib import Path
+from typing import TypedDict, Unpack
 
 spec = importlib.util.spec_from_file_location(
     "vpn_inventory", Path(__file__).with_name("vpn-hardening-inventory.py")
@@ -26,7 +28,7 @@ INTERFACES = ("lo", "wg-socrat", "cni0", "flannel.1", "nb-host")
 PORTS = (12096, 32087)
 
 
-def rules():
+def rules() -> str:
     lines = [
         "table inet " + TABLE + " {",
         ' comment "' + OWNER + '"',
@@ -58,7 +60,7 @@ def rules():
     return "\n".join(lines + [" }", "}"]) + "\n"
 
 
-def stable(value):
+def stable(value) -> object:
     if isinstance(value, dict):
         return {
             k: stable(v)
@@ -70,15 +72,16 @@ def stable(value):
     return value
 
 
-def run(args, **kwargs):
+def run(args, **kwargs) -> str:
     result = subprocess.run(args, capture_output=True, text=True, timeout=20, **kwargs)
     if result.returncode:
         raise RuntimeError("nft operation failed; inspect private state")
-    return result.stdout
+    output: str = result.stdout
+    return output
 
 
-def expected_objects():
-    objects = [
+def expected_objects() -> "list[dict[str, object]]":
+    objects: list[dict[str, object]] = [
         {"table": {"family": "inet", "name": TABLE}},
         {
             "chain": {
@@ -126,7 +129,7 @@ def expected_objects():
     return objects
 
 
-def normalize(value):
+def normalize(value) -> object:
     value = stable(value)
     if isinstance(value, dict):
         return {k: sorted(v) if k == "set" else normalize(v) for k, v in value.items()}
@@ -135,7 +138,7 @@ def normalize(value):
     return value
 
 
-def validate_objects(selected):
+def validate_objects(selected) -> None:
     copy = json.loads(json.dumps(selected))
     for item in copy:
         if "table" in item:
@@ -148,10 +151,10 @@ def validate_objects(selected):
         raise ValueError("Existing table is not the exact owned counter policy")
 
 
-def read_table():
+def read_table() -> "list[dict[str, object]] | None":
     # Read the ruleset so permission errors cannot masquerade as an absent table.
     data = json.loads(run(["nft", "-j", "list", "ruleset"]))["nftables"]
-    selected = [
+    selected: list[dict[str, object]] = [
         item
         for item in data
         if any(
@@ -170,7 +173,7 @@ def read_table():
     return selected
 
 
-def plan(current):
+def plan(current) -> "dict[str, object]":
     return {
         "table": TABLE,
         "policy": "accept",
@@ -182,7 +185,7 @@ def plan(current):
     }
 
 
-def apply(approval, state):
+def apply(approval, state) -> "dict[str, object]":
     if socket.gethostname() != "socrat-2" or os.geteuid() != 0:
         raise ValueError("Apply requires root on socrat-2")
     directory = helpers.private_directory(state)
@@ -215,7 +218,7 @@ def apply(approval, state):
         return {**desired, "installed": True}
 
 
-def finalize_readback(approval, state):
+def finalize_readback(approval, state) -> "dict[str, object]":
     if socket.gethostname() != "socrat-2" or os.geteuid() != 0:
         raise ValueError("Finalization requires root on socrat-2")
     directory = helpers.private_directory(state)
@@ -245,7 +248,7 @@ def finalize_readback(approval, state):
         return receipt
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--finalize-readback", action="store_true")
@@ -284,7 +287,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
+    except (OSError, ValueError, RuntimeError, ImportError, subprocess.SubprocessError):
         raise SystemExit(
             "Counter audit stopped; no automatic retry/rollback. Inspect private receipts."
         ) from None

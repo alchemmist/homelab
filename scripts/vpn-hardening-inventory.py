@@ -17,35 +17,35 @@ TABLES = ("inbounds", "clients", "client_inbounds", "hosts")
 VOLATILE = {"inbounds": {"up", "down", "last_traffic_reset_time"}}
 
 
-def canonical(value):
+def canonical(value) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
-def digest(value):
+def digest(value) -> str:
     return hashlib.sha256(canonical(value).encode()).hexdigest()
 
 
-def check_path(path):
-    path = Path(path).absolute()
-    if any(p.is_symlink() for p in (path, *path.parents)):
+def check_path(path) -> Path:
+    resolved: Path = Path(path).absolute()
+    if any(p.is_symlink() for p in (resolved, *resolved.parents)):
         raise ValueError("Symlinks are not allowed")
-    return path
+    return resolved
 
 
-def private_directory(path):
-    path = check_path(path)
-    path.mkdir(mode=0o700, parents=True, exist_ok=True)
-    st = path.stat()
+def private_directory(path) -> Path:
+    directory: Path = check_path(path)
+    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    st = directory.stat()
     if (
         not stat.S_ISDIR(st.st_mode)
         or st.st_uid != os.geteuid()
         or stat.S_IMODE(st.st_mode) != 0o700
     ):
         raise ValueError("State directory must be caller-owned, mode 0700")
-    return path
+    return directory
 
 
-def save(path, value):
+def save(path, value) -> None:
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
     with os.fdopen(fd, "w") as file:
         file.write(canonical(value) + "\n")
@@ -53,9 +53,9 @@ def save(path, value):
         os.fsync(file.fileno())
 
 
-def projection(con):
+def projection(con) -> "dict[str, list[dict[str, object]]]":
     con.row_factory = sqlite3.Row
-    result = {}
+    result: dict[str, list[dict[str, object]]] = {}
     for table in TABLES:
         result[table] = sorted(
             [
@@ -67,9 +67,9 @@ def projection(con):
     return result
 
 
-def summarize(config):
+def summarize(config) -> "dict[str, object]":
     links = config["client_inbounds"]
-    result = []
+    result: list[dict[str, object]] = []
     for row in sorted(config["inbounds"], key=lambda x: x["port"]):
         stream = json.loads(row["stream_settings"] or "{}")
         reality = stream.get("realitySettings") or {}
@@ -122,7 +122,7 @@ def summarize(config):
     }
 
 
-def inspect(database, state=None):
+def inspect(database, state=None) -> "dict[str, object]":
     database = check_path(database)
     if not database.is_file():
         raise ValueError("Database must be an existing regular file")
@@ -148,7 +148,7 @@ def inspect(database, state=None):
     return summarize(config)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database", type=Path, default=Path("/srv/x-ui-lab/db/x-ui.db"))
     parser.add_argument(
@@ -163,7 +163,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
+    except (OSError, ValueError, RuntimeError, sqlite3.Error):
         raise SystemExit(
             "Inventory/backup stopped; inspect private state before retrying"
         ) from None

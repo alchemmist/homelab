@@ -8,8 +8,27 @@ Never changes metric/trace pipelines, existing exporters, TLS, storage or receiv
 import argparse
 import copy
 import pathlib
+from typing import cast
 
 import yaml
+
+
+def require(expected: object, message: str) -> None:
+    """Enforce an invariant, failing with the given message."""
+    if not expected:
+        raise ValueError(message)
+
+
+def narrow_selflog_exclude(candidate: dict[str, object], receiver: dict[str, object]) -> None:
+    """Move the known overbroad self-log exclusion to the narrow cluster path."""
+    broad = "/var/log/pods/*_otel-*_*/*/*.log"
+    narrow = (
+        "/var/log/pods/cattle-monitoring-system_"
+        "prometheus-kube-prometheus-stack-prometheus-*_*/otel-cluster/*.log"
+    )
+    if candidate.get("exclude") == [narrow]:
+        existing = cast("list[object]", receiver.get("exclude", []))
+        receiver["exclude"] = [narrow if p == broad else p for p in existing]
 
 
 def merge(live, desired):
@@ -22,22 +41,14 @@ def merge(live, desired):
             candidate = desired[section][name]
             if section == "receivers":
                 # Keep cursor paths, ingestion bounds and live host adaptations.
-                if name not in live[section]:
-                    raise ValueError("Missing live receiver: " + name)
+                require(name in live[section], "Missing live receiver: " + name)
                 # Only migrate the known overbroad self-log exclusion. Preserve
                 # all cursor, include, parsing and host-specific receiver settings.
                 if name == "filelog" and name not in shared:
-                    broad = "/var/log/pods/*_otel-*_*/*/*.log"
-                    narrow = "/var/log/pods/cattle-monitoring-system_prometheus-kube-prometheus-stack-prometheus-*_*/otel-cluster/*.log"
-                    if candidate.get("exclude") == [narrow]:
-                        existing = result[section][name].get("exclude", [])
-                        result[section][name]["exclude"] = [
-                            narrow if p == broad else p for p in existing
-                        ]
+                    narrow_selflog_exclude(candidate, result[section][name])
                 continue
             if name in shared:
-                if candidate != live[section][name]:
-                    raise ValueError("Shared component differs: " + name)
+                require(candidate == live[section][name], "Shared component differs: " + name)
                 continue
             if section == "exporters" and name in live[section]:
                 # Existing live endpoint/TLS is authoritative; enable backpressure only.
@@ -45,13 +56,18 @@ def merge(live, desired):
                 candidate.setdefault("sending_queue", {})["block_on_overflow"] = True
             result.setdefault(section, {})[name] = copy.deepcopy(candidate)
     result["service"]["pipelines"]["logs"] = copy.deepcopy(target)
-    for name, pipeline in live["service"]["pipelines"].items():
-        if name != "logs":
-            assert result["service"]["pipelines"][name] == pipeline
-            for section in ("receivers", "processors", "exporters"):
-                for component in pipeline.get(section, []):
-                    assert result[section][component] == live[section][component]
-    assert result.get("extensions") == live.get("extensions")
+    for name, pipeline in ((k, v) for k, v in live["service"]["pipelines"].items() if k != "logs"):
+        require(
+            result["service"]["pipelines"][name] == pipeline,
+            "Live pipeline was mutated: " + name,
+        )
+        for section in ("receivers", "processors", "exporters"):
+            for component in pipeline.get(section, []):
+                require(
+                    result[section][component] == live[section][component],
+                    "Live component was mutated: " + component,
+                )
+    require(result.get("extensions") == live.get("extensions"), "Live extensions were mutated")
     return result
 
 

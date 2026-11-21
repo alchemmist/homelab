@@ -6,6 +6,7 @@ import shlex
 import subprocess
 import sys
 from pathlib import Path
+from typing import cast
 
 BASE = Path(__file__).resolve().parents[2]
 REMOTE = r"""
@@ -29,7 +30,7 @@ print(json.dumps({'status':status,'body':body}))
 """
 
 
-def api(method, path, body=None):
+def api(method, path, body=None) -> dict[str, object]:
     r = subprocess.run(
         ["ssh", "socrat-0", "python3 -c " + shlex.quote(REMOTE)],
         input=json.dumps({"method": method, "path": path, "body": body}),
@@ -37,10 +38,11 @@ def api(method, path, body=None):
         capture_output=True,
         check=True,
     )
-    return json.loads(r.stdout)
+    response: dict[str, object] = json.loads(r.stdout)
+    return response
 
 
-def main():
+def main() -> None:
     definition = json.loads(
         (
             BASE / (sys.argv[1] if len(sys.argv) > 1 else "docs/n8n/yandex-session-alerts.json")
@@ -49,7 +51,10 @@ def main():
     folder = api("GET", "/api/folders/automation")
     if folder["status"] == 404:
         assert (
-            api("POST", "/api/folders", {"uid": "automation", "title": "Automation"})["status"]
+            cast(
+                "int",
+                api("POST", "/api/folders", {"uid": "automation", "title": "Automation"})["status"],
+            )
             < 300
         )
     else:
@@ -57,17 +62,23 @@ def main():
     cp = definition["contactPoint"]
     existing = api("GET", "/api/v1/provisioning/contact-points")
     assert existing["status"] == 200
-    method = "PUT" if any(c.get("uid") == cp["uid"] for c in existing["body"]) else "POST"
+    method = (
+        "PUT"
+        if any(c.get("uid") == cp["uid"] for c in cast("list[dict[str, object]]", existing["body"]))
+        else "POST"
+    )
     path = "/api/v1/provisioning/contact-points" + ("/" + cp["uid"] if method == "PUT" else "")
     result = api(method, path, cp)
-    assert result["status"] < 300, "Grafana provisioning failed with HTTP " + str(result["status"])
+    assert cast("int", result["status"]) < 300, "Grafana provisioning failed with HTTP " + str(
+        result["status"]
+    )
     for rule in definition["rules"]:
         current = api("GET", "/api/v1/provisioning/alert-rules/" + rule["uid"])
         method = "PUT" if current["status"] == 200 else "POST"
         assert current["status"] in [200, 404]
         path = "/api/v1/provisioning/alert-rules" + ("/" + rule["uid"] if method == "PUT" else "")
         result = api(method, path, rule)
-        assert result["status"] < 300, "Grafana provisioning failed with HTTP " + str(
+        assert cast("int", result["status"]) < 300, "Grafana provisioning failed with HTTP " + str(
             result["status"]
         )
         print("Grafana alert provisioned:", rule["uid"])

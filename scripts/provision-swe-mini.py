@@ -104,7 +104,7 @@ def main():
         with urllib.request.urlopen(req, timeout=30) as response:
             key = json.load(response)["key"]
         ensure("swe-mini-model", {"api-key": base64.b64encode(key.encode()).decode()})
-    except Exception:
+    except (OSError, KeyError, TypeError, ValueError, subprocess.SubprocessError):
         if key:
             req = urllib.request.Request(
                 f"http://127.0.0.1:{port}/key/delete",

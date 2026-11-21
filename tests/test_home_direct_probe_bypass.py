@@ -1,3 +1,5 @@
+"""Tests for the home direct probe bypass policy."""
+
 import importlib.util
 from pathlib import Path
 from unittest.mock import patch
