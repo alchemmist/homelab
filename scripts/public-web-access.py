@@ -8,19 +8,21 @@ import json
 import os
 import urllib.request
 from pathlib import Path
+from typing import cast
 
 OWNER = "homelab-public-web-v1"
 
 
-def require(ok, message):
+def require(ok, message) -> None:
     if not ok:
         raise ValueError(message)
 
 
-def unique(rows, key, value):
+def unique(rows, key, value) -> dict[str, object]:
     matches = [r for r in rows if r.get(key) == value]
     require(len(matches) == 1, "Missing/ambiguous reviewed " + key)
-    return matches[0]
+    match: dict[str, object] = matches[0]
+    return match
 
 
 class API:
@@ -33,7 +35,7 @@ class API:
 
         self.http = urllib.request.build_opener(NoRedirect)
 
-    def call(self, method, path, body=None):
+    def call(self, method, path, body=None) -> object | None:
         require(not path.startswith("/") and "://" not in path, "Invalid API path")
         req = urllib.request.Request(
             "https://auth.socrat.alchemmist.xyz/api/v3/" + path,
@@ -45,19 +47,25 @@ class API:
             b = r.read()
             return json.loads(b) if b else None
 
-    def rows(self, path):
-        rows = []
+    def rows(self, path) -> list[dict[str, object]]:
+        rows: list[dict[str, object]] = []
         for page in range(1, 1001):
             d = self.call(
                 "GET", path + ("&" if "?" in path else "?") + f"page_size=100&page={page}"
             )
-            rows.extend(d["results"])
-            if not d.get("pagination", {}).get("next"):
+            require(isinstance(d, dict), "Authentik returned a non-object page")
+            document = cast("dict[str, object]", d)
+            results = document["results"]
+            require(isinstance(results, list), "Authentik returned invalid results")
+            rows.extend(cast("list[dict[str, object]]", results))
+            pagination = document.get("pagination", {})
+            require(isinstance(pagination, dict), "Authentik returned invalid pagination")
+            if not cast("dict[str, str | None]", pagination).get("next"):
                 return rows
         raise ValueError("Pagination exceeded")
 
 
-def snapshot(api):
+def snapshot(api) -> dict[str, list[dict[str, object]]]:
     s = {
         k: api.rows(p)
         for k, p in {
@@ -74,7 +82,7 @@ def snapshot(api):
     return s
 
 
-def plan(s, services):
+def plan(s, services) -> tuple[list[object], dict[str, object]]:
     require(
         not services,
         "External Authentik proxy gates are retired; use native service authentication",
@@ -82,7 +90,7 @@ def plan(s, services):
     return [], unique(s["outposts"], "managed", "goauthentik.io/outposts/embedded")
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--catalog", required=True)
     p.add_argument(

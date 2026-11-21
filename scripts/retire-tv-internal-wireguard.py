@@ -17,21 +17,21 @@ ROOT = Path("/var/lib/homelab-tv-wireguard-retirement")
 CONF = Path("/etc/wireguard/wg-socrat.conf")
 
 
-def need(ok, msg):
+def need(ok, msg) -> None:
     if not ok:
         raise RuntimeError(msg)
 
 
-def digest(b):
+def digest(b) -> str:
     return hashlib.sha256(b).hexdigest()
 
 
-def peers():
+def peers() -> dict[str, str]:
     out = subprocess.check_output(["wg", "show", "wg-socrat", "allowed-ips"], text=True)
     return dict(line.split("\t", 1) for line in out.splitlines())
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")

@@ -12,16 +12,17 @@ import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from types import ModuleType
 
 
-def load(path, name):
+def load(path, name) -> ModuleType:
     spec = importlib.util.spec_from_file_location(name, path)
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
     return m
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--machine-credentials", type=Path, required=True)
     p.add_argument("--apply-fixture", action="store_true")

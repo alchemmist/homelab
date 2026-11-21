@@ -36,13 +36,13 @@ COLLECTIONS = (
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, request, response, code, message, headers, newurl):
+    def redirect_request(self, request, response, code, message, headers, newurl) -> None:
         if response is not None:
             response.close()
         raise ValueError("redirect refused")
 
 
-def builtin_scope(rows, name):
+def builtin_scope(rows, name) -> object:
     matches = [
         r for r in rows if r.get("managed") == "goauthentik.io/providers/oauth2/scope-" + name
     ]
@@ -51,7 +51,7 @@ def builtin_scope(rows, name):
     return matches[0]["pk"]
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--private-dir", type=Path, required=True)
     p.add_argument("--apply", action="store_true")
@@ -209,7 +209,7 @@ def main():
             "refresh_token_validity": "hours=1",
         },
     )
-    providers = []
+    providers: list[dict[str, object]] = []
     apps = [
         ("spi-rustfs-native", "RustFS native OIDC", native, "https://rustfs.socrat.alchemmist.xyz/")
     ]

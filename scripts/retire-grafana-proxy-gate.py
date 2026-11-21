@@ -12,12 +12,12 @@ import subprocess
 from pathlib import Path
 
 
-def require(ok, message):
+def require(ok, message) -> None:
     if not ok:
         raise RuntimeError(message)
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")

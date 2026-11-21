@@ -14,15 +14,18 @@ import urllib.request
 NS = "swe-mini"
 
 
-def kubectl(*args):
+def kubectl(*args) -> bytes:
     return subprocess.check_output(["kubectl", *args], stderr=subprocess.DEVNULL)
 
 
-def secret(namespace, name):
-    return json.loads(kubectl("-n", namespace, "get", "secret", name, "-o", "json"))["data"]
+def secret(namespace, name) -> dict[str, str]:
+    secret_data: dict[str, str] = json.loads(
+        kubectl("-n", namespace, "get", "secret", name, "-o", "json")
+    )["data"]
+    return secret_data
 
 
-def ensure(name, data, kind="Opaque"):
+def ensure(name, data, kind="Opaque") -> None:
     if (
         subprocess.run(
             ["kubectl", "-n", NS, "get", "secret", name],
@@ -49,7 +52,7 @@ def ensure(name, data, kind="Opaque"):
     print(name + ": created (values withheld)")
 
 
-def main():
+def main() -> None:
     kubectl("get", "namespace", NS)
     signer = secret("pr-agent", "pr-agent")
     ensure("swe-mini-github", {key: signer[key] for key in ("github-app-id", "github-private-key")})

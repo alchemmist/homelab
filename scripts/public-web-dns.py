@@ -9,24 +9,25 @@ import json
 import os
 import subprocess
 from pathlib import Path
+from types import ModuleType
 
 CURRENT = Path("/usr/local/libexec/public_dns_zone.py")
 ROOT = Path("/var/lib/homelab-public-web-dns")
 
 
-def require(ok, message):
+def require(ok, message) -> None:
     if not ok:
         raise RuntimeError(message)
 
 
-def load(path, name):
+def load(path, name) -> ModuleType:
     s = importlib.util.spec_from_file_location(name, path)
     m = importlib.util.module_from_spec(s)
     s.loader.exec_module(m)
     return m
 
 
-def delta(old, new):
+def delta(old, new) -> None:
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
         before = old.render(123, home, vps).splitlines()
         after = new.render(123, home, vps).splitlines()
@@ -42,7 +43,7 @@ def delta(old, new):
         )
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")

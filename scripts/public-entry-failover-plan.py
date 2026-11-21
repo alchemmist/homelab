@@ -16,7 +16,7 @@ from pathlib import Path
 ENTRIES = ("home", "vps")
 
 
-def initial(published):
+def initial(published) -> dict[str, object]:
     if not published or not set(published) <= set(ENTRIES):
         raise ValueError("Nonempty known publication required")
     return {
@@ -28,7 +28,7 @@ def initial(published):
     }
 
 
-def plan(state, batch, required, now, max_age=90, threshold=3):
+def plan(state, batch, required, now, max_age=90, threshold=3) -> dict[str, object]:
     # The exact same accepted result must be distributed to ALL authorities;
     # neither local loopback nor independent per-authority rendering is consensus.
     if type(now) is not int or threshold < 2 or max_age < 1:
@@ -141,7 +141,7 @@ def plan(state, batch, required, now, max_age=90, threshold=3):
     }
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("input", type=Path)
     args = p.parse_args()

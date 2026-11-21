@@ -25,7 +25,7 @@ FLOWS = {
 GROUPS = ("homelab-owner", "homelab-platform-operator")
 
 
-def authority(url):
+def authority(url) -> tuple[str, int]:
     parsed = urlsplit(url)
     if (
         parsed.scheme not in ("https", "http")
@@ -40,11 +40,11 @@ def authority(url):
     )
 
 
-def digest(value):
+def digest(value) -> str:
     return hashlib.sha256(json.dumps(value, sort_keys=True, default=str).encode()).hexdigest()
 
 
-def run(action="plan", nonce=None):
+def run(action="plan", nonce=None) -> dict[str, object] | None:
     from django.db import transaction
     from authentik.core.models import Application, Group, User
     from authentik.flows.models import Flow
@@ -139,7 +139,7 @@ def run(action="plan", nonce=None):
         )
 
         def state(provider, app):
-            actual = {key: str(getattr(provider, key)) for key in settings}
+            actual: dict[str, object] = {key: str(getattr(provider, key)) for key in settings}
             actual["property_mappings"] = sorted(
                 str(x) for x in provider.property_mappings.values_list("pk", flat=True)
             )
@@ -205,7 +205,7 @@ def run(action="plan", nonce=None):
             app.delete()
             provider.delete()
             print("Rolled back dedicated objects only; native identity unchanged.")
-            return
+            return None
         # Refuse adoption, even if an existing name happens to match settings.
         if (
             ProxyProvider.objects.filter(name=NAME).exists()
@@ -230,7 +230,7 @@ def run(action="plan", nonce=None):
                     sort_keys=True,
                 )
             )
-            return
+            return None
         if journal.exists():
             raise ValueError("journal already exists; no retry")
         provider = ProxyProvider.objects.create(**settings)
@@ -278,3 +278,4 @@ def run(action="plan", nonce=None):
                 }
             )
         )
+    return None

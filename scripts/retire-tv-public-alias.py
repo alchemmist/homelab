@@ -8,6 +8,7 @@ import json
 import os
 import subprocess
 from pathlib import Path
+from typing import cast
 
 ROOT = Path("/var/lib/homelab-tv-alias-retirement")
 OWNED = [
@@ -32,46 +33,53 @@ OWNED = [
 ]
 
 
-def need(ok, msg):
+def need(ok, msg) -> None:
     if not ok:
         raise RuntimeError(msg)
 
 
-def get(kind, name):
+def get(kind, name) -> dict[str, object] | None:
     r = subprocess.run(
         ["kubectl", "-n", "identity", "get", kind, name, "--ignore-not-found", "-o", "json"],
         capture_output=True,
         check=True,
     )
-    return json.loads(r.stdout) if r.stdout.strip() else None
+    payload: dict[str, object] | None = json.loads(r.stdout) if r.stdout.strip() else None
+    return payload
 
 
-def inspect():
+def inspect() -> list[dict[str, object]]:
     out = []
     for kind, name, uid, path in OWNED:
         o = get(kind, name)
-        if o:
-            need(o["metadata"]["uid"] == uid, "Unowned replacement; stop")
-            if kind == "ingress":
-                need(
-                    o["spec"]["rules"][0]["host"] == "tv.alchemmist.xyz"
-                    and o["metadata"]["annotations"].get("argocd.argoproj.io/tracking-id")
-                    == "public-web-entry:networking.k8s.io/Ingress:identity/public-web-grafana-tv",
-                    "Ingress ownership drift",
-                )
-            if kind == "certificate":
-                need(o["spec"]["dnsNames"] == ["tv.alchemmist.xyz"], "Certificate scope drift")
-            if kind == "secret":
-                need(
-                    o["metadata"]["annotations"].get("cert-manager.io/alt-names")
-                    == "tv.alchemmist.xyz",
-                    "Secret scope drift",
-                )
-            out.append(o)
+        if not isinstance(o, dict):
+            continue
+        metadata = cast("dict[str, object]", o["metadata"])
+        need(metadata["uid"] == uid, "Unowned replacement; stop")
+        if kind == "ingress":
+            spec = cast("dict[str, object]", o["spec"])
+            rules = cast("list[dict[str, object]]", spec["rules"])
+            annotations = cast("dict[str, object]", metadata["annotations"])
+            need(
+                rules[0]["host"] == "tv.alchemmist.xyz"
+                and annotations.get("argocd.argoproj.io/tracking-id")
+                == "public-web-entry:networking.k8s.io/Ingress:identity/public-web-grafana-tv",
+                "Ingress ownership drift",
+            )
+        if kind == "certificate":
+            spec = cast("dict[str, object]", o["spec"])
+            need(spec["dnsNames"] == ["tv.alchemmist.xyz"], "Certificate scope drift")
+        if kind == "secret":
+            annotations = cast("dict[str, object]", metadata["annotations"])
+            need(
+                annotations.get("cert-manager.io/alt-names") == "tv.alchemmist.xyz",
+                "Secret scope drift",
+            )
+        out.append(o)
     return out
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")
@@ -92,16 +100,17 @@ def main():
             (ROOT / "uncertain.json").write_text(json.dumps({"plan_hash": h}))
             for kind, name, uid, path in OWNED:
                 o = get(kind, name)
-                if not o:
+                if not isinstance(o, dict):
                     continue
-                need(o["metadata"]["uid"] == uid, "Concurrent replacement; stop")
+                metadata = cast("dict[str, object]", o["metadata"])
+                need(metadata["uid"] == uid, "Concurrent replacement; stop")
                 options = {
                     "apiVersion": "v1",
                     "kind": "DeleteOptions",
                     "propagationPolicy": "Foreground",
                     "preconditions": {
                         "uid": uid,
-                        "resourceVersion": o["metadata"]["resourceVersion"],
+                        "resourceVersion": metadata["resourceVersion"],
                     },
                 }
                 r = subprocess.run(

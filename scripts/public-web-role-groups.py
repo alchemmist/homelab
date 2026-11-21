@@ -13,12 +13,12 @@ from pathlib import Path
 ROLES = {"syncthing-web-admins": "syncthing", "uptime-kuma-web-admins": "uptime-kuma"}
 
 
-def require(ok, message):
+def require(ok, message) -> None:
     if not ok:
         raise RuntimeError(message)
 
 
-def plan(groups):
+def plan(groups) -> list[dict[str, object]]:
     ops = []
     for name, service in ROLES.items():
         rows = [g for g in groups if g["name"] == name]
@@ -50,7 +50,7 @@ def plan(groups):
     return ops
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")

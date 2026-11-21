@@ -15,7 +15,7 @@ spec.loader.exec_module(creds)
 BASE = Path.home() / ".local/share/homelab/mcp"
 
 
-def command(name):
+def command(name) -> tuple[list[str], dict[str, str]]:
     env = dict(os.environ)
     if name == "argocd":
         env.update(
@@ -50,7 +50,7 @@ def command(name):
     return args, env
 
 
-def main():
+def main() -> None:
     if len(sys.argv) != 2 or sys.argv[1] not in ("argocd", "metrics", "umami"):
         raise SystemExit("Usage: run-official-mcp.py {argocd|metrics|umami}")
     try:

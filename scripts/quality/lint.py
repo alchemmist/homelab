@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 from urllib.parse import unquote, urlparse
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Iterator, Sequence
 
     from scripts.quality.common import Finding
 
@@ -783,7 +783,7 @@ def check_dependencies(names: Sequence[str]) -> tuple[list[Finding], int]:
     return findings, count
 
 
-def sarif(data, prefix=""):
+def sarif(data, prefix="") -> list[Finding]:
     result = []
     for run in data["runs"]:
         for item in run.get("results", []):
@@ -799,16 +799,16 @@ def sarif(data, prefix=""):
     return result
 
 
-def nonsecret_tokenizer_option(path, item):
+def nonsecret_tokenizer_option(path, item) -> bool:
     # DL3064 matches TOKENIZERS as though it were a credential. This exact
     # public runtime option line contains no secret; any edit loses the exception.
     if path != "services/spi-tokenizer/Dockerfile" or item["code"] != "DL3064":
         return False
-    line = (ROOT / path).read_text().splitlines()[item["line"] - 1]
+    line: str = (ROOT / path).read_text().splitlines()[item["line"] - 1]
     return line == "ENV TOKENIZERS_PARALLELISM=false RAYON_NUM_THREADS=1 PYTHONPATH=/app"
 
 
-def yaml_targets(names):
+def yaml_targets(names) -> list[str]:
     # Helm and Ansible templates are Go/Jinja text, not YAML documents.
     return [
         p
@@ -817,7 +817,7 @@ def yaml_targets(names):
     ]
 
 
-def shell_targets(names):
+def shell_targets(names) -> list[str]:
     result = []
     for name in names:
         if "/templates/" in name or name.endswith(".j2"):
@@ -836,8 +836,8 @@ def shell_targets(names):
     return result
 
 
-def shell_dialect(spec):
-    token = spec.split()[0]
+def shell_dialect(spec) -> str | None:
+    token: str = spec.split()[0]
     if token in {"bash", "sh", "dash", "ksh"}:
         return token
     if token in {"python", "python3"}:
@@ -845,7 +845,7 @@ def shell_dialect(spec):
     return None
 
 
-def walk_runs(node, shell="bash"):
+def walk_runs(node, shell="bash") -> Iterator[tuple[str, str]]:
     if isinstance(node, dict):
         current = node["shell"] if isinstance(node.get("shell"), str) else shell
         script = node.get("run")
@@ -859,7 +859,7 @@ def walk_runs(node, shell="bash"):
             yield from walk_runs(item, shell)
 
 
-def workflow_runs(names):
+def workflow_runs(names) -> list[tuple[str, str, str]]:
     import yaml
 
     result = []
@@ -877,13 +877,13 @@ def workflow_runs(names):
     return result
 
 
-def workflow_files(names):
+def workflow_files(names) -> list[str]:
     return [
         p for p in names if p.startswith(".github/workflows/") and p.endswith((".yml", ".yaml"))
     ]
 
 
-def parse_mypy(text):
+def parse_mypy(text) -> list[Finding]:
     result = []
     for line in text.splitlines():
         match = MYPY_ERROR.match(line)
@@ -900,7 +900,7 @@ def parse_mypy(text):
     return result
 
 
-def mypy_argv(files):
+def mypy_argv(files) -> list[str]:
     return [
         "mypy",
         "--config-file",
@@ -916,7 +916,7 @@ def mypy_argv(files):
     ]
 
 
-def mypy_status(parsed, code, text):
+def mypy_status(parsed, code, text) -> str:
     """Separate a finished type-check from a fatal run that did not cover its files."""
     if any(
         marker in text
@@ -934,14 +934,14 @@ def mypy_status(parsed, code, text):
     return "incomplete"
 
 
-def mypy_invoke(files, timeout):
+def mypy_invoke(files, timeout) -> tuple[list[Finding], str]:
     process = command(mypy_argv(files), allowed=(0, 1, 2), timeout=timeout)
     parsed = parse_mypy(process.stdout) + parse_mypy(process.stderr)
     text = process.stdout + "\n" + process.stderr
     return parsed, mypy_status(parsed, process.returncode, text)
 
 
-def python_syntax_findings(files):
+def python_syntax_findings(files) -> tuple[list[Finding], list[str]]:
     """Real parser failures. They must not abort type-checking of every other file."""
     findings = []
     clean = []
@@ -964,7 +964,7 @@ def python_syntax_findings(files):
     return findings, clean
 
 
-def mypy_on(files, timeout):
+def mypy_on(files, timeout) -> list[Finding]:
     if not files:
         return []
     parsed, status = mypy_invoke(files, timeout)
@@ -988,7 +988,7 @@ def mypy_on(files, timeout):
     return result
 
 
-def mypy_findings(files):
+def mypy_findings(files) -> list[Finding]:
     syntax, remaining = python_syntax_findings(files)
     syntax_names = {item["location"]["path"] for item in syntax}
     if syntax_names | set(remaining) != set(files) or syntax_names & set(remaining):
@@ -997,7 +997,7 @@ def mypy_findings(files):
     return syntax + mypy_on(remaining, 2400)
 
 
-def format_findings(files):
+def format_findings(files) -> list[Finding]:
     process = command(
         ["ruff", "format", "--check", "--config", "quality/ruff.toml", *files],
         allowed=(0, 1, 2),
@@ -1038,7 +1038,7 @@ def format_findings(files):
     return result
 
 
-def shellcheck_files(files):
+def shellcheck_files(files) -> list[Finding]:
     if not files:
         return []
     process = command(
@@ -1053,7 +1053,7 @@ def shellcheck_files(files):
     ]
 
 
-def workflow_script_findings(names, kind):
+def workflow_script_findings(names, kind) -> list[Finding]:
     result = []
     grouped = {"bash": [], "sh": [], "dash": [], "ksh": []}
     with tempfile.TemporaryDirectory(prefix="homelab-shellcheck-") as temp:
@@ -1312,7 +1312,7 @@ def check(tool: str) -> tuple[list[Finding], int]:
             data = json.loads(out.read_text())
             result = []
             for item in data:
-                path = (
+                source = (
                     Path(item["File"]).relative_to(stage)
                     if Path(item["File"]).is_absolute()
                     else Path(item["File"])
@@ -1320,7 +1320,7 @@ def check(tool: str) -> tuple[list[Finding], int]:
                 result.append(
                     finding(
                         item["RuleID"],
-                        path,
+                        source,
                         item["StartLine"],
                         "Potential secret: inspect privately; do not paste its value into reports.",
                     )
@@ -1329,7 +1329,7 @@ def check(tool: str) -> tuple[list[Finding], int]:
     raise ValueError("Unknown linter")
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "tool",
@@ -1351,7 +1351,7 @@ def main():
     output = ROOT / f"reports/{args.tool}.json"
     try:
         findings, count = check(args.tool)
-        return report(args.tool, findings, count, output)
+        status: int = report(args.tool, findings, count, output)
     except Exception as error:
         failure(output, error)
         print(
@@ -1359,6 +1359,7 @@ def main():
             file=sys.stderr,
         )
         return 2
+    return status
 
 
 if __name__ == "__main__":

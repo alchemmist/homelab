@@ -19,7 +19,7 @@ ISSUER = "https://" + HOST + "/application/o/rancher/"
 ENTRIES = {"home": "109.173.40.247", "vps": "109.120.141.60", "internal": "192.168.0.250"}
 
 
-def valid_discovery(data):
+def valid_discovery(data) -> bool:
     if not isinstance(data, dict) or data.get("issuer") != ISSUER:
         return False
     for key in ["authorization_endpoint", "token_endpoint", "jwks_uri"]:
@@ -41,7 +41,7 @@ def valid_discovery(data):
     return True
 
 
-def probe(entry, vantage, timeout=3):
+def probe(entry, vantage, timeout=3) -> dict[str, object]:
     if entry not in ENTRIES or vantage not in ["home", "vps", "workstation", "external"]:
         raise ValueError("Unknown owned entry or vantage")
     if entry == "internal" and vantage != "home":
@@ -119,7 +119,7 @@ def probe(entry, vantage, timeout=3):
     return result
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--vantage", required=True, choices=["home", "vps", "workstation", "external"])
     p.add_argument("--entry", action="append", choices=ENTRIES)

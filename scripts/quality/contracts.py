@@ -15,15 +15,15 @@ def require(condition: object, message: str) -> None:
         raise ValueError(message)
 
 
-def unique_json(pairs):
-    result = {}
+def unique_json(pairs) -> dict[str, object]:
+    result: dict[str, object] = {}
     for key, value in pairs:
         require(key not in result, "Duplicate JSON policy/schema key")
         result[key] = value
     return result
 
 
-def local_refs(value):
+def local_refs(value) -> None:
     if isinstance(value, dict):
         for key, item in value.items():
             if key == "$ref":
@@ -86,7 +86,7 @@ def owned_test_files(names: list[str]) -> set[str]:
     }
 
 
-def check():
+def check() -> None:
     frozen_source_files()
     for policy in (ROOT / "quality").rglob("*.json"):
         require(policy.resolve().is_relative_to(ROOT / "quality"), "Quality policy path escape")
