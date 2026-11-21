@@ -2,13 +2,16 @@
 
 import importlib.util
 from pathlib import Path
+import types
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(path, name):
+def load(path: Path, name: str) -> types.ModuleType:
     s = importlib.util.spec_from_file_location(name, path)
+    if s is None or s.loader is None:
+        raise RuntimeError("missing script loader for " + name)
     m = importlib.util.module_from_spec(s)
     s.loader.exec_module(m)
     return m
@@ -23,7 +26,7 @@ def test_exact_addition_and_idempotent_delta() -> None:
         """Drop the additive ns3 records from an otherwise identical zone."""
 
         @staticmethod
-        def render(*args):
+        def render(*args) -> str:
             return (
                 "\n".join(x for x in zone.render(*args).splitlines() if x not in guard.ADDED) + "\n"
             )
@@ -46,8 +49,8 @@ def test_guard_rejects_unrelated_records_and_missing_ns3() -> None:
         """Append one address that is outside the ns3 addition."""
 
         @staticmethod
-        def render(*args):
-            return zone.render(*args) + "unexpected IN A 192.0.2.1\n"
+        def render(*args) -> str:
+            return str(zone.render(*args) + "unexpected IN A 192.0.2.1\n")
 
     with pytest.raises(RuntimeError):
         guard.delta(zone, Bad)
@@ -56,8 +59,8 @@ def test_guard_rejects_unrelated_records_and_missing_ns3() -> None:
         """Remove the ns3 glue address from the current zone."""
 
         @staticmethod
-        def render(*args):
-            return zone.render(*args).replace("ns3 IN A 91.189.82.238\n", "")
+        def render(*args) -> str:
+            return str(zone.render(*args).replace("ns3 IN A 91.189.82.238\n", ""))
 
     with pytest.raises(RuntimeError):
         guard.delta(zone, Missing)

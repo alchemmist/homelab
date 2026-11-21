@@ -1,3 +1,5 @@
+"""Tests for the WebUI fetch timeout handling."""
+
 import asyncio
 import importlib.util
 import json
@@ -14,28 +16,29 @@ SPEC.loader.exec_module(GUARD)
 
 
 class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
-    async def test_success_preserves_page_text(self):
+    async def test_success_preserves_page_text(self) -> None:
         with patch.object(GUARD, "FETCH_WORKER", 'import json; print(json.dumps("page text"))'):
-            self.assertEqual(await GUARD.bounded_fetch({"url": "https://example.com"}), "page text")
+            assert await GUARD.bounded_fetch({"url": "https://example.com"}) == "page text"
 
-    async def test_empty_page_is_explicit_error(self):
+    async def test_empty_page_is_explicit_error(self) -> None:
         with patch.object(GUARD, "FETCH_WORKER", 'import json; print(json.dumps(""))'):
-            self.assertIn("error", await GUARD.bounded_fetch({"url": "https://example.com"}))
+            assert "error" in await GUARD.bounded_fetch({"url": "https://example.com"})
 
-    async def test_worker_failure_is_explicit_error(self):
+    async def test_worker_failure_is_explicit_error(self) -> None:
         with patch.object(GUARD, "FETCH_WORKER", "raise SystemExit(2)"):
-            self.assertIn("error", await GUARD.bounded_fetch({"url": "https://example.com"}))
+            assert "error" in await GUARD.bounded_fetch({"url": "https://example.com"})
 
-    async def test_malformed_worker_response_is_explicit_error(self):
+    async def test_malformed_worker_response_is_explicit_error(self) -> None:
         with patch.object(GUARD, "FETCH_WORKER", 'print("not json")'):
-            self.assertIn("error", await GUARD.bounded_fetch({"url": "https://example.com"}))
+            assert "error" in await GUARD.bounded_fetch({"url": "https://example.com"})
 
-    async def test_worker_start_failure_is_explicit_error(self):
+    async def test_worker_start_failure_is_explicit_error(self) -> None:
         with patch.object(GUARD.asyncio, "create_subprocess_exec", AsyncMock(side_effect=OSError)):
-            self.assertIn("error", await GUARD.bounded_fetch({"url": "https://example.com"}))
+            assert "error" in await GUARD.bounded_fetch({"url": "https://example.com"})
 
-    async def test_upstream_refusal_does_not_start_fetch(self):
-        async def original(form_data, metadata, event_caller, call):
+
+    async def test_upstream_refusal_does_not_start_fetch(self) -> None:
+        async def original(_form_data, _metadata, _event_caller, _call) -> object:
             return {"error": "Tool call was not approved"}
 
         execute = GUARD.guarded_execute(original)
@@ -46,15 +49,15 @@ class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
                 None,
                 {"function": {"name": "fetch_url", "arguments": '{"url":"https://example.com"}'}},
             )
-            self.assertIn("not approved", result["error"])
+            assert "not approved" in result["error"]
             fetch.assert_not_awaited()
 
-    async def check_termination(self, cancel):
+    async def check_termination(self, *, cancel: bool) -> None:
         original = asyncio.create_subprocess_exec
-        processes = []
+        processes: list[asyncio.subprocess.Process] = []
         started = asyncio.Event()
 
-        async def spawn(*args, **kwargs):
+        async def spawn(*args, **kwargs) -> object:
             process = await original(*args, **kwargs)
             processes.append(process)
             started.set()
@@ -73,19 +76,20 @@ class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
                     await task
             else:
                 result = await task
-                self.assertIn("deadline", result["error"])
-            self.assertEqual(len(processes), 1)
-            self.assertIsNotNone(processes[0].returncode)
-            self.assertNotEqual(processes[0].returncode, 0)
+                assert "deadline" in result["error"]
+            assert len(processes) == 1
+            assert processes[0].returncode is not None
+            assert processes[0].returncode != 0
 
-    async def test_deadline_kills_and_reaps_worker(self):
-        await self.check_termination(False)
+    async def test_deadline_kills_and_reaps_worker(self) -> None:
+        await self.check_termination(cancel=False)
 
-    async def test_stop_kills_and_reaps_worker(self):
-        await self.check_termination(True)
+    async def test_stop_kills_and_reaps_worker(self) -> None:
+        await self.check_termination(cancel=True)
 
-    async def test_only_builtin_fetch_is_intercepted(self):
-        async def original(form_data, metadata, event_caller, call):
+
+    async def test_only_builtin_fetch_is_intercepted(self) -> None:
+        async def original(_form_data, metadata, _event_caller, call) -> object:
             tool = metadata["tools"]["fetch_url"]
             result = await tool["callable"](**json.loads(call["function"]["arguments"]))
             return result
@@ -100,20 +104,18 @@ class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
         upstream = AsyncMock(return_value="upstream")
         tool = {"type": "builtin", "callable": upstream}
         with patch.object(GUARD, "bounded_fetch", AsyncMock(return_value="page")) as fetch:
-            self.assertEqual(await execute({}, {"tools": {"fetch_url": tool}}, None, call), "page")
-            self.assertIs(tool["callable"], upstream)
+            assert await execute({}, {"tools": {"fetch_url": tool}}, None, call) == "page"
+            assert tool["callable"] is upstream
             upstream.assert_not_awaited()
             fetch.assert_awaited_once()
             for tool in [
                 {"type": "external", "callable": upstream},
                 {"type": "builtin", "direct": True, "callable": upstream},
             ]:
-                self.assertEqual(
-                    await execute({}, {"tools": {"fetch_url": tool}}, None, call), "upstream"
-                )
+                assert await execute({}, {"tools": {"fetch_url": tool}}, None, call) == "upstream"
             fetch.assert_awaited_once()
 
-    async def test_invalid_arguments_use_upstream_validation(self):
+    async def test_invalid_arguments_use_upstream_validation(self) -> None:
         original = AsyncMock(return_value="upstream")
         original.__globals__ = {}
         execute = GUARD.guarded_execute(original)
@@ -124,7 +126,7 @@ class FetchTimeoutTests(unittest.IsolatedAsyncioTestCase):
                 None,
                 {"function": {"name": "fetch_url", "arguments": args}},
             )
-            self.assertEqual(result, "upstream")
+            assert result == "upstream"
 
 
 if __name__ == "__main__":

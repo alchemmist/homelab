@@ -25,33 +25,32 @@ class ManagementMove(unittest.TestCase):
     def test_controller_only_placement(self) -> None:
         """Pin the controller to socrat-5 and the rest of Argo CD to socrat-0."""
         v = yaml.safe_load((ROOT / "deploy/platform/argo-cd/values.yaml").read_text())
-        self.assertEqual(v["controller"]["nodeSelector"]["kubernetes.io/hostname"], "socrat-5")
-        self.assertEqual(v["global"]["nodeSelector"]["kubernetes.io/hostname"], "socrat-0")
-        self.assertEqual(v["controller"]["replicas"], 1)
-        self.assertEqual(v["controller"]["resources"]["limits"]["memory"], "2Gi")
+        assert v["controller"]["nodeSelector"]["kubernetes.io/hostname"] == "socrat-5"
+        assert v["global"]["nodeSelector"]["kubernetes.io/hostname"] == "socrat-0"
+        assert v["controller"]["replicas"] == 1
+        assert v["controller"]["resources"]["limits"]["memory"] == "2Gi"
         app = yaml.safe_load((ROOT / "deploy/argocd/apps/argo-cd.yaml").read_text())
-        self.assertEqual(app["spec"]["sources"][0]["targetRevision"], "10.11.6")
+        assert app["spec"]["sources"][0]["targetRevision"] == "10.11.6"
 
     def test_exact_rancher_source_native_route_and_security(self) -> None:
         """Require the pinned Rancher chart, native route, and verified TLS bundle."""
         chart = yaml.safe_load((ROOT / "charts/rancher/Chart.yaml").read_text())
-        self.assertEqual(chart["version"], "2.15.2")
-        self.assertEqual(chart["appVersion"], "v2.15.2")
+        assert chart["version"] == "2.15.2"
+        assert chart["appVersion"] == "v2.15.2"
         v = yaml.safe_load((ROOT / "deploy/platform/rancher/values.yaml").read_text())
-        self.assertEqual(v["replicas"], 1)
-        self.assertEqual(v["antiAffinity"], "preferred")
-        self.assertEqual(v["extraNodeSelectorTerms"][0]["values"], ["socrat-5"])
-        self.assertEqual(
-            v["hostAliases"], [{"ip": "10.43.218.222", "hostnames": ["auth.socrat.alchemmist.xyz"]}]
-        )
-        self.assertEqual(
-            v["extraEnv"],
-            [{"name": "SSL_CERT_FILE", "value": "/var/lib/ca-certificates/ca-bundle.pem"}],
-        )
-        self.assertNotIn("CATTLE_INSECURE_SKIP_VERIFY", str(v))
+        assert v["replicas"] == 1
+        assert v["antiAffinity"] == "preferred"
+        assert v["extraNodeSelectorTerms"][0]["values"] == ["socrat-5"]
+        assert v["hostAliases"] == [
+            {"ip": "10.43.218.222", "hostnames": ["auth.socrat.alchemmist.xyz"]}
+        ]
+        assert v["extraEnv"] == [
+            {"name": "SSL_CERT_FILE", "value": "/var/lib/ca-certificates/ca-bundle.pem"}
+        ]
+        assert "CATTLE_INSECURE_SKIP_VERIFY" not in str(v)
         a = yaml.safe_load((ROOT / "deploy/argocd/apps/rancher.yaml").read_text())
-        self.assertEqual(a["spec"]["sources"][0]["path"], "charts/rancher")
-        self.assertFalse(a["spec"]["syncPolicy"]["automated"]["prune"])
+        assert a["spec"]["sources"][0]["path"] == "charts/rancher"
+        assert not a["spec"]["syncPolicy"]["automated"]["prune"]
 
     def upstream(self, target: Path) -> None:
         """Check every vendored Rancher file against its recorded upstream digest."""
@@ -59,12 +58,12 @@ class ManagementMove(unittest.TestCase):
         for name, digest in json.loads((src / "UPSTREAM-SHA256.json").read_text()).items():
             data = (src / name).read_bytes()
             if name == "templates/deployment.yaml":
-                self.assertEqual(data.decode().count(INSERT), 1)
+                assert data.decode().count(INSERT) == 1
                 data = data.decode().replace(INSERT, "").encode()
             elif name == "values.yaml":
-                self.assertTrue(data.decode().endswith(SUFFIX))
+                assert data.decode().endswith(SUFFIX)
                 data = data[: -len(SUFFIX.encode())]
-            self.assertEqual(hashlib.sha256(data).hexdigest(), digest, name)
+            assert hashlib.sha256(data).hexdigest() == digest, name
             p = target / name
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_bytes(data)
@@ -95,23 +94,22 @@ class ManagementMove(unittest.TestCase):
                     ]
                 )
 
-            self.assertEqual(render(d), render(ROOT / "charts/rancher"))
+            assert render(d) == render(ROOT / "charts/rancher")
 
     def test_ansible_cannot_resurrect_unpatched_upstream_chart(self) -> None:
         """Keep the placement role on annotation, not a Helm upgrade or pod patch."""
         tasks = (ROOT / "ansible/roles/rancher_placement/tasks/main.yml").read_text()
-        self.assertNotIn(
-            "--reuse-values",
-            "\n".join(l for l in tasks.splitlines() if not l.lstrip().startswith("#")),
+        assert "--reuse-values" not in "\n".join(
+            l for l in tasks.splitlines() if not l.lstrip().startswith("#")
         )
-        self.assertNotIn("helm upgrade", tasks)
-        self.assertIn("get application rancher", tasks)
-        self.assertIn("annotate application rancher", tasks)
-        self.assertNotIn("patch deployment", tasks)
+        assert "helm upgrade" not in tasks
+        assert "get application rancher" in tasks
+        assert "annotate application rancher" in tasks
+        assert "patch deployment" not in tasks
         role = yaml.safe_load(
             (ROOT / "ansible/roles/rancher_placement/defaults/main.yml").read_text()
         )
-        self.assertEqual(role["rancher_placement_nodes"], ["socrat-5"])
+        assert role["rancher_placement_nodes"] == ["socrat-5"]
 
 
 if __name__ == "__main__":
