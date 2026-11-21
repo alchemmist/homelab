@@ -17,6 +17,7 @@ SPEC.loader.exec_module(SMOKE)
 
 
 class PrivacySmokeTests(unittest.TestCase):
+    """Ensure the smoke configuration never touches production sources."""
     def test_smoke_configuration_cannot_read_production_sources(self) -> None:
         source = {
             "receivers": {

@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ExistingHumanBrowserAuthPolicyTests(unittest.TestCase):
+    """Assert the browser auth policy only targets reviewed non-owners."""
     def setUp(self) -> None:
         self.policy = json.loads((ROOT / "deploy/identity/browser-auth-policy.json").read_text())
         self.people = json.loads((ROOT / "deploy/identity/account-mappings.json").read_text())

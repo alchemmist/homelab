@@ -29,6 +29,7 @@ def _text(value: object) -> str:
 
 
 class FailureAlertsTests(unittest.TestCase):
+    """Run the n8n failure alert node against fake notifications."""
     def notification(self, payload, handler="4321") -> dict[str, object]:
         """Run the alert template's JS code against a payload via node:vm."""
         code = TEMPLATE["nodes"][1]["parameters"]["jsCode"]

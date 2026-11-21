@@ -27,6 +27,7 @@ base = load("netbird-host-peer")
 
 
 class IndependentAccessTest(unittest.TestCase):
+    """Verify redundant access for exact hosts without implicit enrollment."""
     def test_four_exact_hosts_opt_in_no_implicit_enrollment(self) -> None:
         docs = mesh.manifests()
         assert len(docs) == 8

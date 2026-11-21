@@ -12,6 +12,7 @@ CHARTS = ("private-gateway", "syncthing", "img-proxy", "litellm-infra", "socrat-
 
 
 class SafeNginxLoggingTests(unittest.TestCase):
+    """Verify nginx access logging renders with sensitive data stripped."""
     def render(self, chart: str) -> list[dict[str, object]]:
         return list(
             yaml.safe_load_all(

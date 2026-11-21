@@ -46,6 +46,7 @@ def _text(value: object) -> str:
 
 
 class GitOpsTests(unittest.TestCase):
+    """Validate the NetBird GitOps values and rendered manifests."""
     def values(self) -> dict[str, object]:
         """Load the netbird deployment values document."""
         result: dict[str, object] = yaml.safe_load(

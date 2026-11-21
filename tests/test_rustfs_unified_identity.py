@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class IdentityGuards(unittest.TestCase):
+    """Ensure the unified identity helper stays atomic and scoped."""
     def test_helper_is_explicit_atomic_and_scoped(self) -> None:
         tree = ast.parse((ROOT / "scripts/rustfs/unified_identity.py").read_text())
         source = ast.unparse(tree)

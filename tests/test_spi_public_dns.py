@@ -17,6 +17,8 @@ def load(path, name):
 
 
 class SPIOnlyDNSTests(unittest.TestCase):
+    """Ensure DNS zone changes stay SPI-only across health states."""
+
     def test_only_spi_changes_for_all_four_health_states(self):
         new = load(ROOT / "scripts/public_dns_zone.py", "spi_zone")
         old = load(ROOT / "scripts/public_dns_zone.py", "previous_zone")
@@ -38,6 +40,8 @@ class SPIOnlyDNSTests(unittest.TestCase):
 
 
 class DNSPreflightSafetyTests(unittest.TestCase):
+    """Verify preflight rejects directories and symlinked inputs."""
+
     def test_loader_rejects_directories_and_symlinks(self):
         import tempfile
 
@@ -128,6 +132,8 @@ class DNSPreflightSafetyTests(unittest.TestCase):
 
 
 class ExclusiveRendererTests(unittest.TestCase):
+    """Check the renderer never overwrites an existing regular file."""
+
     def test_existing_regular_file_is_not_overwritten(self):
         import tempfile
 

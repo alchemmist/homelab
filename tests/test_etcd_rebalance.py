@@ -59,6 +59,7 @@ class FakeEtcd:
 
 
 class RebalanceTest(unittest.TestCase):
+    """Verify etcd rebalance safety checks before any member removal."""
     def test_final_verification_never_removes_an_unexpected_member(self) -> None:
         """Fail the final verification before any unexpected removal."""
         client = FakeEtcd()

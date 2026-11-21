@@ -15,6 +15,7 @@ SPEC.loader.exec_module(SIGNALS)
 
 
 class SignalInventoryTests(unittest.TestCase):
+    """Check the signal inventory's accounting rules."""
     def test_observations_are_not_a_capacity_approval(self) -> None:
         pods = {
             "windowSeconds": 600,
@@ -71,6 +72,7 @@ if __name__ == "__main__":
 
 
 class PrivilegedJournalTests(unittest.TestCase):
+    """Verify privileged journal evidence collection requirements."""
     def evidence(self, directory, **updates) -> None:
         from datetime import datetime, timezone
 

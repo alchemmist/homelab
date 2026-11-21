@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class NodeSshClientTests(unittest.TestCase):
+    """Exercise the node SSH client helper against temporary state."""
     def setUp(self) -> None:
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)

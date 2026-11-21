@@ -25,6 +25,7 @@ owner = load("nb_owner", "netbird-owner-handover.py")
 
 
 class PublicEntryTests(unittest.TestCase):
+    """Validate the scoped identity public entry manifests."""
     def test_scoped_identity_entry(self) -> None:
         docs = entry.manifests()
         assert all(d["metadata"]["namespace"] in ["identity", "netbird-pilot"] for d in docs)

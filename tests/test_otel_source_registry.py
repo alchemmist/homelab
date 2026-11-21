@@ -133,6 +133,7 @@ def fixtures() -> tuple[
 
 
 class SourceRegistryTests(unittest.TestCase):
+    """Check the source registry's active inventory completeness."""
     def test_complete_active_inventory_preserves_labels_and_ownership(self) -> None:
         args = fixtures()
         before = copy.deepcopy(args)

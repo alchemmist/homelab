@@ -59,6 +59,7 @@ def existing_forwards() -> list[dict[str, str]]:
 
 
 class SimulatedRouter(ROUTER.Router):
+    """Router stub with canned rows and injectable add-port failures."""
     def __init__(self, rows=None, fail_add_port=None) -> None:
         self.rows = copy.deepcopy(existing_forwards() if rows is None else rows)
         self.mutations: list[dict[str, str]] = []
@@ -113,6 +114,7 @@ class SimulatedRouter(ROUTER.Router):
 
 
 class RouterApiTests(unittest.TestCase):
+    """Exercise the router API against the simulated router."""
     def run_main(self, router, *arguments) -> dict[str, object]:
         output = io.StringIO()
         with (

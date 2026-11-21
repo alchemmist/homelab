@@ -26,6 +26,7 @@ graphics = load("homelab_graphics", ROOT / "homelab-graphics")
 
 
 class LaunchGuard(unittest.TestCase):
+    """Exercise the sway desktop launch guard behaviour."""
     def setUp(self) -> None:
         self.runtime = Path(self.id().replace(".", "_"))
         self.runtime.mkdir(exist_ok=True)
@@ -68,6 +69,7 @@ class LaunchGuard(unittest.TestCase):
 
 
 class GraphicsWake(unittest.TestCase):
+    """Check the graphics wake guard's file-based state handling."""
     def setUp(self) -> None:
         self.directory = Path(self.id().replace(".", "_"))
         self.directory.mkdir(exist_ok=True)

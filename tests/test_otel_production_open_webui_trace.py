@@ -77,6 +77,7 @@ def document() -> dict[str, list[_ResourceSpan]]:
 
 
 class OpenWebuiProductionTraceTests(unittest.TestCase):
+    """Verify production Open WebUI trace summaries require real resources."""
     def test_real_application_server_resource_and_parent_are_required(self) -> None:
         result = module().summarize_production_open_webui(document(), TRACE, PARENT)
         assert result["success"]

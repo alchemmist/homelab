@@ -59,6 +59,7 @@ class _HomeDocument(TypedDict):
 
 
 class RancherDashboardFilteringTest(unittest.TestCase):
+    """Verify Rancher dashboard rendering filters disallowed resources."""
     def render(self, resources, allowed=()) -> tuple[list[_Document], MagicMock]:
         output = io.StringIO()
         with (

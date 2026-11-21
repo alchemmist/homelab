@@ -135,6 +135,7 @@ def snapshot() -> dict[str, list[dict[str, object]]]:
 
 
 class PilotTests(unittest.TestCase):
+    """Check pilot inputs fail closed without leaking rendered output."""
     def test_checked_in_inputs_fail_closed_without_output(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             target = Path(d) / "rendered"
@@ -488,6 +489,7 @@ class PilotTests(unittest.TestCase):
 
 
 class UpstreamContractTests(unittest.TestCase):
+    """Optional contract checks against the pinned upstream schema."""
     @unittest.skipUnless(
         os.environ.get("NETBIRD_OPENAPI_FILE"), "optional pinned upstream schema not supplied"
     )
@@ -526,6 +528,7 @@ class UpstreamContractTests(unittest.TestCase):
 
 
 class ProbeTests(unittest.TestCase):
+    """Run the NetBird probe module loaded from its pinned location."""
     @classmethod
     def setUpClass(cls) -> None:
         spec = importlib.util.spec_from_file_location(
