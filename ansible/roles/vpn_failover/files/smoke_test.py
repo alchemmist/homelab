@@ -190,7 +190,7 @@ def main(runtime_root=ROOT):
             try:
                 if run("systemctl", "show", unit, "--property=LoadState", "--value") != "not-found":
                     run("systemctl", "stop", unit)
-            except Exception:
+            except (OSError, RuntimeError, sqlite3.Error, subprocess.SubprocessError):
                 cleanup_errors.append("Could not stop " + unit)
         if namespace_created and not cleanup_errors:
             try:
@@ -198,7 +198,7 @@ def main(runtime_root=ROOT):
                 if remaining:
                     raise RuntimeError("Smoke namespace still has processes")
                 run("ip", "netns", "delete", NAMESPACE)
-            except Exception:
+            except (OSError, RuntimeError, sqlite3.Error, subprocess.SubprocessError):
                 cleanup_errors.append("Could not remove isolated network namespace")
         if not cleanup_errors:
             shutil.rmtree(temporary)
@@ -227,6 +227,14 @@ if __name__ == "__main__":
         parser = argparse.ArgumentParser()
         parser.add_argument("--runtime-root", type=Path, default=ROOT)
         main(parser.parse_args().runtime_root)
-    except Exception as error:
+    except (
+        OSError,
+        RuntimeError,
+        ValueError,
+        KeyError,
+        TypeError,
+        sqlite3.Error,
+        subprocess.SubprocessError,
+    ) as error:
         print(json.dumps({"error": str(error)}))
         raise SystemExit(1)
