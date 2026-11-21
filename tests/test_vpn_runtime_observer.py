@@ -12,6 +12,7 @@ spec.loader.exec_module(m)
 
 
 def test_relay_latch_is_not_sufficient_and_split_brain_unknown():
+    """Test behavior for test_relay_latch_is_not_sufficient_and_split_brain_unknown."""
     p = m.PROFILES["socrat-4"]
 
     def state(mode, agent, native, marker):
@@ -33,6 +34,7 @@ def test_relay_latch_is_not_sufficient_and_split_brain_unknown():
 
 
 def test_backend_requires_native_both_units_and_server_ownership():
+    """Test behavior for test_backend_requires_native_both_units_and_server_ownership."""
     p = m.PROFILES["socrat-2"]
     assert m.classify(p, {"mode": "kubernetes"}, True, [False, False], False) == 0
     assert m.classify(p, {"mode": "fallback"}, False, [True, True], True) == 1
@@ -41,6 +43,7 @@ def test_backend_requires_native_both_units_and_server_ownership():
 
 
 def test_socket_observation_does_not_call_established_sessions_off(tmp_path):
+    """Test behavior for test_socket_observation_does_not_call_established_sessions_off."""
     net = tmp_path / "net"
     net.mkdir()
     for name in ["tcp", "tcp6", "udp", "udp6"]:
@@ -52,6 +55,7 @@ def test_socket_observation_does_not_call_established_sessions_off(tmp_path):
 
 
 def test_export_is_atomic_numeric_no_accounts_or_paths(tmp_path):
+    """Test behavior for test_export_is_atomic_numeric_no_accounts_or_paths."""
     p = tmp_path / "vpn-runtime.prom"
     m.write_metrics(
         p,
@@ -72,6 +76,7 @@ def test_export_is_atomic_numeric_no_accounts_or_paths(tmp_path):
 
 
 def test_observer_has_no_recovery_or_mutating_command():
+    """Test behavior for test_observer_has_no_recovery_or_mutating_command."""
     s = (ROOT / "scripts/vpn-runtime-observer.py").read_text()
     for forbidden in [
         "'tick'",
@@ -88,6 +93,7 @@ def test_observer_has_no_recovery_or_mutating_command():
 
 
 def test_moscow_reuses_actual_watchdog_observation_without_more_tls_or_lock(tmp_path):
+    """Test behavior for test_moscow_reuses_actual_watchdog_observation_without_more_tls_or_lock."""
     from types import SimpleNamespace
 
     profile = dict(m.PROFILES["socrat-4"], marker=str(tmp_path / "fallback.active"))

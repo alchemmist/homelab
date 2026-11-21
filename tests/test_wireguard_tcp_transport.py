@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[1] / "ansible/roles/wireguard_tcp_transp
 
 
 def load(name):
+    """Test behavior for load."""
     spec = importlib.util.spec_from_file_location(name, ROOT / (name + ".py"))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

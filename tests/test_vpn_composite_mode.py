@@ -16,6 +16,7 @@ P = next(
 
 
 def component(c, runtime=0, check=1, off=0, success=1, observed="0+15x20", extra=""):
+    """Test behavior for component."""
     ip = "10.250.0.40" if c == "relay" else "10.250.0.2"
     labels = f'job="node-exporter",instance="{ip}:9100",component="{c}"' + extra
     data = {
