@@ -278,7 +278,8 @@ def default_runner(argv):
 def disk_free_bytes(prometheus_url):
     query = (
         'max(node_filesystem_avail_bytes{job="node-exporter",mountpoint="/",fstype=~"ext4|xfs"}'
-        ' * on(instance) group_left(nodename) node_uname_info{job="node-exporter",nodename="socrat-1"})'
+        ' * on(instance) group_left(nodename) node_uname_info{'
+        'job="node-exporter",nodename="socrat-1"})'
     )
     url = prometheus_url.rstrip("/") + "/api/v1/query?" + urllib.parse.urlencode({"query": query})
     try:
