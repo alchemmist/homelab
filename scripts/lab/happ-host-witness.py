@@ -63,11 +63,16 @@ def main():
     survivors = original.pop("flows")
     start = time.monotonic()
     print("baseline verified; start guest-only cycles now", flush=True)
+    mesh_failures = 0
     next_connect = start + 15
     while time.monotonic() - start < seconds:
         time.sleep(2)
         if time.monotonic() >= next_connect:
-            check_mesh_tcp()
+            try:
+                check_mesh_tcp()
+            except OSError as exc:
+                mesh_failures += 1
+                print(f"mesh TCP failed at +{time.monotonic()-start:.1f}s: {type(exc).__name__}", flush=True)
             next_connect = time.monotonic() + 15
         current = sample()
         survivors &= current.pop("flows")
@@ -78,6 +83,8 @@ def main():
                 "host witness changed; stop acceptance and investigate, do not alter host routes"
             )
     check_mesh_tcp()
+    if mesh_failures:
+        raise SystemExit(f"mesh TCP failed in {mesh_failures} sample(s); acceptance failed")
     print(
         "witness passed: sampled host state and an original relay tuple persisted; guest VPN state must be verified independently"
     )

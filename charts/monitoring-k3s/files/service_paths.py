@@ -85,7 +85,7 @@ def pair():
             vip = socket.gethostbyname(SERVICE)
         except socket.gaierror:
             return "service_dns"
-        if vip != "10.43.167.29":
+        if vip != os.environ["BOT_SERVICE_VIP"]:
             return "service_vip_policy_mismatch"
         via = health(SERVICE, 8080)
         direct = [health(*addr) for addr in targets]
