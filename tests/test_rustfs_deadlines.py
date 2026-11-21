@@ -140,9 +140,13 @@ class Deadlines(unittest.TestCase):
                     # A second connection proves the bounded slot was returned,
                     # not merely that a client-side watchdog closed a socket.
                     until = time.monotonic() + 0.5
-                    while not server.slots.acquire(blocking=False):
-                        assert time.monotonic() < until
+                    acquired = False
+                    while time.monotonic() < until:
+                        if server.slots.acquire(blocking=False):
+                            acquired = True
+                            break
                         time.sleep(0.01)
+                    assert acquired, "slot not returned before deadline"
                     server.slots.release()
                     with socket.create_connection(server.server_address) as c:
                         c.settimeout(1)

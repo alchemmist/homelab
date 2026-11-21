@@ -244,7 +244,7 @@ class CollectorTests(unittest.TestCase):
         assert 'socrat_vpn_client_active{email="mom"} 1' in text
         assert 'socrat_vpn_client_active{email="tim"} 1' in text
         assert 'email="tv"' not in text
-        assert 'email="tv' not in "@unused@"
+        assert 'email="tv' not in text
 
     def test_failure_replaces_previous_values_with_failed_collection(self) -> None:
         with patch.object(

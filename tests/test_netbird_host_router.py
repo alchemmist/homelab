@@ -190,7 +190,8 @@ class HostRouterTests(unittest.TestCase):
         assert context.verify_mode == ssl.CERT_REQUIRED
         assert context.check_hostname
         assert _invoke(sni_callback, None, "rancher.socrat.alchemmist.xyz", None) == ssl.ALERT_DESCRIPTION_UNRECOGNIZED_NAME
-        assert _invoke(sni_callback, type("S", (), {})(), "grafana.socrat.alchemmist.xyz", None) is None
+        tls_socket = type("S", (), {})()
+        assert _invoke(sni_callback, tls_socket, "grafana.socrat.alchemmist.xyz", None) is None
         assert _invoke(bind_allowed, "100.96.0.8")
         for address in (
             "0.0.0.0",
