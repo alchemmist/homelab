@@ -3,10 +3,10 @@
 import argparse
 import json
 import os
-from pathlib import Path
 import stat
 import sys
 import tempfile
+from pathlib import Path
 
 import yaml
 

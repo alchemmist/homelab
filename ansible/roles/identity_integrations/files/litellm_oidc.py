@@ -5,14 +5,12 @@ import argparse
 import hashlib
 import json
 import os
-from pathlib import Path
 import secrets
 import socket
 import subprocess
 import urllib.request
 import uuid
-from collections.abc import Sequence
-from typing import Protocol, cast
+from pathlib import Path
 
 HOST = "auth.socrat.alchemmist.xyz"
 BASE = "https://" + HOST

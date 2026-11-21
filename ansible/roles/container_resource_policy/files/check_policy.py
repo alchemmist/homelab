@@ -7,7 +7,6 @@ import subprocess
 import sys
 from typing import cast
 
-
 RESOURCE_NAMES = ("cpu", "memory", "ephemeral-storage")
 
 

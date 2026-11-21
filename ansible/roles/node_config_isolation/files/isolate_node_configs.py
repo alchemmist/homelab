@@ -3,15 +3,14 @@
 """Audit that per-node home config files stay isolated per node."""
 
 import argparse
-from datetime import datetime, timezone
 import json
 import os
-from pathlib import Path
 import pwd
 import shutil
 import stat
 import tempfile
-
+from datetime import datetime, timezone
+from pathlib import Path
 
 CONFIG_DIRECTORIES = (".config/hypr", ".config/waybar", ".config/alacritty")
 SCRIPT_NAMES = (
