@@ -1,17 +1,36 @@
 import math
 import shutil
 import time
+from collections.abc import Sequence
+from os import terminal_size
+from typing import Protocol, TypedDict
 
 DURATION = 2.2
 FRAME_INTERVAL = 0.05
 
 
-def smooth(value: float) -> float:
+class _TextOutput(Protocol):
+    def write(self, data: str) -> int: ...
+
+    def flush(self) -> None: ...
+
+
+class _PortraitSample(TypedDict):
+    rows: int
+    columns: int
+    lines: list[str]
+
+
+def smooth(value: float):
     value = min(1.0, max(0.0, value))
     return value * value * (3 - 2 * value)
 
 
-def portrait_frame(sample, colors, seconds) -> list[str]:
+def portrait_frame(
+    sample: _PortraitSample,
+    colors: Sequence[Sequence[Sequence[int]]],
+    seconds: float,
+):
     height = sample["rows"]
     width = sample["columns"]
     t = seconds * (5.2 / DURATION)
@@ -57,11 +76,18 @@ def portrait_frame(sample, colors, seconds) -> list[str]:
     return lines
 
 
-def play(initial, final, sample, colors, geometry, output) -> bool:
+def play(
+    initial: str,
+    final: str,
+    sample: _PortraitSample,
+    colors: Sequence[Sequence[Sequence[int]]],
+    geometry: terminal_size,
+    output: _TextOutput,
+):
     height = sample["rows"]
     resized = False
 
-    def draw(seconds):
+    def draw(seconds: float):
         output.write(f"\033[{height}A\r")
         for line in portrait_frame(sample, colors, seconds):
             output.write("\033[2C" + line + "\033[1B\r")

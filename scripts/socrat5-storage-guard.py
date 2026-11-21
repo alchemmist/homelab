@@ -8,12 +8,13 @@ import os
 import subprocess
 import time
 from pathlib import Path
+from typing import cast
 
 NAME = "homelab-socrat5-local-storage"
 KINDS = ("ValidatingAdmissionPolicy", "ValidatingAdmissionPolicyBinding")
 
 
-def kub(args, document=None):
+def kub(args: list[str], document: dict[str, object] | None = None):
     p = subprocess.run(
         ["env", "K3S_CONFIG_FILE=/dev/null", "kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml"]
         + args,
@@ -27,7 +28,7 @@ def kub(args, document=None):
     return json.loads(p.stdout) if p.stdout.strip() else None
 
 
-def canonical(spec):
+def canonical(spec: object):
     s = json.loads(json.dumps(spec))
     c = s.get("matchConstraints")
     if c:
@@ -42,8 +43,10 @@ def canonical(spec):
     return s
 
 
-def validate_existing(want, have):
-    if have["metadata"].get("labels", {}).get("homelab.io/owner") != "socrat5-worker":
+def validate_existing(want: dict[str, object], have: dict[str, object]):
+    metadata = cast("dict[str, object]", have["metadata"])
+    labels = cast("dict[str, object]", metadata.get("labels", {}))
+    if labels.get("homelab.io/owner") != "socrat5-worker":
         raise ValueError("Foreign ownership; refuse adoption")
     if canonical(want["spec"]) != canonical(have["spec"]):
         raise ValueError("Admission guard drift; explicit review/preimage/CAS required")

@@ -7,7 +7,7 @@ from fixtures import cases_for, check_verdict, expected
 from sandbox import inspect_archive
 
 
-def archive(entries):
+def archive(entries: list[tuple[str, bytes, bytes]]):
     buffer = io.BytesIO()
     with tarfile.open(fileobj=buffer, mode="w") as stream:
         for name, content, kind in entries:
@@ -219,7 +219,7 @@ SPOOF = (
 
 
 class NodeVerifierTests(unittest.TestCase):
-    def run_source(self, task, source, seed=7):
+    def run_source(self, task: str, source: str, seed: int = 7):
         import pathlib
         import subprocess
         import tempfile

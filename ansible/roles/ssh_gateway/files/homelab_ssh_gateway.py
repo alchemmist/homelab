@@ -8,14 +8,29 @@ import re
 import socket
 import subprocess
 import sys
-from typing import cast
+from typing import NotRequired, TypedDict
 
 
 CONFIG = Path.home() / ".config/homelab/ssh-gateway.json"
 STATE = Path.home() / ".local/state/homelab/ssh-mappings.json"
 
 
-def load_config(path) -> dict[str, object]:
+class _GatewayNode(TypedDict):
+    name: str
+    address: str
+    external_port: int
+    ports: list[int]
+    relay: NotRequired[bool]
+
+
+class _GatewayConfig(TypedDict):
+    nodes: list[_GatewayNode]
+    gateway_address: str
+    external_address: str
+    router_description: str
+
+
+def load_config(path: Path):
     config = json.loads(path.read_text())
     ports = set()
     for node in config["nodes"]:
@@ -28,22 +43,22 @@ def load_config(path) -> dict[str, object]:
         if not node["ports"] or any(not 1 <= port <= 65535 for port in node["ports"]):
             raise ValueError("Invalid server ports")
     ipaddress.IPv4Address(config["gateway_address"])
-    return cast("dict[str, object]", config)
+    return config
 
 
-def ssh_port(node) -> int:
+def ssh_port(node: _GatewayNode):
     for port in node["ports"]:
         try:
             with socket.create_connection((node["address"], port), timeout=3) as peer:
                 peer.settimeout(3)
                 if peer.recv(256).startswith(b"SSH-"):
-                    return cast("int", port)
+                    return port
         except OSError:
             continue
     raise RuntimeError(f"No SSH listener on {node['name']} ({node['address']})")
 
 
-def reconcile(config) -> None:
+def reconcile(config: _GatewayConfig):
     prefix = ["upnpc", "-u", config["router_description"]]
     listing = subprocess.run(prefix + ["-l"], capture_output=True, text=True, timeout=15)
     if (
@@ -139,7 +154,7 @@ def reconcile(config) -> None:
         raise RuntimeError("\n".join(errors))
 
 
-def relay(config, name) -> None:
+def relay(config: _GatewayConfig, name: str):
     node = next(node for node in config["nodes"] if node["name"] == name and node.get("relay"))
     port = ssh_port(node)
     os.execv(
@@ -147,7 +162,7 @@ def relay(config, name) -> None:
     )
 
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, default=CONFIG)
     parser.add_argument("action", choices=["reconcile", "relay"])

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
+from collections.abc import Sequence
 import json
 import sys
-from typing import cast
+from typing import TypedDict
 
 import yaml
 
@@ -18,7 +19,16 @@ DASHBOARD_UIDS = {
 AGGREGATION = "avg without (pod, namespace, container, endpoint, service)"
 
 
-def rewrite_panels(panels) -> None:
+class _PromTarget(TypedDict, total=False):
+    expr: str
+
+
+class _PromPanel(TypedDict, total=False):
+    targets: list[_PromTarget]
+    panels: list["_PromPanel"]
+
+
+def rewrite_panels(panels: list[_PromPanel]):
     for panel in panels:
         for target in panel.get("targets", []):
             expression = target.get("expr", "")
@@ -27,7 +37,7 @@ def rewrite_panels(panels) -> None:
         rewrite_panels(panel.get("panels", []))
 
 
-def render(resources) -> list[object]:
+def render(resources: Sequence[object]):
     for resource in resources:
         apply_alert_descriptions(resource)
         if isinstance(resource, dict) and resource.get("kind") == "PrometheusRule":
@@ -47,10 +57,10 @@ def render(resources) -> list[object]:
                     rewrite_panels(dashboard.get("panels", []))
                 apply_descriptions(dashboard)
                 resource["data"][key] = json.dumps(dashboard, separators=(",", ":"))
-    return cast("list[object]", resources)
+    return resources
 
 
-def main() -> None:
+def main():
     resources = list(yaml.safe_load_all(sys.stdin))
     yaml.safe_dump_all(render(resources), sys.stdout, sort_keys=False)
 

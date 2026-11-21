@@ -15,7 +15,7 @@ import subprocess
 import sys
 
 
-def arc(args, cwd=None) -> str:
+def arc(args: list[str], cwd: str | None = None):
     try:
         return subprocess.run(
             ["arc"] + args,
@@ -28,14 +28,14 @@ def arc(args, cwd=None) -> str:
         return ""
 
 
-def write_atomic(path, content) -> None:
+def write_atomic(path: str, content: str):
     tmp = f"{path}.tmp.{os.getpid()}"
     with open(tmp, "w") as f:
         f.write(content)
     os.replace(tmp, path)
 
 
-def refresh(root, branch, base) -> None:
+def refresh(root: str, branch: str, base: str):
     os.makedirs(os.path.dirname(base), exist_ok=True)
     pr_out = ""
     # arc pr status резолвит локальную ветку -> remote -> review-request.
@@ -51,7 +51,7 @@ def refresh(root, branch, base) -> None:
     write_atomic(base + ".pr", pr_out)
 
 
-def main() -> None:
+def main():
     if len(sys.argv) >= 5 and sys.argv[1] == "refresh":
         refresh(sys.argv[2], sys.argv[3], sys.argv[4])
 

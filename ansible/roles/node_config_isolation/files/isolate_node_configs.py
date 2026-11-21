@@ -8,6 +8,11 @@ import pwd
 import shutil
 import stat
 import tempfile
+from typing import Protocol
+
+
+class _Condition(Protocol):
+    def __bool__(self) -> bool: ...
 
 
 CONFIG_DIRECTORIES = (".config/hypr", ".config/waybar", ".config/alacritty")
@@ -30,14 +35,14 @@ CONFIG_FILES = (
 )
 
 
-def inside(path: Path, home: Path) -> Path:
+def inside(path: Path, home: Path):
     resolved = path.resolve(strict=True)
     if resolved != home and home not in resolved.parents:
         raise ValueError(f"Configuration target is outside account home: {path}")
     return resolved
 
 
-def inspect_tree(path: Path, home: Path, ancestors: tuple[Path, ...] = ()) -> bool:
+def inspect_tree(path: Path, home: Path, ancestors: tuple[Path, ...] = ()):
     resolved = inside(path, home)
     mode = resolved.stat().st_mode
     if stat.S_ISREG(mode):
@@ -52,7 +57,7 @@ def inspect_tree(path: Path, home: Path, ancestors: tuple[Path, ...] = ()) -> bo
     return linked
 
 
-def check_parents(path, home) -> None:
+def check_parents(path: Path, home: Path):
     for parent in path.parents:
         if parent == home:
             return
@@ -61,7 +66,7 @@ def check_parents(path, home) -> None:
     raise ValueError(f"Configuration path is outside account home: {path}")
 
 
-def isolate(home, check=False) -> dict[str, object]:
+def isolate(home: str | os.PathLike[str], check: _Condition = False):
     home = Path(home).resolve(strict=True)
     paths = list(CONFIG_DIRECTORIES) + list(CONFIG_FILES)
     if (home / "scripts").is_symlink():
@@ -111,7 +116,7 @@ def isolate(home, check=False) -> dict[str, object]:
     return result
 
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--home", required=True)
     parser.add_argument("--user", required=True)

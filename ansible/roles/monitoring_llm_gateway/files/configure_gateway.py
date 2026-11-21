@@ -11,19 +11,75 @@ import subprocess
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Mapping, Sequence
+from http.client import HTTPMessage
+from types import TracebackType
+from typing import IO, Protocol, Self
+
+
+class _Condition(Protocol):
+    def __bool__(self) -> bool: ...
+
+
+class _CommandResult(Protocol):
+    returncode: int
+    stdout: str
+
+
+class _Runner(Protocol):
+    def __call__(
+        self,
+        args: Sequence[str],
+        *,
+        capture_output: bool,
+        text: bool,
+        timeout: float,
+        env: Mapping[str, str],
+    ) -> _CommandResult: ...
+
+
+class _ResponseBody(Protocol):
+    status: int
+
+    def read(self, n: int = -1, /) -> bytes: ...
+
+    def __enter__(self) -> Self: ...
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None: ...
+
+
+class _Opener(Protocol):
+    def __call__(self, req: urllib.request.Request, *, timeout: float) -> _ResponseBody: ...
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl) -> None:
+    def redirect_request(
+        self,
+        req: urllib.request.Request,
+        fp: IO[bytes],
+        code: int,
+        msg: str,
+        headers: HTTPMessage,
+        newurl: str,
+    ):
         return None  # Never forward an authorization header to a redirected host.
 
 
-def verify(args, runner=None, opener=None) -> bool:
+def verify(
+    args: argparse.Namespace,
+    runner: _Runner | None = None,
+    opener: _Opener | None = None,
+):
     runner = runner or subprocess.run
-    opener = opener or urllib.request.build_opener(NoRedirect()).open
+    open_url = opener or urllib.request.build_opener(NoRedirect()).open
     kubectl = ["k3s", "kubectl", "--kubeconfig", args.kubeconfig, "--request-timeout=15s"]
 
-    def get(namespace, kind, name):
+    def get(namespace: str, kind: str, name: str):
         result = runner(
             kubectl + ["-n", namespace, "get", kind, name, "-o", "json"],
             capture_output=True,
@@ -88,11 +144,11 @@ def verify(args, runner=None, opener=None) -> bool:
     if not token or not master:
         raise RuntimeError("Empty existing key; refusing repair")
 
-    def request(path, credential=None, read_json=False):
+    def request(path: str, credential: str | None = None, read_json: _Condition = False):
         headers = {} if credential is None else {"Authorization": "Bearer " + credential}
         req = urllib.request.Request(base + path, headers=headers, method="GET")
         try:
-            with opener(req, timeout=30) as response:
+            with open_url(req, timeout=30) as response:
                 if response.status != 200:
                     return response.status, None
                 if not read_json:
@@ -116,7 +172,7 @@ def verify(args, runner=None, opener=None) -> bool:
     return False
 
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--namespace", required=True)
     parser.add_argument("--release", required=True)

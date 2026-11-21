@@ -37,7 +37,13 @@ class QueueWebTests(unittest.TestCase):
         cls.thread.join(2)
         cls.auth_patch.stop()
 
-    def request(self, method="GET", path="/queue/", body=None, extra=None):
+    def request(
+        self,
+        method: str = "GET",
+        path: str = "/queue/",
+        body: str | None = None,
+        extra: dict[str, str] | None = None,
+    ):
         headers = {"Host": "rustfs.socrat.alchemmist.xyz", "X-authentik-groups": "homelab-owner"}
         headers.update(extra or {})
         c = RealConnection("127.0.0.1", self.server.server_port, timeout=3)
@@ -168,7 +174,7 @@ class QueueHelmTests(unittest.TestCase):
         )
         docs = list(yaml.safe_load_all(raw))
 
-        def get(kind, name):
+        def get(kind: str, name: str):
             return next(
                 d for d in docs if d and d["kind"] == kind and d["metadata"]["name"] == name
             )

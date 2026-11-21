@@ -8,7 +8,6 @@ import sqlite3
 import sys
 import urllib.parse
 import urllib.request
-from typing import cast
 
 DATABASES = {"primary": "/srv/x-ui-lab/db/x-ui.db", "legacy": "/etc/x-ui/x-ui.db"}
 TABLES = (
@@ -32,15 +31,15 @@ RUNTIME_COLUMNS = {
 }
 
 
-def canonical(value) -> str:
+def canonical(value: object):
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
-def digest(value) -> str:
+def digest(value: object):
     return hashlib.sha256(canonical(value).encode()).hexdigest()
 
 
-def configuration(connection) -> dict[str, list[dict[str, object]]]:
+def configuration(connection: sqlite3.Connection):
     connection.row_factory = sqlite3.Row
     result = {}
     for table in TABLES:
@@ -54,7 +53,7 @@ def configuration(connection) -> dict[str, list[dict[str, object]]]:
     return result
 
 
-def normalize_subscription(body) -> list[str]:
+def normalize_subscription(body: bytes):
     text = body.decode("utf-8").strip()
     if "://" not in text:
         text = base64.b64decode(text + "=" * (-len(text) % 4), validate=True).decode("utf-8")
@@ -77,7 +76,7 @@ def normalize_subscription(body) -> list[str]:
     return sorted(links)
 
 
-def subscriptions(connection) -> dict[str, dict[str, object]]:
+def subscriptions(connection: sqlite3.Connection):
     settings = dict(connection.execute("SELECT key, value FROM settings"))
     if settings.get("subCertFile") or settings.get("subKeyFile"):
         raise ValueError("Local TLS subscription endpoint is unsupported")
@@ -122,11 +121,11 @@ def subscriptions(connection) -> dict[str, dict[str, object]]:
     return result
 
 
-def connect(path) -> sqlite3.Connection:
+def connect(path: str | os.PathLike[str]):
     return sqlite3.connect(Path(path).resolve().as_uri() + "?mode=ro", uri=True)
 
 
-def inspect(connection) -> dict[str, object]:
+def inspect(connection: sqlite3.Connection):
     if connection.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
         raise ValueError("SQLite integrity check failed")
     config = configuration(connection)
@@ -136,7 +135,7 @@ def inspect(connection) -> dict[str, object]:
     }
 
 
-def run(mode, directory) -> None:
+def run(mode: str, directory: str | os.PathLike[str]):
     if os.geteuid() != 0:
         raise ValueError("Run as root")
     os.umask(0o077)
@@ -174,18 +173,12 @@ def run(mode, directory) -> None:
         expected = json.loads(manifest_path.read_text())
         if expected != current:
             raise ValueError("VPN configuration or subscriptions changed")
-    count = 0
-    links = 0
-    for item in current.values():
-        subscriptions = cast("dict[str, object]", item["subscriptions"])
-        count += len(subscriptions)
-        links += sum(
-            cast("int", cast("dict[str, object]", sub)["links"]) for sub in subscriptions.values()
-        )
+    count = sum(len(item["subscriptions"]) for item in current.values())
+    links = sum(sub["links"] for item in current.values() for sub in item["subscriptions"].values())
     print(f"{mode}: {len(current)} databases, {count} subscriptions, {links} links verified")
 
 
-def main() -> int:
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("mode", choices=("snapshot", "verify"))
     parser.add_argument("--directory", required=True)

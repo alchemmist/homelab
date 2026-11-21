@@ -7,7 +7,12 @@ from pathlib import Path
 import sqlite3
 import sys
 import tempfile
+from typing import Protocol
 from urllib.parse import urlsplit
+
+
+class _Condition(Protocol):
+    def __bool__(self) -> bool: ...
 
 
 HOSTNAME = "rancher.socrat.alchemmist.xyz"
@@ -24,7 +29,7 @@ DESIRED = {
 }
 
 
-def configure(db_path, check=False) -> dict[str, object]:
+def configure(db_path: str | os.PathLike[str], check: _Condition = False):
     db_path = Path(db_path).resolve()
     mode = "ro" if check else "rw"
     with closing(sqlite3.connect(f"{db_path.as_uri()}?mode={mode}", uri=True)) as connection:
@@ -75,7 +80,7 @@ def configure(db_path, check=False) -> dict[str, object]:
         return result
 
 
-def main() -> int:
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--db", required=True)
     parser.add_argument("--check", action="store_true")

@@ -5,7 +5,13 @@ import subprocess
 import sys
 
 
-def kubectl(binary, kubeconfig, namespace, args, payload: str | None = None) -> str:
+def kubectl(
+    binary: str,
+    kubeconfig: str,
+    namespace: str,
+    args: list[str],
+    payload: str | None = None,
+):
     command = [binary, "kubectl", "--kubeconfig", kubeconfig, "-n", namespace, *args]
     result = subprocess.run(command, input=payload, text=True, capture_output=True)
     if result.returncode != 0:
@@ -14,7 +20,7 @@ def kubectl(binary, kubeconfig, namespace, args, payload: str | None = None) -> 
     return result.stdout
 
 
-def exists(binary, kubeconfig, namespace, name) -> bool:
+def exists(binary: str, kubeconfig: str, namespace: str, name: str):
     result = subprocess.run(
         [binary, "kubectl", "--kubeconfig", kubeconfig, "-n", namespace, "get", "secret", name],
         text=True,
@@ -23,13 +29,13 @@ def exists(binary, kubeconfig, namespace, name) -> bool:
     return result.returncode == 0
 
 
-def read_secret(binary, kubeconfig, namespace, name) -> dict[str, str]:
+def read_secret(binary: str, kubeconfig: str, namespace: str, name: str):
     raw = kubectl(binary, kubeconfig, namespace, ["get", "secret", name, "-o", "json"])
     data = json.loads(raw)["data"]
     return {key: base64.b64decode(value).decode() for key, value in data.items()}
 
 
-def apply_secret(binary, kubeconfig, namespace, name, data) -> None:
+def apply_secret(binary: str, kubeconfig: str, namespace: str, name: str, data: dict[str, str]):
     body = {
         "apiVersion": "v1",
         "kind": "Secret",
@@ -40,11 +46,11 @@ def apply_secret(binary, kubeconfig, namespace, name, data) -> None:
     kubectl(binary, kubeconfig, namespace, ["apply", "-f", "-"], json.dumps(body))
 
 
-def filesystem_config(directory: str) -> str:
+def filesystem_config(directory: str):
     return "type: FILESYSTEM\nconfig:\n  directory: " + directory + "\n"
 
 
-def ensure(binary, kubeconfig, namespace) -> list[str]:
+def ensure(binary: str, kubeconfig: str, namespace: str):
     created = []
     if not exists(binary, kubeconfig, namespace, "thanos-objstore-raw"):
         apply_secret(
@@ -72,7 +78,7 @@ def ensure(binary, kubeconfig, namespace) -> list[str]:
     return created
 
 
-def main() -> int:
+def main():
     binary, kubeconfig, namespace = sys.argv[1:4]
     ensure(binary, kubeconfig, namespace)
     return 0

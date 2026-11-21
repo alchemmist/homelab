@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(path, name):
+def load(path: Path, name: str):
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -23,12 +23,12 @@ class SPIOnlyDNSTests(unittest.TestCase):
         guard.delta(old, new)
         for home, vps in ((True, True), (True, False), (False, True), (False, False)):
             with self.subTest(home=home, vps=vps):
-                before = old.render(123, home, vps).splitlines()
-                after = new.render(123, home, vps).splitlines()
+                before = old.render(123, home_up=home, vps_up=vps).splitlines()
+                after = new.render(123, home_up=home, vps_up=vps).splitlines()
                 self.assertEqual([r for r in after if not r.startswith("spi.socrat IN A ")], before)
                 self.assertEqual(
                     [r for r in after if r.startswith("spi.socrat IN A ")],
-                    ["spi.socrat IN A " + a for a in old.healthy_addresses(home, vps)],
+                    ["spi.socrat IN A " + a for a in old.healthy_addresses(home_up=home, vps_up=vps)],
                 )
                 self.assertNotIn("*.socrat", "\n".join(after))
         new.TTL += 1
@@ -77,10 +77,10 @@ class DNSPreflightSafetyTests(unittest.TestCase):
         previous_umask = guard.os.umask(0o077)
         self.addCleanup(guard.os.umask, previous_umask)
 
-        def fixture_permissions(ok, message):
+        def fixture_permissions(message: str, *, ok: object):
             # Fixture files are user-owned; retain every non-ownership safety check.
             if message not in ("Unsafe renderer", "Unsafe state directory"):
-                require(ok, message)
+                require(message, ok=bool(ok))
 
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)
@@ -88,7 +88,7 @@ class DNSPreflightSafetyTests(unittest.TestCase):
             current.write_text("VALUE = 1\n")
             (base / "proposed.py").write_text("VALUE = 2\n")
 
-            def acquired(fd, operation):
+            def acquired(fd: int, operation: int):
                 self.assertEqual(operation, guard.fcntl.LOCK_EX)
                 # Simulate a prior writer leaving an uncertain marker before releasing its lock.
                 (base / "uncertain.json").write_text("{}")

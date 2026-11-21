@@ -17,11 +17,11 @@ PUBLIC = "109.120.141.60"
 HOME = "109.173.40.247"
 
 
-def request(method, attrs=b""):
+def request(method: int, attrs: bytes = b"") -> bytes:
     return struct.pack("!HHI", method, len(attrs), COOKIE) + os.urandom(12) + attrs
 
 
-def parse_binding(packet, response):
+def parse_binding(packet: bytes, response: bytes) -> dict[str, object]:
     if (
         len(response) < 20
         or response[:2] != b"\x01\x01"
@@ -47,7 +47,7 @@ def parse_binding(packet, response):
     return {"address": address, "port": port}
 
 
-def exchange(address, packet, timeout):
+def exchange(address: str, packet: bytes, timeout: float) -> bytes | None:
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
         sock.settimeout(timeout)
         sock.sendto(packet, (address, 3478))
@@ -60,13 +60,15 @@ def exchange(address, packet, timeout):
             return None
 
 
-def check(expected=None, timeout=3):
+def check(expected: str | None = None, timeout: float = 3) -> dict[str, object]:
     packet = request(1)
     response = exchange(PUBLIC, packet, timeout)
     if response is None:
         raise ValueError("advertised STUN listener timed out")
     mapped = parse_binding(packet, response)
-    ip = ipaddress.ip_address(mapped["address"])
+    ip = ipaddress.ip_address(
+        mapped["address"] if isinstance(mapped["address"], str) else ""
+    )
     if not ip.is_global:
         raise ValueError("STUN returned nonpublic source: investigate service SNAT/hairpin")
     if expected and mapped["address"] != expected:

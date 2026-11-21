@@ -17,6 +17,7 @@ import socket
 import tempfile
 import urllib.error
 import urllib.request
+from typing import Literal, Never, TypedDict
 
 from app_iam import GROUP_MARKER, rows, validate_group
 
@@ -31,26 +32,77 @@ COLLECTIONS = (
 )
 
 
-def require(ok, message):
+class Contract(TypedDict):
+    """Slugged group contract describing the target application role."""
+
+    slug: str
+    role: str
+    enabled: bool
+    reason: str
+
+
+class GroupOp(TypedDict):
+    """Ensured Authentik group operation."""
+
+    kind: Literal["group"]
+    name: str
+
+
+class MappingOp(TypedDict):
+    """Ensured property-mapping operation."""
+
+    kind: Literal["mapping"]
+    settings: dict[str, str]
+
+
+class ProviderOp(TypedDict):
+    """Upstream OAuth provider reconciliation operation."""
+
+    kind: Literal["provider"]
+    slug: str
+    retained: list[str]
+    mappingNames: list[str]
+
+
+class BindingOp(TypedDict):
+    """Policy-binding reconciliation operation."""
+
+    kind: Literal["binding"]
+    slug: str
+    group: str
+
+
+Operation = GroupOp | MappingOp | ProviderOp | BindingOp
+
+
+class Plan(TypedDict):
+    """Ordered reconcile plan with its digest for the evidence receipt."""
+
+    sha256: str
+    operations: list[Operation]
+    groups: dict[str, Contract]
+
+
+def require(ok, message) -> None:
     if not ok:
         raise RuntimeError(message)
 
 
-def digest(value):
+def digest(value) -> str:
     return hashlib.sha256(
         json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
 
 
-def unique(items, key):
-    found = {}
+def unique(items, key) -> dict[str, dict[str, object]]:
+    found: dict[str, dict[str, object]] = {}
     for item in items:
         require(item[key] not in found, "Ambiguous " + key)
         found[item[key]] = item
     return found
 
 
-def group_expression(aliases):
+def group_expression(aliases) -> str:
     require(isinstance(aliases, dict), "Invalid claim aliases")
     for name, values in aliases.items():
         require(
@@ -74,16 +126,18 @@ def group_expression(aliases):
     )
 
 
-def profile_expression(base_expression, aliases):
+def profile_expression(base_expression, aliases) -> str:
     # Only transform the reviewed upstream profile groups entry. Preserve all
     # identity/avatar behavior and never mutate the global/default scope mapping.
     old = '"groups": [group.name for group in request.user.groups.all()],'
     require(base_expression.count(old) == 1, "Unreviewed base profile mapping")
-    return group_expression(aliases) + base_expression.replace(old, '"groups": names,')
+    return str(
+        group_expression(aliases) + base_expression.replace(old, '"groups": names,')
+    )
 
 
-def contracts(services, applications):
-    result = {}
+def contracts(services, applications) -> dict[str, Contract]:
+    result: dict[str, Contract] = {}
     for slug in sorted(set(services) | set(applications)):
         require(SLUG.fullmatch(slug), "Unsafe application slug")
         service = services.get(slug, {})
@@ -97,38 +151,44 @@ def contracts(services, applications):
                 SLUG.fullmatch(role) and type(settings.get("assignable")) is bool,
                 "Invalid role contract",
             )
-            result["app-" + slug + "-" + role] = {
-                "slug": slug,
-                "role": role,
-                "enabled": ready and settings["assignable"],
-                "reason": service.get("accessManagement", {}).get(
+            reason: str = str(
+                service.get("accessManagement", {}).get(
                     "reason", "No reviewed native adapter"
-                ),
-            }
+                )
+            )
+            result["app-" + slug + "-" + role] = Contract(
+                slug=slug,
+                role=role,
+                enabled=ready and settings["assignable"],
+                reason=reason,
+            )
     return result
 
 
-def inventory(api):
-    return {
-        p: sorted(
-            rows(api, p + ("?superuser_full_list=true" if p == "core/applications/" else "")),
-            key=lambda v: str(v["pk"]),
+def inventory(api) -> dict[str, list[object]]:
+    state: dict[str, list[object]] = {}
+    for p in COLLECTIONS:
+        fetched = rows(
+            api, p + ("?superuser_full_list=true" if p == "core/applications/" else "")
         )
-        for p in COLLECTIONS
-    }
+        ordered = sorted(fetched, key=lambda v: str(v["pk"]))
+        state[p] = ordered
+    return state
 
 
-def build_plan(state, services):
+def build_plan(state, services) -> Plan:
     groups = unique(state["core/groups/"], "name")
     apps = unique(state["core/applications/"], "slug")
     providers = unique(state["providers/oauth2/"], "pk")
     mappings = unique(state["propertymappings/provider/scope/"], "name")
     declared = contracts(services, apps)
-    operations = []
+    operations: list[Operation] = []
     for name in declared:
         if name in groups:
             validate_group(groups[name])
-            require(groups[name].get("children") == [], "App group has inherited children")
+            require(
+                groups[name].get("children") == [], "App group has inherited children"
+            )
         else:
             operations.append({"kind": "group", "name": name})
     # Validate ALL contracts before any write, including existing ANY bindings.
@@ -137,16 +197,22 @@ def build_plan(state, services):
         if not active:
             continue
         app = apps.get(slug)
+        provider_key: object = app.get("provider") if app is not None else None
         require(
-            app is not None
-            and app.get("provider") in providers
+            provider_key is not None
+            and provider_key in providers
+            and app is not None
             and app.get("policy_engine_mode") == "any",
             "Ready app/provider missing or mode drift: " + slug,
         )
-        provider = providers[app["provider"]]
-        require(provider["name"] == "homelab-" + slug, "Provider ownership mismatch: " + slug)
+        provider = providers[str(provider_key)]
+        require(
+            provider["name"] == "homelab-" + slug,
+            "Provider ownership mismatch: " + slug,
+        )
         expected_group_names = set(service.get("groups", [])) | set(active)
-        bindings = [b for b in state["policies/bindings/"] if b["target"] == app["pk"]]
+        target_pk: object = app["pk"] if app is not None else None
+        bindings = [b for b in state["policies/bindings/"] if b["target"] == target_pk]
         seen = set()
         for b in bindings:
             require(
@@ -159,7 +225,8 @@ def build_plan(state, services):
             )
             if b.get("group"):
                 require(
-                    b["group"] in {groups[n]["pk"] for n in expected_group_names if n in groups},
+                    b["group"]
+                    in {groups[n]["pk"] for n in expected_group_names if n in groups},
                     "Unexpected admission group: " + slug,
                 )
                 require(b["group"] not in seen, "Duplicate admission group")
@@ -179,56 +246,70 @@ def build_plan(state, services):
                 "Default profile missing",
             )
             prefix = "homelab-app-" + slug + "-"
-            wanted = [
+            default_expression: object = (
+                default["expression"] if default is not None else ""
+            )
+            wanted: list[dict[str, str]] = [
                 {
                     "name": prefix + "profile",
                     "scope_name": "profile",
-                    "expression": profile_expression(default["expression"], aliases),
+                    "expression": profile_expression(default_expression, aliases),
                 },
                 {
                     "name": prefix + "groups",
                     "scope_name": "groups",
-                    "expression": group_expression(aliases) + 'return {"groups": names}',
+                    "expression": group_expression(aliases)
+                    + 'return {"groups": names}',
                 },
             ]
             for want in wanted:
                 have = mappings.get(want["name"])
                 if have:
                     require(
-                        have.get("scope_name") == want["scope_name"], "Scope ownership mismatch"
+                        have.get("scope_name") == want["scope_name"],
+                        "Scope ownership mismatch",
                     )
                     require(
-                        have.get("expression", "").rstrip("\n") == want["expression"].rstrip("\n"),
+                        str(have.get("expression", "")).rstrip("\n")
+                        == want["expression"].rstrip("\n"),
                         "Managed scope drift; explicit migration required",
                     )
                 else:
                     operations.append({"kind": "mapping", "settings": want})
-            by_pk = {m["pk"]: m for m in mappings.values()}
+            by_pk: dict[object, dict[str, object]] = {
+                m["pk"]: m for m in mappings.values()
+            }
+            property_mappings: object = provider["property_mappings"]
+            if not isinstance(property_mappings, list):
+                message = "Invalid provider scope contract"
+                raise ValueError(message)
             require(
-                all(pk in by_pk for pk in provider["property_mappings"]), "Unknown provider scope"
+                all(pk in by_pk for pk in property_mappings), "Unknown provider scope"
             )
             retained = [
                 pk
-                for pk in provider["property_mappings"]
+                for pk in property_mappings
                 if by_pk[pk]["scope_name"] not in ("profile", "groups")
             ]
             # Preserve ONLY the reviewed default scopes on first migration.
-            for pk in provider["property_mappings"]:
+            for pk in property_mappings:
                 m = by_pk[pk]
                 if m["scope_name"] in ("profile", "groups"):
                     require(
-                        m["name"]
+                        str(m["name"])
                         in (
-                            default["name"],
+                            default["name"] if default is not None else "",
                             "homelab-groups",
                             prefix + "profile",
                             prefix + "groups",
                         ),
                         "Unreviewed custom profile/groups mapping",
                     )
-            wanted_pks = [mappings[w["name"]]["pk"] for w in wanted if w["name"] in mappings]
-            if len(wanted_pks) != 2 or set(provider["property_mappings"]) != set(
-                retained + wanted_pks
+            wanted_pks = [
+                mappings[w["name"]]["pk"] for w in wanted if w["name"] in mappings
+            ]
+            if len(wanted_pks) != 2 or set(property_mappings) != (
+                set(retained) | set(wanted_pks)
             ):
                 operations.append(
                     {
@@ -242,16 +323,19 @@ def build_plan(state, services):
     order = {"group": 0, "mapping": 1, "provider": 2, "binding": 3}
     operations.sort(key=lambda op: order[op["kind"]])
     payload = {"services": services, "state": state, "operations": operations}
-    return {"sha256": digest(payload), "operations": operations, "groups": declared}
+    return Plan(sha256=digest(payload), operations=operations, groups=declared)
 
 
-def execute(api, state, services, expected, receipt):
+def execute(api, state, services, expected, receipt) -> int:
     fresh = inventory(api)
     plan = build_plan(fresh, services)
-    require(plan["sha256"] == expected and fresh == state, "Inventory/approval drift; no retry")
+    require(
+        plan["sha256"] == expected and fresh == state,
+        "Inventory/approval drift; no retry",
+    )
     receipt("preimage.json", {"state": state, "services": services, "plan": plan})
     current = copy.deepcopy(state)
-    events = []
+    events: list[dict[str, object]] = []
     for op in plan["operations"]:
         receipt("intent.json", op)
         groups = unique(current["core/groups/"], "name")
@@ -276,7 +360,10 @@ def execute(api, state, services, expected, receipt):
                 },
             )
             validate_group(made)
-            require(made.get("users") == [] and made.get("children") == [], "Unsafe created group")
+            require(
+                made.get("users") == [] and made.get("children") == [],
+                "Unsafe created group",
+            )
             current["core/groups/"].append(made)
         elif op["kind"] == "mapping":
             require(
@@ -298,13 +385,24 @@ def execute(api, state, services, expected, receipt):
         elif op["kind"] == "provider":
             providers = unique(current["providers/oauth2/"], "pk")
             pk = apps[op["slug"]]["provider"]
-            before = providers[pk]
-            require(api("GET", "providers/oauth2/" + str(pk) + "/") == before, "Provider CAS drift")
-            ids = op["retained"] + [mappings[n]["pk"] for n in op["mappingNames"]]
-            response = api("PATCH", "providers/oauth2/" + str(pk) + "/", {"property_mappings": ids})
+            before = providers[str(pk)]
+            require(
+                api("GET", "providers/oauth2/" + str(pk) + "/") == before,
+                "Provider CAS drift",
+            )
+            ids: list[object] = [
+                *op["retained"],
+                *[mappings[n]["pk"] for n in op["mappingNames"]],
+            ]
+            response = api(
+                "PATCH", "providers/oauth2/" + str(pk) + "/", {"property_mappings": ids}
+            )
             receipt("provider-response.json", response)
             made = api("GET", "providers/oauth2/" + str(pk) + "/")
-            require(set(made["property_mappings"]) == set(ids), "Provider verification failed")
+            require(
+                set(made["property_mappings"]) == set(ids),
+                "Provider verification failed",
+            )
             require(
                 {k: v for k, v in made.items() if k != "property_mappings"}
                 == {k: v for k, v in before.items() if k != "property_mappings"},
@@ -316,10 +414,14 @@ def execute(api, state, services, expected, receipt):
         else:
             target = apps[op["slug"]]["pk"]
             group = groups[op["group"]]["pk"]
-            before = [b for b in state["policies/bindings/"] if b["target"] == target]
-            now = rows(api, "policies/bindings/?target=" + target)
+            existing_bindings = [
+                b for b in state["policies/bindings/"] if b["target"] == target
+            ]
+            now = rows(api, "policies/bindings/?target=" + str(target))
             # Account for the bindings we have already created for this app.
-            expected_bindings = [b for b in current["policies/bindings/"] if b["target"] == target]
+            expected_bindings = [
+                b for b in current["policies/bindings/"] if b["target"] == target
+            ]
             require(
                 sorted(now, key=lambda b: b["pk"])
                 == sorted(expected_bindings, key=lambda b: b["pk"]),
@@ -347,7 +449,9 @@ def execute(api, state, services, expected, receipt):
         events.append({"operation": op, "object": made})
         receipt("events.json", events)
     after = inventory(api)
-    require(build_plan(after, services)["operations"] == [], "Reconciliation not idempotent")
+    require(
+        build_plan(after, services)["operations"] == [], "Reconciliation not idempotent"
+    )
     # Existing group membership, apps and every original binding are protected.
     for path in ("core/groups/", "core/applications/", "policies/bindings/"):
         after_by = unique(after[path], "pk")
@@ -360,23 +464,27 @@ def execute(api, state, services, expected, receipt):
             return value
 
         require(
-            all(owned_fields(after_by.get(old["pk"])) == owned_fields(old) for old in state[path]),
+            all(
+                owned_fields(after_by.get(old["pk"])) == owned_fields(old)
+                for old in state[path]
+            ),
             "Protected object drift: " + path,
         )
     receipt(
-        "verified.json", {"operations": len(events), "idempotent": True, "plan_sha256": expected}
+        "verified.json",
+        {"operations": len(events), "idempotent": True, "plan_sha256": expected},
     )
     return len(events)
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
+    def redirect_request(self, req, fp, code, msg, headers, newurl) -> Never:
         if fp:
             fp.close()
         raise RuntimeError("API redirect refused")
 
 
-def api_for(root):
+def api_for(root) -> object:
     credential = root / "credentials.json"
     for path in (root, credential):
         require(
@@ -407,7 +515,10 @@ def api_for(root):
         req = urllib.request.Request(
             BASE + path,
             method=method,
-            headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
+            headers={
+                "Authorization": "Bearer " + token,
+                "Content-Type": "application/json",
+            },
             data=json.dumps(data).encode() if data is not None else None,
         )
         try:
@@ -428,7 +539,7 @@ def api_for(root):
     return api
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("root", type=Path)
     p.add_argument("--apply", action="store_true")
@@ -458,7 +569,9 @@ def main():
         )
         if not args.apply:
             return
-        require(args.confirm_sha256 == plan["sha256"], "Explicit fresh plan hash required")
+        require(
+            args.confirm_sha256 == plan["sha256"], "Explicit fresh plan hash required"
+        )
         os.umask(0o077)
         directory = Path(tempfile.mkdtemp(prefix="app-access-", dir=args.root))
         directory.chmod(0o700)
@@ -469,7 +582,9 @@ def main():
             tmp.write_text(json.dumps(value, indent=2))
             tmp.chmod(0o600)
             os.replace(tmp, path)
-            require(json.loads(path.read_text()) == value, "Receipt verification failed")
+            require(
+                json.loads(path.read_text()) == value, "Receipt verification failed"
+            )
 
         print("PRIVATE_RECEIPT", directory, flush=True)
         count = execute(api, state, services, plan["sha256"], receipt)

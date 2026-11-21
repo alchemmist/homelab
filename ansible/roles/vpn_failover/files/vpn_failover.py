@@ -12,15 +12,43 @@ import sqlite3
 import ssl
 import subprocess
 import time
-from typing import cast
+from typing import TypedDict
 
 CONFIG_PATH = "/etc/homelab-vpn-failover/config.json"
 STATE_DIR = "/var/lib/homelab-vpn-failover"
 NATIVE_UNITS = ["homelab-vpn-primary.service", "homelab-vpn-caddy.service"]
 
 
+class _Websocket(TypedDict, total=False):
+    address: str
+    port: int
+    host: str
+    path: str
+
+
+class _Config(TypedDict, total=False):
+    state_dir: str
+    agent_unit: str
+    fenced_units: list[str]
+    native_units: list[str]
+    timeout_seconds: int
+    kubernetes_start_timeout_seconds: int
+    fence_timeout_seconds: float
+    boot_grace_seconds: float
+    native_start_grace_seconds: float
+    confirmation_checks: int
+    confirmation_interval_seconds: float
+    failure_threshold: int
+    preflight_files: list[str]
+    databases: list[str]
+    listen_ports: list[dict[str, str | int]]
+    tcp_endpoints: list[tuple[str, int]]
+    websocket: _Websocket
+    native_unit_ports: dict[str, list[dict[str, str | int]]]
+
+
 class Watchdog:
-    def __init__(self, config):
+    def __init__(self, config: _Config):
         self.config = config
         self.state = Path(config.get("state_dir", STATE_DIR))
         self.agent = config.get("agent_unit", "k3s.service")
@@ -32,7 +60,7 @@ class Watchdog:
         self.units = config.get("native_units", NATIVE_UNITS)
         self.timeout = config.get("timeout_seconds", 4)
 
-    def write(self, name, data) -> None:
+    def write(self, name: str, data: object):
         target = self.state / name
         temporary = target.with_suffix(".tmp")
         with temporary.open("w") as stream:
@@ -47,7 +75,7 @@ class Watchdog:
         finally:
             os.close(descriptor)
 
-    def command(self, *args) -> str:
+    def command(self, *args: str) -> str:
         # A rejoining etcd voter may need longer than ordinary unit operations.
         timeout = (
             self.config.get("kubernetes_start_timeout_seconds", 180)
@@ -60,7 +88,7 @@ class Watchdog:
             args, check=True, capture_output=True, text=True, timeout=timeout
         ).stdout.strip()
 
-    def service_installed(self, unit) -> bool:
+    def service_installed(self, unit: str):
         state = self.command("systemctl", "show", unit, "--property=LoadState", "--value")
         if state == "not-found":
             return False
@@ -68,16 +96,16 @@ class Watchdog:
             raise RuntimeError("Cannot verify systemd unit: " + unit + ": " + state)
         return True
 
-    def service_active(self, unit) -> bool:
+    def service_active(self, unit: str):
         return self.command("systemctl", "show", unit, "--property=ActiveState", "--value") not in (
             "inactive",
             "failed",
         )
 
-    def kubernetes_group(self, group) -> bool:
+    def kubernetes_group(self, group: str):
         return "kubepods" in group or any("/" + unit in group for unit in self.fenced_units)
 
-    def processes(self) -> list[int]:
+    def processes(self):
         result = []
         for entry in Path("/proc").iterdir():
             if not entry.name.isdigit():
@@ -91,7 +119,7 @@ class Watchdog:
                 result.append(int(entry.name))
         return result
 
-    def terminate(self, pid, sig) -> None:
+    def terminate(self, pid: int, sig: signal.Signals):
         try:
             descriptor = os.pidfd_open(pid)
         except ProcessLookupError:
@@ -110,7 +138,7 @@ class Watchdog:
         finally:
             os.close(descriptor)
 
-    def fence(self) -> None:
+    def fence(self):
         installed = [unit for unit in self.fenced_units if self.service_installed(unit)]
         for unit in installed:
             self.command("systemctl", "stop", unit)
@@ -126,7 +154,7 @@ class Watchdog:
                 return
         raise RuntimeError("Kubernetes processes remain; refusing native startup")
 
-    def guard(self) -> None:
+    def guard(self):
         if (
             not (self.state / "active").exists()
             or any(
@@ -137,7 +165,7 @@ class Watchdog:
         ):
             raise RuntimeError("Native startup requires verified Kubernetes fencing")
 
-    def occupied(self) -> list[tuple[str, int]]:
+    def occupied(self):
         wanted = {(item["protocol"], int(item["port"])) for item in self.config["listen_ports"]}
         found = set()
         for protocol in ("tcp", "udp"):
@@ -151,7 +179,7 @@ class Watchdog:
                         found.add((protocol, port))
         return sorted(found)
 
-    def preflight(self) -> None:
+    def preflight(self):
         for name in self.config.get("preflight_files", []):
             path = Path(name)
             if not path.is_file() or path.stat().st_size == 0:
@@ -166,7 +194,7 @@ class Watchdog:
                 if database.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
                     raise RuntimeError("VPN database integrity check failed")
 
-    def health(self) -> dict[str, object]:
+    def health(self):
         errors = []
         for host, port in self.config["tcp_endpoints"]:
             try:
@@ -228,12 +256,12 @@ class Watchdog:
             return {"healthy": False, "errors": errors, "websocket_diagnostics": diagnostics}
         return {"healthy": not errors, "errors": errors}
 
-    def clock(self) -> tuple[str, float]:
+    def clock(self):
         return Path("/proc/sys/kernel/random/boot_id").read_text().strip(), float(
             Path("/proc/uptime").read_text().split()[0]
         )
 
-    def counters(self, boot) -> dict[str, object]:
+    def counters(self, boot: str):
         try:
             saved = json.loads((self.state / "failures.json").read_text())
         except (FileNotFoundError, ValueError):
@@ -248,7 +276,7 @@ class Watchdog:
             }
         )
 
-    def confirm_failure(self) -> tuple[bool, dict[str, object]]:
+    def confirm_failure(self):
         # Independent samples, under the existing lock, before destructive action.
         for _ in range(max(1, int(self.config.get("confirmation_checks", 2)))):
             time.sleep(max(0, self.config.get("confirmation_interval_seconds", 1)))
@@ -257,14 +285,14 @@ class Watchdog:
                 return False, health
         return True, health
 
-    def native_warmup(self) -> None:
+    def native_warmup(self):
         boot, uptime = self.clock()
         self.write(
             "native_warmup.json",
             {"boot_id": boot, "until": uptime + self.config.get("native_start_grace_seconds", 30)},
         )
 
-    def activate(self) -> dict[str, object]:
+    def activate(self):
         self.preflight()
         if not (self.state / "active").exists():
             self.write("active", {"activated_at": time.time()})
@@ -323,24 +351,24 @@ class Watchdog:
         self.write("fallback_failures.json", {"boot_id": boot, "failures": failures})
         return {"mode": "fallback", "failures": failures, **health}
 
-    def tick(self) -> dict[str, object]:
+    def tick(self):
         if (self.state / "inhibit").exists():
             return {"mode": "inhibited"}
         if (self.state / "active").exists():
             return self.activate()
         boot, uptime = self.clock()
         saved = self.counters(boot)
-        if uptime < cast("float", saved["grace_until"]):
+        if uptime < saved["grace_until"]:
             return {"mode": "grace"}
         health = self.health()
-        saved["failures"] = 0 if health["healthy"] else cast("int", saved["failures"]) + 1
+        saved["failures"] = 0 if health["healthy"] else saved["failures"] + 1
         self.write("failures.json", saved)
         if not health["healthy"]:
             self.write(
                 "last_failure.json",
                 {"mode": "kubernetes", "boot_id": boot, "uptime": uptime, **health},
             )
-        if cast("int", saved["failures"]) >= self.config.get("failure_threshold", 4):
+        if saved["failures"] >= self.config.get("failure_threshold", 4):
             confirmed, health = self.confirm_failure()
             if not confirmed:
                 saved["failures"] = 0
@@ -349,7 +377,7 @@ class Watchdog:
             return self.activate()
         return {"mode": "kubernetes", "failures": saved["failures"], **health}
 
-    def failback(self) -> dict[str, object]:
+    def failback(self):
         if not (self.state / "active").exists():
             raise RuntimeError("Fallback is not active")
         if not self.service_installed(self.agent):
@@ -388,7 +416,7 @@ class Watchdog:
             raise
         return {"mode": "kubernetes", "grace": True}
 
-    def status(self) -> dict[str, object]:
+    def status(self):
         return {
             "mode": "fallback" if (self.state / "active").exists() else "kubernetes",
             "inhibited": (self.state / "inhibit").exists(),
@@ -396,7 +424,7 @@ class Watchdog:
         }
 
 
-def main() -> int | None:
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("action", choices=["tick", "check", "status", "guard", "failback"])
     parser.add_argument("--config", default=CONFIG_PATH)

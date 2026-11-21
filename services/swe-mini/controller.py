@@ -87,7 +87,7 @@ def github(path, method="GET", data=None, auth=True):
     return response.json() if response.content else {}
 
 
-def save(run_id, **fields):
+def save(run_id: int | str, **fields: object) -> None:
     DB.execute(
         "UPDATE runs SET " + ",".join(key + "=?" for key in fields) + " WHERE id=?",
         [*fields.values(), run_id],
@@ -451,7 +451,7 @@ class Health(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
 
-    def log_message(self, *args):
+    def log_message(self, *args: object) -> None:
         pass
 
 

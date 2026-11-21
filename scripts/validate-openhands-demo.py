@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 IMAGE = 'ghcr.io/openhands/agent-canvas:1.41.0@sha256:dcae97b63c9845fd1d4313857af6b10fb5888324a154238c4795ef86233d227c'
 
 
-def kubectl(*args, data=None):
+def kubectl(*args: str, data=None):
     return subprocess.check_output(['kubectl', *args], input=data)
 
 

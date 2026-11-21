@@ -24,9 +24,11 @@ import subprocess
 import tempfile
 import time
 import urllib.request
+from collections.abc import Mapping, Sequence
+from typing import Protocol, TypedDict
 
 
-def peer_host(line: str) -> str | None:
+def peer_host(line: str):
     """Extract the peer host from an ss line, mapping IPv4-in-IPv6 to dotted form."""
     tokens = [t for t in line.split() if ":" in t]
     if not tokens:
@@ -41,7 +43,7 @@ def peer_host(line: str) -> str | None:
     return host
 
 
-def is_private(host) -> bool:
+def is_private(host: str):
     """True for loopback, link-local and RFC1918 ranges the collector ignores."""
     if ":" in host:
         return True
@@ -56,7 +58,7 @@ def is_private(host) -> bool:
     return False
 
 
-def observe_streams(ports) -> int:
+def observe_streams(ports: Sequence[int]):
     """Return established TCP stream count on the given local ports."""
     filters = " or ".join(f"sport = :{port}" for port in ports)
     result = subprocess.run(
@@ -69,7 +71,7 @@ def observe_streams(ports) -> int:
     return len([line for line in result.stdout.splitlines() if line.strip()])
 
 
-def read_xray_user_counters(url, timeout) -> dict[str, int]:
+def read_xray_user_counters(url: str, timeout: float):
     """Read cumulative per-user traffic counters from the xray expvar endpoint."""
     with urllib.request.urlopen(url, timeout=timeout) as response:
         payload = json.load(response)
@@ -80,7 +82,7 @@ def read_xray_user_counters(url, timeout) -> dict[str, int]:
     return counters
 
 
-def read_registered_clients(db_path) -> int | None:
+def read_registered_clients(db_path: str):
     """Count unique enabled client emails across all 3x-ui inbounds."""
     try:
         connection = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=5)
@@ -104,7 +106,16 @@ def read_registered_clients(db_path) -> int | None:
         connection.close()
 
 
-def active_users(counters, state, now, window) -> list[str]:
+class _Condition(Protocol):
+    def __bool__(self) -> bool: ...
+
+
+class _ActivityState(TypedDict, total=False):
+    last_active: dict[str, float]
+    counters: dict[str, int]
+
+
+def active_users(counters: Mapping[str, int], state: _ActivityState, now: float, window: float):
     """Merge new counters into the state, refresh per-user last-activity
     timestamps, and return accounts that transferred traffic within the window."""
     last_active = state.setdefault("last_active", {})
@@ -120,7 +131,7 @@ def active_users(counters, state, now, window) -> list[str]:
     return sorted(email for email, when in last_active.items() if now - when <= window)
 
 
-def write_state(path, state) -> None:
+def write_state(path: str, state: _ActivityState):
     handle, name = tempfile.mkstemp(dir=os.path.dirname(path) or ".", prefix=".vpn-state-")
     try:
         with os.fdopen(handle, "w") as stream:
@@ -136,13 +147,13 @@ def write_state(path, state) -> None:
 
 
 def write_metrics(
-    path,
-    streams,
-    users,
-    success,
-    registered=0,
-    fallback_marker="/var/lib/homelab-vpn-failover/active",
-) -> None:
+    path: str,
+    streams: int,
+    users: Sequence[str],
+    success: _Condition,
+    registered: int = 0,
+    fallback_marker: str = "/var/lib/homelab-vpn-failover/active",
+):
     timestamp = time.time()
     lines = [
         "# HELP socrat_vpn_fallback_active Whether native VPN fallback mode is latched on this VPS.",
@@ -187,7 +198,7 @@ def write_metrics(
         raise
 
 
-def try_load_state(path) -> dict[str, object]:
+def try_load_state(path: str):
     try:
         with open(path) as stream:
             data = json.load(stream)
@@ -199,8 +210,14 @@ def try_load_state(path) -> dict[str, object]:
 
 
 def collect(
-    ports, metrics_url, metrics_timeout, window, output, state_path, xui_db="/etc/x-ui/x-ui.db"
-) -> int:
+    ports: Sequence[int],
+    metrics_url: str,
+    metrics_timeout: float,
+    window: float,
+    output: str,
+    state_path: str,
+    xui_db: str = "/etc/x-ui/x-ui.db",
+):
     try:
         streams = observe_streams(ports)
         counters = read_xray_user_counters(metrics_url, metrics_timeout)
@@ -217,7 +234,7 @@ def collect(
     return 0
 
 
-def _ports(raw):
+def _ports(raw: str):
     ports = []
     for item in raw.split(","):
         item = item.strip()
@@ -228,7 +245,7 @@ def _ports(raw):
     return ports
 
 
-def main() -> int:
+def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--ports", type=_ports, required=True, help="comma-separated local VPN entrypoint TCP ports"

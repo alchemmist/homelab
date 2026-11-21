@@ -13,7 +13,12 @@ import stat
 import subprocess
 import sys
 import tempfile
-from typing import cast
+from typing import Optional, Protocol, cast
+
+
+class _Condition(Protocol):
+    def __bool__(self) -> bool: ...
+
 
 PROTECTED = {"root", "alchemmist", "ghactions", "nobody"}
 PRIVILEGED = {
@@ -38,19 +43,19 @@ KEY = re.compile(
 )
 
 
-def require(ok, message) -> None:
+def require(ok: _Condition, message: str):
     if not ok:
         raise ValueError(message)
 
 
-def username(name) -> None:
+def username(name: str):
     require(
         bool(re.fullmatch(r"[a-z_][a-z0-9_-]{0,30}", name)) and name not in PROTECTED,
         "Invalid or protected Linux username",
     )
 
 
-def fingerprint(line) -> str:
+def fingerprint(line: str):
     with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8") as f:
         f.write(line + "\n")
         f.flush()
@@ -66,11 +71,11 @@ def fingerprint(line) -> str:
     return fields[1]
 
 
-def validate(name, text) -> dict[str, str]:
+def validate(name: str, text: object):
     username(name)
     require(isinstance(text, str) and len(text) <= 16384, "Supply one OpenSSH public key")
     # Strip a normal public-file line ending, not arbitrary embedded controls.
-    text = text.rstrip("\r\n")
+    text = cast("str", text).rstrip("\r\n")
     require(
         not any(ord(c) < 32 or ord(c) == 127 for c in text),
         "Multiline/control characters are forbidden",
@@ -84,7 +89,7 @@ def validate(name, text) -> dict[str, str]:
     return {"username": name, "public_key": canonical, "fingerprint": fp}
 
 
-def safe_paths(name, account) -> Path:
+def safe_paths(name: str, account: Optional[pwd.struct_passwd]):
     home = Path("/home") / name
     require(
         account is None or account.pw_dir == str(home), "Nonstandard home requires separate review"
@@ -117,10 +122,10 @@ def safe_paths(name, account) -> Path:
             not stat.S_IMODE(home.stat().st_mode) & 0o022,
             "Group/world-writable home requires separate review",
         )
-    return cast("Path", home)
+    return home
 
 
-def ssh_policy(name) -> None:
+def ssh_policy(name: str):
     daemon = shutil.which("sshd") or "/usr/sbin/sshd"
     r = subprocess.run(
         [daemon, "-T", "-C", "user=" + name + ",host=socrat,addr=100.100.240.102"],
@@ -144,7 +149,7 @@ def ssh_policy(name) -> None:
     )
 
 
-def inspect(name, expected=None, enforce=False) -> dict[str, object]:
+def inspect(name: str, expected: Optional[str] = None, enforce: _Condition = False):
     username(name)
     require(os.geteuid() == 0, "Account verification requires root")
     require(
@@ -232,7 +237,7 @@ def inspect(name, expected=None, enforce=False) -> dict[str, object]:
     }
 
 
-def main() -> None:
+def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("mode", choices=["validate", "inspect", "as-user"])
     p.add_argument("--username", required=True)
