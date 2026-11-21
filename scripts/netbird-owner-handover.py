@@ -171,7 +171,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception as exc:
+    except (ValueError, KeyError, TypeError, RuntimeError, OSError) as exc:
         print(
             "BLOCKED: "
             + (str(exc) if isinstance(exc, ValueError) else type(exc).__name__)

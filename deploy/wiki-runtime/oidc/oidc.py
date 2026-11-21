@@ -7,6 +7,7 @@ When enabled, legacy passwords and pre-migration sessions are owner-only.
 import json
 import os
 import secrets
+import sqlite3
 import time
 from typing import cast
 
@@ -90,6 +91,7 @@ def external_login(store, issuer, subject, username, role, links):
 
 
 def install_oidc(app, store, origin, prefix, cookie_path, session_seconds):
+    from authlib.integrations.base_client import AuthlibBaseError
     from authlib.integrations.starlette_client import OAuth
     from starlette.middleware.sessions import SessionMiddleware
 
@@ -151,7 +153,7 @@ def install_oidc(app, store, origin, prefix, cookie_path, session_seconds):
             )
         except HTTPException:
             raise
-        except Exception:
+        except (ValueError, KeyError, TypeError, RuntimeError, OSError, sqlite3.Error, AuthlibBaseError):
             # Do not expose codes, JWTs, credentials or provider exception URLs.
             raise HTTPException(401, "OIDC verification failed") from None
         request.session.clear()

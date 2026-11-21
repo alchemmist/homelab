@@ -5,6 +5,7 @@ public registry. Its isolated Go TLS setting is configured by the workflow.
 """
 
 import argparse
+import http.client
 import base64
 import json
 import os
@@ -75,7 +76,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     try:
         configure(args.repository)
-    except Exception as error:
+    except (ValueError, KeyError, TypeError, RuntimeError, OSError, http.client.HTTPException) as error:
         # No URLs, HTTP bodies, credential material or token text in tracebacks.
         print("Harbor authentication preflight failed: " + type(error).__name__)
         raise SystemExit(1) from None
