@@ -466,7 +466,7 @@ class BootstrapSafetyTests(unittest.TestCase):
             def __init__(self, credentials):
                 pass
 
-            def call(self, system, method, path, body=None):
+            def call(self, system, method, path, body=None) -> None:
                 outer.calls.append((system, method, path))
                 converge(
                     outer.state, [{"system": system, "method": method, "path": path, "body": body}]
@@ -589,7 +589,7 @@ class LegacyChatMigrationTests(unittest.TestCase):
         self.migration = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.migration)
 
-        def binding(pk, group):
+        def binding(pk, group) -> dict[str, object]:
             return {
                 "pk": pk,
                 "target": "chat-app",
@@ -629,7 +629,7 @@ class LegacyChatMigrationTests(unittest.TestCase):
         outer = self
 
         class FakeClient:
-            def rows(self, path):
+            def rows(self, path) -> object:
                 if path.startswith("core/groups/"):
                     return copy.deepcopy(outer.state["groups"])
                 if path.startswith("core/applications/"):
@@ -640,7 +640,7 @@ class LegacyChatMigrationTests(unittest.TestCase):
                     return copy.deepcopy(outer.state["users"])
                 raise AssertionError("Unexpected API read")
 
-            def call(self, system, method, path, body=None):
+            def call(self, system, method, path, body=None) -> object:
                 outer.calls.append((system, method, path, body))
                 if method == "POST" and path == "core/groups/":
                     outer.state["groups"].append({"pk": "new-chat-group", "users": [], **body})
@@ -661,6 +661,7 @@ class LegacyChatMigrationTests(unittest.TestCase):
                     )
                 else:
                     raise AssertionError("Unexpected API mutation")
+                return None
 
         self.client = FakeClient()
 

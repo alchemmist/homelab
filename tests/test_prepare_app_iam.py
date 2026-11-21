@@ -280,7 +280,7 @@ class PreparationTests(unittest.TestCase):
     def test_drift_during_second_snapshot_prevents_first_write(self):
         approval = self.plan(evidence=self.evidence)["sha256"]
 
-        def drift(path):
+        def drift(path) -> None:
             # One page per empty proxy collection: second pass is pre-write revalidation.
             if path == "providers/proxy/":
                 drift.count += 1
@@ -312,7 +312,7 @@ class PreparationTests(unittest.TestCase):
     def test_uncertain_accepted_post_is_not_retried_or_adopted(self):
         original = self.api.__call__
 
-        def uncertain(method, path, payload=None):
+        def uncertain(method, path, payload=None) -> object:
             result = original(method, path, payload)
             if method == "POST":
                 raise RuntimeError("connection lost after server accepted POST")
@@ -340,7 +340,7 @@ class PreparationTests(unittest.TestCase):
     def test_journal_intent_failure_prevents_post(self):
         original = prep.atomic_json
 
-        def fail_intent(path, value):
+        def fail_intent(path, value) -> object:
             if path.name == "01.json":
                 raise OSError("disk full")
             return original(path, value)
@@ -352,7 +352,7 @@ class PreparationTests(unittest.TestCase):
     def test_post_create_drift_stops_after_one_post(self):
         original = self.api.__call__
 
-        def api(method, path, payload=None):
+        def api(method, path, payload=None) -> object:
             result = original(method, path, payload)
             if method == "POST":
                 self.api.data["outposts/instances/"][0]["setting"] = "drift"
@@ -376,7 +376,7 @@ class PreparationTests(unittest.TestCase):
                 prep.rows(lambda *args: response, "core/users/")
         original = self.api.__call__
 
-        def api(method, path, payload=None):
+        def api(method, path, payload=None) -> object:
             result = original(method, path, payload)
             if "core/users/" in path:
                 result["results"] *= 2
