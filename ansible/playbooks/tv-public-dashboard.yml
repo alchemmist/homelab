@@ -41,7 +41,7 @@
       changed_when: false
     - name: Require Fully already foreground; do not steal HDMI or another app
       ansible.builtin.command:
-        argv: [adb, -s, "{{ tv_adb }}", shell, "dumpsys window | grep mCurrentFocus"]
+        argv: [adb, -s, "{{ tv_adb }}", shell, dumpsys window | grep mCurrentFocus]
       register: tv_focus
       changed_when: false
     - name: Refuse to replace any pending settings import
@@ -50,7 +50,7 @@
                -s,
                "{{ tv_adb }}",
                shell,
-               "test -e /sdcard/fully-once-settings.json && echo PENDING || echo EMPTY"]
+               test -e /sdcard/fully-once-settings.json && echo PENDING || echo EMPTY]
       register: tv_pending
       changed_when: false
     - name: Require the known TV model, Fully focus, and an empty import
@@ -113,14 +113,14 @@
                    -s,
                    "{{ tv_adb }}",
                    shell,
-                   "am force-stop de.ozerov.fully; am start -n de.ozerov.fully/.FullyActivity"]
+                   am force-stop de.ozerov.fully; am start -n de.ozerov.fully/.FullyActivity]
         - name: Verify Fully consumed the URL-only file
           ansible.builtin.command:
             argv: [adb,
                    -s,
                    "{{ tv_adb }}",
                    shell,
-                   "test -e /sdcard/fully-once-settings.json && echo PENDING || echo EMPTY"]
+                   test -e /sdcard/fully-once-settings.json && echo PENDING || echo EMPTY]
           register: tv_consumed
           changed_when: false
           until: tv_consumed.stdout | trim == 'EMPTY'
