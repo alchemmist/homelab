@@ -3,6 +3,9 @@
 googleDnsEnabled: false
 # Pre-HTTP TCP/TLS address failover for the two exact Google API/OAuth hosts.
 googleTransportEnabled: true
+database:
+  postgresEnabled: false
+  secretName: n8n-postgres
 postgresCaConfigMap: pg-common-ca
 replicaCount: 1
 image: docker.io/n8nio/n8n@sha256:624a1f10f37119a73eca34c0cbd358668aebf0068d320ad5eae584f9d35aa314
