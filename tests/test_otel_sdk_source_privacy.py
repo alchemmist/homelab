@@ -3,12 +3,13 @@
 import importlib.util
 import math
 from pathlib import Path
+from types import ModuleType
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load():
+def load() -> ModuleType:
     spec = importlib.util.spec_from_file_location(
         "source_privacy", ROOT / "scripts/otel-sdk-source-privacy.py"
     )

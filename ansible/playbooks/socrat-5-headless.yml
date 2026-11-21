@@ -11,6 +11,8 @@
     - name: Require private owner inputs and exact node
       ansible.builtin.assert:
         that:
+          - homelab_owner_account.name == 'alchemmist'
+          - homelab_owner_account.sudo is true
           - inventory_hostname == 'socrat-5'
           - socrat5_owner_password_hash is match('^[$](6|y)[$]')
           - socrat5_root_password_hash is match('^[$](6|y)[$]')
@@ -51,9 +53,9 @@
         state: present
     - name: Create owner with normal password-based sudo
       ansible.builtin.user:
-        name: alchemmist
+        name: "{{ homelab_owner_account.name }}"
         create_home: true
-        shell: /usr/bin/zsh
+        shell: "{{ homelab_owner_account.shell }}"
         groups: sudo
         append: true
         password: '{{ socrat5_owner_password_hash }}'
@@ -65,7 +67,7 @@
       no_log: true
     - name: Add owner public key without deleting any existing keys
       ansible.posix.authorized_key:
-        user: alchemmist
+        user: "{{ homelab_owner_account.name }}"
         key: '{{ socrat5_owner_public_key }}'
         exclusive: false
     - name: Set agreed node hostname
