@@ -43,12 +43,12 @@ class SplitCascade(unittest.TestCase):
         d = json.loads((ROOT/'charts/monitoring-k3s/dashboards/traffic-light.json').read_text())
         p = {p['id']: p for p in d['panels']}
         for pid,x,name in [(936,2,'Cascade age'),(939,0,'Samples/s')]:
-            self.assertEqual(p[pid]['gridPos'],dict(x=x,y=12,w=2,h=2))
+            self.assertEqual(p[pid]['gridPos'],{"x": x,"y": 12,"w": 2,"h": 2})
             self.assertEqual(len(p[pid]['targets']),1)
             self.assertEqual(p[pid]['targets'][0]['legendFormat'],name)
             self.assertEqual(p[pid]['fieldConfig']['defaults']['color']['fixedColor'],'#E0B860')
             self.assertIn('or vector(-2)',p[pid]['targets'][0]['expr'])
-        self.assertEqual(p[938]['gridPos'],dict(x=16,y=14,w=8,h=5))
+        self.assertEqual(p[938]['gridPos'],{"x": 16,"y": 14,"w": 8,"h": 5})
         self.assertEqual(p[938]['gridPos']['y']+p[938]['gridPos']['h'],p[909]['gridPos']['y']+p[909]['gridPos']['h'])
         self.assertNotIn('todo_downsample_blocks',json.dumps(d))
         self.assertNotIn('thanos_compact_halted',json.dumps(d))

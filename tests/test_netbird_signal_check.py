@@ -1,4 +1,5 @@
 import importlib.util
+from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
@@ -14,12 +15,12 @@ spec.loader.exec_module(check)
 class ProbeTests(unittest.TestCase):
     def fake(self, registered=True, fail=False):
         class RPCError(Exception):
-            def code(self):
+            def code(self) -> SimpleNamespace:
                 return SimpleNamespace(name="DEADLINE_EXCEEDED")
 
         state = {"closed": False, "cancelled": False}
 
-        def metadata():
+        def metadata() -> list[tuple[str, str]]:
             if fail:
                 raise RPCError()
             return [("x-wiretrustee-peer-registered", "1")] if registered else []
@@ -30,17 +31,17 @@ class ProbeTests(unittest.TestCase):
             cancel=lambda: state.update(cancelled=True),
         )
 
-        def invoke(requests, **kwargs):
+        def invoke(requests, **kwargs) -> SimpleNamespace:
             state.update(requests=requests, **kwargs)
             return call
 
-        def stream(path):
+        def stream(path) -> Callable[[str], SimpleNamespace]:
             state["path"] = path
             return invoke
 
         channel = SimpleNamespace(stream_stream=stream, close=lambda: state.update(closed=True))
 
-        def secure(address, credentials, options):
+        def secure(address, credentials, options) -> SimpleNamespace:
             state.update(address=address, credentials=credentials, options=options)
             return channel
 

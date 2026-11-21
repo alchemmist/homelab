@@ -16,9 +16,9 @@
     - ansible.builtin.assert:
         that: public_web_maintenance_task | default('') in maintenance_helpers
     - ansible.builtin.copy:
-        src: "../../scripts/{{ maintenance_helpers[public_web_maintenance_task] }}.py"
-        dest: "/usr/local/sbin/homelab-{{ maintenance_helpers[public_web_maintenance_task] }}"
-        mode: '0700'
+        src: ../../scripts/{{ maintenance_helpers[public_web_maintenance_task] }}.py
+        dest: /usr/local/sbin/homelab-{{ maintenance_helpers[public_web_maintenance_task] }}
+        mode: "0700"
     - ansible.builtin.command:
         argv: "{{ ['/usr/local/sbin/homelab-' + maintenance_helpers[public_web_maintenance_task]] + (['--apply','--approve-plan-hash',public_web_maintenance_hash | default('')] if public_web_maintenance_apply | default(false) | bool else []) }}"
       register: maintenance

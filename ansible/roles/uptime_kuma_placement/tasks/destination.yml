@@ -16,7 +16,7 @@
         dest: "{{ kuma_destination_transfer.path }}/data.tar"
         owner: root
         group: root
-        mode: '0600'
+        mode: "0600"
 
     - name: Calculate the received archive digest
       ansible.builtin.stat:
@@ -32,7 +32,7 @@
       ansible.builtin.file:
         path: "{{ kuma_destination_transfer.path }}/data"
         state: directory
-        mode: '0700'
+        mode: "0700"
 
     - name: Extract the complete data directory
       ansible.builtin.command:

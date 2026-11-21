@@ -151,7 +151,7 @@ print(json.dumps(dict(cookie=cookie)))
             raise ValueError("Browser and backend trace IDs differ")
         trace = None
         # Existing tail sampler waits 30 seconds; backend visibility is eventual.
-        for attempt in range(36):
+        for _attempt in range(36):
             try:
                 trace = get_json(
                     args.grafana_url + "/api/datasources/proxy/uid/tempo/api/traces/" + trace_id
