@@ -13,7 +13,10 @@ tracing:
 profiling:
   enabled: true
 lms-database-ha:
-  hibernate: true # Historical experiment only; retain PVCs and stop legacy dumps.
+  retired: true # Keep archive PVC and LMS web availability monitoring.
+  hibernate: true
+  backup:
+    enabled: false
 database:
   appSecretName: lms-pg-common
   ha:

@@ -4,7 +4,7 @@ All application writes use the cluster `-rw.postgres.svc.cluster.local` endpoint
 
 Acceptance receipts: Umami 27 table counts; Certification 3 table digests and advancing workflow heartbeats; LMS 11 table digests; Socrat Bot 17 table digests and sequence values (final transfer Job timed out after restore; contents independently compared); LiteLLM 91 table counts and sequences; Authentik 230 table counts and sequences, worker/server TLS and OIDC discovery (first rehearsal failed, retry succeeded); Harbor 49 table digests, sequences and separate robot push/pull. Application ACL audit: each of the seven runtime roles has CONNECT only on its own *application* database, excluding built-in/maintenance databases. This is not CPU, I/O or superuser isolation.
 
-Browser acceptance: use a private window, open LMS, log in using your own MFA and verify a protected page. Discovery, HTTP redirects and existing sessions do not prove a new login. Do not share credentials or MFA codes.
+Browser acceptance: the owner confirmed the manual LMS check after the public LMS/OIDC routing fix. This closes the user-side acceptance item; it is not an automated MFA test.
 
 ## CA rotation
 
@@ -24,3 +24,5 @@ LiteLLM and Umami keep separate TCP probe identities but both check `pg-common-r
 The native otel-cluster Prometheus receiver scrapes primary-only services; `up{job="postgres-platform"}` must report two live targets. Six `socrat-postgres-platform` rules cover missing data, replica availability, delay/retained WAL, required sync observations and host root disks (0/1). Existing socrat-storage rules cover root and the HDD on node 5. Confirm rule health in Prometheus, not only a green Argo application. These are availability signals, not proof of backup integrity or a tested page to the operator.
 
 Retention follow-up: [issue #216](https://github.com/alchemmist/homelab/issues/216). Hold is intentional; the issue is a review, not a deletion timer.
+
+Disposal exception (owner-confirmed): `lms-ha-1`, `lms-ha-2`, `lms-ha-3` PVCs, PVs and node-local volume directories were permanently removed. Their inventory rows are historical; all other retention decisions remain unchanged. See issue #216.
