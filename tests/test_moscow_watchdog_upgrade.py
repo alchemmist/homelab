@@ -2,14 +2,15 @@
 
 import importlib.util, json
 from pathlib import Path
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 import pytest, yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.fixture
-def env(tmp_path, monkeypatch):
+def env(tmp_path, monkeypatch) -> tuple[ModuleType, Path, Path]:
+    """Load the upgrade runtime against a temporary watchdog state fixture."""
     spec = importlib.util.spec_from_file_location(
         "upgrade", ROOT / "scripts/moscow-watchdog-upgrade.py"
     )

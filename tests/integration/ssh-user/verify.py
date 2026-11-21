@@ -33,10 +33,10 @@ def run(args, expected=0, **kw):
             + p.stdout[-2500:]
             + p.stderr[-1000:]
         )
-    return p.stdout
+    return cast("str", p.stdout)
 
 
-def main():
+def main() -> None:
     run(["docker", "info", "--format", "{{.ServerVersion}}"])
     run(["docker", "build", "-q", "-t", IMAGE, str(Path(__file__).parent)], timeout=300)
     containers = []
