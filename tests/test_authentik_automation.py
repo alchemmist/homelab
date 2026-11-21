@@ -1,3 +1,5 @@
+"""Tests for the Authentik automation role."""
+
 import ast
 import contextlib
 import importlib.util

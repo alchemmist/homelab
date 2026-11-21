@@ -1,3 +1,5 @@
+"""Tests for the open-terminal browser auth policy."""
+
 import json
 from pathlib import Path
 import unittest
