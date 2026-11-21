@@ -16,6 +16,7 @@ CONFIG_PATHS = [
 
 
 def backup():
+    """Document the backup operation."""
     root = Path("/var/backups/homelab-k3s")
     root.mkdir(mode=0o700, parents=True, exist_ok=True)
     destination = Path(tempfile.mkdtemp(prefix="pre-ha-", dir=root))
@@ -39,6 +40,7 @@ def backup():
 
 
 def restore(directory):
+    """Document the restore operation."""
     directory = Path(directory).resolve()
     if (
         directory.parent != Path("/var/backups/homelab-k3s")

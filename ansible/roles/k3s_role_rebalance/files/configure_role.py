@@ -10,6 +10,7 @@ import yaml
 
 
 def configure(args):
+    """Document the configure operation."""
     path = Path(args.config)
     if path.is_symlink():
         raise ValueError("config must not be a symlink")
@@ -79,6 +80,7 @@ def configure(args):
 
 
 def main():
+    """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
     parser.add_argument("--role", choices=("server", "control-plane"), required=True)

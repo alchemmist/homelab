@@ -10,6 +10,7 @@ endpoint = base + "/api/v3/flows/executor/default-authentication-flow/"
 
 
 def call(data=None):
+    """Document the call operation."""
     headers = {
         "Content-Type": "application/json",
         "Referer": base + "/if/flow/default-authentication-flow/",

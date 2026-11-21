@@ -9,6 +9,7 @@ RESOURCE_NAMES = ("cpu", "memory", "ephemeral-storage")
 
 
 def check(namespace, kubectl, kubeconfig):
+    """Document the check operation."""
     command = [kubectl, "--kubeconfig", kubeconfig, "--request-timeout=30s"]
     cases = [
         ("empty", {}),
@@ -83,6 +84,7 @@ def check(namespace, kubectl, kubeconfig):
 
 
 def main():
+    """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--namespace", required=True)
     parser.add_argument("--kubectl", default="kubectl")

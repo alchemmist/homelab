@@ -12,6 +12,7 @@ RESOURCE_NAMES = ("cpu", "memory", "ephemeral-storage")
 
 
 def check(namespace, kubectl, kubeconfig, profile, owner_name):
+    """Document the check operation."""
     command = [kubectl, "--kubeconfig", kubeconfig, "--request-timeout=30s"]
     selector = {"resource-policy.socrat.io/probe": "preserved"}
     selector.update({key: "previous" for key in profile.get("nodeSelector", {})})
@@ -105,6 +106,7 @@ def check(namespace, kubectl, kubeconfig, profile, owner_name):
 
 
 def main():
+    """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--kubectl", default="kubectl")
     parser.add_argument("--kubeconfig", default="/etc/rancher/k3s/k3s.yaml")

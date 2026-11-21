@@ -17,6 +17,7 @@ HOST = "auth.socrat.alchemmist.xyz"
 
 def route():
     # Constant destination: user-supplied next/username cannot select another account.
+    """Document the route operation."""
     flow = (
         "/if/flow/"
         + SLUG
@@ -81,6 +82,7 @@ def route():
 
 
 def main():
+    """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("root", type=Path)
     parser.add_argument("--apply", action="store_true")

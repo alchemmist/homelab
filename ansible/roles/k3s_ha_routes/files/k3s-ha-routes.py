@@ -11,14 +11,17 @@ from pathlib import Path
 
 
 def run(*args):
+    """Document the run operation."""
     return subprocess.check_output(args, text=True).strip()
 
 
 def merge(values, additions):
+    """Document the merge operation."""
     return list(dict.fromkeys(values + additions))
 
 
 def update_config(original, routes):
+    """Document the update config operation."""
     blocks = re.split(r"(?=^\s*\[Peer\]\s*$)", original, flags=re.MULTILINE)
     found = set()
     for index, block in enumerate(blocks):
@@ -42,6 +45,7 @@ def update_config(original, routes):
 
 
 def main():
+    """Document the main operation."""
     interface, source, payload = sys.argv[1:]
     if not re.fullmatch(r"[a-zA-Z0-9_=+.-]{1,15}", interface):
         raise ValueError("Invalid interface")

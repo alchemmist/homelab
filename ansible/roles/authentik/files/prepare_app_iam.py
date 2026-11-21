@@ -55,23 +55,28 @@ COLLECTIONS = (
 
 
 def require(condition, message):
+    """Document the require operation."""
     if not condition:
         raise RuntimeError(message)
 
 
 def encoded(value):
+    """Document the encoded operation."""
     return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
 
 
 def digest(value):
+    """Document the digest operation."""
     return hashlib.sha256(encoded(value)).hexdigest()
 
 
 def tool_hash():
+    """Document the tool hash operation."""
     return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 
 
 def private(path, directory=False):
+    """Document the private operation."""
     s = path.lstat()
     require(
         not stat.S_ISLNK(s.st_mode)
@@ -90,6 +95,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def api_for(root):
+    """Document the api for operation."""
     private(root, directory=True)
     path = root / "credentials.json"
     private(path)
@@ -136,6 +142,7 @@ def api_for(root):
 
 
 def rows(api, path):
+    """Document the rows operation."""
     result = []
     for page in range(1, 1001):
         query = {"page_size": 100, "page": page}
@@ -161,6 +168,7 @@ def rows(api, path):
 
 
 def unique(items, key):
+    """Document the unique operation."""
     result = {}
     for item in items:
         require(
@@ -175,6 +183,7 @@ def unique(items, key):
 
 
 def snapshot(api):
+    """Document the snapshot operation."""
     state = {}
     for path in COLLECTIONS:
         items = rows(api, path)
@@ -184,10 +193,12 @@ def snapshot(api):
 
 
 def hashes(state):
+    """Document the hashes operation."""
     return {path: digest(items) for path, items in state.items()}
 
 
 def empty_group(group):
+    """Document the empty group operation."""
     require(
         group.get("is_superuser") is False
         and all(
@@ -203,6 +214,7 @@ def empty_group(group):
 
 
 def group_payload(name):
+    """Document the group payload operation."""
     return {
         "name": name,
         "is_superuser": False,
@@ -215,6 +227,7 @@ def group_payload(name):
 
 
 def evidence_input(path):
+    """Document the evidence input operation."""
     if path is None:
         return None
     private(path)
@@ -249,6 +262,7 @@ def evidence_input(path):
 
 
 def build_plan(api, services, reviewed, stage="groups-only", evidence=None):
+    """Document the build plan operation."""
     require(stage in ("groups-only", "groups+empty-bindings"), "Unknown stage")
     actual = {slug: set(s.get("appRoles", {})) for slug, s in services.items() if s.get("appRoles")}
     require(actual == {k: set(v) for k, v in ALLOWLIST.items()}, "Catalog allowlist changed")
@@ -384,6 +398,7 @@ def build_plan(api, services, reviewed, stage="groups-only", evidence=None):
 
 @contextmanager
 def locked(root):
+    """Document the locked operation."""
     private(root, directory=True)
     fd = os.open(root / ".app-iam-prepare.lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
     try:
@@ -398,6 +413,7 @@ def locked(root):
 
 
 def sync_directory(path):
+    """Document the sync directory operation."""
     fd = os.open(path, os.O_RDONLY)
     try:
         os.fsync(fd)
@@ -406,6 +422,7 @@ def sync_directory(path):
 
 
 def atomic_json(path, value):
+    """Document the atomic json operation."""
     fd, tmp = tempfile.mkstemp(prefix=".pending-", dir=path.parent)
     try:
         with os.fdopen(fd, "wb") as f:
@@ -499,6 +516,7 @@ def apply_plan(api, root, services, reviewed, stage, evidence, approval):
 
 
 def main():
+    """Document the main operation."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
     parser.add_argument("action", choices=("plan", "check", "apply"), default="plan", nargs="?")

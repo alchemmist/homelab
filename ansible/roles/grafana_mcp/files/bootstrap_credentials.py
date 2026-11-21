@@ -18,6 +18,7 @@ class BootstrapError(Exception):
 
 
 def kubectl(arguments, payload=None):
+    """Document the kubectl operation."""
     result = subprocess.run(
         KUBECTL + arguments,
         input=json.dumps(payload) if payload is not None else None,
@@ -57,6 +58,7 @@ class Grafana:
 
 
 def decode_secret(secret):
+    """Document the decode secret operation."""
     try:
         return {
             key: base64.b64decode(value, validate=True).decode()
@@ -67,6 +69,7 @@ def decode_secret(secret):
 
 
 def bootstrap(grafana, existing_secret, persist, has_admin=True):
+    """Document the bootstrap operation."""
     values = decode_secret(existing_secret)
     if not has_admin:
         if not all(
@@ -144,6 +147,7 @@ def bootstrap(grafana, existing_secret, persist, has_admin=True):
 
 
 def main():
+    """Document the main operation."""
     try:
         credentials = json.load(sys.stdin)
         service = kubectl(

@@ -94,6 +94,7 @@ def callback_from_issuer(issuer):
 
 
 def validate_management_issuer(issuer):
+    """Document the validate management issuer operation."""
     parsed = urllib.parse.urlsplit(issuer)
     host = parsed.hostname
     if (
@@ -112,6 +113,7 @@ def validate_management_issuer(issuer):
 
 
 def issuer_from_netbird_config(path):
+    """Document the issuer from netbird config operation."""
     loaded = yaml.safe_load(Path(path).read_text())
     server = loaded.get("server") if isinstance(loaded, dict) else None
     auth = server.get("auth") if isinstance(server, dict) else None
@@ -122,6 +124,7 @@ def issuer_from_netbird_config(path):
 
 
 def profile_expression():
+    """Document the profile expression operation."""
     approved = ", ".join(repr(name) for name in PROFILE_GROUP_NAMES)
     return (
         "approved = (" + approved + ",)\n"
@@ -133,6 +136,7 @@ def profile_expression():
 
 
 def authentik_issuer():
+    """Document the authentik issuer operation."""
     return "https://" + AUTHENTIK_HOST + "/application/o/" + APP_SLUG + "/"
 
 
@@ -231,6 +235,7 @@ def _managed(rows, managed):
 
 
 def load_inventory(api):
+    """Document the load inventory operation."""
     version = api("GET", "admin/version/")
     if not isinstance(version, dict) or version.get("version_current") != AUTHENTIK_VERSION:
         raise RuntimeError("Unreviewed Authentik version")
@@ -324,6 +329,7 @@ def _same_redirect(actual, expected):
 
 
 def build_plan(inventory, issuer, journal):
+    """Document the build plan operation."""
     users = _pilot_snapshot(inventory)
     openid = _managed(inventory["scopes"], OPENID_MANAGED)
     email = _managed(inventory["scopes"], EMAIL_MANAGED)
@@ -625,6 +631,7 @@ def _legacy_preserved(before, after):
 
 
 def execute_apply(api, root, issuer, approved):
+    """Document the execute apply operation."""
     journal_path = root / JOURNAL_NAME
     runtime_path = root / RUNTIME_NAME
     journal = _private_read(journal_path) or {}
@@ -787,6 +794,7 @@ def _mappings_agree(path):
 
 
 def execute(argv):
+    """Document the execute operation."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
     parser.add_argument("action", nargs="?", choices=("check", "plan", "apply"), default="check")
@@ -840,6 +848,7 @@ def execute(argv):
 
 
 def main(argv=None):
+    """Document the main operation."""
     try:
         return execute(argv)
     except RuntimeError as error:
