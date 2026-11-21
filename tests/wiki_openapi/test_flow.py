@@ -11,7 +11,7 @@ BEFORE = "b" * 40
 
 
 class Bot:
-    def __init__(self, files):
+    def __init__(self, files) -> None:
         self._files = files
         self.calls = 0
 
@@ -26,8 +26,8 @@ class Bot:
 
 
 class Lab:
-    def __init__(self):
-        self.closed = []
+    def __init__(self) -> None:
+        self.closed: list[tuple[int, int]] = []
         self.page = "old"
 
     def read_page(self, ref="main") -> tuple[str, str]:
@@ -78,7 +78,7 @@ class Flow(unittest.TestCase):
         created = stage("create-pr", rendered[0], homelab=lab, write=True)
         self.assertEqual(created[0]["number"], 9)
 
-        def decide(prompt, data):
+        def decide(prompt, data) -> dict[str, object]:
             self.assertEqual(data["candidates"][0]["number"], 4)
             return {"close": [4, 9, 99]}
 

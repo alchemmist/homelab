@@ -239,7 +239,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 class Runtime:
-    def __init__(self, folder, config, apply=False):
+    def __init__(self, folder, config, apply=False) -> None:
         self.folder, self.config, self.apply = folder, validate_config(config), apply
         self.k = [
             "env",

@@ -9,9 +9,9 @@ HTML = (ROOT / "charts/socrat-home/files/index.html").read_text()
 
 
 class Links(HTMLParser):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
-        self.urls = []
+        self.urls: list[str] = []
 
     def handle_starttag(self, tag, attrs) -> None:
         if tag == "a":

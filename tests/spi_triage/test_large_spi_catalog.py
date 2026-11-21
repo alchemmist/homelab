@@ -40,7 +40,7 @@ class LargeCatalogTests(unittest.TestCase):
         m = Model(Mock(), "test-only", store=Mock())
         seen = []
 
-        def call(task, data, schema, deadline):
+        def call(task, data, schema, deadline) -> "dict[str, object]":
             batch = data["open_issues"]
             self.assertLessEqual(len(batch), 12)
             self.assertLessEqual(m.budget_reservation(m.payload(task, data, schema)), 30000)
@@ -61,7 +61,7 @@ class LargeCatalogTests(unittest.TestCase):
         saved = []
         calls = []
 
-        def first(task, data, schema, deadline):
+        def first(task, data, schema, deadline) -> "dict[str, object]":
             calls.append([x["number"] for x in data["open_issues"]])
             if len(calls) == 3:
                 raise Failure("LLM_ADMISSION_DEFERRED", 61)
@@ -75,7 +75,7 @@ class LargeCatalogTests(unittest.TestCase):
         completed = [x for batch in calls[:2] for x in batch]
         resumed = []
 
-        def second(task, data, schema, deadline):
+        def second(task, data, schema, deadline) -> "dict[str, object]":
             resumed.extend(x["number"] for x in data["open_issues"])
             return dict(GOOD)
 

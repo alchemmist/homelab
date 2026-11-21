@@ -69,7 +69,7 @@ def projection() -> dict[str, object]:
         reason = "nft returned a non-object projection"
         raise TypeError(reason)
 
-    def clean(v):
+    def clean(v) -> object:
         if isinstance(v, list):
             return [clean(x) for x in v if not isinstance(x, dict) or "metainfo" not in x]
         if isinstance(v, dict):

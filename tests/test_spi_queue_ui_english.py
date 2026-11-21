@@ -14,7 +14,7 @@ class EnglishUITests(unittest.TestCase):
         class HTML(HTMLParser):
             language = None
 
-            def handle_starttag(self, tag, attrs):
+            def handle_starttag(self, tag, attrs) -> None:
                 if tag == "html":
                     self.language = dict(attrs).get("lang")
 

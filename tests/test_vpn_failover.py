@@ -19,7 +19,7 @@ def _mapping(value: object) -> dict[str, object]:
 
 
 class FakeWatchdog(MODULE.Watchdog):
-    def __init__(self, directory: str) -> None:
+    def __init__(self, directory) -> None:
         super().__init__(
             {
                 "state_dir": directory,
@@ -449,7 +449,7 @@ class HardeningTests(unittest.TestCase):
         self.w.activate()
         command = self.w.command
 
-        def failed(*args):
+        def failed(*args) -> object:
             if args == ("systemctl", "start", self.w.agent):
                 raise RuntimeError("start failed")
             return command(*args)

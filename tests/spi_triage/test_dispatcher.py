@@ -38,7 +38,7 @@ class DispatchTests(unittest.TestCase):
     def test_ambiguous_persists_and_ack_race(self) -> None:
         self.enqueue()
 
-        def post():
+        def post() -> None:
             self.assertEqual(self.store.claim()["job_id"], "a")
             raise TimeoutError()
 
@@ -111,7 +111,7 @@ class ServiceSafetyTests(unittest.TestCase):
         from service import read_request_body
         from core import Failure
 
-        def check(raw, length, code, shutdown=True):
+        def check(raw, length, code, shutdown=True) -> None:
             left, right = socket.socketpair()
             try:
                 right.sendall(raw)
@@ -147,18 +147,18 @@ class DispatchTransportTests(unittest.TestCase):
                 self.sock, self.peer = socket.socketpair()
                 self.closed = False
 
-            def connect(self):
+            def connect(self) -> None:
                 pass
 
-            def request(self, *args, **kwargs):
+            def request(self, *args, **kwargs) -> None:
                 pass
 
-            def getresponse(self):
+            def getresponse(self) -> None:
                 # Simulates a parser waiting indefinitely for complete headers.
                 self.sock.recv(1)
                 raise http.client.RemoteDisconnected()
 
-            def close(self):
+            def close(self) -> None:
                 self.closed = True
                 self.sock.close()
                 self.peer.close()
