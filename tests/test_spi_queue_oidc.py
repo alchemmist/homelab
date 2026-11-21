@@ -15,7 +15,7 @@ identity = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(identity)
 
 
-def render(native=True):
+def render(native=True) -> dict[tuple[str, str, str], dict[str, object]]:
     raw = subprocess.check_output(
         [
             "helm",
@@ -43,7 +43,7 @@ def render(native=True):
 
 
 class NativeQueueChartTests(unittest.TestCase):
-    def test_native_host_tls_and_no_forward_auth(self):
+    def test_native_host_tls_and_no_forward_auth(self) -> None:
         docs = render()
         entry = docs["Ingress", "automation", "spi-queue-ui"]
         self.assertEqual(entry["spec"]["rules"][0]["host"], "spi.socrat.alchemmist.xyz")
@@ -59,7 +59,7 @@ class NativeQueueChartTests(unittest.TestCase):
         self.assertFalse(any(k[0] == "Middleware" for k in docs))
         self.assertNotIn("router.middlewares", str(entry))
 
-    def test_client_credential_mount_is_frontend_only_and_read_only(self):
+    def test_client_credential_mount_is_frontend_only_and_read_only(self) -> None:
         docs = render()
         pod = docs["Deployment", "automation", "spi-queue-ui"]["spec"]["template"]["spec"]
         self.assertIn(
@@ -79,7 +79,7 @@ class NativeQueueChartTests(unittest.TestCase):
         self.assertNotIn("spi-queue-oidc", str(docs["CronJob", "pr-agent", "spi-github-broker"]))
         self.assertFalse(any(k[0] == "Secret" for k in docs))
 
-    def test_native_entry_does_not_change_backend_pvc_rbac_jobs_or_limits(self):
+    def test_native_entry_does_not_change_backend_pvc_rbac_jobs_or_limits(self) -> None:
         old, new = render(False), render(True)
         for k in set(old) & set(new):
             if k in [
@@ -98,7 +98,7 @@ class NativeQueueChartTests(unittest.TestCase):
         )
         self.assertEqual(pod(old)["nodeSelector"], pod(new)["nodeSelector"])
 
-    def test_network_is_scoped_to_real_auth_hops_and_same_backend(self):
+    def test_network_is_scoped_to_real_auth_hops_and_same_backend(self) -> None:
         policy = render()["NetworkPolicy", "automation", "spi-queue-ui"]
         text = str(policy["spec"]["egress"])
         self.assertIn("8443", text)
@@ -107,7 +107,7 @@ class NativeQueueChartTests(unittest.TestCase):
         self.assertNotIn("0.0.0.0/0", text)
         self.assertNotIn("9000", text)
 
-    def test_catalog_has_exact_native_callback_groups_and_no_human_assignment(self):
+    def test_catalog_has_exact_native_callback_groups_and_no_human_assignment(self) -> None:
         catalog = json.loads((ROOT / "deploy/identity/spi-triage-oidc.json").read_text())
         self.assertEqual(
             catalog["provider"]["redirect_uris"],
@@ -128,7 +128,7 @@ class NativeQueueChartTests(unittest.TestCase):
         self.assertNotIn("client_secret", str(catalog))
         self.assertNotIn("users", catalog)
 
-    def test_app_group_requires_explicit_nonprivileged_shape(self):
+    def test_app_group_requires_explicit_nonprivileged_shape(self) -> None:
         good = {
             "is_superuser": False,
             "parents": [],
@@ -145,13 +145,13 @@ class NativeQueueChartTests(unittest.TestCase):
             with self.subTest(update=update), self.assertRaises(RuntimeError):
                 identity.group_valid({**good, **update})
 
-    def test_no_unknown_provider_is_adopted_without_private_journal(self):
+    def test_no_unknown_provider_is_adopted_without_private_journal(self) -> None:
         with self.assertRaisesRegex(RuntimeError, "without private client journal"):
             identity.validate_existing(None, {}, None, {"pk": 1}, None, {}, {})
 
 
 class NativeAPIResponseTests(unittest.TestCase):
-    def test_list_response_shape_fails_closed(self):
+    def test_list_response_shape_fails_closed(self) -> None:
         for value in (
             None,
             [],
@@ -170,7 +170,7 @@ class NativeAPIResponseTests(unittest.TestCase):
             ):
                 api.rows("core/groups/")
 
-    def test_valid_pagination_is_bounded_and_merged(self):
+    def test_valid_pagination_is_bounded_and_merged(self) -> None:
         api = object.__new__(identity.API)
         api.call = Mock(
             side_effect=[
@@ -181,7 +181,7 @@ class NativeAPIResponseTests(unittest.TestCase):
         self.assertEqual(api.rows("core/groups/"), [{"pk": 1}, {"pk": 2}])
         self.assertEqual(api.call.call_count, 2)
 
-    def test_create_response_requires_object_primary_key(self):
+    def test_create_response_requires_object_primary_key(self) -> None:
         for value in (None, [], {}, {"pk": None}, {"pk": False}, {"pk": ""}):
             api = object.__new__(identity.API)
             api.token = "fixture"
@@ -197,14 +197,14 @@ class NativeAPIResponseTests(unittest.TestCase):
             ):
                 api.call("POST", "core/groups/", {})
 
-    def test_production_uses_accepted_native_oidc_activation(self):
+    def test_production_uses_accepted_native_oidc_activation(self) -> None:
         values = yaml.safe_load((ROOT / "deploy/spi-triage/values.yaml").read_text())
         self.assertIs(values["queueUI"]["oidc"]["enabled"], True)
         self.assertEqual(values["queueUI"]["oidc"]["existingSecret"], "spi-queue-oidc")
 
 
 class NativeOIDCDefaultTests(unittest.TestCase):
-    def test_partial_oidc_overlay_keeps_boolean_default(self):
+    def test_partial_oidc_overlay_keeps_boolean_default(self) -> None:
         import tempfile
 
         with tempfile.TemporaryDirectory() as directory:
@@ -224,7 +224,7 @@ class NativeOIDCDefaultTests(unittest.TestCase):
                 stderr=subprocess.PIPE,
             )
 
-    def test_invalid_oidc_enabled_types_are_rejected_not_defaulted(self):
+    def test_invalid_oidc_enabled_types_are_rejected_not_defaulted(self) -> None:
         for value in ("0", "null", '"false"'):
             result = subprocess.run(
                 [
@@ -244,7 +244,7 @@ class NativeOIDCDefaultTests(unittest.TestCase):
 
 
 class NativeStatePersistenceTests(unittest.TestCase):
-    def test_save_never_overwrites_existing_file_or_follows_symlink(self):
+    def test_save_never_overwrites_existing_file_or_follows_symlink(self) -> None:
         import tempfile
 
         with tempfile.TemporaryDirectory() as directory:
@@ -268,7 +268,7 @@ class NativeStatePersistenceTests(unittest.TestCase):
                 identity.save(dangling, {"fixture": "must not create"})
             self.assertFalse(target.exists())
 
-    def test_new_state_file_is_private_and_exclusive(self):
+    def test_new_state_file_is_private_and_exclusive(self) -> None:
         import stat
         import tempfile
 
@@ -280,7 +280,7 @@ class NativeStatePersistenceTests(unittest.TestCase):
             with self.assertRaises(FileExistsError):
                 identity.save(path, {})
 
-    def test_cli_rejects_symlink_state_directory_before_api_access(self):
+    def test_cli_rejects_symlink_state_directory_before_api_access(self) -> None:
         import tempfile
 
         with tempfile.TemporaryDirectory() as directory:

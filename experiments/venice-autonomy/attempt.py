@@ -108,7 +108,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
     query = model._query
     calls = []
 
-    def observed_query(messages, **kwargs):
+    def observed_query(messages, **kwargs) -> object:
         record = {"attempt": len(calls) + 1, "started": time.time()}
         calls.append(record)
         try:
@@ -122,7 +122,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
                     "finish_reason": response.choices[0].finish_reason,
                 }
             )
-            return response
+            return cast("object", response)
         except Exception as error:
             record["error_type"] = type(error).__name__
             raise
@@ -133,7 +133,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
     model._query = observed_query
     execute = sandbox.execute
 
-    def execute_with_submission(action, **kwargs):
+    def execute_with_submission(action, **kwargs) -> object:
         result = execute(action, **kwargs)
         if mini_submission(result):
             raise Submitted(
@@ -143,7 +143,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
                     "extra": {"exit_status": "Submitted", "submission": result["output"]},
                 }
             )
-        return result
+        return cast("object", result)
 
     sandbox.execute = execute_with_submission
     system = "You are a coding agent in an isolated offline Linux workspace. "
@@ -259,7 +259,7 @@ def run_openhands(
     workspace = directory / "controller-workspace"
     workspace.mkdir()
 
-    def observe(event):
+    def observe(event) -> None:
         with (directory / "openhands-events.jsonl").open("a") as stream:
             stream.write(json.dumps(event.model_dump(mode="json")) + "\n")
 

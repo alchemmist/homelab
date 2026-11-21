@@ -8,7 +8,7 @@ from engine import UnsafeInput
 
 
 class ModelBoundaryTests(unittest.TestCase):
-    def test_retry_schema_failure(self):
+    def test_retry_schema_failure(self) -> None:
         calls = []
         valid = {
             "should_update": True,

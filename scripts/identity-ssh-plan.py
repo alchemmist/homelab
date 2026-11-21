@@ -59,7 +59,7 @@ def canonical_uuid(value):
 
 def read_json(path):
     # Do not include decoder errors: they can contain supplied private material.
-    def unique_pairs(pairs):
+    def unique_pairs(pairs) -> dict[str, object]:
         result = {}
         for key, value in pairs:
             require(key not in result, "Duplicate JSON field")
@@ -107,7 +107,7 @@ def validate_history(current, histories):
 def binding_history():
     """Fail closed without full Git history. A binding is never reused, even after revoke."""
 
-    def git(*args):
+    def git(*args) -> str:
         try:
             return subprocess.run(
                 ["git", "-C", str(ROOT), *args], check=True, capture_output=True, text=True
@@ -413,7 +413,7 @@ def main(argv=None):
             users = read_json(args.snapshot)
             require(isinstance(users, list), "Snapshot must be a public-only API user list")
 
-            def get_user(ident):
+            def get_user(ident) -> dict[str, object] | None:
                 rows = [u for u in users if isinstance(u, dict) and u.get("uuid") == ident]
                 require(len(rows) == 1, "Snapshot UUID missing or duplicated")
                 return rows[0]

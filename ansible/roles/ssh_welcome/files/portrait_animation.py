@@ -61,7 +61,7 @@ def play(initial, final, sample, colors, geometry, output):
     height = sample["rows"]
     resized = False
 
-    def draw(seconds):
+    def draw(seconds) -> None:
         output.write(f"\033[{height}A\r")
         for line in portrait_frame(sample, colors, seconds):
             output.write("\033[2C" + line + "\033[1B\r")

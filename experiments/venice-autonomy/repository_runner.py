@@ -14,7 +14,7 @@ import tarfile
 import time
 import tokenize
 import uuid
-from typing import cast
+from typing import NoReturn
 
 from sandbox import bounded_process
 
@@ -66,10 +66,10 @@ class CandidateRejected(ValueError):
 
 
 class RepositoryEnvironment:
-    def __init__(self, snapshot, directory, image, protocol) -> None:
+    def __init__(self, snapshot, directory, image, protocol):
         self.directory = directory
         self.directory.mkdir()
-        self.events: list[dict[str, object]] = []
+        self.events = []
         self.protocol = protocol
         self.image = image
         self.nonce = os.environ.get("AUTONOMY_RUN_NONCE") or uuid.uuid4().hex
@@ -206,9 +206,7 @@ class RepositoryEnvironment:
                 + ' 2>&1 | head -c 23000; status=${PIPESTATUS[0]}; exit "$status"'
             )
             code, data = bounded_process(
-                ["docker", "exec", cast("str", self.container_id), "bash", "-lc", wrapped],
-                24000,
-                50,
+                ["docker", "exec", self.container_id, "bash", "-lc", wrapped], 24000, 50
             )
             result = {
                 "returncode": code,
@@ -217,7 +215,7 @@ class RepositoryEnvironment:
             }
         except (TimeoutError, ValueError) as error:
             result = {"returncode": 125, "output": type(error).__name__, "exception_info": None}
-        raw_output = str(result["output"])
+        raw_output = result["output"]
         if len(raw_output.encode()) > 4000:
             result["output"] = (
                 raw_output.encode()[:4000].decode("utf-8", errors="replace") + "\n[truncated]\n"
@@ -291,7 +289,7 @@ class RepositoryEnvironment:
 
 
 def comment_delta(snapshot, candidate):
-    def comments(path):
+    def comments(path) -> collections.Counter[str]:
         return collections.Counter(
             token.string
             for token in tokenize.generate_tokens(io.StringIO(path.read_text()).readline)
@@ -507,7 +505,7 @@ def main(argv=None):
         }
     environment = None
 
-    def deadline(*_):
+    def deadline(*_) -> NoReturn:
         raise TimeoutError("external end-to-end deadline exceeded")
 
     signal.signal(signal.SIGALRM, deadline)

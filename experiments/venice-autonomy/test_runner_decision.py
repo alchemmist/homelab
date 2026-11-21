@@ -64,12 +64,12 @@ class FinalDecisionTests(unittest.TestCase):
         (base / "out").mkdir()
 
         class Environment(FakeEnvironment):
-            def close(self):
+            def close(self) -> None:
                 if cleanup_error:
                     raise RuntimeError("cleanup failed")
                 super().close()
 
-        def invoke(*args, **kwargs):
+        def invoke(*args, **kwargs) -> dict[str, str]:
             if not clean:
                 raise RuntimeError("provider failed")
             return {"exit_status": "ConversationExecutionStatus.FINISHED"}

@@ -115,7 +115,7 @@ def failure_event(error):
 def run(controller):
     original = controller.opener
 
-    def observed(*args, **kwargs):
+    def observed(*args: object, **kwargs: object) -> ObservedHTTP:
         return ObservedHTTP(original(*args, **kwargs))
 
     controller.opener = observed
