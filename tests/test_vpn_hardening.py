@@ -23,6 +23,7 @@ RECEIVED_BYTES_SENTINEL = 40000
 
 
 def load(name: str, filename: str) -> ModuleType:
+    """Test behavior for load."""
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / filename)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

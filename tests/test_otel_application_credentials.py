@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def load(name: str) -> types.ModuleType:
+    """Test behavior for load."""
     spec = importlib.util.spec_from_file_location(
         name.replace("-", "_"), ROOT / "scripts" / (name + ".py")
     )

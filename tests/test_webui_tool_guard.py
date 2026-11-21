@@ -10,6 +10,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 def load(name):
+    """Test behavior for load."""
     spec = importlib.util.spec_from_file_location(
         name, ROOT / "charts/open-webui/files" / f"{name}.py"
     )
