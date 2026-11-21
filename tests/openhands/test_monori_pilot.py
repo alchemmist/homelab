@@ -17,6 +17,8 @@ def load():
 
 
 class Pilot(unittest.TestCase):
+    """Tests for the monori pilot restart behaviour."""
+
     def test_restart_moves_to_second_card_once(self):
         with tempfile.TemporaryDirectory() as d:
             db = str(pathlib.Path(d)/'cards.db'); published=[]; prompts=[]; chats={}

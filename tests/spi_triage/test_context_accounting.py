@@ -8,6 +8,8 @@ from integrations import Model
 
 
 class ContextAccountingTests(unittest.TestCase):
+    """Tests for SPI context accounting contracts."""
+
     def test_contract_and_schema_completion(self):
         m = Model(Mock(), "unused")
         b = m.payload("x", {"text": 'é😀"\\\n' * 100}, MATCH_SCHEMA)

@@ -8,6 +8,8 @@ from engine import UnsafeInput
 
 
 class Fake(GitHub):
+    """In-memory GitHub stub recording API calls."""
+
     def __init__(self, existing=None, main=None):
         self.calls = []
         self.existing = existing or []
@@ -28,6 +30,8 @@ class Fake(GitHub):
 
 
 class WriterTests(unittest.TestCase):
+    """Tests for the blog update PR writer."""
+
     def test_closed_pr_not_reopened(self):
         g = Fake(existing=[{"html_url": "closed-pr", "state": "closed"}])
         self.assertEqual(g.propose("a" * 40, "new", "why")["status"], "existing")

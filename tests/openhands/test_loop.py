@@ -10,6 +10,8 @@ m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
 
 
 class LoopSetup(unittest.TestCase):
+    """Tests for the OpenHands pilot loop setup invariants."""
+
     def test_official_mcp_is_version_and_integrity_pinned(self):
         p = json.loads((ROOT/'tools/openhands-mcp/package-lock.json').read_text())
         fs = p['packages']['node_modules/@modelcontextprotocol/server-filesystem']

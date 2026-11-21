@@ -13,6 +13,8 @@ m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
 
 
 class NativeOIDC(unittest.TestCase):
+    """Tests for the native OpenHands OIDC configuration."""
+
     def setUp(self):
         self.owner = {'pk':'owner'}
         self.settings = copy.deepcopy(m.PROVIDER)
@@ -60,6 +62,8 @@ class NativeOIDC(unittest.TestCase):
 
 
 class OIDCRender(unittest.TestCase):
+    """Tests for rendered OIDC helm values."""
+
     def helm(self,*args):
         return subprocess.run(['helm','template','openhands',str(ROOT/'charts/openhands'),'-n','openhands','-f',str(ROOT/'deploy/openhands/values.yaml'),*args],text=True,capture_output=True)
 

@@ -28,6 +28,8 @@ MAX_BYTES = 2 * 1024 * 1024
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
     def redirect_request(self, request, response, code, message, headers, newurl):
         if response is not None:
             response.close()
@@ -56,6 +58,8 @@ def watchdog(sock, seconds):
 
 
 class DeadlineResponse(http.client.HTTPResponse):
+    """Response that counts reads against the artifact deadline."""
+
     def close(self):
         try:
             super().close()
@@ -66,6 +70,8 @@ class DeadlineResponse(http.client.HTTPResponse):
 
 
 class DeadlineConnection:
+    """Connection base wiring the deadline-aware response class."""
+
     response_class = DeadlineResponse
 
     def connect(self):
@@ -124,19 +130,23 @@ class DeadlineConnection:
 
 
 class HTTPConnection(DeadlineConnection, http.client.HTTPConnection):
-    pass
+    """Plain HTTP connection with deadline-bounded responses."""
 
 
 class HTTPSConnection(DeadlineConnection, http.client.HTTPSConnection):
-    pass
+    """TLS HTTP connection with deadline-bounded responses."""
 
 
 class HTTPHandler(urllib.request.HTTPHandler):
+    """URL handler returning deadline-bounded HTTP connections."""
+
     def http_open(self, request):
         return self.do_open(HTTPConnection, request)
 
 
 class HTTPSHandler(urllib.request.HTTPSHandler):
+    """URL handler returning deadline-bounded HTTPS connections."""
+
     def https_open(self, request):
         return self.do_open(HTTPSConnection, request, context=self._context)
 
@@ -214,6 +224,8 @@ def bounded(response):
 
 
 class Reader:
+    """Artifact reader backed by the gateway opener."""
+
     def __init__(self):
         self.http = opener()
         self.auth = os.environ["AUTH_URL"]
@@ -350,6 +362,8 @@ def byte_range(value, size):
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
+    """HTTP handler serving rustfs artifacts to callers."""
+
     server_version = "ArtifactReader"
     sys_version = ""
 
@@ -527,6 +541,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 
 class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
+    """Threaded HTTP server for the artifact reader."""
+
     daemon_threads = True
 
     def __init__(self, *args, **kwargs):

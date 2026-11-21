@@ -86,7 +86,7 @@ def run_python(source, stdin):
 
 
 class ModelBusy(Exception):
-    pass
+    """Exception raised when the upstream model is saturated."""
 
 
 def _wait_budget(detail):
@@ -226,6 +226,8 @@ def step():
 
 
 class Handler(BaseHTTPRequestHandler):
+    """HTTP handler exposing the lms-certify service."""
+
     def do_GET(self):
         if self.path != "/healthz":
             self.send_error(404)

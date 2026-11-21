@@ -12,6 +12,8 @@ def module(name):
     finally:os.chdir(old);os.umask(mask)
 
 class PiPilot(unittest.TestCase):
+    """Tests for the pi-monori pilot report admission."""
+
     def test_report_and_admission_are_distinct(self):
         d=module('dispatcher');rows=module('cards').plan((ROOT/'services/pi-monori/issue509.md').read_text());self.assertEqual(len(rows),405);self.assertEqual(len({x['id'] for x in rows}),405);self.assertEqual(len(d.CARDS),2)
 

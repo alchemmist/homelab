@@ -14,6 +14,8 @@ PATHS = {"/check", "/render", "/create-pr", "/close-older"}
 
 
 class Handler(BaseHTTPRequestHandler):
+    """HTTP handler serving the wiki OpenAPI frontend."""
+
     def log_message(self, *args):
         pass
 

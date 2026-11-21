@@ -11,6 +11,8 @@ spec.loader.exec_module(sync)
 
 
 class CalendarTests(unittest.TestCase):
+    """Tests for the n8n calendar workflow template."""
+
     def setUp(self):
         self.template = json.loads((BASE / "docs/n8n/calendar-voice-reminder.json").read_text())
         self.creds = {

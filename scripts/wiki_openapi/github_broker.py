@@ -15,7 +15,7 @@ PHASE = "bootstrap"
 
 
 class BrokerFailure(Exception):
-    pass
+    """Exception raised when the wiki broker run fails."""
 
 
 def request(method, url, token, body=None, context=None):

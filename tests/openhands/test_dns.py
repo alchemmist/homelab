@@ -20,6 +20,8 @@ def renderer(source):
 
 
 class DNSDelta(unittest.TestCase):
+    """Tests for OpenHands DNS record changes."""
+
     def setUp(self):
         self.source = (ROOT / "scripts/public_dns_zone.py").read_text()
         self.before = self.source.replace('    "openhands.socrat",\n', "")

@@ -11,6 +11,8 @@ spec.loader.exec_module(m)
 
 
 class ReadyContract(unittest.TestCase):
+    """Tests for the OpenHands ready-state contract."""
+
     def setUp(self):
         self.sha = "a" * 40
         self.p = {

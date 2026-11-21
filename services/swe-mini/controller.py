@@ -430,6 +430,8 @@ def tick():
 
 
 class Health(BaseHTTPRequestHandler):
+    """HTTP handler exposing swe-mini health endpoints."""
+
     def do_GET(self):
         if self.path in ("/healthz", "/livez", "/dependencies"):
             # External API failures cannot be repaired by restarting this process.

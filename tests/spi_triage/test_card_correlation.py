@@ -12,6 +12,8 @@ from card_correlation import record_receipt
 
 
 class CorrelationTests(unittest.TestCase):
+    """Tests for SPI card correlation across reports."""
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.store = Store(Path(self.tmp.name) / "jobs.sqlite")

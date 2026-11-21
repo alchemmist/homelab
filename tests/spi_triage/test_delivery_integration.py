@@ -10,6 +10,8 @@ from integrations import GitHub
 
 
 class DeliveryIntegrationTests(unittest.TestCase):
+    """Tests for end-to-end SPI delivery integration."""
+
     def setUp(self):
         fixture.EngineTests.setUp(self)
         self.links = Links(self.store, Mock(), guarded_protocol=True)

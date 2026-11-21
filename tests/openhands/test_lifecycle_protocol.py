@@ -10,6 +10,8 @@ def snapshot(author='Bot',reply=False):
  def nodes(x):return {'nodes':x,'pageInfo':{'hasNextPage':False}}
  ctx=nodes([{'__typename':'CheckRun','name':'Quality Graph','status':'COMPLETED','conclusion':'SUCCESS'}]);comments=[{'id':'PRRC_1','author':{'__typename':author,'login':'review-bot'},'body':'Please check coverage','url':'url'}];return {'headRefOid':H,'tip':nodes([{'commit':{'statusCheckRollup':{'contexts':ctx}}}]),'reviewThreads':nodes([{'id':'T','isResolved':False,'comments':nodes(comments)}]),'comments':nodes([]),'reviews':nodes([])}
 class Protocol(unittest.TestCase):
+ """Tests for the OpenHands lifecycle readiness protocol."""
+
  def test_no_ready_if_bot_remark_pending_even_with_otherwise_green_snapshot(self):
   api=Mock(return_value={'data':{'repository':{'pullRequest':snapshot()}}});
   with patch.dict(m.G,assess=lambda *a:{'ready_to_review':True,'blockers':[]}):

@@ -9,6 +9,8 @@ from service import Engine
 
 
 class CompletionSchedulerTests(unittest.TestCase):
+    """Tests for the completion scheduler."""
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)

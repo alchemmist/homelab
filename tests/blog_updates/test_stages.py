@@ -8,6 +8,8 @@ from engine import UnsafeInput
 
 
 class ModelBoundaryTests(unittest.TestCase):
+    """Tests for blog update model boundaries and retries."""
+
     def test_retry_schema_failure(self):
         calls = []
         valid = {

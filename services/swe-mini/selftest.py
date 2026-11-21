@@ -28,6 +28,8 @@ else:
 
 
 class Handler(BaseHTTPRequestHandler):
+    """HTTP handler accepting swe-mini selftest jobs."""
+
     def do_POST(self):
         request = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         assert not request.get("tools"), "Venice route must not use tool-call emulation"
