@@ -292,8 +292,10 @@ def test_failure_scope_uses_direct_upstream_not_api(
     monkeypatch.setattr(m, "active", lambda unit: agent)
     monkeypatch.setattr(m, "local_listeners_respond", lambda: listeners)
 
-    def check(config, host, source, detail) -> bool:
+
+    def check(_config, host, source, detail) -> bool:
         assert host == "10.250.0.2" and source == ("10.250.0.40", 0)
+        assert isinstance(detail, dict)  # probe records its observation in-place
         if not upstream:
             raise TimeoutError()
         return True
@@ -336,7 +338,8 @@ def test_upstream_failure_never_fences_worker_or_releases_marker(ctl, monkeypatc
 def test_probe_failure_records_stage_not_private_path(ctl, monkeypatch) -> None:
     m, c = ctl
 
-    def fail(*a, **kw) -> None:
+
+    def fail(*_a, **_kw) -> None:
         raise TimeoutError()
 
     monkeypatch.setattr(m.socket, "create_connection", fail)

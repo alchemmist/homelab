@@ -166,7 +166,8 @@ class ReviewReuseTests(unittest.TestCase):
         m = Model(Mock(), "fake")
         saved = []
 
-        def choose(task, data, schema, deadline) -> dict[str, object]:
+
+        def choose(_task, data, _schema, _deadline) -> dict[str, object]:
             return dict(GOOD, issue_number=data["open_issues"][0]["number"])
 
         m.call = Mock(side_effect=choose)
@@ -186,7 +187,8 @@ class ReviewReuseTests(unittest.TestCase):
         saved = []
         calls = [0]
 
-        def choose(task, data, schema, deadline) -> dict[str, object]:
+
+        def choose(_task, data, _schema, _deadline) -> dict[str, object]:
             calls[0] += 1
             if calls[0] == 8:
                 raise Failure("LLM_ADMISSION_DEFERRED")
