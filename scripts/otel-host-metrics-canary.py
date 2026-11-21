@@ -457,7 +457,11 @@ def run(root: Path, phase: str):
         result["agentCgroup"] = agent_cgroup = command(
             ["systemctl", "show", unit(root, "agent"), "-p", "ControlGroup", "--value"]
         ).strip()
-        peak = Path("/sys/fs/cgroup") / agent_cgroup.lstrip("/") / "memory.peak"
+        peak = (
+            Path("/sys/fs/cgroup") / agent_cgroup.lstrip("/") / "memory.peak"
+            if agent_cgroup
+            else Path("/nonexistent")
+        )
         result["agentMemoryPeakBytes"] = int(peak.read_text()) if peak.is_file() else None
     elif phase == "gateway-stop":
         stop(root, ["gateway"])

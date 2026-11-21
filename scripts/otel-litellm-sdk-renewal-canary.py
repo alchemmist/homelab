@@ -61,6 +61,7 @@ def run():
         cast("Callable[[object, object, object, object], None]", original_loader)(
             context, certfile, keyfile, password
         )
+        return public_hash
 
     setattr(ssl.SSLContext, _LOAD_CERT_CHAIN, observe_loader)
     with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
