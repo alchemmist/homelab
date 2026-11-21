@@ -38,3 +38,25 @@ def test_tcp_and_tls_are_distinct():
         (row,) = samples("example.com", ctx)
         assert row["stage"] == "ok"
         ctx.wrap_socket.assert_called_once_with(sock, server_hostname="example.com")
+
+
+def test_malformed_resolver_output():
+    with patch(
+        "subprocess.run", return_value=subprocess.CompletedProcess([], 0, stdout=b"[")
+    ):
+        assert list(samples("example.com", None))[0]["stage"] == "dns"
+
+
+def test_each_distinct_address_is_sampled():
+    targets = [
+        (socket.AF_INET, socket.SOCK_STREAM, 6, "", (ip, 443))
+        for ip in ("192.0.2.1", "192.0.2.2")
+    ]
+    with (
+        patch.dict(samples.__globals__, {"resolve": lambda host: targets}),
+        patch("socket.socket"),
+    ):
+        assert [r["ip"] for r in samples("example.com", MagicMock())] == [
+            "192.0.2.1",
+            "192.0.2.2",
+        ]
