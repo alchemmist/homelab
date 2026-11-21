@@ -15,6 +15,7 @@ SPEC.loader.exec_module(Q)
 
 
 class QualityPanelsTest(unittest.TestCase):
+    """Tests for QualityPanelsTest."""
     def setUp(self):
         self.d = json.loads(Q.SOURCE.read_text())
         self.p = {p["id"]: p for p in self.d["panels"]}

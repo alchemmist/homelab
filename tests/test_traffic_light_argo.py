@@ -15,6 +15,7 @@ spec.loader.exec_module(lab)
 
 
 class TrafficLightArgoTest(unittest.TestCase):
+    """Tests for TrafficLightArgoTest."""
     def setUp(self):
         self.dashboard = lab.build()
         self.panels = {p["id"]: p for p in self.dashboard["panels"]}

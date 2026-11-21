@@ -53,6 +53,7 @@ def assert_monori_release_images(documents, images):
 
 
 class StatefulBoundaries(unittest.TestCase):
+    """Tests for StatefulBoundaries."""
     @classmethod
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory()
@@ -247,6 +248,7 @@ if __name__ == "__main__":
 
 
 class CurrentMonoriRelease(unittest.TestCase):
+    """Tests for CurrentMonoriRelease."""
     def test_current_image_mutation_is_not_hidden_by_historical_input(self):
         images = yaml.safe_load((R / "deploy/monori/values.yaml").read_text())["images"]
         documents = render(R, "charts/monori", "deploy/monori/values.yaml", "monori", "monori")

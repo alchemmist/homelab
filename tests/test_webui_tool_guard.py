@@ -41,6 +41,7 @@ GOOD = {"path": "/tmp/example", "replacements": [{"target": "old", "replacement"
 
 
 class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
+    """Tests for ToolGuardTests."""
     def setUp(self):
         self.metadata = {
             "message_id": "one",
@@ -267,6 +268,7 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
 
 
 class NoProgressRoundTests(unittest.TestCase):
+    """Tests for NoProgressRoundTests."""
     def call(self, name, error):
         return [
             {"type": "message", "status": "in_progress"},

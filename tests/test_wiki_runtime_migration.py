@@ -14,6 +14,7 @@ SPEC.loader.exec_module(MIGRATION)
 
 
 class MigrationTests(unittest.TestCase):
+    """Tests for MigrationTests."""
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)

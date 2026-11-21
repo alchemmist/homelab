@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class EdgeCrdTests(unittest.TestCase):
+    """Tests for EdgeCrdTests."""
     @classmethod
     def setUpClass(cls):
         output = subprocess.check_output(

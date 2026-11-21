@@ -24,6 +24,7 @@ def series(name, value, labels='job="node-exporter",node="socrat-4"', samples=20
 
 
 class DirectIpTest(unittest.TestCase):
+    """Tests for DirectIpTest."""
     def test_rendered_probe_and_existing_authenticated_pipeline(self):
         rendered = subprocess.check_output(
             [

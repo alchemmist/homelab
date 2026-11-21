@@ -35,6 +35,7 @@ def render(chart, values, release, ns):
 
 
 class MigrationTests(unittest.TestCase):
+    """Tests for MigrationTests."""
     def test_renderer_retry_after_transport_repair_preserves_grafana_and_adapter_placement(self):
         v = load("charts/grafana/alert-graphs.runtime.values.yaml")
         self.assertEqual(

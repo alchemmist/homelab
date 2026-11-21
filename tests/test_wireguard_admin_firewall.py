@@ -15,6 +15,7 @@ ROLLBACK = (ROLE / "ROLLBACK.md").read_text()
 
 
 class WireGuardAdminFirewallTests(unittest.TestCase):
+    """Tests for WireGuardAdminFirewallTests."""
     def test_uses_client_registry_and_exact_interface(self):
         self.assertIn("wg_socrat_admin_clients", DEFAULTS)
         self.assertIn("interface={{ wg_socrat_admin_firewall_interface | quote }}", SCRIPT)

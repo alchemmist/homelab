@@ -16,6 +16,7 @@ spec.loader.exec_module(m)
 
 
 class SessionTests(unittest.TestCase):
+    """Tests for SessionTests."""
     def test_unsafe_name_rejected(self):
         for name in ("install", "cli-fallback", "vpn83-../x", "vpn83-a"):
             with self.assertRaises(ValueError):
@@ -179,6 +180,7 @@ class SessionTests(unittest.TestCase):
 
 
 class TargetHelperTests(unittest.TestCase):
+    """Tests for TargetHelperTests."""
     def module(self):
         spec = importlib.util.spec_from_file_location(
             "target_apply", ROOT / "scripts/vpn-reality-apply.py"
@@ -267,6 +269,7 @@ class TargetHelperTests(unittest.TestCase):
 
 
 class SubscriptionMigrationTests(unittest.TestCase):
+    """Tests for SubscriptionMigrationTests."""
     def module(self):
         spec = importlib.util.spec_from_file_location(
             "sub_migrate", ROOT / "scripts/vpn-subscription-migrate.py"
@@ -357,6 +360,7 @@ class SubscriptionMigrationTests(unittest.TestCase):
 
 
 class BackendGuardTests(unittest.TestCase):
+    """Tests for BackendGuardTests."""
     def module(self, filename):
         spec = importlib.util.spec_from_file_location("backend_test", ROOT / "scripts" / filename)
         m = importlib.util.module_from_spec(spec)
@@ -463,6 +467,7 @@ class BackendGuardTests(unittest.TestCase):
 
 
 class HomeProbeTests(unittest.TestCase):
+    """Tests for HomeProbeTests."""
     def module(self):
         spec = importlib.util.spec_from_file_location(
             "home_probe", ROOT / "scripts/vpn-home-probe.py"
@@ -489,6 +494,7 @@ class HomeProbeTests(unittest.TestCase):
 
 
 class LegacyRetirementTests(unittest.TestCase):
+    """Tests for LegacyRetirementTests."""
     def module(self):
         spec = importlib.util.spec_from_file_location(
             "retire", ROOT / "scripts/vpn-legacy-retire.py"
