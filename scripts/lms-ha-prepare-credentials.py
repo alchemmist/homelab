@@ -4,7 +4,7 @@ import secrets
 import subprocess
 
 
-def kube(*args, document=None):
+def kube(*args, document=None) -> dict[str, object]:
     r = subprocess.run(
         ["kubectl", *args],
         input=json.dumps(document) if document else None,

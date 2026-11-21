@@ -7,11 +7,12 @@ import json
 import re
 import sys
 from pathlib import Path
+from typing import cast
 
 POLICY = "n8n-workflow-policy.json"
 
 
-def unique_object(pairs):
+def unique_object(pairs) -> dict[str, object]:
     result = {}
     for key, value in pairs:
         if key in result:
@@ -20,11 +21,11 @@ def unique_object(pairs):
     return result
 
 
-def load(path):
+def load(path) -> object:
     return json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=unique_object)
 
 
-def inside(root, name):
+def inside(root: Path, name: str) -> Path:
     relative = Path(name)
     if relative.is_absolute() or ".." in relative.parts:
         raise ValueError("policy paths must be repository-relative")
@@ -34,9 +35,9 @@ def inside(root, name):
     return path
 
 
-def run(root, fix=False):
+def run(root, fix=False) -> int:
     root = root.resolve()
-    policy = load(inside(root, POLICY))
+    policy = cast("dict[str, object]", load(inside(root, POLICY)))
     if (
         policy.get("version") != 1
         or not policy.get("handler_id")
@@ -47,10 +48,10 @@ def run(root, fix=False):
     if not isinstance(target, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", target):
         raise ValueError("invalid handler identity")
     handler = policy.get("handler_template")
-    if handler:
+    if isinstance(handler, str) and handler:
         inside(root, handler)
     files = set()
-    for name in policy["workflow_roots"]:
+    for name in cast("list[str]", policy["workflow_roots"]):
         directory = inside(root, name)
         if not directory.is_dir():
             raise ValueError("configured workflow root is missing")
@@ -134,7 +135,7 @@ def run(root, fix=False):
     return 0
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--fix",
