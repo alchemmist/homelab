@@ -41,9 +41,17 @@ spec:
           image: {{ .Values.image | quote }}
           command: [python, -c]
           args:
-            - "import pathlib,json; p=pathlib.Path('/data'); assert json.loads((p/'.homelab-vm105-migration-verified.json').read_text())['verified']; assert (p/'webui.db').open('rb').read(16)==b'SQLite format 3'+bytes([0])"
+            - |
+              import json, os, pathlib, psycopg
+              assert json.loads(pathlib.Path('/data/.homelab-vm105-migration-verified.json').read_text())['verified']
+              with psycopg.connect(os.environ['DATABASE_URL'], connect_timeout=8) as db:
+                  assert db.execute('SELECT EXISTS (SELECT FROM "user"), EXISTS (SELECT FROM alembic_version)').fetchone() == (True, True)
+          env:
+            - name: DATABASE_URL
+              valueFrom: {secretKeyRef: {name: open-webui-postgres, key: url}}
           volumeMounts:
             - {name: data, mountPath: /data, readOnly: true}
+            - {name: pg-ca, mountPath: /pg-ca, readOnly: true}
         {{- end }}
         {{- if .Values.toolGuard.enabled }}
         - name: prepare-tool-guard
@@ -66,6 +74,10 @@ spec:
             - name: http
               containerPort: 8080
           env:
+            - name: DATABASE_URL
+              valueFrom: {secretKeyRef: {name: open-webui-postgres, key: url}}
+            - {name: DATABASE_POOL_SIZE, value: "5"}
+            - {name: DATABASE_POOL_MAX_OVERFLOW, value: "2"}
             - name: CHAT_RESPONSE_MAX_TOOL_CALL_ITERATIONS
               value: {{ .Values.maxToolCallIterations | quote }}
             - name: WEBUI_AUTH
@@ -127,6 +139,7 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 5
           volumeMounts:
+            - {name: pg-ca, mountPath: /pg-ca, readOnly: true}
             {{- if .Values.otel.enabled }}
             - name: otel-source
               mountPath: /etc/otel-source
@@ -148,6 +161,7 @@ spec:
             - name: data
               mountPath: /app/backend/data
       volumes:
+        - {name: pg-ca, configMap: {name: pg-common-ca}}
         {{- if .Values.otel.enabled }}
         - name: otel-source
           configMap:
