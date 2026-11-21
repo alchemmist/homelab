@@ -14,6 +14,8 @@ spec = importlib.util.spec_from_file_location(
 helper = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(helper)
 
+WRITER_SECRET_FILE_MODE = 0o600
+
 
 class WriterSecret(unittest.TestCase):
     """Prove unsafe writer-secret inputs are refused and a valid render is idempotent."""
@@ -27,7 +29,7 @@ class WriterSecret(unittest.TestCase):
                 for r in ("root", "reader", "writer")
             }
 
-            def put(name, obj):
+            def put(name, obj) -> None:
                 p = d / name
                 p.write_text(json.dumps(obj))
                 p.chmod(0o600)
@@ -44,12 +46,10 @@ class WriterSecret(unittest.TestCase):
             helper.render(d)
             p = d / "spi-evidence-writer.secret.json"
             doc = json.loads(p.read_text())
-            self.assertEqual(p.stat().st_mode & 0o777, 0o600)
-            self.assertEqual(
-                doc["metadata"], {"name": "spi-evidence-writer", "namespace": "automation"}
-            )
-            self.assertEqual(
-                json.loads(base64.b64decode(doc["data"]["credentials.json"])), storage["writer"]
+            assert p.stat().st_mode & 0o777 == WRITER_SECRET_FILE_MODE
+            assert doc["metadata"] == {"name": "spi-evidence-writer", "namespace": "automation"}
+            assert (
+                json.loads(base64.b64decode(doc["data"]["credentials.json"])) == storage["writer"]
             )
             put("bootstrap-journal.json", {})
             with self.assertRaises(ValueError):

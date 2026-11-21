@@ -1,3 +1,5 @@
+"""Tests for the SSH gateway service."""
+
 import importlib.util
 import json
 import subprocess
@@ -15,7 +17,8 @@ SPEC.loader.exec_module(GATEWAY)
 
 
 class GatewayTests(unittest.TestCase):
-    def setUp(self):
+    """Exercise the SSH gateway handler with temporary state."""
+    def setUp(self) -> None:
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.state = Path(self.directory.name) / "state.json"
@@ -36,23 +39,25 @@ class GatewayTests(unittest.TestCase):
             ],
         }
 
-    def response(self, output):
+    def response(self, output) -> subprocess.CompletedProcess[str]:
         return subprocess.CompletedProcess([], 0, output, "")
 
-    def listing(self, entry=""):
+    def listing(self, entry="") -> subprocess.CompletedProcess[str]:
         return self.response("ExternalIPAddress = 203.0.113.1\n" + entry)
 
-    def test_existing_mapping_is_unchanged_and_recorded_when_router_rewrites_description(self):
+    def test_existing_mapping_is_unchanged_and_recorded_when_router_rewrites_description(
+        self,
+    ) -> None:
         output = self.listing(" 4 TCP 2222->192.168.0.23:2222 'miniupnpd' '' 0\n")
         with (
             patch.object(GATEWAY, "ssh_port", return_value=2222),
             patch.object(GATEWAY.subprocess, "run", return_value=output) as run,
         ):
             GATEWAY.reconcile(self.config)
-        self.assertEqual(run.call_count, 1)
-        self.assertEqual(json.loads(self.state.read_text()), {"2222": ["192.168.0.23", 2222]})
+        assert run.call_count == 1
+        assert json.loads(self.state.read_text()) == {"2222": ["192.168.0.23", 2222]}
 
-    def test_missing_mapping_is_restored(self):
+    def test_missing_mapping_is_restored(self) -> None:
         responses = [
             self.listing(),
             self.response(
@@ -64,10 +69,10 @@ class GatewayTests(unittest.TestCase):
             patch.object(GATEWAY.subprocess, "run", side_effect=responses) as run,
         ):
             GATEWAY.reconcile(self.config)
-        self.assertIn("-a", run.call_args_list[1].args[0])
-        self.assertEqual(json.loads(self.state.read_text())["2222"], ["192.168.0.23", 2222])
+        assert "-a" in run.call_args_list[1].args[0]
+        assert json.loads(self.state.read_text())["2222"] == ["192.168.0.23", 2222]
 
-    def test_foreign_mapping_is_not_deleted(self):
+    def test_foreign_mapping_is_not_deleted(self) -> None:
         output = self.listing(" 4 TCP 2222->192.168.0.99:22 'another-service' '' 0\n")
         with (
             patch.object(GATEWAY, "ssh_port", return_value=2222),
@@ -75,9 +80,9 @@ class GatewayTests(unittest.TestCase):
         ):
             with self.assertRaisesRegex(RuntimeError, "unmanaged"):
                 GATEWAY.reconcile(self.config)
-        self.assertEqual(run.call_count, 1)
+        assert run.call_count == 1
 
-    def test_backend_port_change_uses_persisted_ownership(self):
+    def test_backend_port_change_uses_persisted_ownership(self) -> None:
         self.state.write_text(json.dumps({"2222": ["192.168.0.23", 22]}))
         responses = [
             self.listing(" 4 TCP 2222->192.168.0.23:22 'miniupnpd' '' 0\n"),
@@ -91,10 +96,10 @@ class GatewayTests(unittest.TestCase):
             patch.object(GATEWAY.subprocess, "run", side_effect=responses) as run,
         ):
             GATEWAY.reconcile(self.config)
-        self.assertIn("-d", run.call_args_list[1].args[0])
-        self.assertEqual(json.loads(self.state.read_text())["2222"], ["192.168.0.23", 2222])
+        assert "-d" in run.call_args_list[1].args[0]
+        assert json.loads(self.state.read_text())["2222"] == ["192.168.0.23", 2222]
 
-    def test_timeout_restores_previous_owned_mapping(self):
+    def test_timeout_restores_previous_owned_mapping(self) -> None:
         self.state.write_text(json.dumps({"2222": ["192.168.0.23", 22]}))
         responses = [
             self.listing(" 4 TCP 2222->192.168.0.23:22 'miniupnpd' '' 0\n"),
@@ -108,12 +113,17 @@ class GatewayTests(unittest.TestCase):
         ):
             with self.assertRaises(RuntimeError):
                 GATEWAY.reconcile(self.config)
-        self.assertEqual(
-            run.call_args_list[3].args[0][-6:], ["-a", "192.168.0.23", "22", "2222", "TCP", "0"]
-        )
-        self.assertEqual(json.loads(self.state.read_text())["2222"], ["192.168.0.23", 22])
+        assert run.call_args_list[3].args[0][-6:] == [
+            "-a",
+            "192.168.0.23",
+            "22",
+            "2222",
+            "TCP",
+            "0",
+        ]
+        assert json.loads(self.state.read_text())["2222"] == ["192.168.0.23", 22]
 
-    def test_remote_node_maps_to_gateway_socket(self):
+    def test_remote_node_maps_to_gateway_socket(self) -> None:
         self.config["nodes"] = [
             {
                 "name": "socrat-2",
@@ -134,7 +144,7 @@ class GatewayTests(unittest.TestCase):
             patch.object(GATEWAY.subprocess, "run", side_effect=responses),
         ):
             GATEWAY.reconcile(self.config)
-        self.assertEqual(json.loads(self.state.read_text())["2224"], ["192.168.0.23", 2224])
+        assert json.loads(self.state.read_text())["2224"] == ["192.168.0.23", 2224]
 
 
 if __name__ == "__main__":

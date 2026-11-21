@@ -11,6 +11,8 @@ SPEC = importlib.util.spec_from_file_location(
     Path(__file__).resolve().parents[1] / "ansible/roles/vpn_consolidation/files/verify_vpn.py",
 )
 VPN = importlib.util.module_from_spec(SPEC)
+
+DUPLICATE_LINK_COUNT = 2
 SPEC.loader.exec_module(VPN)
 
 
@@ -21,30 +23,27 @@ class SubscriptionTests(unittest.TestCase):
         """Keep client identity when only the reality short id rotates."""
         first = b"vless://client@example.org:443?security=reality&sid=aaa&pbk=key#name"
         second = b"vless://client@example.org:443?pbk=key&sid=bbb&security=reality#name"
-        self.assertEqual(
-            VPN.normalize_subscription(first), VPN.normalize_subscription(base64.b64encode(second))
+        assert VPN.normalize_subscription(first) == VPN.normalize_subscription(
+            base64.b64encode(second)
         )
-        self.assertNotEqual(
-            VPN.normalize_subscription(first),
-            VPN.normalize_subscription(second.replace(b"client@", b"other@")),
+        assert VPN.normalize_subscription(first) != VPN.normalize_subscription(
+            second.replace(b"client@", b"other@")
         )
-        self.assertNotEqual(
-            VPN.normalize_subscription(first),
-            VPN.normalize_subscription(second.replace(b"pbk=key", b"pbk=other")),
+        assert VPN.normalize_subscription(first) != VPN.normalize_subscription(
+            second.replace(b"pbk=key", b"pbk=other")
         )
 
     def test_non_reality_sid_is_preserved(self) -> None:
         """Preserve a non-reality sid as part of the subscription identity."""
         first = b"vless://client@example.org:443?security=tls&sid=aaa"
-        self.assertNotEqual(
-            VPN.normalize_subscription(first),
-            VPN.normalize_subscription(first.replace(b"aaa", b"bbb")),
+        assert VPN.normalize_subscription(first) != VPN.normalize_subscription(
+            first.replace(b"aaa", b"bbb")
         )
 
     def test_duplicate_links_remain_visible(self) -> None:
         """Count duplicate links instead of collapsing them."""
         link = b"vless://client@example.org:443?security=tls"
-        self.assertEqual(len(VPN.normalize_subscription(link + b"\n" + link)), 2)
+        assert len(VPN.normalize_subscription(link + b"\n" + link)) == DUPLICATE_LINK_COUNT
 
     def test_empty_and_invalid_payloads_fail(self) -> None:
         """Reject empty and non-subscription payloads."""
@@ -77,12 +76,12 @@ class ConfigurationTests(unittest.TestCase):
             expected = VPN.configuration(connection)
             connection.execute("UPDATE inbounds SET up=50, down=100")
             connection.execute("UPDATE users SET login_epoch=1")
-            self.assertEqual(expected, VPN.configuration(connection))
+            assert expected == VPN.configuration(connection)
             connection.execute("UPDATE inbounds SET total=2000")
-            self.assertNotEqual(expected, VPN.configuration(connection))
+            assert expected != VPN.configuration(connection)
             connection.execute("UPDATE inbounds SET total=1000")
             connection.execute("UPDATE users SET password='changed'")
-            self.assertNotEqual(expected, VPN.configuration(connection))
+            assert expected != VPN.configuration(connection)
 
 
 if __name__ == "__main__":

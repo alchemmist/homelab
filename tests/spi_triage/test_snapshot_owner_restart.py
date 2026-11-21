@@ -8,40 +8,48 @@ from core import Failure, Store
 
 
 class SnapshotOwnerRestartTests(unittest.TestCase):
+    """Tests for snapshot ownership across restarts."""
+
     setUp = integration_fixtures.IntegrationTests.setUp
     tearDown = integration_fixtures.IntegrationTests.tearDown
 
-    def to_analyze(self):
+    def to_analyze(self) -> dict[str, object]:
+        'Advance a fresh event through matching.'
         data = self.engine.run_v1("match", self.data)
-        return self.engine.run_v1("collect", data)
+        result: dict[str, object] = self.engine.run_v1("collect", data)
+        return result
 
-    def test_early_snapshot_change_rewinds_same_execution_without_paid_analysis(self):
+    def test_early_snapshot_change_rewinds_same_execution_without_paid_analysis(self) -> None:
+        'Verify early snapshot changes rewind without paid analysis.'
         sent = self.to_analyze()
         deadline = sent["deadline"]
         self.github.open_signature.return_value = "changed"
         ready = self.engine.run_v1("analyze", sent)
-        self.assertEqual(
-            (ready["status"], ready["stage"], ready["execution_id"]), ("ready", "match", "1234")
+        assert (ready["status"], ready["stage"], ready["execution_id"]) == (
+            "ready",
+            "match",
+            "1234",
         )
-        self.assertEqual(ready["deadline"], deadline)
-        self.assertNotEqual(ready["fence"], sent["fence"])
+        assert ready["deadline"] == deadline
+        assert ready["fence"] != sent["fence"]
         self.model.analyze.assert_not_called()
-        self.assertEqual(self.engine.run_v1("analyze", sent), ready)
-        self.assertEqual(self.store.get(self.key)["attempts"], 1)
-        self.assertEqual(self.store.get(self.key)["state"], "processing")
+        assert self.engine.run_v1("analyze", sent) == ready
+        assert self.store.get(self.key)["attempts"] == 1
+        assert self.store.get(self.key)["state"] == "processing"
         with self.store.db() as c:
-            self.assertEqual(c.execute("SELECT count(*) FROM job_failure_budget").fetchone()[0], 0)
+            assert c.execute("SELECT count(*) FROM job_failure_budget").fetchone()[0] == 0
         self.store = Store(self.store.path)
         self.engine.store = self.store
-        self.assertEqual(self.store.recover_on_start(), 0)
-        self.assertEqual(self.engine.claim(self.identity), ready)
+        assert self.store.recover_on_start() == 0
+        assert self.engine.claim(self.identity) == ready
         self.github.open_signature.return_value = f.digest([])
         for stage in ("match", "collect", "analyze", "publish"):
             ready = self.engine.run_v1(stage, ready)
-        self.assertEqual(ready["status"], "complete")
-        self.assertEqual(self.github.request.call_count, 1)
+        assert ready["status"] == "complete"
+        assert self.github.request.call_count == 1
 
-    def test_expensive_snapshot_churn_keeps_original_two_replacement_limit(self):
+    def test_expensive_snapshot_churn_keeps_original_two_replacement_limit(self) -> None:
+        'Verify snapshot churn keeps the two-replacement limit.'
         data = self.data
         deadline = data["deadline"]
         for generation in range(3):
@@ -55,22 +63,25 @@ class SnapshotOwnerRestartTests(unittest.TestCase):
                 break
             sent = data
             data = self.engine.run_v1("publish", sent)
-            self.assertEqual((data["status"], data["stage"]), ("ready", "match"))
-            self.assertEqual(data["deadline"], deadline)
-            self.assertEqual(self.engine.run_v1("publish", sent), data)
+            assert (data["status"], data["stage"]) == ("ready", "match")
+            assert data["deadline"] == deadline
+            assert self.engine.run_v1("publish", sent) == data
             self.github.snapshot.return_value = []
         job = self.store.get(self.key)
-        self.assertEqual((job["state"], job["error"]), ("dead", "WRITE_NEEDS_REVIEW"))
+        assert (job["state"], job["error"]) == ("dead", "WRITE_NEEDS_REVIEW")
+        # Only two snapshot replacements are budgeted: the third generation is refused.
+        replacement_limit = 2
         with self.store.db() as c:
-            self.assertEqual(
+            assert (
                 c.execute(
                     "SELECT replacements FROM snapshot_budget WHERE job_id=?", (self.key,)
-                ).fetchone()[0],
-                2,
+                ).fetchone()[0]
+                == replacement_limit
             )
         self.github.request.assert_not_called()
 
-    def test_job_and_owner_rewind_roll_back_together_on_receipt_failure(self):
+    def test_job_and_owner_rewind_roll_back_together_on_receipt_failure(self) -> None:
+        'Verify job and owner rewind together on receipt failure.'
         data = self.to_analyze()
         with self.store.db() as c:
             before_job = tuple(
@@ -96,19 +107,19 @@ class SnapshotOwnerRestartTests(unittest.TestCase):
         finally:
             del OWNER_CONTEXT.binding
         with self.store.db() as c:
-            self.assertEqual(
+            assert (
                 tuple(
                     c.execute(
                         "SELECT stage,result,state FROM jobs WHERE id=?", (self.key,)
                     ).fetchone()
-                ),
-                before_job,
+                )
+                == before_job
             )
             row = c.execute(
                 "SELECT stage,fence,phase FROM workflow_wait_owner WHERE job_id=?", (self.key,)
             ).fetchone()
-            self.assertEqual((row["stage"], row["fence"]), before_owner[:2])
-            self.assertEqual(row["phase"], "running")
+            assert (row["stage"], row["fence"]) == before_owner[:2]
+            assert row["phase"] == "running"
 
 
 if __name__ == "__main__":

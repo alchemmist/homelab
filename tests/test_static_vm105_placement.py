@@ -8,11 +8,13 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
+REPLICA_COUNT_WITH_ANTI_AFFINITY = 2
+
 
 class StaticVMPlacementTests(unittest.TestCase):
     """Check retained failure domains, rolling updates, images, and opt-out."""
 
-    def render(self, name, *extra):
+    def render(self, name, *extra) -> dict[str, object]:
         output = subprocess.check_output(
             [
                 "helm",
@@ -32,43 +34,38 @@ class StaticVMPlacementTests(unittest.TestCase):
         for name, retained in [("blog", "socrat-0"), ("socrat-home", "socrat-1")]:
             with self.subTest(app=name):
                 spec = self.render(name)["spec"]
-                self.assertEqual(spec["replicas"], 2)
+                assert spec["replicas"] == REPLICA_COUNT_WITH_ANTI_AFFINITY
                 pod = spec["template"]["spec"]
                 affinity = pod["affinity"]
-                self.assertEqual(
-                    affinity["nodeAffinity"],
-                    {
-                        "requiredDuringSchedulingIgnoredDuringExecution": {
-                            "nodeSelectorTerms": [
-                                {
-                                    "matchExpressions": [
-                                        {
-                                            "key": "kubernetes.io/hostname",
-                                            "operator": "In",
-                                            "values": [retained, "socrat-5"],
-                                        }
-                                    ]
-                                }
-                            ],
-                        },
-                    },
-                )
+                assert affinity["nodeAffinity"] == {
+                    "requiredDuringSchedulingIgnoredDuringExecution": {
+                        "nodeSelectorTerms": [
+                            {
+                                "matchExpressions": [
+                                    {
+                                        "key": "kubernetes.io/hostname",
+                                        "operator": "In",
+                                        "values": [retained, "socrat-5"],
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
                 anti = affinity["podAntiAffinity"]["requiredDuringSchedulingIgnoredDuringExecution"]
-                self.assertEqual(len(anti), 1)
-                self.assertEqual(anti[0]["topologyKey"], "kubernetes.io/hostname")
-                self.assertEqual(
-                    anti[0]["labelSelector"]["matchLabels"], spec["selector"]["matchLabels"]
-                )
-                self.assertNotIn("nodeName", pod)
-                self.assertNotIn("nodeSelector", pod)
+                assert len(anti) == 1
+                assert anti[0]["topologyKey"] == "kubernetes.io/hostname"
+                assert anti[0]["labelSelector"]["matchLabels"] == spec["selector"]["matchLabels"]
+                assert "nodeName" not in pod
+                assert "nodeSelector" not in pod
 
     def test_rolling_update_cannot_deadlock_on_two_required_domains(self) -> None:
         """Keep surge at zero so two required hostnames cannot deadlock a rollout."""
         for name in ["blog", "socrat-home"]:
             with self.subTest(app=name):
                 strategy = self.render(name)["spec"]["strategy"]
-                self.assertEqual(strategy["type"], "RollingUpdate")
-                self.assertEqual(strategy["rollingUpdate"], {"maxSurge": 0, "maxUnavailable": 1})
+                assert strategy["type"] == "RollingUpdate"
+                assert strategy["rollingUpdate"] == {"maxSurge": 0, "maxUnavailable": 1}
 
     def test_images_unchanged_and_no_persistent_data_added(self) -> None:
         """Keep the digested image and reject new persistent or host volumes."""
@@ -76,13 +73,13 @@ class StaticVMPlacementTests(unittest.TestCase):
             with self.subTest(app=name):
                 values = yaml.safe_load((ROOT / "deploy" / name / "values.yaml").read_text())
                 pod = self.render(name)["spec"]["template"]["spec"]
-                self.assertEqual(
-                    pod["containers"][0]["image"],
-                    values["image"]["repository"] + "@" + values["image"]["digest"],
+                assert (
+                    pod["containers"][0]["image"]
+                    == values["image"]["repository"] + "@" + values["image"]["digest"]
                 )
                 for volume in pod.get("volumes", []):
-                    self.assertNotIn("persistentVolumeClaim", volume)
-                    self.assertNotIn("hostPath", volume)
+                    assert "persistentVolumeClaim" not in volume
+                    assert "hostPath" not in volume
 
     def test_optional_scheduling_can_be_disabled(self) -> None:
         """Allow the chart to render without affinity when scheduling is disabled."""
@@ -91,7 +88,7 @@ class StaticVMPlacementTests(unittest.TestCase):
                 pod = self.render(
                     name, "--set", "nodeAffinity=null", "--set", "podAntiAffinity.enabled=false"
                 )["spec"]["template"]["spec"]
-                self.assertNotIn("affinity", pod)
+                assert "affinity" not in pod
 
 
 if __name__ == "__main__":

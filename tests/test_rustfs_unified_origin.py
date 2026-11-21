@@ -33,41 +33,37 @@ class UnifiedOrigin(unittest.TestCase):
         )
         docs = text.split("---")
         console = next(d for d in docs if "name: rustfs-console-browser" in d)
-        self.assertIn("argocd-rustfs-browser-auth@kubernetescrd", console)
-        self.assertIn("service: {name: rustfs-console-http, port: {number: 80}}", console)
-        self.assertNotIn("number: 9000", console)
+        assert "argocd-rustfs-browser-auth@kubernetescrd" in console
+        assert "service: {name: rustfs-console-http, port: {number: 80}}" in console
+        assert "number: 9000" not in console
         middleware = next(d for d in docs if "kind: Middleware" in d)
-        self.assertIn("namespace: argocd", middleware)
-        self.assertIn("homelab.alchemmist.xyz/edge-transport: argocd", middleware)
-        self.assertIn("trustForwardHeader: false", middleware)
-        self.assertIn(
-            "https://rustfs.socrat.alchemmist.xyz/outpost.goauthentik.io/auth/traefik", middleware
+        assert "namespace: argocd" in middleware
+        assert "homelab.alchemmist.xyz/edge-transport: argocd" in middleware
+        assert "trustForwardHeader: false" in middleware
+        assert (
+            "https://rustfs.socrat.alchemmist.xyz/outpost.goauthentik.io/auth/traefik" in middleware
         )
         outpost = next(d for d in docs if "name: rustfs-authentik-browser" in d)
-        self.assertIn("router.priority: '200'", outpost)
-        self.assertNotIn("path: /\n", outpost)
+        assert "router.priority: '200'" in outpost
+        assert "path: /\n" not in outpost
         reader = next(d for d in docs if "name: rustfs-evidence-browser" in d)
-        self.assertIn("router.priority: '150'", reader)
-        self.assertIn("path: /spi/v1/", reader)
-        self.assertIn("host: rustfs.socrat.alchemmist.xyz", reader)
+        assert "router.priority: '150'" in reader
+        assert "path: /spi/v1/" in reader
+        assert "host: rustfs.socrat.alchemmist.xyz" in reader
         gateway = next(d for d in docs if "name: gateway\n" in d)
-        self.assertIn(
-            "https://rustfs.socrat.alchemmist.xyz/outpost.goauthentik.io/auth/nginx", gateway
-        )
+        assert "https://rustfs.socrat.alchemmist.xyz/outpost.goauthentik.io/auth/nginx" in gateway
         policy = next(d for d in docs if "name: rustfs-isolation" in d)
         import yaml
 
         parsed = yaml.safe_load(policy)
         for ingress in parsed["spec"]["ingress"]:
             for peer in ingress["from"]:
-                self.assertNotEqual(
-                    peer.get("podSelector", {})
-                    .get("matchLabels", {})
-                    .get("app.kubernetes.io/name"),
-                    "traefik",
+                assert (
+                    peer.get("podSelector", {}).get("matchLabels", {}).get("app.kubernetes.io/name")
+                    != "traefik"
                 )
-            self.assertTrue({p["port"] for p in ingress["ports"]} <= {9000, 9001})
-        self.assertNotIn("0.0.0.0/0", text)
+            assert {p["port"] for p in ingress["ports"]} <= {9000, 9001}
+        assert "0.0.0.0/0" not in text
 
     def test_activation_remains_off(self) -> None:
         """Keep the unified browser origin absent unless explicitly enabled."""
@@ -86,8 +82,8 @@ class UnifiedOrigin(unittest.TestCase):
             ],
             text=True,
         )
-        self.assertNotIn("name: rustfs-browser-auth", text)
-        self.assertNotIn("kind: Middleware", text)
-        self.assertIn(
-            "https://spi-evidence.socrat.alchemmist.xyz/outpost.goauthentik.io/auth/nginx", text
+        assert "name: rustfs-browser-auth" not in text
+        assert "kind: Middleware" not in text
+        assert (
+            "https://spi-evidence.socrat.alchemmist.xyz/outpost.goauthentik.io/auth/nginx" in text
         )

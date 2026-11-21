@@ -28,20 +28,20 @@ def has_cas_assertion(tree: ast.Module) -> bool:
 class BootstrapTests(unittest.TestCase):
     """Inventory, guard, and CAS checks for the socrat-5 bootstrap sources."""
 
-    def test_manifest_matches_inventory_and_scoped_template(self):
+    def test_manifest_matches_inventory_and_scoped_template(self) -> None:
         """Match the manifest peer to inventory and the rendered unit allowlist."""
         m = json.loads((ROOT / "deploy/network/socrat-5-bootstrap.json").read_text())
         v = {}
         for f in [
             "ansible/roles/wireguard_socrat/defaults/main.yml",
-            "ansible/inventory/group_vars/Socrat.yml",
+            "ansible/inventory/group_vars/Socrat/cluster.yml",
             "ansible/inventory/host_vars/socrat-4.yml",
         ]:
             v.update(yaml.safe_load((ROOT / f).read_text()))
-        self.assertEqual(
-            {k: v["wg_socrat_nodes"][m["name"]][k] for k in ["address", "public_key"]},
-            {"address": m["address"], "public_key": m["public_key"]},
-        )
+        assert {k: v["wg_socrat_nodes"][m["name"]][k] for k in ["address", "public_key"]} == {
+            "address": m["address"],
+            "public_key": m["public_key"],
+        }
         v.update(inventory_hostname="socrat-4", wg_socrat_private_key="TEST_ONLY_NOT_A_KEY")
         rendered = (
             Environment(undefined=StrictUndefined)
@@ -50,22 +50,22 @@ class BootstrapTests(unittest.TestCase):
             )
             .render(v)
         )
-        self.assertEqual(rendered.count(m["public_key"]), 1)
-        self.assertIn("AllowedIPs = 10.250.0.41/32", rendered)
-        self.assertNotIn("0.0.0.0/0", rendered)
+        assert rendered.count(m["public_key"]) == 1
+        assert "AllowedIPs = 10.250.0.41/32" in rendered
+        assert "0.0.0.0/0" not in rendered
         for name, p in v["wg_socrat_nodes"].items():
             if name != "socrat-4":
-                self.assertIn(p["public_key"], rendered)
+                assert p["public_key"] in rendered
 
     def test_guard_is_pre_dnat_and_source_scoped(self) -> None:
         """Keep the guard inserted before DNAT and scoped to the testing-class source."""
         s = (ROOT / "scripts/testing-class-wg-guard.sh").read_text()
-        self.assertIn("-t mangle -I PREROUTING 1 -i wg-socrat -s 10.250.0.41/32", s)
-        self.assertIn("--sport 22 -m conntrack --ctstate ESTABLISHED", s)
-        self.assertIn("-d 10.250.0.40/32", s)
-        self.assertIn('-A "${CHAIN}" -j DROP', s)
+        assert "-t mangle -I PREROUTING 1 -i wg-socrat -s 10.250.0.41/32" in s
+        assert "--sport 22 -m conntrack --ctstate ESTABLISHED" in s
+        assert "-d 10.250.0.40/32" in s
+        assert '-A "${CHAIN}" -j DROP' in s
         for bad in ["iptables-restore", " -F ", " -P ", "MASQUERADE", "--dport 6443"]:
-            self.assertNotIn(bad, s)
+            assert bad not in s
 
     def test_peer_admission_is_cas_and_no_transport_restart(self) -> None:
         """Require CAS peer admission and reject transport restart tokens."""
@@ -115,9 +115,9 @@ class BootstrapTests(unittest.TestCase):
     def test_guard_declared_before_transport_on_boot(self) -> None:
         """Declare the guard before the WireGuard unit and never restart it."""
         s = (ROOT / "ansible/playbooks/testing-class-bootstrap-guard.yml").read_text()
-        self.assertIn("Requires=testing-class-wg-guard.service", s)
-        self.assertIn("Before=wg-quick@wg-socrat.service", s)
-        self.assertNotIn("state: restarted", s)
+        assert "Requires=testing-class-wg-guard.service" in s
+        assert "Before=wg-quick@wg-socrat.service" in s
+        assert "state: restarted" not in s
 
 
 if __name__ == "__main__":
