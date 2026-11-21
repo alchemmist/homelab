@@ -7,7 +7,7 @@ import shutil
 import socket
 import stat
 import subprocess
-from typing import NotRequired, TypedDict
+from typing import TypedDict
 import urllib.request
 import xml.etree.ElementTree as ET
 
@@ -76,11 +76,11 @@ class _KubeletConfig(TypedDict):
     imageGCHighThresholdPercent: int
 
 
-class _DiskPolicy(TypedDict):
+class _DiskPolicy(TypedDict, total=False):
     node: str
     kubelet: _KubeletConfig
     folder: str
-    service: NotRequired[str]
+    service: str
 
 
 def apply(policy: _DiskPolicy):

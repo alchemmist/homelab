@@ -1,6 +1,6 @@
 import json
 import sys
-from typing import NotRequired, TypedDict, cast
+from typing import TypedDict
 
 
 class _Limits(TypedDict, total=False):
@@ -11,15 +11,15 @@ class _Resources(TypedDict, total=False):
     limits: _Limits
 
 
-class _Container(TypedDict):
+class _Container(TypedDict, total=False):
     name: str
-    resources: NotRequired[_Resources]
+    resources: _Resources
 
 
-class _ContainerStatus(TypedDict):
+class _ContainerStatus(TypedDict, total=False):
     name: str
-    ready: NotRequired[bool]
-    resources: NotRequired[_Resources]
+    ready: bool
+    resources: _Resources
 
 
 class _PodSpec(TypedDict, total=False):
@@ -76,8 +76,10 @@ def memory_bytes(value: object):
 def problems(document: _Document, pods: _PodList | None = None):
     if not document:
         return ["Prometheus is not installed"]
-    prom = cast("_Prom", document)
-    items = prom.get("items") if isinstance(document, dict) and "items" in document else [prom]
+    if not isinstance(document, dict):
+        return ["Prometheus is not installed"]
+    prom = document
+    items = prom.get("items") if "items" in prom else [prom]
     if not items:
         return ["Prometheus is not installed"]
     spec = items[0].get("spec") or {}

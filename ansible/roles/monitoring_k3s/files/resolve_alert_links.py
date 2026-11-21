@@ -7,7 +7,7 @@ import re
 import subprocess
 import tempfile
 import time
-from typing import NotRequired, Protocol, TypedDict
+from typing import Protocol, TypedDict
 from urllib.parse import quote, urlencode
 
 PROMETHEUS_PATH = (
@@ -24,18 +24,18 @@ class _Condition(Protocol):
     def __bool__(self) -> bool: ...
 
 
-class _ApiRule(TypedDict):
+class _ApiRule(TypedDict, total=False):
     name: str
     query: str
-    type: NotRequired[str]
-    annotations: NotRequired[dict[str, str]]
-    labels: NotRequired[dict[str, str]]
+    type: str
+    annotations: dict[str, str]
+    labels: dict[str, str]
 
 
-class _ApiGroup(TypedDict):
+class _ApiGroup(TypedDict, total=False):
     file: str
     name: str
-    rules: NotRequired[list[_ApiRule]]
+    rules: list[_ApiRule]
 
 
 class _RulesData(TypedDict):
@@ -77,9 +77,9 @@ class _K8sRule(TypedDict, total=False):
     annotations: dict[str, str]
 
 
-class _K8sGroup(TypedDict):
+class _K8sGroup(TypedDict, total=False):
     name: str
-    rules: NotRequired[list[_K8sRule]]
+    rules: list[_K8sRule]
 
 
 class _K8sSpec(TypedDict, total=False):

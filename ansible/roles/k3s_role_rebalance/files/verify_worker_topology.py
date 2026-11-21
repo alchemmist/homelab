@@ -12,6 +12,9 @@ VOTERS = {"socrat-0", "socrat-1", "socrat-2"}
 
 class _MemberView(TypedDict):
     id: int
+    id_hex: str
+    peer_urls: list[str]
+    learner: bool
 
 
 class _StatusHeader(TypedDict):

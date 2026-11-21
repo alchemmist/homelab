@@ -13,7 +13,7 @@ import stat
 import subprocess
 import sys
 import tempfile
-from typing import Protocol, cast
+from typing import Optional, Protocol, cast
 
 
 class _Condition(Protocol):
@@ -89,7 +89,7 @@ def validate(name: str, text: object):
     return {"username": name, "public_key": canonical, "fingerprint": fp}
 
 
-def safe_paths(name: str, account: pwd.struct_passwd | None):
+def safe_paths(name: str, account: Optional[pwd.struct_passwd]):
     home = Path("/home") / name
     require(
         account is None or account.pw_dir == str(home), "Nonstandard home requires separate review"
@@ -149,7 +149,7 @@ def ssh_policy(name: str):
     )
 
 
-def inspect(name: str, expected: str | None = None, enforce: _Condition = False):
+def inspect(name: str, expected: Optional[str] = None, enforce: _Condition = False):
     username(name)
     require(os.geteuid() == 0, "Account verification requires root")
     require(

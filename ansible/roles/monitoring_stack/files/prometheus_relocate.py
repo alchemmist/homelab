@@ -1,4 +1,3 @@
-from collections.abc import Sequence
 import json
 import sys
 from typing import Protocol, TypedDict
@@ -62,7 +61,7 @@ class _RelocatePayload(TypedDict, total=False):
     relocate: object
 
 
-def live_node(pods: Sequence[_Pod], volumes: Sequence[_Volume]):
+def live_node(pods: list[_Pod], volumes: list[_Volume]):
     for pod in pods:
         name = pod.get("metadata", {}).get("name", "")
         if not name.startswith(POD_PREFIX):
@@ -87,7 +86,7 @@ def live_node(pods: Sequence[_Pod], volumes: Sequence[_Volume]):
     return None
 
 
-def claim_name(volumes: Sequence[_Volume]):
+def claim_name(volumes: list[_Volume]):
     for volume in volumes:
         claim = volume.get("spec", {}).get("claimRef") or {}
         name = str(claim.get("name", ""))
@@ -98,6 +97,8 @@ def claim_name(volumes: Sequence[_Volume]):
 
 def decide(desired_node: str | None, current_node: str | None, relocate: _Condition):
     if current_node in (None, "", desired_node):
+        return "proceed"
+    if relocate:
         return "proceed"
     return "refuse"
 

@@ -7,7 +7,7 @@ import platform
 import shutil
 import sys
 import textwrap
-from typing import NotRequired, Protocol, TypedDict
+from typing import Protocol, TypedDict
 import unicodedata
 from urllib.parse import quote, urlencode, urlsplit
 
@@ -23,7 +23,7 @@ class _Address(TypedDict):
     type: str
 
 
-class _WelcomeConfig(TypedDict):
+class _WelcomeConfig(TypedDict, total=False):
     rancher_url: str
     cluster: str
     node: str
@@ -32,9 +32,9 @@ class _WelcomeConfig(TypedDict):
     addresses: list[_Address]
     labels: dict[str, str]
     disk: str
-    description: NotRequired[str]
-    contacts: NotRequired[dict[str, str]]
-    animation: NotRequired[bool]
+    description: str
+    contacts: dict[str, str]
+    animation: bool
 
 
 class _PortraitVariant(TypedDict):
