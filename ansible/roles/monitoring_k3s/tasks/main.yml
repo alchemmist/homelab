@@ -16,14 +16,25 @@
   ansible.builtin.shell: |
     set -o pipefail
     set -eu
-    existing_secret=$(k3s kubectl --kubeconfig {{ monitoring_k3s_kubeconfig | quote }} -n {{ monitoring_k3s_namespace | quote }} get secret monitoring-etcd-metrics-token --ignore-not-found -o name)
+    existing_secret=$(k3s kubectl --kubeconfig {{ monitoring_k3s_kubeconfig | quote }} \
+      -n {{ monitoring_k3s_namespace | quote }} \
+      get secret monitoring-etcd-metrics-token --ignore-not-found -o name)
     if [ -n "$existing_secret" ]; then
       exit 0
     fi
     python3 - <<'PY' | k3s kubectl --kubeconfig {{ monitoring_k3s_kubeconfig | quote }} create -f -
     import json
     import secrets
-    print(json.dumps({"apiVersion": "v1", "kind": "Secret", "metadata": {"name": "monitoring-etcd-metrics-token", "namespace": {{ monitoring_k3s_namespace | to_json }}}, "type": "Opaque", "stringData": {"token": secrets.token_hex(32)}}))
+    print(json.dumps({
+        "apiVersion": "v1",
+        "kind": "Secret",
+        "metadata": {
+            "name": "monitoring-etcd-metrics-token",
+            "namespace": {{ monitoring_k3s_namespace | to_json }},
+        },
+        "type": "Opaque",
+        "stringData": {"token": secrets.token_hex(32)},
+    }))
     PY
   register: monitoring_k3s_secret
   changed_when: "'created' in monitoring_k3s_secret.stdout"
@@ -72,62 +83,64 @@
 - name: Refuse five-second probes until Prometheus can take them
   ansible.builtin.command:
     argv: [python3, "{{ monitoring_k3s_remote_dir }}/prometheus_scrape_guard.py"]
-    stdin: "{{ {'prometheus': monitoring_k3s_prometheus.stdout | from_json, 'pods': monitoring_k3s_prometheus_pods.stdout | from_json} | to_json }}"
+    stdin: >-
+      {{ {'prometheus': monitoring_k3s_prometheus.stdout | from_json,
+      'pods': monitoring_k3s_prometheus_pods.stdout | from_json} | to_json }}
   changed_when: false
 
 - name: Install private K3s metrics integration
   ansible.builtin.command:
     argv:
-      - helm
-      - upgrade
-      - --install
-      - "{{ monitoring_k3s_release }}"
-      - "{{ monitoring_k3s_remote_dir }}/chart"
-      - --namespace
-      - "{{ monitoring_k3s_namespace }}"
-      - --kubeconfig
-      - "{{ monitoring_k3s_kubeconfig }}"
-      - --set-string
-      - "prometheusRelease={{ monitoring_k3s_prometheus_release }}"
-      - "{{ '--wait' if monitoring_k3s_wait | bool else '--wait=false' }}"
-      - --timeout
-      - 5m
+    - helm
+    - upgrade
+    - --install
+    - "{{ monitoring_k3s_release }}"
+    - "{{ monitoring_k3s_remote_dir }}/chart"
+    - --namespace
+    - "{{ monitoring_k3s_namespace }}"
+    - --kubeconfig
+    - "{{ monitoring_k3s_kubeconfig }}"
+    - --set-string
+    - prometheusRelease={{ monitoring_k3s_prometheus_release }}
+    - "{{ '--wait' if monitoring_k3s_wait | bool else '--wait=false' }}"
+    - --timeout
+    - 5m
   changed_when: true
 
 - name: Stage native Grafana alert link resolver
   ansible.builtin.copy:
     src: resolve_alert_links.py
     dest: "{{ monitoring_k3s_remote_dir }}/resolve_alert_links.py"
-    mode: '0600'
+    mode: "0600"
 
 - name: Resolve rule detail links after Prometheus loads the rules
   ansible.builtin.command:
     argv:
-      - python3
-      - "{{ monitoring_k3s_remote_dir }}/resolve_alert_links.py"
-      - --dashboard
-      - "{{ monitoring_k3s_remote_dir }}/chart/dashboards/nodes.json"
-      - --output
-      - "{{ monitoring_k3s_remote_dir }}/node-alert-links.json"
-      - --timeout
-      - '180'
+    - python3
+    - "{{ monitoring_k3s_remote_dir }}/resolve_alert_links.py"
+    - --dashboard
+    - "{{ monitoring_k3s_remote_dir }}/chart/dashboards/nodes.json"
+    - --output
+    - "{{ monitoring_k3s_remote_dir }}/node-alert-links.json"
+    - --timeout
+    - "180"
   changed_when: false
 
 - name: Resolve service rule detail links after Prometheus loads the rules
   ansible.builtin.command:
     argv:
-      - python3
-      - "{{ monitoring_k3s_remote_dir }}/resolve_alert_links.py"
-      - --dashboard
-      - "{{ monitoring_k3s_remote_dir }}/chart/dashboards/overview.json"
-      - --output
-      - "{{ monitoring_k3s_remote_dir }}/overview-alert-links.json"
-      - --values-key
-      - overviewAlertLinks
-      - --alert-name-prefix
-      - SocratService
-      - --timeout
-      - '180'
+    - python3
+    - "{{ monitoring_k3s_remote_dir }}/resolve_alert_links.py"
+    - --dashboard
+    - "{{ monitoring_k3s_remote_dir }}/chart/dashboards/overview.json"
+    - --output
+    - "{{ monitoring_k3s_remote_dir }}/overview-alert-links.json"
+    - --values-key
+    - overviewAlertLinks
+    - --alert-name-prefix
+    - SocratService
+    - --timeout
+    - "180"
   changed_when: false
 
 - name: Publish native alert detail links on the Nodes and Overview dashboards

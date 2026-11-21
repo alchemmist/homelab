@@ -87,10 +87,10 @@ class Tests(unittest.TestCase):
         class Reader:
             calls = []
 
-            def authorization(self, cookie):
+            def authorization(self, cookie) -> int:
                 return 200 if cookie == "valid=1" else 401
 
-            def read(self, key):
+            def read(self, key) -> bytes:
                 self.calls.append(key)
                 return b'{"x":1}\n'
 
@@ -101,7 +101,7 @@ class Tests(unittest.TestCase):
         worker.start()
         try:
 
-            def request(path, headers={}, method="GET"):
+            def request(path, headers={}, method="GET") -> tuple[int, dict[str, str], bytes]:
                 conn = http.client.HTTPConnection(*server.server_address, timeout=2)
                 conn.request(method, path, headers={"Host": g.HOST, **headers})
                 response = conn.getresponse()
@@ -229,7 +229,7 @@ class Integrity(unittest.TestCase):
                 pass
 
         class HTTP:
-            def open(self, req, timeout):
+            def open(self, req, timeout) -> Response:
                 self.request = req
                 return response
 
@@ -255,10 +255,10 @@ class Integrity(unittest.TestCase):
     def test_signing_against_openssl_canonical_vector(self):
         import subprocess
 
-        def sha(data):
+        def sha(data) -> str:
             return hashlib.sha256(data).hexdigest()
 
-        def hmac_openssl(key, data):
+        def hmac_openssl(key, data) -> bytes:
             return subprocess.check_output(
                 [
                     "openssl",

@@ -153,7 +153,8 @@ def monitor_workers(parent,directory):
                 attempted.add(action);failures[cid]=failures.get(cid,0)+1;delay[cid]=now+min(3600,120*2**min(5,failures[cid]-1))
                 result=api('/run','POST') if action[0]=='parallel' else api('/events','POST',{'role':'user','content':[{'type':'text','text':WORKER_NUDGE}],'run':True})
                 print('worker continuation',cid,action[0],bool(result.get('success')),flush=True);break
-        except Exception as exc:print('worker check:',type(exc).__name__,flush=True)
+        except (OSError, ValueError, TypeError, KeyError, sqlite3.Error) as exc:
+            print('worker check:',type(exc).__name__,flush=True)
         finally:time.sleep(45)
 
 def monitor(cid,qa=False):
@@ -182,7 +183,8 @@ def monitor(cid,qa=False):
                     ok=(api('/events','POST',{'role':'user','content':[{'type':'text','text':QA_READ_PROBE if action=='ledger_probe' else QA_NUDGE if qa else NUDGE}],'run':True}) if action in ('unfinished','ledger_probe') else api('/run','POST'))
                     print('continue',action,eid,'acknowledged',bool(ok.get('success')),flush=True)
             elif status=='running' and last_parallel and now>after+600:parallel_failures=0
-        except Exception as exc:print('continuation check:',type(exc).__name__,flush=True)
+        except (OSError, ValueError, TypeError, KeyError, sqlite3.Error) as exc:
+            print('continuation check:',type(exc).__name__,flush=True)
         time.sleep(30)
 if __name__=='__main__':
     import threading
