@@ -1,9 +1,12 @@
 """Prove the Moscow watchdog upgrade refuses before it changes the controller."""
 
-import importlib.util, json
+import importlib.util
+import json
 from pathlib import Path
 from types import SimpleNamespace
-import pytest, yaml
+
+import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 

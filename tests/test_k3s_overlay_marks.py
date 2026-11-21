@@ -1,5 +1,6 @@
 import importlib.util
 from pathlib import Path
+
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -105,7 +106,8 @@ def test_default_cli_is_read_only(monkeypatch, capsys):
 
 
 def test_cli_rejects_foreign_table_before_kernel_write(monkeypatch):
-    import json, sys
+    import json
+    import sys
     from types import SimpleNamespace
 
     def fake(*args, **kwargs):

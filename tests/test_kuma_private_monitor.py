@@ -1,10 +1,9 @@
-from contextlib import closing
 import importlib.util
-from pathlib import Path
 import sqlite3
 import tempfile
 import unittest
-
+from contextlib import closing
+from pathlib import Path
 
 MODULE_PATH = (
     Path(__file__).resolve().parents[1]

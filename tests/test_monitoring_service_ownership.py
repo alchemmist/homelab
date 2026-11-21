@@ -1,10 +1,11 @@
 """Monitoring ownership contracts; no image, data path, TLS or selector migration."""
 
 import hashlib
-from functools import lru_cache
 import json
-from pathlib import Path
 import subprocess
+from functools import lru_cache
+from pathlib import Path
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]

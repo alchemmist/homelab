@@ -1,12 +1,11 @@
 import importlib.util
 import json
-from pathlib import Path
 import socket
 import struct
 import subprocess
 import unittest
+from pathlib import Path
 from unittest.mock import Mock, patch
-
 
 MODULE_PATH = (
     Path(__file__).resolve().parents[1]

@@ -5,12 +5,12 @@ import base64
 import hashlib
 import importlib.util
 import json
-from pathlib import Path
 import struct
 import textwrap
-from types import SimpleNamespace
 import unittest
 import xml.etree.ElementTree as ET
+from pathlib import Path
+from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[1]
 

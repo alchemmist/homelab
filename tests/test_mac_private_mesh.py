@@ -1,8 +1,9 @@
 """Mac SSH must use narrow mesh routes, without SSH bastions or source masking."""
 
-from pathlib import Path
 import shlex
 import subprocess
+from pathlib import Path
+
 import yaml
 from jinja2 import Environment
 

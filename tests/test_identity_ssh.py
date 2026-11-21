@@ -6,14 +6,14 @@ import importlib.util
 import io
 import json
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import tempfile
 import unittest
-from unittest.mock import patch
 import urllib.error
 import urllib.parse
+from pathlib import Path
+from unittest.mock import patch
 
 import yaml
 
