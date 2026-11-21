@@ -9,7 +9,7 @@ The operator changed the integration scope: PR182 sets up CI and integrates revi
 ## Active CI scope
 
 Only `graph`, `secrets` and `javascript` passed in PR #454 and are active in CI.
-The other twelve checks remain runnable by name (`make check-all` attempts all
+The other twelve checks remain runnable by name (`make check` and its alias `make check-all` attempt all
 fifteen). Six failed and six were skipped; neither counts as a pass. Restore a
 check to `qg.yaml` and remove its local-only entry once it is verified green.
 
