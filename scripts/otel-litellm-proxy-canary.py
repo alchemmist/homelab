@@ -34,7 +34,7 @@ async def run():
             "litellm_settings": {"turn_off_message_logging": True, "telemetry": False},
         }
         path = Path("/run/otel-test/proxy-canary-config.json")
-        path.write_text(json.dumps(config))
+        await asyncio.to_thread(path.write_text, json.dumps(config))
         await proxy_server.initialize(config=str(path))
         litellm.turn_off_message_logging = True
         handler = OpenTelemetry()
