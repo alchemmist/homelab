@@ -16,8 +16,8 @@ ingress:
   tlsSecretName: blog-tls
   clusterIssuer: letsencrypt-http01
 resources:
-  requests: { cpu: 20m, memory: 64Mi }
-  limits: { memory: 256Mi }
+  requests: {cpu: 20m, memory: 64Mi}
+  limits: {memory: 256Mi}
 
 imagePullSecrets:
   - blog-harbor-pull

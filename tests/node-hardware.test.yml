@@ -1,3 +1,4 @@
+---
 rule_files:
 - node-hardware.rules.yml
 evaluation_interval: 1m

@@ -13,7 +13,7 @@
         state: directory
         owner: root
         group: root
-        mode: '0755'
+        mode: "0755"
 
     - name: Add only the Grafana private DNS record
       ansible.builtin.copy:
@@ -21,7 +21,7 @@
         dest: /etc/homelab-private-dns.d/monitoring.conf
         owner: root
         group: root
-        mode: '0644'
+        mode: "0644"
       register: monitoring_dns_record
 
     - name: Validate private DNS configuration before restart

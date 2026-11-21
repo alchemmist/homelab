@@ -8,7 +8,7 @@
            --kubeconfig,
            "{{ rancher_wg_kubeconfig }}",
            --filter,
-           '^cert-manager$',
+           ^cert-manager$,
            --output,
            json]
   register: rancher_wg_cert_release
@@ -54,7 +54,7 @@
       ansible.builtin.copy:
         dest: "{{ rancher_wg_cert_file.path }}"
         content: "{{ {'extraArgs': rancher_wg_cert_args} | to_nice_yaml }}"
-        mode: '0600'
+        mode: "0600"
       no_log: true
 
     - name: Update certificate controller without changing chart version or other settings
@@ -123,9 +123,9 @@
            "{{ rancher_wg_kubeconfig }}",
            apply,
            --server-side,
-           '--field-manager=rancher-private-dns',
+           --field-manager=rancher-private-dns,
            -f,
-           '-']
+           "-"]
     stdin: "{{ {'apiVersion': 'v1', 'kind': 'ConfigMap', 'metadata': {'name': 'coredns-custom', 'namespace': 'kube-system'}} | to_nice_yaml }}"
   register: rancher_wg_dns_configmap
   changed_when: "'created' in rancher_wg_dns_configmap.stdout"

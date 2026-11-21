@@ -29,7 +29,7 @@
         owner: root
         group: root
         mode: "0700"
-      loop: ['', tls]
+      loop: ["", tls]
 
     - name: Copy the pinned Collector to root-owned staging
       ansible.builtin.copy:
@@ -89,7 +89,7 @@
           - --
           - sh
           - -ec
-          - 'ip link set lo up; exec python3 "$@"'
+          - ip link set lo up; exec python3 "$@"
           - otel-metrics-smoke
           - "{{ otel_smoke_stage }}/smoke.py"
           - --legacy-prometheus

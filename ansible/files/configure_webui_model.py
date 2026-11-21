@@ -183,7 +183,7 @@ def main():
     except ConfigurationError as error:
         print(str(error), file=sys.stderr)
         return 1
-    except Exception:
+    except (OSError, subprocess.SubprocessError):
         print("Unable to configure Open WebUI model defaults", file=sys.stderr)
         return 1
     print(json.dumps(result))
