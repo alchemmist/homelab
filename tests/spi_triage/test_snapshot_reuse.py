@@ -40,8 +40,6 @@ class ProofProgress(TypedDict, total=False):
 class MatchResult(TypedDict, total=False):
     """Result payload returned by the matcher after analysis."""
 
-    """Result payload returned by the matcher after analysis."""
-
     reviewed_numbers: list[int]
 
 
@@ -78,7 +76,7 @@ class ReviewReuseTests(unittest.TestCase):
         ]
 
     def prepare(
-        self, issues: list[IssueRow], event: object = None
+        self, issues: list[IssueRow], event: object | None = None
     ) -> tuple[PreparedModel, ProofProgress]:
         m: PreparedModel = Model(Mock(), "fake")
         m.call = Mock(return_value=GOOD)
