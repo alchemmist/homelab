@@ -5,18 +5,20 @@ Not a foundation reconciler, lifecycle controller, or native integration rollout
 """
 
 import argparse
-from contextlib import contextmanager
 import fcntl
 import hashlib
 import json
 import os
-from pathlib import Path
 import re
 import stat
 import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Iterable, Mapping
+from contextlib import contextmanager
+from pathlib import Path
+from typing import IO, NoReturn, Protocol, TypedDict
 from uuid import uuid4
 
 BASE = "https://auth.socrat.alchemmist.xyz/api/v3/"
@@ -54,16 +56,32 @@ COLLECTIONS = (
 )
 
 
-def require(condition, message):
+class _Api(Protocol):
+    def __call__(
+        self, method: str, endpoint: str, payload: Mapping[str, object] | None = None
+    ) -> object: ...
+
+
+class _Service(TypedDict):
+    appRoles: Mapping[str, object]
+    groups: list[str]
+
+
+class _ReviewedEntry(TypedDict):
+    idpUserUuid: str
+    groups: list[str]
+
+
+def require(condition: object, message: str):
     if not condition:
         raise RuntimeError(message)
 
 
-def encoded(value):
+def encoded(value: object):
     return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
 
 
-def digest(value):
+def digest(value: object):
     return hashlib.sha256(encoded(value)).hexdigest()
 
 
@@ -71,7 +89,7 @@ def tool_hash():
     return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 
 
-def private(path, directory=False):
+def private(path: Path, directory: object = False):
     s = path.lstat()
     require(
         not stat.S_ISLNK(s.st_mode)
@@ -83,13 +101,21 @@ def private(path, directory=False):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
+    def redirect_request(
+        self,
+        req: object,
+        fp: IO[bytes] | None,
+        code: int,
+        msg: str,
+        headers: object,
+        newurl: str,
+    ):
         if fp is not None:
             fp.close()
         raise RuntimeError("API redirect refused")
 
 
-def api_for(root):
+def api_for(root: Path):
     private(root, directory=True)
     path = root / "credentials.json"
     private(path)
@@ -107,10 +133,10 @@ def api_for(root):
     token = tokens[0]
     opener = urllib.request.build_opener(NoRedirect())  # default verified HTTPS context
 
-    def api(method, endpoint, payload=None):
+    def api(method: str, endpoint: str, payload: Mapping[str, object] | None = None):
         require(
             method in ("GET", "POST")
-            and endpoint.split("?")[0] in COLLECTIONS
+            and endpoint.partition("?")[0] in COLLECTIONS
             and (method == "GET" or endpoint in ("core/groups/", "policies/bindings/")),
             "Request outside preparation boundary",
         )
@@ -135,20 +161,21 @@ def api_for(root):
     return api
 
 
-def rows(api, path):
+def rows(api: _Api, path: str):
     result = []
     for page in range(1, 1001):
-        query = {"page_size": 100, "page": page}
+        query: dict[str, object] = {"page_size": 100, "page": page}
         if path == "core/applications/":
             query["superuser_full_list"] = "true"
         data = api("GET", path + "?" + urllib.parse.urlencode(query))
-        require(
+        if not (
             isinstance(data, dict)
             and type(data.get("results")) is list
             and type(data.get("pagination")) is dict
-            and "next" in data["pagination"],
-            "Incomplete paginated inventory",
-        )
+            and "next" in data["pagination"]
+        ):
+            reason = "Incomplete paginated inventory"
+            raise RuntimeError(reason)
         result.extend(data["results"])
         nxt = data["pagination"]["next"]
         require(
@@ -160,21 +187,26 @@ def rows(api, path):
     raise RuntimeError("Pagination limit exceeded")
 
 
-def unique(items, key):
+def _reject(message: str) -> NoReturn:
+    raise RuntimeError(message)
+
+
+def unique(items: Iterable[Mapping[str, object]], key: str):
     result = {}
     for item in items:
-        require(
+        if not (
             isinstance(item, dict)
             and key in item
             and (type(item[key]) in (str, int) if key == "pk" else type(item[key]) is str)
-            and item[key] not in result,
-            "Missing/ambiguous inventory identity",
-        )
+            and item[key] not in result
+        ):
+            reason = "Missing/ambiguous inventory identity"
+            raise RuntimeError(reason)
         result[item[key]] = item
     return result
 
 
-def snapshot(api):
+def snapshot(api: _Api):
     state = {}
     for path in COLLECTIONS:
         items = rows(api, path)
@@ -183,11 +215,11 @@ def snapshot(api):
     return state
 
 
-def hashes(state):
+def hashes(state: Mapping[object, object]):
     return {path: digest(items) for path, items in state.items()}
 
 
-def empty_group(group):
+def empty_group(group: Mapping[str, object]):
     require(
         group.get("is_superuser") is False
         and all(
@@ -202,7 +234,7 @@ def empty_group(group):
     )
 
 
-def group_payload(name):
+def group_payload(name: str):
     return {
         "name": name,
         "is_superuser": False,
@@ -214,7 +246,7 @@ def group_payload(name):
     }
 
 
-def evidence_input(path):
+def evidence_input(path: Path | None):
     if path is None:
         return None
     private(path)
@@ -248,12 +280,20 @@ def evidence_input(path):
     return evidence
 
 
-def build_plan(api, services, reviewed, stage="groups-only", evidence=None):
+def build_plan(
+    api: _Api,
+    services: Mapping[str, _Service],
+    reviewed: Mapping[str, _ReviewedEntry],
+    stage: str = "groups-only",
+    evidence: Mapping[str, object] | None = None,
+):
     require(stage in ("groups-only", "groups+empty-bindings"), "Unknown stage")
     actual = {slug: set(s.get("appRoles", {})) for slug, s in services.items() if s.get("appRoles")}
     require(actual == {k: set(v) for k, v in ALLOWLIST.items()}, "Catalog allowlist changed")
     require(
-        all(reviewed.get(n, {}).get("idpUserUuid") == u for n, u in PINNED.items()),
+        all(
+            (reviewed[n]["idpUserUuid"] if n in reviewed else None) == u for n, u in PINNED.items()
+        ),
         "Reviewed owner/Tim UUID mismatch",
     )
     state = snapshot(api)
@@ -271,10 +311,9 @@ def build_plan(api, services, reviewed, stage="groups-only", evidence=None):
         empty_group(groups[name])
     app_pks = {g["pk"] for n, g in groups.items() if n in names}
     for user in users.values():
-        require(
-            type(user.get("groups")) is list and not app_pks.intersection(user["groups"]),
-            "App membership present or user inventory incomplete",
-        )
+        if not (isinstance(user.get("groups"), list) and not app_pks.intersection(user["groups"])):
+            reason = "App membership present or user inventory incomplete"
+            raise RuntimeError(reason)
     for name, uuid in PINNED.items():
         user = users.get(name)
         require(
@@ -316,13 +355,14 @@ def build_plan(api, services, reviewed, stage="groups-only", evidence=None):
             "Application/provider missing or not ANY",
         )
         legacy = services[slug].get("groups")
-        require(
+        if not (
             type(legacy) is list
             and legacy
             and len(set(legacy)) == len(legacy)
-            and all(n in groups and not n.startswith("app-") for n in legacy),
-            "Missing/invalid legacy admission groups",
-        )
+            and all(n in groups and not n.startswith("app-") for n in legacy)
+        ):
+            reason = "Missing/invalid legacy admission groups"
+            raise RuntimeError(reason)
         allowed_names = legacy + [f"app-{slug}-{r}" for r in ALLOWLIST[slug]]
         allowed = {groups[n]["pk"] for n in allowed_names if n in groups}
         seen = set()
@@ -383,7 +423,7 @@ def build_plan(api, services, reviewed, stage="groups-only", evidence=None):
 
 
 @contextmanager
-def locked(root):
+def locked(root: Path):
     private(root, directory=True)
     fd = os.open(root / ".app-iam-prepare.lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
     try:
@@ -397,7 +437,7 @@ def locked(root):
         os.close(fd)  # never unlink a lock inode another invocation may hold
 
 
-def sync_directory(path):
+def sync_directory(path: Path):
     fd = os.open(path, os.O_RDONLY)
     try:
         os.fsync(fd)
@@ -405,7 +445,7 @@ def sync_directory(path):
         os.close(fd)
 
 
-def atomic_json(path, value):
+def atomic_json(path: Path, value: object):
     fd, tmp = tempfile.mkstemp(prefix=".pending-", dir=path.parent)
     try:
         with os.fdopen(fd, "wb") as f:
@@ -423,7 +463,15 @@ def atomic_json(path, value):
             os.unlink(tmp)
 
 
-def apply_plan(api, root, services, reviewed, stage, evidence, approval):
+def apply_plan(
+    api: _Api,
+    root: Path,
+    services: Mapping[str, _Service],
+    reviewed: Mapping[str, _ReviewedEntry],
+    stage: str,
+    evidence: Mapping[str, object] | None,
+    approval: str,
+):
     """Caller holds exclusive local lock. No resume, rollback or automatic adoption."""
     require(evidence is not None, "Apply requires reviewed backup/recovery evidence")
     plan, state = build_plan(api, services, reviewed, stage, evidence)
@@ -455,12 +503,12 @@ def apply_plan(api, root, services, reviewed, stage, evidence, approval):
             path = run / f"{index:02d}.json"
             atomic_json(path, entry)  # durable intent BEFORE sending POST
             created = api(operation["method"], operation["path"], operation["payload"])
-            require(
+            if not (
                 isinstance(created, dict)
                 and "pk" in created
-                and all(created.get(k) == v for k, v in operation["payload"].items()),
-                "Create response mismatch; stop and inventory",
-            )
+                and all(created.get(k) == v for k, v in operation["payload"].items())
+            ):
+                _reject("Create response mismatch; stop and inventory")
             if operation["path"] == "core/groups/":
                 empty_group(created)
             else:
