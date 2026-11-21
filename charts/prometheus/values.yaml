@@ -66,7 +66,7 @@ kube-prometheus-stack:
         objectStorageConfig:
           existingSecret:
             key: objstore.yml
-            name: thanos-objstore-raw
+            name: thanos-warm-shipper
         resources:
           limits:
             memory: 1Gi
@@ -74,13 +74,16 @@ kube-prometheus-stack:
             cpu: 50m
             memory: 256Mi
         volumeMounts:
-        - mountPath: /var/lib/socrat-thanos
-          name: thanos-data
+        - mountPath: /trust
+          name: thanos-warm-ca
+          readOnly: true
       volumes:
-      - hostPath:
-          path: /var/lib/socrat-thanos
-          type: Directory
-        name: thanos-data
+      - name: thanos-warm-ca
+        secret:
+          secretName: thanos-warm-api-tls
+          items:
+          - key: ca.crt
+            path: ca.crt
       - name: otel-config
         configMap:
           name: otel-cluster-config

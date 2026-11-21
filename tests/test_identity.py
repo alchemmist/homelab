@@ -270,6 +270,104 @@ class IdentityTests(unittest.TestCase):
             self.assertEqual((root / "owner-login.json").stat().st_mode & 0o777, 0o600)
             self.assertEqual((root / "oidc-clients.json").stat().st_mode & 0o777, 0o600)
 
+    def test_scoped_monori_replay_preserves_secret_and_requires_owner_binding(
+        self,
+    ) -> None:
+        """Do not attach a provider until the owner restriction exists."""
+        sys.path.insert(0, str(ROOT / "ansible/roles/identity_integrations/files"))
+        from monori_oidc import configure_monori
+
+        fake = FakeAuthentik()
+        fake.data["core/groups/"].append({"name": "homelab-owner", "pk": "owner"})
+
+        def api(method, path, payload=None):
+            req = urllib.request.Request(
+                "https://id.example/api/v3/" + path,
+                method=method,
+                data=json.dumps(payload).encode() if payload else None,
+            )
+            return json.load(fake(req))
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "monori-services.json").write_bytes(
+                (ROOT / "deploy/identity/services.json").read_bytes()
+            )
+            (root / "monori-account-mappings.json").write_text(json.dumps({"antropophag": {"idpUserUuid": "reviewed"}}))
+            fake.data["core/users/"].append({"pk": 7, "username": "antropophag", "uuid": "reviewed", "is_active": True})
+            def malformed(method, path, payload=None):
+                if path.startswith("providers/oauth2/?"):
+                    return {"results": ["invalid row"]}
+                return api(method, path, payload)
+
+            with self.assertRaisesRegex(RuntimeError, "Malformed identity lookup"):
+                configure_monori(root, malformed)
+            self.assertFalse((root / "monori-client-secret").exists())
+
+            def interrupted(method, path, payload=None):
+                if method == "PATCH" and path == "core/applications/monori/":
+                    raise RuntimeError("simulated interruption")
+                return api(method, path, payload)
+
+            with self.assertRaisesRegex(RuntimeError, "simulated interruption"):
+                configure_monori(root, interrupted)
+            sent = [body for method, path, body, _ in fake.requests
+                    if (method, path) == ("POST", "providers/oauth2/")]
+            self.assertEqual(len(sent), 1)
+            self.assertEqual(sent[0]["redirect_uris"], [{
+                "matching_mode": "strict", "url": "https://monori.alchemmist.xyz/oidc/callback",
+                "redirect_uri_type": "authorization",
+            }])
+            secret_path = root / "monori-client-secret"
+            secret = secret_path.read_text()
+            self.assertEqual(secret_path.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(fake.data["providers/oauth2/"][0]["client_secret"], secret)
+            self.assertEqual(configure_monori(root, api), secret)
+            self.assertEqual(configure_monori(root, api), secret)
+            writes = [
+                (method, path)
+                for method, path, _, _ in fake.requests
+                if method != "GET"
+            ]
+            self.assertEqual(
+                writes,
+                [
+                    ("POST", "core/applications/"),
+                    ("POST", "policies/bindings/"),
+                    ("POST", "policies/bindings/"),
+                    ("POST", "providers/oauth2/"),
+                    ("PATCH", "core/applications/monori/"),
+                ],
+            )
+            secret_path.write_text("x" * 64)
+            with self.assertRaisesRegex(RuntimeError, "Cannot verify retained Monori secret"):
+                configure_monori(root, api)
+            secret_path.write_text(secret)
+            fake.data["policies/bindings/"][0]["group"] = "other"
+            with self.assertRaisesRegex(RuntimeError, "binding drift"):
+                configure_monori(root, api)
+            (root / "monori-client-secret").unlink()
+            with self.assertRaisesRegex(RuntimeError, "Restore retained credentials"):
+                configure_monori(root, api)
+
+    def test_scoped_monori_secret_apply_needs_no_shared_registry(self) -> None:
+        """Exercise the entrypoint in an empty directory, without cluster access."""
+        import subprocess
+
+        scripts = ROOT / "ansible/roles/identity_integrations/files"
+        with tempfile.TemporaryDirectory() as directory, patch.dict(sys.modules):
+            with patch.object(sys, "path", [str(scripts), *sys.path]), patch(
+                "monori_oidc.configure_monori", return_value="test-value"
+            ), patch.object(sys, "argv", ["integrate.py", directory, "monori"]), patch(
+                "subprocess.run", return_value=subprocess.CompletedProcess([], 0, stdout="")
+            ) as command, contextlib.redirect_stdout(io.StringIO()):
+                runpy.run_path(str(scripts / "integrate.py"), run_name="__main__")
+            args, kwargs = command.call_args
+            self.assertIn("--server-side", args[0])
+            self.assertIn("--field-manager=monori-oidc", args[0])
+            self.assertNotIn("--force-conflicts", args[0])
+            self.assertEqual(json.loads(kwargs["input"])["metadata"], {"name": "monori-oidc", "namespace": "monori"})
+
     def test_existing_litellm_custom_scope_survives_foundation_replay(self) -> None:
         """Preserve the custom litellm scope across replays."""
         with tempfile.TemporaryDirectory() as d:
@@ -377,14 +475,14 @@ class RolloutRegressionTests(unittest.TestCase):
         manifest = json.loads((ROOT / "assets/service-icons/sources.json").read_text())
         services = json.loads((ROOT / "deploy/identity/services.json").read_text())
         managed = {
-            slug: service for slug, service in services.items() if not service.get("managedBy")
+            slug: service for slug, service in services.items() if not service.get("managedBy") or slug == "monori"
         }
-        self.assertEqual(len(managed), 7)
+        self.assertEqual(len(managed), 8)
         for slug, service in managed.items():
             data = (ROOT / "assets/service-icons" / f"{slug}.svg").read_bytes()
             digest = hashlib.sha256(data).hexdigest()
             self.assertEqual(digest, manifest["files"][f"{slug}.svg"]["sha256"])
-            self.assertEqual(service["icon"], f"service-icons/{slug}-{digest[:12]}.svg")
+            self.assertEqual(service["icon"], f"https://auth.socrat.alchemmist.xyz/-/quiet-mono/v1/{digest[:12]}-{slug}.svg")
             for node in ET.fromstring(data).iter():
                 self.assertNotIn(node.tag.split("}")[-1], ["script", "foreignObject"])
                 self.assertFalse(any(k.lower().startswith("on") for k in node.attrib))

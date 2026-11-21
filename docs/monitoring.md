@@ -23,13 +23,13 @@ Grafana and Alertmanager stay on socrat-1 and explicitly select `local-path`, be
 | Workload | Where | What is kept |
 | --- | --- | --- |
 | Prometheus | socrat-0, 10 GiB local-path PVC | 12 hours of 5-second samples, no size quota, compaction disabled |
-| Thanos raw | socrat-0, `/var/lib/socrat-thanos` | 5 days of raw blocks, plus the 5-minute blocks still needed to build the hour |
+| Thanos workshop | socrat-1, TLS S3 on retained local storage | Raw, 5m and resulting 1h blocks. Compactor computes on socrat-0. Pre-cutover raw directory on socrat-0 released after verified cold restore. |
 | Thanos 5-minute shelf | workload on socrat-1, shared NFS storage on socrat-0 | 5-minute blocks for 30 days |
 | Thanos hourly shelf | socrat-3, `/var/lib/socrat-thanos-1h` | hourly blocks for 730 days |
 | Grafana | socrat-1, 1 GiB | Persistent database and settings |
 | Alertmanager | socrat-1, 1 GiB | Persistent silences and notification state |
 
-Local-path PVC sizes do not enforce filesystem quotas. At about 150 thousand series the steady cascade is about 22 GiB on socrat-0, about 7 GiB more for the NFS-backed 5-minute shelf on the same storage host, and about 29 GiB of hourly blocks on socrat-3 after two years. Those are estimates, not quotas. Low disk raises a warning. Raw and 5-minute blocks are removed only after the next coarser copy has been checked. Hourly blocks older than 730 days are deleted on socrat-3.
+Local-path PVC sizes do not enforce filesystem quotas. The hourly Job on socrat-3 reads from S3, verifies bytes and publishes without overwriting an existing block. During cutover it does not prune the workshop by age or disk pressure. Hourly shelf retention is 730 days. The legacy raw directory was emptied after a verified cold restore; rollback seeds are not new writes. See [release evidence](../deploy/storage/thanos-retire/README.md). See [warm cutover gates and recovery cautions](../deploy/storage/thanos-warm-seed/README.md#production-switch-2026-11-21-1818-utc).
 
 The Grafana datasource uid `prometheus` points at Thanos Query on socrat-1. Dashboard JSON is not rewritten. Alerts are evaluated by Prometheus on socrat-0 and sent to Alertmanager on socrat-1. If socrat-0 is down, fresh samples and alert evaluation stop with it; Grafana stays up. If socrat-3 is offline, graphs lose only hourly blocks that have already moved there. Alertmanager's receiver discards notifications intentionally; delivery is not configured yet.
 

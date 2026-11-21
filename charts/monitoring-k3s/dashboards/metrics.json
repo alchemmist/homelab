@@ -1123,9 +1123,9 @@
     },
     {
       "id": 16,
-      "title": "Allowance",
+      "title": "Metrics storage by node",
       "type": "table",
-      "description": "Soft allowance for cascade data: 29 GiB on socrat-0 (22 GiB local plus 7 GiB for the NFS-backed 5m shelf), 29 GiB on socrat-3. These are the steady sizes from the cascade plan, not hard quotas. The bar is current metrics bytes divided by that allowance. Green is under 80%, orange from 80%, red at or above the allowance. Data keeps being written past the allowance until the cascade job moves or deletes a block that already has a coarser copy. Left is allowance minus current metrics and can be negative. Disk free is the whole root filesystem. An empty shelf is only the directory itself. Bytes grow when blocks arrive.",
+      "description": "Live directory allocations by physical host, separated from the retained pre-cutover workshop on socrat-0. Free space is the whole root filesystem, not a metrics quota. A blank retained value means that node has no reported retained workshop. Cold backup copies are not summed here.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1139,31 +1139,19 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (node) (socrat_metrics_directory_bytes)",
+          "expr": "sum by (node) (socrat_metrics_directory_bytes{role!=\"retained\"})",
           "instant": true,
           "format": "table"
         },
         {
           "refId": "B",
-          "expr": "(29 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-0\", \"\", \"\")\nor (29 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-3\", \"\", \"\")",
-          "instant": true,
-          "format": "table"
-        },
-        {
-          "refId": "C",
-          "expr": "((29 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-0\", \"\", \"\")\nor (29 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-3\", \"\", \"\")) - on(node) sum by (node) (socrat_metrics_directory_bytes)",
-          "instant": true,
-          "format": "table"
-        },
-        {
-          "refId": "D",
-          "expr": "100 * sum by (node) (socrat_metrics_directory_bytes) / on(node) group_left() ((29 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-0\", \"\", \"\")\nor (29 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-3\", \"\", \"\"))",
+          "expr": "sum by (node) (socrat_metrics_directory_bytes{role=\"retained\"})",
           "instant": true,
           "format": "table"
         },
         {
           "refId": "E",
-          "expr": "sum by (node) (label_replace(node_filesystem_avail_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype=~\"ext4|xfs\"} * on(instance) group_left(nodename) node_uname_info{job=\"node-exporter\",nodename=~\"socrat-0|socrat-3\"}, \"node\", \"$1\", \"nodename\", \"(.+)\"))",
+          "expr": "sum by (node) (label_replace(node_filesystem_avail_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype=~\"ext4|xfs\"} * on(instance) group_left(nodename) node_uname_info{job=\"node-exporter\",nodename=~\"socrat-0|socrat-1|socrat-3\"}, \"node\", \"$1\", \"nodename\", \"(.+)\"))",
           "instant": true,
           "format": "table"
         }
@@ -1193,68 +1181,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Of allowance"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "percent"
-              },
-              {
-                "id": "decimals",
-                "value": 0
-              },
-              {
-                "id": "min",
-                "value": 0
-              },
-              {
-                "id": "max",
-                "value": 100
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "thresholds"
-                }
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "#26783D",
-                      "value": null
-                    },
-                    {
-                      "color": "#A85D08",
-                      "value": 80
-                    },
-                    {
-                      "color": "#B42332",
-                      "value": 100
-                    }
-                  ]
-                }
-              },
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "gauge",
-                  "mode": "gradient"
-                }
-              },
-              {
-                "id": "custom.width",
-                "value": 320
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Used"
+              "options": "Active"
             },
             "properties": [
               {
@@ -1270,50 +1197,12 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Allowance"
+              "options": "Retained workshop"
             },
             "properties": [
               {
                 "id": "unit",
                 "value": "bytes"
-              },
-              {
-                "id": "custom.width",
-                "value": 130
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Left"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "bytes"
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "thresholds"
-                }
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "#B42332",
-                      "value": null
-                    },
-                    {
-                      "color": "#26783D",
-                      "value": 0
-                    }
-                  ]
-                }
               },
               {
                 "id": "custom.width",
@@ -1366,19 +1255,15 @@
             },
             "renameByName": {
               "node": "Node",
-              "Value #A": "Used",
-              "Value #B": "Allowance",
-              "Value #C": "Left",
-              "Value #D": "Of allowance",
+              "Value #A": "Active",
+              "Value #B": "Retained workshop",
               "Value #E": "Disk free"
             },
             "indexByName": {
               "Node": 0,
-              "Of allowance": 1,
-              "Used": 2,
-              "Allowance": 3,
-              "Left": 4,
-              "Disk free": 5
+              "Active": 1,
+              "Retained workshop": 2,
+              "Disk free": 3
             }
           }
         }
@@ -1388,7 +1273,7 @@
       "id": 19,
       "title": "Metrics bytes",
       "type": "timeseries",
-      "description": "Allocated bytes of metrics data on each cascade node. socrat-0 includes the Prometheus TSDB plus raw and work directories. The 5m shelf runs on socrat-1 but its bytes are stored on socrat-0 via NFS. The hourly shelf is local to socrat-3. The directory split is in the table below.",
+      "description": "Active directory allocation by storage host. Prometheus TSDB and compactor work stay on socrat-0; the warm S3 workshop is on socrat-1 and hourly storage on socrat-3. The separate legacy 5m shelf still uses NFS on socrat-0. Excludes the retained pre-cutover workshop.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1402,7 +1287,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (node) (socrat_metrics_directory_bytes)",
+          "expr": "sum by (node) (socrat_metrics_directory_bytes{role!=\"retained\"})",
           "legendFormat": "{{node}}",
           "instant": false,
           "format": "time_series"
@@ -1922,7 +1807,7 @@
       "id": 34,
       "title": "Directories",
       "type": "table",
-      "description": "Each metrics directory the disk collector can see, with the allocated bytes on that directory. prometheus is the local Prometheus volume. raw and work stay on socrat-0. Shelf bytes are attributed to the storage host: socrat-0 for 5m (NFS), socrat-3 for 1h.",
+      "description": "Allocated bytes by directory and host. Warm is the S3 backing directory on socrat-1 including storage overhead. Retained is the old workshop on socrat-0 kept for recovery, not an active writer.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"

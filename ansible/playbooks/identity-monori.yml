@@ -1,0 +1,30 @@
+---
+- name: Configure only the Monori OIDC provider, owner binding and backend Secret
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  vars:
+    identity_dir: /home/alchemmist/.cache/homelab-authentik
+  tasks:
+    - name: Stage scoped controller and reviewed public configuration
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/{{ item.src }}"
+        dest: "{{ identity_dir }}/{{ item.dest }}"
+        mode: "0600"
+      loop:
+        - {src: ../roles/identity_integrations/files/integrate.py, dest: integrate.py}
+        - {src: ../roles/identity_integrations/files/monori_oidc.py, dest: monori_oidc.py}
+        - {src: ../roles/authentik/files/app_iam.py, dest: app_iam.py}
+        - {src: ../../deploy/identity/services.json, dest: monori-services.json}
+
+        - {src: ../../deploy/identity/account-mappings.json, dest: monori-account-mappings.json}
+
+    - name: Provision Monori without changing users, MFA or other applications
+      ansible.builtin.command:
+        argv: [python3, "{{ identity_dir }}/integrate.py", "{{ identity_dir }}", monori]
+      environment:
+        K3S_CONFIG_FILE: /dev/null
+      no_log: true
+      changed_when: true
+...

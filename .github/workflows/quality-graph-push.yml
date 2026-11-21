@@ -39,7 +39,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 0ab20bc72b813ebaa3dc2265fd2cc27ab104e3ab64a6131412e3bf3880ea1d8b
+          graph-digest: 34730dc734b533b09aadcb5db1fdf32307b9d13f15515e9b7865ab2116ffe17d
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -85,7 +85,7 @@ jobs:
           adapter: native
           report-path: reports/secrets.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 0ab20bc72b813ebaa3dc2265fd2cc27ab104e3ab64a6131412e3bf3880ea1d8b
+          graph-digest: 34730dc734b533b09aadcb5db1fdf32307b9d13f15515e9b7865ab2116ffe17d
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -135,7 +135,7 @@ jobs:
           adapter: native
           report-path: reports/javascript.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 0ab20bc72b813ebaa3dc2265fd2cc27ab104e3ab64a6131412e3bf3880ea1d8b
+          graph-digest: 34730dc734b533b09aadcb5db1fdf32307b9d13f15515e9b7865ab2116ffe17d
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -148,6 +148,111 @@ jobs:
           if-no-files-found: error
           retention-days: 7
       - name: Enforce JavaScript syntax result
+        if: always()
+        shell: bash
+        env:
+          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
+        run: exit "${EXIT_CODE:-2}"
+    needs:
+      - graph
+    timeout-minutes: 5
+  ownership:
+    name: Ownership contracts
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: 'false'
+          fetch-depth: '0'
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+      - run: uv sync --locked
+      - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e
+        with:
+          version: v3.19.0
+      - run: "set -euo pipefail\nuv run python scripts/check_infrastructure_contracts.py\nuv run python scripts/check_source_pointers.py\nuv run python scripts/check_operational_entrypoints.py\nuv run python scripts/check_vendor_contracts.py\nuv run python scripts/alert_graphs.py --check\nuv run python scripts/n8n/check_failure_alerts.py\nuv run python -m pytest -q \\\n  tests/test_alert_graph_inventory.py \\\n  tests/test_alert_graph_panel_ids.py \\\n  tests/test_alert_graphs_chart.py \\\n  tests/test_infrastructure_contracts.py \\\n  tests/test_n8n_failure_alert_policy.py \\\n  tests/test_n8n_failure_alerts.py \\\n  tests/test_operational_entrypoints.py \\\n  tests/test_source_pointers.py \\\n  tests/test_vendor_contracts.py"
+        name: Run Ownership contracts
+        id: quality-command
+        continue-on-error: true
+      - name: Collect Ownership contracts result
+        id: quality-result
+        if: always()
+        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
+        with:
+          operation: collect
+          node-id: ownership
+          title: Ownership contracts
+          adapter: exit-code
+          report-path: ''
+          command-outcome: ${{ steps.quality-command.outcome }}
+          graph-digest: 34730dc734b533b09aadcb5db1fdf32307b9d13f15515e9b7865ab2116ffe17d
+          approval-findings: 'false'
+          approval-files: 'false'
+          approval-node: 'false'
+      - name: Upload Ownership contracts result
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: quality-result-ownership-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quality-graph/ownership.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Enforce Ownership contracts result
+        if: always()
+        shell: bash
+        env:
+          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
+        run: exit "${EXIT_CODE:-2}"
+    needs:
+      - graph
+    timeout-minutes: 10
+  docker:
+    name: Container recipes
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: 'false'
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+      - run: uv sync --locked
+      - run: uv run python scripts/quality/install_tools.py --tools hadolint
+      - run: 'set -euo pipefail
+
+          uv run pytest -q tests/test_quality_experiment_admission.py -k docker
+
+          uv run python scripts/quality/lint.py docker
+
+          '
+        name: Run Container recipes
+        id: quality-command
+        continue-on-error: true
+      - name: Collect Container recipes result
+        id: quality-result
+        if: always()
+        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
+        with:
+          operation: collect
+          node-id: docker
+          title: Container recipes
+          adapter: native
+          report-path: reports/docker.json
+          command-outcome: ${{ steps.quality-command.outcome }}
+          graph-digest: 34730dc734b533b09aadcb5db1fdf32307b9d13f15515e9b7865ab2116ffe17d
+          approval-findings: 'false'
+          approval-files: 'false'
+          approval-node: 'false'
+      - name: Upload Container recipes result
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: quality-result-docker-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quality-graph/docker.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Enforce Container recipes result
         if: always()
         shell: bash
         env:

@@ -75,7 +75,9 @@ print(json.dumps([f for _,files in sorted(blocks) for f in files]))
 
 
 def main():
-    if sys.argv[1:] != ["--run"]:
+    delta = sys.argv[1:] == ["--run", "--delta"]
+    marks = sys.argv[1:] == ["--run", "--source-compaction-marks"]
+    if not delta and not marks and sys.argv[1:] != ["--run"]:
         sys.exit("use --run explicitly")
     jobs = json.loads(
         kube("get", "jobs", "-l", "thanos-warm-client=seed", "-o", "json")
@@ -102,6 +104,43 @@ def main():
     files = json.loads(
         kube("exec", pods[0]["metadata"]["name"], "--", "python3", "-c", INVENTORY)
     )
+    if marks:
+        from markers import batch
+
+        files = batch(jobs)
+        if not files:
+            return
+    if delta:
+        import re
+        from delta import remote_objects
+
+        objects = remote_objects()
+        verified = set()
+        for j in jobs:
+            if not j.get("status", {}).get("succeeded"):
+                continue
+            log = kube("logs", "job/" + j["metadata"]["name"])
+            if not re.search(
+                r"^all files verified .*sha256\(manifest\) [a-f0-9]{64}$", log, re.M
+            ):
+                continue
+            verified.update(
+                re.findall(
+                    r"^verified block ([0-9A-Z]{26}) cumulative bytes", log, re.M
+                )
+            )
+        assert not any(k in objects and objects[k] != n for k, n in files), (
+            "size mismatch; review required"
+        )
+        needed = {
+            k.split("/")[0]
+            for k, n in files
+            if k not in objects or k.split("/")[0] not in verified
+        }
+        files = [(k, n) for k, n in files if k.split("/")[0] in needed]
+        if not files:
+            print("No unconfirmed active blocks at this observation")
+            return
     assert files and max(n for _, n in files) < 5 * 2**30
     backend = json.loads(kube("get", "pod", "-l", "app=thanos-warm-api", "-o", "json"))[
         "items"

@@ -11,7 +11,7 @@
       "homelab-project-maintainer"
     ],
     "migration": "native-oidc-candidate",
-    "icon": "service-icons/grafana-8f32897073ee.svg",
+    "icon": "https://auth.socrat.alchemmist.xyz/-/quiet-mono/v1/8f32897073ee-grafana.svg",
     "admission": "native-oidc",
     "appRoles": {
       "viewer": {
@@ -40,7 +40,7 @@
       "homelab-project-maintainer"
     ],
     "migration": "native-oidc-candidate",
-    "icon": "service-icons/harbor-51ef5dd74fab.svg",
+    "icon": "https://auth.socrat.alchemmist.xyz/-/quiet-mono/v1/51ef5dd74fab-harbor.svg",
     "admission": "native-oidc",
     "appRoles": {
       "user": {
@@ -60,7 +60,7 @@
     "url": "https://rancher.socrat.alchemmist.xyz/",
     "description": "Kubernetes administration over public HTTPS; personal Authentik/OIDC and reviewed Rancher permissions are required.",
     "migration": "native-oidc-explicit-principal-linking",
-    "icon": "service-icons/rancher-6fb0a4f542f7.svg",
+    "icon": "https://auth.socrat.alchemmist.xyz/-/quiet-mono/v1/6fb0a4f542f7-rancher.svg",
     "redirect": "https://rancher.socrat.alchemmist.xyz/verify-auth",
     "subMode": "user_uuid",
     "groups": [
@@ -90,7 +90,7 @@
       "homelab-chat-user"
     ],
     "migration": "native-oidc-candidate-account-linking-review-required",
-    "icon": "service-icons/open-webui-54717f2b0d40.svg",
+    "icon": "https://auth.socrat.alchemmist.xyz/-/quiet-mono/v1/54717f2b0d40-open-webui.svg",
     "subMode": "user_uuid",
     "extraRedirects": [
       "https://llm.socrat.alchemmist.xyz/oauth/oidc/callback"
@@ -121,7 +121,7 @@
     "url": "https://wiki.socrat.alchemmist.xyz/",
     "description": "Published infrastructure documentation; editor/API credentials are separate.",
     "migration": "native-oidc-owner-only-local-fallback",
-    "icon": "service-icons/wiki-08ef91235235.svg",
+    "icon": "https://auth.socrat.alchemmist.xyz/-/quiet-mono/v1/08ef91235235-wiki.svg",
     "redirect": "https://wiki.socrat.alchemmist.xyz/api/auth/oidc/callback",
     "groups": [
       "homelab-owner",
@@ -159,7 +159,7 @@
     "extraScopeMappings": [
       "homelab-litellm-reviewed-identity"
     ],
-    "icon": "service-icons/litellm-69eaed389008.svg",
+    "icon": "https://auth.socrat.alchemmist.xyz/-/quiet-mono/v1/69eaed389008-litellm.svg",
     "admission": "native-oidc-app-group",
     "appRoles": {
       "user": {
@@ -186,7 +186,7 @@
     "groupsScope": true,
     "subMode": "user_uuid",
     "migration": "native-oidc-no-local-accounts",
-    "icon": "service-icons/lms-733ef8f848f3.svg",
+    "icon": "https://auth.socrat.alchemmist.xyz/-/quiet-mono/v1/733ef8f848f3-lms.svg",
     "admission": "native-oidc",
     "appRoles": {
       "student": {
@@ -249,5 +249,23 @@
       "state": "blocked",
       "reason": "No reviewed native OIDC/JIT provisioning; app group does not create an n8n account"
     }
+  },
+  "monori": {
+    "name": "Monori",
+    "url": "https://monori.alchemmist.xyz/",
+    "description": "Personal budgets. Link an existing account in Monori Settings before signing in with SSO.",
+    "redirect": "https://monori.alchemmist.xyz/oidc/callback",
+    "groups": [
+      "homelab-owner"
+    ],
+    "migration": "native-oidc-with-local-fallback",
+    "admission": "native-oidc",
+    "appRoles": {},
+    "accessManagement": {
+      "state": "blocked",
+      "reason": "Admission only; budget ownership is managed in Monori."
+    },
+    "icon": "https://auth.socrat.alchemmist.xyz/-/quiet-mono/v1/d2ecda88620e-monori.svg",
+    "managedBy": "native-monori"
   }
 }

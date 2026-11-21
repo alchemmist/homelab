@@ -42,12 +42,19 @@ def rows(host_root) -> "list[tuple[str, str, int]]":
     storage = os.path.join(host_root, "rancher/k3s/storage")
     if os.path.isdir(storage):
         for name in sorted(os.listdir(storage)):
+            if os.environ.get("WARM_WORKSHOP") == "1" and name.endswith("_cattle-monitoring-system_thanos-warm-s1-candidate"):
+                warm = os.path.join(storage, name, "workshop-s3")
+                if os.path.isdir(warm):
+                    found.append(("warm", host_path(warm, host_root), directory_bytes(warm)))
+                continue
             if PROMETHEUS_MARKER not in name:
                 continue
             path = os.path.join(storage, name)
             if os.path.isdir(path):
                 found.append(("prometheus", "/var/lib/prometheus", directory_bytes(path)))
     for role, dirname in ROLES:
+        if role == "raw" and os.environ.get("WARM_WORKSHOP") == "1":
+            role = "retained"
         if dirname == "socrat-thanos-5m" and os.environ.get("SKIP_OLD_FIVE") == "1":
             continue
         path = os.path.join(host_root, dirname)
@@ -82,7 +89,11 @@ def main() -> None:
     output = os.environ.get("OUTPUT", "/textfile/socrat-metrics-disk.prom")
     interval = int(os.environ.get("INTERVAL_SECONDS", "30"))
     while True:
-        write(output, render(node, rows(host_root)))
+        try:
+            write(output, render(node, rows(host_root)))
+        except FileNotFoundError:
+            # A compactor renamed a file while walking. Keep the last complete sample.
+            pass
         time.sleep(interval)
 
 

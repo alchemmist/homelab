@@ -630,5 +630,49 @@
   "NATURE_7F9527E12857_CSS": {
     "path": "nature/nature-7f9527e12857.css",
     "sha256": "f2f568b23caa7ee6be3a722b4b3c8b0ba8536fa237349491d9f3e29ea3e51dde"
+  },
+  "PORTAL_GRAFANA": {
+    "path": "service-icons/grafana.svg",
+    "sha256": "8f32897073ee93594ab2339482ef21ca3767044055da89e2baf9066d25592df7"
+  },
+  "PORTAL_HARBOR": {
+    "path": "service-icons/harbor.svg",
+    "sha256": "51ef5dd74fab4dfb67a37f8b1b91530952276edb5738f4c1615d6794f3f7727d"
+  },
+  "PORTAL_RANCHER": {
+    "path": "service-icons/rancher.svg",
+    "sha256": "6fb0a4f542f7ea22e00c6a4a522a1281f1a11fb2a25f429fbaa0eb83de5b5c7e"
+  },
+  "PORTAL_OPEN_WEBUI": {
+    "path": "service-icons/open-webui.svg",
+    "sha256": "54717f2b0d403a6a559c87622d23dfd3cff3538e910ea3dbd8ffbf015aa3ff89"
+  },
+  "PORTAL_WIKI": {
+    "path": "service-icons/wiki.svg",
+    "sha256": "08ef91235235b027105679eb61a9458dea1f19d6c3472a985e3585bc0a834f7a"
+  },
+  "PORTAL_LITELLM": {
+    "path": "service-icons/litellm.svg",
+    "sha256": "69eaed389008a423e98590466c98b80f4ab7ffec47f4bda53ee0db3890775ba0"
+  },
+  "PORTAL_ARGOCD": {
+    "path": "service-icons/argocd.svg",
+    "sha256": "dfd0a40f38081d499182b3ecb7cb6bf9445652a8365914b9e38fffc3d2e7f8fa"
+  },
+  "PORTAL_LMS": {
+    "path": "service-icons/lms.svg",
+    "sha256": "733ef8f848f3c03f9449c0838673542f85bf1afb80e8e904ad3b2821ed56f953"
+  },
+  "PORTAL_NETBIRD": {
+    "path": "service-icons/netbird.svg",
+    "sha256": "afe6ae99e35a60153d080e989b549f6f5f7c72a8f220afc1e3864fb48d5059ed"
+  },
+  "PORTAL_RUSTFS": {
+    "path": "service-icons/rustfs.svg",
+    "sha256": "a708327b4d7cf213c11dada32a810686d0b0243ffa56906b8d17762e84c7fb8a"
+  },
+  "PORTAL_MONORI": {
+    "path": "service-icons/monori.svg",
+    "sha256": "d2ecda88620eb0783f6d70abe58fe4d129a582c152b1d6835098d5bf13b4c94e"
   }
 }

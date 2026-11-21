@@ -11,6 +11,7 @@ import subprocess
 import urllib.request
 import uuid
 from pathlib import Path
+from typing import Protocol, cast
 
 HOST = "auth.socrat.alchemmist.xyz"
 BASE = "https://" + HOST
@@ -361,7 +362,7 @@ def _require_application(
     """Create or update the reviewed LiteLLM application entry."""
     files = cast("dict[str, object]", cast("dict[str, object]", manifest)["files"])
     sha = cast("str", cast("dict[str, object]", files["litellm.svg"])["sha256"])
-    icon = "service-icons/litellm-" + sha[:12] + ".svg"
+    icon = "https://auth.socrat.alchemmist.xyz/-/quiet-mono/v1/" + sha[:12] + "-litellm.svg"
     app = one("core/applications/", "slug", "litellm")
     settings = {
         "name": "LiteLLM",

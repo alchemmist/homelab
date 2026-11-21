@@ -7,6 +7,6 @@ RUN python -m pip install --no-cache-dir -r /opt/worker/requirements.txt \
     && mkdir -p /opt/agent /opt/grader \
     && chmod 755 /opt/agent /opt/grader \
     && rm -rf /root/.cache /tmp/*
-USER nobody
+USER 65534:65534
 WORKDIR /workspace
 CMD ["python", "-c", "import fastapi, jsonschema, playwright, uvicorn, pydantic"]

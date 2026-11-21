@@ -11,7 +11,7 @@ from pathlib import Path
 root = Path(sys.argv[1])
 service = sys.argv[2]
 kube = ["kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml"]
-clients = json.loads((root / "oidc-clients.json").read_text())
+clients = {} if service == "monori" else json.loads((root / "oidc-clients.json").read_text())
 
 
 def private_save(path, data):
@@ -512,6 +512,23 @@ elif service == "wiki":
     print(
         "Wiki OIDC Secret reconciled; exact reviewed subjects, owner-only local fallback; no password reset"
     )
+elif service == "monori":
+    from monori_oidc import configure_monori
+
+    secret = configure_monori(root, idp)
+    kubectl(
+        ["apply", "--server-side", "--field-manager=monori-oidc", "-f", "-"],
+        {
+            "apiVersion": "v1",
+            "kind": "Secret",
+            "metadata": {"name": "monori-oidc", "namespace": "monori"},
+            "type": "Opaque",
+            "data": {
+                "client-secret": base64.b64encode(secret.encode()).decode()
+            },
+        },
+    )
+    print("Monori confidential client Secret reconciled")
 elif service == "lms":
     kubectl(
         ["apply", "-f", "-"],

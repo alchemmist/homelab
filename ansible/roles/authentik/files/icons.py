@@ -17,6 +17,7 @@ import xml.etree.ElementTree as ET
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("root", type=Path)
 parser.add_argument("--public-edge")
+parser.add_argument("--only-slug")
 parser.add_argument("--expected-inventory", type=Path)
 args = parser.parse_args()
 if args.public_edge:
@@ -125,12 +126,14 @@ for filename, source in json.loads((assets / "sources.json").read_text())["files
     if not isinstance(targets, list):
         message = "Invalid icon application targets"
         raise RuntimeError(message)
-    name = "service-icons/" + Path(filename).stem + "-" + digest[:12] + ".svg"
+    name = "https://auth.socrat.alchemmist.xyz/-/quiet-mono/v1/" + digest[:12] + "-" + filename
     for slug in targets:
         if not re.fullmatch(r"[a-z0-9-]+", slug) or slug in seen:
             message = "Invalid or duplicate application target"
             raise RuntimeError(message)
         seen.add(slug)
+    if args.only_slug:
+        targets = [slug for slug in targets if slug == args.only_slug]
     if targets:
         plan.append((filename, content, digest, name, targets))
 
@@ -141,33 +144,10 @@ run_id = (
 )
 private_json(root / ("portal-icons-before-" + run_id + ".json"), inventory["results"])
 private_json(uncertain, {"run": run_id, "targets": sorted(seen)})
-files = {f["name"]: f for f in api("GET", "admin/file/?usage=media")}
 changed = []
 verified = []
 for filename, content, digest, name, targets in plan:
-    if name not in files:
-        boundary = "socrat-" + uuid.uuid4().hex
-        parts = []
-        for key, value in [("name", name), ("usage", "media")]:
-            parts.append(
-                f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n{value}\r\n'.encode()
-            )
-        parts.append(
-            f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{filename}"\r\nContent-Type: image/svg+xml\r\n\r\n'.encode()
-            + content
-            + b"\r\n"
-        )
-        parts.append(f"--{boundary}--\r\n".encode())
-        req = urllib.request.Request(
-            base + "admin/file/",
-            method="POST",
-            data=b"".join(parts),
-            headers={**headers, "Content-Type": "multipart/form-data; boundary=" + boundary},
-        )
-        with urllib.request.urlopen(req, timeout=60) as response:
-            response.read()
-        files = {f["name"]: f for f in api("GET", "admin/file/?usage=media")}
-    url = files[name]["url"]
+    url = name
     parsed = urllib.parse.urlsplit(url)
     if parsed.scheme != "https" or parsed.netloc != "auth.socrat.alchemmist.xyz":
         message = "Unexpected media origin; no credential forwarding"
@@ -186,12 +166,14 @@ for filename, content, digest, name, targets in plan:
         if stable(current) != stable(before) or current["meta_icon"] != before["meta_icon"]:
             raise RuntimeError("Concurrent application change; review required: " + slug)
         if current["meta_icon"] != name:
-            # Persist a storage name, never an expiring signed URL.
+            # Persist the immutable static URL.
             api("PATCH", "core/applications/" + slug + "/", {"meta_icon": name})
             changed.append(slug)
         after = api("GET", "core/applications/" + slug + "/")
         if stable(after) != stable(before) or after["meta_icon"] != name:
             raise RuntimeError("Icon-only postcondition failed: " + slug)
+        if after.get("meta_icon_url", name) != name:
+            raise RuntimeError("Resolved static icon URL mismatch: " + slug)
         verified.append(slug)
         print("Local portal icon verified:", slug)
 private_json(

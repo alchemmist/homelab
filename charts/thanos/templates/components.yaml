@@ -9,7 +9,7 @@ metadata:
     app: {{ $name }}
     app.kubernetes.io/part-of: thanos
 spec:
-  replicas: {{ if and $five (eq $.Values.fivePhase "cold") }}0{{ else if $component.spreadQuery }}2{{ else }}1{{ end }}
+  replicas: {{ if and (eq $name "thanos-compactor") $.Values.workshopHold }}0{{ else if and $five (eq $.Values.fivePhase "cold") }}0{{ else if $component.spreadQuery }}2{{ else }}1{{ end }}
   selector:
     matchLabels:
       app: {{ $name }}
@@ -62,7 +62,13 @@ spec:
           image: {{ $.Values.images.thanos }}
           imagePullPolicy: IfNotPresent
           args:
-            {{- toYaml $component.args | nindent 12 }}
+            {{- range $arg := $component.args }}
+            {{- if and $.Values.warmCascade (eq $name "thanos-compactor") (hasPrefix "--delete-delay=" $arg) }}
+            - {{ printf "--delete-delay=%s" $.Values.warmWorkshopDeleteDelay | quote }}
+            {{- else }}
+            - {{ $arg | quote }}
+            {{- end }}
+            {{- end }}
           ports:
             - name: http
               containerPort: 10902
