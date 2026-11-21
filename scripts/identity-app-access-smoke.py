@@ -17,7 +17,7 @@ import urllib.request
 from pathlib import Path
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("root", type=Path)
     p.add_argument("--run", action="store_true")

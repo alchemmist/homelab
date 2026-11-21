@@ -31,6 +31,20 @@ import time
 import urllib.parse
 import urllib.request
 import uuid
+from typing import cast
+
+
+class _PageResponse:
+    """Structural stand-in for module-mocked Playwright response events."""
+
+    url: str
+    status: int
+    headers: dict[str, str]
+
+    def json(self) -> dict[str, object]:
+        """Return the decoded response payload."""
+        return {}
+
 
 from playwright.sync_api import sync_playwright
 
@@ -58,7 +72,7 @@ credential = json.loads(
 )
 
 
-def api(method, path, data=None):
+def api(method: str, path: str, data: dict[str, object] | None = None) -> dict[str, object]:
     req = urllib.request.Request(
         BASE + "/api/v3/" + path,
         method=method,
@@ -70,28 +84,29 @@ def api(method, path, data=None):
     )
     with urllib.request.urlopen(req, timeout=45) as r:
         body = r.read()
-        return json.loads(body) if body else None
+        return cast("dict[str, object]", json.loads(body) if body else None)
 
 
 app = api("GET", "core/applications/xui-panel/")
+owner_groups = api("GET", "core/groups/?name=homelab-owner")
 owner = next(
     g
-    for g in api("GET", "core/groups/?name=homelab-owner")["results"]
+    for g in cast("list[dict[str, object]]", owner_groups["results"])
     if g["name"] == "homelab-owner"
 )
+bindings_page = api("GET", "policies/bindings/?page_size=1000")
 bindings = [
-    b
-    for b in api("GET", "policies/bindings/?page_size=1000")["results"]
-    if b["target"] == app["pk"]
+    b for b in cast("list[dict[str, object]]", bindings_page["results"]) if b["target"] == app["pk"]
 ]
 assert len(bindings) == 1 and bindings[0]["group"] == owner["pk"] and not bindings[0].get("user")
-launch = app["meta_launch_url"]
+launch = cast("str", app["meta_launch_url"])
 assert urllib.parse.urlparse(launch).hostname == "vpn.alchemmist.xyz"
 username = "xui-gateway-smoke-" + uuid.uuid4().hex[:10]
 password = secrets.token_urlsafe(32)
+observer_groups = api("GET", "core/groups/?name=homelab-observer")
 observer = next(
     g
-    for g in api("GET", "core/groups/?name=homelab-observer")["results"]
+    for g in cast("list[dict[str, object]]", observer_groups["results"])
     if g["name"] == "homelab-observer"
 )
 user = api(
@@ -123,7 +138,7 @@ try:
         denials = []
         authorization_scopes = []
 
-        def observe(response):
+        def observe(response: _PageResponse) -> None:
             parsed = urllib.parse.urlparse(response.url)
             if (
                 parsed.hostname == "auth.socrat.alchemmist.xyz"
@@ -400,7 +415,7 @@ except Exception as error:
 finally:
     try:
         if binding:
-            api("DELETE", "policies/bindings/" + binding["pk"] + "/")
+            api("DELETE", "policies/bindings/" + cast("str", binding["pk"]) + "/")
     finally:
         api("DELETE", "core/users/" + str(user["pk"]) + "/")
     print("Temporary observer identity and exact admission binding removed", flush=True)

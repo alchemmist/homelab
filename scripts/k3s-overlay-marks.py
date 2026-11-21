@@ -9,19 +9,22 @@ import os
 import re
 import subprocess
 from pathlib import Path
+from typing import cast
 
 TABLE = "homelab_k3s_overlay_marks"
 OWNER = "homelab:k3s-overlay-marks:v1"
 
 
-def run(*args, input=None, ok=(0,)):
+def run(
+    *args: str, input: str | None = None, ok: tuple[int, ...] = (0,)
+) -> subprocess.CompletedProcess[str]:
     p = subprocess.run(args, input=input, text=True, capture_output=True, check=False)
     if p.returncode not in ok:
         raise RuntimeError(p.stderr.strip())
     return p
 
 
-def rules(interface, cidr, exists):
+def rules(interface: str, cidr: str, exists: object) -> str:
     net = ipaddress.ip_network(cidr, strict=True)
     if net.version != 4 or not net.is_private or net.prefixlen < 16:
         raise ValueError("Require a narrow private IPv4 pod network")
@@ -41,10 +44,10 @@ def rules(interface, cidr, exists):
     )
 
 
-def desired(interface, cidr):
+def desired(interface: str, cidr: str) -> list[dict[str, object]]:
     net = ipaddress.ip_network(cidr)
 
-    def match(left, right, op="=="):
+    def match(left: object, right: object, op: str = "==") -> dict[str, object]:
         return {"match": {"op": op, "left": left, "right": right}}
 
     prefix = {"prefix": {"addr": str(net.network_address), "len": net.prefixlen}}
@@ -81,31 +84,44 @@ def desired(interface, cidr):
     ]
 
 
-def owned(doc, text=""):
-    table = next((x["table"] for x in doc["nftables"] if "table" in x), {})
+def owned(doc: dict[str, object], text: str = "") -> bool:
+    table = cast(
+        "dict[str, object]",
+        next(
+            (x["table"] for x in cast("list[dict[str, object]]", doc["nftables"]) if "table" in x),
+            {},
+        ),
+    )
     if "comment" in table:
-        return table["comment"] == OWNER
+        return bool(table["comment"] == OWNER)
     # nft 1.0.6 omits table comments from JSON, but preserves them in text.
     lines = text.splitlines()
     return len(lines) > 1 and lines[1].strip() == f'comment "{OWNER}"'
 
 
-def normalize(doc):
-    def clean(x):
+def normalize(doc: dict[str, object]) -> list[object]:
+    def clean(x: object) -> object:
         if isinstance(x, list):
             return [clean(v) for v in x]
         if isinstance(x, dict):
             return {k: ({} if k == "counter" else clean(v)) for k, v in x.items() if k != "handle"}
         return x
 
-    result = [clean(x) for x in doc.get("nftables", []) if "metainfo" not in x]
+    result = [
+        clean(x)
+        for x in cast("list[dict[str, object]]", doc.get("nftables", []))
+        if "metainfo" not in x
+    ]
     for item in result:
-        if "table" in item:
-            item["table"].pop("comment", None)  # ownership is verified separately
+        record = cast("dict[str, object]", item)
+        if "table" in record:
+            cast("dict[str, object]", record["table"]).pop(
+                "comment", None
+            )  # ownership is verified separately
     return result
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--interface", default="flannel.1")
     p.add_argument("--pod-cidr", default="10.42.0.0/16")

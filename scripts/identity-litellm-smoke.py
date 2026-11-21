@@ -27,17 +27,11 @@ BASE = "https://auth.socrat.alchemmist.xyz"
 import socket
 
 _original_getaddrinfo = socket.getaddrinfo
-
-
-def public_auth(host, *params, **kwargs):
-    return _original_getaddrinfo(
-        args.public_edge if host in ["auth.socrat.alchemmist.xyz", "llm.alchemmist.xyz"] else host,
-        *params,
-        **kwargs,
-    )
-
-
-socket.getaddrinfo = public_auth
+socket.getaddrinfo = lambda host, *pos, **kw: _original_getaddrinfo(
+    args.public_edge if host in ["auth.socrat.alchemmist.xyz", "llm.alchemmist.xyz"] else host,
+    *pos,
+    **kw,
+)
 SSH = [
     "ssh",
     "-o",
@@ -53,7 +47,7 @@ credential = json.loads(
 )
 
 
-def api(method, path, data=None):
+def api(method: str, path: str, data: dict[str, object] | None = None) -> dict[str, object]:
     req = urllib.request.Request(
         BASE + "/api/v3/" + path,
         method=method,
@@ -65,7 +59,7 @@ def api(method, path, data=None):
     )
     with urllib.request.urlopen(req, timeout=45) as r:
         b = r.read()
-        return json.loads(b) if b else None
+        return cast("dict[str, object]", json.loads(b) if b else None)
 
 
 import base64
@@ -76,14 +70,29 @@ import struct
 import time
 import urllib.parse
 import uuid
+from typing import cast
+
+
+class _PageResponse:
+    """Structural stand-in for module-mocked Playwright response events."""
+
+    url: str
+    status: int
+    headers: dict[str, str]
+
+    def json(self) -> dict[str, object]:
+        """Return the decoded response payload."""
+        return {}
+
 
 from playwright.sync_api import sync_playwright
 
 username = "litellm-smoke-" + uuid.uuid4().hex[:10]
 password = secrets.token_urlsafe(32)
+groups_page = api("GET", "core/groups/?name=homelab-observer")
 group = next(
     x
-    for x in api("GET", "core/groups/?name=homelab-observer")["results"]
+    for x in cast("list[dict[str, object]]", groups_page["results"])
     if x["name"] == "homelab-observer"
 )
 user = api(
@@ -98,12 +107,11 @@ user = api(
     },
 )
 binding = None
-fixture_id = "authentik:" + user["uuid"]
+fixture_id = "authentik:" + cast("str", user["uuid"])
 try:
+    apps_page = api("GET", "core/applications/?superuser_full_list=true&page_size=100")
     app = next(
-        a
-        for a in api("GET", "core/applications/?superuser_full_list=true&page_size=100")["results"]
-        if a["slug"] == "litellm"
+        a for a in cast("list[dict[str, object]]", apps_page["results"]) if a["slug"] == "litellm"
     )
     binding = api(
         "POST",
@@ -132,7 +140,7 @@ try:
         components = []
         errors = []
 
-        def observe(response):
+        def observe(response: _PageResponse) -> None:
             if (
                 urllib.parse.urlparse(response.url).hostname == "llm.alchemmist.xyz"
                 and "/sso/callback" in response.url
@@ -284,7 +292,7 @@ try:
 finally:
     try:
         if binding:
-            api("DELETE", "policies/bindings/" + binding["pk"] + "/")
+            api("DELETE", "policies/bindings/" + cast("str", binding["pk"]) + "/")
         api("DELETE", "core/users/" + str(user["pk"]) + "/")
     finally:
         cleanup = Path(__file__).with_name("identity-litellm-cleanup.py").read_text()
