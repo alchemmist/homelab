@@ -69,10 +69,6 @@ def reconcile(config):
             existing = mappings.get(node["external_port"])
             if existing and existing[:2] == (address, port):
                 owned[str(node["external_port"])] = [address, port]
-                print(
-                    f"{node['name']}: {node['external_port']} -> {address}:{port} (present)",
-                    flush=True,
-                )
                 continue
             if existing:
                 if existing[2] != description and owned.get(str(node["external_port"])) != list(
@@ -124,10 +120,9 @@ def reconcile(config):
                             timeout=15,
                         )
                     except (OSError, subprocess.SubprocessError) as error:
-                        print(f"Rollback failed for {node['name']}: {error}", file=sys.stderr)
+                        pass
                 raise
             owned[str(node["external_port"])] = [address, port]
-            print(f"{node['name']}: {node['external_port']} -> {address}:{port}", flush=True)
         except (OSError, RuntimeError, subprocess.SubprocessError) as error:
             errors.append(f"{node['name']}: {error}")
     STATE.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -165,5 +160,4 @@ if __name__ == "__main__":
     try:
         main()
     except (OSError, ValueError, RuntimeError, StopIteration, subprocess.SubprocessError) as error:
-        print(error, file=sys.stderr)
         sys.exit(1)

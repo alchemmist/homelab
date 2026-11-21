@@ -219,7 +219,6 @@ def main(runtime_root=ROOT):
             json.dump(proof, stream)
             stream.flush()
             os.fsync(stream.fileno())
-    print(json.dumps(proof))
 
 
 if __name__ == "__main__":
@@ -228,5 +227,4 @@ if __name__ == "__main__":
         parser.add_argument("--runtime-root", type=Path, default=ROOT)
         main(parser.parse_args().runtime_root)
     except Exception as error:
-        print(json.dumps({"error": str(error)}))
         raise SystemExit(1)

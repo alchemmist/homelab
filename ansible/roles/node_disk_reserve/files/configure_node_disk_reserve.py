@@ -130,7 +130,6 @@ def main():
         result = {"status": "error", "error": str(error)}
     if os.geteuid() == 0:
         atomic_write(RESULT, (json.dumps(result, indent=2) + "\n").encode(), 0o644)
-    print(json.dumps(result))
     if result["status"] != "ok":
         raise SystemExit(1)
 

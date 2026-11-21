@@ -136,7 +136,6 @@ def main():
         raise SystemExit(
             "Read-only gateway verification failed; review Git ownership and existing metrics prerequisites privately. No repair or fallback attempted."
         ) from None
-    print("changed=false")
 
 
 if __name__ == "__main__":

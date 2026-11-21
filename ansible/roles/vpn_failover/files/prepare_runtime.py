@@ -47,4 +47,3 @@ if __name__ == "__main__":
     parser.add_argument("image")
     parser.add_argument("destination")
     args = parser.parse_args()
-    print(json.dumps({"changed": prepare(args.image, args.destination)}))

@@ -40,7 +40,6 @@ def main():
                 reply += chunk
             if reply != b"\x01\x02\x00\x00":
                 raise RuntimeError("Relay did not explicitly reject invalid authentication")
-    print("TLS trust, hostname verification and relay authentication verified")
 
 
 if __name__ == "__main__":

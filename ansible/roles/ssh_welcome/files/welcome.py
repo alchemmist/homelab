@@ -198,8 +198,6 @@ def main():
         )
         if not play(initial, final, sample, colors, geometry, sys.stdout):
             return
-        print()
-    print(render(config, portraits, stats, shutil.get_terminal_size().columns, color, hyperlinks))
 
 
 if __name__ == "__main__":

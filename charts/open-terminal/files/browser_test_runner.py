@@ -109,10 +109,6 @@ def run(command, timeout=180, grace=2):
             if result is not None:
                 return result if result >= 0 else 128 - result
             if time.monotonic() >= deadline:
-                print(
-                    f"Browser test exceeded {timeout:g} seconds; terminating its processes",
-                    file=sys.stderr,
-                )
                 return 124
             time.sleep(0.05)
     finally:
@@ -145,7 +141,6 @@ def main():
     try:
         return run(command, args.timeout)
     except (OSError, RuntimeError) as error:
-        print(f"Browser test failed: {error}", file=sys.stderr)
         return 1
 
 

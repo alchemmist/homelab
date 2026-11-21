@@ -12,7 +12,7 @@ result = subprocess.run(
     text=True,
 )
 if result.stdout.strip():
-    print("unchanged")
+    pass
 else:
     secret = {
         "apiVersion": "v1",
@@ -28,4 +28,3 @@ else:
         check=True,
         capture_output=True,
     )
-    print("created")

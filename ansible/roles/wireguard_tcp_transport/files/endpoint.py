@@ -72,7 +72,6 @@ def main():
             ["wg", "set", interface, "peer", public_key, "endpoint", endpoint], check=True
         )
         changed = True
-    print(json.dumps({"changed": changed}))
 
 
 if __name__ == "__main__":

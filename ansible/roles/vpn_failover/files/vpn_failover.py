@@ -409,10 +409,8 @@ def main():
                 result = getattr(watchdog, args.action)()
         else:
             result = getattr(watchdog, "health" if args.action == "check" else args.action)()
-        print(json.dumps(result or {"guard": True}))
         return 1 if result and result.get("healthy") is False else 0
     except Exception as error:
-        print(json.dumps({"error": str(error)}))
         return 1
 
 

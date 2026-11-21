@@ -83,9 +83,7 @@ def main():
     try:
         result = configure(args.db, args.check)
     except (OSError, sqlite3.Error, ValueError) as error:
-        print(str(error), file=sys.stderr)
         return 1
-    print(json.dumps(result))
     return 0
 
 

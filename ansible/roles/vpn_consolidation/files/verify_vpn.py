@@ -175,7 +175,6 @@ def run(mode, directory):
             raise ValueError("VPN configuration or subscriptions changed")
     count = sum(len(item["subscriptions"]) for item in current.values())
     links = sum(sub["links"] for item in current.values() for sub in item["subscriptions"].values())
-    print(f"{mode}: {len(current)} databases, {count} subscriptions, {links} links verified")
 
 
 def main():
@@ -187,9 +186,9 @@ def main():
         run(args.mode, args.directory)
     except Exception as error:
         if isinstance(error, ValueError):
-            print(str(error), file=sys.stderr)
+            pass
         else:
-            print("VPN snapshot operation failed: " + type(error).__name__, file=sys.stderr)
+            pass
         return 1
     return 0
 

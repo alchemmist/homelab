@@ -61,14 +61,11 @@ def main():
     with os.fdopen(fd, "w") as handle:
         json.dump(config, handle)
     os.rename(tmp, "/vpn-runtime/client.json")
-    print("VPN_SUBSCRIPTION_PREPARED")
 
 if __name__ == "__main__":
     try:
         main()
     except SystemExit:
-        print("VPN_SUBSCRIPTION_PREPARE_FAILED")
         raise
     except Exception:
-        print("VPN_SUBSCRIPTION_PREPARE_FAILED")
         raise SystemExit(1)

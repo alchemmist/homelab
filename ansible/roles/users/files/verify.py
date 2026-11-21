@@ -35,16 +35,3 @@ admin_read = (
     ).returncode
     == 0
 )
-print(
-    json.dumps(
-        {
-            "username": name,
-            "pubkeyAuthentication": settings.get("pubkeyauthentication"),
-            "usePAM": settings.get("usepam"),
-            "keyCount": len(keys),
-            "hasSudoGrant": not denied,
-            "canReadAdminKubeconfig": admin_read,
-            "shell": user.pw_shell,
-        }
-    )
-)

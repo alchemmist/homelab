@@ -53,7 +53,7 @@ def busy_resume(cid,api,events,now,allowed=lambda: True,path='/wait-state/waits.
         if next((e.get('id') for e in latest if e['kind']!='ConversationStateUpdateEvent'),None)!=eid:return False
         # Commit cooldown before HTTP: lost acknowledgement cannot trigger a burst.
         db.execute('update waits set due=? where cid=?',(now+900,cid));db.execute('insert or replace into gates values(?,?)',(model,now+60));db.commit()
-        ok=api('/run','POST').get('success');print('capacity resume',cid,model,bool(ok),flush=True);return bool(ok)
+        ok=api('/run','POST').get('success');return bool(ok)
 
 def final_message(events,qa=False):
     # Never infer an agent finish from arbitrary user/file/tool text.
@@ -152,8 +152,8 @@ def monitor_workers(parent,directory):
                 if api()['execution_status']!=st or parent_api()['execution_status'] not in ('running','finished'):break
                 attempted.add(action);failures[cid]=failures.get(cid,0)+1;delay[cid]=now+min(3600,120*2**min(5,failures[cid]-1))
                 result=api('/run','POST') if action[0]=='parallel' else api('/events','POST',{'role':'user','content':[{'type':'text','text':WORKER_NUDGE}],'run':True})
-                print('worker continuation',cid,action[0],bool(result.get('success')),flush=True);break
-        except Exception as exc:print('worker check:',type(exc).__name__,flush=True)
+                break
+        except Exception as exc:pass
         finally:time.sleep(45)
 
 def monitor(cid,qa=False):
@@ -180,9 +180,8 @@ def monitor(cid,qa=False):
                     if action=='ledger_probe':probed=True
                     attempted=eid
                     ok=(api('/events','POST',{'role':'user','content':[{'type':'text','text':QA_READ_PROBE if action=='ledger_probe' else QA_NUDGE if qa else NUDGE}],'run':True}) if action in ('unfinished','ledger_probe') else api('/run','POST'))
-                    print('continue',action,eid,'acknowledged',bool(ok.get('success')),flush=True)
             elif status=='running' and last_parallel and now>after+600:parallel_failures=0
-        except Exception as exc:print('continuation check:',type(exc).__name__,flush=True)
+        except Exception as exc:pass
         time.sleep(30)
 if __name__=='__main__':
     import threading

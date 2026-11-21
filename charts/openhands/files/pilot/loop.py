@@ -34,7 +34,6 @@ def save(c,phase,note='',**kw):
     fields={'state':phase,'detail':note[:1000],**kw}; assert fields.keys()<={'state','detail','pr','due','cid','attempt'}
     with contextlib.closing(sqlite3.connect(DB)) as d, d:
         d.execute('update cards set '+','.join(k+'=?' for k in fields)+' where name=?',(*fields.values(),c['name']));d.execute('insert into transitions values(?,?,?,?)',(time.time(),c['name'],phase,note[:1000]))
-    print(c['name'],phase,flush=True)
 
 def fixture():
     if not (REPO/'.git').exists():
@@ -183,7 +182,6 @@ def background(action):
     except Exception as ex:
         c=current()
         if c and c['state']!='publishing':save(c,'blocked','Stage '+action+' failed: '+type(ex).__name__+' '+str(ex)[:250])
-        print('stage failure',action,type(ex).__name__,flush=True)
     finally:LOCK.release()
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self):

@@ -123,7 +123,6 @@ def main():
         or Path(account.pw_dir).resolve() != Path(args.home).resolve()
     ):
         raise ValueError("Run as the configured account with its actual home directory")
-    print(json.dumps(isolate(args.home, args.check)))
 
 
 if __name__ == "__main__":

@@ -18,6 +18,5 @@ try:
         ).fetchone()[0]
         for table in tables
     }
-    print(json.dumps(counts, sort_keys=True))
 finally:
     connection.close()

@@ -251,21 +251,10 @@ def main():
             if a.mode == "validate"
             else inspect(a.username, a.fingerprint, a.enforce)
         )
-    print(json.dumps(result))
 
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        print(
-            json.dumps(
-                {
-                    "status": "blocked",
-                    "reason": str(e)
-                    if isinstance(e, ValueError)
-                    else "Verification failed; inspect host locally without dumping credentials",
-                }
-            )
-        )
         sys.exit(1)

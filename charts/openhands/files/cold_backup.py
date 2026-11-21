@@ -53,5 +53,4 @@ def main():
         assert db.execute('pragma integrity_check').fetchall()==[('ok',)] and db.execute("select count(*) from sqlite_master where type='table'").fetchone()[0]>0
     public=serialization.load_pem_public_key(pathlib.Path('/config/recipient.pem').read_bytes());wrapped=public.encrypt(key,padding.OAEP(mgf=padding.MGF1(hashes.SHA256()),algorithm=hashes.SHA256(),label=None));report={'format':AAD.decode(),'cipher':'AES-256-GCM','wrapped_key':b64(wrapped),'wrap':'RSA-OAEP-SHA256','iv':b64(iv),'tag':b64(crypt.tag),'key_sha256':hashlib.sha256(key).hexdigest(),'ciphertext_sha256':file_digest(part),'tar_gz_sha256':digest.hexdigest(),'bytes':n,'members':count,'history_events':events,'restored_sqlite_integrity':'ok','verified_settings_and_handoff':True,'excluded':[]};os.link(part,enc);part.unlink()
     with receipt.open('x') as dst:json.dump(report,dst);dst.flush();os.fsync(dst.fileno())
-    print(json.dumps(report),flush=True)
 if __name__=='__main__':main()

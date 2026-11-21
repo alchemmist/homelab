@@ -68,7 +68,6 @@ def ensure(binary, kubeconfig, namespace):
             },
         )
         created.append("thanos-shelf-token")
-    print("created" if created else "present")
     return created
 
 

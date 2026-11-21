@@ -107,7 +107,6 @@ def main():
             )
             if result.returncode != 0 or result.stdout != "200":
                 raise RuntimeError("Authenticated public Trojan HTTPS probe failed")
-            print("Authenticated public Trojan TLS/WebSocket tunnel: HTTPS 200")
         finally:
             process.terminate()
             try:

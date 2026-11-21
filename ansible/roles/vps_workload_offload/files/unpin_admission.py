@@ -39,4 +39,3 @@ if __name__ == '__main__':
         subprocess.run(cmd + ['--dry-run=server'], check=True)
         if args.apply:
             subprocess.run(cmd, check=True)
-            print('updated two workload profiles')
