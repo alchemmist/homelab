@@ -21,7 +21,9 @@
         checksum_algorithm: sha256
       register: old
     - ansible.builtin.assert:
-        that: old.stat.checksum == '4757adfbdee04817a8ab3df60426649d608a17f5cd10e6d608805c56050782ae'
+        that: >-
+          old.stat.checksum ==
+          '4757adfbdee04817a8ab3df60426649d608a17f5cd10e6d608805c56050782ae'
     - name: Reserve a dedicated locked probe identity, never reuse an existing UID
       ansible.builtin.command: getent passwd 19091
       register: identity

@@ -8,7 +8,10 @@
       ansible.builtin.command: ip link show dev wg-socrat
       changed_when: false
     - name: Verify peer destination uses existing mesh
-      ansible.builtin.command: ip route get {{ "10.250.0.2" if inventory_hostname == "socrat-4" else "10.250.0.40" }}
+      ansible.builtin.command: >-
+        ip route get
+        {{ "10.250.0.2" if inventory_hostname == "socrat-4"
+        else "10.250.0.40" }}
       register: mesh_route
       changed_when: false
       failed_when: "'dev wg-socrat' not in mesh_route.stdout"

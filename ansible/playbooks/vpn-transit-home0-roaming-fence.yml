@@ -23,7 +23,9 @@
           [Service]
           Type=oneshot
           RemainAfterExit=yes
-          ExecStart=/bin/sh -c '/usr/sbin/nft list table inet homelab_msk_mesh_fence >/dev/null 2>&1 || /usr/sbin/nft -f /etc/wireguard/msk-mesh-fence.nft'
+          ExecStart=/bin/sh -c '/usr/sbin/nft list table inet \
+          homelab_msk_mesh_fence >/dev/null 2>&1 || \
+          /usr/sbin/nft -f /etc/wireguard/msk-mesh-fence.nft'
           [Install]
           WantedBy=multi-user.target
     - name: Enable only the scoped anti-roaming fence

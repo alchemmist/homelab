@@ -13,7 +13,7 @@ tracing:
 profiling:
   enabled: true
 lms-database-ha:
-  retired: true # Keep archive PVC and LMS web availability monitoring.
+  retired: true  # Keep archive PVC and LMS web availability monitoring.
   hibernate: true
   backup:
     enabled: false
