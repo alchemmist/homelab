@@ -61,3 +61,9 @@ At this checkpoint the off-host copy was in progress, not yet independently
 accepted on 3. The running finish controller keeps the transit copy unless
 both the remote archive and its decompressed manifest verify. The net space
 reclaimed before transit-spool release is approx. 36.14 GiB.
+
+Final check at 21:28 UTC: `raw-packed-copy-20261121` completed. On socrat-3
+`restore-verified.json` confirms the full compressed archive and decompressed
+manifest; SHA-256 matches the value above. On socrat-0 `offsite-complete.json`
+records the same digest, the transit `raw.tar.zst` is absent, and the pre-cutover
+raw directory has zero entries. No compressed transit copy remains to reclaim.
