@@ -31,6 +31,11 @@ global:
 postgresql:
   enabled: false
 server:
+  # Remove a slow backend from routing on the normal readiness budget. Avoid
+  # recycling its warm workers during a transient shared latency spike.
+  livenessProbe:
+    timeoutSeconds: 8
+    failureThreshold: 9
   affinity:
     nodeAffinity: &preferredNodes
       preferredDuringSchedulingIgnoredDuringExecution:
