@@ -14,13 +14,13 @@ spec.loader.exec_module(module)
 
 
 class FakeEtcd:
-    def __init__(self):
+    def __init__(self) -> None:
         self.data = {
             name: {"id": i, "learner": False} for i, name in enumerate(sorted(module.VOTERS), 1)
         }
-        self.checked = []
+        self.checked: list[str] = []
         self.mismatch = False
-        self.unhealthy = None
+        self.unhealthy: str | None = None
 
     def members(self):
         return self.data.copy()

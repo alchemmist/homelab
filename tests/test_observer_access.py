@@ -463,7 +463,7 @@ class BootstrapSafetyTests(unittest.TestCase):
         outer = self
 
         class FakeClient:
-            def __init__(self, credentials):
+            def __init__(self, credentials) -> None:
                 pass
 
             def call(self, system, method, path, body=None):

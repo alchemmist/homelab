@@ -214,7 +214,7 @@ def bounded(response):
 
 
 class Reader:
-    def __init__(self):
+    def __init__(self) -> None:
         self.http = opener()
         self.auth = os.environ["AUTH_URL"]
         if self.auth != ORIGIN + "/outpost.goauthentik.io/auth/nginx":
@@ -529,7 +529,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
     daemon_threads = True
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         self.slots = threading.BoundedSemaphore(MAX_CONNECTIONS)
         super().__init__(*args, **kwargs)
 

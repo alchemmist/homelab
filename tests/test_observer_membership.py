@@ -258,7 +258,7 @@ class MembershipTests(unittest.TestCase):
         class Client:
             """Fake Authentik client that mutates only the in-memory user."""
 
-            def __init__(self, credentials):
+            def __init__(self, credentials) -> None:
                 pass
 
             def rows(self, path):

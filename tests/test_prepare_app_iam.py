@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import sys
 import tempfile
+from typing import TYPE_CHECKING, cast
 import unittest
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
@@ -16,14 +17,17 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "ansible/roles/authentik/files"))
 import prepare_app_iam as prep
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 
 class FakeAPI:
-    def __init__(self, services, reviewed):
+    def __init__(self, services, reviewed) -> None:
         self.data = {p: [] for p in prep.COLLECTIONS}
-        self.requests = []
+        self.requests: list[tuple[str, str, object]] = []
         self.page_size = 2
-        self.fail_write = None
-        self.after_get = None
+        self.fail_write: int | None = None
+        self.after_get: Callable[[str], None] | None = None
         self.writes = 0
         legacy = sorted({g for s in services.values() for g in s.get("groups", [])})
         self.data["core/groups/"] = [dict(prep.group_payload(n), pk="g-" + n) for n in legacy]
@@ -68,7 +72,7 @@ class FakeAPI:
             if p.startswith(("stages/", "flows/", "outposts/", "propertymappings/")):
                 self.data[p] = [{"pk": "protected-" + p, "setting": "unchanged"}]
 
-    def __call__(self, method, endpoint, payload=None):
+    def __call__(self, method, endpoint, payload=None) -> dict[str, object]:
         self.requests.append((method, endpoint, copy.deepcopy(payload)))
         parsed = urlsplit(endpoint)
         path = parsed.path
@@ -379,7 +383,7 @@ class PreparationTests(unittest.TestCase):
         def api(method, path, payload=None):
             result = original(method, path, payload)
             if "core/users/" in path:
-                result["results"] *= 2
+                result["results"] = cast("list[object]", result["results"]) * 2
             return result
 
         with self.assertRaisesRegex(RuntimeError, "ambiguous"):

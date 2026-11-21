@@ -21,7 +21,7 @@ def fixtures():
     calls = []
 
     class Native:
-        def __init__(self, app, db_engine):
+        def __init__(self, app, db_engine) -> None:
             self.app = app
             self.db_engine = db_engine
 

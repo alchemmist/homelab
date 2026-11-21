@@ -68,7 +68,7 @@ class BotRepo:
 
 
 class Homelab:
-    def __init__(self, token):
+    def __init__(self, token) -> None:
         self.token = token
 
     def api(self, method, path, body=None):

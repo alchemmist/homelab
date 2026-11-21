@@ -17,7 +17,7 @@ from app_iam import admission_groups
 
 
 class FakeAuthentik:
-    def __init__(self):
+    def __init__(self) -> None:
         self.data = {
             "core/groups/": [],
             "core/users/": [],
@@ -60,9 +60,9 @@ class FakeAuthentik:
                 for s in ["openid", "profile", "email", "offline_access"]
             ],
         }
-        self.requests = []
+        self.requests: list[tuple[str, str, object | None, dict[str, list[str]]]] = []
 
-    def __call__(self, req, timeout=60):
+    def __call__(self, req, timeout=60) -> io.BytesIO:
         uri = urlparse(req.full_url)
         path = uri.path.split("/api/v3/")[1]
         method = req.get_method()

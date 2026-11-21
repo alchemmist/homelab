@@ -19,6 +19,7 @@ import time
 import urllib.request
 from contextlib import closing
 from pathlib import Path
+from typing import Self, TextIO, TypedDict
 
 spec = importlib.util.spec_from_file_location(
     "inventory", Path(__file__).with_name("vpn-hardening-inventory.py")
@@ -30,6 +31,14 @@ IMAGE = (
 )
 DB = Path("/srv/x-ui-lab/db/x-ui.db")
 KUBE = ["/usr/local/bin/kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml"]
+
+
+class _Credential(TypedDict, total=False):
+    """Machine credential fields consumed by this tool (JSON payloads stay dynamic)."""
+
+    id: object
+    scope: str
+    token: str
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -131,7 +140,7 @@ def pod_identity():
 
 
 class NativeSession:
-    def __init__(self, state, database=DB, worker_scope="node-sync"):
+    def __init__(self, state, database=DB, worker_scope="node-sync") -> None:
         if worker_scope not in ("node-sync", "admin"):
             raise ValueError("Unreviewed worker scope")
         self.worker_scope = worker_scope
@@ -142,9 +151,9 @@ class NativeSession:
             raise ValueError("Use a fresh explicit vpn83-* session name")
         self.names = {kind: label + "-" + kind for kind in ("bootstrap", "cleanup", "worker")}
         self.base = None
-        self.credentials = {}
-        self.original = []
-        self.lock = None
+        self.credentials: dict[str, _Credential] = {}
+        self.original: list[dict[str, object]] = []
+        self.lock: TextIO | None = None
 
     def preview(self):
         original = token_rows(self.database)
@@ -297,7 +306,7 @@ class NativeSession:
         return request(self.base, self.credentials["worker"]["token"], method, path, body)
 
     def cleanup(self):
-        errors = []
+        errors: list[str] = []
         actor = "cleanup" if "cleanup" in self.credentials else "bootstrap"
         if actor in self.credentials:
             for kind in ("worker", "bootstrap", "cleanup"):
@@ -330,8 +339,8 @@ class NativeSession:
             self.lock.close()
             self.lock = None
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, *args) -> None:
         self.cleanup()

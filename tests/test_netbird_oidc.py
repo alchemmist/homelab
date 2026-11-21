@@ -35,7 +35,7 @@ def write_json(path, value):
 
 
 class FakeAuthentik(threading.Thread):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(daemon=True)
         self.calls = []
         self.fail_provider = False
@@ -150,8 +150,8 @@ class FakeAuthentik(threading.Thread):
                 "property_mappings": ["profile-pk", "email-pk", "openid-pk"],
             },
         ]
-        self.applications = []
-        self.bindings = []
+        self.applications: list[dict[str, object]] = []
+        self.bindings: list[dict[str, object]] = []
         self.outposts = [
             {
                 "pk": "outpost-pk",
@@ -167,7 +167,7 @@ class FakeAuthentik(threading.Thread):
             {"pk": "invalidation-flow", "slug": "default-provider-invalidation-flow"},
         ]
         self.certificates = [{"pk": "cert-pk", "name": oidc.CERT_NAME}]
-        self.provider_secrets = {}
+        self.provider_secrets: dict[int, object] = {}
         self._seq = 20
         server = self
 

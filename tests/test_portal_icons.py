@@ -7,6 +7,7 @@ from pathlib import Path
 import runpy
 import shutil
 import sys
+from typing import Self
 from unittest.mock import patch
 from urllib.parse import urlsplit
 
@@ -47,21 +48,21 @@ def test_current_application_coverage_and_asset_checksums():
 
 
 class Response:
-    def __init__(self, body):
+    def __init__(self, body) -> None:
         self.body = body if isinstance(body, bytes) else json.dumps(body).encode()
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, *args):
-        return False
+    def __exit__(self, *args) -> None:
+        return
 
     def read(self):
         return self.body
 
 
 class FakeAPI:
-    def __init__(self):
+    def __init__(self) -> None:
         self.apps = {
             s: {
                 "slug": s,
@@ -81,7 +82,7 @@ class FakeAPI:
             "pk": "fixture-unmanaged",
             "meta_icon": "keep.svg",
         }
-        self.patches = []
+        self.patches: list[str] = []
         self.files = []
         self.content = {}
         for filename, record in MANIFEST["files"].items():
@@ -90,7 +91,7 @@ class FakeAPI:
             self.files.append({"name": name, "url": url})
             self.content[url] = (ASSETS / filename).read_bytes()
 
-    def __call__(self, request, timeout=None):
+    def __call__(self, request, timeout=None) -> "Response":
         if isinstance(request, str):
             # No API bearer token is sent when reading media.
             return Response(self.content[request])

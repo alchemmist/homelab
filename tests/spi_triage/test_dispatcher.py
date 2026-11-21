@@ -142,7 +142,7 @@ class DispatchTransportTests(unittest.TestCase):
         import http.client
 
         class Connection:
-            def __init__(self, *args, **kwargs):
+            def __init__(self, *args, **kwargs) -> None:
                 self.sock, self.peer = socket.socketpair()
                 self.closed = False
 

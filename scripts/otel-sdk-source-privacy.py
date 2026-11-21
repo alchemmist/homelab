@@ -60,7 +60,7 @@ def activate():
     if not isinstance(trace.get_tracer_provider(), trace.ProxyTracerProvider):
         raise ValueError('Source privacy guard must activate before any real tracer provider')
     class BeforeQueuePrivacy(sdk.SpanProcessor):
-        def __init__(self, downstream):
+        def __init__(self, downstream) -> None:
             self.downstream = downstream
         def on_start(self, span, parent_context=None):
             self.downstream.on_start(span, parent_context=parent_context)

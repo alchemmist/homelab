@@ -21,7 +21,7 @@ def node(host):
 
 
 class Fake(n.Runtime):
-    def __init__(self, apply=True, existing=True):
+    def __init__(self, apply=True, existing=True) -> None:
         self.apply = apply
         self.config = n.validate_config(
             {
@@ -32,7 +32,7 @@ class Fake(n.Runtime):
         )
         self.state = {"nodes": {}}
         self.changed = False
-        self.writes = []
+        self.writes: list[tuple[str, str, object]] = []
         self.cluster_node = node("socrat-4")
         self.peer = {
             "id": "peer4",
@@ -46,7 +46,7 @@ class Fake(n.Runtime):
         }
         self.group = {"id": "nodes", "issued": "api", "name": n.DEST, "peers": []}
         self.admin = {"id": "jwt", "issued": "jwt", "name": n.ADMIN}
-        self.resources = []
+        self.resources: list[dict[str, object]] = []
         self.policies = [
             {
                 "enabled": True,

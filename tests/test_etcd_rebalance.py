@@ -11,7 +11,7 @@ SPEC.loader.exec_module(MODULE)
 
 
 class FakeEtcd:
-    def __init__(self):
+    def __init__(self) -> None:
         self.membership = {
             name: {
                 "id": index + 1,
@@ -23,7 +23,7 @@ class FakeEtcd:
         }
         self.leader = 2
         self.healthy = {"socrat-0", "socrat-1", "socrat-3"}
-        self.calls = []
+        self.calls: list[tuple[list[str], str | None]] = []
         self.fail_remove = False
         self.ambiguous_remove = False
 
