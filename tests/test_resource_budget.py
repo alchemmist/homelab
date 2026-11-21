@@ -68,7 +68,9 @@ def container(name="app", cpu="100m", memory="128Mi", **kwargs) -> _Container:
         "name": name,
         "resources": {"requests": {"cpu": cpu, "memory": memory}},
     }
-    value.update(cast(_Container, kwargs))
+    value.update(cast(dict[str, object], kwargs))
+    if "restartPolicy" in kwargs:
+        value["restartPolicy"] = str(kwargs["restartPolicy"])
     return value
 
 
