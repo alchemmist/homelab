@@ -31,12 +31,12 @@ FLOWS = {
 }
 
 
-def require(message: str, *, ok: bool) -> None:
+def require(ok, message) -> None:
     if not ok:
         raise RuntimeError(message)
 
 
-def private(path: Path):
+def private(path) -> None:
     info = path.lstat()
     require(
         "Private regular operator-owned file required",
@@ -47,7 +47,7 @@ def private(path: Path):
     )
 
 
-def save(path: Path, value: object):
+def save(path, value) -> None:
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as stream:
         json.dump(value, stream)
@@ -56,7 +56,7 @@ def save(path: Path, value: object):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *args: object, **kwargs: object):
+    def redirect_request(self, *args, **kwargs) -> None:
         return None
 
 
@@ -72,9 +72,12 @@ class API:
         self.write = write
         self.http = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
-    def call(self, method: str, path: str, value: dict[str, object] | None = None):
-        require("Fixed native API path required", ok=not path.startswith("/") and "://" not in path)
-        require("Plan is read-only", ok=method == "GET" or self.write)
+    def call(self, method, path, value=None) -> "object | None":
+        require(
+            not path.startswith("/") and "://" not in path,
+            "Fixed native API path required",
+        )
+        require(method == "GET" or self.write, "Plan is read-only")
         data = None if value is None else json.dumps(value).encode()
         req = urllib.request.Request(
             BASE + path,
@@ -107,7 +110,7 @@ class API:
                 "Native API transport failed; do not retry ambiguous writes"
             ) from None
 
-    def rows(self, path: str) -> list[dict[str, object]]:
+    def rows(self, path) -> "list[dict[str, object]]":
         result: list[dict[str, object]] = []
         for page in range(1, 21):
             data = self.call(
@@ -120,8 +123,10 @@ class API:
                 and isinstance(data.get("results"), list)
                 and all(isinstance(row, dict) for row in data["results"]),
             )
-            row_data = cast("dict[str, object]", data)
-            pagination = row_data.get("pagination")
+            if not isinstance(data, dict):
+                reason = "Malformed native list response"
+                raise TypeError(reason)
+            pagination = data.get("pagination")
             require(
                 "Malformed native pagination", ok=pagination is None or isinstance(pagination, dict)
             )
@@ -136,7 +141,7 @@ class API:
         raise RuntimeError("Bounded native pagination exceeded")
 
 
-def one(api: API, path: str, field: str, value: str | int) -> dict[str, object] | None:
+def one(api, path, field, value) -> "dict[str, object] | None":
     query = urllib.parse.urlencode({field: value})
     if path == "core/applications/":
         query += "&superuser_full_list=true"
@@ -145,7 +150,7 @@ def one(api: API, path: str, field: str, value: str | int) -> dict[str, object] 
     return found[0] if found else None
 
 
-def group_valid(row: dict[str, object]):
+def group_valid(row) -> None:
     require(
         "SPI app group has unexpected inheritance/privilege/ownership",
         ok=row.get("is_superuser") is False
@@ -155,14 +160,21 @@ def group_valid(row: dict[str, object]):
     )
 
 
-def inspect(api: API, catalog: dict[str, object]):
-    provider_spec = cast("dict[str, object]", catalog["provider"])
-    application_spec = cast("dict[str, object]", catalog["application"])
-    group_names = cast("list[str]", catalog["groups"])
-    provider = one(api, "providers/oauth2/", "name", provider_spec["name"])
-    app = one(api, "core/applications/", "slug", application_spec["slug"])
-    groups = {name: one(api, "core/groups/", "name", name) for name in group_names}
-    require("Legacy admission groups missing", ok=all(groups[name] for name in group_names[:2]))
+def inspect(
+    api, catalog
+) -> tuple[
+    dict[str, object] | None,
+    dict[str, object] | None,
+    dict[str, dict[str, object] | None],
+    dict[str, object],
+]:
+    provider = one(api, "providers/oauth2/", "name", catalog["provider"]["name"])
+    app = one(api, "core/applications/", "slug", catalog["application"]["slug"])
+    groups = {name: one(api, "core/groups/", "name", name) for name in catalog["groups"]}
+    require(
+        all(groups[name] for name in catalog["groups"][:2]),
+        "Legacy admission groups missing",
+    )
     if groups["app-spi-triage-operator"]:
         group_valid(groups["app-spi-triage-operator"])
     flow = {field: one(api, "flows/instances/", "slug", slug) for field, slug in FLOWS.items()}
@@ -189,27 +201,19 @@ def inspect(api: API, catalog: dict[str, object]):
         == 'return {"groups": [group.name for group in request.user.ak_groups.all()]}',
     )
     settings = {
-        **provider_spec,
-        "signing_key": cast("dict[str, object]", signing)["pk"],
+        **catalog["provider"],
+        "signing_key": signing["pk"] if signing else None,
         "property_mappings": [openid[0]["pk"], claims[0]["pk"]],
-        **{field: value["pk"] for field, value in flow.items()},
+        **{field: value["pk"] for field, value in flow.items() if value is not None},
     }
     return provider, app, groups, settings
 
 
-def canonical_redirects(rows: list[dict[str, object]]):
+def canonical_redirects(rows) -> "list[tuple[object, object]]":
     return sorted((r.get("matching_mode"), r.get("url")) for r in rows)
 
 
-def validate_existing(
-    api: API,
-    catalog: dict[str, object],
-    state: dict[str, object] | None,
-    provider: dict[str, object] | None,
-    app: dict[str, object] | None,
-    groups: dict[str, object],
-    settings: dict[str, object],
-):
+def validate_existing(api, catalog, state, provider, app, groups, settings) -> None:
     if provider or app:
         require(
             "Existing SPI identity without private client journal; stop, no adoption/rotation",
@@ -273,7 +277,7 @@ def validate_existing(
         )
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--credentials", type=Path, required=True)
     parser.add_argument("--state-dir", type=Path, required=True)
@@ -348,27 +352,32 @@ def main():
     save(journal, state)  # Persist before the first identity write.
     api.write = True
     if not groups["app-spi-triage-operator"]:
-        groups["app-spi-triage-operator"] = api.call(
-            "POST",
-            "core/groups/",
-            {
-                "name": "app-spi-triage-operator",
-                "is_superuser": False,
-                "parents": [],
-                "roles": [],
-                "attributes": MARKER,
-            },
+        groups["app-spi-triage-operator"] = cast(
+            "dict[str, object]",
+            api.call(
+                "POST",
+                "core/groups/",
+                {
+                    "name": "app-spi-triage-operator",
+                    "is_superuser": False,
+                    "parents": [],
+                    "roles": [],
+                    "attributes": MARKER,
+                },
+            ),
         )
         group_valid(groups["app-spi-triage-operator"])
-    provider = api.call(
-        "POST",
-        "providers/oauth2/",
-        {**settings, "client_secret": state["client_secret"]},
+    provider = cast(
+        "dict[str, object]",
+        api.call(
+            "POST", "providers/oauth2/", {**settings, "client_secret": state["client_secret"]}
+        ),
     )
-    app = api.call(
-        "POST",
-        "core/applications/",
-        {**catalog["application"], "provider": provider["pk"]},
+    app = cast(
+        "dict[str, object]",
+        api.call(
+            "POST", "core/applications/", {**catalog["application"], "provider": provider["pk"]}
+        ),
     )
     for order, name in enumerate(catalog["groups"]):
         api.call(
@@ -376,7 +385,7 @@ def main():
             "policies/bindings/",
             {
                 "target": app["pk"],
-                "group": groups[name]["pk"],
+                "group": cast("dict[str, object]", groups[name])["pk"],
                 "order": order,
                 "enabled": True,
                 "negate": False,
@@ -384,6 +393,9 @@ def main():
             },
         )
     provider, app, groups, settings = inspect(api, catalog)
+    if provider is None or app is None:
+        reason = "Created native identity missing after create"
+        raise TypeError(reason)
     validate_existing(api, catalog, state, provider, app, groups, settings)
     save(
         args.state_dir / "after.json",

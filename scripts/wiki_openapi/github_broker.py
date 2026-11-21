@@ -24,7 +24,7 @@ def request(
     token: str,
     body: object = None,
     context: ssl.SSLContext | None = None,
-) -> dict[str, object]:
+):
     req = urllib.request.Request(
         url,
         data=json.dumps(body).encode() if body is not None else None,
@@ -40,13 +40,12 @@ def request(
     )
     try:
         with urllib.request.urlopen(req, context=context, timeout=25) as response:
-            value: dict[str, object] = json.load(response)
-            return value
+            return json.load(response)
     except urllib.error.HTTPError as exc:
         raise BrokerFailure("HTTP_" + str(exc.code)) from None
 
 
-def main() -> None:
+def main():
     global PHASE
     PHASE = "sign"
     now = int(time.time())
@@ -60,16 +59,12 @@ def main() -> None:
         "GET", "https://api.github.com/repos/alchemmist/homelab/installation", auth
     )
     permissions = installation.get("permissions") or {}
-    if not isinstance(permissions, dict):
-        reason = "APP_PERMISSION_MISSING"
-        raise TypeError(reason)
     if (
         installation.get("suspended_at")
         or permissions.get("pull_requests") != "write"
         or permissions.get("contents") != "write"
     ):
-        reason = "APP_PERMISSION_MISSING"
-        raise TypeError(reason)
+        raise ValueError("APP_PERMISSION_MISSING")
     PHASE = "mint"
     grant = request(
         "POST",
@@ -81,16 +76,12 @@ def main() -> None:
         },
     )
     granted = grant["permissions"]
-    if not isinstance(granted, dict):
-        reason = "INVALID_TOKEN_SCOPE"
-        raise TypeError(reason)
     if (
         granted.get("contents") != "write"
         or granted.get("pull_requests") != "write"
         or granted.get("issues")
     ):
-        reason = "INVALID_TOKEN_SCOPE"
-        raise TypeError(reason)
+        raise ValueError("INVALID_TOKEN_SCOPE")
     root = Path("/var/run/secrets/kubernetes.io/serviceaccount")
     context = ssl.create_default_context(cafile=str(root / "ca.crt"))
     PHASE = "publish_secret"
@@ -99,7 +90,7 @@ def main() -> None:
         "https://kubernetes.default.svc/api/v1/namespaces/automation/secrets/wiki-openapi-github",
         (root / "token").read_text(),
         {
-            "data": {"token": base64.b64encode(str(grant["token"]).encode()).decode()},
+            "data": {"token": base64.b64encode(grant["token"].encode()).decode()},
             "metadata": {"annotations": {"socrat.alchemmist.xyz/expires-at": grant["expires_at"]}},
         },
         context,

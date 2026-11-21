@@ -14,14 +14,14 @@ PATHS = {"/check", "/render", "/create-pr", "/close-older"}
 
 
 class Handler(BaseHTTPRequestHandler):
-    def log_message(self, *args: object) -> None:
+    def log_message(self, *args: object):
         pass
 
-    def do_GET(self) -> None:
+    def do_GET(self):
         self.send_response(200 if self.path == "/healthz" else 404)
         self.end_headers()
 
-    def do_POST(self) -> None:
+    def do_POST(self):
         if self.path not in PATHS or not hmac.compare_digest(
             self.headers.get("X-Worker-Token", ""), os.environ["WORKER_TOKEN"]
         ):

@@ -20,7 +20,7 @@ CONFIG = Path("/etc/wireguard/wg-socrat.conf")
 BACKUP = Path("/root/.local/state/homelab-wg15-relay-20261116")
 
 
-def replace_endpoint(text: str, target: str) -> str:
+def replace_endpoint(text: str, target: str):
     """Preserve every other byte; refuse unknown or ambiguous peer state."""
     parts = re.split(r"(?m)(?=^\[Peer\]\s*$)", text)
     found = 0
@@ -38,15 +38,14 @@ def replace_endpoint(text: str, target: str) -> str:
         found += 1
     if found != 1:
         raise ValueError("Expected exactly one peer1 block")
-    value: str = "".join(parts)
-    return value
+    return "".join(parts)
 
 
-def wg(*args: str) -> str:
+def wg(*args: str):
     return subprocess.check_output(["wg", *args], text=True).strip()
 
 
-def atomic_write(data: bytes) -> None:
+def atomic_write(data: bytes):
     fd, name = tempfile.mkstemp(prefix=".homelab-wg15-", dir=CONFIG.parent)
     try:
         with os.fdopen(fd, "wb") as f:
@@ -65,7 +64,7 @@ def atomic_write(data: bytes) -> None:
             os.unlink(name)
 
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("mode", choices=["apply", "rollback"])
     args = parser.parse_args()

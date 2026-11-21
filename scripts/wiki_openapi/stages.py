@@ -5,7 +5,7 @@ import os
 import subprocess
 import tempfile
 import urllib.request
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Protocol
 
@@ -13,7 +13,39 @@ from engine import UnsafeInput, page_ok, select_closable, spec_changed
 from github import BotRepo, Homelab
 
 
-def model(system: str, data: dict[str, object]) -> dict[str, object]:
+class PageBot(Protocol):
+    """Bot repo reads used by a stage. Test doubles only need these methods."""
+
+    def files(self, before: object, after: object) -> object:
+        """Return compare or commit file entries."""
+        ...
+
+    def text(self, sha: object, path: str) -> str:
+        """Return one allowed file at sha."""
+        ...
+
+
+class WikiRepo(Protocol):
+    """Homelab writes used by a stage."""
+
+    def propose(self, after: object, markdown: str) -> object:
+        """Open or reuse the wiki refresh pull request."""
+        ...
+
+    def automation_prs(self, keep: object) -> Sequence[Mapping[str, object]]:
+        """List older automation pull requests."""
+        ...
+
+    def close(self, number: object, survivor: object) -> object:
+        """Close one pull request as superseded."""
+        ...
+
+    def api(self, method: str, path: str, body: object = ...) -> object:
+        """Call the homelab GitHub API."""
+        ...
+
+
+def model(system: str, data: object):
     request = urllib.request.Request(
         "http://litellm.llm.svc.cluster.local:4000/v1/chat/completions",
         data=json.dumps(
@@ -49,44 +81,10 @@ def model(system: str, data: dict[str, object]) -> dict[str, object]:
         },
     )
     with urllib.request.urlopen(request, timeout=360) as response:
-        content = json.load(response)["choices"][0]["message"]["content"]
-        value: dict[str, object] = json.loads(content)
-        return value
+        return json.loads(json.load(response)["choices"][0]["message"]["content"])
 
 
-class _BotRepo(Protocol):
-    """Structural type of the bot repository API used by rendering."""
-
-    def files(self, before: str, after: str) -> list[dict[str, object]]:
-        """Return the changed bot files between two commits."""
-        ...
-
-    def text(self, sha: str, path: str) -> str:
-        """Raw file text at a bot commit."""
-        ...
-
-
-class _Homelab(Protocol):
-    """Structural type of the authenticated homelab GitHub API used here."""
-
-    def api(self, method: str, path: str, body: object = ...) -> object:
-        """Perform an authenticated homelab API call."""
-        ...
-
-    def propose(self, after: str, markdown: str) -> dict[str, object]:
-        """Propose a wiki update pull request."""
-        ...
-
-    def automation_prs(self, keep: object) -> list[dict[str, object]]:
-        """Open automation pull requests older than the survivor."""
-        ...
-
-    def close(self, number: int, survivor: object) -> None:
-        """Close one automation pull request."""
-        ...
-
-
-def render_page(after: str, bot: _BotRepo) -> str:
+def render_page(after: object, bot: PageBot):
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
         (root / "openapi.yaml").write_text(bot.text(after, "openapi.yaml"))
@@ -110,30 +108,27 @@ def render_page(after: str, bot: _BotRepo) -> str:
         )
         if run.returncode:
             raise UnsafeInput("Wiki renderer failed")
-        value: str = page_ok(target.read_text())
-        return value
+        return page_ok(target.read_text())
 
 
 def stage(
     name: str,
-    payload: dict[str, object],
+    payload: Mapping[str, object],
+    bot: PageBot | None = None,
+    homelab: WikiRepo | None = None,
+    call_model: Callable[[str, object], object] | None = None,
     *,
-    bot: _BotRepo | None = None,
-    homelab: _Homelab | None = None,
-    call_model: Callable[[str, dict[str, object]], dict[str, object]] | None = None,
     write: bool = False,
-) -> list[dict[str, object]]:
+):
     bot = bot or BotRepo()
     if name == "check":
         event = payload.get("body", payload)
         if not isinstance(event, dict) or event.get("ref") != "refs/heads/main":
             return []
-        if not spec_changed(
-            event, bot.files(str(event.get("before", "")), str(event.get("after", "")))
-        ):
+        if not spec_changed(event, bot.files(event.get("before", ""), event.get("after", ""))):
             return []
         return [{"before": event["before"], "after": event["after"]}]
-    after = str(payload.get("after"))
+    after = payload.get("after")
     if name == "render":
         return [{"after": after, "markdown": render_page(after, bot)}]
     homelab = homelab or Homelab(
@@ -144,6 +139,8 @@ def stage(
         if not write:
             return [{"after": after, "status": "dry_run"}]
         result = homelab.propose(after, markdown)
+        if not isinstance(result, dict):
+            raise UnsafeInput("GitHub proposal returned invalid data")
         result["after"] = after
         return [result]
     if name != "close-older":
@@ -165,8 +162,7 @@ def stage(
         prompt, {"survivor": keep, "status": payload.get("status"), "candidates": candidates}
     )
     closed = []
-    for number_raw in select_closable(decision, candidates, keep):
-        number = int(number_raw)
+    for number in select_closable(decision, candidates, keep):
         if keep:
             homelab.close(number, keep)
         else:

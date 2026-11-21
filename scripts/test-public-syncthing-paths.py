@@ -11,11 +11,11 @@ import subprocess
 NS = "syncthing"
 
 
-def k(*args: str):
+def k(*args) -> str:
     return subprocess.check_output(["kubectl", "-n", NS, *args], text=True)
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--run", action="store_true")
     a = p.parse_args()

@@ -17,7 +17,7 @@ class GitHubError(Exception):
 
 def _request(
     url: str, token: str | None = None, method: str = "GET", body: object = None
-) -> dict[str, object] | list[dict[str, object]] | None:
+) -> object:
     headers = {
         "Accept": "application/vnd.github+json",
         "User-Agent": "socrat-wiki-openapi",
@@ -44,96 +44,59 @@ def _request(
 
 
 class BotRepo:
-    def files(self, before: str, after: str) -> list[dict[str, object]]:
+    def files(self, before: object, after: object):
         require_sha(after)
         if before == "0" * 40:
             commit = _request(f"https://api.github.com/repos/{BOT}/commits/{after}")
-            if not isinstance(commit, dict):
+            if not commit:
                 raise GitHubError("Commit not found")
-            files_value = commit.get("files") or []
-            if not isinstance(files_value, list):
-                reason = "Commit file list missing"
-                raise GitHubError(reason)
-            return files_value
+            return commit.get("files") or []
         require_sha(before)
         compared = _request(f"https://api.github.com/repos/{BOT}/compare/{before}...{after}")
-        if not isinstance(compared, dict):
+        if not compared:
             raise GitHubError("Compare not found")
-        files_value = compared.get("files") or []
-        if not isinstance(files_value, list):
-            reason = "Compare not found"
-            raise GitHubError(reason)
-        if len(files_value) >= 300:
+        if len(compared.get("files") or []) >= 300:
             raise GitHubError("Compare file list truncated")
-        return files_value
+        return compared.get("files") or []
 
-    def text(self, sha: str, path: str) -> str:
+    def text(self, sha: object, path: str):
         require_sha(sha)
         if path not in ("openapi.yaml", "scripts/render_wiki.py"):
             raise GitHubError("Unexpected bot path")
         item = _request(f"https://api.github.com/repos/{BOT}/contents/{path}?ref={sha}")
-        if not isinstance(item, dict) or item.get("encoding") != "base64":
+        if not item or item.get("encoding") != "base64":
             raise GitHubError("Bot file missing")
-        return base64.b64decode(str(item["content"])).decode()
+        return base64.b64decode(item["content"]).decode()
 
 
 class Homelab:
-    def __init__(self, token: str) -> None:
+    def __init__(self, token: str):
         self.token = token
 
-    def api(
-        self, method: str, path: str, body: object = None
-    ) -> dict[str, object] | list[object] | None:
-        value = _request(f"https://api.github.com/repos/{HOME}/{path}", self.token, method, body)
-        if isinstance(value, list):
-            listed: list[object] = []
-            listed.extend(value)
-            return listed
-        return value
+    def api(self, method: str, path: str, body: object = None):
+        return _request(f"https://api.github.com/repos/{HOME}/{path}", self.token, method, body)
 
-    def read_page(self, ref: str = "main") -> tuple[str | None, str | None]:
+    def read_page(self, ref: str = "main"):
         item = self.api("GET", f"contents/{PAGE}?ref={ref}")
         if item is None:
             return None, None
-        if not isinstance(item, dict):
-            shape = "Unexpected page shape"
-            raise GitHubError(shape)
         if item.get("encoding") != "base64":
-            encoding = "Unexpected page encoding"
-            raise GitHubError(encoding)
-        return base64.b64decode(str(item["content"])).decode(), str(item["sha"])
+            raise GitHubError("Unexpected page encoding")
+        return base64.b64decode(item["content"]).decode(), item["sha"]
 
-    def propose(self, after: str, markdown: str) -> dict[str, object]:
+    def propose(self, after: object, markdown: str):
         branch = branch_for(after)
         existing = self.api("GET", f"pulls?state=open&head=alchemmist:{branch}&per_page=20") or []
-        if not isinstance(existing, list):
-            shape = "Unexpected pull list shape"
-            raise GitHubError(shape)
         if existing:
-            first = existing[0]
-            if not isinstance(first, dict):
-                shape = "Unexpected pull shape"
-                raise GitHubError(shape)
             return {
                 "status": "existing",
-                "number": first["number"],
-                "url": first["html_url"],
+                "number": existing[0]["number"],
+                "url": existing[0]["html_url"],
             }
         current, _ = self.read_page("main")
         if current == markdown:
             return {"status": "no_change"}
-        ref = self.api("GET", "git/ref/heads/main")
-        if not isinstance(ref, dict):
-            shape = "Unexpected ref shape"
-            raise GitHubError(shape)
-        head_object = ref["object"]
-        if not isinstance(head_object, dict):
-            shape = "Unexpected object shape"
-            raise GitHubError(shape)
-        main = head_object.get("sha")
-        if not isinstance(main, str):
-            shape = "Unexpected object shape"
-            raise GitHubError(shape)
+        main = self.api("GET", "git/ref/heads/main")["object"]["sha"]
         self.api("POST", "git/refs", {"ref": "refs/heads/" + branch, "sha": main})
         _, blob = self.read_page(branch)
         body = {
@@ -156,40 +119,26 @@ class Homelab:
                 "Human review required. No auto-merge.\n\n" + MARKER,
             },
         )
-        if not isinstance(pr, dict):
-            shape = "Unexpected pull shape"
-            raise GitHubError(shape)
         return {"status": "created", "number": pr["number"], "url": pr["html_url"]}
 
-    def automation_prs(self, keep: object) -> list[dict[str, object]]:
-        found: list[dict[str, object]] = []
-        page = 1
+    def automation_prs(self, keep: object):
+        found, page = [], 1
         while page <= 5:
             batch = self.api("GET", f"pulls?state=open&per_page=50&page={page}") or []
-            if not isinstance(batch, list):
-                shape = "Unexpected pull list shape"
-                raise GitHubError(shape)
             if not batch:
                 break
             for pr in batch:
-                if not isinstance(pr, dict):
-                    shape = "Unexpected pull shape"
-                    raise GitHubError(shape)
                 if pr.get("number") == keep:
                     continue
-                body = pr.get("body") or ""
-                user = pr.get("user") or {}
                 if (
-                    isinstance(body, str)
-                    and MARKER in body
-                    and isinstance(user, dict)
-                    and user.get("login") == "socrat-steward[bot]"
+                    MARKER in (pr.get("body") or "")
+                    and pr.get("user", {}).get("login") == "socrat-steward[bot]"
                 ):
                     found.append(
                         {
                             "number": pr["number"],
                             "title": pr["title"],
-                            "body": body[:800],
+                            "body": (pr.get("body") or "")[:800],
                             "url": pr["html_url"],
                         }
                     )
@@ -198,7 +147,7 @@ class Homelab:
             page += 1
         return found
 
-    def close(self, number: int, survivor: object) -> None:
+    def close(self, number: object, survivor: object):
         self.api(
             "POST",
             f"issues/{number}/comments",

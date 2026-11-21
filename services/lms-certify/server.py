@@ -7,7 +7,6 @@ are waiting on vLLM, the loop saves its place and the next idle minute resumes i
 
 import json
 import os
-from collections.abc import Sequence
 import resource
 import subprocess
 import sys
@@ -16,10 +15,11 @@ import tempfile
 import time
 import threading
 import urllib.error
-import urllib.parse
 import urllib.request
+from collections.abc import Mapping, Sequence
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import TypedDict
 
 sys.path.insert(0, "/app")
 from certify_loop import certify
@@ -36,34 +36,63 @@ PROMETHEUS = os.environ.get(
 LOCK = ROOT / "step.lock"
 
 
-def log(event: str, **fields: object) -> None:
+class QueueItem(TypedDict):
+    """One queued certification task."""
+
+    id: str
+    statement: str
+
+
+class CertState(TypedDict):
+    """Persisted loop progress keyed by task id."""
+
+    tasks: dict[str, dict[str, object]]
+
+
+class LoopRecord(TypedDict, total=False):
+    """Fields the loop hook reads from one round record."""
+
+    phase: str
+    reason: str
+    rounds: int
+    cases: list[object]
+    mutation: dict[str, object]
+
+
+def log(event: str, **fields: object):
     print(
         json.dumps({"service": "lms-certify", "event": event, **fields}, ensure_ascii=False),
         flush=True,
     )
 
 
-def load_json(path: Path, default: object) -> object:
+def load_json(path: Path, default: object):
     if not path.exists():
         return default
-    value: object = json.loads(path.read_text())
-    return value
+    return json.loads(path.read_text())
 
 
-def save_json(path: Path, value: object) -> None:
+def load_state() -> CertState:
+    value = load_json(ROOT / "state.json", {"tasks": {}})
+    if not isinstance(value, dict) or not isinstance(value.get("tasks"), dict):
+        raise ValueError("invalid certification state")
+    return {"tasks": value["tasks"]}
+
+
+def save_json(path: Path, value: object):
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps(value, ensure_ascii=False))
     tmp.replace(path)
 
 
-def _limits() -> None:
+def _limits():
     resource.setrlimit(resource.RLIMIT_CPU, (2, 2))
     resource.setrlimit(resource.RLIMIT_AS, (256 * 1024 * 1024, 256 * 1024 * 1024))
     resource.setrlimit(resource.RLIMIT_NOFILE, (32, 32))
 
 
-def run_python(source: str, stdin: str) -> tuple[int, str]:
+def run_python(source: str, stdin: str):
     """Isolated student process: fresh directory, no secrets, CPU and memory caps."""
     with tempfile.TemporaryDirectory(prefix="lms-") as folder:
         path = Path(folder) / "main.py"
@@ -92,7 +121,7 @@ class ModelBusy(Exception):
     pass
 
 
-def _wait_budget(detail: str) -> None:
+def _wait_budget(detail: str):
     match = re.search(r"resets at: ([0-9-]{10} [0-9:]{8}) UTC", detail)
     delay = 20
     if match:
@@ -104,7 +133,7 @@ def _wait_budget(detail: str) -> None:
     time.sleep(delay)
 
 
-def llm(role: str, prompt: str) -> object:
+def llm(role: str, prompt: str):
     body = {
         "model": MODEL,
         "temperature": 0,
@@ -136,90 +165,63 @@ def llm(role: str, prompt: str) -> object:
             raise
     with response:
         payload = json.load(response)
-    text: str = payload["choices"][0]["message"].get("content") or ""
+    text = payload["choices"][0]["message"].get("content") or ""
     start, end = text.find("{"), text.rfind("}")
     if start < 0 or end <= start:
         raise ValueError("model json")
-    parsed: object = json.loads(text[start : end + 1])
-    return parsed
+    return json.loads(text[start : end + 1])
 
 
-def others_waiting() -> bool:
+def others_waiting():
     query = 'vllm:num_requests_waiting{model_name="qwen3.8-27b"}'
-    url = PROMETHEUS + "/api/v1/query?query=" + urllib.parse.quote(query)
+    url = PROMETHEUS + "/api/v1/query?query=" + urllib.request.quote(query)
     try:
         with urllib.request.urlopen(url, timeout=5) as response:
             payload = json.load(response)
     except Exception:
         return False
-    waiting = 0.0
+    waiting = 0
     for row in payload.get("data", {}).get("result", []):
         waiting += float(row["value"][1])
     return waiting > 0
 
 
-def _task_map(value: object) -> dict[str, dict[str, object]]:
-    if isinstance(value, dict):
-        tasks = value.get("tasks")
-        if isinstance(tasks, dict):
-            return tasks
-    return {}
-
-
-def open_task(queue: Sequence[object], state: dict[str, object]) -> dict[str, object] | None:
-    tasks = state["tasks"]
-    known: dict[str, dict[str, object]] = tasks if isinstance(tasks, dict) else {}
+def open_task(queue: Sequence[QueueItem], state: CertState):
     for item in queue:
-        if not isinstance(item, dict):
-            continue
-        record: dict[str, object] = {}
-        entry = known.get(str(item["id"]), {})
-        if isinstance(entry, dict):
-            record = entry
+        record = state["tasks"].get(item["id"], {})
         if record.get("loop") == "v2" and record.get("phase") in {"certified", "needs_review"}:
             continue
         return item
     return None
 
 
-def run_loop(task_id: str, statement: str) -> None:
+def run_loop(task_id: str, statement: str):
     try:
-        stored: object = load_json(ROOT / "state.json", {"tasks": {}})
-        state: dict[str, object] = stored if isinstance(stored, dict) else {"tasks": {}}
-        tasks = _task_map(state)
+        state = load_state()
 
-        def hook(record: dict[str, object]) -> None:
-            current_value: object = load_json(ROOT / "state.json", {"tasks": {}})
-            current: dict[str, object] = (
-                current_value if isinstance(current_value, dict) else {"tasks": {}}
-            )
-            current_tasks = _task_map(current)
-            current_tasks[task_id] = record
-            current["tasks"] = current_tasks
+        def hook(record: LoopRecord):
+            current = load_state()
+            current["tasks"][task_id] = record
             save_json(ROOT / "state.json", current)
-            case_list: object = record.get("cases", [])
             log(
                 "round",
                 task=task_id,
                 status=record.get("phase"),
                 reason=record.get("reason", ""),
                 rounds=record.get("rounds"),
-                cases=len(case_list) if isinstance(case_list, Sequence) else 0,
+                cases=len(record.get("cases") or []),
             )
 
         record = certify(
             {"statement": statement},
-            tasks.get(task_id),
+            state["tasks"].get(task_id),
             llm,
             run_python,
             pause=others_waiting,
             hook=hook,
         )
-        stored = load_json(ROOT / "state.json", {"tasks": {}})
-        state = stored if isinstance(stored, dict) else {"tasks": {}}
-        tasks = _task_map(state)
-        tasks[task_id] = record
-        state["tasks"] = tasks
+        state = load_state()
+        state["tasks"][task_id] = record
         save_json(ROOT / "state.json", state)
         log(
             "loop",
@@ -239,34 +241,30 @@ def run_loop(task_id: str, statement: str) -> None:
         LOCK.unlink(missing_ok=True)
 
 
-def step() -> object:
+def step():
     if LOCK.exists():
         return {"action": "running"}
-    queue_value: object = load_json(QUEUE, [])
-    queue: list[dict[str, object]] = (
-        [x for x in queue_value if isinstance(x, dict)] if isinstance(queue_value, list) else []
-    )
-    state_value: object = load_json(ROOT / "state.json", {"tasks": {}})
-    state: dict[str, object] = state_value if isinstance(state_value, dict) else {"tasks": {}}
+    queue = load_json(QUEUE, [])
+    state = load_json(ROOT / "state.json", {"tasks": {}})
     chosen = open_task(queue, state)
     if chosen is None:
         log("idle", reason="queue_done", size=len(queue))
         return {"action": "idle", "reason": "queue_done", "size": len(queue)}
     ROOT.mkdir(parents=True, exist_ok=True)
-    LOCK.write_text(str(chosen["id"]))
+    LOCK.write_text(chosen["id"])
     threading.Thread(target=run_loop, args=(chosen["id"], chosen["statement"]), daemon=True).start()
     log("started", task=chosen["id"])
     return {"action": "started", "task": chosen["id"]}
 
 
 class Handler(BaseHTTPRequestHandler):
-    def do_GET(self) -> None:
+    def do_GET(self):
         if self.path != "/healthz":
             self.send_error(404)
             return
         self._send({"ok": True, "running": LOCK.exists()})
 
-    def do_POST(self) -> None:
+    def do_POST(self):
         if self.path != "/step" or self.headers.get("X-Worker-Token") != TOKEN:
             self.send_error(404)
             return
@@ -279,7 +277,7 @@ class Handler(BaseHTTPRequestHandler):
             log("error", kind=type(exc).__name__)
             self._send({"action": "error", "kind": type(exc).__name__}, 500)
 
-    def _send(self, payload: object, status: int = 200) -> None:
+    def _send(self, payload: Mapping[str, object], status: int = 200):
         raw = json.dumps(payload).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
@@ -287,7 +285,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(raw)
 
-    def log_message(self, fmt: str, *args: object) -> None:
+    def log_message(self, fmt: str, *args: object):
         return
 
 
