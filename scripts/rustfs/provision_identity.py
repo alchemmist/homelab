@@ -7,6 +7,8 @@ Uses the same provider serializers/flows as the existing configure.py, but does
 not invoke that broad identity bootstrap.
 """
 
+from __future__ import annotations
+
 import argparse
 import importlib.util
 import json
@@ -16,6 +18,10 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from typing import TYPE_CHECKING, Protocol, Self, TypedDict, cast
+
+if TYPE_CHECKING:
+    from types import ModuleType
 
 BASE = "https://auth.socrat.alchemmist.xyz/api/v3/"
 GROUPS = ("homelab-owner", "homelab-platform-operator")
@@ -35,11 +41,92 @@ COLLECTIONS = (
 )
 
 
+class HttpResponse(Protocol):
+    """Minimal file-like response object the opener returns."""
+
+    def read(self, size: int = -1) -> bytes:
+        """Read up to size bytes from the response body."""
+        ...
+
+    def __enter__(self) -> Self:
+        """Return the response as its own context manager."""
+        ...
+
+    def __exit__(self, *args: object) -> object:
+        """Close the underlying connection."""
+        ...
+
+
+class Opener(Protocol):
+    """urllib opener protocol limited to request dispatch."""
+
+    def open(self, request: object, timeout: float | None = None) -> HttpResponse:
+        """Dispatch the request and return the response."""
+        ...
+
+
+class Session(TypedDict):
+    """State needed to invoke the Authentik API: auth, transport, mode."""
+
+    opener: Opener
+    token: str
+    writable: bool
+
+
+class Pagination(TypedDict):
+    """Pagination cursor block of a v3 API listing page."""
+
+    next: int | None
+
+
+class Page(TypedDict):
+    """One v3 API listing page."""
+
+    results: list[dict[str, object]]
+    pagination: Pagination
+
+
 class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Redirect handler that refuses to follow HTTP redirects."""
+
     def redirect_request(self, request, response, code, message, headers, newurl):
+        """Close the body and refuse redirects instead of following them."""
         if response is not None:
             response.close()
         raise ValueError("redirect refused")
+
+
+def reconcile_app_bindings(
+    session: Session,
+    bindings: list[dict[str, object]],
+    app_pk: object,
+    groups: list[object],
+) -> None:
+    """Refuse drift on existing bindings and add the missing owner-group grants."""
+    for binding in bindings:
+        if (
+            binding.get("group") not in groups
+            or binding.get("policy")
+            or binding.get("user")
+            or binding.get("negate")
+            or not binding.get("enabled")
+            or binding.get("failure_result")
+        ):
+            raise ValueError("unexpected authorization binding")
+    for order, group in enumerate(groups):
+        if not any(b.get("group") == group for b in bindings):
+            call_api(
+                session,
+                "POST",
+                "policies/bindings/",
+                {
+                    "target": app_pk,
+                    "group": group,
+                    "order": order,
+                    "enabled": True,
+                    "failure_result": False,
+                },
+            )
 
 
 def builtin_scope(rows, name):
@@ -50,6 +137,146 @@ def builtin_scope(rows, name):
     if len(matches) != 1 or matches[0].get("scope_name") != name:
         raise ValueError("missing/duplicate/mismatched builtin scope")
     return matches[0]["pk"]
+
+
+def call_api(
+    session: Session,
+    method: str,
+    path: str,
+    record: dict[str, object] | None = None,
+    *,
+    allow_missing: bool = False,
+) -> dict[str, object] | None:
+    """Send one JSON request, refusing redirects and oversized responses."""
+    if method != "GET" and not session["writable"]:
+        raise ValueError("writes disabled")
+    request = urllib.request.Request(
+        BASE + path,
+        method=method,
+        headers={"Authorization": "Bearer " + session["token"], "Content-Type": "application/json"},
+        data=json.dumps(record).encode() if record is not None else None,
+    )
+    try:
+        with session["opener"].open(request, timeout=30) as r:
+            data = r.read(2 * 1024 * 1024 + 1)
+            if len(data) > 2 * 1024 * 1024:
+                raise ValueError("oversized inventory")
+            value = json.loads(data)
+            return cast("dict[str, object] | None", value)
+    except urllib.error.HTTPError as e:
+        code = e.code
+        e.close()
+        if allow_missing and code == 404:
+            return None
+        raise ValueError("identity request failed") from None
+
+
+def read_generator(session: Session, path: str) -> list[dict[str, object]]:
+    """Return the unique inventory rows for one API collection."""
+    result: list[dict[str, object]] = []
+    for page_number in range(1, 101):
+        query = path + "?" + urllib.parse.urlencode({"page_size": 100, "page": page_number})
+        raw = call_api(session, "GET", query)
+        if raw is None:
+            err = ValueError("unexpected missing listing")
+            raise err
+        page = cast("Page", raw)
+        result.extend(page["results"])
+        nxt = page["pagination"]["next"]
+        if nxt is None or nxt == 0:
+            return result
+        if type(nxt) is not int or nxt != page_number + 1:
+            raise ValueError("pagination mismatch")
+    raise ValueError("inventory too large")
+
+
+def lookup(
+    records: list[dict[str, object]],
+    key: str,
+    value: str,
+    *,
+    required: bool = False,
+) -> dict[str, object] | None:
+    """Return the unique inventory row matching the key/value, if adopted."""
+    found = [r for r in records if r.get(key) == value]
+    if len(found) > 1 or (required and not found):
+        raise ValueError("missing/duplicate prerequisite")
+    return found[0] if found else None
+
+
+class Catalogue(TypedDict):
+    """Live API session plus the inventory snapshot taken so far."""
+
+    session: Session
+    inventory: dict[str, list[dict[str, object]]]
+
+
+def reconcile_object(
+    catalogue: Catalogue,
+    path: str,
+    key: str,
+    value: str,
+    settings: dict[str, object],
+) -> dict[str, object]:
+    """Add the missing object or refuse on drift; never edit existing objects."""
+    session = catalogue["session"]
+    inventory = catalogue["inventory"]
+    old = lookup(inventory[path], key, value)
+    if old:
+        for k, v in settings.items():
+            actual = old.get(k)
+            if isinstance(v, list) and all(isinstance(x, (str, int)) for x in v):
+                if sorted(cast("list[str]", actual or [])) != sorted(cast("list[str]", v)):
+                    raise ValueError("existing object drift: " + path)
+            elif k == "client_secret":
+                # Some serializers redact secrets. Never rotate implicitly.
+                continue
+            elif actual != v:
+                raise ValueError("existing object drift: " + path)
+        return old
+    new = call_api(session, "POST", path, settings)
+    if new is None:
+        err = ValueError("identity creation failed")
+        raise err
+    inventory[path].append(new)
+    return new
+
+
+def require_private_root(directory: Path) -> None:
+    """Fail unless the private directory is operator-owned with closed permissions."""
+    st = directory.lstat()
+    if (
+        not directory.is_dir()
+        or directory.is_symlink()
+        or st.st_uid != os.getuid()
+        or st.st_mode & 0o077
+    ):
+        raise ValueError("private directory required")
+
+
+def load_or_init_client(
+    module: ModuleType,
+    directory: Path,
+    *,
+    native_taken: bool,
+    session: Session,
+) -> dict[str, object]:
+    """Load the persisted OAuth client journal or create one when absent."""
+    client_record_path = directory / "rustfs-client.json"
+    if client_record_path.exists():
+        module.private(client_record_path)
+        return cast("dict[str, object]", json.loads(client_record_path.read_text()))
+    if native_taken:
+        raise ValueError("lost private client journal")
+    client: dict[str, object] = {
+        "client_id": "spi-rustfs-console",
+        "client_secret": secrets.token_urlsafe(48),
+    }
+    if session["writable"]:
+        fd = os.open(client_record_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        with os.fdopen(fd, "w") as out:
+            json.dump(client, out)
+    return client
 
 
 def main():
@@ -64,48 +291,21 @@ def main():
     b = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(b)
     d = args.private_dir
-    st = d.lstat()
-    if not d.is_dir() or d.is_symlink() or st.st_uid != os.getuid() or st.st_mode & 0o077:
-        raise ValueError("private directory required")
+    require_private_root(d)
     b.private(d / "credentials.json")
     token = json.loads((d / "credentials.json").read_text())["AUTHENTIK_API_TOKEN"]
     http = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
+    session: Session = {"opener": cast("Opener", http), "token": token, "writable": args.apply}
+    catalogue: Catalogue = {"session": session, "inventory": {}}
 
     def api(method, path, body=None, allow_missing=False):
-        if method != "GET" and not args.apply:
-            raise ValueError("writes disabled")
-        request = urllib.request.Request(
-            BASE + path,
-            method=method,
-            headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
-            data=json.dumps(body).encode() if body is not None else None,
-        )
-        try:
-            with http.open(request, timeout=30) as r:
-                data = r.read(2 * 1024 * 1024 + 1)
-                if len(data) > 2 * 1024 * 1024:
-                    raise ValueError("oversized inventory")
-                return json.loads(data)
-        except urllib.error.HTTPError as e:
-            code = e.code
-            e.close()
-            if allow_missing and code == 404:
-                return None
-            raise ValueError("identity request failed") from None
+        return call_api(session, method, path, body, allow_missing=allow_missing)
 
     def rows(path):
-        result = []
-        for page in range(1, 101):
-            data = api("GET", path + "?" + urllib.parse.urlencode({"page_size": 100, "page": page}))
-            result.extend(data["results"])
-            nxt = data["pagination"]["next"]
-            if nxt is None or nxt == 0:
-                return result
-            if type(nxt) is not int or nxt != page + 1:
-                raise ValueError("pagination mismatch")
-        raise ValueError("inventory too large")
+        return read_generator(session, path)
 
-    inventory = {path: rows(path) for path in COLLECTIONS}
+    catalogue["inventory"] = {path: rows(path) for path in COLLECTIONS}
+    inventory = catalogue["inventory"]
     # Application list is admission-filtered, including for automation principals.
     # Exact dedicated detail GET respects RBAC without requiring superuser listing.
     inventory["core/applications/"] = []
@@ -117,10 +317,7 @@ def main():
             inventory["core/applications/"].append(app)
 
     def one(path, key, value, required=False):
-        found = [r for r in inventory[path] if r.get(key) == value]
-        if len(found) > 1 or (required and not found):
-            raise ValueError("missing/duplicate prerequisite")
-        return found[0] if found else None
+        return lookup(inventory[path], key, value, required=required)
 
     groups = [one("core/groups/", "name", name, True)["pk"] for name in GROUPS]
     flow = {
@@ -140,18 +337,12 @@ def main():
         for name in ("openid", "profile", "email")
     ]
     # Refuse unexplained pre-existing providers when the private journal is lost.
-    client_path = d / "rustfs-client.json"
-    if client_path.exists():
-        b.private(client_path)
-        client = json.loads(client_path.read_text())
-    else:
-        if one("providers/oauth2/", "name", "spi-rustfs-native"):
-            raise ValueError("lost private client journal")
-        client = {"client_id": "spi-rustfs-console", "client_secret": secrets.token_urlsafe(48)}
-        if args.apply:
-            fd = os.open(client_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-            with os.fdopen(fd, "w") as out:
-                json.dump(client, out)
+    client = load_or_init_client(
+        b,
+        d,
+        native_taken=one("providers/oauth2/", "name", "spi-rustfs-native") is not None,
+        session=session,
+    )
     # Inventory-only plan has no mutation, even local client secret persistence.
     if not args.apply:
         print(
@@ -160,22 +351,7 @@ def main():
         return
 
     def reconcile(path, key, value, settings):
-        old = one(path, key, value)
-        if old:
-            for k, v in settings.items():
-                actual = old.get(k)
-                if isinstance(v, list) and all(isinstance(x, (str, int)) for x in v):
-                    if sorted(actual or []) != sorted(v):
-                        raise ValueError("existing object drift: " + path)
-                elif k == "client_secret":
-                    # Some serializers redact secrets. Never rotate implicitly.
-                    continue
-                elif actual != v:
-                    raise ValueError("existing object drift: " + path)
-            return old
-        new = api("POST", path, settings)
-        inventory[path].append(new)
-        return new
+        return reconcile_object(catalogue, path, key, value, settings)
 
     scope = reconcile(
         "propertymappings/provider/scope/",
@@ -228,30 +404,8 @@ def main():
                 "policy_engine_mode": "any",
             },
         )
-        bindings = [b for b in inventory["policies/bindings/"] if b.get("target") == app["pk"]]
-        for binding in bindings:
-            if (
-                binding.get("group") not in groups
-                or binding.get("policy")
-                or binding.get("user")
-                or binding.get("negate")
-                or not binding.get("enabled")
-                or binding.get("failure_result")
-            ):
-                raise ValueError("unexpected authorization binding")
-        for order, group in enumerate(groups):
-            if not any(b.get("group") == group for b in bindings):
-                api(
-                    "POST",
-                    "policies/bindings/",
-                    {
-                        "target": app["pk"],
-                        "group": group,
-                        "order": order,
-                        "enabled": True,
-                        "failure_result": False,
-                    },
-                )
+        bindings = [x for x in inventory["policies/bindings/"] if x.get("target") == app["pk"]]
+        reconcile_app_bindings(session, bindings, app["pk"], groups)
     print(
         "Dedicated applications reconciled; verify discovery S256/client_secret_post and real browser authorization before routes."
     )

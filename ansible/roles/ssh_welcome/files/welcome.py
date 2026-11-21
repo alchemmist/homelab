@@ -1,3 +1,5 @@
+"""Render the SSH login welcome banner with system facts and links."""
+
 import argparse
 import json
 import os

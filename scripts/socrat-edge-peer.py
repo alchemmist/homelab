@@ -14,15 +14,22 @@ ADDRESS = "10.250.0.40/32"
 ENDPOINT = "91.189.82.238:51830"
 
 
-def main():
-    """Execute main."""
-    os.umask(0o077)
-    config = Path("/etc/wireguard/wg-socrat.conf")
-    old = config.read_bytes()
-    target = ipaddress.ip_network(ADDRESS)
-    legacy_target = ipaddress.ip_network("10.250.0.8/32")
-    prior_path = Path("/var/lib/homelab-recovery/20261109-socrat4-peer/receipt.json")
-    legacy_owned = prior_path.exists() and json.loads(prior_path.read_text()).get("new_peer") == KEY
+def active_peers() -> dict[str, str]:
+    """Return the current wg-socrat peer key to allowed-ips mapping."""
+    lines = subprocess.check_output(
+        ["wg", "show", "wg-socrat", "allowed-ips"], text=True
+    ).splitlines()
+    return dict(line.split(None, 1) for line in lines)
+
+
+def scan_existing_peers(
+    old: bytes,
+    *,
+    target: ipaddress.IPv4Network,
+    legacy_target: ipaddress.IPv4Network,
+    legacy_owned: bool,
+) -> list[dict[str, str]]:
+    """Parse existing peers and assert no overlap with the new address."""
     matches = []
     for block in re.split(r"(?m)^\s*\[Peer\]\s*$", old.decode())[1:]:
         fields = {}
@@ -40,25 +47,34 @@ def main():
             assert networks == [target] or (legacy_owned and networks == [legacy_target]), (
                 "Existing target peer differs"
             )
-            matches.append(fields)
+            matches.append(dict(fields))
         else:
             assert not any(n.version == target.version and n.overlaps(target) for n in networks), (
                 "Address overlap"
             )
     assert len(matches) <= 1
+    return matches
 
-    def active():
-        lines = subprocess.check_output(
-            ["wg", "show", "wg-socrat", "allowed-ips"], text=True
-        ).splitlines()
-        return dict(line.split(None, 1) for line in lines)
+
+def main():
+    """Execute main."""
+    os.umask(0o077)
+    config = Path("/etc/wireguard/wg-socrat.conf")
+    old = config.read_bytes()
+    target = ipaddress.ip_network(ADDRESS)
+    legacy_target = ipaddress.ip_network("10.250.0.8/32")
+    prior_path = Path("/var/lib/homelab-recovery/20261109-socrat4-peer/receipt.json")
+    legacy_owned = prior_path.exists() and json.loads(prior_path.read_text()).get("new_peer") == KEY
+    matches = scan_existing_peers(
+        old, target=target, legacy_target=legacy_target, legacy_owned=legacy_owned
+    )
 
     # A historical restricted admin-client ACL used .8 even though its WG peer
     # was retired. Do not remove that ACL or grant a server identity to a client.
     acl = Path("/usr/local/libexec/wg-socrat-admin-firewall")
     if acl.exists():
         assert "10.250.0.40" not in acl.read_text(), "Reserved client ACL address"
-    before = active()
+    before = active_peers()
     for key, addresses in before.items():
         if key == KEY:
             assert addresses == ADDRESS or (legacy_owned and addresses == str(legacy_target))
@@ -119,7 +135,7 @@ def main():
         check=True,
         timeout=10,
     )
-    after = active()
+    after = active_peers()
     assert after.get(KEY) == ADDRESS
     assert all(after.get(key) == value for key, value in before.items() if key != KEY)
     receipt = {

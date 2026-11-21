@@ -12,43 +12,43 @@ def document(path):
 
 
 class VMApplicationPlacementTests(unittest.TestCase):
+    """Verify vm application placement keeps original claims."""
+
     def test_n8n_uses_original_vm_claim_without_repointing_recovery_storage(self):
         values = document("charts/n8n/values.yaml")
-        self.assertEqual(values["nodeName"], "socrat-5")
-        self.assertEqual(values["persistence"]["claimName"], "n8n-socrat5")
-        self.assertEqual(values["secretName"], "n8n-secrets")
-        self.assertIn(values["replicaCount"], [0, 1])
-        self.assertEqual(values["recoveryStorage"]["name"], "n8n-recovery-20261114")
-        self.assertEqual(values["recoveryStorage"]["nodeName"], "socrat-1")
-        self.assertEqual(
-            values["recoveryStorage"]["path"],
-            "/home/alchemmist/.local/share/homelab/n8n-recovery-20261114/data",
+        assert values["nodeName"] == "socrat-5"
+        assert values["persistence"]["claimName"] == "n8n-socrat5"
+        assert values["secretName"] == "n8n-secrets"
+        assert values["replicaCount"] in [0, 1]
+        assert values["recoveryStorage"]["name"] == "n8n-recovery-20261114"
+        assert values["recoveryStorage"]["nodeName"] == "socrat-1"
+        assert (
+            values["recoveryStorage"]["path"]
+            == "/home/alchemmist/.local/share/homelab/n8n-recovery-20261114/data"
         )
 
     def test_pr_agent_uses_vm_and_preserves_secret_identity(self):
         values = document("charts/pr-agent/values.yaml")
-        self.assertEqual(values["nodeName"], "socrat-5")
-        self.assertEqual(values["secretName"], "pr-agent")
-        self.assertEqual(values["replicaCount"], 1)
+        assert values["nodeName"] == "socrat-5"
+        assert values["secretName"] == "pr-agent"
+        assert values["replicaCount"] == 1
 
     def test_rancher_single_replica_recovery_preserves_native_oidc_trust(self):
         values = document("deploy/platform/rancher/values.yaml")
         role = document("ansible/roles/rancher_placement/defaults/main.yml")
-        self.assertEqual(values["replicas"], 1)
-        self.assertEqual(values["antiAffinity"], "preferred")
-        self.assertEqual(
-            values["extraNodeSelectorTerms"],
-            [{"key": "kubernetes.io/hostname", "operator": "In", "values": ["socrat-5"]}],
-        )
-        self.assertNotIn("nodeSelector", values)
-        self.assertEqual(role["rancher_placement_nodes"], ["socrat-5"])
-        self.assertEqual(role["rancher_replicas"], 1)
-        self.assertEqual(role["rancher_chart_version"], "2.15.2")
-        self.assertFalse(values["ingress"]["enabled"])
+        assert values["replicas"] == 1
+        assert values["antiAffinity"] == "preferred"
+        assert values["extraNodeSelectorTerms"] == [
+            {"key": "kubernetes.io/hostname", "operator": "In", "values": ["socrat-5"]}
+        ]
+        assert "nodeSelector" not in values
+        assert role["rancher_placement_nodes"] == ["socrat-5"]
+        assert role["rancher_replicas"] == 1
+        assert role["rancher_chart_version"] == "2.15.2"
+        assert not values["ingress"]["enabled"]
 
-        self.assertEqual(
-            values["extraEnv"],
-            [{"name": "SSL_CERT_FILE", "value": "/var/lib/ca-certificates/ca-bundle.pem"}],
-        )
-        self.assertEqual(role["rancher_ssl_cert_file"], values["extraEnv"][0]["value"])
-        self.assertNotIn("CATTLE_INSECURE_SKIP_VERIFY", str(values))
+        assert values["extraEnv"] == [
+            {"name": "SSL_CERT_FILE", "value": "/var/lib/ca-certificates/ca-bundle.pem"}
+        ]
+        assert role["rancher_ssl_cert_file"] == values["extraEnv"][0]["value"]
+        assert "CATTLE_INSECURE_SKIP_VERIFY" not in str(values)

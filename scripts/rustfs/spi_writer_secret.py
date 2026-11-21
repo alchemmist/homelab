@@ -74,7 +74,7 @@ def render(directory):
             json.dump(doc, stream)
             stream.flush()
             os.fsync(stream.fileno())
-    except Exception:
+    except (OSError, ValueError):
         raise ValueError("SPI_WRITER_SECRET_PREPARATION_REFUSED") from None
 
 
@@ -85,7 +85,7 @@ def main():
     args = parser.parse_args()
     try:
         render(args.private_dir)
-    except Exception:
+    except (OSError, ValueError):
         raise SystemExit("SPI_WRITER_SECRET_PREPARATION_REFUSED") from None
 
 

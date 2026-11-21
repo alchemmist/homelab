@@ -1,3 +1,5 @@
+"""Isolated smoke test for the telemetry signals collector and exporters."""
+
 import argparse
 import hashlib
 import json
@@ -10,6 +12,7 @@ import urllib.parse
 import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import IO
 
 SERVICE = "otel-isolated-signal-smoke"
 SECRET = "synthetic-sensitive-value"
@@ -119,9 +122,96 @@ def logs_fixture(now):
     }
 
 
+def require(expected: object, message: str) -> None:
+    """Enforce an invariant, failing with the given message."""
+    if not expected:
+        raise ValueError(message)
+
+
+def fail(message: str) -> None:
+    """Abort the synthetic smoke run with RuntimeError."""
+    raise RuntimeError(message)
+
+
+def start_signal_components(
+    args: argparse.Namespace,
+    configs: dict[str, object],
+    environment: dict[str, str],
+    logs: list[object],
+    children: list[subprocess.Popen[bytes]],
+) -> list[subprocess.Popen[bytes]]:
+    """Start the four private smoke components; return Popen handles."""
+    for name in ["loki", "tempo", "trace-gateway", "cluster"]:
+        path = args.workspace / (name + ".json")
+        path.write_text(json.dumps(configs[name]))
+        if name in ("cluster", "trace-gateway"):
+            command = [str(args.binaries / "otelcol-contrib"), "--config=" + str(path)]
+        else:
+            command = [
+                str(args.binaries / name),
+                "-config.file=" + str(path),
+                "-config.expand-env=true",
+            ]
+        log = (args.workspace / (name + ".log")).open("x")
+        logs.append(log)
+        children.append(
+            subprocess.Popen(
+                command,
+                env=environment,
+                stdin=subprocess.DEVNULL,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+            )
+        )
+    return children
+
+
+def await_backend_readiness(
+    children: list[subprocess.Popen[bytes]], context: ssl.SSLContext
+) -> None:
+    """Block until the private backends are ready or a component stops."""
+    deadline = time.monotonic() + 80
+    while True:
+        if any(child.poll() is not None for child in children):
+            fail("Native signal component stopped; inspect private run logs")
+        try:
+            for port in [3100, 3200]:
+                with urllib.request.urlopen(
+                    "https://127.0.0.1:" + str(port) + "/ready", context=context, timeout=3
+                ) as response:
+                    require(response.status == 200, "Backend not ready")
+        except (OSError, ValueError):
+            if time.monotonic() >= deadline:
+                fail("Native signal backend readiness timed out")
+        else:
+            return
+        time.sleep(1)
+
+
+def verify_client_certificate_enforced(unauthenticated: ssl.SSLContext) -> None:
+    """Require both private backends to refuse requests without client certs."""
+    for port in [3100, 3200]:
+        try:
+            with urllib.request.urlopen(
+                "https://127.0.0.1:" + str(port) + "/ready",
+                context=unauthenticated,
+                timeout=5,
+            ):
+                pass
+        except (ssl.SSLError, ConnectionResetError):
+            continue
+        except urllib.error.URLError as error:
+            if isinstance(error.reason, ssl.SSLError):
+                continue
+            raise
+        raise ValueError("Backend unexpectedly accepted a client without a certificate")
+
+
 def run(args):
-    if os.readlink("/proc/self/ns/net") == os.readlink("/proc/1/ns/net"):
-        raise ValueError("Signal smoke requires an isolated loopback-only network namespace")
+    require(
+        os.readlink("/proc/self/ns/net") != os.readlink("/proc/1/ns/net"),
+        "Signal smoke requires an isolated loopback-only network namespace",
+    )
     args.workspace.mkdir(mode=0o700, exist_ok=False)
     configs = {
         name: json.loads((args.config / (name + ".json")).read_text())
@@ -156,49 +246,13 @@ def run(args):
         "OTEL_TEMPO_ENDPOINT": "127.0.0.1:24317",
     }
     children = []
-    logs = []
+    logs: list[IO[str]] = []
     context = ssl.create_default_context(cafile=str(args.tls / "ca.crt"))
     context.load_cert_chain(str(args.tls / "client.crt"), str(args.tls / "client.key"))
     try:
-        for name in ["loki", "tempo", "trace-gateway", "cluster"]:
-            path = args.workspace / (name + ".json")
-            path.write_text(json.dumps(configs[name]))
-            if name in ("cluster", "trace-gateway"):
-                command = [str(args.binaries / "otelcol-contrib"), "--config=" + str(path)]
-            else:
-                command = [
-                    str(args.binaries / name),
-                    "-config.file=" + str(path),
-                    "-config.expand-env=true",
-                ]
-            log = (args.workspace / (name + ".log")).open("x")
-            logs.append(log)
-            children.append(
-                subprocess.Popen(
-                    command,
-                    env=environment,
-                    stdin=subprocess.DEVNULL,
-                    stdout=log,
-                    stderr=subprocess.STDOUT,
-                )
-            )
+        start_signal_components(args, configs, environment, logs, children)
         started = time.monotonic()
-        deadline = started + 80
-        while True:
-            if any(child.poll() is not None for child in children):
-                raise RuntimeError("Native signal component stopped; inspect private run logs")
-            try:
-                for port in [3100, 3200]:
-                    with urllib.request.urlopen(
-                        "https://127.0.0.1:" + str(port) + "/ready", context=context, timeout=3
-                    ) as response:
-                        if response.status != 200:
-                            raise ValueError("Backend not ready")
-                break
-            except (OSError, ValueError):
-                if time.monotonic() >= deadline:
-                    raise RuntimeError("Native signal backend readiness timed out")
-                time.sleep(1)
+        await_backend_readiness(children, context)
         now = time.time_ns()
         traces, groups = trace_fixtures(now)
         request(context, 4318, "/v1/logs", logs_fixture(now))
@@ -223,7 +277,7 @@ def run(args):
         ids = set()
         while True:
             if any(child.poll() is not None for child in children):
-                raise RuntimeError("Native signal component stopped during delivery")
+                fail("Native signal component stopped during delivery")
             loki = request(context, 3100, "/loki/api/v1/query_range?" + selector)
             data = request(context, 3200, "/api/search?" + search)
             ids = {trace["traceID"].lower().zfill(32) for trace in data.get("traces", [])}
@@ -233,37 +287,32 @@ def run(args):
             if loki.get("data", {}).get("result") and mandatory <= ids:
                 break
             if time.monotonic() >= deadline:
-                raise RuntimeError("Native log delivery or mandatory tail sampling timed out")
+                fail("Native log delivery or mandatory tail sampling timed out")
             time.sleep(2)
         serialized = json.dumps(loki)
-        if (
-            SECRET in serialized
-            or "forbidden-history" in serialized
-            or "forbidden-time-zero" in serialized
-            or "fresh-fixture" not in serialized
-        ):
-            raise ValueError("Loki privacy or historical boundary failed")
+        require(
+            all(
+                [
+                    SECRET not in serialized,
+                    "forbidden-history" not in serialized,
+                    "forbidden-time-zero" not in serialized,
+                    "fresh-fixture" in serialized,
+                ]
+            ),
+            "Loki privacy or historical boundary failed",
+        )
         normal = len(groups["normal"] & ids)
-        if not 5 <= normal <= 45:
-            raise ValueError("Normal trace sampling is outside the synthetic acceptance range")
+        require(
+            5 <= normal <= 45, "Normal trace sampling is outside the synthetic acceptance range"
+        )
         for identity in sorted(mandatory):
             body = request(context, 3200, "/api/traces/" + identity)
-            if SECRET in json.dumps(body):
-                raise ValueError("Trace attribute/event/resource privacy failed")
+            require(
+                SECRET not in json.dumps(body),
+                "Trace attribute/event/resource privacy failed",
+            )
         unauthenticated = ssl.create_default_context(cafile=str(args.tls / "ca.crt"))
-        for port in [3100, 3200]:
-            try:
-                with urllib.request.urlopen(
-                    "https://127.0.0.1:" + str(port) + "/ready", context=unauthenticated, timeout=5
-                ):
-                    pass
-            except (ssl.SSLError, ConnectionResetError):
-                continue
-            except urllib.error.URLError as error:
-                if isinstance(error.reason, ssl.SSLError):
-                    continue
-                raise
-            raise ValueError("Backend unexpectedly accepted a client without a certificate")
+        verify_client_certificate_enforced(unauthenticated)
         result = {
             "schemaVersion": 1,
             "observedAt": datetime.now(UTC).isoformat(),
@@ -308,7 +357,7 @@ def main():
     os.umask(0o077)
     try:
         print(json.dumps(run(args), indent=2))
-    except Exception:
+    except (OSError, RuntimeError, subprocess.SubprocessError, ValueError):
         raise SystemExit("Isolated signal smoke failed; inspect private root-owned run logs")
 
 
