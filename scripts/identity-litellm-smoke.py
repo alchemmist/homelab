@@ -5,8 +5,7 @@ Requires Playwright + Chromium. Run from the owner Mac with --run.
 """
 
 import argparse
-from collections.abc import Mapping
-from typing import Literal, Protocol
+from typing import Literal, TypedDict, Unpack, cast
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
@@ -31,10 +30,49 @@ import socket
 _original_getaddrinfo = socket.getaddrinfo
 
 
+class _AddrKeywords(TypedDict, total=False):
+    port: bytes | str | int | None
+    family: int
+    type: int
+    proto: int
+    flags: int
+
+
+def _install[T](replacement: object, current: T) -> T:
+    chosen = current if replacement is current else replacement
+    return cast("T", chosen)
+
+
+def _addr_port(
+    params: tuple[bytes | str | int | None, ...], kwargs: _AddrKeywords
+) -> bytes | str | int | None:
+    if "port" in kwargs:
+        return kwargs["port"]
+    if params:
+        return params[0]
+    return None
+
+
+def _addr_int(
+    params: tuple[bytes | str | int | None, ...],
+    kwargs: _AddrKeywords,
+    name: Literal["family", "type", "proto", "flags"],
+    index: int,
+) -> int:
+    if name in kwargs:
+        return kwargs[name]
+    if len(params) > index:
+        value = params[index]
+        if isinstance(value, int):
+            return value
+        raise TypeError(value)
+    return 0
+
+
 def public_auth(
-    host: str | bytes | None,
-    *params,
-    **kwargs,
+    host: bytes | str | None,
+    *params: bytes | str | int | None,
+    **kwargs: Unpack[_AddrKeywords],
 ) -> list[
     tuple[Literal[socket.AddressFamily.AF_INET], socket.SocketKind, int, str, tuple[str, int]]
     | tuple[
@@ -45,15 +83,17 @@ def public_auth(
         tuple[str, int, int, int] | tuple[int, bytes],
     ]
 ]:
-    edge = (
-        args.public_edge
-        if isinstance(host, str) and host in ["auth.socrat.alchemmist.xyz", "llm.alchemmist.xyz"]
-        else host
+    return _original_getaddrinfo(
+        args.public_edge if host in ["auth.socrat.alchemmist.xyz", "llm.alchemmist.xyz"] else host,
+        _addr_port(params, kwargs),
+        _addr_int(params, kwargs, "family", 1),
+        _addr_int(params, kwargs, "type", 2),
+        _addr_int(params, kwargs, "proto", 3),
+        _addr_int(params, kwargs, "flags", 4),
     )
-    return _original_getaddrinfo(edge, *params, **kwargs)
 
 
-socket.getaddrinfo = public_auth
+socket.getaddrinfo = _install(public_auth, _original_getaddrinfo)
 SSH = [
     "ssh",
     "-o",
@@ -69,7 +109,7 @@ credential = json.loads(
 )
 
 
-def api(method: str, path: str, data: Mapping[str, object] | None = None):
+def api(method, path, data=None):
     req = urllib.request.Request(
         BASE + "/api/v3/" + path,
         method=method,
@@ -94,23 +134,6 @@ import urllib.parse
 import uuid
 
 from playwright.sync_api import sync_playwright
-
-
-class CallbackResponse(Protocol):
-    """Browser response fields the LiteLLM callback observer reads."""
-
-    @property
-    def url(self) -> str:
-        """Return the response URL."""
-
-    @property
-    def status(self) -> int:
-        """Return the HTTP status code."""
-
-    def json(self) -> Mapping[str, object]:
-        """Return the decoded JSON body."""
-        ...
-
 
 username = "litellm-smoke-" + uuid.uuid4().hex[:10]
 password = secrets.token_urlsafe(32)
@@ -165,7 +188,7 @@ try:
         components = []
         errors = []
 
-        def observe(response: CallbackResponse):
+        def observe(response):
             if (
                 urllib.parse.urlparse(response.url).hostname == "llm.alchemmist.xyz"
                 and "/sso/callback" in response.url

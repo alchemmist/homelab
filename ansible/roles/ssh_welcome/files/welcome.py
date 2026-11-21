@@ -1,4 +1,5 @@
 import argparse
+from collections.abc import Mapping, Sequence
 import json
 import os
 from pathlib import Path
@@ -6,19 +7,52 @@ import platform
 import shutil
 import sys
 import textwrap
+from typing import Protocol, TypedDict
 import unicodedata
 from urllib.parse import quote, urlencode, urlsplit
 
 ROOT = Path("/etc/homelab-welcome")
 
 
-def clean(value):
+class _Condition(Protocol):
+    def __bool__(self) -> bool: ...
+
+
+class _Address(TypedDict):
+    address: str
+    type: str
+
+
+class _WelcomeConfig(TypedDict, total=False):
+    rancher_url: str
+    cluster: str
+    node: str
+    exporter_port: str | int
+    logo: str
+    addresses: list[_Address]
+    labels: dict[str, str]
+    disk: str
+    description: str
+    contacts: dict[str, str]
+    animation: bool
+
+
+class _PortraitVariant(TypedDict):
+    id: str
+    lines: list[str]
+
+
+class _Portraits(TypedDict):
+    variants: list[_PortraitVariant]
+
+
+def clean(value: object):
     return "".join(
         c if not unicodedata.category(c).startswith("C") else " " for c in str(value)
     ).strip()
 
 
-def role(labels):
+def role(labels: Mapping[str, str]):
     roles = []
     if any(f"node-role.kubernetes.io/{key}" in labels for key in ("control-plane", "master")):
         roles.append("master")
@@ -27,7 +61,7 @@ def role(labels):
     return " + ".join(roles) or "worker"
 
 
-def urls(config, ip):
+def urls(config: _WelcomeConfig, ip: str):
     base = config["rancher_url"].rstrip("/")
     parsed = urlsplit(base)
     if parsed.scheme != "https" or not parsed.netloc or any(ord(c) < 32 for c in base):
@@ -56,7 +90,7 @@ def urls(config, ip):
     )
 
 
-def metrics(disk):
+def metrics(disk: str):
     os_name = platform.freedesktop_os_release().get("PRETTY_NAME", platform.system())
     memory = {}
     for line in Path("/proc/meminfo").read_text().splitlines():
@@ -85,7 +119,15 @@ def metrics(disk):
     ]
 
 
-def render(config, portraits, stats, width=100, color=True, hyperlinks=False, logo_frame=None):
+def render(
+    config: _WelcomeConfig,
+    portraits: _Portraits,
+    stats: list[tuple[str, str]],
+    width: int = 100,
+    color: _Condition = True,
+    hyperlinks: _Condition = False,
+    logo_frame: Sequence[str] | None = None,
+):
     logo = next(v["lines"] for v in portraits["variants"] if v["id"] == config["logo"])
     logo = [line.rstrip() for line in logo]
     ip = next((a["address"] for a in config["addresses"] if a["type"] == "InternalIP"), "unknown")

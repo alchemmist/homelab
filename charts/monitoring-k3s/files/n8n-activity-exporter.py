@@ -129,7 +129,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
 
-    def log_message(self, *_):
+    def log_message(self, *_: object) -> None:
         pass
 
 

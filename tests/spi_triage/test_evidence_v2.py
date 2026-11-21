@@ -1,8 +1,12 @@
 import json
 import sys
 import unittest
-from unittest.mock import Mock, patch
 from pathlib import Path
+from typing import TYPE_CHECKING
+from unittest.mock import Mock, patch
+
+if TYPE_CHECKING:
+    from _typeshed import Incomplete
 from urllib.parse import urlsplit, parse_qs
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "charts/spi-triage/files"))
@@ -155,7 +159,7 @@ class ArtifactTests(unittest.TestCase):
 
 
 class TelemetryTests(unittest.TestCase):
-    def response(self, method, url, *args, **kw):
+    def response(self, method: str, url: str, *args: object, **kw: object) -> "Incomplete":
         if "/api/search?" in url:
             return {"traces": [{"traceID": "a" * 32}]}
         if "/api/traces/" in url:
