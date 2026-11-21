@@ -40,6 +40,7 @@ def main():
         }:
             env.pop(key)
     env["KUBECONFIG"] = "/dev/null"
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
     argv = [
         sys.executable,
         "-m",
@@ -76,6 +77,8 @@ def main():
             "--",
             "env",
             "PATH=" + env["PATH"],
+            "KUBECONFIG=/dev/null",
+            "PYTHONDONTWRITEBYTECODE=1",
             *(["QUALITY_SYNTHETIC_SPI_SORT=1"] if args.suite == "fast" else []),
             *argv,
         ]

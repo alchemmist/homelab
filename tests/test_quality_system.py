@@ -324,12 +324,16 @@ def test_network_namespace_preserves_locked_tool_path(tmp_path, monkeypatch, sys
     assert runner.main() == 0
     argv, kw = calls[0]
     assert "SSH_AUTH_SOCK" not in kw["env"]
+    assert kw["env"]["KUBECONFIG"] == "/dev/null"
+    assert kw["env"]["PYTHONDONTWRITEBYTECODE"] == "1"
     assert "SPI_SORT_FIXTURE" not in kw["env"]
     assert "QUALITY_SYNTHETIC_SPI_SORT" not in kw["env"]
     assert ("QUALITY_SYNTHETIC_SPI_SORT=1" in argv) == (suite == "fast" and system == "Linux")
     if system == "Linux":
         assert argv[:4] == ["sudo", "-n", "unshare", "--net"]
         assert "PATH=/locked-venv/bin:/usr/bin" in argv
+        assert "KUBECONFIG=/dev/null" in argv
+        assert "PYTHONDONTWRITEBYTECODE=1" in argv
     else:
         assert argv[:2] == ["/usr/bin/sandbox-exec", "-p"]
         assert "(deny network*)" in argv[2]
