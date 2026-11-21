@@ -19,7 +19,7 @@ def _mapping(value: object) -> dict[str, object]:
 
 
 class FakeWatchdog(MODULE.Watchdog):
-    def __init__(self, directory: str) -> None:
+    def __init__(self, directory) -> None:
         super().__init__(
             {
                 "state_dir": directory,
