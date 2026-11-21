@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Isolated pinned-Collector privacy/severity and persistent full-queue recovery probe.
+
 Only synthetic data; prints counts/IDs, never Collector logs or payloads. Requires Docker and PyYAML.
 """
 

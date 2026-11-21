@@ -9,11 +9,11 @@ from __future__ import annotations
 import base64
 import json
 import os
-from pathlib import Path
 import secrets
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 ROOT = Path.home() / ".cache/homelab-authentik"
 CLIENTS_PATH = ROOT / "oidc-clients.json"
@@ -128,6 +128,7 @@ print(json.dumps({"ok":True,"changed":changed}))"""
 
 
 def run(args: list[str], *, input_text: str | None = None, check: bool = True) -> str:
+    """Run."""
     result = subprocess.run(args, input=input_text, text=True, capture_output=True)
     if check and result.returncode:
         # Never include subprocess output: it may contain authentication material.
@@ -136,6 +137,7 @@ def run(args: list[str], *, input_text: str | None = None, check: bool = True) -
 
 
 def exec_authentik(code: str, input_text: str | None = None) -> dict:
+    """Exec authentik."""
     args = KUBECTL + ["-n", "identity", "exec"]
     if input_text is not None:
         args.append("-i")
@@ -148,6 +150,7 @@ def exec_authentik(code: str, input_text: str | None = None) -> dict:
 
 
 def persist_clients(clients: dict) -> None:
+    """Persist clients."""
     ROOT.mkdir(mode=0o700, parents=True, exist_ok=True)
     fd, name = tempfile.mkstemp(prefix=".oidc-clients-", dir=ROOT)
     try:
@@ -164,6 +167,7 @@ def persist_clients(clients: dict) -> None:
 
 
 def main() -> None:
+    """Main."""
     global STAGE
     STAGE = "read-private-credential-journal"
     if not (ROOT / "credentials.json").is_file():

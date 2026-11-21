@@ -126,6 +126,7 @@ class Sandbox:
     """Docker sandbox hosting a persistent working directory."""
 
     def __init__(self, files, directory, verifier=False):
+        """Initialize the sandbox environment."""
         self.directory = pathlib.Path(directory)
         self.directory.mkdir(parents=True, exist_ok=True)
         self.events = []
@@ -374,7 +375,9 @@ class Sandbox:
             raise ValueError("; ".join(errors))
 
     def __enter__(self):
+        """Return this sandbox as the active context manager resource."""
         return self
 
     def __exit__(self, *args):
+        """Close the sandbox when leaving its context manager block."""
         self.close()

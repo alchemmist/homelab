@@ -137,6 +137,7 @@ class State:
     """Mutable state collected by the update watcher."""
 
     def __init__(self) -> None:
+        """Initialize empty metric state."""
 
         self.lock = threading.Lock()
         self.body = render_metrics([]).encode()

@@ -6,13 +6,13 @@ import fcntl
 import hashlib
 import json
 import os
-from pathlib import Path
 import re
 import socket
 import urllib.parse
 import urllib.request
 import uuid
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("root", type=Path)
@@ -37,6 +37,7 @@ base = "https://auth.socrat.alchemmist.xyz/api/v3/"
 
 
 def api(method, path, payload=None):
+    """Api."""
     req = urllib.request.Request(
         base + path,
         method=method,
@@ -49,11 +50,13 @@ def api(method, path, payload=None):
 
 
 def private_json(path, value):
+    """Private json."""
     with open(path, "x", opener=lambda p, f: os.open(p, f, 0o600)) as out:
         json.dump(value, out)
 
 
 def normalize(value, key=""):
+    """Normalize."""
     if isinstance(value, dict):
         return {k: normalize(v, k) for k, v in value.items()}
     if isinstance(value, list):
@@ -69,6 +72,7 @@ def normalize(value, key=""):
 
 
 def stable(app):
+    """Stable."""
     # These three fields are the icon and its derived, possibly signed URLs.
     return normalize(
         {

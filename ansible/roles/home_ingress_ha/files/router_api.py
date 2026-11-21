@@ -10,11 +10,11 @@ import time
 import urllib.parse
 import urllib.request
 
-
 FIELDS = ("ip", "local_port", "protocol", "remote_ip", "external_port", "wan", "status", "comment")
 
 
 def parse_forwards(page):
+    """Document the parse forwards operation."""
     rows = []
     for row in re.findall(r"<tr\b[^>]*>(.*?)</tr>", page, re.S | re.I):
         selected = re.search(r'name="(select\d+)"', row)
@@ -33,6 +33,7 @@ def parse_forwards(page):
 
 
 def canonical(rows):
+    """Document the canonical operation."""
     return sorted(tuple(row[field] for field in FIELDS) for row in rows)
 
 
@@ -40,6 +41,7 @@ class Router:
     """Router HTTP API client using authenticated requests."""
 
     def __init__(self, credentials, address) -> None:
+        """Initialize the router client."""
 
         self.base = "http://" + str(ipaddress.IPv4Address(address))
         self.cookie = None
@@ -142,6 +144,7 @@ class Router:
 
 
 def main():
+    """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--router", default="192.168.0.1")
     parser.add_argument("--expected-old")

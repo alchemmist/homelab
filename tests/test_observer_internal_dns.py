@@ -3,6 +3,7 @@
 import importlib.util
 from pathlib import Path
 from typing import TypedDict
+
 import pytest
 
 spec = importlib.util.spec_from_file_location(

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Explicit live branding acceptance: temporary observer, real MFA/OIDC, cleanup.
+
 No real owner password/MFA is read or reset. No QR/secret/session traces are saved.
 Requires Playwright + Chromium. Run from the owner Mac with --run.
 """
@@ -30,6 +31,7 @@ _original_getaddrinfo = socket.getaddrinfo
 
 
 def public_auth(host, *params, **kwargs):
+    """Perform the public auth operation."""
     return _original_getaddrinfo(
         args.public_edge if host == "auth.socrat.alchemmist.xyz" else host, *params, **kwargs
     )
@@ -52,6 +54,7 @@ credential = json.loads(
 
 
 def api(method, path, data=None):
+    """Perform the HTTP request and return its response."""
     req = urllib.request.Request(
         BASE + "/api/v3/" + path,
         method=method,
@@ -108,6 +111,7 @@ try:
         errors = []
 
         def observe(response):
+            """Perform the observe operation."""
             if "/api/v3/flows/executor/" in response.url and response.status in [200, 400]:
                 try:
                     data = response.json()

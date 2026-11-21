@@ -1,13 +1,12 @@
 """Tests for the wiki editor resolver script."""
 
 import os
-from pathlib import Path
 import shlex
 import shutil
 import subprocess
 import tempfile
 import unittest
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -16,6 +15,7 @@ SOURCE = ROOT / "ansible/roles/wiki_editor_client/files/wiki-editor-resolver.sh"
 
 
 class WikiEditorResolverTests(unittest.TestCase):
+    """Tests for WikiEditorResolverTests."""
     def setUp(self) -> None:
         self.directory = tempfile.TemporaryDirectory(prefix="wiki-resolver-test-")
         self.addCleanup(self.directory.cleanup)

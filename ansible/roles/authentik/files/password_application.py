@@ -4,14 +4,14 @@
 import argparse
 import json
 import os
-from pathlib import Path
 import socket
 import tempfile
 import urllib.request
-from typing import cast
+from pathlib import Path
 
 
 def validate(spec):
+    """Document the validate operation."""
     assert spec["slug"] == "password-self-service"
     assert spec["provider"] is None
     assert spec["meta_launch_url"] == "https://auth.socrat.alchemmist.xyz/change-password"
@@ -20,6 +20,7 @@ def validate(spec):
 
 
 def main():
+    """Document the main operation."""
     parser = argparse.ArgumentParser()
     parser.add_argument("root", type=Path)
     parser.add_argument("--apply", action="store_true")

@@ -1,8 +1,9 @@
 """Read-only Helm render contracts for the scoped VPS CRD provider."""
 
-from pathlib import Path
 import subprocess
 import unittest
+from pathlib import Path
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -11,6 +12,7 @@ TRANSIT_SERVICE_PORT = 32087
 
 
 class EdgeCrdTests(unittest.TestCase):
+    """Tests for EdgeCrdTests."""
     @classmethod
     def setUpClass(cls) -> None:
         output = subprocess.check_output(

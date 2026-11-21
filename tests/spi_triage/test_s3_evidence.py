@@ -2,14 +2,13 @@
 
 import datetime
 import hashlib
-import sys
 import socket
+import sys
 import threading
 import time
 import unittest
-from typing import Protocol
-from typing import cast
 from pathlib import Path
+from typing import Protocol, cast
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "charts/spi-triage/files"))

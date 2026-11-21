@@ -4,16 +4,16 @@ import base64
 import json
 import logging
 import os
-from pathlib import Path
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 from policy import (
     LANES,
+    dependency_repair,
     encode_result,
     validate_changes,
-    dependency_repair,
     validate_dependency_update,
 )
 
@@ -24,10 +24,12 @@ RESULT_KEY = os.environ.pop("RESULT_KEY", "")
 
 
 def signed_result(result):
+    """Run signed result."""
     return encode_result(result, RESULT_KEY)
 
 
 def command(args, *, cwd=ROOT, timeout=900):
+    """Run command."""
     with open(ART / "commands.log", "a") as log:
         log.write("\nCOMMAND " + repr(args) + "\n")
         log.flush()
@@ -41,6 +43,7 @@ def command(args, *, cwd=ROOT, timeout=900):
 
 
 def checks():
+    """Run checks."""
     return {
         "backend": command(
             [
@@ -64,6 +67,7 @@ def checks():
 
 
 def agent_main():
+    """Run agent main."""
     import yaml
     from minisweagent import package_dir
     from minisweagent.agents.default import DefaultAgent
@@ -96,6 +100,7 @@ def agent_main():
 
 
 def harden_parent():
+    """Run harden parent."""
     import ctypes
 
     # Deny same-UID children /proc/<parent>/{environ,mem,fd}, including Pod stdout.
@@ -106,6 +111,7 @@ def harden_parent():
 
 
 def main():
+    """Run main."""
     harden_parent()
     ART.mkdir(parents=True, exist_ok=True)
     Path("/workspace/tmp").mkdir(exist_ok=True)

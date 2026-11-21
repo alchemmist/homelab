@@ -1,8 +1,8 @@
 """Offline contracts for the one-node runtime cold cutover; never SSH or migrate."""
 
 import ast
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts/socrat5-runtime-boot-migrate.py"
 

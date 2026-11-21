@@ -16,6 +16,7 @@ JOBS = {"vllm", "litellm"}
 
 
 def main():
+    """Run the command-line entry point."""
     deadline = time.monotonic() + 120
     while True:
         targets = [

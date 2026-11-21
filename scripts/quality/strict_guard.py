@@ -87,6 +87,7 @@ class StrictPolicy(TypedDict):
 
 
 def marker(*parts: str) -> str:
+    """Execute marker."""
     return "".join(parts)
 
 
@@ -111,14 +112,17 @@ CODE_SUFFIXES = {".py", ".pyi", ".sh", ".bash", ".yml", ".yaml", ".js", ".ts", "
 
 
 def policy():
+    """Execute policy."""
     return json.loads((ROOT / "quality/strict-policy.json").read_text())
 
 
 def line_is_suppression(line: str) -> bool:
+    """Execute line_is_suppression."""
     return bool(SUPPRESSION.search(line))
 
 
 def suppression_paths(names: Iterable[str]) -> list[str]:
+    """Execute suppression_paths."""
     selected = []
     for name in names:
         path = Path(name)
@@ -137,6 +141,7 @@ def suppression_paths(names: Iterable[str]) -> list[str]:
 
 
 def suppression_hits(names: Iterable[str]) -> list[str]:
+    """Execute suppression_hits."""
     hits = []
     for name in suppression_paths(names):
         for number, line in enumerate((ROOT / name).read_text(errors="ignore").splitlines(), 1):
@@ -146,6 +151,7 @@ def suppression_hits(names: Iterable[str]) -> list[str]:
 
 
 def partition(path: str) -> str:
+    """Execute partition."""
     for prefix in vendor_prefixes():
         if path.startswith(prefix):
             return "vendor"
@@ -165,6 +171,7 @@ def partition(path: str) -> str:
 
 
 def discovered_ansible_rules() -> set[str]:
+    """Execute discovered_ansible_rules."""
     import ansiblelint
 
     root = Path(ansiblelint.__file__).parent / "rules"
@@ -189,6 +196,7 @@ def discovered_ansible_rules() -> set[str]:
 
 
 def listed_ansible_rules() -> set[str]:
+    """Execute listed_ansible_rules."""
     use_project_tools()
     process = command(
         ["ansible-lint", "-L", "-f", "brief", "--offline", "--nocolor"],
@@ -445,6 +453,7 @@ def verify_configuration() -> None:
 
 
 def main() -> int:
+    """Execute main."""
     try:
         verify_configuration()
     except (OSError, TypeError, ValueError) as error:

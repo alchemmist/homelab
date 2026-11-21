@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Private CLI-only online backup. Failed/truncated stdout MUST be deleted.
+
 POSIX main-thread deadline assumes normally interruptible OS I/O; no guarantee
 is possible for uninterruptible kernel I/O. Never invoke in HTTP worker threads.
 """
@@ -133,6 +134,7 @@ def _deadline_check(start: float, deadline_seconds: float) -> Callable[[], None]
 
 
 def backup(source, directory, max_bytes=512 * 1024 * 1024, deadline_seconds=60) -> None:
+    """Stream a consistent SQLite backup to stdout within size and time bounds."""
     if deadline_seconds <= 0 or max_bytes <= 0:
         raise ValueError("invalid bounds")
     start = time.monotonic()
@@ -193,6 +195,7 @@ def backup(source, directory, max_bytes=512 * 1024 * 1024, deadline_seconds=60) 
 
 
 def main() -> None:
+    """Run the backup from CLI arguments and report only an opaque failure flag."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--source", default="/data/spi.sqlite")
     p.add_argument("--private-pvc-directory", required=True)

@@ -4,9 +4,9 @@
 import argparse
 import json
 import os
-from pathlib import Path
 import socket
 import urllib.request
+from pathlib import Path
 
 TITLES = {
     "default-provider-authorization-explicit-consent": "Redirecting",
@@ -15,6 +15,7 @@ TITLES = {
 
 
 def reconcile(api, root, rollback=False):
+    """Reconcile."""
     backup = root / "authorization-flow-titles-original.json"
     current = {slug: api("GET", "flows/instances/" + slug + "/") for slug in TITLES}
     if rollback:
@@ -48,6 +49,7 @@ def reconcile(api, root, rollback=False):
 
 
 def main():
+    """Main."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
     parser.add_argument("--public-edge", default="109.173.40.247")

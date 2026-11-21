@@ -1,9 +1,8 @@
 """Offline checks for OTLP numeric-label comparison and dollar escaping."""
 
 import importlib.util
-from pathlib import Path
 import unittest
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(

@@ -1,4 +1,5 @@
 """Existing-user app membership lifecycle. Default plan/check are GET-only.
+
 Never creates/deletes/merges humans, resets passwords/MFA or manages legacy groups.
 """
 
@@ -7,15 +8,21 @@ import fcntl
 import hashlib
 import json
 import os
-from pathlib import Path
 import re
 import sys
 import urllib.error
 import urllib.request
+from pathlib import Path
 from typing import Protocol, cast
 from uuid import UUID
 
-from app_iam import app_groups, rows, validate_bindings, validate_group, admission_groups
+from app_iam import (
+    admission_groups,
+    app_groups,
+    rows,
+    validate_bindings,
+    validate_group,
+)
 
 BASE = "https://auth.socrat.alchemmist.xyz/api/v3/"
 OWNER = "alchemmist"
@@ -31,6 +38,7 @@ class Api(Protocol):
 
 
 def api_for(root: Path) -> Api:
+    'Api for.'
     path = root / "credentials.json"
     if root.stat().st_mode & 0o077 or path.stat().st_mode & 0o077:
         raise RuntimeError("Deployment directory/credentials must be private")
@@ -299,6 +307,7 @@ def apply_plan(api: Api, plan: dict[str, object], approval: object) -> None:
 
 
 def main():
+    'Main.'
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
     parser.add_argument("action", choices=["plan", "check", "apply"], default="plan", nargs="?")

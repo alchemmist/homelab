@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Withdraw only plaintext32063 from subscriptions; retain cached-client listener.
+
 Owner coordinates end-device refresh. No client/key/binding deletion or listener retirement.
 Default preview; explicit fresh session+configuration hashes required for native API write.
 """
