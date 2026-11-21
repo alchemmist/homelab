@@ -19,11 +19,23 @@ CHARTS = {
 }
 
 
-def values(owner) -> dict[str, object]:
-    value: dict[str, object] = yaml.safe_load((ROOT / CHARTS[owner] / "values.yaml").read_text())
-    if CHARTS[owner].startswith("deploy/"):
-        return value
-    return cast("dict[str, object]", value["publicEntry"])
+def chart_values(owner: str) -> dict[str, object]:
+    """Load the complete owner inputs, preserving any surrounding feature values."""
+    source = (ROOT / CHARTS[owner] / "values.yaml").read_text()
+    return cast("dict[str, object]", yaml.safe_load(source))
+
+
+def public_entry(document: dict[str, object]) -> dict[str, object]:
+    """Select the routes by schema, independently of the chart's directory."""
+    entry = document.get("publicEntry", document)
+    assert isinstance(entry, dict)
+    assert isinstance(entry.get("routes"), list)
+    return entry
+
+
+def values(owner: str) -> dict[str, object]:
+    """Read just the public-entry section for cross-owner topology checks."""
+    return public_entry(chart_values(owner))
 
 
 def render(owner=None) -> list[dict[str, object]]:
