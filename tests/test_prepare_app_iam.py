@@ -6,10 +6,10 @@ import io
 import json
 import sys
 import tempfile
-from collections.abc import Callable
-from typing import TYPE_CHECKING, TypedDict, cast
 import unittest
+from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING, TypedDict, cast
 from unittest.mock import patch
 from urllib.error import HTTPError
 from urllib.parse import parse_qs, urlsplit

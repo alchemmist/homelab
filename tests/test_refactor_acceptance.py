@@ -2,10 +2,11 @@
 
 import copy
 import importlib.util
+import unittest
 from pathlib import Path
 from types import ModuleType
 from typing import TypedDict, cast
-import unittest
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
