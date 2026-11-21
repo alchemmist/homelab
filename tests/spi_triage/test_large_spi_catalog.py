@@ -14,7 +14,7 @@ GOOD = {"issue_number": 0, "reason": "No shared cause established.", "confidence
 
 class LargeCatalogTests(unittest.TestCase):
     @staticmethod
-    def issues(n):
+    def issues(n) -> list[dict[str, object]]:
         return [
             {
                 "number": i + 1,
