@@ -8,8 +8,8 @@ secretName: monori-env
 images:
   front:
     repository: harbor.socrat.alchemmist.xyz/homelab/monori
-    tag: 4576a41a4477b804dc4631de0a93a1fd9f5774fd
-    digest: sha256:35dff2c2c9b0a94e682e8b20dc88b39bff1edce5969c51d51913cd7c22c34487
+    tag: 2c9d0dda76a57999f31bbed367de6e5e35a586e7
+    digest: sha256:30fa48ab5ba50c3d2a23a9b7b14ea7072024b3d8f71dec51fc901ada8bada37e
     fallback: ghcr.io/alchemmist/homelab-monori-front:latest
   back:
     repository: harbor.socrat.alchemmist.xyz/homelab/monori
