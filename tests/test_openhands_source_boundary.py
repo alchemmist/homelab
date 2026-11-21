@@ -863,7 +863,7 @@ def test_opt_in_continuation_rejects_writable_credentials_and_registries(mount: 
         _replace_path(
             stateful,
             ("spec", "template", "spec", "containers", 2, "volumeMounts", index, "readOnly"),
-            False,
+            replacement=False,
         )
     )
     with pytest.raises(AssertionError, match="Continuation session mount changed"):
