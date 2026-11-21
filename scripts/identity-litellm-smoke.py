@@ -5,6 +5,8 @@ Requires Playwright + Chromium. Run from the owner Mac with --run.
 """
 
 import argparse
+from collections.abc import Mapping
+from typing import Literal, Protocol
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
@@ -29,12 +31,26 @@ import socket
 _original_getaddrinfo = socket.getaddrinfo
 
 
-def public_auth(host, *params, **kwargs):
-    return _original_getaddrinfo(
-        args.public_edge if host in ["auth.socrat.alchemmist.xyz", "llm.alchemmist.xyz"] else host,
-        *params,
-        **kwargs,
+def public_auth(
+    host: str | bytes | None,
+    *params,
+    **kwargs,
+) -> list[
+    tuple[Literal[socket.AddressFamily.AF_INET], socket.SocketKind, int, str, tuple[str, int]]
+    | tuple[
+        Literal[socket.AddressFamily.AF_INET6],
+        socket.SocketKind,
+        int,
+        str,
+        tuple[str, int, int, int] | tuple[int, bytes],
+    ]
+]:
+    edge = (
+        args.public_edge
+        if isinstance(host, str) and host in ["auth.socrat.alchemmist.xyz", "llm.alchemmist.xyz"]
+        else host
     )
+    return _original_getaddrinfo(edge, *params, **kwargs)
 
 
 socket.getaddrinfo = public_auth
@@ -53,7 +69,7 @@ credential = json.loads(
 )
 
 
-def api(method, path, data=None):
+def api(method: str, path: str, data: Mapping[str, object] | None = None):
     req = urllib.request.Request(
         BASE + "/api/v3/" + path,
         method=method,
@@ -78,6 +94,23 @@ import urllib.parse
 import uuid
 
 from playwright.sync_api import sync_playwright
+
+
+class CallbackResponse(Protocol):
+    """Browser response fields the LiteLLM callback observer reads."""
+
+    @property
+    def url(self) -> str:
+        """Return the response URL."""
+
+    @property
+    def status(self) -> int:
+        """Return the HTTP status code."""
+
+    def json(self) -> Mapping[str, object]:
+        """Return the decoded JSON body."""
+        ...
+
 
 username = "litellm-smoke-" + uuid.uuid4().hex[:10]
 password = secrets.token_urlsafe(32)
@@ -132,7 +165,7 @@ try:
         components = []
         errors = []
 
-        def observe(response):
+        def observe(response: CallbackResponse):
             if (
                 urllib.parse.urlparse(response.url).hostname == "llm.alchemmist.xyz"
                 and "/sso/callback" in response.url

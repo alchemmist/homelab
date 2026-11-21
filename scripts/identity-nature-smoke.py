@@ -215,8 +215,16 @@ with sync_playwright() as p:
 
 if args.delay_hq:
     import asyncio
+    from typing import Protocol
 
     from playwright.async_api import async_playwright
+
+    class RouteControl(Protocol):
+        """Playwright route handle this preview holds open."""
+
+        async def continue_(self) -> object:
+            """Resume the held route."""
+            ...
 
     async def preview_only():
         async with async_playwright() as p:
@@ -231,7 +239,7 @@ if args.delay_hq:
                     release = asyncio.Event()
                     pending = []
 
-                    async def hold(route):
+                    async def hold(route: RouteControl):
                         pending.append(True)
                         await release.wait()
                         await route.continue_()

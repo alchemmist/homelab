@@ -18,7 +18,10 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
+from http.client import HTTPMessage
 from pathlib import Path
+from typing import IO, NoReturn
 
 ROOT = Path(__file__).resolve().parents[1]
 BINDINGS = ROOT / "deploy/identity/ssh-bindings.json"
@@ -37,29 +40,37 @@ class Refused(ValueError):
     """Safe error, deliberately excludes raw API responses/attributes/credentials."""
 
 
-def require(ok, message):
+def refuse(message: str) -> NoReturn:
+    """Refuse the plan with a uniform operator-facing error."""
+    raise Refused(message)
+
+
+def require(ok: object, message: str):
     if not ok:
         raise Refused(message)
 
 
-def fields(obj, expected):
-    require(isinstance(obj, dict) and set(obj) == set(expected), "Unexpected document fields")
+def fields(obj: object, expected: Collection[str]):
+    """Require exactly the expected field names on a JSON object."""
+    if not isinstance(obj, dict):
+        refuse("Unexpected document fields")
+    require(set(obj) == set(expected), "Unexpected document fields")
 
 
-def canonical_uuid(value):
+def canonical_uuid(value: object):
+    if not isinstance(value, str):
+        refuse("Canonical UUID required")
     try:
-        require(
-            isinstance(value, str) and str(uuid.UUID(value)) == value, "Canonical UUID required"
-        )
+        require(str(uuid.UUID(value)) == value, "Canonical UUID required")
         require(uuid.UUID(value).int != 0, "Nonzero UUID required")
-    except (ValueError, AttributeError):
+    except ValueError:
         raise Refused("Canonical UUID required") from None
     return value
 
 
-def read_json(path):
+def read_json(path: str | Path):
     # Do not include decoder errors: they can contain supplied private material.
-    def unique_pairs(pairs):
+    def unique_pairs(pairs: Iterable[tuple[str, object]]):
         result = {}
         for key, value in pairs:
             require(key not in result, "Duplicate JSON field")
@@ -72,14 +83,15 @@ def read_json(path):
         raise Refused("Cannot read valid JSON input") from None
 
 
-def bindings_map(document):
+def bindings_map(document: Mapping[str, object]):
     fields(document, ["version", "bindings"])
-    require(
-        document["version"] == 1 and isinstance(document["bindings"], list),
-        "Invalid binding ledger",
-    )
+    entries = document["bindings"]
+    require(document["version"] == 1, "Invalid binding ledger")
+    entries = document["bindings"]
+    if not isinstance(entries, list):
+        refuse("Invalid binding ledger")
     result = {}
-    for entry in document["bindings"]:
+    for entry in entries:
         fields(entry, ["uuid", "name"])
         ident, name = canonical_uuid(entry["uuid"]), entry["name"]
         require(
@@ -95,7 +107,7 @@ def bindings_map(document):
     return result
 
 
-def validate_history(current, histories):
+def validate_history(current: Mapping[str, str], histories: Iterable[Mapping[str, object]]):
     for old in histories:
         for ident, name in bindings_map(old).items():
             require(
@@ -129,17 +141,18 @@ def binding_history():
     return result
 
 
-def host_list(value):
+def host_list(value: object):
+    if not isinstance(value, list):
+        refuse("Explicit inventory hosts required")
     require(
-        isinstance(value, list)
-        and all(isinstance(h, str) and re.fullmatch(r"[a-z0-9][a-z0-9.-]{0,62}", h) for h in value),
+        all(isinstance(h, str) and re.fullmatch(r"[a-z0-9][a-z0-9.-]{0,62}", h) for h in value),
         "Explicit inventory hosts required",
     )
     require(len(set(value)) == len(value), "Duplicate host assignment")
     return value
 
 
-def validate_policy(policy, bindings):
+def validate_policy(policy: Mapping[str, object], bindings: Mapping[str, str]):
     fields(policy, ["version", "public_key_attribute", "assignments"])
     require(policy["version"] == 1, "Unsupported policy version")
     require(
@@ -147,9 +160,11 @@ def validate_policy(policy, bindings):
         and re.fullmatch(r"[a-zA-Z][a-zA-Z0-9_]{0,63}", policy["public_key_attribute"]),
         "Invalid attribute name",
     )
-    require(isinstance(policy["assignments"], list), "Assignment list required")
+    assignments = policy["assignments"]
+    if not isinstance(assignments, list):
+        refuse("Assignment list required")
     seen = set()
-    for row in policy["assignments"]:
+    for row in assignments:
         fields(row, ["uuid", "state", "hosts", "revoked_hosts"])
         ident = canonical_uuid(row["uuid"])
         require(ident in bindings and ident not in seen, "Unbound or duplicate assignment UUID")
@@ -162,15 +177,19 @@ def validate_policy(policy, bindings):
     return policy
 
 
-def validate_transition(policy, histories):
+def validate_transition(policy: Mapping[str, object], histories: Iterable[Mapping[str, object]]):
     """Previously managed hosts must remain explicit, including disabled tombstones."""
-    current = {r["uuid"]: set(r["hosts"] + r["revoked_hosts"]) for r in policy["assignments"]}
+    assignments = policy["assignments"]
+    if not isinstance(assignments, list):
+        refuse("Assignment list required")
+    current = {r["uuid"]: set(r["hosts"] + r["revoked_hosts"]) for r in assignments}
     for old in histories:
-        require(
-            isinstance(old, dict) and isinstance(old.get("assignments"), list),
-            "Invalid policy history",
-        )
-        for row in old["assignments"]:
+        if not isinstance(old, dict):
+            refuse("Invalid policy history")
+        prior = old.get("assignments")
+        if not isinstance(prior, list):
+            refuse("Invalid policy history")
+        for row in prior:
             require(
                 set(row["hosts"] + row["revoked_hosts"]) <= current.get(row["uuid"], set()),
                 "Removed host/assignment needs an explicit retained revocation tombstone",
@@ -202,9 +221,11 @@ def policy_history():
         raise Refused("Cannot verify assignment history") from None
 
 
-def public_keys(value):
+def public_keys(value: object):
+    if not isinstance(value, list):
+        refuse("Active assignment needs a public key list")
     require(
-        isinstance(value, list) and 0 < len(value) <= 32,
+        0 < len(value) <= 32,
         "Active assignment needs a public key list",
     )
     result, fingerprints = [], []
@@ -246,12 +267,20 @@ def public_keys(value):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
+    def redirect_request(
+        self,
+        req: urllib.request.Request,
+        fp: IO[bytes],
+        code: int,
+        msg: str,
+        headers: HTTPMessage,
+        newurl: str,
+    ):
         raise Refused("Authentik redirect refused")
 
 
 class Authentik:
-    def __init__(self, url, token, ca_file=None):
+    def __init__(self, url: str, token: str | None, ca_file: str | None = None):
         parsed = urllib.parse.urlsplit(url)
         require(
             parsed.scheme == "https"
@@ -263,10 +292,10 @@ class Authentik:
             and not parsed.fragment,
             "HTTPS Authentik origin required",
         )
+        if not isinstance(token, str):
+            refuse("AUTHENTIK_SSH_TOKEN required")
         require(
-            isinstance(token, str)
-            and token
-            and not any(ord(c) < 33 or ord(c) > 126 for c in token),
+            bool(token) and not any(ord(c) < 33 or ord(c) > 126 for c in token),
             "AUTHENTIK_SSH_TOKEN required",
         )
         self.url, self.token = url.rstrip("/"), token
@@ -275,7 +304,7 @@ class Authentik:
             urllib.request.HTTPSHandler(context=ssl.create_default_context(cafile=ca_file)),
         )
 
-    def user(self, ident):
+    def user(self, ident: str):
         canonical_uuid(ident)
         query = urllib.parse.urlencode({"uuid": ident, "page_size": 100})
         request = urllib.request.Request(
@@ -310,28 +339,36 @@ class Authentik:
         return rows[0]
 
 
-def digest(value):
+def digest(value: object):
     return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=True).encode()).hexdigest()
 
 
-def build_plan(bindings, policy, get_user):
+def build_plan(
+    bindings: Mapping[str, str],
+    policy: Mapping[str, object],
+    get_user: Callable[[str], object],
+):
     validate_policy(policy, bindings)
+    assignments = policy["assignments"]
+    if not isinstance(assignments, list):
+        refuse("Assignment list required")
     by_host, summary = {}, []
-    for row in policy["assignments"]:
+    for row in assignments:
         ident, state = row["uuid"], row["state"]
         keys, fingerprints = [], []
         if state == "present":
             user = get_user(ident)
-            require(
-                isinstance(user, dict) and user.get("uuid") == ident, "Missing immutable user UUID"
-            )
+            if not isinstance(user, dict):
+                refuse("Missing immutable user UUID")
+            require(user.get("uuid") == ident, "Missing immutable user UUID")
             require(
                 user.get("is_active") is True,
                 "IdP user inactive; review explicit disabled assignment",
             )
             require(user.get("type") == "internal", "Only internal human users may be assigned")
             attributes = user.get("attributes")
-            require(isinstance(attributes, dict), "Missing user attributes")
+            if not isinstance(attributes, dict):
+                refuse("Missing user attributes")
             keys, fingerprints = public_keys(attributes.get(policy["public_key_attribute"]))
         for host in row["hosts"] + row["revoked_hosts"]:
             effective = "disabled" if host in row["revoked_hosts"] else state
@@ -368,7 +405,7 @@ def build_plan(bindings, policy, get_user):
     return payload, summary
 
 
-def export(path, payload, approval):
+def export(path: str | Path, payload: Mapping[str, object], approval: str | None):
     require(bool(payload["required_hosts"]), "Empty integration cannot be exported")
     review = digest(payload)
     require(approval == review, "Export requires --approve-plan with the current review SHA256")
@@ -387,7 +424,7 @@ def export(path, payload, approval):
         raise Refused("Export refused; use a new private output file") from None
 
 
-def main(argv=None):
+def main(argv: Sequence[str] | None = None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--authentik-url", help="HTTPS origin, no API path; token from AUTHENTIK_SSH_TOKEN"
@@ -413,7 +450,7 @@ def main(argv=None):
             users = read_json(args.snapshot)
             require(isinstance(users, list), "Snapshot must be a public-only API user list")
 
-            def get_user(ident):
+            def get_user(ident: str):
                 rows = [u for u in users if isinstance(u, dict) and u.get("uuid") == ident]
                 require(len(rows) == 1, "Snapshot UUID missing or duplicated")
                 return rows[0]

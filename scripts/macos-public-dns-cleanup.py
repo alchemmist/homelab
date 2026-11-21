@@ -2,7 +2,9 @@
 """Retire exact owned per-domain resolvers/wiki restorer; never modify global DNS/VPN."""
 
 import argparse, datetime, hashlib, json, os, plistlib, shutil, subprocess
+from collections.abc import Sequence
 from pathlib import Path
+from typing import Protocol
 
 LABEL = "xyz.alchemmist.wiki-resolver"
 STATE = Path("/var/db/homelab-public-dns-cleanup")
@@ -27,12 +29,20 @@ SCRIPT = Path("/usr/local/libexec/socrat-wiki-resolver")
 MARKER = Path("/var/db/socrat-wiki-resolver-owned")
 
 
-def need(ok, message):
+class Truthy(Protocol):
+    """Value whose truthiness can be tested without a positional bool annotation."""
+
+    def __bool__(self) -> bool:
+        """Return the flag's truth value."""
+        ...
+
+
+def need(ok: Truthy, message: str):
     if not ok:
         raise RuntimeError(message)
 
 
-def run(argv, **kwargs):
+def run(argv: Sequence[str], **kwargs) -> subprocess.CompletedProcess[bytes]:
     return subprocess.run(argv, capture_output=True, check=False, **kwargs)
 
 
@@ -45,7 +55,7 @@ def loaded():
     return r.returncode == 0
 
 
-def baseline(expected_pid):
+def baseline(expected_pid: int):
     r = run(["/usr/sbin/scutil"], input=b"show State:/Network/Global/DNS\nquit\n")
     need(r.returncode == 0, "Cannot read global DNS baseline")
     p = run(["/bin/ps", "-axo", "pid=,comm="])
@@ -65,7 +75,7 @@ def baseline(expected_pid):
     }
 
 
-def fingerprint(path):
+def fingerprint(path: Path):
     need(path.is_file() and not path.is_symlink(), "Unsafe owned-file type")
     s = path.stat()
     need(s.st_uid == 0 and not s.st_mode & 0o022, "Unsafe owned-file permissions")
