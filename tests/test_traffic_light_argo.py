@@ -13,90 +13,91 @@ spec = importlib.util.spec_from_file_location(
 lab = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(lab)
 
+ARGOCD_STRIP_PANEL_ID = 909
+MAX_DASHBOARD_BYTES = 240000
+ARGO_GRID_COLUMNS = 24
+ARGO_GRID_ROWS = 20
+ARGO_STATE_CHECK_COUNT = 5
+
 
 class TrafficLightArgoTest(unittest.TestCase):
-    def setUp(self) -> None:
+    def setUp(self):
         self.dashboard = lab.build()
         self.panels = {p["id"]: p for p in self.dashboard["panels"]}
 
-    def test_generated_copy_and_unchanged_original_panels(self) -> None:
-        self.assertEqual(json.loads(lab.OUTPUT.read_text()), self.dashboard)
-        self.assertEqual(self.dashboard["uid"], "socrat-traffic-light")
+    def test_generated_copy_and_unchanged_original_panels(self):
+        assert json.loads(lab.OUTPUT.read_text()) == self.dashboard
+        assert self.dashboard["uid"] == "socrat-traffic-light"
         original = json.loads(lab.SOURCE.read_text())
         for p in original["panels"]:
-            if p["id"] != 909:
-                self.assertEqual(self.panels[p["id"]], p)
-        self.assertEqual(
-            {k: v for k, v in original.items() if k != "panels"},
-            {k: v for k, v in self.dashboard.items() if k != "panels"},
-        )
-        self.assertFalse(set(self.panels) & set(range(950, 976)))
+            if p["id"] != ARGOCD_STRIP_PANEL_ID:
+                assert self.panels[p["id"]] == p
+        assert {k: v for k, v in original.items() if k != "panels"} == {
+            k: v for k, v in self.dashboard.items() if k != "panels"
+        }
+        assert not set(self.panels) & set(range(950, 976))
 
-    def test_current_strip_is_per_application_native_bar_gauge_without_chrome(self) -> None:
+    def test_current_strip_is_per_application_native_bar_gauge_without_chrome(self):
         p = self.panels[909]
-        self.assertEqual(p["type"], "bargauge")
-        self.assertEqual(p["gridPos"], {"x": 0, "y": 18, "w": 12, "h": 1})
-        self.assertEqual(p["title"], "")
-        self.assertTrue(p["transparent"])
-        self.assertEqual(p["fieldConfig"]["defaults"]["min"], 0)
-        self.assertEqual(
-            p["fieldConfig"]["defaults"]["max"], 1
+        assert p["type"] == "bargauge"
+        assert p["gridPos"] == {"x": 0, "y": 18, "w": 12, "h": 1}
+        assert p["title"] == ""
+        assert p["transparent"]
+        assert p["fieldConfig"]["defaults"]["min"] == 0
+        assert (
+            p["fieldConfig"]["defaults"]["max"] == 1
         )  # Positive categorical codes: equal full blocks.
-        self.assertEqual(p["interval"], "15s")
-        self.assertEqual(p["maxDataPoints"], 1)
-        self.assertEqual(len(p["targets"]), 1)
+        assert p["interval"] == "15s"
+        assert p["maxDataPoints"] == 1
+        assert len(p["targets"]) == 1
         t = p["targets"][0]
-        self.assertTrue(t["instant"])
-        self.assertFalse(t["range"])
-        self.assertEqual(t["format"], "time_series")
-        self.assertEqual(t["legendFormat"], "{{name}}")
-        self.assertEqual(t["expr"], lab.application_query())
+        assert t["instant"]
+        assert not t["range"]
+        assert t["format"] == "time_series"
+        assert t["legendFormat"] == "{{name}}"
+        assert t["expr"] == lab.application_query()
         for forbidden in ["argocd_app_sync_total", "topk", "increase(", "count_values("]:
-            self.assertNotIn(forbidden, t["expr"])
-        self.assertNotIn('name!="root"', t["expr"])
-        self.assertFalse(p["options"]["legend"]["showLegend"])
-        self.assertEqual(p["options"]["orientation"], "vertical")
-        self.assertEqual(p["options"]["displayMode"], "gradient")
-        self.assertEqual(p["options"]["valueMode"], "hidden")
-        self.assertEqual(p["options"]["namePlacement"], "hidden")
-        self.assertEqual(p["options"]["textMode"], "none")
-        self.assertFalse(p["options"]["showUnfilled"])
-        self.assertEqual(
-            p["options"]["sizing"], "manual"
+            assert forbidden not in t["expr"]
+        assert 'name!="root"' not in t["expr"]
+        assert not p["options"]["legend"]["showLegend"]
+        assert p["options"]["orientation"] == "vertical"
+        assert p["options"]["displayMode"] == "gradient"
+        assert p["options"]["valueMode"] == "hidden"
+        assert p["options"]["namePlacement"] == "hidden"
+        assert p["options"]["textMode"] == "none"
+        assert not p["options"]["showUnfilled"]
+        assert (
+            p["options"]["sizing"] == "manual"
         )  # Auto ignores zero min width and clips narrow panels.
-        self.assertEqual(p["options"]["minVizWidth"], 0)
-        self.assertEqual(p["options"]["minVizHeight"], 0)
-        self.assertEqual(
-            [t["id"] for t in p["transformations"]], ["seriesToRows", "sortBy", "rowsToFields"]
-        )
-        self.assertEqual(
-            p["transformations"][1]["options"]["sort"], [{"field": "Metric", "desc": False}]
-        )
+        assert p["options"]["minVizWidth"] == 0
+        assert p["options"]["minVizHeight"] == 0
+        assert [t["id"] for t in p["transformations"]] == ["seriesToRows", "sortBy", "rowsToFields"]
+        assert p["transformations"][1]["options"]["sort"] == [{"field": "Metric", "desc": False}]
         (link,) = p["fieldConfig"]["defaults"]["links"]
-        self.assertEqual(link["title"], "${__field.name}")
-        self.assertEqual(
-            link["url"], "https://argocd.socrat.alchemmist.xyz/applications/argocd/${__field.name}"
+        assert link["title"] == "${__field.name}"
+        assert (
+            link["url"]
+            == "https://argocd.socrat.alchemmist.xyz/applications/argocd/${__field.name}"
         )
-        self.assertTrue(link["targetBlank"])
+        assert link["targetBlank"]
         mappings = p["fieldConfig"]["defaults"]["mappings"][0]["options"]
-        self.assertEqual(
-            mappings,
-            {str(code + 1): {"text": name, "color": color} for name, code, color in lab.STATES},
-        )
+        assert mappings == {
+            str(code + 1): {"text": name, "color": color} for name, code, color in lab.STATES
+        }
 
-    def test_generator_preserves_manual_argo_geometry_and_thresholds(self) -> None:
+    def test_generator_preserves_manual_argo_geometry_and_thresholds(self):
         original = json.loads(lab.SOURCE.read_text())
-        owner = next(p for p in original["panels"] if p["id"] == 909)
+        owner = next(p for p in original["panels"] if p["id"] == ARGOCD_STRIP_PANEL_ID)
         panel = self.panels[909]
-        self.assertEqual(panel["gridPos"], owner["gridPos"])
-        self.assertEqual(panel.get("pluginVersion"), owner.get("pluginVersion"))
-        self.assertEqual(
-            panel["fieldConfig"]["defaults"]["thresholds"],
-            owner["fieldConfig"]["defaults"]["thresholds"],
+        assert panel["gridPos"] == owner["gridPos"]
+        assert panel.get("pluginVersion") == owner.get("pluginVersion")
+        assert (
+            panel["fieldConfig"]["defaults"]["thresholds"]
+            == owner["fieldConfig"]["defaults"]["thresholds"]
         )
 
     @unittest.skipUnless(shutil.which("helm"), "helm needed for apply-size regression")
-    def test_rendered_apply_annotation_stays_below_kubernetes_limit(self) -> None:
+    def test_rendered_apply_annotation_stays_below_kubernetes_limit(self):
         import yaml
 
         chart = ROOT / "charts/monitoring-k3s"
@@ -114,27 +115,25 @@ class TrafficLightArgoTest(unittest.TestCase):
             text=True,
         )
         docs = [x for x in yaml.safe_load_all(rendered) if x]
-        self.assertNotIn(
-            "socrat-traffic-light-tmp-lab-dashboard", [x["metadata"]["name"] for x in docs]
-        )
+        assert "socrat-traffic-light-tmp-lab-dashboard" not in [x["metadata"]["name"] for x in docs]
         cm = next(x for x in docs if x["metadata"]["name"] == "socrat-traffic-light-dashboard")
-        self.assertLess(len(json.dumps(cm, separators=(",", ":")).encode()), 240000)
-        self.assertEqual(json.loads(next(iter(cm["data"].values()))), self.dashboard)
+        assert len(json.dumps(cm, separators=(",", ":")).encode()) < MAX_DASHBOARD_BYTES
+        assert json.loads(next(iter(cm["data"].values()))) == self.dashboard
 
-    def test_nonoverlapping_tv_grid(self) -> None:
+    def test_nonoverlapping_tv_grid(self):
         occupied = {}
         for p in self.dashboard["panels"]:
             g = p["gridPos"]
-            self.assertLessEqual(g["x"] + g["w"], 24)
-            self.assertLessEqual(g["y"] + g["h"], 20)
+            assert g["x"] + g["w"] <= ARGO_GRID_COLUMNS
+            assert g["y"] + g["h"] <= ARGO_GRID_ROWS
             for x in range(g["x"], g["x"] + g["w"]):
                 for y in range(g["y"], g["y"] + g["h"]):
-                    self.assertNotIn((x, y), occupied)
+                    assert (x, y) not in occupied
                     occupied[x, y] = p["id"]
-        self.assertEqual(len(self.panels), len(self.dashboard["panels"]))
+        assert len(self.panels) == len(self.dashboard["panels"])
 
     @unittest.skipUnless(shutil.which("promtool"), "promtool needed for PromQL semantics")
-    def test_promql_partition_latest_labels_and_telemetry_gaps(self) -> None:
+    def test_promql_partition_latest_labels_and_telemetry_gaps(self):
         def series(name, values="1+0x120"):
             return {"series": name, "values": values}
 
@@ -145,7 +144,7 @@ class TrafficLightArgoTest(unittest.TestCase):
             )
 
         def checks(counts, when="30m"):
-            if len(counts) == 5:
+            if len(counts) == ARGO_STATE_CHECK_COUNT:
                 counts = counts + [None if counts[0] is None else 0]
             return [
                 {
@@ -153,7 +152,7 @@ class TrafficLightArgoTest(unittest.TestCase):
                     "eval_time": when,
                     "exp_samples": [] if n is None else [{"labels": "{}", "value": n}],
                 }
-                for (_, expr, _), n in zip(lab.queries()[1], counts, strict=False)
+                for (_, expr, _), n in zip(lab.queries()[1], counts)
             ]
 
         up = series('up{job="socrat-argocd"}')
@@ -243,7 +242,7 @@ class TrafficLightArgoTest(unittest.TestCase):
             result = subprocess.run(
                 ["promtool", "test", "rules", str(path)], capture_output=True, text=True
             )
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            assert result.returncode == 0, result.stdout + result.stderr
 
 
 if __name__ == "__main__":

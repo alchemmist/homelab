@@ -10,6 +10,11 @@ import unittest
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts/n8n/spi_private_backup.py"
 
+PRIVATE_BACKUP_FILE_MODE = 0o600
+MAX_READ_DEADLINE_SECONDS = 3
+TIMER_INITIAL_SECONDS = 30
+TIMER_INTERVAL_SECONDS = 7
+
 
 class BackupTests(unittest.TestCase):
     def test_private_stream_and_cleanup(self) -> None:
@@ -35,12 +40,12 @@ class BackupTests(unittest.TestCase):
                     stdout=f,
                     check=True,
                 )
-            self.assertEqual(stat.S_IMODE(dst.stat().st_mode), 0o600)
+            assert stat.S_IMODE(dst.stat().st_mode) == PRIVATE_BACKUP_FILE_MODE
             c = sqlite3.connect(dst)
-            self.assertEqual(c.execute("SELECT * FROM ledger").fetchall(), [("unchanged",)])
-            self.assertEqual(c.execute("PRAGMA integrity_check").fetchone()[0], "ok")
+            assert c.execute("SELECT * FROM ledger").fetchall() == [("unchanged",)]
+            assert c.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
             c.close()
-            self.assertEqual(list(Path(d).glob(".spi-prechange-*")), [])
+            assert list(Path(d).glob(".spi-prechange-*")) == []
 
     def test_bound_failure_cleans(self) -> None:
         spec = importlib.util.spec_from_file_location("backup", SCRIPT)
@@ -53,7 +58,7 @@ class BackupTests(unittest.TestCase):
             c.close()
             with self.assertRaises(RuntimeError):
                 m.backup(str(src), d, max_bytes=1)
-            self.assertEqual(list(Path(d).glob(".spi-prechange-*")), [])
+            assert list(Path(d).glob(".spi-prechange-*")) == []
 
 
 class BackupDeadlineTests(unittest.TestCase):
@@ -87,12 +92,13 @@ class BackupDeadlineTests(unittest.TestCase):
                     proc.stdout.close()
                 # Deliberately never read stdout before exit: actual full pipe.
                 status = proc.wait(timeout=4)
-                self.assertNotEqual(status, 0)
-                self.assertLess(time.monotonic() - started, 3)
-                self.assertEqual(
-                    proc.stderr.read(), b"BACKUP_FAILED: output invalid; delete private host file\n"
+                assert status != 0
+                assert time.monotonic() - started < MAX_READ_DEADLINE_SECONDS
+                assert (
+                    proc.stderr.read()
+                    == b"BACKUP_FAILED: output invalid; delete private host file\n"
                 )
-                self.assertEqual(list(Path(d).glob(".spi-prechange-*")), [])
+                assert list(Path(d).glob(".spi-prechange-*")) == []
             finally:
                 if proc.poll() is None:
                     proc.kill()
@@ -144,8 +150,8 @@ except Exception:sys.exit(1)
                 stderr=subprocess.PIPE,
                 timeout=4,
             )
-            self.assertNotEqual(result.returncode, 0)
-            self.assertEqual(list(Path(d).glob(".spi-prechange-*")), [])
+            assert result.returncode != 0
+            assert list(Path(d).glob(".spi-prechange-*")) == []
 
     def test_alarm_restored_and_pvc_private(self) -> None:
         import signal
@@ -164,16 +170,16 @@ except Exception:sys.exit(1)
 
             def checked(path, *a, **kw):
                 if not kw.get("uri"):
-                    self.assertEqual(stat.S_IMODE(Path(path).stat().st_mode), 0o600)
+                    assert stat.S_IMODE(Path(path).stat().st_mode) == PRIVATE_BACKUP_FILE_MODE
                     raise OSError("synthetic destination open failure")
                 return original(path, *a, **kw)
 
             with patch.object(m.sqlite3, "connect", checked):
                 with self.assertRaises(OSError):
                     m.backup(str(src), d)
-            self.assertEqual(list(Path(d).glob(".spi-prechange-*")), [])
-            self.assertEqual(signal.getsignal(signal.SIGALRM), old)
-            self.assertEqual(signal.getitimer(signal.ITIMER_REAL), (0.0, 0.0))
+            assert list(Path(d).glob(".spi-prechange-*")) == []
+            assert signal.getsignal(signal.SIGALRM) == old
+            assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)
 
 
 class CleanupBoundaryTests(unittest.TestCase):
@@ -221,9 +227,9 @@ class CleanupBoundaryTests(unittest.TestCase):
                 ):
                     with self.assertRaises(TimeoutError):
                         m.backup(str(src), d)
-                self.assertEqual(list(Path(d).glob(".spi-prechange-*")), [])
-                self.assertEqual(signal.getsignal(signal.SIGALRM), old)
-                self.assertEqual(signal.getitimer(signal.ITIMER_REAL), (0.0, 0.0))
+                assert list(Path(d).glob(".spi-prechange-*")) == []
+                assert signal.getsignal(signal.SIGALRM) == old
+                assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)
 
     def test_prior_periodic_timer_restored_on_open_failure(self) -> None:
         import signal
@@ -239,16 +245,16 @@ class CleanupBoundaryTests(unittest.TestCase):
 
         try:
             signal.signal(signal.SIGALRM, caller)
-            signal.setitimer(signal.ITIMER_REAL, 30, 7)
+            signal.setitimer(signal.ITIMER_REAL, TIMER_INITIAL_SECONDS, TIMER_INTERVAL_SECONDS)
             with tempfile.TemporaryDirectory() as d:
                 with self.assertRaises(sqlite3.OperationalError):
                     m.backup(str(Path(d) / "absent"), d)
-                self.assertEqual(list(Path(d).glob(".spi-prechange-*")), [])
-            self.assertIs(signal.getsignal(signal.SIGALRM), caller)
+                assert list(Path(d).glob(".spi-prechange-*")) == []
+            assert signal.getsignal(signal.SIGALRM) is caller
             remaining, interval = signal.getitimer(signal.ITIMER_REAL)
-            self.assertGreater(remaining, 25)
-            self.assertLessEqual(remaining, 30)
-            self.assertEqual(interval, 7)
+            assert remaining > TIMER_INITIAL_SECONDS - 5
+            assert remaining <= TIMER_INITIAL_SECONDS
+            assert interval == TIMER_INTERVAL_SECONDS
         finally:
             signal.setitimer(signal.ITIMER_REAL, 0)
             signal.signal(signal.SIGALRM, handler)
