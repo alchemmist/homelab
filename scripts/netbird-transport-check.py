@@ -63,6 +63,7 @@ class WS:
             raise ValueError("wrong WS accept")
 
     def send(self, data, opcode=2):
+        """Send a masked WebSocket frame on the raw socket."""
         n = len(data)
         mask = os.urandom(4)
         head = (
@@ -73,6 +74,7 @@ class WS:
         self.s.sendall(head + mask + bytes(b ^ mask[i % 4] for i, b in enumerate(data)))
 
     def read(self, n):
+        """Buffer exactly n bytes from the socket."""
         while len(self.buffer) < n:
             data = self.s.recv(4096)
             if not data:
@@ -82,6 +84,7 @@ class WS:
         return data
 
     def receive(self):
+        """Read one WebSocket frame, unmasking its payload."""
         for _ in range(8):
             head = self.read(2)
             opcode = head[0] & 15
@@ -102,6 +105,7 @@ class WS:
         raise ValueError("no relay payload")
 
     def close(self):
+        """Send a close frame and shut the socket down."""
         try:
             self.send(b"", 8)
         finally:

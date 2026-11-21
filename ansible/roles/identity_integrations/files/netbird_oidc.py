@@ -176,6 +176,7 @@ class Authentik:
         self.get_only = get_only
 
     def __call__(self, method, path, payload=None):
+        """Perform an Authentik API call, enforcing GET-only when configured."""
         if self.get_only and method != "GET":
             raise RuntimeError("GET-only action refused an Authentik write")
         target = path if path.startswith("http") else self.base + "/api/v3/" + path.lstrip("/")
@@ -200,6 +201,7 @@ class Authentik:
             ) from None
 
     def pages(self, path):
+        """Follow pagination for an API path and collect all rows."""
         joiner = "&" if "?" in path else "?"
         url = path + joiner + "page_size=200"
         rows = []

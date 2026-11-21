@@ -53,6 +53,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
     def redirect_request(self, *_a, **_kw):
 
+        'Refuse redirects so credentials are never forwarded.'
         return None
 
 
