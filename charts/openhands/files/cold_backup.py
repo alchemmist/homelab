@@ -20,7 +20,7 @@ def main():
         assert tar.wait()==0,'Source tar failed';dst.write(crypt.finalize());dst.flush();os.fsync(dst.fileno())
     assert n>0 and part.stat().st_size==n
     class Reader:
-        def __init__(self,f):
+        def __init__(self,f) -> None:
             self.f=f;self.decrypt=Cipher(algorithms.AES(key),modes.GCM(iv,crypt.tag)).decryptor();self.decrypt.authenticate_additional_data(AAD);self.hash=hashlib.sha256();self.done=False
         def read(self,size):
             if self.done:return b''

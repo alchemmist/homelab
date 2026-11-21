@@ -11,9 +11,9 @@ import attempt
 
 
 class FakeEnvironment:
-    def __init__(self, snapshot, directory, image, protocol):
+    def __init__(self, snapshot, directory, image, protocol) -> None:
         self.container_id = "fake"
-        self.events = []
+        self.events: list[dict[str, object]] = []
         self.protocol = protocol
         directory.mkdir()
 

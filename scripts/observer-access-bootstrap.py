@@ -104,7 +104,7 @@ def harbor_authorization(credentials):
 
 
 class Client:
-    def __init__(self, credentials):
+    def __init__(self, credentials) -> None:
         class NoRedirect(urllib.request.HTTPRedirectHandler):
             def redirect_request(self, *args, **kwargs):
                 return None

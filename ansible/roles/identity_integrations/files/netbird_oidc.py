@@ -168,12 +168,12 @@ def _private_read(path):
 
 
 class Authentik:
-    def __init__(self, base, token, get_only):
+    def __init__(self, base, token, get_only) -> None:
         self.base = base.rstrip("/")
         self.token = token
         self.get_only = get_only
 
-    def __call__(self, method, path, payload=None):
+    def __call__(self, method, path, payload=None) -> object:
         if self.get_only and method != "GET":
             raise RuntimeError("GET-only action refused an Authentik write")
         target = path if path.startswith("http") else self.base + "/api/v3/" + path.lstrip("/")

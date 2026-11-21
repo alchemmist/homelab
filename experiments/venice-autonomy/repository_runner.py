@@ -14,6 +14,7 @@ import tarfile
 import time
 import tokenize
 import uuid
+from typing import cast
 
 from sandbox import bounded_process
 
@@ -65,10 +66,10 @@ class CandidateRejected(ValueError):
 
 
 class RepositoryEnvironment:
-    def __init__(self, snapshot, directory, image, protocol):
+    def __init__(self, snapshot, directory, image, protocol) -> None:
         self.directory = directory
         self.directory.mkdir()
-        self.events = []
+        self.events: list[dict[str, object]] = []
         self.protocol = protocol
         self.image = image
         self.nonce = os.environ.get("AUTONOMY_RUN_NONCE") or uuid.uuid4().hex
@@ -205,7 +206,9 @@ class RepositoryEnvironment:
                 + ' 2>&1 | head -c 23000; status=${PIPESTATUS[0]}; exit "$status"'
             )
             code, data = bounded_process(
-                ["docker", "exec", self.container_id, "bash", "-lc", wrapped], 24000, 50
+                ["docker", "exec", cast("str", self.container_id), "bash", "-lc", wrapped],
+                24000,
+                50,
             )
             result = {
                 "returncode": code,
@@ -214,7 +217,7 @@ class RepositoryEnvironment:
             }
         except (TimeoutError, ValueError) as error:
             result = {"returncode": 125, "output": type(error).__name__, "exception_info": None}
-        raw_output = result["output"]
+        raw_output = str(result["output"])
         if len(raw_output.encode()) > 4000:
             result["output"] = (
                 raw_output.encode()[:4000].decode("utf-8", errors="replace") + "\n[truncated]\n"
