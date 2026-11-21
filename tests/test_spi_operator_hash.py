@@ -1,10 +1,16 @@
-"""Offline only. Large-sort reproduction is opt-in with a host RO fixture."""
+"""Offline hash regressions; isolated Linux fast runs generate their own pressure fixture."""
 
 import importlib.util
 import os
+import pwd
 import sqlite3
+import sys
+import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
+
+from scripts.quality.common import command
 
 spec = importlib.util.spec_from_file_location(
     "retry", Path(__file__).resolve().parents[1] / "scripts/n8n/spi_operator_retry.py"
@@ -13,6 +19,61 @@ m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 
 SHA256_HEX_LENGTH = 64
+
+
+def _linux_sort_reproduction() -> None:
+    """Run only this regression with a real 1 MiB SQLite temp filesystem, not the whole suite."""
+    if not sys.platform.startswith("linux") or os.getuid() == 0:
+        message = "The synthetic sort fixture requires an unprivileged Linux test runner"
+        raise RuntimeError(message)
+    with tempfile.TemporaryDirectory(prefix="spi-sort-") as directory:
+        database = Path(directory) / "synthetic.db"
+        with closing(sqlite3.connect(database)) as db:
+            db.execute("CREATE TABLE payload(sort_key INTEGER, body TEXT)")
+            db.executemany(
+                "INSERT INTO payload VALUES(?, ?)", ((i, "x" * 4096) for i in range(14000, 0, -1))
+            )
+            db.commit()
+        database.chmod(0o400)
+        # /dev/shm is covered ONLY in this private child mount namespace. No
+        # repository code is executed as root. runuser drops privileges before
+        # Python; env -i does not pass through credentials or fixture selectors.
+        command(
+            [
+                "/usr/bin/sudo",
+                "-n",
+                "/usr/bin/unshare",
+                "--net",
+                "--mount",
+                "--propagation",
+                "private",
+                "--",
+                "/bin/sh",
+                "-ec",
+                "/usr/bin/mount -t tmpfs -o size=1m,nodev,nosuid,noexec,mode=1777 "
+                'tmpfs /dev/shm && exec "$@"',
+                "sort-fixture",
+                "/usr/sbin/runuser",
+                "-u",
+                pwd.getpwuid(os.getuid()).pw_name,
+                "--",
+                "/usr/bin/env",
+                "-i",
+                "HOME=" + directory,
+                "KUBECONFIG=/dev/null",
+                "SQLITE_TMPDIR=/dev/shm",
+                "PYTHONDONTWRITEBYTECODE=1",
+                "SPI_SORT_FIXTURE=" + str(database),
+                "/usr/bin/timeout",
+                "--kill-after=3s",
+                "45s",
+                sys.executable,
+                "-m",
+                "unittest",
+                "tests.test_spi_operator_hash.HashTests.test_disk_full_sort_reproduction",
+            ],
+            timeout=60,
+        )
 
 
 class HashTests(unittest.TestCase):
@@ -72,10 +133,14 @@ class HashTests(unittest.TestCase):
         assert hashes[0] != hashes[1]
 
     @unittest.skipUnless(
-        os.environ.get("SPI_SORT_FIXTURE"), "requires host fixture and tiny container tmpfs"
+        os.environ.get("SPI_SORT_FIXTURE") or os.environ.get("QUALITY_SYNTHETIC_SPI_SORT") == "1",
+        "requires host fixture and tiny container tmpfs or the isolated Linux fast runner",
     )
     def test_disk_full_sort_reproduction(self) -> None:
-        """Reproduce a read-only sort failure only when the host fixture is present."""
+        """Prove the old query hits SQLITE_FULL; hash the same real rows twice without sorting."""
+        if os.environ.get("QUALITY_SYNTHETIC_SPI_SORT") == "1":
+            _linux_sort_reproduction()
+            return
         c = sqlite3.connect(
             "file:" + os.environ["SPI_SORT_FIXTURE"] + "?mode=ro", uri=True, isolation_level=None
         )
@@ -83,11 +148,13 @@ class HashTests(unittest.TestCase):
         c.row_factory = sqlite3.Row
         assert c.execute("PRAGMA temp_store").fetchone()[0] == 0
         c.execute("BEGIN IMMEDIATE")
-        with self.assertRaisesRegex(sqlite3.OperationalError, "database or disk is full"):
+        with self.assertRaisesRegex(sqlite3.OperationalError, "database or disk is full") as caught:
             for _ in c.execute("SELECT * FROM payload ORDER BY 1,2"):
                 pass
-        assert m.table_hashes(c)["payload"]
-        assert len(m.table_hashes(c)["payload"]) == SHA256_HEX_LENGTH
+        assert caught.exception.sqlite_errorcode == sqlite3.SQLITE_FULL
+        first = m.table_hashes(c)["payload"]
+        assert len(first) == SHA256_HEX_LENGTH
+        assert m.table_hashes(c)["payload"] == first
         c.rollback()
 
 

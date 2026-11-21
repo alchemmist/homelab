@@ -292,8 +292,9 @@ def test_helm_parameters_cannot_inject_a_post_renderer() -> None:
         charts.arguments(target)
 
 
+@pytest.mark.parametrize("suite", ["fast", "medium"])
 @pytest.mark.parametrize("system", ["Linux", "Darwin"])
-def test_network_namespace_preserves_locked_tool_path(tmp_path, monkeypatch, system) -> None:
+def test_network_namespace_preserves_locked_tool_path(tmp_path, monkeypatch, system, suite) -> None:
     import importlib.util
     from types import SimpleNamespace
 
@@ -305,13 +306,15 @@ def test_network_namespace_preserves_locked_tool_path(tmp_path, monkeypatch, sys
     monkeypatch.setattr(runner, "ROOT", tmp_path)
     (tmp_path / "quality").mkdir()
     (tmp_path / "quality/test-suites.json").write_text(
-        json.dumps({"suites": {"fixture": ["tests/test_fixture.py"]}})
+        json.dumps({"suites": {suite: ["tests/test_fixture.py"]}})
     )
     monkeypatch.setattr(runner.platform, "system", lambda: system)
     monkeypatch.setattr(runner.getpass, "getuser", lambda: "runner")
-    monkeypatch.setattr(sys, "argv", ["tests.py", "fixture", "--isolate-network"])
+    monkeypatch.setattr(sys, "argv", ["tests.py", suite, "--isolate-network"])
     monkeypatch.setenv("PATH", "/locked-venv/bin:/usr/bin")
     monkeypatch.setenv("SSH_AUTH_SOCK", "/must-not-leak")
+    monkeypatch.setenv("SPI_SORT_FIXTURE", "/must-not-read-user-data")
+    monkeypatch.setenv("QUALITY_SYNTHETIC_SPI_SORT", "ambient")
     calls = []
     monkeypatch.setattr(
         runner.subprocess,
@@ -321,6 +324,9 @@ def test_network_namespace_preserves_locked_tool_path(tmp_path, monkeypatch, sys
     assert runner.main() == 0
     argv, kw = calls[0]
     assert "SSH_AUTH_SOCK" not in kw["env"]
+    assert "SPI_SORT_FIXTURE" not in kw["env"]
+    assert "QUALITY_SYNTHETIC_SPI_SORT" not in kw["env"]
+    assert ("QUALITY_SYNTHETIC_SPI_SORT=1" in argv) == (suite == "fast" and system == "Linux")
     if system == "Linux":
         assert argv[:4] == ["sudo", "-n", "unshare", "--net"]
         assert "PATH=/locked-venv/bin:/usr/bin" in argv

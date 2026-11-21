@@ -36,7 +36,16 @@ SQLITE_TMPDIR constrains only the test process, not operator/runtime settings.
 Without that explicit test environment, SQLite selected a different temp
 location and the initial reproduction did not fail; it is not counted as proof.
 
-Run tests/test_spi_operator_hash.py with SPI_SORT_FIXTURE pointing at that
+On Linux, `make tests-fast` generates a private synthetic two-column fixture
+(14,000 4 KiB payloads). Only the one disk-pressure check gets an isolated
+1 MiB tmpfs over `/dev/shm` in a private mount and network namespace. The
+unprivileged child uses that SQLite temporary directory and an empty credential
+environment. It checks for the real `SQLITE_FULL` code; both streaming hashes
+must then agree in the same transaction. Namespace teardown removes the mount,
+and the fixture directory is temporary. This requires passwordless `sudo -n`
+for `unshare` on Linux; do not use a live worker or operator database.
+
+For manual reproduction outside the fast suite, run tests/test_spi_operator_hash.py with SPI_SORT_FIXTURE pointing at that
 read-only synthetic fixture and SQLITE_TMPDIR=/tmp in that constrained container.
 The fixture is not repository content. No production rows or private manifests
 were copied, printed, regenerated, or modified. Do not rerun the failed live
