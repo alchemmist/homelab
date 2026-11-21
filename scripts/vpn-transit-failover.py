@@ -21,7 +21,7 @@ def run(args, timeout=25, check=True):
     return p
 
 
-def atomic(path, value):
+def atomic(path: pathlib.Path, value: object) -> None:
     tmp = path.with_suffix(".tmp")
     data = json.dumps(value, sort_keys=True).encode()
     with tmp.open("wb") as f:
@@ -152,11 +152,11 @@ class Controller:
             else {"mode": "prepared", "failures": 0}
         )
 
-    def save(self, **fields):
+    def save(self, **fields: object) -> None:
         self.state.update(fields)
         atomic(ROOT / "state.json", self.state)
 
-    def receipt(self, action, **fields):
+    def receipt(self, action: str, **fields: object) -> None:
         v = {"action": action, "at": time.time(), **fields}
         atomic(ROOT / (str(time.time_ns()) + "-" + action + ".json"), v)
 

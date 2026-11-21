@@ -48,7 +48,7 @@ class OutboxTest(unittest.TestCase):
             key="Alert/pod/ns/name", updated=[dict(chat_id=1, message_id=2)], pending=[]
         )
 
-    def publication(self, **changes):
+    def publication(self, **changes: object) -> dict[str, object]:
         return dict(
             dict(
                 kind="comment",

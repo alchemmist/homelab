@@ -258,7 +258,7 @@ def test_copy_refuses_live_ha_or_unknown_endpoint_before_creating_job(
     ]:
         calls = []
 
-        def kube(*args, **kwargs):
+        def kube(*args, **kwargs: object):
             calls.append(args)
             assert args == ("-n", "lms", "get", "secret", "lms-db", "-o", "json")
             return json.dumps({"data": data})

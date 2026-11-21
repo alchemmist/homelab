@@ -39,7 +39,7 @@ class WorkflowPolicyTests(unittest.TestCase):
         p.write_text(json.dumps(data, indent=2) + "\n")
         return p
 
-    def workflow(self, **settings):
+    def workflow(self, **settings: str):
         return {
             "name": "Example",
             "nodes": [
