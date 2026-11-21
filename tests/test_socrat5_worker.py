@@ -91,7 +91,7 @@ class Socrat5WorkerSourceTests(unittest.TestCase):
     def test_only_worker5_nl_endpoint_changes_to_existing_relay(self) -> None:
         """Keep worker5's NL endpoint pinned to the existing relay."""
         group = yaml.safe_load((ROOT / "ansible/inventory/group_vars/Socrat/cluster.yml").read_text())
-        peers = group["wg_socrat_peer_endpoints"]
+        peers = group["wg_socrat_peer_endpoint_overrides"]
         self.assertEqual(peers["socrat-5"]["socrat-2"], peers["socrat-0"]["socrat-2"])
         self.assertEqual(peers["socrat-5"]["socrat-2"], "91.189.82.238:51832")
         self.assertEqual(peers["socrat-5"]["socrat-3"], "46.8.146.172:46559")

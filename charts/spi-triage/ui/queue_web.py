@@ -6,12 +6,12 @@ Only two fixed operator routes; no worker token or caller identity is trusted.
 import http.client
 import http.server
 import json
-from pathlib import Path
 import socket
 import threading
-import urllib.request
 import urllib.error
 import urllib.parse
+import urllib.request
+from pathlib import Path
 
 ORIGIN = "https://rustfs.socrat.alchemmist.xyz"
 ASSETS = {
@@ -24,7 +24,7 @@ TOKEN = ""
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *args, **kwargs):
+    def redirect_request(self, *_args, **_kwargs):
         return None
 
 
@@ -39,7 +39,7 @@ def expire(sock):
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
-    def log_message(self, *args):
+    def log_message(self, *_args):
         pass
 
     def handle(self):
@@ -52,7 +52,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         finally:
             timer.cancel()
 
-    def send_error(self, code, message=None, explain=None):
+    def send_error(self, _code, _message=None, _explain=None):
         self.send(400, b"", "text/plain")
 
     def send(self, status, body, mime="application/json; charset=utf-8", location=None):
@@ -135,26 +135,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.send(404, b"{}")
         self.send(200, Path(__file__).with_name(asset[0]).read_bytes(), asset[1])
 
-    def do_POST(self):
-        if not self.valid_host():
-            return self.send(400, b"{}")
-        auth = self.authorization()
-        if auth != 200:
-            code = (
-                "AUTH_REQUIRED"
-                if auth == 401
-                else ("FORBIDDEN" if auth == 403 else "AUTH_UNAVAILABLE")
-            )
-            return self.send(auth, json.dumps({"code": code}).encode())
-        if (
-            self.headers.get_all("Origin", []) != [ORIGIN]
-            or self.headers.get("X-SPI-Queue") != "1"
-            or self.headers.get("Sec-Fetch-Site", "same-origin") != "same-origin"
-        ):
-            return self.send(403, b'{"code":"CSRF_REJECTED"}')
-        route = ROUTES.get(self.path)
-        if not route:
-            return self.send(404, b"{}")
+    def _auth_code(self, auth: int) -> str:
+        if auth == 401:
+            return "AUTH_REQUIRED"
+        if auth == 403:
+            return "FORBIDDEN"
+        return "AUTH_UNAVAILABLE"
+
+    def _body_request_length(self) -> str | None:
         lengths = self.headers.get_all("Content-Length", [])
         if (
             self.headers.get("Transfer-Encoding") is not None
@@ -165,15 +153,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
             or not 0 < int(lengths[0]) <= 2048
             or self.headers.get("Content-Type", "").split(";")[0].strip() != "application/json"
         ):
-            return self.send(400, b'{"code":"INVALID_REQUEST"}')
-        connection = None
+            return None
+        return lengths[0]
+
+    def _proxy_queue_request(self, route: str, raw: bytes) -> tuple[int, bytes] | None:
+        """Forward a validated request; None means upstream is out of policy."""
+        connection = http.client.HTTPConnection(
+            "spi-triage.automation.svc.cluster.local", 8080, timeout=8
+        )
         try:
-            raw = self.rfile.read(int(lengths[0]))
-            if len(raw) != int(lengths[0]) or not isinstance(json.loads(raw), dict):
-                return self.send(400, b'{"code":"INVALID_REQUEST"}')
-            connection = http.client.HTTPConnection(
-                "spi-triage.automation.svc.cluster.local", 8080, timeout=8
-            )
             connection.request(
                 "POST",
                 route,
@@ -183,16 +171,42 @@ class Handler(http.server.BaseHTTPRequestHandler):
             response = connection.getresponse()
             body = response.read(512001)
             if len(body) > 512000 or response.status not in (200, 400, 403, 409):
-                return self.send(502, b'{"code":"QUEUE_UNAVAILABLE"}')
+                return None
             data = json.loads(body)
             if not isinstance(data, dict):
-                raise ValueError()
-            self.send(response.status, json.dumps(data).encode())
+                return None
+            return response.status, json.dumps(data).encode()
+        finally:
+            connection.close()
+
+    def do_POST(self):
+        if not self.valid_host():
+            return self.send(400, b"{}")
+        auth = self.authorization()
+        if auth != 200:
+            return self.send(auth, json.dumps({"code": self._auth_code(auth)}).encode())
+        if (
+            self.headers.get_all("Origin", []) != [ORIGIN]
+            or self.headers.get("X-SPI-Queue") != "1"
+            or self.headers.get("Sec-Fetch-Site", "same-origin") != "same-origin"
+        ):
+            return self.send(403, b'{"code":"CSRF_REJECTED"}')
+        route = ROUTES.get(self.path)
+        if not route:
+            return self.send(404, b"{}")
+        length = self._body_request_length()
+        if length is None:
+            return self.send(400, b'{"code":"INVALID_REQUEST"}')
+        try:
+            raw = self.rfile.read(int(length))
+            if len(raw) != int(length) or not isinstance(json.loads(raw), dict):
+                return self.send(400, b'{"code":"INVALID_REQUEST"}')
+            result = self._proxy_queue_request(route, raw)
+            if result is None:
+                return self.send(502, b'{"code":"QUEUE_UNAVAILABLE"}')
+            self.send(result[0], result[1])
         except (ValueError, OSError, http.client.HTTPException):
             self.send(502, b'{"code":"QUEUE_UNAVAILABLE"}')
-        finally:
-            if connection:
-                connection.close()
 
     def do_OPTIONS(self):
         self.send(405, b"{}")

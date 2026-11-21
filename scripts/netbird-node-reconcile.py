@@ -8,6 +8,7 @@ or re-enrollment by friendly name. Uncertain writes stop for operator inspection
 
 import argparse
 import fcntl
+import http.client
 import ipaddress
 import json
 import os
@@ -234,7 +235,7 @@ def policy_ok(p, admin, resource=None, group=None):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *a, **kw):
+    def redirect_request(self, *_a, **_kw):
         return None
 
 
@@ -882,7 +883,15 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception as e:
+    except (
+        ValueError,
+        KeyError,
+        TypeError,
+        RuntimeError,
+        OSError,
+        subprocess.SubprocessError,
+        http.client.HTTPException,
+    ) as e:
         print(
             json.dumps(
                 {

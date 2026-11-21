@@ -227,7 +227,13 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
+    except (
+        ImportError,
+        OSError,
+        RuntimeError,
+        ValueError,
+        subprocess.SubprocessError,
+    ):
         raise SystemExit(
             "Bootstrap stopped safely; inspect private state; no secrets or response bodies printed."
-        )
+        ) from None

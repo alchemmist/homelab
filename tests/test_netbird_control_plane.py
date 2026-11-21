@@ -333,7 +333,8 @@ class BootstrapTests(unittest.TestCase):
         )
         self.assertNotIn("create_pat", calls[1][1])
 
-        def claimed(url, body) -> dict[str, object]:
+
+        def claimed(_url, _body) -> dict[str, object]:
             return {"setup_required": False}
 
         with self.assertRaises(ValueError):

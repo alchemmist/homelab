@@ -1,5 +1,5 @@
 """Trusted systemd consumer. Only enrolled repo adapters; never execute issue text here."""
-import fcntl, json, os, re, subprocess, sys, time
+import fcntl, json, os, re, sqlite3, subprocess, sys, time
 import campaign as c
 import restore_worker
 import lifecycle_worker
@@ -26,7 +26,7 @@ def main():
  last=c.query("select v from meta where k='last_admission'") if c.D.exists() else []
  prior=int(last[0]['v']) if last else 0;c.ISSUE=next((i for i in reports if i>prior),reports[0]);r=rpc('get')
  revision=(c.R/'report_dispatch.py').stat().st_mtime_ns
- rows=r['cards']; c.BACK=[dict(id=str(i+1),family=x['target'],section=x['section']) for i,x in enumerate(rows)];c.init(); allowed=set()
+ rows=r['cards']; c.BACK=[{'id': str(i+1),'family': x['target'],'section': x['section']} for i,x in enumerate(rows)];c.init(); allowed=set()
  for x in rows:
   f,_,num=x['target'].partition('__mutmut_');allowed.update(f+'__mutmut_'+n for n in ([num] if num else c.C.get(f,{}).get('diffs',{})))
  if not allowed:
@@ -69,5 +69,6 @@ def main():
    except (RuntimeError,subprocess.TimeoutExpired) as ex:
     cache=0;c.K('judge',['rm','-f','/scratch/campaign-base'],ok=False);c.mark(t,'transport_wait',str(ex)[:360],sha)
    sync()
-  except Exception as ex:print('adapter backoff:',type(ex).__name__,str(ex)[:360],flush=True);time.sleep(45)
+  except (OSError,ValueError,RuntimeError,sqlite3.Error,subprocess.SubprocessError) as ex:
+   print('adapter backoff:',type(ex).__name__,str(ex)[:360],flush=True);time.sleep(45)
 if __name__=='__main__':main()

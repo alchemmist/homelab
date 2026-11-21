@@ -72,7 +72,7 @@ class WireGuardAdminFirewallTests(unittest.TestCase):
         env = Environment()
         env.filters["quote"] = shlex.quote
         env.filters["bool"] = bool
-        env.filters["dict2items"] = lambda value: [dict(key=k, value=v) for k, v in value.items()]
+        env.filters["dict2items"] = lambda value: [{"key": k, "value": v} for k, v in value.items()]
         script = env.from_string(SCRIPT).render(
             wg_socrat_admin_firewall_interface="wg-socrat",
             wg_socrat_admin_firewall_chain_prefix="WG_SOCRAT_ADMIN",

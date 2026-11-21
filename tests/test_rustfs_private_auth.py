@@ -13,7 +13,7 @@ class PrivateAuth(unittest.TestCase):
         reader.auth = g.ORIGIN + "/outpost.goauthentik.io/auth/nginx"
 
         class HTTP:
-            def open(self, *args, **kwargs):
+            def open(self, *_args, **_kwargs):
                 raise self.error
 
         reader.http = HTTP()
@@ -29,7 +29,7 @@ class PrivateAuth(unittest.TestCase):
             status = 403
             calls = []
 
-            def authorization(self, cookie):
+            def authorization(self, _cookie):
                 return self.status
 
             def read(self, key):

@@ -168,19 +168,19 @@ def prepare(
                 server_public = subprocess.check_output(
                     ["wg", "pubkey"], input=server["secretKey"] + "\n", text=True
                 ).strip()
-                settings = dict(
-                    secretKey=private,
-                    address=[candidate],
-                    peers=[
+                settings = {
+                    "secretKey": private,
+                    "address": [candidate],
+                    "peers": [
                         {
                             "publicKey": server_public,
                             "endpoint": endpoint + ":" + str(port),
                             "allowedIPs": ["0.0.0.0/0"],
                         }
                     ],
-                    noKernelTun=True,
-                    mtu=1420,
-                )
+                    "noKernelTun": True,
+                    "mtu": 1420,
+                }
                 udp_settings[label] = settings
         s.call("POST", "/clients/add", {"client": client, "inboundIds": inbound_ids})
         reality = target.vless_client(json.loads(rows[32053]["stream_settings"]), identifier, 1080)
@@ -269,7 +269,14 @@ if __name__ == "__main__":
         else:
             s = native.NativeSession(a.state)
             print(h.canonical({"session_sha256": h.digest(s.preview()), "writes": 0}))
-    except Exception:
+    except (
+        OSError,
+        ValueError,
+        RuntimeError,
+        ImportError,
+        sqlite3.Error,
+        subprocess.SubprocessError,
+    ):
         raise SystemExit(
             "Home native session stopped; inspect private receipts, no blind replay."
         ) from None

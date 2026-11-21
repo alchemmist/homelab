@@ -114,6 +114,7 @@ class SessionTests(unittest.TestCase):
                 self.assertIn(s.names["bootstrap"], args)
                 self.assertNotIn("existing", args)
                 insert("bootstrap", "admin")
+
                 stdout.write("apiToken: " + values["bootstrap"] + "\n")
                 result: object = type("Result", (), {"returncode": 0})()
                 return result
@@ -152,7 +153,7 @@ class SessionTests(unittest.TestCase):
             with (
                 patch.object(m.socket, "gethostname", return_value="socrat-2"),
                 patch.object(m.os, "geteuid", return_value=0),
-                patch.object(m, "token_rows", side_effect=lambda *args: [x.copy() for x in rows]),
+                patch.object(m, "token_rows", side_effect=lambda *_args: [x.copy() for x in rows]),
                 patch.object(
                     m,
                     "pod_identity",
