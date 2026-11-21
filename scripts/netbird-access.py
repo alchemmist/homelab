@@ -550,7 +550,7 @@ class API:
 
 
 def atomic(path, value):
-    """Durably write a JSON value to disk via a temporarary file and rename."""
+    """Durably write a JSON value to disk via a temporary file and rename."""
     temp = path.with_suffix(".tmp")
     fd = os.open(temp, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
     with os.fdopen(fd, "w") as f:
