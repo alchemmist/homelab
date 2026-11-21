@@ -80,7 +80,7 @@ class DNSPreflightSafetyTests(unittest.TestCase):
         def fixture_permissions(ok: object, message: str):
             # Fixture files are user-owned; retain every non-ownership safety check.
             if message not in ("Unsafe renderer", "Unsafe state directory"):
-                require(ok, message)
+                require(message, ok=bool(ok))
 
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)
