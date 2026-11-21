@@ -4,6 +4,7 @@ import json
 import secrets
 import shlex
 import subprocess
+from typing import TypedDict, Unpack
 
 
 class BootstrapError(Exception):
@@ -46,13 +47,21 @@ def decoded(value):
         raise BootstrapError("Invalid encoded credential in source Secret") from None
 
 
-def resource(kind, name, namespace, **fields):
-    return {
-        "apiVersion": "v1",
-        "kind": kind,
-        "metadata": {"name": name, "namespace": namespace},
-        **fields,
-    }
+class _ResourceFields(TypedDict, total=False):
+    spec: object
+    data: object
+    type: str
+
+
+class _Resource(_ResourceFields):
+    apiVersion: str
+    kind: str
+    metadata: dict[str, object]
+
+
+def resource(kind: str, name: str, namespace: str, **fields: Unpack[_ResourceFields]) -> _Resource:
+    metadata: dict[str, object] = {"name": name, "namespace": namespace}
+    return {"apiVersion": "v1", "kind": kind, "metadata": metadata, **fields}
 
 
 def required_data(item, key):

@@ -7,6 +7,9 @@ import ssl
 import time
 import urllib.error
 import urllib.parse
+import urllib.request
+from collections.abc import Iterator
+from typing import cast
 
 
 class DiagnosticFailure(RuntimeError):
@@ -68,14 +71,19 @@ class ObservedHTTP:
         self.inner = inner
 
     @contextlib.contextmanager
-    def open(self, request, *args, **kwargs):
+    def open(
+        self,
+        request: urllib.request.Request,
+        *args: object,
+        **kwargs: object,
+    ) -> Iterator[object]:
         started = time.monotonic()
         phase = "https_open"
         response = None
         try:
             response = self.inner.open(request, *args, **kwargs)
             phase = "response_read"
-            yield response
+            yield cast("object", response)
         except Exception as error:
             event = {
                 "event": "observer_reconciliation_failed",
@@ -115,7 +123,7 @@ def failure_event(error):
 def run(controller):
     original = controller.opener
 
-    def observed(*args, **kwargs):
+    def observed(*args: object, **kwargs: object) -> ObservedHTTP:
         return ObservedHTTP(original(*args, **kwargs))
 
     controller.opener = observed

@@ -4,9 +4,17 @@ import argparse
 import datetime
 import json
 import subprocess
+from collections.abc import Sequence
+from typing import TypedDict, Unpack
 
 
-def run(args, **kwargs):
+class _TextRun(TypedDict, total=False):
+    input: str
+
+
+def run(
+    args: Sequence[str], **kwargs: Unpack[_TextRun]
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(args, text=True, capture_output=True, timeout=120, **kwargs)
 
 
