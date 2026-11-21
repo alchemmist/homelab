@@ -1,3 +1,5 @@
+"""Privacy smoke tests for the OpenTelemetry pipeline."""
+
 import importlib.util
 import io
 import json
