@@ -61,15 +61,3 @@ spec:
             spi_graphs: {{ . | quote }}
             {{- end }}
             summary: 'Less than 15% free on a PostgreSQL NVMe host filesystem. Do not delete retained volumes.'
-        - alert: SocratPgWalArchiveUnavailable
-          expr: cnpg_dr_receivers < 1 or kube_deployment_status_replicas_available{namespace="postgres",deployment=~"pg-(common|critical)-wal-receiver"} < 1
-          for: 3m
-          labels: {severity: critical}
-          annotations:
-            summary: 'PostgreSQL WAL archive is disconnected or has no recently sealed segment. Check gap before claiming PITR.'
-        - alert: SocratPgArchiveDiskSpaceLow
-          expr: node_filesystem_avail_bytes{job="node-exporter",instance="10.250.0.5:9100",mountpoint="/"} < 21474836480
-          for: 5m
-          labels: {severity: critical}
-          annotations:
-            summary: 'Postgres archive host has less than 20 GiB free. Verify backup and WAL coverage before disposal.'
