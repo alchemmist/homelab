@@ -11,6 +11,7 @@ import time
 import urllib.request
 import uuid
 from concurrent import futures
+from typing import cast
 
 import yaml
 
@@ -22,11 +23,11 @@ TAG = "log-test-" + uuid.uuid4().hex[:8]
 NAMES = []
 
 
-def docker(*args, check=True):
+def docker(*args, check=True) -> "subprocess.CompletedProcess[bytes]":
     return subprocess.run(["docker", *args], check=check, capture_output=True)
 
 
-def launch(name, config, network=None, publish=False):
+def launch(name, config, network=None, publish=False) -> "str | None":
     NAMES.append(name)
     args = ["create", "--user", "0", "--name", name]
     if network:
@@ -46,9 +47,10 @@ def launch(name, config, network=None, publish=False):
     if publish:
         port = docker("port", name, "4318/tcp").stdout.decode().strip().split(":")[-1]
         return "http://127.0.0.1:" + port + "/v1/logs"
+    return None
 
 
-def config(processors, exporter):
+def config(processors, exporter) -> "dict[str, object]":
     return {
         "receivers": {"otlp": {"protocols": {"http": {"endpoint": "0.0.0.0:4318"}}}},
         "processors": processors,
@@ -65,7 +67,7 @@ def config(processors, exporter):
     }
 
 
-def value(v):
+def value(v) -> "dict[str, object]":
     if isinstance(v, dict):
         return {"kvlistValue": {"values": [{"key": k, "value": value(x)} for k, x in v.items()]}}
     if isinstance(v, list):
@@ -73,7 +75,7 @@ def value(v):
     return {"stringValue": str(v)}
 
 
-def send(url, ident, body):
+def send(url, ident, body) -> None:
     payload = {
         "resourceLogs": [
             {
@@ -109,7 +111,7 @@ def send(url, ident, body):
         assert response.status == 200
 
 
-def output(name):
+def output(name) -> "list[dict[str, object]]":
     with tempfile.TemporaryDirectory() as directory:
         path = pathlib.Path(directory) / "out"
         docker("cp", name + ":/tmp/output.json", str(path))
@@ -122,7 +124,7 @@ def output(name):
         ]
 
 
-def ids(records):
+def ids(records) -> "set[str]":
     return {
         a["value"]["stringValue"]
         for r in records
@@ -131,7 +133,7 @@ def ids(records):
     }
 
 
-def main():
+def main() -> None:
     agent = yaml.safe_load((ROOT / "deploy/monitoring/otel/agent.yaml").read_text())
     cluster = yaml.safe_load(
         (ROOT / "deploy/monitoring/otel/cluster-logs-candidate.yaml").read_text()
@@ -183,7 +185,9 @@ def main():
         if source == "agent":
             actual = {
                 next(
-                    a["value"]["stringValue"] for a in r["attributes"] if a["key"] == "test.id"
+                    cast("dict[str, object]", a["value"])["stringValue"]
+                    for a in cast("list[dict[str, object]]", r["attributes"])
+                    if a["key"] == "test.id"
                 ): r["severityText"]
                 for r in records
             }
@@ -215,7 +219,7 @@ def main():
         cfg["extensions"] = {
             "file_storage": {"directory": "/tmp/queue", "create_directory": True, "fsync": True}
         }
-        cfg["service"]["extensions"] = ["file_storage"]
+        cast("dict[str, dict[str, object]]", cfg)["service"]["extensions"] = ["file_storage"]
         url = launch(sender, cfg, network, publish=True)
 
         def retry(i):

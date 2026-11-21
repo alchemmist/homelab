@@ -21,14 +21,15 @@ TABLE = "homelab_xui_backend_guard"
 OWNER = "homelab issue83 public backend guard v1"
 
 
-def run(args, **kwargs):
+def run(args, **kwargs) -> str:
     r = subprocess.run(args, capture_output=True, text=True, timeout=20, **kwargs)
     if r.returncode:
         raise RuntimeError("Backend guard operation failed; inspect private receipts")
-    return r.stdout
+    output: str = r.stdout
+    return output
 
 
-def rules():
+def rules() -> str:
     return """table inet homelab_xui_backend_guard {
  comment "homelab issue83 public backend guard v1"
  chain input {
@@ -40,7 +41,7 @@ def rules():
 """
 
 
-def stable(value):
+def stable(value) -> object:
     if isinstance(value, dict):
         return {
             k: stable(v)
@@ -52,7 +53,7 @@ def stable(value):
     return value
 
 
-def expected():
+def expected() -> "list[dict[str, object]]":
     prefix = [
         {"match": {"op": "==", "left": {"meta": {"key": "iifname"}}, "right": "eth0"}},
         {
@@ -63,7 +64,7 @@ def expected():
             }
         },
     ]
-    return [
+    objects: list[dict[str, object]] = [
         {"table": {"family": "inet", "name": TABLE}},
         {
             "chain": {
@@ -106,10 +107,14 @@ def expected():
             }
         },
     ]
+    return objects
 
 
-def validate(objects):
+def validate(objects) -> None:
     data = stable(objects)
+    if not isinstance(data, list):
+        reason = "Unexpected nftables objects projection"
+        raise TypeError(reason)
     for obj in data:
         if "table" in obj:
             comment = obj["table"].pop("comment", None)
@@ -137,7 +142,7 @@ def validate(objects):
         raise ValueError("Not the exact owned backend guard")
 
 
-def read_table():
+def read_table() -> "list[dict[str, object]] | None":
     data = json.loads(run(["nft", "-j", "list", "ruleset"]))["nftables"]
     own = [
         x
@@ -154,7 +159,7 @@ def read_table():
     return own or None
 
 
-def require_host():
+def require_host() -> None:
     if os.geteuid() != 0 or socket.gethostname() != "socrat-2":
         raise ValueError("Requires root on socrat-2")
     links = json.loads(run(["ip", "-j", "link", "show", "eth0"]))
@@ -162,7 +167,7 @@ def require_host():
         raise ValueError("Public interface missing")
 
 
-def plan():
+def plan() -> "dict[str, object]":
     require_host()
     current = read_table()
     return {
@@ -177,7 +182,7 @@ def plan():
     }
 
 
-def apply(state, approval):
+def apply(state, approval) -> "dict[str, object]":
     require_host()
     wanted = plan()
     if h.digest(wanted) != approval or read_table() is not None:
@@ -197,7 +202,7 @@ def apply(state, approval):
     return wanted
 
 
-def finalize_readback(state, approval):
+def finalize_readback(state, approval) -> "dict[str, object]":
     require_host()
     marker = json.loads((state / "backend-guard-uncertain.json").read_text())
     if marker["approval"] != approval or h.digest(marker["plan"]) != approval:
@@ -220,7 +225,7 @@ def finalize_readback(state, approval):
     return {"readback_finalized": True, "repeated_rule_writes": 0}
 
 
-def ensure():
+def ensure() -> "dict[str, object]":
     require_host()
     if read_table() is None:
         run(["nft", "--check", "-f", "-"], input=rules())
@@ -246,7 +251,7 @@ WantedBy=multi-user.target
 """
 
 
-def persist(state):
+def persist(state) -> None:
     require_host()
     if read_table() is None:
         raise ValueError("Verified live guard required before persistence")

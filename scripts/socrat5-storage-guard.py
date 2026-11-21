@@ -13,7 +13,7 @@ NAME = "homelab-socrat5-local-storage"
 KINDS = ("ValidatingAdmissionPolicy", "ValidatingAdmissionPolicyBinding")
 
 
-def kub(args, document=None):
+def kub(args, document=None) -> dict[str, object] | None:
     p = subprocess.run(
         ["env", "K3S_CONFIG_FILE=/dev/null", "kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml"]
         + args,
@@ -27,7 +27,7 @@ def kub(args, document=None):
     return json.loads(p.stdout) if p.stdout.strip() else None
 
 
-def canonical(spec):
+def canonical(spec) -> object:
     s = json.loads(json.dumps(spec))
     c = s.get("matchConstraints")
     if c:
@@ -42,14 +42,14 @@ def canonical(spec):
     return s
 
 
-def validate_existing(want, have):
+def validate_existing(want, have) -> None:
     if have["metadata"].get("labels", {}).get("homelab.io/owner") != "socrat5-worker":
         raise ValueError("Foreign ownership; refuse adoption")
     if canonical(want["spec"]) != canonical(have["spec"]):
         raise ValueError("Admission guard drift; explicit review/preimage/CAS required")
 
 
-def main():
+def main() -> None:
     p = argparse.ArgumentParser(__doc__)
     p.add_argument("--manifest", type=Path, required=True)
     p.add_argument("--apply", action="store_true")
@@ -81,13 +81,16 @@ def main():
             (receipt / (o["kind"] + ".accepted.json")).write_text(json.dumps(actual))
             if o["kind"] == KINDS[0]:
                 for _ in range(15):
-                    current = kub(["get", KINDS[0], NAME, "-o", "json"])
-                    if "typeChecking" in current.get("status", {}):
+                    current = kub(["get", KINDS[0], NAME, "-o", "json"]) or {}
+                    status = current.get("status")
+                    if isinstance(status, dict) and "typeChecking" in status:
                         break
                     time.sleep(1)
-                if "typeChecking" not in current.get("status", {}):
+                status = current.get("status")
+                if not (isinstance(status, dict) and "typeChecking" in status):
                     raise ValueError("CEL type checking not complete; binding not created")
-                if current.get("status", {}).get("typeChecking", {}).get("expressionWarnings"):
+                tc = status.get("typeChecking", {})
+                if isinstance(tc, dict) and tc.get("expressionWarnings"):
                     raise ValueError("CEL type warnings; binding not created")
     print(
         json.dumps(

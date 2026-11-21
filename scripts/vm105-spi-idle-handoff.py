@@ -17,7 +17,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 K = ["kubectl", "--kubeconfig=/etc/rancher/k3s/k3s.yaml"]
 
 
-def call(args, timeout=40):
+def call(args, timeout=40) -> str:
     r = subprocess.run(
         ["ssh", "socrat-0", shlex.join(K + args)], capture_output=True, text=True, timeout=timeout
     )
@@ -26,12 +26,19 @@ def call(args, timeout=40):
     return r.stdout
 
 
-def get(args):
-    return json.loads(call(args + ["-o", "json"]))
+def get(args) -> object:
+    payload: object = json.loads(call(args + ["-o", "json"]))
+    if not isinstance(payload, dict):
+        reason = "Kubernetes returned a non-object payload"
+        raise TypeError(reason)
+    return payload
 
 
-def patch_service(paused):
+def patch_service(paused) -> None:
     s = get(["get", "service", "spi-triage", "-n", "automation"])
+    if not isinstance(s, dict):
+        reason = "Kubernetes returned a non-object service payload"
+        raise TypeError(reason)
     key = "homelab.io/maintenance-serving"
     if paused == bool(s["spec"]["selector"].get(key)):
         return
@@ -55,7 +62,7 @@ def patch_service(paused):
     )
 
 
-def idle_state():
+def idle_state() -> object:
     code = """import sqlite3,os,time,json
 c=sqlite3.connect('file:'+os.environ.get('SPI_DATABASE','/data/spi.sqlite')+'?mode=ro',uri=True);c.execute('pragma query_only=on')
 a=c.execute(\"select count(*)from jobs where state in ('queued','retry','processing')\").fetchone()[0]
@@ -68,25 +75,34 @@ print(json.dumps({'activeOrQueuedJobs':a,'liveOwners':b,'liveLinkLeases':d}))
     )
 
 
-def stop_signal(*_):
+def stop_signal(*_) -> None:
     raise SystemExit("Interrupted; restoring temporary hold")
 
 
-def main():
+def main() -> None:
     signal.signal(signal.SIGTERM, stop_signal)
     signal.signal(signal.SIGINT, stop_signal)
     d = get(["get", "deployment", "spi-triage", "-n", "automation"])
+    if not isinstance(d, dict):
+        reason = "Kubernetes returned a non-object deployment payload"
+        raise TypeError(reason)
     if d["spec"]["template"]["spec"].get("nodeSelector") != {"kubernetes.io/hostname": "socrat-1"}:
         raise RuntimeError(
             "Historical one-way handoff refuses an already-migrated or unexpected worker"
         )
     a = get(["get", "application", "spi-triage", "-n", "argocd"])
+    if not isinstance(a, dict):
+        reason = "Kubernetes returned a non-object application payload"
+        raise TypeError(reason)
     if a["metadata"].get("annotations", {}).get("argocd.argoproj.io/skip-reconcile") == "true":
         raise RuntimeError("App already held by someone else")
     limit = time.monotonic() + 1200
     iteration = 0
     while time.monotonic() < limit:
         state = idle_state()
+        if not isinstance(state, dict):
+            reason = "Unexpected idle-state payload"
+            raise TypeError(reason)
         iteration += 1
         if iteration == 1 or iteration % 4 == 0:
             print(json.dumps({"waitingForNaturalIdle": state}), flush=True)
@@ -123,6 +139,9 @@ def main():
                         "kubernetes.io/service-name=spi-triage",
                     ]
                 )
+                if not isinstance(slices, dict):
+                    reason = "Kubernetes returned a non-object endpoint slice list"
+                    raise TypeError(reason)
                 if not any(
                     e.get("addresses") and (e.get("conditions") or {}).get("ready") is not False
                     for s in slices["items"]
@@ -133,6 +152,9 @@ def main():
                     raise RuntimeError("Service did not quiesce")
                 time.sleep(0.15)
             state = idle_state()
+            if not isinstance(state, dict):
+                reason = "Unexpected idle-state payload"
+                raise TypeError(reason)
             if any(state.values()):
                 print(json.dumps({"newWorkWonRaceRestoringImmediately": state}), flush=True)
                 continue
