@@ -4,7 +4,11 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+from typing import TYPE_CHECKING
 import unittest
+
+if TYPE_CHECKING:
+    from _typeshed import Incomplete
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts/n8n"))
@@ -139,7 +143,7 @@ class FailureAlertsTests(unittest.TestCase):
         w["settings"]["errorWorkflow"] = "handler"
         calls = []
 
-        def api(*args):
+        def api(*args: object) -> "Incomplete":
             calls.append(args)
             return copy.deepcopy(w)
 

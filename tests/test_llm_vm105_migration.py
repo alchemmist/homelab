@@ -2,13 +2,18 @@
 
 from pathlib import Path
 import subprocess
+from typing import TYPE_CHECKING
 import unittest
+
 import yaml
+
+if TYPE_CHECKING:
+    from _typeshed import Incomplete
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def render(name, *args):
+def render(name: str, *args: str) -> "list[Incomplete]":
     return list(
         yaml.safe_load_all(
             subprocess.check_output(
