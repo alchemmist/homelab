@@ -79,7 +79,9 @@ spec:
               path: /ready
               port: http
             periodSeconds: 5
-            failureThreshold: 36
+            # Allow cold recovery on NFS without repeatedly killing startup.
+            timeoutSeconds: 4
+            failureThreshold: 120
           readinessProbe:
             httpGet:
               path: /ready
