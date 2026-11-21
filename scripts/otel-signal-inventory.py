@@ -4,8 +4,27 @@ import json
 import os
 import subprocess
 import sys
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import NotRequired, TypedDict
+
+
+class _Source(TypedDict):
+    bytes: int
+    truncated: bool
+    measurementAvailable: NotRequired[bool]
+    containerState: NotRequired[str]
+
+
+class _PodReport(TypedDict):
+    sources: list[_Source]
+    windowSeconds: int
+
+
+class _Journal(TypedDict):
+    systemJournalAccessVerified: bool
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
@@ -78,7 +97,7 @@ print(json.dumps(report))
 )
 
 
-def privileged_journals(directory, now=None):
+def privileged_journals(directory: Path, now: datetime | None = None):
     now = datetime.now(UTC) if now is None else now
     if (
         directory.is_symlink()
@@ -136,7 +155,7 @@ def privileged_journals(directory, now=None):
     return reports
 
 
-def summarize(pods, journals):
+def summarize(pods: _PodReport, journals: Mapping[str, _Journal]):
     sources = pods["sources"]
     measured = [source for source in sources if source.get("measurementAvailable")]
     truncated = [source for source in measured if source["truncated"]]

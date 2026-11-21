@@ -92,7 +92,7 @@ def main():
     name = "identity-restore-" + uuid.uuid4().hex[:10]
     k = ["kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml", "-n", "identity"]
 
-    def run(argv, data=None):
+    def run(argv: list[str], data: bytes | None = None):
         cmd = "env K3S_CONFIG_FILE=/dev/null " + shlex.join(k + argv)
         result = subprocess.run(b.SSH + [cmd], input=data, capture_output=True, timeout=300)
         if result.returncode:

@@ -366,7 +366,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.header_timer.cancel()
             self.request_timer.cancel()
 
-    def log_message(self, *args):
+    def log_message(self, *args: object):
         pass
 
     def do_GET(self):
@@ -529,15 +529,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
 class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
     daemon_threads = True
 
-    def __init__(
-        self,
-        server_address: tuple[str, int],
-        handler_class: type[socketserver.BaseRequestHandler],
-        *,
-        bind_and_activate: bool = True,
-    ) -> None:
+    def __init__(self, *args: object, **kwargs: object):
         self.slots = threading.BoundedSemaphore(MAX_CONNECTIONS)
-        super().__init__(server_address, handler_class, bind_and_activate)
+        super().__init__(*args, **kwargs)
 
     def process_request(self, request, client_address):
         if not self.slots.acquire(blocking=False):

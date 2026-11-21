@@ -13,8 +13,12 @@ import re
 import subprocess
 import tempfile
 import time
+from typing import TYPE_CHECKING
 import uuid
 from typing import TypedDict, Unpack
+
+if TYPE_CHECKING:
+    from _typeshed import Incomplete
 
 ROOT = Path(__file__).resolve().parents[3]
 IMAGE = "homelab-ssh-user-fixture:local"
@@ -85,7 +89,7 @@ def main():
             inventory = d / "inventory.json"
             inventory.write_text(json.dumps({"all": {"children": {"Socrat": {"hosts": hosts}}}}))
 
-            def execute(container, *args):
+            def execute(container: str, *args: str) -> "Incomplete":
                 return run(["docker", "exec", container, *args])
 
             def play(key=1, check=False, expected=0, name=USER):

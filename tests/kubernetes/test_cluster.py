@@ -2,15 +2,17 @@
 
 import importlib.util
 import json
-from collections.abc import Sequence
 from pathlib import Path
 import subprocess
-from typing import TypedDict, Unpack
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 from uuid import uuid4
 
 import pytest
 import yaml
+
+if TYPE_CHECKING:
+    from _typeshed import Incomplete
 
 ROOT = Path(__file__).resolve().parents[2]
 NODE_IMAGE = (
@@ -19,13 +21,7 @@ NODE_IMAGE = (
 NGINX_DIGEST = "sha256:b3c656d55d7ad751196f21b7fd2e8d4da9cb430e32f646adcf92441b72f82b14"
 
 
-def run(
-    argv: Sequence[str],
-    *,
-    data: str | None = None,
-    check: bool = True,
-    timeout: int = 180,
-) -> subprocess.CompletedProcess[str]:
+def run(argv, *, data=None, check=True, timeout=180):
     result = subprocess.run(
         argv, input=data, text=True, capture_output=True, check=False, timeout=timeout
     )
@@ -35,12 +31,6 @@ def run(
             f"Ephemeral {argv[0]} failed ({result.returncode}): {result.stderr[-3000:]}"
         )
     return result
-
-
-# Keyword options kube() forwards to run().
-class _KubeKeywords(TypedDict, total=False):
-    data: str | None
-    check: bool
 
 
 @pytest.fixture(scope="module")
@@ -70,7 +60,7 @@ def cluster(tmp_path_factory):
         )
         config.chmod(0o600)
 
-        def kube(*args: str, **kwargs: Unpack[_KubeKeywords]) -> subprocess.CompletedProcess[str]:
+        def kube(*args: str, **kwargs: "Incomplete") -> "Incomplete":
             return run(
                 [
                     "kubectl",

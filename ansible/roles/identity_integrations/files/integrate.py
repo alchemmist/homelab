@@ -14,7 +14,7 @@ kube = ["kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml"]
 clients = json.loads((root / "oidc-clients.json").read_text())
 
 
-def private_save(path, data):
+def private_save(path: Path, data: object):
     if path.exists():
         return
     fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
@@ -22,7 +22,7 @@ def private_save(path, data):
         json.dump(data, f)
 
 
-def kubectl(args, body=None):
+def kubectl(args: list[str], body: object | None = None):
     result = subprocess.run(
         kube + args,
         input=json.dumps(body) if body is not None else None,
@@ -36,7 +36,7 @@ def kubectl(args, body=None):
     return result.stdout
 
 
-def idp(method, path, payload=None):
+def idp(method: str, path: str, payload: object | None = None):
     runtime = json.loads((root / "credentials.json").read_text())
     request = urllib.request.Request(
         "https://auth.socrat.alchemmist.xyz/api/v3/" + path,
@@ -52,7 +52,7 @@ def idp(method, path, payload=None):
         return json.loads(data) if data else None
 
 
-def reviewed_user(username, account):
+def reviewed_user(username: str, account: dict[str, object]):
     from urllib.parse import urlencode
 
     users = idp("GET", "core/users/?" + urlencode({"username": username}))["results"]

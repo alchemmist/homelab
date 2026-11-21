@@ -5,7 +5,11 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import Mock, patch
+
+if TYPE_CHECKING:
+    from _typeshed import Incomplete
 import test_triage as f
 from core import Store, Failure, MATCH_SCHEMA
 from integrations import Model, REQUEST_DEADLINE
@@ -293,7 +297,7 @@ class IntegrationTests(unittest.TestCase):
         entered = threading.Event()
         release = threading.Event()
 
-        def model(*args: object, **kwargs: object) -> dict[str, object]:
+        def model(*args: object, **kwargs: object) -> "Incomplete":
             entered.set()
             self.assertTrue(release.wait(3))
             return {"candidates": []}
@@ -341,12 +345,8 @@ class ModelTimerTests(unittest.TestCase):
             model = Model(http, "fake", store=store)
             now = time.time()
 
-            def request(*args: object, **kwargs: object) -> dict[str, object]:
-                timeout = kwargs["timeout"]
-                if not isinstance(timeout, (int, float)):
-                    invalid_timeout = "Model.request stub must receive a numeric timeout"
-                    raise TypeError(invalid_timeout)
-                self.assertGreater(timeout, 1700)
+            def request(*args: object, **kwargs: "Incomplete") -> "Incomplete":
+                self.assertGreater(kwargs["timeout"], 1700)
                 with store.db() as c:
                     row = c.execute("select * from llm_admission").fetchone()
                     self.assertGreater(row["expires"], now + 1800)

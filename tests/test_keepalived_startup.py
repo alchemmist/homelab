@@ -9,7 +9,7 @@ ROLE = ROOT / "ansible/roles/home_ingress_ha"
 
 
 class KeepalivedStartupTest(unittest.TestCase):
-    def run_wait(self, appear_at):
+    def run_wait(self, appear_at: int) -> tuple[subprocess.CompletedProcess[str], int]:
         script = (ROLE / "templates/wait-home-ingress-interface.sh.j2").read_text()
         script = script.replace(
             "{{ home_ingress_ha_nodes[inventory_hostname].interface | quote }}", "wlan0"

@@ -4,13 +4,16 @@ import pathlib
 import shutil
 import subprocess
 import unittest
+from collections.abc import Sequence
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 @unittest.skipUnless(shutil.which("helm"), "helm unavailable")
 class AlertGraphsChartTests(unittest.TestCase):
-    def render(self, enabled=False, extra=()):
+    def render(
+        self, *, enabled: bool = False, extra: Sequence[str] = ()
+    ) -> subprocess.CompletedProcess[str]:
         args = [
             "helm",
             "template",
@@ -42,7 +45,7 @@ class AlertGraphsChartTests(unittest.TestCase):
         self.assertNotIn("name: socrat-alert-graphs", result.stdout)
 
     def test_enabled_isolated_role(self):
-        result = self.render(True)
+        result = self.render(enabled=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("/app/graph_gateway.py", result.stdout)
         self.assertIn("name: socrat-alert-graphs", result.stdout)
@@ -56,8 +59,8 @@ class AlertGraphsChartTests(unittest.TestCase):
 
     def test_release_values_render_real_valid_images(self):
         result = self.render(
-            False,
-            [
+            enabled=False,
+            extra=[
                 "-f",
                 "charts/grafana/alert-graphs.policy.values.yaml",
                 "-f",
@@ -83,39 +86,67 @@ class AlertGraphsChartTests(unittest.TestCase):
     def test_monitoring_helpers_use_one_portable_home_placement(self):
         import yaml
 
-        result = self.render(extra=[
-            "-f", "charts/grafana/alert-graphs.policy.values.yaml",
-            "-f", "charts/grafana/alert-graphs.runtime.values.yaml",
-            "-f", "deploy/grafana/values.yaml", "--show-only", "templates/alert-graphs.yaml",
-        ])
+        result = self.render(
+            extra=[
+                "-f",
+                "charts/grafana/alert-graphs.policy.values.yaml",
+                "-f",
+                "charts/grafana/alert-graphs.runtime.values.yaml",
+                "-f",
+                "deploy/grafana/values.yaml",
+                "--show-only",
+                "templates/alert-graphs.yaml",
+            ]
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
-        dep, = [d for d in yaml.safe_load_all(result.stdout) if d and d["kind"] == "Deployment"]
+        (dep,) = [d for d in yaml.safe_load_all(result.stdout) if d and d["kind"] == "Deployment"]
         self.assertEqual(dep["spec"].get("replicas", 1), 1)
-        proxy = yaml.safe_load((ROOT / "deploy/monitoring/rancher-values.yaml").read_text())["monitoringProxy"]
-        def term(nodes):
-            return {"matchExpressions": [{"key": "kubernetes.io/hostname", "operator": "In", "values": nodes}]}
+        proxy = yaml.safe_load((ROOT / "deploy/monitoring/rancher-values.yaml").read_text())[
+            "monitoringProxy"
+        ]
+
+        def term(nodes: list[str]) -> dict[str, object]:
+            return {
+                "matchExpressions": [
+                    {"key": "kubernetes.io/hostname", "operator": "In", "values": nodes}
+                ]
+            }
+
         for spec in [dep["spec"]["template"]["spec"], proxy]:
             self.assertEqual(spec["nodeSelector"], {"kubernetes.io/os": "linux"})
-            self.assertEqual(spec["affinity"]["nodeAffinity"], {
-                "requiredDuringSchedulingIgnoredDuringExecution": {"nodeSelectorTerms": [term(["socrat-0", "socrat-1"])]},
-                "preferredDuringSchedulingIgnoredDuringExecution": [{"weight": 100, "preference": term(["socrat-0"])}],
-            })
+            self.assertEqual(
+                spec["affinity"]["nodeAffinity"],
+                {
+                    "requiredDuringSchedulingIgnoredDuringExecution": {
+                        "nodeSelectorTerms": [term(["socrat-0", "socrat-1"])]
+                    },
+                    "preferredDuringSchedulingIgnoredDuringExecution": [
+                        {"weight": 100, "preference": term(["socrat-0"])}
+                    ],
+                },
+            )
 
     def test_requires_immutable_image(self):
-        result = self.render(True, ["--set", "gateway.digest=latest"])
+        result = self.render(enabled=True, extra=["--set", "gateway.digest=latest"])
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("immutable", result.stderr)
 
     def test_requires_renderer(self):
-        result = self.render(True, ["--set", "grafana.imageRenderer.enabled=false"])
+        result = self.render(enabled=True, extra=["--set", "grafana.imageRenderer.enabled=false"])
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("remote imageRenderer", result.stderr)
 
     def test_bot_sources_are_exact_only(self):
-        result = self.render(True, ["--set", "alertGraphs.botSourceCIDRs[0]=10.0.0.0/8"])
+        result = self.render(
+            enabled=True,
+            extra=["--set", "alertGraphs.botSourceCIDRs[0]=10.0.0.0/8"],
+        )
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("exact /32 or /128", result.stderr)
-        result = self.render(True, ["--set", "alertGraphs.botSourceCIDRs[0]=10.250.0.2/32"])
+        result = self.render(
+            enabled=True,
+            extra=["--set", "alertGraphs.botSourceCIDRs[0]=10.250.0.2/32"],
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
 
 

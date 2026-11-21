@@ -14,7 +14,7 @@ base = "https://harbor.socrat.alchemmist.xyz/api/v2.0"
 auth = "Basic " + base64.b64encode(("admin:" + password).encode()).decode()
 
 
-def api(method, path, payload=None):
+def api(method: str, path: str, payload: object | None = None):
     req = urllib.request.Request(
         base + path,
         method=method,

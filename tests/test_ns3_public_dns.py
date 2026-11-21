@@ -7,11 +7,18 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load(path, name):
+def load(path: Path, name: str):
     s = importlib.util.spec_from_file_location(name, path)
     m = importlib.util.module_from_spec(s)
     s.loader.exec_module(m)
     return m
+
+
+def render_text(zone, *args: object, **kwargs: object) -> str:
+    rendered = zone.render(*args, **kwargs)
+    if not isinstance(rendered, str):
+        raise TypeError(f"zone.render returned {type(rendered).__name__}, expected str")
+    return rendered
 
 
 def test_exact_addition_and_idempotent_delta() -> None:
@@ -23,15 +30,15 @@ def test_exact_addition_and_idempotent_delta() -> None:
         """Drop the additive ns3 records from an otherwise identical zone."""
 
         @staticmethod
-        def render(*args):
-            return (
-                "\n".join(x for x in zone.render(*args).splitlines() if x not in guard.ADDED) + "\n"
-            )
+        def render(*args: object, **kwargs: object) -> str:
+            rendered = render_text(zone, *args, **kwargs)
+            kept = [line for line in rendered.splitlines() if line not in guard.ADDED]
+            return "\n".join(kept) + "\n"
 
     guard.delta(Old, zone)
     guard.delta(zone, zone)
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
-        lines = zone.render(123, home, vps).splitlines()
+        lines = zone.render(123, home_up=home, vps_up=vps).splitlines()
         assert all(lines.count(x) == 1 for x in guard.ADDED)
         for name in zone.FAILOVER:
             assert f"{name} IN A 91.189.82.238" not in lines
@@ -46,8 +53,8 @@ def test_guard_rejects_unrelated_records_and_missing_ns3() -> None:
         """Append one address that is outside the ns3 addition."""
 
         @staticmethod
-        def render(*args):
-            return zone.render(*args) + "unexpected IN A 192.0.2.1\n"
+        def render(*args: object, **kwargs: object) -> str:
+            return render_text(zone, *args, **kwargs) + "unexpected IN A 192.0.2.1\n"
 
     with pytest.raises(RuntimeError):
         guard.delta(zone, Bad)
@@ -56,8 +63,8 @@ def test_guard_rejects_unrelated_records_and_missing_ns3() -> None:
         """Remove the ns3 glue address from the current zone."""
 
         @staticmethod
-        def render(*args):
-            return zone.render(*args).replace("ns3 IN A 91.189.82.238\n", "")
+        def render(*args: object, **kwargs: object) -> str:
+            return render_text(zone, *args, **kwargs).replace("ns3 IN A 91.189.82.238\n", "")
 
     with pytest.raises(RuntimeError):
         guard.delta(zone, Missing)

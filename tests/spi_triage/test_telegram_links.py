@@ -6,7 +6,7 @@ import unittest
 FILES = Path(__file__).resolve().parents[2] / "charts/spi-triage/files"
 
 
-def load(name):
+def load(name: str):
     spec = importlib.util.spec_from_file_location(name, FILES / (name + ".py"))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -42,13 +42,13 @@ class OutboxTest(unittest.TestCase):
             self.store, self.http, clock=lambda: self.now, guarded_protocol=True
         )
 
-    def http(self, method: str, path: str, **kwargs: object) -> tuple[int, dict[str, object]]:
+    def http(self, method: str, path: str, **kwargs: object):
         self.calls.append((method, path, kwargs))
         return self.status, self.item if method == "GET" else dict(
             key="Alert/pod/ns/name", updated=[dict(chat_id=1, message_id=2)], pending=[]
         )
 
-    def publication(self, **changes: object) -> dict[str, object]:
+    def publication(self, **changes):
         return dict(
             dict(
                 kind="comment",
@@ -172,7 +172,7 @@ class OutboxTest(unittest.TestCase):
         self.receipt()
         original = self.http
 
-        def racing(method: str, path: str, **kwargs: object) -> tuple[int, dict[str, object]]:
+        def racing(method: str, path: str, **kwargs: object):
             if method == "POST":
                 self.outbox.record_primary_publication(
                     "resolved",
@@ -212,7 +212,7 @@ class OutboxTest(unittest.TestCase):
             dict(html_url="https://github.com/alchemmist/homelab/issues/42"),
             dict(html_url="https://evil/issues/42#issuecomment-7"),
             dict(id=8),
-            dict(html_url=str(self.publication()["html_url"]) + "?token=x"),
+            dict(html_url=self.publication()["html_url"] + "?token=x"),
         ]:
             with self.assertRaises(ValueError):
                 links.primary_url(self.publication(**changes))
