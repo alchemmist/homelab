@@ -302,7 +302,7 @@ class ProductionStoreTests(unittest.TestCase):
             }
             m.retry(path, auth, True, manifest)
 
-            def audit():
+            def audit() -> list[object]:
                 with sqlite3.connect(path) as c:
                     return c.execute(
                         "SELECT * FROM operator_retry_audit ORDER BY job_id"

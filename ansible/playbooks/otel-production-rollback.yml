@@ -21,9 +21,9 @@
           - otel_rollback_artifacts is defined
     - name: Copy private original controller specifications
       ansible.builtin.copy:
-        src: '{{ otel_rollback_artifacts }}/{{ item }}'
-        dest: '/var/lib/homelab-otel/{{ item }}'
-        mode: '0600'
+        src: "{{ otel_rollback_artifacts }}/{{ item }}"
+        dest: /var/lib/homelab-otel/{{ item }}
+        mode: "0600"
       loop: [prometheus-before.json, legacy-node-exporter-before.json]
     - name: Atomically restore complete original specs rather than retaining new merge keys
       ansible.builtin.command:

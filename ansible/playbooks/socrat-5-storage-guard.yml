@@ -15,14 +15,14 @@
       ansible.builtin.copy:
         src: ../../scripts/socrat5-storage-guard.py
         dest: /usr/local/libexec/socrat5-storage-guard.py
-        mode: '0700'
+        mode: "0700"
     - name: Render the public desired admission objects
       ansible.builtin.copy:
         content: >-
           {{ lookup('file', '../../deploy/admission/socrat5-local-storage.yaml')
           | from_yaml_all | list | to_json }}
         dest: /var/lib/homelab-socrat5-storage-guard.json
-        mode: '0600'
+        mode: "0600"
     - name: Audit only unless explicitly applying missing owned objects
       ansible.builtin.command:
         cmd: >-

@@ -97,7 +97,7 @@ def main(runtime_root=ROOT):
     namespace_created = False
     cleanup_errors = []
     try:
-        for name, db, cert, acme, binaries, zone in workloads:
+        for name, db, cert, acme, binaries, _zone in workloads:
             target = temporary / name
             target.mkdir()
             (target / "db").mkdir()
@@ -119,7 +119,7 @@ def main(runtime_root=ROOT):
         namespace_created = True
         run("ip", "-n", NAMESPACE, "link", "set", "lo", "up")
         run("ip", "-n", NAMESPACE, "address", "add", "172.18.0.1/16", "dev", "lo")
-        for name, db, cert, acme, binaries, zone in workloads:
+        for name, _db, _cert, _acme, _binaries, zone in workloads:
             target = temporary / name
             unit = "homelab-vpn-smoke-" + name + ".service"
             properties = [
@@ -190,7 +190,7 @@ def main(runtime_root=ROOT):
             try:
                 if run("systemctl", "show", unit, "--property=LoadState", "--value") != "not-found":
                     run("systemctl", "stop", unit)
-            except Exception:
+            except (OSError, RuntimeError, sqlite3.Error, subprocess.SubprocessError):
                 cleanup_errors.append("Could not stop " + unit)
         if namespace_created and not cleanup_errors:
             try:
@@ -198,7 +198,7 @@ def main(runtime_root=ROOT):
                 if remaining:
                     raise RuntimeError("Smoke namespace still has processes")
                 run("ip", "netns", "delete", NAMESPACE)
-            except Exception:
+            except (OSError, RuntimeError, sqlite3.Error, subprocess.SubprocessError):
                 cleanup_errors.append("Could not remove isolated network namespace")
         if not cleanup_errors:
             shutil.rmtree(temporary)
@@ -227,6 +227,14 @@ if __name__ == "__main__":
         parser = argparse.ArgumentParser()
         parser.add_argument("--runtime-root", type=Path, default=ROOT)
         main(parser.parse_args().runtime_root)
-    except Exception as error:
+    except (
+        OSError,
+        RuntimeError,
+        ValueError,
+        KeyError,
+        TypeError,
+        sqlite3.Error,
+        subprocess.SubprocessError,
+    ) as error:
         print(json.dumps({"error": str(error)}))
         raise SystemExit(1)

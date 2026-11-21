@@ -28,14 +28,14 @@ def test_settings_schema_and_private_local_auth() -> None:
 
 def test_only_exact_native_default_can_be_deleted() -> None:
     """Accept only one exact native Default policy for deletion."""
-    rule = dict(
-        action="accept",
-        protocol="all",
-        bidirectional=True,
-        sources=[{"name": "All"}],
-        destinations=[{"name": "All"}],
-    )
-    policy = dict(id="exact-id", name="Default", enabled=True, rules=[rule])
+    rule = {
+        "action": "accept",
+        "protocol": "all",
+        "bidirectional": True,
+        "sources": [{"name": "All"}],
+        "destinations": [{"name": "All"}],
+    }
+    policy = {"id": "exact-id", "name": "Default", "enabled": True, "rules": [rule]}
     assert stage2.default_policy([policy]) == "exact-id"
     with pytest.raises(ValueError):
         stage2.default_policy([policy, policy])
