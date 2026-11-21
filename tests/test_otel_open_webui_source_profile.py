@@ -39,11 +39,11 @@ def fixtures() -> tuple[
 
     class FastApi:
         @staticmethod
-        def instrument_app(**kwargs):
+        def instrument_app(**kwargs) -> None:
             calls.append(kwargs)
 
         @staticmethod
-        def uninstrument_app(app):
+        def uninstrument_app(app) -> None:
             calls.append("fastapi-stop")
 
     native = SimpleNamespace(
