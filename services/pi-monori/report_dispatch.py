@@ -39,7 +39,7 @@ def main():
   log=c.A/c.key(t)/'pi-3.log'
   if log.exists() and b'502 Bad Gateway' in log.read_bytes()[-2000:]:c.mark(t,'queued','Recovered prior transport failure, no model verdict')
  c.query("update tasks set state='queued' where pr is null and state in ('screening','survived','authoring','rejected')");c.query("update tasks set state='published' where pr is not null and state in ('authoring','rejected')");c.query("update tasks set state='publication_uncertain' where state='publishing'");cache=0;nextrepair=0
- def sync(active=''):
+ def sync(active='') -> None:
   tasks={x['id']:x for x in c.query('select id,state,pr from tasks')};changes=[]
   for row in rows:
    f,_,n=row['target'].partition('__mutmut_');ids=[f+'__mutmut_'+i for i in ([n] if n else c.C.get(f,{}).get('diffs',{}))];states={tasks[i]['state'] for i in ids if i in tasks};state='processing' if active in ids else 'partial' if 'queued' in states and len(states)>1 else 'queued' if states=={'queued'} else 'attention' if states-{'published','merged','already_killed','covered_pending_merge'} or not states else 'assessed';changes.append([row['section'],row['target'],state])

@@ -29,18 +29,18 @@ class Fake(GitHub):
 
 
 class WriterTests(unittest.TestCase):
-    def test_closed_pr_not_reopened(self):
+    def test_closed_pr_not_reopened(self) -> None:
         g = Fake(existing=[{"html_url": "closed-pr", "state": "closed"}])
         self.assertEqual(g.propose("a" * 40, "new", "why")["status"], "existing")
         self.assertTrue(all(c[0] == "GET" for c in g.calls))
 
-    def test_advanced_main_refused(self):
+    def test_advanced_main_refused(self) -> None:
         g = Fake(main="b" * 40)
         with self.assertRaises(UnsafeInput):
             g.propose("a" * 40, "new", "why")
         self.assertTrue(all(c[0] == "GET" for c in g.calls))
 
-    def test_only_updates_written(self):
+    def test_only_updates_written(self) -> None:
         g = Fake()
         r = g.propose("a" * 40, "new", "why")
         self.assertEqual(r["status"], "created")
@@ -52,7 +52,7 @@ class WriterTests(unittest.TestCase):
         )
         self.assertFalse(any("merge" in c[1] for c in g.calls))
 
-    def test_no_change_no_branch(self):
+    def test_no_change_no_branch(self) -> None:
         g = Fake()
         self.assertEqual(g.propose("a" * 40, "original", "why")["status"], "no_change")
         self.assertTrue(all(c[0] == "GET" for c in g.calls))

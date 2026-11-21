@@ -4,6 +4,7 @@ import base64
 import json
 import urllib.error
 import urllib.request
+from typing import cast
 
 from engine import MARKER, PAGE, branch_for, require_sha
 
@@ -15,7 +16,7 @@ class GitHubError(Exception):
     pass
 
 
-def _request(url, token=None, method="GET", body=None):
+def _request(url, token=None, method="GET", body=None) -> "dict[str, object] | None":
     headers = {
         "Accept": "application/vnd.github+json",
         "User-Agent": "socrat-wiki-openapi",
@@ -34,7 +35,7 @@ def _request(url, token=None, method="GET", body=None):
     try:
         with urllib.request.urlopen(request, timeout=45) as response:
             raw = response.read()
-            return json.loads(raw) if raw else {}
+            return cast("dict[str, object]", json.loads(raw)) if raw else {}
     except urllib.error.HTTPError as exc:
         if exc.code == 404:
             return None
@@ -53,7 +54,7 @@ class BotRepo:
         compared = _request(f"https://api.github.com/repos/{BOT}/compare/{before}...{after}")
         if not compared:
             raise GitHubError("Compare not found")
-        if len(compared.get("files") or []) >= 300:
+        if len(cast("list[object]", compared.get("files") or [])) >= 300:
             raise GitHubError("Compare file list truncated")
         return compared.get("files") or []
 
@@ -64,7 +65,7 @@ class BotRepo:
         item = _request(f"https://api.github.com/repos/{BOT}/contents/{path}?ref={sha}")
         if not item or item.get("encoding") != "base64":
             raise GitHubError("Bot file missing")
-        return base64.b64decode(item["content"]).decode()
+        return base64.b64decode(cast("str", item["content"])).decode()
 
 
 class Homelab:

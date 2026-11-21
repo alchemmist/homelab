@@ -6,6 +6,8 @@ No API availability-only failover. Native mode is sticky until explicit failback
 
 import argparse, fcntl, hashlib, json, os, pathlib, signal, socket, ssl, subprocess, time
 
+from typing import TypedDict
+
 ROOT = pathlib.Path("/var/lib/homelab-vpn-transit/relay-failover")
 CONFIG = pathlib.Path("/etc/homelab-vpn-transit/failover.json")
 AGENT = "k3s-agent.service"
@@ -14,7 +16,22 @@ TCP = (80, 443, 32053, 32083, 32084)
 UDP = (443, 32085, 32086)
 
 
-def run(args, timeout=25, check=True):
+def persistent_number(value: object) -> float:
+    """Numeric watch state, read as untrusted persistence: 0.0 when corrupt."""
+    return float(value) if isinstance(value, (int, float)) else 0.0
+
+
+class Diagnosis(TypedDict, total=False):
+    """Autonomous classification of why four data-path failures occurred."""
+
+    recover_local: bool
+    scope: str
+    upstream_probe: dict[str, object]
+
+
+def run(
+    args: list[str], timeout: int = 25, *, check: bool = True
+) -> subprocess.CompletedProcess[str]:
     p = subprocess.run(args, capture_output=True, text=True, timeout=timeout)
     if check and p.returncode:
         raise RuntimeError("Command failed: " + str(args[:3]))
@@ -35,15 +52,15 @@ def atomic(path, value):
     os.close(fd)
 
 
-def boot_id():
+def boot_id() -> str:
     return pathlib.Path("/proc/sys/kernel/random/boot_id").read_text().strip()
 
 
-def active(unit):
+def active(unit: str) -> bool:
     return run(["systemctl", "is-active", "--quiet", unit], check=False).returncode == 0
 
 
-def free_ports():
+def free_ports() -> bool:
     for typ, ports in [(socket.SOCK_STREAM, TCP), (socket.SOCK_DGRAM, UDP)]:
         for port in ports:
             with socket.socket(socket.AF_INET, typ) as s:
@@ -56,7 +73,7 @@ def free_ports():
     return True
 
 
-def identity(pid, cid):
+def identity(pid: int, cid: str) -> dict[str, object] | None:
     p = pathlib.Path("/proc") / str(pid)
     if not p.exists():
         return None
@@ -65,9 +82,9 @@ def identity(pid, cid):
     return {"pid": pid, "cid": cid, "start": (p / "stat").read_text().split()[21]}
 
 
-def pod_processes():
+def pod_processes() -> list[dict[str, object]]:
     p = run(["k3s", "crictl", "--timeout=5s", "ps", "-o", "json"], timeout=9)
-    result = []
+    result: list[dict[str, object]] = []
     for c in json.loads(p.stdout)["containers"]:
         labels = c.get("labels", {})
         if (
@@ -76,15 +93,20 @@ def pod_processes():
         ):
             continue
         v = json.loads(run(["k3s", "crictl", "--timeout=5s", "inspect", c["id"]], timeout=9).stdout)
-        i = identity(int(v["info"]["pid"]), c["id"])
+        i = identity(int(v["info"]["pid"]), str(c["id"]))
         if i:
             result.append(i)
     return result
 
 
-def terminate_owned(i):
-    pid = i["pid"]
-    now = identity(pid, i["cid"])
+def terminate_owned(i: dict[str, object]) -> None:
+    pid_value = i["pid"]
+    if not isinstance(pid_value, int):
+        reason = "Unusable container pid"
+        raise TypeError(reason)
+    pid = pid_value
+    cid = str(i["cid"])
+    now = identity(pid, cid)
     if now is None:
         return
     assert now == i
@@ -93,12 +115,17 @@ def terminate_owned(i):
         if not pathlib.Path("/proc", str(pid)).exists():
             return
         time.sleep(0.1)
-    now = identity(pid, i["cid"])
+    now = identity(pid, cid)
     if now == i:
         os.kill(pid, signal.SIGKILL)
 
 
-def probe(config, host="127.0.0.1", source=None, detail=None):
+def probe(
+    config: dict[str, object],
+    host: str = "127.0.0.1",
+    source: tuple[str, int] | None = None,
+    detail: dict[str, object] | None = None,
+) -> bool:
     # Same strict TLS/WS identity and ACLs on the local and direct upstream path.
     d = detail if detail is not None else {}
     d.update(at=time.time(), stage="connect", ok=False)
@@ -116,7 +143,7 @@ def probe(config, host="127.0.0.1", source=None, detail=None):
                 d["stage"] = "websocket"
                 req = (
                     "GET "
-                    + config["ws_path"]
+                    + str(config["ws_path"])
                     + " HTTP/1.1\r\nHost: vpn.alchemmist.xyz\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n"
                 )
                 t.sendall(req.encode())
@@ -132,7 +159,7 @@ def probe(config, host="127.0.0.1", source=None, detail=None):
         raise
 
 
-def local_listeners_respond():
+def local_listeners_respond() -> bool:
     for port in (32053, 32083, 32084, 443):
         try:
             with socket.create_connection(("127.0.0.1", port), timeout=1):
@@ -146,7 +173,7 @@ class Controller:
     def __init__(self) -> None:
         self.config = json.loads(CONFIG.read_text())
         self.marker = ROOT / "fallback.active"
-        self.state = (
+        self.state: dict[str, object] = (
             json.loads((ROOT / "state.json").read_text())
             if (ROOT / "state.json").exists()
             else {"mode": "prepared", "failures": 0}
@@ -160,22 +187,22 @@ class Controller:
         v = {"action": action, "at": time.time(), **fields}
         atomic(ROOT / (str(time.time_ns()) + "-" + action + ".json"), v)
 
-    def healthy(self):
-        self.last_probe = {}
+    def healthy(self) -> bool:
+        self.last_probe: dict[str, object] = {}
         try:
             probe(self.config, detail=self.last_probe)
             return True
         except (OSError, AssertionError, ssl.SSLError):
             return False
 
-    def recovery_scope(self):
+    def recovery_scope(self) -> Diagnosis:
         # Only after the existing four failures. An upstream outage is not evidence
         # that stopping a still-listening local worker can improve the data path.
         if not active(AGENT):
             return {"recover_local": True, "scope": "local-agent-inactive"}
         if not local_listeners_respond():
             return {"recover_local": True, "scope": "local-listener-failed"}
-        detail = {}
+        detail: dict[str, object] = {}
         try:
             probe(self.config, host="10.250.0.2", source=("10.250.0.40", 0), detail=detail)
             return {
@@ -190,7 +217,7 @@ class Controller:
                 "upstream_probe": detail,
             }
 
-    def prerequisites(self):
+    def prerequisites(self) -> None:
         assert (
             hashlib.sha256(pathlib.Path("/usr/local/libexec/xray-transit").read_bytes()).hexdigest()
             == self.config["binary_sha256"]
@@ -200,12 +227,12 @@ class Controller:
         r = run(["ip", "route", "get", "10.250.0.2"]).stdout
         assert "dev wg-socrat" in r and "src 10.250.0.40" in r
 
-    def activate(self, reason):
+    def activate(self, reason: str) -> None:
         assert self.state["mode"] != "native-primary", (
             "Native primary cannot be reactivated as fallback"
         )
         self.prerequisites()
-        processes = []
+        processes: list[dict[str, object]] = []
         try:
             processes = pod_processes()
         except (RuntimeError, subprocess.TimeoutExpired):
@@ -240,7 +267,7 @@ class Controller:
         self.save(mode="native", failures=0, healthy=True)
         self.receipt("native-accepted", reason=reason, owned_containers_fenced=len(unique))
 
-    def promote(self):
+    def promote(self) -> None:
         """Explicitly accept a healthy fenced native relay as the permanent primary."""
         self.prerequisites()
         assert self.marker.exists() and self.state["mode"] == "native"
@@ -248,7 +275,7 @@ class Controller:
         self.save(mode="native-primary", failures=0, healthy=True)
         self.receipt("native-primary-accepted")
 
-    def demote(self):
+    def demote(self) -> None:
         """Explicit rollback preparation; never starts a worker or releases its fence."""
         self.prerequisites()
         assert self.marker.exists() and self.state["mode"] == "native-primary"
@@ -256,7 +283,7 @@ class Controller:
         self.save(mode="native", failures=0, healthy=True)
         self.receipt("native-primary-demoted")
 
-    def failback(self):
+    def failback(self) -> None:
         self.prerequisites()
         assert self.marker.exists() and self.state["mode"] == "native"
         self.save(mode="transition-to-kubernetes", healthy=False)
@@ -283,7 +310,7 @@ class Controller:
             self.activate("failback failed; native rollback")
             raise
 
-    def tick(self):
+    def tick(self) -> None:
         if self.state["mode"] == "prepared":
             return
         if self.marker.exists():
@@ -306,12 +333,12 @@ class Controller:
         if self.state.get("boot_id") != boot:
             self.save(boot_id=boot, grace_until=time.time() + 120, healthy=False, failures=0)
         ok = self.healthy()
-        if not ok and time.time() < self.state.get("grace_until", 0):
+        if not ok and time.time() < persistent_number(self.state.get("grace_until", 0)):
             self.save(healthy=False, last_probe=getattr(self, "last_probe", {}))
             return
         if ok:
             self.save(grace_until=0)
-        n = 0 if ok else self.state.get("failures", 0) + 1
+        n = 0 if ok else int(persistent_number(self.state.get("failures", 0))) + 1
         self.save(healthy=ok, failures=min(n, 4), last_probe=getattr(self, "last_probe", {}))
         if ok:
             if self.state.get("failure_scope"):
@@ -326,7 +353,7 @@ class Controller:
             if diagnosis["recover_local"]:
                 self.activate("four data-path failures; " + diagnosis["scope"])
 
-    def status(self):
+    def status(self) -> dict[str, object]:
         return {
             **self.state,
             "native_active": active(NATIVE),
@@ -336,7 +363,7 @@ class Controller:
         }
 
 
-def main():
+def main() -> None:
     os.umask(0o077)
     ROOT.mkdir(mode=0o700, parents=True, exist_ok=True)
     p = argparse.ArgumentParser()

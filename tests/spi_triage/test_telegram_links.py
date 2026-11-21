@@ -2,11 +2,12 @@ import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
+from types import ModuleType
 
 FILES = Path(__file__).resolve().parents[2] / "charts/spi-triage/files"
 
 
-def load(name):
+def load(name: str) -> ModuleType:
     spec = importlib.util.spec_from_file_location(name, FILES / (name + ".py"))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -17,13 +18,13 @@ core, links = load("core"), load("telegram_links")
 
 
 class OutboxTest(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.store = core.Store(Path(self.tmp.name) / "db")
         self.now = 1000
-        self.calls = []
-        self.item = dict(
+        self.calls: list[tuple[str, str, dict[str, object]]] = []
+        self.item: dict[str, object] = dict(
             link_protocol=1,
             episode="e",
             generation=1,
@@ -42,13 +43,13 @@ class OutboxTest(unittest.TestCase):
             self.store, self.http, clock=lambda: self.now, guarded_protocol=True
         )
 
-    def http(self, method, path, **kwargs):
+    def http(self, method: str, path: str, **kwargs: object) -> tuple[int, dict[str, object]]:
         self.calls.append((method, path, kwargs))
         return self.status, self.item if method == "GET" else dict(
             key="Alert/pod/ns/name", updated=[dict(chat_id=1, message_id=2)], pending=[]
         )
 
-    def publication(self, **changes):
+    def publication(self, **changes: str | int) -> dict[str, object]:
         return dict(
             dict(
                 kind="comment",
@@ -60,10 +61,10 @@ class OutboxTest(unittest.TestCase):
             **changes,
         )
 
-    def enqueue(self):
+    def enqueue(self) -> None:
         self.outbox.record_primary_publication("event", "e", 1, self.publication())
 
-    def receipt(self):
+    def receipt(self) -> None:
         self.outbox.record_card_receipt(
             "e",
             dict(
@@ -74,11 +75,11 @@ class OutboxTest(unittest.TestCase):
             ),
         )
 
-    def retry(self):
+    def retry(self) -> None:
         self.now += 4000
         self.outbox.once()
 
-    def test_duplicate_and_all_copy_ack(self):
+    def test_duplicate_and_all_copy_ack(self) -> None:
         self.enqueue()
         self.enqueue()
         self.receipt()
@@ -87,7 +88,7 @@ class OutboxTest(unittest.TestCase):
         self.assertFalse(self.outbox.once())
         self.assertEqual(len(self.calls), 1)
 
-    def test_publication_before_card(self):
+    def test_publication_before_card(self) -> None:
         self.enqueue()
         self.outbox.once()
         self.assertEqual(self.outbox.snapshot("e")["error"], "WAIT_RECEIPT")
@@ -95,7 +96,7 @@ class OutboxTest(unittest.TestCase):
         self.outbox.once()
         self.assertEqual(self.outbox.snapshot("e")["state"], "applied")
 
-    def test_races_and_restart(self):
+    def test_races_and_restart(self) -> None:
         self.enqueue()
         self.receipt()
         for status in (404, 409, 500):
@@ -109,7 +110,7 @@ class OutboxTest(unittest.TestCase):
         self.retry()
         self.assertEqual(self.outbox.snapshot("e")["state"], "applied")
 
-    def test_partial_readback_not_desired_state(self):
+    def test_partial_readback_not_desired_state(self) -> None:
         self.enqueue()
         self.receipt()
         self.outbox.request = lambda *a, **kw: (
@@ -127,11 +128,11 @@ class OutboxTest(unittest.TestCase):
         self.retry()
         self.assertEqual(self.outbox.snapshot("e")["state"], "applied")
 
-    def test_timeout_secret_safe(self):
+    def test_timeout_secret_safe(self) -> None:
         self.enqueue()
         self.receipt()
 
-        def fail(*a, **kw):
+        def fail(*a, **kw) -> None:
             raise TimeoutError("X-Internal-Token: secret-value")
 
         self.outbox.request = fail
@@ -139,7 +140,7 @@ class OutboxTest(unittest.TestCase):
         self.assertEqual(self.outbox.snapshot("e")["error"], "DELIVERY_UNKNOWN")
         self.assertNotIn("secret-value", str(self.outbox.snapshot("e")))
 
-    def test_lease_recovery(self):
+    def test_lease_recovery(self) -> None:
         self.enqueue()
         self.receipt()
         with self.store.db() as c:
@@ -148,7 +149,7 @@ class OutboxTest(unittest.TestCase):
         self.retry()
         self.assertEqual(self.outbox.snapshot("e")["state"], "applied")
 
-    def test_episode_and_stale_revision(self):
+    def test_episode_and_stale_revision(self) -> None:
         self.enqueue()
         self.outbox.record_card_receipt(
             "e", dict(key="legacy", copies=[dict(chat_id=1, message_id=2)])
@@ -167,12 +168,12 @@ class OutboxTest(unittest.TestCase):
         self.enqueue()
         self.assertEqual(self.outbox.snapshot("e")["revision"], 2)
 
-    def test_out_of_order_completion_cannot_ack_new_revision(self):
+    def test_out_of_order_completion_cannot_ack_new_revision(self) -> None:
         self.enqueue()
         self.receipt()
         original = self.http
 
-        def racing(method, path, **kwargs):
+        def racing(method, path, **kwargs) -> tuple[int, dict[str, object]]:
             if method == "POST":
                 self.outbox.record_primary_publication(
                     "resolved",
@@ -183,14 +184,15 @@ class OutboxTest(unittest.TestCase):
                         html_url="https://github.com/alchemmist/homelab/issues/42#issuecomment-8",
                     ),
                 )
-            return original(method, path, **kwargs)
+            response: tuple[int, dict[str, object]] = original(method, path, **kwargs)
+            return response
 
         self.outbox.request = racing
         self.outbox.once()
         self.assertEqual(self.outbox.snapshot("e")["state"], "pending")
         self.assertEqual(self.outbox.snapshot("e")["revision"], 2)
 
-    def test_legacy_bot_blocked(self):
+    def test_legacy_bot_blocked(self) -> None:
         self.enqueue()
         self.receipt()
         self.outbox.guarded = False
@@ -198,7 +200,7 @@ class OutboxTest(unittest.TestCase):
         self.assertEqual(self.calls, [])
         self.assertEqual(self.outbox.snapshot("e")["error"], "BOT_GUARD_REQUIRED")
 
-    def test_urls(self):
+    def test_urls(self) -> None:
         self.assertEqual(
             links.primary_url(
                 self.publication(
@@ -207,17 +209,18 @@ class OutboxTest(unittest.TestCase):
             ),
             "https://github.com/alchemmist/homelab/issues/42",
         )
-        for changes in [
+        change_sets: list[dict[str, str | int]] = [
             dict(role="artifact"),
             dict(html_url="https://github.com/alchemmist/homelab/issues/42"),
             dict(html_url="https://evil/issues/42#issuecomment-7"),
             dict(id=8),
-            dict(html_url=self.publication()["html_url"] + "?token=x"),
-        ]:
+            dict(html_url=f"{self.publication()['html_url']}?token=x"),
+        ]
+        for changes in change_sets:
             with self.assertRaises(ValueError):
                 links.primary_url(self.publication(**changes))
 
-    def test_atomic_rollback(self):
+    def test_atomic_rollback(self) -> None:
         with self.assertRaises(RuntimeError):
             with self.store.db() as c:
                 self.outbox.record_primary_publication(

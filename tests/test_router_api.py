@@ -17,7 +17,13 @@ ROUTER = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(ROUTER)
 
 
-def forward(address, local_port, external_port, protocol, comment):
+def _mapping(value: object) -> dict[str, object]:
+    """Narrow decoded router responses to a mapping-shaped view."""
+    assert isinstance(value, dict)
+    return value
+
+
+def forward(address, local_port, external_port, protocol, comment) -> dict[str, str]:
     return dict(
         zip(
             ROUTER.FIELDS,
@@ -35,7 +41,7 @@ def forward(address, local_port, external_port, protocol, comment):
     )
 
 
-def existing_forwards():
+def existing_forwards() -> list[dict[str, str]]:
     return [
         forward("192.168.0.23", 80, 80, "TCP", "socrat-http"),
         forward("192.168.0.23", 443, 443, "TCP", "socrat-https"),
@@ -52,11 +58,11 @@ def existing_forwards():
 class SimulatedRouter(ROUTER.Router):
     def __init__(self, rows=None, fail_add_port=None) -> None:
         self.rows = copy.deepcopy(existing_forwards() if rows is None else rows)
-        self.mutations: list[dict[str, object]] = []
+        self.mutations: list[dict[str, str]] = []
         self.fail_add_port = fail_add_port
         self.failed = False
 
-    def request(self, path, data=None):
+    def request(self, path, data=None) -> str:
         if data is None:
             if path != "/portfw.htm":
                 raise AssertionError(path)
@@ -104,7 +110,7 @@ class SimulatedRouter(ROUTER.Router):
 
 
 class RouterApiTests(unittest.TestCase):
-    def run_main(self, router, *arguments):
+    def run_main(self, router, *arguments) -> dict[str, object]:
         output = io.StringIO()
         with (
             patch.object(ROUTER, "Router", return_value=router),
@@ -114,14 +120,14 @@ class RouterApiTests(unittest.TestCase):
             redirect_stdout(output),
         ):
             ROUTER.main()
-        return json.loads(output.getvalue())
+        return _mapping(json.loads(output.getvalue()))
 
-    def apply(self, router):
+    def apply(self, router) -> dict[str, object]:
         return self.run_main(
             router, "--apply", "--expected-old", "192.168.0.23", "--destination", "192.168.0.250"
         )
 
-    def test_only_web_forwards_move_and_seven_unrelated_forwards_survive(self):
+    def test_only_web_forwards_move_and_seven_unrelated_forwards_survive(self) -> None:
         router = SimulatedRouter()
         original = copy.deepcopy(router.rows)
         result = self.apply(router)
@@ -135,7 +141,7 @@ class RouterApiTests(unittest.TestCase):
         self.assertEqual(len(router.mutations), 4)
         self.assertTrue(all("deleteAllPortFw" not in request for request in router.mutations))
 
-    def test_second_add_failure_restores_both_original_web_forwards(self):
+    def test_second_add_failure_restores_both_original_web_forwards(self) -> None:
         router = SimulatedRouter(fail_add_port="443")
         original = copy.deepcopy(router.rows)
         with self.assertRaisesRegex(OSError, "Simulated target add failure"):
@@ -143,7 +149,7 @@ class RouterApiTests(unittest.TestCase):
         self.assertEqual(ROUTER.canonical(router.rows), ROUTER.canonical(original))
         self.assertTrue(router.failed)
 
-    def test_concurrent_unrelated_insert_with_shifted_selectors_refuses_mutation(self):
+    def test_concurrent_unrelated_insert_with_shifted_selectors_refuses_mutation(self) -> None:
         router = SimulatedRouter()
         expected = router.forwards()
         router.rows.insert(0, forward("192.168.0.50", 9000, 9000, "TCP", "unrelated"))
@@ -156,7 +162,7 @@ class RouterApiTests(unittest.TestCase):
         self.assertEqual(router.mutations, [])
         self.assertEqual(router.rows, current)
 
-    def test_reordered_unchanged_table_uses_fresh_selector_instead_of_stale_index(self):
+    def test_reordered_unchanged_table_uses_fresh_selector_instead_of_stale_index(self) -> None:
         router = SimulatedRouter()
         expected = router.forwards()
         router.rows.reverse()
@@ -167,14 +173,14 @@ class RouterApiTests(unittest.TestCase):
         self.assertEqual([row["external_port"] for row in changed], ["80"])
         self.assertEqual(len(router.rows), 9)
 
-    def test_unexpected_https_target_refuses_entire_operation_before_http_change(self):
+    def test_unexpected_https_target_refuses_entire_operation_before_http_change(self) -> None:
         router = SimulatedRouter()
         router.rows[1]["ip"] = "192.168.0.99"
         with self.assertRaisesRegex(RuntimeError, "expected old state: 443"):
             self.apply(router)
         self.assertEqual(router.mutations, [])
 
-    def test_already_targeted_router_rejects_stale_expected_old_without_mutation(self):
+    def test_already_targeted_router_rejects_stale_expected_old_without_mutation(self) -> None:
         router = SimulatedRouter()
         for row in router.rows[:2]:
             row["ip"] = "192.168.0.250"
@@ -182,7 +188,7 @@ class RouterApiTests(unittest.TestCase):
             self.apply(router)
         self.assertEqual(router.mutations, [])
 
-    def test_read_only_default_never_mutates_router(self):
+    def test_read_only_default_never_mutates_router(self) -> None:
         router = SimulatedRouter()
         result = self.run_main(router)
         self.assertEqual(
@@ -190,7 +196,7 @@ class RouterApiTests(unittest.TestCase):
         )
         self.assertEqual(router.mutations, [])
 
-    def test_lost_delete_response_restores_original_after_readback(self):
+    def test_lost_delete_response_restores_original_after_readback(self) -> None:
         router = SimulatedRouter()
         request = router.request
         lost = False
@@ -210,7 +216,7 @@ class RouterApiTests(unittest.TestCase):
         self.assertEqual(len(router.mutations), 2)
         self.assertEqual(router.mutations[1]["ip"], "192.168.0.23")
 
-    def test_lost_add_response_is_verified_without_duplicate_add(self):
+    def test_lost_add_response_is_verified_without_duplicate_add(self) -> None:
         router = SimulatedRouter()
         request = router.request
         lost = False
@@ -231,7 +237,7 @@ class RouterApiTests(unittest.TestCase):
         moved = [row for row in router.rows if row["ip"] == "192.168.0.250"]
         self.assertEqual(sorted(row["external_port"] for row in moved), ["443", "80"])
 
-    def test_lost_delete_response_with_unexpected_state_does_not_blindly_restore(self):
+    def test_lost_delete_response_with_unexpected_state_does_not_blindly_restore(self) -> None:
         router = SimulatedRouter()
         request = router.request
 
@@ -249,7 +255,7 @@ class RouterApiTests(unittest.TestCase):
         self.assertTrue(any(row["comment"] == "concurrent" for row in router.rows))
         self.assertFalse(any(row["external_port"] == "80" for row in router.rows))
 
-    def test_malformed_forward_table_is_rejected(self):
+    def test_malformed_forward_table_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "Unexpected router forwarding table format"):
             ROUTER.parse_forwards('<tr><td>192.168.0.23</td><td><input name="select1"></td></tr>')
         with self.assertRaisesRegex(ValueError, "Missing router forwarding table"):
