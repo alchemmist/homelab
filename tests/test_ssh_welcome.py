@@ -18,7 +18,7 @@ SPEC.loader.exec_module(WELCOME)
 class WelcomeTests(unittest.TestCase):
     """Role labels, node links, and rendered text stay bounded and injectable-safe."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.config = dict(
             node="socrat-3",
             labels={},
