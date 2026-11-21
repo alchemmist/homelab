@@ -33,7 +33,7 @@ def _run(args, timeout):
     return subprocess.run(args, capture_output=True, text=True, timeout=timeout)
 
 
-def remove_container(container_id, expected):
+def remove_container(container_id, expected) -> None:
     if not container_id or any(part in container_id for part in ("/", "..", " ")):
         raise ValueError("refusing to clean an unsafe container id")
     inspection = _run(["docker", "inspect", container_id], 15)
@@ -57,7 +57,7 @@ def remove_container(container_id, expected):
         raise ValueError("container removal failed: " + detail)
 
 
-def remove_volume(volume, expected):
+def remove_volume(volume, expected) -> None:
     if not volume.startswith("venice-lab-") or any(part in volume for part in ("/", " ")):
         raise ValueError("refusing to clean an unrelated volume")
     inspection = _run(["docker", "volume", "inspect", volume], 15)
@@ -76,7 +76,7 @@ def remove_volume(volume, expected):
         raise ValueError("volume removal failed: " + detail)
 
 
-def cleanup_role(root):
+def cleanup_role(root) -> None:
     root = pathlib.Path(root)
     expected = str(root.resolve())
     errors = []

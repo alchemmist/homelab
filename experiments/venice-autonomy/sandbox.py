@@ -18,7 +18,7 @@ MAX_FILE = 65536
 MAX_OUTPUT = 24000
 
 
-def bounded_process(args, limit, timeout=55, input_bytes=None):
+def bounded_process(args, limit, timeout=55, input_bytes=None) -> tuple[int, bytes]:
     source = None
     try:
         if input_bytes is not None:
@@ -78,8 +78,8 @@ def _raw_member_name(data, offset):
     return prefix + "/" + name if prefix else name
 
 
-def inspect_archive(data):
-    result = {}
+def inspect_archive(data) -> dict[str, str]:
+    result: dict[str, str] = {}
     try:
         archive = tarfile.open(fileobj=io.BytesIO(data), mode="r:*")
     except (tarfile.ReadError, OSError, EOFError) as exc:
@@ -235,7 +235,7 @@ class Sandbox:
             self.close()
             raise
 
-    def inspect_security(self):
+    def inspect_security(self) -> dict[str, object]:
         info = json.loads(
             subprocess.check_output(["docker", "inspect", self.container_id], timeout=15)
         )[0]
@@ -291,7 +291,7 @@ class Sandbox:
             raise ValueError("sandbox security preflight failed")
         return result
 
-    def execute(self, action, input_bytes=None, **kwargs):
+    def execute(self, action, input_bytes=None, **kwargs) -> dict[str, object]:
         command = action["command"]
         wrapped = (
             "timeout -k 2 40 bash -lc "
@@ -318,7 +318,7 @@ class Sandbox:
             stream.write(json.dumps(event) + "\n")
         return {"returncode": code, "output": text, "exception_info": None}
 
-    def snapshot(self):
+    def snapshot(self) -> dict[str, str]:
         subprocess.run(
             ["docker", "pause", self.container_id], capture_output=True, check=True, timeout=15
         )
@@ -329,17 +329,17 @@ class Sandbox:
             raise ValueError("workspace snapshot failed")
         return inspect_archive(data)
 
-    def get_template_vars(self):
+    def get_template_vars(self) -> dict[str, object]:
         return {"cwd": "/workspace", **self.config}
 
-    def serialize(self):
+    def serialize(self) -> dict[str, object]:
         return {"info": {"environment": self.config, "security": self.security}}
 
-    def close(self):
+    def close(self) -> None:
         import owned_resources
 
         expected = str(self.directory.resolve())
-        errors = []
+        errors: list[str] = []
         if self.container_id:
             try:
                 owned_resources.remove_container(self.container_id, expected)

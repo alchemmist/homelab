@@ -1,53 +1,84 @@
 #!/usr/bin/env python3
 """Read-only PV/mount inventory. Never creates pods, reads datasets or uses sudo."""
+
 import argparse
 import datetime
 import json
 import subprocess
+from typing import cast
 
 
-def run(args, **kwargs):
-    return subprocess.run(args, text=True, capture_output=True, timeout=120, **kwargs)
+def run(args, **kwargs) -> subprocess.CompletedProcess[str]:
+    result: subprocess.CompletedProcess[str] = subprocess.run(
+        args, text=True, capture_output=True, timeout=120, **kwargs
+    )
+    return result
 
 
-def kub(resource):
-    result = run(['kubectl', 'get', resource, '-A', '-o', 'json'])
+def kub(resource) -> list[dict[str, object]]:
+    result = run(["kubectl", "get", resource, "-A", "-o", "json"])
     result.check_returncode()
-    return json.loads(result.stdout)['items']
+    items: list[dict[str, object]] = json.loads(result.stdout)["items"]
+    return items
 
 
-def inventory(pvs, pods):
-    rows = []
+def inventory(pvs, pods) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
     for pv in pvs:
-        spec = pv['spec']
-        claim = spec.get('claimRef', {})
+        spec = pv["spec"]
+        claim = spec.get("claimRef", {})
         consumers = []
         for pod in pods:
-            if pod['metadata']['namespace'] != claim.get('namespace'):
+            if pod["metadata"]["namespace"] != claim.get("namespace"):
                 continue
-            if any(v.get('persistentVolumeClaim', {}).get('claimName') == claim.get('name')
-                   for v in pod['spec'].get('volumes', [])):
-                consumers.append({'pod': pod['metadata']['name'], 'node': pod['spec'].get('nodeName')})
-        terms = spec.get('nodeAffinity', {}).get('required', {}).get('nodeSelectorTerms', [])
-        nodes = sorted({n for term in terms for e in term.get('matchExpressions', [])
-                        if e['key'] == 'kubernetes.io/hostname' and e['operator'] == 'In'
-                        for n in e['values']})
-        backend = spec.get('local') or spec.get('hostPath') or spec.get('nfs') or {}
-        rows.append({'pv': pv['metadata']['name'], 'claim': claim, 'phase': pv.get('status', {}).get('phase'),
-                     'class': spec.get('storageClassName', ''), 'requested_capacity': spec['capacity'],
-                     'reclaim': spec['persistentVolumeReclaimPolicy'], 'nodes': nodes,
-                     'backend': backend, 'consumers': consumers})
+            if any(
+                v.get("persistentVolumeClaim", {}).get("claimName") == claim.get("name")
+                for v in pod["spec"].get("volumes", [])
+            ):
+                consumers.append(
+                    {"pod": pod["metadata"]["name"], "node": pod["spec"].get("nodeName")}
+                )
+        terms = spec.get("nodeAffinity", {}).get("required", {}).get("nodeSelectorTerms", [])
+        nodes = sorted(
+            {
+                n
+                for term in terms
+                for e in term.get("matchExpressions", [])
+                if e["key"] == "kubernetes.io/hostname" and e["operator"] == "In"
+                for n in e["values"]
+            }
+        )
+        backend = spec.get("local") or spec.get("hostPath") or spec.get("nfs") or {}
+        rows.append(
+            {
+                "pv": pv["metadata"]["name"],
+                "claim": claim,
+                "phase": pv.get("status", {}).get("phase"),
+                "class": spec.get("storageClassName", ""),
+                "requested_capacity": spec["capacity"],
+                "reclaim": spec["persistentVolumeReclaimPolicy"],
+                "nodes": nodes,
+                "backend": backend,
+                "consumers": consumers,
+            }
+        )
     return rows
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(__doc__)
-    parser.add_argument('--node', default='socrat-5', choices=[f'socrat-{i}' for i in range(6)])
+    parser.add_argument("--node", default="socrat-5", choices=[f"socrat-{i}" for i in range(6)])
     args = parser.parse_args()
-    rows = inventory(kub('pv'), kub('pods'))
-    paths = sorted({r['backend']['path'] for r in rows if args.node in r['nodes'] and 'path' in r['backend']})
+    rows = inventory(kub("pv"), kub("pods"))
+    mounted = {
+        cast("str", cast("dict[str, object]", r["backend"])["path"])
+        for r in rows
+        if "path" in cast("dict[str, object]", r["backend"])
+        and args.node in cast("list[str]", r["nodes"])
+    }
+    paths = sorted(mounted)
     # Fixed remote program; paths travel as JSON on stdin, never interpolated into shell.
-    remote = '''import json,sys,subprocess,os
+    remote = """import json,sys,subprocess,os
 paths=json.load(sys.stdin)
 mounts=subprocess.run(['findmnt','-rn','-o','TARGET,SOURCE,FSTYPE'],text=True,capture_output=True,check=True).stdout.splitlines()
 mounts=[dict(zip(['target','source','fstype'],line.split())) for line in mounts if len(line.split())==3]
@@ -62,16 +93,50 @@ for path in paths:
   s=os.statvfs(path);item['filesystem']={'capacity_bytes':s.f_blocks*s.f_frsize,'available_bytes':s.f_bavail*s.f_frsize,'inodes':s.f_files,'inodes_free':s.f_favail}
  except OSError as e:item['stat_error']=str(e)
  out.append(item)
-print(json.dumps(out))'''
-    result = run(['ssh', '-o', 'BatchMode=yes', args.node, 'python3 -c ' + __import__('shlex').quote(remote)],
-                 input=json.dumps(sorted(set(paths + ['/', '/mnt/files', '/var/lib/rancher/k3s', '/var/lib/containerd', '/var/log', '/home']))))
+print(json.dumps(out))"""
+    result = run(
+        [
+            "ssh",
+            "-o",
+            "BatchMode=yes",
+            args.node,
+            "python3 -c " + __import__("shlex").quote(remote),
+        ],
+        input=json.dumps(
+            sorted(
+                set(
+                    paths
+                    + [
+                        "/",
+                        "/mnt/files",
+                        "/var/lib/rancher/k3s",
+                        "/var/lib/containerd",
+                        "/var/log",
+                        "/home",
+                    ]
+                )
+            )
+        ),
+    )
     result.check_returncode()
-    print(json.dumps({'observed_at': datetime.datetime.now(datetime.UTC).isoformat(), 'node': args.node,
-                      'pvs': rows, 'mount_inspection': json.loads(result.stdout),
-                      'storage_classes': kub('storageclasses'),
-                      'limitations': ['du failures are unknown, never zero', 'PVC capacity is not a directory quota',
-                                      'No dataset contents read; root-only disk usage requires operator measurement']}, indent=2))
+    print(
+        json.dumps(
+            {
+                "observed_at": datetime.datetime.now(datetime.UTC).isoformat(),
+                "node": args.node,
+                "pvs": rows,
+                "mount_inspection": json.loads(result.stdout),
+                "storage_classes": kub("storageclasses"),
+                "limitations": [
+                    "du failures are unknown, never zero",
+                    "PVC capacity is not a directory quota",
+                    "No dataset contents read; root-only disk usage requires operator measurement",
+                ],
+            },
+            indent=2,
+        )
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

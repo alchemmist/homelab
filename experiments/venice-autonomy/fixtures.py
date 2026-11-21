@@ -4,6 +4,7 @@ import json
 import random
 import secrets
 import shlex
+from typing import cast
 
 FIXTURES = {
     "median": {
@@ -24,7 +25,7 @@ FIXTURES = {
 }
 
 
-def expected(task, args):
+def expected(task, args) -> dict[str, object]:
     if task == "median":
         values = sorted(args[0])
         if not values:
@@ -41,7 +42,7 @@ def expected(task, args):
     return {"value": value}
 
 
-def fixture_files(task):
+def fixture_files(task) -> dict[str, object]:
     definition = FIXTURES[task]
     tests = "const a=require('node:assert/strict');const {solve}=require('./lib.cjs');\n"
     for args in definition["visible"]:
@@ -56,10 +57,11 @@ def fixture_files(task):
     return {"lib.cjs": definition["source"], "test.cjs": tests}
 
 
-def task_prompt(task):
+def task_prompt(task) -> str:
+    contract = cast("str", FIXTURES[task]["contract"])
     return (
         "Find and fix bugs in lib.cjs, exported function solve. Contract: "
-        + FIXTURES[task]["contract"]
+        + contract
         + " Work at /workspace. Edit only lib.cjs; never change test.cjs or leave extra files. "
         "Do not add comments. Node and bash are installed. No installations, network, git, credentials, host access or user input. "
         "Inspect actual files, execute a failing reproduction, implement a minimal fix, run actual tests. "
@@ -69,7 +71,7 @@ def task_prompt(task):
     )
 
 
-def cases_for(task, seed):
+def cases_for(task, seed) -> list[object]:
     rng = random.Random(seed)
     if task == "median":
         cases = [[[]], [[1]], [[10, 2, 1]], [[1, 2]], [[-1, -4, -2, -3]]]
@@ -77,13 +79,19 @@ def cases_for(task, seed):
             [[rng.randint(-1000, 1000) for _ in range(rng.randint(1, 16))]] for _ in range(60)
         ]
     elif task == "clamp":
-        cases = [[-1, 0, 3], [5, -3, 0], [1, 2, -2], [0, 0, 0]]
+        cases = cast(
+            "list[object]",
+            [[-1, 0, 3], [5, -3, 0], [1, 2, -2], [0, 0, 0]],
+        )
         cases += [
             [rng.randint(-100, 100), rng.randint(-100, 100), rng.randint(-100, 100)]
             for _ in range(60)
         ]
     else:
-        cases = [[""], ['<a title="x">&\'</a>'], ["&lt;"], ["plain text"], ["<&>"]]
+        cases = cast(
+            "list[object]",
+            [[""], ['<a title="x">&\'</a>'], ["&lt;"], ["plain text"], ["<&>"]],
+        )
         alphabet = "abc xyz<&>'\"é\n"
         cases += [
             ["".join(rng.choice(alphabet) for _ in range(rng.randint(1, 60)))] for _ in range(60)
@@ -179,15 +187,15 @@ process.stdout.write(JSON.stringify({results}));
 """
 
 
-def verifier_command(task, seed):
+def verifier_command(task, seed) -> tuple[str, str, list[object]]:
     cases = cases_for(task, seed)
     nonce = secrets.token_hex(16)
     return "node -e " + shlex.quote(VERIFIER_SCRIPT), nonce, cases
 
 
-def seal_execution(nonce, result):
+def seal_execution(nonce, result) -> object:
     if not isinstance(result, dict):
-        return result
+        return cast("object", result)
     sealed = dict(result)
     try:
         data = json.loads(result.get("output"))
@@ -200,7 +208,7 @@ def seal_execution(nonce, result):
     return sealed
 
 
-def check_verdict(task, nonce, cases, result):
+def check_verdict(task, nonce, cases, result) -> dict[str, object]:
     if not isinstance(result, dict):
         return {"accepted": False, "reason": "missing or invalid verifier output"}
     code = result.get("returncode")

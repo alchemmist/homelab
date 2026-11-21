@@ -4,12 +4,13 @@ import json
 import os
 import urllib.request
 from pathlib import Path
+from typing import cast
 
 from engine import UnsafeInput, prepare, render, validate_decision, validate_event
 from github import GitHub
 
 
-def context_for(event, github):
+def context_for(event, github) -> tuple[dict[str, object], dict[str, object], str] | None:
     if not validate_event(event):
         return None
     comparison = github.compare(event["before"], event["after"])
@@ -18,7 +19,7 @@ def context_for(event, github):
     return (context, comparison, updates) if context else None
 
 
-def model(system, data):
+def model(system, data) -> object:
     req = urllib.request.Request(
         "http://litellm.llm.svc.cluster.local:4000/v1/chat/completions",
         data=json.dumps(
@@ -72,20 +73,24 @@ def model(system, data):
         },
     )
     with urllib.request.urlopen(req, timeout=360) as r:
-        return json.loads(json.load(r)["choices"][0]["message"]["content"])
+        return cast(
+            "dict[str, object]",
+            json.loads(json.load(r)["choices"][0]["message"]["content"]),
+        )
 
 
-def checked_model(call_model, prompt, data, context):
+def checked_model(call_model, prompt, data, context) -> dict[str, object]:
     for attempt in range(2):
         try:
-            return validate_decision(call_model(prompt, data), context)
+            return cast("dict[str, object]", validate_decision(call_model(prompt, data), context))
         except (UnsafeInput, json.JSONDecodeError):
             if attempt:
                 raise UnsafeInput("Model response failed validation after two attempts") from None
             prompt += "\nPrevious response failed validation. Return only the exact JSON schema, plain text without URLs or Markdown, and supplied changed file paths."
+    raise UnsafeInput("Model response failed validation after two attempts") from None
 
 
-def stage(name, payload, github=None, call_model=None, write=False):
+def stage(name, payload, github=None, call_model=None, write=False) -> list[dict[str, object]]:
     github = github or GitHub(os.environ["GITHUB_TOKEN"])
     call_model = call_model or model
     event = payload if name == "validate" else payload["event"]
@@ -107,8 +112,10 @@ def stage(name, payload, github=None, call_model=None, write=False):
         decision = checked_model(
             call_model, prompt, {"context": context, "selected": selection}, context
         )
-        allowed = {p for e in selection["entries"] for p in e["source_paths"]}
-        if any(p not in allowed for e in decision["entries"] for p in e["source_paths"]):
+        selected = cast("list[dict[str, object]]", selection["entries"])
+        generated = cast("list[dict[str, object]]", decision["entries"])
+        allowed = {p for e in selected for p in cast("list[str]", e["source_paths"])}
+        if any(p not in allowed for e in generated for p in cast("list[str]", e["source_paths"])):
             raise UnsafeInput("Generation introduced an unselected source")
         return [{"event": event, "decision": decision}] if decision["should_update"] else []
     if name != "create-pr":
@@ -116,10 +123,19 @@ def stage(name, payload, github=None, call_model=None, write=False):
     decision = validate_decision(payload["decision"], context)
     if not decision["should_update"]:
         return []
-    head = next((c for c in comparison["commits"] if c["sha"] == event["after"]), None)
+    head = next(
+        (
+            c
+            for c in cast("list[dict[str, object]]", comparison["commits"])
+            if c["sha"] == event["after"]
+        ),
+        None,
+    )
     if not head:
         raise UnsafeInput("Missing head commit")
-    content = render(updates, decision["entries"], head["commit"]["committer"]["date"])
+    commit = cast("dict[str, object]", head["commit"])
+    committer = cast("dict[str, object]", commit["committer"])
+    content = render(updates, decision["entries"], cast("str", committer["date"]))
     if content == updates:
         return [{"status": "no_change"}]
     if not write:

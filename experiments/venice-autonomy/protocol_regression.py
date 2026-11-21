@@ -9,8 +9,8 @@ import json
 import os
 import re
 import selectors
-import signal
 import shutil
+import signal
 import subprocess
 import sys
 import tarfile
@@ -18,6 +18,7 @@ import tempfile
 import time
 import uuid
 from pathlib import Path
+from typing import cast
 
 SOURCE_COMMIT = "d2b324b30a0c11fe7599368bc11269b53dd34484"
 GRADER_COMMIT = "85437b7ab921b8f2a099bed6e648ccec9ab2d35e"
@@ -226,7 +227,7 @@ def export_snapshot(repo: Path, dest: Path) -> dict:
 
 
 def load_manifest(snapshot: Path) -> dict:
-    return json.loads((snapshot / "manifest.json").read_text(encoding="utf-8"))
+    return cast(dict, json.loads((snapshot / "manifest.json").read_text(encoding="utf-8")))
 
 
 def verify_snapshot(snapshot: Path) -> dict:
@@ -270,7 +271,9 @@ def clean_env(agent: Path, home: Path, rejection: Path) -> dict[str, str]:
     }
 
 
-def bounded_test_process(args, cwd=None, env=None, timeout=120, limit=131072):
+def bounded_test_process(
+    args, cwd=None, env=None, timeout=120, limit=131072
+) -> subprocess.CompletedProcess[str]:
     process = subprocess.Popen(
         args,
         cwd=cwd,
@@ -315,7 +318,7 @@ def bounded_test_process(args, cwd=None, env=None, timeout=120, limit=131072):
         process.stderr.close()
 
 
-def test_completed(exit_code, stderr):
+def test_completed(exit_code, stderr) -> bool:
     return (
         exit_code == 0
         and re.search(r"(?m)^Ran 1 test in [0-9.]+s$", stderr) is not None

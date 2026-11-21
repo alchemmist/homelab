@@ -6,12 +6,13 @@ import json
 import os
 import urllib.request
 from pathlib import Path
+from typing import cast
 
 from engine import prepare, render, validate_decision, validate_event
 from github import GitHub
 
 
-def run(event, github, llm_url, llm_key, write=False):
+def run(event, github, llm_url, llm_key, write=False) -> dict[str, object]:
     if not validate_event(event):
         return {"status": "ignored"}
     compare = github.compare(event["before"], event["after"])
@@ -47,14 +48,17 @@ def run(event, github, llm_url, llm_key, write=False):
     if not decision["should_update"]:
         return {"status": "skipped", "decision": decision}
     # Use the analyzed head commit's timestamp, never the model's invented date.
-    commits = compare.get("commits", [])
+    commits = cast("list[dict[str, object]]", compare.get("commits", []))
     head = next((c for c in commits if c["sha"] == event["after"]), None)
     if not head:
         raise ValueError("Missing head commit metadata")
-    content = render(updates, decision["entries"], head["commit"]["committer"]["date"])
+    commit = cast("dict[str, object]", head["commit"])
+    committer = cast("dict[str, object]", commit["committer"])
+    content = render(updates, decision["entries"], cast("str", committer["date"]))
     if not write:
         return {"status": "dry_run", "decision": decision, "proposed_updates": content}
-    return github.propose(event["after"], content, decision["reason"])
+    outcome: dict[str, object] = github.propose(event["after"], content, decision["reason"])
+    return outcome
 
 
 if __name__ == "__main__":

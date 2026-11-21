@@ -18,8 +18,9 @@ p.add_argument("--model", default="qwen3.8-27b")
 a = p.parse_args()
 
 
-def gh(path):
-    return json.loads(subprocess.check_output(["gh", "api", path], text=True))
+def gh(path) -> object:
+    payload: object = json.loads(subprocess.check_output(["gh", "api", path], text=True))
+    return payload
 
 
 compare = gh(f"repos/{REPO}/compare/{a.before}...{a.after}")

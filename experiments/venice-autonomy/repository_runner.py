@@ -14,11 +14,13 @@ import tarfile
 import time
 import tokenize
 import uuid
+from types import ModuleType
+from typing import cast
 
 from sandbox import bounded_process
 
 
-def require_path(name):
+def require_path(name) -> pathlib.Path:
     value = os.environ.get(name, "").strip()
     if not value:
         raise RuntimeError(name + " is required")
@@ -28,7 +30,7 @@ def require_path(name):
     return path
 
 
-def load_local(name):
+def load_local(name) -> ModuleType:
     path = pathlib.Path(__file__).with_name(name + ".py")
     spec = importlib.util.spec_from_file_location("venice_autonomy_" + name, path)
     module = importlib.util.module_from_spec(spec)
@@ -37,7 +39,7 @@ def load_local(name):
     return module
 
 
-def load_protocol():
+def load_protocol() -> ModuleType:
     root = require_path("AUTONOMY_PROTOCOL_ROOT")
     local = str(pathlib.Path(__file__).resolve().parent)
     sys.path.insert(0, str(root))
@@ -47,8 +49,10 @@ def load_protocol():
     return protocol_regression
 
 
-def invoke_openhands(attempt_module, environment, directory, prompt, base_url, key, acceptance):
-    return attempt_module.run_openhands(
+def invoke_openhands(
+    attempt_module, environment, directory, prompt, base_url, key, acceptance
+) -> dict[str, object]:
+    result: dict[str, object] = attempt_module.run_openhands(
         environment,
         directory,
         prompt,
@@ -58,6 +62,7 @@ def invoke_openhands(attempt_module, environment, directory, prompt, base_url, k
         max_iterations=30,
         language="Python",
     )
+    return result
 
 
 class CandidateRejected(ValueError):
@@ -187,13 +192,13 @@ class RepositoryEnvironment:
                     "command": "python -c \"import fastapi,jsonschema,playwright; from pathlib import Path; p=Path('/workspace/.preflight');p.write_text('ok');p.unlink();print('WORKER_READY')\""
                 }
             )
-            if result["returncode"] != 0 or "WORKER_READY" not in result["output"]:
+            if result["returncode"] != 0 or "WORKER_READY" not in cast("str", result["output"]):
                 raise RuntimeError("worker preflight failed")
         except BaseException:
             self.close()
             raise
 
-    def execute(self, action, **kwargs):
+    def execute(self, action, **kwargs) -> dict[str, object]:
         command = action.get("command") if isinstance(action, dict) else None
         if not isinstance(command, str) or len(command.encode()) > 12000:
             raise ValueError("invalid or oversized command")
@@ -214,7 +219,7 @@ class RepositoryEnvironment:
             }
         except (TimeoutError, ValueError) as error:
             result = {"returncode": 125, "output": type(error).__name__, "exception_info": None}
-        raw_output = result["output"]
+        raw_output = cast("str", result["output"])
         if len(raw_output.encode()) > 4000:
             result["output"] = (
                 raw_output.encode()[:4000].decode("utf-8", errors="replace") + "\n[truncated]\n"
@@ -227,7 +232,7 @@ class RepositoryEnvironment:
             stream.write(json.dumps(self.events[-1]) + "\n")
         return result
 
-    def snapshot(self, destination):
+    def snapshot(self, destination) -> None:
         subprocess.run(
             ["docker", "pause", self.container_id], check=True, capture_output=True, timeout=15
         )
@@ -256,7 +261,7 @@ class RepositoryEnvironment:
         for name, data in files.items():
             (destination / name).write_bytes(data)
 
-    def close(self):
+    def close(self) -> None:
         if self.container_id:
             info = json.loads(
                 subprocess.check_output(["docker", "inspect", self.container_id], timeout=15)
@@ -287,7 +292,7 @@ class RepositoryEnvironment:
             self.volume_name = None
 
 
-def comment_delta(snapshot, candidate):
+def comment_delta(snapshot, candidate) -> collections.Counter[str]:
     def comments(path):
         return collections.Counter(
             token.string
@@ -295,10 +300,13 @@ def comment_delta(snapshot, candidate):
             if token.type == tokenize.COMMENT
         )
 
-    return comments(candidate / "main.py") - comments(snapshot / "agent" / "main.py")
+    delta: collections.Counter[str] = comments(candidate / "main.py") - comments(
+        snapshot / "agent" / "main.py"
+    )
+    return delta
 
 
-def artifact_accepted(verdict, snapshot, candidate):
+def artifact_accepted(verdict, snapshot, candidate) -> bool:
     if not isinstance(verdict, dict) or verdict.get("passed") is not True:
         return False
     if verdict.get("agent_protocol_unchanged") is not True:
@@ -314,7 +322,7 @@ def artifact_accepted(verdict, snapshot, candidate):
     return True
 
 
-def overall_success(summary):
+def overall_success(summary) -> bool:
     return (
         summary.get("accepted") is True
         and summary.get("clean_finish") is True
@@ -326,7 +334,7 @@ def overall_success(summary):
     )
 
 
-def apply_continuation_policy(facts, round_number, force_once=False):
+def apply_continuation_policy(facts, round_number, force_once=False) -> dict[str, object]:
     facts["real_accepted"] = facts["accepted"]
     facts["continue"] = (not facts["accepted"]) and facts.get("consecutive_no_progress", 0) < 2
     if force_once and round_number == 0:
@@ -337,10 +345,10 @@ def apply_continuation_policy(facts, round_number, force_once=False):
             "External continuation check only. Keep a correct fix, "
             "do not revert passing code, rerun the read-only reproduction, and finish."
         )
-    return facts
+    return cast("dict[str, object]", facts)
 
 
-def sdk_acceptance(environment, directory, round_number):
+def sdk_acceptance(environment, directory, round_number) -> dict[str, object]:
     protocol = environment.protocol
     snapshot = pathlib.Path(os.environ["AUTONOMY_SNAPSHOT"])
     candidate = directory / ("round-" + str(round_number) + "-candidate")
@@ -419,10 +427,10 @@ def sdk_acceptance(environment, directory, round_number):
     apply_continuation_policy(facts, round_number, os.getenv("AUTONOMY_FORCE_CONTINUE_ONCE") == "1")
     with (directory / "acceptance-rounds.jsonl").open("a") as stream:
         stream.write(json.dumps(facts) + "\n")
-    return facts
+    return cast("dict[str, object]", facts)
 
 
-def task_prompt():
+def task_prompt() -> str:
     prompt = (
         "Fix two real historical regressions in this venice-api snapshot. Work in /workspace. "
         "Python and the required dependencies are installed; there is no network. "
@@ -456,7 +464,7 @@ def task_prompt():
     return prompt
 
 
-def main(argv=None):
+def main(argv=None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check-wiring", action="store_true")
     args = parser.parse_args(argv)
@@ -479,7 +487,7 @@ def main(argv=None):
     image = os.environ.get("AUTONOMY_WORKER_IMAGE", "").strip()
     if not image:
         raise RuntimeError("AUTONOMY_WORKER_IMAGE is required")
-    protocol.PILOT_LABEL = "venice-e2e-run=" + os.environ["AUTONOMY_RUN_NONCE"]
+    setattr(protocol, "PILOT_LABEL", "venice-e2e-run=" + os.environ["AUTONOMY_RUN_NONCE"])
     protocol.verify_snapshot(snapshot)
     attempt = load_local("attempt")
     started = time.time()
@@ -524,7 +532,7 @@ def main(argv=None):
                     "command": "test -r /opt/repro.py && test ! -w /opt/repro.py && sha256sum /opt/repro.py"
                 }
             )
-            if check["returncode"] != 0 or not check["output"].startswith(expected):
+            if check["returncode"] != 0 or not cast("str", check["output"]).startswith(expected):
                 raise RuntimeError("visible reproduction check failed")
             summary["visible_reproducer_sha256"] = expected
         try:

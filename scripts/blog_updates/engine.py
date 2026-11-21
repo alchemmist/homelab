@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime as dt
 import json
 import re
+from typing import cast
 
 REPO = "alchemmist/blog"
 UPDATES = "site/content/updates.md"
@@ -17,7 +18,7 @@ class UnsafeInput(ValueError):
     pass
 
 
-def validate_event(event):
+def validate_event(event) -> bool:
     if event.get("repository", {}).get("full_name") != REPO:
         raise UnsafeInput("Unexpected repository")
     if event.get("ref") != "refs/heads/main" or event.get("deleted"):
@@ -30,7 +31,7 @@ def validate_event(event):
     return True
 
 
-def prepare(compare, updates):
+def prepare(compare, updates) -> dict[str, object] | None:
     files = compare.get("files", [])
     if not files or len(files) > MAX_FILES:
         raise UnsafeInput("Missing or oversized file list; do not silently truncate")
@@ -83,7 +84,7 @@ def prepare(compare, updates):
     return context
 
 
-def validate_decision(raw, context):
+def validate_decision(raw, context) -> dict[str, object]:
     """Model chooses a description, never a path to write or arbitrary Markdown."""
     if not isinstance(raw, dict) or set(raw) != {"should_update", "reason", "entries"}:
         raise UnsafeInput("Unexpected model schema")
@@ -111,10 +112,11 @@ def validate_decision(raw, context):
             or not all(isinstance(p, str) and p in paths for p in sources)
         ):
             raise UnsafeInput("Unsubstantiated entry")
-    return raw
+    validated: dict[str, object] = raw
+    return validated
 
 
-def render(updates, entries, timestamp):
+def render(updates, entries, timestamp) -> str:
     if not updates.startswith("---\n"):
         raise UnsafeInput("Missing front matter")
     end = updates.find("\n---\n", 4)
@@ -131,6 +133,7 @@ def render(updates, entries, timestamp):
     }
     lines = [l for l, e in zip(lines, entries) if e["text"].strip() not in existing]
     if not lines:
-        return updates
+        return cast("str", updates)
     offset = end + len("\n---\n")
-    return updates[:offset] + "\n".join(lines) + "\n" + updates[offset:]
+    content: str = updates[:offset] + "\n".join(lines) + "\n" + updates[offset:]
+    return content

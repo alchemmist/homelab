@@ -7,6 +7,7 @@ import ssl
 import time
 import urllib.error
 import urllib.parse
+from collections.abc import Iterator
 
 
 class DiagnosticFailure(RuntimeError):
@@ -15,7 +16,7 @@ class DiagnosticFailure(RuntimeError):
         self.event = event
 
 
-def classify(error):
+def classify(error) -> dict[str, object]:
     """Never use exception strings, URL, headers, body, subject or request data."""
     if isinstance(error, urllib.error.HTTPError):
         return {"kind": "http_status", "http_status": error.code if 100 <= error.code <= 599 else 0}
@@ -44,7 +45,7 @@ def classify(error):
     return {"kind": "validation_or_internal"}
 
 
-def stage(request):
+def stage(request) -> str:
     # Use only fixed labels, never a logged URL or arbitrary path component.
     path = urllib.parse.urlsplit(request.full_url).path
     if path == "/api/v3/core/groups/":
@@ -68,7 +69,9 @@ class ObservedHTTP:
         self.inner = inner
 
     @contextlib.contextmanager
-    def open(self, request, *args, **kwargs):
+    def open(
+        self, request: urllib.request.Request, *args: object, **kwargs: object
+    ) -> Iterator[object]:
         started = time.monotonic()
         phase = "https_open"
         response = None
@@ -91,7 +94,7 @@ class ObservedHTTP:
                 response.close()
 
 
-def failure_event(error):
+def failure_event(error) -> dict[str, object]:
     # Existing controller deliberately suppresses exception text, but retains
     # context. Find only our bounded metadata; never render underlying context.
     current = error
@@ -101,7 +104,8 @@ def failure_event(error):
             break
         seen.add(id(current))
         if isinstance(current, DiagnosticFailure):
-            return dict(current.event)
+            event: dict[str, object] = dict(current.event)
+            return event
         current = current.__cause__ or current.__context__
     return {
         "event": "observer_reconciliation_failed",
@@ -112,7 +116,7 @@ def failure_event(error):
     }
 
 
-def run(controller):
+def run(controller) -> int:
     original = controller.opener
 
     def observed(*args, **kwargs):

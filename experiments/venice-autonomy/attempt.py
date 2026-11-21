@@ -6,11 +6,11 @@ import pathlib
 import signal
 import time
 
-from fixtures import check_verdict, fixture_files, task_prompt, verifier_command, seal_execution
+from fixtures import check_verdict, fixture_files, seal_execution, task_prompt, verifier_command
 from sandbox import Sandbox
 
 
-def exception_chain(error):
+def exception_chain(error) -> list[dict[str, str]]:
     chain = []
     seen = set()
     current = error
@@ -30,7 +30,7 @@ def exception_chain(error):
     return chain
 
 
-def record_exception(summary, error, key, prefix):
+def record_exception(summary, error, key, prefix) -> list[dict[str, str]]:
     chain = exception_chain(error)
     redacted = []
     for item in chain:
@@ -48,7 +48,7 @@ def record_exception(summary, error, key, prefix):
     return redacted
 
 
-def resolved_mini_exit(result, directory):
+def resolved_mini_exit(result, directory) -> tuple[str | None, str]:
     status = result.get("exit_status") if isinstance(result, dict) else None
     if isinstance(status, str) and status:
         return status, "agent_result.exit_status"
@@ -57,10 +57,11 @@ def resolved_mini_exit(result, directory):
         return None, "unknown"
     from controller import resolve_mini_exit
 
-    return resolve_mini_exit(json.loads(path.read_text()))
+    exit_state: tuple[str | None, str] = resolve_mini_exit(json.loads(path.read_text()))
+    return exit_state
 
 
-def provider_settings():
+def provider_settings() -> tuple[str, str]:
     source = pathlib.Path(
         os.environ.get("LAB_PI_MODELS", str(pathlib.Path.home() / ".pi/agent/models.json"))
     )
@@ -71,10 +72,11 @@ def provider_settings():
     key = os.environ.get(reference.lstrip("$").strip("{}"), "").strip()
     if not key or "\r" in key or "\n" in key:
         raise ValueError("missing or unsafe API key")
-    return provider["baseUrl"], key
+    base_url: str = provider["baseUrl"]
+    return base_url, key
 
 
-def mini_submission(result):
+def mini_submission(result) -> bool:
     lines = result.get("output", "").lstrip().splitlines()
     return (
         result.get("returncode") == 0
@@ -83,7 +85,7 @@ def mini_submission(result):
     )
 
 
-def run_mini(engine, sandbox, directory, prompt, base_url, key):
+def run_mini(engine, sandbox, directory, prompt, base_url, key) -> dict[str, object]:
     os.environ["MSWEA_GLOBAL_CONFIG_DIR"] = str(directory / "mini-config")
     os.environ["MSWEA_SILENT_STARTUP"] = "1"
     os.environ["MSWEA_MODEL_RETRY_STOP_AFTER_ATTEMPT"] = "1"
@@ -178,7 +180,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
     }
 
 
-def continue_openhands(conversation, sandbox, directory, acceptance=None):
+def continue_openhands(conversation, sandbox, directory, acceptance=None) -> str:
     limit = 3 if acceptance is not None else 1
     for round_number in range(limit):
         conversation.run()
@@ -198,16 +200,23 @@ def continue_openhands(conversation, sandbox, directory, acceptance=None):
 
 
 def run_openhands(
-    sandbox, directory, prompt, base_url, key, acceptance=None, max_iterations=18, language="Node"
-):
+    sandbox,
+    directory,
+    prompt,
+    base_url,
+    key,
+    acceptance=None,
+    max_iterations=18,
+    language="Node",
+) -> dict[str, object]:
     for name in list(os.environ):
         if name.startswith(("LMNR_", "OTEL_", "OPENHANDS_")):
             os.environ.pop(name)
     os.environ["OH_PERSISTENCE_DIR"] = str(directory / "openhands-home")
     os.environ["OTEL_SDK_DISABLED"] = "true"
-    from pydantic import Field, SecretStr
-    from openhands.sdk import Agent, Conversation, LLM, Tool
+    from openhands.sdk import LLM, Agent, Conversation, Tool
     from openhands.sdk.tool import Action, Observation, ToolDefinition, ToolExecutor, register_tool
+    from pydantic import Field, SecretStr
 
     class BashAction(Action):
         command: str = Field(
@@ -283,7 +292,7 @@ def run_openhands(
     }
 
 
-def attempt(engine, task, directory, seed, feedback=""):
+def attempt(engine, task, directory, seed, feedback="") -> dict[str, object]:
     os.umask(0o077)
     directory = pathlib.Path(directory)
     directory.mkdir(parents=True, exist_ok=False)

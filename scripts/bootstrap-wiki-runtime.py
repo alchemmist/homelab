@@ -4,6 +4,7 @@ import json
 import secrets
 import shlex
 import subprocess
+from typing import cast
 
 
 class BootstrapError(Exception):
@@ -14,7 +15,7 @@ class Kubernetes:
     def __init__(self, command):
         self.command = command
 
-    def run(self, *args, payload=None):
+    def run(self, *args, payload=None) -> str:
         result = subprocess.run(
             self.command + list(args),
             input=json.dumps(payload) if payload else None,
@@ -27,26 +28,27 @@ class Kubernetes:
             )
         return result.stdout
 
-    def get(self, kind, name, namespace):
+    def get(self, kind, name, namespace) -> dict[str, object] | None:
         value = self.run("-n", namespace, "get", kind, name, "--ignore-not-found", "-o", "json")
-        return json.loads(value) if value.strip() else None
+        document: dict[str, object] | None = json.loads(value) if value.strip() else None
+        return document
 
-    def create(self, resource):
+    def create(self, resource) -> None:
         self.run("create", "-f", "-", payload=resource)
 
 
-def encoded(value):
+def encoded(value) -> str:
     return base64.b64encode(value.encode()).decode()
 
 
-def decoded(value):
+def decoded(value) -> str:
     try:
         return base64.b64decode(value, validate=True).decode()
     except (ValueError, UnicodeError, TypeError):
         raise BootstrapError("Invalid encoded credential in source Secret") from None
 
 
-def resource(kind, name, namespace, **fields):
+def resource(kind, name, namespace, **fields) -> dict[str, object]:
     return {
         "apiVersion": "v1",
         "kind": kind,
@@ -55,18 +57,18 @@ def resource(kind, name, namespace, **fields):
     }
 
 
-def required_data(item, key):
+def required_data(item, key) -> str:
     value = (item or {}).get("data", {}).get(key)
     if not isinstance(value, str) or not value:
         raise BootstrapError("Required credential/configuration field is missing")
     return value
 
 
-def prerequisites(_kube):
+def prerequisites(_kube) -> list[dict[str, object]]:
     return [{"apiVersion": "v1", "kind": "Namespace", "metadata": {"name": "wiki"}}]
 
 
-def bootstrap(kube, skip_legacy_git=False):
+def bootstrap(kube, skip_legacy_git=False) -> list[str]:
     infrastructure = prerequisites(kube)
     targets = [
         ("persistentvolumeclaim", "wiki-runtime-data", "wiki"),
@@ -84,7 +86,7 @@ def bootstrap(kube, skip_legacy_git=False):
             "resources": {"requests": {"storage": "5Gi"}},
         },
     )
-    pvc["metadata"]["annotations"] = {"helm.sh/resource-policy": "keep"}
+    cast("dict[str, object]", pvc["metadata"])["annotations"] = {"helm.sh/resource-policy": "keep"}
     if existing[0]:
         spec = existing[0].get("spec", {})
         if spec.get("storageClassName") != "local-path" or spec.get("accessModes") != [
@@ -126,25 +128,24 @@ def bootstrap(kube, skip_legacy_git=False):
         )
     results = []
     for item in infrastructure:
-        metadata = item["metadata"]
+        metadata = cast("dict[str, object]", item["metadata"])
         namespace = metadata.get("namespace", "wiki")
-        old = kube.get(item["kind"].lower(), metadata["name"], namespace)
+        old = kube.get(cast("str", item["kind"]), cast("str", metadata["name"]), namespace)
         if not old:
             kube.create(item)
-            results.append(
-                metadata.get("namespace", "cluster") + "/" + metadata["name"] + ": created"
-            )
-    for target, old, item in zip(targets, existing, [pvc, bootstrap_secret, git_secret]):
-        if not old and item is not None:
-            kube.create(item)
+            place = cast("str", metadata.get("namespace", "cluster"))
+            results.append(place + "/" + cast("str", metadata["name"]) + ": created")
+    for target, old, entry in zip(targets, existing, [pvc, bootstrap_secret, git_secret]):
+        if not old and entry is not None:
+            kube.create(entry)
         results.append(
             f"{target[2]}/{target[1]}: "
-            + ("preserved" if old else "created" if item is not None else "skipped")
+            + ("preserved" if old else "created" if entry is not None else "skipped")
         )
     return results
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Create isolated wiki runtime storage and Secret prerequisites without changing routes or deployments"
     )

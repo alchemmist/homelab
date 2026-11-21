@@ -12,14 +12,14 @@ from stages import stage
 
 
 class Handler(BaseHTTPRequestHandler):
-    def log_message(self, *args):
+    def log_message(self, *args) -> None:
         pass  # no request bodies, credentials or content in logs
 
-    def do_GET(self):
+    def do_GET(self) -> None:
         self.send_response(200 if self.path == "/healthz" else 404)
         self.end_headers()
 
-    def do_POST(self):
+    def do_POST(self) -> None:
         if self.path not in ("/validate", "/generate", "/create-pr") or not hmac.compare_digest(
             self.headers.get("X-Worker-Token", ""), os.environ["WORKER_TOKEN"]
         ):
@@ -34,14 +34,15 @@ class Handler(BaseHTTPRequestHandler):
         try:
             event = json.loads(self.rfile.read(length))
             with EXECUTION_LOCK:
-                result = stage(
+                result: list[dict[str, object]] | dict[str, object] = stage(
                     self.path[1:], event, write=os.environ.get("WRITE_ENABLED") == "true"
                 )
             self.send_response(200)
         except Exception as exc:
-            result = {"status": "error", "type": type(exc).__name__}
+            failure: dict[str, object] = {"status": "error", "type": type(exc).__name__}
             if isinstance(exc, UnsafeInput):
-                result["reason"] = str(exc)
+                failure["reason"] = str(exc)
+            result = failure
             self.send_response(422)
         self.send_header("Content-Type", "application/json")
         self.end_headers()

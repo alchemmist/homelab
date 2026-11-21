@@ -6,17 +6,17 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest import mock
 from pathlib import Path
+from unittest import mock
 
 import protocol_regression as pilot
 
 
-def repo_path():
+def repo_path() -> Path:
     return Path(os.environ["PROTOCOL_REGRESSION_REPO"])
 
 
-def python_path():
+def python_path() -> Path:
     raw = os.environ.get("PROTOCOL_REGRESSION_PYTHON")
     return Path(raw) if raw else Path(sys.executable)
 
@@ -24,7 +24,7 @@ def python_path():
 class MethodSignatureTests(unittest.TestCase):
     baseline = "class BrowserSession:\n    async def _answer(self, page, fallback=None) -> str:\n        return 'answer'\n    async def _generate_on_page(self, page):\n        return page\n"
 
-    def test_signature_changes_are_rejected(self):
+    def test_signature_changes_are_rejected(self) -> None:
         changes = [
             ("self, page,", "self, injected_parameter, page,"),
             ("fallback=None", "fallback=42"),
@@ -38,13 +38,13 @@ class MethodSignatureTests(unittest.TestCase):
                 self.assertIn("method signature", report["detail"])
                 self.assertTrue(any("_answer" in value for value in report["expected_signatures"]))
 
-    def test_body_changes_remain_allowed(self):
+    def test_body_changes_remain_allowed(self) -> None:
         report = pilot.allowed_edit_report(
             self.baseline, self.baseline.replace("return 'answer'", "return 'fixed'")
         )
         self.assertTrue(report["allowed"], report)
 
-    def test_duplicate_allowed_method_is_rejected(self):
+    def test_duplicate_allowed_method_is_rejected(self) -> None:
         candidate = (
             self.baseline
             + "    async def _answer(self, page, fallback=None) -> str:\n        return 'override'\n"
@@ -53,7 +53,7 @@ class MethodSignatureTests(unittest.TestCase):
 
 
 class TestCompletionTests(unittest.TestCase):
-    def grade(self, body):
+    def grade(self, body) -> dict[str, object]:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             grader = root / "grader"
@@ -67,18 +67,18 @@ class TestCompletionTests(unittest.TestCase):
             )
             return pilot.run_selected_tests(Path(sys.executable), root, grader)
 
-    def test_early_zero_exit_is_not_a_pass(self):
+    def test_early_zero_exit_is_not_a_pass(self) -> None:
         self.assertFalse(self.grade("__import__('os')._exit(0)")["passed"])
 
-    def test_skipped_tests_are_not_a_pass(self):
+    def test_skipped_tests_are_not_a_pass(self) -> None:
         self.assertFalse(self.grade("self.skipTest('not executed')")["passed"])
 
-    def test_executed_successful_tests_pass(self):
+    def test_executed_successful_tests_pass(self) -> None:
         self.assertTrue(self.grade("self.assertEqual(1, 1)")["passed"])
 
 
 class GraderProcessTests(unittest.TestCase):
-    def test_both_output_channels_are_bounded(self):
+    def test_both_output_channels_are_bounded(self) -> None:
         for channel in (1, 2):
             with self.subTest(channel=channel), self.assertRaisesRegex(ValueError, "output limit"):
                 pilot.bounded_test_process(
@@ -86,13 +86,13 @@ class GraderProcessTests(unittest.TestCase):
                     limit=1024,
                 )
 
-    def test_process_timeout_is_bounded(self):
+    def test_process_timeout_is_bounded(self) -> None:
         with self.assertRaises(TimeoutError):
             pilot.bounded_test_process(
                 [sys.executable, "-c", "import time;time.sleep(30)"], timeout=0.1
             )
 
-    def test_failed_docker_start_is_not_overwritten_by_inspect(self):
+    def test_failed_docker_start_is_not_overwritten_by_inspect(self) -> None:
         created = subprocess.CompletedProcess([], 0, "container", "")
         inspected = subprocess.CompletedProcess([], 0, "0", "")
         failed = subprocess.CompletedProcess([], 1, "", "start failed")
@@ -107,15 +107,15 @@ class GraderProcessTests(unittest.TestCase):
 
 
 class SnapshotTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.dest = Path(self.temp.name) / "snapshot"
         self.manifest = pilot.export_snapshot(repo_path(), self.dest)
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         self.temp.cleanup()
 
-    def test_export_is_deterministic_and_grader_stays_outside_agent(self):
+    def test_export_is_deterministic_and_grader_stays_outside_agent(self) -> None:
         again = Path(self.temp.name) / "again"
         second = pilot.export_snapshot(repo_path(), again)
         self.assertEqual(self.manifest["manifest_sha256"], second["manifest_sha256"])
@@ -138,7 +138,7 @@ class SnapshotTests(unittest.TestCase):
             data = (self.dest / item["path"]).read_bytes()
             self.assertEqual(hashlib.sha256(data).hexdigest(), item["sha256"])
 
-    def test_verify_rejects_tamper_extra_file_and_grader_inside_agent(self):
+    def test_verify_rejects_tamper_extra_file_and_grader_inside_agent(self) -> None:
         main = self.dest / "agent" / "main.py"
         original = main.read_bytes()
         main.write_bytes(original + b"\n")
@@ -160,7 +160,7 @@ class SnapshotTests(unittest.TestCase):
             pilot.verify_snapshot(self.dest)
         self.assertIn("grader is inside the agent snapshot", str(embedded.exception))
 
-    def test_allowed_method_boundary(self):
+    def test_allowed_method_boundary(self) -> None:
         baseline = (self.dest / "agent" / "main.py").read_text(encoding="utf-8")
         spans = pilot.method_spans(baseline)
         lines = baseline.splitlines(keepends=True)
@@ -193,7 +193,7 @@ class SnapshotTests(unittest.TestCase):
         self.assertFalse(rejected["passed"])
         self.assertFalse(rejected["allowed_edits"]["allowed"])
 
-    def test_fail_pass_gate_on_persistent_interpreter(self):
+    def test_fail_pass_gate_on_persistent_interpreter(self) -> None:
         python = python_path()
         baseline = pilot.grade_candidate(python, self.dest, self.dest / "agent")
         self.assertFalse(baseline["passed"])

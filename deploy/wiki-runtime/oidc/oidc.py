@@ -13,7 +13,7 @@ from fastapi import HTTPException, Request
 from fastapi.responses import RedirectResponse
 
 
-def configure_store(store):
+def configure_store(store) -> None:
     store.oidc_enabled = bool(os.getenv("WIKI_OIDC_ISSUER"))
     store.local_owners = set(json.loads(os.getenv("WIKI_OIDC_LOCAL_OWNER_IDS", "[]")))
     if not store.oidc_enabled:
@@ -37,7 +37,7 @@ def configure_store(store):
         """)
 
 
-def external_login(store, issuer, subject, username, role, links):
+def external_login(store, issuer, subject, username, role, links) -> str:
     from auth import PASSWORD_HASHER
 
     if not subject or not isinstance(subject, str) or len(subject) > 512:
@@ -88,7 +88,7 @@ def external_login(store, issuer, subject, username, role, links):
         return token
 
 
-def install_oidc(app, store, origin, prefix, cookie_path, session_seconds):
+def install_oidc(app, store, origin, prefix, cookie_path, session_seconds) -> None:
     from authlib.integrations.starlette_client import OAuth
     from starlette.middleware.sessions import SessionMiddleware
 

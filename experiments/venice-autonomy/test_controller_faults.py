@@ -8,10 +8,11 @@ import sys
 import tempfile
 import time
 import unittest
+from typing import cast
 
 
 class ControllerFaultTests(unittest.TestCase):
-    def setup_case(self, directory, behavior):
+    def setup_case(self, directory, behavior) -> tuple[pathlib.Path, list[str]]:
         root = pathlib.Path(directory)
         code = root / "code"
         code.mkdir()
@@ -61,7 +62,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             "1",
         ]
 
-    def test_model_final_is_not_verified_success(self):
+    def test_model_final_is_not_verified_success(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root, command = self.setup_case(directory, "premature_final")
             subprocess.run(command, stdout=subprocess.DEVNULL, check=True, timeout=15)
@@ -70,7 +71,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             self.assertTrue(all(task["status"] == "blocked" for task in state["tasks"]))
             self.assertTrue(all(len(task["attempts"]) == 2 for task in state["tasks"]))
 
-    def test_malformed_summaries_are_failures(self):
+    def test_malformed_summaries_are_failures(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root, command = self.setup_case(directory, "malformed_summary")
             subprocess.run(command, stdout=subprocess.DEVNULL, check=True, timeout=15)
@@ -81,7 +82,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             self.assertEqual(attempts[0]["controller_error"], "missing_or_invalid_summary")
             self.assertFalse(any(task["status"] == "accepted" for task in state["tasks"]))
 
-    def test_kill_resume_preserves_deadline_and_stops_after_repeated_provider_errors(self):
+    def test_kill_resume_preserves_deadline_and_stops_after_repeated_provider_errors(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root, command = self.setup_case(directory, "restart")
             original = subprocess.Popen(command, stdout=subprocess.DEVNULL)
@@ -129,7 +130,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
                         process.kill()
                         process.wait()
 
-    def test_bad_gateway_stops_without_resetting_for_an_accepted_artifact(self):
+    def test_bad_gateway_stops_without_resetting_for_an_accepted_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root, command = self.setup_case(directory, "bad_gateway")
             subprocess.run(command, stdout=subprocess.DEVNULL, check=True, timeout=20)
@@ -149,7 +150,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
 
             self.assertEqual(render_report(state), again)
 
-    def test_structured_cause_is_provider_and_message_text_is_not(self):
+    def test_structured_cause_is_provider_and_message_text_is_not(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root, command = self.setup_case(directory, "wrapped_cause")
             subprocess.run(command, stdout=subprocess.DEVNULL, check=True, timeout=20)
@@ -168,7 +169,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
                 (root / "REPORT.md").read_text(),
             )
 
-    def test_context_length_and_client_input_are_not_provider_outages(self):
+    def test_context_length_and_client_input_are_not_provider_outages(self) -> None:
         from controller import classify_result
 
         self.assertEqual(
@@ -207,7 +208,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             state = json.loads((root / "state.json").read_text())
             self.assertEqual(state["phase"], "unknown_error_type")
 
-    def test_null_exit_is_clean_only_from_top_level_submitted_event(self):
+    def test_null_exit_is_clean_only_from_top_level_submitted_event(self) -> None:
         from controller import attempt_facts, render_report
 
         bare = {"accepted": True, "exit_status": None, "actual_commands": 4}
@@ -262,7 +263,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             self.assertIn("exit unresolved", report)
             self.assertIn("not counterfactual scores", report)
 
-    def test_historical_receipt_report_matches_audited_counts(self):
+    def test_historical_receipt_report_matches_audited_counts(self) -> None:
         receipt = pathlib.Path(
             "/Users/antonmoss/venice-auth/autonomy-comparison-20261117-123339/state.json"
         )
@@ -283,7 +284,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
         self.assertIn("summary.run_error text", report)
         self.assertIn("| mini_native | 9 | 0 | 0 | 61 |", report)
 
-    def test_exception_chain_records_cause_not_message_text(self):
+    def test_exception_chain_records_cause_not_message_text(self) -> None:
         from attempt import exception_chain, record_exception
 
         class SDKError(Exception):
@@ -307,22 +308,22 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
         )
         self.assertNotIn("cause_type", {"run_error_type": "SDKError"})
 
-    def test_default_matrix_is_native_and_openhands_until_text_opt_in(self):
+    def test_default_matrix_is_native_and_openhands_until_text_opt_in(self) -> None:
         from controller import DEFAULT_ENGINES, initial_state
 
         state = initial_state(30, 1)
         self.assertEqual(DEFAULT_ENGINES, ("mini_native", "openhands"))
-        self.assertEqual(
-            [task["engine"] for task in state["tasks"][:2]], ["mini_native", "openhands"]
-        )
-        self.assertNotIn("mini_text", {task["engine"] for task in state["tasks"]})
+        tasks = cast("list[dict[str, str]]", state["tasks"])
+        self.assertEqual([task["engine"] for task in tasks[:2]], ["mini_native", "openhands"])
+        self.assertNotIn("mini_text", {task["engine"] for task in tasks})
         included = initial_state(30, 1, ("mini_native", "openhands", "mini_text"))
+        included_tasks = cast("list[dict[str, str]]", included["tasks"])
         self.assertEqual(
-            [task["engine"] for task in included["tasks"][:3]],
+            [task["engine"] for task in included_tasks[:3]],
             ["mini_native", "openhands", "mini_text"],
         )
 
-    def test_sigkill_rechecks_exact_child_identity(self):
+    def test_sigkill_rechecks_exact_child_identity(self) -> None:
         import controller
 
         calls = []
@@ -366,7 +367,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             ) = original
         self.assertEqual(calls, [signal.SIGTERM])
 
-    def test_cleanup_requires_per_run_ownership_and_collects_both_roles(self):
+    def test_cleanup_requires_per_run_ownership_and_collects_both_roles(self) -> None:
         import controller
 
         with tempfile.TemporaryDirectory() as directory:
@@ -461,7 +462,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
                 )
             )
 
-    def test_same_child_rejects_directory_prefix(self):
+    def test_same_child_rejects_directory_prefix(self) -> None:
         import controller
 
         directory = "/tmp/run"
@@ -484,7 +485,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             controller.process_signature = original_signature
             controller.os.getpgid = original_getpgid
 
-    def test_pid_kill_requires_recorded_start_signature(self):
+    def test_pid_kill_requires_recorded_start_signature(self) -> None:
         import controller
 
         calls = []
@@ -515,7 +516,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             ) = original
         self.assertEqual(calls, [])
 
-    def test_cleanup_is_idempotent_for_already_removed_resources(self):
+    def test_cleanup_is_idempotent_for_already_removed_resources(self) -> None:
         import controller
 
         with tempfile.TemporaryDirectory() as directory:
@@ -619,7 +620,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
                 )
             )
 
-    def test_cleanup_does_not_swallow_daemon_errors(self):
+    def test_cleanup_does_not_swallow_daemon_errors(self) -> None:
         import controller
 
         with tempfile.TemporaryDirectory() as directory:
@@ -673,7 +674,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
                 )
             )
 
-    def test_sandbox_close_uses_ownership_validation(self):
+    def test_sandbox_close_uses_ownership_validation(self) -> None:
         import sandbox
 
         modules = [sandbox]
@@ -750,7 +751,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
         self.assertEqual(box.container_id, "cid-foreign")
         self.assertEqual(box.volume_name, "venice-lab-foreign")
 
-    def test_cleanup_exception_final_report_is_not_running(self):
+    def test_cleanup_exception_final_report_is_not_running(self) -> None:
         import controller
 
         with tempfile.TemporaryDirectory() as directory:
@@ -784,7 +785,7 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
 
 
 class ReportErrorStateTests(unittest.TestCase):
-    def test_accepted_artifact_with_any_error_is_not_a_clean_finish(self):
+    def test_accepted_artifact_with_any_error_is_not_a_clean_finish(self) -> None:
         import controller
 
         for field, value in (

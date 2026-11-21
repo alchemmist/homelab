@@ -5,6 +5,7 @@ import json
 import re
 import urllib.error
 import urllib.request
+from typing import cast
 
 from engine import REPO, UPDATES, UnsafeInput
 
@@ -13,7 +14,7 @@ class GitHub:
     def __init__(self, token):
         self.token = token
 
-    def api(self, method, path, body=None):
+    def api(self, method, path, body=None) -> dict[str, object]:
         # All destinations are fixed; model input never controls API paths.
         request = urllib.request.Request(
             "https://api.github.com/repos/" + REPO + "/" + path,
@@ -28,11 +29,12 @@ class GitHub:
         )
         try:
             with urllib.request.urlopen(request, timeout=45) as response:
-                return json.load(response)
+                document: dict[str, object] = json.load(response)
+                return document
         except urllib.error.HTTPError as exc:
             raise RuntimeError(f"GitHub {method} failed (HTTP {exc.code})") from None
 
-    def compare(self, before, after):
+    def compare(self, before, after) -> dict[str, object]:
         for sha in (before, after):
             if not re.fullmatch("[a-f0-9]{40}", sha):
                 raise UnsafeInput("Full SHA required")
@@ -40,16 +42,20 @@ class GitHub:
         if result.get("status") not in ("ahead", "identical"):
             raise UnsafeInput("Non-forward push requires manual review")
         # Files are returned on page one only; reject ambiguous/truncated compares.
-        if len(result.get("files", [])) >= 300:
+        files = cast("list[object]", result.get("files", []))
+        if len(files) >= 300:
             raise UnsafeInput("Compare file limit exceeded")
-        total = result.get("total_commits", 0)
+        total = cast("int", result.get("total_commits", 0))
         if total > 1000:
             raise UnsafeInput("Commit range too large")
-        commits = result.get("commits", [])
+        commits = cast("list[dict[str, object]]", result.get("commits", []))
         page = 2
         while len(commits) < total:
-            extra = self.api("GET", f"compare/{before}...{after}?per_page=100&page={page}").get(
-                "commits", []
+            extra = cast(
+                "list[dict[str, object]]",
+                self.api("GET", f"compare/{before}...{after}?per_page=100&page={page}").get(
+                    "commits", []
+                ),
             )
             if not extra:
                 raise UnsafeInput("Incomplete commit pagination")
@@ -58,23 +64,29 @@ class GitHub:
         result["commits"] = commits
         return result
 
-    def read_updates(self, ref):
+    def read_updates(self, ref) -> tuple[str, str]:
         f = self.api("GET", f"contents/{UPDATES}?ref={ref}")
         if f.get("encoding") != "base64":
             raise UnsafeInput("Unexpected GitHub content encoding")
-        return base64.b64decode(f["content"]).decode(), f["sha"]
+        content = cast("str", f["content"])
+        sha = cast("str", f["sha"])
+        return base64.b64decode(content).decode(), sha
 
-    def propose(self, after, content, reason, draft=False):
+    def propose(self, after, content, reason, draft=False) -> dict[str, object]:
         if not re.fullmatch("[a-f0-9]{40}", after):
             raise UnsafeInput("Full SHA required")
         branch = "automation/blog-updates-" + after + ("-test" if draft else "")
         # Include closed PRs: closing a proposal is an editorial decision, not a retry.
-        existing = self.api("GET", f"pulls?state=all&head=alchemmist:{branch}&per_page=100")
+        existing = cast(
+            "list[dict[str, object]]",
+            self.api("GET", f"pulls?state=all&head=alchemmist:{branch}&per_page=100"),
+        )
         if existing:
             return {"status": "existing", "url": existing[0]["html_url"]}
         # Pin proposal to the analyzed commit. A later main change cannot be silently overwritten.
-        main = self.api("GET", "git/ref/heads/main")["object"]["sha"]
-        if main != after:
+        main_ref = cast("dict[str, object]", self.api("GET", "git/ref/heads/main")["object"])
+        main_sha = cast("str", main_ref["sha"])
+        if main_sha != after:
             raise UnsafeInput("main advanced; reanalysis required")
         original, _ = self.read_updates(after)
         if content == original:
@@ -96,7 +108,7 @@ class GitHub:
             "POST",
             "pulls",
             {
-                "title": "docs: add blog Updates entry",
+                "title": "docs: add reader Updates entry",
                 "head": branch,
                 "base": "main",
                 "draft": draft,

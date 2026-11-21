@@ -6,12 +6,14 @@ not changed. Requires Helm and PyYAML, like the repository's chart contract test
 """
 
 import argparse
-from collections import defaultdict
 import hashlib
 import json
-from pathlib import Path
 import re
 import subprocess
+from collections import defaultdict
+from pathlib import Path
+from typing import cast
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,7 +30,7 @@ OWNERS = [
 ]
 
 
-def unparen(expr):
+def unparen(expr) -> str:
     expr = expr.strip()
     while expr.startswith("(") and expr.endswith(")"):
         depth, quote, escaped, closes = 0, None, False, None
@@ -53,10 +55,11 @@ def unparen(expr):
         if closes != len(expr) - 1:
             break
         expr = expr[1:-1].strip()
-    return expr
+    expression: str = expr
+    return expression
 
 
-def diagnostic(expr):
+def diagnostic(expr) -> tuple[str, float | None, str]:
     """Remove only a root numeric comparison; never rewrite inner PromQL logic."""
     expr = unparen(expr)
     depth, quote, escaped = 0, None, False
@@ -93,7 +96,7 @@ def diagnostic(expr):
     )
 
 
-def operands(expr):
+def operands(expr) -> list[tuple[str, float | None, str]]:
     """Expose logical/comparison inputs without mutating the actual alert rule."""
     expr = unparen(expr)
     depth, quote, escaped = 0, None, False
@@ -126,7 +129,7 @@ def operands(expr):
     return [(value, None, reason)]
 
 
-def render_owner(owner):
+def render_owner(owner) -> list[dict[str, object]]:
     app = yaml.safe_load((ROOT / "deploy/argocd/apps" / f"{owner}.yaml").read_text())
     source = app["spec"].get("source")
     if source is None:
@@ -152,17 +155,19 @@ def render_owner(owner):
     ]
 
 
-def inventory():
+def inventory() -> list[dict[str, object]]:
     rules = []
     for owner in OWNERS:
         for resource in render_owner(owner):
-            for group in resource["spec"]["groups"]:
-                for rule in group["rules"]:
+            for group in cast(
+                "list[dict[str, object]]", cast("dict[str, object]", resource["spec"])["groups"]
+            ):
+                for rule in cast("list[dict[str, object]]", group["rules"]):
                     if "alert" in rule:
                         rules.append(
                             {
                                 "owner": owner,
-                                "resource": resource["metadata"]["name"],
+                                "resource": cast("dict[str, object]", resource["metadata"])["name"],
                                 "group": group["name"],
                                 "rule": rule,
                             }
@@ -174,13 +179,14 @@ def inventory():
     )
     for resource in yaml.safe_load_all(rendered):
         if isinstance(resource, dict) and resource.get("kind") == "PrometheusRule":
-            for group in resource["spec"]["groups"]:
-                for rule in group["rules"]:
+            spec = cast("dict[str, object]", resource["spec"])
+            for group in cast("list[dict[str, object]]", spec["groups"]):
+                for rule in cast("list[dict[str, object]]", group["rules"]):
                     if "alert" in rule:
                         rules.append(
                             {
                                 "owner": "rancher",
-                                "resource": resource["metadata"]["name"],
+                                "resource": cast("dict[str, object]", resource["metadata"])["name"],
                                 "group": group["name"],
                                 "rule": rule,
                             }
@@ -202,7 +208,9 @@ def inventory():
     return rules
 
 
-def build(rules, panel_ids=None):
+def build(
+    rules, panel_ids=None
+) -> tuple[dict[str, object], dict[str, dict[str, object]], list[dict[str, object]]]:
     # Append-only IDs preserve historical graph URLs when sorted rule names grow.
     panel_ids = {} if panel_ids is None else panel_ids
     for uid, names in panel_ids.items():
@@ -214,27 +222,34 @@ def build(rules, panel_ids=None):
     grouped = defaultdict(list)
     for item in rules:
         grouped[(item["owner"], item["rule"]["alert"])].append(item)
-    dashboards, mappings, rows = {}, defaultdict(dict), []
+    dashboards: dict[str, object] = {}
+    mappings: defaultdict[str, dict[str, object]] = defaultdict(dict)
+    rows: list[dict[str, object]] = []
     for (owner, name), variants in sorted(grouped.items()):
-        group = variants[0]["group"]
+        group = cast("str", variants[0]["group"])
         uid = "alerts-" + hashlib.sha256((owner + "/" + group).encode()).hexdigest()[:16]
-        dashboard = dashboards.setdefault(
-            uid,
-            {
-                "uid": uid,
-                "title": "Alerts / " + owner + " / " + group,
-                "schemaVersion": 39,
-                "version": 1,
-                "editable": False,
-                "timezone": "utc",
-                "tags": ["socrat", "alert-diagnostics"],
-                "refresh": "1m",
-                "time": {"from": "now-1h", "to": "now"},
-                "templating": {"list": []},
-                "panels": [],
-            },
+        dashboard = cast(
+            "dict[str, object]",
+            dashboards.setdefault(
+                uid,
+                {
+                    "uid": uid,
+                    "title": "Alerts / " + owner + " / " + group,
+                    "schemaVersion": 39,
+                    "version": 1,
+                    "editable": False,
+                    "timezone": "utc",
+                    "tags": ["socrat", "alert-diagnostics"],
+                    "refresh": "1m",
+                    "time": {"from": "now-1h", "to": "now"},
+                    "templating": {"list": []},
+                    "panels": [],
+                },
+            ),
         )
-        targets, reasons, thresholds = [], [], []
+        targets: list[dict[str, object]] = []
+        reasons: list[str] = []
+        thresholds: list[float] = []
         for index, item in enumerate(variants):
             for expr, threshold, reason in operands(str(item["rule"]["expr"])):
                 if expr in ("vector(0)", "vector(1)") and len(variants) > 1:
@@ -282,7 +297,7 @@ def build(rules, panel_ids=None):
                 "legend": {"displayMode": "table", "placement": "bottom"},
             },
         }
-        dashboard["panels"].append(panel)
+        cast("list[dict[str, object]]", dashboard["panels"]).append(panel)
         state = {
             **panel,
             "id": base + 1,
@@ -320,7 +335,7 @@ def build(rules, panel_ids=None):
                 },
                 "overrides": [],
             }
-        dashboard["panels"].append(state)
+        cast("list[dict[str, object]]", dashboard["panels"]).append(state)
         spec = {
             "version": 1,
             "graphs": [
@@ -360,7 +375,7 @@ def build(rules, panel_ids=None):
     return dashboards, dict(mappings), rows
 
 
-def outputs(rules):
+def outputs(rules) -> tuple[dict[Path, str], dict[str, dict[str, object]]]:
     registry_path = ROOT / "deploy/monitoring/alert-graph-panel-ids.json"
     registry = json.loads(registry_path.read_text())
     if registry["schemaVersion"] != 1:
@@ -372,10 +387,10 @@ def outputs(rules):
             json.dumps(dashboard, indent=2) + "\n"
         )
     result[ROOT / "docs/monitoring/alert-graphs.inventory.json"] = json.dumps(rows, indent=2) + "\n"
-    policy = {
+    policy: dict[str, list[str]] = {
         uid + ":" + str(panel["id"]): []
         for uid, dashboard in dashboards.items()
-        for panel in dashboard["panels"]
+        for panel in cast("list[dict[str, object]]", cast("dict[str, object]", dashboard)["panels"])
     }
     result[ROOT / "charts/grafana/alert-graphs.policy.values.yaml"] = yaml.safe_dump(
         {"alertGraphs": {"panels": policy}}, sort_keys=True, explicit_start=True, explicit_end=True
@@ -390,7 +405,7 @@ def outputs(rules):
             "node-exporter",
             "kube-state-metrics",
         ):
-            value = {
+            value: dict[str, object] = {
                 "kube-prometheus-stack": {
                     "defaultRules": {
                         "additionalRuleAnnotations": {
@@ -414,7 +429,8 @@ def outputs(rules):
                                 rule.setdefault("annotations", {})["spi_graphs"] = json.dumps(
                                     mapping[rule["alert"]], separators=(",", ":")
                                 )
-                value["kube-prometheus-stack"]["additionalPrometheusRulesMap"] = extra
+                stack = cast("dict[str, object]", value["kube-prometheus-stack"])
+                stack["additionalPrometheusRulesMap"] = extra
         else:
             value = {
                 "alertGraphAnnotations": {
@@ -433,7 +449,7 @@ def outputs(rules):
     return result, mappings
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
@@ -453,12 +469,13 @@ def main():
             path = ROOT / relative
             obj = json.loads(path.read_text())
             for rule in obj["rules"]:
-                spec = mappings["grafana-managed"][rule["title"]]
+                spec = cast("dict[str, object]", mappings["grafana-managed"][rule["title"]])
                 rule.setdefault("annotations", {})["spi_graphs"] = json.dumps(
                     spec, separators=(",", ":")
                 )
-                rule["annotations"]["__dashboardUid__"] = spec["graphs"][0]["dashboard_uid"]
-                rule["annotations"]["__panelId__"] = str(spec["graphs"][0]["panel_id"])
+                graphs = cast("list[dict[str, object]]", spec["graphs"])
+                rule["annotations"]["__dashboardUid__"] = graphs[0]["dashboard_uid"]
+                rule["annotations"]["__panelId__"] = str(graphs[0]["panel_id"])
             path.write_text(json.dumps(obj, indent=2) + "\n")
     print(
         "Rules:",

@@ -3,13 +3,15 @@ import fcntl
 import hashlib
 import json
 import os
-import owned_resources
 import pathlib
 import shlex
 import signal
 import subprocess
 import sys
 import time
+from typing import cast
+
+import owned_resources
 
 DEFAULT_ENGINES = ("mini_native", "openhands")
 ENGINES = DEFAULT_ENGINES + ("mini_text",)
@@ -43,8 +45,8 @@ CLEAN_EXIT_STATUSES = ("Submitted", "finished", "ConversationExecutionStatus.FIN
 WRAPPER_ERROR_TYPES = ("ConversationRunError", "SDKError")
 
 
-def exception_types(result):
-    names = []
+def exception_types(result) -> list[str]:
+    names: list[str] = []
 
     def add(value):
         if isinstance(value, str) and value and value not in names:
@@ -66,11 +68,11 @@ def exception_types(result):
     return names
 
 
-def structured_provider_errors(result):
+def structured_provider_errors(result) -> list[str]:
     return [name for name in exception_types(result) if name in PROVIDER_ERRORS]
 
 
-def unstructured_provider_errors(result):
+def unstructured_provider_errors(result) -> list[str]:
     if (
         result.get("cause_type")
         or result.get("error_chain")
@@ -85,7 +87,7 @@ def unstructured_provider_errors(result):
     return [name for name in PROVIDER_ERRORS if f".{name}" in text or text.startswith(name)]
 
 
-def classify_result(result):
+def classify_result(result) -> str:
     if result.get("controller_error"):
         return "runner"
     if (
@@ -109,7 +111,7 @@ def classify_result(result):
     raise ValueError("unknown error type: " + names[0])
 
 
-def resolve_mini_exit(trajectory):
+def resolve_mini_exit(trajectory) -> tuple[str | None, str]:
     if not isinstance(trajectory, dict):
         return None, "absent"
     messages = trajectory.get("messages")
@@ -138,7 +140,7 @@ def resolve_mini_exit(trajectory):
     return None, "unknown"
 
 
-def resolve_attempt_exit(attempt):
+def resolve_attempt_exit(attempt) -> tuple[str | None, str]:
     status = attempt.get("exit_status")
     if isinstance(status, str) and status:
         provenance = (
@@ -161,7 +163,7 @@ def resolve_attempt_exit(attempt):
     return None, "unknown"
 
 
-def attempt_facts(attempt):
+def attempt_facts(attempt) -> dict[str, object]:
     provider = structured_provider_errors(attempt)
     provider_provenance = "structured" if provider else ""
     if not provider:
@@ -198,7 +200,7 @@ def attempt_facts(attempt):
     }
 
 
-def task_outcome(task):
+def task_outcome(task) -> tuple[str, list[dict[str, object]]]:
     facts = [attempt_facts(attempt) for attempt in task.get("attempts", [])]
     if not facts:
         return "pending", facts
@@ -229,7 +231,7 @@ def task_outcome(task):
     return "unknown", facts
 
 
-def save_state(path, state):
+def save_state(path, state) -> None:
     state["updated_at"] = time.time()
     temporary = path.with_suffix(".new")
     with temporary.open("w") as stream:
@@ -244,7 +246,7 @@ def save_state(path, state):
         os.close(directory)
 
 
-def initial_state(duration, rounds, engines=DEFAULT_ENGINES):
+def initial_state(duration, rounds, engines=DEFAULT_ENGINES) -> dict[str, object]:
     selected = tuple(engines)
     if not selected or any(engine not in ENGINES for engine in selected):
         raise ValueError("unknown engine selection")
@@ -276,7 +278,7 @@ def initial_state(duration, rounds, engines=DEFAULT_ENGINES):
     }
 
 
-def settle_task(task, result, max_attempts=2):
+def settle_task(task, result, max_attempts=2) -> object:
     task["attempts"].append(result)
     task["status"] = (
         "accepted"
@@ -288,7 +290,7 @@ def settle_task(task, result, max_attempts=2):
     return task["status"]
 
 
-def recover_interrupted(state):
+def recover_interrupted(state) -> None:
     running = state.get("running")
     if running:
         task = next(task for task in state["tasks"] if task["id"] == running["task_id"])
@@ -304,13 +306,13 @@ def recover_interrupted(state):
     state["controller_restarts"] += 1
 
 
-def process_signature(pid):
+def process_signature(pid) -> tuple[str, str]:
     started = subprocess.check_output(["ps", "-p", str(pid), "-o", "lstart="], text=True).strip()
     command = subprocess.check_output(["ps", "-p", str(pid), "-o", "args="], text=True).strip()
     return started, command
 
 
-def same_child(pid, directory, signature):
+def same_child(pid, directory, signature) -> bool:
     expected_script = str(pathlib.Path(__file__).with_name("attempt.py"))
     started, command = process_signature(pid)
     if signature != (started, command) or os.getpgid(pid) != pid:
@@ -329,11 +331,11 @@ def same_child(pid, directory, signature):
     return process_signature(pid) == (started, command)
 
 
-def cleanup_role(root):
+def cleanup_role(root) -> None:
     owned_resources.cleanup_role(root)
 
 
-def cleanup_interrupted(running):
+def cleanup_interrupted(running) -> None:
     directory = str(running["directory"])
     recorded = running.get("signature")
     if (
@@ -361,7 +363,7 @@ def cleanup_interrupted(running):
         raise ValueError("cleanup errors: " + "; ".join(errors))
 
 
-def render_report(state):
+def render_report(state) -> str:
     rows = ["# Controlled autonomy experiment", "", f"Phase: `{state.get('phase')}`"]
     if "deadline" in state:
         rows.append(f"Deadline: {state['deadline']!r}")
@@ -433,7 +435,7 @@ def render_report(state):
         last = facts[-1] if facts else None
         resolved = "null" if last is None or last["exit_status"] is None else last["exit_status"]
         exit_provenance = "none" if last is None else last["exit_provenance"]
-        provider = [] if last is None else last["provider"]
+        provider = [] if last is None else cast("list[str]", last["provider"])
         provider_provenance = "" if last is None else last["provider_provenance"]
         commands = sum(item["commands"] for item in facts)
         rows.append(
@@ -458,7 +460,8 @@ def render_report(state):
             resolved = "null" if item["exit_status"] is None else item["exit_status"]
             rows.append(
                 f"| {task.get('id')} | {index} | {stored_exit_text} | {attempt.get('run_error_type') or ''} | "
-                f"{attempt.get('cause_type') or ''} | {resolved} | {item['exit_provenance']} | {','.join(item['provider'])} | "
+                f"{attempt.get('cause_type') or ''} | {resolved} | {item['exit_provenance']} | "
+                f"{','.join(cast('list[str]', item['provider']))} | "
                 f"{item['provider_provenance']} | {str(item['artifact']).lower()} | {str(item['clean']).lower()} | {item['commands']} |"
             )
             if item["exit_provenance"] == "unknown" or (
@@ -485,11 +488,11 @@ def render_report(state):
     return "\n".join(rows) + "\n"
 
 
-def write_report(root, state):
+def write_report(root, state) -> None:
     (root / "REPORT.md").write_text(render_report(state))
 
 
-def run(root, mini_python, openhands_python, duration, rounds, include_text=False):
+def run(root, mini_python, openhands_python, duration, rounds, include_text=False) -> None:
     os.umask(0o077)
     root = pathlib.Path(root)
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
