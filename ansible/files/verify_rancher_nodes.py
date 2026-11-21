@@ -39,11 +39,13 @@ def verify():
                 timeout=30,
                 context=ssl.create_default_context(),
             )
-            connection._create_connection = lambda target, timeout, source_address=None: (
-                socket.create_connection(
-                    (endpoint, 443),
-                    timeout,
-                    source_address=("10.250.0.1", 0),
+            connection._create_connection = (
+                lambda target, timeout, source_address=None, endpoint=endpoint: (
+                    socket.create_connection(
+                        (endpoint, 443),
+                        timeout,
+                        source_address=("10.250.0.1", 0),
+                    )
                 )
             )
             try:

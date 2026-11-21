@@ -47,7 +47,7 @@ class Deadlines(unittest.TestCase):
                 listener.bind(("127.0.0.1", 0))
                 listener.listen()
 
-                def peer():
+                def peer(listener=listener, headers=headers):
                     c, _ = listener.accept()
                     with c:
                         c.recv(4096)
@@ -88,7 +88,7 @@ class Deadlines(unittest.TestCase):
                 listener.listen()
                 url = "http://127.0.0.1:%d/" % listener.getsockname()[1]
 
-                def peer():
+                def peer(listener=listener, version=version):
                     c, _ = listener.accept()
                     with c:
                         c.recv(4096)
@@ -112,7 +112,7 @@ class Deadlines(unittest.TestCase):
                     def authorization(self, cookie):
                         return 200 if cookie else 401
 
-                    def read(self, _key):
+                    def read(self, _key, url=url):
                         with g.opener().open(url, timeout=1) as response:
                             return g.bounded(response)
 
