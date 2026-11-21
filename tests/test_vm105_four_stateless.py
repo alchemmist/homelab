@@ -1,10 +1,11 @@
 """Placement-only boundaries and guarded worker handoff; offline, no credentials."""
 
 import copy
-from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from pathlib import Path
+
 import yaml
 
 R = Path(__file__).resolve().parents[1]

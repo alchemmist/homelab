@@ -1,8 +1,8 @@
 """Offline contracts: dashboard provisioning and native Loki queries, no credentials."""
 
 import json
-from pathlib import Path
 import unittest
+from pathlib import Path
 from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[1]

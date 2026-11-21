@@ -3,7 +3,6 @@ import json
 import unittest
 from pathlib import Path
 
-
 SOURCE = Path(__file__).resolve().parents[1] / "charts/thanos/files/cascade.py"
 SPEC = importlib.util.spec_from_file_location("cascade", SOURCE)
 CASCADE = importlib.util.module_from_spec(SPEC)

@@ -1,7 +1,14 @@
 """Check VPN transit failover decisions, image bytes, and source contracts."""
 
-import importlib.util, json, pathlib, hashlib, tarfile, io
-import pytest, yaml
+import hashlib
+import importlib.util
+import io
+import json
+import pathlib
+import tarfile
+
+import pytest
+import yaml
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 

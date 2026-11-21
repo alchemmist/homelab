@@ -2,7 +2,6 @@ import json
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 DASHBOARD = ROOT / "charts/monitoring-k3s/dashboards/traffic-light.json"
 VALUES = ROOT / "charts/monitoring-k3s/values.yaml"

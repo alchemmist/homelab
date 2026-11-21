@@ -1,8 +1,14 @@
 """Native auth/storage-preserving VM105 application-only placement contracts."""
 
 import ast
+import hashlib
+import json
+import subprocess
+import tempfile
+import unittest
 from pathlib import Path
-import hashlib, json, subprocess, tempfile, unittest, yaml
+
+import yaml
 
 R = Path(__file__).resolve().parents[1]
 
