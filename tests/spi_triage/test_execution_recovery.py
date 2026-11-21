@@ -12,7 +12,7 @@ from test_wait_integration import IntegrationTests
 
 
 class ReadWaitTests(IntegrationTests):
-    def test_read_timeout_replays_receipt_then_resumes_after_restart(self):
+    def test_read_timeout_replays_receipt_then_resumes_after_restart(self) -> None:
         self.github.snapshot.side_effect = [Failure("GITHUB_READ_TIMEOUT", 60), []]
         sent = self.data
         response = self.engine.run_v1("match", sent)
@@ -33,7 +33,7 @@ class ReadWaitTests(IntegrationTests):
 
 @patch.dict("os.environ", {"SPI_TOKEN_ACCOUNTING_MODE": "byte-bound-v1"})
 class RepairTests(unittest.TestCase):
-    def test_repair_budget_survives_admission_and_restart(self):
+    def test_repair_budget_survives_admission_and_restart(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             store = Store(tmp + "/db")
             key = store.enqueue(f.event())["job_id"]

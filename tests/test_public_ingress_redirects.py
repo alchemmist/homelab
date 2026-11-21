@@ -16,15 +16,13 @@ class LoginRedirectTests(unittest.TestCase):
 
     def test_expected_lms_login(self) -> None:
         """Accept the expected LMS login location."""
-        self.assertTrue(MODULE.redirect_matches("lms.alchemmist.xyz", "Location: /auth/login\r\n"))
+        assert MODULE.redirect_matches("lms.alchemmist.xyz", "Location: /auth/login\r\n")
 
     def test_expected_panel_login(self) -> None:
         """Accept the expected panel login location."""
-        self.assertTrue(
-            MODULE.redirect_matches(
-                "vpn.alchemmist.xyz",
-                "location: https://vpn.alchemmist.xyz/outpost.goauthentik.io/start?rd=test\r\n",
-            )
+        assert MODULE.redirect_matches(
+            "vpn.alchemmist.xyz",
+            "location: https://vpn.alchemmist.xyz/outpost.goauthentik.io/start?rd=test\r\n",
         )
 
     def test_unrelated_redirect_is_not_healthy(self) -> None:
@@ -35,13 +33,11 @@ class LoginRedirectTests(unittest.TestCase):
             "/error",
             "http://lms.alchemmist.xyz/auth/login",
         ]:
-            self.assertFalse(MODULE.redirect_matches("lms.alchemmist.xyz", "Location: " + value))
+            assert not MODULE.redirect_matches("lms.alchemmist.xyz", "Location: " + value)
 
     def test_missing_or_duplicate_location_is_not_healthy(self) -> None:
         """Reject missing and duplicate Location headers."""
-        self.assertFalse(MODULE.redirect_matches("lms.alchemmist.xyz", ""))
-        self.assertFalse(
-            MODULE.redirect_matches(
-                "lms.alchemmist.xyz", "Location: /auth/login\nLocation: /auth/login"
-            )
+        assert not MODULE.redirect_matches("lms.alchemmist.xyz", "")
+        assert not MODULE.redirect_matches(
+            "lms.alchemmist.xyz", "Location: /auth/login\nLocation: /auth/login"
         )

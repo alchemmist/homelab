@@ -14,7 +14,7 @@ GOOD = {"issue_number": 0, "reason": "No shared cause established.", "confidence
 
 class LargeCatalogTests(unittest.TestCase):
     @staticmethod
-    def issues(n):
+    def issues(n) -> list[dict[str, object]]:
         return [
             {
                 "number": i + 1,
@@ -25,7 +25,7 @@ class LargeCatalogTests(unittest.TestCase):
             for i in range(n)
         ]
 
-    def test_121_open_issues_can_be_fingerprinted_without_model_review(self):
+    def test_121_open_issues_can_be_fingerprinted_without_model_review(self) -> None:
         g = GitHub(Mock(), "unused")
         fingerprinted_issues = 121
         rows = self.issues(fingerprinted_issues)
@@ -35,11 +35,11 @@ class LargeCatalogTests(unittest.TestCase):
         assert g.open_signature() == f.digest([(x["number"], x["updated_at"]) for x in rows])
         g.http.request.assert_not_called()
 
-    def test_all_241_issues_reviewed_with_unchanged_per_request_bounds(self):
+    def test_all_241_issues_reviewed_with_unchanged_per_request_bounds(self) -> None:
         m = Model(Mock(), "test-only", store=Mock())
         seen = []
 
-        def call(task, data, schema, deadline):
+        def call(task, data, schema, deadline) -> "dict[str, object]":
             batch = data["open_issues"]
             # Match batches are capped: at most 12 issues, 30k reserved tokens, 30 min.
             batch_size_limit = 12
@@ -58,7 +58,7 @@ class LargeCatalogTests(unittest.TestCase):
         assert result["candidates"] == []
         m.http.request.assert_not_called()
 
-    def test_admission_resume_reuses_existing_v3_paid_batch_receipts(self):
+    def test_admission_resume_reuses_existing_v3_paid_batch_receipts(self) -> None:
         m = Model(Mock(), "test-only", store=Mock())
         rows = self.issues(121)
         saved = []
@@ -69,7 +69,7 @@ class LargeCatalogTests(unittest.TestCase):
         receipt_version = 3
         reviewed_batches = 2
 
-        def first(task, data, schema, deadline):
+        def first(task, data, schema, deadline) -> "dict[str, object]":
             calls.append([x["number"] for x in data["open_issues"]])
             if len(calls) == deferred_batch:
                 raise Failure("LLM_ADMISSION_DEFERRED", 61)
@@ -83,7 +83,7 @@ class LargeCatalogTests(unittest.TestCase):
         completed = [x for batch in calls[:2] for x in batch]
         resumed = []
 
-        def second(task, data, schema, deadline):
+        def second(task, data, schema, deadline) -> "dict[str, object]":
             resumed.extend(x["number"] for x in data["open_issues"])
             return dict(GOOD)
 

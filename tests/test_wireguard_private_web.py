@@ -1,3 +1,5 @@
+"""Tests for the wireguard private web service files."""
+
 from pathlib import Path
 import json
 import os
@@ -18,41 +20,42 @@ UNIT = (ROLE / "templates/wireguard-private-web.service.j2").read_text()
 
 class WireGuardPrivateWebTests(unittest.TestCase):
     def test_defaults_are_disabled_and_use_nftables(self):
-        self.assertIn("wireguard_private_web_enabled: false", DEFAULTS)
-        self.assertIn("Debian: nftables", DEFAULTS)
-        self.assertIn("Archlinux: nftables", DEFAULTS)
-        self.assertIn("wireguard_private_web_proxy_port: 18443", DEFAULTS)
+        assert "wireguard_private_web_enabled: false" in DEFAULTS
+        assert "Debian: nftables" in DEFAULTS
+        assert "Archlinux: nftables" in DEFAULTS
+        assert "wireguard_private_web_proxy_port: 18443" in DEFAULTS
 
     def test_installs_and_starts_dedicated_unit(self):
-        self.assertIn("ansible.builtin.apt", TASKS)
-        self.assertIn("community.general.pacman", TASKS)
-        self.assertIn("systemd_service", TASKS)
-        self.assertIn("enabled: true", TASKS)
-        self.assertIn("ExecStart={{ wireguard_private_web_script_path }}", UNIT)
-        self.assertIn("RemainAfterExit=yes", UNIT)
-        self.assertIn("Wants=network-online.target {{ wireguard_private_web_wg_service }}", UNIT)
-        self.assertIn("After=network-online.target {{ wireguard_private_web_wg_service }}", UNIT)
-        self.assertNotIn("ExecStop=", UNIT)
+        assert "ansible.builtin.apt" in TASKS
+        assert "community.general.pacman" in TASKS
+        assert "systemd_service" in TASKS
+        assert "enabled: true" in TASKS
+        assert "ExecStart={{ wireguard_private_web_script_path }}" in UNIT
+        assert "RemainAfterExit=yes" in UNIT
+        assert "Wants=network-online.target {{ wireguard_private_web_wg_service }}" in UNIT
+        assert "After=network-online.target {{ wireguard_private_web_wg_service }}" in UNIT
+        assert "ExecStop=" not in UNIT
 
     def test_owns_only_its_nft_table_and_nat_hooks(self):
-        self.assertIn("table={{ wireguard_private_web_table | quote }}", SCRIPT)
-        self.assertIn("delete table ip $table", SCRIPT)
-        self.assertIn(
-            "add chain ip %s prerouting { type nat hook prerouting priority -110; policy accept; }",
-            SCRIPT,
+        assert "table={{ wireguard_private_web_table | quote }}" in SCRIPT
+        assert "delete table ip $table" in SCRIPT
+        assert (
+            "add chain ip %s prerouting { type nat hook prerouting priority -110; policy accept; }"
+            in SCRIPT
         )
-        self.assertIn(
-            "add chain ip %s output { type nat hook output priority -110; policy accept; }", SCRIPT
+        assert (
+            "add chain ip %s output { type nat hook output priority -110; policy accept; }"
+            in SCRIPT
         )
-        self.assertIn("iifname %s ip daddr %s tcp dport %s dnat to %s:%s", SCRIPT)
-        self.assertIn("output ip daddr %s tcp dport %s dnat to %s:%s", SCRIPT)
-        self.assertNotIn("flush ruleset", SCRIPT)
+        assert "iifname %s ip daddr %s tcp dport %s dnat to %s:%s" in SCRIPT
+        assert "output ip daddr %s tcp dport %s dnat to %s:%s" in SCRIPT
+        assert "flush ruleset" not in SCRIPT
 
     def test_validates_before_apply_and_preserves_an_owned_backup(self):
-        self.assertIn('nft" -c -f "$tmp"', SCRIPT)
-        self.assertIn('cp "$old" "$backup"', SCRIPT)
-        self.assertIn('nft" -f "$tmp"', SCRIPT)
-        self.assertNotIn('nft" -f "$backup"', SCRIPT)
+        assert 'nft" -c -f "$tmp"' in SCRIPT
+        assert 'cp "$old" "$backup"' in SCRIPT
+        assert 'nft" -f "$tmp"' in SCRIPT
+        assert 'nft" -f "$backup"' not in SCRIPT
 
     def test_failed_atomic_apply_does_not_append_backup_rules(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -100,17 +103,15 @@ sys.exit(1 if s['apply_calls'] == 1 else 0)
                 text=True,
                 env={**os.environ, "PRIVATE_WEB_TEST_STATE": str(state)},
             )
-            self.assertNotEqual(result.returncode, 0)
-            self.assertEqual(
-                json.loads(state.read_text()), {"apply_calls": 1, "rules": ["original"]}
-            )
-            self.assertTrue((directory / "backup.nft").exists())
+            assert result.returncode != 0
+            assert json.loads(state.read_text()) == {"apply_calls": 1, "rules": ["original"]}
+            assert (directory / "backup.nft").exists()
             rules = (directory / "validated.nft").read_text()
-            self.assertIn(
-                "prerouting iifname cni0 ip saddr 10.42.0.0/16 ip daddr 10.250.0.1 tcp dport 443 dnat to 10.250.0.1:18443",
-                rules,
+            assert (
+                "prerouting iifname cni0 ip saddr 10.42.0.0/16 ip daddr 10.250.0.1 tcp dport 443 dnat to 10.250.0.1:18443"
+                in rules
             )
-            self.assertNotIn("192.168.", rules)
+            assert "192.168." not in rules
 
 
 if __name__ == "__main__":

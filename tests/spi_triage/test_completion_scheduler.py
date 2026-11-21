@@ -9,7 +9,7 @@ from service import Engine
 
 
 class CompletionSchedulerTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.s = Store(self.tmp.name + "/db")
@@ -26,7 +26,7 @@ class CompletionSchedulerTests(unittest.TestCase):
                 (stage, state, self.now if available is None else available, error, key),
             )
 
-    def test_competition_expiry_jitter_publication_and_resume(self):
+    def test_competition_expiry_jitter_publication_and_resume(self) -> None:
         for jitter in (1, 2, 3):
             with self.subTest(jitter=jitter):
                 self.set_competition(jitter)
@@ -60,7 +60,7 @@ class CompletionSchedulerTests(unittest.TestCase):
         http.open_signature.return_value = digest([])
         model = Mock()
 
-        def analyze(*args):
+        def analyze(*args) -> object:
             r = self.s.reserve_llm(28931)
             self.s.finish_llm(r)
             return f.report()
@@ -73,7 +73,7 @@ class CompletionSchedulerTests(unittest.TestCase):
         assert http.request.call_count == 1
         assert self.s.claim()["job_id"] == "older-match"
 
-    def test_safe_continuations_unknown_backoff_and_cancelled(self):
+    def test_safe_continuations_unknown_backoff_and_cancelled(self) -> None:
         self.add("match")
         self.add("analysis", 2, "retry", 3700, "LLM_HTTP_429")
         for i in range(119):
@@ -86,13 +86,13 @@ class CompletionSchedulerTests(unittest.TestCase):
         self.s.save("collect", 4, {}, state="complete")
         assert self.s.claim()["job_id"] == "match"
 
-    def test_stale_unbounded_deadline_does_not_hold(self):
+    def test_stale_unbounded_deadline_does_not_hold(self) -> None:
         self.add("match")
         self.add("analysis", 2, "retry", 4000, "LLM_ADMISSION_DEFERRED")
         self.s.reserve_llm(30000, timeout=4000)
         assert self.s.claim()["job_id"] == "match"
 
-    def test_due_analysis_priority_and_safe_write_during_hold(self):
+    def test_due_analysis_priority_and_safe_write_during_hold(self) -> None:
         self.add("match")
         self.add("analysis", 2, "retry", 164, "LLM_ADMISSION_DEFERRED")
         r = self.s.reserve_llm(30000)
@@ -104,7 +104,7 @@ class CompletionSchedulerTests(unittest.TestCase):
         self.now = 164
         assert self.s.claim()["job_id"] == "analysis"
 
-    def test_abandoned_active_ledger_bounded_wake_and_expiry(self):
+    def test_abandoned_active_ledger_bounded_wake_and_expiry(self) -> None:
         self.add("match")
         self.add("analysis", 2, "retry", 764, "LLM_ADMISSION_DEFERRED")
         self.s.reserve_llm(30000)  # active request lost on restart, expires at 761
@@ -118,7 +118,7 @@ class CompletionSchedulerTests(unittest.TestCase):
         with self.assertRaises(Failure):
             self.s.reserve_llm(1)
 
-    def test_stage_ties_and_age_alert_remain_natural(self):
+    def test_stage_ties_and_age_alert_remain_natural(self) -> None:
         self.add("old-match")
         self.now = 110
         self.add("z-analysis", 2)

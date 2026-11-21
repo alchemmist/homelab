@@ -1,9 +1,12 @@
+"""Tests for the SPI triage pipeline entry point."""
+
 import importlib.util
 import json
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import TypedDict, cast
 from unittest.mock import Mock
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -13,23 +16,40 @@ from integrations import GitHub, Model, Evidence, metric_summary
 from service import Engine
 
 
-def event(status="firing", start="2026-11-03T13:00:00Z"):
-    return normalize(
-        {
-            "source": "test",
-            "alert": {
-                "status": status,
-                "startsAt": start,
-                "endsAt": "2026-11-03T13:01:00Z" if status == "resolved" else "",
-                "fingerprint": "abc",
-                "labels": {"alertname": "TestAlert", "namespace": "test"},
-                "annotations": {"summary": "Test alert"},
-            },
-        }
+class Event(TypedDict):
+    """Normalized alert event produced by core.normalize in tests."""
+
+    source: str
+    status: str
+    labels: dict[str, str]
+    annotations: dict[str, str]
+    startsAt: str
+    endsAt: str | None
+    generatorURL: str
+    episode: str
+    event_key: str
+
+
+def event(status="firing", start="2026-11-03T13:00:00Z") -> Event:
+    return cast(
+        Event,
+        normalize(
+            {
+                "source": "test",
+                "alert": {
+                    "status": status,
+                    "startsAt": start,
+                    "endsAt": "2026-11-03T13:01:00Z" if status == "resolved" else "",
+                    "fingerprint": "abc",
+                    "labels": {"alertname": "TestAlert", "namespace": "test"},
+                    "annotations": {"summary": "Test alert"},
+                },
+            }
+        ),
     )
 
 
-def report(number=0):
+def report(number=0) -> dict[str, object]:
     return {
         "title": "[SPI] Test service interruption",
         "summary": "A service symptom requires investigation.",
@@ -49,40 +69,38 @@ def report(number=0):
 
 
 class CoreTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.store = Store(Path(self.tmp.name) / "jobs.sqlite")
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         self.tmp.cleanup()
 
-    def test_duplicate_delivery_is_not_new_job(self):
+    def test_duplicate_delivery_is_not_new_job(self) -> None:
         assert not self.store.enqueue(event())["duplicate"]
         assert self.store.enqueue(event())["duplicate"]
-        # The same delivery arrives twice: once stored, once duplicated.
-        delivery_count = 2
-        assert self.store.get(event()["event_key"])["deliveries"] == delivery_count
+        assert self.store.get(event()["event_key"])["deliveries"] == 2
 
-    def test_new_episode_and_resolve_are_distinct(self):
+    def test_new_episode_and_resolve_are_distinct(self) -> None:
         assert event()["event_key"] != event("resolved")["event_key"]
         assert event()["episode"] != event(start="2026-11-03T14:00:00Z")["episode"]
         assert event()["episode"] == event("resolved")["episode"]
 
-    def test_claim_is_exclusive_and_survives_restart(self):
+    def test_claim_is_exclusive_and_survives_restart(self) -> None:
         self.store.enqueue(event())
         first = self.store.claim()
         second = Store(self.store.path).claim()
         assert first["job_id"]
         assert not second["job_id"]
 
-    def test_expired_lease_is_recovered(self):
+    def test_expired_lease_is_recovered(self) -> None:
         self.store.enqueue(event())
         first = self.store.claim()
         with self.store.db() as c:
             c.execute("UPDATE jobs SET lease=0")
         assert first == self.store.claim()
 
-    def test_process_restart_releases_claim_but_preserves_progress(self):
+    def test_process_restart_releases_claim_but_preserves_progress(self) -> None:
         self.store.enqueue(event())
         key = self.store.claim()["job_id"]
         self.store.save(key, 1, {"match": {"candidates": []}})
@@ -91,7 +109,7 @@ class CoreTests(unittest.TestCase):
         assert restored.claim()["job_id"] == key
         assert restored.get(key)["stage"] == 1
 
-    def test_group_insert_rolls_back_atomically(self):
+    def test_group_insert_rolls_back_atomically(self) -> None:
         first = event()
         second = event(start="2026-11-03T14:00:00Z")
         second.pop("episode")
@@ -99,7 +117,7 @@ class CoreTests(unittest.TestCase):
             self.store.enqueue_many([first, second])
         assert self.store.health()["counts"] == {}
 
-    def test_invalid_annotations_rejected_before_storage(self):
+    def test_invalid_annotations_rejected_before_storage(self) -> None:
         with self.assertRaises(Failure):
             normalize(
                 {
@@ -112,24 +130,22 @@ class CoreTests(unittest.TestCase):
                 }
             )
 
-    def test_bad_timestamp_is_rejected(self):
+    def test_bad_timestamp_is_rejected(self) -> None:
         with self.assertRaises(Failure):
             event(start="not a time")
 
-    def test_redaction_precedes_model(self):
+    def test_redaction_precedes_model(self) -> None:
         secret = "ghp_" + "x" * 25
-        assert secret not in json.dumps(
-            clean({"password": "private", "message": secret, "description": "token=private"})
-        )
+        assert secret not in json.dumps(clean({"password": "private", "message": secret, "description": "token=private"}))
         assert clean({"Authorization": "Bearer xyz"})["Authorization"] == "[REDACTED]"
 
-    def test_english_contract(self):
+    def test_english_contract(self) -> None:
         r = report()
         r["summary"] = "Ошибка сервиса"
         with self.assertRaisesRegex(Failure, "NON_ENGLISH"):
             render(r, event())
 
-    def test_strict_schema_and_boolean_target(self):
+    def test_strict_schema_and_boolean_target(self) -> None:
         r = report()
         r["issue_number"] = True
         with self.assertRaises(Failure):
@@ -139,7 +155,7 @@ class CoreTests(unittest.TestCase):
         with self.assertRaises(Failure):
             validate(r, REPORT_SCHEMA)
 
-    def test_publication_marker_and_prefix(self):
+    def test_publication_marker_and_prefix(self) -> None:
         r = report()
         r["title"] = "Service issue"
         title, body = render(r, event())
@@ -147,7 +163,7 @@ class CoreTests(unittest.TestCase):
         assert event()["event_key"] in body
         assert "## Alert quality" in body
 
-    def test_reject_model_secret(self):
+    def test_reject_model_secret(self) -> None:
         r = report()
         r["summary"] = "Authorization: Bearer ghp_" + "x" * 25
         with self.assertRaises(Failure):
@@ -155,7 +171,7 @@ class CoreTests(unittest.TestCase):
 
 
 class AdapterTests(unittest.TestCase):
-    def test_github_paginates_all_open_and_excludes_pr(self):
+    def test_github_paginates_all_open_and_excludes_pr(self) -> None:
         http = Mock()
         http.request.side_effect = [
             [
@@ -171,25 +187,21 @@ class AdapterTests(unittest.TestCase):
             f.write("fake-token")
             f.flush()
             items = GitHub(http, f.name).issues()
-        # Twenty fake issues across the two pages, plus one Pager entry.
-        item_count = 21
-        assert len(items) == item_count
+        assert len(items) == 21
         assert "state=open" in http.request.call_args_list[0].args[1]
         assert "page=2" in http.request.call_args_list[1].args[1]
 
-    def test_model_matches_every_batch(self):
+    def test_model_matches_every_batch(self) -> None:
         model = Model(Mock(), "fake")
         model.call = Mock(
             return_value={"issue_number": 0, "reason": "Different", "confidence": "low"}
         )
         issues = [{"number": i} for i in range(25)]
         r = model.match(event(), issues)
-        # 25 issues in batches of 12 need three model calls.
-        review_batches = 3
-        assert model.call.call_count == review_batches
+        assert model.call.call_count == 3
         assert r["reviewed_numbers"] == list(range(25))
 
-    def test_invented_issue_is_rejected(self):
+    def test_invented_issue_is_rejected(self) -> None:
         model = Model(Mock(), "fake")
         model.call = Mock(
             return_value={"issue_number": 999, "reason": "Same", "confidence": "high"}
@@ -197,7 +209,7 @@ class AdapterTests(unittest.TestCase):
         with self.assertRaisesRegex(Failure, "INVALID_MATCH_TARGET"):
             model.match(event(), [{"number": 1}])
 
-    def test_schema_retry_is_bounded(self):
+    def test_schema_retry_is_bounded(self) -> None:
         http = Mock()
         http.request.return_value = {"choices": [{"message": {"content": "not json"}}]}
         model = Model(http, "fake", min_interval=0, store=Mock())
@@ -207,7 +219,7 @@ class AdapterTests(unittest.TestCase):
 
 
 class EvidenceTests(unittest.TestCase):
-    def test_metric_summary_preserves_transient_peak_and_empty_data(self):
+    def test_metric_summary_preserves_transient_peak_and_empty_data(self) -> None:
         data = {
             "data": {
                 "resultType": "matrix",
@@ -217,23 +229,22 @@ class EvidenceTests(unittest.TestCase):
             }
         }
         result = metric_summary(data)
-        # The peak of the series is seven occurrences.
-        series_maximum = 7
-        assert result["series"][0]["maximum"] == series_maximum
+        assert result["series"][0]["maximum"] == 7
         assert result["series"][0]["last"]["value"] == 0
         assert "values" not in result["series"][0]
         assert "do not establish" in result["limitation"]
 
-    def test_http_200_observability_error_is_not_evidence(self):
+    def test_http_200_observability_error_is_not_evidence(self) -> None:
         http = Mock()
         http.request.return_value = {"status": "error", "error": "not secret"}
         with self.assertRaisesRegex(Failure, "OBSERVABILITY_QUERY_ERROR"):
             Evidence(http, "fake", "http://grafana").get("/api/test")
 
-    def test_host_profile_and_no_raw_trace_attributes(self):
+    def test_host_profile_and_no_raw_trace_attributes(self) -> None:
         http = Mock()
 
-        def request(method, url, *args, **kwargs):
+
+        def request(_method, url, *_args, **_kwargs) -> dict[str, object]:
             if "/api/v1/query?" in url:
                 return {"data": {"result": [{"metric": {"nodename": "socrat-0"}}]}}
             if "/api/traces/" in url:
@@ -268,7 +279,7 @@ class EvidenceTests(unittest.TestCase):
         assert "do-not-publish" not in json.dumps(data)
         assert "attributes" not in json.dumps(data["queries"])
 
-    def test_repository_reference_is_not_deployed_proof(self):
+    def test_repository_reference_is_not_deployed_proof(self) -> None:
         import base64
 
         http = Mock()
@@ -291,7 +302,7 @@ class EvidenceTests(unittest.TestCase):
 
 
 class EngineTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.store = Store(Path(self.tmp.name) / "db")
         self.github = Mock()
@@ -306,52 +317,50 @@ class EngineTests(unittest.TestCase):
         self.evidence.collect.return_value = {"missing": ["logs"]}
         self.engine = Engine(self.store, self.github, self.model, self.evidence, write=False)
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         self.tmp.cleanup()
 
-    def process(self, e=None, through=4):
-        key = self.store.enqueue(e or event())["job_id"]
+    def process(self, e=None, through=4) -> str:
+        key = cast("str", self.store.enqueue(e or event())["job_id"])
         self.store.claim()
         for stage in ["match", "collect", "analyze", "publish"][:through]:
             self.engine.run(stage, key)
         return key
 
-    def test_dry_run_never_writes(self):
+    def test_dry_run_never_writes(self) -> None:
         key = self.process()
         assert self.store.get(key)["state"] == "dry_run"
         self.github.request.assert_not_called()
 
-    def test_new_issue(self):
+    def test_new_issue(self) -> None:
         self.engine.write = True
         self.github.request.return_value = {"number": 7}
         key = self.process()
-        assert self.store.get(key)["issue"] == self.github.request.return_value["number"]
+        assert self.store.get(key)["issue"] == 7
         assert self.github.request.call_args.args[1] == "/issues"
 
-    def test_existing_issue_adds_comment(self):
+    def test_existing_issue_adds_comment(self) -> None:
         self.engine.write = True
         self.model.match.return_value = {"candidates": [{"number": 7}]}
         self.model.analyze.return_value = report(7)
         key = self.process()
         assert self.github.request.call_args.args[1] == "/issues/7/comments"
 
-    def test_ambiguous_write_is_reconciled_not_repeated(self):
+    def test_ambiguous_write_is_reconciled_not_repeated(self) -> None:
         self.engine.write = True
         key = self.process(through=3)
         self.github.request.side_effect = Failure("UPSTREAM_NETWORK_ERROR")
+        self.github.reconcile.return_value = 7
         with self.assertRaises(Failure):
             self.engine.run("publish", key)
-        # The failed write is later reconciled as issue #7.
-        reconciled_issue = 7
-        self.github.reconcile.return_value = reconciled_issue
         with self.store.db() as c:
             c.execute("UPDATE jobs SET available=0,lease=0")
         self.store.claim()
         self.engine.run("publish", key)
         assert self.github.request.call_count == 1
-        assert self.store.get(key)["issue"] == reconciled_issue
+        assert self.store.get(key)["issue"] == 7
 
-    def test_unreconciled_write_requires_review(self):
+    def test_unreconciled_write_requires_review(self) -> None:
         self.engine.write = True
         key = self.process(through=3)
         self.github.request.side_effect = Failure("HTTP_500")
@@ -366,7 +375,7 @@ class EngineTests(unittest.TestCase):
         assert self.store.get(key)["state"] == "dead"
         assert self.github.request.call_count == 1
 
-    def test_changed_open_issues_restarts_matching(self):
+    def test_changed_open_issues_restarts_matching(self) -> None:
         self.engine.write = True
         key = self.process(through=3)
         self.github.snapshot.return_value = [{"number": 3, "updated_at": "later"}]
@@ -375,13 +384,13 @@ class EngineTests(unittest.TestCase):
         assert self.store.get(key)["stage"] == 0
         self.github.request.assert_not_called()
 
-    def test_resolved_does_not_create_issue(self):
+    def test_resolved_does_not_create_issue(self) -> None:
         self.engine.write = True
         key = self.process(event("resolved"))
         self.github.request.assert_not_called()
         self.model.match.assert_not_called()
 
-    def test_resolved_comments_but_does_not_close(self):
+    def test_resolved_comments_but_does_not_close(self) -> None:
         self.engine.write = True
         self.github.request.return_value = {"number": 7}
         first = self.process()
@@ -391,7 +400,7 @@ class EngineTests(unittest.TestCase):
         assert self.github.request.call_args.args[0:2] == ("POST", "/issues/7/comments")
         assert "state" not in self.github.request.call_args.args[2]
 
-    def test_closed_issue_not_reopened_on_resolution(self):
+    def test_closed_issue_not_reopened_on_resolution(self) -> None:
         self.engine.write = True
         self.github.request.return_value = {"number": 7}
         self.process()
@@ -400,7 +409,7 @@ class EngineTests(unittest.TestCase):
         self.process(event("resolved"))
         assert self.github.request.call_count == 1
 
-    def test_saved_stages_are_idempotent(self):
+    def test_saved_stages_are_idempotent(self) -> None:
         key = self.process(through=2)
         self.engine.run("match", key)
         self.engine.run("collect", key)

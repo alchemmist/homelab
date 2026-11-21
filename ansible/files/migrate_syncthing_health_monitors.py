@@ -1,3 +1,5 @@
+"""Migrate Uptime Kuma monitor rows for Syncthing's private UI to new targets."""
+
 import argparse
 import json
 import os

@@ -10,29 +10,27 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class EnglishUITests(unittest.TestCase):
-    def test_all_owned_interface_assets_are_english(self):
+    def test_all_owned_interface_assets_are_english(self) -> None:
         class HTML(HTMLParser):
             language = None
 
-            def handle_starttag(self, tag, attrs):
+            def handle_starttag(self, tag, attrs) -> None:
                 if tag == "html":
                     self.language = dict(attrs).get("lang")
 
         html = (ROOT / "charts/spi-triage/ui/index.html").read_text()
         parsed = HTML()
         parsed.feed(html)
-        self.assertEqual(parsed.language, "en")
+        assert parsed.language == "en"
         for path in (ROOT / "charts/spi-triage/ui").iterdir():
             if path.suffix in (".html", ".js", ".css", ".py"):
-                self.assertFalse(
-                    any("\u0400" <= c <= "\u04ff" for c in path.read_text()), path.name
-                )
-        self.assertIn("Queue controls", html)
-        self.assertIn("Cancellation does not close the GitHub issue", html)
+                assert not any("Ѐ" <= c <= "ӿ" for c in path.read_text()), path.name
+        assert "Queue controls" in html
+        assert "Cancellation does not close the GitHub issue" in html
         js = (ROOT / "charts/spi-triage/ui/app.js").read_text()
-        self.assertIn("toLocaleString('en-GB'", js)
+        assert "toLocaleString('en-GB'" in js
 
-    def test_render_confirmation_and_errors_are_english_but_data_is_preserved(self):
+    def test_render_confirmation_and_errors_are_english_but_data_is_preserved(self) -> None:
         script = r"""
 const fs=require('node:fs'), vm=require('node:vm'), assert=require('node:assert/strict');
 class Element {

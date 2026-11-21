@@ -6,30 +6,33 @@ import unittest
 import urllib.error
 from tests.test_rustfs_gateway import g, BASE
 
+OFFLINE_AUTHORIZATION_STATUS = 503
+EMPTY_COOKIE_AUTHORIZATION_STATUS = 401
+
 
 class PrivateAuth(unittest.TestCase):
-    def test_auth_results_are_fail_closed(self):
+    def test_auth_results_are_fail_closed(self) -> None:
         reader = object.__new__(g.Reader)
         reader.auth = g.ORIGIN + "/outpost.goauthentik.io/auth/nginx"
 
         class HTTP:
-            def open(self, *args, **kwargs):
+            def open(self, *_args, **_kwargs):
                 raise self.error
 
         reader.http = HTTP()
         for code, expected in [(401, 401), (403, 403), (500, 503)]:
             reader.http.error = urllib.error.HTTPError(reader.auth, code, "", {}, None)
-            self.assertEqual(reader.authorization("fixture"), expected)
+            assert reader.authorization("fixture") == expected
         reader.http.error = OSError("offline")
-        self.assertEqual(reader.authorization("fixture"), 503)
-        self.assertEqual(reader.authorization(""), 401)
+        assert reader.authorization("fixture") == OFFLINE_AUTHORIZATION_STATUS
+        assert reader.authorization("") == EMPTY_COOKIE_AUTHORIZATION_STATUS
 
-    def test_denied_and_unavailable_never_loop_or_read(self):
+    def test_denied_and_unavailable_never_loop_or_read(self) -> None:
         class Reader:
             status = 403
             calls = []
 
-            def authorization(self, cookie):
+            def authorization(self, _cookie):
                 return self.status
 
             def read(self, key):
@@ -57,12 +60,12 @@ class PrivateAuth(unittest.TestCase):
                 )
                 response = conn.getresponse()
                 body = response.read()
-                self.assertEqual(response.status, code)
-                self.assertIsNone(response.getheader("Location"))
-                self.assertEqual(response.getheader("Cache-Control"), "no-store")
-                self.assertEqual(body, b"")
+                assert response.status == code
+                assert response.getheader("Location") is None
+                assert response.getheader("Cache-Control") == "no-store"
+                assert body == b""
                 conn.close()
-            self.assertEqual(reader.calls, [])
+            assert reader.calls == []
         finally:
             server.shutdown()
             server.server_close()

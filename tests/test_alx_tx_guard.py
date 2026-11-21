@@ -1,3 +1,5 @@
+"""Tests for the ALX tool transaction guard."""
+
 import os
 from pathlib import Path
 import re
@@ -63,7 +65,7 @@ int main(int argc, char **argv) {
 @unittest.skipUnless(SOURCE and COMPILER, "ALX_SOURCE and a C compiler are required")
 class AlxTxGuardTests(unittest.TestCase):
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         source = Path(SOURCE).read_text()
         match = re.search(r"static bool alx_clean_tx_irq\(struct alx_tx_queue \*txq\)\s*\{", source)
         if match is None:
@@ -90,7 +92,7 @@ class AlxTxGuardTests(unittest.TestCase):
             timeout=30,
         )
 
-    def run_cleanup(self, hardware_index, software_index, occupied):
+    def run_cleanup(self, hardware_index, software_index, occupied) -> tuple[int, ...]:
         result = subprocess.run(
             [str(self.binary), str(hardware_index), str(software_index), str(occupied)],
             check=True,
@@ -100,21 +102,21 @@ class AlxTxGuardTests(unittest.TestCase):
         )
         return tuple(map(int, result.stdout.split()))
 
-    def test_invalid_indices_schedule_reset_without_consuming_descriptors(self):
+    def test_invalid_indices_schedule_reset_without_consuming_descriptors(self) -> None:
         for hardware_index in [256, 65535]:
             with self.subTest(hardware_index=hardware_index):
                 assert self.run_cleanup(hardware_index, 0, 3) == (1, 1, 0, 0, 0, 0)
 
-    def test_last_valid_index_completes(self):
+    def test_last_valid_index_completes(self) -> None:
         assert self.run_cleanup(255, 250, 5) == (1, 0, 5, 255, 5, 500)
 
-    def test_ring_wrap_preserves_completion_accounting(self):
+    def test_ring_wrap_preserves_completion_accounting(self) -> None:
         assert self.run_cleanup(2, 254, 4) == (1, 0, 4, 2, 4, 400)
 
-    def test_empty_ring_does_no_work(self):
+    def test_empty_ring_does_no_work(self) -> None:
         assert self.run_cleanup(0, 0, 0) == (1, 0, 0, 0, 0, 0)
 
-    def test_budget_preserves_pending_work(self):
+    def test_budget_preserves_pending_work(self) -> None:
         assert self.run_cleanup(200, 0, 200) == (0, 0, 128, 128, 128, 12800)
 
 

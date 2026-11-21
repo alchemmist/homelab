@@ -3,6 +3,8 @@
 import copy
 import importlib.util
 from pathlib import Path
+from typing import TypedDict
+from types import ModuleType
 from unittest.mock import Mock, patch
 import json
 import ssl
@@ -11,8 +13,9 @@ import pytest
 ROOT = Path(__file__).parents[1]
 
 
-def load(name, file):
+def load(name: str, file: str) -> ModuleType:
     spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / file)
+    assert spec is not None
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
     return m
@@ -23,7 +26,24 @@ p = load("entry_plan", "public-entry-failover-plan.py")
 REQUIRED = {"home": ["external-a", "external-b"], "vps": ["home-isp", "external-a"]}
 
 
-def batch(n, home=True, vps=True, now=None):
+class _Observation(TypedDict):
+    """One witness sample of a backend probe at a fixed time."""
+
+    entry: str
+    vantage: str
+    checked_at: int
+    backend_ok: bool
+    local_only: bool
+
+
+class _Batch(TypedDict):
+    """A round of published-state evidence accepted by the planner."""
+
+    round: int
+    observations: list[_Observation]
+
+
+def batch(n, home=True, vps=True, now=None) -> _Batch:
     return {
         "round": n,
         "observations": [
@@ -40,7 +60,7 @@ def batch(n, home=True, vps=True, now=None):
     }
 
 
-def test_three_failures_withdraw_and_three_passes_restore():
+def test_three_failures_withdraw_and_three_passes_restore() -> None:
     s = p.initial(["home", "vps"])
     for n in [1, 2]:
         r = p.plan(s, batch(n, vps=False), REQUIRED, n * 30)
@@ -57,7 +77,7 @@ def test_three_failures_withdraw_and_three_passes_restore():
     assert r["writes"] is False and r["ready_to_publish"] is False
 
 
-def test_partition_never_silently_means_healthy_or_global_down():
+def test_partition_never_silently_means_healthy_or_global_down() -> None:
     s = p.initial(["home", "vps"])
     b = batch(1)
     b["observations"][-1]["backend_ok"] = False
@@ -75,14 +95,14 @@ def test_partition_never_silently_means_healthy_or_global_down():
         lambda b: b["observations"][0].update(checked_at=9999),
     ],
 )
-def test_missing_local_stale_future_hold(change):
+def test_missing_local_stale_future_hold(change) -> None:
     b = batch(1)
     change(b)
     r = p.plan(p.initial(["home", "vps"]), b, REQUIRED, 30)
     assert r["decision"] == "hold_review" and r["state"]["published"] == ["home", "vps"]
 
 
-def test_both_down_never_publish_empty():
+def test_both_down_never_publish_empty() -> None:
     s = p.initial(["home", "vps"])
     for n in [1, 2, 3]:
         r = p.plan(s, batch(n, False, False), REQUIRED, n * 30)
@@ -92,7 +112,7 @@ def test_both_down_never_publish_empty():
     )
 
 
-def test_duplicate_idempotence_and_no_reused_sample_streak():
+def test_duplicate_idempotence_and_no_reused_sample_streak() -> None:
     b = batch(1, vps=False)
     s = p.plan(p.initial(["home", "vps"]), b, REQUIRED, 30)["state"]
     assert p.plan(s, b, REQUIRED, 30)["state"] == s
@@ -109,7 +129,7 @@ def test_duplicate_idempotence_and_no_reused_sample_streak():
         p.plan(s, batch(0), REQUIRED, 30)
 
 
-def test_authorities_with_same_shared_evidence_cannot_disagree():
+def test_authorities_with_same_shared_evidence_cannot_disagree() -> None:
     s = p.initial(["home", "vps"])
     b = batch(1)
     assert p.plan(s, b, REQUIRED, 30) == p.plan(
@@ -118,7 +138,7 @@ def test_authorities_with_same_shared_evidence_cannot_disagree():
     assert b == batch(1)
 
 
-def test_single_vantage_and_duplicate_row_rejected():
+def test_single_vantage_and_duplicate_row_rejected() -> None:
     with pytest.raises(ValueError):
         p.plan(p.initial(["home"]), batch(1), {"home": ["one"], "vps": ["one"]}, 30)
     b = batch(1)
@@ -127,7 +147,7 @@ def test_single_vantage_and_duplicate_row_rejected():
         p.plan(p.initial(["home"]), b, REQUIRED, 30)
 
 
-def discovery():
+def discovery() -> dict[str, str]:
     return {
         "issuer": h.ISSUER,
         "authorization_endpoint": "https://" + h.HOST + "/authorize",
@@ -136,7 +156,7 @@ def discovery():
     }
 
 
-def test_backend_discovery_not_just_listening_port():
+def test_backend_discovery_not_just_listening_port() -> None:
     assert h.valid_discovery(discovery())
     assert not h.valid_discovery({"status": "ok"})
     for value in [
@@ -149,7 +169,7 @@ def test_backend_discovery_not_just_listening_port():
         assert not h.valid_discovery(d)
 
 
-def test_certificate_failure_never_counts_as_backend_up():
+def test_certificate_failure_never_counts_as_backend_up() -> None:
     with (
         patch.object(h.socket, "create_connection", return_value=Mock()),
         patch.object(h.ssl, "create_default_context") as ctx,
@@ -160,7 +180,7 @@ def test_certificate_failure_never_counts_as_backend_up():
     assert "SECRET" not in json.dumps(r) and r["failure_kind"] == "tls_certificate"
 
 
-def test_success_preserves_sni_host_and_marks_self_probe_local_only():
+def test_success_preserves_sni_host_and_marks_self_probe_local_only() -> None:
     response = Mock()
     response.status = 200
     response.read.return_value = json.dumps(discovery()).encode()

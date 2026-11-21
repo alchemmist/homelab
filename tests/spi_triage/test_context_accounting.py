@@ -8,10 +8,7 @@ from integrations import Model
 
 
 class ContextAccountingTests(unittest.TestCase):
-    # Reservations must never exceed the configured model budget of 30k tokens.
-    token_budget = 30000
-
-    def test_contract_and_schema_completion(self):
+    def test_contract_and_schema_completion(self) -> None:
         m = Model(Mock(), "unused")
         b = m.payload("x", {"text": 'é😀"\\\n' * 100}, MATCH_SCHEMA)
         n = m.reservation(b)
@@ -30,7 +27,7 @@ class ContextAccountingTests(unittest.TestCase):
             assert e.exception.code == "LLM_ACCOUNTING_CONTRACT_MISMATCH"
         m.http.request.assert_not_called()
 
-    def test_excerpts_identity_reference_metadata_and_no_mutation(self):
+    def test_excerpts_identity_reference_metadata_and_no_mutation(self) -> None:
         x = {
             "candidates": [{"number": n, "body": "😀" * 8000} for n in range(120)],
             "index": [{"id": "E001", "path": "original/reference", "excerpt": "x" * 40000}],
@@ -49,14 +46,14 @@ class ContextAccountingTests(unittest.TestCase):
             assert c["body"]["truncated"]
             assert c["body"]["unreviewed_bytes"] > 0
 
-    def test_matching_event_bounded_and_all_identities(self):
+    def test_matching_event_bounded_and_all_identities(self) -> None:
         m = Model(Mock(), "unused")
         event = f.event()
         event["description"] = "x" * 1000000
         seen = []
 
-        def call(task, data, schema, deadline):
-            assert m.reservation(m.payload(task, data, schema)) <= self.token_budget
+        def call(task, data, schema, deadline) -> "dict[str, object]":
+            assert m.reservation(m.payload(task, data, schema)) <= 30000
             assert data["alert"]["description"]["truncated"]
             seen.extend(x["number"] for x in data["open_issues"])
             return {"issue_number": 0, "reason": "No same problem.", "confidence": "low"}
@@ -65,7 +62,7 @@ class ContextAccountingTests(unittest.TestCase):
         m.match(event, [{"number": i, "body": "x" * 6000} for i in range(120)])
         assert seen == list(range(120))
 
-    def test_large_analysis_preserves_candidates_and_artifact_index(self):
+    def test_large_analysis_preserves_candidates_and_artifact_index(self) -> None:
         m = Model(Mock(), "unused")
         event = f.event()
         event["description"] = "x" * 80000
@@ -88,9 +85,9 @@ class ContextAccountingTests(unittest.TestCase):
         class Stop(Exception):
             pass
 
-        def call(task, data, schema, deadline):
+        def call(task, data, schema, deadline) -> "dict[str, object]":
             captured.update(data)
-            assert m.budget_reservation(m.payload(task, data, schema)) <= self.token_budget
+            assert m.budget_reservation(m.payload(task, data, schema)) <= 30000
             raise Stop()
 
         m.call = call
@@ -102,7 +99,7 @@ class ContextAccountingTests(unittest.TestCase):
         assert captured["evidence"]["artifact_context"]["index"][0]["id"] == "E001"
         assert captured["alert"]["description"]["truncated"]
 
-    def test_irreducible_metadata_visible_without_transport(self):
+    def test_irreducible_metadata_visible_without_transport(self) -> None:
         m = Model(Mock(), "unused")
         event = f.event()
         event["path"] = ["x" * 120000] * 5
@@ -111,7 +108,7 @@ class ContextAccountingTests(unittest.TestCase):
         assert e.exception.code == "LLM_CONTEXT_METADATA_TOO_LARGE"
         m.http.request.assert_not_called()
 
-    def test_local_120_long_report_analysis(self):
+    def test_local_120_long_report_analysis(self) -> None:
         if __import__("os").environ.get("SPI_TOKEN_ACCOUNTING_MODE") != "local-qwen-v1":
             return
         m = Model(Mock(), "unused")
@@ -133,16 +130,14 @@ class ContextAccountingTests(unittest.TestCase):
         class Stop(Exception):
             pass
 
-        def call(task, data, schema, deadline):
+        def call(task, data, schema, deadline) -> "dict[str, object]":
             captured.update(data)
-            assert m.counter.reservation(m.payload(task, data, schema)) <= self.token_budget
+            assert m.counter.reservation(m.payload(task, data, schema)) <= 30000
             raise Stop()
 
         m.call = call
         with self.assertRaises(Stop):
             m.analyze(f.event(), match, evidence)
         assert (match, evidence) == original
-        assert [c["number"] for c in captured["preliminary_match"]["candidates"]] == list(
-            range(120)
-        )
+        assert [c["number"] for c in captured["preliminary_match"]["candidates"]] == list(range(120))
         assert captured["evidence"]["artifact_context"]["index"][0]["id"] == "E001"

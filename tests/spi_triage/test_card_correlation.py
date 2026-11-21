@@ -1,3 +1,5 @@
+"""Tests for SPI triage card correlation logic."""
+
 import json
 import subprocess
 import sys
@@ -16,7 +18,7 @@ HANDOFF_TIMEOUT_MS = 5000
 
 
 class CorrelationTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.store = Store(Path(self.tmp.name) / "jobs.sqlite")
         self.payload = {
@@ -35,10 +37,10 @@ class CorrelationTests(unittest.TestCase):
             },
         }
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         self.tmp.cleanup()
 
-    def test_restart_duplicates_raw_identity_and_copies(self):
+    def test_restart_duplicates_raw_identity_and_copies(self) -> None:
         expected = normalize(self.payload)
         for store in [self.store, Store(self.store.path)]:
             result = record_receipt(store, self.payload)
@@ -50,7 +52,7 @@ class CorrelationTests(unittest.TestCase):
             )
         assert b"private" not in Path(self.store.path).read_bytes()
 
-    def test_resolved_flap_and_unknown(self):
+    def test_resolved_flap_and_unknown(self) -> None:
         firing = record_receipt(self.store, self.payload)
         self.payload["alert"]["status"] = "resolved"
         resolved = record_receipt(self.store, self.payload)
@@ -62,14 +64,14 @@ class CorrelationTests(unittest.TestCase):
         assert new["episode"] != firing["episode"]
         assert new["state"] == "unknown"
 
-    def test_invalid_copy_and_empty_receipt(self):
+    def test_invalid_copy_and_empty_receipt(self) -> None:
         self.payload["receipt"]["copies"] = [{"chat_id": 1, "message_id": "2"}]
         with self.assertRaises(Failure):
             record_receipt(self.store, self.payload)
         self.payload["receipt"]["copies"] = []
         assert record_receipt(self.store, self.payload)["state"] == "unknown"
 
-    def test_workflow_graph_and_actual_splitter(self):
+    def test_workflow_graph_and_actual_splitter(self) -> None:
         w = json.loads((ROOT / "docs/n8n/socrat-bot/workflow.json").read_text())
         nodes = {n["name"]: n for n in w["nodes"]}
         assert nodes["Alertmanager Webhook"]["id"] == "c0ffee00-0001-4000-8000-000000000001"

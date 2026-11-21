@@ -6,8 +6,17 @@ import json
 from pathlib import Path
 import sys
 import tempfile
+from typing import cast
 import unittest
 from unittest.mock import patch
+from typing import Protocol
+
+
+class SyncCall(Protocol):
+    """Duck-type of a unittest.mock call record captured from the fake API."""
+
+    args: tuple[object, object, dict[str, object]]
+
 
 ROOT = Path(__file__).resolve().parents[2]
 RELATIVE = "docs/n8n/spi/triage-workflow.json"
@@ -21,11 +30,11 @@ WORKFLOW_NODE_COUNT = 10
 
 
 class EventWorkflowTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.workflow = json.loads((ROOT / RELATIVE).read_text())
         self.mapping = {"worker": {"id": "existing-worker-id", "name": "SPI worker internal"}}
 
-    def test_authenticated_immediate_webhook_and_linear_pipeline(self):
+    def test_authenticated_immediate_webhook_and_linear_pipeline(self) -> None:
         w = self.workflow
         nodes = {n["name"]: n for n in w["nodes"]}
         assert not any("schedule" in n["type"].lower() for n in w["nodes"])
@@ -62,7 +71,7 @@ class EventWorkflowTests(unittest.TestCase):
         ]
         assert [nodes[n]["id"] for n in chain] == original_ids
 
-        def targets(name):
+        def targets(name) -> "list[list[object]]":
             return [[x["node"] for x in output] for output in w["connections"][name]["main"]]
 
         assert targets("Dispatch Triage Job") == [["Claim Triage Job"]]
@@ -107,7 +116,7 @@ class EventWorkflowTests(unittest.TestCase):
             "saveManualExecutions": True,
         }
 
-    def test_dispatch_execution_persistence_defense_in_depth(self):
+    def test_dispatch_execution_persistence_defense_in_depth(self) -> None:
         """Authenticated trigger strips secret headers; requested history stays enabled."""
         settings = self.workflow["settings"]
         for key in ("saveDataSuccessExecution", "saveDataErrorExecution"):
@@ -115,7 +124,7 @@ class EventWorkflowTests(unittest.TestCase):
         for key in ("saveManualExecutions", "saveExecutionProgress"):
             assert settings[key] is True
 
-    def test_actual_envelope_validator_rejects_unknown_and_early_terminal(self):
+    def test_actual_envelope_validator_rejects_unknown_and_early_terminal(self) -> None:
         import subprocess, time
 
         code = next(n for n in self.workflow["nodes"] if n["name"] == "Select Claimed Job")[
@@ -155,7 +164,7 @@ class EventWorkflowTests(unittest.TestCase):
         results = json.loads(subprocess.check_output(["node", "-e", js], text=True))
         assert results == [1, 1, 1, "error", "error", "error", "error", "error", 1, 0]
 
-    def test_render_reuses_worker_identity_without_mutating_template(self):
+    def test_render_reuses_worker_identity_without_mutating_template(self) -> None:
         original = copy.deepcopy(self.workflow)
         rendered = sync.render(self.workflow, self.mapping)
         for node in rendered["nodes"]:
@@ -165,17 +174,18 @@ class EventWorkflowTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Missing private SPI credential mapping: worker"):
             sync.render(self.workflow, {})
 
-    def run_sync(self, pages):
+    def run_sync(self, pages: list[dict[str, object]]) -> tuple[dict[str, object], list[SyncCall]]:
         with tempfile.TemporaryDirectory() as config:
             Path(config, "spi-credentials.json").write_text(json.dumps(self.mapping))
             with (
                 patch.object(sync, "CONFIG", Path(config)),
                 patch.object(sync, "api", side_effect=pages) as api,
             ):
-                result = sync.sync(RELATIVE)
-                return result, api.call_args_list
+                payload: dict[str, object] = sync.sync(RELATIVE)
+                calls: list[SyncCall] = cast("list[SyncCall]", api.call_args_list)
+                return payload, calls
 
-    def test_sync_updates_existing_id_on_later_page_without_activation(self):
+    def test_sync_updates_existing_id_on_later_page_without_activation(self) -> None:
         result, calls = self.run_sync(
             [
                 {"data": [], "nextCursor": "next/page"},
@@ -190,7 +200,7 @@ class EventWorkflowTests(unittest.TestCase):
         assert set(body) == {"name", "nodes", "connections", "settings"}
         assert body["nodes"] == sync.render(self.workflow, self.mapping)["nodes"]
 
-    def test_sync_refuses_active_or_ambiguous_workflows_before_write(self):
+    def test_sync_refuses_active_or_ambiguous_workflows_before_write(self) -> None:
         for entries in [
             [{"name": self.workflow["name"], "id": "original-id", "active": True}],
             [{"name": self.workflow["name"], "id": str(i), "active": False} for i in range(2)],
@@ -198,7 +208,7 @@ class EventWorkflowTests(unittest.TestCase):
             with self.subTest(entries=entries), self.assertRaises(RuntimeError):
                 self.run_sync([{"data": entries}])
 
-    def test_sync_refuses_missing_original_without_write(self):
+    def test_sync_refuses_missing_original_without_write(self) -> None:
         with tempfile.TemporaryDirectory() as config:
             Path(config, "spi-credentials.json").write_text(json.dumps(self.mapping))
             with (
@@ -214,7 +224,7 @@ class EventWorkflowTests(unittest.TestCase):
                 assert api.call_count == pages_walked
                 assert all(call.args[0] == "GET" for call in api.call_args_list)
 
-    def test_sync_refuses_duplicate_names_across_pages(self):
+    def test_sync_refuses_duplicate_names_across_pages(self) -> None:
         entry = {"name": self.workflow["name"], "id": "original-id", "active": False}
         with self.assertRaisesRegex(RuntimeError, "Ambiguous workflow name"):
             self.run_sync(

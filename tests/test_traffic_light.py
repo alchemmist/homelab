@@ -9,6 +9,22 @@ ROOT = Path(__file__).resolve().parents[1]
 DASHBOARD = ROOT / "charts/monitoring-k3s/dashboards/traffic-light.json"
 VALUES = ROOT / "charts/monitoring-k3s/values.yaml"
 
+TV_GRID_COLUMNS = 24
+TV_GRID_ROWS = 19
+OWNER_LAYOUT_HOLE_COUNT = 33
+RETIRED_TOP_ROW_NODE_IDS = (325, 326)
+NODE_COLUMN_X = {327: 2, 328: 0}
+LEGACY_NODE_TILE_BASE_ID = 901
+NODE_TILE_ID_BY_DIGIT = {4: 926, 5: 927}
+CPU_TEMP_PANEL_ID = 24
+REMOVED_UP_TILE_ID = 908
+REMOVED_VPN_FRACTION_TILE_IDS = (910, 911)
+INGRESS_RPS_TARGET_COUNT = 5
+ACTIVITY_ROW_BOTTOM_Y = 14
+COMPACT_READOUT_HEIGHT = 2
+LOCAL_AI_PANEL_ID = 930
+DISK_IO_PANEL_ID = 23
+
 
 def load():
     return json.loads(DASHBOARD.read_text())
@@ -33,101 +49,100 @@ class TrafficLightLayoutTest(unittest.TestCase):
 
     def test_vpn_mode_replaces_top_nodes_without_resizing(self):
         panel = panel_by_id(self.dashboard, 9)
-        self.assertEqual(panel["gridPos"], {"x": 4, "y": 0, "w": 2, "h": 2})
-        self.assertEqual(panel["title"], "")
+        assert panel["gridPos"] == {"x": 4, "y": 0, "w": 2, "h": 2}
+        assert panel["title"] == ""
         defaults = panel["fieldConfig"]["defaults"]
-        self.assertEqual(defaults["displayName"], "VPN mode")
+        assert defaults["displayName"] == "VPN mode"
         states = defaults["mappings"][0]["options"]
-        self.assertEqual(states["0"], {"text": "K3S", "color": "#26783D"})
-        self.assertEqual(states["1"], {"text": "OS", "color": "#A85D08"})
-        self.assertEqual(states["2"], {"text": "OFF", "color": "#B42332"})
+        assert states["0"] == {"text": "K3S", "color": "#26783D"}
+        assert states["1"] == {"text": "OS", "color": "#A85D08"}
+        assert states["2"] == {"text": "OFF", "color": "#B42332"}
         expr = panel["targets"][0]["expr"]
-        self.assertIn("socrat_vpn_component_runtime", expr)
-        self.assertIn('component="relay"', expr)
-        self.assertIn('component="backend"', expr)
-        self.assertIn("timestamp(", expr)
-        self.assertIn("< 90", expr)
-        self.assertIn("or vector(-2)", expr)
-        self.assertEqual(states["-2"]["text"], "NO DATA")
-        self.assertTrue(panel["targets"][0]["instant"])
+        assert "socrat_vpn_component_runtime" in expr
+        assert 'component="relay"' in expr
+        assert 'component="backend"' in expr
+        assert "timestamp(" in expr
+        assert "< 90" in expr
+        assert "or vector(-2)" in expr
+        assert states["-2"]["text"] == "NO DATA"
+        assert panel["targets"][0]["instant"]
         ids = {item["id"] for item in self.dashboard["panels"]}
-        self.assertNotIn(325, ids)
-        self.assertNotIn(326, ids)
-        self.assertEqual(panel_by_id(self.dashboard, 327)["gridPos"]["x"], 2)
-        self.assertEqual(panel_by_id(self.dashboard, 328)["gridPos"]["x"], 0)
+        assert ids.isdisjoint(RETIRED_TOP_ROW_NODE_IDS)
+        for node_panel_ids, x in NODE_COLUMN_X.items():
+            assert panel_by_id(self.dashboard, node_panel_ids)["gridPos"]["x"] == x
 
     def test_panels_use_the_integer_tv_grid(self):
         for panel in self.dashboard["panels"]:
             grid = panel["gridPos"]
-            self.assertIsInstance(grid["x"], int, f"panel {panel['id']} fractional x")
-            self.assertIsInstance(grid["y"], int, f"panel {panel['id']} fractional y")
-            self.assertIsInstance(grid["w"], int, f"panel {panel['id']} fractional w")
-            self.assertIsInstance(grid["h"], int, f"panel {panel['id']} fractional h")
+            assert isinstance(grid["x"], int), f"panel {panel['id']} fractional x"
+            assert isinstance(grid["y"], int), f"panel {panel['id']} fractional y"
+            assert isinstance(grid["w"], int), f"panel {panel['id']} fractional w"
+            assert isinstance(grid["h"], int), f"panel {panel['id']} fractional h"
 
     def test_panels_fill_the_tv_grid_without_holes_or_overlaps(self):
         occupied = {}
         for panel in self.dashboard["panels"]:
             grid = panel["gridPos"]
-            self.assertLessEqual(grid["x"] + grid["w"], 24)
-            self.assertLessEqual(grid["y"] + grid["h"], 19)
+            assert grid["x"] + grid["w"] <= TV_GRID_COLUMNS
+            assert grid["y"] + grid["h"] <= TV_GRID_ROWS
             for assert_key in cells(grid):
-                self.assertNotIn(
-                    assert_key, occupied, f"panel {panel['id']} overlaps {occupied.get(assert_key)}"
+                assert assert_key not in occupied, (
+                    f"panel {panel['id']} overlaps {occupied.get(assert_key)}"
                 )
                 occupied[assert_key] = panel["id"]
         holes = [(x, y) for y in range(19) for x in range(24) if (x, y) not in occupied]
         approved = json.loads((ROOT / "tests/fixtures/traffic-light-owner-layout.json").read_text())
-        self.assertEqual({str(p["id"]): p["gridPos"] for p in self.dashboard["panels"]}, approved)
-        self.assertEqual(len(holes), 33)  # intentional whitespace in owner layout
+        assert {str(p["id"]): p["gridPos"] for p in self.dashboard["panels"]} == approved
+        assert len(holes) == OWNER_LAYOUT_HOLE_COUNT  # intentional whitespace in owner layout
 
     def test_cpu_temperature_bar_removed(self):
         ids = {panel["id"] for panel in self.dashboard["panels"]}
-        self.assertNotIn(24, ids)
+        assert CPU_TEMP_PANEL_ID not in ids
 
     def test_cluster_health_column_layout(self):
         digits = ["0", "1", "2", "3", "4", "5"]
         for i, panel_id in enumerate((901, 902, 903, 904, 926, 927)):
             panel = panel_by_id(self.dashboard, panel_id)
-            self.assertEqual(panel["gridPos"], {"x": 23, "y": i, "w": 1, "h": 1})
-            self.assertEqual(panel["fieldConfig"]["defaults"]["displayName"], digits[i])
-            self.assertEqual(len(panel["targets"]), 1)
+            assert panel["gridPos"] == {"x": 23, "y": i, "w": 1, "h": 1}
+            assert panel["fieldConfig"]["defaults"]["displayName"] == digits[i]
+            assert len(panel["targets"]) == 1
         for i, (panel_id, name) in enumerate(((905, "Home IP"), (906, "VPS IP"))):
             panel = panel_by_id(self.dashboard, panel_id)
-            self.assertEqual(panel["gridPos"], {"x": 23, "y": 7 - i, "w": 1, "h": 1})
-            self.assertEqual(panel["fieldConfig"]["defaults"]["displayName"], name)
-            self.assertEqual(len(panel["targets"]), 1)
-        self.assertNotIn(908, {p["id"] for p in self.dashboard["panels"]})  # Owner removed UP.
+            assert panel["gridPos"] == {"x": 23, "y": 7 - i, "w": 1, "h": 1}
+            assert panel["fieldConfig"]["defaults"]["displayName"] == name
+            assert len(panel["targets"]) == 1
+        assert REMOVED_UP_TILE_ID not in {
+            p["id"] for p in self.dashboard["panels"]
+        }  # Owner removed UP.
         chart = panel_by_id(self.dashboard, 907)
-        self.assertEqual(chart["gridPos"], {"x": 16, "y": 10, "w": 8, "h": 4})
-        self.assertEqual(chart["type"], "stat")
+        assert chart["gridPos"] == {"x": 16, "y": 10, "w": 8, "h": 4}
+        assert chart["type"] == "stat"
         history = panel_by_id(self.dashboard, 909)
-        self.assertEqual(history["gridPos"], {"x": 0, "y": 18, "w": 12, "h": 1})
-        self.assertEqual(history["type"], "bargauge")
+        assert history["gridPos"] == {"x": 0, "y": 18, "w": 12, "h": 1}
+        assert history["type"] == "bargauge"
 
     def test_unmodified_resource_columns(self):
         cpu = panel_by_id(self.dashboard, 21)
         memory = panel_by_id(self.dashboard, 22)
         disk = panel_by_id(self.dashboard, 23)
         for panel in (cpu, memory, disk):
-            self.assertEqual(panel["gridPos"]["x"] in (8, 13, 18), True)
-        self.assertEqual(cpu["gridPos"], {"x": 13, "y": 0, "w": 5, "h": 10})
-        self.assertEqual(memory["gridPos"], {"x": 18, "y": 0, "w": 5, "h": 10})
-        self.assertEqual(disk["gridPos"], {"x": 8, "y": 0, "w": 5, "h": 10})
+            assert panel["gridPos"]["x"] in (8, 13, 18)
+        assert cpu["gridPos"] == {"x": 13, "y": 0, "w": 5, "h": 10}
+        assert memory["gridPos"] == {"x": 18, "y": 0, "w": 5, "h": 10}
+        assert disk["gridPos"] == {"x": 8, "y": 0, "w": 5, "h": 10}
 
     def test_ingress_chart_preserves_live_rps_queries(self):
         panel = panel_by_id(self.dashboard, 334)
-        self.assertEqual(len(panel["targets"]), 5)
+        assert len(panel["targets"]) == INGRESS_RPS_TARGET_COUNT
         for target in panel["targets"]:
-            self.assertIn("sum(rate(traefik_entrypoint_requests_total{", target["expr"])
-            self.assertIn('entrypoint=~"web|websecure"', target["expr"])
-            self.assertIn("[5m]", target["expr"])
+            assert "sum(rate(traefik_entrypoint_requests_total{" in target["expr"]
+            assert 'entrypoint=~"web|websecure"' in target["expr"]
+            assert "[5m]" in target["expr"]
 
     def test_rps_and_n8n_share_a_shorter_graph_row(self):
         panel = panel_by_id(self.dashboard, 334)
-        self.assertEqual(panel["gridPos"], {"x": 0, "y": 14, "w": 6, "h": 4})
-        self.assertEqual(
-            panel_by_id(self.dashboard, 920)["gridPos"], {"x": 6, "y": 10, "w": 6, "h": 4}
-        )
+        assert panel["gridPos"] == {"x": 0, "y": 14, "w": 6, "h": 4}
+        assert panel_by_id(self.dashboard, 920)["gridPos"] == {"x": 6, "y": 10, "w": 6, "h": 4}
 
 
 class TrafficLightQueriesTest(unittest.TestCase):
@@ -137,33 +152,34 @@ class TrafficLightQueriesTest(unittest.TestCase):
     def node_panel(self, node):
         digit = node.rsplit("-", 1)[1]
         return panel_by_id(
-            self.dashboard, 927 if int(digit) == 5 else 926 if int(digit) == 4 else 901 + int(digit)
+            self.dashboard,
+            NODE_TILE_ID_BY_DIGIT.get(int(digit), LEGACY_NODE_TILE_BASE_ID + int(digit)),
         )
 
     def test_node_tiles_reference_each_node_with_health_priorities(self):
         for node in ("socrat-0", "socrat-1", "socrat-2", "socrat-3", "socrat-4", "socrat-5"):
             expr = self.node_panel(node)["targets"][0]["expr"]
-            self.assertIn(f'node="{node}"', expr)
-            self.assertIn('condition="Ready",status="true"}', expr)
-            self.assertIn('condition=~"DiskPressure|MemoryPressure",status="true"', expr)
-            self.assertIn("or vector(-2)", expr)
-            self.assertIn("2 * (1 -", expr)
+            assert f'node="{node}"' in expr
+            assert 'condition="Ready",status="true"}' in expr
+            assert 'condition=~"DiskPressure|MemoryPressure",status="true"' in expr
+            assert "or vector(-2)" in expr
+            assert "2 * (1 -" in expr
 
     def test_node_tiles_map_every_state_to_color_semantics(self):
         colors = {"0": "#26783D", "1": "#A85D08", "2": "#B42332", "3": "#B42332", "-2": "#555555"}
         for node in ("socrat-0", "socrat-1", "socrat-2", "socrat-3", "socrat-4", "socrat-5"):
             mappings = self.node_panel(node)["fieldConfig"]["defaults"]["mappings"][0]["options"]
             for value, color in colors.items():
-                self.assertIn(value, mappings)
-                self.assertEqual(mappings[value]["color"], color)
+                assert value in mappings
+                assert mappings[value]["color"] == color
 
     def test_vpn_chart_uses_freshness_guarded_textfile_metrics(self):
         expr = panel_by_id(self.dashboard, 907)["targets"][0]["expr"]
-        self.assertIn("socrat_vpn_active_clients", expr)
-        self.assertIn("socrat_vpn_collection_success == 1", expr)
-        self.assertIn("socrat_vpn_collection_timestamp_seconds < 90", expr)
+        assert "socrat_vpn_active_clients" in expr
+        assert "socrat_vpn_collection_success == 1" in expr
+        assert "socrat_vpn_collection_timestamp_seconds < 90" in expr
         panel = panel_by_id(self.dashboard, 907)
-        self.assertEqual(panel["fieldConfig"]["defaults"]["min"], 0)
+        assert panel["fieldConfig"]["defaults"]["min"] == 0
 
     def test_edge_tiles_match_probe_catalog(self):
         text = VALUES.read_text()
@@ -173,58 +189,58 @@ class TrafficLightQueriesTest(unittest.TestCase):
             (928, "edge-moscow", "SocratServiceEdgeMoscowUnavailable"),
         ):
             expr = panel_by_id(self.dashboard, panel_id)["targets"][0]["expr"]
-            self.assertIn(f'service_id="{service_id}"', expr)
-            self.assertNotIn("ALERTS", expr)
-            self.assertIn('job="public-ip-probes"', expr)
-            self.assertIn('probe_observer="socrat-0"', expr)
-            self.assertIn('probe_path="direct-home-wan-v2"', expr)
-            self.assertIn(f"id: {service_id}\n", text)
-            self.assertIn(alert, text)
+            assert f'service_id="{service_id}"' in expr
+            assert "ALERTS" not in expr
+            assert 'job="public-ip-probes"' in expr
+            assert 'probe_observer="socrat-0"' in expr
+            assert 'probe_path="direct-home-wan-v2"' in expr
+            assert f"id: {service_id}\n" in text
+            assert alert in text
 
     def test_n8n_history_is_a_gauge_not_counter_rate(self):
         panel = panel_by_id(self.dashboard, 920)
-        self.assertEqual(panel["fieldConfig"]["defaults"]["custom"]["drawStyle"], "bars")
+        assert panel["fieldConfig"]["defaults"]["custom"]["drawStyle"] == "bars"
         expr = panel["targets"][0]["expr"]
-        self.assertIn("socrat_n8n_starts_window", expr)
-        self.assertIn("collection_success", expr)
-        self.assertNotIn("increase(", expr)
-        self.assertNotIn("rate(", expr)
+        assert "socrat_n8n_starts_window" in expr
+        assert "collection_success" in expr
+        assert "increase(" not in expr
+        assert "rate(" not in expr
 
     def test_dashboard_time_window_is_twelve_hours(self):
-        self.assertEqual(self.dashboard["time"], {"from": "now-12h", "to": "now"})
+        assert self.dashboard["time"] == {"from": "now-12h", "to": "now"}
 
     def test_vpn_preserves_latest_manual_stat_visualization(self):
         panel = panel_by_id(self.dashboard, 907)
-        self.assertEqual(panel["type"], "stat")
-        self.assertEqual(panel["gridPos"]["y"] + panel["gridPos"]["h"], 14)
-        self.assertEqual(panel["fieldConfig"]["defaults"]["min"], 0)
-        self.assertNotIn("max", panel["fieldConfig"]["defaults"])
+        assert panel["type"] == "stat"
+        assert panel["gridPos"]["y"] + panel["gridPos"]["h"] == ACTIVITY_ROW_BOTTOM_Y
+        assert panel["fieldConfig"]["defaults"]["min"] == 0
+        assert "max" not in panel["fieldConfig"]["defaults"]
 
     def test_argocd_has_current_state_strip(self):
         panel = panel_by_id(self.dashboard, 909)
-        self.assertEqual(panel["type"], "bargauge")
-        self.assertEqual(len(panel["targets"]), 1)
-        self.assertFalse(panel["options"]["legend"]["showLegend"])
-        self.assertEqual(panel["options"]["valueMode"], "hidden")
-        self.assertEqual(panel["options"]["namePlacement"], "hidden")
-        self.assertTrue(panel["targets"][0]["instant"])
-        self.assertFalse(panel["targets"][0]["range"])
-        self.assertNotIn('name!="root"', panel["targets"][0]["expr"])
+        assert panel["type"] == "bargauge"
+        assert len(panel["targets"]) == 1
+        assert not panel["options"]["legend"]["showLegend"]
+        assert panel["options"]["valueMode"] == "hidden"
+        assert panel["options"]["namePlacement"] == "hidden"
+        assert panel["targets"][0]["instant"]
+        assert not panel["targets"][0]["range"]
+        assert 'name!="root"' not in panel["targets"][0]["expr"]
 
     def test_new_activity_visuals_have_no_headers_legends_or_period_badges(self):
         for panel_id in (920,):
             panel = panel_by_id(self.dashboard, panel_id)
-            self.assertEqual(panel.get("title", ""), "")
-            self.assertEqual(panel.get("description", ""), "")
-            self.assertFalse(panel.get("options", {}).get("legend", {}).get("showLegend", False))
+            assert panel.get("title", "") == ""
+            assert panel.get("description", "") == ""
+            assert not panel.get("options", {}).get("legend", {}).get("showLegend", False)
             if panel.get("timeFrom"):
-                self.assertTrue(panel["hideTimeOverride"])
+                assert panel["hideTimeOverride"]
         for panel_id in ():  # owner removed compact n8n readouts
             panel = panel_by_id(self.dashboard, panel_id)
-            self.assertEqual(len(panel["targets"]), 1)
-            self.assertEqual(panel["options"]["orientation"], "vertical")
-            self.assertFalse(panel["options"]["wideLayout"])
-            self.assertEqual(panel["gridPos"]["h"], 2)
+            assert len(panel["targets"]) == 1
+            assert panel["options"]["orientation"] == "vertical"
+            assert not panel["options"]["wideLayout"]
+            assert panel["gridPos"]["h"] == COMPACT_READOUT_HEIGHT
 
     def test_user_approved_resource_panels_remain_unchanged(self):
         approved = json.loads(
@@ -236,37 +252,38 @@ class TrafficLightQueriesTest(unittest.TestCase):
             # Approved TMP-1: fixed top labels; metrics, capacity and geometry retained.
             actual.pop("gridPos")
             expected.pop("gridPos")
-            self.assertEqual(actual, expected)
+            assert actual == expected
         heights = [panel_by_id(self.dashboard, i)["gridPos"]["h"] for i in (21, 22, 23)]
-        self.assertEqual(heights, [10, 10, 10])
+        assert heights == [10, 10, 10]
 
     def test_absolute_resource_values_and_dynamic_capacity(self):
         for panel_id, unit in [(21, "suffix: cores"), (22, "bytes"), (23, "bytes")]:
             panel = panel_by_id(self.dashboard, panel_id)
             defaults = panel["fieldConfig"]["defaults"]
-            self.assertEqual(defaults["unit"], unit)
-            self.assertEqual(defaults["thresholds"]["mode"], "percentage")
-            self.assertNotIn("max", defaults)
+            assert defaults["unit"] == unit
+            assert defaults["thresholds"]["mode"] == "percentage"
+            assert "max" not in defaults
             mappings = panel["transformations"][-1]["options"]["mappings"]
-            self.assertIn({"fieldName": "Capacity", "handlerKey": "max"}, mappings)
-            self.assertIn({"fieldName": "Used", "handlerKey": "field.value"}, mappings)
-            self.assertEqual(panel["targets"][0]["format"], "table")
-            self.assertIn("nodename", panel["targets"][1]["expr"])
+            assert {"fieldName": "Capacity", "handlerKey": "max"} in mappings
+            assert {"fieldName": "Used", "handlerKey": "field.value"} in mappings
+            assert panel["targets"][0]["format"] == "table"
+            assert "nodename" in panel["targets"][1]["expr"]
             for target in panel["targets"]:
-                self.assertNotIn("or vector(0)", target["expr"])
-        self.assertIn(
-            "node_filesystem_free_bytes", panel_by_id(self.dashboard, 23)["targets"][0]["expr"]
+                assert "or vector(0)" not in target["expr"]
+        assert (
+            "node_filesystem_free_bytes"
+            in panel_by_id(self.dashboard, DISK_IO_PANEL_ID)["targets"][0]["expr"]
         )
 
     def test_activity_replaces_incident_list_and_latency(self):
         for panel in self.dashboard["panels"]:
-            if panel["id"] != 930:  # Owner-approved compact local AI block.
-                self.assertNotIn("histogram_quantile", str(panel.get("targets")))
-            self.assertNotEqual(panel["type"], "table")
-        self.assertFalse({923, 924, 925, 930} & {p["id"] for p in self.dashboard["panels"]})
+            if panel["id"] != LOCAL_AI_PANEL_ID:  # Owner-approved compact local AI block.
+                assert "histogram_quantile" not in str(panel.get("targets"))
+            assert panel["type"] != "table"
+        assert not {923, 924, 925, 930} & {p["id"] for p in self.dashboard["panels"]}
 
     def test_owner_removed_up_tile(self):
-        self.assertNotIn(908, {p["id"] for p in self.dashboard["panels"]})
+        assert REMOVED_UP_TILE_ID not in {p["id"] for p in self.dashboard["panels"]}
 
     def test_platform_tiles_fill_the_gap_under_grafana(self):
         expected = {
@@ -287,30 +304,35 @@ class TrafficLightQueriesTest(unittest.TestCase):
         for panel_id, (service_id, alert, grid) in expected.items():
             panel = panel_by_id(self.dashboard, panel_id)
             expr = panel["targets"][0]["expr"]
-            self.assertIn(f'service_id="{service_id}"', expr)
-            self.assertIn(alert, expr)
-            self.assertEqual(panel["gridPos"], grid)
+            assert f'service_id="{service_id}"' in expr
+            assert alert in expr
+            assert panel["gridPos"] == grid
 
     def test_vpn_fraction_tiles_are_removed(self):
         ids = {panel["id"] for panel in self.dashboard["panels"]}
-        self.assertNotIn(910, ids)
-        self.assertNotIn(911, ids)
+        assert ids.isdisjoint(REMOVED_VPN_FRACTION_TILE_IDS)
         names = {item.get("name") for item in self.dashboard.get("templating", {}).get("list", [])}
-        self.assertNotIn("vpn_now", names)
+        assert "vpn_now" not in names
 
     def test_new_panels_have_an_english_description(self):
         for panel in self.dashboard["panels"]:
-            if panel["id"] >= 901 and panel["id"] not in (909, 920, 923, 924, 925, 938):
-                self.assertTrue(panel.get("description", "").strip(), f"panel {panel['id']}")
+            if panel["id"] >= LEGACY_NODE_TILE_BASE_ID and panel["id"] not in (
+                909,
+                920,
+                923,
+                924,
+                925,
+                938,
+            ):
+                assert panel.get("description", "").strip(), f"panel {panel['id']}"
 
     def test_row_panels_have_unique_target_ids_and_series_names(self):
         for panel_id in (901, 902, 903, 904, 926, 927, 905, 906):
             panel = panel_by_id(self.dashboard, panel_id)
             ref_ids = [t["refId"] for t in panel["targets"]]
-            self.assertEqual(len(ref_ids), len(set(ref_ids)), f"panel {panel_id} duplicate refIds")
-            self.assertTrue(
-                panel["fieldConfig"]["defaults"].get("displayName", "").strip(),
-                f"panel {panel_id} lacks a tile name",
+            assert len(ref_ids) == len(set(ref_ids)), f"panel {panel_id} duplicate refIds"
+            assert panel["fieldConfig"]["defaults"].get("displayName", "").strip(), (
+                f"panel {panel_id} lacks a tile name"
             )
 
 

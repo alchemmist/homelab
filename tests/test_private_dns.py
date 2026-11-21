@@ -14,31 +14,29 @@ ROLE = ROOT / "ansible/roles/homelab_private_dns"
 
 
 class PrivateDnsRoleTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.defaults = (ROLE / "defaults/main.yml").read_text()
         self.tasks = (ROLE / "tasks/main.yml").read_text()
         self.config = (ROLE / "templates/dnsmasq.conf.j2").read_text()
         self.unit = (ROLE / "templates/homelab-private-dns.service.j2").read_text()
 
-    def test_role_has_separate_service_and_config(self):
-        self.assertIn("homelab_private_dns_unit_name: homelab-private-dns.service", self.defaults)
-        self.assertIn(
-            "homelab_private_dns_config_path: /etc/homelab-private-dns.conf", self.defaults
-        )
-        self.assertIn('dest: "/etc/systemd/system/{{ homelab_private_dns_unit_name }}"', self.tasks)
+    def test_role_has_separate_service_and_config(self) -> None:
+        assert "homelab_private_dns_unit_name: homelab-private-dns.service" in self.defaults
+        assert "homelab_private_dns_config_path: /etc/homelab-private-dns.conf" in self.defaults
+        assert 'dest: "/etc/systemd/system/{{ homelab_private_dns_unit_name }}"' in self.tasks
 
-    def test_dnsmasq_is_bound_to_wireguard_address_and_has_explicit_upstreams(self):
-        self.assertIn("listen-address={{ homelab_private_dns_listen_address }}", self.config)
-        self.assertIn("bind-dynamic", self.config)
-        self.assertIn("except-interface=lo", self.config)
-        self.assertNotIn("interface={{ homelab_private_dns_interface }}", self.config)
-        self.assertIn("no-resolv", self.config)
-        self.assertIn("no-hosts", self.config)
-        self.assertNotIn("address=/#/", self.config)
-        self.assertIn("homelab_private_dns_upstream_servers: []", self.defaults)
-        self.assertIn("server={{ server }}", self.config)
+    def test_dnsmasq_is_bound_to_wireguard_address_and_has_explicit_upstreams(self) -> None:
+        assert "listen-address={{ homelab_private_dns_listen_address }}" in self.config
+        assert "bind-dynamic" in self.config
+        assert "except-interface=lo" in self.config
+        assert "interface={{ homelab_private_dns_interface }}" not in self.config
+        assert "no-resolv" in self.config
+        assert "no-hosts" in self.config
+        assert "address=/#/" not in self.config
+        assert "homelab_private_dns_upstream_servers: []" in self.defaults
+        assert "server={{ server }}" in self.config
 
-    def test_only_configured_upstreams_are_rendered(self):
+    def test_only_configured_upstreams_are_rendered(self) -> None:
         from jinja2 import Template
         import yaml
 
@@ -47,49 +45,45 @@ class PrivateDnsRoleTests(unittest.TestCase):
             {"name": "3.socrat.alchemmist.xyz", "address": "10.250.0.5"}
         ]
         template = Template(self.config)
-        self.assertNotIn("server=", template.render(**values))
+        assert "server=" not in template.render(**values)
         values["homelab_private_dns_upstream_servers"] = ["1.1.1.1", "9.9.9.9"]
         rendered = template.render(**values)
-        self.assertIn("server=1.1.1.1", rendered)
-        self.assertIn("server=9.9.9.9", rendered)
-        self.assertIn("host-record=3.socrat.alchemmist.xyz,10.250.0.5", rendered)
-        self.assertIn("local=/3.socrat.alchemmist.xyz/", rendered)
+        assert "server=1.1.1.1" in rendered
+        assert "server=9.9.9.9" in rendered
+        assert "host-record=3.socrat.alchemmist.xyz,10.250.0.5" in rendered
+        assert "local=/3.socrat.alchemmist.xyz/" in rendered
 
-    def test_records_are_rendered_as_explicit_addresses(self):
-        self.assertRegex(
-            self.config, r"host-record=\{\{ record\.name \}\},\{\{ record\.address \}\}"
-        )
-        self.assertIn("local=/{{ record.name }}/", self.config)
-        self.assertNotIn("address=/{{ record.name }}/{{ record.address }}", self.config)
-        self.assertIn("homelab_private_dns_records | sort(attribute='name')", self.config)
+    def test_records_are_rendered_as_explicit_addresses(self) -> None:
+        assert re.search(r"host-record=\{\{ record\.name \}\},\{\{ record\.address \}\}", self.config)
+        assert "local=/{{ record.name }}/" in self.config
+        assert "address=/{{ record.name }}/{{ record.address }}" not in self.config
+        assert "homelab_private_dns_records | sort(attribute='name')" in self.config
 
-    def test_wireguard_lifecycle_is_part_of_private_dns_unit(self):
-        self.assertIn("Requires={{ homelab_private_dns_wg_service }}", self.unit)
-        self.assertIn("After=network-online.target {{ homelab_private_dns_wg_service }}", self.unit)
-        self.assertIn("PartOf={{ homelab_private_dns_wg_service }}", self.unit)
-        self.assertIn("BindsTo={{ homelab_private_dns_wg_service }}", self.unit)
+    def test_wireguard_lifecycle_is_part_of_private_dns_unit(self) -> None:
+        assert "Requires={{ homelab_private_dns_wg_service }}" in self.unit
+        assert "After=network-online.target {{ homelab_private_dns_wg_service }}" in self.unit
+        assert "PartOf={{ homelab_private_dns_wg_service }}" in self.unit
+        assert "BindsTo={{ homelab_private_dns_wg_service }}" in self.unit
 
-    def test_configuration_is_validated_before_start_and_restart(self):
-        self.assertIn("--test", self.tasks)
-        self.assertIn("ExecStartPre={{ homelab_private_dns_binary }} --test", self.unit)
-        self.assertIn("--keep-in-foreground", self.unit)
-        self.assertIn("- name: Restart private DNS", (ROLE / "handlers/main.yml").read_text())
+    def test_configuration_is_validated_before_start_and_restart(self) -> None:
+        assert "--test" in self.tasks
+        assert "ExecStartPre={{ homelab_private_dns_binary }} --test" in self.unit
+        assert "--keep-in-foreground" in self.unit
+        assert "- name: Restart private DNS" in (ROLE / "handlers/main.yml").read_text()
 
-    def test_platform_paths_cover_supported_hosts(self):
-        self.assertIn("Debian: dnsmasq-base", self.defaults)
-        self.assertIn("Archlinux: /usr/bin/dnsmasq", self.defaults)
-        self.assertIn("homelab_private_dns_user: homelab-dns", self.defaults)
-        self.assertIn("homelab_private_dns_group: homelab-dns", self.defaults)
-        self.assertIn("when: ansible_os_family == 'Debian'", self.tasks)
-        self.assertIn("when: ansible_os_family == 'Archlinux'", self.tasks)
+    def test_platform_paths_cover_supported_hosts(self) -> None:
+        assert "Debian: dnsmasq-base" in self.defaults
+        assert "Archlinux: /usr/bin/dnsmasq" in self.defaults
+        assert "homelab_private_dns_user: homelab-dns" in self.defaults
+        assert "homelab_private_dns_group: homelab-dns" in self.defaults
+        assert "when: ansible_os_family == 'Debian'" in self.tasks
+        assert "when: ansible_os_family == 'Archlinux'" in self.tasks
 
-    def test_template_validates_before_replacing_live_configuration(self):
-        self.assertIn(
-            'validate: "{{ homelab_private_dns_binary }} --test --conf-file=%s"', self.tasks
-        )
+    def test_template_validates_before_replacing_live_configuration(self) -> None:
+        assert 'validate: "{{ homelab_private_dns_binary }} --test --conf-file=%s"' in self.tasks
 
     @unittest.skipUnless(shutil.which("ansible-playbook"), "ansible-playbook is required")
-    def test_ansible_accepts_valid_private_dns_values(self):
+    def test_ansible_accepts_valid_private_dns_values(self) -> None:
         result = self.run_validation(
             {
                 "homelab_private_dns_listen_address": "10.250.0.1",
@@ -100,10 +94,10 @@ class PrivateDnsRoleTests(unittest.TestCase):
                 ],
             }
         )
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        assert result.returncode == 0, result.stdout + result.stderr
 
     @unittest.skipUnless(shutil.which("ansible-playbook"), "ansible-playbook is required")
-    def test_ansible_rejects_invalid_private_dns_values(self):
+    def test_ansible_rejects_invalid_private_dns_values(self) -> None:
         result = self.run_validation(
             {
                 "homelab_private_dns_listen_address": "10.250.0.999",
@@ -112,9 +106,9 @@ class PrivateDnsRoleTests(unittest.TestCase):
                 ],
             }
         )
-        self.assertNotEqual(result.returncode, 0)
+        assert result.returncode != 0
 
-    def run_validation(self, variables):
+    def run_validation(self, variables: dict[str, str]) -> subprocess.CompletedProcess[str]:
         playbook = """
 - hosts: localhost
   connection: local

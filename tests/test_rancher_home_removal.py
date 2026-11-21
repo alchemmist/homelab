@@ -6,7 +6,8 @@ import json
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from typing import NotRequired, TypedDict
+from unittest.mock import MagicMock, patch
 
 import yaml
 
@@ -15,18 +16,50 @@ ROOT = Path(__file__).resolve().parents[1]
 DESCRIPTION_SPEC = importlib.util.spec_from_file_location(
     "dashboard_descriptions", ROOT / "ansible/files/dashboard_descriptions.py"
 )
+assert DESCRIPTION_SPEC is not None
 DESCRIPTIONS = importlib.util.module_from_spec(DESCRIPTION_SPEC)
 DESCRIPTION_SPEC.loader.exec_module(DESCRIPTIONS)
 SPEC = importlib.util.spec_from_file_location(
     "rancher_renderer", ROOT / "ansible/roles/monitoring_rancher/files/name_node_series.py"
 )
+assert SPEC is not None
 RENDERER = importlib.util.module_from_spec(SPEC)
 with patch.dict(sys.modules, {"dashboard_descriptions": DESCRIPTIONS}):
     SPEC.loader.exec_module(RENDERER)
 
 
+def _mapping(value: object) -> dict[str, object]:
+    """Narrow one rendered document for dictionary-style keyed access."""
+    assert isinstance(value, dict)
+    return value
+
+
+class _DocumentMetadata(TypedDict):
+    """Metadata of a rendered public dashboard ConfigMap."""
+
+    name: str
+    annotations: NotRequired[dict[str, str]]
+
+
+class _Document(TypedDict):
+    """Rendered manifest documents that survive dashboard filtering."""
+
+    kind: str
+    metadata: _DocumentMetadata
+    data: NotRequired[dict[str, str]]
+
+
+class _HomeDocument(TypedDict):
+    """Dashboard ConfigMap fixture, which always has mutable data."""
+
+    kind: str
+    metadata: _DocumentMetadata
+    data: dict[str, str]
+    binaryData: NotRequired[dict[str, str]]
+
+
 class RancherDashboardFilteringTest(unittest.TestCase):
-    def render(self, resources, allowed=()):
+    def render(self, resources, allowed=()) -> tuple[list[_Document], MagicMock]:
         output = io.StringIO()
         with (
             patch.object(RENDERER, "RANCHER_DASHBOARD_UIDS", set(allowed)),
@@ -37,7 +70,7 @@ class RancherDashboardFilteringTest(unittest.TestCase):
             RENDERER.main()
         return list(yaml.safe_load_all(output.getvalue())), describe
 
-    def home(self):
+    def home(self) -> _HomeDocument:
         return {
             "kind": "ConfigMap",
             "metadata": {"name": "home"},
@@ -46,14 +79,14 @@ class RancherDashboardFilteringTest(unittest.TestCase):
             },
         }
 
-    def test_drops_home_only_configmap_without_loading_its_descriptions(self):
+    def test_drops_home_only_configmap_without_loading_its_descriptions(self) -> None:
         resource = {"kind": "Service", "metadata": {"name": "preserved"}}
         rendered, describe = self.render([self.home(), resource])
-        self.assertEqual(rendered, [resource])
+        assert rendered == [resource]
         describe.assert_not_called()
-        self.assertNotIn("rancher-home-1", RENDERER.RANCHER_DASHBOARD_UIDS)
+        assert "rancher-home-1" not in RENDERER.RANCHER_DASHBOARD_UIDS
 
-    def test_drops_all_unselected_dashboards_without_loading_descriptions(self):
+    def test_drops_all_unselected_dashboards_without_loading_descriptions(self) -> None:
         resource = self.home()
         resource["data"]["diagnostic.json"] = json.dumps(
             {
@@ -63,24 +96,22 @@ class RancherDashboardFilteringTest(unittest.TestCase):
             }
         )
         rendered, describe = self.render([resource])
-        self.assertEqual(rendered, [])
+        assert rendered == []
         describe.assert_not_called()
 
-    def test_preserves_embedded_dashboard_in_shared_configmap(self):
+    def test_preserves_embedded_dashboard_in_shared_configmap(self) -> None:
         resource = self.home()
         dashboard = {"uid": "rancher-pod-1", "title": "Rancher / Pod", "panels": []}
         resource["data"]["pod.json"] = json.dumps(dashboard)
         rendered, describe = self.render([resource], allowed={"rancher-pod-1"})
         dashboard["title"] = "Pod"
-        self.assertEqual(len(rendered), 1)
-        self.assertEqual(set(rendered[0]["data"]), {"pod.json"})
-        self.assertEqual(json.loads(rendered[0]["data"]["pod.json"]), dashboard)
-        self.assertEqual(
-            rendered[0]["metadata"]["annotations"]["grafana_folder"], "/tmp/dashboards/Rancher"
-        )
+        assert len(rendered) == 1
+        assert set(rendered[0]["data"]) == {"pod.json"}
+        assert json.loads(rendered[0]["data"]["pod.json"]) == dashboard
+        assert rendered[0]["metadata"]["annotations"]["grafana_folder"] == "/tmp/dashboards/Rancher"
         describe.assert_called_once_with(dashboard)
 
-    def test_preserves_non_dashboard_json(self):
+    def test_preserves_non_dashboard_json(self) -> None:
         data = {
             "settings.json": json.dumps({"uid": "settings", "enabled": True}),
             "list.json": "[1, 2]",
@@ -89,24 +120,26 @@ class RancherDashboardFilteringTest(unittest.TestCase):
         resource = self.home()
         resource["data"].update(data)
         rendered, describe = self.render([resource])
-        self.assertEqual(rendered[0]["data"], data)
+        assert rendered[0]["data"] == data
         describe.assert_not_called()
 
-    def test_preserves_unrelated_data_and_binary_data(self):
+    def test_preserves_unrelated_data_and_binary_data(self) -> None:
         for field, data in [
             ("data", {"settings.txt": "keep"}),
             ("binaryData", {"payload": "a2VlcA=="}),
         ]:
             with self.subTest(field=field):
                 resource = self.home()
-                resource.setdefault(field, {}).update(data)
+                added = _mapping(resource).setdefault(field, {})
+                assert isinstance(added, dict)
+                added.update(data)
                 rendered, describe = self.render([resource])
-                self.assertEqual(len(rendered), 1)
-                self.assertEqual(rendered[0][field], data)
-                self.assertNotIn("home.json", rendered[0]["data"])
+                assert len(rendered) == 1
+                assert _mapping(rendered[0])[field] == data
+                assert "home.json" not in rendered[0]["data"]
                 describe.assert_not_called()
 
-    def test_missing_required_dashboard_still_blocks_rendering(self):
+    def test_missing_required_dashboard_still_blocks_rendering(self) -> None:
         with (
             patch.object(RENDERER, "RANCHER_DASHBOARD_UIDS", {"required"}),
             patch.object(sys, "stdin", io.StringIO(yaml.safe_dump(self.home()))),

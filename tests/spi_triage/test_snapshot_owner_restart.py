@@ -11,11 +11,12 @@ class SnapshotOwnerRestartTests(unittest.TestCase):
     setUp = integration_fixtures.IntegrationTests.setUp
     tearDown = integration_fixtures.IntegrationTests.tearDown
 
-    def to_analyze(self):
+    def to_analyze(self) -> dict[str, object]:
         data = self.engine.run_v1("match", self.data)
-        return self.engine.run_v1("collect", data)
+        result: dict[str, object] = self.engine.run_v1("collect", data)
+        return result
 
-    def test_early_snapshot_change_rewinds_same_execution_without_paid_analysis(self):
+    def test_early_snapshot_change_rewinds_same_execution_without_paid_analysis(self) -> None:
         sent = self.to_analyze()
         deadline = sent["deadline"]
         self.github.open_signature.return_value = "changed"
@@ -43,7 +44,7 @@ class SnapshotOwnerRestartTests(unittest.TestCase):
         assert ready["status"] == "complete"
         assert self.github.request.call_count == 1
 
-    def test_expensive_snapshot_churn_keeps_original_two_replacement_limit(self):
+    def test_expensive_snapshot_churn_keeps_original_two_replacement_limit(self) -> None:
         data = self.data
         deadline = data["deadline"]
         for generation in range(3):
@@ -74,7 +75,7 @@ class SnapshotOwnerRestartTests(unittest.TestCase):
             )
         self.github.request.assert_not_called()
 
-    def test_job_and_owner_rewind_roll_back_together_on_receipt_failure(self):
+    def test_job_and_owner_rewind_roll_back_together_on_receipt_failure(self) -> None:
         data = self.to_analyze()
         with self.store.db() as c:
             before_job = tuple(
