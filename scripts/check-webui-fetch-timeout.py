@@ -9,7 +9,7 @@ from open_webui.utils import homelab_tool_guard as guard
 from open_webui.utils.middleware import execute_tool_call
 
 
-async def main():
+async def main() -> None:
     assert await Config.get("web.loader.timeout") == "15"
     metadata = {
         "tools": {
