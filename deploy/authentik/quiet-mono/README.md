@@ -21,7 +21,7 @@ Do not persist Authentik media API signed URLs in CSS. They expire, unlike the c
 
 The endpoint serves only the explicitly reviewed `.webp`, `.svg` and `.woff2` files, with immutable caching and `nosniff`. It shares the existing TLS secret and domain, not an external CDN. Ingress matches only this prefix; native login, executor, token and API routes continue to the IdP.
 
-Static deployment: namespace `identity`, name `socrat-authentik-theme`, node `socrat-0`, one replica; 5m/16Mi requests, 100m/64Mi limits. Read-only filesystem, non-root, dropped capabilities, no privilege escalation or mounted service-account token, bounded `/tmp`. This is **not HA**; loss of the node can affect branding, and the IdP itself is also single-node.
+Static deployment: namespace `identity`, name `socrat-authentik-theme`, three replicas with soft hostname anti-affinity and preferred nodes `socrat-0`, `socrat-5`, `socrat-2`; 5m/16Mi requests, 100m/64Mi limits. Read-only filesystem, non-root, dropped capabilities, no privilege escalation or mounted service-account token, bounded `/tmp`. Portal icons are content-addressed Git assets. Authentik server and worker no longer mount `authentik-data`; retain that PVC for rollback. Do not rely on admin media uploads or file reports surviving pod replacement.
 
 ## Reconcile
 

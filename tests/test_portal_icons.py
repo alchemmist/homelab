@@ -101,7 +101,7 @@ class FakeAPI:
         self.content = {}
         for filename, record in MANIFEST["files"].items():
             name = "service-icons/" + Path(filename).stem + "-" + record["sha256"][:12] + ".svg"
-            url = "https://auth.socrat.alchemmist.xyz/files/media/public/" + name
+            url = "https://auth.socrat.alchemmist.xyz/-/quiet-mono/v1/" + record["sha256"][:12] + "-" + filename
             self.files.append({"name": name, "url": url})
             self.content[url] = (ASSETS / filename).read_bytes()
 
