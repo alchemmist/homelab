@@ -156,8 +156,37 @@ class GrafanaStorage(unittest.TestCase):
         o = yaml.safe_load((ROOT / "deploy/grafana/values.yaml").read_text())["grafana"]
         assert o["replicas"] == 1
         guard = o["extraInitContainers"][0]
-        assert "test -s /var/lib/grafana/grafana.db" in guard["command"]
-        assert guard["volumeMounts"][0]["readOnly"]
+        assert guard["name"] == "require-imported-grafana-db"
+        assert guard["command"] == ["sh", "-ec"]
+        assert guard["args"] == [
+            'test "$(psql -XAtq -v ON_ERROR_STOP=1 -c "select exists(select 1 from resource '
+            "where resource='dashboards') and exists(select 1 from org_user)\")\" = t\n"
+        ]
+        env = guard["env"]
+        expected = {
+            "PGHOST": "pg-common-rw.postgres.svc.cluster.local",
+            "PGDATABASE": "grafana",
+            "PGUSER": "grafana",
+            "PGSSLMODE": "verify-full",
+            "PGCONNECT_TIMEOUT": "5",
+            "PGSSLROOTCERT": "/etc/grafana/pg-ca/ca.crt",
+        }
+        password = {"secretKeyRef": {"name": "grafana-postgres", "key": "password"}}
+        assert sorted(env, key=lambda item: item["name"]) == sorted(
+            [{"name": name, "value": value} for name, value in expected.items()]
+            + [{"name": "PGPASSWORD", "valueFrom": password}],
+            key=lambda item: item["name"],
+        )
+        assert o["env"]["GF_DATABASE_TYPE"] == "postgres"
+        assert o["env"]["GF_DATABASE_HOST"] == expected["PGHOST"] + ":5432"
+        assert o["env"]["GF_DATABASE_NAME"] == expected["PGDATABASE"]
+        assert o["env"]["GF_DATABASE_USER"] == expected["PGUSER"]
+        assert o["env"]["GF_DATABASE_SSL_MODE"] == expected["PGSSLMODE"]
+        assert o["env"]["GF_DATABASE_CA_CERT_PATH"] == expected["PGSSLROOTCERT"]
+        assert o["envValueFrom"]["GF_DATABASE_PASSWORD"] == password
+        assert guard["volumeMounts"] == [
+            {"name": "pg-common-ca", "mountPath": "/etc/grafana/pg-ca", "readOnly": True}
+        ]
         assert guard["securityContext"]["runAsNonRoot"]
         docs = list(
             yaml.safe_load_all((ROOT / "deploy/storage/grafana-socrat5/volume.yaml").read_text())
