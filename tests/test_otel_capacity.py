@@ -1,7 +1,7 @@
 import copy
 import importlib.util
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 spec = importlib.util.spec_from_file_location(
     "otel_capacity", Path(__file__).parents[1] / "scripts/otel-capacity-placement.py"

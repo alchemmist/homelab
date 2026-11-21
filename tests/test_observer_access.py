@@ -1,14 +1,14 @@
 """Hermetic native authorization-policy and bounded-bootstrap regression tests."""
 
 import ast
+import contextlib
 import copy
 import importlib.util
-import json
-from pathlib import Path
-import unittest
-import contextlib
 import io
+import json
 import tempfile
+import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]

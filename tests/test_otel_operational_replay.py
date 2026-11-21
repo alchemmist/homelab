@@ -1,8 +1,8 @@
 import base64
 import copy
 import importlib.util
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 

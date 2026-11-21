@@ -1,7 +1,7 @@
 import importlib.util
 import json
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 spec = importlib.util.spec_from_file_location(
     "application_registry",

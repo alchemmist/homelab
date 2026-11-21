@@ -1,10 +1,9 @@
 import importlib.util
 import io
 import json
-from pathlib import Path
 import unittest
+from pathlib import Path
 from unittest.mock import patch
-
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
