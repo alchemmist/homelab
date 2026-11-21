@@ -46,7 +46,7 @@ class Watchdog:
         finally:
             os.close(descriptor)
 
-    def command(self, *args):
+    def command(self, *args: str) -> str:
         # A rejoining etcd voter may need longer than ordinary unit operations.
         timeout = (
             self.config.get("kubernetes_start_timeout_seconds", 180)

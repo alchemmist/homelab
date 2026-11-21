@@ -9,7 +9,7 @@ import yaml
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
-def render(enabled):
+def render(*, enabled: bool):
     raw = subprocess.check_output(
         [
             "helm",
@@ -34,7 +34,7 @@ def render(enabled):
 
 class AuthNetworkTests(unittest.TestCase):
     def test_only_two_policies_change_no_pod_or_stateful_resource(self):
-        before, after = render(False), render(True)
+        before, after = render(enabled=False), render(enabled=True)
         self.assertEqual(set(before), set(after))
         changed = {k for k in before if before[k] != after[k]}
         self.assertEqual(
@@ -46,7 +46,7 @@ class AuthNetworkTests(unittest.TestCase):
         )
 
     def test_both_real_https_dnat_hops_are_narrowly_selected(self):
-        for key, obj in render(True).items():
+        for key, obj in render(enabled=True).items():
             if key[0] != "NetworkPolicy" or key[2] not in (
                 "rustfs-isolation",
                 "rustfs-gateway-isolation",

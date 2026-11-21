@@ -13,7 +13,116 @@ import os
 import re
 import subprocess
 import time
+from collections.abc import Sequence
 from pathlib import Path
+from typing import NotRequired, TypedDict
+
+
+class _Variable(TypedDict):
+    name: str
+    expression: str
+
+
+class _PolicySpec(TypedDict):
+    variables: list[_Variable]
+
+
+class _Metadata(TypedDict):
+    uid: str
+    resourceVersion: str
+    name: str
+    namespace: str
+
+
+class _Policy(TypedDict):
+    metadata: _Metadata
+    spec: _PolicySpec
+
+
+class _OwnerReference(TypedDict):
+    controller: NotRequired[bool]
+    kind: str
+    name: str
+
+
+class _MemoryResources(TypedDict):
+    memory: str
+
+
+class _Resources(TypedDict):
+    requests: _MemoryResources
+    limits: _MemoryResources
+
+
+class _ResizePolicy(TypedDict):
+    resourceName: str
+    restartPolicy: str
+
+
+class _Container(TypedDict):
+    name: str
+    resources: _Resources
+    resizePolicy: NotRequired[list[_ResizePolicy]]
+
+
+class _PodSpec(TypedDict):
+    nodeName: str
+    containers: list[_Container]
+
+
+class _PodMetadata(TypedDict):
+    name: str
+    namespace: str
+    uid: str
+    resourceVersion: str
+    ownerReferences: list[_OwnerReference]
+
+
+class _Pod(TypedDict):
+    metadata: _PodMetadata
+    spec: _PodSpec
+
+
+class _ImageContainer(TypedDict):
+    image: str
+
+
+class _TemplatePodSpec(TypedDict):
+    containers: list[_ImageContainer]
+
+
+class _Template(TypedDict):
+    spec: _TemplatePodSpec
+
+
+class _StatefulSpec(TypedDict):
+    template: _Template
+
+
+class _StatefulSet(TypedDict):
+    metadata: _Metadata
+    spec: _StatefulSpec
+
+
+class _Allocatable(TypedDict):
+    memory: str
+
+
+class _NodeStatus(TypedDict):
+    allocatable: _Allocatable
+
+
+class _Node(TypedDict):
+    status: _NodeStatus
+
+
+class _PodStatus(TypedDict, total=False):
+    phase: str
+
+
+class _CapacityPod(TypedDict, total=False):
+    status: _PodStatus
+
 
 NS = "cattle-monitoring-system"
 NAME = "prometheus-kube-prometheus-stack-prometheus-0"
@@ -23,12 +132,12 @@ PATTERN = "^prometheus\\-kube\\-prometheus\\-stack\\-prometheus$"
 RECEIPT = Path.home() / ".cache/homelab-recovery/20261114-prometheus-memory"
 
 
-def require(ok, message):
+def require(ok: object, message: str):
     if not ok:
         raise RuntimeError(message)
 
 
-def expression_change(expr):
+def expression_change(expr: str):
     needle = '"ownerPattern": dyn(' + json.dumps(PATTERN) + ")"
     require(expr.count(needle) == 1, "Prometheus profile not unique")
     start = expr.index(needle)
@@ -68,7 +177,7 @@ def expression_change(expr):
     return expr[:begin] + block + expr[end:]
 
 
-def policy_patch(policy):
+def policy_patch(policy: _Policy):
     variables = policy["spec"]["variables"]
     indexes = [i for i, v in enumerate(variables) if v["name"] == "profiles"]
     require(len(indexes) == 1, "Profiles variable not unique")
@@ -88,7 +197,7 @@ def policy_patch(policy):
     ]
 
 
-def resize_patch(pod):
+def resize_patch(pod: _Pod):
     require(pod["metadata"]["name"] == NAME and pod["metadata"]["namespace"] == NS, "Wrong Pod")
     require(pod["spec"]["nodeName"] == "socrat-0", "Wrong node")
     require(
@@ -129,7 +238,7 @@ def resize_patch(pod):
     ]
 
 
-def kubectl(args, data=None):
+def kubectl(args: list[str], data: object | None = None):
     env = dict(os.environ, K3S_CONFIG_FILE="/dev/null")
     p = subprocess.run(
         ["kubectl", "--request-timeout=10s", *args],
@@ -143,7 +252,7 @@ def kubectl(args, data=None):
     return json.loads(p.stdout)
 
 
-def save(name, data):
+def save(name: str, data: object):
     fd = os.open(RECEIPT / name, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     with os.fdopen(fd, "w") as out:
         json.dump(data, out, indent=2)
@@ -156,7 +265,7 @@ def save(name, data):
         os.close(directory)
 
 
-def probe(sts):
+def probe(sts: _StatefulSet):
     return {
         "apiVersion": "v1",
         "kind": "Pod",
@@ -187,7 +296,7 @@ def probe(sts):
     }
 
 
-def memory_capacity(node, pods):
+def memory_capacity(node: _Node, pods: Sequence[_CapacityPod]):
     budget_path = Path(__file__).with_name("check-resource-budget.py")
     spec = importlib.util.spec_from_file_location("resource_budget", budget_path)
     budget = importlib.util.module_from_spec(spec)
@@ -205,7 +314,7 @@ def memory_capacity(node, pods):
     }
 
 
-def wait_future_admission(sts, timeout=20):
+def wait_future_admission(sts: _StatefulSet, timeout: int = 20):
     deadline = time.monotonic() + timeout
     samples = []
     while True:
