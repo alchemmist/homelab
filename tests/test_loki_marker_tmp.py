@@ -43,29 +43,29 @@ class LokiMarkerScratchTests(unittest.TestCase):
                 assert "marker-tmp" not in volumes
 
     def test_loki_storage_phases(self) -> None:
-        chart = ROOT / 'charts/loki'
-        claim = yaml.safe_load((ROOT / 'deploy/storage/loki-drill/pvc.yaml').read_text())['metadata']['name']
-        for phase in ('local', 'paused', 'shared', 'typo'):
+        chart = ROOT / "charts/loki"
+        claim = yaml.safe_load((ROOT / "deploy/storage/loki-drill/pvc.yaml").read_text())["metadata"]["name"]
+        for phase in ("local", "paused", "shared", "typo"):
             with self.subTest(phase=phase):
-                result = subprocess.run(['helm', 'template', 'loki', str(chart), '-f', str(chart / 'alert-graphs.values.yaml'), '--set-string', f'storagePhase={phase}', '--show-only', 'templates/deployment.yaml'], text=True, capture_output=True)
-                if phase == 'typo':
+                result = subprocess.run(["helm", "template", "loki", str(chart), "-f", str(chart / "alert-graphs.values.yaml"), "--set-string", f"storagePhase={phase}", "--show-only", "templates/deployment.yaml"], text=True, capture_output=True)
+                if phase == "typo":
                     assert result.returncode != 0
-                    assert 'storagePhase must be' in result.stderr
+                    assert "storagePhase must be" in result.stderr
                     continue
                 assert result.returncode == 0, result.stderr
-                dep = yaml.safe_load(result.stdout)['spec']
-                assert dep['replicas'] == (0 if phase == 'paused' else 1)
-                assert dep['strategy']['type'] == 'Recreate'
-                pod = dep['template']['spec']
-                data = next(v for v in pod['volumes'] if v['name'] == 'data')
-                if phase != 'shared':
-                    assert data['hostPath']['path'] == '/var/lib/private/homelab-otel-loki'
-                    assert pod['nodeSelector'] == {'kubernetes.io/hostname': 'socrat-1'}
+                dep = yaml.safe_load(result.stdout)["spec"]
+                assert dep["replicas"] == (0 if phase == "paused" else 1)
+                assert dep["strategy"]["type"] == "Recreate"
+                pod = dep["template"]["spec"]
+                data = next(v for v in pod["volumes"] if v["name"] == "data")
+                if phase != "shared":
+                    assert data["hostPath"]["path"] == "/var/lib/private/homelab-otel-loki"
+                    assert pod["nodeSelector"] == {"kubernetes.io/hostname": "socrat-1"}
                     continue
-                assert data == {'name': 'data', 'persistentVolumeClaim': {'claimName': claim}}
-                assert pod['nodeSelector'] == {'kubernetes.io/os': 'linux'}
-                affinity = pod['affinity']['nodeAffinity']
-                terms = affinity['requiredDuringSchedulingIgnoredDuringExecution']['nodeSelectorTerms']
+                assert data == {"name": "data", "persistentVolumeClaim": {"claimName": claim}}
+                assert pod["nodeSelector"] == {"kubernetes.io/os": "linux"}
+                affinity = pod["affinity"]["nodeAffinity"]
+                terms = affinity["requiredDuringSchedulingIgnoredDuringExecution"]["nodeSelectorTerms"]
                 assert len(terms) == 1
-                assert {'key': 'kubernetes.io/hostname', 'operator': 'In', 'values': ['socrat-0', 'socrat-1']} in terms[0]['matchExpressions']
-                assert {'weight': 100, 'preference': {'matchExpressions': [{'key': 'kubernetes.io/hostname', 'operator': 'In', 'values': ['socrat-1']}]}} in affinity['preferredDuringSchedulingIgnoredDuringExecution']
+                assert {"key": "kubernetes.io/hostname", "operator": "In", "values": ["socrat-0", "socrat-1"]} in terms[0]["matchExpressions"]
+                assert {"weight": 100, "preference": {"matchExpressions": [{"key": "kubernetes.io/hostname", "operator": "In", "values": ["socrat-1"]}]}} in affinity["preferredDuringSchedulingIgnoredDuringExecution"]

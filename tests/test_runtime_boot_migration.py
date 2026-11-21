@@ -13,15 +13,15 @@ class RuntimeBootMigrationTest(unittest.TestCase):
 
     def test_cold_mode_requires_a_different_boot(self) -> None:
         text = SCRIPT.read_text()
-        assert "assert boot_id()!=x['original_boot_id']" in text
-        assert "'pgrep','-x','containerd'" in text
-        assert "'pgrep','-x','k3s-server'" in text
+        assert "assert boot_id() != x[\"original_boot_id\"]" in text
+        assert '["pgrep", "-x", "containerd"]' in text
+        assert '["pgrep", "-x", "k3s-server"]' in text
 
     def test_copy_is_checked_before_original_rename(self) -> None:
         text = SCRIPT.read_text()
         assert text.index("assert not v.stdout.strip()") < text.index("S.rename(old)")
-        assert "'--numeric-ids'" in text
-        assert "'cold-verify'" in text
+        assert '"--numeric-ids"' in text
+        assert '"cold-verify"' in text
 
     def test_no_original_removal_or_pvc_relocation(self) -> None:
         text = SCRIPT.read_text()
