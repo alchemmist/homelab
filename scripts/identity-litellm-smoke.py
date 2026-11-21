@@ -176,7 +176,7 @@ try:
                             "Callback exception types:",
                             re.findall(r"\b[A-Z][A-Za-z]+(?:Error|Exception)\b", err),
                         )
-                    except Exception:
+                    except (ValueError, TypeError, IndexError, KeyError, AttributeError):
                         pass
             if "/api/v3/flows/executor/" in response.url and response.status in [200, 400]:
                 try:
@@ -196,7 +196,7 @@ try:
                     if data.get("component") == "ak-stage-authenticator-totp":
                         totp_challenge.clear()
                         totp_challenge.update(data)
-                except Exception:
+                except (ValueError, TypeError, IndexError, KeyError, AttributeError):
                     pass
 
         page.on("response", observe)

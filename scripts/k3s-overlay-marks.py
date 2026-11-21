@@ -47,7 +47,7 @@ def desired(interface, cidr):
     """Document this public function."""
     net = ipaddress.ip_network(cidr)
 
-    def match(left, right, op="=="):
+    def match(left, right, op="==") -> dict[str, object]:
         return {"match": {"op": op, "left": left, "right": right}}
 
     prefix = {"prefix": {"addr": str(net.network_address), "len": net.prefixlen}}
@@ -86,7 +86,7 @@ def desired(interface, cidr):
 
 def owned(doc, text=""):
     """Document this public function."""
-    table = next((x["table"] for x in doc["nftables"] if "table" in x), {})
+    table: dict[str, object] = next((x["table"] for x in doc["nftables"] if "table" in x), {})
     if "comment" in table:
         return table["comment"] == OWNER
     # nft 1.0.6 omits table comments from JSON, but preserves them in text.
@@ -96,16 +96,16 @@ def owned(doc, text=""):
 
 def normalize(doc):
     """Document this public function."""
-    def clean(x):
+    def clean(x) -> object:
         if isinstance(x, list):
             return [clean(v) for v in x]
         if isinstance(x, dict):
             return {k: ({} if k == "counter" else clean(v)) for k, v in x.items() if k != "handle"}
         return x
 
-    result = [clean(x) for x in doc.get("nftables", []) if "metainfo" not in x]
+    result: list[object] = [clean(x) for x in doc.get("nftables", []) if "metainfo" not in x]
     for item in result:
-        if "table" in item:
+        if isinstance(item, dict) and "table" in item:
             item["table"].pop("comment", None)  # ownership is verified separately
     return result
 

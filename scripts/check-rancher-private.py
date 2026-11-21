@@ -1,3 +1,4 @@
+"""Check that the Rancher UI stays reachable only from the private network."""
 import argparse
 import shlex
 import subprocess

@@ -1,3 +1,4 @@
+"""Check that public ingress hosts resolve to expected addresses and respond."""
 import argparse
 import concurrent.futures
 import json

@@ -1,3 +1,5 @@
+"""Tests for RustFS deployment manifests."""
+
 import os
 from pathlib import Path
 import subprocess
@@ -6,7 +8,8 @@ import unittest
 
 
 class Deploy(unittest.TestCase):
-    def test_safe_refusals_and_anchored_paths(self):
+    """Check the RustFS deploy script's safe refusals and anchored paths."""
+    def test_safe_refusals_and_anchored_paths(self) -> None:
         source = Path(__file__).resolve().parents[1] / "scripts/rustfs/deploy.sh"
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -56,26 +59,27 @@ class Deploy(unittest.TestCase):
                     stderr=subprocess.PIPE,
                 )
 
-            self.assertNotEqual(run("0" * 40).returncode, 0)
-            self.assertFalse(marker.exists())
+            assert run("0" * 40).returncode != 0
+            assert not marker.exists()
             tracked.write_text("enabled: true\n")
-            self.assertNotEqual(run(rev).returncode, 0)
-            self.assertFalse(marker.exists())
+            assert run(rev).returncode != 0
+            assert not marker.exists()
             git("checkout", "--", "charts/rustfs/values.yaml")
             templates = chart / "templates"
             templates.mkdir()
             extra = templates / "extra.yaml"
             extra.write_text("kind: Secret\n")
-            self.assertNotEqual(run(rev).returncode, 0)
-            self.assertFalse(marker.exists())
+            assert run(rev).returncode != 0
+            assert not marker.exists()
             extra.unlink()
             exclude = root / git("rev-parse", "--git-path", "info/exclude")
             exclude.parent.mkdir(parents=True, exist_ok=True)
             exclude.write_text("charts/rustfs/templates/ignored.yaml\n")
             ignored = templates / "ignored.yaml"
             ignored.write_text("kind: Secret\n")
-            self.assertNotEqual(run(rev).returncode, 0)
-            self.assertFalse(marker.exists())
+            assert run(rev).returncode != 0
+            assert not marker.exists()
             ignored.unlink()
-            self.assertEqual(run(rev).returncode, 0)
-            self.assertEqual(len(marker.read_text().splitlines()), 3)
+            assert run(rev).returncode == 0
+            expected_marker_lines = 3
+            assert len(marker.read_text().splitlines()) == expected_marker_lines

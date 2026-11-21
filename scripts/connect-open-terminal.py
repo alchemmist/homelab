@@ -1,3 +1,4 @@
+"""Create an Open WebUI terminal session token for a given admin user."""
 import argparse
 import base64
 import getpass

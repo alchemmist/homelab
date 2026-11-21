@@ -1,9 +1,14 @@
+"""Check the Open WebUI homelab tool guard behaviour across tool kinds."""
 import asyncio
 import json
 import uuid
+from typing import cast
 
 from open_webui.utils.homelab_tool_guard import REPEAT_STOP_MESSAGE, guard_stopped
-from open_webui.utils.middleware import build_terminal_file_tool_result, execute_tool_call
+from open_webui.utils.middleware import (
+    build_terminal_file_tool_result,
+    execute_tool_call,
+)
 from open_webui.utils.tools import (
     Config,
     clean_openai_tool_schema,
@@ -48,17 +53,20 @@ async def main():
     changed = "GUARD_AFTER_" + uuid.uuid4().hex
     dispatches = 0
 
-    async def raw(name, params):
-        return await execute_tool_server(
-            url=server["url"],
-            headers=headers,
-            cookies={},
-            name=name,
-            params=params,
-            server_data=server,
+    async def raw(name, params) -> object:
+        return cast(
+            "object",
+            await execute_tool_server(
+                url=server["url"],
+                headers=headers,
+                cookies={},
+                name=name,
+                params=params,
+                server_data=server,
+            ),
         )
 
-    async def replace(**params):
+    async def replace(**params) -> object:
         nonlocal dispatches
         dispatches += 1
         return await raw("replace_file_content", params)
@@ -75,15 +83,21 @@ async def main():
         },
     }
 
-    async def call(params):
-        return await execute_tool_call(
-            {"messages": []},
-            metadata,
-            None,
-            {
-                "id": str(uuid.uuid4()),
-                "function": {"name": "replace_file_content", "arguments": json.dumps(params)},
-            },
+    async def call(params) -> tuple[object, dict[str, object]]:
+        return cast(
+            "tuple[object, dict[str, object]]",
+            await execute_tool_call(
+                {"messages": []},
+                metadata,
+                None,
+                {
+                    "id": str(uuid.uuid4()),
+                    "function": {
+                        "name": "replace_file_content",
+                        "arguments": json.dumps(params),
+                    },
+                },
+            ),
         )
 
     try:
@@ -91,9 +105,12 @@ async def main():
         assert "error" not in serialize(created).lower(), "Fixture creation failed"
         for index in range(3):
             result = await call(
-                {"path": path, "replacements": [{"old_text": original, "new_text": changed}]}
+                {
+                    "path": path,
+                    "replacements": [{"old_text": original, "new_text": changed}],
+                }
             )
-            error = result[1]["error"]
+            error = cast("str", result[1]["error"])
             assert "target" in error and "replacement" in error
             assert original not in error and changed not in error
             assert guard_stopped(metadata) == (index == 2)
@@ -104,7 +121,10 @@ async def main():
         )
         metadata["message_id"] = str(uuid.uuid4())
         result = await call(
-            {"path": path, "replacements": [{"target": original, "replacement": changed}]}
+            {
+                "path": path,
+                "replacements": [{"target": original, "replacement": changed}],
+            }
         )
         assert dispatches == 1 and not guard_stopped(metadata)
         read = await raw("read_file", {"path": path})
@@ -123,21 +143,30 @@ async def main():
         )
         # Repeated identical valid calls warn first and then stop the loop.
         metadata["message_id"] = str(uuid.uuid4())
-        metadata["tools"]["read_file"] = {"type": "terminal", "spec": specs["read_file"]}
+        metadata["tools"]["read_file"] = {
+            "type": "terminal",
+            "spec": specs["read_file"],
+        }
 
-        async def read(params):
-            async def dispatch(**kwargs):
+        async def read(params) -> tuple[object, dict[str, object] | str]:
+            async def dispatch(**kwargs) -> object:
                 return await raw("read_file", params)
 
             metadata["tools"]["read_file"]["callable"] = dispatch
-            return await execute_tool_call(
-                {"messages": []},
-                metadata,
-                None,
-                {
-                    "id": str(uuid.uuid4()),
-                    "function": {"name": "read_file", "arguments": json.dumps(params)},
-                },
+            return cast(
+                "tuple[object, dict[str, object] | str]",
+                await execute_tool_call(
+                    {"messages": []},
+                    metadata,
+                    None,
+                    {
+                        "id": str(uuid.uuid4()),
+                        "function": {
+                            "name": "read_file",
+                            "arguments": json.dumps(params),
+                        },
+                    },
+                ),
             )
 
         identical = {"path": path}
@@ -149,13 +178,18 @@ async def main():
             "Third identical valid call did not warn"
         )
         stopped = await read(identical)
-        error = stopped[1].get("error") if isinstance(stopped[1], dict) else serialize(stopped[1])
+        stopped_payload = stopped[1]
+        error = (
+            cast("str", stopped_payload.get("error"))
+            if isinstance(stopped_payload, dict)
+            else serialize(stopped_payload)
+        )
         assert guard_stopped(metadata) and error == REPEAT_STOP_MESSAGE, (
             "Fourth identical valid call did not stop the loop"
         )
         # A genuinely different command clears the warning in a fresh response.
         metadata["message_id"] = str(uuid.uuid4())
-        result = await read({"path": path + ".missing"})
+        await read({"path": path + ".missing"})
         assert not guard_stopped(metadata), "Fresh response inherited repeat stop"
     finally:
         cleanup = await raw("run_command", {"command": "rm -f -- " + path, "wait": 10})

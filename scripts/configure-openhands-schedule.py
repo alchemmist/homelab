@@ -15,8 +15,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def main():
     """Document this public function."""
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--apply',action='store_true');a=p.parse_args()
-    desired=json.loads((ROOT/'services/openhands/the-loop-demo/schedule.json').read_text())
+    p=argparse.ArgumentParser(description=__doc__);
+    p.add_argument("--apply",action="store_true");
+    a=p.parse_args()
+    desired=json.loads((ROOT/"services/openhands/the-loop-demo/schedule.json").read_text())
     code='''import json,sys,pathlib,urllib.request,importlib.metadata
 request=json.load(sys.stdin);desired=request['desired'];key=pathlib.Path('/home/openhands/.openhands/agent-canvas/api-key.txt').read_text().strip()
 def api(path,body=None,method=None):
@@ -43,7 +45,7 @@ else:
 assert result['state']=='INACTIVE' and result['setup_script_path'] is None and result['entrypoint']=='python main.py'
 print(json.dumps({'id':result['id'],'state':result['state'],'trigger':result['trigger'],'model_calls_started':False}))
 '''
-    subprocess.run(['kubectl','-n','openhands','exec','-i','openhands-0','--','python','-c',code],input=json.dumps({'desired':desired,'apply':a.apply}),text=True,check=True)
+    subprocess.run(["kubectl","-n","openhands","exec","-i","openhands-0","--","python","-c",code],input=json.dumps({"desired":desired,"apply":a.apply}),text=True,check=True)
 
 
-if __name__=='__main__':main()
+if __name__=="__main__":main()

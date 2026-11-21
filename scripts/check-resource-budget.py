@@ -1,16 +1,17 @@
+"""Check that cluster resource requests stay within the configured budget."""
 import argparse
 import copy
 import json
 import re
 import sys
 from decimal import Decimal
+from typing import cast
 
 RESOURCES = ("cpu", "memory", "ephemeral-storage")
 QUANTITY = re.compile(r"^([+-]?(?:\d+(?:\.\d*)?|\.\d+))([eE][+-]?\d+|[numkKMGTPE]|[KMGTPE]i)?$")
 
 
 def quantity(value):
-    """Document this public function."""
     match = QUANTITY.fullmatch(str(value))
     if not match:
         raise ValueError("Invalid resource quantity: " + str(value))
@@ -44,22 +45,18 @@ def quantity(value):
 
 
 def vector(values=None):
-    """Document this public function."""
     return {name: quantity((values or {}).get(name, 0)) for name in RESOURCES}
 
 
 def add(left, right):
-    """Document this public function."""
     return {name: left[name] + right[name] for name in RESOURCES}
 
 
 def maximum(left, right):
-    """Document this public function."""
     return {name: max(left[name], right[name]) for name in RESOURCES}
 
 
 def effective_requests(pod):
-    """Document this public function."""
     spec = pod.get("spec", {})
     total, sidecars, init_peak = vector(), vector(), vector()
     for container in spec.get("containers", []):
@@ -79,7 +76,6 @@ def effective_requests(pod):
 
 
 def proposed_pod(pod, profiles):
-    """Document this public function."""
     label = pod["metadata"].get("namespace", "default") + "/" + pod["metadata"]["name"]
     owner = next(
         (value for value in pod["metadata"].get("ownerReferences", []) if value.get("controller")),
@@ -118,51 +114,81 @@ def proposed_pod(pod, profiles):
 
 
 def items(value):
-    """Document this public function."""
     return value["items"] if isinstance(value, dict) else value
 
 
-def validate_profiles(profiles):
-    """Document this public function."""
+def _validate_container(resources: dict[str, dict[str, object]]) -> None:
+    """Require positive requests, ordered limits and boolean CPU-limit removal."""
+    requests = resources.get("requests", {})
+    for name in RESOURCES:
+        if name not in requests or quantity(requests[name]) <= 0:
+            raise ValueError("Profile requires positive requests/" + name)
+    for name, limit in resources.get("limits", {}).items():
+        if name in RESOURCES and quantity(limit) < quantity(requests[name]):
+            raise ValueError("Profile limit below request: " + name)
+    remove = resources.get("removeCpuLimit", False)
+    if not isinstance(remove, bool):
+        raise ValueError("removeCpuLimit must be boolean")
+    if remove and "cpu" in resources.get("limits", {}):
+        raise ValueError("Profile cannot set and remove CPU limit")
+
+
+def _validate_profile(profile: dict[str, object]) -> None:
+    """Check one budget profile's identifying fields and container contracts."""
+    for name in ("namespace", "ownerKind", "ownerPattern"):
+        if not isinstance(profile.get(name), str) or not profile[name]:
+            raise ValueError("Profile requires " + name)
+    # The loop above established that ownerPattern is a non-empty string.
+    re.compile(cast("str", profile["ownerPattern"]))
+    containers = profile.get("containers")
+    if not isinstance(containers, dict) or not containers:
+        raise ValueError("Profile requires containers")
+    for resources in containers.values():
+        _validate_container(resources)
+
+
+def validate_profiles(profiles: object) -> None:
+    """Validate the shape and content of every budget profile."""
     if not isinstance(profiles, list):
         raise ValueError("Profiles must be a JSON list")
     for profile in profiles:
-        for name in ("namespace", "ownerKind", "ownerPattern"):
-            if not isinstance(profile.get(name), str) or not profile[name]:
-                raise ValueError("Profile requires " + name)
-        re.compile(profile["ownerPattern"])
-        if not isinstance(profile.get("containers"), dict) or not profile["containers"]:
-            raise ValueError("Profile requires containers")
-        for resources in profile["containers"].values():
-            requests = resources.get("requests", {})
-            for name in RESOURCES:
-                if name not in requests or quantity(requests[name]) <= 0:
-                    raise ValueError("Profile requires positive requests/" + name)
-            for name, limit in resources.get("limits", {}).items():
-                if name in RESOURCES and quantity(limit) < quantity(requests[name]):
-                    raise ValueError("Profile limit below request: " + name)
-            if not isinstance(resources.get("removeCpuLimit", False), bool):
-                raise ValueError("removeCpuLimit must be boolean")
-            if resources.get("removeCpuLimit") and "cpu" in resources.get("limits", {}):
-                raise ValueError("Profile cannot set and remove CPU limit")
+        _validate_profile(profile)
 
 
-def budget(pods, nodes, profiles):
-    """Document this public function."""
-    validate_profiles(profiles)
-    report = {
-        "scope": "Current placement only; not a scheduler simulation or an N-1, rollout, peak-use or memory-safety guarantee. Requests are not actual usage. Unassigned pods are not charged to any node.",
-        "nodes": {},
-        "unassigned": [],
-        "errors": [],
-    }
+def _node_table(nodes: object) -> dict[str, dict[str, object]]:
+    """Summarize each node's allocatable capacity keyed by its name."""
+    table: dict[str, dict[str, object]] = {}
     for node in items(nodes):
-        report["nodes"][node["metadata"]["name"]] = {
+        table[node["metadata"]["name"]] = {
             "allocatable": vector(node["status"]["allocatable"]),
             "current_requests": vector(),
             "proposed_requests": vector(),
             "pods": 0,
         }
+    return table
+
+
+def _flag_overcommit(nodes: dict[str, dict[str, dict[str, Decimal]]], errors: list[object]) -> None:
+    """Compute remaining capacity per node and record every deficit."""
+    for name, node in nodes.items():
+        for mode in ("current", "proposed"):
+            node[mode + "_remaining"] = {
+                resource: node["allocatable"][resource] - node[mode + "_requests"][resource]
+                for resource in RESOURCES
+            }
+        for resource, remaining in node["proposed_remaining"].items():
+            if remaining < 0:
+                errors.append(name + ": proposed requests exceed allocatable " + resource)
+
+
+def budget(pods, nodes, profiles):
+    validate_profiles(profiles)
+    report = {
+        "scope": "Current placement only; not a scheduler simulation or an N-1, rollout, peak-use or memory-safety guarantee. Requests are not actual usage. Unassigned pods are not charged to any node.",
+        "nodes": _node_table(nodes),
+        "unassigned": [],
+        "errors": [],
+    }
     for pod in items(pods):
         if pod.get("status", {}).get("phase") in ("Succeeded", "Failed"):
             continue
@@ -186,22 +212,13 @@ def budget(pods, nodes, profiles):
         entry["pods"] += 1
         entry["current_requests"] = add(entry["current_requests"], current)
         entry["proposed_requests"] = add(entry["proposed_requests"], future)
-    for name, node in report["nodes"].items():
-        for mode in ("current", "proposed"):
-            node[mode + "_remaining"] = {
-                resource: node["allocatable"][resource] - node[mode + "_requests"][resource]
-                for resource in RESOURCES
-            }
-        for resource, remaining in node["proposed_remaining"].items():
-            if remaining < 0:
-                report["errors"].append(name + ": proposed requests exceed allocatable " + resource)
+    _flag_overcommit(report["nodes"], report["errors"])
     report["ok"] = not report["errors"]
     report["units"] = {"cpu": "cores", "memory": "bytes", "ephemeral-storage": "bytes"}
     return report
 
 
 def main():
-    """Document this public function."""
     parser = argparse.ArgumentParser(
         description="Read-only current-placement request budget comparison"
     )
