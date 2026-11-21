@@ -109,3 +109,12 @@ expires. After any new writes, rolling back just a Secret or values file is
 not a lossless rollback: preserve both stores, account for journaled ULIDs and
 reconcile the delta first. Do not delete the old archive, shrink retention, or
 turn on age-based pruning merely because these rollouts are Healthy.
+
+18:30 UTC production checkpoint: `thanos-cascade-29921430` completed on its
+natural schedule on 3 (0 eligible hour blocks; no source mutation). Compactor
+synced 16 metas and completed a compaction iteration on 0. Metrics distinguished
+48.44 GiB of warm backing directory on 1, 49.58 GiB retained raw and 10.60 GiB
+Prometheus TSDB on 0. For a single `node-exporter` series on 0, the largest gap
+across the restart was 10s (5s cadence); this is not a no-loss audit of every
+series. Shipper uploads since restart = 0 at this checkpoint. Natural journal
+verification remains outstanding; do not reclaim the retained archive yet.
