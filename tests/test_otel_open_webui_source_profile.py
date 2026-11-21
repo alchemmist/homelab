@@ -38,7 +38,7 @@ def fixtures():
             calls.append(kwargs)
 
         @staticmethod
-        def uninstrument_app(app):
+        def uninstrument_app(_app):
             calls.append("fastapi-stop")
 
     native = SimpleNamespace(
