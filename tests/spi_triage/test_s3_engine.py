@@ -425,7 +425,7 @@ class EngineStorageTests(unittest.TestCase):
                 ]
                 original_save = self.store.save
 
-                def checkpoint(*args, **kwargs):
+                def checkpoint(*args: object, **kwargs: object) -> None:
                     original_save(*args, **kwargs)
                     if args[1] == 3:
                         self.assertIsNotNone(self.store.get(self.key)["intent"])

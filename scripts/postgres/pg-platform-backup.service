@@ -1,7 +1,0 @@
-[Unit]
-Description=Verified encrypted physical snapshots of the Socrat PostgreSQL tiers
-[Service]
-Type=oneshot
-UMask=0077
-ExecStart=%h/.config/homelab/pg-platform-dr/backup-platform.sh
-TimeoutStartSec=3h

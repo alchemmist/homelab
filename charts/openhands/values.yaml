@@ -233,4 +233,3 @@ statefulSet:
   # persistentVolumeClaimRetentionPolicy:
   #   whenDeleted: Retain
   #   whenScaled: Retain
-...

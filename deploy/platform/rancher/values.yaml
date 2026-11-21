@@ -4,10 +4,10 @@
 features: continuous-delivery=false
 antiAffinity: preferred
 extraNodeSelectorTerms:
-  - key: kubernetes.io/hostname
-    operator: In
-    values:
-      - socrat-5
+- key: kubernetes.io/hostname
+  operator: In
+  values:
+  - socrat-5
 hostname: rancher.socrat.alchemmist.xyz
 ingress:
   enabled: false

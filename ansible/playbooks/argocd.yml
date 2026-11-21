@@ -25,7 +25,7 @@
     - name: Inspect existing Argo namespace workloads before any mutation
       ansible.builtin.command:
         argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, -n, argocd,
-               get, deployments, statefulsets, -o, json]
+               get, deployments,statefulsets, -o, json]
       environment:
         K3S_CONFIG_FILE: /dev/null
       register: argocd_existing_workloads

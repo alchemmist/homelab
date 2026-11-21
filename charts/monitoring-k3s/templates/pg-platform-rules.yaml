@@ -8,7 +8,7 @@ spec:
     - name: postgres-platform
       rules:
         - alert: SocratPgCommonStandbyUnavailable
-          expr: cnpg_dr_standbys{pg_cluster="pg-common"} < 1
+          expr: cnpg_pg_replication_streaming_replicas{pg_cluster="pg-common"} < 1
           for: 2m
           labels: {severity: critical}
           annotations:
@@ -17,7 +17,7 @@ spec:
             {{- end }}
             summary: 'pg-common has no streaming standby; new writes are unprotected.'
         - alert: SocratPgCommonReplicaLag
-          expr: cnpg_pg_stat_replication_replay_lag_seconds{pg_cluster="pg-common",application_name=~"pg-common-[0-9]+"} > 60 or cnpg_pg_replication_slots_pg_wal_lsn_diff{pg_cluster="pg-common"} > 268435456
+          expr: cnpg_pg_stat_replication_replay_lag_seconds{pg_cluster="pg-common"} > 60 or cnpg_pg_replication_slots_pg_wal_lsn_diff{pg_cluster="pg-common"} > 268435456
           for: 5m
           labels: {severity: warning}
           annotations:
@@ -26,7 +26,7 @@ spec:
             {{- end }}
             summary: 'pg-common replay delay exceeds 60s or a physical slot retains over 256 MiB of WAL.'
         - alert: SocratPgCriticalRedundancyReduced
-          expr: cnpg_dr_standbys{pg_cluster="pg-critical"} < 2
+          expr: cnpg_pg_replication_streaming_replicas{pg_cluster="pg-critical"} < 2
           for: 2m
           labels: {severity: warning}
           annotations:
@@ -44,7 +44,7 @@ spec:
             {{- end }}
             summary: 'No synchronous standby observed on pg-critical; writes may be blocked.'
         - alert: SocratPgPlatformMetricsMissing
-          expr: absent_over_time(cnpg_dr_standbys{pg_cluster="pg-common"}[3m]) or absent_over_time(cnpg_collector_sync_replicas{pg_cluster="pg-critical",value="observed"}[3m])
+          expr: absent_over_time(cnpg_pg_replication_streaming_replicas{pg_cluster="pg-common"}[3m]) or absent_over_time(cnpg_collector_sync_replicas{pg_cluster="pg-critical",value="observed"}[3m])
           for: 2m
           labels: {severity: warning}
           annotations:
@@ -61,15 +61,3 @@ spec:
             spi_graphs: {{ . | quote }}
             {{- end }}
             summary: 'Less than 15% free on a PostgreSQL NVMe host filesystem. Do not delete retained volumes.'
-        - alert: SocratPgWalArchiveUnavailable
-          expr: cnpg_dr_receivers < 1 or kube_deployment_status_replicas_available{namespace="postgres",deployment=~"pg-(common|critical)-wal-receiver"} < 1
-          for: 3m
-          labels: {severity: critical}
-          annotations:
-            summary: 'PostgreSQL WAL archive is disconnected or has no recently sealed segment. Check gap before claiming PITR.'
-        - alert: SocratPgArchiveDiskSpaceLow
-          expr: node_filesystem_avail_bytes{job="node-exporter",instance="10.250.0.5:9100",mountpoint="/"} < 21474836480
-          for: 5m
-          labels: {severity: critical}
-          annotations:
-            summary: 'Postgres archive host has less than 20 GiB free. Verify backup and WAL coverage before disposal.'

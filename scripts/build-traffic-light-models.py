@@ -3,14 +3,20 @@
 import copy
 import json
 import runpy
+from collections.abc import Sequence
 from pathlib import Path
+from typing import Protocol
 
 SOURCE = Path(__file__).resolve().parents[1] / 'charts/monitoring-k3s/dashboards/traffic-light.json'
 IDS = {937, 938}
 
 
-def build(source=None):
-    d = copy.deepcopy(source if source is not None else json.loads(SOURCE.read_text()))
+def build(source: dict[str, object] | None = None):
+    if source is None:
+        d = copy.deepcopy(json.loads(SOURCE.read_text()))
+    else:
+        copied = copy.deepcopy(source)
+        d = copied
     owner = {p['id']: p for p in d['panels']}
     bottom = owner[909]['gridPos']['y'] + owner[909]['gridPos']['h']
     panel = owner[938]
@@ -39,7 +45,15 @@ def build(source=None):
     return d
 
 
-def write(d):
+class _PanelId(Protocol):
+    def __getitem__(self, key: str) -> int: ...
+
+
+class _Dashboard(Protocol):
+    def __getitem__(self, key: str) -> Sequence[_PanelId]: ...
+
+
+def write(d: _Dashboard):
     # Preserve existing owned-widget compaction and actual ConfigMap size budget.
     quality = runpy.run_path(str(SOURCE.parents[3] / 'scripts/build-traffic-light-quality.py'))
     quality['write'](d)

@@ -23,7 +23,7 @@ class Runtime(unittest.TestCase):
             link.symlink_to(target)
             real_open = os.open
 
-            def opened(path: str | Path, flags: int, *args: int):
+            def opened(path: str, flags: int, *args: int) -> int:
                 return real_open(
                     link if str(path) == "/s3-writer/credentials.json" else path, flags, *args
                 )

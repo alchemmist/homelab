@@ -8,10 +8,41 @@ The equivalent rule is maintained in otel-production-grafana.py for rebuilds.
 import base64
 import json
 import subprocess
+from typing import NotRequired, TypedDict
 
 NAMESPACE = "cattle-monitoring-system"
 SECRET = "otel-grafana-datasources"
-FIELD = {
+
+
+class DerivedField(TypedDict):
+    """Loki derived field linking a trace id to Tempo."""
+
+    name: str
+    matcherRegex: str
+    datasourceUid: str
+    url: str
+
+
+class JsonData(TypedDict, total=False):
+    """Datasource JSON data this configurator updates."""
+
+    derivedFields: list[DerivedField]
+
+
+class Datasource(TypedDict):
+    """Provisioned Grafana datasource."""
+
+    uid: str
+    jsonData: NotRequired[JsonData]
+
+
+class DatasourceDocument(TypedDict):
+    """Datasource provisioning document stored in the Grafana secret."""
+
+    datasources: list[Datasource]
+
+
+FIELD: DerivedField = {
     "name": "TraceID",
     "matcherRegex": "trace_id=([0-9a-f]{32})",
     "datasourceUid": "tempo",
@@ -19,7 +50,7 @@ FIELD = {
 }
 
 
-def configure(document):
+def configure(document: DatasourceDocument):
     loki = next(source for source in document["datasources"] if source["uid"] == "loki")
     data = loki.setdefault("jsonData", {})
     fields = [field for field in data.get("derivedFields", []) if field.get("name") != "TraceID"]

@@ -1,10 +1,10 @@
 ---
 issuer: letsencrypt-http01
 routes:
-  - name: litellm-alias
-    host: litellm.socrat.alchemmist.xyz
-    namespace: llm
-    service: litellm
-    port: 4000
-    authorization: native-oidc
+- name: litellm-alias
+  host: litellm.socrat.alchemmist.xyz
+  namespace: llm
+  service: litellm
+  port: 4000
+  authorization: native-oidc
 ...

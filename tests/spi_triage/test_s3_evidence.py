@@ -1,12 +1,16 @@
 import datetime
 import hashlib
-import sys
 import socket
+import sys
 import threading
 import time
 import unittest
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import patch
+
+if TYPE_CHECKING:
+    from _typeshed import Incomplete
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "charts/spi-triage/files"))
 import s3_evidence as s
@@ -18,7 +22,7 @@ class ClientTests(unittest.TestCase):
     def client(self, responses: list[tuple[int, dict[str, str], bytes] | Exception]):
         self.calls = []
 
-        def transport(*args):
+        def transport(*args: object) -> "Incomplete":
             self.calls.append(args)
             value = responses.pop(0)
             if isinstance(value, Exception):
@@ -32,7 +36,7 @@ class ClientTests(unittest.TestCase):
         workers = []
         slots = threading.BoundedSemaphore(s.MAX_RESOLVERS)
 
-        def stuck(*args, **kwargs):
+        def stuck(*args: object, **kwargs: object) -> "Incomplete":
             workers.append(threading.current_thread())
             release.wait()
             return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 9))]

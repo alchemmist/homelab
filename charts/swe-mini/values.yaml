@@ -11,4 +11,3 @@ minIntervalSeconds: 300
 storage:
   size: 2Gi
   className: local-path
-...

@@ -1,4 +1,3 @@
----
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -14,10 +13,10 @@ reclaimPolicy: Retain
 volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: false
 allowedTopologies:
-  - matchLabelExpressions:
-      - key: kubernetes.io/hostname
-        values:
-          - socrat-5
+- matchLabelExpressions:
+  - key: kubernetes.io/hostname
+    values:
+    - socrat-5
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
@@ -34,7 +33,7 @@ reclaimPolicy: Retain
 volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: false
 allowedTopologies:
-  - matchLabelExpressions:
-      - key: kubernetes.io/hostname
-        values:
-          - socrat-5
+- matchLabelExpressions:
+  - key: kubernetes.io/hostname
+    values:
+    - socrat-5

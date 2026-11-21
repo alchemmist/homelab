@@ -3,11 +3,11 @@
 externallyManagedRuntimeSecrets: true
 core:
   extraEnvVars:
-    - name: CONFIG_OVERWRITE_JSON
-      valueFrom:
-        secretKeyRef:
-          name: socrat-authentik-harbor
-          key: config-json
+  - name: CONFIG_OVERWRITE_JSON
+    valueFrom:
+      secretKeyRef:
+        name: socrat-authentik-harbor
+        key: config-json
   nodeSelector:
     kubernetes.io/hostname: socrat-0
   resources:
@@ -69,7 +69,7 @@ expose:
 externalURL: https://harbor.socrat.alchemmist.xyz
 jobservice:
   jobLoggers:
-    - stdout
+  - stdout
   maxJobWorkers: 2
   nodeSelector:
     kubernetes.io/hostname: socrat-0

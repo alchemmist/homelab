@@ -99,11 +99,7 @@ def render(serial, home_up, vps_up):
     for value in TXT:
         lines.append('@ IN TXT "%s"' % value)
     for name in FAILOVER:
-        # The VPS can answer its own health probe while external TCP/443 is
-        # unreachable from some networks. Keep the LMS/OIDC path on HOME
-        # while HOME is healthy; retain VPS failover and the both-down policy.
-        selected = [HOME] if home_up and name in {"lms", "auth.socrat"} else addresses
-        for address in selected:
+        for address in addresses:
             lines.append("%s IN A %s" % (name, address))
     for name in sorted(STATIC_A):
         for address in STATIC_A[name]:

@@ -11,14 +11,44 @@ import fcntl
 import hashlib
 import json
 import os
-from pathlib import Path
 import re
 import socket
 import tempfile
 import urllib.error
 import urllib.request
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from pathlib import Path
+from typing import IO, Protocol
 
 from app_iam import GROUP_MARKER, rows, validate_group
+
+
+def _mapping(value: object) -> Mapping[str, object]:
+    if isinstance(value, dict):
+        return value
+    malformed = "Malformed JSON object"
+    raise TypeError(malformed)
+
+
+def _str(value: object) -> str:
+    if isinstance(value, str):
+        return value
+    malformed = "Malformed JSON string"
+    raise TypeError(malformed)
+
+
+def _entries(value: object) -> Sequence[object]:
+    if isinstance(value, list):
+        return value
+    malformed = "Malformed JSON list"
+    raise TypeError(malformed)
+
+
+class _Api(Protocol):
+    def __call__(
+        self, method: str, path: str, data: Mapping[object, object] | None = None
+    ) -> object: ...
+
 
 BASE = "https://auth.socrat.alchemmist.xyz/api/v3/"
 SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
@@ -31,18 +61,18 @@ COLLECTIONS = (
 )
 
 
-def require(ok, message):
+def require(ok: object, message: str):
     if not ok:
         raise RuntimeError(message)
 
 
-def digest(value):
+def digest(value: object):
     return hashlib.sha256(
         json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
 
 
-def unique(items, key):
+def unique(items: Iterable[Mapping[str, object]], key: str):
     found = {}
     for item in items:
         require(item[key] not in found, "Ambiguous " + key)
@@ -50,8 +80,10 @@ def unique(items, key):
     return found
 
 
-def group_expression(aliases):
-    require(isinstance(aliases, dict), "Invalid claim aliases")
+def group_expression(aliases: object):
+    if not isinstance(aliases, dict):
+        invalid = "Invalid claim aliases"
+        raise TypeError(invalid)
     for name, values in aliases.items():
         require(
             SLUG.fullmatch(name)
@@ -74,7 +106,7 @@ def group_expression(aliases):
     )
 
 
-def profile_expression(base_expression, aliases):
+def profile_expression(base_expression: str, aliases: object):
     # Only transform the reviewed upstream profile groups entry. Preserve all
     # identity/avatar behavior and never mutate the global/default scope mapping.
     old = '"groups": [group.name for group in request.user.groups.all()],'
@@ -82,16 +114,19 @@ def profile_expression(base_expression, aliases):
     return group_expression(aliases) + base_expression.replace(old, '"groups": names,')
 
 
-def contracts(services, applications):
+def contracts(services: Mapping[str, Mapping[str, object]], applications: Mapping[str, object]):
     result = {}
     for slug in sorted(set(services) | set(applications)):
         require(SLUG.fullmatch(slug), "Unsafe application slug")
         service = services.get(slug, {})
-        roles = service.get("appRoles") or {
-            "user": {"assignable": False, "nativeRole": "unreviewed"}
-        }
-        require(isinstance(roles, dict) and roles, "Missing roles")
-        ready = service.get("accessManagement", {}).get("state") == "ready"
+        raw_roles = service.get("appRoles")
+        roles = raw_roles or {"user": {"assignable": False, "nativeRole": "unreviewed"}}
+        if not (isinstance(roles, dict) and roles):
+            missing = "Missing roles"
+            raise RuntimeError(missing)
+        raw_access = service.get("accessManagement", {})
+        access = raw_access if isinstance(raw_access, dict) else {}
+        ready = access.get("state") == "ready"
         for role, settings in roles.items():
             require(
                 SLUG.fullmatch(role) and type(settings.get("assignable")) is bool,
@@ -101,14 +136,12 @@ def contracts(services, applications):
                 "slug": slug,
                 "role": role,
                 "enabled": ready and settings["assignable"],
-                "reason": service.get("accessManagement", {}).get(
-                    "reason", "No reviewed native adapter"
-                ),
+                "reason": access.get("reason", "No reviewed native adapter"),
             }
     return result
 
 
-def inventory(api):
+def inventory(api: _Api):
     return {
         p: sorted(
             rows(api, p + ("?superuser_full_list=true" if p == "core/applications/" else "")),
@@ -118,7 +151,10 @@ def inventory(api):
     }
 
 
-def build_plan(state, services):
+def build_plan(
+    state: Mapping[str, list[Mapping[str, object]]],
+    services: Mapping[str, Mapping[str, object]],
+):
     groups = unique(state["core/groups/"], "name")
     apps = unique(state["core/applications/"], "slug")
     providers = unique(state["providers/oauth2/"], "pk")
@@ -145,7 +181,7 @@ def build_plan(state, services):
         )
         provider = providers[app["provider"]]
         require(provider["name"] == "homelab-" + slug, "Provider ownership mismatch: " + slug)
-        expected_group_names = set(service.get("groups", [])) | set(active)
+        expected_group_names = set(_entries(service.get("groups", []))) | set(active)
         bindings = [b for b in state["policies/bindings/"] if b["target"] == app["pk"]]
         seen = set()
         for b in bindings:
@@ -171,7 +207,9 @@ def build_plan(state, services):
         for name in active:
             if name not in groups or groups[name]["pk"] not in seen:
                 operations.append({"kind": "binding", "slug": slug, "group": name})
-        aliases = service.get("accessManagement", {}).get("claimAliases")
+        raw_access = service.get("accessManagement", {})
+        access = raw_access if isinstance(raw_access, dict) else {}
+        aliases = access.get("claimAliases")
         if aliases:
             default = mappings.get("authentik default OAuth Mapping: OpenID 'profile'")
             require(
@@ -245,14 +283,24 @@ def build_plan(state, services):
     return {"sha256": digest(payload), "operations": operations, "groups": declared}
 
 
-def execute(api, state, services, expected, receipt):
+def execute(
+    api: _Api,
+    state: Mapping[str, list[Mapping[str, object]]],
+    services: Mapping[str, Mapping[str, object]],
+    expected: str,
+    receipt: Callable[[str, object], object],
+):
     fresh = inventory(api)
     plan = build_plan(fresh, services)
     require(plan["sha256"] == expected and fresh == state, "Inventory/approval drift; no retry")
     receipt("preimage.json", {"state": state, "services": services, "plan": plan})
-    current = copy.deepcopy(state)
+    current = copy.deepcopy(dict(state))
     events = []
-    for op in plan["operations"]:
+    operations = plan["operations"]
+    if not isinstance(operations, list):
+        malformed = "Malformed plan operations"
+        raise TypeError(malformed)
+    for op in operations:
         receipt("intent.json", op)
         groups = unique(current["core/groups/"], "name")
         apps = unique(current["core/applications/"], "slug")
@@ -262,18 +310,20 @@ def execute(api, state, services, expected, receipt):
                 not any(g["name"] == op["name"] for g in rows(api, "core/groups/")),
                 "Group create race",
             )
-            made = api(
-                "POST",
-                "core/groups/",
-                {
-                    "name": op["name"],
-                    "is_superuser": False,
-                    "parents": [],
-                    "children": [],
-                    "users": [],
-                    "roles": [],
-                    "attributes": GROUP_MARKER,
-                },
+            made = _mapping(
+                api(
+                    "POST",
+                    "core/groups/",
+                    {
+                        "name": op["name"],
+                        "is_superuser": False,
+                        "parents": [],
+                        "children": [],
+                        "users": [],
+                        "roles": [],
+                        "attributes": GROUP_MARKER,
+                    },
+                )
             )
             validate_group(made)
             require(made.get("users") == [] and made.get("children") == [], "Unsafe created group")
@@ -286,10 +336,10 @@ def execute(api, state, services, expected, receipt):
                 ),
                 "Scope create race",
             )
-            made = api("POST", "propertymappings/provider/scope/", op["settings"])
+            made = _mapping(api("POST", "propertymappings/provider/scope/", op["settings"]))
             require(
                 all(
-                    made.get(k, "").rstrip("\n") == v.rstrip("\n")
+                    _str(made.get(k, "")).rstrip("\n") == _str(v).rstrip("\n")
                     for k, v in op["settings"].items()
                 ),
                 "Scope verification failed",
@@ -303,8 +353,11 @@ def execute(api, state, services, expected, receipt):
             ids = op["retained"] + [mappings[n]["pk"] for n in op["mappingNames"]]
             response = api("PATCH", "providers/oauth2/" + str(pk) + "/", {"property_mappings": ids})
             receipt("provider-response.json", response)
-            made = api("GET", "providers/oauth2/" + str(pk) + "/")
-            require(set(made["property_mappings"]) == set(ids), "Provider verification failed")
+            made = _mapping(api("GET", "providers/oauth2/" + str(pk) + "/"))
+            require(
+                set(_entries(made["property_mappings"])) == set(ids),
+                "Provider verification failed",
+            )
             require(
                 {k: v for k, v in made.items() if k != "property_mappings"}
                 == {k: v for k, v in before.items() if k != "property_mappings"},
@@ -321,21 +374,23 @@ def execute(api, state, services, expected, receipt):
             # Account for the bindings we have already created for this app.
             expected_bindings = [b for b in current["policies/bindings/"] if b["target"] == target]
             require(
-                sorted(now, key=lambda b: b["pk"])
-                == sorted(expected_bindings, key=lambda b: b["pk"]),
+                sorted(now, key=lambda b: str(b["pk"]))
+                == sorted(expected_bindings, key=lambda b: str(b["pk"])),
                 "Binding CAS drift",
             )
-            made = api(
-                "POST",
-                "policies/bindings/",
-                {
-                    "target": target,
-                    "group": group,
-                    "order": 100,
-                    "enabled": True,
-                    "negate": False,
-                    "failure_result": False,
-                },
+            made = _mapping(
+                api(
+                    "POST",
+                    "policies/bindings/",
+                    {
+                        "target": target,
+                        "group": group,
+                        "order": 100,
+                        "enabled": True,
+                        "negate": False,
+                        "failure_result": False,
+                    },
+                )
             )
             require(
                 made.get("group") == group
@@ -352,11 +407,11 @@ def execute(api, state, services, expected, receipt):
     for path in ("core/groups/", "core/applications/", "policies/bindings/"):
         after_by = unique(after[path], "pk")
 
-        def owned_fields(value):
+        def owned_fields(value: object):
             # ApplicationSerializer embeds a read-only provider_obj which changes
             # when we update that provider's scopes; it is not an app write.
             if path == "core/applications/" and value is not None:
-                return {k: v for k, v in value.items() if k != "provider_obj"}
+                return {k: v for k, v in _mapping(value).items() if k != "provider_obj"}
             return value
 
         require(
@@ -370,13 +425,21 @@ def execute(api, state, services, expected, receipt):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        if fp:
+    def redirect_request(
+        self,
+        req: object,
+        fp: IO[bytes] | None,
+        code: int,
+        msg: str,
+        headers: object,
+        newurl: str,
+    ):
+        if fp is not None:
             fp.close()
         raise RuntimeError("API redirect refused")
 
 
-def api_for(root):
+def api_for(root: Path):
     credential = root / "credentials.json"
     for path in (root, credential):
         require(
@@ -388,8 +451,8 @@ def api_for(root):
     token = json.loads(credential.read_text())["AUTHENTIK_BOOTSTRAP_TOKEN"]
     http = urllib.request.build_opener(NoRedirect())
 
-    def api(method, path, data=None):
-        base = path.split("?")[0]
+    def api(method: str, path: str, data: Mapping[object, object] | None = None):
+        base = path.partition("?")[0]
         allowed = method == "GET" and (
             base in COLLECTIONS or bool(re.fullmatch(r"providers/oauth2/\d+/", base))
         )
@@ -463,7 +526,7 @@ def main():
         directory = Path(tempfile.mkdtemp(prefix="app-access-", dir=args.root))
         directory.chmod(0o700)
 
-        def receipt(name, value):
+        def receipt(name: str, value: object):
             path = directory / name
             tmp = path.with_suffix(".tmp")
             tmp.write_text(json.dumps(value, indent=2))

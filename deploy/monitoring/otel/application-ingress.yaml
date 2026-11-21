@@ -25,20 +25,26 @@ processors:
   transform/privacy:
     error_mode: propagate
     trace_statements:
-      - context: resource
-        statements:
-          - delete_matching_keys(attributes, "(?i).*(authorization|password|secret|token|cookie|prompt|completion|request.body|response.body|gen_ai[.](input|output|system_instructions)|db[.](statement|query[.]text)|exception[.](message|stacktrace)).*")
-      - context: span
-        statements:
-          - set(status.message, "")
-          - delete_matching_keys(attributes, "(?i).*(authorization|password|secret|token|cookie|prompt|completion|request.body|response.body|gen_ai[.](input|output|system_instructions)|db[.](statement|query[.]text)|exception[.](message|stacktrace)).*")
-          - replace_pattern(attributes["url.full"], "\\?.*", "?<redacted>") where
-            attributes["url.full"] != nil
-          - replace_pattern(attributes["http.url"], "\\?.*", "?<redacted>") where
-            attributes["http.url"] != nil
-      - context: spanevent
-        statements:
-          - delete_matching_keys(attributes, "(?i).*(authorization|password|secret|token|cookie|prompt|completion|request.body|response.body|gen_ai[.](input|output|system_instructions)|db[.](statement|query[.]text)|exception[.](message|stacktrace)).*")
+    - context: resource
+      statements:
+      - >-
+        delete_matching_keys(attributes,
+        "(?i).*(authorization|password|secret|token|cookie|prompt|completion|request.body|response.body|gen_ai[.](input|output|system_instructions)|db[.](statement|query[.]text)|exception[.](message|stacktrace)).*")
+    - context: span
+      statements:
+      - set(status.message, "")
+      - >-
+        delete_matching_keys(attributes,
+        "(?i).*(authorization|password|secret|token|cookie|prompt|completion|request.body|response.body|gen_ai[.](input|output|system_instructions)|db[.](statement|query[.]text)|exception[.](message|stacktrace)).*")
+      - replace_pattern(attributes["url.full"], "\\?.*", "?<redacted>") where attributes["url.full"]
+        != nil
+      - replace_pattern(attributes["http.url"], "\\?.*", "?<redacted>") where attributes["http.url"]
+        != nil
+    - context: spanevent
+      statements:
+      - >-
+        delete_matching_keys(attributes,
+        "(?i).*(authorization|password|secret|token|cookie|prompt|completion|request.body|response.body|gen_ai[.](input|output|system_instructions)|db[.](statement|query[.]text)|exception[.](message|stacktrace)).*")
   batch:
     timeout: 1s
     send_batch_size: 128
@@ -60,24 +66,24 @@ exporters:
       max_elapsed_time: 0s
 service:
   extensions:
-    - file_storage
-    - health_check
+  - file_storage
+  - health_check
   telemetry:
     metrics:
       readers:
-        - pull:
-            exporter:
-              prometheus:
-                host: 127.0.0.1
-                port: 18889
+      - pull:
+          exporter:
+            prometheus:
+              host: 127.0.0.1
+              port: 18889
   pipelines:
     traces:
       receivers:
-        - otlp
+      - otlp
       processors:
-        - memory_limiter
-        - transform/privacy
-        - batch
+      - memory_limiter
+      - transform/privacy
+      - batch
       exporters:
-        - otlp/global-sampler
+      - otlp/global-sampler
 ...

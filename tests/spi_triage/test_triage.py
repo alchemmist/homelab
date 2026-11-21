@@ -4,7 +4,11 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import Mock
+
+if TYPE_CHECKING:
+    from _typeshed import Incomplete
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "charts/spi-triage/files"))
@@ -13,7 +17,7 @@ from integrations import GitHub, Model, Evidence, metric_summary
 from service import Engine
 
 
-def event(status: str = "firing", start: str = "2026-11-03T13:00:00Z"):
+def event(status="firing", start="2026-11-03T13:00:00Z"):
     return normalize(
         {
             "source": "test",
@@ -29,7 +33,7 @@ def event(status: str = "firing", start: str = "2026-11-03T13:00:00Z"):
     )
 
 
-def report(number: int = 0):
+def report(number=0):
     return {
         "title": "[SPI] Test service interruption",
         "summary": "A service symptom requires investigation.",
@@ -228,7 +232,7 @@ class EvidenceTests(unittest.TestCase):
     def test_host_profile_and_no_raw_trace_attributes(self):
         http = Mock()
 
-        def request(method: str, url: str, *args: object, **kwargs: object):
+        def request(method: str, url: str, *args: object, **kwargs: object) -> "Incomplete":
             if "/api/v1/query?" in url:
                 return {"data": {"result": [{"metric": {"nodename": "socrat-0"}}]}}
             if "/api/traces/" in url:
@@ -304,7 +308,7 @@ class EngineTests(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def process(self, e: dict[str, object] | None = None, through: int = 4):
+    def process(self, e=None, through=4):
         key = self.store.enqueue(e or event())["job_id"]
         self.store.claim()
         for stage in ["match", "collect", "analyze", "publish"][:through]:
