@@ -15,6 +15,7 @@ RETIRED_AI_COMPACT_PANEL_ID = 930
 
 
 class Models(unittest.TestCase):
+    """Tests for Models."""
     def setUp(self):
         self.d = json.loads(
             (ROOT / "charts/monitoring-k3s/dashboards/traffic-light.json").read_text()
@@ -53,6 +54,7 @@ class Models(unittest.TestCase):
 
 
 class SplitCascade(unittest.TestCase):
+    """Tests for SplitCascade."""
     def test_split_preserves_query_semantics_and_boundary(self):
         d = json.loads((ROOT / "charts/monitoring-k3s/dashboards/traffic-light.json").read_text())
         p = {p["id"]: p for p in d["panels"]}

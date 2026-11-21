@@ -11,6 +11,7 @@ TRANSIT_SERVICE_PORT = 32087
 
 
 class EdgeCrdTests(unittest.TestCase):
+    """Tests for EdgeCrdTests."""
     @classmethod
     def setUpClass(cls) -> None:
         output = subprocess.check_output(
