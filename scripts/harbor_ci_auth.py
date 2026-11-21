@@ -17,7 +17,7 @@ import urllib.request
 HOST = "harbor.socrat.alchemmist.xyz"
 
 
-def configure(repository):
+def configure(repository: str):
     if not re.fullmatch(r"homelab/[a-z0-9-]+", repository):
         raise ValueError("INVALID_REPOSITORY")
     username, password = os.environ["HARBOR_USERNAME"], os.environ["HARBOR_PASSWORD"]

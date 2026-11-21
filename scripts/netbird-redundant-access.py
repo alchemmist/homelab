@@ -23,7 +23,7 @@ DESTINATION_GROUP = "netbird-node-agents"
 ADMIN_SOURCE = "netbird-internal-admins"
 
 
-def peer(host):
+def peer(host: str) -> list[dict[str, object]]:
     if host not in HOSTS:
         raise ValueError("existing reviewed node required")
     spec = importlib.util.spec_from_file_location(
@@ -31,28 +31,47 @@ def peer(host):
     )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    docs = module.peer(host, admin_mesh=True)
-    for entry in docs[1]["spec"]["template"]["spec"]["containers"][0]["env"]:
-        if entry["name"] == "NB_DISABLE_SERVER_ROUTES":
+    docs: list[dict[str, object]] = module.peer(host, admin_mesh=True)
+    containers = as_list(
+        as_record(as_record(as_record(docs[1]["spec"])["template"])["spec"])["containers"]
+    )
+    for entry in [as_record(x) for x in as_list(as_record(containers[0])["env"])]:
+        if entry.get("name") == "NB_DISABLE_SERVER_ROUTES":
             entry["value"] = "false"
     return docs
 
 
-def reviewed_id(value):
+def as_record(value: object) -> dict[str, object]:
+    """Return a mapping-shaped JSON value, failing loudly on malformed structure."""
+    if not isinstance(value, dict):
+        error = "structured JSON record required"
+        raise TypeError(error)
+    return value
+
+
+def as_list(value: object) -> list[object]:
+    """Return a list-shaped JSON value, failing loudly on malformed structure."""
+    if not isinstance(value, list):
+        error = "structured JSON array required"
+        raise TypeError(error)
+    return value
+
+
+def reviewed_id(value: object) -> bool:
     return (
         isinstance(value, str)
-        and re.fullmatch(r"[A-Za-z0-9_-]+", value)
+        and re.fullmatch(r"[A-Za-z0-9_-]+", value) is not None
         and value.lower() not in ("all", "default")
     )
 
 
-def router_body(node_group):
+def router_body(node_group: str) -> dict[str, object]:
     if not reviewed_id(node_group):
         raise ValueError("dedicated API group containing exact node agents required")
     return {"peer_groups": [node_group], "enabled": True, "masquerade": True, "metric": 80}
 
 
-def admin_input_policy(jwt_group, node_group):
+def admin_input_policy(jwt_group: str, node_group: str) -> dict[str, object]:
     if not reviewed_id(jwt_group) or not reviewed_id(node_group) or jwt_group == node_group:
         raise ValueError("separate genuine admin JWT and exact node destinations required")
     return {
@@ -73,7 +92,7 @@ def admin_input_policy(jwt_group, node_group):
     }
 
 
-def pilot_input_policy(jwt_group, node2_destination):
+def pilot_input_policy(jwt_group: str, node2_destination: str) -> dict[str, object]:
     if (
         not reviewed_id(jwt_group)
         or not reviewed_id(node2_destination)
@@ -99,7 +118,7 @@ def pilot_input_policy(jwt_group, node2_destination):
     }
 
 
-def manifests():
+def manifests() -> list[dict[str, object]]:
     return [doc for host in HOSTS for doc in peer(host)]
 
 

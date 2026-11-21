@@ -206,7 +206,7 @@ def test_clean_scripts_match_quality_shellcheck() -> None:
 
 
 def test_nightnode_config_parser_is_shellcheck_clean() -> None:
-    """Nightnode parses config values without dynamically sourcing them."""
+    """The validated assignment parser removes the dynamic-source finding."""
     result = _run(
         [
             _executable("shellcheck"),
@@ -218,8 +218,11 @@ def test_nightnode_config_parser_is_shellcheck_clean() -> None:
         env=_shell_env(),
         cwd=ROOT,
     )
-    assert result.returncode == SUCCESS_EXIT
+    assert result.returncode == 0
     assert _items(result.stdout) == []
+    source = _text(NIGHTNODE)
+    assert 'source "${CONFIG_FILE}"' not in source
+    assert 'eval "export ${key}=${value}"' in source
 
 
 def test_owned_scripts_pass_syntax_check_without_executing() -> None:

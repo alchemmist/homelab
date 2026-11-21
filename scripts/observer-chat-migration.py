@@ -13,7 +13,9 @@ import importlib.util
 import json
 import os
 import urllib.parse
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Protocol
 
 SPEC = importlib.util.spec_from_file_location(
     "observer_bootstrap", Path(__file__).with_name("observer-access-bootstrap.py")
@@ -24,13 +26,53 @@ require = bootstrap.planner.require
 CHAT = "homelab-chat-user"
 
 
-def snapshot(client, policy):
+class _Client(Protocol):
+    """Structural subset of the bootstrap API client used by the migration."""
+
+    def rows(self, path: str) -> object:
+        """List rows from the identity service."""
+
+    def call(
+        self,
+        system: str,
+        method: str,
+        path: str,
+        body: Mapping[str, object] | None = None,
+    ) -> dict[str, object]:
+        """Issue a single identity service API call."""
+
+
+def as_record(value: object) -> dict[str, object]:
+    """Return a JSON object or stop the migration on structural drift."""
+    if not isinstance(value, dict):
+        error = "Unexpected record structure; stop"
+        raise TypeError(error)
+    return value
+
+
+def as_list(value: object) -> list[object]:
+    """Return a JSON array or stop the migration on structural drift."""
+    if not isinstance(value, list):
+        error = "Unexpected list structure; stop"
+        raise TypeError(error)
+    return value
+
+
+def as_str(value: object) -> str:
+    """Return a JSON string or stop the migration on structural drift."""
+    if not isinstance(value, str):
+        error = "Unexpected string structure; stop"
+        raise TypeError(error)
+    return value
+
+
+def snapshot(client: _Client, policy: Mapping[str, object]) -> dict[str, object]:
     users = []
-    for identity in policy["legacyChatPreservation"]:
-        found = client.rows(
-            "core/users/?" + urllib.parse.urlencode({"username": identity["username"]})
-        )
-        user = bootstrap.planner.exact(found, "username", identity["username"])
+    for identity_value in as_list(policy["legacyChatPreservation"]):
+        identity = as_record(identity_value)
+        username = as_str(identity["username"])
+        found = client.rows("core/users/?" + urllib.parse.urlencode({"username": username}))
+        user = bootstrap.planner.exact(found, "username", username)
         require(user.get("uuid") == identity["uuid"], "Legacy chat subject mismatch")
         users.append({k: user[k] for k in ["pk", "uuid", "username", "groups"]})
     app = bootstrap.planner.exact(
@@ -44,35 +86,38 @@ def snapshot(client, policy):
     }
 
 
-def build(state, policy):
+def build(state: Mapping[str, object], policy: Mapping[str, object]) -> list[dict[str, object]]:
     require(
         policy["legacyChatPreservation"]
         == [{"username": "antropophag", "uuid": "6015c85b-82e9-49ce-a4e3-0270c676e26d"}],
         "Unreviewed legacy preservation scope",
     )
+    app = as_record(state["app"])
     require(
-        state["app"]["slug"] == "open-webui"
-        and state["app"]["policy_engine_mode"] == "any"
-        and state["app"]["provider"] is not None,
+        app["slug"] == "open-webui"
+        and app["policy_engine_mode"] == "any"
+        and app["provider"] is not None,
         "Unexpected native chat application",
     )
     observer = bootstrap.planner.exact(state["groups"], "name", "homelab-observer")
     owner = bootstrap.planner.exact(state["groups"], "name", "homelab-owner")
+    users = [as_record(u) for u in as_list(state["users"])]
+    preservation = [as_record(u) for u in as_list(policy["legacyChatPreservation"])]
     require(
-        len(state["users"]) == len(policy["legacyChatPreservation"])
-        and {(u["username"], u["uuid"]) for u in state["users"]}
-        == {(u["username"], u["uuid"]) for u in policy["legacyChatPreservation"]},
+        len(users) == len(preservation)
+        and {(u["username"], u["uuid"]) for u in users}
+        == {(u["username"], u["uuid"]) for u in preservation},
         "Unreviewed user snapshot",
     )
-    expected = {u["pk"] for u in state["users"]}
+    expected = {u["pk"] for u in users}
     require(
         set(observer["users"]) <= expected | set(owner["users"]),
         "Unreviewed existing observer: audit native chat preservation first",
     )
-    for identity in policy["legacyChatPreservation"]:
-        user = bootstrap.planner.exact(state["users"], "username", identity["username"])
+    for identity in preservation:
+        user = bootstrap.planner.exact(users, "username", identity["username"])
         require(user["uuid"] == identity["uuid"], "Immutable legacy subject mismatch")
-    matches = [g for g in state["groups"] if g["name"] == CHAT]
+    matches = [g for g in [as_record(x) for x in as_list(state["groups"])] if g["name"] == CHAT]
     require(len(matches) <= 1, "Ambiguous chat-use group")
     group = matches[0] if matches else None
     if group:
@@ -82,11 +127,11 @@ def build(state, policy):
             and group.get("parents") == [],
             "Chat group carries inherited/IdP administration privileges",
         )
-    operations = []
+    operations: list[dict[str, object]] = []
     if not group:
         operations.append({"action": "create-chat-group"})
-    for user in state["users"]:
-        if not group or group["pk"] not in user["groups"]:
+    for user in users:
+        if not group or group["pk"] not in as_list(user["groups"]):
             operations.append(
                 {
                     "action": "preserve-chat-user",
@@ -95,10 +140,10 @@ def build(state, policy):
                     "pk": user["pk"],
                 }
             )
-    bindings = state["bindings"]
+    bindings = [as_record(b) for b in as_list(state["bindings"])]
     require(
         all(
-            b["target"] == state["app"]["pk"]
+            b["target"] == app["pk"]
             and b.get("enabled") is True
             and b.get("negate") is False
             and b.get("policy") is None
@@ -116,7 +161,7 @@ def build(state, policy):
         "Owner chat recovery admission missing",
     )
     if not chat_bindings:
-        operations.append({"action": "admit-chat-group", "app": state["app"]["pk"]})
+        operations.append({"action": "admit-chat-group", "app": app["pk"]})
     old = [b for b in bindings if b.get("group") == observer["pk"]]
     require(len(old) <= 1, "Duplicate observer chat binding")
     if old:
@@ -124,15 +169,15 @@ def build(state, policy):
             {
                 "action": "remove-observer-chat-admission",
                 "binding": old[0]["pk"],
-                "app": state["app"]["pk"],
+                "app": app["pk"],
                 "group": observer["pk"],
             }
         )
     return operations
 
 
-def apply(client, operation, state):
-    action = operation["action"]
+def apply(client: _Client, operation: Mapping[str, object], state: Mapping[str, object]) -> None:
+    action = as_str(operation["action"])
     if action == "create-chat-group":
         client.call(
             "authentik",
@@ -176,7 +221,9 @@ def apply(client, operation, state):
             },
         )
     elif action == "remove-observer-chat-admission":
-        current = client.call("authentik", "GET", "policies/bindings/" + operation["binding"] + "/")
+        current = client.call(
+            "authentik", "GET", "policies/bindings/" + as_str(operation["binding"]) + "/"
+        )
         require(
             current["target"] == operation["app"]
             and current["group"] == operation["group"]
@@ -189,7 +236,8 @@ def apply(client, operation, state):
             client,
             {
                 "legacyChatPreservation": [
-                    {"username": u["username"], "uuid": u["uuid"]} for u in state["users"]
+                    {"username": as_record(u)["username"], "uuid": as_record(u)["uuid"]}
+                    for u in as_list(state["users"])
                 ]
             },
         )
@@ -197,7 +245,8 @@ def apply(client, operation, state):
             ready,
             {
                 "legacyChatPreservation": [
-                    {"username": u["username"], "uuid": u["uuid"]} for u in state["users"]
+                    {"username": as_record(u)["username"], "uuid": as_record(u)["uuid"]}
+                    for u in as_list(state["users"])
                 ]
             },
         )
@@ -205,7 +254,9 @@ def apply(client, operation, state):
             pending == [operation],
             "Legacy users not safely admitted or policy drifted before removal",
         )
-        client.call("authentik", "DELETE", "policies/bindings/" + operation["binding"] + "/")
+        client.call(
+            "authentik", "DELETE", "policies/bindings/" + as_str(operation["binding"]) + "/"
+        )
     else:
         raise ValueError("Unreviewed migration operation")
 

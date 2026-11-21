@@ -56,7 +56,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 http = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
 
-def api(method, path, body=None):
+def api(method: str, path: str, body: dict[str, object] | None = None):
     req = urllib.request.Request(
         "https://auth.socrat.alchemmist.xyz/api/v3/" + path,
         method=method,
@@ -80,7 +80,7 @@ def api(method, path, body=None):
         ) from None
 
 
-def rows(path):
+def rows(path: str):
     out = []
     for page in range(1, 101):
         d = api("GET", path + ("&" if "?" in path else "?") + "page_size=100&page=" + str(page))

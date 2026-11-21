@@ -32,7 +32,7 @@ def run(*args: str, timeout: int = 45) -> str:
     ).stdout.strip()
 
 
-def copy_directory(source, destination):
+def copy_directory(source: str | Path, destination: Path) -> None:
     source = Path(source)
     if source.is_dir():
         shutil.copytree(source, destination, symlinks=False)
@@ -40,7 +40,7 @@ def copy_directory(source, destination):
         destination.mkdir()
 
 
-def backup_database(source, destination):
+def backup_database(source: str | Path, destination: Path) -> None:
     source = Path(source)
     if not source.is_file() or source.stat().st_size == 0:
         raise RuntimeError("Live database is missing or empty")
@@ -69,7 +69,7 @@ def launch(unit: str, properties: list[str], executable: str, *arguments: str) -
     run(*command, executable, *arguments)
 
 
-def main(runtime_root=ROOT):
+def main(runtime_root: Path = ROOT) -> None:
     if os.geteuid() != 0:
         raise RuntimeError("Smoke test requires root")
     os.umask(0o077)
