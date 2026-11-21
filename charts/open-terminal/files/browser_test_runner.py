@@ -82,15 +82,15 @@ def cleanup(owned, grace):
             send(identity, signal.SIGKILL if expired else signal.SIGTERM)
         reap()
         if expired and time.monotonic() >= deadline + 2:
-            msg = "Browser test processes did not exit after SIGKILL"
-            raise RuntimeError(msg)
+            message = "Browser test processes did not exit after SIGKILL"
+            raise RuntimeError(message)
         time.sleep(0.05)
 
 
 def run(command, timeout=180, grace=2):
     if sys.platform != "linux":
-        msg = "homelab-browser-test requires Linux"
-        raise RuntimeError(msg)
+        message = "homelab-browser-test requires Linux"
+        raise RuntimeError(message)
     libc = ctypes.CDLL(None, use_errno=True)
     if libc.prctl(36, 1, 0, 0, 0) != 0:
         error = ctypes.get_errno()
@@ -131,8 +131,8 @@ def run(command, timeout=180, grace=2):
 def positive(value):
     number = float(value)
     if not math.isfinite(number) or number <= 0:
-        msg = "timeout must be finite and positive"
-        raise argparse.ArgumentTypeError(msg)
+        message = "timeout must be finite and positive"
+        raise argparse.ArgumentTypeError(message)
     return number
 
 
