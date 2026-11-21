@@ -1,3 +1,5 @@
+"""Tests for the OpenTelemetry signal inventory."""
+
 import importlib.util
 import json
 from pathlib import Path
@@ -25,13 +27,13 @@ class SignalInventoryTests(unittest.TestCase):
             for node in ["socrat-0", "socrat-1", "socrat-2", "socrat-3"]
         }
         result = SIGNALS.summarize(pods, journals)
-        self.assertEqual(result["observedContainerBytesPerSecond"], 2)
-        self.assertTrue(result["observedSourcesReadable"])
-        self.assertFalse(result["logRatesComplete"])
-        self.assertFalse(result["traceRateMeasured"])
-        self.assertFalse(result["diskProjectionVerified"])
-        self.assertFalse(result["rawLogBodiesPersisted"])
-        self.assertTrue(result["countsAreLowerBounds"])
+        assert result["observedContainerBytesPerSecond"] == 2
+        assert result["observedSourcesReadable"]
+        assert not result["logRatesComplete"]
+        assert not result["traceRateMeasured"]
+        assert not result["diskProjectionVerified"]
+        assert not result["rawLogBodiesPersisted"]
+        assert result["countsAreLowerBounds"]
 
     def test_truncation_unavailable_logs_and_journal_gaps_are_explicit(self) -> None:
         pods = {
@@ -42,24 +44,24 @@ class SignalInventoryTests(unittest.TestCase):
             ],
         }
         result = SIGNALS.summarize(pods, {"socrat-0": {"systemJournalAccessVerified": False}})
-        self.assertEqual(result["truncatedContainerCount"], 1)
-        self.assertEqual(result["unavailableContainerCount"], 1)
-        self.assertFalse(result["observedSourcesReadable"])
+        assert result["truncatedContainerCount"] == 1
+        assert result["unavailableContainerCount"] == 1
+        assert not result["observedSourcesReadable"]
 
     def test_empty_sources_and_missing_nodes_cannot_pass(self) -> None:
         result = SIGNALS.summarize({"windowSeconds": 600, "sources": []}, {})
-        self.assertFalse(result["observedSourcesReadable"])
+        assert not result["observedSourcesReadable"]
 
     def test_zero_measurement_window_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
             SIGNALS.summarize({"windowSeconds": 0, "sources": []}, {})
 
     def test_probe_returns_counts_not_log_contents_or_env_values(self) -> None:
-        self.assertNotIn("'body':", SIGNALS.POD_PROBE)
-        self.assertIn("'bytes':size", SIGNALS.POD_PROBE)
-        self.assertIn("entry['name']", SIGNALS.POD_PROBE)
-        self.assertNotIn("entry['value']", SIGNALS.POD_PROBE)
-        self.assertIn("stderr=subprocess.DEVNULL", SIGNALS.POD_PROBE)
+        assert "'body':" not in SIGNALS.POD_PROBE
+        assert "'bytes':size" in SIGNALS.POD_PROBE
+        assert "entry['name']" in SIGNALS.POD_PROBE
+        assert "entry['value']" not in SIGNALS.POD_PROBE
+        assert "stderr=subprocess.DEVNULL" in SIGNALS.POD_PROBE
         compile(SIGNALS.POD_PROBE, "pod_probe", "exec")
         compile(SIGNALS.JOURNAL_PROBE, "journal_probe", "exec")
 
@@ -99,9 +101,9 @@ class PrivilegedJournalTests(unittest.TestCase):
             directory = Path(name)
             self.evidence(directory, MESSAGE="not-persisted-in-report")
             result = SIGNALS.privileged_journals(directory)
-            self.assertEqual(len(result), 4)
-            self.assertTrue(all(item["systemJournalAccessVerified"] for item in result.values()))
-            self.assertNotIn("not-persisted-in-report", str(result))
+            assert len(result) == 4
+            assert all(item["systemJournalAccessVerified"] for item in result.values())
+            assert "not-persisted-in-report" not in str(result)
 
     def test_stale_or_incomplete_evidence_is_rejected(self) -> None:
         import tempfile
@@ -145,11 +147,11 @@ class ActiveLogSourceTests(unittest.TestCase):
             ],
         }
         report = SIGNALS.summarize(data, {})
-        self.assertEqual(report["unavailableContainerCount"], 1)
-        self.assertEqual(report["activeUnavailableContainerCount"], 0)
-        self.assertTrue(report["activeLogAPIsReadable"])
-        self.assertFalse(report["observedSourcesReadable"])
-        self.assertFalse(report["logRatesComplete"])
+        assert report["unavailableContainerCount"] == 1
+        assert report["activeUnavailableContainerCount"] == 0
+        assert report["activeLogAPIsReadable"]
+        assert not report["observedSourcesReadable"]
+        assert not report["logRatesComplete"]
 
     def test_missing_active_or_unknown_state_does_not_pass(self) -> None:
         for sources in [
@@ -164,8 +166,4 @@ class ActiveLogSourceTests(unittest.TestCase):
                 {"measurementAvailable": False},
             ],
         ]:
-            self.assertFalse(
-                SIGNALS.summarize({"windowSeconds": 600, "sources": sources}, {})[
-                    "activeLogAPIsReadable"
-                ]
-            )
+            assert not SIGNALS.summarize({"windowSeconds": 600, "sources": sources}, {})["activeLogAPIsReadable"]

@@ -1,3 +1,5 @@
+"""Tests for the blog update engine loaded by file path."""
+
 import importlib.util
 from pathlib import Path
 import unittest

@@ -9,6 +9,8 @@ from services.rustfs_gateway.gateway import Reader
 
 ROOT = Path(__file__).resolve().parents[1]
 
+GATEWAY_DOC_COUNT = 3
+
 
 class Namespace(unittest.TestCase):
     """Rendered RustFS namespace boundaries and the fixed S3 destination."""
@@ -38,30 +40,30 @@ class Namespace(unittest.TestCase):
             text = self.render(ns)
             docs = text.split("---")
             gateway = [d for d in docs if "metadata: {name: rustfs-gateway" in d]
-            self.assertEqual(len(gateway), 3)
+            assert len(gateway) == GATEWAY_DOC_COUNT
             for d in gateway:
-                self.assertIn("namespace: " + ns, d)
-                self.assertNotIn("rustfs-root", d)
-                self.assertNotIn("rustfs-oidc", d)
-                self.assertNotIn("persistentVolumeClaim:", d)
+                assert "namespace: " + ns in d
+                assert "rustfs-root" not in d
+                assert "rustfs-oidc" not in d
+                assert "persistentVolumeClaim:" not in d
             reader = next(d for d in docs if "name: rustfs-evidence-browser" in d)
-            self.assertIn("namespace: " + ns, reader)
+            assert "namespace: " + ns in reader
             auth = next(d for d in docs if "name: rustfs-console-browser" in d)
-            self.assertIn("namespace: identity", auth)
-            self.assertIn(
+            assert "namespace: identity" in auth
+            assert (
                 "namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: "
                 + ns
-                + "}}\n          podSelector: {matchLabels: {app: rustfs-gateway}}",
-                text,
+                + "}}\n          podSelector: {matchLabels: {app: rustfs-gateway}}"
+                in text
             )
-            self.assertIn(
-                "namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: rustfs}}\n          podSelector: {matchLabels: {app: rustfs}}",
-                text,
+            assert (
+                "namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: rustfs}}\n          podSelector: {matchLabels: {app: rustfs}}"
+                in text
             )
-            self.assertNotIn("0.0.0.0/0", text)
+            assert "0.0.0.0/0" not in text
             storage = next(d for d in docs if "kind: Deployment" in d and "  name: rustfs\n" in d)
-            self.assertNotIn("namespace: identity", storage)
-            self.assertIn("rustfs-root", storage)
+            assert "namespace: identity" not in storage
+            assert "rustfs-root" in storage
         with self.assertRaises(subprocess.CalledProcessError):
             self.render("default")
 
@@ -73,7 +75,7 @@ class Namespace(unittest.TestCase):
             "S3_SECRET_KEY": "offline",
         }
         with patch.dict(os.environ, env, clear=True):
-            self.assertEqual(Reader().s3, "http://rustfs.rustfs.svc.cluster.local:9000")
+            assert Reader().s3 == "http://rustfs.rustfs.svc.cluster.local:9000"
             for endpoint in (
                 "http://rustfs:9000",
                 "http://127.0.0.1:9000",

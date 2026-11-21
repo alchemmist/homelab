@@ -1,3 +1,5 @@
+"""Tests for the SPI triage dispatcher."""
+
 import pathlib
 import sys
 import tempfile

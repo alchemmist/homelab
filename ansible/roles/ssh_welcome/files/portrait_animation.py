@@ -1,3 +1,5 @@
+"""Play a short SSH-login portrait animation between two snapshots."""
+
 import math
 import shutil
 import time

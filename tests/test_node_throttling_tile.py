@@ -1,3 +1,5 @@
+"""Tests for node throttling tile rendering under load."""
+
 import json
 import os
 from pathlib import Path
@@ -142,11 +144,11 @@ class NodeThrottlingTileTest(unittest.TestCase):
         mapping = next(
             entry for entry in _list(defaults["mappings"]) if _mapping(entry)["type"] == "value"
         )
-        self.assertEqual(_mapping(_mapping(_mapping(mapping)["options"])["-1"])["text"], "N/A")
-        self.assertEqual(defaults["noValue"], "No telemetry")
+        assert _mapping(_mapping(_mapping(mapping)["options"])["-1"])["text"] == "N/A"
+        assert defaults["noValue"] == "No telemetry"
         description = panel()["description"]
         assert isinstance(description, str)
-        self.assertIn("positive CPU limit", description)
+        assert "positive CPU limit" in description
 
     @unittest.skipUnless(PROMTOOL, "promtool is not installed; use --generate for remote execution")
     def test_promql_semantics(self) -> None:

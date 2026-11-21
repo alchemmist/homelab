@@ -33,7 +33,7 @@ def main():
     passed = 0
     for ip in ["109.173.40.247", "109.120.141.60"]:
 
-        def check(name, path, status, body=None, headers=(), predicate=None) -> None:
+        def check(name, path, status, body=None, headers=(), predicate=None, ip=ip) -> None:
             nonlocal passed
             cmd = [
                 "curl",

@@ -1,3 +1,5 @@
+"""Tests for the k3s-overlay-marks script."""
+
 import importlib.util
 from pathlib import Path
 import pytest

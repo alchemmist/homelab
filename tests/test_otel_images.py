@@ -1,3 +1,5 @@
+"""Tests for the OpenTelemetry image build and publishing tooling."""
+
 import hashlib
 import importlib.util
 import io
@@ -64,9 +66,9 @@ class ImageLockTests(unittest.TestCase):
         )
         image = result["image"]
         assert isinstance(image, str)
-        self.assertIn("@sha256:", image)
-        self.assertEqual(result["linuxAMD64Digest"], "sha256:platform")
-        self.assertNotIn("private-fixture", str(result))
+        assert "@sha256:" in image
+        assert result["linuxAMD64Digest"] == "sha256:platform"
+        assert "private-fixture" not in str(result)
 
     def test_registry_hash_mismatch(self) -> None:
         """Reject a registry digest that does not match the body."""
@@ -130,10 +132,10 @@ class ValidationBinaryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary)
             receipt = self.extract(output)
-            self.assertEqual((output / "loki").read_bytes(), b"ELF")
-            self.assertFalse((output / "etc").exists())
-            self.assertEqual(receipt["sha256"], hashlib.sha256(b"ELF").hexdigest())
-            self.assertEqual((output / "loki").stat().st_mode & 0o777, 0o700)
+            assert (output / "loki").read_bytes() == b"ELF"
+            assert not (output / "etc").exists()
+            assert receipt["sha256"] == hashlib.sha256(b"ELF").hexdigest()
+            assert (output / "loki").stat().st_mode & 511 == 448
 
     def test_binary_symlink_is_rejected(self) -> None:
         """Reject a symlink planted at the expected binary path."""

@@ -1,3 +1,5 @@
+"""Check Prometheus scrape limits against pod resource requests."""
+
 import json
 import sys
 

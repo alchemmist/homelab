@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+
+"""Reconcile SSH gateway port mappings for homelab nodes."""
+
 import argparse
 import ipaddress
 import json

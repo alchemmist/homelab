@@ -1,3 +1,5 @@
+"""Apply the node disk-reserve policy to node configuration files."""
+
 import argparse
 from datetime import datetime, timezone
 import json

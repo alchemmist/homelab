@@ -1,3 +1,5 @@
+"""Tests for the NetBird node credential helper script."""
+
 import datetime as dt
 import importlib.util
 import json
@@ -70,18 +72,19 @@ class CredentialTest(unittest.TestCase):
             folder = Path(t)
             runtime, calls, users = self.setup_runtime(folder, 300)
             with patch.object(c.mod, "Runtime", runtime):
-                self.assertFalse(c.renew(folder, {}))
-            self.assertEqual(calls, [("GET", "users")])
+                assert not c.renew(folder, {})
+            assert calls == [("GET", "users")]
 
     def test_renew_verify_atomic_switch_then_revoke_old(self) -> None:
         with tempfile.TemporaryDirectory() as t:
             folder = Path(t)
             runtime, calls, users = self.setup_runtime(folder, 10)
             with patch.object(c.mod, "Runtime", runtime):
-                self.assertTrue(c.renew(folder, {}))
-            self.assertEqual([method for method, path in calls], ["GET", "POST", "GET", "DELETE"])
-            self.assertFalse((folder / "credential-intent.json").exists())
-            self.assertEqual((folder / "credential.json").stat().st_mode & 0o777, 0o600)
+                assert c.renew(folder, {})
+            assert [method for method, path in calls] == ["GET", "POST", "GET", "DELETE"]
+            assert not (folder / "credential-intent.json").exists()
+            owner_only_mode = 0o600
+            assert (folder / "credential.json").stat().st_mode & 511 == owner_only_mode
 
     def test_human_blocked_or_lowered_account_not_repaired(self) -> None:
         for field, value in [("is_service_user", False), ("is_blocked", True), ("role", "user")]:
@@ -91,7 +94,7 @@ class CredentialTest(unittest.TestCase):
                 users[0][field] = value
                 with patch.object(c.mod, "Runtime", runtime), self.assertRaises(ValueError):
                     c.renew(folder, {})
-                self.assertEqual(calls, [("GET", "users")])
+                assert calls == [("GET", "users")]
 
     def test_uncertain_issuance_never_retries(self) -> None:
         with tempfile.TemporaryDirectory() as t:

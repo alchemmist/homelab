@@ -1,3 +1,4 @@
+"""Run benchmark tasks inside a checked-out repository with continuation policy."""
 import argparse
 import collections
 import hashlib
