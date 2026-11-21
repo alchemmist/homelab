@@ -5,7 +5,9 @@
 
 - name: Ordinary public Wiki access needs no workstation DNS changes
   ansible.builtin.debug:
-    msg: Use https://wiki.socrat.alchemmist.xyz with native OIDC roles; no local resolver is required.
+    msg: >-
+      Use https://wiki.socrat.alchemmist.xyz with native OIDC roles;
+      no local resolver is required.
   when: not (wiki_editor_client_private_dns_legacy | default(false) | bool)
 
 - name: Explicit legacy private-DNS recovery only (never normal onboarding)

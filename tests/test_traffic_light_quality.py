@@ -157,7 +157,7 @@ class QualityPanelsTest(unittest.TestCase):
 
             e = p["targets"][0]["expr"]
             if i == 934:
-                self.assertIn("cnpg_pg_replication_streaming_replicas", e)
+                self.assertIn("cnpg_dr_standbys", e)
                 self.assertNotIn("lms-database-backup", e)
                 continue
             self.assertIn("NOT proof", p["description"])

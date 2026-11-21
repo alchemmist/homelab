@@ -58,6 +58,7 @@
       "tests/test_otel_read_boundary_and_pki.py",
       "tests/test_otel_sdk_source_privacy.py",
       "tests/test_otel_source_registry.py",
+      "tests/test_pi_monori_seed_checksums.py",
       "tests/test_portal_icons.py",
       "tests/test_prepare_app_iam.py",
       "tests/test_public_entry_ownership.py",

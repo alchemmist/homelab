@@ -63,7 +63,7 @@
     - name: Copy app Helm charts to control-plane
       ansible.builtin.copy:
         src: "{{ playbook_dir }}/../../charts/{{ item.chart }}/"
-        dest: "/tmp/charts/{{ item.chart }}/"
+        dest: /tmp/charts/{{ item.chart }}/
         owner: root
         group: root
         mode: preserve
