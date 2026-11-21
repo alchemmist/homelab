@@ -226,9 +226,7 @@ class PreparationTests(unittest.TestCase):
     def test_group_schema_all_relations_required_and_no_adoption(self) -> None:
         self.apply()
         group = next(
-            g
-            for g in self.api.data["core/groups/"]
-            if isinstance(g["name"], str) and g["name"].startswith("app-")
+            g for g in self.api.data["core/groups/"] if cast(str, g["name"]).startswith("app-")
         )
         good = copy.deepcopy(group)
         for field in ("parents", "children", "users", "roles", "is_superuser", "attributes"):
@@ -244,9 +242,7 @@ class PreparationTests(unittest.TestCase):
                         self.plan()
         group.clear()
         group.update(good)
-        groups = self.api.data["core/users/"][0]["groups"]
-        if isinstance(groups, list):
-            groups.append(group["pk"])
+        cast(list[object], self.api.data["core/users/"][0]["groups"]).append(group["pk"])
         with self.assertRaisesRegex(RuntimeError, "membership"):
             self.plan()
 
@@ -422,8 +418,9 @@ class PreparationTests(unittest.TestCase):
 
         def api(method, path, payload=None):
             result = original(method, path, payload)
-            if "core/users/" in path and isinstance(result["results"], list):
-                result["results"] *= 2
+            if "core/users/" in path:
+                results = cast(list[object], result["results"])
+                results *= 2
             return result
 
         with self.assertRaisesRegex(RuntimeError, "ambiguous"):
