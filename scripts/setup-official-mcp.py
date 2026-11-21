@@ -44,7 +44,7 @@ ARTIFACTS = {
 }
 
 
-def private_write(path, data) -> None:
+def private_write(path: Path, data: bytes):
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     if path.parent.is_symlink() or path.parent.stat().st_uid != os.getuid():
         raise ValueError("Unsafe credentials directory")
@@ -61,7 +61,7 @@ def private_write(path, data) -> None:
             os.unlink(tmp)
 
 
-def main() -> None:
+def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--ssh-host", default="socrat-0")
     p.add_argument(

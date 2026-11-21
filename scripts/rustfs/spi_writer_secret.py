@@ -8,10 +8,9 @@ import json
 import os
 import stat
 from pathlib import Path
-from typing import cast
 
 
-def private_json(path) -> dict[str, dict[str, object]]:
+def private_json(path: Path):
     fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     with os.fdopen(fd, "rb") as stream:
         st = os.fstat(stream.fileno())
@@ -25,11 +24,10 @@ def private_json(path) -> dict[str, dict[str, object]]:
         raw = stream.read(65537)
     if len(raw) > 65536:
         raise ValueError
-    payload: dict[str, dict[str, object]] = json.loads(raw)
-    return payload
+    return json.loads(raw)
 
 
-def render(directory) -> None:
+def render(directory: Path):
     try:
         d = Path(directory)
         st = d.lstat()
@@ -49,13 +47,10 @@ def render(directory) -> None:
             ):
                 raise ValueError
         intended = {
-            cast("str", storage[r]["access"]): hashlib.sha256(
-                cast("str", storage[r]["secret"]).encode()
-            ).hexdigest()
+            storage[r]["access"]: hashlib.sha256(storage[r]["secret"].encode()).hexdigest()
             for r in ("reader", "writer")
         }
-        journal = cast("dict[str, str]", private_json(d / "bootstrap-journal.json"))
-        if journal != intended:
+        if private_json(d / "bootstrap-journal.json") != intended:
             raise ValueError
         payload = json.dumps(
             {k: storage["writer"][k] for k in ("access", "secret")}, separators=(",", ":")
@@ -81,7 +76,7 @@ def render(directory) -> None:
         raise ValueError("SPI_WRITER_SECRET_PREPARATION_REFUSED") from None
 
 
-def main() -> None:
+def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--private-dir", type=Path, required=True)
     args = parser.parse_args()

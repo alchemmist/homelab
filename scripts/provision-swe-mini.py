@@ -5,6 +5,7 @@ Run only after Argo creates swe-mini. Does not modify existing keys or accounts.
 
 import base64
 import json
+from collections.abc import Mapping
 from pathlib import Path
 import socket
 import subprocess
@@ -14,18 +15,15 @@ import urllib.request
 NS = "swe-mini"
 
 
-def kubectl(*args) -> bytes:
+def kubectl(*args: str):
     return subprocess.check_output(["kubectl", *args], stderr=subprocess.DEVNULL)
 
 
-def secret(namespace, name) -> dict[str, str]:
-    secret_data: dict[str, str] = json.loads(
-        kubectl("-n", namespace, "get", "secret", name, "-o", "json")
-    )["data"]
-    return secret_data
+def secret(namespace: str, name: str):
+    return json.loads(kubectl("-n", namespace, "get", "secret", name, "-o", "json"))["data"]
 
 
-def ensure(name, data, kind="Opaque") -> None:
+def ensure(name: str, data: Mapping[str, str], kind: str = "Opaque"):
     if (
         subprocess.run(
             ["kubectl", "-n", NS, "get", "secret", name],
@@ -52,7 +50,7 @@ def ensure(name, data, kind="Opaque") -> None:
     print(name + ": created (values withheld)")
 
 
-def main() -> None:
+def main():
     kubectl("get", "namespace", NS)
     signer = secret("pr-agent", "pr-agent")
     ensure("swe-mini-github", {key: signer[key] for key in ("github-app-id", "github-private-key")})

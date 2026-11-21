@@ -5,13 +5,14 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+from typing import cast
 
 
 class ConfigurationError(Exception):
     pass
 
 
-def request_json(opener, base_url, path, token=None, payload=None):
+def request_json(opener, base_url, path, token=None, payload=None) -> object:
     headers = {"Accept": "application/json"}
     if token is not None:
         headers["Authorization"] = f"Bearer {token}"
@@ -22,7 +23,8 @@ def request_json(opener, base_url, path, token=None, payload=None):
     request = urllib.request.Request(base_url + path, data=data, headers=headers)
     try:
         with opener.open(request, timeout=120) as response:
-            return json.load(response)
+            document: object = json.load(response)
+            return document
     except urllib.error.HTTPError as error:
         raise ConfigurationError(f"Open WebUI request failed: HTTP {error.code}") from None
     except (urllib.error.URLError, TimeoutError, OSError):
@@ -31,7 +33,7 @@ def request_json(opener, base_url, path, token=None, payload=None):
         raise ConfigurationError("Open WebUI returned invalid JSON") from None
 
 
-def configure(args):
+def configure(args) -> dict[str, object]:
     result = {
         "changed": False,
         "skipped": False,
@@ -103,7 +105,9 @@ def configure(args):
             "Requested model is absent from the refreshed Open WebUI model list"
         )
     if args.share_with_users:
-        records = request_json(opener, base_url, "/api/v1/models/all", token)
+        records = cast(
+            "list[dict[str, object]]", request_json(opener, base_url, "/api/v1/models/all", token)
+        )
         if not any(model.get("id") == args.model for model in records):
             request_json(
                 opener,
@@ -167,7 +171,7 @@ def configure(args):
     return result
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", required=True)
     parser.add_argument("--max-output-tokens", type=int, default=16384)

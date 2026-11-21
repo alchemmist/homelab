@@ -16,7 +16,7 @@ class AgentLoggingTests(unittest.TestCase):
 
         patterns = self.agent["receivers"]["filelog"]["exclude"]
 
-        def excluded(pod, container):
+        def excluded(pod: str, container: str):
             path = f"/var/log/pods/cattle-monitoring-system_{pod}_uid/{container}/0.log"
             return any(fnmatchcase(path, pattern) for pattern in patterns)
 

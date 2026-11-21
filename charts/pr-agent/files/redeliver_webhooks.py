@@ -10,6 +10,7 @@ import os
 import time
 import http.client
 from datetime import UTC, datetime
+from typing import cast
 
 import jwt
 
@@ -36,7 +37,7 @@ def token() -> str:
     return encoded.decode() if isinstance(encoded, bytes) else encoded
 
 
-def request(method: str, path: str, bearer: str):
+def request(method: str, path: str, bearer: str) -> list[dict[str, object]]:
     if not path.startswith("/app/hook/deliveries") or "\r" in path or "\n" in path:
         raise ValueError("Only GitHub App delivery paths are allowed")
     # HTTPSConnection verifies TLS and never follows redirects with the bearer.
@@ -56,7 +57,8 @@ def request(method: str, path: str, bearer: str):
         if not 200 <= response.status < 300:
             raise RuntimeError(f"GitHub delivery request failed: HTTP {response.status}")
         raw = response.read()
-        return json.loads(raw) if raw else {}
+        document = json.loads(raw) if raw else []
+        return cast("list[dict[str, object]]", document)
     finally:
         connection.close()
 
@@ -64,9 +66,9 @@ def request(method: str, path: str, bearer: str):
 def main() -> None:
     bearer = token()
     deliveries = request("GET", f"/app/hook/deliveries?per_page={LOOKBACK}", bearer)
-    grouped: dict[str, list[dict]] = {}
+    grouped: dict[str, list[dict[str, object]]] = {}
     for delivery in deliveries:
-        guid = delivery.get("guid") or str(delivery.get("id"))
+        guid = cast("str", delivery.get("guid") or str(delivery.get("id")))
         grouped.setdefault(guid, []).append(delivery)
 
     now = datetime.now(UTC)
@@ -74,11 +76,12 @@ def main() -> None:
     for guid, attempts in grouped.items():
         if any(item.get("status") == "OK" for item in attempts):
             continue
-        latest = max(attempts, key=lambda item: item.get("delivered_at") or "")
-        kind = (latest.get("event"), latest.get("action"))
+        latest = max(attempts, key=lambda item: cast("str", item.get("delivered_at") or ""))
+        kind = (cast("str", latest.get("event")), cast("str", latest.get("action")))
         if kind not in INTERESTING or len(attempts) >= MAX_ATTEMPTS:
             continue
-        delivered = datetime.fromisoformat(latest["delivered_at"].replace("Z", "+00:00"))
+        delivered_at = cast("str", latest["delivered_at"])
+        delivered = datetime.fromisoformat(delivered_at.replace("Z", "+00:00"))
         if (now - delivered).total_seconds() < MIN_AGE_SECONDS:
             continue
         request("POST", f"/app/hook/deliveries/{latest['id']}/attempts", bearer)

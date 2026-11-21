@@ -15,7 +15,7 @@ CONFIG_PATHS = [
 ]
 
 
-def backup():
+def backup() -> None:
     root = Path("/var/backups/homelab-k3s")
     root.mkdir(mode=0o700, parents=True, exist_ok=True)
     destination = Path(tempfile.mkdtemp(prefix="pre-ha-", dir=root))
@@ -32,13 +32,20 @@ def backup():
         if database.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
             raise RuntimeError("SQLite datastore integrity check failed")
     subprocess.run(
-        ["tar", "-C", "/var/lib/rancher/k3s", "-cpf", str(destination / "server.tar"), "server"],
+        [
+            "tar",
+            "-C",
+            "/var/lib/rancher/k3s",
+            "-cpf",
+            str(destination / "server.tar"),
+            "server",
+        ],
         check=True,
     )
     print(json.dumps({"backup": str(destination)}))
 
 
-def restore(directory):
+def restore(directory) -> None:
     directory = Path(directory).resolve()
     if (
         directory.parent != Path("/var/backups/homelab-k3s")
@@ -49,7 +56,8 @@ def restore(directory):
     if server.exists():
         server.rename(directory / "failed-server")
     subprocess.run(
-        ["tar", "-C", "/var/lib/rancher/k3s", "-xpf", str(directory / "server.tar")], check=True
+        ["tar", "-C", "/var/lib/rancher/k3s", "-xpf", str(directory / "server.tar")],
+        check=True,
     )
     for path in CONFIG_PATHS:
         if path.is_dir():

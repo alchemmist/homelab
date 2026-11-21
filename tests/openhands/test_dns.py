@@ -13,7 +13,7 @@ guard = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(guard)
 
 
-def renderer(source):
+def renderer(source: str) -> types.ModuleType:
     module = types.ModuleType("renderer_fixture")
     exec(compile(source, "<renderer fixture>", "exec"), module.__dict__)
     return module

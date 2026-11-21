@@ -23,7 +23,8 @@ prometheus:
         value: 768MiB
       - name: GOMAXPROCS
         value: '2'
-      image: docker.io/otel/opentelemetry-collector-contrib@sha256:ac0bb9cdc844b55d2fd2655d03e596243787d6a8c52dd408b1dc96dd1bd372ee
+      image: >-
+        docker.io/otel/opentelemetry-collector-contrib@sha256:ac0bb9cdc844b55d2fd2655d03e596243787d6a8c52dd408b1dc96dd1bd372ee
       imagePullPolicy: IfNotPresent
       livenessProbe:
         httpGet:
@@ -157,7 +158,8 @@ prometheus:
         release: kube-prometheus-stack
     podMetadata:
       annotations:
-        homelab.alchemmist.xyz/otel-config-sha256: 90be50a866f9e26f8b01675af1af421ab3d880ab91baee80fad1cb36c34b5a93
+        homelab.alchemmist.xyz/otel-config-sha256: >-
+          90be50a866f9e26f8b01675af1af421ab3d880ab91baee80fad1cb36c34b5a93
 prometheus-node-exporter:
   nodeSelector:
     homelab.alchemmist.xyz/legacy-node-exporter-enabled: 'true'

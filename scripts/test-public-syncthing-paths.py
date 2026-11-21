@@ -11,7 +11,7 @@ import subprocess
 NS = "syncthing"
 
 
-def k(*args):
+def k(*args: str):
     return subprocess.check_output(["kubectl", "-n", NS, *args], text=True)
 
 

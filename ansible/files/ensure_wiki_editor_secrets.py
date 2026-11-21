@@ -8,17 +8,20 @@ import tempfile
 import urllib.request
 
 
-def get_secret(name):
+def get_secret(name) -> dict[str, str]:
     result = subprocess.run(
         ["kubectl", "-n", "wiki", "get", "secret", name, "--ignore-not-found", "-o", "json"],
         text=True,
         capture_output=True,
         check=True,
     )
-    return json.loads(result.stdout).get("data", {}) if result.stdout.strip() else {}
+    if not result.stdout.strip():
+        return {}
+    data: dict[str, str] = json.loads(result.stdout).get("data", {})
+    return data
 
 
-def apply(kind, namespace, name, data):
+def apply(kind, namespace, name, data) -> None:
     payload = {
         "apiVersion": "v1",
         "kind": kind,

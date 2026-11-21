@@ -8,7 +8,6 @@ import json
 import os
 import subprocess
 from pathlib import Path
-from typing import cast
 
 ROOT = Path("/var/lib/homelab-tv-alias-retirement")
 OWNED = [
@@ -33,84 +32,76 @@ OWNED = [
 ]
 
 
-def need(ok, msg) -> None:
+def need(msg: str, *, ok: bool):
     if not ok:
         raise RuntimeError(msg)
 
 
-def get(kind, name) -> dict[str, object] | None:
+def get(kind: str, name: str):
     r = subprocess.run(
         ["kubectl", "-n", "identity", "get", kind, name, "--ignore-not-found", "-o", "json"],
         capture_output=True,
         check=True,
     )
-    payload: dict[str, object] | None = json.loads(r.stdout) if r.stdout.strip() else None
-    return payload
+    return json.loads(r.stdout) if r.stdout.strip() else None
 
 
-def inspect() -> list[dict[str, object]]:
+def inspect():
     out = []
     for kind, name, uid, path in OWNED:
         o = get(kind, name)
-        if not isinstance(o, dict):
-            continue
-        metadata = cast("dict[str, object]", o["metadata"])
-        need(metadata["uid"] == uid, "Unowned replacement; stop")
-        if kind == "ingress":
-            spec = cast("dict[str, object]", o["spec"])
-            rules = cast("list[dict[str, object]]", spec["rules"])
-            annotations = cast("dict[str, object]", metadata["annotations"])
-            need(
-                rules[0]["host"] == "tv.alchemmist.xyz"
-                and annotations.get("argocd.argoproj.io/tracking-id")
-                == "public-web-entry:networking.k8s.io/Ingress:identity/public-web-grafana-tv",
-                "Ingress ownership drift",
-            )
-        if kind == "certificate":
-            spec = cast("dict[str, object]", o["spec"])
-            need(spec["dnsNames"] == ["tv.alchemmist.xyz"], "Certificate scope drift")
-        if kind == "secret":
-            annotations = cast("dict[str, object]", metadata["annotations"])
-            need(
-                annotations.get("cert-manager.io/alt-names") == "tv.alchemmist.xyz",
-                "Secret scope drift",
-            )
-        out.append(o)
+        if o:
+            need("Unowned replacement; stop", ok=o["metadata"]["uid"] == uid)
+            if kind == "ingress":
+                need(
+                    "Ingress ownership drift",
+                    ok=o["spec"]["rules"][0]["host"] == "tv.alchemmist.xyz"
+                    and o["metadata"]["annotations"].get("argocd.argoproj.io/tracking-id")
+                    == "public-web-entry:networking.k8s.io/Ingress:identity/public-web-grafana-tv",
+                )
+            if kind == "certificate":
+                need("Certificate scope drift", ok=o["spec"]["dnsNames"] == ["tv.alchemmist.xyz"])
+            if kind == "secret":
+                need(
+                    "Secret scope drift",
+                    ok=o["metadata"]["annotations"].get("cert-manager.io/alt-names")
+                    == "tv.alchemmist.xyz",
+                )
+            out.append(o)
     return out
 
 
-def main() -> None:
+def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")
     a = p.parse_args()
     os.umask(0o077)
-    need(not ROOT.is_symlink(), "Unsafe state")
+    need("Unsafe state", ok=not ROOT.is_symlink())
     ROOT.mkdir(mode=0o700, exist_ok=True)
-    need(ROOT.stat().st_uid == 0 and not ROOT.stat().st_mode & 0o077, "Unsafe state")
+    need("Unsafe state", ok=ROOT.stat().st_uid == 0 and not ROOT.stat().st_mode & 0o077)
     with (ROOT / "lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        need(not (ROOT / "uncertain.json").exists(), "Uncertain deletion; inspect privately")
+        need("Uncertain deletion; inspect privately", ok=not (ROOT / "uncertain.json").exists())
         objects = inspect()
         h = hashlib.sha256(json.dumps(objects, sort_keys=True).encode()).hexdigest()
         if a.apply and objects:
-            need(a.approve_plan_hash == h, "Fresh exact approval required")
-            need(not (ROOT / "before.json").exists(), "Existing cleanup backup; inspect")
+            need("Fresh exact approval required", ok=a.approve_plan_hash == h)
+            need("Existing cleanup backup; inspect", ok=not (ROOT / "before.json").exists())
             (ROOT / "before.json").write_text(json.dumps(objects))
             (ROOT / "uncertain.json").write_text(json.dumps({"plan_hash": h}))
             for kind, name, uid, path in OWNED:
                 o = get(kind, name)
-                if not isinstance(o, dict):
+                if not o:
                     continue
-                metadata = cast("dict[str, object]", o["metadata"])
-                need(metadata["uid"] == uid, "Concurrent replacement; stop")
+                need("Concurrent replacement; stop", ok=o["metadata"]["uid"] == uid)
                 options = {
                     "apiVersion": "v1",
                     "kind": "DeleteOptions",
                     "propagationPolicy": "Foreground",
                     "preconditions": {
                         "uid": uid,
-                        "resourceVersion": metadata["resourceVersion"],
+                        "resourceVersion": o["metadata"]["resourceVersion"],
                     },
                 }
                 r = subprocess.run(
@@ -119,11 +110,14 @@ def main() -> None:
                     capture_output=True,
                 )
                 need(
-                    r.returncode == 0 or b"NotFound" in r.stderr,
                     "Scoped delete failed; inspect privately",
+                    ok=r.returncode == 0 or b"NotFound" in r.stderr,
                 )
             remaining = inspect()
-            need(not any(o["kind"] == "Secret" for o in remaining), "Secret deletion not confirmed")
+            need(
+                "Secret deletion not confirmed",
+                ok=not any(o["kind"] == "Secret" for o in remaining),
+            )
             (ROOT / "after.json").write_text(
                 json.dumps({"plan_hash": h, "delete_requests_completed": True})
             )

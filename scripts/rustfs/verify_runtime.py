@@ -12,10 +12,9 @@ import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from types import ModuleType
 
 
-def load(path, name) -> ModuleType:
+def load(path: Path, name: str) -> ModuleType:
     spec = importlib.util.spec_from_file_location(name, path)
     if spec is None or spec.loader is None:
         raise RuntimeError("cannot load module: " + str(path))
@@ -24,7 +23,7 @@ def load(path, name) -> ModuleType:
     return m
 
 
-def main() -> None:
+def main():
     p = argparse.ArgumentParser()
     p.add_argument("--machine-credentials", type=Path, required=True)
     p.add_argument("--apply-fixture", action="store_true")
@@ -43,7 +42,7 @@ def main() -> None:
         return
     origin = "http://127.0.0.1:19000"
 
-    def request(role, method, path, payload=b""):
+    def request(role: str, method: str, path: str, payload: bytes = b""):
         url = origin + path
         headers = g.sign(method, url, c[role]["access"], c[role]["secret"], payload=payload)
         req = urllib.request.Request(

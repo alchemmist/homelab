@@ -6,13 +6,23 @@ import json
 import shlex
 import subprocess
 import time
+from typing import cast
 
 
-def converged(deployment, pods, node, replicas=1):
-    spec, status = deployment["spec"], deployment.get("status", {})
+def converged(
+    deployment: dict[str, object],
+    pods: list[dict[str, object]],
+    node: str,
+    replicas: int = 1,
+):
+    metadata = cast("dict[str, object]", deployment["metadata"])
+    spec = cast("dict[str, object]", deployment["spec"])
+    status = cast("dict[str, object]", deployment.get("status", {}))
     if replicas < 1 or spec.get("replicas") != replicas:
         return False
-    if status.get("observedGeneration", 0) < deployment["metadata"]["generation"]:
+    if cast("int", status.get("observedGeneration", 0)) < cast(
+        "int", metadata["generation"]
+    ):
         return False
     if status.get("updatedReplicas", 0) != replicas or status.get("readyReplicas", 0) != replicas:
         return False
@@ -23,41 +33,62 @@ def converged(deployment, pods, node, replicas=1):
     if len(pods) != replicas:
         return False
     for pod in pods:
-        if pod["metadata"].get("deletionTimestamp") or pod["spec"].get("nodeName") != node:
+        pod_metadata = cast("dict[str, object]", pod["metadata"])
+        pod_spec = cast("dict[str, object]", pod["spec"])
+        if pod_metadata.get("deletionTimestamp") or cast("str | None", pod_spec.get("nodeName")) != node:
             return False
-        state = pod.get("status", {})
+        state = cast("dict[str, object]", pod.get("status", {}))
         if state.get("phase") != "Running" or not any(
-            c.get("type") == "Ready" and c.get("status") == "True"
-            for c in state.get("conditions", [])
+            cast("dict[str, object]", c).get("type") == "Ready"
+            and cast("dict[str, object]", c).get("status") == "True"
+            for c in cast("list[object]", state.get("conditions", []))
         ):
             return False
-        states = state.get("containerStatuses", [])
-        if len(states) != len(pod["spec"]["containers"]) or not all(c.get("ready") for c in states):
+        states = cast("list[dict[str, object]]", state.get("containerStatuses", []))
+        if len(states) != len(cast("list[object]", pod_spec["containers"])) or not all(
+            c.get("ready") for c in states
+        ):
             return False
     return True
 
 
-def owned_by_current_revision(deployment, replica_sets, pods):
+def owned_by_current_revision(
+    deployment: dict[str, object],
+    replica_sets: list[dict[str, object]],
+    pods: list[dict[str, object]],
+):
     """Label match and old ReplicaSet ownership alone do not prove current rollout."""
-    uid = deployment["metadata"].get("uid")
-    revision = (
-        deployment["metadata"].get("annotations", {}).get("deployment.kubernetes.io/revision")
+    metadata = cast("dict[str, object]", deployment["metadata"])
+    uid = metadata.get("uid")
+    revision = cast("dict[str, object]", metadata.get("annotations", {})).get(
+        "deployment.kubernetes.io/revision"
     )
     if not uid or not revision or not pods:
         return False
 
-    def controller(obj, kind, expected):
-        owners = [o for o in obj["metadata"].get("ownerReferences", []) if o.get("controller")]
+    def controller(obj: dict[str, object], kind: str, expected: set[object]):
+        owners = [
+            o
+            for o in cast(
+                "list[dict[str, object]]",
+                cast("dict[str, object]", obj["metadata"]).get("ownerReferences", []),
+            )
+            if o.get("controller")
+        ]
         return (
-            len(owners) == 1 and owners[0].get("kind") == kind and owners[0].get("uid") in expected
+            len(owners) == 1
+            and owners[0].get("kind") == kind
+            and owners[0].get("uid") in expected
         )
 
     owned = {
-        r["metadata"]["uid"]
+        cast("dict[str, object]", r["metadata"])["uid"]
         for r in replica_sets
-        if r["metadata"].get("uid")
+        if cast("dict[str, object]", r["metadata"]).get("uid")
         and controller(r, "Deployment", {uid})
-        and r["metadata"].get("annotations", {}).get("deployment.kubernetes.io/revision")
+        and cast(
+            "dict[str, object]", cast("dict[str, object]", r["metadata"]).get("annotations", {})
+        ).get("deployment.kubernetes.io/revision")
         == revision
     }
     return all(controller(pod, "ReplicaSet", owned) for pod in pods)
@@ -81,7 +112,7 @@ def main():
         p.error("timeout must be 1..1800 seconds")
     deadline = time.monotonic() + args.timeout
 
-    def get(kind, *extra):
+    def get(kind: str, *extra: str):
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise TimeoutError("Placement did not converge before deadline")

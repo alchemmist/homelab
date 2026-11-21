@@ -8,19 +8,19 @@ import importlib.util
 import json
 import os
 import subprocess
+import types
 from pathlib import Path
-from types import ModuleType
 
 CURRENT = Path("/usr/local/libexec/public_dns_zone.py")
 ROOT = Path("/var/lib/homelab-public-web-dns")
 
 
-def require(ok, message) -> None:
+def require(message: str, *, ok: bool):
     if not ok:
         raise RuntimeError(message)
 
 
-def load(path, name) -> ModuleType:
+def load(path: Path, name: str) -> ModuleType:
     s = importlib.util.spec_from_file_location(name, path)
     if s is None or s.loader is None:
         raise RuntimeError("cannot load module: " + str(path))
@@ -29,23 +29,23 @@ def load(path, name) -> ModuleType:
     return m
 
 
-def delta(old, new) -> None:
+def delta(old: types.ModuleType, new: types.ModuleType):
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
-        before = old.render(123, home, vps).splitlines()
-        after = new.render(123, home, vps).splitlines()
+        before = old.render(123, home_up=home, vps_up=vps).splitlines()
+        after = new.render(123, home_up=home, vps_up=vps).splitlines()
         require(
-            [x for x in after if not x.startswith("kuma.socrat IN A ")]
-            == [x for x in before if not x.startswith("kuma.socrat IN A ")],
             "Unrelated DNS record change; stop",
+            ok=[x for x in after if not x.startswith("kuma.socrat IN A ")]
+            == [x for x in before if not x.startswith("kuma.socrat IN A ")],
         )
         require(
-            [x for x in after if x.startswith("kuma.socrat IN A ")]
-            == ["kuma.socrat IN A " + a for a in old.healthy_addresses(home, vps)],
             "Wrong new record",
+            ok=[x for x in after if x.startswith("kuma.socrat IN A ")]
+            == ["kuma.socrat IN A " + a for a in old.healthy_addresses(home_up=home, vps_up=vps)],
         )
 
 
-def main() -> None:
+def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")
@@ -54,16 +54,18 @@ def main() -> None:
     proposed = ROOT / "proposed.py"
     for path in [CURRENT, proposed]:
         require(
-            path.is_file()
+            "Unsafe renderer",
+            ok=path.is_file()
             and not path.is_symlink()
             and path.stat().st_uid == 0
             and not path.stat().st_mode & 0o022,
-            "Unsafe renderer",
         )
-    require(ROOT.stat().st_uid == 0 and not ROOT.stat().st_mode & 0o077, "Unsafe state directory")
+    require(
+        "Unsafe state directory", ok=ROOT.stat().st_uid == 0 and not ROOT.stat().st_mode & 0o077
+    )
     with (ROOT / "lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        require(not (ROOT / "uncertain.json").exists(), "Uncertain prior write; stop")
+        require("Uncertain prior write; stop", ok=not (ROOT / "uncertain.json").exists())
         old = CURRENT.read_bytes()
         new = proposed.read_bytes()
         oldmod = load(CURRENT, "old")
@@ -78,11 +80,11 @@ def main() -> None:
         }
         digest = hashlib.sha256(json.dumps(context, sort_keys=True).encode()).hexdigest()
         if a.apply and changed:
-            require(a.approve_plan_hash == digest, "Fresh hash approval required")
+            require("Fresh hash approval required", ok=a.approve_plan_hash == digest)
             (ROOT / "before.py").write_bytes(old)
             (ROOT / "uncertain.json").write_text(json.dumps(context))
             temp = CURRENT.with_name("public_dns_zone.py.public-web.tmp")
-            require(not temp.exists(), "Unexpected temporary renderer")
+            require("Unexpected temporary renderer", ok=not temp.exists())
             temp.write_bytes(new)
             temp.chmod(0o755)
             temp.replace(CURRENT)
@@ -96,9 +98,9 @@ def main() -> None:
                 text=True,
             )
             require(
-                "A" in result.split()
-                and any(ip in result.split() for ip in newmod.healthy_addresses(True, True)),
                 "New authoritative record not confirmed",
+                ok="A" in result.split()
+                and any(ip in result.split() for ip in newmod.healthy_addresses(home_up=True, vps_up=True)),
             )
             (ROOT / "after.json").write_text(
                 json.dumps({"renderer_sha256": context["after"], "zone_read_confirmed": True})
