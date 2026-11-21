@@ -79,8 +79,9 @@ def problems(document: _Document, pods: _PodList | None = None):
     if not isinstance(document, dict):
         return ["Prometheus is not installed"]
     prom = document
-    items = prom.get("items") if "items" in prom else [prom]
-    if not items:
+    raw_items = prom.get("items")
+    items = raw_items if isinstance(raw_items, list) else [prom]
+    if not items or not isinstance(items[0], dict):
         return ["Prometheus is not installed"]
     spec = items[0].get("spec") or {}
     found = []
