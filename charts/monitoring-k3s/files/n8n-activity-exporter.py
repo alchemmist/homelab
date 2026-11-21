@@ -72,7 +72,8 @@ def collect():
         if not cursor or (dates and max(dates) < now - 3600):
             break
     else:
-        raise RuntimeError("recent-start scan exceeds 4000 execution budget")
+        msg = "recent-start scan exceeds 4000 execution budget"
+        raise RuntimeError(msg)
     # The unfiltered API deliberately excludes active executions. Fetch them
     # explicitly. Waiting workflows are not actively running.
     active, cursor = [], None
@@ -83,7 +84,8 @@ def collect():
         if not cursor:
             break
     else:
-        raise RuntimeError("running scan incomplete")
+        msg = "running scan incomplete"
+        raise RuntimeError(msg)
     result = summarize(rows + active, now)
     result["running", 0] = len({r["id"] for r in active if r.get("status") == "running"})
     return result

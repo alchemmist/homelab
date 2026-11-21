@@ -159,7 +159,8 @@ def fetch(repo, number):
     )
     response = json.loads(out)
     if response.get("errors"):
-        raise RuntimeError("GitHub GraphQL returned errors")
+        msg = "GitHub GraphQL returned errors"
+        raise RuntimeError(msg)
     pr = response["data"]["repository"]["pullRequest"]
     pr["statusCheckRollup"] = (
         pr.get("tip", {}).get("nodes", [{}])[-1].get("commit", {}).get("statusCheckRollup")

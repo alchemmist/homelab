@@ -43,12 +43,14 @@ def copy_directory(source, destination):
 def backup_database(source, destination):
     source = Path(source)
     if not source.is_file() or source.stat().st_size == 0:
-        raise RuntimeError("Live database is missing or empty")
+        msg = "Live database is missing or empty"
+        raise RuntimeError(msg)
     with sqlite3.connect(source.as_uri() + "?mode=ro", uri=True, timeout=10) as original:
         with sqlite3.connect(destination) as backup:
             original.backup(backup)
             if backup.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
-                raise RuntimeError("Smoke database integrity check failed")
+                msg = "Smoke database integrity check failed"
+                raise RuntimeError(msg)
 
 
 def launch(unit, properties, executable, *arguments):
@@ -71,7 +73,8 @@ def launch(unit, properties, executable, *arguments):
 
 def main(runtime_root=ROOT):
     if os.geteuid() != 0:
-        raise RuntimeError("Smoke test requires root")
+        msg = "Smoke test requires root"
+        raise RuntimeError(msg)
     os.umask(0o077)
     runtime_root = Path(runtime_root)
     if runtime_root != ROOT:
@@ -80,18 +83,21 @@ def main(runtime_root=ROOT):
             or runtime_root.parent != ROOT
             or not runtime_root.name.startswith("staged-")
         ):
-            raise RuntimeError("Unowned candidate runtime root")
+            msg = "Unowned candidate runtime root"
+            raise RuntimeError(msg)
     workloads = [
         (name, db, cert, acme, runtime_root / name / "app/bin", zone)
         for name, db, cert, acme, _, zone in WORKLOADS
     ]
     namespaces = json.loads(run("ip", "-j", "netns", "list"))
     if any(item["name"] == NAMESPACE for item in namespaces):
-        raise RuntimeError("Smoke namespace already exists; refusing to modify it")
+        msg = "Smoke namespace already exists; refusing to modify it"
+        raise RuntimeError(msg)
     for unit in UNITS:
         state = run("systemctl", "show", unit, "--property=LoadState", "--value")
         if state != "not-found":
-            raise RuntimeError("Smoke unit already exists; refusing to modify it")
+            msg = "Smoke unit already exists; refusing to modify it"
+            raise RuntimeError(msg)
     temporary = Path(tempfile.mkdtemp(prefix="homelab-vpn-smoke-", dir="/var/tmp"))
     started = []
     namespace_created = False
@@ -109,7 +115,8 @@ def main(runtime_root=ROOT):
         caddyfile = temporary / "Caddyfile"
         caddy_config = (CONFIG / "Caddyfile").read_text()
         if "root /srv/caddy/data/caddy" not in caddy_config:
-            raise RuntimeError("Unexpected Caddy storage configuration")
+            msg = "Unexpected Caddy storage configuration"
+            raise RuntimeError(msg)
         caddyfile.write_text(
             caddy_config.replace("root /srv/caddy/data/caddy", "root " + str(storage))
         )
@@ -178,7 +185,8 @@ def main(runtime_root=ROOT):
             if result.returncode == 0:
                 break
             if time.monotonic() >= deadline:
-                raise RuntimeError("Isolated native VPN health checks did not pass")
+                msg = "Isolated native VPN health checks did not pass"
+                raise RuntimeError(msg)
             time.sleep(2)
         proof = {
             "healthy": True,
@@ -196,7 +204,8 @@ def main(runtime_root=ROOT):
             try:
                 remaining = run("ip", "netns", "pids", NAMESPACE)
                 if remaining:
-                    raise RuntimeError("Smoke namespace still has processes")
+                    msg = "Smoke namespace still has processes"
+                    raise RuntimeError(msg)
                 run("ip", "netns", "delete", NAMESPACE)
             except Exception:
                 cleanup_errors.append("Could not remove isolated network namespace")

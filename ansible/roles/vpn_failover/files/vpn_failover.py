@@ -101,7 +101,8 @@ class Watchdog:
             except FileNotFoundError:
                 return
             if not self.kubernetes_group(group):
-                raise RuntimeError("Process cgroup changed while fencing")
+                msg = "Process cgroup changed while fencing"
+                raise RuntimeError(msg)
             try:
                 signal.pidfd_send_signal(descriptor, sig)
             except ProcessLookupError:
@@ -114,7 +115,8 @@ class Watchdog:
         for unit in installed:
             self.command("systemctl", "stop", unit)
         if any(self.service_active(unit) for unit in installed):
-            raise RuntimeError("Kubernetes service did not stop")
+            msg = "Kubernetes service did not stop"
+            raise RuntimeError(msg)
         for sig in (signal.SIGTERM, signal.SIGKILL):
             for pid in self.processes():
                 self.terminate(pid, sig)
@@ -123,7 +125,8 @@ class Watchdog:
                 time.sleep(0.2)
             if not self.processes():
                 return
-        raise RuntimeError("Kubernetes processes remain; refusing native startup")
+        msg = "Kubernetes processes remain; refusing native startup"
+        raise RuntimeError(msg)
 
     def guard(self):
         if (
@@ -134,7 +137,8 @@ class Watchdog:
             )
             or self.processes()
         ):
-            raise RuntimeError("Native startup requires verified Kubernetes fencing")
+            msg = "Native startup requires verified Kubernetes fencing"
+            raise RuntimeError(msg)
 
     def occupied(self):
         wanted = {(item["protocol"], int(item["port"])) for item in self.config["listen_ports"]}
@@ -158,12 +162,14 @@ class Watchdog:
         for name in self.config.get("databases", []):
             path = Path(name)
             if not path.is_file() or path.stat().st_size == 0:
-                raise RuntimeError("VPN database missing or empty")
+                msg = "VPN database missing or empty"
+                raise RuntimeError(msg)
             with sqlite3.connect(
                 path.as_uri() + "?mode=ro", uri=True, timeout=self.timeout
             ) as database:
                 if database.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
-                    raise RuntimeError("VPN database integrity check failed")
+                    msg = "VPN database integrity check failed"
+                    raise RuntimeError(msg)
 
     def health(self):
         errors = []
@@ -205,7 +211,8 @@ class Watchdog:
                     status = lines[0].split()[1] if len(lines[0].split()) >= 2 else ""
                     diagnostics["http_status"] = int(status) if status.isdigit() else None
                     if len(lines[0].split()) < 2 or lines[0].split()[1] != "101":
-                        raise ValueError("WebSocket upgrade rejected")
+                        msg = "WebSocket upgrade rejected"
+                        raise ValueError(msg)
                     accept = next(
                         (
                             line.split(":", 1)[1].strip()
@@ -215,7 +222,8 @@ class Watchdog:
                         "",
                     )
                     if accept != expected or headers.get("upgrade", "").strip() != "websocket":
-                        raise ValueError("WebSocket handshake invalid")
+                        msg = "WebSocket handshake invalid"
+                        raise ValueError(msg)
         except (OSError, ValueError) as error:
             errors.append("Public VPN TLS/WebSocket handshake failed")
             diagnostics.update(stage=stage, exception=type(error).__name__)
@@ -270,7 +278,8 @@ class Watchdog:
         self.fence()
         running = [unit for unit in self.units if self.service_active(unit)]
         if not running and self.occupied():
-            raise RuntimeError("VPN ports still occupied; refusing native startup")
+            msg = "VPN ports still occupied; refusing native startup"
+            raise RuntimeError(msg)
         self.guard()
         started = False
         for unit in self.units:
@@ -313,7 +322,8 @@ class Watchdog:
             for unit in reversed(self.units):
                 self.command("systemctl", "stop", unit)
             if any(self.service_active(unit) for unit in self.units) or self.occupied():
-                raise RuntimeError("Native VPN did not release ports for recovery restart")
+                msg = "Native VPN did not release ports for recovery restart"
+                raise RuntimeError(msg)
             self.guard()
             self.native_warmup()
             for unit in self.units:
@@ -350,18 +360,20 @@ class Watchdog:
 
     def failback(self):
         if not (self.state / "active").exists():
-            raise RuntimeError("Fallback is not active")
+            msg = "Fallback is not active"
+            raise RuntimeError(msg)
         if not self.service_installed(self.agent):
-            raise RuntimeError("Configured Kubernetes service is not installed; keeping native VPN")
+            msg = "Configured Kubernetes service is not installed; keeping native VPN"
+            raise RuntimeError(msg)
         if self.agent == "k3s-agent.service" and self.service_installed("k3s.service"):
-            raise RuntimeError(
-                "Legacy agent target conflicts with installed server; keeping native VPN"
-            )
+            msg = "Legacy agent target conflicts with installed server; keeping native VPN"
+            raise RuntimeError(msg)
         self.fence()
         for unit in reversed(self.units):
             self.command("systemctl", "stop", unit)
         if any(self.service_active(unit) for unit in self.units) or self.occupied():
-            raise RuntimeError("Native VPN has not released its ports; keeping Kubernetes fenced")
+            msg = "Native VPN has not released its ports; keeping Kubernetes fenced"
+            raise RuntimeError(msg)
         boot, uptime = self.clock()
         self.write(
             "failures.json",

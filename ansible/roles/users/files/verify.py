@@ -25,10 +25,12 @@ policy = subprocess.run(
     env={**os.environ, "LC_ALL": "C"},
 )
 if policy.returncode not in [0, 1]:
-    raise SystemExit("Cannot inspect effective sudo policy")
+    msg = "Cannot inspect effective sudo policy"
+    raise SystemExit(msg)
 denied = ("User " + name + " is not allowed to run sudo on ") in policy.stdout
 if not denied and "may run the following commands" not in policy.stdout:
-    raise SystemExit("Unrecognized effective sudo policy output")
+    msg = "Unrecognized effective sudo policy output"
+    raise SystemExit(msg)
 admin_read = (
     subprocess.run(
         ["runuser", "-u", name, "--", "test", "-r", "/etc/rancher/k3s/k3s.yaml"]
