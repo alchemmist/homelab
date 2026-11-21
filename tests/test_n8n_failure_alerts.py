@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 import copy
 import importlib.util
 import json
@@ -14,7 +15,7 @@ TEMPLATE = json.loads((ROOT / "docs/n8n/workflow-failure-alerts.json").read_text
 
 
 class FailureAlertsTests(unittest.TestCase):
-    def notification(self, payload, handler="4321"):
+    def notification(self, payload: Mapping[str, object], handler: str = "4321"):
         code = TEMPLATE["nodes"][1]["parameters"]["jsCode"]
         js = 'const vm=require("node:vm");const x=JSON.parse(process.argv[1]);const fn=vm.runInNewContext("(function(){"+x.code+"})",{items:[{json:x.payload}],$execution:{id:x.handler}});console.log(JSON.stringify(fn()));'
         return json.loads(
@@ -80,7 +81,7 @@ class FailureAlertsTests(unittest.TestCase):
             last["parameters"]["url"], "http://socrat-bot.socrat-bot.svc:8080/v1/messages"
         )
 
-    def wf(self, active=True):
+    def wf(self, *, active: bool = True):
         return {
             "id": "abc",
             "name": "Calendar",
@@ -110,13 +111,14 @@ class FailureAlertsTests(unittest.TestCase):
 
     def test_only_settings_change_and_active_state_preserved(self):
         for active in (True, False):
-            original = self.wf(active)
+            original = self.wf(active=active)
             current = copy.deepcopy(original)
             calls = []
 
-            def api(method, path, body=None):
+            def api(method: str, path: str, body: Mapping[str, object] | None = None):
                 calls.append((method, path, body))
                 if method == "PUT":
+                    assert body is not None
                     self.assertEqual(body["nodes"], original["nodes"])
                     self.assertEqual(body["connections"], original["connections"])
                     current["settings"] = body["settings"]
