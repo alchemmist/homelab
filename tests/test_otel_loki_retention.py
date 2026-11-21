@@ -17,20 +17,21 @@ class RetentionTests(unittest.TestCase):
 
     def test_copies_and_defaults(self):
         text = m.COPIES[0].read_text()
-        self.assertEqual(text, m.COPIES[1].read_text())
-        self.assertEqual(text, m.render(text, self.policy))
+        assert text == m.COPIES[1].read_text()
+        assert text == m.render(text, self.policy)
         fallback, rules = m.rules(self.policy)
-        self.assertEqual(fallback, 336)
-        self.assertIn((10, '{severity="unknown"}', 336), rules)
-        self.assertIn((10, '{severity="debug"}', 72), rules)
-        self.assertIn((10, '{severity="warn"}', 336), rules)
-        self.assertIn("k8s.namespace.name, severity]", text)
+        expected_fallback_burst = 336
+        assert fallback == expected_fallback_burst
+        assert (10, '{severity="unknown"}', 336) in rules
+        assert (10, '{severity="debug"}', 72) in rules
+        assert (10, '{severity="warn"}', 336) in rules
+        assert "k8s.namespace.name, severity]" in text
 
     def test_service_beats_severity(self):
         self.policy["services"] = {"example": {"debug": 48, "error": 336}}
         _, rules = m.rules(self.policy)
-        self.assertIn((100, '{service_name="example",severity="debug"}', 48), rules)
-        self.assertEqual(len({(p, s) for p, s, _ in rules}), len(rules))
+        assert (100, '{service_name="example",severity="debug"}', 48) in rules
+        assert len({(p, s) for p, s, _ in rules}) == len(rules)
 
     def test_reject_invalid_and_unmeasured_long_retention(self):
         for value in (0, 23, 8761, True, "72", 8760):

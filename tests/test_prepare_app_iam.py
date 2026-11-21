@@ -176,55 +176,50 @@ class PreparationTests(unittest.TestCase):
         current = json.loads((ROOT / "deploy/identity/services.json").read_text())
         with self.assertRaisesRegex(RuntimeError, "Catalog allowlist changed"):
             prep.build_plan(self.api, current, self.reviewed)
-        self.assertEqual(self.api.writes, 0)
+        assert self.api.writes == 0
 
     def test_full_plan_is_get_only_paginated_and_sanitized(self) -> None:
         before = copy.deepcopy(self.api.data)
         plan = self.plan()
-        self.assertEqual(len(plan["operations"]), 9)
-        self.assertEqual(before, self.api.data)
-        self.assertEqual({m for m, _, _ in self.api.requests}, {"GET"})
-        self.assertTrue(any("page=2" in p for _, p, _ in self.api.requests))
-        self.assertEqual(set(plan["snapshot_hashes"]), set(prep.COLLECTIONS))
-        self.assertNotIn("SECRET", json.dumps(plan))
+        assert len(plan["operations"]) == 9
+        assert before == self.api.data
+        assert {m for m, _, _ in self.api.requests} == {"GET"}
+        assert any("page=2" in p for _, p, _ in self.api.requests)
+        assert set(plan["snapshot_hashes"]) == set(prep.COLLECTIONS)
+        assert "SECRET" not in json.dumps(plan)
         for op in plan["operations"]:
-            self.assertEqual(op["payload"], prep.group_payload(op["payload"]["name"]))
+            assert op["payload"] == prep.group_payload(op["payload"]["name"])
 
     def test_both_stages_bounded_preserve_everything_else(self) -> None:
         before = copy.deepcopy(self.api.data)
-        self.assertEqual(self.apply(), 9)
-        self.assertEqual(self.plan()["operations"], [])
+        assert self.apply() == 9
+        assert self.plan()["operations"] == []
         for p in prep.COLLECTIONS:
             if p != "core/groups/":
-                self.assertEqual(self.api.data[p], before[p])
+                assert self.api.data[p] == before[p]
         plan = self.plan("groups+empty-bindings")
-        self.assertEqual(len(plan["operations"]), 9)
+        assert len(plan["operations"]) == 9
         for op in plan["operations"]:
-            self.assertIn(op["payload"]["group"], {g["pk"] for g in self.api.data["core/groups/"]})
-            self.assertIn(
-                op["payload"]["target"], {a["pk"] for a in self.api.data["core/applications/"]}
-            )
-        self.assertEqual(self.apply("groups+empty-bindings"), 9)
-        self.assertEqual(self.plan("groups+empty-bindings")["operations"], [])
+            assert op["payload"]["group"] in {g["pk"] for g in self.api.data["core/groups/"]}
+            assert op["payload"]["target"] in {a["pk"] for a in self.api.data["core/applications/"]}
+        assert self.apply("groups+empty-bindings") == 9
+        assert self.plan("groups+empty-bindings")["operations"] == []
         for p in prep.COLLECTIONS:
             if p not in ("core/groups/", "policies/bindings/"):
-                self.assertEqual(self.api.data[p], before[p])
-        self.assertEqual(
-            self.api.data["policies/bindings/"][: len(before["policies/bindings/"])],
-            before["policies/bindings/"],
-        )
+                assert self.api.data[p] == before[p]
+        assert self.api.data["policies/bindings/"][:len(before["policies/bindings/"])] == before["policies/bindings/"]
         for method, path, _payload in self.api.requests:
             if method != "GET":
-                self.assertEqual(method, "POST")
-                self.assertIn(path, ("core/groups/", "policies/bindings/"))
+                assert method == "POST"
+                assert path in ("core/groups/", "policies/bindings/")
         for p in (self.root / "app-iam-prepare-journal").rglob("*"):
-            self.assertEqual(p.stat().st_mode & 0o077, 0)
-        self.assertNotIn("SECRET", "".join(p.read_text() for p in self.root.rglob("*.json")))
+            assert p.stat().st_mode & 63 == 0
+        assert "SECRET" not in "".join(p.read_text() for p in self.root.rglob("*.json"))
 
     def test_stage_b_requires_real_fresh_group_pks(self) -> None:
         with self.assertRaisesRegex(RuntimeError, "groups-only first"):
             self.plan("groups+empty-bindings")
-        self.assertEqual(self.api.writes, 0)
+        assert self.api.writes == 0
 
     def test_group_schema_all_relations_required_and_no_adoption(self) -> None:
         self.apply()
@@ -274,7 +269,7 @@ class PreparationTests(unittest.TestCase):
         self.services["grafana"]["appRoles"]["admin"] = {}
         with self.assertRaisesRegex(RuntimeError, "allowlist"):
             self.plan()
-        self.assertEqual(self.api.writes, 0)
+        assert self.api.writes == 0
 
     def test_binding_faults_in_both_stages(self) -> None:
         self.apply()
@@ -316,7 +311,7 @@ class PreparationTests(unittest.TestCase):
                 self.api.data[path][0]["unrelated-setting"] = "drift"
             with self.subTest(path=path), self.assertRaises(RuntimeError):
                 self.apply(approval=plan["sha256"])
-        self.assertEqual(self.api.writes, 0)
+        assert self.api.writes == 0
 
     def test_drift_during_second_snapshot_prevents_first_write(self) -> None:
         approval = self.plan(evidence=self.evidence)["sha256"]
@@ -333,23 +328,21 @@ class PreparationTests(unittest.TestCase):
         self.api.after_get = drift
         with self.assertRaisesRegex(RuntimeError, "Baseline drift"):
             self.apply(approval=approval)
-        self.assertEqual(self.api.writes, 0)
+        assert self.api.writes == 0
 
     def test_partial_failure_durable_pending_and_no_retry_rollback_or_adoption(self) -> None:
         self.api.fail_write = 2
         with self.assertRaisesRegex(RuntimeError, "simulated"):
             self.apply()
         journals = list((self.root / "app-iam-prepare-journal").iterdir())
-        self.assertEqual(len(journals), 1)
-        self.assertEqual(json.loads((journals[0] / "01.json").read_text())["status"], "verified")
-        self.assertEqual(json.loads((journals[0] / "02.json").read_text())["status"], "pending")
-        self.assertEqual(
-            json.loads((journals[0] / "run.json").read_text())["status"], "stopped-uncertain"
-        )
+        assert len(journals) == 1
+        assert json.loads((journals[0] / "01.json").read_text())["status"] == "verified"
+        assert json.loads((journals[0] / "02.json").read_text())["status"] == "pending"
+        assert json.loads((journals[0] / "run.json").read_text())["status"] == "stopped-uncertain"
         self.api.fail_write = None
         with self.assertRaisesRegex(RuntimeError, "Unresolved prior journal"):
             self.apply()
-        self.assertEqual(self.api.writes, 2)
+        assert self.api.writes == 2
 
     def test_uncertain_accepted_post_is_not_retried_or_adopted(self) -> None:
         original = self.api.__call__
@@ -371,13 +364,13 @@ class PreparationTests(unittest.TestCase):
                 self.evidence,
                 approval,
             )
-        self.assertEqual(self.api.writes, 1)
-        self.assertEqual(len(self.plan()["operations"]), 8)
+        assert self.api.writes == 1
+        assert len(self.plan()["operations"]) == 8
         with self.assertRaisesRegex(RuntimeError, "Unresolved prior journal"):
             self.apply()
-        self.assertEqual(self.api.writes, 1)
+        assert self.api.writes == 1
         entry = next((self.root / "app-iam-prepare-journal").glob("*/01.json"))
-        self.assertEqual(json.loads(entry.read_text())["status"], "pending")
+        assert json.loads(entry.read_text())["status"] == "pending"
 
     def test_journal_intent_failure_prevents_post(self) -> None:
         original = prep.atomic_json
@@ -389,7 +382,7 @@ class PreparationTests(unittest.TestCase):
 
         with patch.object(prep, "atomic_json", side_effect=fail_intent), self.assertRaises(OSError):
             self.apply()
-        self.assertEqual(self.api.writes, 0)
+        assert self.api.writes == 0
 
     def test_post_create_drift_stops_after_one_post(self) -> None:
         original = self.api.__call__
@@ -405,7 +398,7 @@ class PreparationTests(unittest.TestCase):
             prep.apply_plan(
                 api, self.root, self.services, self.reviewed, "groups-only", self.evidence, approval
             )
-        self.assertEqual(self.api.writes, 1)
+        assert self.api.writes == 1
 
     def test_pagination_missing_cursor_arbitrary_url_and_duplicate_rows_refused(self) -> None:
         responses: tuple[dict[str, object], ...] = (
@@ -440,9 +433,9 @@ class PreparationTests(unittest.TestCase):
                 api = prep.api_for(self.root)
                 api("GET", "core/users/?page=1")
                 request = opener.open.call_args.args[0]
-                self.assertTrue(request.full_url.startswith("https://"))
-                self.assertEqual(request.get_header("Authorization"), "Bearer PRIVATE-TOKEN")
-                self.assertIsInstance(build.call_args.args[0], prep.NoRedirect)
+                assert request.full_url.startswith("https://")
+                assert request.get_header("Authorization") == "Bearer PRIVATE-TOKEN"
+                assert isinstance(build.call_args.args[0], prep.NoRedirect)
                 opener.open.side_effect = HTTPError(
                     "https://example.invalid/",
                     403,
@@ -484,7 +477,7 @@ class PreparationTests(unittest.TestCase):
         path = self.root / "evidence.json"
         path.write_text(json.dumps(self.evidence))
         path.chmod(0o600)
-        self.assertEqual(prep.evidence_input(path), self.evidence)
+        assert prep.evidence_input(path) == self.evidence
         for field in (
             "writers_paused",
             "backup_sha256",
@@ -501,7 +494,7 @@ class PreparationTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "holds the lock"):
                 with prep.locked(self.root):
                     self.fail("second lock acquired")
-        self.assertEqual(self.api.writes, 0)
+        assert self.api.writes == 0
 
     def test_cli_default_plan_and_check_are_get_only_no_journal(self) -> None:
         (self.root / "services.json").write_text(json.dumps(self.services))
@@ -512,13 +505,10 @@ class PreparationTests(unittest.TestCase):
                 patch.object(prep, "api_for", return_value=self.api),
                 contextlib.redirect_stdout(io.StringIO()),
             ):
-                self.assertEqual(prep.main(), status)
-        self.assertEqual(self.api.writes, 0)
-        self.assertFalse((self.root / "app-iam-prepare-journal").exists())
-        self.assertEqual(
-            {p.name for p in self.root.iterdir()},
-            {"services.json", "account-mappings.json", ".app-iam-prepare.lock"},
-        )
+                assert prep.main() == status
+        assert self.api.writes == 0
+        assert not (self.root / "app-iam-prepare-journal").exists()
+        assert {p.name for p in self.root.iterdir()} == {"services.json", "account-mappings.json", ".app-iam-prepare.lock"}
 
 
 if __name__ == "__main__":
