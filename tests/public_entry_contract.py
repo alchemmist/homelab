@@ -2,7 +2,6 @@
 
 import subprocess
 from pathlib import Path
-from typing import cast
 
 import yaml
 
@@ -22,14 +21,16 @@ CHARTS = {
 def chart_values(owner: str) -> dict[str, object]:
     """Load the complete owner inputs, preserving any surrounding feature values."""
     source = (ROOT / CHARTS[owner] / "values.yaml").read_text()
-    return cast("dict[str, object]", yaml.safe_load(source))
+    document = yaml.safe_load(source)
+    assert isinstance(document, dict), f"Expected mapping in {owner} chart values"
+    return document
 
 
 def public_entry(document: dict[str, object]) -> dict[str, object]:
     """Select the routes by schema, independently of the chart's directory."""
     entry = document.get("publicEntry", document)
     assert isinstance(entry, dict)
-    assert isinstance(entry.get("routes"), list)
+    assert isinstance(entry.get("routes"), list), "Expected public-entry routes list"
     return entry
 
 

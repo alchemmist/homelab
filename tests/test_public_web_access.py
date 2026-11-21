@@ -158,8 +158,9 @@ def test_chart_rejects_mislabeled_authorization(owner, key, value, denial: str, 
     overrides = chart_values(owner)
     routes = public_entry(overrides)["routes"]
     assert isinstance(routes, list)
-    [target] = [r for r in routes if r["name"] == owner]
-    target[key] = value
+    targets = [r for r in routes if r["name"] == owner]
+    assert len(targets) == 1, f"Missing or ambiguous reviewed {owner} route"
+    targets[0][key] = value
     p = tmp_path / "values.yaml"
     p.write_text(yaml.safe_dump(overrides))
     result = subprocess.run(
