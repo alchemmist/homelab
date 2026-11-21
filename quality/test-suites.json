@@ -120,6 +120,7 @@
       "tests/test_traffic_light_models.py"
     ],
     "medium": [
+      "tests/openhands/test_upgrade.py",
       "tests/test_alert_graph_inventory.py",
       "tests/test_alert_graphs_chart.py",
       "tests/test_ansible_quality_policy.py",
@@ -149,6 +150,7 @@
       "tests/test_rustfs_gateway.py",
       "tests/test_rustfs_namespace.py",
       "tests/test_rustfs_unified_origin.py",
+      "tests/test_service_paths_404.py",
       "tests/test_shell_strict_regressions.py",
       "tests/test_shell_strict_second_batch.py",
       "tests/test_socrat4_contention.py",
@@ -169,8 +171,7 @@
       "tests/test_vm105_renderer_lms_litellm.py",
       "tests/test_vm105_stateful_batch.py",
       "tests/test_wiki_socrat0_placement.py",
-      "tests/test_wishlist_vm105.py",
-      "tests/openhands/test_upgrade.py"
+      "tests/test_wishlist_vm105.py"
     ],
     "cluster": [
       "tests/kubernetes/test_cluster.py"

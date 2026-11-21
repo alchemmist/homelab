@@ -188,6 +188,11 @@
       "SocratNodeResourceContention": 5,
       "SocratNodeThermalThrottling": 7
     },
+    "alerts-9b2750a20f4596c3": {
+      "SocratApiScrapeMissing": 1,
+      "SocratApiScrapeUnavailable": 3,
+      "SocratServicePathDiverged": 5
+    },
     "alerts-9e50577fca7fb4a0": {
       "ConfigReloaderSidecarErrors": 1
     },

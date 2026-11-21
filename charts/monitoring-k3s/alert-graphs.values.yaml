@@ -5,6 +5,10 @@ alertGraphAnnotations:
     / rule evaluations","dashboard_uid":"alerts-78cc217981bbb8aa","panel_id":2,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
   KubeNodePressure: '{"version":1,"graphs":[{"id":"primary","title":"KubeNodePressure","dashboard_uid":"alerts-78cc217981bbb8aa","panel_id":3,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"KubeNodePressure
     / rule evaluations","dashboard_uid":"alerts-78cc217981bbb8aa","panel_id":4,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
+  SocratApiScrapeMissing: '{"version":1,"graphs":[{"id":"primary","title":"SocratApiScrapeMissing","dashboard_uid":"alerts-9b2750a20f4596c3","panel_id":1,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratApiScrapeMissing
+    / rule evaluations","dashboard_uid":"alerts-9b2750a20f4596c3","panel_id":2,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
+  SocratApiScrapeUnavailable: '{"version":1,"graphs":[{"id":"primary","title":"SocratApiScrapeUnavailable","dashboard_uid":"alerts-9b2750a20f4596c3","panel_id":3,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratApiScrapeUnavailable
+    / rule evaluations","dashboard_uid":"alerts-9b2750a20f4596c3","panel_id":4,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
   SocratContainerOOMKilled: '{"version":1,"graphs":[{"id":"primary","title":"SocratContainerOOMKilled","dashboard_uid":"alerts-45608093acd53723","panel_id":1,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratContainerOOMKilled
     / rule evaluations","dashboard_uid":"alerts-45608093acd53723","panel_id":2,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
   SocratContainerRestartsFrequent: '{"version":1,"graphs":[{"id":"primary","title":"SocratContainerRestartsFrequent","dashboard_uid":"alerts-45608093acd53723","panel_id":3,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratContainerRestartsFrequent
@@ -95,6 +99,8 @@ alertGraphAnnotations:
     / rule evaluations","dashboard_uid":"alerts-8bcf7e7a450f9592","panel_id":44,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
   SocratServiceOpenWebuiUnavailable: '{"version":1,"graphs":[{"id":"primary","title":"SocratServiceOpenWebuiUnavailable","dashboard_uid":"alerts-8bcf7e7a450f9592","panel_id":45,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratServiceOpenWebuiUnavailable
     / rule evaluations","dashboard_uid":"alerts-8bcf7e7a450f9592","panel_id":46,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
+  SocratServicePathDiverged: '{"version":1,"graphs":[{"id":"primary","title":"SocratServicePathDiverged","dashboard_uid":"alerts-9b2750a20f4596c3","panel_id":5,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratServicePathDiverged
+    / rule evaluations","dashboard_uid":"alerts-9b2750a20f4596c3","panel_id":6,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
   SocratServiceProbeCollectorUnavailable: '{"version":1,"graphs":[{"id":"primary","title":"SocratServiceProbeCollectorUnavailable","dashboard_uid":"alerts-8bcf7e7a450f9592","panel_id":47,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratServiceProbeCollectorUnavailable
     / rule evaluations","dashboard_uid":"alerts-8bcf7e7a450f9592","panel_id":48,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
   SocratServicePrometheusUnavailable: '{"version":1,"graphs":[{"id":"primary","title":"SocratServicePrometheusUnavailable","dashboard_uid":"alerts-8bcf7e7a450f9592","panel_id":49,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratServicePrometheusUnavailable
