@@ -156,8 +156,7 @@ def exact(token: str, endpoint: str, field: str, value: str) -> dict[str, object
         row for row in cast("list[dict[str, object]]", payload["results"]) if row[field] == value
     ]
     if len(matches) > 1:
-        message = "Ambiguous managed identity"
-        raise RuntimeError(message)
+        raise RuntimeError("Ambiguous managed identity")
     return matches[0] if matches else None
 
 
@@ -179,12 +178,10 @@ def verify(token: str, journal: dict[str, object]) -> dict[str, object]:
         and group["attributes"] == marker
         and set(cast("list[object]", group["users"])) == {user["pk"]}
     ):
-        message = "Managed account/group drift"
-        raise RuntimeError(message)
+        raise RuntimeError("Managed account/group drift")
     t = api(token, "GET", "core/tokens/" + quote(NAME, safe="") + "/")
     if t["user"] != user["pk"] or t["intent"] != "api" or t["expiring"]:
-        message = "Managed token drift"
-        raise RuntimeError(message)
+        raise RuntimeError("Managed token drift")
     owner = exact(token, "core/users/", "username", "alchemmist")
     if (
         not owner
@@ -192,8 +189,7 @@ def verify(token: str, journal: dict[str, object]) -> dict[str, object]:
         or not owner["is_active"]
         or not owner["is_superuser"]
     ):
-        message = "Owner admin prerequisite failed"
-        raise RuntimeError(message)
+        raise RuntimeError("Owner admin prerequisite failed")
     for endpoint in [
         "providers/all/",
         "core/applications/",
@@ -212,19 +208,16 @@ def _require_owner_admin(owner: dict[str, object] | None) -> None:
         or not owner["is_superuser"]
         or not owner["is_active"]
     ):
-        message = "Owner admin prerequisite failed"
-        raise RuntimeError(message)
+        raise RuntimeError("Owner admin prerequisite failed")
 
 
 def _verify_active_journal(path: Path, journal: dict[str, object], old: object) -> None:
     """Re-verify an already-active journal without touching any consumer."""
     if path.stat().st_mode & 0o077:
-        message = "Journal is not private"
-        raise RuntimeError(message)
+        raise RuntimeError("Journal is not private")
     verify(cast("str", journal["token"]), journal)
     if old != journal["token"]:
-        message = "Consumer credential alias drift"
-        raise RuntimeError(message)
+        raise RuntimeError("Consumer credential alias drift")
     print("PASS: dedicated machine API identity and consumer alias verified; read-only check")
 
 
@@ -233,8 +226,7 @@ def _create_journal(
 ) -> dict[str, object]:
     """Reject adoption of foreign identities, back up credentials, persist a journal."""
     if exact(old, "core/users/", "username", NAME) or exact(old, "core/groups/", "name", GROUP):
-        message = "Refusing adoption of existing identity"
-        raise RuntimeError(message)
+        raise RuntimeError("Refusing adoption of existing identity")
     # List metadata only; never overwrite an existing token identifier.
     matches = [
         t
@@ -244,13 +236,11 @@ def _create_journal(
         if t["identifier"] == NAME
     ]
     if matches:
-        message = "Foreign token identifier"
-        raise RuntimeError(message)
+        raise RuntimeError("Foreign token identifier")
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     backup = root / ("credentials-before-automation-" + stamp + ".json")
     if backup.exists():
-        message = "Backup already exists"
-        raise RuntimeError(message)
+        raise RuntimeError("Backup already exists")
     save(backup, values)
     journal = {
         "version": 1,
@@ -269,15 +259,13 @@ def _ensure_group(
     """Create the dedicated automation group or validate the existing one."""
     group = exact(old, "core/groups/", "name", GROUP)
     if group and group["attributes"] != marker:
-        message = "Foreign group"
-        raise RuntimeError(message)
+        raise RuntimeError("Foreign group")
     if group is None:
         group = api(
             old, "POST", "core/groups/", {"name": GROUP, "is_superuser": True, "attributes": marker}
         )
     if not group["is_superuser"]:
-        message = "Group permission drift"
-        raise RuntimeError(message)
+        raise RuntimeError("Group permission drift")
     journal["group_pk"] = group["pk"]
     save(path, journal)
     return group
@@ -293,12 +281,10 @@ def _ensure_user(
     """Create the dedicated service account or validate the existing one."""
     user = exact(old, "core/users/", "username", NAME)
     if user and user["attributes"] != marker:
-        message = "Foreign user"
-        raise RuntimeError(message)
+        raise RuntimeError("Foreign user")
     if user is None:
         if group["users"]:
-            message = "Foreign group member"
-            raise RuntimeError(message)
+            raise RuntimeError("Foreign group member")
         user = api(
             old,
             "POST",
@@ -333,8 +319,7 @@ def _ensure_token(old: str, user: dict[str, object], journal: dict[str, object])
             or matches[0]["user"] != user["pk"]
             or matches[0].get("description") != journal["nonce"]
         ):
-            message = "Foreign token"
-            raise RuntimeError(message)
+            raise RuntimeError("Foreign token")
     else:
         api(
             old,
@@ -353,13 +338,11 @@ def _ensure_token(old: str, user: dict[str, object], journal: dict[str, object])
 def migrate(root, action):
     'Migrate.'
     if root.stat().st_mode & 0o077:
-        message = "Deployment directory is not private"
-        raise RuntimeError(message)
+        raise RuntimeError("Deployment directory is not private")
     path = root / "automation-api.json"
     credentials = root / "credentials.json"
     if credentials.stat().st_mode & 0o077:
-        message = "Credential file is not private"
-        raise RuntimeError(message)
+        raise RuntimeError("Credential file is not private")
     values = json.loads(credentials.read_text())
     old = values["AUTHENTIK_BOOTSTRAP_TOKEN"]
     journal = json.loads(path.read_text()) if path.exists() else None
@@ -397,8 +380,7 @@ def _require_recovery_evidence(journal: dict[str, object]) -> None:
         and evidence.get("owner_uuid") == OWNER_UUID
         and journal.get("encrypted_backup_sha256")
     ):
-        message = "Recovery and off-node backup prerequisites not recorded"
-        raise RuntimeError(message)
+        raise RuntimeError("Recovery and off-node backup prerequisites not recorded")
 
 
 def _require_no_bootstrap_credentials() -> None:
@@ -412,8 +394,7 @@ def _require_no_bootstrap_credentials() -> None:
     )
     keys = {"AUTHENTIK_BOOTSTRAP_TOKEN", "AUTHENTIK_BOOTSTRAP_PASSWORD"}
     if keys.intersection(secret.get("data", {})):
-        message = "Runtime Secret still contains bootstrap credentials"
-        raise RuntimeError(message)
+        raise RuntimeError("Runtime Secret still contains bootstrap credentials")
     metadata = cast("dict[object, dict[str, object]]", secret)["metadata"]
     annotations = cast("dict[str, object]", metadata.get("annotations", {}))
     annotation = cast(
@@ -423,23 +404,20 @@ def _require_no_bootstrap_credentials() -> None:
     if keys.intersection(applied.get("data", {})) or keys.intersection(
         applied.get("stringData", {})
     ):
-        message = "Runtime Secret annotation still contains bootstrap credentials"
-        raise RuntimeError(message)
+        raise RuntimeError("Runtime Secret annotation still contains bootstrap credentials")
     for name in ["authentik-server", "authentik-worker"]:
         deploy = json.loads(
             subprocess.check_output(k + ["get", "deploy", name, "-o", "json"], env=env)
         )
         for c in deploy["spec"]["template"]["spec"]["containers"]:
             if keys.intersection(e["name"] for e in c.get("env", [])):
-                message = "Explicit pod bootstrap environment remains"
-                raise RuntimeError(message)
+                raise RuntimeError("Explicit pod bootstrap environment remains")
 
 
 def _require_reviewed_default_admin(target: dict[str, object]) -> None:
     """Only ever delete the exact reviewed default-admin identity."""
     if target["uuid"] != "fc86d87d-3a72-4cfb-8ba1-aa6bf6b017e7" or target["pk"] != 4:
-        message = "Refusing deletion of an unreviewed identity"
-        raise RuntimeError(message)
+        raise RuntimeError("Refusing deletion of an unreviewed identity")
 
 
 def _require_clean_default_tokens(token: str, target: dict[str, object]) -> None:
@@ -452,8 +430,7 @@ def _require_clean_default_tokens(token: str, target: dict[str, object]) -> None
         if t["user"] == target["pk"]
     ]
     if any(t["identifier"] != "authentik-bootstrap-token" for t in owned):
-        message = "Unexpected default-admin token dependency"
-        raise RuntimeError(message)
+        raise RuntimeError("Unexpected default-admin token dependency")
 
 
 def retire_default_admin(root):
@@ -466,37 +443,32 @@ def retire_default_admin(root):
     _require_no_bootstrap_credentials()
     bootstrap = (root / "bootstrap.py").read_text()
     if not bootstrap_is_migration_aware(bootstrap):
-        message = "Future bootstrap reconciliation is not migration-aware"
-        raise RuntimeError(message)
+        raise RuntimeError("Future bootstrap reconciliation is not migration-aware")
     token = journal["token"]
     target = exact(token, "core/users/", "username", "akadmin")
     if target is None:
         if journal.get("akadmin_retired_at"):
             print("PASS: akadmin already retired")
             return
-        message = "Default admin missing without retirement journal"
-        raise RuntimeError(message)
+        raise RuntimeError("Default admin missing without retirement journal")
     _require_reviewed_default_admin(target)
     _require_clean_default_tokens(token, target)
     journal["retired_user_before"] = target
     save(path, journal)
     api(token, "DELETE", "core/users/" + str(target["pk"]) + "/")
     if exact(token, "core/users/", "username", "akadmin") is not None:
-        message = "Default admin removal not confirmed"
-        raise RuntimeError(message)
+        raise RuntimeError("Default admin removal not confirmed")
     if any(
         t["user"] == target["pk"]
         for t in cast(
             "list[dict[str, object]]", api(token, "GET", "core/tokens/?page_size=1000")["results"]
         )
     ):
-        message = "Default-admin token survived deletion"
-        raise RuntimeError(message)
+        raise RuntimeError("Default-admin token survived deletion")
     verify(token, journal)
     values = json.loads((root / "credentials.json").read_text())
     if values["AUTHENTIK_BOOTSTRAP_TOKEN"] != token:
-        message = "Consumer alias changed during retirement"
-        raise RuntimeError(message)
+        raise RuntimeError("Consumer alias changed during retirement")
     values.pop("AUTHENTIK_BOOTSTRAP_PASSWORD", None)
     save(root / "credentials.json", values)
     journal["akadmin_retired_at"] = datetime.now(timezone.utc).isoformat()
