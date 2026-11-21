@@ -1,3 +1,5 @@
+"""Production trace checks for the OpenTelemetry SDK setup."""
+
 import copy
 import importlib.util
 import unittest

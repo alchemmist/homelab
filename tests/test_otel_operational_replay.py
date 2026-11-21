@@ -1,3 +1,5 @@
+"""Tests for OpenTelemetry operational replay handling."""
+
 import base64
 import copy
 import importlib.util

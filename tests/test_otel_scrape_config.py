@@ -1,3 +1,5 @@
+"""Tests for the OpenTelemetry scrape configuration generator."""
+
 import copy
 import importlib.util
 import json
