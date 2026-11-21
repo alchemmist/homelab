@@ -1,28 +1,29 @@
 """Trusted tmux dispatcher. Never run agent code on the SSH host or in publisher."""
 import ast,contextlib,fcntl,hashlib,json,os,pathlib,re,sqlite3,subprocess,sys,time
+from collections.abc import Sequence
 ROOT=pathlib.Path(__file__).resolve().parent;os.chdir(ROOT);os.umask(0o077)
 BASE='61ca009312ee850c70cd87ed4c60296e2a78abcc';CAT=json.loads((ROOT/'catalog.json').read_text());
 CARDS={'integer_value':('common/json_values.py',['server/tests/unit/test_db_records.py']), '_amount':('server/app/workbook/parser.py',['server/tests/unit/test_workbook_parser.py','server/tests/unit/test_workbook_parser_mutation.py'])}
 
-def cmd(args,data=None,timeout=120,ok=True):
+def cmd(args: Sequence[str], data: str | None = None, timeout: int = 120, *, ok: bool = True):
     p=subprocess.run(args,input=data,text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=timeout); 
     if ok and p.returncode:raise RuntimeError(f'{args[0]} exit {p.returncode}: '+p.stderr[-500:]+p.stdout[-300:]);
     return p
 
-def k(role,args,data=None,timeout=120,ok=True):return cmd(['kubectl','-n','openhands','exec','-i','deploy/pi-monori-'+role,'-c','sandbox','--',*args],data,timeout,ok)
-def sql(q,args=()):
+def k(role: str,args: Sequence[str],data: str | None=None,timeout: int=120,*,ok: bool=True):return cmd(['kubectl','-n','openhands','exec','-i','deploy/pi-monori-'+role,'-c','sandbox','--',*args],data,timeout,ok=ok)
+def sql(q: str,args: Sequence[object]=()):
     with contextlib.closing(sqlite3.connect(ROOT/'queue.sqlite')) as d,d:return d.execute(q,args).fetchall()
-def phase(name,st,note):
+def phase(name: str,st: str,note: str):
     sql('insert into events values(?,?,?,?)',(time.time(),name,st,note[:2300]));print(time.strftime('%FT%T%z'),name,st,note[:180],flush=True)
-def write(role,path,value):k(role,['sh','-ec','cat > "$1"','sh',path],value)
-def gitfile(path):return cmd(['git','--git-dir=base.git','show',BASE+':'+path]).stdout
-def suite(paths,timeout=220):
+def write(role: str,path: str,value: str):k(role,['sh','-ec','cat > "$1"','sh',path],value)
+def gitfile(path: str):return cmd(['git','--git-dir=base.git','show',BASE+':'+path]).stdout
+def suite(paths: Sequence[str],timeout: int=220):
     p=k('judge',['sh','-ec','cd /scratch/monori; PYTHONPATH=/scratch exec .venv/bin/python -m pytest -q --tb=short --disable-warnings "$@"','sh',*paths],timeout=timeout,ok=False);return p.returncode,p.stdout[-2800:]
 
-def mutfile(name,src,mid):
+def mutfile(name: str,src: str,mid: str):
     s=gitfile(src);fn=next(n for n in ast.parse(s).body if isinstance(n,ast.FunctionDef) and n.name==name);lines=s.splitlines(keepends=True);a,b=CAT[name][mid];part=lines[fn.lineno-1:fn.end_lineno];idx=[i for i,line in enumerate(part) if line.rstrip('\n')==a];assert len(idx)==1;part[idx[0]]=b+'\n';return ''.join(lines[:fn.lineno-1]+part+lines[fn.end_lineno:])
 
-def inspect_test(text,name):
+def inspect_test(text: str,name: str):
     if not 30<len(text)<15000:raise ValueError('missing or oversized new regression test')
     tree=ast.parse(text); calls={'integer_value','_amount','Workbook','pytest.raises','str','isinstance','len','type','bool','int','float','dict','list','tuple','set','Cell','Decimal','range','date','pytest.mark.parametrize'};modules={'pytest','datetime','decimal','openpyxl','openpyxl.cell.cell','monori.common.json_values','monori.server.app.workbook.parser'}
     tests=[n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name.startswith('test_')]
@@ -41,10 +42,10 @@ def inspect_test(text,name):
 PUBLISH='''import sys,json,hmac,pathlib,urllib.request as u
 x=json.load(sys.stdin);x['proof']=hmac.new(pathlib.Path('/proof/key').read_bytes(),json.dumps(x,sort_keys=True).encode(),'sha256').hexdigest();r=u.urlopen(u.Request('http://monori-publisher:8081/v1',data=json.dumps(x).encode(),headers={'Content-Type':'application/json'}),timeout=75);print(r.read().decode())'''
 
-def packet(name,mid,feedback):
+def packet(name: str,mid: str,feedback: str):
     src,suitefiles=CARDS[name];dest='server/tests/unit/test_pi509_'+name.strip('_')+'.py';a,b=CAT[name][mid];return f'''Implement ONE new focused mutation regression, not a progress report. Monori #509, main {BASE}, target {src}::{name}, ID {mid}. Existing focused suite passed with this mutation. Original line: {a!r}. Replacement: {b!r}. Your workstation is a disposable isolated git worktree, not OpenHands. Inspect the source (including callees), and run experiments with /scratch/monori/.venv/bin/python and PYTHONPATH set to the parent of this worktree. Write an actual pytest regression to the new file {dest}, no other changes. Run it on original and mutant if useful, restore any production edit before exit. Prefer a simple positive or negative behavior assertion. Allowed test style: direct imports of {name}, pytest.raises, pytest.mark.parametrize, integer_value, Workbook/cell etc; no mocks, process/FS/network, broad fixtures or skip. All tests in English, annotated -> None. No gh, publisher, credentials or merge. A separate trusted controller runs old tests on mutant, new test on mutant and suite on original then publishes your test as PR. If genuinely equivalent or duplicate, explain concrete evidence in OUTCOME.md instead of a dummy test. Do not waste time installing packages. Use tools and actually write the test before you finish. Reviewer feedback: {feedback[:800]}'''
 
-def process(name):
+def process(name: str):
     src,olds=CARDS[name];dest='server/tests/unit/test_pi509_'+name.strip('_')+'.py';casepath='/scratch/trees/'+name+'/monori';basepath='/scratch/monori/'+src;testpath='/scratch/monori/'+dest
     def restore():write('judge',basepath,gitfile(src));k('judge',['rm','-f',testpath]);k('judge',['rm','-rf','/scratch/monori/'+str(pathlib.Path(src).parent/'__pycache__')])
     restore();rc,out=suite(olds);assert not rc and re.search(r'\d+ passed',out),'baseline not green'
