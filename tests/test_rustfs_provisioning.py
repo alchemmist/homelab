@@ -99,7 +99,7 @@ class Provisioning(unittest.TestCase):
                 policies[args[4]] = json.loads(Path(args[5]).read_text())
                 return []
             if args[:3] == ["admin", "user", "add"]:
-                access, secret = cast("bytes", stdin).decode().splitlines()
+                access, secret = cast(bytes, stdin).decode().splitlines()
                 self.assertNotIn(secret, " ".join(args))
                 users[access] = {"userStatus": "enabled", "policyName": ""}
                 return []
