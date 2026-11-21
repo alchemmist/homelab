@@ -30,7 +30,7 @@ resources:
     memory: 1Gi
     ephemeral-storage: 1Gi
   limits:
-    cpu: '2'
+    cpu: "2"
     memory: 6Gi
     ephemeral-storage: 6Gi
 ingress:
@@ -38,7 +38,7 @@ ingress:
 config:
   extraEnv:
     - name: AGENT_CANVAS_ALLOW_LAN_SESSION_KEY
-      value: 'true'
+      value: "true"
     # Local automation workers need key-authenticated loopback callbacks, not
     # the public browser OIDC gate. Public UI still uses its same-origin proxy.
     - name: AUTOMATION_BASE_URL
@@ -65,9 +65,9 @@ monoriPublisher: true
 
 # Continue only MaxIterationsReached for the owner's Monori mutation task.
 # Set to an empty string to disarm. No other chat or error is retried.
-continueIterationChat: ''
+continueIterationChat: ""
 
-continueQaChat: ''
+continueQaChat: ""
 
 # Owner explicitly requested no iteration-count stop for main agents, task workers or goals.
 unlimitedIterations: true

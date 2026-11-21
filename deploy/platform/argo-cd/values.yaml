@@ -33,7 +33,7 @@ configs:
       g, mcp, role:readonly
       p, mcp, applications, sync, */*, allow
     policy.default: role:unassigned
-    scopes: '[groups]'
+    scopes: "[groups]"
 controller:
   # Controller-only move; server/repo/Redis and identity stay on0.
   nodeSelector:

@@ -1,7 +1,7 @@
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/deeperseeker
-  tag: "1b1148ec1e2a"
-  digest: "sha256:696884aa3c846f4471b6876b4b3455e8fa047dfd2638f050c5f0b8cf270e16ac"
+  tag: 1b1148ec1e2a
+  digest: sha256:696884aa3c846f4471b6876b4b3455e8fa047dfd2638f050c5f0b8cf270e16ac
   pullPolicy: IfNotPresent
 
 imagePullSecrets:
@@ -9,7 +9,7 @@ imagePullSecrets:
 
 # Same fingerprint as charts/deeperseeker/values.yaml. Overlay wins on merge.
 browserPlatform: Linux
-browserUserAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36"
-clientVersion: "2.8.0"
+browserUserAgent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36
+clientVersion: 2.8.0
 cookieHeadless: "true"
 warmupNonHeadless: "false"

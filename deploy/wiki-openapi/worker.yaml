@@ -135,7 +135,7 @@ spec:
       containers:
         - name: worker
           image: python:3.13-alpine@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8
-          command: ["/bin/sh", "-c", "HOME=/tmp pip install --no-cache-dir -q -t /tmp/py pyyaml==6.0.3 && exec python -B /app/wiki_openapi/server.py"]
+          command: [/bin/sh, -c, HOME=/tmp pip install --no-cache-dir -q -t /tmp/py pyyaml==6.0.3 && exec python -B /app/wiki_openapi/server.py]
           envFrom:
             - secretRef:
                 name: wiki-openapi

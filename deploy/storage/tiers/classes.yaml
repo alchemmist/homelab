@@ -3,7 +3,7 @@ kind: StorageClass
 metadata:
   name: local-hdd
   annotations:
-    storageclass.kubernetes.io/is-default-class: 'false'
+    storageclass.kubernetes.io/is-default-class: "false"
     defaultVolumeType: local
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
 provisioner: rancher.io/local-path
@@ -23,7 +23,7 @@ kind: StorageClass
 metadata:
   name: local-ssd
   annotations:
-    storageclass.kubernetes.io/is-default-class: 'false'
+    storageclass.kubernetes.io/is-default-class: "false"
     defaultVolumeType: local
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
 provisioner: rancher.io/local-path

@@ -162,7 +162,7 @@ metadata:
     homelab-otel-role: application-client
 rules:
 - apiGroups:
-  - ''
+  - ""
   resources:
   - secrets
   resourceNames:
