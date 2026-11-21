@@ -24,7 +24,7 @@ TOKEN = ""
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *args, **kwargs):
+    def redirect_request(self, *args: object, **kwargs: object) -> None:
         return None
 
 

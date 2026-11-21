@@ -8,44 +8,20 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-import urllib.response
 from collections.abc import Iterator
-from typing import Protocol, cast
-
-
-class _OpenerFactory(Protocol):
-    """Builds a urllib opener, optionally for an SSL context."""
-
-    def __call__(
-        self, context: object | None = ...
-    ) -> urllib.request.OpenerDirector: ...
-
-
-class _InnerOpener(Protocol):
-    def open(self, *args: object, **kwargs: object) -> urllib.response.addinfourl: ...
-
-
-class _Reconciler(Protocol):
-    """Anything that exposes a removable opener and a single reconcile pass."""
-
-    opener: _OpenerFactory
-
-    def reconcile_rancher(self) -> None: ...
+from typing import cast
 
 
 class DiagnosticFailure(RuntimeError):
-    def __init__(self, event: dict[str, object]):
+    def __init__(self, event):
         super().__init__("Observer dependency operation failed")
         self.event = event
 
 
-def classify(error: BaseException) -> dict[str, object]:
+def classify(error):
     """Never use exception strings, URL, headers, body, subject or request data."""
     if isinstance(error, urllib.error.HTTPError):
-        return {
-            "kind": "http_status",
-            "http_status": error.code if 100 <= error.code <= 599 else 0,
-        }
+        return {"kind": "http_status", "http_status": error.code if 100 <= error.code <= 599 else 0}
     if isinstance(error, urllib.error.URLError):
         return (
             classify(error.reason)
@@ -71,7 +47,7 @@ def classify(error: BaseException) -> dict[str, object]:
     return {"kind": "validation_or_internal"}
 
 
-def stage(request: urllib.request.Request) -> str:
+def stage(request):
     # Use only fixed labels, never a logged URL or arbitrary path component.
     path = urllib.parse.urlsplit(request.full_url).path
     if path == "/api/v3/core/groups/":
@@ -91,20 +67,23 @@ def stage(request: urllib.request.Request) -> str:
 
 
 class ObservedHTTP:
-    def __init__(self, inner: urllib.request.OpenerDirector):
+    def __init__(self, inner):
         self.inner = inner
 
     @contextlib.contextmanager
     def open(
-        self, request: urllib.request.Request, *args: object, **kwargs: object
-    ) -> Iterator[urllib.response.addinfourl]:
+        self,
+        request: urllib.request.Request,
+        *args: object,
+        **kwargs: object,
+    ) -> Iterator[object]:
         started = time.monotonic()
         phase = "https_open"
-        response: urllib.response.addinfourl | None = None
+        response = None
         try:
-            response = cast("_InnerOpener", self.inner).open(request, *args, **kwargs)
+            response = self.inner.open(request, *args, **kwargs)
             phase = "response_read"
-            yield response
+            yield cast("object", response)
         except Exception as error:
             event = {
                 "event": "observer_reconciliation_failed",
@@ -120,10 +99,10 @@ class ObservedHTTP:
                 response.close()
 
 
-def failure_event(error: BaseException) -> dict[str, object]:
+def failure_event(error):
     # Existing controller deliberately suppresses exception text, but retains
     # context. Find only our bounded metadata; never render underlying context.
-    current: BaseException | None = error
+    current = error
     seen = set()
     for _ in range(12):
         if current is None or id(current) in seen:
@@ -141,13 +120,13 @@ def failure_event(error: BaseException) -> dict[str, object]:
     }
 
 
-def run(controller: _Reconciler) -> int:
+def run(controller):
     original = controller.opener
 
     def observed(*args: object, **kwargs: object) -> ObservedHTTP:
         return ObservedHTTP(original(*args, **kwargs))
 
-    controller.opener = cast("_OpenerFactory", observed)
+    controller.opener = observed
     started = time.monotonic()
     try:
         controller.reconcile_rancher()
@@ -171,4 +150,4 @@ def run(controller: _Reconciler) -> int:
 if __name__ == "__main__":
     import observer_membership
 
-    raise SystemExit(run(cast("_Reconciler", observer_membership)))
+    raise SystemExit(run(observer_membership))
