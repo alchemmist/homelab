@@ -8,7 +8,6 @@ import argparse
 import glob
 import json
 import os
-from pathlib import Path
 import pwd
 import re
 import shutil
@@ -16,6 +15,7 @@ import stat
 import subprocess
 import tempfile
 import uuid
+from pathlib import Path
 
 DIRECTORY = Path("/var/lib/homelab-authentik-ssh-bindings")
 CONFIG = Path("/etc/ssh/sshd_config")

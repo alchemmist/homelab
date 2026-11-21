@@ -4,11 +4,11 @@
 import argparse
 import json
 import os
-from pathlib import Path
 import socket
 import subprocess
 import tempfile
 import urllib.request
+from pathlib import Path
 from urllib.parse import quote
 
 SLUG = "socrat-change-password"

@@ -11,12 +11,12 @@ import fcntl
 import hashlib
 import json
 import os
-from pathlib import Path
 import re
 import socket
 import tempfile
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 from app_iam import GROUP_MARKER, rows, validate_group
 

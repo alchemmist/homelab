@@ -1,4 +1,6 @@
-import http.cookiejar, json, urllib.request
+import http.cookiejar
+import json
+import urllib.request
 from pathlib import Path
 
 root = Path.home() / ".cache/homelab-authentik"

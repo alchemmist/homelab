@@ -5,18 +5,18 @@ Not a foundation reconciler, lifecycle controller, or native integration rollout
 """
 
 import argparse
-from contextlib import contextmanager
 import fcntl
 import hashlib
 import json
 import os
-from pathlib import Path
 import re
 import stat
 import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
+from contextlib import contextmanager
+from pathlib import Path
 from uuid import uuid4
 
 BASE = "https://auth.socrat.alchemmist.xyz/api/v3/"

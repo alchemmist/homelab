@@ -4,7 +4,6 @@ import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-
 root = Path(sys.argv[1])
 config = ET.parse(root / "config.xml").getroot()
 snapshot = {

@@ -105,7 +105,7 @@ def configure():
         raise RuntimeError("Model access grants changed")
 
     async def verify_users():
-        from open_webui.utils.access_control import has_permission, has_access
+        from open_webui.utils.access_control import has_access, has_permission
 
         with sqlite3.connect("file:/app/backend/data/webui.db?mode=ro", uri=True) as db:
             users = db.execute("SELECT id FROM user WHERE role IN ('admin', 'user')").fetchall()

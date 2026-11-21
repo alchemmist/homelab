@@ -1,8 +1,8 @@
 import argparse
 import json
-from pathlib import Path
 import subprocess
 import time
+from pathlib import Path
 
 NAMESPACE = "homelab-tim-check"
 INTERFACE = "wg-tim-check"

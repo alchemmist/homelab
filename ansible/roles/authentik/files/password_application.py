@@ -4,10 +4,10 @@
 import argparse
 import json
 import os
-from pathlib import Path
 import socket
 import tempfile
 import urllib.request
+from pathlib import Path
 
 
 def validate(spec):

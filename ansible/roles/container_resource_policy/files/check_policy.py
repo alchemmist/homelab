@@ -4,7 +4,6 @@ import os
 import subprocess
 import sys
 
-
 RESOURCE_NAMES = ("cpu", "memory", "ephemeral-storage")
 
 

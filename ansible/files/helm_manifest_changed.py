@@ -2,7 +2,6 @@ import argparse
 import json
 import subprocess
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument("--release", required=True)
 parser.add_argument("--chart", required=True)

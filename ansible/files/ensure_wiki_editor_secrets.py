@@ -1,11 +1,11 @@
 import base64
 import json
 import os
-from pathlib import Path
 import secrets
 import subprocess
 import tempfile
 import urllib.request
+from pathlib import Path
 
 
 def get_secret(name):
