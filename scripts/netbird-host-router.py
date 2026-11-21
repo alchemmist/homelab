@@ -189,9 +189,9 @@ def client_image():
 
 
 def _host_map(facts: _Facts):
-    hosts = facts["hosts"]
+    hosts = facts.get("hosts") if isinstance(facts, dict) else None
     require(
-        [h.get("name") for h in hosts] == list(HOSTS),
+        isinstance(hosts, list) and [h.get("name") for h in hosts] == list(HOSTS),
         "hosts must be exactly socrat-0 then socrat-2",
     )
     return {h["name"]: h for h in hosts}
@@ -209,7 +209,10 @@ def classify(host: _Host, address: str):
 
 
 def validate(facts: _Facts):
-    require(facts.get("schema_version") == 1, "unsupported schema_version")
+    require(
+        isinstance(facts, dict) and facts.get("schema_version") == 1,
+        "unsupported schema_version",
+    )
     allowed = {
         "schema_version",
         "overlay_cidr",

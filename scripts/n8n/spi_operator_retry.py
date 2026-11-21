@@ -115,7 +115,7 @@ def table_hashes(c: sqlite3.Connection, original_jobs: dict[str, dict[str, objec
 def manifest_rows(manifest: _TargetManifest | None) -> list[dict[str, object]]:
     """Return the reviewed rows of the operator-signed target manifest."""
     if manifest is None:
-        raise TypeError
+        raise TypeError("target manifest is required")
     return manifest["rows"]
 
 

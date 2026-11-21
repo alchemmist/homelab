@@ -55,7 +55,10 @@ def desired(values: _Values, inventory: dict[str, object], image: str):
     if not isinstance(meta, dict):
         message = "inventory _meta entry must be a mapping"
         raise TypeError(message)
-    hostvars = meta["hostvars"]
+    hostvars = meta.get("hostvars", {})
+    if not isinstance(hostvars, dict):
+        message = "inventory _meta.hostvars entry must be a mapping"
+        raise TypeError(message)
     node.require(hosts, "explicit Socrat inventory required")
     addresses: dict[str, str] = {}
     reserved: set[str] = set()
