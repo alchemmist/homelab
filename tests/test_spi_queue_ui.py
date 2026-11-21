@@ -24,6 +24,7 @@ RealAuthorization = web.Handler.authorization
 class QueueWebTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        """Setupclass."""
         cls.auth_patch = patch.object(web.Handler, "authorization", return_value=200)
         cls.auth_patch.start()
         cls.server = web.Server(("127.0.0.1", 0), web.Handler)
@@ -32,12 +33,14 @@ class QueueWebTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        """Teardownclass."""
         cls.server.shutdown()
         cls.server.server_close()
         cls.thread.join(2)
         cls.auth_patch.stop()
 
     def request(self, method="GET", path="/queue/", body=None, extra=None):
+        """Request."""
         headers = {"Host": "rustfs.socrat.alchemmist.xyz", "X-authentik-groups": "homelab-owner"}
         headers.update(extra or {})
         c = RealConnection("127.0.0.1", self.server.server_port, timeout=3)
@@ -48,6 +51,7 @@ class QueueWebTests(unittest.TestCase):
         return result
 
     def test_static_csp_and_no_framework(self):
+        """Test static csp and no framework."""
         code, headers, body = self.request()
         self.assertEqual(code, 200)
         self.assertIn("private, no-store", headers["Cache-Control"])
@@ -61,12 +65,14 @@ class QueueWebTests(unittest.TestCase):
         self.assertIn("expected_updated", js)
 
     def test_host_group_and_arbitrary_path_denied(self):
+        """Test host group and arbitrary path denied."""
         self.assertEqual(self.request(extra={"Host": "evil.invalid"})[0], 400)
         self.assertEqual(self.request(path="/queue/../../service.py")[0], 404)
         self.assertEqual(self.request(path="/queue/app.js?x=1")[0], 404)
         self.assertEqual(self.request(path="/queue")[0], 308)
 
     def test_anonymous_challenge_returns_exact_queue_and_does_not_trust_identity_header(self):
+        """Test anonymous challenge returns exact queue and does not trust identity header."""
         with patch.object(web.Handler, "authorization", return_value=401):
             code, headers, _ = self.request(extra={"X-authentik-groups": "homelab-owner"})
         self.assertEqual(code, 302)
@@ -76,6 +82,7 @@ class QueueWebTests(unittest.TestCase):
         )
 
     def test_csrf_rejected_before_upstream(self):
+        """Test csrf rejected before upstream."""
         for extra in (
             {},
             {"Origin": "https://evil.invalid", "X-SPI-Queue": "1"},
@@ -86,6 +93,7 @@ class QueueWebTests(unittest.TestCase):
                 upstream.assert_not_called()
 
     def test_fixed_upstream_and_no_cookie_identity_or_worker_header_forwarding(self):
+        """Test fixed upstream and no cookie identity or worker header forwarding."""
         response = Mock(status=200)
         response.read.return_value = b'{"items":[],"counts":{}}'
         connection = Mock()
@@ -111,6 +119,7 @@ class QueueWebTests(unittest.TestCase):
         connection.close.assert_called_once()
 
     def test_no_arbitrary_proxy_target_or_cors(self):
+        """Test no arbitrary proxy target or cors."""
         headers = {"Origin": web.ORIGIN, "X-SPI-Queue": "1", "Content-Type": "application/json"}
         with patch.object(web.http.client, "HTTPConnection") as upstream:
             self.assertEqual(self.request("POST", "/queue/api/claim", "{}", headers)[0], 404)
@@ -122,6 +131,7 @@ class QueueWebTests(unittest.TestCase):
 
 class QueueAuthorizationTests(unittest.TestCase):
     def test_caller_groups_never_authorize_without_real_cookie(self):
+        """Test caller groups never authorize without real cookie."""
         from email.message import Message
 
         handler = Mock()
@@ -132,6 +142,7 @@ class QueueAuthorizationTests(unittest.TestCase):
             auth.assert_not_called()
 
     def test_only_trusted_auth_response_groups_grant_access(self):
+        """Test only trusted auth response groups grant access."""
         from email.message import Message
 
         handler = Mock()
@@ -154,6 +165,7 @@ class QueueAuthorizationTests(unittest.TestCase):
 
 class QueueHelmTests(unittest.TestCase):
     def test_private_routes_network_identity_and_separate_secret(self):
+        """Test private routes network identity and separate secret."""
         raw = subprocess.check_output(
             [
                 "helm",
@@ -169,6 +181,7 @@ class QueueHelmTests(unittest.TestCase):
         docs = list(yaml.safe_load_all(raw))
 
         def get(kind, name):
+            """Get."""
             return next(
                 d for d in docs if d and d["kind"] == kind and d["metadata"]["name"] == name
             )

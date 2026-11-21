@@ -19,6 +19,7 @@ class WelcomeTests(unittest.TestCase):
     """Role labels, node links, and rendered text stay bounded and injectable-safe."""
 
     def setUp(self):
+        """Setup."""
         self.config = dict(
             node="socrat-3",
             labels={},

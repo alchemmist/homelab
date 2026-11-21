@@ -10,6 +10,7 @@ from tests.test_rustfs_gateway import g
 
 class Deadlines(unittest.TestCase):
     def test_trickled_header_and_recovery(self):
+        """Test trickled header and recovery."""
         with patch.object(g, "HEADER_SECONDS", 0.3):
             server = g.Server(("127.0.0.1", 0), g.Handler)
             t = threading.Thread(target=server.serve_forever, daemon=True)
@@ -41,6 +42,7 @@ class Deadlines(unittest.TestCase):
                 t.join()
 
     def test_trickled_upstream_headers_and_body(self):
+        """Test trickled upstream headers and body."""
         for headers in (True, False):
             with self.subTest(headers=headers), patch.object(g, "UPSTREAM_SECONDS", 0.3):
                 listener = socket.socket()
@@ -48,6 +50,7 @@ class Deadlines(unittest.TestCase):
                 listener.listen()
 
                 def peer():
+                    """Peer."""
                     c, _ = listener.accept()
                     with c:
                         c.recv(4096)
@@ -77,6 +80,7 @@ class Deadlines(unittest.TestCase):
                     t.join(2)
 
     def test_connection_close_body_deadline_and_worker_recovery(self):
+        """Test connection close body deadline and worker recovery."""
         for version in ("HTTP/1.1", "HTTP/1.0"):
             with (
                 self.subTest(version=version),
@@ -89,6 +93,7 @@ class Deadlines(unittest.TestCase):
                 url = "http://127.0.0.1:%d/" % listener.getsockname()[1]
 
                 def peer():
+                    """Peer."""
                     c, _ = listener.accept()
                     with c:
                         c.recv(4096)
@@ -110,9 +115,11 @@ class Deadlines(unittest.TestCase):
 
                 class Reader:
                     def authorization(self, cookie):
+                        """Authorization."""
                         return 200 if cookie else 401
 
                     def read(self, key):
+                        """Read."""
                         with g.opener().open(url, timeout=1) as response:
                             return g.bounded(response)
 
@@ -154,11 +161,13 @@ class Deadlines(unittest.TestCase):
                     serving.join()
 
     def test_response_close_cancels_upstream_timer(self):
+        """Test response close cancels upstream timer."""
         listener = socket.socket()
         listener.bind(("127.0.0.1", 0))
         listener.listen()
 
         def peer():
+            """Peer."""
             c, _ = listener.accept()
             with c:
                 c.recv(4096)
@@ -180,16 +189,21 @@ class Deadlines(unittest.TestCase):
             t.join(2)
 
     def test_response_write_deadline_releases_worker(self):
+        """Test response write deadline releases worker."""
+
         class Handler(g.Handler):
             def setup(self):
+                """Setup."""
                 self.request.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024)
                 super().setup()
 
         class Reader:
             def authorization(self, cookie):
+                """Authorization."""
                 return 200
 
             def read(self, key):
+                """Read."""
                 return b"x" * g.MAX_BYTES
 
         with patch.object(g, "REQUEST_SECONDS", 0.3), patch.object(g, "MAX_CONNECTIONS", 1):

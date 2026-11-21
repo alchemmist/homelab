@@ -9,14 +9,17 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 class Foundation(unittest.TestCase):
     def render(self, *args):
+        """Render."""
         return subprocess.check_output(
             ["helm", "template", "rustfs", str(ROOT / "charts/rustfs"), *args], text=True
         )
 
     def test_default_is_off(self):
+        """Test default is off."""
         self.assertEqual(self.render().strip(), "")
 
     def test_retention_and_placement(self):
+        """Test retention and placement."""
         text = self.render("--set", "enabled=true")
         self.assertEqual(text.count("Prune=false,Delete=false"), 2)
         self.assertIn("reclaimPolicy: Retain", text)
@@ -26,6 +29,7 @@ class Foundation(unittest.TestCase):
         self.assertIn("storage: 20Gi", text)
 
     def test_no_exposure(self):
+        """Test no exposure."""
         text = self.render("--set", "enabled=true")
         self.assertNotIn("kind: Ingress", text)
         self.assertIn("kind: Service\n", text)
@@ -39,6 +43,7 @@ class Foundation(unittest.TestCase):
         )
 
     def test_protected_routes_and_secret_boundaries(self):
+        """Test protected routes and secret boundaries."""
         text = self.render(
             "--set",
             "enabled=true",
@@ -76,6 +81,7 @@ class Foundation(unittest.TestCase):
         self.assertIn("path: /health/ready", text)
 
     def test_activation_guards(self):
+        """Test activation guards."""
         for values in [
             ["--set", "gateway.enabled=true"],
             ["--set", "browserRoutes.enabled=true"],
@@ -96,6 +102,7 @@ class Foundation(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
 
     def test_manual_app(self):
+        """Test manual app."""
         text = (ROOT / "deploy/argocd/apps/rustfs.yaml").read_text()
         self.assertNotIn("automated:", text)
 

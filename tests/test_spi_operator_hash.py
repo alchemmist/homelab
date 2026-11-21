@@ -17,6 +17,7 @@ class HashTests(unittest.TestCase):
     """In-memory checks for transaction-local table hashes."""
 
     def connection(self):
+        """Connection."""
         c = sqlite3.connect(":memory:", isolation_level=None)
         c.row_factory = sqlite3.Row
         self.addCleanup(c.close)

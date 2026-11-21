@@ -44,6 +44,7 @@ def render(native=True):
 
 class NativeQueueChartTests(unittest.TestCase):
     def test_native_host_tls_and_no_forward_auth(self):
+        """Test native host tls and no forward auth."""
         docs = render()
         entry = docs["Ingress", "automation", "spi-queue-ui"]
         self.assertEqual(entry["spec"]["rules"][0]["host"], "spi.socrat.alchemmist.xyz")
@@ -60,6 +61,7 @@ class NativeQueueChartTests(unittest.TestCase):
         self.assertNotIn("router.middlewares", str(entry))
 
     def test_client_credential_mount_is_frontend_only_and_read_only(self):
+        """Test client credential mount is frontend only and read only."""
         docs = render()
         pod = docs["Deployment", "automation", "spi-queue-ui"]["spec"]["template"]["spec"]
         self.assertIn(
@@ -80,6 +82,7 @@ class NativeQueueChartTests(unittest.TestCase):
         self.assertFalse(any(k[0] == "Secret" for k in docs))
 
     def test_native_entry_does_not_change_backend_pvc_rbac_jobs_or_limits(self):
+        """Test native entry does not change backend pvc rbac jobs or limits."""
         old, new = render(False), render(True)
         for k in set(old) & set(new):
             if k in [
@@ -99,6 +102,7 @@ class NativeQueueChartTests(unittest.TestCase):
         self.assertEqual(pod(old)["nodeSelector"], pod(new)["nodeSelector"])
 
     def test_network_is_scoped_to_real_auth_hops_and_same_backend(self):
+        """Test network is scoped to real auth hops and same backend."""
         policy = render()["NetworkPolicy", "automation", "spi-queue-ui"]
         text = str(policy["spec"]["egress"])
         self.assertIn("8443", text)
@@ -108,6 +112,7 @@ class NativeQueueChartTests(unittest.TestCase):
         self.assertNotIn("9000", text)
 
     def test_catalog_has_exact_native_callback_groups_and_no_human_assignment(self):
+        """Test catalog has exact native callback groups and no human assignment."""
         catalog = json.loads((ROOT / "deploy/identity/spi-triage-oidc.json").read_text())
         self.assertEqual(
             catalog["provider"]["redirect_uris"],
@@ -129,6 +134,7 @@ class NativeQueueChartTests(unittest.TestCase):
         self.assertNotIn("users", catalog)
 
     def test_app_group_requires_explicit_nonprivileged_shape(self):
+        """Test app group requires explicit nonprivileged shape."""
         good = {
             "is_superuser": False,
             "parents": [],
@@ -146,12 +152,14 @@ class NativeQueueChartTests(unittest.TestCase):
                 identity.group_valid({**good, **update})
 
     def test_no_unknown_provider_is_adopted_without_private_journal(self):
+        """Test no unknown provider is adopted without private journal."""
         with self.assertRaisesRegex(RuntimeError, "without private client journal"):
             identity.validate_existing(None, {}, None, {"pk": 1}, None, {}, {})
 
 
 class NativeAPIResponseTests(unittest.TestCase):
     def test_list_response_shape_fails_closed(self):
+        """Test list response shape fails closed."""
         for value in (
             None,
             [],
@@ -171,6 +179,7 @@ class NativeAPIResponseTests(unittest.TestCase):
                 api.rows("core/groups/")
 
     def test_valid_pagination_is_bounded_and_merged(self):
+        """Test valid pagination is bounded and merged."""
         api = object.__new__(identity.API)
         api.call = Mock(
             side_effect=[
@@ -182,6 +191,7 @@ class NativeAPIResponseTests(unittest.TestCase):
         self.assertEqual(api.call.call_count, 2)
 
     def test_create_response_requires_object_primary_key(self):
+        """Test create response requires object primary key."""
         for value in (None, [], {}, {"pk": None}, {"pk": False}, {"pk": ""}):
             api = object.__new__(identity.API)
             api.token = "fixture"
@@ -198,6 +208,7 @@ class NativeAPIResponseTests(unittest.TestCase):
                 api.call("POST", "core/groups/", {})
 
     def test_production_uses_accepted_native_oidc_activation(self):
+        """Test production uses accepted native oidc activation."""
         values = yaml.safe_load((ROOT / "deploy/spi-triage/values.yaml").read_text())
         self.assertIs(values["queueUI"]["oidc"]["enabled"], True)
         self.assertEqual(values["queueUI"]["oidc"]["existingSecret"], "spi-queue-oidc")
@@ -205,6 +216,7 @@ class NativeAPIResponseTests(unittest.TestCase):
 
 class NativeOIDCDefaultTests(unittest.TestCase):
     def test_partial_oidc_overlay_keeps_boolean_default(self):
+        """Test partial oidc overlay keeps boolean default."""
         import tempfile
 
         with tempfile.TemporaryDirectory() as directory:
@@ -225,6 +237,7 @@ class NativeOIDCDefaultTests(unittest.TestCase):
             )
 
     def test_invalid_oidc_enabled_types_are_rejected_not_defaulted(self):
+        """Test invalid oidc enabled types are rejected not defaulted."""
         for value in ("0", "null", '"false"'):
             result = subprocess.run(
                 [
@@ -245,6 +258,7 @@ class NativeOIDCDefaultTests(unittest.TestCase):
 
 class NativeStatePersistenceTests(unittest.TestCase):
     def test_save_never_overwrites_existing_file_or_follows_symlink(self):
+        """Test save never overwrites existing file or follows symlink."""
         import tempfile
 
         with tempfile.TemporaryDirectory() as directory:
@@ -269,6 +283,7 @@ class NativeStatePersistenceTests(unittest.TestCase):
             self.assertFalse(target.exists())
 
     def test_new_state_file_is_private_and_exclusive(self):
+        """Test new state file is private and exclusive."""
         import stat
         import tempfile
 
@@ -281,6 +296,7 @@ class NativeStatePersistenceTests(unittest.TestCase):
                 identity.save(path, {})
 
     def test_cli_rejects_symlink_state_directory_before_api_access(self):
+        """Test cli rejects symlink state directory before api access."""
         import tempfile
 
         with tempfile.TemporaryDirectory() as directory:

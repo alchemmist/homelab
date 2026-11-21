@@ -18,6 +18,7 @@ ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
 
 class AnimationTests(unittest.TestCase):
     def setUp(self):
+        """Setup."""
         self.sample = next(
             v
             for v in json.loads((ROOT / "assets/socrates-braille.json").read_text())["variants"]
@@ -29,6 +30,7 @@ class AnimationTests(unittest.TestCase):
         self.final = "\n" + "\n".join("face info" for _ in range(16)) + "\nfooter\n"
 
     def test_reveal_completes_without_changing_final_portrait(self):
+        """Test reveal completes without changing final portrait."""
         for seconds in (1.1, 3.0):
             frame = ANIMATION.portrait_frame(self.sample, self.colors, seconds)
             self.assertEqual([ANSI.sub("", s) for s in frame], self.sample["lines"])
@@ -36,6 +38,7 @@ class AnimationTests(unittest.TestCase):
         self.assertTrue(all(c in (" ", "\u2800") for line in first for c in ANSI.sub("", line)))
 
     def test_interrupt_restores_cursor_and_finishes_footer(self):
+        """Test interrupt restores cursor and finishes footer."""
         out = io.StringIO()
         with (
             patch.object(ANIMATION.shutil, "get_terminal_size", return_value=self.geometry),
@@ -53,6 +56,7 @@ class AnimationTests(unittest.TestCase):
         self.assertEqual(output.count("footer"), 1)
 
     def test_resize_stops_before_cursor_repositioning(self):
+        """Test resize stops before cursor repositioning."""
         out = io.StringIO()
         with patch.object(
             ANIMATION.shutil, "get_terminal_size", return_value=os.terminal_size((40, 12))

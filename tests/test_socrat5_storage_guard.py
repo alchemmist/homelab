@@ -16,6 +16,7 @@ class StorageGuardTests(unittest.TestCase):
     """Check the owned admission documents and worker bootstrap stay fail-closed."""
 
     def setUp(self):
+        """Setup."""
         self.docs = list(
             yaml.safe_load_all((ROOT / "deploy/admission/socrat5-local-storage.yaml").read_text())
         )

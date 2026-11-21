@@ -7,6 +7,7 @@ import unittest
 
 class Deploy(unittest.TestCase):
     def test_safe_refusals_and_anchored_paths(self):
+        """Test safe refusals and anchored paths."""
         source = Path(__file__).resolve().parents[1] / "scripts/rustfs/deploy.sh"
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -19,6 +20,7 @@ class Deploy(unittest.TestCase):
             tracked.write_text("enabled: false\n")
 
             def git(*args):
+                """Git."""
                 return (
                     subprocess.check_output(["git", "-C", tmp, *args], stderr=subprocess.DEVNULL)
                     .decode()
@@ -48,6 +50,7 @@ class Deploy(unittest.TestCase):
             env = dict(os.environ, PATH=str(binpath) + os.pathsep + os.environ["PATH"])
 
             def run(revision):
+                """Run."""
                 return subprocess.run(
                     ["bash", str(script), "--apply", revision, str(values)],
                     cwd="/",

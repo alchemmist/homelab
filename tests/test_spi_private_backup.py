@@ -13,6 +13,7 @@ SCRIPT = Path(__file__).resolve().parents[1] / "scripts/n8n/spi_private_backup.p
 
 class BackupTests(unittest.TestCase):
     def test_private_stream_and_cleanup(self):
+        """Test private stream and cleanup."""
         with tempfile.TemporaryDirectory() as d:
             src = Path(d) / "source"
             dst = Path(d) / "host"
@@ -43,6 +44,7 @@ class BackupTests(unittest.TestCase):
             self.assertEqual(list(Path(d).glob(".spi-prechange-*")), [])
 
     def test_bound_failure_cleans(self):
+        """Test bound failure cleans."""
         spec = importlib.util.spec_from_file_location("backup", SCRIPT)
         m = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(m)
@@ -58,6 +60,7 @@ class BackupTests(unittest.TestCase):
 
 class BackupDeadlineTests(unittest.TestCase):
     def run_failure(self, kind):
+        """Run failure."""
         import time
 
         with tempfile.TemporaryDirectory() as d:
@@ -103,20 +106,25 @@ class BackupDeadlineTests(unittest.TestCase):
                 c.close()
 
     def test_actual_blocked_consumer(self):
+        """Test actual blocked consumer."""
         self.run_failure("blocked")
 
     def test_broken_pipe(self):
+        """Test broken pipe."""
         self.run_failure("broken")
 
     def test_busy_source(self):
+        """Test busy source."""
         self.run_failure("busy")
 
     def test_connection_open_cleanup(self):
+        """Test connection open cleanup."""
         self.run_failure("open")
 
     def test_slow_integrity_deadline(self):
         # Real subprocess and real SQLite VM; progress callback intentionally
         # sleeps while integrity is running, not a mocked monotonic clock.
+        """Test slow integrity deadline."""
         code = """import importlib.util,sqlite3,sys,time
 spec=importlib.util.spec_from_file_location('b',sys.argv[1]);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 original=sqlite3.connect
@@ -148,6 +156,7 @@ except Exception:sys.exit(1)
             self.assertEqual(list(Path(d).glob(".spi-prechange-*")), [])
 
     def test_alarm_restored_and_pvc_private(self):
+        """Test alarm restored and pvc private."""
         import signal
         from unittest.mock import patch
 
@@ -163,6 +172,7 @@ except Exception:sys.exit(1)
             original = m.sqlite3.connect
 
             def checked(path, *a, **kw):
+                """Checked."""
                 if not kw.get("uri"):
                     self.assertEqual(stat.S_IMODE(Path(path).stat().st_mode), 0o600)
                     raise OSError("synthetic destination open failure")
@@ -178,6 +188,7 @@ except Exception:sys.exit(1)
 
 class CleanupBoundaryTests(unittest.TestCase):
     def test_real_ownership_and_close_failures(self):
+        """Test real ownership and close failures."""
         import signal
         from unittest.mock import patch
 
@@ -196,6 +207,7 @@ class CleanupBoundaryTests(unittest.TestCase):
                 count = [0]
 
                 def owned(*a, **kw):
+                    """Owned."""
                     result = create(*a, **kw)
                     for suffix in ("-wal", "-shm", "-journal"):
                         Path(result[1] + suffix).touch(mode=0o600)
@@ -205,6 +217,7 @@ class CleanupBoundaryTests(unittest.TestCase):
 
                 class Conn(sqlite3.Connection):
                     def close(self):
+                        """Close."""
                         super().close()
                         count[0] += 1
                         if boundary == "pending-close":
@@ -213,6 +226,7 @@ class CleanupBoundaryTests(unittest.TestCase):
                             raise TimeoutError("synthetic close failure")
 
                 def connected(*a, **kw):
+                    """Connected."""
                     return connect(*a, **kw, factory=Conn)
 
                 with (
@@ -226,6 +240,7 @@ class CleanupBoundaryTests(unittest.TestCase):
                 self.assertEqual(signal.getitimer(signal.ITIMER_REAL), (0.0, 0.0))
 
     def test_prior_periodic_timer_restored_on_open_failure(self):
+        """Test prior periodic timer restored on open failure."""
         import signal
 
         spec = importlib.util.spec_from_file_location("backup", SCRIPT)
@@ -235,6 +250,7 @@ class CleanupBoundaryTests(unittest.TestCase):
         timer = signal.getitimer(signal.ITIMER_REAL)
 
         def caller(*args):
+            """Caller."""
             pass
 
         try:

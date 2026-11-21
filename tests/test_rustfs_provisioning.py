@@ -28,6 +28,7 @@ def put(path, data):
 
 class Provisioning(unittest.TestCase):
     def test_policies_exact(self):
+        """Test policies exact."""
         b = module("bootstrap")
         self.assertEqual(b.POLICIES["spi-reader"]["Statement"][0]["Action"], ["s3:GetObject"])
         for p in b.POLICIES.values():
@@ -36,6 +37,7 @@ class Provisioning(unittest.TestCase):
             self.assertNotIn("*", p["Statement"][0]["Action"])
 
     def test_policy_normalization_is_not_scope_widening(self):
+        """Test policy normalization is not scope widening."""
         b = module("bootstrap")
         p = b.POLICIES["spi-reader"]
         equivalent = {
@@ -55,6 +57,7 @@ class Provisioning(unittest.TestCase):
             b.canonical_policy(equivalent)
 
     def test_private_credentials(self):
+        """Test private credentials."""
         b = module("bootstrap")
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "c"
@@ -69,6 +72,7 @@ class Provisioning(unittest.TestCase):
                 b.private(link)
 
     def test_bootstrap_resumes_and_is_idempotent(self):
+        """Test bootstrap resumes and is idempotent."""
         b = module("bootstrap")
         users = {}
         policies = {}
@@ -76,6 +80,7 @@ class Provisioning(unittest.TestCase):
         calls = []
 
         def fake(mc, config, args, stdin=None):
+            """Fake."""
             calls.append(args)
             if args[:3] == ["admin", "user", "list"]:
                 return [{"accessKey": k} for k in users]
@@ -161,6 +166,7 @@ class Provisioning(unittest.TestCase):
                 b.main()
 
     def test_secret_outputs_private_idempotent_and_isolated(self):
+        """Test secret outputs private idempotent and isolated."""
         m = module("secrets")
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
@@ -192,6 +198,7 @@ class Provisioning(unittest.TestCase):
             )
 
     def test_identity_additive_idempotent(self):
+        """Test identity additive idempotent."""
         m = module("provision_identity")
         tables = {x: [] for x in m.COLLECTIONS}
         writes = []
@@ -225,19 +232,24 @@ class Provisioning(unittest.TestCase):
 
         class Response:
             def __init__(self, data):
+                """init  ."""
                 self.data = data
 
             def __enter__(self):
+                """enter  ."""
                 return self
 
             def __exit__(self, *a):
+                """exit  ."""
                 pass
 
             def read(self, *a):
+                """Read."""
                 return json.dumps(self.data).encode()
 
         class HTTP:
             def open(self, request, timeout):
+                """Open."""
                 path = urllib.parse.urlsplit(request.full_url).path.removeprefix("/api/v3/")
                 method = request.get_method()
                 if method == "GET":
@@ -342,6 +354,7 @@ class Provisioning(unittest.TestCase):
                 m.main()
 
     def test_human_admin_claim_is_exact_identity_only(self):
+        """Test human admin claim is exact identity only."""
         from types import SimpleNamespace
 
         expression = module("provision_identity").EXPRESSION
@@ -349,6 +362,7 @@ class Provisioning(unittest.TestCase):
         def claim(
             pk=5, uuid="9e33877a-3eaa-4541-98eb-8cdc10088ef6", username="alchemmist", member=False
         ):
+            """Claim."""
             user = SimpleNamespace(pk=pk, uuid=uuid, username=username)
             return eval(
                 expression.removeprefix("return "),
@@ -365,6 +379,7 @@ class Provisioning(unittest.TestCase):
         self.assertEqual(claim(pk=99, username="spi-writer", member=True), ["spi-console-reader"])
 
     def test_builtin_scope_exact_managed_identity(self):
+        """Test builtin scope exact managed identity."""
         m = module("provision_identity")
         official = {
             "pk": "official",

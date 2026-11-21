@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class FullServiceBundleTests(unittest.TestCase):
     def render(self, bundled=False):
+        """Render."""
         args = [
             "helm",
             "template",
@@ -43,6 +44,7 @@ class FullServiceBundleTests(unittest.TestCase):
         }
 
     def test_same_release_image_for_backend_frontend_and_scoped_broker(self):
+        """Test same release image for backend frontend and scoped broker."""
         docs = self.render(True)
         image = "harbor.socrat.alchemmist.xyz/homelab/spi-triage@sha256:" + "a" * 64
         for name in ("spi-triage", "spi-queue-ui"):
@@ -59,6 +61,7 @@ class FullServiceBundleTests(unittest.TestCase):
         self.assertNotIn(("ConfigMap", "automation", "spi-queue-ui"), docs)
 
     def test_queue_identity_is_not_replaced_or_exposed_to_web(self):
+        """Test queue identity is not replaced or exposed to web."""
         docs = self.render(True)
         dep = docs["Deployment", "automation", "spi-triage"]
         self.assertEqual(dep["spec"]["replicas"], 1)
@@ -88,6 +91,7 @@ class FullServiceBundleTests(unittest.TestCase):
         )
 
     def test_bundle_does_not_change_resources_credentials_fences_or_quotas(self):
+        """Test bundle does not change resources credentials fences or quotas."""
         legacy = self.render()
         bundled = self.render(True)
         a = legacy["Deployment", "automation", "spi-triage"]["spec"]["template"]["spec"][
@@ -120,6 +124,7 @@ class FullServiceBundleTests(unittest.TestCase):
             )
 
     def test_legacy_code_is_frozen_and_no_second_argo_publisher_exists(self):
+        """Test legacy code is frozen and no second argo publisher exists."""
         import hashlib
 
         manifest = json.loads((ROOT / "charts/spi-triage/LEGACY-SOURCE-MANIFEST.json").read_text())

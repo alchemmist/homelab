@@ -14,6 +14,7 @@ class Namespace(unittest.TestCase):
     """Rendered RustFS namespace boundaries and the fixed S3 destination."""
 
     def render(self, namespace):
+        """Render."""
         return subprocess.check_output(
             [
                 "helm",

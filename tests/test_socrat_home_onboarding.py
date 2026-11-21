@@ -10,10 +10,12 @@ HTML = (ROOT / "charts/socrat-home/files/index.html").read_text()
 
 class Links(HTMLParser):
     def __init__(self):
+        """init  ."""
         super().__init__()
         self.urls = []
 
     def handle_starttag(self, tag, attrs):
+        """Handle starttag."""
         if tag == "a":
             self.urls.append(dict(attrs)["href"])
 

@@ -9,11 +9,13 @@ from tests.test_rustfs_gateway import g, BASE
 
 class PrivateAuth(unittest.TestCase):
     def test_auth_results_are_fail_closed(self):
+        """Test auth results are fail closed."""
         reader = object.__new__(g.Reader)
         reader.auth = g.ORIGIN + "/outpost.goauthentik.io/auth/nginx"
 
         class HTTP:
             def open(self, *args, **kwargs):
+                """Open."""
                 raise self.error
 
         reader.http = HTTP()
@@ -25,14 +27,18 @@ class PrivateAuth(unittest.TestCase):
         self.assertEqual(reader.authorization(""), 401)
 
     def test_denied_and_unavailable_never_loop_or_read(self):
+        """Test denied and unavailable never loop or read."""
+
         class Reader:
             status = 403
             calls = []
 
             def authorization(self, cookie):
+                """Authorization."""
                 return self.status
 
             def read(self, key):
+                """Read."""
                 self.calls.append(key)
                 raise AssertionError("unauthorized object read")
 

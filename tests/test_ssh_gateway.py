@@ -17,6 +17,7 @@ SPEC.loader.exec_module(GATEWAY)
 
 class GatewayTests(unittest.TestCase):
     def setUp(self):
+        """Setup."""
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.state = Path(self.directory.name) / "state.json"
@@ -38,12 +39,15 @@ class GatewayTests(unittest.TestCase):
         }
 
     def response(self, output):
+        """Response."""
         return subprocess.CompletedProcess([], 0, output, "")
 
     def listing(self, entry=""):
+        """Listing."""
         return self.response("ExternalIPAddress = 203.0.113.1\n" + entry)
 
     def test_existing_mapping_is_unchanged_and_recorded_when_router_rewrites_description(self):
+        """Test existing mapping is unchanged and recorded when router rewrites description."""
         output = self.listing(" 4 TCP 2222->192.168.0.23:2222 'miniupnpd' '' 0\n")
         with (
             patch.object(GATEWAY, "ssh_port", return_value=2222),
@@ -54,6 +58,7 @@ class GatewayTests(unittest.TestCase):
         self.assertEqual(json.loads(self.state.read_text()), {"2222": ["192.168.0.23", 2222]})
 
     def test_missing_mapping_is_restored(self):
+        """Test missing mapping is restored."""
         responses = [
             self.listing(),
             self.response(
@@ -69,6 +74,7 @@ class GatewayTests(unittest.TestCase):
         self.assertEqual(json.loads(self.state.read_text())["2222"], ["192.168.0.23", 2222])
 
     def test_foreign_mapping_is_not_deleted(self):
+        """Test foreign mapping is not deleted."""
         output = self.listing(" 4 TCP 2222->192.168.0.99:22 'another-service' '' 0\n")
         with (
             patch.object(GATEWAY, "ssh_port", return_value=2222),
@@ -79,6 +85,7 @@ class GatewayTests(unittest.TestCase):
         self.assertEqual(run.call_count, 1)
 
     def test_backend_port_change_uses_persisted_ownership(self):
+        """Test backend port change uses persisted ownership."""
         self.state.write_text(json.dumps({"2222": ["192.168.0.23", 22]}))
         responses = [
             self.listing(" 4 TCP 2222->192.168.0.23:22 'miniupnpd' '' 0\n"),
@@ -96,6 +103,7 @@ class GatewayTests(unittest.TestCase):
         self.assertEqual(json.loads(self.state.read_text())["2222"], ["192.168.0.23", 2222])
 
     def test_timeout_restores_previous_owned_mapping(self):
+        """Test timeout restores previous owned mapping."""
         self.state.write_text(json.dumps({"2222": ["192.168.0.23", 22]}))
         responses = [
             self.listing(" 4 TCP 2222->192.168.0.23:22 'miniupnpd' '' 0\n"),
@@ -115,6 +123,7 @@ class GatewayTests(unittest.TestCase):
         self.assertEqual(json.loads(self.state.read_text())["2222"], ["192.168.0.23", 22])
 
     def test_remote_node_maps_to_gateway_socket(self):
+        """Test remote node maps to gateway socket."""
         self.config["nodes"] = [
             {
                 "name": "socrat-2",

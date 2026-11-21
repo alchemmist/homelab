@@ -34,6 +34,7 @@ def render(enabled):
 
 class AuthNetworkTests(unittest.TestCase):
     def test_only_two_policies_change_no_pod_or_stateful_resource(self):
+        """Test only two policies change no pod or stateful resource."""
         before, after = render(False), render(True)
         self.assertEqual(set(before), set(after))
         changed = {k for k in before if before[k] != after[k]}
@@ -46,6 +47,7 @@ class AuthNetworkTests(unittest.TestCase):
         )
 
     def test_both_real_https_dnat_hops_are_narrowly_selected(self):
+        """Test both real https dnat hops are narrowly selected."""
         for key, obj in render(True).items():
             if key[0] != "NetworkPolicy" or key[2] not in (
                 "rustfs-isolation",

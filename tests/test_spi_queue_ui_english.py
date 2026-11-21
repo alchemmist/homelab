@@ -11,10 +11,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class EnglishUITests(unittest.TestCase):
     def test_all_owned_interface_assets_are_english(self):
+        """Test all owned interface assets are english."""
+
         class HTML(HTMLParser):
             language = None
 
             def handle_starttag(self, tag, attrs):
+                """Handle starttag."""
                 if tag == "html":
                     self.language = dict(attrs).get("lang")
 
@@ -33,6 +36,7 @@ class EnglishUITests(unittest.TestCase):
         self.assertIn("toLocaleString('en-GB'", js)
 
     def test_render_confirmation_and_errors_are_english_but_data_is_preserved(self):
+        """Test render confirmation and errors are english but data is preserved."""
         script = r"""
 const fs=require('node:fs'), vm=require('node:vm'), assert=require('node:assert/strict');
 class Element {

@@ -12,6 +12,7 @@ class StaticVMPlacementTests(unittest.TestCase):
     """Check retained failure domains, rolling updates, images, and opt-out."""
 
     def render(self, name, *extra):
+        """Render."""
         output = subprocess.check_output(
             [
                 "helm",
