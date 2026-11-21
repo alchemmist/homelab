@@ -1,12 +1,12 @@
 import importlib.util
 import os
-import stat
-from pathlib import Path
 import sqlite3
+import stat
 import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts/n8n/spi_private_backup.py"
 

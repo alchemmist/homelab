@@ -1,13 +1,12 @@
-from contextlib import redirect_stdout
 import copy
 import html
 import importlib.util
 import io
 import json
-from pathlib import Path
 import unittest
+from contextlib import redirect_stdout
+from pathlib import Path
 from unittest.mock import patch
-
 
 MODULE_PATH = (
     Path(__file__).resolve().parents[1] / "ansible/roles/home_ingress_ha/files/router_api.py"

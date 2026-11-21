@@ -1,7 +1,8 @@
 """Source contracts for the owner-approved15Nov VM application handoff."""
 
-from pathlib import Path
 import unittest
+from pathlib import Path
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]

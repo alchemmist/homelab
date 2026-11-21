@@ -1,10 +1,11 @@
 """Offline migration gates; never claim runtime hostNetwork CNI acceptance."""
 
 import os
-from pathlib import Path
 import subprocess
 import unittest
+from pathlib import Path
 from unittest.mock import patch
+
 from services.rustfs_gateway.gateway import Reader
 
 ROOT = Path(__file__).resolve().parents[1]

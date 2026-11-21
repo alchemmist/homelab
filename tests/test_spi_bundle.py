@@ -1,9 +1,10 @@
 """Offline source/Helm invariants for the full-service extraction; no live calls."""
 
 import json
-from pathlib import Path
 import subprocess
 import unittest
+from pathlib import Path
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]

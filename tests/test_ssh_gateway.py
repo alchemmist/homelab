@@ -1,11 +1,10 @@
 import importlib.util
 import json
-from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
-
 
 SOURCE = (
     Path(__file__).resolve().parents[1] / "ansible/roles/ssh_gateway/files/homelab_ssh_gateway.py"

@@ -1,10 +1,10 @@
 """Offline interface-language regressions; incoming alert data is not rewritten."""
 
-from html.parser import HTMLParser
 import json
-from pathlib import Path
 import subprocess
 import unittest
+from html.parser import HTMLParser
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 

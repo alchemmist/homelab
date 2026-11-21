@@ -2,9 +2,9 @@
 
 import importlib.util
 import os
-from pathlib import Path
 import sqlite3
 import unittest
+from pathlib import Path
 
 spec = importlib.util.spec_from_file_location(
     "retry", Path(__file__).resolve().parents[1] / "scripts/n8n/spi_operator_retry.py"
