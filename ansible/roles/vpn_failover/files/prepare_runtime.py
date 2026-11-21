@@ -3,13 +3,14 @@
 import argparse
 import json
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+from pathlib import Path
 
 
 def prepare(image, destination):
+    """Execute the prepare operation."""
     destination = Path(destination)
     marker = destination / ".homelab-image"
     if marker.exists() and marker.read_text().strip() == image:

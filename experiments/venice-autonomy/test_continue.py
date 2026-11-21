@@ -9,6 +9,7 @@ class Conversation:
     """Fake agent conversation with scriptable failures."""
 
     def __init__(self, failures=0) -> None:
+        """Initialize the conversation fixture."""
 
         self.failures = failures
         self.runs = 0

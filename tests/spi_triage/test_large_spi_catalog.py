@@ -5,9 +5,10 @@ import tempfile
 import time
 import unittest
 from unittest.mock import Mock
+
 import test_triage as f
-from integrations import GitHub, Model
 from core import Failure
+from integrations import GitHub, Model
 
 GOOD = {"issue_number": 0, "reason": "No shared cause established.", "confidence": "low"}
 

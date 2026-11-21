@@ -3,11 +3,11 @@
 import hashlib
 import importlib.util
 import json
-from pathlib import Path
 import shutil
 import stat
 import subprocess
 import sys
+from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
@@ -19,15 +19,16 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts/quality"))
-from common import finding, report, unique, failure, command
-import charts
 import contracts
+from common import command, failure, finding, report, unique
 from strict_report import (
     audit_exit_code,
     create_evidence_directory,
     snapshot_is_stable,
     write_private,
 )
+
+import charts
 
 
 @pytest.mark.parametrize(
@@ -312,6 +313,7 @@ def test_image_digest_must_be_real_sha256_shape(image) -> None:
 
 def test_dependency_audit_uses_installed_environment_and_deduplicates(monkeypatch) -> None:
     from types import SimpleNamespace
+
     import lint
 
     calls = []

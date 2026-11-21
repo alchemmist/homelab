@@ -3,10 +3,10 @@
 import base64
 import json
 import os
-from pathlib import Path
 import sys
-import urllib.request
 import urllib.error
+import urllib.request
+from pathlib import Path
 
 root = Path(sys.argv[1])
 password = json.loads((root / "private-values.json").read_text())["harborAdminPassword"]
@@ -15,6 +15,7 @@ auth = "Basic " + base64.b64encode(("admin:" + password).encode()).decode()
 
 
 def api(method, path, payload=None):
+    """Document the api operation."""
     req = urllib.request.Request(
         base + path,
         method=method,

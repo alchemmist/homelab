@@ -1,8 +1,9 @@
 """Tests for the LMS database high-availability Helm rendering."""
 
 import json
-from pathlib import Path
 import subprocess
+from pathlib import Path
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -230,6 +231,7 @@ def test_production_web_does_not_depend_on_legacy_nfs_and_legacy_db_is_stopped()
 
 def test_operator_canary_avoids_stale_ready_pod_on_unreachable_node() -> None:
     import importlib.util
+
     import pytest
 
     spec = importlib.util.spec_from_file_location(
@@ -292,6 +294,7 @@ def test_copy_refuses_live_ha_or_unknown_endpoint_before_creating_job(monkeypatc
     import importlib.util
     import json
     from types import SimpleNamespace
+
     import pytest
 
     spec = importlib.util.spec_from_file_location("ha_copy", ROOT / "scripts/lms-ha-copy.py")

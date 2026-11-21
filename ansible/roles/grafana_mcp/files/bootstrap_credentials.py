@@ -21,6 +21,7 @@ class BootstrapError(Exception):
 
 
 def kubectl(arguments: list[str], payload: object | None = None) -> dict[str, object] | None:
+    """Document the kubectl operation."""
     result = subprocess.run(
         KUBECTL + arguments,
         input=json.dumps(payload) if payload is not None else None,
@@ -38,6 +39,7 @@ class Grafana:
     """Minimal Grafana HTTP API client."""
 
     def __init__(self, url: str, username: str, password: str) -> None:
+        """Initialize the Grafana client."""
 
         self.url = url
         encoded = base64.b64encode((username + ":" + password).encode()).decode()
@@ -70,6 +72,7 @@ class Grafana:
 
 
 def decode_secret(secret: object) -> dict[str, str]:
+    """Document the decode secret operation."""
     try:
         data = cast("dict[str, object]", secret).get("data", {}) if secret else {}
         return {
@@ -81,6 +84,7 @@ def decode_secret(secret: object) -> dict[str, str]:
 
 
 def bootstrap(grafana, existing_secret, persist, has_admin=True):
+    """Document the bootstrap operation."""
     values = decode_secret(existing_secret)
     if not has_admin:
         if not all(
@@ -163,6 +167,7 @@ def _issue_credentials(grafana, account_id, values, persist):
 
 
 def main():
+    """Document the main operation."""
     try:
         credentials = json.load(sys.stdin)
         service = kubectl(

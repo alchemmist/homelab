@@ -1,0 +1,76 @@
+"""One direct DNS/TCP/TLS sample per resolved address. Sends no HTTP or bot data."""
+
+import json
+import socket
+import ssl
+import subprocess
+import sys
+from datetime import UTC, datetime
+from time import monotonic
+
+
+def elapsed(start):
+    return round((monotonic() - start) * 1000, 1)
+
+
+def resolve(host):
+    # libc getaddrinfo has no portable timeout. Reap the isolated resolver even
+    # when a nameserver stops answering; a timed-out thread would keep running.
+    program = "import json,socket,sys; print(json.dumps(socket.getaddrinfo(sys.argv[1],443,type=socket.SOCK_STREAM)))"
+    try:
+        result = subprocess.run(
+            [sys.executable, "-c", program, host], capture_output=True, timeout=3
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise TimeoutError("DNS deadline") from exc
+    if result.returncode:
+        raise socket.gaierror("resolution failed")
+    return [
+        (socket.AddressFamily(f), k, p, n, tuple(a))
+        for f, k, p, n, a in json.loads(result.stdout)
+    ]
+
+
+def samples(host, context):
+    """Keep each candidate distinct; IPv6 failure does not imply IPv4 failure."""
+    row = {"utc": datetime.now(UTC).isoformat(), "host": host}
+    start = monotonic()
+    try:
+        addresses = resolve(host)
+    except OSError as exc:
+        yield {
+            **row,
+            "dns_ms": elapsed(start),
+            "stage": "dns",
+            "error": type(exc).__name__,
+        }
+        return
+    row["dns_ms"] = elapsed(start)
+    for family, kind, proto, _, address in dict.fromkeys(addresses):
+        result = {**row, "family": family.name, "ip": address[0]}
+        stage = "tcp"
+        start = monotonic()
+        try:
+            with socket.socket(family, kind, proto) as sock:
+                sock.settimeout(3)
+                sock.connect(address)
+                result["tcp_ms"] = elapsed(start)
+                stage = "tls"
+                start = monotonic()
+                with context.wrap_socket(sock, server_hostname=host):
+                    result["tls_ms"] = elapsed(start)
+            yield {**result, "stage": "ok"}
+        except OSError as exc:
+            yield {
+                **result,
+                f"{stage}_ms": elapsed(start),
+                "stage": stage,
+                "error": type(exc).__name__,
+            }
+
+
+if __name__ == "__main__":
+    tls = ssl.create_default_context()
+    for target in ("api.telegram.org", "example.com"):
+        for sample in samples(target, tls):
+            print(json.dumps(sample), flush=True)

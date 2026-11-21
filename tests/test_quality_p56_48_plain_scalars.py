@@ -15,7 +15,7 @@ MONITORING_LINES = (
         "      rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/"
         "explorer/node/{{ $labels.node }}"
     ),
-    r"        regex: 10\.250\.0\.(1|3|5):6443",
+    r"        regex: 10\.250\.0\.(1|3|41):6443",
     (
         r"        regex: (192\.168\.0\.(23|24)|10\.250\.0\.5):10250;"
         r"(apiserver|etcd|scheduler|workqueue|kubeproxy)_.*"

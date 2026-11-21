@@ -79,7 +79,9 @@ class AlertGraphsChartTests(unittest.TestCase):
         )
         assert result.returncode == 0, result.stderr
         assert "@sha256:sha256:" not in result.stdout
-        import yaml, re
+        import re
+
+        import yaml
 
         for doc in yaml.safe_load_all(result.stdout):
             if not isinstance(doc, dict) or doc.get("kind") != "Deployment":

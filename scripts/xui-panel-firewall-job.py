@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Render the explicit owner-admin one-shot host firewall installer; does not apply.
+
 Only socrat-2, SYS_CHROOT, host PID visibility and two writable managed directories.
 Do not run as an unreviewed routine workload. No SSH/sudo policy is modified.
 """

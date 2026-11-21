@@ -121,6 +121,32 @@ def escape_literals(value):
     return value
 
 
+def refresh_api_targets(scrape):
+    """Update only the owned keep rule in frozen native Collector bundles."""
+    desired = yaml.safe_load((ROOT / "charts/prometheus/values.yaml").read_text())[
+        "kube-prometheus-stack"
+    ]["kubeApiServer"]["serviceMonitor"]["relabelings"][0]["regex"]
+    result = copy.deepcopy(scrape)
+    for job in result.get("scrape_configs", []):
+        if (
+            job.get("job_name")
+            != "serviceMonitor/cattle-monitoring-system/kube-prometheus-stack-apiserver/0"
+        ):
+            continue
+        rules = [
+            r
+            for r in job.get("relabel_configs", [])
+            if r.get("action") == "keep" and r.get("source_labels") == ["__address__"]
+        ]
+        if len(rules) != 1 or rules[0].get("regex") not in (
+            r"10\.250\.0\.(1|3|5):6443",
+            desired,
+        ):
+            raise ValueError("Unrecognized apiserver scrape keep rule")
+        rules[0]["regex"] = desired
+    return result
+
+
 def refresh_public_edge_probe(scrape):
     """Keep captured native scrape bundles aligned with the owned VPS probe."""
     targets = yaml.safe_load((ROOT / "charts/monitoring-k3s/values.yaml").read_text())[
@@ -146,7 +172,7 @@ def refresh_public_edge_probe(scrape):
             if job.get("params", {}).get("module") != ["tcp_connect"]:
                 raise ValueError("Unexpected catalog TCP probe module")
             job["params"]["target"] = [tcp_targets[identity[0]]]
-    return add_moscow_edge_probe(result)
+    return refresh_api_targets(add_moscow_edge_probe(result))
 
 
 def add_moscow_edge_probe(scrape):

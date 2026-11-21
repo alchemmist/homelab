@@ -45,6 +45,7 @@ print(json.dumps({'users':users,'passwordlessPrivilege':sudo,
 
 
 def remote(host, command):
+    """Perform the remote operation."""
     return subprocess.check_output(
         ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", *HOSTS[host], command],
         text=True,
@@ -53,6 +54,7 @@ def remote(host, command):
 
 
 def collect():
+    """Perform the collect operation."""
     import shlex
 
     result = {"observedAt": datetime.now(UTC).isoformat(), "nodes": {}}
@@ -93,6 +95,7 @@ def collect():
 
 
 def main():
+    """Run the command-line entry point."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--output", required=True)
     args = p.parse_args()

@@ -9,6 +9,7 @@ VOTERS = {"socrat-0", "socrat-1", "socrat-2"}
 
 
 def verify(client):
+    """Document the verify operation."""
     members = client.members()
     require_members(members, VOTERS)
     for name in sorted(VOTERS):

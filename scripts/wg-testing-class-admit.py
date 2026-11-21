@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 """One-time CAS admission after source-scoped guard. Never blindly replay.
+
 Existing private config/runtime snapshot stays root-only; stdout is sanitized.
 """
 
-import hashlib, json, os, pathlib, subprocess, time
+import hashlib
+import json
+import os
+import pathlib
+import subprocess
+import time
 
 KEY = "kq9Kb6ZF9j/cuBooG3onvLfnBBjI0cTdQK26nKR4R0E="
 IP = "10.250.0.41/32"
