@@ -234,7 +234,7 @@ def test_nightnode_config_loads_values_without_executing_them() -> None:
                 (
                     "  # ignored=not-a-setting",
                     " NIGHTNODE_ALLOW_JOIN = 1 ",
-                    'K3S_URL = "https://k3s.example.invalid:6443?x=a=b" ',
+                    ' export K3S_URL = "https://k3s.example.invalid:6443?x=a=b" ',
                     f"NIGHTNODE_UNSAFE = $(touch {marker})",
                     "",
                 )

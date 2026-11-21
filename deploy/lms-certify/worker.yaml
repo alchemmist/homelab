@@ -78,6 +78,7 @@ spec:
           emptyDir: {}
         - name: tmp
           emptyDir: {}
+...
 ---
 apiVersion: v1
 kind: Service
@@ -90,3 +91,4 @@ spec:
   ports:
     - port: 8080
       targetPort: 8080
+...
