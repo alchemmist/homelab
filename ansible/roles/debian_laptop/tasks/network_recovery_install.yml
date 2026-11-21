@@ -10,10 +10,6 @@
 - name: Verify the running Ethernet module is the validated candidate
   ansible.builtin.shell: |
     set -eu
-    if [ -x /usr/local/sbin/homelab-load-guarded-wifi ] \
-        && /usr/local/sbin/homelab-load-guarded-wifi --check; then
-      exit 0
-    fi
     work=$(mktemp -d)
     trap 'rm -rf "$work"' EXIT
     objcopy --dump-section .note.gnu.build-id="$work/build-id" \

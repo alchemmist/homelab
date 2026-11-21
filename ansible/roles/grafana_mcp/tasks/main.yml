@@ -76,8 +76,8 @@
       | to_nice_yaml }}
   register: grafana_mcp_certificate
   changed_when: >-
-    'created' in grafana_mcp_certificate.stdout
-    or 'configured' in grafana_mcp_certificate.stdout
+    (grafana_mcp_certificate.stdout | lower)
+    is search('(?m)(created|configured|patched)\\s*$')
 
 - name: Wait for private gateway certificate
   ansible.builtin.command:
