@@ -121,7 +121,9 @@ def check_dns(host):
         good = result.returncode == 0 and addresses == set(ADDRESSES)
         valid = good and valid
         print(
-            f"DNS {host:25} authority={authority} {','.join(sorted(addresses)) or 'no answer'} {'ok' if good else 'FAILED'}"
+            f"DNS {host:25} authority={authority} "
+            f"{','.join(sorted(addresses)) or 'no answer'} "
+            f"{'ok' if good else 'FAILED'}"
         )
     return valid
 

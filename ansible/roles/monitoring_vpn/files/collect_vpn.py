@@ -146,29 +146,50 @@ def write_metrics(
 ):
     timestamp = time.time()
     lines = [
-        "# HELP socrat_vpn_fallback_active Whether native VPN fallback mode is latched on this VPS.",
+        (
+            "# HELP socrat_vpn_fallback_active Whether native VPN fallback mode is "
+            "latched on this VPS."
+        ),
         "# TYPE socrat_vpn_fallback_active gauge",
         f"socrat_vpn_fallback_active {int(os.path.exists(fallback_marker))}",
-        "# HELP socrat_vpn_trojan_connections Established TCP streams on the local VPN entrypoint ports.",
+        (
+            "# HELP socrat_vpn_trojan_connections Established TCP streams on the "
+            "local VPN entrypoint ports."
+        ),
         "# TYPE socrat_vpn_trojan_connections gauge",
         f"socrat_vpn_trojan_connections {streams}",
-        "# HELP socrat_vpn_active_clients VPN client accounts that transferred traffic within the activity window.",
+        (
+            "# HELP socrat_vpn_active_clients VPN client accounts that transferred "
+            "traffic within the activity window."
+        ),
         "# TYPE socrat_vpn_active_clients gauge",
         f"socrat_vpn_active_clients {len(users)}",
-        "# HELP socrat_vpn_registered_clients VPN client accounts registered on the xray server, active or not.",
+        (
+            "# HELP socrat_vpn_registered_clients VPN client accounts registered on "
+            "the xray server, active or not."
+        ),
         "# TYPE socrat_vpn_registered_clients gauge",
         f"socrat_vpn_registered_clients {registered}",
-        "# HELP socrat_vpn_client_active Whether this VPN client account transferred traffic within the activity window.",
+        (
+            "# HELP socrat_vpn_client_active Whether this VPN client account "
+            "transferred traffic within the activity window."
+        ),
         "# TYPE socrat_vpn_client_active gauge",
     ]
     for email in sorted(users):
         lines.append(f'socrat_vpn_client_active{{email="{email}"}} 1')
     lines.extend(
         [
-            "# HELP socrat_vpn_collection_success Whether the last VPN metric collection succeeded.",
+            (
+                "# HELP socrat_vpn_collection_success Whether the last VPN metric "
+                "collection succeeded."
+            ),
             "# TYPE socrat_vpn_collection_success gauge",
             f"socrat_vpn_collection_success {1 if success else 0}",
-            "# HELP socrat_vpn_collection_timestamp_seconds Unix time of the last successful VPN metric collection.",
+            (
+                "# HELP socrat_vpn_collection_timestamp_seconds Unix time of the "
+                "last successful VPN metric collection."
+            ),
             "# TYPE socrat_vpn_collection_timestamp_seconds gauge",
             f"socrat_vpn_collection_timestamp_seconds {timestamp if success else 0}",
             "",
