@@ -4,6 +4,7 @@ import base64
 import json
 import urllib.error
 import urllib.request
+from typing import cast
 
 from engine import MARKER, PAGE, branch_for, require_sha
 
@@ -12,10 +13,10 @@ HOME = "alchemmist/homelab"
 
 
 class GitHubError(Exception):
-    pass
+    """Exception raised when the GitHub API request fails."""
 
 
-def _request(url, token=None, method="GET", body=None):
+def _request(url, token=None, method="GET", body=None) -> "dict[str, object] | None":
     headers = {
         "Accept": "application/vnd.github+json",
         "User-Agent": "socrat-wiki-openapi",
@@ -34,7 +35,7 @@ def _request(url, token=None, method="GET", body=None):
     try:
         with urllib.request.urlopen(request, timeout=45) as response:
             raw = response.read()
-            return json.loads(raw) if raw else {}
+            return cast("dict[str, object]", json.loads(raw)) if raw else {}
     except urllib.error.HTTPError as exc:
         if exc.code == 404:
             return None
@@ -42,7 +43,10 @@ def _request(url, token=None, method="GET", body=None):
 
 
 class BotRepo:
+    """GitHub repository client for bot-managed files."""
+
     def files(self, before, after):
+        """Fingerprint the changed file set between two commits."""
         require_sha(after)
         if before == "0" * 40:
             commit = _request(f"https://api.github.com/repos/{BOT}/commits/{after}")
@@ -53,28 +57,34 @@ class BotRepo:
         compared = _request(f"https://api.github.com/repos/{BOT}/compare/{before}...{after}")
         if not compared:
             raise GitHubError("Compare not found")
-        if len(compared.get("files") or []) >= 300:
+        if len(cast("list[object]", compared.get("files") or [])) >= 300:
             raise GitHubError("Compare file list truncated")
         return compared.get("files") or []
 
     def text(self, sha, path):
+        """Fetch one of the two allowed files at a commit SHA."""
         require_sha(sha)
         if path not in ("openapi.yaml", "scripts/render_wiki.py"):
             raise GitHubError("Unexpected bot path")
         item = _request(f"https://api.github.com/repos/{BOT}/contents/{path}?ref={sha}")
         if not item or item.get("encoding") != "base64":
             raise GitHubError("Bot file missing")
-        return base64.b64decode(item["content"]).decode()
+        return base64.b64decode(cast("str", item["content"])).decode()
 
 
 class Homelab:
-    def __init__(self, token):
+    """GitHub client for the homelab wiki repository."""
+
+    def __init__(self, token) -> None:
+
         self.token = token
 
     def api(self, method, path, body=None):
+        """Call the GitHub API on the pinned repository."""
         return _request(f"https://api.github.com/repos/{HOME}/{path}", self.token, method, body)
 
     def read_page(self, ref="main"):
+        """Read the generated wiki page content at the given ref."""
         item = self.api("GET", f"contents/{PAGE}?ref={ref}")
         if item is None:
             return None, None
@@ -83,6 +93,7 @@ class Homelab:
         return base64.b64decode(item["content"]).decode(), item["sha"]
 
     def propose(self, after, markdown):
+        """Open (or reuse) a pull request with the regenerated page."""
         branch = branch_for(after)
         existing = self.api("GET", f"pulls?state=open&head=alchemmist:{branch}&per_page=20") or []
         if existing:
@@ -120,6 +131,7 @@ class Homelab:
         return {"status": "created", "number": pr["number"], "url": pr["html_url"]}
 
     def automation_prs(self, keep):
+        """List automation PRs other than the one to keep."""
         found, page = [], 1
         while page <= 5:
             batch = self.api("GET", f"pulls?state=open&per_page=50&page={page}") or []
@@ -146,6 +158,7 @@ class Homelab:
         return found
 
     def close(self, number, survivor):
+        """Comment on and close an superseded automation PR."""
         self.api(
             "POST",
             f"issues/{number}/comments",

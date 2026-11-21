@@ -15,10 +15,16 @@ PHASE = "bootstrap"
 
 
 class BrokerFailure(Exception):
-    pass
+    """Exception raised when the wiki broker run fails."""
 
 
-def request(method, url, token, body=None, context=None):
+def request(
+    method: str,
+    url: str,
+    token: str,
+    body: object = None,
+    context: ssl.SSLContext | None = None,
+):
     req = urllib.request.Request(
         url,
         data=json.dumps(body).encode() if body is not None else None,
@@ -95,7 +101,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception as exc:
+    except (BrokerFailure, ValueError, OSError, KeyError, jwt.PyJWTError, ssl.SSLError) as exc:
         code = str(exc) if isinstance(exc, (BrokerFailure, ValueError)) else type(exc).__name__
         print(
             json.dumps(
@@ -107,4 +113,4 @@ if __name__ == "__main__":
                 }
             )
         )
-        raise SystemExit(1)
+        raise SystemExit(1) from exc

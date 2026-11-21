@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Sample GPU statistics and print them as JSON for waybar."""
+
 import csv
 import json
 import shutil
