@@ -49,3 +49,15 @@ Recovery: verify `raw.tar.zst` against the recorded SHA-256, restore into a new
 empty private directory, compare `tree.manifest()` to `manifest.json`, and query
 through an isolated read-only Store first. This backup is not a substitute for
 newer data written to 1 after cutover. Do not point a live writer back at it.
+
+19:25 UTC: the final release completed. All 19 old blocks had active S3
+coverage. Full cold restore matched 148 files / 53,235,947,912 logical bytes;
+manifest `bdb264b6d7dd302333cf350f62645d332ec93256c207c5c79052578690e9ca93`.
+Raw directory contains zero entries (4 KiB for the directory itself). Available
+space increased 53,232,201,728 bytes during unlink (49.58 GiB). Compressed
+transit archive 14,422,352,421 bytes / 13.43 GiB, SHA-256
+`368b1e8f9b96c9d9f600c62a43c34d165d60a513aece08bcec7c76d760939c8a`.
+At this checkpoint the off-host copy was in progress, not yet independently
+accepted on 3. The running finish controller keeps the transit copy unless
+both the remote archive and its decompressed manifest verify. The net space
+reclaimed before transit-spool release is approx. 36.14 GiB.

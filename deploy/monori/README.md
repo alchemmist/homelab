@@ -28,3 +28,10 @@ stays enabled. No ingress auth proxy, PVC modification or sync-service change.
 
 Rollback: set `oidc.enabled: false` in the production values and reconcile.
 This preserves password access, identity associations, budgets and secrets.
+
+## Socrat closed admission
+
+With the SSO-only-capable backend and `oidc.onlyUserIds: [1, 3]`, only the two
+prelinked budgets are admitted. Password sign-in, registration and self-linking
+are unavailable. Removing the key restores mixed authentication; setting it to
+an empty list blocks everyone. Disabling OIDC alone does not enable passwords.

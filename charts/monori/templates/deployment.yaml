@@ -91,6 +91,10 @@ spec:
         env:
         - { name: PYTHONDONTWRITEBYTECODE, value: "1" }
         - { name: MONORI_SYNC_URL, value: http://monori-sync:8010 }
+        {{- if hasKey .Values.oidc "onlyUserIds" }}
+        - name: MONORI_SSO_ONLY_USER_IDS
+          value: {{ join "," .Values.oidc.onlyUserIds | quote }}
+        {{- end }}
         {{- if .Values.oidc.enabled }}
         - name: MONORI_OIDC_ISSUER
           value: {{ required "OIDC issuer is required" .Values.oidc.issuer | quote }}

@@ -80,7 +80,7 @@ def receive():
         finally:
             c.close()
 
-    for _ in range(360):
+    for _ in range(2880):
         try:
             meta = json.loads(get("/state"))
             break
@@ -114,7 +114,7 @@ def receive():
         os.fsync(f.fileno())
         f.seek(0)
         assert hashlib.file_digest(f, "sha256").hexdigest() == meta["sha256"]
-    assert get("/state") and info_remote_stable(meta, get)
+    assert info_remote_stable(meta, get)
     os.link(partial, ROOT / ARCHIVE)
     partial.unlink()
     (ROOT / "offload.json").write_text(json.dumps(meta))
