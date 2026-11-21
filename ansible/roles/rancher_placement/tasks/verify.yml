@@ -4,7 +4,9 @@
     that:
       - rancher_replicas | int == 1
       - rancher_placement_nodes | length == 1
-    fail_msg: This verifier supports the accepted single-replica topology; HA changes require a separate reviewed contract.
+    fail_msg: >-
+      This verifier supports the accepted single-replica topology;
+      HA changes require a separate reviewed contract.
 
 # Ansible transports the same reviewed stdlib-only checker into its temporary
 # directory. No permanent helper install, nested SSH or additional Python package.
