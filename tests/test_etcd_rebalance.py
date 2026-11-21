@@ -1,6 +1,6 @@
 import importlib.util
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 SPEC = importlib.util.spec_from_file_location(
     "etcd_members",

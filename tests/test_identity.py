@@ -2,13 +2,14 @@ import contextlib
 import hashlib
 import io
 import json
-from pathlib import Path
 import runpy
-import tempfile
 import sys
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlparse
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -332,7 +333,8 @@ class IdentityTests(unittest.TestCase):
 
 class RolloutRegressionTests(unittest.TestCase):
     def test_pinned_icons_match_local_portal_assets(self):
-        import hashlib, xml.etree.ElementTree as ET
+        import hashlib
+        import xml.etree.ElementTree as ET
 
         manifest = json.loads((ROOT / "assets/service-icons/sources.json").read_text())
         services = json.loads((ROOT / "deploy/identity/services.json").read_text())
@@ -405,8 +407,8 @@ class RolloutRegressionTests(unittest.TestCase):
         self.assertEqual(webui["OAUTH_ADMIN_ROLES"], "homelab-owner")
 
     def test_sudo_listing_rc_zero_is_not_a_privilege_grant(self):
-        from types import SimpleNamespace
         import subprocess
+        from types import SimpleNamespace
 
         with tempfile.TemporaryDirectory() as d:
             (Path(d) / ".ssh").mkdir()

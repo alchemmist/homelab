@@ -1,11 +1,10 @@
 import os
-from pathlib import Path
 import re
 import shutil
 import subprocess
 import tempfile
 import unittest
-
+from pathlib import Path
 
 SOURCE = os.environ.get("ALX_SOURCE")
 COMPILER = shutil.which("cc")

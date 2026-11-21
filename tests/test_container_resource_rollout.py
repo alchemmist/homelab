@@ -2,13 +2,12 @@ import copy
 import importlib.util
 import io
 import json
-from pathlib import Path
-from contextlib import redirect_stdout
-from types import SimpleNamespace
-import unittest
 import tempfile
+import unittest
+from contextlib import redirect_stdout
+from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
-
 
 PATH = (
     Path(__file__).resolve().parents[1]

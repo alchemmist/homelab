@@ -68,7 +68,9 @@ class AlertGraphsChartTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertNotIn("@sha256:sha256:", result.stdout)
-        import yaml, re
+        import re
+
+        import yaml
 
         for doc in yaml.safe_load_all(result.stdout):
             if not isinstance(doc, dict) or doc.get("kind") != "Deployment":

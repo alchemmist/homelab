@@ -1,12 +1,12 @@
 """Exercise the Harbor staging gate with in-memory observations only."""
 
 import copy
-from datetime import datetime, timezone, timedelta
 import importlib.util
 import json
-from pathlib import Path
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(

@@ -1,6 +1,6 @@
 import importlib.util
-from pathlib import Path
 import unittest
+from pathlib import Path
 from urllib.parse import unquote
 
 MODULE_PATH = (

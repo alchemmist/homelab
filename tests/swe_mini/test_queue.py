@@ -2,15 +2,15 @@
 
 import base64
 import importlib.util
-from importlib.machinery import ModuleSpec
 import io
 import json
 import os
-from pathlib import Path
 import sqlite3
 import sys
-from types import ModuleType, SimpleNamespace
 import unittest
+from importlib.machinery import ModuleSpec
+from pathlib import Path
+from types import ModuleType, SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 ROOT = Path(__file__).resolve().parents[2] / "services/swe-mini"
@@ -233,7 +233,10 @@ class QueueTransitions(unittest.TestCase):
         self.assertEqual(c.STATUS["error"], "")
 
     def test_api_error_does_not_fail_process_health(self):
-        import threading, urllib.request, urllib.error, time
+        import threading
+        import time
+        import urllib.error
+        import urllib.request
 
         saved = dict(c.STATUS)
         server = c.HTTPServer(("127.0.0.1", 0), c.Health)

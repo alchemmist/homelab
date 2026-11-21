@@ -4,20 +4,21 @@ import contextlib
 import copy
 import io
 import json
-from pathlib import Path
-import sys
-import subprocess
 import runpy
+import subprocess
+import sys
 import tempfile
 import unittest
-from urllib.request import Request
+from pathlib import Path
 from unittest.mock import patch
+from urllib.request import Request
 
 ROOT = Path(__file__).resolve().parents[1]
 FILES = ROOT / "ansible/roles/authentik/files"
 sys.path.insert(0, str(FILES))
 import app_iam
 import lifecycle
+
 from tests import test_identity as identity
 
 

@@ -3,11 +3,11 @@
 import hashlib
 import importlib.util
 import json
-from pathlib import Path
-import tempfile
 import subprocess
 import sys
+import tempfile
 import unittest
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 THEME = ROOT / "deploy/authentik/quiet-mono"

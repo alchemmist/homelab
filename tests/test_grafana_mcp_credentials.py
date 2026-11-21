@@ -1,7 +1,7 @@
 import base64
 import importlib.util
-from pathlib import Path
 import unittest
+from pathlib import Path
 from unittest.mock import Mock
 
 MODULE_PATH = (

@@ -4,10 +4,10 @@ import importlib.util
 import io
 import json
 import os
-from pathlib import Path
 import runpy
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import parse_qs
 

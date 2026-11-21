@@ -6,7 +6,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-
 SPEC = importlib.util.spec_from_file_location(
     "browser_watchdog",
     Path(__file__).resolve().parents[1] / "charts/open-terminal/files/browser_watchdog.py",

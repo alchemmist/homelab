@@ -3,9 +3,9 @@ import gzip
 import importlib.util
 import io
 import lzma
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 SOURCE = (

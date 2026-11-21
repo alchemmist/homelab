@@ -1,14 +1,13 @@
 import importlib.util
 import os
-from pathlib import Path
 import shutil
 import stat
 import subprocess
 import tempfile
-from types import SimpleNamespace
 import unittest
+from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
-
 
 SOURCE = (
     Path(__file__).resolve().parents[1]
