@@ -219,7 +219,7 @@ def cascade_summary():
     age = f"((time()-max({success}>0)) and on() {fresh_metric(success)} and on() ({fresh_job('kube-state-metrics')})) or vector(-2)"
     pod_re = "thanos-compactor(-5m|-1h)?-[0-9a-f]+-.+"
 
-    def live(metric):
+    def live(metric) -> str:
         return f'({metric} and (time()-timestamp({metric})<90) and on(instance) (up{{job="cattle-monitoring-system/thanos"}}==1))'
 
     todo = 'thanos_compact_todo_downsample_blocks{job="cattle-monitoring-system/thanos",pod=~"thanos-compactor-[0-9a-f]+-.+"}'

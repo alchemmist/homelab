@@ -1,3 +1,5 @@
+"""Isolated smoke test for the telemetry signals collector and exporters."""
+
 import argparse
 import hashlib
 import json
@@ -308,7 +310,7 @@ def main():
     os.umask(0o077)
     try:
         print(json.dumps(run(args), indent=2))
-    except Exception:
+    except (OSError, RuntimeError, subprocess.SubprocessError, ValueError):
         raise SystemExit("Isolated signal smoke failed; inspect private root-owned run logs")
 
 

@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import sqlite3
 import unittest
+from typing import TypedDict
 from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,10 +16,26 @@ m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 
 
-def fixture(subject="fixture-uuid"):
+class Attribute(TypedDict):
+    """Rancher userattributes shape the membership plan reads and patches."""
+
+    metadata: dict[str, str]
+    ExtraByProvider: dict[str, dict[str, list[str]]]
+    GroupPrincipals: dict[str, dict[str, list[dict[str, object]]]]
+
+
+class AuthPatch(TypedDict):
+    """Rancher auth slice exposing the observer allowance to the plan."""
+
+    allowedPrincipalIds: list[str]
+
+
+def fixture(
+    subject: str = "fixture-uuid",
+) -> tuple[list[dict[str, object]], list[Attribute], AuthPatch]:
     principal = m.PREFIX + subject
-    user = {"metadata": {"name": "u-fixture"}, "principalIds": [principal]}
-    attr = {
+    user: dict[str, object] = {"metadata": {"name": "u-fixture"}, "principalIds": [principal]}
+    attr: Attribute = {
         "metadata": {"name": "u-fixture", "uid": "owned", "resourceVersion": "17"},
         "ExtraByProvider": {"genericoidc": {"principalid": [principal]}},
         "GroupPrincipals": {"genericoidc": {"Items": [{"metadata": {"name": m.PRINCIPAL}}]}},
@@ -46,13 +63,16 @@ class MembershipTests(unittest.TestCase):
         """Leave owner and reviewed direct principals out of the cache plan."""
         for subject in [m.OWNER, "legacy-owner"]:
             users, attrs, auth = fixture(subject)
-            auth["allowedPrincipalIds"].append(m.PREFIX + subject)
+            allowed: list[str] = auth["allowedPrincipalIds"]
+            allowed.append(m.PREFIX + subject)
             self.assertEqual(m.rancher_plan(users, attrs, auth, lambda *a: False), [])
 
     def test_only_observer_group_changes_and_other_groups_survive(self) -> None:
         """Drop or add only the observer group and retain an unrelated group."""
         users, attrs, auth = fixture()
-        other = {"metadata": {"name": "genericoidc_group://other-reviewed-group"}}
+        other: dict[str, object] = {
+            "metadata": {"name": "genericoidc_group://other-reviewed-group"}
+        }
         attrs[0]["GroupPrincipals"]["genericoidc"]["Items"].append(other)
         ops = m.rancher_plan(users, attrs, auth, lambda *a: False)[0][1]
         self.assertEqual(ops[-1]["value"], [other])
@@ -102,7 +122,7 @@ class MembershipTests(unittest.TestCase):
         """Propagate an identity failure before any cache mutation is planned."""
         users, attrs, auth = fixture()
 
-        def failed(*args):
+        def failed(*_args):
             raise RuntimeError("IdP unavailable")
 
         with self.assertRaises(RuntimeError):
@@ -258,13 +278,13 @@ class MembershipTests(unittest.TestCase):
         class Client:
             """Fake Authentik client that mutates only the in-memory user."""
 
-            def __init__(self, credentials):
+            def __init__(self, credentials) -> None:
                 pass
 
-            def rows(self, path):
+            def rows(self, _path):
                 return [copy.deepcopy(group)]
 
-            def call(self, system, method, path, body=None):
+            def call(self, _system, method, path, body=None):
                 if method == "GET":
                     return copy.deepcopy(user)
                 posts.append((path, body))
@@ -289,7 +309,7 @@ class MembershipTests(unittest.TestCase):
         class Loader:
             """Supply the prepared bootstrap module instead of its source file."""
 
-            def create_module(self, spec):
+            def create_module(self, _spec):
                 return fake
 
             def exec_module(self, module):

@@ -1,4 +1,7 @@
+"""Tests for PR readiness evaluation in the scripts/openhands-pr-ready module."""
+
 import copy
+from typing import cast
 import importlib.util
 from pathlib import Path
 import unittest
@@ -11,7 +14,7 @@ spec.loader.exec_module(m)
 
 
 class ReadyContract(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.sha = "a" * 40
         self.p = {
             "state": "OPEN",
@@ -52,10 +55,10 @@ class ReadyContract(unittest.TestCase):
             },
         }
 
-    def result(self):
-        return m.assess(self.p, {"review-bot"}, {"publisher"})
+    def result(self) -> dict[str, object]:
+        return cast("dict[str, object]", m.assess(self.p, {"review-bot"}, {"publisher"}))
 
-    def remark(self):
+    def remark(self) -> None:
         self.p["reviewThreads"]["nodes"] = [
             {
                 "id": "thread",
@@ -73,31 +76,31 @@ class ReadyContract(unittest.TestCase):
             }
         ]
 
-    def test_closed_merged_unknown_state_are_not_ready(self):
+    def test_closed_merged_unknown_state_are_not_ready(self) -> None:
         for state in ("CLOSED", "MERGED", None):
             self.p["state"] = state
             self.assertFalse(self.result()["ready_to_review"])
 
-    def test_green_complete(self):
+    def test_green_complete(self) -> None:
         self.assertTrue(self.result()["ready_to_review"])
 
-    def test_skipped_failed_and_pending_are_not_green(self):
+    def test_skipped_failed_and_pending_are_not_green(self) -> None:
         for conclusion in ("SKIPPED", "NEUTRAL", "FAILURE", None):
             self.p["statusCheckRollup"]["contexts"]["nodes"][0]["conclusion"] = conclusion
             self.assertFalse(self.result()["ready_to_review"])
 
-    def test_no_reviewers_is_not_ready(self):
+    def test_no_reviewers_is_not_ready(self) -> None:
         self.assertFalse(m.assess(self.p, set(), {"publisher"})["ready_to_review"])
 
-    def test_old_review_is_not_current(self):
+    def test_old_review_is_not_current(self) -> None:
         self.p["reviews"]["nodes"][0]["commit"]["oid"] = "b" * 40
         self.assertFalse(self.result()["ready_to_review"])
 
-    def test_resolved_without_reply_is_not_enough(self):
+    def test_resolved_without_reply_is_not_enough(self) -> None:
         self.remark()
         self.assertFalse(self.result()["ready_to_review"])
 
-    def test_fix_requires_link_and_commit_membership(self):
+    def test_fix_requires_link_and_commit_membership(self) -> None:
         self.remark()
         reply = {
             "id": "reply",
@@ -113,7 +116,7 @@ class ReadyContract(unittest.TestCase):
         self.p["commits"]["nodes"] = []
         self.assertFalse(self.result()["ready_to_review"])
 
-    def test_rejection_requires_reason_then_resolve(self):
+    def test_rejection_requires_reason_then_resolve(self) -> None:
         self.remark()
         self.p["comments"]["nodes"] = [
             {
@@ -126,13 +129,13 @@ class ReadyContract(unittest.TestCase):
         self.p["reviewThreads"]["nodes"][0]["isResolved"] = False
         self.assertFalse(self.result()["ready_to_review"])
 
-    def test_untrusted_actor_cannot_supply_disposition(self):
+    def test_untrusted_actor_cannot_supply_disposition(self) -> None:
         self.test_rejection_requires_reason_then_resolve()
         self.p["reviewThreads"]["nodes"][0]["isResolved"] = True
         self.p["comments"]["nodes"][0]["author"]["login"] = "someone-else"
         self.assertFalse(self.result()["ready_to_review"])
 
-    def test_conflict_draft_missing_checks_pagination(self):
+    def test_conflict_draft_missing_checks_pagination(self) -> None:
         original = copy.deepcopy(self.p)
         for field, value in [
             ("mergeable", "CONFLICTING"),

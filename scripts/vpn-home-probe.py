@@ -15,7 +15,7 @@ import urllib.request
 from pathlib import Path
 
 
-def exclusive(path, value):
+def exclusive(path, value) -> None:
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
     with os.fdopen(fd, "w") as f:
         json.dump(value, f)
@@ -23,7 +23,7 @@ def exclusive(path, value):
         os.fsync(f.fileno())
 
 
-def network(endpoint="91.189.82.238"):
+def network(endpoint="91.189.82.238") -> "dict[str, object]":
     r = subprocess.run(
         ["ip", "-j", "route", "get", endpoint], capture_output=True, text=True, timeout=10
     )
@@ -45,7 +45,7 @@ def network(endpoint="91.189.82.238"):
     }
 
 
-def run(state, approved_binary, endpoint="91.189.82.238"):
+def run(state, approved_binary, endpoint="91.189.82.238") -> "dict[str, object]":
     import ipaddress
 
     if not ipaddress.ip_address(endpoint).is_global:
@@ -67,7 +67,7 @@ def run(state, approved_binary, endpoint="91.189.82.238"):
         raise ValueError("Binary checksum mismatch")
     prepared = json.loads(configs.read_text())
     before = network(endpoint)
-    proofs = {}
+    proofs: dict[str, object] = {}
     if (
         prepared["reality"]["outbounds"][1]["settings"]["vnext"][0]["address"] != endpoint
         or prepared["trojan"]["outbounds"][1]["settings"]["servers"][0]["address"] != endpoint
@@ -206,7 +206,7 @@ if __name__ == "__main__":
     a = p.parse_args()
     try:
         print(json.dumps(run(a.state, a.approved_binary_sha256, endpoint=a.endpoint)))
-    except Exception:
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
         raise SystemExit(
             "Home probe stopped; inspect private evidence; no global network changes requested."
         ) from None

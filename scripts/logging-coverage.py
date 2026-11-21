@@ -2,6 +2,7 @@
 """Read-only, metadata-only logging acceptance. No range/log-stream API calls."""
 
 import argparse
+import http.client
 import concurrent.futures
 import json
 import math
@@ -275,7 +276,15 @@ def main():
                 }
             )
         )
-    except Exception:
+    except (
+        ValueError,
+        KeyError,
+        TypeError,
+        RuntimeError,
+        OSError,
+        subprocess.SubprocessError,
+        http.client.HTTPException,
+    ):
         # Exception text, HTTP errors and kubectl stderr may contain sensitive data.
         parser.exit(2, "Coverage check failed; no raw response or credential details emitted.\n")
 
