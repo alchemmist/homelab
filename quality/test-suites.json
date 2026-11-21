@@ -120,9 +120,11 @@
       "tests/test_traffic_light_models.py"
     ],
     "medium": [
+      "tests/openhands/test_upgrade.py",
       "tests/test_alert_graph_inventory.py",
       "tests/test_alert_graphs_chart.py",
       "tests/test_ansible_quality_policy.py",
+      "tests/test_apiserver_scrape_targets.py",
       "tests/test_app_iam.py",
       "tests/test_argocd_refresh.py",
       "tests/test_authentik_branding.py",
@@ -161,6 +163,7 @@
       "tests/test_spi_unified_origin.py",
       "tests/test_static_vm105_placement.py",
       "tests/test_syncthing_scheduling.py",
+      "tests/test_telegram_egress_probe.py",
       "tests/test_traffic_light_argo.py",
       "tests/test_traffic_light_direct_ip.py",
       "tests/test_umami_recovery_contract.py",
@@ -169,8 +172,7 @@
       "tests/test_vm105_renderer_lms_litellm.py",
       "tests/test_vm105_stateful_batch.py",
       "tests/test_wiki_socrat0_placement.py",
-      "tests/test_wishlist_vm105.py",
-      "tests/openhands/test_upgrade.py"
+      "tests/test_wishlist_vm105.py"
     ],
     "cluster": [
       "tests/kubernetes/test_cluster.py"
