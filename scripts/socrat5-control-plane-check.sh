@@ -5,11 +5,11 @@ phase=${1:-before}
 case "$phase" in before|after) ;; *) echo 'usage: socrat5-control-plane-check.sh before|after' >&2; exit 2;; esac
 k=(kubectl --context=Socrat --request-timeout=6s)
 for ip in 10.250.0.1 10.250.0.3; do
-  ready=$("${k[@]}" --server="https://$ip:6443" get --raw=/readyz)
+  ready=$("${k[@]}" --server="https://${ip}:6443" get --raw=/readyz)
   test "${ready}" = ok
-  echo "existing API $ip ready"
+  echo "existing API ${ip} ready"
 done
-if [[ $phase == after ]]; then
+if [[ ${phase} == after ]]; then
   ready=$("${k[@]}" --server=https://10.250.0.41:6443 get --raw=/readyz)
   test "${ready}" = ok
   echo 'VM105 API ready'

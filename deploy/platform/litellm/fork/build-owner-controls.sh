@@ -1,15 +1,15 @@
 #!/bin/sh
 # The parent is the previously verified Generic OIDC fork. Requires crane v0.20.6.
 set -eu
-d=$(mktemp -d); trap 'rm -rf "$d"' EXIT; cd "$d"
+d=$(mktemp -d); trap 'rm -rf "$d"' EXIT; cd "${d}"
 rev=a691e23abfac6dd0f2b69f9f5b4f714241f39ac4
 repo=harbor.socrat.alchemmist.xyz/homelab/litellm
 base=sha256:e982dddf6a3da10ea76fa4c9b5f05ab166a128b83f653cd0e07e96493e6506d9
 root=app/.venv/lib/python3.13/site-packages
 fetch() {
-  mkdir -p "$(dirname "$root/$1")"
-  gh api -H "Accept: application/vnd.github.raw+json" "repos/alchemmist/litellm/contents/$1?ref=$rev" > "$root/$1"
-  echo "$2  $root/$1" | shasum -a 256 -c -
+  mkdir -p "$(dirname "${root}/$1")"
+  gh api -H "Accept: application/vnd.github.raw+json" "repos/alchemmist/litellm/contents/$1?ref=${rev}" > "${root}/$1"
+  echo "$2  ${root}/$1" | shasum -a 256 -c -
 }
 fetch litellm/proxy/socrat_owner.py b1d6665d916395b20c7bde2cf4bf1b848cda990b7d403cc53b6f01ddbb9edbbe
 fetch litellm/proxy/management_endpoints/key_management_endpoints.py 75fa3822dfc16ec8003760b63500e8086994e232adfed88fdd4d59872b3e9c6f
@@ -24,5 +24,5 @@ with tarfile.open('layer.tar','w',format=tarfile.USTAR_FORMAT) as archive:
             b=p.read_bytes(); t=tarfile.TarInfo(str(p)); t.size=len(b); t.mode=0o644
             archive.addfile(t,io.BytesIO(b))
 PYTAR
-crane append --base "$repo@$base" --new_layer layer.tar --new_tag "$repo:$rev" --platform linux/amd64
-crane digest "$repo:$rev"
+crane append --base "${repo}@${base}" --new_layer layer.tar --new_tag "${repo}:${rev}" --platform linux/amd64
+crane digest "${repo}:${rev}"
