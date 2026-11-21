@@ -354,7 +354,7 @@ class Provisioning(unittest.TestCase):
                 expression.removeprefix("return "),
                 {
                     "request": SimpleNamespace(user=user),
-                    "ak_is_group_member": lambda user, name: member,
+                    "ak_is_group_member": lambda _user, _name: member,
                 },
             )["rustfs_policy"]
 

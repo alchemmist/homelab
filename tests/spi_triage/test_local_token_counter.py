@@ -55,7 +55,9 @@ class ProxyFloor(unittest.TestCase):
         from types import SimpleNamespace
 
         counter = object.__new__(LocalCounter)
-        counter._tokenizer = SimpleNamespace(encode=lambda *a, **kw: SimpleNamespace(ids=[1] * 10))
+        counter._tokenizer = SimpleNamespace(
+            encode=lambda *_a, **_kw: SimpleNamespace(ids=[1] * 10)
+        )
         return counter
 
     def body(self, text, maximum=2500):

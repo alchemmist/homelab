@@ -155,7 +155,7 @@ try:
         page.on("response", observe)
         page.on(
             "pageerror",
-            lambda e: (
+            lambda _e: (
                 errors.append(True)
                 if urllib.parse.urlparse(page.url).hostname == "auth.socrat.alchemmist.xyz"
                 else None

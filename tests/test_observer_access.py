@@ -478,7 +478,7 @@ class BootstrapSafetyTests(unittest.TestCase):
         with (
             patch.object(self.bootstrap, "Client", self.fake_client),
             patch.object(
-                self.bootstrap, "snapshot", side_effect=lambda *args: copy.deepcopy(self.state)
+                self.bootstrap, "snapshot", side_effect=lambda *_args: copy.deepcopy(self.state)
             ),
             patch(
                 "sys.argv",
@@ -570,7 +570,7 @@ class BootstrapSafetyTests(unittest.TestCase):
 
     def test_failed_write_leaves_uncertain_stop_and_no_blind_retry(self):
         approved = self.run_main()["plan_hash"]
-        self.fake_client.call = lambda *args: (_ for _ in ()).throw(
+        self.fake_client.call = lambda *_args: (_ for _ in ()).throw(
             RuntimeError("simulated uncertain write")
         )
         with self.assertRaisesRegex(RuntimeError, "uncertain"):
