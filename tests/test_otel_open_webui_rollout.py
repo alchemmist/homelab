@@ -1,10 +1,12 @@
 """Tests for the OpenTelemetry Open WebUI rollout."""
 
 import importlib.util
+import json
 import unittest
 from pathlib import Path
 from types import ModuleType
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,6 +20,52 @@ def module() -> ModuleType:
     result = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(result)
     return result
+
+
+def test_stale_source_receipt_refuses_candidate_before_cluster_access(
+    tmp_path, monkeypatch
+) -> None:
+    """An offline candidate digest is not proof that the runtime may change."""
+    helper = module()
+    candidate = helper.source_data()
+    previous = {**candidate, "sitecustomize.py": candidate["sitecustomize.py"] + "# stale\n"}
+    evidence = tmp_path / "deploy/monitoring/migration-evidence"
+    evidence.mkdir(parents=True)
+    (evidence / "open-webui-sdk-early-bootstrap-20261101.json").write_text(
+        json.dumps(
+            {
+                "sourceConfigMapData": previous,
+                "source": {
+                    "success": True,
+                    "earlyBootstrapRequiredWithoutManualFallback": True,
+                    "unsafeAndDuplicateInstrumentorsDisabled": {"fixture": True},
+                },
+                "backend": {"success": True},
+            }
+        )
+    )
+    (evidence / "open-webui-sdk-leaf-renewal-20261101.json").write_text(
+        json.dumps(
+            {
+                "source": {
+                    "success": True,
+                    "sameNativeProviderAndExporterInstance": True,
+                    "sdkLeafReloadVerified": True,
+                },
+                "rotation": {"clientKeypairRotationVerified": True},
+                "backend": [{"success": True}, {"success": True}],
+            }
+        )
+    )
+    monkeypatch.setattr(helper, "ROOT", tmp_path)
+    monkeypatch.setattr(helper, "source_data", lambda: candidate)
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    monkeypatch.setattr(helper.os, "umask", lambda _mask: None)
+    monkeypatch.setattr(helper.BOOTSTRAP, "kube", lambda *_args: pytest.fail("cluster access"))
+    output = tmp_path / "Library/Application Support/homelab/otel-controller/candidate"
+    with pytest.raises(ValueError, match="Exact source/profile/bootstrap/renewal/backend gates"):
+        helper.run(output, apply=False)
+    assert not output.exists()
 
 
 class OpenWebuiRolloutTests(unittest.TestCase):
