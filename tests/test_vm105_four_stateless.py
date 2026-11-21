@@ -1,10 +1,11 @@
 """Placement-only boundaries and guarded worker handoff; offline, no credentials."""
 
 import copy
-from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from pathlib import Path
+
 import yaml
 
 R = Path(__file__).resolve().parents[1]
@@ -33,20 +34,20 @@ def values(chart):
 
 
 class PlacementTests(unittest.TestCase):
+    """Tests for PlacementTests."""
     def test_monori_only_frontend_changes(self):
         new = values("monori")
         old = copy.deepcopy(new)
         old["frontNodeName"] = "socrat-0"
         a, b = render("monori", old, "monori"), render("monori", new, "monori")
-        self.assertEqual([k for k in a if a[k] != b[k]], [("Deployment", "monori")])
+        assert [k for k in a if a[k] != b[k]] == [("Deployment", "monori")]
         for name in ["monori-back", "monori-sync"]:
-            self.assertEqual(
-                b["Deployment", name]["spec"]["template"]["spec"]["nodeSelector"],
-                {"kubernetes.io/hostname": new["statefulNodeName"]},
-            )
+            assert b["Deployment", name]["spec"]["template"]["spec"]["nodeSelector"] == {
+                "kubernetes.io/hostname": new["statefulNodeName"]
+            }
         pod = b["Deployment", "monori"]["spec"]["template"]["spec"]
-        self.assertEqual(pod["nodeSelector"], {"kubernetes.io/hostname": "socrat-5"})
-        self.assertNotIn("volumes", pod)
+        assert pod["nodeSelector"] == {"kubernetes.io/hostname": "socrat-5"}
+        assert "volumes" not in pod
 
     def test_spi_only_queue_ui_changes_not_backend_jobs_rbac_or_network_policy(self):
         new = values("spi-triage")
@@ -54,35 +55,31 @@ class PlacementTests(unittest.TestCase):
         old["queueUI"]["nodeName"] = "socrat-3"
         old["queueUI"]["hostAliases"] = []
         a, b = render("spi-triage", old, "automation"), render("spi-triage", new, "automation")
-        self.assertEqual([k for k in a if a[k] != b[k]], [("Deployment", "spi-queue-ui")])
+        assert [k for k in a if a[k] != b[k]] == [("Deployment", "spi-queue-ui")]
         pod = b["Deployment", "spi-queue-ui"]["spec"]["template"]["spec"]
-        self.assertEqual(pod["nodeSelector"], {"kubernetes.io/hostname": "socrat-5"})
-        self.assertEqual(
-            pod["hostAliases"],
-            [{"ip": "10.43.218.222", "hostnames": ["auth.socrat.alchemmist.xyz"]}],
-        )
-        self.assertFalse(pod["automountServiceAccountToken"])
+        assert pod["nodeSelector"] == {"kubernetes.io/hostname": "socrat-5"}
+        assert pod["hostAliases"] == [
+            {"ip": "10.43.218.222", "hostnames": ["auth.socrat.alchemmist.xyz"]}
+        ]
+        assert not pod["automountServiceAccountToken"]
 
     def test_worker_single_recreate_no_pvc_auth_and_write_modes_preserved(self):
         for folder, expected in [("blog-updates", "false"), ("wiki-openapi", "true")]:
             docs = list(yaml.safe_load_all((R / "deploy" / folder / "worker.yaml").read_text()))
             d = next(x for x in docs if x and x["kind"] == "Deployment")
-            self.assertEqual(d["spec"]["replicas"], 1)
-            self.assertEqual(d["spec"]["strategy"], {"type": "Recreate"})
+            assert d["spec"]["replicas"] == 1
+            assert d["spec"]["strategy"] == {"type": "Recreate"}
             pod = d["spec"]["template"]["spec"]
-            self.assertEqual(pod["nodeSelector"], {"kubernetes.io/hostname": "socrat-5"})
-            self.assertFalse(pod["automountServiceAccountToken"])
-            self.assertFalse(
-                any("persistentVolumeClaim" in v or "hostPath" in v for v in pod["volumes"])
-            )
+            assert pod["nodeSelector"] == {"kubernetes.io/hostname": "socrat-5"}
+            assert not pod["automountServiceAccountToken"]
+            assert not any("persistentVolumeClaim" in v or "hostPath" in v for v in pod["volumes"])
             env = {e["name"]: e.get("value") for e in pod["containers"][0]["env"]}
-            self.assertEqual(env["WRITE_ENABLED"], expected)
+            assert env["WRITE_ENABLED"] == expected
             if folder == "wiki-openapi":
                 cron = next(x for x in docs if x and x["kind"] == "CronJob")
-                self.assertEqual(
-                    cron["spec"]["jobTemplate"]["spec"]["template"]["spec"]["nodeSelector"],
-                    {"kubernetes.io/hostname": "socrat-1"},
-                )
+                assert cron["spec"]["jobTemplate"]["spec"]["template"]["spec"]["nodeSelector"] == {
+                    "kubernetes.io/hostname": "socrat-1"
+                }
 
     def test_endpoint_slice_null_is_a_valid_empty_drain(self):
         import importlib.util
@@ -97,36 +94,29 @@ class PlacementTests(unittest.TestCase):
             {"items": [{"endpoints": None}]},
             {"items": [{"endpoints": []}]},
         ]:
-            self.assertFalse(module.has_ready_endpoints(value))
-        self.assertTrue(
-            module.has_ready_endpoints(
-                {
-                    "items": [
-                        {"endpoints": [{"addresses": ["10.0.0.1"], "conditions": {"ready": True}}]}
-                    ]
-                }
-            )
+            assert not module.has_ready_endpoints(value)
+        assert module.has_ready_endpoints(
+            {"items": [{"endpoints": [{"addresses": ["10.0.0.1"], "conditions": {"ready": True}}]}]}
         )
-        self.assertFalse(
-            module.has_ready_endpoints(
-                {
-                    "items": [
-                        {"endpoints": [{"addresses": ["10.0.0.1"], "conditions": {"ready": False}}]}
-                    ]
-                }
-            )
+        assert not module.has_ready_endpoints(
+            {
+                "items": [
+                    {"endpoints": [{"addresses": ["10.0.0.1"], "conditions": {"ready": False}}]}
+                ]
+            }
         )
 
     def test_drain_is_two_exact_services_only_and_finally_restores(self):
         p = R / "deploy/migrations/vm105-four-stateless-20261116/drain-services.yaml"
         docs = [x for x in yaml.safe_load_all(p.read_text()) if x]
-        self.assertEqual(
-            {x["metadata"]["name"] for x in docs}, {"blog-updates-worker", "wiki-openapi-worker"}
-        )
+        assert {x["metadata"]["name"] for x in docs} == {
+            "blog-updates-worker",
+            "wiki-openapi-worker",
+        }
         for x in docs:
-            self.assertEqual(x["kind"], "Service")
-            self.assertEqual(x["metadata"]["namespace"], "automation")
-            self.assertEqual(x["spec"]["selector"]["homelab.io/migration-drain"], "no-serving-pods")
+            assert x["kind"] == "Service"
+            assert x["metadata"]["namespace"] == "automation"
+            assert x["spec"]["selector"]["homelab.io/migration-drain"] == "no-serving-pods"
         source = (R / "scripts/vm105-stateless-handoff.py").read_text()
         for required in [
             "idle(old_name)",
@@ -135,9 +125,9 @@ class PlacementTests(unittest.TestCase):
             "/proc/1/task",
             "endpointslices",
         ]:
-            self.assertIn(required, source)
+            assert required in source
         for forbidden in ["--force", "--grace-period=0", "/create-pr", "delete", "workflow_entity"]:
-            self.assertNotIn(forbidden, source)
+            assert forbidden not in source
 
 
 if __name__ == "__main__":

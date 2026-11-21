@@ -1,0 +1,7 @@
+apiVersion: v2
+name: socrat-descheduler
+version: 0.1.0
+dependencies:
+  - name: descheduler
+    version: 0.36.0
+    repository: https://kubernetes-sigs.github.io/descheduler/

@@ -1,3 +1,5 @@
+"""Materialize the production Grafana TLS and proxy resources from credentials."""
+
 import argparse
 import base64
 import importlib.util

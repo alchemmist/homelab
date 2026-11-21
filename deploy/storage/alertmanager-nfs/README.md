@@ -59,3 +59,10 @@ During the actual drill monitor the Prometheus `KubeNodeNotReady` rule directly:
 its `for` is 15m. Allow node detection, rule evaluation, Alertmanager grouping and
 webhook delivery; brief outages need not fire. Do not use a fabricated instance
 of the real node-down alert as proof the node actually went down.
+
+**Second loss-of-1 drill only:** two mesh peers, hard hostname spread on 0/1,
+separate retained RWO claims. Confirm both peers in each `/api/v2/status` and
+both active Alertmanager targets in Prometheus before power-off. A terminating
+ordinal on 1 must not be force-deleted. After the drill and confirmed delivery
+of firing/resolved, review returning `replicas` to 1; do not delete ordinal 1's
+claim. Mesh deduplication is best-effort, not exactly-once Telegram delivery.

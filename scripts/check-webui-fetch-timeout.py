@@ -1,6 +1,8 @@
+"""Check the web fetch timeout setting and fetch tool call behaviour."""
 import asyncio
 import json
 import time
+from typing import cast
 from unittest.mock import patch
 
 from open_webui.models.config import Config
@@ -22,12 +24,15 @@ async def main():
         }
     }
 
-    async def call(url):
-        return await execute_tool_call(
-            {},
-            metadata,
-            None,
-            {"function": {"name": "fetch_url", "arguments": json.dumps({"url": url})}},
+    async def call(url) -> tuple[object, object]:
+        return cast(
+            "tuple[object, object]",
+            await execute_tool_call(
+                {},
+                metadata,
+                None,
+                {"function": {"name": "fetch_url", "arguments": json.dumps({"url": url})}},
+            ),
         )
 
     with patch.object(guard, "FETCH_WORKER", 'import json; print(json.dumps("healthy page"))'):
@@ -37,7 +42,7 @@ async def main():
     processes = []
     spawn = asyncio.create_subprocess_exec
 
-    async def record_process(*args, **kwargs):
+    async def record_process(*args, **kwargs) -> asyncio.subprocess.Process:
         process = await spawn(*args, **kwargs)
         processes.append(process)
         return process
@@ -48,7 +53,8 @@ async def main():
         patch.object(guard.asyncio, "create_subprocess_exec", record_process),
     ):
         response = await call("https://example.com")
-        assert "deadline" in response[1]["error"], response
+        payload = cast("dict[str, object]", response[1])
+        assert "deadline" in cast("str", payload["error"]), response
         assert processes[0].returncode is not None
 
     start = time.monotonic()

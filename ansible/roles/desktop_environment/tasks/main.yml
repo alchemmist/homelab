@@ -109,6 +109,17 @@
     mode: "0644"
     follow: true
     backup: true
-    validate: /usr/bin/Hyprland --verify-config --config %s
+    validate: "{{ omit if inventory_hostname == 'socrat-1' else '/usr/bin/Hyprland --verify-config --config %s' }}"
   register: homelab_hyprland_config
+
+- name: Install Lua entry point for the updated socrat-1 compositor
+  tags: hyprland
+  become: false
+  ansible.builtin.copy:
+    src: homelab-desktop.lua
+    dest: "{{ homelab_user_home }}/.config/hypr/hyprland.lua"
+    mode: "0644"
+    backup: true
+    validate: /usr/bin/Hyprland --verify-config --config %s
+  when: inventory_hostname == 'socrat-1'
 ...

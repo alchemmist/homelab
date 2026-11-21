@@ -14,11 +14,13 @@ ROLES = {"syncthing-web-admins": "syncthing", "uptime-kuma-web-admins": "uptime-
 
 
 def require(ok, message):
+    """Execute require."""
     if not ok:
         raise RuntimeError(message)
 
 
 def plan(groups):
+    """Execute plan."""
     ops = []
     for name, service in ROLES.items():
         rows = [g for g in groups if g["name"] == name]
@@ -51,6 +53,7 @@ def plan(groups):
 
 
 def main():
+    """Execute main."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apply", action="store_true")
     p.add_argument("--approve-plan-hash")

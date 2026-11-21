@@ -1,3 +1,4 @@
+"""Unit tests for the repository_runner and attempt decision logic."""
 import json
 import os
 import pathlib
@@ -11,16 +12,21 @@ import attempt
 
 
 class FakeEnvironment:
-    def __init__(self, snapshot, directory, image, protocol):
+    """Fake repository environment for deterministic tests."""
+
+    def __init__(self, _snapshot, directory, _image, protocol) -> None:
+
         self.container_id = "fake"
-        self.events = []
+        self.events: list[dict[str, object]] = []
         self.protocol = protocol
         directory.mkdir()
 
     def snapshot(self, destination):
+        """Copy the staged decision candidate into destination."""
         shutil.copytree(os.environ["DECISION_CANDIDATE"], destination)
 
     def close(self):
+        """No-op close for the fake runner."""
         self.container_id = None
 
 
@@ -35,7 +41,10 @@ def passing_verdict():
 
 
 class FinalDecisionTests(unittest.TestCase):
+    """Tests for the final runner decision logic."""
+
     def run_main(self, verdict, candidate_main, clean=True, cleanup_error=False):
+        """Run repository_runner.main with a stubbed verdict and return its summary."""
         root = tempfile.TemporaryDirectory()
         self.addCleanup(root.cleanup)
         base = pathlib.Path(root.name)
@@ -64,12 +73,12 @@ class FinalDecisionTests(unittest.TestCase):
         (base / "out").mkdir()
 
         class Environment(FakeEnvironment):
-            def close(self):
+            def close(self) -> None:
                 if cleanup_error:
                     raise RuntimeError("cleanup failed")
                 super().close()
 
-        def invoke(*args, **kwargs):
+        def invoke(*args, **kwargs) -> dict[str, str]:
             if not clean:
                 raise RuntimeError("provider failed")
             return {"exit_status": "ConversationExecutionStatus.FINISHED"}
@@ -103,6 +112,7 @@ class FinalDecisionTests(unittest.TestCase):
         return code, json.loads(summary_path.read_text())
 
     def test_clean_valid_candidate_is_overall_success(self):
+        """Verify a clean valid candidate is reported as overall success."""
         source = "class BrowserSession:\n    async def _answer(self):\n        return 1\n"
         code, summary = self.run_main(passing_verdict(), source)
         self.assertTrue(summary["accepted"])
@@ -110,6 +120,7 @@ class FinalDecisionTests(unittest.TestCase):
         self.assertEqual(code, 0)
 
     def test_comment_violation_is_not_overall_success(self):
+        """Verify a comment-only edit violates the protocol and is rejected."""
         commented = "class BrowserSession:\n    async def _answer(self):\n        # added comment\n        return 1\n"
         with mock.patch.dict(os.environ, {"AUTONOMY_FORCE_CONTINUE_ONCE": "1"}, clear=False):
             code, summary = self.run_main(passing_verdict(), commented)
@@ -118,6 +129,7 @@ class FinalDecisionTests(unittest.TestCase):
         self.assertNotEqual(code, 0)
 
     def test_functional_failure_is_not_accepted(self):
+        """Verify a failed functional verdict is not accepted."""
         verdict = passing_verdict()
         verdict["passed"] = False
         code, summary = self.run_main(
@@ -127,6 +139,7 @@ class FinalDecisionTests(unittest.TestCase):
         self.assertNotEqual(code, 0)
 
     def test_edit_outside_allowed_methods_is_not_accepted(self):
+        """Verify edits outside allowed methods are not accepted."""
         verdict = passing_verdict()
         verdict["allowed_edits"] = {"allowed": False}
         code, summary = self.run_main(
@@ -136,6 +149,7 @@ class FinalDecisionTests(unittest.TestCase):
         self.assertNotEqual(code, 0)
 
     def test_protocol_change_is_not_accepted(self):
+        """Verify a changed agent protocol is not accepted."""
         verdict = passing_verdict()
         verdict["agent_protocol_unchanged"] = False
         code, summary = self.run_main(
@@ -145,6 +159,7 @@ class FinalDecisionTests(unittest.TestCase):
         self.assertNotEqual(code, 0)
 
     def test_provider_failure_keeps_artifact_separate_from_overall_success(self):
+        """Verify provider failure keeps the artifact record separate from success."""
         code, summary = self.run_main(
             passing_verdict(),
             "class BrowserSession:\n    async def _answer(self):\n        return 1\n",
@@ -156,6 +171,7 @@ class FinalDecisionTests(unittest.TestCase):
         self.assertNotEqual(code, 0)
 
     def test_cleanup_failure_is_not_overall_success(self):
+        """Verify a cleanup failure is not reported as overall success."""
         code, summary = self.run_main(
             passing_verdict(),
             "class BrowserSession:\n    async def _answer(self):\n        return 1\n",
@@ -166,6 +182,7 @@ class FinalDecisionTests(unittest.TestCase):
         self.assertNotEqual(code, 0)
 
     def test_malformed_verdict_fails_closed(self):
+        """Verify a malformed verdict fails closed instead of passing."""
         code, summary = self.run_main(
             {"passed": True},
             "class BrowserSession:\n    async def _answer(self):\n        return 1\n",
@@ -179,7 +196,10 @@ if __name__ == "__main__":
 
 
 class AcceptanceFeedbackTests(unittest.TestCase):
+    """Tests for acceptance feedback diagnostics."""
+
     def test_rejection_contains_bounded_failure_diagnostics(self):
+        """Verify rejection feedback carries bounded, non-leaking diagnostics."""
         with tempfile.TemporaryDirectory() as temp:
             root = pathlib.Path(temp)
             agent = root / "snapshot" / "agent"
@@ -215,7 +235,10 @@ class AcceptanceFeedbackTests(unittest.TestCase):
 
 
 class ResumePromptTests(unittest.TestCase):
+    """Tests for the resume prompt contract."""
+
     def test_resume_identifies_original_snapshot_as_the_contract(self):
+        """Verify the resume prompt names the original snapshot as the contract."""
         with tempfile.TemporaryDirectory() as temp:
             root = pathlib.Path(temp)
             agent = root / "agent"
@@ -234,7 +257,10 @@ class ResumePromptTests(unittest.TestCase):
 
 
 class SnapshotRejectionTests(unittest.TestCase):
+    """Tests for actionable snapshot archive rejections."""
+
     def test_archive_policy_rejection_is_actionable_without_becoming_a_pass(self):
+        """Verify archive-policy rejections stay actionable yet never pass."""
         with tempfile.TemporaryDirectory() as temp:
             environment = mock.Mock()
             environment.snapshot_rejections = 0

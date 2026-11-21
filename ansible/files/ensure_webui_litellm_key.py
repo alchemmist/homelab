@@ -1,3 +1,5 @@
+"""Ensure the WebUI virtual API key for a model exists in Kubernetes."""
+
 import argparse
 import base64
 import hashlib
@@ -12,6 +14,7 @@ desired_models = args.model or ["qwen3.8-27b"]
 
 
 def kubectl(*argv, data=None):
+    """Kubectl."""
     return subprocess.run(
         ["kubectl", "-n", "llm", *argv], input=data, capture_output=True, text=True, check=True
     ).stdout
@@ -24,6 +27,7 @@ opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
 def request(path, data=None):
+    """Request."""
     req = urllib.request.Request(
         "http://" + ip + ":4000" + path,
         data=None if data is None else json.dumps(data).encode(),
