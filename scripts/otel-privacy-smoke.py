@@ -1,3 +1,5 @@
+"""Privacy smoke test for the telemetry stack run in an isolated workspace."""
+
 import argparse
 import json
 import os

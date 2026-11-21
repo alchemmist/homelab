@@ -1,3 +1,5 @@
+"""Tests for the blog updates stage helpers module."""
+
 import sys
 from pathlib import Path
 import unittest

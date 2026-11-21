@@ -1,3 +1,5 @@
+"""Tests for the n8n calendar workflow sync module."""
+
 import importlib.util
 import json
 from pathlib import Path

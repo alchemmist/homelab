@@ -1,3 +1,5 @@
+"""Tests for PR readiness evaluation in the scripts/openhands-pr-ready module."""
+
 import copy
 import importlib.util
 from pathlib import Path
