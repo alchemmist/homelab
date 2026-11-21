@@ -14,11 +14,65 @@ import tarfile
 import time
 import tokenize
 import uuid
+from collections.abc import Mapping, Sequence
+from typing import Protocol, TypedDict, cast
 
 from sandbox import bounded_process
 
 
-def require_path(name):
+class _TestResult(TypedDict, total=False):
+    test: object
+    exit_code: object
+    completed: object
+    stderr_tail: object
+
+
+class _Grade(TypedDict, total=False):
+    tests: list[_TestResult]
+
+
+class _Verdict(TypedDict, total=False):
+    passed: object
+    allowed_edits: object
+    agent_protocol_unchanged: object
+    grade: _Grade
+
+
+class _CandidateProtocol(Protocol):
+    WHITELIST: Sequence[str]
+
+    def grade_candidate_container(
+        self,
+        runtime: str,
+        image: str,
+        snapshot: pathlib.Path,
+        candidate: pathlib.Path,
+    ) -> _Verdict: ...
+
+
+class _OpenHandsAttempt(Protocol):
+    def run_openhands(self, *args: object, **kwargs: object) -> object: ...
+
+
+_Facts = TypedDict(
+    "_Facts",
+    {
+        "round": int,
+        "accepted": bool,
+        "consecutive_no_progress": int,
+        "verification": dict[str, object],
+        "required_action": str,
+        "real_accepted": bool,
+        "continue": bool,
+        "forced_rejection": bool,
+        "no_added_comments": bool,
+        "candidate_sha256": str,
+    },
+    total=False,
+)
+
+
+def require_path(name: str):
     value = os.environ.get(name, "").strip()
     if not value:
         raise RuntimeError(name + " is required")
@@ -28,7 +82,7 @@ def require_path(name):
     return path
 
 
-def load_local(name):
+def load_local(name: str):
     path = pathlib.Path(__file__).with_name(name + ".py")
     spec = importlib.util.spec_from_file_location("venice_autonomy_" + name, path)
     module = importlib.util.module_from_spec(spec)
@@ -47,7 +101,15 @@ def load_protocol():
     return protocol_regression
 
 
-def invoke_openhands(attempt_module, environment, directory, prompt, base_url, key, acceptance):
+def invoke_openhands(
+    attempt_module: _OpenHandsAttempt,
+    environment: object,
+    directory: pathlib.Path,
+    prompt: str,
+    base_url: str,
+    key: str,
+    acceptance: object,
+):
     return attempt_module.run_openhands(
         environment,
         directory,
@@ -65,10 +127,20 @@ class CandidateRejected(ValueError):
 
 
 class RepositoryEnvironment:
-    def __init__(self, snapshot, directory, image, protocol):
+    snapshot_rejections: int
+    no_progress: int
+    last_candidate_hash: str
+
+    def __init__(
+        self,
+        snapshot: pathlib.Path,
+        directory: pathlib.Path,
+        image: str,
+        protocol: _CandidateProtocol,
+    ):
         self.directory = directory
         self.directory.mkdir()
-        self.events = []
+        self.events: list[dict[str, object]] = []
         self.protocol = protocol
         self.image = image
         self.nonce = os.environ.get("AUTONOMY_RUN_NONCE") or uuid.uuid4().hex
@@ -193,7 +265,7 @@ class RepositoryEnvironment:
             self.close()
             raise
 
-    def execute(self, action, **kwargs):
+    def execute(self, action: object, **kwargs: object):
         command = action.get("command") if isinstance(action, dict) else None
         if not isinstance(command, str) or len(command.encode()) > 12000:
             raise ValueError("invalid or oversized command")
@@ -227,7 +299,7 @@ class RepositoryEnvironment:
             stream.write(json.dumps(self.events[-1]) + "\n")
         return result
 
-    def snapshot(self, destination):
+    def snapshot(self, destination: pathlib.Path):
         subprocess.run(
             ["docker", "pause", self.container_id], check=True, capture_output=True, timeout=15
         )
@@ -287,8 +359,8 @@ class RepositoryEnvironment:
             self.volume_name = None
 
 
-def comment_delta(snapshot, candidate):
-    def comments(path):
+def comment_delta(snapshot: pathlib.Path, candidate: pathlib.Path):
+    def comments(path: pathlib.Path):
         return collections.Counter(
             token.string
             for token in tokenize.generate_tokens(io.StringIO(path.read_text()).readline)
@@ -298,7 +370,7 @@ def comment_delta(snapshot, candidate):
     return comments(candidate / "main.py") - comments(snapshot / "agent" / "main.py")
 
 
-def artifact_accepted(verdict, snapshot, candidate):
+def artifact_accepted(verdict: object, snapshot: pathlib.Path, candidate: pathlib.Path):
     if not isinstance(verdict, dict) or verdict.get("passed") is not True:
         return False
     if verdict.get("agent_protocol_unchanged") is not True:
@@ -314,7 +386,7 @@ def artifact_accepted(verdict, snapshot, candidate):
     return True
 
 
-def overall_success(summary):
+def overall_success(summary: Mapping[str, object]):
     return (
         summary.get("accepted") is True
         and summary.get("clean_finish") is True
@@ -326,7 +398,7 @@ def overall_success(summary):
     )
 
 
-def apply_continuation_policy(facts, round_number, force_once=False):
+def apply_continuation_policy(facts: _Facts, round_number: int, *, force_once: bool = False):
     facts["real_accepted"] = facts["accepted"]
     facts["continue"] = (not facts["accepted"]) and facts.get("consecutive_no_progress", 0) < 2
     if force_once and round_number == 0:
@@ -340,7 +412,7 @@ def apply_continuation_policy(facts, round_number, force_once=False):
     return facts
 
 
-def sdk_acceptance(environment, directory, round_number):
+def sdk_acceptance(environment: RepositoryEnvironment, directory: pathlib.Path, round_number: int):
     protocol = environment.protocol
     snapshot = pathlib.Path(os.environ["AUTONOMY_SNAPSHOT"])
     candidate = directory / ("round-" + str(round_number) + "-candidate")
@@ -351,14 +423,14 @@ def sdk_acceptance(environment, directory, round_number):
         rejection = str(error)
     finally:
         subprocess.run(
-            ["docker", "unpause", environment.container_id],
+            ["docker", "unpause", cast("str", environment.container_id)],
             capture_output=True,
             check=True,
             timeout=15,
         )
     if rejection is not None:
         environment.snapshot_rejections = getattr(environment, "snapshot_rejections", 0) + 1
-        facts = {
+        facts: _Facts = {
             "round": round_number,
             "accepted": False,
             "consecutive_no_progress": environment.snapshot_rejections - 1,
@@ -416,7 +488,11 @@ def sdk_acceptance(environment, directory, round_number):
             "passing the visible reproduction alone is not acceptance. "
             "Preserve the method signatures and add no comments."
         )
-    apply_continuation_policy(facts, round_number, os.getenv("AUTONOMY_FORCE_CONTINUE_ONCE") == "1")
+    apply_continuation_policy(
+        facts,
+        round_number,
+        force_once=os.getenv("AUTONOMY_FORCE_CONTINUE_ONCE") == "1",
+    )
     with (directory / "acceptance-rounds.jsonl").open("a") as stream:
         stream.write(json.dumps(facts) + "\n")
     return facts
@@ -456,7 +532,7 @@ def task_prompt():
     return prompt
 
 
-def main(argv=None):
+def main(argv: list[str] | None = None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--check-wiring", action="store_true")
     args = parser.parse_args(argv)

@@ -14,11 +14,11 @@ def run(*args: str) -> str:
     return subprocess.check_output(args, text=True).strip()
 
 
-def merge(values, additions):
+def merge(values: list[str], additions: list[str]):
     return list(dict.fromkeys(values + additions))
 
 
-def update_config(original, routes):
+def update_config(original: str, routes: dict[str, list[str]]):
     blocks = re.split(r"(?=^\s*\[Peer\]\s*$)", original, flags=re.MULTILINE)
     found = set()
     for index, block in enumerate(blocks):
@@ -46,7 +46,7 @@ def main():
     if not re.fullmatch(r"[a-zA-Z0-9_=+.-]{1,15}", interface):
         raise ValueError("Invalid interface")
     ipaddress.IPv4Address(source)
-    routes = {}
+    routes: dict[str, list[str]] = {}
     for item in json.loads(payload):
         network = ipaddress.IPv4Network(item["network"], strict=True)
         if network.prefixlen != 32:
@@ -92,13 +92,13 @@ def main():
         if allowed != live[key]:
             run("wg", "set", interface, "peer", key, "allowed-ips", ",".join(allowed))
             changed = True
-        for network in networks:
-            current = json.loads(run("ip", "-json", "route", "show", "exact", network))
+        for host_route in networks:
+            current = json.loads(run("ip", "-json", "route", "show", "exact", host_route))
             if not any(
                 route.get("dev") == interface and route.get("prefsrc") == source
                 for route in current
             ):
-                run("ip", "route", "replace", network, "dev", interface, "src", source)
+                run("ip", "route", "replace", host_route, "dev", interface, "src", source)
                 changed = True
     print(json.dumps({"changed": changed, "routes": sum(len(value) for value in routes.values())}))
 
