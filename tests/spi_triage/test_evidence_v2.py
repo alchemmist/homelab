@@ -3,6 +3,8 @@ import sys
 import unittest
 from unittest.mock import Mock, patch
 from pathlib import Path
+from collections.abc import Mapping
+from typing import cast
 from urllib.parse import urlsplit, parse_qs
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "charts/spi-triage/files"))
@@ -21,11 +23,14 @@ from test_triage import event
 
 
 class ArtifactTests(unittest.TestCase):
-    def bundle(self, text="diagnostic"):
-        return prepare_bundle(
-            event(),
-            {"window": {"start": 1, "end": 2}},
-            [{"name": "logs.json", "content": text, "source": {"query": "test"}}],
+    def bundle(self, text: str = "diagnostic") -> dict[str, object]:
+        return cast(
+            "dict[str, object]",
+            prepare_bundle(
+                event(),
+                {"window": {"start": 1, "end": 2}},
+                [{"name": "logs.json", "content": text, "source": {"query": "test"}}],
+            ),
         )
 
     def test_recursive_redaction_keeps_topology(self):
@@ -51,17 +56,24 @@ class ArtifactTests(unittest.TestCase):
     def test_deterministic_and_manifest(self):
         a = self.bundle()
         self.assertEqual(a, self.bundle())
-        self.assertIn("sha256", a["manifest"]["artifacts"][0])
-        self.assertEqual(a["parts"][0]["id"], "MANIFEST")
+        a_manifest = cast("dict[str, object]", a["manifest"])
+        self.assertIn("sha256", cast("list[dict[str, object]]", a_manifest["artifacts"])[0])
+        a_parts = cast("list[dict[str, object]]", a["parts"])
+        self.assertEqual(a_parts[0]["id"], "MANIFEST")
 
     def test_explicit_truncation_and_parts(self):
         b = self.bundle("x" * 100000)
-        self.assertTrue(b["manifest"]["artifacts"][0]["truncated"])
-        self.assertTrue(all(len(x["text"]) <= PART_SIZE for x in b["parts"]))
+        b_manifest = cast("dict[str, object]", b["manifest"])
+        b_artifacts = cast("list[dict[str, object]]", b_manifest["artifacts"])
+        self.assertTrue(b_artifacts[0]["truncated"])
+        b_parts = cast("list[dict[str, object]]", b["parts"])
+        self.assertTrue(all(len(cast("str", x["text"])) <= PART_SIZE for x in b_parts))
 
     def test_no_arbitrary_links(self):
         b = self.bundle()
-        b["manifest"]["links"] = [{"title": "evil", "url": "https://evil.example"}]
+        cast("dict[str, object]", b["manifest"])["links"] = [
+            {"title": "evil", "url": "https://evil.example"}
+        ]
         self.assertNotIn("evil", index_markdown(b))
 
     def test_idempotent_parts(self):
@@ -98,7 +110,7 @@ class ArtifactTests(unittest.TestCase):
         g.request.return_value = {"html_url": "https://github.com/test"}
         publish_parts(g, 9, b, state, save)
         self.assertTrue(state["index_done"])
-        self.assertEqual(g.request.call_count, len(b["parts"]) + 1)
+        self.assertEqual(g.request.call_count, len(cast("list[dict[str, object]]", b["parts"])) + 1)
 
     def test_ambiguous_not_blindly_retried(self):
         g = Mock()
@@ -115,7 +127,12 @@ class ArtifactTests(unittest.TestCase):
 
     def test_index_ambiguous_reconciles(self):
         b = self.bundle()
-        state = {"done": {p["marker"]: "url" for p in b["parts"]}, "index_pending": True}
+        state = {
+            "done": {
+                cast("str", p["marker"]): "url" for p in cast("list[dict[str, object]]", b["parts"])
+            },
+            "index_pending": True,
+        }
         g = Mock()
         g.comments.return_value = [
             {
@@ -139,10 +156,15 @@ class ArtifactTests(unittest.TestCase):
     def test_untrusted_marker_cannot_hide_missing_artifact(self):
         b = self.bundle()
         g = Mock()
-        g.comments.return_value = [{"body": b["parts"][0]["marker"], "user": {"login": "unknown"}}]
+        g.comments.return_value = [
+            {
+                "body": cast("str", cast("list[dict[str, object]]", b["parts"])[0]["marker"]),
+                "user": {"login": "unknown"},
+            }
+        ]
         g.request.return_value = {}
         publish_parts(g, 9, b, {}, Mock())
-        self.assertEqual(g.request.call_count, len(b["parts"]) + 1)
+        self.assertEqual(g.request.call_count, len(cast("list[dict[str, object]]", b["parts"])) + 1)
 
     def test_fence_injection_remains_data(self):
         b = self.bundle("```\nmalicious\n````")
@@ -155,7 +177,7 @@ class ArtifactTests(unittest.TestCase):
 
 
 class TelemetryTests(unittest.TestCase):
-    def response(self, method, url, *args, **kw):
+    def response(self, method: object, url: str, *args: object, **kw: object) -> dict[str, object]:
         if "/api/search?" in url:
             return {"traces": [{"traceID": "a" * 32}]}
         if "/api/traces/" in url:
@@ -192,25 +214,36 @@ class TelemetryTests(unittest.TestCase):
             }
         return {"data": {"result": []}}
 
-    def collect(self, labels=None):
+    def collect(self, labels: Mapping[str, str] | None = None) -> tuple[Mock, dict[str, object]]:
         h = Mock()
         h.request.side_effect = self.response
         e = event()
         e["labels"].update(labels or {})
         with patch("telemetry.time.time", return_value=1793711400):
-            r = TelemetryCollector(h, "http://grafana", "fake").collect(e, {})
+            r = cast(
+                "dict[str, object]", TelemetryCollector(h, "http://grafana", "fake").collect(e, {})
+            )
         return h, r
 
     def test_log_trace_discovery_and_bounds(self):
         h, r = self.collect({"pod": "test-pod", "service": "test"})
-        self.assertTrue(any("tempo-trace" in a["name"] for a in r["artifacts"]))
+        self.assertTrue(
+            any(
+                "tempo-trace" in cast("str", a["name"])
+                for a in cast("list[dict[str, object]]", r["artifacts"])
+            )
+        )
         self.assertLessEqual(h.request.call_count, 10)
         self.assertTrue(r["links"])
 
     def test_unsafe_pod_does_not_widen(self):
         h, r = self.collect({"pod": 'bad"} |= "secret'})
         self.assertFalse(any("/query_range?" in x.args[1] for x in h.request.call_args_list))
-        self.assertTrue(any(x["reason"] == "UNSAFE_LABEL" for x in r["missing"]))
+        self.assertTrue(
+            any(
+                x["reason"] == "UNSAFE_LABEL" for x in cast("list[dict[str, object]]", r["missing"])
+            )
+        )
 
     def test_links_absolute_decodable(self):
         url = grafana_explore_url(
@@ -231,7 +264,9 @@ class TelemetryTests(unittest.TestCase):
         h.request.side_effect = Failure("HTTP_403")
         with patch("telemetry.time.time", return_value=1793711400):
             r = TelemetryCollector(h, "http://grafana", "fake").collect(event(), {})
-        self.assertTrue(any(x["reason"] == "HTTP_403" for x in r["missing"]))
+        self.assertTrue(
+            any(x["reason"] == "HTTP_403" for x in cast("list[dict[str, object]]", r["missing"]))
+        )
 
     def test_trace_exception_events_and_resource_version(self):
         from telemetry import _project_trace
@@ -284,7 +319,12 @@ class TelemetryTests(unittest.TestCase):
         }
         with patch("telemetry.time.time", return_value=1793711400):
             r = TelemetryCollector(h, "http://grafana", "fake").collect(event(), {})
-        self.assertTrue(any(x["reason"] == "NO_MATCHING_LINES" for x in r["missing"]))
+        self.assertTrue(
+            any(
+                x["reason"] == "NO_MATCHING_LINES"
+                for x in cast("list[dict[str, object]]", r["missing"])
+            )
+        )
 
 
 class ProvenanceTests(unittest.TestCase):
@@ -648,7 +688,7 @@ class GrafanaLoginLinkTests(unittest.TestCase):
         old = grafana_explore_url(
             "https://grafana.socrat.alchemmist.xyz", "tempo", "a" * 32, 10, 20, "query"
         ).replace("&forceLogin=true", "")
-        b["manifest"]["links"] = [{"title": "Trace", "url": old}]
+        cast("dict[str, object]", b["manifest"])["links"] = [{"title": "Trace", "url": old}]
         from copy import deepcopy
 
         snapshot = deepcopy(b)
