@@ -42,7 +42,7 @@ def peer_host(line):
 
 
 def is_private(host):
-    """True for loopback, link-local and RFC1918 ranges the collector ignores."""
+    """Return whether the collector ignores the loopback, link-local, or RFC1918 range."""
     if ":" in host:
         return True
     if host.startswith(("10.", "127.", "192.168.", "0.")):

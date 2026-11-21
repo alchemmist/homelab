@@ -104,7 +104,7 @@ def scope_matches_chart(chart, delta):
 
 
 def report(inputs, candidates, audit, chart, delta):
-    """Internal bootstrap and edge publication are separate gates.
+    """Keep internal bootstrap and edge publication as separate gates.
 
     UDP 3478 not listening is the preexisting state. Requiring it before apply is
     circular, because nothing is published to bind it. A listener that is already
@@ -183,7 +183,7 @@ def report(inputs, candidates, audit, chart, delta):
 
 
 def assert_safe_manifests(docs, publication="internal"):
-    """Internal publication has no Service, Ingress, or NodePort. Edge may add them."""
+    """Keep internal publication free of Service, Ingress, or NodePort resources."""
     nb.require(publication in ("internal", "edge"), "publication invalid")
     namespaces = set()
     runtime_refs = []
