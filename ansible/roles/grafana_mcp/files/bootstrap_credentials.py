@@ -31,7 +31,8 @@ def kubectl(arguments: list[str], payload: object | None = None) -> dict[str, ob
         timeout=45,
     )
     if result.returncode:
-        raise BootstrapError("Kubernetes operation failed")
+        msg = "Kubernetes operation failed"
+        raise BootstrapError(msg)
     return cast("dict[str, object]", json.loads(result.stdout)) if result.stdout.strip() else None
 
 
@@ -68,7 +69,8 @@ class Grafana:
         except urllib.error.HTTPError as error:
             raise BootstrapError("Grafana returned HTTP " + str(error.code)) from None
         except (urllib.error.URLError, TimeoutError, ValueError):
-            raise BootstrapError("Grafana request failed") from None
+            msg = "Grafana request failed"
+            raise BootstrapError(msg) from None
 
 
 def decode_secret(secret: object) -> dict[str, str]:
@@ -90,7 +92,8 @@ def bootstrap(grafana, existing_secret, persist, has_admin=True):
         if not all(
             values.get(key) for key in ("grafana-token", "client-token", "service-account-id")
         ):
-            raise BootstrapError("Admin credentials required to create missing MCP credentials")
+            msg = "Admin credentials required to create missing MCP credentials"
+            raise BootstrapError(msg)
         grafana.request("GET", "/api/org", token=values["grafana-token"])
         return {"changed": False}
     accounts = grafana.request("GET", "/api/serviceaccounts/search?query=socrat-mcp&perpage=100")
@@ -100,12 +103,14 @@ def bootstrap(grafana, existing_secret, persist, has_admin=True):
         if account["name"] == ACCOUNT_NAME
     ]
     if len(matches) > 1:
-        raise BootstrapError("Multiple matching Grafana service accounts")
+        msg = "Multiple matching Grafana service accounts"
+        raise BootstrapError(msg)
     changed = False
     if matches:
         account = matches[0]
         if account.get("isDisabled"):
-            raise BootstrapError("Grafana service account is disabled")
+            msg = "Grafana service account is disabled"
+            raise BootstrapError(msg)
         if account.get("role") != "Viewer":
             grafana.request(
                 "PATCH", "/api/serviceaccounts/" + str(account["id"]), {"role": "Viewer"}
@@ -159,10 +164,12 @@ def _issue_credentials(grafana, account_id, values, persist):
                 "DELETE", "/api/serviceaccounts/" + account_id + "/tokens/" + str(token["id"])
             )
         except Exception:
+            msg = "Credential persistence failed; newly created token cleanup also failed"
             raise BootstrapError(
-                "Credential persistence failed; newly created token cleanup also failed"
+                msg
             ) from None
-        raise BootstrapError("Credential persistence failed; newly created token revoked") from None
+        msg = "Credential persistence failed; newly created token revoked"
+        raise BootstrapError(msg) from None
     return True
 
 

@@ -45,7 +45,8 @@ def resolve_repo(explicit: Path | None) -> Path:
         return explicit
     raw = os.environ.get("PROTOCOL_REGRESSION_REPO")
     if not raw:
-        raise ValueError("pass --repo or set PROTOCOL_REGRESSION_REPO")
+        msg = "pass --repo or set PROTOCOL_REGRESSION_REPO"
+        raise ValueError(msg)
     return Path(raw)
 
 
@@ -96,10 +97,12 @@ def method_spans(source: str) -> dict[str, tuple[int, int]]:
         for child in node.body:
             if isinstance(child, ast.AsyncFunctionDef) and child.name in ALLOWED_METHODS:
                 if child.name in spans:
-                    raise ValueError("duplicate allowed method")
+                    msg = "duplicate allowed method"
+                    raise ValueError(msg)
                 spans[child.name] = (child.lineno, child.end_lineno or child.lineno)
     if tuple(sorted(spans)) != tuple(sorted(ALLOWED_METHODS)):
-        raise ValueError("snapshot is missing BrowserSession._answer or _generate_on_page")
+        msg = "snapshot is missing BrowserSession._answer or _generate_on_page"
+        raise ValueError(msg)
     return spans
 
 
@@ -289,7 +292,8 @@ def bounded_test_process(args, cwd=None, env=None, timeout=120, limit=131072):
         while selector.get_map():
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                raise TimeoutError("test process deadline exceeded")
+                msg = "test process deadline exceeded"
+                raise TimeoutError(msg)
             for key, _ in selector.select(min(remaining, 1)):
                 data = os.read(key.fileobj.fileno(), 65536)
                 if not data:
@@ -297,7 +301,8 @@ def bounded_test_process(args, cwd=None, env=None, timeout=120, limit=131072):
                     continue
                 output[key.data].extend(data)
                 if len(output[key.data]) > limit:
-                    raise ValueError("test process output limit exceeded")
+                    msg = "test process output limit exceeded"
+                    raise ValueError(msg)
         code = process.wait(timeout=max(0.01, deadline - time.monotonic()))
         return subprocess.CompletedProcess(
             args,
@@ -433,7 +438,8 @@ def pinned_base_digest(dockerfile: Path) -> str:
             if marker not in image or not image.startswith(BASE_IMAGE + marker):
                 raise ValueError(f"worker base is not a pinned {BASE_IMAGE} digest")
             return image.split("@", 1)[1]
-    raise ValueError("worker Dockerfile has no FROM")
+    msg = "worker Dockerfile has no FROM"
+    raise ValueError(msg)
 
 
 def verify_pinned_base(docker: str, dockerfile: Path) -> dict:
@@ -676,7 +682,8 @@ def image_facts(docker: str, image: str) -> dict:
         raise RuntimeError(f"image probe failed: {detail}")
     version, imports, baked_main, pip_present, baked_grader = ran.stdout.splitlines()
     if baked_main != "False" or baked_grader != "False" or pip_present != "False":
-        raise RuntimeError("image contains a solution, grader, or pip")
+        msg = "image contains a solution, grader, or pip"
+        raise RuntimeError(msg)
     return {
         "image_id": document["Id"],
         "created": document.get("Created"),

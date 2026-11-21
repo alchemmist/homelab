@@ -95,7 +95,8 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         'Refuse redirects by closing the body and raising instead.'
         if fp is not None:
             fp.close()
-        raise RuntimeError("API redirect refused")
+        msg = "API redirect refused"
+        raise RuntimeError(msg)
 
 
 def api_for(root):
@@ -138,10 +139,12 @@ def api_for(root):
             # Close without reading/logging: unclosed HTTPError ResourceWarnings can
             # echo an untrusted server reason phrase during garbage collection.
             error.close()
-            raise RuntimeError("API request failed; outcome may be uncertain") from None
+            msg = "API request failed; outcome may be uncertain"
+            raise RuntimeError(msg) from None
         except (urllib.error.URLError, OSError, ValueError):
             # Never include response bodies, URLs, credentials or server errors.
-            raise RuntimeError("API request failed; outcome may be uncertain") from None
+            msg = "API request failed; outcome may be uncertain"
+            raise RuntimeError(msg) from None
 
     return api
 
@@ -169,7 +172,8 @@ def rows(api, path):
         )
         if nxt is None or nxt == 0:
             return result
-    raise RuntimeError("Pagination limit exceeded")
+    msg = "Pagination limit exceeded"
+    raise RuntimeError(msg)
 
 
 def unique(items, key):
@@ -419,7 +423,8 @@ def locked(root):
         try:
             fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
-            raise RuntimeError("Another preparation invocation holds the lock") from None
+            msg = "Another preparation invocation holds the lock"
+            raise RuntimeError(msg) from None
         yield
     finally:
         os.close(fd)  # never unlink a lock inode another invocation may hold
@@ -557,6 +562,7 @@ if __name__ == "__main__":
         raise SystemExit(main())
     except (RuntimeError, OSError, KeyError, ValueError, TypeError, AttributeError):
         # Sanitized fixed text also covers malformed/untrusted API/input values.
+        msg = "Preparation stopped: private input/API/schema/drift/approval or journal failure; inspect locally, never replay configure.py"
         raise SystemExit(
-            "Preparation stopped: private input/API/schema/drift/approval or journal failure; inspect locally, never replay configure.py"
+            msg
         ) from None
