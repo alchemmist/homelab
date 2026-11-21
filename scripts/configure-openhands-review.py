@@ -1,5 +1,8 @@
 """Run from operator checkout. Install read-only MCP and a non-active review profile."""
-import subprocess,json,hashlib,pathlib
+import subprocess
+import json
+import hashlib
+import pathlib
 root=pathlib.Path(__file__).resolve().parents[1]
 source=(root/"tools/openhands-mcp/monori_github_read.py").read_bytes();
 digest=hashlib.sha256(source).hexdigest()

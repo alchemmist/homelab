@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 """Create one schema-only Kuma service account; leave all existing DB passwords untouched."""
 
-import argparse, base64, fcntl, hashlib, json, os, secrets, subprocess
+import argparse
+import base64
+import fcntl
+import hashlib
+import json
+import os
+import secrets
+import subprocess
 from pathlib import Path
 
 USER = "homelab_kuma_app"
