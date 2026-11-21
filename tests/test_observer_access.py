@@ -224,16 +224,22 @@ def permits(
 class ObserverPolicyTests(unittest.TestCase):
     """Validate the observer access policy deployment values."""
     def test_reviewed_activation_enables_native_rancher_roles(self) -> None:
+        """A reviewed activation flag enables the native Rancher roles."""
+
         values = (ROOT / "deploy/platform/rancher/public-entry/values.yaml").read_text()
         assert "observerAccess:\n  enabled: true" in values
 
     def test_native_only_no_user_objects(self) -> None:
+        """The RBAC is group-native with no user objects."""
+
         assert [o["kind"] for o in RBAC] == ["GlobalRole", "RoleTemplate", "ClusterRoleTemplateBinding"]
         binding = RBAC[2]
         assert binding["groupPrincipalName"] == "genericoidc_group://homelab-observer"
         assert not any(k in binding for k in ["userName", "userPrincipalName"])
 
     def test_positive_cluster_read_matrix(self) -> None:
+        """The positive cluster read matrix is exactly granted."""
+
         for group, resource in [
             ("", "pods"),
             ("", "nodes"),
@@ -249,6 +255,8 @@ class ObserverPolicyTests(unittest.TestCase):
                     assert permits(RBAC[1]["rules"], group, resource, verb)
 
     def test_no_sensitive_reads(self) -> None:
+        """No sensitive resources are readable."""
+
         for group, resource in [
             ("", "secrets"),
             ("", "configmaps"),
@@ -263,6 +271,8 @@ class ObserverPolicyTests(unittest.TestCase):
                     assert not permits(RBAC[1]["rules"], group, resource, verb)
 
     def test_no_infrastructure_mutations_or_escalation(self) -> None:
+        """No infrastructure mutations or escalation verbs are granted."""
+
         rules = RBAC[1]["rules"] + RBAC[0]["rules"]
         for group, resource in [
             ("", "pods"),
@@ -295,12 +305,16 @@ class ObserverPolicyTests(unittest.TestCase):
                     assert not permits(rules, group, resource, verb)
 
     def test_cluster_metadata_is_named_local_only(self) -> None:
+        """Cluster metadata reads are local and named only."""
+
         rules = RBAC[1]["rules"]
         assert permits(rules, "management.cattle.io", "clusters", "get", "local")
         assert not permits(rules, "management.cattle.io", "clusters", "get", "other-cluster")
         assert not permits(rules, "management.cattle.io", "clusters", "list")
 
     def test_bounded_minimal_plan_no_secrets_no_machine_ttl(self) -> None:
+        """The plan is bounded with no secrets or machine TTL edits."""
+
         state = fixture()
         before = copy.deepcopy(state)
         operations = plan.build(state, POLICY)
@@ -317,6 +331,8 @@ class ObserverPolicyTests(unittest.TestCase):
     def test_harbor_gate_removes_only_exact_owned_guest_and_observer_admission(
         self,
     ) -> None:
+        """The harbor gate removes only exact owned guest and observer admission."""
+
         state = fixture()
         state["harbor"]["groups"] = [{"id": 101, "group_name": "homelab-observer", "group_type": 3}]
         for n, project in enumerate(POLICY["harbor"]["projects"], start=1):
@@ -349,6 +365,8 @@ class ObserverPolicyTests(unittest.TestCase):
         assert plan.build(state, POLICY) == []
 
     def test_cas_and_preserved_principals(self) -> None:
+        """CAS tests and principal preservation are emitted for Kubernetes writes."""
+
         operations = plan.build(fixture(), POLICY)
         for op in operations:
             if op["system"] == "kubernetes":
@@ -360,6 +378,8 @@ class ObserverPolicyTests(unittest.TestCase):
         assert auth["body"][-1]["value"] == [*principals, "genericoidc_group://homelab-observer"]
 
     def test_safe_defaults_and_harbor_before_admission(self) -> None:
+        """Safe defaults run first and harbor precedes admission."""
+
         operations = plan.build(fixture(), POLICY)
         first_auth = next(i for i, o in enumerate(operations) if o["system"] == "authentik")
         assert all(o["system"] == "authentik" for o in operations[first_auth:])
@@ -368,17 +388,23 @@ class ObserverPolicyTests(unittest.TestCase):
         assert harbor_ops[0]["body"] == {"project_creation_restriction": "adminonly"}
 
     def test_idempotent_native_bootstrap(self) -> None:
+        """The native bootstrap converges idempotently."""
+
         state = fixture()
         converge(state, plan.build(state, POLICY))
         assert plan.build(state, POLICY) == []
 
     def test_multiple_future_users_do_not_change_plan(self) -> None:
+        """Multiple future users never change the plan."""
+
         state = fixture()
         converge(state, plan.build(state, POLICY))
         state["groups"][0]["users"] = [94, 100, 101, 102]
         assert plan.build(state, POLICY) == []
 
     def test_reject_dangerous_live_drift(self) -> None:
+        """Dangerous live drift is rejected."""
+
         mutations = [
             lambda s: s["groups"][0].update(is_superuser=True),
             lambda s: s["groups"][0].update(roles=["idp-read-role"]),
@@ -430,6 +456,8 @@ class ObserverPolicyTests(unittest.TestCase):
                     plan.build(state, POLICY)
 
     def test_reject_policy_scope_widening(self) -> None:
+        """Policy scope widening is rejected."""
+
         for mutation in [
             lambda p: p["nativeAdmission"].append("litellm"),
             lambda p: p["harbor"]["projects"].append("other-project"),
@@ -444,6 +472,8 @@ class ObserverPolicyTests(unittest.TestCase):
                 plan.build(fixture(), policy)
 
     def test_native_reconciler_retains_but_never_opens_group_admission(self) -> None:
+        """The reconciler retains but never opens group admission."""
+
         spec = importlib.util.spec_from_file_location(
             "observer_admission",
             ROOT / "ansible/roles/identity_integrations/files/observer_admission.py",
@@ -469,6 +499,8 @@ class ObserverPolicyTests(unittest.TestCase):
         assert patch[:2] == [{"op": "test", "path": "/metadata/uid", "value": "auth-uid"}, {"op": "test", "path": "/metadata/resourceVersion", "value": "9"}]
 
     def test_malformed_snapshot_is_a_clear_validation_error(self) -> None:
+        """A malformed snapshot is a clear validation error."""
+
         snapshots: list[tuple[object, object]] = [
             ({}, POLICY),
             (None, POLICY),
@@ -480,6 +512,8 @@ class ObserverPolicyTests(unittest.TestCase):
                 plan.build(state, policy)
 
     def test_harbor_group_type_and_native_entity_id_are_verified(self) -> None:
+        """Harbor group types and native entity IDs are verified."""
+
         state = fixture()
         converge(state, plan.build(state, POLICY))
         state["harbor"]["groups"] = [{"id": 101, "group_name": "homelab-observer", "group_type": 3}]
@@ -501,6 +535,8 @@ class ObserverPolicyTests(unittest.TestCase):
             plan.build(state, POLICY)
 
     def test_unsupported_services_are_explicit_not_fake_viewers(self) -> None:
+        """Unsupported services are explicit, not fake viewers."""
+
         for slug in [
             "n8n",
             "syncthing",
@@ -513,6 +549,8 @@ class ObserverPolicyTests(unittest.TestCase):
             assert slug not in POLICY["nativeAdmission"]
 
     def test_scripts_have_no_syntax_errors(self) -> None:
+        """The scripts parse without syntax errors."""
+
         for name in [
             "observer-access-plan.py",
             "observer-access-bootstrap.py",
@@ -524,9 +562,10 @@ class ObserverPolicyTests(unittest.TestCase):
 class BootstrapSafetyTests(unittest.TestCase):
     """Guard observer bootstrap safety against dangerous actions."""
     def setUp(self) -> None:
+        """Load the observer bootstrap module."""
+
         spec = importlib.util.spec_from_file_location(
-            "observer_bootstrap",
-            ROOT / "scripts/observer-access-bootstrap.py",
+            "observer_bootstrap", ROOT / "scripts/observer-access-bootstrap.py"
         )
         if spec is None or spec.loader is None:
             message = "missing observer bootstrap loader"
@@ -565,6 +604,8 @@ class BootstrapSafetyTests(unittest.TestCase):
         self.fake_client = FakeClient
 
     def run_main(self, *args: str) -> dict[str, object]:
+        """Run the bootstrap main with patched inputs and capture output."""
+
         with (
             patch.object(self.bootstrap, "Client", self.fake_client),
             patch.object(
@@ -591,6 +632,8 @@ class BootstrapSafetyTests(unittest.TestCase):
             return receipts
 
     def test_api_paths_are_scoped_and_reject_traversal(self) -> None:
+        """API paths are scoped and reject traversal."""
+
         for system, path in [
             ("authentik", "../../etc/passwd"),
             ("harbor", "/etc/passwd"),
@@ -609,6 +652,8 @@ class BootstrapSafetyTests(unittest.TestCase):
             self.bootstrap.validate_path(system, path)
 
     def test_explicit_harbor_machine_identity_uses_internal_config_api(self) -> None:
+        """The explicit Harbor machine identity uses the internal config API."""
+
         header, path = self.bootstrap.harbor_authorization(
             {"harborJobserviceSecret": "test-machine-only"}
         )
@@ -623,6 +668,8 @@ class BootstrapSafetyTests(unittest.TestCase):
             self.bootstrap.harbor_authorization({"harborJobserviceSecret": ""})
 
     def test_foundation_ready_path_preserves_explicit_trusted_owner(self) -> None:
+        """The foundation ready path preserves the explicit trusted owner."""
+
         path = Path("/home/alchemmist/.cache/homelab-authentik")
         with (
             patch.object(self.bootstrap.os, "geteuid", return_value=0),
@@ -637,17 +684,23 @@ class BootstrapSafetyTests(unittest.TestCase):
             validate.assert_called_once_with(self.root, directory=True, owner_uid=None)
 
     def test_default_is_no_native_writes(self) -> None:
+        """The default run makes no native writes."""
+
         result = self.run_main()
         assert not result["applied"]
         assert self.calls == []
         assert not (self.root / "state/uncertain.json").exists()
 
     def test_wrong_approval_stops_before_mutation(self) -> None:
+        """A wrong approval stops before any mutation."""
+
         with self.assertRaisesRegex(ValueError, "plan hash"):
             self.run_main("--apply", "--approve-plan-hash", "wrong")
         assert self.calls == []
 
     def test_approved_apply_private_receipts_and_native_convergence(self) -> None:
+        """An approved apply keeps receipts private and converges natively."""
+
         approved = self.run_main()["plan_hash"]
         assert isinstance(approved, str)
         result = self.run_main(
@@ -668,6 +721,8 @@ class BootstrapSafetyTests(unittest.TestCase):
             assert receipt.stat().st_mode & 511 == 384
 
     def test_failed_write_leaves_uncertain_stop_and_no_blind_retry(self) -> None:
+        """A failed write leaves an uncertain stop with no blind retry."""
+
         approved = self.run_main()["plan_hash"]
         assert isinstance(approved, str)
         self.fake_client.call = lambda *args: (_ for _ in ()).throw(
@@ -683,9 +738,10 @@ class BootstrapSafetyTests(unittest.TestCase):
 
 class LegacyChatMigrationTests(unittest.TestCase):
     def setUp(self) -> None:
+        """Load the chat migration module and fixture state."""
+
         spec = importlib.util.spec_from_file_location(
-            "chat_migration",
-            ROOT / "scripts/observer-chat-migration.py",
+            "chat_migration", ROOT / "scripts/observer-chat-migration.py"
         )
         if spec is None or spec.loader is None:
             message = "missing observer chat migration loader"
@@ -775,6 +831,8 @@ class LegacyChatMigrationTests(unittest.TestCase):
     def test_one_time_migration_preserves_native_subject_and_owner_then_converges(
         self,
     ) -> None:
+        """The one-time migration preserves subject and owner, then converges."""
+
         before = copy.deepcopy(self.state)
         operations = self.migration.build(self.state, POLICY)
         assert [op["action"] for op in operations] == ["create-chat-group", "preserve-chat-user", "admit-chat-group", "remove-observer-chat-admission"]
@@ -791,6 +849,8 @@ class LegacyChatMigrationTests(unittest.TestCase):
         assert [path for _, method, path, _ in self.calls if method == "DELETE"] == ["policies/bindings/old-observer-binding/"]
 
     def test_unreviewed_observer_or_subject_change_stops_before_writes(self) -> None:
+        """Unreviewed observer or subject changes stop before writes."""
+
         for modify in [
             lambda s: s["groups"][0]["users"].append(94),
             lambda s: s["users"][0].update(uuid="changed"),
@@ -807,6 +867,8 @@ class LegacyChatMigrationTests(unittest.TestCase):
             assert self.calls == []
 
     def test_cannot_remove_legacy_admission_before_preservation(self) -> None:
+        """Legacy admission cannot be removed before preservation."""
+
         operations = self.migration.build(self.state, POLICY)
         self.migration.apply(self.client, operations[0], copy.deepcopy(self.state))
         with self.assertRaisesRegex(ValueError, "not safely admitted"):
@@ -814,6 +876,8 @@ class LegacyChatMigrationTests(unittest.TestCase):
         assert not any(method == "DELETE" for _, method, _, _ in self.calls)
 
     def test_new_observer_is_not_an_ordinary_chat_user(self) -> None:
+        """A new observer is not an ordinary chat user."""
+
         services = json.loads((ROOT / "deploy/identity/services.json").read_text())
         assert "homelab-observer" not in services["open-webui"]["groups"]
         assert "homelab-chat-user" in services["open-webui"]["groups"]

@@ -16,10 +16,12 @@ class RetentionTests(unittest.TestCase):
 
     def setUp(self):
         """Load the reviewed retention policy."""
+
         self.policy = json.loads(m.POLICY.read_text())
 
     def test_copies_and_defaults(self):
         """Config copies match and default severity rules render."""
+
         text = m.COPIES[0].read_text()
         assert text == m.COPIES[1].read_text()
         assert text == m.render(text, self.policy)
@@ -33,6 +35,7 @@ class RetentionTests(unittest.TestCase):
 
     def test_service_beats_severity(self):
         """Service-level retention beats severity defaults."""
+
         self.policy["services"] = {"example": {"debug": 48, "error": 336}}
         _, rules = m.rules(self.policy)
         assert (100, '{service_name="example",severity="debug"}', 48) in rules
@@ -40,6 +43,7 @@ class RetentionTests(unittest.TestCase):
 
     def test_reject_invalid_and_unmeasured_long_retention(self):
         """Invalid or unmeasured long retentions are rejected."""
+
         for value in (0, 23, 8761, True, "72", 8760):
             with self.subTest(value=value):
                 self.policy["severityHours"]["error"] = value
@@ -47,6 +51,8 @@ class RetentionTests(unittest.TestCase):
                     m.rules(self.policy)
 
     def approval(self):
+        """Build a complete capacity approval record."""
+
         return {
             "measuredAt": "2026-11-04",
             "evidence": "reviewed 7d report",
@@ -64,6 +70,7 @@ class RetentionTests(unittest.TestCase):
 
     def test_any_extension_needs_approval(self):
         """Any retention extension needs an approval."""
+
         for level in m.LEVELS - {"unknown"}:
             for value in (337, 720):
                 with self.subTest(level=level, value=value):
@@ -77,6 +84,7 @@ class RetentionTests(unittest.TestCase):
 
     def test_capacity_gate(self):
         """The capacity gate validates approval measurements."""
+
         self.policy["capacityApproval"] = self.approval()
         self.policy["severityHours"]["warn"] = 720
         m.rules(self.policy)
@@ -96,6 +104,7 @@ class RetentionTests(unittest.TestCase):
 
     def test_unknown_and_fallback_preserved(self):
         """Unknown tiers and the fallback are preserved and required."""
+
         for field in ("fallback", "unknown", "service"):
             policy = json.loads(m.POLICY.read_text())
             if field == "fallback":
@@ -109,6 +118,7 @@ class RetentionTests(unittest.TestCase):
 
     def test_reject_selector_injection(self):
         """Selector injection is rejected."""
+
         self.policy["services"] = {'bad"}': {"error": 336}}
         with self.assertRaises(ValueError):
             m.rules(self.policy)

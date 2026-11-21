@@ -2,6 +2,8 @@
 
 [Отчёт: внезапная потеря `socrat-1`, 21 ноября 2026](socrat-1-loss-20261121.md) — фактические времена, границы восстановления и незакрытые проверки.
 
+[Второе отключение `socrat-1`, 21 ноября 2026](socrat-1-loss-20261121-run2.md) — повтор с отдельным Alertmanager на `0` и без смены primary PostgreSQL.
+
 Авторизация обновлена в текущем closeout: [B2C app-группы](application-access.md).
 Текущая карта размещения и source ownership: [context](context.md), обновление **16 ноября 2026**. Сетевой обзор ниже: срез **10 ноября 2026** (production Moscow VPN Pod/native, shared mesh и приёмка fallback; SPI service extraction; observer — 8 ноября, остальные срезы датированы в своих разделах). Это рабочая память для сопровождения homelab,
 не public wiki content и не набор команд для автоматического повторения миграций.

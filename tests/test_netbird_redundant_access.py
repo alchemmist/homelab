@@ -29,6 +29,8 @@ base = load("netbird-host-peer")
 class IndependentAccessTest(unittest.TestCase):
     """Verify redundant access for exact hosts without implicit enrollment."""
     def test_four_exact_hosts_opt_in_no_implicit_enrollment(self) -> None:
+        """Four exact hosts opt in with no implicit enrollment."""
+
         docs = mesh.manifests()
         assert len(docs) == 8
         for host in mesh.HOSTS:
@@ -48,6 +50,8 @@ class IndependentAccessTest(unittest.TestCase):
             mesh.peer("new-vm")
 
     def test_native_group_router_not_single_peer_or_default_route(self) -> None:
+        """Routers use native groups, not single peers or default routes."""
+
         assert mesh.router_body("exact-node-group") == {"peer_groups": ["exact-node-group"], "enabled": True, "masquerade": True, "metric": 80}
         assert set(mesh.NODE_ADDRESSES.values()) == {"10.250.0.1/32", "10.250.0.2/32", "10.250.0.3/32", "10.250.0.5/32"}
         for bad in [None, "", "All", "default", [], "group/other", "group name"]:
@@ -55,6 +59,8 @@ class IndependentAccessTest(unittest.TestCase):
                 mesh.router_body(bad)
 
     def test_distinct_input_policies_keep_pilot_tcp_only(self) -> None:
+        """Distinct input policies keep the pilot TCP-only."""
+
         admin = mesh.admin_input_policy("jwt-admin", "nodes")["rules"][0]
         pilot = mesh.pilot_input_policy("jwt-pilot", "only-node2")["rules"][0]
         assert admin["sources"] == ["jwt-admin"]
@@ -71,6 +77,8 @@ class IndependentAccessTest(unittest.TestCase):
                     fn(*args)
 
     def test_relay_pinned_vps_and_no_secret_values_or_management(self) -> None:
+        """The relay is pinned to the VPS with no secret values or management."""
+
         docs = relay.manifests()
         assert [d["kind"] for d in docs] == ["Deployment", "Service", "NetworkPolicy", "Certificate", "Ingress"]
         pod = docs[0]["spec"]["template"]["spec"]
@@ -92,6 +100,8 @@ class IndependentAccessTest(unittest.TestCase):
         assert "/api" not in yaml.safe_dump(docs)
 
     def test_native_self_health_bootstrap_and_actual_vps_cni(self) -> None:
+        """Self-health uses the native LB with the actual VPS CNI."""
+
         service, policy = relay.manifests()[1:3]
         assert service["spec"]["publishNotReadyAddresses"]
         assert service["metadata"]["annotations"]["traefik.ingress.kubernetes.io/service.nativelb"] == "true"
@@ -103,6 +113,8 @@ class IndependentAccessTest(unittest.TestCase):
         assert ingress["ports"] == [{"protocol": "TCP", "port": 33080}]
 
     def test_home_relay_is_separate_and_reuses_existing_tls(self) -> None:
+        """The home relay is separate and reuses existing TLS."""
+
         deploy, service, policy, ingress = relay.home_manifests()
         assert deploy["spec"]["template"]["spec"]["nodeSelector"] == {"kubernetes.io/hostname": "socrat-0"}
         assert service["spec"]["selector"] == {"app": "netbird-relay-home"}
@@ -118,6 +130,8 @@ class IndependentAccessTest(unittest.TestCase):
         assert "relay" not in relay.advertised_relays()
 
     def test_mac_bootstrap_does_not_depend_on_internal_dns(self) -> None:
+        """The macOS bootstrap does not depend on internal DNS."""
+
         assert len(dns.HOSTS) == 3
         assert "auth.socrat.alchemmist.xyz" in dns.HOSTS
         body = dns.render().decode()

@@ -48,6 +48,8 @@ class QueueTransitions(unittest.TestCase):
     """Tests for swe-mini queue state transitions."""
 
     def setUp(self) -> None:
+        """Install guards and a single "work" run with mocked cluster clients."""
+
 
         # A transition regression must never reach credential files or the real API.
         github_guard = patch.object(
@@ -82,39 +84,55 @@ class QueueTransitions(unittest.TestCase):
         }
 
     def state(self) -> str:
+        """Return the current state of the fixture run."""
+
         return cast("str", c.DB.execute("SELECT state FROM runs WHERE id='test'").fetchone()[0])
 
     def tick(self) -> None:
+        """Feed a signed worker result into the controller and run a tick."""
+
         c.CORE.read_namespaced_pod_log.return_value = policy.encode_result(
             self.result, c.signing_key("test", self.state())
         )
         c.tick()
 
     def test_clean_no_finding_done(self) -> None:
+        """A clean run with matching baseline transitions to done."""
+
         self.tick()
         assert self.state() == "done"
 
     def test_failed_baseline_never_published(self) -> None:
+        """A failed baseline on the worker lands in rejected, not publishing."""
+
         self.result["baseline"]["backend"] = 1
         self.tick()
         assert self.state() == "rejected"
 
     def test_failed_postcheck_rejected(self) -> None:
+        """A failing candidate post-check rejects the run."""
+
         self.result["checks"]["backend"] = 1
         self.tick()
         assert self.state() == "rejected"
 
     def test_model_limit_not_completion(self) -> None:
+        """Model LimitsExceeded status marks the run failed, not done."""
+
         self.result["agent_status"] = "LimitsExceeded"
         self.tick()
         assert self.state() == "failed"
 
     def test_wrong_revision_failed(self) -> None:
+        """A result for a different revision fails the run."""
+
         self.result["revision"] = "b" * 40
         self.tick()
         assert self.state() == "failed"
 
     def test_candidate_requires_review(self) -> None:
+        """A run with candidate changes enters review instead of publishing."""
+
         self.result["changes"] = [
             {"path": "server/app/a.py", "content": base64.b64encode(b"x=1\n").decode()}
         ]
@@ -124,12 +142,16 @@ class QueueTransitions(unittest.TestCase):
             assert self.state() != "publishing"
 
     def test_review_rejection(self) -> None:
+        """A disapproved review rejects the run."""
+
         c.save("test", state="review")
         self.result["review"] = {"approved": False, "reason": "reproduction fails"}
         self.tick()
         assert self.state() == "rejected"
 
     def test_review_approval_queues_publication(self) -> None:
+        """An approved review queues publication and clears the landing config map."""
+
         c.save("test", state="review")
         self.result["review"] = {"approved": True, "reason": "test reproduced"}
         self.tick()
@@ -137,6 +159,8 @@ class QueueTransitions(unittest.TestCase):
         c.CORE.delete_namespaced_config_map.assert_called_once()
 
     def test_model_approval_cannot_override_fresh_candidate_test_failure(self) -> None:
+        """Review approval cannot override a fresh candidate test failure."""
+
         c.save("test", state="review")
         self.result["candidate_checks"] = {"backend": 1}
         self.result["review"] = {"approved": True, "reason": "model claims it passes"}
@@ -144,21 +168,29 @@ class QueueTransitions(unittest.TestCase):
         assert self.state() == "rejected"
 
     def test_forged_unsigned_worker_result_is_refused(self) -> None:
+        """Unsigned worker results are refused outright."""
+
         c.CORE.read_namespaced_pod_log.return_value = policy.encode_result(self.result)
         c.tick()
         assert self.state() == "failed"
 
     def test_invalid_candidate_is_terminal_not_infinite_retry(self) -> None:
+        """An invalid candidate ends in rejected rather than retrying forever."""
+
         self.result["changes"] = [{"path": ".github/workflows/evil.yml", "content": "dHJ1ZQ=="}]
         self.tick()
         assert self.state() == "rejected"
 
     def test_no_unstructured_log_completion(self) -> None:
+        """Plain prose log output does not count as a completion marker."""
+
         c.CORE.read_namespaced_pod_log.return_value = "I am done!"
         c.tick()
         assert self.state() == "failed"
 
     def test_pending_job_is_not_restarted(self) -> None:
+        """A still-running job is left alone instead of being restarted."""
+
         c.BATCH.read_namespaced_job.return_value.status = SimpleNamespace(
             succeeded=None, failed=None
         )
@@ -168,6 +200,8 @@ class QueueTransitions(unittest.TestCase):
         assert self.state() == "work"
 
     def test_expired_job_fails_and_next_task_is_admitted(self) -> None:
+        """A vanished job fails and the next queued task is admitted."""
+
         class NotFound(Exception):
             status = 404
 
@@ -180,11 +214,15 @@ class QueueTransitions(unittest.TestCase):
         assert c.DB.execute("SELECT count(*) FROM runs WHERE state='queued'").fetchone()[0] == 1
 
     def test_missing_terminal_pod_does_not_wedge_queue(self) -> None:
+        """A missing terminal pod fails the run instead of wedging the queue."""
+
         c.CORE.list_namespaced_pod.return_value.items = []
         c.tick()
         assert self.state() == "failed"
 
     def test_dependency_pr_blocks_duplicates_until_base_changes(self) -> None:
+        """Dependency PRs block duplicates until the base revision moves."""
+
         payload = {"changes": [{"path": p} for p in policy.DEPENDENCY_PATHS]}
         c.save(
             "test",
@@ -210,6 +248,8 @@ class QueueTransitions(unittest.TestCase):
         assert c.DB.execute("SELECT count(*) FROM runs").fetchone()[0] == run_count
 
     def test_idle_github_failure_is_backed_off(self) -> None:
+        """Idle-path API failures are backed off rather than spammed."""
+
         c.save("test", state="failed")
         with patch.object(c, "github", side_effect=RuntimeError("external API unavailable")) as api:
             with self.assertRaises(RuntimeError):
@@ -218,12 +258,16 @@ class QueueTransitions(unittest.TestCase):
             assert api.call_count == 1
 
     def test_main_discovery_uses_installation_auth(self) -> None:
+        """Discovery calls GitHub with installation authentication."""
+
         c.save("test", state="failed")
         with patch.object(c, "github", side_effect=[[], {"sha": "b" * 40}]) as api:
             c.tick()
             assert api.call_args.kwargs.get("auth")
 
     def test_backoff_preserves_dependency_error_and_heartbeat(self) -> None:
+        """Backoff keeps the last error visible while heartbeats continue."""
+
         c.save("test", state="failed")
         with patch.object(c, "github", side_effect=RuntimeError("external API unavailable")):
             c.run_once()
@@ -236,6 +280,8 @@ class QueueTransitions(unittest.TestCase):
         assert c.STATUS["error"] == ""
 
     def test_api_error_does_not_fail_process_health(self) -> None:
+        """API errors do not fail liveness; stale heartbeats still do."""
+
         import threading, urllib.request, urllib.error, time
 
         saved = dict(c.STATUS)
@@ -274,6 +320,8 @@ class QueueTransitions(unittest.TestCase):
             c.STATUS.update(saved)
 
     def test_persisted_queued_run_resumes(self) -> None:
+        """A persisted queued run resumes into the work lane after restart."""
+
         c.save("test", state="queued")
         with patch.object(c, "start_job") as start:
             c.tick()
