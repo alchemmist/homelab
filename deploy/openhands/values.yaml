@@ -1,3 +1,4 @@
+---
 fullnameOverride: openhands
 image:
   repository: ghcr.io/openhands/agent-canvas
@@ -82,3 +83,4 @@ workerRegistries:
 monoriPilot: true
 
 piMonori: true
+...

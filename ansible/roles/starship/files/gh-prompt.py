@@ -23,7 +23,7 @@ def gh(args, cwd=None):
             text=True,
             timeout=15,
         ).stdout.strip()
-    except Exception:
+    except (OSError, subprocess.SubprocessError):
         return ""
 
 

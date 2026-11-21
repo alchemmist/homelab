@@ -5,7 +5,7 @@ metadata:
   name: lms
   namespace: argocd
   finalizers:
-  - resources-finalizer.argocd.argoproj.io
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
@@ -15,8 +15,8 @@ spec:
     helm:
       releaseName: lms
       valueFiles:
-      - ../../deploy/lms/values.yaml
-      - alert-graphs.values.yaml
+        - ../../deploy/lms/values.yaml
+        - alert-graphs.values.yaml
       parameters: []
   destination:
     namespace: lms
@@ -26,19 +26,19 @@ spec:
       prune: false
       selfHeal: true
     syncOptions:
-    - CreateNamespace=true
-    - RespectIgnoreDifferences=true
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true
   ignoreDifferences:
-  - group: apps
-    kind: Deployment
-    name: lms
-    namespace: lms
-    jsonPointers:
-    - /spec/template/metadata/annotations/homelab.alchemmist.xyz~1client-certificate-sha256
-  - group: ''
-    kind: Secret
-    name: lms-db
-    namespace: lms
-    jsonPointers:
-    - /data
+    - group: apps
+      kind: Deployment
+      name: lms
+      namespace: lms
+      jsonPointers:
+        - /spec/template/metadata/annotations/homelab.alchemmist.xyz~1client-certificate-sha256
+    - group: ''
+      kind: Secret
+      name: lms-db
+      namespace: lms
+      jsonPointers:
+        - /data
 ...
